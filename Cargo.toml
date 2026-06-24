@@ -1,0 +1,73 @@
+[package]
+name = "conglobate"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/pichi-vm/conglobate"
+publish = false
+description = "The pichi build driver: PID 1 (/init) in the PMI-only build VM."
+
+[[bin]]
+name = "conglobate"
+path = "src/main.rs"
+
+[lib]
+# The pichi.build recipe I/O types (parse + validate), shared with the host
+# CLI. Portable (serde-only); the Linux-only build logic lives in the binary.
+
+[dependencies]
+# Portable recipe I/O: the lib parses carapace.yaml/pmi.yaml/refs.lock and
+# emits build.yaml, with structural validation. serde-only so the
+# cross-platform `pichi` CLI can depend on this lib.
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+thiserror = "2"
+
+# The build path is device-mapper + virtio-fs + chroot, all Linux syscalls —
+# these deps back the binary's build logic and never enter the portable lib.
+[target.'cfg(target_os = "linux")'.dependencies]
+# rustix's safe syscall wrappers (linux_raw backend → no libc, no unsafe in
+# our code), matching the snuffler guest probe. `mount`/`system`/`stdio` are
+# added on top of the workspace base feature set.
+rustix = { version = "1", default-features = false, features = ["std", "fs", "process", "mount", "system", "stdio"] }
+# Read-side carapace assembly: attach the source carapace (the recipe `from:`)
+# as a composed read-only `/dev/mapper/...` to use as the build origin.
+carapace = { git = "https://github.com/pichi-vm/carapace" }
+# Scute-format emission: flatten the origin into a base scute (cow) and the
+# dm-verity hash tree over it; per-directive delta cow via write_delta.
+carapace-import = { git = "https://github.com/pichi-vm/carapace" }
+# device-mapper ioctls: the writable dm-snapshot per directive (origin = the
+# composed previous layer, COW store = a brd ramdisk).
+carapace-dm = { git = "https://github.com/pichi-vm/carapace" }
+# Decode the source root hash / encode scute salts (refs.lock <-> build.yaml).
+hex = "0.4"
+# Cow-digest for the deterministic verity UUID (matches pichi import).
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unreachable_pub = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+must_use_candidate = "allow"
+doc_markdown = "allow"
+type_complexity = "allow"
+similar_names = "allow"
+struct_field_names = "allow"
+needless_continue = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_lossless = "allow"
+too_many_lines = "allow"
+missing_panics_doc = "allow"
+needless_pass_by_value = "allow"
+uninlined_format_args = "allow"
