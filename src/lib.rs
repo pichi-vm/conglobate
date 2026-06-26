@@ -2,17 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! conglobate's library half: the `pichi.build` recipe I/O types shared
-//! with the host — parse + validate for `carapace.yaml`, `pmi.yaml`, and
-//! `refs.lock` (BUILD.md §2.1, §2.2, §2.4).
+//! with the host — parse + validate for `carapace.yaml`, `pmi.yaml`,
+//! `refs.lock` (BUILD.md §2.1, §2.2, §2.4), and the `requirements.yaml`
+//! launch contract (§7).
 //!
-//! Shared by the host (`pichi build` / `pichi update`) and the in-guest
-//! build driver (`conglobate`). The types are the on-disk YAML schema; a
-//! `parse` constructor on each runs `serde_yaml` then a structural
-//! `validate` pass. MVP scope — the `config.yaml` → `requirements.yaml`
-//! filter is deferred.
+//! Shared by the host (`pichi build` / `pichi update` / `pichi run`) and the
+//! in-guest build driver (`conglobate`). The types are the on-disk YAML
+//! schema; a `parse` constructor on each runs `serde_yaml` then a structural
+//! `validate` pass. `requirements.yaml` is currently authored by hand (the
+//! official build image ships one to bootstrap the platform); the
+//! `config.yaml` → `requirements.yaml` filter is still deferred.
 
 use std::collections::BTreeMap;
 
+use bytesize::ByteSize;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -312,6 +315,107 @@ fn validate_directives(derive: &[Directive]) -> Result<(), RecipeError> {
     Ok(())
 }
 
+/// `requirements.yaml` — the host-facing launch contract (BUILD.md §7): what
+/// the host must provide to launch a pichi VM. v1 models only the two fields
+/// pichi uses to size a VM — `cpus` and `memory`; the other host-facing dicts
+/// (`carapaces`, `volumes`, `interfaces`, enforced inside the guest by corium)
+/// are not modelled yet. Authored by hand to bootstrap the platform — the
+/// `config.yaml` → `requirements.yaml` filter is still deferred.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Requirements {
+    /// vCPU band. Omit to leave sizing to the operator / dillo default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cpus: Option<Band<u32>>,
+
+    /// Guest-memory band; sizes are written like `2GiB` (binary units).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory: Option<Band<ByteSize>>,
+}
+
+/// A two-tier requirement (BUILD.md §7): `required` MUST be met or launch
+/// errors; `recommended` SHOULD be met or the instance starts with a warning.
+/// Neither is a ceiling; both are individually optional.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Band<T> {
+    /// The host MUST provide at least this; otherwise launch errors.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub required: Option<T>,
+
+    /// The host SHOULD provide at least this; otherwise a warning.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recommended: Option<T>,
+}
+
+impl Requirements {
+    /// Parse and validate a `requirements.yaml` document. An empty document is
+    /// a valid empty contract (no host obligations).
+    pub fn parse(yaml: &str) -> Result<Self, RecipeError> {
+        if yaml.trim().is_empty() {
+            return Ok(Self::default());
+        }
+        let req: Self = serde_yaml::from_str(yaml)?;
+        req.validate()?;
+        Ok(req)
+    }
+
+    fn validate(&self) -> Result<(), RecipeError> {
+        if let Some(b) = &self.cpus {
+            if b.required == Some(0) {
+                return Err(RecipeError::Invalid(
+                    "requirements.yaml: cpus.required is 0".into(),
+                ));
+            }
+            if let (Some(r), Some(rec)) = (b.required, b.recommended)
+                && rec < r
+            {
+                return Err(RecipeError::Invalid(
+                    "requirements.yaml: cpus.recommended is below cpus.required".into(),
+                ));
+            }
+        }
+        if let Some(b) = &self.memory
+            && let (Some(r), Some(rec)) = (b.required, b.recommended)
+            && rec < r
+        {
+            return Err(RecipeError::Invalid(
+                "requirements.yaml: memory.recommended is below memory.required".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Required vCPU floor, if declared.
+    pub fn cpus_required(&self) -> Option<u32> {
+        self.cpus.and_then(|b| b.required)
+    }
+
+    /// Recommended vCPU count, if declared.
+    pub fn cpus_recommended(&self) -> Option<u32> {
+        self.cpus.and_then(|b| b.recommended)
+    }
+
+    /// Required memory floor in MiB (rounded up), if declared.
+    pub fn memory_required_mib(&self) -> Option<u32> {
+        self.memory.and_then(|b| b.required).map(byte_size_to_mib)
+    }
+
+    /// Recommended memory in MiB (rounded up), if declared.
+    pub fn memory_recommended_mib(&self) -> Option<u32> {
+        self.memory
+            .and_then(|b| b.recommended)
+            .map(byte_size_to_mib)
+    }
+}
+
+/// Round a byte size up to whole MiB, saturating at `u32::MAX` (dillo takes
+/// `--memory` in MiB).
+fn byte_size_to_mib(size: ByteSize) -> u32 {
+    const MIB: u64 = 1 << 20;
+    u32::try_from(size.as_u64().div_ceil(MIB)).unwrap_or(u32::MAX)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -458,5 +562,56 @@ registry.example.com/models/llama:7b:
         let yaml = "reg/x:1:\n  manifest: deadbeef\n  carapace: sha256:aa\n";
         let err = RefsLock::parse(yaml).unwrap_err();
         assert!(matches!(err, RecipeError::Invalid(_)), "{err:?}");
+    }
+
+    #[test]
+    fn parses_requirements() {
+        let yaml = r"
+cpus:
+  required: 1
+  recommended: 4
+memory:
+  required: 2GiB
+  recommended: 4GiB
+";
+        let r = Requirements::parse(yaml).unwrap();
+        assert_eq!(r.cpus_required(), Some(1));
+        assert_eq!(r.cpus_recommended(), Some(4));
+        assert_eq!(r.memory_required_mib(), Some(2048));
+        assert_eq!(r.memory_recommended_mib(), Some(4096));
+    }
+
+    #[test]
+    fn empty_requirements_is_valid() {
+        let r = Requirements::parse("").unwrap();
+        assert_eq!(r.cpus_required(), None);
+        assert_eq!(r.memory_required_mib(), None);
+    }
+
+    #[test]
+    fn partial_requirements_bands_are_allowed() {
+        let r = Requirements::parse("memory:\n  required: 512MiB\n").unwrap();
+        assert_eq!(r.memory_required_mib(), Some(512));
+        assert_eq!(r.memory_recommended_mib(), None);
+        assert_eq!(r.cpus_required(), None);
+    }
+
+    #[test]
+    fn requirements_rejects_recommended_below_required() {
+        let err = Requirements::parse("cpus:\n  required: 4\n  recommended: 1\n").unwrap_err();
+        assert!(matches!(err, RecipeError::Invalid(_)), "{err:?}");
+    }
+
+    #[test]
+    fn requirements_rejects_unknown_field() {
+        let err = Requirements::parse("gpus:\n  required: 1\n").unwrap_err();
+        assert!(matches!(err, RecipeError::Parse(_)), "{err:?}");
+    }
+
+    #[test]
+    fn requirements_memory_rounds_up_to_mib() {
+        // 1 byte over 1 MiB rounds to 2 MiB.
+        let r = Requirements::parse("memory:\n  required: 1048577\n").unwrap();
+        assert_eq!(r.memory_required_mib(), Some(2));
     }
 }
