@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
-#
+
 # Build conglobate + assemble the official pichi build image initramfs and
 # kernel. Runs INSIDE an arch-matched Alpine container (see build-image.sh):
 # the host stages the conglobate source tree in /work/src and collects the

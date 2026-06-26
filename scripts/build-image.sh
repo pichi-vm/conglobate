@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
-#
+
 # Build one architecture's official pichi build image (a PMI-only pichi VM
 # whose /init is conglobate) and write it to $OUT/boot.pmi.
 #

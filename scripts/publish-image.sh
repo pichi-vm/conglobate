@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
-#
+
 # Publish the per-arch build-image PMIs as a single multi-arch OCI index that
 # `pichi pull` can consume. The manifests + index are hand-built to match
 # pichi's artifact schema exactly (see pichi-artifact: artifactType
