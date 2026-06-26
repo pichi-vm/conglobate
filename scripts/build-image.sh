@@ -20,7 +20,9 @@ set -euo pipefail
 
 ARMA_DIR="${ARMA_DIR:?set ARMA_DIR to an arma checkout}"
 OUT="${OUT:-$(pwd)/image-out}"
-PMI_CMDLINE="${PMI_CMDLINE:-console=ttyS0 panic=-1}"
+# dillo routes the guest's virtio-console (hvc0) to stdout, so the build VM
+# logs (conglobate's progress) reach `pichi build`'s captured output there.
+PMI_CMDLINE="${PMI_CMDLINE:-console=hvc0}"
 ALPINE_IMAGE="${ALPINE_IMAGE:-alpine:latest}"
 root=$(cd "$(dirname "$0")/.." && pwd)
 
