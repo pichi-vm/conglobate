@@ -2,12 +2,17 @@
 # SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
 #
-# Assemble the official pichi build image initramfs + kernel. Runs INSIDE an
-# arch-matched Alpine container (see build-image.sh): the host stages the
-# prebuilt static-musl conglobate in /work/conglobate and collects the kernel,
-# config and uncompressed cpio from /work/out afterwards. The host then seals
-# them into the PMI with arma (arma needs only the files, not a musl runtime,
-# so it stays on the host).
+# Build conglobate + assemble the official pichi build image initramfs and
+# kernel. Runs INSIDE an arch-matched Alpine container (see build-image.sh):
+# the host stages the conglobate source tree in /work/src and collects the
+# kernel, config and uncompressed cpio from /work/out afterwards, then seals
+# them into the PMI with arma on the host (arma needs only the files, not a
+# musl runtime).
+#
+# conglobate is compiled here, in the Alpine context, so it links Alpine's musl
+# dynamically and shares it (and libgcc_s) with mkfs.erofs instead of bundling
+# a second static libc. Requires an Alpine new enough for conglobate's edition
+# (2024 -> rust >= 1.85; alpine:3.23 ships 1.91).
 #
 # The build image is a PMI-only pichi VM whose /init is conglobate. conglobate
 # mounts only ext4 (the working snapshot) and virtiofs (/context, /output) and
@@ -16,17 +21,18 @@
 # apk linux-virt ships them all as modules; VIRTIO transport is built in.
 set -eu
 
-: "${ALPINE_PKGS:=linux-virt erofs-utils kmod cpio}"
+: "${ALPINE_PKGS:=cargo git linux-virt erofs-utils kmod cpio}"
 apk add --no-cache $ALPINE_PKGS >/dev/null
 KV=$(ls /lib/modules)
-echo "assemble: kernel $KV ($(uname -m))"
+echo "assemble: kernel $KV ($(uname -m)), $(rustc --version)"
 
 IRFS=/tmp/irfs
 rm -rf "$IRFS"
 mkdir -p "$IRFS/modules" "$IRFS/usr/bin"
 
-# /init = conglobate (PID 1). Kept static-musl, so no loader needed for it.
-install -m 0755 /work/conglobate "$IRFS/init"
+# /init = conglobate, built in the Alpine context (dynamic musl).
+(cd /work/src && cargo build --release --bin conglobate)
+install -m 0755 /work/src/target/release/conglobate "$IRFS/init"
 
 # Kernel modules in dependency order. `modprobe --show-depends` lists each
 # module's prerequisites before it; concatenating the top-level modules and
@@ -51,13 +57,19 @@ awk '!seen[$0]++' "$modlist" | while read -r ko; do
 	i=$((i + 1))
 done
 
-# mkfs.erofs (userspace erofs writer) + its shared libraries. conglobate is
-# static, so these libs serve only mkfs.erofs.
+# mkfs.erofs (userspace erofs writer) and every shared library /init or
+# mkfs.erofs need (musl loader, libc, libgcc_s, libuuid/liblz4/libz).
 install -m 0755 /usr/bin/mkfs.erofs "$IRFS/usr/bin/mkfs.erofs"
-ldd /usr/bin/mkfs.erofs | awk '
-	/=>/ && $3 ~ /^\// { print $3 }       # libfoo.so => /path
-	!/=>/ && $1 ~ /^\// { print $1 }      # /lib/ld-musl-*.so (loader)
-' | sort -u | while read -r lib; do
+needed_libs() {
+	ldd "$1" 2>/dev/null | awk '
+		/=>/ && $3 ~ /^\// { print $3 }   # libfoo.so => /path
+		!/=>/ && $1 ~ /^\// { print $1 }  # /lib/ld-musl-*.so (loader)
+	'
+}
+{
+	needed_libs "$IRFS/init"
+	needed_libs /usr/bin/mkfs.erofs
+} | sort -u | while read -r lib; do
 	install -D -m 0755 "$lib" "$IRFS$lib"
 	echo "  lib $lib"
 done
