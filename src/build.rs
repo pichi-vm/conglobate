@@ -8,8 +8,8 @@
 //!   * 8b — attach the source carapace (the recipe `from:`) as a composed
 //!     read-only origin and flatten it into the base scute (cow + verity).
 //!   * 8c — per `carapace.yaml` directive: a writable dm-snapshot over the
-//!     composed previous layer (COW store = a brd ramdisk in RAM), mount +
-//!     apply the directive, then re-emit the layer's changes as a clean COW
+//!     composed previous layer (COW store = a loop device over a /tmp tmpfs
+//!     file), mount + apply the directive, then re-emit the changes as a COW
 //!     (`write_delta`) and a dm-verity tree salt-chained onto the prior root.
 //!
 //! No `unsafe`: every syscall is a rustix safe wrapper, carapace assembly /
@@ -23,7 +23,9 @@ use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use carapace_dm::{DmCreateMode, DmDevice, DmTable, TableLine, TargetSpec, open_dm_control};
+use carapace_dm::{
+    DmCreateMode, DmDevice, DmTable, LoopDevice, TableLine, TargetSpec, open_dm_control,
+};
 use carapace_import::verity;
 use conglobate::{BuildOutput, CopyDirective, Directive, FromSpec, ScuteOut};
 use rustix::mount::{MountFlags, UnmountFlags, mount, unmount};
@@ -46,6 +48,15 @@ const SCUTE_CHUNK_SIZE_SECTORS: u32 = carapace_import::SCUTE_CHUNK_SIZE_SECTORS;
 
 /// dm-verity block sizes for emitted scutes (RDP-locked at 4096).
 const VERITY_BLOCK_SIZE: u32 = 4096;
+
+/// Sparse size of each per-snapshot COW backing file on the `/tmp` tmpfs.
+/// Generous: only the dm-snapshot chunks a directive actually writes are
+/// committed to RAM (the file is sparse, the read back is bounded by the
+/// snapshot's allocated extent — see [`emit_delta_scute`]). Replaces the
+/// former brd ramdisk, whose fixed size capped a layer's change set; no
+/// real-world kernel ships both erofs and brd, so the COW store is now a
+/// loop device over this file.
+const COW_MAX_BYTES: u64 = 1 << 30;
 
 /// Filesystem type conglobate mounts a carapace's working snapshot as. MVP:
 /// carapace content is a bare filesystem (matching the carapace read tests),
@@ -100,13 +111,14 @@ pub(crate) fn run() -> Result<(), String> {
     let mut scutes: Vec<ScuteOut> = Vec::new();
 
     // Per directive (BUILD.md §5): a writable dm-snapshot over the composed
-    // previous layer (COW store = a brd ramdisk in RAM), mount + apply, then
-    // the live COW *is* the layer's change set — emit it as the delta scute's
+    // previous layer (COW store = a loop device over a /tmp tmpfs file), mount
+    // + apply, then the live COW *is* the layer's change set — emit it as the
     // cow and compute the salt-chained verity tree.
     let mut control = open_dm_control().map_err(|e| format!("opening /dev/mapper/control: {e}"))?;
     let mut origin_path = origin.clone();
     for (i, directive) in recipe.derive.iter().enumerate() {
-        let cow_dev = PathBuf::from(format!("/dev/ram{i}"));
+        let cow = make_cow(i)?;
+        let cow_dev = cow.path().to_path_buf();
         let snap = create_snapshot(&mut control, &format!("build{i}"), &origin_path, &cow_dev)?;
         let snap_path = snap.dev_node();
 
@@ -118,15 +130,17 @@ pub(crate) fn run() -> Result<(), String> {
         rustix::fs::sync();
 
         let salt = parent_root.to_vec();
-        let (scute, root) = emit_delta_scute(&cow_dev, &salt, &output, i)?;
+        let (scute, root) = emit_delta_scute(&mut control, &snap, &cow_dev, &salt, &output, i)?;
         scutes.push(scute);
         parent_root = root;
 
         // The composed snapshot view becomes the next directive's origin.
-        // Leak the dm device so it persists past this scope (PID 1 powers
-        // off, so there is nothing to clean up).
+        // Leak the dm device *and* its loop-backed COW so they persist past
+        // this scope and back the next layer (PID 1 powers off, so there is
+        // nothing to clean up).
         origin_path = snap_path;
         snap.forget();
+        cow.forget();
     }
 
     // PMI build (BUILD.md §2.2): if pmi.yaml is present, run its directives in
@@ -172,22 +186,28 @@ pub(crate) fn exec_in_root(root: &str, cmd: &str) -> Result<(), String> {
 }
 
 /// Emit one directive's delta scute. After the directive ran against the
-/// mounted snapshot, the snapshot's COW store (`cow_dev`, a brd ramdisk) holds
-/// exactly the chunks the directive changed, already in dm-snapshot persistent
-/// format — that *is* the delta scute's cow. Read it (bounded by the ramdisk
-/// size, not the huge composed device), then compute the dm-verity tree salted
-/// with the parent root. Returns the [`ScuteOut`] and this scute's root.
+/// mounted snapshot, the snapshot's COW store (`cow_dev`, a loop device over a
+/// sparse `/tmp` file) holds exactly the chunks the directive changed, already
+/// in dm-snapshot persistent format — that *is* the delta scute's cow. Read
+/// back only the snapshot's *allocated* extent (queried from dm status), not
+/// the full sparse device, then compute the dm-verity tree salted with the
+/// parent root. Returns the [`ScuteOut`] and this scute's root.
 ///
 /// MVP note: copies the live COW verbatim rather than the canonical write-once
 /// re-emit of BUILD.md §5.2 (determinism + minimal size). The bytes are a
 /// valid scute cow either way; the re-emit is a later refinement.
 fn emit_delta_scute(
+    control: &mut std::fs::File,
+    snap: &DmDevice,
     cow_dev: &Path,
     salt: &[u8],
     output: &Path,
     index: usize,
 ) -> Result<(ScuteOut, [u8; 32]), String> {
-    let cow_bytes = read_block_device(cow_dev)?;
+    let (allocated_sectors, _total) = snap
+        .snapshot_allocated(control)
+        .map_err(|e| format!("snapshot {index} status: {e}"))?;
+    let cow_bytes = read_cow_prefix(cow_dev, allocated_sectors)?;
     write_scute_blobs(&cow_bytes, salt, output, index)
 }
 
@@ -248,7 +268,7 @@ fn build_pmi(
     carapace: &BuiltCarapace<'_>,
     control: &mut std::fs::File,
     output: &Path,
-    brd_index: usize,
+    cow_index: usize,
 ) -> Result<Option<String>, String> {
     let carapace_origin = carapace.origin;
     let carapace_root = carapace.root;
@@ -272,7 +292,8 @@ fn build_pmi(
         None => carapace_origin.to_path_buf(),
     };
 
-    let cow_dev = PathBuf::from(format!("/dev/ram{brd_index}"));
+    let cow = make_cow(cow_index)?;
+    let cow_dev = cow.path().to_path_buf();
     let snap = create_snapshot(control, "pmibuild", &pmi_origin, &cow_dev)?;
     let snap_path = snap.dev_node();
     let work = Path::new(WORK_DIR);
@@ -303,12 +324,14 @@ fn build_pmi(
     rustix::fs::sync();
     let _ = unmount(WORK_DIR, UnmountFlags::empty());
     snap.forget();
+    cow.forget();
     result?;
     Ok(Some("boot.pmi".to_string()))
 }
 
 /// Build a writable dm-snapshot named `name` over `origin_path`, with its COW
-/// exception store on `cow_path` (a brd ramdisk). Returns the resumed device.
+/// exception store on `cow_path` (a loop device over a `/tmp` tmpfs file).
+/// Returns the resumed device.
 fn create_snapshot(
     control: &mut std::fs::File,
     name: &str,
@@ -540,12 +563,38 @@ fn block_sectors(path: &Path) -> Result<u64, String> {
         .map_err(|e| format!("parsing {sysfs}: {e}"))
 }
 
-/// Read a block device in full (until EOF).
-fn read_block_device(path: &Path) -> Result<Vec<u8>, String> {
+/// Acquire a fresh RAM-backed block device for one snapshot's COW exception
+/// store: a sparse [`COW_MAX_BYTES`] file on the `/tmp` tmpfs attached to a
+/// loop device (via `carapace_dm`). tmpfs commits only the chunks the
+/// dm-snapshot actually writes, so the generous cap costs nothing until used.
+/// Replaces the former brd ramdisk; the caller leaks the returned device so it
+/// outlives the build (PID 1 powers off — nothing to clean up).
+fn make_cow(index: usize) -> Result<LoopDevice, String> {
+    let backing = PathBuf::from(format!("/tmp/cow{index}.img"));
+    let file = fs::File::create(&backing)
+        .map_err(|e| format!("creating COW backing {}: {e}", backing.display()))?;
+    file.set_len(COW_MAX_BYTES)
+        .map_err(|e| format!("sizing COW backing {}: {e}", backing.display()))?;
+    drop(file);
+    LoopDevice::attach(&backing).map_err(|e| format!("loop-attaching {}: {e}", backing.display()))
+}
+
+/// Read the in-use prefix of a snapshot COW device: `allocated_sectors`
+/// (from dm status) rounded up to a whole chunk, plus one chunk of slack, so
+/// the emitted scute cow holds the full exception store without copying the
+/// sparse tail of the loop device.
+fn read_cow_prefix(path: &Path, allocated_sectors: u64) -> Result<Vec<u8>, String> {
+    let chunk = u64::from(SCUTE_CHUNK_SIZE_SECTORS);
+    let sectors = allocated_sectors
+        .div_ceil(chunk)
+        .saturating_add(1)
+        .saturating_mul(chunk);
+    let len = sectors.saturating_mul(512).min(COW_MAX_BYTES);
+    let len = usize::try_from(len).map_err(|_| format!("COW prefix {len} too large"))?;
     let mut f = fs::File::open(path).map_err(|e| format!("opening {}: {e}", path.display()))?;
-    let mut buf = Vec::new();
-    f.read_to_end(&mut buf)
-        .map_err(|e| format!("reading {}: {e}", path.display()))?;
+    let mut buf = vec![0u8; len];
+    f.read_exact(&mut buf)
+        .map_err(|e| format!("reading {} ({len} bytes): {e}", path.display()))?;
     Ok(buf)
 }
 
