@@ -614,4 +614,14 @@ memory:
         let r = Requirements::parse("memory:\n  required: 1048577\n").unwrap();
         assert_eq!(r.memory_required_mib(), Some(2));
     }
+
+    #[test]
+    fn official_build_image_requirements_parse() {
+        // The hand-authored launch contract shipped in the build image must
+        // stay valid (publish-image.sh embeds it verbatim as a layer).
+        let yaml = include_str!("../image/requirements.yaml");
+        let r = Requirements::parse(yaml).unwrap();
+        assert!(r.cpus_required().is_some());
+        assert!(r.memory_required_mib().is_some());
+    }
 }

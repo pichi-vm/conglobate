@@ -15,9 +15,11 @@ set -euo pipefail
 
 REPO="${REPO:?set REPO, e.g. ghcr.io/pichi-vm/conglobate}"
 TAG="${TAG:?set TAG}"
+REQUIREMENTS_YAML="${REQUIREMENTS_YAML:-$(cd "$(dirname "$0")/.." && pwd)/image/requirements.yaml}"
 
 ARTIFACT_TYPE="application/vnd.pichi.artifact.v1+json"
 PMI_MT="application/vnd.pichi.pmi.v1"
+REQ_MT="application/vnd.pichi.requirements.v1+yaml"
 EMPTY_MT="application/vnd.oci.empty.v1+json"
 EMPTY_DIGEST="sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
 MANIFEST_MT="application/vnd.oci.image.manifest.v1+json"
@@ -29,6 +31,12 @@ trap 'rm -rf "$tmp"' EXIT
 # Shared OCI 1.1 empty-config blob ({} -> EMPTY_DIGEST, size 2).
 printf '{}' >"$tmp/empty"
 oras blob push "$REPO" "$tmp/empty" >/dev/null
+
+# Shared requirements.yaml layer (BUILD.md §7) — the build image's launch
+# contract, identical across architectures.
+req_digest="sha256:$(sha256sum "$REQUIREMENTS_YAML" | cut -d' ' -f1)"
+req_size=$(wc -c <"$REQUIREMENTS_YAML")
+oras blob push "$REPO" "$REQUIREMENTS_YAML" >/dev/null
 
 entries=()
 for spec in "$@"; do
@@ -45,7 +53,10 @@ for spec in "$@"; do
   "mediaType": "$MANIFEST_MT",
   "artifactType": "$ARTIFACT_TYPE",
   "config": {"mediaType": "$EMPTY_MT", "digest": "$EMPTY_DIGEST", "size": 2, "data": "e30="},
-  "layers": [{"mediaType": "$PMI_MT", "digest": "$pmi_digest", "size": $pmi_size}],
+  "layers": [
+    {"mediaType": "$PMI_MT", "digest": "$pmi_digest", "size": $pmi_size},
+    {"mediaType": "$REQ_MT", "digest": "$req_digest", "size": $req_size}
+  ],
   "annotations": {
     "dev.pichi.carapace.verity.algo": "sha256",
     "dev.pichi.carapace.verity.data-block-size": "4096",
