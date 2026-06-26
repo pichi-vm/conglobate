@@ -16,7 +16,8 @@
 #
 # The build image is a PMI-only pichi VM whose /init is conglobate. conglobate
 # reads each source carapace from a virtio-blk GPT disk (virtio_blk) through
-# dm-verity + dm-snapshot, mounts ext4 (the working snapshot) and virtiofs
+# dm-verity + dm-snapshot over a dm-zero origin, mounts ext4 (the working
+# snapshot) and virtiofs
 # (/context, /output), and writes erofs purely in userspace via mkfs.erofs — so
 # the kernel needs virtio_blk, fuse, virtiofs, ext4, loop and the dm (snapshot +
 # verity) stack, but NOT the erofs module. apk linux-virt ships them all as
@@ -43,7 +44,7 @@ install -m 0755 /work/src/target/release/conglobate "$IRFS/init"
 # target-arch container rather than hardcoding a list.
 modlist=/tmp/modlist
 : >"$modlist"
-for top in virtio_blk virtiofs ext4 loop dm-snapshot dm-verity; do
+for top in virtio_blk virtiofs ext4 loop dm-snapshot dm-verity dm-zero; do
 	modprobe -S "$KV" --show-depends "$top" 2>/dev/null \
 		| sed -n 's|^insmod \([^ ]*\).*|\1|p' >>"$modlist"
 done
