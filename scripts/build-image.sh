@@ -21,7 +21,7 @@ set -euo pipefail
 ARMA_DIR="${ARMA_DIR:?set ARMA_DIR to an arma checkout}"
 OUT="${OUT:-$(pwd)/image-out}"
 PMI_CMDLINE="${PMI_CMDLINE:-console=ttyS0 panic=-1}"
-ALPINE_IMAGE="${ALPINE_IMAGE:-alpine:3.23}"
+ALPINE_IMAGE="${ALPINE_IMAGE:-alpine:latest}"
 root=$(cd "$(dirname "$0")/.." && pwd)
 
 case "$(uname -m)" in

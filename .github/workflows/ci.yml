@@ -106,3 +106,38 @@ jobs:
           name: build-image-${{ matrix.arch }}
           path: image-out/boot.pmi
           if-no-files-found: error
+
+  # Publish the per-arch PMIs as one multi-arch OCI index (platform.os=pichi)
+  # to this repo's GHCR, so `pichi build` can pull it. The image is rebuilt and
+  # republished on every push; the tag follows the ref name (branch, or the tag
+  # name on a tag push), and :latest tracks the default branch (the ref pichi
+  # defaults to). Uses the built-in GITHUB_TOKEN — no manual seeding.
+  publish-image:
+    name: publish image
+    needs: build-image
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: oras-project/setup-oras@v1
+      - name: log in to ghcr.io
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: publish multi-arch build image
+        env:
+          REPO: ghcr.io/${{ github.repository_owner }}/conglobate
+        run: |
+          set -euo pipefail
+          amd64=artifacts/build-image-amd64/boot.pmi
+          arm64=artifacts/build-image-arm64/boot.pmi
+          TAG="${GITHUB_REF_NAME//\//-}" bash scripts/publish-image.sh \
+            "amd64=$amd64" "arm64=$arm64"
+          if [ "$GITHUB_REF_TYPE" = branch ] && \
+             [ "$GITHUB_REF_NAME" = "${{ github.event.repository.default_branch }}" ]; then
+            TAG=latest bash scripts/publish-image.sh "amd64=$amd64" "arm64=$arm64"
+          fi
