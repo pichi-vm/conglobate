@@ -68,3 +68,41 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo build
       - run: cargo test
+
+  # Build the official pichi build image (a PMI-only pichi VM whose /init is
+  # conglobate) once per architecture, on a native runner — no cross-compile,
+  # no qemu. conglobate is compiled static-musl for the initramfs, the kernel +
+  # modules come from Alpine in a native container, and arma seals the PMI.
+  # Each arch's PMI is uploaded; the publish job assembles the multi-arch index.
+  build-image:
+    name: build image (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: checkout arma
+        uses: actions/checkout@v4
+        with:
+          repository: pichi-vm/arma
+          path: .arma
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: install podman
+        run: sudo apt-get update && sudo apt-get install -y podman
+      - name: build image
+        env:
+          ARMA_DIR: ${{ github.workspace }}/.arma
+          OUT: ${{ github.workspace }}/image-out
+        run: bash scripts/build-image.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-image-${{ matrix.arch }}
+          path: image-out/boot.pmi
+          if-no-files-found: error
