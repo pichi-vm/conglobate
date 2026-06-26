@@ -12,3 +12,10 @@ cpus:
 memory:
   required: 2GiB
   recommended: 4GiB
+# A network interface so build stages that opt in (`network: true`, e.g.
+# `dnf install kernel`) can reach the network. pichi wires one user-mode NIC;
+# conglobate brings it up per stage and tears it down otherwise. Outbound only
+# — no ingress.
+interfaces:
+  default:
+    description: outbound build network

@@ -31,7 +31,7 @@ bytesize = { version = "1", features = ["serde"] }
 # rustix's safe syscall wrappers (linux_raw backend → no libc, no unsafe in
 # our code), matching the snuffler guest probe. `mount`/`system`/`stdio` are
 # added on top of the workspace base feature set.
-rustix = { version = "1", default-features = false, features = ["std", "fs", "process", "mount", "system", "stdio"] }
+rustix = { version = "1", default-features = false, features = ["std", "fs", "process", "mount", "system", "stdio", "net"] }
 # Read-side carapace assembly: attach the source carapace (the recipe `from:`)
 # as a composed read-only `/dev/mapper/...` to use as the build origin.
 carapace = { git = "https://github.com/pichi-vm/carapace" }

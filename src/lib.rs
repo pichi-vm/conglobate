@@ -14,6 +14,7 @@
 //! `config.yaml` → `requirements.yaml` filter is still deferred.
 
 use std::collections::BTreeMap;
+use std::fmt;
 
 use bytesize::ByteSize;
 use serde::{Deserialize, Serialize};
@@ -69,14 +70,22 @@ pub struct PmiRecipe {
 /// the build context into the guest filesystem.
 ///
 /// On the wire each directive is a single-key mapping (`{run: …}` or
-/// `{copy: …}`) — serde_yaml reserves the externally-tagged enum form for
-/// YAML `!tags`, so [`Deserialize`] is hand-written over a `{run?, copy?}`
-/// shape that enforces exactly one key.
+/// `{copy: …}`), optionally with `network: <bool>` on a `run:` — serde_yaml
+/// reserves the externally-tagged enum form for YAML `!tags`, so
+/// [`Deserialize`] is hand-written over a `{run?, copy?, network?}` shape that
+/// enforces exactly one of `run`/`copy`.
 #[derive(Debug, Clone)]
 pub enum Directive {
-    /// Execute a shell command inside the build VM (working dir `/`);
-    /// tools come from the parent scute.
-    Run(String),
+    /// Execute a shell command inside the build VM (working dir `/`); tools
+    /// come from the parent scute. `network` requests an up interface for this
+    /// stage only — conglobate brings the host-provided NIC up before the
+    /// command and tears it back down after (default: no network).
+    Run {
+        /// The shell command to execute.
+        command: String,
+        /// Whether this stage runs with the network interface up.
+        network: bool,
+    },
 
     /// Copy from the build context into the guest filesystem, optionally
     /// setting ownership/mode in the same scute.
@@ -95,11 +104,23 @@ impl<'de> Deserialize<'de> for Directive {
             run: Option<String>,
             #[serde(default)]
             copy: Option<CopyDirective>,
+            #[serde(default)]
+            network: bool,
         }
         let raw = Raw::deserialize(deserializer)?;
         match (raw.run, raw.copy) {
-            (Some(cmd), None) => Ok(Directive::Run(cmd)),
-            (None, Some(c)) => Ok(Directive::Copy(c)),
+            (Some(command), None) => Ok(Directive::Run {
+                command,
+                network: raw.network,
+            }),
+            (None, Some(c)) => {
+                if raw.network {
+                    return Err(serde::de::Error::custom(
+                        "`network` is only valid on a `run:` directive",
+                    ));
+                }
+                Ok(Directive::Copy(c))
+            }
             (None, None) => Err(serde::de::Error::custom(
                 "directive must be a `run:` or `copy:` mapping",
             )),
@@ -316,11 +337,11 @@ fn validate_directives(derive: &[Directive]) -> Result<(), RecipeError> {
 }
 
 /// `requirements.yaml` — the host-facing launch contract (BUILD.md §7): what
-/// the host must provide to launch a pichi VM. v1 models only the two fields
-/// pichi uses to size a VM — `cpus` and `memory`; the other host-facing dicts
-/// (`carapaces`, `volumes`, `interfaces`, enforced inside the guest by corium)
-/// are not modelled yet. Authored by hand to bootstrap the platform — the
-/// `config.yaml` → `requirements.yaml` filter is still deferred.
+/// the host must provide to launch a pichi VM. v1 models the fields pichi acts
+/// on — `cpus`/`memory` (VM sizing) and `interfaces` (network) — but not yet
+/// `carapaces`/`volumes` (enforced inside the guest by corium). Authored by
+/// hand to bootstrap the platform — the `config.yaml` → `requirements.yaml`
+/// filter is still deferred.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Requirements {
@@ -331,6 +352,117 @@ pub struct Requirements {
     /// Guest-memory band; sizes are written like `2GiB` (binary units).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub memory: Option<Band<ByteSize>>,
+
+    /// Network interfaces the host must wire (BUILD.md §7). pichi attaches one
+    /// user-mode virtio-net device per entry; the guest brings each up/down per
+    /// stage. The map key is the operator-facing label (identity is
+    /// underspecified in v1 — most artifacts have a single interface).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub interfaces: BTreeMap<String, Interface>,
+}
+
+/// One declared network interface (BUILD.md §7). pichi wires one user-mode NIC
+/// per entry; it does not yet act on `ingress`/`slot` (ingress exposure is
+/// enforced in-guest by corium). The fields are carried so a full
+/// `requirements.yaml` parses.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Interface {
+    /// Human-facing description.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+
+    /// Ports the host must/should expose inbound.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ingress: Option<Ingress>,
+
+    /// Placement hint (`pci`/`mmio`); omit to let dillo choose.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slot: Option<String>,
+}
+
+/// Inbound port bands for an [`Interface`] (BUILD.md §7).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Ingress {
+    /// Ports the host MUST expose, else launch errors.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub required: Vec<PortSpec>,
+
+    /// Ports the host SHOULD expose, else a warning.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub recommended: Vec<PortSpec>,
+}
+
+/// One ingress port-list entry: a single port, an inclusive `[low, high]`
+/// range, or `*` (all ports).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PortSpec {
+    /// A single port.
+    Port(u16),
+    /// An inclusive `[low, high]` range.
+    Range(u16, u16),
+    /// All ports (`*`).
+    All,
+}
+
+impl Serialize for PortSpec {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            PortSpec::Port(p) => s.serialize_u16(*p),
+            PortSpec::Range(lo, hi) => {
+                use serde::ser::SerializeSeq;
+                let mut seq = s.serialize_seq(Some(2))?;
+                seq.serialize_element(lo)?;
+                seq.serialize_element(hi)?;
+                seq.end()
+            }
+            PortSpec::All => s.serialize_str("*"),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for PortSpec {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        struct V;
+        impl<'de> serde::de::Visitor<'de> for V {
+            type Value = PortSpec;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("a port (integer), an inclusive [low, high] range, or \"*\"")
+            }
+            fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<PortSpec, E> {
+                u16::try_from(v)
+                    .map(PortSpec::Port)
+                    .map_err(|_| E::custom(format!("port {v} out of range")))
+            }
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<PortSpec, E> {
+                if v == "*" {
+                    Ok(PortSpec::All)
+                } else {
+                    Err(E::custom(format!(
+                        "expected a port, range, or \"*\", got {v:?}"
+                    )))
+                }
+            }
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(
+                self,
+                mut seq: A,
+            ) -> Result<PortSpec, A::Error> {
+                use serde::de::Error as _;
+                let lo: u16 = seq
+                    .next_element()?
+                    .ok_or_else(|| A::Error::custom("range needs [low, high]"))?;
+                let hi: u16 = seq
+                    .next_element()?
+                    .ok_or_else(|| A::Error::custom("range needs [low, high]"))?;
+                if seq.next_element::<u16>()?.is_some() {
+                    return Err(A::Error::custom("range has more than two elements"));
+                }
+                Ok(PortSpec::Range(lo, hi))
+            }
+        }
+        d.deserialize_any(V)
+    }
 }
 
 /// A two-tier requirement (BUILD.md §7): `required` MUST be met or launch
@@ -437,7 +569,10 @@ derive:
         assert_eq!(r.from, "registry.example.com/base/fedora:43");
         assert_eq!(r.derive.len(), 2);
         match &r.derive[0] {
-            Directive::Run(cmd) => assert_eq!(cmd, "dnf install -y python3 torch"),
+            Directive::Run { command, network } => {
+                assert_eq!(command, "dnf install -y python3 torch");
+                assert!(!network, "network defaults to false");
+            }
             other @ Directive::Copy(_) => panic!("expected run, got {other:?}"),
         }
         match &r.derive[1] {
@@ -447,7 +582,7 @@ derive:
                 assert_eq!(c.owner.as_deref(), Some("appuser"));
                 assert_eq!(c.mode.as_deref(), Some("0755"));
             }
-            other @ Directive::Run(_) => panic!("expected copy, got {other:?}"),
+            other @ Directive::Run { .. } => panic!("expected copy, got {other:?}"),
         }
     }
 
@@ -472,8 +607,41 @@ derive:
                 FromSpec::Many(v) => assert_eq!(v.len(), 2),
                 FromSpec::One(_) => panic!("expected list"),
             },
-            other @ Directive::Run(_) => panic!("expected copy, got {other:?}"),
+            other @ Directive::Run { .. } => panic!("expected copy, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn run_directive_carries_network_flag() {
+        let yaml = "from: reg/base:1\n\
+                    derive:\n\
+                    \x20 - run: dnf install -y kernel\n\
+                    \x20   network: true\n\
+                    \x20 - run: make\n";
+        let r = CarapaceRecipe::parse(yaml).unwrap();
+        match &r.derive[0] {
+            Directive::Run { command, network } => {
+                assert_eq!(command, "dnf install -y kernel");
+                assert!(network);
+            }
+            other @ Directive::Copy(_) => panic!("expected run, got {other:?}"),
+        }
+        match &r.derive[1] {
+            Directive::Run { network, .. } => assert!(!network, "defaults to false"),
+            other @ Directive::Copy(_) => panic!("expected run, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn network_on_copy_is_rejected() {
+        let yaml = "from: reg/base:1\n\
+                    derive:\n\
+                    \x20 - copy:\n\
+                    \x20     from: a\n\
+                    \x20     into: /b\n\
+                    \x20   network: true\n";
+        let err = CarapaceRecipe::parse(yaml).unwrap_err();
+        assert!(matches!(err, RecipeError::Parse(_)), "{err:?}");
     }
 
     #[test]
@@ -616,6 +784,38 @@ memory:
     }
 
     #[test]
+    fn parses_requirements_interfaces() {
+        let yaml = r#"
+cpus:
+  required: 1
+interfaces:
+  public:
+    description: outbound
+    ingress:
+      required: [443, [8000, 8999], "*"]
+      recommended: [80]
+    slot: pci
+  internal: {}
+"#;
+        let r = Requirements::parse(yaml).unwrap();
+        assert_eq!(r.interfaces.len(), 2);
+        let public = &r.interfaces["public"];
+        assert_eq!(public.description.as_deref(), Some("outbound"));
+        let ingress = public.ingress.as_ref().unwrap();
+        assert_eq!(
+            ingress.required,
+            vec![
+                PortSpec::Port(443),
+                PortSpec::Range(8000, 8999),
+                PortSpec::All
+            ]
+        );
+        assert_eq!(ingress.recommended, vec![PortSpec::Port(80)]);
+        assert_eq!(public.slot.as_deref(), Some("pci"));
+        assert!(r.interfaces["internal"].ingress.is_none());
+    }
+
+    #[test]
     fn official_build_image_requirements_parse() {
         // The hand-authored launch contract shipped in the build image must
         // stay valid (publish-image.sh embeds it verbatim as a layer).
@@ -623,5 +823,10 @@ memory:
         let r = Requirements::parse(yaml).unwrap();
         assert!(r.cpus_required().is_some());
         assert!(r.memory_required_mib().is_some());
+        // The build image declares a network interface (outbound for dnf).
+        assert!(
+            !r.interfaces.is_empty(),
+            "build image must declare a network interface"
+        );
     }
 }

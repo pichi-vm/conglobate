@@ -19,9 +19,10 @@
 # dm-verity + dm-snapshot over a dm-zero origin, mounts ext4 (the working
 # snapshot) and virtiofs
 # (/context, /output), and writes erofs purely in userspace via mkfs.erofs — so
-# the kernel needs virtio_blk, fuse, virtiofs, ext4, loop and the dm (snapshot +
-# verity) stack, but NOT the erofs module. apk linux-virt ships them all as
-# modules; the VIRTIO PCI/MMIO transport is built in.
+# the kernel needs virtio_blk, virtio_net (conglobate does in-process DHCP for
+# `network:` stages), fuse, virtiofs, ext4, loop and the dm (snapshot + verity)
+# stack, but NOT the erofs module. apk linux-virt ships them all as modules; the
+# VIRTIO PCI/MMIO transport is built in.
 set -eu
 
 : "${ALPINE_PKGS:=cargo git linux-virt erofs-utils kmod cpio}"
@@ -44,7 +45,7 @@ install -m 0755 /work/src/target/release/conglobate "$IRFS/init"
 # target-arch container rather than hardcoding a list.
 modlist=/tmp/modlist
 : >"$modlist"
-for top in virtio_blk virtiofs ext4 loop dm-snapshot dm-verity dm-zero; do
+for top in virtio_blk virtio_net virtiofs ext4 loop dm-snapshot dm-verity dm-zero; do
 	modprobe -S "$KV" --show-depends "$top" 2>/dev/null \
 		| sed -n 's|^insmod \([^ ]*\).*|\1|p' >>"$modlist"
 done

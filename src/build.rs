@@ -306,7 +306,16 @@ fn build_pmi(
         let run = (|| -> Result<(), String> {
             for directive in &recipe.derive {
                 match directive {
-                    Directive::Run(cmd) => exec_directive_in_root(work, cmd, Some(carapace_root))?,
+                    Directive::Run { command, network } => {
+                        if *network {
+                            crate::net::net_up(work)?;
+                        }
+                        let res = exec_directive_in_root(work, command, Some(carapace_root));
+                        if *network {
+                            let _ = crate::net::net_down();
+                        }
+                        res?;
+                    }
                     Directive::Copy(c) => apply_copy(c, context, work)?,
                 }
             }
@@ -372,9 +381,17 @@ fn apply_directive(
     carapace_root: Option<&str>,
 ) -> Result<(), String> {
     match directive {
-        Directive::Run(cmd) => {
+        Directive::Run { command, network } => {
             mount_chroot_binds(root, context)?;
-            let res = exec_directive_in_root(root, cmd, carapace_root);
+            // Per-stage network: bring the host-provided NIC up (DHCP) only for
+            // stages that opt in, and tear it back down after (default: down).
+            if *network {
+                crate::net::net_up(root)?;
+            }
+            let res = exec_directive_in_root(root, command, carapace_root);
+            if *network {
+                let _ = crate::net::net_down();
+            }
             umount_chroot_binds(root);
             res
         }

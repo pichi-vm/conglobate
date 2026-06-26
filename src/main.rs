@@ -17,6 +17,12 @@
 #[cfg(target_os = "linux")]
 mod build;
 
+// In-process network bring-up / teardown for build stages. Not yet wired
+// into the build flow; the public API is exercised by its own unit tests.
+#[cfg(target_os = "linux")]
+#[allow(dead_code)]
+mod net;
+
 #[cfg(target_os = "linux")]
 use std::fs;
 #[cfg(target_os = "linux")]
