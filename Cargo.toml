@@ -33,14 +33,11 @@ bytesize = { version = "1", features = ["serde"] }
 # added on top of the workspace base feature set.
 rustix = { version = "1", default-features = false, features = ["std", "fs", "process", "mount", "system", "stdio", "net"] }
 # Read-side carapace assembly: attach the source carapace (the recipe `from:`)
-# as a composed read-only `/dev/mapper/...` to use as the build origin.
+# as a composed read-only `/dev/mapper/...` to use as the build origin (op 1).
 carapace = { git = "https://github.com/pichi-vm/carapace" }
-# Scute-format emission: flatten the origin into a base scute (cow) and the
-# dm-verity hash tree over it; per-directive delta cow via write_delta.
-carapace-import = { git = "https://github.com/pichi-vm/carapace" }
-# device-mapper ioctls: the writable dm-snapshot per directive (origin = the
-# composed previous layer, COW store = a brd ramdisk).
-carapace-dm = { git = "https://github.com/pichi-vm/carapace" }
+# The writable dm-snapshot per directive (op 3) and the dm-verity seal (op 4)
+# are done by shelling out to `losetup`/`dmsetup`/`veritysetup`, bundled in the
+# build initramfs (see scripts/assemble.sh) — no carapace-dm / carapace-import.
 # Decode the source root hash / encode scute salts (refs.lock <-> build.yaml).
 hex = "0.4"
 # Cow-digest for the deterministic verity UUID (matches pichi import).

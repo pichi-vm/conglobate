@@ -25,7 +25,7 @@
 # VIRTIO PCI/MMIO transport is built in.
 set -eu
 
-: "${ALPINE_PKGS:=cargo git linux-virt erofs-utils kmod cpio}"
+: "${ALPINE_PKGS:=cargo git linux-virt erofs-utils kmod cpio util-linux device-mapper cryptsetup}"
 apk add --no-cache $ALPINE_PKGS >/dev/null
 KV=$(ls /lib/modules)
 echo "assemble: kernel $KV ($(uname -m)), $(rustc --version)"
@@ -61,9 +61,21 @@ awk '!seen[$0]++' "$modlist" | while read -r ko; do
 	i=$((i + 1))
 done
 
-# mkfs.erofs (userspace erofs writer) and every shared library /init or
-# mkfs.erofs need (musl loader, libc, libgcc_s, libuuid/liblz4/libz).
-install -m 0755 /usr/bin/mkfs.erofs "$IRFS/usr/bin/mkfs.erofs"
+# Userspace tools /init shells out to during the build, each bundled to
+# /usr/bin (on the default exec search path) plus every shared library it and
+# /init need (musl loader, libc, libgcc_s, libuuid/liblz4/libz, libcrypto, …):
+#   mkfs.erofs  — output erofs writer
+#   losetup     — COW loop device (op 3; util-linux, not busybox: needs --show)
+#   blockdev    — origin size in sectors (op 3)
+#   dmsetup     — the writable dm-snapshot (op 3)
+#   veritysetup — the dm-verity seal (op 4)
+tool_bins=""
+for t in mkfs.erofs losetup blockdev dmsetup veritysetup; do
+	p=$(command -v "$t") || { echo "assemble: required tool '$t' not found" >&2; exit 1; }
+	install -D -m 0755 "$p" "$IRFS/usr/bin/$(basename "$p")"
+	tool_bins="$tool_bins $p"
+	echo "  bin $p -> /usr/bin/$(basename "$p")"
+done
 needed_libs() {
 	ldd "$1" 2>/dev/null | awk '
 		/=>/ && $3 ~ /^\// { print $3 }   # libfoo.so => /path
@@ -72,7 +84,7 @@ needed_libs() {
 }
 {
 	needed_libs "$IRFS/init"
-	needed_libs /usr/bin/mkfs.erofs
+	for b in $tool_bins; do needed_libs "$b"; done
 } | sort -u | while read -r lib; do
 	install -D -m 0755 "$lib" "$IRFS$lib"
 	echo "  lib $lib"

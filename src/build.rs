@@ -19,14 +19,9 @@
 
 use std::fs;
 use std::io::Read as _;
-use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use carapace_dm::{
-    DmCreateMode, DmDevice, DmTable, LoopDevice, TableLine, TargetSpec, open_dm_control,
-};
-use carapace_import::verity;
 use conglobate::{BuildOutput, CopyDirective, Directive, FromSpec, ScuteOut};
 use rustix::mount::{MountFlags, UnmountFlags, mount, unmount};
 use sha2::{Digest as _, Sha256};
@@ -44,7 +39,8 @@ const WORK_DIR: &str = "/work";
 
 /// COW chunk size for emitted scutes + the dm-snapshots conglobate builds:
 /// the carapace-mandated value (the carapace read side rejects anything else).
-const SCUTE_CHUNK_SIZE_SECTORS: u32 = carapace_import::SCUTE_CHUNK_SIZE_SECTORS;
+/// 8 sectors = 4096 bytes; fixed by the carapace spec's parameter whitelist.
+const SCUTE_CHUNK_SIZE_SECTORS: u32 = 8;
 
 /// dm-verity block sizes for emitted scutes (RDP-locked at 4096).
 const VERITY_BLOCK_SIZE: u32 = 4096;
@@ -114,13 +110,11 @@ pub(crate) fn run() -> Result<(), String> {
     // previous layer (COW store = a loop device over a /tmp tmpfs file), mount
     // + apply, then the live COW *is* the layer's change set — emit it as the
     // cow and compute the salt-chained verity tree.
-    let mut control = open_dm_control().map_err(|e| format!("opening /dev/mapper/control: {e}"))?;
     let mut origin_path = origin.clone();
     for (i, directive) in recipe.derive.iter().enumerate() {
-        let cow = make_cow(i)?;
-        let cow_dev = cow.path().to_path_buf();
-        let snap = create_snapshot(&mut control, &format!("build{i}"), &origin_path, &cow_dev)?;
-        let snap_path = snap.dev_node();
+        let name = format!("build{i}");
+        let cow_dev = make_cow(i)?;
+        let snap_path = create_snapshot(&name, &origin_path, &cow_dev)?;
 
         mount_rootfs(&snap_path)?;
         let res = apply_directive(directive, &context, Path::new(WORK_DIR), None);
@@ -130,17 +124,14 @@ pub(crate) fn run() -> Result<(), String> {
         rustix::fs::sync();
 
         let salt = parent_root.to_vec();
-        let (scute, root) = emit_delta_scute(&mut control, &snap, &cow_dev, &salt, &output, i)?;
+        let (scute, root) = emit_delta_scute(&name, &cow_dev, &salt, &output, i)?;
         scutes.push(scute);
         parent_root = root;
 
-        // The composed snapshot view becomes the next directive's origin.
-        // Leak the dm device *and* its loop-backed COW so they persist past
-        // this scope and back the next layer (PID 1 powers off, so there is
-        // nothing to clean up).
+        // The composed snapshot view becomes the next directive's origin. The
+        // dm-snapshot and its loop-backed COW persist past this scope (PID 1
+        // powers off, so there is nothing to clean up) and back the next layer.
         origin_path = snap_path;
-        snap.forget();
-        cow.forget();
     }
 
     // PMI build (BUILD.md §2.2): if pmi.yaml is present, run its directives in
@@ -156,7 +147,6 @@ pub(crate) fn run() -> Result<(), String> {
             origin: &origin_path,
             root: &carapace_root,
         },
-        &mut control,
         &output,
         recipe.derive.len(),
     )?;
@@ -197,23 +187,23 @@ pub(crate) fn exec_in_root(root: &str, cmd: &str) -> Result<(), String> {
 /// re-emit of BUILD.md §5.2 (determinism + minimal size). The bytes are a
 /// valid scute cow either way; the re-emit is a later refinement.
 fn emit_delta_scute(
-    control: &mut std::fs::File,
-    snap: &DmDevice,
+    snap_name: &str,
     cow_dev: &Path,
     salt: &[u8],
     output: &Path,
     index: usize,
 ) -> Result<(ScuteOut, [u8; 32]), String> {
-    let (allocated_sectors, _total) = snap
-        .snapshot_allocated(control)
-        .map_err(|e| format!("snapshot {index} status: {e}"))?;
+    let allocated_sectors = snapshot_allocated(snap_name)?;
     let cow_bytes = read_cow_prefix(cow_dev, allocated_sectors)?;
     write_scute_blobs(&cow_bytes, salt, output, index)
 }
 
-/// Compute the dm-verity tree over `cow_bytes` (salt = chain prefix), write
-/// both blobs (`<index>.cow`, `<index>.verity`) to the output sink, and
-/// return the [`ScuteOut`] + verity root.
+/// Write the scute cow (`<index>.cow`), seal it with dm-verity via
+/// `veritysetup format` into `<index>.verity` (salt = chain prefix), and
+/// return the [`ScuteOut`] + verity root. `veritysetup format` is
+/// byte-identical to the in-tree producer (see the pichi-import verity
+/// cross-check test), so scutes are interoperable between `conglobate` (this
+/// path) and `pichi import`.
 fn write_scute_blobs(
     cow_bytes: &[u8],
     salt: &[u8],
@@ -221,19 +211,12 @@ fn write_scute_blobs(
     index: usize,
 ) -> Result<(ScuteOut, [u8; 32]), String> {
     let cow_digest: [u8; 32] = Sha256::digest(cow_bytes).into();
-    let params = verity::VerityParams {
-        data_block_size: VERITY_BLOCK_SIZE,
-        hash_block_size: VERITY_BLOCK_SIZE,
-        salt: salt.to_vec(),
-        uuid: verity::derive_uuid(salt, &cow_digest),
-    };
-    let vout = verity::compute(cow_bytes, &params).map_err(|e| format!("verity::compute: {e}"))?;
-
     let cow_name = format!("{index:04}.cow");
     let verity_name = format!("{index:04}.verity");
-    fs::write(output.join(&cow_name), cow_bytes).map_err(|e| format!("writing {cow_name}: {e}"))?;
-    fs::write(output.join(&verity_name), &vout.blob)
-        .map_err(|e| format!("writing {verity_name}: {e}"))?;
+    let cow_path = output.join(&cow_name);
+    let verity_path = output.join(&verity_name);
+    fs::write(&cow_path, cow_bytes).map_err(|e| format!("writing {cow_name}: {e}"))?;
+    let root_hash = veritysetup_format(&cow_path, &verity_path, salt, &cow_digest)?;
 
     Ok((
         ScuteOut {
@@ -241,7 +224,7 @@ fn write_scute_blobs(
             verity: verity_name,
             salt: hex::encode(salt),
         },
-        vout.root_hash,
+        root_hash,
     ))
 }
 
@@ -266,7 +249,6 @@ fn build_pmi(
     context: &Path,
     refs: &conglobate::RefsLock,
     carapace: &BuiltCarapace<'_>,
-    control: &mut std::fs::File,
     output: &Path,
     cow_index: usize,
 ) -> Result<Option<String>, String> {
@@ -292,10 +274,8 @@ fn build_pmi(
         None => carapace_origin.to_path_buf(),
     };
 
-    let cow = make_cow(cow_index)?;
-    let cow_dev = cow.path().to_path_buf();
-    let snap = create_snapshot(control, "pmibuild", &pmi_origin, &cow_dev)?;
-    let snap_path = snap.dev_node();
+    let cow_dev = make_cow(cow_index)?;
+    let snap_path = create_snapshot("pmibuild", &pmi_origin, &cow_dev)?;
     let work = Path::new(WORK_DIR);
 
     mount_rootfs(&snap_path)?;
@@ -332,42 +312,129 @@ fn build_pmi(
     })();
     rustix::fs::sync();
     let _ = unmount(WORK_DIR, UnmountFlags::empty());
-    snap.forget();
-    cow.forget();
     result?;
     Ok(Some("boot.pmi".to_string()))
 }
 
 /// Build a writable dm-snapshot named `name` over `origin_path`, with its COW
-/// exception store on `cow_path` (a loop device over a `/tmp` tmpfs file).
-/// Returns the resumed device.
-fn create_snapshot(
-    control: &mut std::fs::File,
-    name: &str,
-    origin_path: &Path,
-    cow_path: &Path,
-) -> Result<DmDevice, String> {
-    let origin = dev_of(origin_path)?;
-    let cow = dev_of(cow_path)?;
+/// exception store on `cow_path` (a loop device over a `/tmp` tmpfs file), via
+/// `dmsetup create`. Returns the `/dev/mapper/<name>` path. `--noudevsync`
+/// because the build initramfs has no udevd — dmsetup creates the node itself.
+/// Persistence flag `PO` (persistent, overflow-tolerant) + chunk size 8 match
+/// the carapace read side's parameter whitelist.
+fn create_snapshot(name: &str, origin_path: &Path, cow_path: &Path) -> Result<PathBuf, String> {
     let sectors = block_sectors(origin_path)?;
-    let dev = DmDevice::create(control, name, DmCreateMode::ReadWrite)
-        .map_err(|e| format!("dm create {name}: {e}"))?;
-    let table = DmTable {
-        lines: vec![TableLine {
-            start: 0,
-            length: sectors,
-            target: TargetSpec::Snapshot {
-                origin,
-                cow,
-                chunk_size_sectors: u64::from(SCUTE_CHUNK_SIZE_SECTORS),
-            },
-        }],
-    };
-    dev.load_table(control, &table)
-        .map_err(|e| format!("dm load_table {name}: {e}"))?;
-    dev.resume(control)
-        .map_err(|e| format!("dm resume {name}: {e}"))?;
-    Ok(dev)
+    let table = format!(
+        "0 {sectors} snapshot {} {} PO {SCUTE_CHUNK_SIZE_SECTORS}",
+        origin_path.display(),
+        cow_path.display()
+    );
+    let out = Command::new("dmsetup")
+        .args(["create", name, "--noudevsync", "--table", &table])
+        .output()
+        .map_err(|e| format!("spawn dmsetup create {name}: {e}"))?;
+    if !out.status.success() {
+        return Err(format!(
+            "dmsetup create {name}: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    Ok(PathBuf::from(format!("/dev/mapper/{name}")))
+}
+
+/// Allocated COW sectors of a live dm-snapshot, via `dmsetup status`. The
+/// status line is `0 <len> snapshot <allocated>/<total> <metadata>`.
+fn snapshot_allocated(name: &str) -> Result<u64, String> {
+    let out = Command::new("dmsetup")
+        .args(["status", name])
+        .output()
+        .map_err(|e| format!("spawn dmsetup status {name}: {e}"))?;
+    if !out.status.success() {
+        return Err(format!(
+            "dmsetup status {name}: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    let s = String::from_utf8_lossy(&out.stdout);
+    let frac = s
+        .split_whitespace()
+        .nth(3)
+        .ok_or_else(|| format!("dmsetup status {name}: unexpected output {s:?}"))?;
+    let allocated = frac
+        .split('/')
+        .next()
+        .ok_or_else(|| format!("dmsetup status {name}: bad allocated field {frac:?}"))?;
+    allocated
+        .parse::<u64>()
+        .map_err(|e| format!("dmsetup status {name}: allocated {allocated:?}: {e}"))
+}
+
+/// Deterministic verity UUID = `SHA256(salt || cow_digest)[..16]`, formatted
+/// as the canonical 8-4-4-4-12 string `veritysetup format --uuid` writes back
+/// byte-identically (matches the in-tree `verity::derive_uuid`).
+fn derive_uuid_string(salt: &[u8], cow_digest: &[u8; 32]) -> String {
+    let mut h = Sha256::new();
+    h.update(salt);
+    h.update(cow_digest);
+    let d = h.finalize();
+    let hx = hex::encode(&d[..16]);
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hx[0..8],
+        &hx[8..12],
+        &hx[12..16],
+        &hx[16..20],
+        &hx[20..32]
+    )
+}
+
+/// Seal `cow_file` with dm-verity via `veritysetup format`, writing the hash
+/// tree to `verity_file`, and return the 32-byte root hash. Salt = the parent
+/// root (chain anchor); UUID = deterministic derive. `veritysetup format` is
+/// rootless and byte-identical to the in-tree producer.
+fn veritysetup_format(
+    cow_file: &Path,
+    verity_file: &Path,
+    salt: &[u8],
+    cow_digest: &[u8; 32],
+) -> Result<[u8; 32], String> {
+    let uuid = derive_uuid_string(salt, cow_digest);
+    let salt_hex = hex::encode(salt);
+    let bs = VERITY_BLOCK_SIZE.to_string();
+    let out = Command::new("veritysetup")
+        .args([
+            "format",
+            "--data-block-size",
+            &bs,
+            "--hash-block-size",
+            &bs,
+            "--hash",
+            "sha256",
+            "--salt",
+            &salt_hex,
+            "--uuid",
+            &uuid,
+        ])
+        .arg(cow_file)
+        .arg(verity_file)
+        .output()
+        .map_err(|e| format!("spawn veritysetup format: {e}"))?;
+    if !out.status.success() {
+        return Err(format!(
+            "veritysetup format: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let root_hex = stdout
+        .lines()
+        .find_map(|l| l.strip_prefix("Root hash:"))
+        .map(str::trim)
+        .ok_or_else(|| format!("veritysetup: no Root hash in output: {stdout}"))?;
+    let bytes = hex::decode(root_hex).map_err(|e| format!("veritysetup root hash not hex: {e}"))?;
+    bytes
+        .try_into()
+        .map_err(|v: Vec<u8>| format!("veritysetup root hash is {} bytes, expected 32", v.len()))
 }
 
 /// Apply one directive to the mounted working filesystem at `root`.
@@ -555,45 +622,58 @@ fn mount_rootfs(dev: &Path) -> Result<(), String> {
     .map_err(|e| format!("mount {} -> {WORK_DIR} ({ROOTFS_TYPE}): {e}", dev.display()))
 }
 
-/// `(major, minor)` of a device node. Decodes dev_t per `<linux/kdev_t.h>`
-/// (same split as `carapace_dm`'s internal helper).
-fn dev_of(path: &Path) -> Result<(u32, u32), String> {
-    let rdev = fs::metadata(path)
-        .map_err(|e| format!("stat {}: {e}", path.display()))?
-        .rdev();
-    let major = ((rdev >> 8) & 0xfff) as u32;
-    let minor = ((rdev & 0xff) | ((rdev >> 12) & 0xfff00)) as u32;
-    Ok((major, minor))
-}
-
-/// Block-device size in 512-byte sectors, from
-/// `/sys/class/block/<name>/size`.
+/// Block-device size in 512-byte sectors, via `blockdev --getsz` (follows
+/// `/dev/mapper` symlinks, unlike a sysfs-name lookup).
 fn block_sectors(path: &Path) -> Result<u64, String> {
-    let name = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .ok_or_else(|| format!("no device name in {}", path.display()))?;
-    let sysfs = format!("/sys/class/block/{name}/size");
-    read(Path::new(&sysfs))?
+    let out = Command::new("blockdev")
+        .arg("--getsz")
+        .arg(path)
+        .output()
+        .map_err(|e| format!("spawn blockdev --getsz {}: {e}", path.display()))?;
+    if !out.status.success() {
+        return Err(format!(
+            "blockdev --getsz {}: {}",
+            path.display(),
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    String::from_utf8_lossy(&out.stdout)
         .trim()
         .parse::<u64>()
-        .map_err(|e| format!("parsing {sysfs}: {e}"))
+        .map_err(|e| format!("parsing blockdev size for {}: {e}", path.display()))
 }
 
 /// Acquire a fresh RAM-backed block device for one snapshot's COW exception
 /// store: a sparse [`COW_MAX_BYTES`] file on the `/tmp` tmpfs attached to a
-/// loop device (via `carapace_dm`). tmpfs commits only the chunks the
-/// dm-snapshot actually writes, so the generous cap costs nothing until used.
-/// Replaces the former brd ramdisk; the caller leaks the returned device so it
-/// outlives the build (PID 1 powers off — nothing to clean up).
-fn make_cow(index: usize) -> Result<LoopDevice, String> {
+/// loop device via `losetup`. tmpfs commits only the chunks the dm-snapshot
+/// actually writes, so the generous cap costs nothing until used. Returns the
+/// `/dev/loopN` path; it (and the dm-snapshot over it) persist for the build's
+/// lifetime (PID 1 powers off — nothing to clean up). 4096-byte sector size
+/// matches the scute chunk/verity block size.
+fn make_cow(index: usize) -> Result<PathBuf, String> {
     let backing = PathBuf::from(format!("/tmp/cow{index}.img"));
     let file = fs::File::create(&backing)
         .map_err(|e| format!("creating COW backing {}: {e}", backing.display()))?;
     file.set_len(COW_MAX_BYTES)
         .map_err(|e| format!("sizing COW backing {}: {e}", backing.display()))?;
     drop(file);
-    LoopDevice::attach(&backing).map_err(|e| format!("loop-attaching {}: {e}", backing.display()))
+    let out = Command::new("losetup")
+        .args(["--find", "--show", "--sector-size", "4096"])
+        .arg(&backing)
+        .output()
+        .map_err(|e| format!("spawn losetup {}: {e}", backing.display()))?;
+    if !out.status.success() {
+        return Err(format!(
+            "losetup {}: {}",
+            backing.display(),
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    let dev = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if dev.is_empty() {
+        return Err(format!("losetup {}: empty device path", backing.display()));
+    }
+    Ok(PathBuf::from(dev))
 }
 
 /// Read the in-use prefix of a snapshot COW device: `allocated_sectors`
@@ -657,46 +737,55 @@ fn mount_output() -> Result<PathBuf, String> {
 mod tests {
     use super::*;
 
-    /// The scute writer must produce an attachable COW + verity pair and a
-    /// deterministic root (recomputing verity over the written cow matches).
+    fn have_veritysetup() -> bool {
+        Command::new("veritysetup")
+            .arg("--version")
+            .output()
+            .is_ok()
+    }
+
+    /// The scute writer must produce a cow + verity pair on disk and a
+    /// deterministic root (same bytes+salt → same root). Uses `veritysetup`;
+    /// skips if it is not installed.
     #[test]
     fn write_scute_blobs_is_deterministic_and_on_disk() {
+        if !have_veritysetup() {
+            eprintln!("veritysetup absent — skipping");
+            return;
+        }
         let tmp = tempfile::TempDir::new().unwrap();
         let out = tmp.path();
-        let cow_bytes = carapace_import::cow::write(
-            &{
-                let mut v = vec![0u8; 4096 * 3];
-                v[5000] = 0x42;
-                v
-            },
-            SCUTE_CHUNK_SIZE_SECTORS,
-        )
-        .unwrap();
+        // Verity data must be a whole number of 4096-byte blocks.
+        let mut cow_bytes = vec![0u8; 4096 * 3];
+        cow_bytes[5000] = 0x42;
         let salt = vec![0u8; 32];
 
         let (scute, root) = write_scute_blobs(&cow_bytes, &salt, out, 0).unwrap();
         assert_eq!(scute.cow, "0000.cow");
+        assert_eq!(scute.verity, "0000.verity");
         assert_eq!(scute.salt, "00".repeat(32));
+        assert!(out.join("0000.cow").is_file());
+        assert!(out.join("0000.verity").is_file());
 
-        let on_disk = std::fs::read(out.join("0000.cow")).unwrap();
-        let cow_digest: [u8; 32] = Sha256::digest(&on_disk).into();
-        let params = verity::VerityParams {
-            data_block_size: VERITY_BLOCK_SIZE,
-            hash_block_size: VERITY_BLOCK_SIZE,
-            salt: salt.clone(),
-            uuid: verity::derive_uuid(&salt, &cow_digest),
-        };
-        assert_eq!(verity::compute(&on_disk, &params).unwrap().root_hash, root);
+        let tmp2 = tempfile::TempDir::new().unwrap();
+        let (_, root2) = write_scute_blobs(&cow_bytes, &salt, tmp2.path(), 0).unwrap();
+        assert_eq!(
+            root, root2,
+            "same bytes+salt must yield the same verity root"
+        );
     }
 
     /// A chained scute salts with the parent root, so its verity root differs
     /// from the same content salted as a base — the salt-chain binding.
     #[test]
     fn chained_salt_changes_the_root() {
+        if !have_veritysetup() {
+            eprintln!("veritysetup absent — skipping");
+            return;
+        }
         let tmp = tempfile::TempDir::new().unwrap();
         let out = tmp.path();
-        let cow_bytes =
-            carapace_import::cow::write(&vec![1u8; 4096 * 2], SCUTE_CHUNK_SIZE_SECTORS).unwrap();
+        let cow_bytes = vec![1u8; 4096 * 2];
 
         let (_, base_root) = write_scute_blobs(&cow_bytes, &[0u8; 32], out, 0).unwrap();
         let (_, child_root) = write_scute_blobs(&cow_bytes, &base_root, out, 1).unwrap();
@@ -704,5 +793,17 @@ mod tests {
             base_root, child_root,
             "salt-chain must bind the parent root"
         );
+    }
+
+    /// The verity UUID derivation is canonical 8-4-4-4-12 and deterministic.
+    #[test]
+    fn derive_uuid_string_is_canonical_and_deterministic() {
+        let salt = vec![7u8; 32];
+        let cow_digest = [9u8; 32];
+        let a = derive_uuid_string(&salt, &cow_digest);
+        assert_eq!(a, derive_uuid_string(&salt, &cow_digest));
+        let lens: Vec<usize> = a.split('-').map(str::len).collect();
+        assert_eq!(lens, vec![8, 4, 4, 4, 12]);
+        assert!(a.chars().all(|c| c.is_ascii_hexdigit() || c == '-'));
     }
 }
