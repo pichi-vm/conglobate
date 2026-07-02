@@ -204,6 +204,11 @@ fn emit_delta_scute(
 /// byte-identical to the in-tree producer (see the pichi-import verity
 /// cross-check test), so scutes are interoperable between `conglobate` (this
 /// path) and `pichi import`.
+///
+/// Disambiguates the per-call `/tmp` verity scratch file so concurrent callers
+/// (parallel tests) never collide.
+static VERITY_TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 fn write_scute_blobs(
     cow_bytes: &[u8],
     salt: &[u8],
@@ -216,7 +221,17 @@ fn write_scute_blobs(
     let cow_path = output.join(&cow_name);
     let verity_path = output.join(&verity_name);
     fs::write(&cow_path, cow_bytes).map_err(|e| format!("writing {cow_name}: {e}"))?;
-    let root_hash = veritysetup_format(&cow_path, &verity_path, salt, &cow_digest)?;
+    // `veritysetup format` grows the hash-tree file as it writes; the /output
+    // virtiofs mount rejects grow-in-place (ENOTSUP). Format onto the /tmp
+    // tmpfs (same store the COW backing files use) under a unique name, then
+    // copy the finished tree onto /output with a plain sequential write. The
+    // counter keeps concurrent callers (parallel tests) from colliding.
+    let seq = VERITY_TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let verity_tmp = PathBuf::from(format!("/tmp/verity.{}.{seq}", std::process::id()));
+    let root_hash = veritysetup_format(&cow_path, &verity_tmp, salt, &cow_digest)?;
+    fs::copy(&verity_tmp, &verity_path)
+        .map_err(|e| format!("copying {verity_name} to output: {e}"))?;
+    let _ = fs::remove_file(&verity_tmp);
 
     Ok((
         ScuteOut {
