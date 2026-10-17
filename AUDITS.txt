@@ -126,3 +126,12 @@ interrupted activation recovery. No unsafe code or dependency change was added.
 The full audit conclusions remain valid for this implementation tree, with
 three consecutive clean review passes and no intervening source modification.
 Exact final-commit CI remains a delivery gate.
+
+CI run 39077560463 passed normal and privileged tests on the reviewed
+implementation. Its test-target Clippy pass additionally required an empty
+byte-property assertion to use assert_eq! for useful failure diagnostics.
+The follow-up changes only that assertion (equality to b""), not implementation
+code. Reviewed the assertion against the empty-property requirement, checked
+its equivalence to is_empty(), and verified all 10 transform tests plus local
+formatting and Clippy. All three checks were clean; implementation conformity
+conclusions above are unchanged.

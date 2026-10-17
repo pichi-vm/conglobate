@@ -166,7 +166,7 @@ fn all_typed_values_round_trip_and_operations_are_ordered() {
             .collect::<Vec<_>>(),
         [0, 0x8000_0000, 0, 0x4000_0000]
     );
-    assert!(node.property("empty").unwrap().as_ref().is_empty());
+    assert_eq!(node.property("empty").unwrap().as_ref(), b"");
     assert_eq!(node.property("bytes").unwrap().as_ref(), [1, 0xab, 0, 0xff]);
     assert!(node.property("temporary").is_none());
     assert_eq!(
