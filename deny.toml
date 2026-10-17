@@ -8,6 +8,8 @@
 [licenses]
 allow = [
     "Apache-2.0",   # this crate + many deps
+    "BSD-3-Clause", # encoding_rs WHATWG encoding data
+    "Zlib",         # foldhash (gix pack cache)
     "MIT",          # many deps (dual MIT/Apache)
     "Unicode-3.0",  # required by the `unicode-ident` family (AND expression)
 ]
@@ -20,11 +22,11 @@ ignore = []
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
-# Allow path/git deps without a version (the carapace git dep, etc.).
+# Allow ecosystem path/git dependencies without a registry version.
 allow-wildcard-paths = true
 
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
 [sources.allow-org]
-github = ["pichi-vm"]   # carapace git dep
+github = ["pichi-vm"]   # ecosystem dependencies

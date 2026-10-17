@@ -1,0 +1,102 @@
+Conglobate initial implementation conformity audits
+2026-10-17
+
+Reviewed implementation tree: ad8463f5571b73d47950495da2a5faeca74c147c
+The tree identifier excludes this review record. These are sequential manual
+passes by the implementing agent, not independent reviewers. Scope is the
+standalone initial implementation in DESIGN.md; explicitly deferred appliance,
+attestation, platform.yaml and additional signing contracts remain deferred.
+
+Preliminary reviews found and corrected ecosystem index selectors, inherited
+stdin, worker startup races, executable identity, interrupted device activation,
+Docker pattern differences and runtime device permissions. Earlier clean passes
+were discarded after later findings; only the final passes below count.
+
+FINAL PASS 1: requirements to implementation -- CLEAN
+
+Sections 1-4: standalone real-root CLI and safe libraries; committed local Git
+objects, private checkout, no hooks/filters, unsupported Git content rejection;
+locked OCI indexes with the native pichi artifact-type and platform selectors,
+unique host architecture selection, blob verification and chain authentication.
+Reviewed main, recipe, context, input, cache and scute against these requirements.
+
+Sections 5-7: all pipeline combinations, independent bootstrap ancestry, one
+scute per carapace directive, all base components inherited, independent firmware
+tools, paired firmware replacement and final-output CARAPACE propagation.
+Reviewed build, copy, copy_pattern, execute and template against these rules.
+
+Sections 8-10: typed property operations and conditions; missing/type errors;
+global regex replacement and lazy variables; default/authored/empty selection;
+private namespaces, real root, read-only context, process lifetime, per-step
+network choice, RAM-backed scratch and cleanup; final DTB compatibility checks.
+Reviewed transform, firmware, mounts, snapshot, execute and cancel.
+
+Sections 11-13: deterministic CBOR, supplied-input/output bindings, running
+executable identity, self-contained OCI output, atomic no-replace publication,
+and deferred features. Reviewed artifact and inventory, including failure paths.
+No outstanding conformity finding.
+
+Validation evidence
+
+30 normal tests and all 8 privileged integration tests passed. The final device
+permission change was checked with the strengthened privileged execution test;
+the other tests had already passed on the same implementation apart from that
+localized runtime-mode fix. Formatting, Clippy with warnings denied, license
+headers, dependency checks and staged whitespace checks passed.
+
+Privileged checks ran without a pichi VM on Fedora with SELinux enforcing.
+They cover labels, capabilities, ACLs, xattrs, real UID/GID, caller environment
+and stdin isolation, network namespaces, descendant lifetime, concurrent builds,
+cancellation, interrupted activation recovery and deletion of the installed
+executable during a build. The pipeline covers all stage combinations and
+inherited firmware with a refreshed root binding. A local pichi load/save round
+trip verifies manifest and payload bytes after removing the original input
+cache. The import uses a transport copy because pichi load may move its blobs;
+canonical empty config remains represented inline when pichi save omits its file.
+
+FINAL PASS 2: implementation paths back to requirements -- CLEAN
+
+Revisited the complete section 1-13 mapping from the CLI's success and failure
+paths. Verified that preflight consumes committed recipes and locked identities,
+never mutable tags; tool inputs do not become output ancestry; firmware exports
+both artifacts; CARAPACE is unavailable before the output root exists; and
+authored transforms cannot silently acquire defaults or missing DTBs.
+
+Rechecked process and resource ownership: parent identity is captured before
+spawn, namespace init bounds descendant lifetime, mount teardown precedes
+sealing, activation is serialized, deferred removal owns kernel teardown, and
+an abandoned activation is recovered through an exclusively locked scratch
+lease. Runtime device modes do not depend on umask. Caller stdin and environment
+are not recipe input channels. No disk fallback or VM infrastructure is used.
+
+Rechecked finalization: changed DTBs require a supported measurement contract;
+inventory identifies final private bytes and the running executable; all image
+components are validated before atomic publication; existing destinations are
+never overwritten; and failures do not publish a successful result. No
+outstanding conformity finding. Implementation tree unchanged from pass 1.
+
+FINAL PASS 3: ecosystem contracts, evidence and delivery -- CLEAN
+
+Repeated the section 1-13 mapping using the public CLI, test assertions and
+downstream format consumers as the starting points. CLI help exposes the agreed
+local-repository/commit/context/cache/new-output interface. No obsolete VM,
+network-provisioning, scratch-budget or architecture-override interface remains.
+
+Compared index selection with the pinned pichi registry walker and pull
+implementation: artifactType and platform.os=pichi agree, and foreign artifact
+entries do not create false ambiguity. Compared the documented arma invocation
+with its CLI and detached-DTB contract. Checked that import uses pichi-import,
+assembly uses carapace, writable mappings use devmap, and DTB operations remain
+in process through safe library APIs.
+
+Rechecked validation coverage against every item in section 12 and the initial
+scope exclusions in section 13. Normal and privileged test results are accounted
+for separately, so ignored privileged tests are not mistaken for coverage.
+Local load/save interoperability validates real exported bytes; metadata checks
+ran under enforcing SELinux. CI explicitly executes all privileged test binaries
+without launching a pichi VM. Source has no unsafe blocks or implementation
+placeholders. No outstanding conformity finding; implementation tree unchanged
+through all three final passes. Final consecutive clean count: 3.
+
+Commit, push and exact-commit CI verification are delivery gates performed after
+these audits; their result is reported with the delivered commit.

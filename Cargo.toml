@@ -5,49 +5,40 @@ edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/pichi-vm/conglobate"
 publish = false
-description = "The pichi build driver: PID 1 (/init) in the PMI-only build VM."
-
-[[bin]]
-name = "conglobate"
-path = "src/main.rs"
-
-[lib]
-# The pichi.build recipe I/O types (parse + validate), shared with the host
-# CLI. Portable (serde-only); the Linux-only build logic lives in the binary.
+description = "Standalone privileged image builder for pichi."
 
 [dependencies]
-# Portable recipe I/O: the lib parses carapace.yaml/pmi.yaml/refs.lock and
-# emits build.yaml, with structural validation. serde-only so the
-# cross-platform `pichi` CLI can depend on this lib.
-serde = { version = "1", features = ["derive"] }
-serde_yaml = "0.9"
-thiserror = "2"
-# requirements.yaml memory sizes ("2GiB") — serde parses strings + integers.
-bytesize = { version = "1", features = ["serde"] }
-
-# The build path is device-mapper + virtio-fs + chroot, all Linux syscalls —
-# these deps back the binary's build logic and never enter the portable lib.
-[target.'cfg(target_os = "linux")'.dependencies]
-# rustix's safe syscall wrappers (linux_raw backend → no libc, no unsafe in
-# our code), matching the snuffler guest probe. `mount`/`system`/`stdio` are
-# added on top of the workspace base feature set.
-rustix = { version = "1", default-features = false, features = ["std", "fs", "process", "mount", "system", "stdio", "net"] }
-# Read-side carapace assembly: attach the source carapace (the recipe `from:`)
-# as a composed read-only `/dev/mapper/...` to use as the build origin (op 1).
-carapace = { git = "https://github.com/pichi-vm/carapace" }
-# The writable dm-snapshot per directive (op 3) and the dm-verity seal (op 4)
-# are done by shelling out to `losetup`/`dmsetup`/`veritysetup`, bundled in the
-# build initramfs (see scripts/assemble.sh) — no carapace-dm / carapace-import.
-# Decode the source root hash / encode scute salts (refs.lock <-> build.yaml).
+carapace = { git = "https://github.com/pichi-vm/carapace", rev = "4662818553b532a9fd190cf22f41335610018efc", version = "0.1.0", default-features = false, features = ["loop"] }
+ciborium = "0.2"
+clap = { version = "4", features = ["derive"] }
+devmap-core = { git = "https://github.com/pichi-vm/devmap.git", rev = "6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72", version = "0.1.0" }
+devmap-linux = { git = "https://github.com/pichi-vm/devmap.git", rev = "6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72", version = "0.1.0" }
+devmap-snapshot = { git = "https://github.com/pichi-vm/devmap.git", rev = "6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72", version = "0.1.0" }
+devtree = { git = "https://github.com/pichi-vm/devtree", rev = "e90bafce9ee9e4f7f570f07c5c242b6398c64980", features = ["alloc"] }
+filetime = "0.2"
+gix = { version = "0.84", default-features = false, features = ["sha1", "sha256"] }
+goblin = { version = "0.10", default-features = false, features = ["std", "pe32", "pe64"] }
 hex = "0.4"
-# Cow-digest for the deterministic verity UUID (matches pichi import).
+lodown = { git = "https://github.com/pichi-vm/lodown.git", rev = "31f8951293af180150e5e4c654c47a5b190097b9", version = "0.1.0" }
+nix = { version = "0.30", features = ["mount", "sched", "fs", "user", "process", "signal"] }
+pichi-artifact = { git = "https://github.com/pichi-vm/pichi", rev = "3a5c409c703cccc5c5c29519896417f741a1383f", version = "0.1.0" }
+pichi-import = { git = "https://github.com/pichi-vm/pichi", rev = "3a5c409c703cccc5c5c29519896417f741a1383f", version = "0.1.0" }
+pmi = { git = "https://github.com/pichi-vm/pmi", rev = "364ee0be240fa44c9d7cef7692593f3b52e45b78", version = "0.1.0" }
+regex = "1"
+rustix = { version = "1", features = ["fs"] }
+serde = { version = "1", features = ["derive"] }
+serde-saphyr = { version = "2", default-features = false, features = ["deserialize"] }
+serde_bytes = "0.11"
+serde_json = "1"
 sha2 = "0.10"
-
-[dev-dependencies]
+signal-hook = "0.3"
 tempfile = "3"
+thiserror = "2"
+xattr = "1"
+zstd = "0.13"
 
 [lints.rust]
-unsafe_code = "deny"
+unsafe_code = "forbid"
 missing_debug_implementations = "warn"
 rust_2018_idioms = { level = "warn", priority = -1 }
 unreachable_pub = "warn"
