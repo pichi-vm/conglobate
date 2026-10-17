@@ -262,7 +262,7 @@ pub(crate) fn trim_cow(file: &mut File) -> Result<(), Error> {
         file.seek(SeekFrom::Start(area * BLOCK))?;
         file.read_exact(&mut metadata)?;
         end = end.max(area + 1);
-        for entry in metadata.chunks_exact(16) {
+        for entry in metadata.as_chunks::<16>().0 {
             let chunk = u64::from_le_bytes(entry[8..16].try_into().map_err(format_error)?);
             if chunk == 0 {
                 file.set_len(end * BLOCK)?;
