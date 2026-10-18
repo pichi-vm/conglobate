@@ -176,3 +176,47 @@ fn unfinished_corrupt_or_mismatched_artifacts_cannot_publish() {
     .unwrap();
     assert!(artifact.finalize(&manifest, &inventory).is_err());
 }
+
+#[test]
+fn firmware_only_input_omits_root_but_execution_inputs_require_one() {
+    let mut inventory = fixture(&manifest());
+    let digest = Digest::sha256(b"input");
+    inventory.inputs.push(inv::Input {
+        roles: vec!["carapace-base".into()],
+        reference: "base".into(),
+        index: digest.clone(),
+        manifest: digest,
+        carapace_root: None,
+    });
+    let bytes = inventory.encode().unwrap();
+    assert!(
+        Inventory::decode(&bytes).unwrap().inputs[0]
+            .carapace_root
+            .is_none()
+    );
+    let value: ciborium::Value = ciborium::from_reader(bytes.as_slice()).unwrap();
+    let inputs = value
+        .as_map()
+        .unwrap()
+        .iter()
+        .find(|(k, _)| k.as_text() == Some("inputs"))
+        .unwrap()
+        .1
+        .as_array()
+        .unwrap();
+    assert!(
+        !inputs[0]
+            .as_map()
+            .unwrap()
+            .iter()
+            .any(|(k, _)| k.as_text() == Some("carapace_root"))
+    );
+    for role in ["bootstrap-tools", "firmware-tools"] {
+        inventory.inputs[0].roles = vec![role.into()];
+        assert!(inventory.encode().is_err());
+    }
+    inventory.inputs[0].carapace_root = Some(vec![0; 31].into());
+    assert!(inventory.encode().is_err());
+    inventory.inputs[0].carapace_root = Some(vec![0; 32].into());
+    Inventory::decode(&inventory.encode().unwrap()).unwrap();
+}

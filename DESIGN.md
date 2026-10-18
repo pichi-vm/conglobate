@@ -337,9 +337,10 @@ Common execution behavior:
 `copy.from` accepts one string or a nonempty list of strings. `copy.into` is
 an absolute image path; multiple sources require a trailing slash. Optional
 `owner` and `group` accept quoted numeric IDs or names resolved in the image's
-`/etc/passwd` and `/etc/group`. Defaults are UID/GID zero; specifying only an
-owner uses that numeric ID for both. Optional `mode` is a quoted octal or
-symbolic mode. Filename patterns use Go `filepath.Match` semantics, including
+`/etc/passwd` and `/etc/group`. Defaults are UID/GID zero; specifying only a
+numeric owner uses that ID for both. A named owner uses its primary GID from
+`/etc/passwd` unless `group` explicitly overrides it. Optional `mode` is a quoted
+octal or symbolic mode. Filename patterns use Go `filepath.Match` semantics, including
 Unicode `?` and bracket classes, without shell brace expansion.
 
 ### 6.1 Bootstrap
@@ -824,7 +825,11 @@ The required top-level fields are `version`, `builder`, `context`, `inputs`,
 `execution`, and `outputs`, with the nested fields illustrated above. Version
 is exactly 1. Consumers reject unknown fields, unsupported versions, duplicate
 keys, noncanonical encodings, and trailing data. Absent optional output roots
-and firmware digests are omitted. `outputs.scutes` and `inputs` are arrays,
+and firmware digests are omitted. An input's `carapace_root` is also omitted
+when a firmware-only base passes through without execution; execution-tool
+inputs must have a 32-byte root. Such a base retains the `carapace-base` role,
+which identifies the selecting recipe, not a requirement that scutes exist.
+`outputs.scutes` and `inputs` are arrays,
 including when empty. Scutes are recorded in base-to-top chain order; inputs
 are sorted by reference, with unique sorted roles. Network steps occur in
 pipeline and directive order.

@@ -195,3 +195,50 @@ fn copy_preserves_security_metadata() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires root for Docker COPY ownership semantics"]
+fn copy_replaces_appended_symlinks_and_preserves_destination_directory_metadata() {
+    let directory = tempfile::tempdir().unwrap();
+    let context = directory.path().join("context");
+    let root = directory.path().join("root");
+    fs::create_dir_all(context.join("source")).unwrap();
+    fs::create_dir_all(root.join("dest")).unwrap();
+    fs::write(context.join("file"), "new").unwrap();
+    fs::write(root.join("marker"), "old").unwrap();
+    symlink("/marker", root.join("dest/file")).unwrap();
+    copy("file", "/dest/").apply(&context, &root, None).unwrap();
+    assert!(
+        fs::symlink_metadata(root.join("dest/file"))
+            .unwrap()
+            .is_file()
+    );
+    assert_eq!(fs::read_to_string(root.join("marker")).unwrap(), "old");
+    assert_eq!(fs::read_to_string(root.join("dest/file")).unwrap(), "new");
+    fs::set_permissions(context.join("source"), fs::Permissions::from_mode(0o711)).unwrap();
+    xattr::set(context.join("source"), "user.source", b"source only").unwrap();
+    fs::write(context.join("source/child"), "child").unwrap();
+    for into in ["/a", "/b/"] {
+        copy("source", into).apply(&context, &root, None).unwrap();
+        let dest = root.join(into.trim_matches('/'));
+        assert_eq!(fs::metadata(&dest).unwrap().mode() & 0o7777, 0o755);
+        assert_eq!(xattr::get(&dest, "user.source").unwrap(), None);
+        assert_eq!(fs::read(dest.join("child")).unwrap(), b"child");
+    }
+    fs::set_permissions(root.join("a"), fs::Permissions::from_mode(0o700)).unwrap();
+    copy("source", "/a").apply(&context, &root, None).unwrap();
+    assert_eq!(fs::metadata(root.join("a")).unwrap().mode() & 0o7777, 0o700);
+    assert!(
+        copy("source", "/marker")
+            .apply(&context, &root, None)
+            .is_err()
+    );
+    // Named-owner resolution is also exercised through real chown.
+    fs::create_dir(root.join("etc")).unwrap();
+    fs::write(root.join("etc/passwd"), "builder:x:1234:9876::/:/bin/sh\n").unwrap();
+    let mut owned = copy("file", "/owned");
+    owned.owner = Some("builder".into());
+    owned.apply(&context, &root, None).unwrap();
+    let meta = fs::metadata(root.join("owned")).unwrap();
+    assert_eq!((meta.uid(), meta.gid()), (1234, 9876));
+}

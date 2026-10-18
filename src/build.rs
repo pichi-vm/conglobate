@@ -62,6 +62,9 @@ impl Build {
         let artifact = Artifact::new(&scratch.path().join("artifact"))?;
         let mut tools = BTreeMap::new();
         for (index, (reference, image)) in inputs.images.iter().enumerate() {
+            if image.manifest.carapace_verity_hash().is_none() {
+                continue;
+            }
             tools.insert(
                 reference.clone(),
                 Chain::stage(
@@ -86,7 +89,13 @@ impl Build {
         if let Some(bootstrap) = &inputs.pipeline.bootstrap {
             let tool = &tools[&bootstrap.from];
             let (snapshot, filesystem) = environment.mount(tool, "bootstrap")?;
-            environment.derive(&bootstrap.derive, filesystem.path(), None)?;
+            environment.derive(
+                "bootstrap.yaml",
+                0,
+                &bootstrap.derive,
+                filesystem.path(),
+                None,
+            )?;
             let raw = output_file(filesystem.path(), bootstrap.into.as_ref(), None)?;
             let scute = Scute::import(&raw, &scratch.path().join("bootstrap-output"))?;
             filesystem.finish()?;
@@ -104,13 +113,19 @@ impl Build {
             chain = tools.remove(reference);
         }
         if let Some(carapace) = &inputs.pipeline.carapace {
-            let chain = chain
-                .as_mut()
-                .ok_or_else(|| Error::Invalid("carapace stage has no input".into()))?;
             for (index, directive) in carapace.derive.iter().enumerate() {
+                let chain = chain
+                    .as_mut()
+                    .ok_or_else(|| Error::Invalid("carapace stage has no input".into()))?;
                 let (snapshot, filesystem) =
                     environment.mount(chain, &format!("carapace-{index}"))?;
-                environment.derive(std::slice::from_ref(directive), filesystem.path(), None)?;
+                environment.derive(
+                    "carapace.yaml",
+                    index,
+                    std::slice::from_ref(directive),
+                    filesystem.path(),
+                    None,
+                )?;
                 filesystem.finish()?;
                 let scute = snapshot
                     .finish()
@@ -145,7 +160,13 @@ impl Build {
                 return Err(Error::Invalid("firmware stage has no tool carapace".into()));
             };
             let (snapshot, filesystem) = environment.mount(tool, "firmware")?;
-            environment.derive(&firmware.derive, filesystem.path(), root.as_deref())?;
+            environment.derive(
+                "firmware.yaml",
+                0,
+                &firmware.derive,
+                filesystem.path(),
+                root.as_deref(),
+            )?;
             let pmi = output_file(
                 filesystem.path(),
                 firmware.into.pmi.as_ref(),
@@ -194,7 +215,7 @@ impl Build {
             .transform
             .apply(before.as_deref(), root.as_deref())?;
         if let Some(bytes) = transformed {
-            if let Some(before) = &before {
+            if let Some(before) = before.as_ref().filter(|before| **before != bytes) {
                 let pmi = manifest
                     .layers
                     .iter()
@@ -267,13 +288,15 @@ impl Environment<'_> {
     }
     fn derive(
         &self,
+        recipe: &str,
+        first_step: usize,
         directives: &[Directive],
         root: &Path,
         carapace: Option<&str>,
     ) -> Result<(), Error> {
-        for directive in directives {
+        for (index, directive) in directives.iter().enumerate() {
             crate::cancel::check()?;
-            match directive {
+            let result = match directive {
                 Directive::Run { command, network } => Step {
                     expected_parent: None,
                     root: root.to_owned(),
@@ -282,9 +305,20 @@ impl Environment<'_> {
                     carapace: carapace.map(str::to_owned),
                     command: command.clone(),
                 }
-                .run(&self.executable)?,
-                Directive::Copy(copy) => copy.apply(self.context, root, carapace)?,
-            }
+                .run(&self.executable),
+                Directive::Copy(copy) => {
+                    copy.apply(self.context, root, carapace).map_err(|error| {
+                        Error::Invalid(format!(
+                            "COPY {:?} -> {}: {error}",
+                            copy.from.paths(),
+                            copy.into.as_ref()
+                        ))
+                    })
+                }
+            };
+            result.map_err(|error| {
+                Error::Invalid(format!("{recipe} derive[{}]: {error}", first_step + index))
+            })?;
         }
         Ok(())
     }

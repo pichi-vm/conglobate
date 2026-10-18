@@ -185,12 +185,12 @@ fn cache_verifies_index_manifest_and_every_payload() {
     let (locked, payload) = index(root.path(), false);
     let cache = Cache::new(root.path());
     let image = cache.resolve(&locked).unwrap();
-    cache.verify_blobs(&image).unwrap();
+    cache.verify_blobs(&image.manifest).unwrap();
     let path = root.path().join("blobs/sha256").join(&payload[7..]);
     fs::write(&path, "tampered").unwrap();
-    assert!(cache.verify_blobs(&image).is_err());
+    assert!(cache.verify_blobs(&image.manifest).is_err());
     fs::remove_file(path).unwrap();
-    assert!(cache.verify_blobs(&image).is_err());
+    assert!(cache.verify_blobs(&image.manifest).is_err());
     let manifest = IndexDigest::try_from(image.manifest_digest.clone()).unwrap();
     assert!(cache.resolve(&manifest).is_err());
     fs::write(
@@ -277,6 +277,11 @@ fn input_resolution_connects_committed_lock_to_execution_images() {
     let repo = repository();
     let store = tempfile::tempdir().unwrap();
     let (locked, payload) = index(store.path(), false);
+    fs::write(
+        repo.path().join("context/pichi.build/carapace.yaml"),
+        "from: base\nderive:\n  - run: 'true'\n",
+    )
+    .unwrap();
     let cache = Cache::new(store.path());
     let commit_lock = |digest: &str| {
         fs::write(
@@ -355,4 +360,74 @@ fn input_resolution_connects_committed_lock_to_execution_images() {
     conglobate::inventory::Inventory::decode(&record.encode().unwrap()).unwrap();
     // Preflight verifies the blob identity, not the dm-verity chain. The
     // executor must establish that separately before mounting this image.
+}
+
+#[test]
+fn optional_recipes_can_be_absent_below_a_symlinked_directory() {
+    let repo = repository();
+    let context = repo.path().join("context");
+    fs::rename(context.join("pichi.build"), context.join("recipes")).unwrap();
+    std::os::unix::fs::symlink("recipes", context.join("pichi.build")).unwrap();
+    git(repo.path(), &["add", "."]);
+    git(repo.path(), &["commit", "-qm", "linked directory"]);
+    let commit = git(repo.path(), &["rev-parse", "HEAD"]);
+    Context::capture(repo.path(), &commit, Path::new("context"))
+        .unwrap()
+        .pipeline()
+        .unwrap();
+    // The same directory link must not hide a dangling explicit recipe link.
+    std::os::unix::fs::symlink("missing", context.join("recipes/bootstrap.yaml")).unwrap();
+    git(repo.path(), &["add", "."]);
+    git(repo.path(), &["commit", "-qm", "dangling stage"]);
+    let commit = git(repo.path(), &["rev-parse", "HEAD"]);
+    assert!(
+        Context::capture(repo.path(), &commit, Path::new("context"))
+            .unwrap()
+            .pipeline()
+            .is_err()
+    );
+}
+
+#[test]
+fn special_cache_blobs_are_rejected_without_waiting_for_a_writer() {
+    let store = tempfile::tempdir().unwrap();
+    let digest = format!("sha256:{}", "0".repeat(64));
+    let path = store.path().join("blobs/sha256").join(&digest[7..]);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    nix::unistd::mkfifo(&path, nix::sys::stat::Mode::S_IRUSR).unwrap();
+    let cache = Cache::new(store.path());
+    // Execute in a child with a deadline: a regression must fail, not hang CI.
+    let mut child = Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", "fifo_probe_child"])
+        .env("CONGLOBATE_FIFO_PROBE", store.path())
+        .spawn()
+        .unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            assert!(status.success());
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("cache FIFO open blocked before type validation");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    fs::remove_file(&path).unwrap();
+    fs::create_dir(&path).unwrap();
+    assert!(cache.copy_blob(&digest, 0, &mut Vec::new()).is_err());
+}
+
+#[test]
+fn fifo_probe_child() {
+    let Some(root) = std::env::var_os("CONGLOBATE_FIFO_PROBE") else {
+        return;
+    };
+    let digest = format!("sha256:{}", "0".repeat(64));
+    let error = Cache::new(root)
+        .copy_blob(&digest, 0, &mut Vec::new())
+        .unwrap_err();
+    assert!(error.to_string().contains("not a regular file"), "{error}");
 }

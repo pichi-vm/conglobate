@@ -135,3 +135,69 @@ code. Reviewed the assertion against the empty-property requirement, checked
 its equivalence to is_empty(), and verified all 10 transform tests plus local
 formatting and Clippy. All three checks were clean; implementation conformity
 conclusions above are unchanged.
+
+
+2026-10-18 — remediation of the independent Claude/Codex review
+
+The consensus review of 960eb0c supersedes the earlier claims of no outstanding
+conformity findings. This implementation addresses its eight confirmed findings:
+COPY final-component symlinks, token-scoped sticky modes, unsigned octal parsing,
+destination-directory metadata, firmware-only base pass-through, optional
+recipes below directory symlinks, nonblocking rejection of special cache blobs,
+and preservation of step errors through cleanup. Named-owner COPY now uses the
+passwd primary GID, following the user's Docker-compatibility direction; numeric
+owner-only IDs still apply to both UID and GID. DESIGN records this distinction.
+
+Firmware-only inputs are distinguished from execution tools before execution.
+Their missing root is represented by omission in version-one inventory CBOR;
+bootstrap/firmware execution roles still require a root. The new CLI regression
+covers inherited PMI/DTB with default/empty/authored transforms, an independent
+tool carapace, undefined CARAPACE, and rejection of rootless execution inputs.
+The same tests check unchanged firmware bytes and inherited annotations.
+
+Added unprivileged mode/account tests, a subprocess-deadline FIFO regression,
+linked-recipe-directory and inventory-schema tests, and multi-target PMI tests
+covering second-target rejection, duplicates, ambiguous/missing fill sections,
+TDX and CCA schemas. Privileged COPY tests cover the reproduced symlink and
+metadata failures and actual named-user ownership. Pattern matching already had
+unprivileged tests and was not rewritten.
+
+Also removed the avoidable Git blob clone, the synthetic ResolvedImage used for
+blob verification, duplicate verification of non-inline configs, the unnecessary
+PMI read for unchanged DTBs, unused Cache::root/Pipeline::has_carapace helpers,
+and the empty public copy module surface. Derive failures include their recipe,
+zero-based step index and COPY paths. Integrity checks and resource-owning
+wrappers remain. Speculative filesystem-probe changes, alternate bootstrap
+quiescence ordering and redundant inventory decoding were not introduced.
+Dependency-revision consolidation and deeper path/hash optimizations remain
+optional ecosystem/performance work, not demonstrated correctness failures.
+
+Validation of the final changes:
+- cargo test --all-features: 38 normal tests passed, plus the FIFO subprocess
+  probe; 10 privileged tests intentionally excluded from the normal invocation.
+- All 10 privileged tests passed in private mount namespaces on this Linux host
+  with SELinux enforcing (/sys/fs/selinux/enforce = 1). Nine passed in the full
+  run; a new separate-tool fixture initially read from the already-detached
+  /context mount, was corrected to COPY outputs into the tool filesystem, and
+  its full eight-case CLI test then passed. No production workaround was added.
+- The real pichi load/save round trip passed after deleting the original cache.
+  Built pinned pichi revision 3a5c409c703cccc5c5c29519896417f741a1383f using
+  cargo +nightly-2026-07-06 build --locked --bin pichi, then repeated that
+  interoperability test successfully against the freshly built executable.
+- Stable warnings-denied Clippy, formatting, and git diff --check passed.
+- cargo deny check passed advisories/bans/licenses/sources; existing duplicate
+  dependency-version warnings remain, with Cargo.lock unchanged.
+- CI workflow YAML and embedded Python parse successfully. The privileged CI
+  job now builds that pinned pichi consumer and explicitly requires the round
+  trip. The revised hosted workflow itself has not been run on GitHub yet.
+
+SELinux is validated locally, not claimed for Ubuntu-hosted CI: that runner has
+no enforcing SELinux environment. Supplying such an environment remains an
+infrastructure responsibility, rather than a conglobate binary feature. No new
+memory-budget, host-isolation or appliance policy was added.
+
+Review evidence: /tmp/conglobate-claude-review/CONSENSUS.txt and its transcripts.
+Test evidence: /tmp/conglobate-review-normal-tests.log,
+/tmp/conglobate-privileged-review-tests.log (includes the initial fixture failure),
+and /tmp/conglobate-review-pichi-roundtrip.log. The corrected firmware-only test
+was rerun directly and passed; results above account for that rerun explicitly.

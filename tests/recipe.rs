@@ -25,7 +25,6 @@ fn all_eight_stage_combinations_have_correct_input_selection() {
             continue;
         }
         let pipeline = result.unwrap();
-        assert_eq!(pipeline.has_carapace(), bits & 3 != 0);
         assert_eq!(pipeline.base().is_some(), bits & 3 == 2);
     }
 }

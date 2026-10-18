@@ -10,7 +10,7 @@ use sha2::{Digest, Sha256};
 use std::{
     fs::File,
     io::{Read, Write},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 const INDEX: &str = "application/vnd.oci.image.index.v1+json";
@@ -78,7 +78,18 @@ impl Cache {
         size: u64,
         destination: &mut impl Write,
     ) -> Result<(), Error> {
-        let file = File::open(self.path(digest)?)?;
+        // A FIFO must not block before we can reject its file type. Inspect the
+        // same descriptor we will read, not a racy pre-open metadata check.
+        let file = File::from(
+            rustix::fs::open(
+                self.path(digest)?,
+                rustix::fs::OFlags::RDONLY
+                    | rustix::fs::OFlags::NONBLOCK
+                    | rustix::fs::OFlags::CLOEXEC,
+                rustix::fs::Mode::empty(),
+            )
+            .map_err(std::io::Error::from)?,
+        );
         if !file.metadata()?.is_file() {
             return Err(Error::Invalid(format!(
                 "cache blob {digest} is not a regular file"
@@ -165,19 +176,15 @@ impl Cache {
     }
 
     /// Validate all selected manifest blobs without modifying the cache.
-    pub fn verify_blobs(&self, image: &ResolvedImage) -> Result<(), Error> {
-        let config = &image.manifest.config;
+    pub fn verify_blobs(&self, manifest: &Manifest) -> Result<(), Error> {
+        let config = &manifest.config;
         if !config.is_empty() {
             self.copy_blob(&config.digest, config.size, &mut std::io::sink())?;
         }
-        for layer in &image.manifest.layers {
+        for layer in &manifest.layers {
             self.copy_blob(layer.digest_str(), layer.size(), &mut std::io::sink())?;
         }
         Ok(())
-    }
-
-    pub fn root(&self) -> &Path {
-        &self.root
     }
 }
 

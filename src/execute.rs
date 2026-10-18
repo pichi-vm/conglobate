@@ -85,23 +85,24 @@ impl Step {
             .collect();
         let child = self.command(&std::env::current_exe()?, "__init")?.spawn()?;
         let status = wait_child(child, Signal::SIGKILL);
+        let mut cleanup = Vec::new();
         for name in mountpoints {
             match nix::mount::umount2(&self.root.join(name), nix::mount::MntFlags::MNT_DETACH) {
                 Ok(()) | Err(nix::errno::Errno::EINVAL | nix::errno::Errno::ENOENT) => {}
-                Err(error) => return Err(error.into()),
+                Err(error) => cleanup.push(format!("unmount {name}: {error}")),
             }
         }
         for name in created {
             match std::fs::remove_dir(self.root.join(name)) {
                 Ok(()) => {}
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                Err(error) => return Err(error.into()),
+                Err(error) => cleanup.push(format!("remove mountpoint {name}: {error}")),
             }
         }
 
         // Linux completes PID-namespace teardown (SIGKILL to all remaining
         // members) before the namespace init's parent can reap it.
-        success(status?)
+        finish_step(status, &cleanup)
     }
 
     /// This helper is PID 1 in the step's PID namespace. Its exit terminates
@@ -264,5 +265,41 @@ fn wait_child(mut child: std::process::Child, terminate: Signal) -> Result<ExitS
             return Err(error);
         }
         std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+}
+
+/// Cleanup failures remain fatal, but never hide the step's own failure.
+fn finish_step(status: Result<ExitStatus, Error>, cleanup: &[String]) -> Result<(), Error> {
+    let result = status.and_then(success);
+    if cleanup.is_empty() {
+        return result;
+    }
+    let cleanup = cleanup.join("; ");
+    Err(Error::Invalid(match result {
+        Ok(()) => format!("step cleanup: {cleanup}"),
+        Err(error) => format!("{error}; step cleanup: {cleanup}"),
+    }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::finish_step;
+    use std::os::unix::process::ExitStatusExt;
+    use std::process::ExitStatus;
+
+    #[test]
+    fn cleanup_failure_keeps_child_status_and_stays_fatal() {
+        let cleanup = vec![
+            "unmount context: failure".into(),
+            "remove mountpoint dev: failure".into(),
+        ];
+        let failed = || Ok(ExitStatus::from_raw(23 << 8));
+        let original = finish_step(failed(), &[]).unwrap_err().to_string();
+        let combined = finish_step(failed(), &cleanup).unwrap_err().to_string();
+        assert!(combined.contains(&original));
+        assert!(combined.contains(&cleanup[0]));
+        assert!(combined.contains(&cleanup[1]));
+        assert!(finish_step(Ok(ExitStatus::from_raw(0)), &cleanup).is_err());
+        finish_step(Ok(ExitStatus::from_raw(0)), &[]).unwrap();
     }
 }

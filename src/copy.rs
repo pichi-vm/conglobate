@@ -21,13 +21,7 @@ impl Copy {
         let target = resolve(root, Path::new(&destination), true)?;
         let owner = self.owner.as_deref().map(expand).transpose()?;
         let group = self.group.as_deref().map(expand).transpose()?;
-        let uid = identity(root, owner.as_deref(), false)?.unwrap_or(0);
-        // Docker --chown=user uses the same numeric ID for UID and GID.
-        let gid = identity(root, group.as_deref(), true)?.unwrap_or(if owner.is_some() {
-            uid
-        } else {
-            0
-        });
+        let (uid, gid) = ownership(root, owner.as_deref(), group.as_deref())?;
         let mode = self.mode.as_deref().map(expand).transpose()?;
         let mut sources = Vec::new();
         for source in self.from.paths() {
@@ -49,7 +43,13 @@ impl Copy {
         for source in sources {
             let actual = resolve(context, &source, true)?;
             let metadata = fs::metadata(&actual)?;
-            let target = if metadata.is_file() && target.is_dir() {
+            if metadata.is_dir() {
+                // COPY merges directory contents into a destination prepared
+                // with default metadata, regardless of a trailing slash.
+                policy.parents(&target)?;
+            }
+            let appended = metadata.is_file() && target.is_dir();
+            let target = if appended {
                 target.join(
                     source
                         .file_name()
@@ -58,7 +58,7 @@ impl Copy {
             } else {
                 target.clone()
             };
-            policy.copy(&actual, &target, root, true)?;
+            policy.copy(&actual, &target, root, !appended)?;
         }
         Ok(())
     }
@@ -137,27 +137,41 @@ fn expand_sources(context: &Path, source: &str) -> Result<Vec<PathBuf>, Error> {
     Ok(paths)
 }
 
-fn identity(root: &Path, value: Option<&str>, group: bool) -> Result<Option<u32>, Error> {
-    let Some(value) = value else {
-        return Ok(None);
-    };
-    if let Ok(id) = value.parse::<u32>() {
-        return Ok(Some(id));
-    }
-    let path = if group { "/etc/group" } else { "/etc/passwd" };
+fn account(root: &Path, path: &str, name: &str) -> Result<Vec<String>, Error> {
     let text = fs::read_to_string(resolve(root, Path::new(path), true)?)?;
-    for line in text.lines() {
-        let fields: Vec<_> = line.split(':').collect();
-        if fields.len() >= 3 && fields[0] == value {
-            return fields[2]
-                .parse()
-                .map(Some)
-                .map_err(|_| Error::Invalid("invalid COPY account id".into()));
+    text.lines()
+        .find(|line| line.split(':').next() == Some(name))
+        .map(|line| line.split(':').map(str::to_owned).collect())
+        .ok_or_else(|| Error::Invalid(format!("COPY account {name:?} not found in {path}")))
+}
+
+fn account_id(fields: &[String], field: usize) -> Result<u32, Error> {
+    fields
+        .get(field)
+        .and_then(|id| id.parse().ok())
+        .ok_or_else(|| Error::Invalid("invalid COPY account id".into()))
+}
+
+fn ownership(root: &Path, owner: Option<&str>, group: Option<&str>) -> Result<(u32, u32), Error> {
+    // Named users inherit their passwd primary GID; numeric owners use UID=GID.
+    let (uid, mut gid) = match owner {
+        None => (0, 0),
+        Some(value) => {
+            if let Ok(id) = value.parse::<u32>() {
+                (id, id)
+            } else {
+                let fields = account(root, "/etc/passwd", value)?;
+                (account_id(&fields, 2)?, account_id(&fields, 3)?)
+            }
         }
+    };
+    if let Some(group) = group {
+        gid = match group.parse::<u32>() {
+            Ok(id) => id,
+            Err(_) => account_id(&account(root, "/etc/group", group)?, 2)?,
+        };
     }
-    Err(Error::Invalid(format!(
-        "COPY account {value:?} not found in {path}"
-    )))
+    Ok((uid, gid))
 }
 
 struct Policy<'a> {
@@ -264,7 +278,10 @@ impl Policy<'_> {
         let Some(specification) = self.mode else {
             return Ok(original);
         };
-        if let Ok(mode) = u32::from_str_radix(specification, 8)
+        if specification
+            .bytes()
+            .all(|byte| matches!(byte, b'0'..=b'7'))
+            && let Ok(mode) = u32::from_str_radix(specification, 8)
             && mode <= 0o7777
         {
             return Ok(mode);
@@ -282,15 +299,12 @@ fn symbolic_mode(specification: &str, mut mode: u32, directory: bool) -> Result<
             let bits = match ch {
                 'u' => 0o4700,
                 'g' => 0o2070,
-                'o' => 0o1007,
-                'a' => 0o7777,
+                'o' => 0o0007,
+                'a' => 0o6777,
                 _ => break,
             };
             who |= bits;
             chars.next();
-        }
-        if who == 0 {
-            who = 0o7777;
         }
         let mut operations = 0;
         while let Some(op) = chars.next() {
@@ -298,6 +312,9 @@ fn symbolic_mode(specification: &str, mut mode: u32, directory: bool) -> Result<
                 return Err(invalid());
             }
             operations += 1;
+            // Sticky participates in the affected mask only for an explicit
+            // t token, and not for other-only clauses (BuildKit dchapes-mode).
+            who &= !0o1000;
             let mut bits = 0;
             while let Some(&ch) = chars.peek() {
                 if matches!(ch, '+' | '-' | '=') {
@@ -316,7 +333,14 @@ fn symbolic_mode(specification: &str, mut mode: u32, directory: bool) -> Result<
                         }
                     }
                     's' => 0o6000,
-                    't' => 0o1000,
+                    't' => {
+                        if who == 0 || who & !0o7 != 0 {
+                            who |= 0o1000;
+                            0o1000
+                        } else {
+                            0
+                        }
+                    }
                     'u' | 'g' | 'o' => {
                         let value = (mode
                             >> match ch {
@@ -330,11 +354,12 @@ fn symbolic_mode(specification: &str, mut mode: u32, directory: bool) -> Result<
                     _ => return Err(invalid()),
                 };
             }
-            bits &= who;
+            let affected = if who == 0 { 0o6777 } else { who };
+            bits &= affected;
             match op {
                 '+' => mode |= bits,
                 '-' => mode &= !bits,
-                '=' => mode = (mode & !who) | bits,
+                '=' => mode = (mode & !affected) | bits,
                 _ => unreachable!(),
             }
         }
@@ -343,4 +368,85 @@ fn symbolic_mode(specification: &str, mut mode: u32, directory: bool) -> Result<
         }
     }
     Ok(mode)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Policy, ownership};
+    use std::fs;
+
+    #[test]
+    fn modes_follow_buildkit_sticky_scoping_and_unsigned_octal() {
+        for (spec, before, directory, expected) in [
+            ("u+t", 0o644, false, 0o1644),
+            ("g+t", 0o644, false, 0o1644),
+            ("o+t", 0o644, false, 0o644),
+            ("a+t", 0o644, false, 0o1644),
+            ("+t", 0o644, false, 0o1644),
+            // In the reference parser, an unqualified t sets who to sticky;
+            // other permissions in that operation are then masked out.
+            ("+rt", 0o000, false, 0o1000),
+            ("+tr", 0o000, false, 0o1000),
+            ("a+rt", 0o000, false, 0o1444),
+            ("=rw", 0o1644, false, 0o1666),
+            ("u-t", 0o1644, false, 0o644),
+            ("o-t", 0o1644, false, 0o1644),
+            ("a-t", 0o1644, false, 0o644),
+            ("u=rw", 0o1644, false, 0o1644),
+            ("o=rw", 0o1644, false, 0o1646),
+            ("a=rw", 0o1644, false, 0o1666),
+            ("u+t=rw", 0o644, false, 0o1644),
+            ("a=rw-t", 0o1644, false, 0o666),
+            ("u+s,g+s,o+s", 0o644, false, 0o6644),
+            ("u=rw,go=r", 0o777, false, 0o644),
+            ("g=u", 0o640, false, 0o660),
+            ("a+X", 0o640, false, 0o640),
+            ("a+X", 0o640, true, 0o751),
+            ("0755", 0o1644, false, 0o755),
+        ] {
+            let policy = Policy {
+                uid: 0,
+                gid: 0,
+                mode: Some(spec),
+            };
+            assert_eq!(
+                policy.permissions(before, directory).unwrap(),
+                expected,
+                "{spec}"
+            );
+        }
+        for spec in ["+7", "-7", "0788", "10000", "u+q", "u", ""] {
+            let policy = Policy {
+                uid: 0,
+                gid: 0,
+                mode: Some(spec),
+            };
+            assert!(policy.permissions(0o644, false).is_err(), "{spec}");
+        }
+    }
+
+    #[test]
+    fn named_owner_uses_passwd_primary_group_unless_overridden() {
+        let root = tempfile::tempdir().unwrap();
+        fs::create_dir(root.path().join("etc")).unwrap();
+        fs::write(
+            root.path().join("etc/passwd"),
+            "builder:x:1234:9876::/:/bin/sh\n",
+        )
+        .unwrap();
+        // Deliberately no group named builder and no entry for its primary GID.
+        fs::write(root.path().join("etc/group"), "builders:x:2345:\n").unwrap();
+        for (owner, group, expected) in [
+            (None, None, (0, 0)),
+            (Some("1234"), None, (1234, 1234)),
+            (Some("builder"), None, (1234, 9876)),
+            (Some("builder"), Some("builders"), (1234, 2345)),
+            (Some("builder"), Some("5"), (1234, 5)),
+            (None, Some("builders"), (0, 2345)),
+        ] {
+            assert_eq!(ownership(root.path(), owner, group).unwrap(), expected);
+        }
+        assert!(ownership(root.path(), Some("missing"), None).is_err());
+        assert!(ownership(root.path(), None, Some("missing")).is_err());
+    }
 }

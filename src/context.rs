@@ -102,7 +102,7 @@ impl Context {
                     pending.push((path.clone(), entry.oid.to_owned()));
                     Vec::new()
                 } else {
-                    let blob = object(&repo, entry.oid.to_owned())?
+                    let mut blob = object(&repo, entry.oid.to_owned())?
                         .try_into_blob()
                         .map_err(git_error)?;
                     if blob
@@ -114,7 +114,7 @@ impl Context {
                     {
                         return Err(git_error("Git LFS pointers are not supported"));
                     }
-                    blob.data.clone()
+                    std::mem::take(&mut blob.data)
                 };
                 files.insert(path, Entry { kind, bytes });
             }
@@ -135,13 +135,15 @@ impl Context {
         let path = Path::new("pichi.build").join(name);
         // Resolve committed symlinks using only captured objects. Never follow
         // a recipe link through the caller's filesystem or outside the context.
+        // Symlink-target components must exist; original optional recipe
+        // components may be absent even after resolving a linked directory.
         let mut pending: std::collections::VecDeque<_> = path
             .components()
-            .map(|part| part.as_os_str().to_owned())
+            .map(|part| (part.as_os_str().to_owned(), false))
             .collect();
         let mut resolved = PathBuf::new();
         let mut links = 0;
-        while let Some(part) = pending.pop_front() {
+        while let Some((part, required)) = pending.pop_front() {
             if part == "." {
                 continue;
             }
@@ -153,7 +155,7 @@ impl Context {
             }
             resolved.push(part);
             let Some(entry) = self.files.get(&resolved) else {
-                if links == 0 {
+                if !required {
                     return Ok(None);
                 }
                 return Err(git_error("recipe symlink target does not exist"));
@@ -169,7 +171,7 @@ impl Context {
                 }
                 resolved.pop();
                 for part in target.components().rev() {
-                    pending.push_front(part.as_os_str().to_owned());
+                    pending.push_front((part.as_os_str().to_owned(), true));
                 }
             } else if !pending.is_empty() && entry.kind != EntryKind::Tree {
                 return Err(git_error("recipe parent is not a directory"));

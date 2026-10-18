@@ -238,8 +238,18 @@ impl Pipeline {
         self.carapace.as_ref().and_then(|c| c.from.as_ref())
     }
 
-    pub fn has_carapace(&self) -> bool {
-        self.bootstrap.is_some() || self.carapace.is_some()
+    /// A pass-through base can contain only firmware; execution inputs cannot.
+    pub(crate) fn needs_carapace(&self, reference: &ImageReference) -> bool {
+        self.bootstrap
+            .as_ref()
+            .is_some_and(|b| &b.from == reference)
+            || self
+                .firmware
+                .as_ref()
+                .is_some_and(|f| f.from.as_ref() == Some(reference))
+            || (self.base() == Some(reference)
+                && (self.carapace.as_ref().is_some_and(|c| !c.derive.is_empty())
+                    || self.firmware.as_ref().is_some_and(|f| f.from.is_none())))
     }
 
     /// References that must be pinned and available in the cache.

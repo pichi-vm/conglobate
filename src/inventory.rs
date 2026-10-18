@@ -63,8 +63,8 @@ pub struct Input {
     pub reference: String,
     pub index: Digest,
     pub manifest: Digest,
-    #[serde(with = "serde_bytes")]
-    pub carapace_root: Vec<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub carapace_root: Option<serde_bytes::ByteBuf>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -221,7 +221,13 @@ impl Inventory {
             }) {
                 return Err(invalid("unknown input role"));
             }
-            if input.carapace_root.len() != 32 {
+            if input
+                .carapace_root
+                .as_ref()
+                .is_some_and(|root| root.len() != 32)
+                || (input.carapace_root.is_none()
+                    && input.roles.iter().any(|role| role != "carapace-base"))
+            {
                 return Err(invalid("invalid input root length"));
             }
             if input.roles.is_empty() || input.roles.windows(2).any(|w| w[0] >= w[1]) {
@@ -385,8 +391,7 @@ impl Record<'_> {
                 carapace_root: image
                     .manifest
                     .carapace_verity_hash()
-                    .ok_or_else(|| invalid("execution input has no carapace"))?
-                    .to_vec(),
+                    .map(|root| root.to_vec().into()),
             });
         }
         let inherited: std::collections::BTreeSet<_> = pipeline

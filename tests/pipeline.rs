@@ -211,6 +211,12 @@ fn build_cli_layers_replaces_firmware_and_publishes_bound_inventory() {
     }
     if let Some(pichi) = std::env::var_os("PICHI_TEST_BINARY") {
         import_roundtrip(Path::new(&pichi), scratch.path(), &output, &inventory);
+    } else {
+        assert!(
+            std::env::var_os("PICHI_REQUIRE_ROUNDTRIP").is_none(),
+            "PICHI_REQUIRE_ROUNDTRIP requires PICHI_TEST_BINARY"
+        );
+        eprintln!("SKIP pichi load/save round trip: set PICHI_TEST_BINARY to enable it");
     }
     inherited_firmware(scratch.path(), &output, &inventory);
 }
@@ -668,4 +674,174 @@ fn cancellation_reaps_workers_and_crash_recovery_removes_scratch() {
     assert!(child.wait().unwrap().success());
     let inventory = Inventory::decode(&fs::read(output.join("inventory.cbor")).unwrap()).unwrap();
     assert_eq!(inventory.builder.executable, expected);
+}
+
+#[test]
+#[ignore = "requires root, mkfs.ext4, device-mapper and Linux namespaces"]
+fn firmware_only_base_passes_through_and_transforms_without_an_execution_root() {
+    let scratch = Scratch::new().unwrap();
+    let (cache, tool_index) = seed(scratch.path());
+    let pmi = firmware_fixture::image(".pmi.vm", &firmware_fixture::detached(), 4096);
+    let mut tree = devtree::OwnedTree::new(devtree::OwnedNode::new(""));
+    let mut chosen = devtree::OwnedNode::new("chosen");
+    chosen.set_property(devtree::OwnedProperty::new("bootargs").with_str("quiet"));
+    tree.root_mut().set_child(chosen);
+    let dtb = tree.encode().unwrap();
+    let manifest = Manifest {
+        schema_version: 2,
+        media_type: "application/vnd.oci.image.manifest.v1+json".into(),
+        artifact_type: "application/vnd.pichi.artifact.v1+json".into(),
+        config: ConfigDescriptor::canonical(),
+        layers: vec![
+            Layer::Pmi(pichi_artifact::PmiDescriptor {
+                digest: blob(&cache, &pmi),
+                size: pmi.len() as u64,
+            }),
+            Layer::Dtb(pichi_artifact::DtbDescriptor {
+                digest: blob(&cache, &dtb),
+                size: dtb.len() as u64,
+            }),
+        ],
+        annotations: BTreeMap::from([("example.inherited".into(), "firmware-only".into())]),
+    };
+    let bytes = manifest.to_bytes().unwrap();
+    let digest = blob(&cache, &bytes);
+    let architecture = if cfg!(target_arch = "aarch64") {
+        "arm64"
+    } else {
+        "amd64"
+    };
+    let index = blob(&cache, &serde_json::to_vec(&serde_json::json!({
+        "schemaVersion": 2, "mediaType": "application/vnd.oci.image.index.v1+json",
+        "manifests": [{"mediaType": "application/vnd.oci.image.manifest.v1+json", "artifactType": pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+            "digest": digest, "size": bytes.len(), "platform": {"os": "pichi", "architecture": architecture}}]
+    })).unwrap());
+    let edit = "- op: set\n  property: /chosen/bootargs\n  type: string\n  data: debug\n";
+    let undefined = "- op: set\n  property: /chosen/bootargs\n  type: string\n  data: $CARAPACE\n";
+    let firmware = "into: {pmi: /boot.pmi, dtb: /boot.dtb}\n";
+    let tools = "from: tool\nderive:\n  - copy: {from: kernel.pmi, into: /boot.pmi}\n  - copy: {from: base.dtb, into: /boot.dtb}\n  - run: 'test \"${CARAPACE+x}\" != x'\ninto: {pmi: /boot.pmi, dtb: /boot.dtb}\n";
+    for (name, carapace, firmware, transform, error) in [
+        ("default", "from: base\n", None, None, None),
+        ("empty", "from: base\n", None, Some(""), None),
+        ("edit", "from: base\n", None, Some(edit), None),
+        ("tools", "from: base\n", Some(tools), None, None),
+        (
+            "undefined",
+            "from: base\n",
+            None,
+            Some(undefined),
+            Some("undefined build variable CARAPACE"),
+        ),
+        (
+            "derive",
+            "from: base\nderive:\n  - run: 'true'\n",
+            None,
+            None,
+            Some("no carapace"),
+        ),
+        (
+            "implicit-tools",
+            "from: base\n",
+            Some(firmware),
+            None,
+            Some("no carapace"),
+        ),
+        (
+            "explicit-tools",
+            "from: base\n",
+            Some("from: base\ninto: {pmi: /boot.pmi, dtb: /boot.dtb}\n"),
+            None,
+            Some("no carapace"),
+        ),
+    ] {
+        let repository = scratch.path().join(format!("repo-{name}"));
+        fs::create_dir_all(repository.join("pichi.build")).unwrap();
+        git(&repository, &["init", "-q"]);
+        fs::write(repository.join("pichi.build/carapace.yaml"), carapace).unwrap();
+        fs::write(repository.join("pichi.build/refs.lock"), format!("version: 1\nimages:\n  base:\n    index: {index}\n  tool:\n    index: {tool_index}\n")).unwrap();
+        fs::write(repository.join("kernel.pmi"), &pmi).unwrap();
+        fs::write(repository.join("base.dtb"), &dtb).unwrap();
+        if let Some(firmware) = firmware {
+            fs::write(repository.join("pichi.build/firmware.yaml"), firmware).unwrap();
+        }
+        if let Some(transform) = transform {
+            fs::write(repository.join("pichi.build/transform.yaml"), transform).unwrap();
+        }
+        git(&repository, &["add", "."]);
+        git(&repository, &["commit", "-qm", "firmware base"]);
+        let commit = git(&repository, &["rev-parse", "HEAD"]);
+        // The rootless preflight must distinguish execution from pass-through.
+        let resolved = conglobate::input::Inputs::resolve(
+            &repository,
+            &commit,
+            Path::new("."),
+            &conglobate::cache::Cache::new(&cache),
+        );
+        if error == Some("no carapace") {
+            assert!(resolved.is_err());
+        } else {
+            resolved.unwrap();
+        }
+        let output = scratch.path().join(format!("out-{name}"));
+        let result = Command::new(env!("CARGO_BIN_EXE_conglobate"))
+            .arg("build")
+            .arg("--repository")
+            .arg(&repository)
+            .arg("--commit")
+            .arg(&commit)
+            .arg("--cache")
+            .arg(&cache)
+            .arg("--output")
+            .arg(&output)
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        if let Some(error) = error {
+            assert!(!result.status.success(), "{name}");
+            assert!(stderr.contains(error), "{name}: {stderr}");
+            assert!(!output.exists());
+            continue;
+        }
+        assert!(result.status.success(), "{name}: {stderr}");
+        let inventory =
+            Inventory::decode(&fs::read(output.join("inventory.cbor")).unwrap()).unwrap();
+        assert!(inventory.outputs.carapace_root.is_none());
+        assert!(inventory.outputs.scutes.is_empty());
+        assert!(
+            inventory
+                .inputs
+                .iter()
+                .find(|i| i.reference == "base")
+                .unwrap()
+                .carapace_root
+                .is_none()
+        );
+        let read = |digest: &Digest| {
+            fs::read(
+                output
+                    .join("image.oci/blobs/sha256")
+                    .join(hex::encode(&digest.digest)),
+            )
+            .unwrap()
+        };
+        assert_eq!(read(inventory.outputs.pmi.as_ref().unwrap()), pmi);
+        let output_dtb = read(inventory.outputs.dtb.as_ref().unwrap());
+        if name == "edit" {
+            let parsed: devtree::Tree<'_> = devtree::Tree::parse(&output_dtb).unwrap();
+            let owned = devtree::OwnedTree::from(&parsed);
+            assert_eq!(
+                owned
+                    .find_path("/chosen")
+                    .unwrap()
+                    .property("bootargs")
+                    .unwrap()
+                    .as_ref(),
+                b"debug\0"
+            );
+        } else {
+            assert_eq!(output_dtb, dtb);
+        }
+        let result: Manifest = serde_json::from_slice(&read(&inventory.outputs.manifest)).unwrap();
+        assert_eq!(result.annotations, manifest.annotations);
+    }
 }

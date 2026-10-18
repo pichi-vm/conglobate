@@ -10,7 +10,7 @@ pub mod build;
 pub mod cache;
 pub mod cancel;
 pub mod context;
-pub mod copy;
+mod copy;
 mod copy_pattern;
 pub mod execute;
 pub mod firmware;

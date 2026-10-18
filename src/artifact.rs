@@ -156,17 +156,14 @@ impl Artifact {
         let bytes = manifest
             .to_bytes()
             .map_err(|e| Error::Invalid(e.to_string()))?;
-        cache.verify_blobs(&ResolvedImage {
-            index: String::new(),
-            manifest_digest: String::new(),
-            manifest: manifest.clone(),
-            manifest_bytes: bytes.clone(),
-        })?;
-        cache.copy_blob(
-            &manifest.config.digest,
-            manifest.config.size,
-            &mut std::io::sink(),
-        )?;
+        cache.verify_blobs(manifest)?;
+        if manifest.config.is_empty() {
+            cache.copy_blob(
+                &manifest.config.digest,
+                manifest.config.size,
+                &mut std::io::sink(),
+            )?;
+        }
         let (digest, size) = self.put(bytes.as_slice())?;
         let mut referenced: std::collections::BTreeSet<_> = manifest
             .layers

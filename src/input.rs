@@ -32,13 +32,14 @@ impl Inputs {
         let mut images = BTreeMap::new();
         for reference in pipeline.references() {
             let image = cache.resolve(lock.resolve(reference)?)?;
-            if image.manifest.carapace_verity_hash().is_none() {
+            if pipeline.needs_carapace(reference) && image.manifest.carapace_verity_hash().is_none()
+            {
                 return Err(Error::Invalid(format!(
                     "execution image {} has no carapace",
                     reference.as_ref()
                 )));
             }
-            cache.verify_blobs(&image)?;
+            cache.verify_blobs(&image.manifest)?;
             images.insert(reference.clone(), image);
         }
         Ok(Self {
