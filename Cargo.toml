@@ -22,7 +22,7 @@ goblin = { version = "0.10", default-features = false, features = ["std", "pe32"
 hex = "0.4"
 lodown = { git = "https://github.com/pichi-vm/lodown.git", rev = "31f8951293af180150e5e4c654c47a5b190097b9", version = "0.1.0" }
 nix = { version = "0.30", features = ["mount", "sched", "fs", "user", "process", "signal"] }
-pichi-artifact = { git = "https://github.com/pichi-vm/pichi", rev = "3a5c409c703cccc5c5c29519896417f741a1383f", version = "0.1.0" }
+pichi-artifact = { git = "https://github.com/pichi-vm/pichi-artifact", rev = "64feac956d4539fb79b9490a90480a81ef098ebb", version = "0.1.0" }
 pmi = { git = "https://github.com/pichi-vm/pmi", rev = "364ee0be240fa44c9d7cef7692593f3b52e45b78", version = "0.1.0" }
 regex = "1"
 rustix = { version = "1", features = ["fs"] }

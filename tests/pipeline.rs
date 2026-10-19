@@ -209,14 +209,14 @@ fn build_cli_layers_replaces_firmware_and_publishes_bound_inventory() {
                 .is_file()
         );
     }
-    if let Some(pichi) = std::env::var_os("PICHI_TEST_BINARY") {
-        import_roundtrip(Path::new(&pichi), scratch.path(), &output, &inventory);
+    if let Some(oras) = std::env::var_os("ORAS_TEST_BINARY") {
+        oci_copy(Path::new(&oras), scratch.path(), &output, &inventory);
     } else {
         assert!(
-            std::env::var_os("PICHI_REQUIRE_ROUNDTRIP").is_none(),
-            "PICHI_REQUIRE_ROUNDTRIP requires PICHI_TEST_BINARY"
+            std::env::var_os("ORAS_REQUIRE_COPY").is_none(),
+            "ORAS_REQUIRE_COPY requires ORAS_TEST_BINARY"
         );
-        eprintln!("SKIP pichi load/save round trip: set PICHI_TEST_BINARY to enable it");
+        eprintln!("SKIP ORAS OCI copy: set ORAS_TEST_BINARY to enable it");
     }
     inherited_firmware(scratch.path(), &output, &inventory);
 }
@@ -307,60 +307,25 @@ fn inherited_firmware(directory: &Path, parent: &Path, original: &Inventory) {
     }
 }
 
-fn import_roundtrip(pichi: &Path, directory: &Path, output: &Path, inventory: &Inventory) {
-    // pichi load may consume its layout's blobs by rename. Import a transport
-    // copy, retaining the original as the independent byte-for-byte oracle.
-    let transport = directory.join("import-layout");
-    fs::create_dir_all(transport.join("blobs/sha256")).unwrap();
-    for name in ["oci-layout", "index.json"] {
-        fs::copy(output.join("image.oci").join(name), transport.join(name)).unwrap();
-    }
-    let entries: Vec<_> = fs::read_dir(output.join("image.oci/blobs/sha256"))
-        .unwrap()
-        .collect::<Result<_, _>>()
+fn oci_copy(oras: &Path, directory: &Path, output: &Path, inventory: &Inventory) {
+    let saved = directory.join("copied-image");
+    // Select by digest: conglobate's layout does not need a tag annotation.
+    let mut source = output.join("image.oci").into_os_string();
+    source.push(format!("@{}", inventory.outputs.manifest.oci()));
+    let mut destination = saved.clone().into_os_string();
+    destination.push(":verified");
+    let result = Command::new(oras)
+        .args(["cp", "--from-oci-layout", "--to-oci-layout"])
+        .arg(source)
+        .arg(destination)
+        .output()
         .unwrap();
-    assert!(!entries.is_empty());
-    for entry in entries {
-        fs::copy(
-            entry.path(),
-            transport.join("blobs/sha256").join(entry.file_name()),
-        )
-        .unwrap();
-    }
-    let config = directory.join("pichi-config.toml");
-    fs::write(
-        &config,
-        format!(
-            "[storage]\ngraphroot = {}\n",
-            serde_json::to_string(&directory.join("import-cache")).unwrap()
-        ),
-    )
-    .unwrap();
-    let run = |args: &[&std::ffi::OsStr]| {
-        let result = Command::new(pichi)
-            .args(args)
-            .env("PICHI_CONFIG", &config)
-            .output()
-            .unwrap();
-        assert!(
-            result.status.success(),
-            "{}",
-            String::from_utf8_lossy(&result.stderr)
-        );
-    };
-    run(&[
-        "load".as_ref(),
-        transport.as_os_str(),
-        "--tag".as_ref(),
-        "localhost/conglobate-test:latest".as_ref(),
-    ]);
-    let saved = directory.join("saved-image");
-    run(&[
-        "save".as_ref(),
-        "localhost/conglobate-test:latest".as_ref(),
-        "--output".as_ref(),
-        saved.as_os_str(),
-    ]);
+    assert!(
+        result.status.success(),
+        "ORAS copy failed: {}\n{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
     let index: serde_json::Value =
         serde_json::from_slice(&fs::read(saved.join("index.json")).unwrap()).unwrap();
     assert_eq!(
@@ -370,19 +335,13 @@ fn import_roundtrip(pichi: &Path, directory: &Path, output: &Path, inventory: &I
     for entry in fs::read_dir(output.join("image.oci/blobs/sha256")).unwrap() {
         let entry = entry.unwrap();
         let saved_blob = saved.join("blobs/sha256").join(entry.file_name());
-        // pichi save represents the canonical empty config inline in the
-        // unchanged manifest, and need not duplicate its two bytes as a blob.
-        if entry.file_name() == ConfigDescriptor::canonical().digest[7..] && !saved_blob.exists() {
-            assert_eq!(fs::read(entry.path()).unwrap(), b"{}");
-            continue;
-        }
         assert_eq!(
             fs::read(entry.path()).unwrap(),
             fs::read(&saved_blob)
                 .unwrap_or_else(|error| panic!("{}: {error}", saved_blob.display()))
         );
     }
-    eprintln!("pichi load/save round trip verified after removing input cache");
+    eprintln!("ORAS OCI copy verified after removing input cache");
 }
 
 #[test]

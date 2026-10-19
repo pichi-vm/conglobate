@@ -240,3 +240,42 @@ were required. Preserved the uncommitted import migration. The normal all-featur
 suite, two privileged scute tests, stable warnings-denied Clippy, cargo-deny and
 diff checks passed. The full privileged pipeline suite was not repeated for this
 portability-only dependency update. No commits or remote CI run were made.
+
+2026-10-19 — independent pichi-artifact repository
+
+Extracted pichi/deps/pichi-artifact into the public repository
+https://github.com/pichi-vm/pichi-artifact with its subtree history preserved.
+Revision 64feac956d4539fb79b9490a90480a81ef098ebb supplies standalone Cargo metadata,
+Apache-2.0 licensing, documentation and Linux/macOS/Windows CI. Schema source and
+tests are byte-for-byte unchanged; only crate-level documentation/lints and
+packaging changed. The config blob remains a shared wire schema, while launch
+policy and application orchestration remain in pichi.
+
+Conglobate and the local pichi workspace now pin that independent revision; the
+embedded pichi crate is removed. The legacy conglobate revision in pichi's lockfile
+remains unchanged because it has no dependency on the embedded format crate.
+Conglobate's resolved dependency tree contains no source from the pichi application
+repository. This completes the previously outstanding format-library extraction.
+
+Validation: all 75 standalone format tests passed and standalone hosted CI is
+green on Linux, macOS and Windows, including warnings-denied Clippy. Conglobate's
+normal suite, Clippy, cargo-deny and format checks passed. Pichi's 147 workspace
+library tests and 16 CLI import/PMI/inspect tests passed, and its binary rebuilt.
+The privileged conglobate pipeline test passed the required load/save round trip
+against that newly rebuilt pichi binary after removal of the input cache.
+
+The new repository is committed and pushed; the two consumer migrations remain
+local and uncommitted. Pichi's pre-existing untracked BUILD-FOUNDATION.md is untouched.
+
+2026-10-19 — ORAS interoperability in standalone CI
+
+Replaced the privileged pipeline's pichi load/save check with ORAS copying the
+published manifest by digest into a fresh local OCI layout. CI installs ORAS
+1.3.5 and requires the copy check; it no longer checks out or builds pichi or
+installs its nightly toolchain. The test compares the manifest digest and every
+published blob byte-for-byte, including the canonical empty config, after the
+original input cache has been removed.
+
+The privileged pipeline test passed locally with the checksum-verified ORAS
+1.3.5 release binary, including the subsequent inherited-firmware build.
+Warnings-denied Clippy and formatting checks passed. No remote CI run was made.

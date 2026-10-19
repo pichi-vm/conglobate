@@ -67,17 +67,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Check out the pinned pichi consumer
-        uses: actions/checkout@v4
+      - name: Install ORAS for the required OCI copy
+        uses: oras-project/setup-oras@v2
         with:
-          repository: pichi-vm/pichi
-          ref: 3a5c409c703cccc5c5c29519896417f741a1383f
-          path: .ci/pichi
-      - name: Build pichi for the required OCI round trip
-        working-directory: .ci/pichi
-        run: |
-          rustup toolchain install nightly-2026-07-06 --profile minimal
-          cargo +nightly-2026-07-06 build --locked --bin pichi
+          version: 1.3.5
       - name: Prepare kernel devices
         run: |
           sudo modprobe -a loop dm_snapshot dm_verity
@@ -90,11 +83,10 @@ jobs:
         run: |
           python3 - <<'PY'
           import json
-          import os
+          import shutil
           import subprocess
-          from pathlib import Path
-          pichi = Path(os.environ['GITHUB_WORKSPACE']) / '.ci/pichi/target/debug/pichi'
-          assert pichi.is_file(), pichi
+          oras = shutil.which('oras')
+          assert oras is not None, 'ORAS must be installed'
           with open('test-artifacts.json') as stream:
               for line in stream:
                   item = json.loads(line)
@@ -103,8 +95,8 @@ jobs:
                   executable = item.get('executable')
                   if executable and item.get('profile', {}).get('test'):
                       subprocess.run([
-                          'sudo', 'env', f'PICHI_TEST_BINARY={pichi}',
-                          'PICHI_REQUIRE_ROUNDTRIP=1',
+                          'sudo', 'env', f'ORAS_TEST_BINARY={oras}',
+                          'ORAS_REQUIRE_COPY=1',
                           'unshare', '--mount', '--propagation', 'private',
                           executable, '--ignored', '--test-threads=1',
                       ], check=True)
