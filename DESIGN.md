@@ -363,7 +363,8 @@ into: /out/rootfs.raw
 The example assumes the mkosi configuration emits that filesystem filename.
 `from` is required. Commands share a disposable writable filesystem. Only the
 filesystem image named by `into` is imported into a new base carapace, using the
-same format-producing machinery as `pichi import`. No tool scutes are inherited.
+carapace planned image reader and devmap verity formatter. No tool scutes are
+inherited.
 The proposed initial filesystem-image contract is a bare filesystem image.
 The binary does not impose an ext4-only policy: available filesystem support
 belongs to the execution environment and, for VM builds, the appliance image.

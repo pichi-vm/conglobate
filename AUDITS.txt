@@ -201,3 +201,42 @@ Test evidence: /tmp/conglobate-review-normal-tests.log,
 /tmp/conglobate-privileged-review-tests.log (includes the initial fixture failure),
 and /tmp/conglobate-review-pichi-roundtrip.log. The corrected firmware-only test
 was rerun directly and passed; results above account for that rerun explicitly.
+
+2026-10-19 — use committed carapace planning and devmap formatting APIs
+
+Updated carapace to f612a0dcc551cff569a70554cadc3b2365abaf6e and devmap to
+0b1fc00f7853ec15535f4ebca2e9f80961390ec3. Removed pichi-import. Bootstrap import
+constructs carapace::image::Planned, uses its known encoded size, and streams the
+reader through a capture adapter into the COW file, SHA-256 blob digest, and
+existing devmap verity formatter. The generated COW is not reread for hashing.
+Kernel-layer sealing and cached-scute reconstruction use devmap directly too.
+Cached partial final blocks retain zero padding; declared block counts must match
+the decoded extent, and formatting requires EOF, including late read errors.
+
+Regression coverage includes 16 GiB sparse inputs with allocated zero blocks,
+metadata boundaries, captured blob digests, independent resealing, compressed and
+uncompressed cached extents, missing/incorrect/overflowing block counts, partial
+final blocks, and late input errors. The normal suite, stable warnings-denied
+Clippy, formatting and dependency-policy checks passed. Test logs are in
+/tmp/conglobate-planned-migration-tests.log and
+/tmp/conglobate-planned-migration-deny.log.
+
+The dependency graph no longer contains pichi-import, pichi-storage, Tokio, or the
+old duplicate devmap revision. pichi-artifact still supplies shared image-format
+types and remains pending its separate extraction; this change does not claim to
+have removed that remaining coupling. No sibling repository was changed.
+All six relevant privileged tests passed: two scute/kernel tests and all four
+pipeline tests, including required pichi load/save interoperability, bootstrap
+stage combinations, cancellation/recovery, and firmware-only inheritance. They
+ran under sudo in private mount namespaces; no VM was used. Changes are local
+and uncommitted; this migration has not run in hosted CI yet.
+
+2026-10-19 — align the migration with portable carapace
+
+Updated carapace to 184c28879cb3cdeadb7bdd82f1b0dae63df6f079 and aligned all direct
+devmap pins with its b4bf66ac9dea45f79c5f672b642abe4da1ab6870 revision. The existing
+Plan/Planned calls and image feature remain compatible; no source API changes
+were required. Preserved the uncommitted import migration. The normal all-features
+suite, two privileged scute tests, stable warnings-denied Clippy, cargo-deny and
+diff checks passed. The full privileged pipeline suite was not repeated for this
+portability-only dependency update. No commits or remote CI run were made.

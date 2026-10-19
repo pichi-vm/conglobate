@@ -169,3 +169,101 @@ fn startup_recovers_an_interrupted_device_activation() {
     assert!(!remains, "abandoned mapping survived startup recovery");
     assert!(!path.exists());
 }
+
+#[test]
+fn planned_import_captures_exact_bytes_and_full_metadata_terminator() {
+    let directory = tempfile::tempdir().unwrap();
+    for blocks in [0, 1, 255, 256, 257] {
+        let raw = directory.path().join(format!("raw-{blocks}"));
+        let file = File::create(&raw).unwrap();
+        file.set_len(16 * 1024 * 1024 * 1024).unwrap();
+        for index in 0..blocks {
+            file.write_all_at(&[0x51; 4096], (index + 7) * 4096)
+                .unwrap();
+        }
+        // An allocated zero block is not an exception either.
+        file.write_all_at(&[0; 4096], 8192).unwrap();
+        drop(file);
+        let base = Scute::import(&raw, &directory.path().join(format!("base-{blocks}"))).unwrap();
+        let (digest, size) = conglobate::scute::digest_file(base.data_path()).unwrap();
+        assert_eq!(base.descriptor.digest, digest);
+        assert_eq!(base.descriptor.size, size);
+        assert_eq!(size, (blocks + blocks / 256 + 2) * 4096);
+        let resealed = Scute::seal(
+            base.data_path().into(),
+            directory.path().join(format!("hash-{blocks}")),
+            [0; 32],
+        )
+        .unwrap();
+        assert_eq!(resealed.root, base.root);
+    }
+}
+
+#[test]
+fn staging_preserves_partial_block_padding_and_rejects_wrong_extents() {
+    use sha2::{Digest as _, Sha256};
+    let directory = tempfile::tempdir().unwrap();
+    let raw = directory.path().join("raw");
+    fs::write(&raw, [0; 4096]).unwrap();
+    let base = Scute::import(&raw, &directory.path().join("base")).unwrap();
+    let complete = fs::read(base.data_path()).unwrap();
+    assert_eq!(complete.len(), 8192);
+    let cache_dir = directory.path().join("cache");
+    fs::create_dir_all(cache_dir.join("blobs/sha256")).unwrap();
+    let cache = Cache::new(cache_dir.clone());
+    for compressed in [false, true] {
+        for (index, (length, blocks, valid)) in [
+            (8192, Some(2), true),
+            (8191, Some(2), true),
+            (8191, None, true),
+            (8193, Some(2), false),
+            (4096, Some(2), false),
+            (8191, Some(3), false),
+            (8191, Some(0), false),
+            (8191, Some(u64::MAX), false),
+            (0, None, false),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let mut bytes = complete.clone();
+            bytes.resize(length, 0);
+            let blob = if compressed {
+                zstd::stream::encode_all(bytes.as_slice(), 1).unwrap()
+            } else {
+                bytes
+            };
+            let digest = format!("sha256:{:x}", Sha256::digest(&blob));
+            fs::write(cache_dir.join("blobs/sha256").join(&digest[7..]), &blob).unwrap();
+            let mut descriptor = base.descriptor.clone();
+            descriptor.digest = digest;
+            descriptor.size = blob.len() as u64;
+            descriptor.annotations.data_blocks = blocks;
+            let mut manifest = manifest(std::slice::from_ref(&base));
+            manifest.layers = vec![if compressed {
+                Layer::ScuteZstd(descriptor)
+            } else {
+                Layer::Scute(descriptor)
+            }];
+            let image = ResolvedImage {
+                manifest_bytes: manifest.to_bytes().unwrap(),
+                manifest,
+                index: String::new(),
+                manifest_digest: String::new(),
+            };
+            let result = Chain::stage(
+                &cache,
+                &image,
+                &directory.path().join(format!("stage-{compressed}-{index}")),
+            );
+            assert_eq!(
+                result.is_ok(),
+                valid,
+                "compressed={compressed}, length={length}, blocks={blocks:?}: {result:?}"
+            );
+            if valid {
+                assert_eq!(result.unwrap().root().unwrap(), base.root);
+            }
+        }
+    }
+}

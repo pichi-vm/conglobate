@@ -7,14 +7,19 @@ use crate::{
     Error,
     cache::{Cache, ResolvedImage},
 };
-use carapace::Assemble as _;
+use carapace::{
+    Assemble as _,
+    image::{Plan as _, Planned},
+};
+use devmap_core::{BlockSize, Geometry};
+use devmap_verity::{Algorithm, Format as _, HashType, Header, Parameters, Salt};
 use pichi_artifact::{Layer, ScuteAnnotations, ScuteDescriptor};
-use pichi_import::verity::{VerityFormat as _, VerityParams};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     fs::{File, OpenOptions},
-    io::{Read, Seek, SeekFrom},
+    io::{self, Read, Seek, SeekFrom, Write},
+    num::NonZero,
     path::{Path, PathBuf},
 };
 
@@ -52,23 +57,39 @@ pub fn digest_file(path: &Path) -> Result<(String, u64), Error> {
 }
 
 impl Scute {
-    /// Convert an independently produced raw filesystem using pichi import's
-    /// streaming encoder. The tool carapace contributes no ancestor layer.
+    /// Plan an independent image, then stream its COW into storage and verity.
+    /// The tool carapace contributes no ancestor layer.
     pub fn import(raw: &Path, directory: &Path) -> Result<Self, Error> {
+        let planned = Planned::plan(File::open(raw)?)?;
+        let size = planned.size();
         std::fs::create_dir(directory)?;
         let data = directory.join("data");
-        let mut cow = new_file(&data)?;
-        let source = File::open(raw)?;
-        let meta = pichi_import::cow::write_streaming_sparse(
-            &source,
-            source.metadata()?.len(),
-            &mut cow,
-            8,
-        )
-        .map_err(format_error)?;
-        cow.set_len(meta.total_bytes)?;
-        drop(cow);
-        Self::seal(data, directory.join("hash"), [0; 32])
+        let hash = directory.join("hash");
+        let mut stream = Capture {
+            input: planned,
+            output: new_file(&data)?,
+            digest: Sha256::new(),
+        };
+        let root = format_exact(
+            &header(size / BLOCK, &[0; 32])?,
+            &mut stream,
+            new_file(&hash)?,
+        )?;
+        stream.output.flush()?;
+        Ok(Self {
+            descriptor: ScuteDescriptor {
+                digest: format!("sha256:{:x}", stream.digest.finalize()),
+                size,
+                annotations: ScuteAnnotations {
+                    data_blocks: Some(size / BLOCK),
+                    salt: hex::encode([0; 32]),
+                },
+            },
+            root,
+            parent: [0; 32],
+            data,
+            hash,
+        })
     }
 
     /// Seal a completed and detached writable COW. Callers must stop every
@@ -78,10 +99,11 @@ impl Scute {
         if size == 0 || size % BLOCK != 0 {
             return Err(invalid("COW must contain whole 4096-byte blocks"));
         }
-        let parameters = params(parent.to_vec());
-        let root = parameters
-            .header(size)?
-            .format_padded(File::open(&data)?, new_file(&hash)?)?;
+        let root = format_exact(
+            &header(size / BLOCK, &parent)?,
+            File::open(&data)?,
+            new_file(&hash)?,
+        )?;
         Ok(Self {
             descriptor: ScuteDescriptor {
                 digest,
@@ -121,14 +143,20 @@ impl Scute {
             .ok_or_else(|| invalid("scute salt is missing its parent root"))?
             .try_into()
             .map_err(format_error)?;
-        let parameters = params(salt);
         let size = File::open(&data)?.metadata()?.len();
-        let header = match descriptor.annotations.data_blocks {
-            Some(blocks) => parameters.header_for_blocks(blocks)?,
-            None => parameters.header(size)?,
-        };
+        let blocks = size.div_ceil(BLOCK);
+        if descriptor
+            .annotations
+            .data_blocks
+            .is_some_and(|declared| declared != blocks)
+        {
+            return Err(invalid("scute length disagrees with declared data_blocks"));
+        }
+        let header = header(blocks, &salt)?;
+        let padding = header.parameters.data_size()? - size;
+        let input = File::open(&data)?.chain(io::repeat(0).take(padding));
         let hash = directory.join("hash");
-        let root = header.format_padded(File::open(&data)?, new_file(&hash)?)?;
+        let root = format_exact(&header, input, new_file(&hash)?)?;
         Ok(Self {
             descriptor: descriptor.clone(),
             root,
@@ -150,13 +178,54 @@ impl Scute {
     }
 }
 
-fn params(salt: Vec<u8>) -> VerityParams {
-    VerityParams {
-        data_block_size: 4096,
-        hash_block_size: 4096,
-        salt,
-        uuid: [0; 16],
+// Record the exact emitted bytes while verity consumes the planned reader.
+// No reread of the generated COW is needed to calculate either digest.
+struct Capture<R> {
+    input: R,
+    output: File,
+    digest: Sha256,
+}
+
+impl<R: Read> Read for Capture<R> {
+    fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+        let count = self.input.read(bytes)?;
+        self.output.write_all(&bytes[..count])?;
+        self.digest.update(&bytes[..count]);
+        Ok(count)
     }
+}
+
+fn header(blocks: u64, salt: &[u8]) -> Result<Header, Error> {
+    let block = NonZero::new(BLOCK as u32)
+        .and_then(BlockSize::from_bytes)
+        .ok_or_else(|| invalid("invalid scute block size"))?;
+    Ok(Header {
+        uuid: [0; 16],
+        parameters: Parameters {
+            algorithm: Algorithm::Sha256,
+            hash_type: HashType::Normal,
+            salt: Salt::new(salt).ok_or_else(|| invalid("invalid scute salt"))?,
+            data: Geometry {
+                size: block,
+                count: NonZero::new(blocks).ok_or_else(|| invalid("empty scute data"))?,
+            },
+            hash: block,
+        },
+    })
+}
+
+// The formatter intentionally consumes only its declared extent. Our import and
+// cache contracts require EOF as well, including propagation of late read errors.
+fn format_exact(
+    header: &Header,
+    mut input: impl Read,
+    hash: impl Write + Seek,
+) -> Result<[u8; 32], Error> {
+    let root = header.format(&mut input, hash)?;
+    if input.read(&mut [0])? != 0 {
+        return Err(invalid("scute data exceeds declared extent"));
+    }
+    root.as_ref().try_into().map_err(format_error)
 }
 
 /// Fully verified, privately staged scutes in base-to-top order.
@@ -274,5 +343,35 @@ pub(crate) fn trim_cow(file: &mut File) -> Result<(), Error> {
             end = end.max(chunk + 1);
         }
         area += 257;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Failure;
+    impl Read for Failure {
+        fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
+            Err(io::Error::other("late input error"))
+        }
+    }
+
+    #[test]
+    fn verity_requires_exact_input_and_reports_late_read_errors() {
+        let header = header(1, &[0; 32]).unwrap();
+        for length in [4095, 4097] {
+            assert!(
+                format_exact(
+                    &header,
+                    vec![0; length].as_slice(),
+                    io::Cursor::new(Vec::new())
+                )
+                .is_err()
+            );
+        }
+        let input = io::Cursor::new(vec![0; 4096]).chain(Failure);
+        let error = format_exact(&header, input, io::Cursor::new(Vec::new())).unwrap_err();
+        assert!(error.to_string().contains("late input error"));
     }
 }

@@ -79,12 +79,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anyhow"
-version = "1.0.104"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
-
-[[package]]
 name = "arc-swap"
 version = "1.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -98,17 +92,6 @@ name = "arraydeque"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
-
-[[package]]
-name = "async-trait"
-version = "0.1.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82f6aeea286b8eb4dd3431a1be1b59d290ace00f5bfd8e2a159bc2a05e2c1667"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 3.0.9",
-]
 
 [[package]]
 name = "autocfg"
@@ -172,14 +155,15 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 [[package]]
 name = "carapace"
 version = "0.1.0"
-source = "git+https://github.com/pichi-vm/carapace?rev=4662818553b532a9fd190cf22f41335610018efc#4662818553b532a9fd190cf22f41335610018efc"
+source = "git+https://github.com/pichi-vm/carapace?rev=184c28879cb3cdeadb7bdd82f1b0dae63df6f079#184c28879cb3cdeadb7bdd82f1b0dae63df6f079"
 dependencies = [
- "devmap-core 0.1.0 (git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72)",
- "devmap-linux 0.1.0 (git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72)",
+ "devmap-core",
+ "devmap-linux",
  "devmap-snapshot",
- "devmap-verity 0.1.0 (git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72)",
+ "devmap-verity",
  "lodown",
- "zerocopy",
+ "rustix",
+ "windows-sys",
 ]
 
 [[package]]
@@ -295,9 +279,10 @@ dependencies = [
  "carapace",
  "ciborium",
  "clap",
- "devmap-core 0.1.0 (git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72)",
- "devmap-linux 0.1.0 (git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72)",
+ "devmap-core",
+ "devmap-linux",
  "devmap-snapshot",
+ "devmap-verity",
  "devtree",
  "filetime",
  "gix",
@@ -306,7 +291,6 @@ dependencies = [
  "lodown",
  "nix",
  "pichi-artifact",
- "pichi-import",
  "pmi",
  "regex",
  "rustix",
@@ -423,15 +407,7 @@ dependencies = [
 [[package]]
 name = "devmap-core"
 version = "0.1.0"
-source = "git+https://github.com/pichi-vm/devmap?rev=6c86672ad3da004ece96fb502a363de4873e42cb#6c86672ad3da004ece96fb502a363de4873e42cb"
-dependencies = [
- "iocuddle 0.4.0",
-]
-
-[[package]]
-name = "devmap-core"
-version = "0.1.0"
-source = "git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72#6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72"
+source = "git+https://github.com/pichi-vm/devmap.git?rev=b4bf66ac9dea45f79c5f672b642abe4da1ab6870#b4bf66ac9dea45f79c5f672b642abe4da1ab6870"
 dependencies = [
  "iocuddle 0.4.0",
 ]
@@ -439,19 +415,9 @@ dependencies = [
 [[package]]
 name = "devmap-linux"
 version = "0.1.0"
-source = "git+https://github.com/pichi-vm/devmap?rev=6c86672ad3da004ece96fb502a363de4873e42cb#6c86672ad3da004ece96fb502a363de4873e42cb"
+source = "git+https://github.com/pichi-vm/devmap.git?rev=b4bf66ac9dea45f79c5f672b642abe4da1ab6870#b4bf66ac9dea45f79c5f672b642abe4da1ab6870"
 dependencies = [
- "devmap-core 0.1.0 (git+https://github.com/pichi-vm/devmap?rev=6c86672ad3da004ece96fb502a363de4873e42cb)",
- "iocuddle 0.4.0",
- "zerocopy",
-]
-
-[[package]]
-name = "devmap-linux"
-version = "0.1.0"
-source = "git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72#6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72"
-dependencies = [
- "devmap-core 0.1.0 (git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72)",
+ "devmap-core",
  "iocuddle 0.4.0",
  "zerocopy",
 ]
@@ -459,30 +425,21 @@ dependencies = [
 [[package]]
 name = "devmap-snapshot"
 version = "0.1.0"
-source = "git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72#6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72"
+source = "git+https://github.com/pichi-vm/devmap.git?rev=b4bf66ac9dea45f79c5f672b642abe4da1ab6870#b4bf66ac9dea45f79c5f672b642abe4da1ab6870"
 dependencies = [
- "devmap-core 0.1.0 (git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72)",
- "devmap-linux 0.1.0 (git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72)",
+ "devmap-core",
+ "devmap-linux",
 ]
 
 [[package]]
 name = "devmap-verity"
 version = "0.1.0"
-source = "git+https://github.com/pichi-vm/devmap?rev=6c86672ad3da004ece96fb502a363de4873e42cb#6c86672ad3da004ece96fb502a363de4873e42cb"
+source = "git+https://github.com/pichi-vm/devmap.git?rev=b4bf66ac9dea45f79c5f672b642abe4da1ab6870#b4bf66ac9dea45f79c5f672b642abe4da1ab6870"
 dependencies = [
- "devmap-core 0.1.0 (git+https://github.com/pichi-vm/devmap?rev=6c86672ad3da004ece96fb502a363de4873e42cb)",
- "devmap-linux 0.1.0 (git+https://github.com/pichi-vm/devmap?rev=6c86672ad3da004ece96fb502a363de4873e42cb)",
+ "devmap-core",
+ "devmap-linux",
  "digest 0.10.7",
  "sha2 0.10.9",
-]
-
-[[package]]
-name = "devmap-verity"
-version = "0.1.0"
-source = "git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72#6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72"
-dependencies = [
- "devmap-core 0.1.0 (git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72)",
- "devmap-linux 0.1.0 (git+https://github.com/pichi-vm/devmap.git?rev=6ebfb76008fc3d5e2c933a2ff4697827f5f9fd72)",
 ]
 
 [[package]]
@@ -594,17 +551,6 @@ name = "foldhash"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
-
-[[package]]
-name = "fs4"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e72ed92b67c146290f88e9c89d60ca163ea417a446f61ffd7b72df3e7f1dfd5"
-dependencies = [
- "rustix",
- "tokio",
- "windows-sys",
-]
 
 [[package]]
 name = "generic-array"
@@ -1561,47 +1507,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pichi-import"
-version = "0.1.0"
-source = "git+https://github.com/pichi-vm/pichi?rev=3a5c409c703cccc5c5c29519896417f741a1383f#3a5c409c703cccc5c5c29519896417f741a1383f"
-dependencies = [
- "anyhow",
- "devmap-core 0.1.0 (git+https://github.com/pichi-vm/devmap?rev=6c86672ad3da004ece96fb502a363de4873e42cb)",
- "devmap-verity 0.1.0 (git+https://github.com/pichi-vm/devmap?rev=6c86672ad3da004ece96fb502a363de4873e42cb)",
- "hex",
- "log",
- "pichi-artifact",
- "pichi-storage",
- "rustix",
- "sha2 0.10.9",
- "tempfile",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "pichi-storage"
-version = "0.1.0"
-source = "git+https://github.com/pichi-vm/pichi?rev=3a5c409c703cccc5c5c29519896417f741a1383f#3a5c409c703cccc5c5c29519896417f741a1383f"
-dependencies = [
- "anyhow",
- "async-trait",
- "fs4",
- "pichi-artifact",
- "rustix",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "pin-project-lite"
-version = "0.2.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
-
-[[package]]
 name = "pkg-config"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1993,16 +1898,6 @@ name = "tinyvec"
 version = "1.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd3ca314f692efd6c868f8408f53fe444634a845f96c028b97d35f6a1f79f0ee"
-
-[[package]]
-name = "tokio"
-version = "1.53.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce3335fa71841cda333a58d7615b03901380ecf09d59b3296d21f8bbac0dde4e"
-dependencies = [
- "bytes",
- "pin-project-lite",
-]
 
 [[package]]
 name = "typenum"
