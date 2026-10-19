@@ -70,7 +70,8 @@ jobs:
       - name: Install ORAS for the required OCI copy
         uses: oras-project/setup-oras@v2
         with:
-          version: 1.3.5
+          url: https://github.com/oras-project/oras/releases/download/v1.3.5/oras_1.3.5_linux_amd64.tar.gz
+          checksum: f48a73ea6d026a862c3919fc773da9a8c86fc259c2c737d5baed3b8b9614ad22
       - name: Prepare kernel devices
         run: |
           sudo modprobe -a loop dm_snapshot dm_verity
