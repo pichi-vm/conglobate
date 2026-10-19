@@ -279,3 +279,18 @@ original input cache has been removed.
 The privileged pipeline test passed locally with the checksum-verified ORAS
 1.3.5 release binary, including the subsequent inherited-firmware build.
 Warnings-denied Clippy and formatting checks passed. No remote CI run was made.
+
+2026-10-19 — carapace and devmap dependency refresh
+
+Updated carapace to published revision 99caf7941ac8930a5761f6f843b6d8e53dd89587
+and all four direct devmap dependencies to
+2679426fa1d4508fc5c3bbdf643efbdbe64a3edd. Carapace now uses the same devmap
+revision, leaving one instance of each devmap crate in the resolved graph.
+Neither update changes library source: carapace updates its devmap pins and
+devmap adds commit-message CI policy.
+
+Normal tests and all ten privileged integration tests passed, including the
+required ORAS copy, stage combinations, cancellation and crash recovery,
+security metadata preservation, and snapshot sealing. Warnings-denied Clippy,
+formatting, cargo-deny, and diff checks passed. Sibling repositories were not
+modified.
