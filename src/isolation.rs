@@ -3,6 +3,7 @@
 
 //! Trusted helper namespace setup; this alone is not a command sandbox.
 mod root;
+mod runtime;
 use nix::sched::{CloneFlags, setns, unshare};
 pub use root::{CommandRoot, EnteredRoot};
 use rustix::mount::MountPropagationFlags;

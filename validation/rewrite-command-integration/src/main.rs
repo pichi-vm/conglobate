@@ -32,16 +32,6 @@ impl Integration {
             let script = args.get(3).ok_or("script required")?;
             let scope = PrivateMountNamespace::enter()?;
             let selected = CommandRoot::from_directory(fs::File::open(root)?, &scope)?;
-            // Fixture runtime-mount adapter only. The executable is still from
-            // the trusted guest root, before the native irreversible pivot.
-            let status = Command::new("/usr/bin/mount")
-                .args(["-t", "proc", "-o", "nosuid,nodev,noexec", "proc"])
-                .arg(root.join("proc"))
-                .env_clear()
-                .status()?;
-            if !status.success() {
-                return Err("fixture proc mount failed".into());
-            }
             let filter = CommandSyscalls::compile()?;
             selected
                 .enter()?
@@ -202,6 +192,7 @@ impl Integration {
             test ! -e /idmap-probe
             test ! -e /image-root
             test ! -e /bin/setpriv
+            if (printf no > /sys/must-be-read-only) 2>/dev/null; then exit 1; fi
             caps=0
             nnp=0
             while read -r key value rest; do

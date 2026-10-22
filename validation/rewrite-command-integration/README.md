@@ -177,3 +177,36 @@ mount-point cleanup on timeout is fixture-owned. Active LSM admission, CARAPACE
 environment, complete error/timeout ownership and distro qualification remain
 outstanding. The v6 VM-disposal test has not yet been repeated on this native root
 path. Earlier sections describe their historical versions, not the current path.
+
+
+## Native confined runtime mounts
+
+v19 replaces the external mount executable in the command setup path. Native
+RuntimeTargets resolves existing proc/sys directories with openat2 relative to
+the pinned image root, rejects magic links/mount crossings, and treats absolute
+symlinks as image-relative. Both targets are resolved before attaching either
+mount. Root aliases, duplicate targets and nested targets are rejected, avoiding
+one runtime mount hiding another. Safe fsopen/fsconfig/fsmount/move_mount APIs
+attach fresh procfs and an empty read-only tmpfs at sys. Both use nosuid/nodev/
+noexec. Detached resources close on failure; attached mounts belong to the private
+command namespace, and setup failure requires helper exit. No scaffolding is
+created in the image by this implementation; absent directories currently fail.
+
+Four maintained tests cover confined absolute symlinks, outside-sibling rejection,
+root/duplicate aliases and nested targets. v19 passes actual native image command
+setup and explicitly verifies /sys rejects writes, plus existing capability,
+namespace-denial, timeout, ownership and filesystem persistence checks. Root
+cargo test, root/fixture Clippy and formatting pass.
+
+v20 exercised independent VM shutdown on this native path: supervisor wait status
+137, a populated command domain and kernel power-down are present. Its overall
+verdict failed because printk interrupted the status marker. The parser now
+removes timestamped kernel records only when reading userspace markers, while
+still requiring the raw kernel power-down message. A directed parser check
+accepts the interrupted status 0 and rejects interrupted status 1. v21 is a fresh
+passing run. v20 remains preserved with its original failing verdict.
+
+This closes the former external proc-mount adapter and native-path VM-disposal
+coverage gaps. It does not qualify active LSM lifetime, private device/devpts/shm
+setup, sensitive proc masking, missing-directory scaffolding, namespace init,
+complete cleanup ownership, or appliance/architecture/distro compatibility.

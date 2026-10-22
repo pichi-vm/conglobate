@@ -170,10 +170,14 @@ with (out / 'serial.txt').open('wb') as log:
     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
 serial = (out / 'serial.txt').read_text()
 if supervisor_death:
-    passed = all(marker in serial for marker in [
+    # Kernel console output can interrupt a userspace status line during power
+    # off. Remove complete timestamped kernel messages only for status parsing;
+    # still require the actual kernel shutdown message in the untouched log.
+    userspace = re.sub(r'\[\s*\d+\.\d+\] [^\n]*\n', '', serial)
+    passed = all(marker in userspace for marker in [
         'SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN', 'IDMAP_PROBE_EXIT 0',
-        'VM_CONTROLLER_POWER_OFF', 'Power down',
-    ]) and 'INTEGRATED_COMMAND_' not in serial
+        'VM_CONTROLLER_POWER_OFF',
+    ]) and 'Power down' in serial and 'INTEGRATED_COMMAND_' not in serial
 else:
     passed = all(marker in serial for marker in ['NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
 (out / 'verdict.json').write_text(json.dumps({'passed': passed, 'full_sandbox_qualified': False}, indent=2))

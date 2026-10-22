@@ -997,3 +997,27 @@ rules rather than silently shrinking acceptance criteria.
   milestone adherence pass: M4 remains zero. External namespace/proc adapters,
   runtime view hardening, FD negatives, init reaping, active policy admission,
   complete normal-error ownership and native-path VM disposal still need work.
+
+
+- Previous goal turn made progress integrating native image root/restrictions.
+  Native RuntimeTargets now resolves proc/sys under the pinned image root via
+  openat2, forbids magic links/mount crossings and rejects root, duplicate and
+  nested target aliases before mounting. Four nonprivileged maintained tests
+  pass. No generic mount authority or raw descriptors are exposed publicly.
+- Replaced the fixture's external proc mount with safe fsopen/fsconfig/fsmount/
+  move_mount construction of fresh procfs and empty read-only sys tmpfs. Detached
+  FDs use RAII; partial attached setup remains exit-only under namespace ownership.
+  Existing runtime directories are currently required; scaffolding cleanup and
+  private dev/devpts/shm plus sensitive proc masks remain required work.
+- v19 passes native setup, read-only sys, command/timeout/capability/ownership and
+  clean filesystem persistence tests. v20 shows correct native-path supervisor
+  death and VM power-off but failed serial parsing due to interleaved printk.
+  Preserved its failing verdict; corrected userspace-marker parsing without
+  removing the requirement for a raw kernel power-down message. Directed parser
+  success/failure cases pass, and fresh v21 independently passes VM disposal.
+- Root tests, including four new confinement cases and fourteen compile-fail
+  doctests, root/fixture Clippy and formatting pass. Reviewed target resolution,
+  overlap rejection, mount flags, partial setup ownership and evidence limits.
+  M4 remains at zero adherence passes. No active policy or full launcher/distro/
+  platform qualification is implied; namespace adapters and remaining runtime
+  views still require implementation and integration.

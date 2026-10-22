@@ -14,8 +14,9 @@ use std::{
 };
 
 /// A pinned command root and trusted null input, prepared before switching roots.
-/// The caller must supply its assigned mounted image with runtime mounts already
-/// prepared, in an isolated setup process. This is not admission authority:
+/// The caller must supply its assigned mounted image in an isolated setup
+/// process. Procfs and empty read-only sys are prepared here; the other runtime
+/// views (including private devices) are not implemented yet. This is not admission authority:
 /// PID/user/network isolation, containment and policy must be established by
 /// the enclosing step. No raw root handle is returned to callers.
 ///
@@ -73,6 +74,7 @@ impl<'ns> CommandRoot<'ns> {
         {
             return Err(io::Error::other("root setup requires one thread"));
         }
+        super::runtime::RuntimeTargets::resolve(&self.root)?.install()?;
         // The scope was entered before this directory was opened. Unsharing
         // here would leave the pinned descriptor referring to the old mount
         // namespace rather than its cloned tree.
