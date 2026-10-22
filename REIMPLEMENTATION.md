@@ -24,7 +24,7 @@ M4 implementation. Prior passes remain historical, not approvals of this revisio
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
 | 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: revised dedicated-VM lifecycle | 3 |
-| 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete | 3 |
+| 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Reopened: context lifecycle changes | 0 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, scoped LSM, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | In progress | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Pending | 0 |
 | 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Pending | 0 |
@@ -1643,3 +1643,25 @@ rules rather than silently shrinking acceptance criteria.
   fix and test are not clean adherence passes. Remaining build-wide integration,
   storage/device assembly and lifecycle qualification still prevent M4 completion;
   the full goal remains active.
+
+- Previous turn progressed in 395ba80. Changed-context review against DESIGN §3,
+  SANDBOX-DESIGN §2.1 and the ownership/error contract found another failure gap:
+  population errors returned only ContextError and dropped the partial directory,
+  making cleanup best-effort with no retained recovery authority. Added distinct
+  ContextMaterializeFailure::Before/Partial results. After allocation, failed root
+  opening or entry population returns ContextCleanup; it cannot expose a valid
+  StagedContext. Cleanup failure retains its existing retry-only owner.
+- A host regression builds a valid Git tree with a short first filename and a
+  256-byte second filename, captures it, stages on ordinary /dev/shm, verifies
+  ENAMETOOLONG after the first file exists, and explicitly removes the partial
+  directory through returned ownership. No namespace/mount/capability operation
+  occurred on the host. Full root tests (25 compile-fail), root/fixture Clippy,
+  old fixture compilation and formatting pass. Logs preserved under evidence/
+  context-population-review; kernel mount behavior was unchanged, so no new VM
+  behavior is claimed and prior v77 evidence is not represented as this build.
+- Reviewed state construction, consuming failure transitions, root/parent drop
+  order, read-only access confinement and cleanup API exposure. Finding/fix means
+  no clean pass; M3's summary table is now explicitly reopened at zero rather than
+  incorrectly displaying its historical three passes as current. Restore M3's
+  three clean reviews before advancing the changed foundation. M4 remains zero;
+  all later milestones and the full goal remain outstanding.

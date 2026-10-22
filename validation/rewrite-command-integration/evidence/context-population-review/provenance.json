@@ -1,0 +1,17 @@
+{
+  "base_commit": "395ba80abef1d68520a86b687749928bae7e5243",
+  "scope": "host tests and compile checks only; sources in this commit",
+  "sha256": {
+    "validation/rewrite-command-integration/evidence/context-population-review/tests.txt": "d71dc7d6c636bcdc4b9c2f26df5ccc707e4a7ceaea8a379b73147e4b41bfeafa",
+    "validation/rewrite-command-integration/evidence/context-population-review/clippy.txt": "4478383991a9912b66990318b5e10b21af89551a738a963f175d0b662bfcd037",
+    "validation/rewrite-command-integration/evidence/context-population-review/fixture-clippy.txt": "4083bbf1155817f3156cd393ac041cfcfdb0a7469f46e618d8b252a6e773608d",
+    "validation/rewrite-command-integration/evidence/context-population-review/old-fixture-check.txt": "0671f6307bb6b3039f0b644b58a79979a8757fe6476533414a30557e6dd5bc6d",
+    "src/context/materialize.rs": "49a653f2352c1126773e356b68455389288da2d6e24c16d7d05a5544f19b9c42",
+    "src/context/cleanup.rs": "78bd7275379a0499e21583f8c8eb1e01f0d4bd4ebca2ce694565b625f31a2ea7",
+    "src/context/readonly.rs": "ca055c2fa044e9ffeaa03a0eab45947b5b14872b22dc60fe889cb316592b46d2",
+    "src/context/mod.rs": "95ba326d3d32bb8c7fa52de74c7bb48320190f61661db6558f5cb7a53a6aba36",
+    "src/storage.rs": "7cdb2f70a14bbb601cf2ee80f6f83d5b231e47f4c9899a2161d066b740330b49",
+    "tests/contexts.rs": "c4b29db4b61e09df3cf2b5115971bea5ea6ae3811a3803dbd6c6d9a69b6a4c46"
+  },
+  "full_sandbox_qualified": false
+}

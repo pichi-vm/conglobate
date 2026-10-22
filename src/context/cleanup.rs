@@ -13,7 +13,7 @@ use std::{
 #[error("context backing cleanup: {source}")]
 pub struct ContextCleanupFailure {
     source: io::Error,
-    backing: BackingDirectory,
+    backing: ContextCleanup,
 }
 impl ContextCleanupFailure {
     pub fn source_error(&self) -> &io::Error {
@@ -25,19 +25,19 @@ impl ContextCleanupFailure {
 }
 
 #[derive(Debug)]
-pub(super) struct BackingDirectory {
+pub struct ContextCleanup {
     // TempDir fallback removal must run before the proc-fd parent is closed.
     directory: tempfile::TempDir,
     _parent: File,
 }
-impl BackingDirectory {
+impl ContextCleanup {
     pub(super) fn new(directory: tempfile::TempDir, parent: File) -> Self {
         Self {
             directory,
             _parent: parent,
         }
     }
-    pub(super) fn close(self) -> Result<(), ContextCleanupFailure> {
+    pub fn close(self) -> Result<(), ContextCleanupFailure> {
         // TempDir::close consumes the owner even on failure. Borrow the path
         // during removal instead, retaining both owners on any partial failure.
         match fs::remove_dir_all(self.directory.path()) {

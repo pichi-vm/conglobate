@@ -17,6 +17,24 @@ use std::{
     path::Path,
 };
 
+/// Failures before allocation carry only the cause. Once a directory exists,
+/// failures retain cleanup-only authority, never a partially populated checkout.
+#[derive(Debug, thiserror::Error)]
+pub enum ContextMaterializeFailure {
+    #[error("context staging before allocation: {0}")]
+    Before(#[from] ContextError),
+    #[error("context population: {source}")]
+    Partial {
+        source: ContextError,
+        cleanup: super::ContextCleanup,
+    },
+}
+impl From<io::Error> for ContextMaterializeFailure {
+    fn from(error: io::Error) -> Self {
+        Self::Before(error.into())
+    }
+}
+
 /// Private populated checkout on existing tmpfs. Read-only mount enforcement is
 /// a separate consuming lifecycle transition, not implied by file permissions.
 #[derive(Debug)]
@@ -27,7 +45,7 @@ pub struct StagedResources {
     pub(super) _parent: File,
 }
 impl CapturedContext {
-    pub fn materialize(&self, parent: &Path) -> Result<StagedContext, ContextError> {
+    pub fn materialize(&self, parent: &Path) -> Result<StagedContext, ContextMaterializeFailure> {
         let parent = File::from(
             rustix::fs::open(
                 parent,
@@ -41,7 +59,10 @@ impl CapturedContext {
 
     /// Internal descriptor authority from the workspace, never a command path.
     /// The returned context owns this parent reference through cleanup.
-    pub(crate) fn materialize_in(&self, parent: File) -> Result<StagedContext, ContextError> {
+    pub(crate) fn materialize_in(
+        &self,
+        parent: File,
+    ) -> Result<StagedContext, ContextMaterializeFailure> {
         // Linux tmpfs superblock magic, from linux/magic.h. This only verifies
         // backing type; environment policy governs ordinary tmpfs swap behavior.
         if rustix::fs::fstatfs(&parent)
@@ -49,14 +70,22 @@ impl CapturedContext {
             .f_type
             != 0x0102_1994
         {
-            return Err(ContextError::Invalid("context staging requires tmpfs"));
+            return Err(ContextError::Invalid("context staging requires tmpfs").into());
         }
         let pinned = format!("/proc/self/fd/{}", parent.as_raw_fd());
         let directory = tempfile::Builder::new()
             .prefix("conglobate-context-")
             .permissions(fs::Permissions::from_mode(0o700))
             .tempdir_in(pinned)?;
-        let root = File::open(directory.path())?;
+        let root = match File::open(directory.path()) {
+            Ok(root) => root,
+            Err(error) => {
+                return Err(ContextMaterializeFailure::Partial {
+                    source: error.into(),
+                    cleanup: super::ContextCleanup::new(directory, parent),
+                });
+            }
+        };
         let staged = StagedContext {
             resources: StagedResources {
                 directory,
@@ -64,24 +93,39 @@ impl CapturedContext {
                 _parent: parent,
             },
         };
-        for (relative, entry) in self.entries() {
-            let target = staged.resources.directory.path().join(relative);
-            match entry {
-                ContextEntry::Directory => fs::create_dir(target)?,
-                ContextEntry::File { executable, bytes } => {
-                    // Ordinary checkout modes are subject to the builder umask;
-                    // never normalize them to read-only to simulate a mount.
-                    let mut file = OpenOptions::new()
-                        .create_new(true)
-                        .write(true)
-                        .mode(if *executable { 0o777 } else { 0o666 })
-                        .open(target)?;
-                    file.write_all(bytes)?;
-                }
-                ContextEntry::Symlink(bytes) => {
-                    std::os::unix::fs::symlink(std::ffi::OsStr::from_bytes(bytes), target)?;
+        let populated = (|| -> Result<(), ContextError> {
+            for (relative, entry) in self.entries() {
+                let target = staged.resources.directory.path().join(relative);
+                match entry {
+                    ContextEntry::Directory => fs::create_dir(target)?,
+                    ContextEntry::File { executable, bytes } => {
+                        // Ordinary checkout modes are subject to the builder umask;
+                        // never normalize them to read-only to simulate a mount.
+                        let mut file = OpenOptions::new()
+                            .create_new(true)
+                            .write(true)
+                            .mode(if *executable { 0o777 } else { 0o666 })
+                            .open(target)?;
+                        file.write_all(bytes)?;
+                    }
+                    ContextEntry::Symlink(bytes) => {
+                        std::os::unix::fs::symlink(std::ffi::OsStr::from_bytes(bytes), target)?;
+                    }
                 }
             }
+            Ok(())
+        })();
+        if let Err(source) = populated {
+            let StagedResources {
+                directory,
+                root,
+                _parent,
+            } = staged.resources;
+            drop(root);
+            return Err(ContextMaterializeFailure::Partial {
+                source,
+                cleanup: super::ContextCleanup::new(directory, _parent),
+            });
         }
         Ok(staged)
     }
@@ -117,7 +161,7 @@ impl StagedContext {
             _parent,
         } = self.resources;
         drop(root);
-        super::cleanup::BackingDirectory::new(directory, _parent).close()
+        super::cleanup::ContextCleanup::new(directory, _parent).close()
     }
 }
 

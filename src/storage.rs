@@ -48,7 +48,7 @@ impl Workspace {
     pub fn materialize(
         &self,
         context: &crate::context::CapturedContext,
-    ) -> Result<crate::context::StagedContext, crate::context::ContextError> {
+    ) -> Result<crate::context::StagedContext, crate::context::ContextMaterializeFailure> {
         context.materialize_in(self.root.try_clone()?)
     }
 

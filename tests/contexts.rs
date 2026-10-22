@@ -540,3 +540,42 @@ fn captured_and_materialized_reads_agree_on_trailing_symlink_separators() {
     assert!(staged.open(&dotpath).is_err());
     staged.close().unwrap();
 }
+
+#[test]
+fn failed_population_returns_cleanup_not_a_partial_checkout() {
+    let repo = Repository::new("sha1");
+    let blob = repo.object("blob", b"content");
+    let mut tree = Vec::new();
+    // Valid Git names can exceed the destination filesystem's NAME_MAX.
+    // The first file succeeds before the second fails during materialization.
+    for name in ["a".to_owned(), "z".repeat(256)] {
+        tree.extend_from_slice(format!("100644 {name}\0").as_bytes());
+        tree.extend(hex::decode(&blob).unwrap());
+    }
+    let tree = repo.object("tree", &tree);
+    let commit = repo.object("commit", format!("tree {tree}\nauthor Fixture <fixture@example.invalid> 1 +0000\ncommitter Fixture <fixture@example.invalid> 1 +0000\n\nfixture\n").as_bytes());
+    let context = repo
+        .capture(&CommitIdentity::try_from(commit.as_str()).unwrap(), ".")
+        .unwrap();
+    let parent = tempfile::tempdir_in("/dev/shm").unwrap();
+    let failure = context.materialize(parent.path()).unwrap_err();
+    let conglobate::context::ContextMaterializeFailure::Partial { source, cleanup } = failure
+    else {
+        panic!("must retain partially populated directory");
+    };
+    assert!(
+        matches!(source, conglobate::context::ContextError::Io(ref error)
+        if error.raw_os_error() == Some(36))
+    );
+    let entries = std::fs::read_dir(parent.path())
+        .unwrap()
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+    assert_eq!(entries.len(), 1);
+    assert_eq!(
+        std::fs::read(entries[0].path().join("a")).unwrap(),
+        b"content"
+    );
+    cleanup.close().unwrap();
+    assert_eq!(std::fs::read_dir(parent.path()).unwrap().count(), 0);
+}

@@ -120,6 +120,6 @@ impl ReadOnlyContext {
             ..
         } = self.resources;
         drop(root);
-        super::cleanup::BackingDirectory::new(directory, _parent).close()
+        super::cleanup::ContextCleanup::new(directory, _parent).close()
     }
 }
