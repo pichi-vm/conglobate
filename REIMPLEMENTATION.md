@@ -254,3 +254,11 @@ rules rather than silently shrinking acceptance criteria.
   cover both. All 50 tests and Clippy pass. Detailed findings and the still-open
   read-only enforcement boundary are in preservation/MILESTONE-3-ADHERENCE.md.
   This is a partial self-review with findings, not a clean adherence pass.
+- Safe Rust read-only bind/remount probe passed in the disposable stock Fedora
+  x86-64 guest. Confirmed reopened view returns EROFS and pre-bind directory FDs
+  retain writable authority, so production must replace/close those descriptors.
+  Explicit unmount/cleanup also passed. Evidence, source and failed first harness
+  run retained in validation/rewrite-context-mount/. Initial harness had shutdown
+  log interleaving/PID1 exit; corrected v2 passes. No host mount was performed.
+- Read-only lifecycle finding remains open until the owning production transition
+  and failure cleanup are implemented/tested. This probe is not an adherence pass.

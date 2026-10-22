@@ -1,0 +1,64 @@
+READONLY_CONTEXT_VIEW_PASS
+CONT[    1.755749] sysrq: Power Off
+EXT_PROBE_EXIT 0
+[    1.757932] Kernel panic - not syncing: Attempted to kill init! exitcode=0x00000000
+[    1.760056] CPU: 0 UID: 0 PID: 1 Comm: init Not tainted 7.2.10-200.fc44.x86_64 #1 PREEMPT(lazy) 
+[    1.762523] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.17.0-10.fc44 06/10/2025
+[    1.764962] Call Trace:
+[    1.765685]  <TASK>
+[    1.766309]  dump_stack_lvl+0x5d/0x80
+[    1.767359]  vpanic+0x246/0x450
+[    1.768266]  panic+0x6b/0x70
+[    1.769087]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.770430]  do_exit.cold+0x15/0x15
+[    1.771431]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.772778]  do_group_exit+0x2d/0xc0
+[    1.773804]  __x64_sys_exit_group+0x18/0x20
+[    1.774982]  x64_sys_call+0x102c/0x1530
+[    1.776081]  do_syscall_64+0xe2/0x570
+[    1.777128]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.778485]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.779839]  ? __mod_memcg_lruvec_state+0xed/0x230
+[    1.781176]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.782537]  ? lruvec_stat_mod_folio+0x7d/0xc0
+[    1.783788]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.785124]  ? folio_add_file_rmap_ptes+0x57/0x270
+[    1.786483]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.787828]  ? xas_find+0x83/0x1a0
+[    1.788810]  ? __pte_offset_map+0x1b/0x100
+[    1.789965]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.791320]  ? next_uptodate_folio+0x93/0x320
+[    1.792562]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.793903]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.795273]  ? filemap_map_pages+0x2e6/0x480
+[    1.796482]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.797829]  ? do_read_fault+0x107/0x250
+[    1.798939]  ? pte_offset_map_rw_nolock+0x1f/0x90
+[    1.800298]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.801649]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.802985]  ? do_fault+0x1fc/0x380
+[    1.803982]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.805343]  ? __handle_mm_fault+0x47c/0x6c0
+[    1.806565]  ? shmem_file_read_iter+0x397/0x3c0
+[    1.807839]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.809177]  ? count_memcg_events+0xd9/0x210
+[    1.810415]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.811773]  ? handle_mm_fault+0x24b/0x340
+[    1.812925]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.814275]  ? do_user_addr_fault+0x2cd/0x840
+[    1.815504]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.816857]  ? irqentry_exit+0x45/0x740
+[    1.817944]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.819298]  ? do_syscall_64+0x99/0x570
+[    1.820387]  ? exc_page_fault+0x90/0x1e0
+[    1.821499]  entry_SYSCALL_64_after_hwframe+0x76/0x7e
+[    1.822919] RIP: 0033:0x7faca67e01b8
+[    1.823939] Code: 00 f7 d8 bb ff ff ff ff 64 89 02 eb c8 e8 50 31 04 00 f3 0f 1e fa 48 8b 35 2d ec 12 00 eb 04 0f 1f 00 f4 b8 e7 00 00 00 0f 05 <48> 3d 00 f0 ff ff 76 f0 f7 d8 64 89 06 eb e9 66 0f 1f 84 00 00 00
+[    1.829051] RSP: 002b:00007ffcc77e5a58 EFLAGS: 00000246 ORIG_RAX: 00000000000000e7
+[    1.831155] RAX: ffffffffffffffda RBX: 00007faca6910f88 RCX: 00007faca67e01b8
+[    1.833135] RDX: 00007faca671da48 RSI: ffffffffffffffb0 RDI: 0000000000000000
+[    1.835106] RBP: 00007ffcc77e5ab0 R08: 0000000000000000 R09: 0000000000000000
+[    1.837088] R10: 00007ffcc77e58f0 R11: 0000000000000246 R12: 0000000000000001
+[    1.839070] R13: 0000000000000000 R14: 00007faca690f680 R15: 00007faca6910fa0
+[    1.841069]  </TASK>
+[    1.841914] Kernel Offset: 0x35a00000 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffffbfffffff)

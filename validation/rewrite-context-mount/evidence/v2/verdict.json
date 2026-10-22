@@ -1,0 +1,5 @@
+{
+  "readonly_view": true,
+  "pre_mount_fd_is_writable": true,
+  "production_lifecycle_qualified": false
+}
