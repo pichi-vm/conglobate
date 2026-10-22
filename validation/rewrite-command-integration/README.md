@@ -889,3 +889,13 @@ cleanup can retry after restoration. Remount persistence and the normal suite pa
 Exact booted sources, failed/intermediate logs and artifact hashes are preserved;
 the later compile-fail lifetime test is identified separately. Protected-command
 and supervisor-death qualification of the new volume path remain outstanding.
+
+## Retained namespace descriptor for volume views
+
+v99 replaces the volume fixture's namespace-path reopen with
+`UserNamespace::idmap`. NamespacePin retains the original descriptor (or the
+single verified descriptor during recovery). Both volume modes pass, including
+actual ID mapping, policy pins and busy-unmount/remount handling. The protected
+command path still needs its separate descriptor-transfer integration. Evidence
+includes exact changed sources, host checks and the VM run; this is not full
+sandbox qualification or an adherence pass.

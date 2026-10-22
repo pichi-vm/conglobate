@@ -90,7 +90,6 @@ impl Integration {
                 Instant::now() + Duration::from_secs(5),
             )?
             .pin(&lease)?;
-            let user_file = fs::File::open(recovery.join(user.record().name()))?;
             let scope = if args[1] == "volume-probe" {
                 Some(PrivateMountNamespace::enter()?)
             } else {
@@ -138,9 +137,8 @@ impl Integration {
             let command_scope = PrivateMountNamespace::enter()?;
             assert!(volume.pin(&lease).is_err());
             assert!(volume.view().is_err());
-            let view = view
-                .in_namespace(&command_scope)?
-                .idmap(user_file)
+            let view = user
+                .idmap(view.in_namespace(&command_scope)?)
                 .map_err(|e| e.to_string())?
                 .attach(MountPoint::create(Path::new("/work"))?)
                 .map_err(|e| e.to_string())?;

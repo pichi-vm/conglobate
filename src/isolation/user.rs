@@ -211,6 +211,21 @@ pub enum UserNamespaceReleaseFailure {
     },
 }
 impl UserNamespace<PinnedNamespace> {
+    /// Apply this pinned mapping without reopening its mountpoint by name.
+    /// The mount retains a duplicate namespace descriptor on success; the policy
+    /// owner must separately retain the pin until authorization is removed.
+    pub fn idmap<'ns>(
+        &self,
+        mount: crate::filesystem::Mount<'ns, crate::filesystem::Detached>,
+    ) -> Result<crate::filesystem::Mount<'ns, crate::filesystem::Idmapped>, NamespaceViewFailure<'ns>>
+    {
+        match self.resources.namespace() {
+            Ok(namespace) => mount
+                .idmap(namespace)
+                .map_err(NamespaceViewFailure::Mapping),
+            Err(source) => Err(NamespaceViewFailure::Descriptor { source, mount }),
+        }
+    }
     /// Policy description derived from the owned mapping and namespace pin.
     /// This is not activation authority: the enclosing step must retain this
     /// owner and assigned filesystem lifetimes until policy is disabled.
@@ -256,4 +271,16 @@ mod tests {
         );
         assert!(IdRange::new(u32::MAX - 1, 1).is_ok());
     }
+}
+
+/// Both failures retain the detached mount for explicit cleanup or retry.
+#[derive(Debug, thiserror::Error)]
+pub enum NamespaceViewFailure<'ns> {
+    #[error("duplicate pinned namespace descriptor: {source}")]
+    Descriptor {
+        source: io::Error,
+        mount: crate::filesystem::Mount<'ns, crate::filesystem::Detached>,
+    },
+    #[error("apply pinned namespace mapping: {0}")]
+    Mapping(crate::filesystem::IdmapFailure<'ns>),
 }

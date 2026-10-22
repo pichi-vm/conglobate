@@ -1942,3 +1942,21 @@ rules rather than silently shrinking acceptance criteria.
   new path. That integration, fixed setup/teardown bounds, combined error reporting
   and broader faults remain required. M4 stays zero; no adherence advancement or
   whole-sandbox claim. Privileged work remained in disposable QEMU; no sleeps added.
+
+### M4 retained namespace authority (v99)
+
+- Previous turn checked the sleep objection without changing implementation; this
+  turn resumes concrete M4 work. No sleep-based synchronization was introduced.
+- NamespacePin now retains its original namespace descriptor. Recovery opens and
+  verifies one descriptor and retains that same identity. UserNamespace::idmap
+  applies the pinned mapping without exposing a raw descriptor or reopening a
+  fixture pathname; descriptor duplication and mapping failures retain the mount.
+- The volume fixture uses this API in both private and init mount namespace modes.
+  v99 passes idmapped views, policy pins, busy unmount recovery and persistence.
+  Root tests (including 37 compile-fail cases), root and fixture Clippy pass.
+  Exact sources, logs and hash provenance are archived under evidence/v99.
+- This is a prerequisite for descriptor-based helper setup, not that completed
+  handoff: the protected-command fixture still uses /work/userns-path and
+  /work/origin. Transfer over supervision and Step/Volume aggregate ownership,
+  bounded setup/teardown and broader fault qualification remain outstanding.
+  M4 has zero clean adherence passes; no milestone advancement is claimed.

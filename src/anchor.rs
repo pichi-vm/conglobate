@@ -130,6 +130,9 @@ impl Backing {
         .join(&self.record.name)
     }
     fn verify(&self) -> io::Result<()> {
+        self.open().map(drop)
+    }
+    fn open(&self) -> io::Result<File> {
         self.parent.namespace.verify_current()?;
         let file = File::from(rustix::fs::openat(
             &self.parent.directory,
@@ -143,7 +146,7 @@ impl Backing {
         {
             return Err(io::Error::other("namespace pin identity mismatch"));
         }
-        Ok(())
+        Ok(file)
     }
 }
 
@@ -155,6 +158,7 @@ impl Backing {
 #[derive(Debug)]
 pub struct NamespacePin {
     backing: Backing,
+    namespace: File,
 }
 
 /// An unmounted pin target awaiting unlink. Drop only unlinks this known file.
@@ -230,7 +234,11 @@ impl NamespacePin {
         // Only infallible ownership transfer follows successful mount creation.
         Ok(Self {
             backing: target.backing.take().expect("owned target"),
+            namespace,
         })
+    }
+    pub(crate) fn namespace(&self) -> io::Result<File> {
+        self.namespace.try_clone()
     }
     pub fn record(&self) -> &NamespaceRecord {
         &self.backing.record
@@ -240,8 +248,8 @@ impl NamespacePin {
             parent: Arc::clone(&parent.lease),
             record,
         };
-        backing.verify()?;
-        Ok(Self { backing })
+        let namespace = backing.open()?;
+        Ok(Self { backing, namespace })
     }
     pub fn release(self) -> Result<(), ReleaseFailure> {
         if let Err(source) = self.backing.verify() {

@@ -1,0 +1,1 @@
+Retained namespace descriptor supports typed UserNamespace::idmap without fixture pathname reopening. Both private/init volume probes pass. Full helper descriptor transfer and enclosing step/volume ownership remain outstanding; no adherence pass.

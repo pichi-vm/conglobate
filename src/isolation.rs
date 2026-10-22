@@ -10,7 +10,7 @@ mod user;
 pub use namespaces::CommandNamespaces;
 pub use setup::CommandSetup;
 pub use user::{
-    IdRange, Mapped, PinnedNamespace, UserNamespace, UserNamespaceFailure,
+    IdRange, Mapped, NamespaceViewFailure, PinnedNamespace, UserNamespace, UserNamespaceFailure,
     UserNamespaceReleaseFailure, UserNamespaceState,
 };
 mod root;
