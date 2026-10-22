@@ -16,6 +16,8 @@ use std::{
     sync::Arc,
 };
 
+mod record;
+
 /// Exclusive cooperative lease on a root-only tmpfs recovery directory.
 /// The descriptor stays locked while any pin/recovery target derived from this
 /// owner lives. This does not prevent privileged callers bypassing the protocol,
@@ -34,7 +36,7 @@ impl RecoveryDirectory {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NamespaceRecord {
     name: std::ffi::OsString,
     device: u64,

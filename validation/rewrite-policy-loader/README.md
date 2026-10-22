@@ -67,3 +67,15 @@ command containment, supervisor/guardian death,
 concurrent builds, Arm or confidential hardware. Existing C-loader policy
 semantics evidence remains in ../rewrite-label-policy; that is separate from
 this production Rust loading test.
+
+
+v11 persists production namespace records as canonical CBOR under the directory
+lease. It rejects duplicate publication and truncated data, refuses record
+removal while the pin exists, and recovers using the stored record after the
+creator exits. It removes the record only after successful unmount/unlink. v12
+adds oversized-file, symlink, public-mode and mismatched-name rejection. Both
+retain the earlier mount, locking, policy and descriptor-accounting checks.
+The v11 probe source snapshot was reconstructed immediately from the v12 edit
+by reversing only the added negative cases; its binary and input hashes are
+captured directly from the executed VM artifacts. No production activation,
+independent anchor namespace, complete build lease or crash protocol is claimed.

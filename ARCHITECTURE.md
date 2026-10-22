@@ -230,8 +230,19 @@ cleanup targets share that open description internally, so dropping the director
 facade cannot unlock their live resources. A separately opened recovery owner is
 excluded until the final reference closes. Descriptor-relative access survives
 directory rename. This is cooperative locking, not protection against privileged
-protocol bypass or replacement of the directory through its parent. A durable
-record format and independent mount-namespace verification are still required.
+protocol bypass or replacement of the directory through its parent.
+
+Namespace records use deterministic CBOR `[1, name, nsfs-device, inode]`, bounded
+at 256 bytes. Decoding validates canonical encoding, generated-name syntax and
+identity ranges; it grants no ownership or cleanup authority. Publication checks
+the mounted identity, writes and syncs a private temporary file, publishes without
+replacement, then syncs the directory. An error after publication can leave the
+complete record: callers must fail and inspect under the lease. Reading rejects
+symlinks, non-regular/non-private files, oversized/corrupt records and mismatched
+names. Record deletion requires an exact stored match and an absent pin target;
+policy/containment teardown remains the enclosing owner's prerequisite. This is
+RAM-backed recovery across process loss, not across VM loss. Complete build-lease
+serialization and independent mount-namespace verification are still required.
 
 The helper identity handoff uses a private close-on-exec sequence-packet socket
 and one deterministic CBOR message `[1, 0]` (version, identity-offer opcode),

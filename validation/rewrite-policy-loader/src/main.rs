@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
 use conglobate::policy::{FilesystemTarget, LabelPolicy, LabelScope, PinDirectory};
-use std::{fs, os::unix::fs::MetadataExt};
+use std::{
+    fs,
+    os::unix::fs::{MetadataExt, PermissionsExt},
+};
 
 #[derive(Debug)]
 struct Probe;
@@ -146,6 +149,32 @@ impl Probe {
         let source = fs::File::open(format!("/proc/{}/ns/user", holder.trim()))?;
         let pin = conglobate::anchor::NamespacePin::create(&lease, source)?;
         let record = pin.record().clone();
+        lease.save_namespace(&record)?;
+        assert_eq!(
+            lease.save_namespace(&record).unwrap_err().kind(),
+            std::io::ErrorKind::AlreadyExists
+        );
+        let name = record.name().to_str().unwrap();
+        assert_eq!(lease.load_namespace(name)?, record);
+        assert!(lease.remove_namespace_record(&record).is_err());
+        let record_path = parent.join(format!("{name}.cbor"));
+        fs::write(&record_path, [0x84])?;
+        assert!(lease.load_namespace(name).is_err());
+        fs::write(&record_path, [0u8; 257])?;
+        assert!(lease.load_namespace(name).is_err());
+        fs::remove_file(&record_path)?;
+        std::os::unix::fs::symlink("/dev/null", &record_path)?;
+        assert!(lease.load_namespace(name).is_err());
+        fs::remove_file(&record_path)?;
+        fs::write(&record_path, record.to_cbor())?;
+        fs::set_permissions(&record_path, fs::Permissions::from_mode(0o644))?;
+        assert!(lease.load_namespace(name).is_err());
+        fs::set_permissions(&record_path, fs::Permissions::from_mode(0o600))?;
+        let alias = parent.join("namespace-alias.cbor");
+        fs::copy(&record_path, &alias)?;
+        assert!(lease.load_namespace("namespace-alias").is_err());
+        fs::remove_file(alias)?;
+        assert_eq!(lease.load_namespace(name)?, record);
         let renamed = parent.with_file_name("renamed-namespace-pins");
         fs::rename(parent, &renamed)?;
         let parent = renamed.as_path();
@@ -180,7 +209,9 @@ impl Probe {
         );
         drop(holder_identity);
         let lease = conglobate::anchor::RecoveryDirectory::open(parent)?;
-        let pin = conglobate::anchor::NamespacePin::recover(&lease, record.clone())?;
+        let persisted = lease.load_namespace(record.name().to_str().unwrap())?;
+        assert_eq!(persisted, record);
+        let pin = conglobate::anchor::NamespacePin::recover(&lease, persisted)?;
         assert_eq!(pin.record().inode(), namespace);
         let restricted = EffectiveCapabilities::clear()?;
         let failure = pin.release().unwrap_err();
@@ -189,7 +220,14 @@ impl Probe {
         };
         drop(restricted);
         pin.release()?;
-        assert!(conglobate::anchor::NamespacePin::recover(&lease, record).is_err());
+        assert!(conglobate::anchor::NamespacePin::recover(&lease, record.clone()).is_err());
+        lease.remove_namespace_record(&record)?;
+        assert!(
+            lease
+                .load_namespace(record.name().to_str().unwrap())
+                .is_err()
+        );
+        println!("PRODUCTION_NAMESPACE_RECORD_PERSISTENCE_PASS");
         assert_eq!(fs::read_dir(parent)?.count(), 0);
         let pin = conglobate::anchor::NamespacePin::create(
             &lease,

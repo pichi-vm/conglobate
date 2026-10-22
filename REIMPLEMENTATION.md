@@ -541,3 +541,19 @@ rules rather than silently shrinking acceptance criteria.
 - All 71 tests (including fixture entry), six compile-fail doctests, production/
   probe Clippy and formatting pass. M4 has zero adherence passes and remains open;
   no activation, guardian admission or full crash-recovery claim is made.
+
+- Namespace recovery now has a versioned deterministic CBOR description and
+  lease-scoped save/load/remove methods. Parsing is bounded and canonical and
+  creates data only. Publication verifies the live pin, uses a private staged
+  file and no-replacement publication, and documents post-publication errors.
+  Deletion requires matching stored identity and absence of the mount target.
+- Added minicbor 2.3.1 (BlueOak-1.0.0, permissive) using its safe encoder/decoder
+  APIs with std and no derive feature. Application Rust still forbids unsafe.
+  The namespace control record is separate from the output inventory schema.
+- Codec tests cover exact bytes, truncation, canonical form, bounds and invalid
+  names/identities. VM v11 passes stored-record recovery and publication/removal
+  ordering; v12 adds record-file rejection cases. An initial v12 probe compile
+  required importing PermissionsExt; this did not affect production code or v11.
+  Full Rust tests and six compile-fail doctests pass; production/probe Clippy
+  pass. M4 remains open with zero adherence passes. These records are not yet a
+  complete persisted build lease or proof of independent namespace lifetime.
