@@ -8,8 +8,8 @@ This ledger describes required work, not claims about the current executor.
 
 | Milestone | Deliverables and success criteria | Status | Clean streak |
 | --- | --- | --- | --- |
-| 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | In progress | 0 |
-| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Pending | 0 |
+| 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
+| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | In progress | 0 |
 | 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Pending | 0 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, scoped LSM, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup/recovery tests and no context/control/block-device exposure. | Pending | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Pending | 0 |
@@ -78,3 +78,10 @@ rules rather than silently shrinking acceptance criteria.
   Root target/ is a separate approximately 24 GiB generated build cache.
 - Preservation destination: sibling conglobate-preservation/2026-10-22/.
   Archive verification and separation are in progress; no adherence pass yet.
+
+- M1 completed: preservation tag rewrite-reference-2026-10-22 at 7bd1863;
+  full archive verified; complete Git bundle verified; 12,538 Git archive files
+  checked against baseline; 35 relocated implementation files checked exactly.
+- Reference tree: reference/legacy/. Validation remains at validation/.
+- Three clean adherence passes recorded in preservation/MILESTONE-1-ADHERENCE.md.
+  Architecture work may now begin. No production rewrite code exists yet.
