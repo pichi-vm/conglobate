@@ -112,3 +112,19 @@ rules rather than silently shrinking acceptance criteria.
   preservation/MILESTONE-2-ADHERENCE.md. Architecture scope is accepted, not kernel
   implementation qualification. The safe idmapping dependency and actual recovery
   protocol are explicit M4 gates. M3 may begin.
+
+## Milestone 3 work log
+
+- Created a new library crate from scratch with forbid(unsafe_code), private
+  invariant-bearing fields and object/trait methods. No legacy source copied.
+- Implemented context-relative lexical path values (explicitly not filesystem
+  confinement), filesystem capacity/block-count and label values, finite command
+  timeout values, image names/index digest values, strict YAML policy and immutable
+  top-level image locks. Duplicate mapping keys/fields and unknown lock fields fail.
+- Six behavioral tests pass; cargo fmt and Clippy with -D warnings pass. The
+  first doctest launch hit the host /tmp quota; rerunning all checks with
+  TMPDIR=/var/tmp/conglobate-rewrite-tmp passed. This is a host test-runtime setting,
+  not a change to builder tmpfs storage or execution semantics.
+- M3 remains incomplete: single-file recipe/stage parsing and immutable planning,
+  request/CLI selection, verified Git context and local image-cache resolution
+  still need implementation and their tests. No M3 adherence pass claimed.
