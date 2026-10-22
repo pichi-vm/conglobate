@@ -25,6 +25,23 @@ impl Probe {
             )?);
             return Ok(());
         }
+        if arguments
+            .get(1)
+            .is_some_and(|argument| argument == "--publish-pin")
+        {
+            let path = arguments.get(2).ok_or("missing lease path")?;
+            let lease = conglobate::anchor::RecoveryDirectory::open(std::path::Path::new(path))?;
+            let pin = conglobate::anchor::NamespacePin::create(
+                &lease,
+                fs::File::open("/proc/self/ns/user")?,
+            )?;
+            lease.save_namespace(pin.record())?;
+            println!("{}", pin.record().name().to_str().unwrap());
+            std::io::Write::flush(&mut std::io::stdout())?;
+            // Deliberately bypass all Rust destructors; only kernel exit cleanup
+            // closes the lease and namespace descriptors. Guest fixture only.
+            std::process::exit(0);
+        }
         let holder = fs::read_to_string("/work/userns-pid")?;
         let namespace = fs::metadata(format!("/proc/{}/ns/user", holder.trim()))?.ino();
         let owner = fs::metadata("/proc/self/ns/user")?.ino();
@@ -130,7 +147,7 @@ impl Probe {
         let holder_identity =
             rustix::process::pidfd_open(holder_pid, rustix::process::PidfdFlags::empty())?;
         let source = fs::File::open(format!("/proc/{}/ns/user", holder.trim()))?;
-        let restricted = EffectiveCapabilities::clear()?;
+        let restricted = EffectiveCapabilities::without_sys_admin()?;
         let failure = conglobate::anchor::NamespacePin::create(&lease, source).unwrap_err();
         let conglobate::anchor::CreateFailure::Mount { target, .. } = failure else {
             panic!("expected mount failure with retained target");
@@ -157,6 +174,20 @@ impl Probe {
         let name = record.name().to_str().unwrap();
         assert_eq!(lease.load_namespace(name)?, record);
         assert!(lease.remove_namespace_record(&record).is_err());
+        let private = conglobate::isolation::PrivateMountNamespace::enter()?;
+        assert!(conglobate::anchor::RecoveryDirectory::open(parent).is_err());
+        assert!(lease.load_namespace(name).is_err());
+        assert!(matches!(
+            conglobate::anchor::NamespacePin::create(&lease, fs::File::open("/proc/self/ns/user")?),
+            Err(conglobate::anchor::CreateFailure::Before(_))
+        ));
+        let failure = pin.release().unwrap_err();
+        let conglobate::anchor::ReleaseFailure::Mounted { pin, .. } = failure else {
+            panic!("wrong mount namespace must retain original pin ownership");
+        };
+        private.restore()?;
+        assert_eq!(lease.load_namespace(name)?, record);
+        println!("PRODUCTION_RECOVERY_NAMESPACE_GUARD_PASS");
         let record_path = parent.join(format!("{name}.cbor"));
         fs::write(&record_path, [0x84])?;
         assert!(lease.load_namespace(name).is_err());
@@ -213,7 +244,7 @@ impl Probe {
         assert_eq!(persisted, record);
         let pin = conglobate::anchor::NamespacePin::recover(&lease, persisted)?;
         assert_eq!(pin.record().inode(), namespace);
-        let restricted = EffectiveCapabilities::clear()?;
+        let restricted = EffectiveCapabilities::without_sys_admin()?;
         let failure = pin.release().unwrap_err();
         let conglobate::anchor::ReleaseFailure::Mounted { pin, .. } = failure else {
             panic!("expected retained namespace mount");
@@ -241,6 +272,18 @@ impl Probe {
         drop(lease);
         drop(conglobate::anchor::RecoveryDirectory::open(parent)?);
         assert!(Self::check_lease_in_child(parent)?);
+        let output = std::process::Command::new(std::env::current_exe()?)
+            .arg("--publish-pin")
+            .arg(parent)
+            .output()?;
+        assert!(output.status.success());
+        let name = String::from_utf8(output.stdout)?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(parent)?;
+        let record = lease.load_namespace(name.trim())?;
+        conglobate::anchor::NamespacePin::recover(&lease, record.clone())?.release()?;
+        lease.remove_namespace_record(&record)?;
+        drop(lease);
+        println!("PRODUCTION_NAMESPACE_PUBLISHER_EXIT_RECOVERY_PASS");
         fs::remove_dir(parent)?;
         assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
         println!("PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS");
@@ -261,6 +304,16 @@ impl Probe {
 #[derive(Debug)]
 struct EffectiveCapabilities(rustix::thread::CapabilitySets);
 impl EffectiveCapabilities {
+    fn without_sys_admin() -> std::io::Result<Self> {
+        let saved = rustix::thread::capabilities(None)?;
+        let mut restricted = saved;
+        restricted
+            .effective
+            .remove(rustix::thread::CapabilitySet::SYS_ADMIN);
+        rustix::thread::set_capabilities(None, restricted)?;
+        Ok(Self(saved))
+    }
+
     fn clear() -> std::io::Result<Self> {
         let saved = rustix::thread::capabilities(None)?;
         let mut restricted = saved;

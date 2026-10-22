@@ -89,6 +89,7 @@ impl RecoveryDirectory {
     /// Remove a matching record only after its pin and underlying target are
     /// gone. Policy/containment teardown remains the enclosing owner's duty.
     pub fn remove_namespace_record(&self, record: &NamespaceRecord) -> io::Result<()> {
+        self.lease.namespace.verify_current()?;
         let name = record.name.to_str().expect("validated ASCII name");
         if self.load_namespace(name)? != *record {
             return Err(io::Error::new(
@@ -97,7 +98,7 @@ impl RecoveryDirectory {
             ));
         }
         match rustix::fs::openat(
-            &self.directory,
+            &self.lease.directory,
             &record.name,
             rustix::fs::OFlags::PATH | rustix::fs::OFlags::CLOEXEC | rustix::fs::OFlags::NOFOLLOW,
             rustix::fs::Mode::empty(),
@@ -107,11 +108,11 @@ impl RecoveryDirectory {
             Ok(_) => return Err(io::Error::other("namespace pin target still exists")),
         }
         rustix::fs::unlinkat(
-            &self.directory,
+            &self.lease.directory,
             format!("{name}.cbor"),
             rustix::fs::AtFlags::empty(),
         )?;
-        self.directory.sync_all()
+        self.lease.directory.sync_all()
     }
 
     /// Publish one verified namespace record without replacing an existing one.
@@ -121,7 +122,10 @@ impl RecoveryDirectory {
         // Recheck the mount, not just the syntactic record. Dropping this view
         // leaves the kernel pin intact and releases only its shared lease ref.
         drop(NamespacePin::recover(self, record.clone())?);
-        let root = PathBuf::from(format!("/proc/self/fd/{}", self.directory.as_raw_fd()));
+        let root = PathBuf::from(format!(
+            "/proc/self/fd/{}",
+            self.lease.directory.as_raw_fd()
+        ));
         let mut staged = tempfile::Builder::new()
             .prefix("record-")
             .tempfile_in(&root)?;
@@ -137,12 +141,13 @@ impl RecoveryDirectory {
         staged
             .persist_noclobber(destination)
             .map_err(|error| error.error)?;
-        self.directory.sync_all()
+        self.lease.directory.sync_all()
     }
 
     /// Read a bounded validated description. Recovery must still verify its
     /// mounted identity. Missing or corrupt records never authorize cleanup.
     pub fn load_namespace(&self, name: &str) -> io::Result<NamespaceRecord> {
+        self.lease.namespace.verify_current()?;
         if !NamespaceRecord::valid_name(name) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -150,7 +155,7 @@ impl RecoveryDirectory {
             ));
         }
         let file = File::from(rustix::fs::openat(
-            &self.directory,
+            &self.lease.directory,
             format!("{name}.cbor"),
             rustix::fs::OFlags::RDONLY
                 | rustix::fs::OFlags::CLOEXEC

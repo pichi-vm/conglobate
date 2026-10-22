@@ -79,3 +79,21 @@ The v11 probe source snapshot was reconstructed immediately from the v12 edit
 by reversing only the added negative cases; its binary and input hashes are
 captured directly from the executed VM artifacts. No production activation,
 independent anchor namespace, complete build lease or crash protocol is claimed.
+
+
+v13 adds the production deployment-init namespace check. It fails at the older
+mount-denial fixture: clearing every effective capability prevents the new procfs
+namespace check, so creation correctly fails before target allocation. v14 removes
+only SYS_ADMIN in mount/unmount-denial tests, retaining the capability needed to
+inspect init. The BPF load-denial test still clears all effective capabilities.
+Production guard code is unchanged between these two runs.
+
+v14 also carries a live lease into a private mount namespace: new lease acquisition,
+record reads, creation and release are rejected; release returns the original pin
+owner, which works after restoring the namespace. A separate publisher then saves
+a pin/record and exits with std::process::exit (bypassing Rust destructors). The
+parent reacquires the lease, reads the record and recovers/releases the pin. This
+proves process-exit persistence in the guest init's namespace, not complete guardian
+or concurrent supervisor/guardian death recovery. The v13 probe source was retained
+by reversing the immediately following publisher-test edit; executed binary hashes
+come directly from the VM artifact directory.

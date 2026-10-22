@@ -219,8 +219,8 @@ name and namespace inode/device. Dropping the userspace owner leaves the kernel
 mount for recovery; reopening verifies nsfs identity without following a final
 symlink. Explicit release distinguishes a still-mounted pin from an unmounted
 target needing unlink. This primitive assumes serialized parent access and does
-not establish that the containing mount namespace survives the builder. A future
-anchor aggregate must verify that prerequisite, persist records and own all
+not establish the deployment init lifetime contract by itself. A future
+anchor aggregate must persist a complete lease and own all
 namespace/filesystem/policy identities before enabling authorization. Namespace
 pins alone are not a crash-recovery or command-admission receipt.
 
@@ -242,7 +242,24 @@ symlinks, non-regular/non-private files, oversized/corrupt records and mismatche
 names. Record deletion requires an exact stored match and an absent pin target;
 policy/containment teardown remains the enclosing owner's prerequisite. This is
 RAM-backed recovery across process loss, not across VM loss. Complete build-lease
-serialization and independent mount-namespace verification are still required.
+serialization remains required.
+
+RecoveryDirectory now captures the deployment init's mount namespace descriptor
+and pidfd, shared with every pin/target through the directory lease. Opening a
+lease rejects PID 1 itself, mismatched procfs PID views, different PID namespaces
+and a current mount namespace different from init's. Pin creation, verification,
+release and record operations recheck the current/init namespace identities and
+init's live pidfd before mutation. A private helper cannot use a carried lease to
+mutate its copied mount tree as though it were the persistent anchor. A failed
+release retains original pin ownership for restoration/recovery.
+
+This is a deployment-relative check, not proof of the machine's initial PID/user
+namespace or protection against init changing namespaces after a check. Deployment
+must keep its trusted init alive in that mount namespace independently of builds;
+containers with a disposable init cannot satisfy the lifetime requirement merely
+by passing these checks. Production guardian/admission still must enforce the
+complete protocol. Unmounted target unlink remains descriptor-relative and does
+not require namespace entry or release any namespace identity.
 
 The helper identity handoff uses a private close-on-exec sequence-packet socket
 and one deterministic CBOR message `[1, 0]` (version, identity-offer opcode),

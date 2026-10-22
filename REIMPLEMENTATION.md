@@ -557,3 +557,24 @@ rules rather than silently shrinking acceptance criteria.
   Full Rust tests and six compile-fail doctests pass; production/probe Clippy
   pass. M4 remains open with zero adherence passes. These records are not yet a
   complete persisted build lease or proof of independent namespace lifetime.
+
+- RecoveryDirectory now retains a deployment-init mount namespace descriptor and
+  pidfd in the shared directory lease. Acquisition rejects PID 1, mismatched procfs
+  PID views, different PID namespaces and a private current mount namespace.
+  Creation, verification/release and record operations recheck namespace identity
+  and init liveness. Failed release retains the pin owner. These are methods on
+  immutable private ownership types; no new raw-FD or signaling API is exposed.
+- This verifies deployment-relative namespace identity, not host-global identity
+  or future init behavior. The deployment must keep init independently alive and
+  in its namespace. A complete build lease, guardian and admission protocol are
+  still required; the new check alone cannot authorize commands or activation.
+- VM v13 fails an older mount-denial fixture because clearing every effective
+  capability now denies the earlier procfs check. v14 targets SYS_ADMIN removal
+  for mount tests while leaving the BPF all-capabilities-denied test intact.
+  v14 passes carried-lease rejection in a private namespace, ownership recovery
+  after restoration, and recovery after a separate publisher exits without Rust
+  destructors. Failed and passing runs, source snapshots and hashes are retained.
+- Full Rust suite and six compile-fail tests passed; after the final PID-view
+  recheck refinement, affected anchor/codec tests and VM v14 passed. Root/probe
+  Clippy and formatting passed. M4 remains at zero adherence passes; neither
+  these tests nor the primitive constitute full sandbox qualification.

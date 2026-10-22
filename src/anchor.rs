@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Kernel-held namespace pins. The caller must serialize access to the parent
-//! and supply a mount namespace that outlives the build. This primitive does not
-//! establish that deployment prerequisite or authorize policy activation.
+//! Kernel-held namespace pins in the deployment init's mount namespace.
+//! The deployment must keep init alive independently of builds. Runtime checks
+//! reject a different namespace; they do not prove host-global identity or
+//! authorize policy activation.
 use std::{
     ffi::OsStr,
     fs::{self, File},
@@ -16,7 +17,9 @@ use std::{
     sync::Arc,
 };
 
+mod namespace;
 mod record;
+use namespace::InitMountNamespace;
 
 /// Exclusive cooperative lease on a root-only tmpfs recovery directory.
 /// The descriptor stays locked while any pin/recovery target derived from this
@@ -24,16 +27,26 @@ mod record;
 /// namespace disappearance, or replacement of the directory by its parent owner.
 #[derive(Debug)]
 pub struct RecoveryDirectory {
-    directory: Arc<File>,
+    lease: Arc<DirectoryLease>,
 }
 impl RecoveryDirectory {
     pub fn open(path: &Path) -> io::Result<Self> {
+        let namespace = InitMountNamespace::capture()?;
         let file = Backing::parent(path)?;
         rustix::fs::flock(&file, rustix::fs::FlockOperation::NonBlockingLockExclusive)?;
         Ok(Self {
-            directory: Arc::new(file),
+            lease: Arc::new(DirectoryLease {
+                directory: file,
+                namespace,
+            }),
         })
     }
+}
+
+#[derive(Debug)]
+struct DirectoryLease {
+    directory: File,
+    namespace: InitMountNamespace,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,7 +65,7 @@ impl NamespaceRecord {
 }
 #[derive(Debug)]
 struct Backing {
-    parent: Arc<File>,
+    parent: Arc<DirectoryLease>,
     record: NamespaceRecord,
 }
 impl Backing {
@@ -78,11 +91,16 @@ impl Backing {
         Ok(file)
     }
     fn path(&self) -> PathBuf {
-        PathBuf::from(format!("/proc/self/fd/{}", self.parent.as_raw_fd())).join(&self.record.name)
+        PathBuf::from(format!(
+            "/proc/self/fd/{}",
+            self.parent.directory.as_raw_fd()
+        ))
+        .join(&self.record.name)
     }
     fn verify(&self) -> io::Result<()> {
+        self.parent.namespace.verify_current()?;
         let file = File::from(rustix::fs::openat(
-            &self.parent,
+            &self.parent.directory,
             &self.record.name,
             rustix::fs::OFlags::RDONLY | rustix::fs::OFlags::CLOEXEC | rustix::fs::OFlags::NOFOLLOW,
             rustix::fs::Mode::empty(),
@@ -136,6 +154,7 @@ pub enum ReleaseFailure {
 }
 impl NamespacePin {
     pub fn create(parent: &RecoveryDirectory, namespace: File) -> Result<Self, CreateFailure> {
+        parent.lease.namespace.verify_current()?;
         if rustix::fs::fstatfs(&namespace)
             .map_err(io::Error::from)?
             .f_type as u64
@@ -144,11 +163,11 @@ impl NamespacePin {
             return Err(io::Error::other("source is not a namespace descriptor").into());
         }
         let metadata = namespace.metadata()?;
-        let parent = Arc::clone(&parent.directory);
+        let parent = Arc::clone(&parent.lease);
         let temporary = tempfile::Builder::new()
             .prefix("namespace-")
             .permissions(fs::Permissions::from_mode(0o600))
-            .tempfile_in(format!("/proc/self/fd/{}", parent.as_raw_fd()))?;
+            .tempfile_in(format!("/proc/self/fd/{}", parent.directory.as_raw_fd()))?;
         let name = temporary
             .path()
             .file_name()
@@ -185,7 +204,7 @@ impl NamespacePin {
     }
     pub fn recover(parent: &RecoveryDirectory, record: NamespaceRecord) -> io::Result<Self> {
         let backing = Backing {
-            parent: Arc::clone(&parent.directory),
+            parent: Arc::clone(&parent.lease),
             record,
         };
         backing.verify()?;
