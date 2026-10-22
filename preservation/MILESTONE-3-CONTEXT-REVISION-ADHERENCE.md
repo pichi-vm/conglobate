@@ -1,9 +1,8 @@
 # Foundation revalidation after workspace/context changes
 
-Implementation scope: a7f7217. Status: two consecutive clean self-reviews.
+Implementation scope: a7f7217. Status: accepted after three consecutive clean self-reviews.
 This supplements the historical MILESTONE-3-ADHERENCE.md; it does not erase its
-findings or reuse its three passes as acceptance of changed code. M3 must regain
-three passes before further milestone advancement. M4 remains unfinished.
+findings or reuse its three passes as acceptance of changed code. The reopened M3 gate is now satisfied at this scope. M4 remains unfinished.
 
 ## Earlier revision findings
 
@@ -127,3 +126,66 @@ qualification and final retirement remain explicitly incomplete.
 
 Result: no new finding; clean streak 2/3. One further complete self-review of the
 unchanged scope is required. This is not independent security qualification.
+
+## Clean pass 3: acceptance criteria and public authority
+
+Frozen implementation remains a7f7217; confirmed no source/test/Cargo/current
+harness changes during the three-pass sequence. Started from acceptance criteria
+and public constructors, rather than re-running the prior failure traversal.
+
+Acceptance audit:
+- Safe replacement crate: root forbids unsafe application Rust; source modules
+  remain separated from reference/legacy and use safe dependency interfaces.
+- Explicit context-relative recipe/lock arguments: BuildRequest requires both;
+  validated path values reject absolute/escaping/NUL/empty file paths. They are
+  syntax, not filesystem authority. Committed resolution supplies the authority.
+- Committed private context: capture verifies selected objects, rejects unsupported
+  entries, ends Git authority after capture, then staging writes onto tmpfs.
+  Workspace-backed staging retains parent identity. Detached freeze enforces
+  read-only attributes before publication. Commands receive neither context root
+  nor backing authority from these APIs. Full executor integration remains M4.
+- Locked local inputs: pin parsing, host index selection, metadata capture,
+  referenced-blob and ancestry checks remain unchanged and retain error gates.
+  No resolving/downloading method was introduced. Future mutable-cache reads
+  still require use-time verification; this is explicitly not a mounted chain.
+- Single recipe/immutable plan: reviewed validated getters, final stage/from
+  checks, transform selection and role aggregation. Public data cannot manufacture
+  a validated Recipe or mutate BuildPlan. Input components are retained for future
+  composition; no output artifact is claimed here.
+- Meaningful tests: reviewed the mapping in passes 1/2 and current test assertions.
+  Host partial-population evidence, VM enforcement/recovery evidence and intended
+  compile-fail diagnostics cover the changed foundation contract. Full source
+  checks remain passing for this unchanged scope. Neither earlier EBUSY behavior
+  nor subsequent hardware/OS-image qualification is inferred from these tests.
+
+Public authority/style audit: ContextCleanup can only be obtained through actual
+owned failures; its constructor and fields are not public. It offers cleanup, not
+read/freeze or raw backing access. ContextMountFailure can return staging because
+only an independent clone was mutated; materialization/cleanup failures cannot.
+ReadOnlyResources' field order closes its view before backing cleanup, with the
+parent retained last. Scratch borrows Workspace; staged context owns a separate
+parent reference because it must survive early owner release for cleanup. These
+are genuine ownership differences, not flags asserting kernel state. Sealed
+checkout markers, consuming methods, read-only getters, RAII and safe library
+interfaces match the style contract. Retained read-only File handles do not regain
+pre-freeze write authority. No completion receipt or successful build token comes
+from these foundation operations.
+
+Recovery and limits: ordinary allocation/I/O errors propagate; no disk fallback.
+Explicit cleanup distinguishes success from retained retry authority; destructor
+fallback is not a success claim and no behavior relies on destructors surviving
+process death. Concurrent privileged mutation is outside these private-input
+owners' contract, consistent with the trusted supervisor boundary. Device maps,
+command descendants, label policy and whole-build resource leases still require
+M4 ownership; a context borrow is not substituted for those proofs.
+
+Preservation: hashed 40 reference/legacy files against baseline-manifest.json;
+all match. Confirmed the original working-tree archive still exists at its
+recorded sibling location (did not rehash the whole archive or claim remote
+replication). Historical reviews, validation failures and source snapshots remain
+retained. Final retirement still requires its own recoverability audit.
+
+Result: no new finding; clean streak 3/3. M3 is accepted again at foundation
+scope a7f7217. M4 work may resume, with zero clean M4 passes and its storage,
+lifecycle and qualification obligations still open. These are self-reviews, not
+independent security review or completion of the overall goal.
