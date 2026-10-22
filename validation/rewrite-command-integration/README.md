@@ -264,3 +264,27 @@ Command, timeout, proc restrictions, filesystem checks and reaping regressions
 pass. Root tests, root/fixture Clippy and formatting pass. Root tests are preserved
 with v28. Terminal/session isolation, tty/devpts/shm, remaining proc information
 masking, active LSM and complete cleanup/qualification remain outstanding.
+
+
+## Private devpts, shared memory and session
+
+v29 creates a new session before exposing a fresh private tty inode. Device setup
+adds trusted pts/shm directories and a relative ptmx symlink. After attachment
+inside the command user namespace, native filesystem-context APIs mount a new
+private devpts instance (ptmxmode 0666, slave mode 0620, namespace gid 0) and a
+separate mode-1777 tmpfs at shm. Both are nosuid/noexec; shm is additionally nodev.
+No VM devpts or shm mount is shared. Missing or failed setup rejects execution.
+
+The actual image shell checks thirteen expected /dev entries, denied access to
+an inherited controlling tty, PTY master allocation with a new pts/0 slave,
+slave removal on master close, and writable fresh shared memory in both normal
+and timeout steps. Read-only image remount confirms pts/shm were not persisted.
+Existing capability, proc restrictions, timeout, reaping and fsck checks pass.
+Root tests, root/fixture Clippy and formatting pass; evidence includes source
+snapshots and test output.
+
+This does not test unlocking the slave, terminal configuration, interactive jobs,
+or full terminal ioctl compatibility. The filter still needs those qualification
+cases. It also does not replace the fixture's external namespace adapters or add
+namespace init behavior. Active labeling-policy admission, complete partial-setup
+ownership, control-channel negative tests and distro/platform qualification remain.

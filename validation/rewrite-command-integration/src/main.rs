@@ -203,7 +203,19 @@ impl Integration {
             if (printf 'full' > /dev/full) 2>/dev/null; then exit 1; fi
             test ! -e /dev/fuse
             set -- /dev/*
-            test "$#" = 9
+            test "$#" = 13
+            test -c /dev/tty
+            if (: > /dev/tty) 2>/dev/null; then exit 1; fi
+            test -c /dev/ptmx
+            test ! -e /dev/pts/0
+            exec 3<> /dev/ptmx
+            test -c /dev/pts/0
+            exec 3>&-
+            test ! -e /dev/pts/0
+            test ! -e /dev/shm/step-data
+            printf 'temporary' > /dev/shm/step-data
+            read -r -N 9 shm < /dev/shm/step-data
+            test "$shm" = temporary
             if (printf no > /sys/must-be-read-only) 2>/dev/null; then exit 1; fi
             restricted=0
             while read -r id parent device root point options rest; do

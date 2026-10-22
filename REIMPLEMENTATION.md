@@ -1061,3 +1061,21 @@ rules rather than silently shrinking acceptance criteria.
   sessions, devpts and shm remain. Packet-negative coverage, remaining proc masks,
   namespace init, active policy, partial setup and full cleanup ownership also
   remain. The fixture still uses external namespace setup adapters.
+
+
+- Previous goal turn made progress on private device inodes and descriptor
+  transfer. Added fresh session creation before root entry, a private tty inode,
+  and private devpts/shm mounts prepared through safe filesystem-context APIs in
+  the command user namespace. Targets are freshly created in the private device
+  tree and resolved with no symlinks or mount crossings; descriptors retain
+  ownership until attachment. Setup failures remain exit-only.
+- v29 passes actual shell PTY allocation/release, absence of inherited controlling
+  tty, fresh per-step shared-memory write/read, exact device-entry count and
+  non-persistence after image unmount/remount. Existing capability, syscall,
+  proc, timeout, reaping and filesystem checks pass. Root tests, root/fixture
+  Clippy and formatting pass. Evidence, hashes and test output are preserved.
+- Reviewed session ordering, mapped ownership, mount flags/configuration and
+  bounded claim scope. PTY unlock/terminal ioctl compatibility is not proven by
+  master allocation. M4 remains at zero adherence passes; namespace init/adapters,
+  active LSM admission, partial-setup ownership, transfer negatives and complete
+  integration/qualification remain outstanding.

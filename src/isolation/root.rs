@@ -16,7 +16,7 @@ use std::{
 /// A pinned command root and trusted null input, prepared before switching roots.
 /// The caller must supply its assigned mounted image in an isolated setup
 /// process. Procfs, empty read-only sys and supplied private devices are prepared
-/// here; devpts/shm and other runtime views are not implemented yet. This is not admission authority:
+/// here, including private devpts/shm. This is not admission authority:
 /// PID/user/network isolation, containment and policy must be established by
 /// the enclosing step. No raw root handle is returned to callers.
 ///
@@ -80,6 +80,10 @@ impl<'ns> CommandRoot<'ns> {
         {
             return Err(io::Error::other("root setup requires one thread"));
         }
+        // The setup helper is a fresh child, not a process-group leader. A
+        // separate session severs any inherited controlling terminal before
+        // exposing the private tty device. Failure is fatal to command setup.
+        rustix::process::setsid()?;
         super::runtime::RuntimeTargets::resolve(&self.root)?.install(self.devices)?;
         // The scope was entered before this directory was opened. Unsharing
         // here would leave the pinned descriptor referring to the old mount

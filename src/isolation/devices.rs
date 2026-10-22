@@ -44,19 +44,20 @@ impl CommandDevices {
             MountAttrFlags::MOUNT_ATTR_NOSUID | MountAttrFlags::MOUNT_ATTR_NOEXEC,
         )?
         .into();
-        for (name, minor) in [
-            ("null", 3),
-            ("zero", 5),
-            ("full", 7),
-            ("random", 8),
-            ("urandom", 9),
+        for (name, major, minor) in [
+            ("null", 1, 3),
+            ("zero", 1, 5),
+            ("full", 1, 7),
+            ("random", 1, 8),
+            ("urandom", 1, 9),
+            ("tty", 5, 0),
         ] {
             fs::mknodat(
                 &root,
                 name,
                 FileType::CharacterDevice,
                 Mode::from_raw_mode(0o666),
-                fs::makedev(1, minor),
+                fs::makedev(major, minor),
             )?;
             fs::chownat(
                 &root,
@@ -67,7 +68,18 @@ impl CommandDevices {
             )?;
             fs::chmodat(&root, name, Mode::from_raw_mode(0o666), AtFlags::empty())?;
         }
+        for name in ["pts", "shm"] {
+            fs::mkdirat(&root, name, Mode::from_raw_mode(0o755))?;
+            fs::chownat(
+                &root,
+                name,
+                Some(Uid::from_raw(uid)),
+                Some(Gid::from_raw(gid)),
+                AtFlags::empty(),
+            )?;
+        }
         for (name, target) in [
+            ("ptmx", "pts/ptmx"),
             ("fd", "/proc/self/fd"),
             ("stdin", "/proc/self/fd/0"),
             ("stdout", "/proc/self/fd/1"),
@@ -155,6 +167,56 @@ impl CommandDevices {
             &self.root,
             "",
             target,
+            "",
+            MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH | MoveMountFlags::MOVE_MOUNT_T_EMPTY_PATH,
+        )?;
+        DeviceRuntime::Pts.attach(&self.root, "pts")?;
+        DeviceRuntime::SharedMemory.attach(&self.root, "shm")
+    }
+}
+
+#[derive(Debug)]
+enum DeviceRuntime {
+    Pts,
+    SharedMemory,
+}
+impl DeviceRuntime {
+    fn attach(self, root: &File, name: &str) -> io::Result<()> {
+        // These directories were freshly created by trusted setup, not read
+        // from the image. Still resolve without symlinks or mount crossings.
+        let target = fs::openat2(
+            root,
+            name,
+            fs::OFlags::PATH | fs::OFlags::DIRECTORY | fs::OFlags::CLOEXEC,
+            Mode::empty(),
+            fs::ResolveFlags::BENEATH | fs::ResolveFlags::NO_SYMLINKS | fs::ResolveFlags::NO_XDEV,
+        )?;
+        let context = mount::fsopen(
+            match self {
+                Self::Pts => "devpts",
+                Self::SharedMemory => "tmpfs",
+            },
+            FsOpenFlags::FSOPEN_CLOEXEC,
+        )?;
+        let mut flags = MountAttrFlags::MOUNT_ATTR_NOSUID | MountAttrFlags::MOUNT_ATTR_NOEXEC;
+        match self {
+            Self::Pts => {
+                mount::fsconfig_set_flag(&context, "newinstance")?;
+                mount::fsconfig_set_string(&context, "ptmxmode", "0666")?;
+                mount::fsconfig_set_string(&context, "mode", "0620")?;
+                mount::fsconfig_set_string(&context, "gid", "0")?;
+            }
+            Self::SharedMemory => {
+                mount::fsconfig_set_string(&context, "mode", "1777")?;
+                flags |= MountAttrFlags::MOUNT_ATTR_NODEV;
+            }
+        }
+        mount::fsconfig_create(&context)?;
+        let tree = mount::fsmount(&context, FsMountFlags::FSMOUNT_CLOEXEC, flags)?;
+        mount::move_mount(
+            &tree,
+            "",
+            &target,
             "",
             MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH | MoveMountFlags::MOVE_MOUNT_T_EMPTY_PATH,
         )?;
