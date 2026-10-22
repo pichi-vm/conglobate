@@ -698,3 +698,17 @@ rules rather than silently shrinking acceptance criteria.
   and formatting pass. The domain-record gate is not complete build persistence
   or sandbox admission. M4 remains open with zero adherence passes; aggregate
   ownership and actual guardian orchestration remain required.
+
+- Added GuardianWatch borrowing paired supervisor and registered helper channels.
+  It waits on both sockets and pidfds under one bound and returns sampled loss
+  diagnostics only. Errors propagate for failed-build cancellation; no observation
+  becomes a quiescence or completion receipt. Setup-phase monitoring is separate.
+- Unit checks cover supervisor/helper/both loss, deadline and invalid traffic.
+  A compile-fail check prevents constructing this registered-phase watch around
+  an unregistered helper. VM v24 uses a separate supervisor-peer stand-in, observes
+  its termination while the helper remains live, then reopens/cancels the domain,
+  reaps the helper and observes both losses. Exact evidence/source is preserved.
+- Full suite passes 93 tests and nine compile-fail doctests. Root/probe Clippy
+  and formatting pass. M4 remains at zero adherence passes. The borrowing watch
+  is not the owning guardian aggregate; startup monitoring, resource teardown
+  orchestration and combined crash qualification remain unfinished.

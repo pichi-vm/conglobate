@@ -347,8 +347,14 @@ and the paired supervision channel. Exchange/descriptor-duplication failures
 cancel the channel and retain the started child for cleanup. Both successful
 owners independently retain the same kernel process identity. A sampled live
 peer is not a lifetime guarantee, and observed loss is not descendant quiescence.
-The future guardian must combine this with persisted resources, containment
-registration, ordered teardown and final completion acknowledgements.
+GuardianWatch now borrows a paired supervisor channel and a registered helper
+channel, polling both sockets and both pidfds under one deadline. Its sampled
+ShutdownTrigger distinguishes supervisor/helper/both loss for diagnostics; it
+neither orders exits nor certifies command success or quiescence. Protocol and
+I/O errors must also start failed-build cancellation. It deliberately requires a
+registered helper; setup-phase monitoring remains a separate obligation.
+The guardian aggregate must still combine these observations with persisted
+resources, ordered teardown and final completion acknowledgements.
 
 See [pidfd_open(2)](https://man7.org/linux/man-pages/man2/pidfd_open.2.html)
 for the parent-side PID lookup constraints this identity handoff avoids.

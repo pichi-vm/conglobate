@@ -11,7 +11,8 @@ use std::{
 
 mod supervision;
 pub use supervision::{
-    ObservedState, Paired, Registered, Supervision, SupervisionChild, SupervisionState, Unpaired,
+    GuardianWatch, ObservedState, Paired, Registered, ShutdownTrigger, Supervision,
+    SupervisionChild, SupervisionState, Unpaired,
 };
 mod observation;
 pub use observation::ProcessObservation;

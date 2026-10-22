@@ -17,6 +17,16 @@ impl Probe {
         let arguments = std::env::args_os().collect::<Vec<_>>();
         if arguments
             .get(1)
+            .is_some_and(|argument| argument == "--guardian-peer")
+        {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
+            let watch = conglobate::process::Supervision::from_stdin()?.exchange_until(deadline)?;
+            watch.wait_for_loss_until(deadline)?;
+            return Ok(());
+        }
+
+        if arguments
+            .get(1)
             .is_some_and(|argument| argument == "--publish-domain")
         {
             let recovery = arguments.get(2).ok_or("missing recovery path")?;
@@ -453,6 +463,31 @@ impl Probe {
             }
             std::thread::sleep(Duration::from_millis(5));
         }
+        let mut supervisor_command = Command::new(std::env::current_exe()?);
+        supervisor_command
+            .arg("--guardian-peer")
+            .env_clear()
+            .stdout(Stdio::null());
+        let (supervisor_peer, supervisor_watch) =
+            conglobate::process::Process::launch_supervised(supervisor_command, deadline)?;
+        let guardian = conglobate::process::GuardianWatch::new(&supervisor_watch, &watch);
+        assert_eq!(
+            guardian
+                .wait_until(Instant::now() + Duration::from_millis(20))
+                .unwrap_err()
+                .kind(),
+            std::io::ErrorKind::TimedOut
+        );
+        let terminator = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(20));
+            supervisor_peer.terminate_until(deadline)
+        });
+        assert_eq!(
+            guardian.wait_until(deadline)?,
+            conglobate::process::ShutdownTrigger::SupervisorLost
+        );
+        terminator.join().expect("fixture terminator thread")?;
+        println!("PRODUCTION_GUARDIAN_SUPERVISOR_LOSS_PASS");
         drop(domain);
         let recovered_lease = conglobate::anchor::RecoveryDirectory::open(recovery_path)?;
         assert_eq!(recovered_lease.load_domain(record.name())?, record);
@@ -462,6 +497,10 @@ impl Probe {
         assert!(!child.wait_until(deadline)?.status().success());
         assert!(!path.exists());
         assert!(watch.peer_lost()?);
+        assert_eq!(
+            guardian.wait_until(deadline)?,
+            conglobate::process::ShutdownTrigger::BothLost
+        );
         let lease = conglobate::anchor::RecoveryDirectory::open(recovery_path)?;
         assert!(lease.recover_domain(parent, record.name()).is_err());
         lease.remove_domain_record(parent, &record)?;

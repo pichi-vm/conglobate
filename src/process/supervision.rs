@@ -9,6 +9,8 @@ use rustix::{
 };
 use std::{io, process::Stdio, time::Instant};
 
+mod guardian;
+pub use guardian::{GuardianWatch, ShutdownTrigger};
 mod registration;
 pub use registration::Registered;
 
@@ -192,6 +194,58 @@ mod tests {
             let parent = parent.exchange_until(Self::deadline()).unwrap();
             (parent, helper.join().unwrap())
         }
+    }
+    #[test]
+    fn guardian_observes_either_peer_and_keeps_protocol_errors() {
+        // Test-only state construction isolates the four-FD observation logic.
+        // The disposable VM separately exercises actual helper registration.
+        for supervisor_first in [true, false] {
+            let (supervisor, upstream) = Fixture::paired();
+            let (helper, downstream) = Fixture::paired();
+            let helper = Supervision::<Registered> {
+                socket: helper.socket,
+                peer: helper.peer,
+            };
+            let watch = GuardianWatch::new(&supervisor, &helper);
+            assert_eq!(
+                watch
+                    .wait_until(Instant::now() + Duration::from_millis(10))
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::TimedOut
+            );
+            if supervisor_first {
+                drop(upstream);
+                assert_eq!(
+                    watch.wait_until(Fixture::deadline()).unwrap(),
+                    ShutdownTrigger::SupervisorLost
+                );
+                drop(downstream);
+            } else {
+                drop(downstream);
+                assert_eq!(
+                    watch.wait_until(Fixture::deadline()).unwrap(),
+                    ShutdownTrigger::HelperLost
+                );
+                drop(upstream);
+            }
+            assert_eq!(
+                watch.wait_until(Fixture::deadline()).unwrap(),
+                ShutdownTrigger::BothLost
+            );
+        }
+        let (supervisor, _upstream) = Fixture::paired();
+        let (helper, downstream) = Fixture::paired();
+        let helper = Supervision::<Registered> {
+            socket: helper.socket,
+            peer: helper.peer,
+        };
+        send(&downstream.socket.0.0, b"invalid", SendFlags::NOSIGNAL).unwrap();
+        let watch = GuardianWatch::new(&supervisor, &helper);
+        assert_eq!(
+            watch.wait_until(Fixture::deadline()).unwrap_err().kind(),
+            io::ErrorKind::InvalidData
+        );
     }
     #[test]
     fn invalid_traffic_cannot_be_consumed_into_a_healthy_state() {

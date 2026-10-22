@@ -156,3 +156,13 @@ Restoring the canonical record permits the normal registration/cancellation path
 The missing-ACK fixture now persists its domain before attempting registration,
 then cleans its record after cancellation. Earlier persistence/namespace/policy
 checks remain. This gate covers the domain record, not the full build lease.
+
+
+v24 adds production GuardianWatch after helper registration. A separate trusted
+process stands in for the supervisor peer outside the command domain. The watch
+times out with both peers alive; a fixture thread then terminates that peer while
+the main thread waits, and SupervisorLost is observed. The fixture joins/reaps
+the terminator's child owner, reopens/cancels the populated domain, reaps the
+registered helper and observes BothLost. Prior checks remain. This tests the
+registered-phase observation/cleanup sequence, not a complete guardian process,
+setup-phase monitoring or concurrent supervisor/guardian death recovery.
