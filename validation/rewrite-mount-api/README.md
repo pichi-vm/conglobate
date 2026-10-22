@@ -113,3 +113,24 @@ This tests ordinary attachment and cleanup, not command quiescence, durable
 recovery anchors, sealing or simultaneous process death. The production API
 requires the trusted private builder namespace; creation and lifetime enforcement
 of that namespace remain separate M4 work. No command execution is enabled.
+
+## Production private mount namespace
+
+Runs v6/v7 call PrivateMountNamespace::enter before production mount acquisition.
+The namespace inode changes; an attached fixture file remains invisible through
+PID 1's original root view. Both explicit restore and Drop restore the original
+namespace identity. Existing mapping/attachment/recovery tests still pass. v7
+also keeps another thread alive while attempting entry: the production API
+rejects this before transition, and the namespace identity remains unchanged.
+
+Mount and unmount-recovery owners borrow the namespace guard. The new compile-fail
+test rejects restoring it while a mount remains alive. This covers ordinary
+ownership, not forgotten objects or process death. Namespace creation is for a
+fresh single-threaded trusted helper; a runtime task-count observation cannot
+exclude a concurrent thread-creation race in arbitrary calling code.
+
+The dependency is nix 0.31.3 with only sched enabled (MIT). Its fixed NEWNS call
+does not unshare descriptor tables. Rustix's deprecated safe general unshare was
+not used, nor its unsafe replacement. The module exposes no arbitrary flags.
+Process supervision, durable namespace/policy anchors, PID/user/network command
+namespaces and the launch protocol remain outstanding; no commands run here.

@@ -65,43 +65,44 @@ struct AttachmentLease {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("attaching mapped mount: {source}")]
-pub struct AttachmentFailure {
+pub struct AttachmentFailure<'ns> {
     source: io::Error,
-    mount: Mount<Idmapped>,
+    mount: Mount<'ns, Idmapped>,
     point: MountPoint,
 }
-impl AttachmentFailure {
-    pub fn into_parts(self) -> (io::Error, Mount<Idmapped>, MountPoint) {
+impl<'ns> AttachmentFailure<'ns> {
+    pub fn into_parts(self) -> (io::Error, Mount<'ns, Idmapped>, MountPoint) {
         (self.source, self.mount, self.point)
     }
 }
 #[derive(Debug, thiserror::Error)]
-pub enum UnmountFailure {
+pub enum UnmountFailure<'ns> {
     #[error("unmount failed: {source}")]
     Mounted {
         source: io::Error,
-        recovery: UnmountRecovery,
+        recovery: UnmountRecovery<'ns>,
     },
     #[error("mount point cleanup failed after unmount: {0}")]
     Cleanup(io::Error),
 }
 #[derive(Debug)]
-pub struct UnmountRecovery {
+pub struct UnmountRecovery<'ns> {
+    scope: &'ns crate::isolation::PrivateMountNamespace,
     lease: AttachmentLease,
     _thread: PhantomData<std::rc::Rc<()>>,
 }
-impl UnmountFailure {
+impl UnmountFailure<'_> {
     pub fn cleanup(self) -> Result<(), Self> {
         match self {
-            Self::Mounted { recovery, .. } => recovery.lease.close(),
+            Self::Mounted { recovery, .. } => recovery.lease.close(recovery.scope),
             error => Err(error),
         }
     }
 }
-impl Mount<Idmapped> {
+impl<'ns> Mount<'ns, Idmapped> {
     /// Attach in the trusted builder's private mount namespace. No command may
     /// run until its separate containment and recovery protocol is established.
-    pub fn attach(self, point: MountPoint) -> Result<Mount<Attached>, AttachmentFailure> {
+    pub fn attach(self, point: MountPoint) -> Result<Mount<'ns, Attached>, AttachmentFailure<'ns>> {
         if let Err(source) = rustix::mount::move_mount(
             &self.resources.root,
             "",
@@ -124,24 +125,28 @@ impl Mount<Idmapped> {
                     backing: Some(AttachmentBacking { point, _namespace }),
                 },
             },
+            _scope: self._scope,
             _thread: PhantomData,
         })
     }
 }
-impl Mount<Attached> {
+impl<'ns> Mount<'ns, Attached> {
     pub fn root_metadata(&self) -> io::Result<fs::Metadata> {
         self.resources.root.metadata()
     }
     /// Cleanly remove this view. This is not filesystem sealing or proof that
     /// another mount/command cannot still write the underlying filesystem.
-    pub fn close(self) -> Result<(), UnmountFailure> {
+    pub fn close(self) -> Result<(), UnmountFailure<'ns>> {
         let AttachedResources { root, lease } = self.resources;
         drop(root);
-        lease.close()
+        lease.close(self._scope)
     }
 }
 impl AttachmentLease {
-    fn close(mut self) -> Result<(), UnmountFailure> {
+    fn close<'ns>(
+        mut self,
+        scope: &'ns crate::isolation::PrivateMountNamespace,
+    ) -> Result<(), UnmountFailure<'ns>> {
         let backing = self.backing.as_ref().expect("live attachment lease");
         if let Err(source) =
             rustix::mount::unmount(backing.point.directory.path(), UnmountFlags::empty())
@@ -150,6 +155,7 @@ impl AttachmentLease {
                 source: source.into(),
                 recovery: UnmountRecovery {
                     lease: self,
+                    scope,
                     _thread: PhantomData,
                 },
             });

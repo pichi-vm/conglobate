@@ -9,6 +9,7 @@ description = "Standalone image builder with isolated command execution"
 
 [dependencies]
 thiserror = "2"
+nix = { version = "0.31", default-features = false, features = ["sched"] }
 serde = { version = "1", features = ["derive"] }
 serde-saphyr = { version = "2", default-features = false, features = ["deserialize"] }
 hex = "0.4"

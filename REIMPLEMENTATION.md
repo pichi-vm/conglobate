@@ -353,3 +353,18 @@ rules rather than silently shrinking acceptance criteria.
   four compile-fail checks, production/probe Clippy and formatting pass. M4 remains
   incomplete with zero adherence passes; private namespace creation, resource
   anchors, LSM, process containment and storage integration remain outstanding.
+- Added thread-affine PrivateMountNamespace setup/restoration through safe nix
+  APIs with fixed NEWNS only (never FILES). The rustix general safe unshare API
+  is deprecated for descriptor-table concerns; no deprecated or unsafe call was
+  used. Namespace propagation is made recursively private. Setup failures after
+  entering retain restoration authority; Drop is only a fallback.
+- Detached, mapped and attached production mount owners, including unmount
+  recovery, now borrow the namespace guard. A compile-fail test prevents explicit
+  restoration with a live mount owner. Single-threaded helper setup remains an
+  invocation contract; the thread-count check diagnoses misuse, not racing code.
+- VM v6 passes changed namespace identity, attachment invisibility from PID 1's
+  root, existing lifecycle checks and explicit/Drop restoration. VM v7 adds and
+  passes live-thread rejection before transition. Evidence retained. All 52 tests,
+  five compile-fail checks, Clippy and formatting pass. Dedicated helper launching,
+  current namespace anchors, guardian protocol and command isolation remain M4
+  work; these checks do not qualify untrusted command execution.

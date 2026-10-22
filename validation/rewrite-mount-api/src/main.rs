@@ -54,10 +54,36 @@ impl Probe {
         if !Path::new("/conglobate-disposable-validation-vm").exists() {
             return Err(io::Error::other("disposable VM fixture required"));
         }
+        use conglobate::isolation::PrivateMountNamespace;
+        let original_namespace = fs::metadata("/proc/thread-self/ns/mnt")?.ino();
+        let ready = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let release = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let child_ready = ready.clone();
+        let child_release = release.clone();
+        let thread = std::thread::spawn(move || {
+            child_ready.wait();
+            child_release.wait();
+        });
+        ready.wait();
+        let rejected = PrivateMountNamespace::enter();
+        release.wait();
+        thread.join().unwrap();
+        assert!(
+            matches!(rejected, Err(conglobate::isolation::NamespaceFailure::Before(error)) if error.to_string().contains("single-threaded"))
+        );
+        assert_eq!(
+            fs::metadata("/proc/thread-self/ns/mnt")?.ino(),
+            original_namespace
+        );
+        let scope = PrivateMountNamespace::enter().map_err(|e| io::Error::other(e.to_string()))?;
+        assert_ne!(
+            fs::metadata("/proc/thread-self/ns/mnt")?.ino(),
+            original_namespace
+        );
         let pid = fs::read_to_string("/work/userns-pid")?;
         let namespace = fs::File::open(format!("/proc/{}/ns/user", pid.trim()))?;
         fs::write("/work/origin/file", b"fixture")?;
-        self.production(&namespace)?;
+        self.production(&namespace, &scope)?;
         let detached = Detached::clone_origin()?;
         IdmapRequest::new(namespace.as_fd()).apply(&detached.0)?;
         let (error, detached) = detached.attach("/work/missing/target").unwrap_err();
@@ -96,13 +122,31 @@ impl Probe {
         );
         assert_eq!(fs::read_dir("/work/mapped")?.count(), 0);
         println!("IDMAP_TRANSLATION_AND_CLEANUP_PASS");
+        scope
+            .restore()
+            .map_err(|e| io::Error::other(e.to_string()))?;
+        assert_eq!(
+            fs::metadata("/proc/thread-self/ns/mnt")?.ino(),
+            original_namespace
+        );
+        let scope = PrivateMountNamespace::enter().map_err(|e| io::Error::other(e.to_string()))?;
+        drop(scope);
+        assert_eq!(
+            fs::metadata("/proc/thread-self/ns/mnt")?.ino(),
+            original_namespace
+        );
+        println!("PRODUCTION_PRIVATE_NAMESPACE_PASS");
         Ok(())
     }
 
-    fn production(&self, namespace: &fs::File) -> io::Result<()> {
+    fn production(
+        &self,
+        namespace: &fs::File,
+        scope: &conglobate::isolation::PrivateMountNamespace,
+    ) -> io::Result<()> {
         use conglobate::filesystem::{Detached, Mount};
         let origin = fs::File::open("/work/origin")?;
-        let mount = Mount::<Detached>::clone_from(&origin)?;
+        let mount = Mount::<Detached>::clone_from(&origin, scope)?;
         drop(origin);
         let invalid = fs::File::open("/work/origin/file")?;
         let failure = mount.idmap(invalid).unwrap_err();
@@ -130,6 +174,10 @@ impl Probe {
             .attach(point)
             .map_err(|e| io::Error::other(e.to_string()))?;
         assert_eq!(attached.root_metadata()?.uid(), 100000);
+        assert_eq!(
+            fs::read_dir(format!("/proc/1/root{}", path.display()))?.count(),
+            0
+        );
         let busy = fs::File::open(path.join("file"))?;
         fs::rename(parent, moved)?;
         let failure = attached.close().unwrap_err();
@@ -143,7 +191,7 @@ impl Probe {
             .map_err(|e| io::Error::other(e.to_string()))?;
         assert_eq!(fs::read_dir(moved)?.count(), 0);
         let origin = fs::File::open("/work/origin")?;
-        let mapped = Mount::<Detached>::clone_from(&origin)?
+        let mapped = Mount::<Detached>::clone_from(&origin, scope)?
             .idmap(namespace.try_clone()?)
             .map_err(|e| io::Error::other(e.to_string()))?;
         drop(origin);

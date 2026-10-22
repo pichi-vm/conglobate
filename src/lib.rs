@@ -12,6 +12,7 @@ pub mod document;
 pub mod filesystem;
 pub mod image;
 pub mod input;
+pub mod isolation;
 pub mod lock;
 pub mod path;
 pub mod plan;
