@@ -270,3 +270,9 @@ rules rather than silently shrinking acceptance criteria.
   and Drop cleanup succeeds. All 50 unit/integration tests, one compile-fail
   doctest and Clippy pass. VM evidence is preserved. Full M3 review remains open;
   no M4 command lifecycle or crash qualification is inferred.
+- Pipeline review found authored transforms were not rejected during resolution
+  when no output DTB could exist. Fixed preflight using only output ancestry or
+  an explicit firmware-producing stage; implicit defaults retain their skip rule.
+  Integration coverage includes omitted/empty/nonempty transforms without a DTB
+  and an inherited-DTB success case. All 12 affected tests and Clippy pass.
+  This finding keeps the M3 clean-pass count at zero; review continues.

@@ -15,6 +15,8 @@ use sha2::{Digest, Sha256};
 
 #[derive(Debug, thiserror::Error)]
 pub enum InputError {
+    #[error("an authored transform requires an inherited or generated DTB")]
+    MissingTransformDtb,
     #[error(transparent)]
     Cache(#[from] crate::cache::CacheError),
     #[error("execution input {0} has no carapace")]
@@ -157,6 +159,31 @@ impl CapturedBuild {
                     receipts,
                 },
             );
+        }
+        let recipe = self.plan.recipe();
+        if recipe.firmware().is_none()
+            && matches!(
+                recipe.transform(),
+                crate::recipe::TransformSelection::Authored(_)
+            )
+        {
+            // Only the selected output base propagates components. Bootstrap
+            // tools (and alternate firmware tools) are never output ancestry.
+            let inherited_dtb = recipe
+                .carapace()
+                .and_then(|stage| stage.from())
+                .and_then(|reference| images.get(reference))
+                .is_some_and(|image| {
+                    image
+                        .image
+                        .manifest()
+                        .layers
+                        .iter()
+                        .any(|layer| matches!(layer, pichi_artifact::Layer::Dtb(_)))
+                });
+            if !inherited_dtb {
+                return Err(InputError::MissingTransformDtb);
+            }
         }
         Ok(ResolvedBuild {
             captured: self,

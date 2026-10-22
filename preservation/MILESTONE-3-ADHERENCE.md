@@ -49,3 +49,18 @@ missing ordinary read-only checkout transition evidence for finding 3. Private
 namespace establishment, simultaneous crashes and broader lifecycle recovery are
 still M4 requirements. Setup fault injection and the full milestone-wide review
 remain to be considered; no clean pass has yet been counted.
+
+## Pipeline requirements review (baseline 4997ee8)
+
+Reviewed input resolution, stage/reference planning, optional stage parsing,
+transform selection and timeout values against DESIGN.md sections 5–8. Found
+that an authored transform (including an empty list) could pass preflight with
+no possible output DTB. This violated the explicit empty-versus-omitted rule.
+Resolution now requires a DTB from the output base unless firmware will produce
+one. Tool images never supply inherited output DTBs. The implicit default still
+skips when no DTB exists. Added regression cases for omitted, empty and nonempty
+transform selections, and a positive case using an inherited empty DTB.
+
+Affected 12 context/input integration tests pass and Clippy passes for all
+ targets. This is a review with a fixed finding; clean streak remains zero.
+The rest of the milestone-wide review and setup-failure evidence remain pending.

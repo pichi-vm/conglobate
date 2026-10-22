@@ -318,6 +318,11 @@ fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_command
     for (recipe, execution) in [
         ("carapace: {from: base}", false),
         ("carapace: {from: base, derive: [{run: echo ok}]}", true),
+        ("carapace: {from: base}\ntransform: []", false),
+        (
+            "carapace: {from: base}\ntransform: [{op: remove, property: /chosen/bootargs}]",
+            false,
+        ),
     ] {
         repo.write("recipe", recipe.as_bytes());
         let commit = repo.commit();
@@ -346,10 +351,71 @@ fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_command
                 result,
                 Err(InputError::MissingExecutionCarapace(_))
             ));
+        } else if recipe.contains("transform:") {
+            assert!(matches!(result, Err(InputError::MissingTransformDtb)));
         } else {
             assert_eq!(result.unwrap().images().len(), 1);
         }
     }
+    // A structurally valid empty DTB supplies the inherited component. This
+    // preflight checks presence/content identity; transformation parses it later.
+    let mut dtb = Vec::new();
+    for word in [0xd00dfeed_u32, 72, 56, 72, 40, 17, 16, 0, 0, 16] {
+        dtb.extend(word.to_be_bytes());
+    }
+    dtb.extend([0; 16]);
+    for word in [1_u32, 0, 2, 9] {
+        dtb.extend(word.to_be_bytes());
+    }
+    let dtb_digest = Digest::from_bytes_sha256(&dtb);
+    std::fs::write(blobs.join(dtb_digest.hex()), &dtb).unwrap();
+    let mut with_dtb: pichi_artifact::Manifest =
+        serde_json::from_slice(&std::fs::read(blobs.join(manifest_digest.hex())).unwrap()).unwrap();
+    with_dtb
+        .layers
+        .push(pichi_artifact::Layer::Dtb(pichi_artifact::DtbDescriptor {
+            digest: dtb_digest.to_string(),
+            size: dtb.len() as u64,
+        }));
+    let bytes = with_dtb.to_bytes().unwrap();
+    let digest = Digest::from_bytes_sha256(&bytes);
+    std::fs::write(blobs.join(digest.hex()), &bytes).unwrap();
+    let mut with_dtb_index: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(blobs.join(index_digest.hex())).unwrap()).unwrap();
+    with_dtb_index["manifests"][0]["digest"] = digest.to_string().into();
+    with_dtb_index["manifests"][0]["size"] = bytes.len().into();
+    let index = serde_json::to_vec(&with_dtb_index).unwrap();
+    let pin = Digest::from_bytes_sha256(&index);
+    std::fs::write(blobs.join(pin.hex()), index).unwrap();
+    repo.write(
+        "lock",
+        format!("version: 1\nimages:\n  base:\n    index: {pin}\n").as_bytes(),
+    );
+    repo.write("recipe", b"carapace: {from: base}\ntransform: []");
+    let commit = repo.commit();
+    let request = BuildRequest::parse_from([
+        "conglobate",
+        "build",
+        "--repository",
+        repo.0.path().to_str().unwrap(),
+        "--commit",
+        &hex::encode(commit.bytes()),
+        "--recipe",
+        "recipe",
+        "--lock",
+        "lock",
+        "--cache",
+        cache.path().to_str().unwrap(),
+        "--output",
+        "/unused-output",
+    ])
+    .unwrap();
+    assert!(
+        CapturedBuild::try_from(&request)
+            .unwrap()
+            .resolve(Cache::open(cache.path()).unwrap())
+            .is_ok()
+    );
 }
 
 #[test]
