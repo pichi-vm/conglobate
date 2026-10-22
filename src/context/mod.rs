@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Immutable committed objects, captured without checkout filters or hooks.
+mod materialize;
+pub use materialize::StagedContext;
 mod read;
 pub use read::ContextFile;
 
@@ -16,6 +18,8 @@ use std::{
 
 #[derive(Debug, thiserror::Error)]
 pub enum ContextError {
+    #[error("context I/O: {0}")]
+    Io(#[from] std::io::Error),
     #[error("Git input: {0}")]
     Git(String),
     #[error("invalid committed context: {0}")]

@@ -351,3 +351,69 @@ fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_command
         }
     }
 }
+
+#[test]
+fn materialization_preserves_committed_data_modes_and_confined_links_on_tmpfs() {
+    use conglobate::path::ContextPath;
+    use std::{io::Read, os::unix::fs::PermissionsExt};
+    let repo = Repository::new("sha1");
+    repo.write("dir/plain", b"original");
+    repo.write("dir/executable", b"#!/bin/sh\n");
+    std::fs::set_permissions(
+        repo.0.path().join("dir/executable"),
+        std::fs::Permissions::from_mode(0o755),
+    )
+    .unwrap();
+    std::os::unix::fs::symlink("dir/plain", repo.0.path().join("link")).unwrap();
+    std::os::unix::fs::symlink("../outside", repo.0.path().join("escape")).unwrap();
+    let commit = repo.commit();
+    let captured = repo.capture(&commit, ".").unwrap();
+    let scratch = tempfile::tempdir_in("/dev/shm").unwrap();
+    let checkout = captured.materialize(scratch.path()).unwrap();
+    repo.write("dir/plain", b"changed");
+    let mut file = checkout
+        .open(&ContextPath::try_from(Path::new("link")).unwrap())
+        .unwrap();
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes).unwrap();
+    assert_eq!(bytes, b"original");
+    let executable = checkout
+        .open(&ContextPath::try_from(Path::new("dir/executable")).unwrap())
+        .unwrap();
+    assert_ne!(
+        executable.metadata().unwrap().permissions().mode() & 0o100,
+        0
+    );
+    assert_eq!(file.metadata().unwrap().permissions().mode() & 0o111, 0);
+    assert!(
+        checkout
+            .open(&ContextPath::try_from(Path::new("escape")).unwrap())
+            .is_err()
+    );
+    assert_eq!(std::fs::read_dir(scratch.path()).unwrap().count(), 1);
+    checkout.close().unwrap();
+    assert_eq!(std::fs::read_dir(scratch.path()).unwrap().count(), 0);
+}
+
+#[test]
+fn staging_cleanup_retains_parent_authority_across_rename() {
+    use std::os::unix::fs::PermissionsExt;
+    let repo = Repository::new("sha1");
+    repo.write("file", b"bytes");
+    let commit = repo.commit();
+    let captured = repo.capture(&commit, ".").unwrap();
+    let scratch = tempfile::tempdir_in("/dev/shm").unwrap();
+    let original = scratch.path().join("original");
+    let moved = scratch.path().join("moved");
+    std::fs::create_dir(&original).unwrap();
+    let checkout = captured.materialize(&original).unwrap();
+    let created = std::fs::read_dir(&original)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap();
+    assert_eq!(created.metadata().unwrap().permissions().mode() & 0o077, 0);
+    std::fs::rename(&original, &moved).unwrap();
+    drop(checkout);
+    assert_eq!(std::fs::read_dir(&moved).unwrap().count(), 0);
+}

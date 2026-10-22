@@ -1,0 +1,109 @@
+// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+use super::{CapturedContext, ContextEntry, ContextError};
+use crate::path::ContextPath;
+use rustix::fs::{Mode, OFlags, ResolveFlags};
+use std::{
+    fs::{self, File, OpenOptions},
+    io::{self, Write},
+    os::{
+        fd::AsRawFd,
+        unix::{ffi::OsStrExt, fs::OpenOptionsExt},
+    },
+    path::Path,
+};
+
+/// Private populated checkout on existing tmpfs. Read-only mount enforcement is
+/// a separate consuming lifecycle transition, not implied by file permissions.
+#[derive(Debug)]
+pub struct StagedContext {
+    // Cleanup uses /proc/self/fd/<parent>/..., so parent must outlive directory.
+    directory: tempfile::TempDir,
+    root: File,
+    _parent: File,
+}
+impl CapturedContext {
+    pub fn materialize(&self, parent: &Path) -> Result<StagedContext, ContextError> {
+        let parent = File::from(
+            rustix::fs::open(
+                parent,
+                OFlags::RDONLY | OFlags::DIRECTORY | OFlags::CLOEXEC,
+                Mode::empty(),
+            )
+            .map_err(io::Error::from)?,
+        );
+        // Linux tmpfs superblock magic, from linux/magic.h. This only verifies
+        // backing type; environment policy governs ordinary tmpfs swap behavior.
+        if rustix::fs::fstatfs(&parent)
+            .map_err(io::Error::from)?
+            .f_type
+            != 0x0102_1994
+        {
+            return Err(ContextError::Invalid("context staging requires tmpfs"));
+        }
+        let pinned = format!("/proc/self/fd/{}", parent.as_raw_fd());
+        let directory = tempfile::Builder::new()
+            .prefix("conglobate-context-")
+            .tempdir_in(pinned)?;
+        let root = File::open(directory.path())?;
+        let staged = StagedContext {
+            directory,
+            root,
+            _parent: parent,
+        };
+        for (relative, entry) in self.entries() {
+            let target = staged.directory.path().join(relative);
+            match entry {
+                ContextEntry::Directory => fs::create_dir(target)?,
+                ContextEntry::File { executable, bytes } => {
+                    // Ordinary checkout modes are subject to the builder umask;
+                    // never normalize them to read-only to simulate a mount.
+                    let mut file = OpenOptions::new()
+                        .create_new(true)
+                        .write(true)
+                        .mode(if *executable { 0o777 } else { 0o666 })
+                        .open(target)?;
+                    file.write_all(bytes)?;
+                }
+                ContextEntry::Symlink(bytes) => {
+                    std::os::unix::fs::symlink(std::ffi::OsStr::from_bytes(bytes), target)?;
+                }
+            }
+        }
+        Ok(staged)
+    }
+}
+impl StagedContext {
+    /// Read-only descriptor access, confined beneath the captured root. This
+    /// does not expose the staging pathname or a writable directory descriptor.
+    pub fn open(&self, path: &ContextPath) -> Result<File, ContextError> {
+        let fd = rustix::fs::openat2(
+            &self.root,
+            path.as_ref(),
+            OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC,
+            Mode::empty(),
+            ResolveFlags::BENEATH | ResolveFlags::NO_MAGICLINKS,
+        )
+        .map_err(io::Error::from)?;
+        let file = File::from(fd);
+        if !file.metadata()?.is_file() {
+            return Err(ContextError::Invalid(
+                "selected checkout path is not a file",
+            ));
+        }
+        Ok(file)
+    }
+    /// Explicit cleanup reports failure; Drop remains best-effort fallback.
+    pub fn close(self) -> Result<(), ContextError> {
+        let Self {
+            directory,
+            root,
+            _parent,
+        } = self;
+        drop(root);
+        let result = directory.close();
+        drop(_parent);
+        result.map_err(ContextError::from)
+    }
+}

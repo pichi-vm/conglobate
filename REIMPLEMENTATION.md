@@ -230,3 +230,16 @@ rules rather than silently shrinking acceptance criteria.
   (full suite plus new integration test), as do formatting and Clippy.
 - This verifies content/ancestry, not snapshot exception structural interpretation
   or mounted behavior. Context materialization and final M3 review remain pending.
+- Added private context materialization on verified existing tmpfs. A pinned
+  parent descriptor anchors creation/cleanup across pathname rename; a private
+  temporary directory owns all created entries and is removed on partial failure
+  or Drop, with explicit fallible close also available. File modes preserve
+  ordinary executable/non-executable checkout behavior under the builder umask.
+- StagedContext exposes confined read-only regular-file opens and no staging path
+  or writable directory descriptor. It is explicitly a staged checkout, not proof
+  of a read-only mount. Read-only mount enforcement belongs to the lifecycle
+  boundary and remains outstanding evidence; no command can be admitted yet.
+- Two materialization tests verify committed bytes, executable bits, symlinks,
+  private root mode, explicit cleanup and Drop cleanup after parent rename.
+  All 48 tests and Clippy pass. Next: review M3 coverage/invariants, resolve findings
+  and the staged/read-only lifecycle gate before claiming clean adherence passes.
