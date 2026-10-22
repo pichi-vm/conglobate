@@ -678,3 +678,17 @@ Root tests also replace the last /bin/sleep unit-test hold with a child blocked 
 stdin until termination. No sleeps remain in production Rust, current host tests
 or this Rust fixture. Historical evidence is preserved unchanged. Shell fixture
 coordination and wider lifecycle qualification remain separate work.
+
+## RAM workspace foundation
+
+v74 creates production Workspace inside the disposable VM: a detached tmpfs with
+nosuid/nodev/noexec and a private root. Its anonymous scratch files share one
+filesystem, have distinct inodes and zero link count, retain sparse zero-fill,
+and support write/seek/sync/read. Dropping scratch owners and workspace leaves the
+mount table unchanged. The normal command suite also passes. A compile-fail test
+prevents dropping the workspace while a scratch lease remains in use. Raw file
+or mount handles are not public. Constructor intermediates are RAII descriptors;
+no attached pathname needs rollback. This does not establish allocation-failure,
+OOM, kernel-device-consumer lifetime or whole-build workspace qualification.
+The context, snapshots and device-map owners still require integration. No new
+supervisor-death run was needed for this standalone owner; no death claim added.

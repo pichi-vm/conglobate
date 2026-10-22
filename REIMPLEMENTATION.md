@@ -1562,3 +1562,23 @@ rules rather than silently shrinking acceptance criteria.
   drainage, spurious-event handling and claims versus VM coverage. No milestone
   adherence pass: M4 remains zero, with full scope construction, RAM/storage and
   remaining lifecycle/fault coverage outstanding. The overall goal remains active.
+
+- Previous turn progressed in 6b7b122. Began production storage with Workspace:
+  one owned detached tmpfs, private root, nosuid/nodev/noexec, environment-managed
+  capacity, no disk fallback. Anonymous Scratch leases borrow the workspace and
+  expose Read/Write/Seek, sizing, metadata and sync without public raw descriptors
+  or Clone. Intermediate fsopen/fsmount descriptors use RAII on every error; no
+  mountpoint attachment or global name requires cleanup. This is temporary RAM
+  storage, not a finalized layer, command lease or successful output receipt.
+- v74 disposable-VM probe verifies anonymous files, filesystem sharing/inode
+  separation, permissions, root ownership, sparse zero-fill and I/O; mountinfo is
+  unchanged after release. Existing normal suite also passes. Root tests now have
+  25 compile-fail cases including workspace lifetime; both Clippy checks and
+  formatting pass. Evidence/sources/raw logs/hashes retained. No privileged host
+  operation, disk fallback, or new supervisor-death qualification claim.
+- Focused review checked descriptor cleanup, borrowed lifetime, absent raw-handle
+  escape and environment-controlled tmpfs behavior. Future device users must own
+  kernel leases through quiescence; a Rust borrow alone does not prove this. Full
+  build-wide integration (context, writable snapshots, intermediate/output storage),
+  fault injection and storage/device lifecycle remain outstanding. M4 has zero
+  clean adherence passes; no milestone or goal completion claimed.

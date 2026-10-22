@@ -24,5 +24,6 @@ pub mod process;
 pub mod recipe;
 pub mod request;
 pub mod step;
+pub mod storage;
 pub mod template;
 pub mod value;

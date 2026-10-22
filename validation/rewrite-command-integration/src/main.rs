@@ -33,6 +33,37 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "workspace-probe") {
+            use std::io::{Read, Seek, SeekFrom, Write};
+            let before = fs::read_to_string("/proc/self/mountinfo")?;
+            let workspace = conglobate::storage::Workspace::create()?;
+            let mut first = workspace.scratch()?;
+            let mut second = workspace.scratch()?;
+            assert_eq!(first.metadata()?.nlink(), 0);
+            assert_eq!(first.metadata()?.mode() & 0o777, 0o600);
+            assert_eq!(first.metadata()?.uid(), 0);
+            assert_eq!(first.metadata()?.dev(), second.metadata()?.dev());
+            assert_ne!(first.metadata()?.ino(), second.metadata()?.ino());
+            first.set_len(1024 * 1024)?;
+            first.seek(SeekFrom::Start(4096))?;
+            first.write_all(b"workspace")?;
+            first.sync_all()?;
+            first.rewind()?;
+            let mut hole = [1u8; 4096];
+            first.read_exact(&mut hole)?;
+            assert_eq!(hole, [0; 4096]);
+            let mut data = [0; 9];
+            first.read_exact(&mut data)?;
+            assert_eq!(&data, b"workspace");
+            assert_eq!(second.read(&mut data)?, 0);
+            second.write_all(b"independent")?;
+            drop(first);
+            drop(second);
+            drop(workspace);
+            assert_eq!(fs::read_to_string("/proc/self/mountinfo")?, before);
+            println!("DETACHED_RAM_WORKSPACE_SCRATCH_PASS");
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "filesystem-pin-probe") {
             let path = Path::new("/work/filesystem-pin-test");
             fs::create_dir(path)?;

@@ -86,6 +86,7 @@ mke2fs -q -t ext4 -F /work/volume.ext4
 mount -o loop /work/volume.ext4 /work/origin
 cp -a /image-root/. /work/origin/
 /idmap-probe namespace-rejections
+/idmap-probe workspace-probe
 /idmap-probe reaper-probe
 /idmap-probe filesystem-pin-probe
 # Preflight probes are ready. User namespace and command setup must be native.
