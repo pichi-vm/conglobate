@@ -11,7 +11,7 @@ This ledger describes required work, not claims about the current executor.
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
 | 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete | 3 |
 | 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete | 3 |
-| 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, scoped LSM, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup/recovery tests and no context/control/block-device exposure. | Pending | 0 |
+| 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, scoped LSM, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup/recovery tests and no context/control/block-device exposure. | In progress | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Pending | 0 |
 | 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Pending | 0 |
 | 7. Integrated qualification | Critical source/design/style review resolved; Fedora/Debian/Alpine/NixOS representative builds and boots; amd64/arm64 and TDX/SEV-SNP/CCA qualification with evidence; repository checks and CI green. Unavailable required environments remain outstanding, never passes. | Pending | 0 |
@@ -306,3 +306,15 @@ rules rather than silently shrinking acceptance criteria.
   Verified preserved legacy bytes and VM probe provenance; source/tests/harness
   remain frozen at 621b34d. M3 is complete with 3/3 consecutive clean self-review
   passes. M4 may begin; no command execution or full sandbox qualification claimed.
+
+## Milestone 4 work log
+
+- Investigated the mount_setattr dependency gap. Existing upstream rustix proposal
+  at 8bda151d exposes typed attributes with a borrowed user-namespace descriptor
+  and internal structure sizing. Reviewed its libc/linux_raw implementations;
+  preserved a separate pinned compile probe in validation/rewrite-mount-api.
+- Both backends compile; the lifetime-negative client fails with E0597 as intended.
+  Probe Clippy passes. The initial flag-name mismatch is recorded in its README.
+  No production dependency changed and no host mount was performed. Actual
+  idmapping/UID-GID persistence and cleanup must be tested in a disposable VM
+  before adoption. This is API feasibility, not lifecycle qualification.
