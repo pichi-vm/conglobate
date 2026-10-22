@@ -102,6 +102,24 @@ publication. The guardian/supervisor death protocol requires explicit qualificat
 not inference from loader-death experiments. Fixed internal deadlines bound
 acceptance/waiting but cannot guarantee recovery from uninterruptible kernel I/O.
 
+The initial command-domain primitive creates a fresh private cgroup-v2 directory
+under a protected root-owned parent. It does not provision controllers or resource
+limits. Its ownership survives userspace Drop in the kernel hierarchy, while
+explicit cancellation writes cgroup.kill, waits for cgroup.events populated=0,
+and removes only that directory. Failed cancellation/removal retains the domain;
+failed construction after creation retains a removable target. No recursive
+cleanup or arbitrary-existing-cgroup kill API is exposed.
+
+This primitive is not yet connected to registration: the trusted launcher must
+hold execution before first fork, persist domain identity and register the helper
+before release. The supervisor/guardian must remain outside the domain, commands
+must have no cgroup control access, and admission must be stopped before teardown.
+Empty membership is not a reaping, policy-removal or successful-step receipt.
+Existing preserved guardian experiments and the new disposable-VM primitive test
+support this mechanism, not the complete production supervision protocol.
+See the [kernel cgroup-v2 documentation](https://docs.kernel.org/admin-guide/cgroup-v2.html)
+for inheritance, migration and subtree-kill semantics.
+
 ## Pipeline owners
 
 BuildPlan is immutable. A stage consumes ImageComposition and returns a new

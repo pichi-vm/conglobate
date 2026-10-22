@@ -611,3 +611,22 @@ rules rather than silently shrinking acceptance criteria.
 - Three new unit tests pass, alongside the existing identity/supervision
   integration checks, Clippy and formatting. This is an in-progress M4 correction,
   not an adherence-gate pass. The clean streak remains zero.
+
+- Added CommandDomain for fresh private cgroup2 creation and explicit subtree
+  cancellation. Protected-parent validation rejects ordinary filesystems before
+  mutation. Bounded event parsing rejects missing/ambiguous population status.
+  Setup errors after creation retain a target; cancellation/removal errors retain
+  the domain. Drop leaves kernel ownership for recovery, never reports completion.
+- The primitive creates no limits/controllers and exposes no arbitrary-existing-
+  cgroup kill or numeric-PID registration API. Production admission must still
+  prevent forks before registration, keep control processes outside membership,
+  persist domain identity and prevent access/migration by commands. Empty-group
+  removal is not reaping, policy cleanup or a successful-step receipt.
+- Disposable VM v15 passes empty cleanup and shell-plus-child cancellation after
+  a fixture-only pre-fork gate. v16 also forces parent-removal failure with a
+  nested empty cgroup, recovers the returned owner and later cancels successfully.
+  Both retain prior namespace/policy checks; sources, hashes and logs preserved.
+- Full suite passes 86 tests and seven compile-fail doctests. Root/probe Clippy
+  and formatting pass. All cgroup mutation occurred in disposable QEMU guests.
+  M4 remains at zero adherence passes, with production registration, persisted
+  domain recovery and complete guardian integration still pending.

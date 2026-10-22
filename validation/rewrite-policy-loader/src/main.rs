@@ -42,6 +42,7 @@ impl Probe {
             // closes the lease and namespace descriptors. Guest fixture only.
             std::process::exit(0);
         }
+        Self::command_domain()?;
         let holder = fs::read_to_string("/work/userns-pid")?;
         let namespace = fs::metadata(format!("/proc/{}/ns/user", holder.trim()))?.ino();
         let owner = fs::metadata("/proc/self/ns/user")?.ino();
@@ -287,6 +288,65 @@ impl Probe {
         fs::remove_dir(parent)?;
         assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
         println!("PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS");
+        Ok(())
+    }
+    fn command_domain() -> Result<(), Box<dyn std::error::Error>> {
+        use std::{
+            io::Write,
+            process::{Command, Stdio},
+            time::{Duration, Instant},
+        };
+        let parent = std::path::Path::new("/work/cgroups");
+        let empty = conglobate::domain::CommandDomain::create(parent)?;
+        empty.cancel_until(Instant::now() + Duration::from_secs(5))?;
+        let domain = conglobate::domain::CommandDomain::create(parent)?;
+        let path = fs::read_dir(parent)?
+            .filter_map(Result::ok)
+            .find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("conglobate-command-")
+            })
+            .ok_or("missing fixture domain")?
+            .path();
+        fs::create_dir(path.join("retained-child"))?;
+        let failure = domain
+            .cancel_until(Instant::now() + Duration::from_secs(5))
+            .unwrap_err();
+        let (_, domain) = failure.into_parts();
+        assert!(path.exists());
+        fs::remove_dir(path.join("retained-child"))?;
+        let mut command = Command::new("/bin/bash");
+        command
+            .args(["-c", "read -r token; sleep 30 & wait"])
+            .env_clear()
+            .env("PATH", "/usr/bin:/usr/sbin")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null());
+        let mut child = command.spawn()?;
+        drop(command);
+        let mut gate = child.stdin.take().ok_or("missing fixture gate")?;
+        let pid = child.id();
+        let child: conglobate::process::Process<conglobate::process::Running> = child.into();
+        fs::write(path.join("cgroup.procs"), pid.to_string())?;
+        gate.write_all(b"go\n")?;
+        drop(gate);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while fs::read_to_string(path.join("cgroup.procs"))?
+            .lines()
+            .count()
+            < 2
+        {
+            if Instant::now() >= deadline {
+                return Err("fixture descendant not created".into());
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        domain.cancel_until(deadline)?;
+        assert!(!child.wait_until(deadline)?.status().success());
+        assert!(!path.exists());
+        println!("PRODUCTION_COMMAND_DOMAIN_CANCEL_PASS");
         Ok(())
     }
     fn check_lease_in_child(path: &std::path::Path) -> std::io::Result<bool> {

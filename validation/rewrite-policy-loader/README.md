@@ -97,3 +97,15 @@ proves process-exit persistence in the guest init's namespace, not complete guar
 or concurrent supervisor/guardian death recovery. The v13 probe source was retained
 by reversing the immediately following publisher-test edit; executed binary hashes
 come directly from the VM artifact directory.
+
+
+v15 adds production CommandDomain creation/cancellation on a guest-only cgroup2
+mount. An empty domain is cancelled/removed. A trusted fixture shell blocks on
+stdin before it can fork; the fixture moves it into the fresh domain, releases
+that gate, observes shell plus child membership, and calls production subtree
+cancellation. The shell is separately reaped and the domain disappears. v16
+first creates an empty nested cgroup that prevents parent removal: cancellation
+returns its domain owner, removal of the fixture child permits subsequent reuse
+and successful cancellation. Both runs retain the namespace/policy checks.
+This uses fixture registration, not a production registration/admission protocol.
+No controller/resource limits or host cgroup operations are performed.
