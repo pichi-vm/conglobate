@@ -83,7 +83,7 @@ a timed-out, cancelled or failed command never becomes successful through cleanu
 Drop is best-effort cancellation/rollback, never a successful finalization proof.
 No guarantee depends on unwinding, forgetting being impossible, or a destructor
 running after process death. Explicit fallible methods establish completion;
-external supervision and kernel-held leases cover crashes. Keep ownership of
+independent VM shutdown handles abrupt supervisor death. Keep ownership of
 unresolved mappings, policy pins and identities until recovery completes.
 
 The step aggregate, not incidental field-drop order, enforces:
@@ -98,80 +98,17 @@ The step aggregate, not incidental field-drop order, enforces:
 Partial setup needs acquisition guards before each fallible operation. Policy
 installation starts disabled and installs/pins every guard before enabling.
 Unknown startup process scope or failed quiescence retains protection and rejects
-publication. The guardian/supervisor death protocol requires explicit qualification,
-not inference from loader-death experiments. Fixed internal deadlines bound
+publication. Supervisor death and environment-driven VM shutdown require explicit
+qualification, not inference from loader-death experiments. Fixed internal deadlines bound
 acceptance/waiting but cannot guarantee recovery from uninterruptible kernel I/O.
 
-The initial command-domain primitive creates a fresh private cgroup-v2 directory
-under a protected root-owned parent. It does not provision controllers or resource
-limits. Its ownership survives userspace Drop in the kernel hierarchy, while
-explicit cancellation writes cgroup.kill, waits for cgroup.events populated=0,
-and removes only that directory. Failed cancellation/removal retains the domain;
-failed construction after creation retains a removable target. Domain creation
-requires a RecoveryDirectory. The domain/target internally shares its directory
-lease, keeping the cooperative recovery lock held after the facade is dropped.
-Registration, cancellation and target removal verify the deployment namespace
-through that shared lease. No public lease clone, raw descriptor or early unlock
-is exposed. No recursive cleanup or arbitrary-existing-cgroup kill API is exposed.
-Domain records now use canonical bounded CBOR
-`[1, name, parent-device, parent-inode, device, inode]`. Saving verifies live path
-identity and requires the same recovery lease that owns the domain. Protected
-record loading returns data only; recovery loads that record under the lease,
-verifies the supplied parent's identity and the exact cgroup directory identity,
-permissions and domain type, then retains the lease in the recovered owner.
-Wrong parents, missing targets and substituted directories fail. Removing the
-record requires a matching stored description, the original parent identity and
-an absent target. These records do not create a complete transactional build lease
-or establish that another owner has stopped; the aggregate must enforce exclusive
-recovery and preserve all policy/mount identities through descendant cleanup.
-
-Registration now requires DomainRegistration, a borrowed capability obtained
-only after comparing the live domain with its protected recovery record under
-the same lease. Bare CommandDomain owners are not accepted. The capability
-rechecks that match immediately before yielding the private registration file;
-its borrow prevents consuming the domain for cancellation during exchange. It
-uses an internal shared lease view, so dropping the public directory facade does
-not bypass or prevent the check. This enforces domain-record publication, not
-persistence of the complete build or readiness of the command sandbox.
-
-RecordedDomain now owns the cgroup and its published description while borrowing
-the recovery directory. Creation retains the raw domain on publication failure.
-Cancellation consumes the owner; failure returns DomainCancellation, which exposes
-only retry, and success returns DomainRecordCleanup. Recovery likewise returns a
-cleanup-only DomainCancellation. Record cleanup consumes its owner and retains it
-on failure. A relocated parent can be supplied for retry, with identity checked
-against the record. Post-unlink failures remain errors even if the record is now
-absent. These consuming ownership transitions enforce domain-before-record cleanup;
-they do not certify reaping, policy removal, image validity or complete build recovery.
-
-ContainedHelper now combines that recorded domain with its identified helper
-and registered supervision channel. RecordedDomain::launch constructs the pair
-through the persisted registration gate; startup failures retain any child and
-a cleanup-only domain. Cancellation first closes the channel, then consumes the
-domain into HelperReaping. Only collecting the helper status yields ReapedHelper,
-and only record cleanup releases that diagnostic status. Each failed transition
-retains its owner for retry. Private fields prevent mixing unrelated helper/domain
-owners. This is still trusted-helper containment, not recipe admission: it owns
-neither mounts nor policy, does not reap all adopted descendants, and produces no
-successful-step or image-finalization receipt. Drop is fallback, not completion.
-
-The registration exchange places a trusted helper in this domain before its
-first fork: the parent transfers a freshly opened cgroup.procs descriptor, the
-helper writes its own membership (0), closes the descriptor and acknowledges.
-Only the explicit exchange consumes these control messages. Sealed Registered
-state records that acknowledgement; it is not sandbox readiness or admission.
-The helper must execute this at dedicated single-threaded startup, with no prior
-descendants; a task-count check diagnoses misuse but cannot prevent trusted-code
-races. The parent never reopens or writes a numeric child PID. Domain and child
-ownership remain with their respective callers on exchange failure.
-The aggregate must still persist domain identity before registration and hold
-recipe execution until all isolation and supervision gates are complete. The supervisor/guardian must remain outside the domain, commands
-must have no cgroup control access, and admission must be stopped before teardown.
-Empty membership is not a reaping, policy-removal or successful-step receipt.
-Existing preserved guardian experiments and the new disposable-VM primitive test
-support this mechanism, not the complete production supervision protocol.
-See the [kernel cgroup-v2 documentation](https://docs.kernel.org/admin-guide/cgroup-v2.html)
-for inheritance, migration and subtree-kill semantics.
+The existing domain, process, mount and disabled-policy primitives are reference
+inputs for the integrated executor. Reuse their typed ownership and bounded
+cancellation where appropriate, but persistent recovery records and a guardian
+are not prerequisites for command startup under the dedicated-VM contract.
+Earlier implementation details and the superseded recovery protocol are preserved
+in preservation/pre-dedicated-vm-contract/ARCHITECTURE.md. They are historical
+mechanisms, not additional current requirements.
 
 ## Pipeline owners
 
@@ -246,188 +183,42 @@ avoid mirroring every method signature. Runtime tests validate external effects.
 | Owned lifecycle | Partial acquisition at each boundary; cleanup failure retains recovery; no publishable token |
 | Command isolation | No context/device/control access; five capability sets; private namespace/FD checks |
 | Scoped LSM | Exact-name regression, both authorized mounts, denied third mount/nonroot/other namespace, policy-off denial |
-| Teardown | Live descendants, timeout/cancellation, launcher/guardian/supervisor death, blocked I/O, concurrent builds |
+| Teardown | Live descendants, timeout/cancellation, helper death, supervisor death plus VM shutdown, blocked I/O |
 | Bootstrap | Actual zero-backed chain, formatter geometry, / plus /mnt packages, metadata persistence, direct sealing |
 | Filesystem fidelity | UID/GID, ACL access/defaults, file capabilities, SELinux labels and target enforcing boot |
 | Network | Disabled default, outbound NAT/replies, explicit resolver including confined symlinks and cleanup |
 | Outputs | Paired firmware validation, final DTB, deterministic CBOR, inherited blobs, OCI/ORAS, atomic failure cases |
 | Platforms | amd64/arm64 and TDX/SEV-SNP/CCA evidence; unavailable environments remain outstanding |
 
-## Recovery anchor and protocol
+## Dedicated-VM lifecycle
 
-Before any command admission, create a root-only recovery anchor in a trusted
-mount namespace whose lifetime is independent of build processes. The default
-host/VM deployment uses the persistent initial mount namespace. The anchor
-retains bind-mounted namespace handles, assigned filesystem mounts/scratch and
-private bpffs links/config. Verify this prerequisite; a private namespace that
-will disappear with the builder is insufficient. Commands must not inherit the
-anchor path, namespace handle or controller channel. The binary does not require
-a particular init system or attestation service.
+Conglobate is the sole build workflow in a disposable VM. An independent
+execution-environment controller shuts down the VM if conglobate crashes or exits
+unexpectedly; the binary has no pichi/VM transport dependency. The controller must
+not launch another build or permit abandoned resources to be reused in that VM.
+This contract replaces the separate guardian and cross-invocation recovery design.
 
-A dedicated guardian owns a per-build lease and watches the supervisor through
-stable process identity and a private control channel. It retains every identity
-and mapping needed for cleanup. Command creation registers containment before
-release to execute; an unregistered process cannot run recipe code. Supervisor
-loss triggers guardian cancellation and ordered teardown. Guardian loss triggers
-supervisor cancellation. Concurrent loss leaves the kernel-held anchor in place,
-not a policy with reusable unpinned identifiers. Recovery on a later invocation
-validates the lease, shuts down remaining command domains and removes policy
-before dropping anchored identities. Unknown or incomplete ownership is
-quarantined, not guessed from a numeric PID. Publication requires an intact
-supervision protocol and all completion receipts. This is the target protocol;
-its death/race/failure cases are mandatory M4 qualification.
+The main conglobate process owns image storage, policy, command containment and
+publication. A trusted setup helper establishes each command's isolation and
+starts its untrusted payload. Namespace init reaps command descendants. No second
+recovery supervisor or serialized resume protocol is needed. This does not remove
+bounded cancellation, normal error cleanup, subreaping where needed, or explicit
+fallible teardown. Destructors remain best effort, never completion evidence.
 
-The independent-process fixture now composes the production supervision, recorded
-domain, cancellation and descendant-drain primitives across separate supervisor,
-guardian and helper processes. It exercises upstream channel closure, supervisor
-exit without destructors, and guardian termination followed by lease-protected
-supervisor recovery. Fixture files synchronize registered-phase readiness only;
-they are not an admission protocol. These checks qualify process separation for
-the domain lifecycle, not a production guardian entrypoint, setup-phase monitoring,
-concurrent death recovery or persisted policy/mount lifetime ordering.
+The step owner retains namespace, superblock and policy lifetimes together until
+commands stop and authorization is removed. On abrupt supervisor death, the
+remaining lifetime arrangement must remain safe until the environment stops the
+VM. VM shutdown is not instantaneous and does not justify partial guard removal
+or unsafe identity reuse while commands still execute. The integrated execution
+path must establish that behavior before enabling the policy. If cleanup cannot
+finish while conglobate lives, fail and require disposal; never advance or publish.
 
-The anchor addresses a security issue independent of resource leaks: deleting
-namespaces while leaving global LSM authorization pinned can authorize later
-identity reuse. No cleanup fallback may make that tradeoff. Namespace/mount
-anchors can persist after a failed build until a trusted recovery pass succeeds.
-Exact lease serialization and readiness/acknowledgement messages are implementation
-choices subject to this protocol and fault-injection tests.
-
-The NamespacePin primitive bind-mounts an owned nsfs descriptor beneath a
-root-owned mode-0700 tmpfs parent. Its immutable record identifies the generated
-name and namespace inode/device. Dropping the userspace owner leaves the kernel
-mount for recovery; reopening verifies nsfs identity without following a final
-symlink. Explicit release distinguishes a still-mounted pin from an unmounted
-target needing unlink. This primitive assumes serialized parent access and does
-not establish the deployment init lifetime contract by itself. A future
-anchor aggregate must persist a complete lease and own all
-namespace/filesystem/policy identities before enabling authorization. Namespace
-pins alone are not a crash-recovery or command-admission receipt.
-
-Creation and recovery now require a RecoveryDirectory lease: a nonblocking
-exclusive flock on the root-only tmpfs directory descriptor. Pins and unmounted
-cleanup targets share that open description internally, so dropping the directory
-facade cannot unlock their live resources. A separately opened recovery owner is
-excluded until the final reference closes. Descriptor-relative access survives
-directory rename. This is cooperative locking, not protection against privileged
-protocol bypass or replacement of the directory through its parent.
-
-Namespace and domain control records share bounded, private, no-replacement
-file storage. Namespace records use deterministic CBOR `[1, name, nsfs-device, inode]`, bounded
-at 256 bytes. Decoding validates canonical encoding, generated-name syntax and
-identity ranges; it grants no ownership or cleanup authority. Publication checks
-the mounted identity, writes and syncs a private temporary file, publishes without
-replacement, then syncs the directory. An error after publication can leave the
-complete record: callers must fail and inspect under the lease. Reading rejects
-symlinks, non-regular/non-private files, oversized/corrupt records and mismatched
-names. Record deletion requires an exact stored match and an absent pin target;
-policy/containment teardown remains the enclosing owner's prerequisite. This is
-RAM-backed recovery across process loss, not across VM loss. Complete build-lease
-serialization remains required.
-
-RecoveryDirectory now captures the deployment init's mount namespace descriptor
-and pidfd, shared with every pin/target through the directory lease. Opening a
-lease rejects PID 1 itself, mismatched procfs PID views, different PID namespaces
-and a current mount namespace different from init's. Pin creation, verification,
-release and record operations recheck the current/init namespace identities and
-init's live pidfd before mutation. A private helper cannot use a carried lease to
-mutate its copied mount tree as though it were the persistent anchor. A failed
-release retains original pin ownership for restoration/recovery.
-
-This is a deployment-relative check, not proof of the machine's initial PID/user
-namespace or protection against init changing namespaces after a check. Deployment
-must keep its trusted init alive in that mount namespace independently of builds;
-containers with a disposable init cannot satisfy the lifetime requirement merely
-by passing these checks. Production guardian/admission still must enforce the
-complete protocol. Unmounted target unlink remains descriptor-relative and does
-not require namespace entry or release any namespace identity.
-
-The helper identity handoff uses a private close-on-exec sequence-packet socket
-and one deterministic CBOR message `[1, 0]` (version, identity-offer opcode),
-with exactly one SCM_RIGHTS descriptor. The trusted helper opens its own pidfd
-while alive and sends it; the receiver never reopens a numeric child PID.
-Received descriptors are close-on-exec and owned immediately. Truncated messages,
-unknown versions/opcodes, missing/extra descriptors, peer loss and deadlines
-fail the exchange. This channel belongs exclusively to trusted helper startup;
-it is never made available to recipe commands. Receipt establishes identity
-only, not readiness or command admission. The eventual launcher must retain
-cleanup ownership on exchange failure and complete registration/acknowledgement
-before releasing any recipe execution. Normal child wait/reaping semantics are
-still required for child cleanup; this handoff does not establish them.
-The trusted launch primitive owns the spawned child before receiving identity.
-Pre-spawn errors have no child owner; exchange errors return the pending child
-for explicit recovery. A successful exchange yields Process<Identified>, whose
-state payload retains the pidfd for explicit and destructor termination, with
-no numeric-PID fallback after identification. Wait failures preserve that state
-and both owners. Process<Reaped> remains solely a collected exit status. The
-caller supplies trusted helper code and startup configuration; this primitive
-does not launch arbitrary recipe commands or replace containment/admission gates.
-Supervision<Unpaired> -> Supervision<Paired> adds a mutual startup exchange:
-both trusted processes send their own pidfd over the private channel before
-receiving the peer's identity under a single deadline. Paired state owns the peer
-observation and the retained CLOEXEC control socket. Normal Drop shuts down the
-endpoint even if a transient inherited descriptor remains; pidfd observation
-independently detects process exit without destructors. A bounded poll observes
-both mechanisms. Unexpected payloads outside the explicit registration exchange are errors, not
-accepted control commands. Observation peeks rather than consumes those payloads, so a
-second check cannot turn a protocol violation into a healthy observation. This initial protocol has no readiness or admission message.
-
-Process<Identified>::launch_supervised returns both the identified child owner
-and the paired supervision channel. Exchange/descriptor-duplication failures
-cancel the channel and retain the started child for cleanup. Both successful
-owners independently retain the same kernel process identity. A sampled live
-peer is not a lifetime guarantee, and observed loss is not descendant quiescence.
-GuardianWatch now borrows a paired supervisor channel and a registered helper
-channel, polling both sockets and both pidfds under one deadline. Its sampled
-ShutdownTrigger distinguishes supervisor/helper/both loss for diagnostics; it
-neither orders exits nor certifies command success or quiescence. Protocol and
-I/O errors must also start failed-build cancellation. It deliberately requires a
-registered helper. Setup exchange primitives now offer launch_watched and
-register_helper_watched: a private ExchangeWait abstraction preserves ordinary
-deadline-only behavior and adds StartupWatch polling the helper socket plus the
-supervisor socket/pidfd. Upstream loss or malformed traffic aborts setup, with
-loss checked before and after polling; launch retains a started child on error.
-This does not interrupt kernel spawn, prove continuing liveness after return or
-monitor unrelated setup operations. RecordedDomain::launch_watched now selects
-both watched exchanges through the same consuming failure handler as standalone
-launch. Errors retain any started child and a cleanup-only domain. The independent
-guardian fixture uses this owned path for successful registration; interrupted
-identity and registration tests verify preserved records and explicit cleanup.
-The complete guardian startup/anchor/admission orchestration remains unfinished.
-RegisteredGuardian now owns the upstream paired channel and ContainedHelper.
-Its consuming supervise_until waits for either peer, then attempts domain
-cancellation on every outcome, including timeout and protocol/I/O error. The
-must-use GuardianStop preserves observation and cancellation outcomes separately;
-success retains HelperReaping, failure retains cleanup-only HelperCancellation.
-Neither path returns a registered helper or guardian. Upstream closure is not a
-completion acknowledgement. This registered-phase owner still needs integration
-with the independent guardian process, setup monitoring, persistent mount/policy
-resources, adopted-descendant reaping and final completion acknowledgements.
-
-ChildReaper now installs process-lifetime subreaping in a dedicated single-threaded
-non-init guardian before children exist. The safe nix interface supplies the boolean
-prctl operation and waitpid with WNOHANG | __WALL. The consuming bounded drain
-retains its cumulative diagnostic count and owner on error; ECHILD yields data,
-not a successful-step receipt. Individually owned child statuses must be collected
-first, admission closed and containment independently quiescent. No concurrent
-waiter or SIGCHLD disposition change is allowed. Drop deliberately does not disable
-adoption, since that would not clean surviving descendants. The owner is thread-
-affine and checks process identity and the enabled setting before draining.
-ReapedHelper::with_reaper now consumes both owners into DescendantDrain. Failure
-retains this combined owner with its protected domain record; success yields
-DrainedHelper, whose record cleanup also retains the drain result on failure.
-The integrated path cannot remove its record before draining. The low-level
-ReapedHelper::finish remains a domain-record operation without descendant proof;
-no finalization gate may treat its returned status as complete step cleanup.
-Full guardian construction still must enforce installation before spawning,
-exclusive wait ownership and the absence of unrelated individually owned children.
-The count does not establish which containment domain a child belonged to.
-
-References: [subreaper semantics](https://man7.org/linux/man-pages/man2/PR_SET_CHILD_SUBREAPER.2const.html)
-and [wait semantics](https://man7.org/linux/man-pages/man2/waitpid.2.html).
-
-See [pidfd_open(2)](https://man7.org/linux/man-pages/man2/pidfd_open.2.html)
-for the parent-side PID lookup constraints this identity handoff avoids.
+Validation must include actual supervisor termination and externally triggered VM
+shutdown, with no successful artifact accepted. Test the deployed environment's
+contract rather than assuming a signal handler or destructor will enforce it.
+Independent VMs provide build concurrency; persistent shared-host execution is
+not covered. Preserved guardian/anchor experiments remain useful reference data,
+but do not impose an implementation requirement.
 
 ## Safe integration and dependency evidence
 
@@ -480,7 +271,7 @@ Primary references inspected:
 Architecture fixes the invariants, schema and ownership/recovery protocol. It
 identifies dependency gaps explicitly rather than claiming implementations exist.
 M3 handles pure inputs/planning. M4 must prove the actual safe syscall/policy,
-process-containment and anchor protocol. M5 must prove direct formatted snapshot
+process containment and dedicated-VM shutdown contract. M5 must prove direct formatted snapshot
 behavior and dual mounts. Failure of those proofs reopens the architecture gate.
 Hardware and distro qualification remain M7 requirements; no absence of hardware
 can be recorded as a pass. Public library APIs may evolve within these boundaries

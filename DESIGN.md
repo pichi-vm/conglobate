@@ -774,6 +774,15 @@ ancestor nodes, but there are no explicit whole-node creation/removal operations
 It specifies the ordered setup, execution, teardown, finalization, and validation
 requirements. This section summarizes its relationship to the build pipeline.
 
+Conglobate runs as the only major workflow in a dedicated disposable build VM.
+The execution environment must independently shut down that VM if conglobate
+crashes or exits unexpectedly. It must not start another build or reuse abandoned
+kernel resources in that VM. This is an environment contract, not a pichi library
+or transport dependency. The binary does not implement VM lifecycle management.
+A separate in-guest guardian and cross-invocation recovery are not required.
+Normal step failures and teardown remain conglobate's responsibility; abrupt
+supervisor death invalidates the build and is handled by VM disposal.
+
 The root supervisor owns verified inputs, cache handles, loop/device-mapper
 assembly, writable snapshots, inventory, and publication. Immutable carapace
 layers remain cache-backed with verified reads. One private build-wide tmpfs
@@ -812,10 +821,13 @@ On every exit path, stop/reap all descendants before mutating policy or detachin
 its guards. Then remove authorization, runtime mounts and networking, flush and
 cleanly unmount the filesystems before sealing. Hold identities and storage
 leases until cleanup completes. If quiescence cannot be proved, retain protection
-and recovery ownership and reject publication. Partial installation, abandoned
-pins and supervisor death require independent recovery; pinned-policy survival
-across loader death is only one validated case. Propagate filesystem/writeback
-errors; forced/lazy unmount is not evidence of clean finalization.
+and ownership and reject publication. Recover partial setup while conglobate is
+alive. If safe teardown cannot complete, fail the build and require VM disposal;
+do not start another step or reuse its resources. Until commands are quiescent or
+the VM has stopped, authorization and its identities must remain valid together.
+Propagate filesystem/writeback errors; forced/lazy unmount is not evidence of
+clean finalization. Supervisor death is an environment shutdown test, not an
+in-guest recovery protocol.
 
 Foreign target SELinux labels, ownership, ACL semantics, and file capabilities
 must survive into the booted image independently of the build VM policy. The
@@ -1053,16 +1065,17 @@ Required integration tests include trusted formatting directly on a zero-backed
 carapace layer; concurrent tool `/` and output `/mnt` mounts; LSM authorization
 of both and denial elsewhere; full tool-root package installation; direct scute
 finalization without conversion; safe COPY/export; identity/FD lifetime; actual
-capability/syscall profiles on both architectures; concurrent builds; parent
-death and abandoned-policy recovery; blocked I/O and fixed deadlines; writeback
+capability/syscall profiles on both architectures; independent build VMs;
+helper death, supervisor death followed by VM shutdown; blocked I/O and fixed deadlines; writeback
 errors; and publication ordering. Validate NAT/DNS and resolver cleanup under
 this final topology. Old component passes do not qualify the complete design.
 
 Preserve tests for pipeline combinations, inheritance and tool ancestry,
 firmware-only output, unavailable CARAPACE, typed DTB operations and defaults,
 locked images, Git capture, deterministic CBOR, OCI/ORAS interoperability,
-and output digest verification. No VM is intrinsically required by the binary;
-privileged integration tests can use disposable VMs for test containment.
+and output digest verification. The binary remains standalone and does not create
+VMs. Privileged execution is qualified in disposable VMs with the independent
+shutdown contract; a persistent shared host is outside this lifecycle design.
 
 Build and boot Fedora, Debian, Alpine, and NixOS images, exercising package
 transactions, initramfs/kernel construction, permissions and labeling. Fedora
@@ -1077,8 +1090,8 @@ identity before materialization. Recipe symlinks resolve only to captured files
 within the context; hooks and checkout filters do not execute. The lock and
 inventory wire formats, YAML values, device exposure, and supported firmware
 measurement contracts are specified above. Temporary writable mappings use
-kernel deferred removal and scratch leases for recovery after interrupted
-activation. Ordinary tmpfs allocation failures propagate as build failures.
+kernel deferred removal and scratch leases for in-process cleanup after failed
+activation; abrupt conglobate death is handled by disposal of the build VM. Ordinary tmpfs allocation failures propagate as build failures.
 
 Remaining ecosystem decisions are authentication of the intended Git identity,
 creation/override of components beyond carapace and firmware, additional

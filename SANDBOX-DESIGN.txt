@@ -16,6 +16,13 @@ Historical experiments are evidence, not competing specifications.
         not depend on pichi code, a VM transport, a particular init system, or
         an attestation service. Appliance integration is outside this binary.
 
+   1.1a. Deployment is a dedicated disposable VM with conglobate as its only
+         major workflow. An independent environment controller shuts down the VM
+         on conglobate crash or unexpected exit. No new build or resource reuse
+         is allowed in an abandoned VM. The binary does not manage that controller
+         or require pichi code. A separate guardian and recovery across invocations
+         are not required. Qualify shutdown behavior in the execution environment.
+
    1.2. Build commands are untrusted, including namespace root. Trust the build
         kernel, supervisor, scoped BPF LSM policy and trusted formatting tools.
         Native filesystem drivers execute inside the trusted kernel. There is
@@ -164,20 +171,21 @@ Historical experiments are evidence, not competing specifications.
         descendant before changing configuration or detaching any policy link.
         Retain namespace and superblock lifetimes until authorization is gone:
         numeric namespace/device identifiers are reusable, not permanent tokens.
-        Define recovery for partial setup, guardian/supervisor death, abandoned
-        pins and concurrent builds. If quiescence cannot be proved, preserve
-        policy/resource ownership, reject publication and fail closed. A loader-
-        death test alone does not qualify supervisor-death recovery.
+        Recover partial setup while conglobate is alive. If quiescence cannot
+        be proved, retain protection and resource ownership, reject publication
+        and fail closed; the environment must dispose of the VM before reuse.
 
-   4.7. Before admission, anchor namespace handles, filesystem/scratch mounts and
-        policy pins in a root-only trusted mount namespace independent of build
-        process lifetime. The default deployment uses the persistent initial
-        mount namespace. Verify the prerequisite; do not claim a builder-private
-        disappearing mount namespace provides crash recovery. The guardian
-        registers command containment before execution. Concurrent guardian/
-        supervisor loss leaves anchored identities and policy for ordered trusted
-        recovery, not reusable IDs with stale authorization. Commands cannot
-        access the anchor. See ARCHITECTURE.md for ownership and recovery protocol.
+   4.7. Keep command namespace and assigned superblock identities alive for the
+        lifetime of active authorization, including the interval before an
+        independently triggered VM shutdown completes. Keep guards and exception
+        lifetime coupled; supervisor death must not leave a selectively detached
+        policy usable by surviving commands. Commands cannot access policy or
+        identity handles. Do not require serialized recovery records, a guardian,
+        or a persistent initial-mount-namespace recovery service merely to resume
+        cleanup in a later invocation. There is no later build in that VM.
+        The concrete policy/resource lifetime must still be qualified under
+        abrupt supervisor death; VM disposal is not permission for an unsafe
+        interval before the VM stops.
 
 5. Execute the assembly pipeline without changing its inheritance rules
 
@@ -363,13 +371,12 @@ Historical experiments are evidence, not competing specifications.
 
 10. Own execution, failure, and cleanup end to end
 
-   10.1. Use explicit lifetime ownership for supervisor, setup helpers, policy
-         guardian, namespace init, and descendants. Preserve independent
-         cancellation and recovery outside the command sandbox. Arm parent-death
-         protection
-         with race checks; credential transitions and parent-thread lifetime
-         must not invalidate it. Do not rely solely on process groups, launcher
-         exit, or paths containing numeric PIDs.
+   10.1. Conglobate owns setup helpers, command containment, namespace init and
+         descendants. Helpers prepare isolation and launch untrusted commands;
+         they are not independent recovery supervisors. Retain cancellation
+         authority outside the command sandbox. Do not rely solely on process
+         groups, launcher exit or numeric PID paths. The environment handles
+         abrupt conglobate death by shutting down the dedicated VM.
 
    10.2. Setup and teardown have finite FIXED INTERNAL DEADLINES, chosen and
          tested as implementation constants. They are not recipe or CLI knobs
@@ -385,7 +392,7 @@ Historical experiments are evidence, not competing specifications.
          Detect and propagate storage/writeback errors. Preserve primary failure
          and cleanup diagnostics independently; process exit is not durability.
 
-   10.4. Command error, timeout, filesystem error, helper/guardian death,
+   10.4. Command error, timeout, filesystem error, helper death,
          cancellation or setup/teardown deadline rejects the build. Quiesce
          commands before policy mutation and mount teardown. Do not tear down
          guards first to escape blocked cleanup, nor accept a forced/lazy unmount
@@ -393,10 +400,11 @@ Historical experiments are evidence, not competing specifications.
          Never silently resume a failed command on remounted storage.
 
    10.5. Incomplete cleanup must not authorize publication or unsafe identity/
-         resource reuse. Retain recovery ownership and report the failure.
-         Supervisor death must trigger independent descendant shutdown and
-         leave recoverable storage leases. Qualify normal, partial setup,
-         blocked I/O, parent death, and concurrent-build cases together.
+         resource reuse. Keep ownership while the process remains alive, report
+         failure and require VM disposal if teardown cannot complete. Validate
+         normal completion, partial setup, timeout, helper death, blocked I/O,
+         supervisor death with independent VM shutdown, and output rejection.
+         Shared-host recovery and concurrent builds inside one VM are out of scope.
 
 11. Finalize and publish
 
@@ -447,8 +455,9 @@ Historical experiments are evidence, not competing specifications.
    12.3. Before accepting production output, qualify the actual integrated
          kernel/device contract, dual-mount bootstrap, full tool-root launch, trusted COPY
          and export, capability/seccomp policy on both architectures, ID reuse,
-         keyring/FD closure, parent-death recovery, fixed deadlines, blocked I/O,
-         concurrent builds, clean/error finalization, and publication ordering.
+         keyring/FD closure, helper death, supervisor death with VM shutdown,
+         fixed deadlines, blocked I/O, independent build VMs, clean/error
+         finalization, and publication ordering.
          Include benign owned-object positive/negative containment tests and
          malformed-input/parser tests; passing them is not proof of absence
          of vulnerabilities. Do not substitute historical markers for new runs.

@@ -4,14 +4,28 @@ Status: active. No milestone may advance until its three-pass gate is clean.
 The target is the latest DESIGN.md, SANDBOX-DESIGN.txt and user decisions.
 This ledger describes required work, not claims about the current executor.
 
+## Current deployment correction
+
+The user's dedicated-VM clarification supersedes earlier guardian/recovery
+requirements in this chronological ledger and in the stored goal's historical
+wording. Latest user decisions remain authoritative: an independent environment
+controller shuts down the VM after conglobate dies; no build resumes there.
+Preserve prior code and evidence, but do not expand the guardian or serialized
+cross-invocation recovery path. Ordinary cleanup, coupled policy/identity lifetime
+until shutdown, command isolation and successful-publication gates remain required.
+The full rewrite, distro/platform qualification and final retirement scope remain.
+
+This changes M2's lifecycle contract: reopen its adherence gate before resuming
+M4 implementation. Prior passes remain historical, not approvals of this revision.
+
 ## Milestones and acceptance criteria
 
 | Milestone | Deliverables and success criteria | Status | Clean streak |
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
-| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete | 3 |
+| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: revised dedicated-VM lifecycle | 3 |
 | 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete | 3 |
-| 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, scoped LSM, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup/recovery tests and no context/control/block-device exposure. | In progress | 0 |
+| 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, scoped LSM, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | In progress | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Pending | 0 |
 | 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Pending | 0 |
 | 7. Integrated qualification | Critical source/design/style review resolved; Fedora/Debian/Alpine/NixOS representative builds and boots; amd64/arm64 and TDX/SEV-SNP/CCA qualification with evidence; repository checks and CI green. Unavailable required environments remain outstanding, never passes. | Pending | 0 |
@@ -855,3 +869,24 @@ rules rather than silently shrinking acceptance criteria.
   policy/mount integration remain unfinished. M4 stays at zero adherence passes.
   Previous goal turn was progress through watched-exchange implementation and
   measured disposable-guest interruption evidence.
+
+## Dedicated-VM revision review
+
+- Previous user-facing explanation alone was not implementation progress. This
+  turn changed the authoritative lifecycle contract to match the user's deployment
+  clarification and preserved the superseded documents with SHA256 checksums.
+- A review found section 12.3 still required parent-death recovery and same-VM
+  concurrent builds. Replaced those with helper-death cleanup, supervisor-death
+  VM shutdown and independent build VMs. Clarified interrupted activation as
+  in-process cleanup rather than resuming an abandoned VM. Finding resets the
+  revised M2 streak to zero; M4 implementation is held pending three clean passes.
+- No production code or historical experiments were deleted. The uncommitted
+  command-integration harness and its successful/failed guest evidence remain
+  intact. Its diagnostic build completed before this design revision; it has not
+  been mistaken for a passing sandbox qualification.
+
+- Revised M2 completed three consecutive clean self-reviews; scope hashes and
+  category-by-category observations are in
+  preservation/MILESTONE-2-VM-REVISION-ADHERENCE.md. M4 resumes at zero passes.
+  No production qualification is implied. Prior explanation-only turn was no
+  progress; this turn verified preservation and completed the architecture gate.
