@@ -1,0 +1,1 @@
+PreparedScute verifies root and owns data/tree; this is not dm-verity read-time protection yet. Cache-fixture bytes are synthetic block data, not a mountable filesystem. Guest modifications are confined to its disposable initramfs. Host tests validate emitted tree and write-error propagation.

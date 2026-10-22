@@ -47,6 +47,38 @@ fn multiple_data_blocks_hash_through_a_padded_hash_block() {
     assert_eq!(actual.as_slice(), root.finalize().as_slice());
 }
 
+#[test]
+fn emitted_tree_contains_independently_calculated_leaf_hashes() {
+    let salt = [3; 32];
+    let input = vec![42; 8192];
+    let extent = ScuteExtent::new(8192, &salt, Some(2)).unwrap();
+    let mut tree = std::io::Cursor::new(Vec::new());
+    let root = extent.format(input.as_slice(), &mut tree).unwrap();
+    let mut leaf = Sha256::new();
+    leaf.update(salt);
+    leaf.update(&input[..4096]);
+    let leaf = leaf.finalize();
+    let bytes = tree.into_inner();
+    assert_eq!(bytes.len(), 8192);
+    assert_eq!(&bytes[4096..4128], leaf.as_slice());
+    assert_eq!(&bytes[4128..4160], leaf.as_slice());
+    assert!(bytes[4160..].iter().all(|byte| *byte == 0));
+    let mut expected = Sha256::new();
+    expected.update(salt);
+    expected.update(&bytes[4096..]);
+    assert_eq!(root.as_slice(), expected.finalize().as_slice());
+
+    let mut short_output = [0u8; 8];
+    assert!(
+        extent
+            .format(
+                input.as_slice(),
+                std::io::Cursor::new(short_output.as_mut_slice())
+            )
+            .is_err()
+    );
+}
+
 #[derive(Debug)]
 struct LateError(std::io::Cursor<Vec<u8>>);
 impl std::io::Read for LateError {

@@ -33,6 +33,34 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "prepare-scutes") {
+            let workspace = conglobate::storage::Workspace::create()?;
+            let cache = conglobate::cache::Cache::open(Path::new("/cache-fixture"))?;
+            for name in ["aligned", "partial", "compressed"] {
+                let pin = fs::read_to_string(format!("/cache-fixture/{name}.pin"))?;
+                let image = cache.resolve(pin.parse()?)?;
+                let chain = cache.verify_chain(&image)?.ok_or("missing scutes")?;
+                let scute = &chain.scutes()[0];
+                let prepared = scute.prepare(&cache, &workspace)?;
+                assert_eq!(prepared.is_cache_backed(), name == "aligned");
+                assert_eq!(prepared.root(), chain.root());
+                assert_eq!(prepared.data_size()?, 8192);
+                assert_eq!(prepared.hash_size()?, 8192);
+                let path = format!("/cache-fixture/blobs/sha256/{}", scute.digest().hex());
+                let original = fs::read(&path)?;
+                fs::write(&path, vec![1; original.len()])?;
+                assert!(scute.prepare(&cache, &workspace).is_err());
+                fs::write(&path, &original)?;
+                if name == "aligned" {
+                    fs::rename(&path, format!("{path}.original"))?;
+                    fs::write(&path, b"replacement")?;
+                    assert_eq!(prepared.data_size()?, 8192);
+                    assert!(scute.prepare(&cache, &workspace).is_err());
+                }
+            }
+            println!("CACHE_BACKED_SCUTE_PREPARATION_PASS");
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "wait-marker") {
             let marker = args.get(2).ok_or("marker path required")?;
             Readiness::new(Path::new(marker))?

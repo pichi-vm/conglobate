@@ -1776,3 +1776,26 @@ rules rather than silently shrinking acceptance criteria.
   adherence pass. M4 stays at zero; cache-backed verified chain assembly, final
   flush/sealing, fixed setup/teardown orchestration and broader qualification are
   still required. No privileged host filesystem/BPF/device operations performed.
+
+- Previous turn progressed in 8cc8daf. M4 storage now prepares verified scutes
+  into owned data/tree inputs. Aligned uncompressed scutes retain the cache inode
+  used for hashing; only verification metadata is generated in the RAM workspace.
+  Compressed/partial-block scutes use bounded decoded/padded scratch as required
+  by the block format. Root mismatch, changed length, decoder errors and I/O
+  failures reject preparation. Scratch cleanup is anonymous-file RAII; no writable
+  file handles escape PreparedScute. ScuteExtent::root delegates to the same
+  streaming formatter with its existing discard sink; the new format method
+  retains exact-extent/EOF/error checks and emits the tree for storage assembly.
+- v89 passes three preparation cases, same-length corruption rejection, cache
+  pathname replacement without changing the retained inode, and the normal suite.
+  Independent host hash calculations verify emitted tree blocks and a short
+  destination rejects write failure. Full root tests (28 compile-fail), root and
+  fixture Clippy, formatting and Python checks pass. Synthetic fixture source and
+  bytes, VM logs, source snapshots and artifact hashes are preserved. Privileged
+  operations remained inside disposable QEMU.
+- Focused review checked bounded decoding, padding/root equivalence, retained
+  inode authority, no blanket cache copy, scratch cleanup and unchanged existing
+  root-verification behavior. Preparation does not enforce future reads: owned
+  loop/verity/read-only snapshot assembly and corruption-through-kernel tests are
+  next. The cache inode may still mutate; dm-verity remains mandatory. No M4
+  adherence pass or full sandbox qualification is claimed; M4 remains zero.

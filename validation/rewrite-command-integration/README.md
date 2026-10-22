@@ -805,3 +805,15 @@ continued policy attachment and independent shutdown. Four host readiness tests
 pass, including atomic rename publication; the added test source is archived
 separately from the exact v88 booted source. No readiness depends on elapsed sleep.
 All runs retain raw logs and artifact hashes; full sandbox qualification is false.
+
+## Prepared cache-backed scutes
+
+v89 adds three synthetic scute inputs: aligned raw, partial-block raw and zstd.
+PreparedScute keeps aligned data cache-backed and generates a RAM verity tree;
+other cases materialize only for decoding/padding. The guest confirms backing
+selection, expected extents, trusted roots, rejection after same-length corruption,
+and original inode retention after pathname replacement. The normal suite passes.
+Host tests independently check emitted leaf/root hashes and failed tree writes.
+This does not test read-time dm-verity protection or mountable scute metadata yet.
+The fixture generator, source snapshots, exact initial cache blobs, logs and hashes
+are retained in evidence/v89. No host mounts or device operations were performed.

@@ -3,7 +3,7 @@
 
 //! Read-only content access. A receipt verifies a read, never future cache bytes.
 mod chain;
-pub use chain::{VerifiedChain, VerifiedScute};
+pub use chain::{PreparedScute, VerifiedChain, VerifiedScute};
 mod resolve;
 pub use resolve::{HostArchitecture, ResolvedImage};
 

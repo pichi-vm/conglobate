@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+from cache_fixture import CacheFixture
 
 here = pathlib.Path(__file__).resolve().parent
 seed = pathlib.Path('/var/tmp/conglobate-cap-review-fix-normal-v1')
@@ -63,6 +64,7 @@ subprocess.run(['git', '-C', str(context_fixture), '-c', 'user.name=Fixture',
 (root / 'workspace-context-commit').write_text(subprocess.check_output(
     ['git', '-C', str(context_fixture), 'rev-parse', 'HEAD'], text=True))
 (root / 'conglobate-disposable-validation-vm').touch()
+CacheFixture(root / 'cache-fixture').create()
 image_root = root / 'image-root'
 (image_root / 'bin').mkdir(parents=True)
 for source, name in [('/usr/bin/bash', 'sh'), ('/usr/bin/setfattr', 'setfattr'), ('/usr/bin/getfattr', 'getfattr'), ('/usr/bin/mv', 'mv')]:
@@ -101,6 +103,7 @@ cp -a /image-root/. /work/origin/
 modprobe dm-zero
 modprobe dm-snapshot
 /idmap-probe snapshot-probe
+/idmap-probe prepare-scutes
 /idmap-probe loop-probe
 /idmap-probe mapping-probe
 /idmap-probe workspace-probe

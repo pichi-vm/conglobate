@@ -10,6 +10,8 @@ use std::{
     fs::File,
     io::{self, BufReader, Read},
 };
+mod prepared;
+pub use prepared::PreparedScute;
 
 #[derive(Debug)]
 pub struct VerifiedScute {
@@ -17,6 +19,7 @@ pub struct VerifiedScute {
     root: [u8; 32],
     extent: ScuteExtent,
     compressed: bool,
+    blob_size: u64,
 }
 impl VerifiedScute {
     pub fn digest(&self) -> &ContentDigest {
@@ -144,6 +147,7 @@ impl Cache {
             root,
             extent,
             compressed,
+            blob_size: descriptor.size,
         })
     }
 }

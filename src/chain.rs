@@ -66,7 +66,16 @@ impl ScuteExtent {
     }
     /// Hash exactly the decoded bytes, with canonical zero block padding.
     /// EOF is mandatory; trailing bytes and late decoder errors fail.
-    pub fn root(&self, mut input: impl Read) -> Result<[u8; 32], ChainError> {
+    pub fn root(&self, input: impl Read) -> Result<[u8; 32], ChainError> {
+        self.format(input, DiscardTree::default())
+    }
+    /// Emit the verity header/tree for this exact decoded extent. The caller
+    /// must compare the returned root with its trusted root before using it.
+    pub fn format(
+        &self,
+        mut input: impl Read,
+        output: impl Write + Seek,
+    ) -> Result<[u8; 32], ChainError> {
         let padding = self.header.parameters.data_size()? - self.size;
         // read_exact on the limited extent must fail on a truncated input before
         // padding is allowed to supply any bytes.
@@ -75,7 +84,7 @@ impl ScuteExtent {
             remaining: self.size,
         };
         let padded = exact.chain(io::repeat(0).take(padding));
-        let root = self.header.format(padded, DiscardTree::default())?;
+        let root = self.header.format(padded, output)?;
         if input.read(&mut [0])? != 0 {
             return Err(ChainError::Invalid("data exceeds decoded extent"));
         }
