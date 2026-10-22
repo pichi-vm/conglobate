@@ -146,3 +146,13 @@ with the same name and verifies recovery rejects its different identity. A
 separate publisher saves an empty domain and exits without Rust destructors;
 the parent recovers/cancels it and removes the record. Both runs pass. These are
 component persistence checks, not complete supervisor/guardian crash recovery.
+
+
+v23 makes the protected record a production registration prerequisite. Unsaved
+domains cannot obtain DomainRegistration. The fixture obtains a capability,
+corrupts its owned record, then attempts registration: the recheck rejects it,
+the channel closes, and the helper exits without joining or creating a child.
+Restoring the canonical record permits the normal registration/cancellation path.
+The missing-ACK fixture now persists its domain before attempting registration,
+then cleans its record after cancellation. Earlier persistence/namespace/policy
+checks remain. This gate covers the domain record, not the full build lease.

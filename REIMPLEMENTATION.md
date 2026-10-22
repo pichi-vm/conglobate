@@ -683,3 +683,18 @@ rules rather than silently shrinking acceptance criteria.
   and formatting pass. M4 remains at zero adherence passes. Complete aggregate
   persistence, exclusive recovery arbitration, guardian orchestration and final
   admission still require implementation and combined fault qualification.
+
+- Connected persistence to registration with DomainRegistration, a private-field
+  borrowed capability. CommandDomain::registration compares the current live
+  identity to the protected record through its retained lease; descriptor handoff
+  checks again. Bare domains no longer satisfy register_helper_until. The borrow
+  prevents consuming the domain during exchange and introduces no runtime flags.
+- A compile-fail test rejects bypassing the capability. VM v23 rejects an unsaved
+  domain and a record corrupted after capability creation; the helper receives
+  channel closure before registration/child creation. Canonical restoration
+  permits the ordinary path. Missing-ACK cleanup now includes its persisted
+  record, keeping that negative test beyond the new publication prerequisite.
+- Full suite passes 92 tests and eight compile-fail doctests. Root/probe Clippy
+  and formatting pass. The domain-record gate is not complete build persistence
+  or sandbox admission. M4 remains open with zero adherence passes; aggregate
+  ownership and actual guardian orchestration remain required.

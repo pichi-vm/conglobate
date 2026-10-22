@@ -35,6 +35,12 @@ pub struct RecoveryDirectory {
 #[derive(Debug, Clone)]
 pub(crate) struct RecoveryLease(Arc<DirectoryLease>);
 impl RecoveryLease {
+    pub(crate) fn directory(&self) -> RecoveryDirectory {
+        RecoveryDirectory {
+            lease: Arc::clone(&self.0),
+        }
+    }
+
     pub(crate) fn belongs_to(&self, directory: &RecoveryDirectory) -> bool {
         Arc::ptr_eq(&self.0, &directory.lease)
     }

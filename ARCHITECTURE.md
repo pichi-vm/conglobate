@@ -125,7 +125,16 @@ an absent target. These records do not create a complete transactional build lea
 or establish that another owner has stopped; the aggregate must enforce exclusive
 recovery and preserve all policy/mount identities through descendant cleanup.
 
-The registration exchange now places a trusted helper in this domain before its
+Registration now requires DomainRegistration, a borrowed capability obtained
+only after comparing the live domain with its protected recovery record under
+the same lease. Bare CommandDomain owners are not accepted. The capability
+rechecks that match immediately before yielding the private registration file;
+its borrow prevents consuming the domain for cancellation during exchange. It
+uses an internal shared lease view, so dropping the public directory facade does
+not bypass or prevent the check. This enforces domain-record publication, not
+persistence of the complete build or readiness of the command sandbox.
+
+The registration exchange places a trusted helper in this domain before its
 first fork: the parent transfers a freshly opened cgroup.procs descriptor, the
 helper writes its own membership (0), closes the descriptor and acknowledges.
 Only the explicit exchange consumes these control messages. Sealed Registered

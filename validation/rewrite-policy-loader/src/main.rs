@@ -25,6 +25,7 @@ impl Probe {
                 conglobate::anchor::RecoveryDirectory::open(std::path::Path::new(recovery))?;
             let domain =
                 conglobate::domain::CommandDomain::create(&lease, std::path::Path::new(parent))?;
+            assert!(domain.registration().is_err());
             let record = lease.save_domain(&domain)?;
             println!("{}", record.name());
             std::io::Write::flush(&mut std::io::stdout())?;
@@ -363,6 +364,7 @@ impl Probe {
         empty.cancel_until(Instant::now() + Duration::from_secs(5))?;
         let lease = conglobate::anchor::RecoveryDirectory::open(recovery_path)?;
         let domain = conglobate::domain::CommandDomain::create(&lease, parent)?;
+        assert!(domain.registration().is_err());
         let record = lease.save_domain(&domain)?;
         assert_eq!(
             lease.save_domain(&domain).unwrap_err().kind(),
@@ -370,6 +372,22 @@ impl Probe {
         );
         assert_eq!(lease.load_domain(record.name())?, record);
         assert!(lease.remove_domain_record(parent, &record).is_err());
+        let permit = domain.registration()?;
+        let record_path = recovery_path.join(format!("{}.cbor", record.name()));
+        fs::write(&record_path, [0x86])?;
+        let mut command = Command::new(std::env::current_exe()?);
+        command
+            .arg("--domain-helper")
+            .env_clear()
+            .stdout(Stdio::null());
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let (child, watch) = conglobate::process::Process::launch_supervised(command, deadline)?;
+        assert!(watch.register_helper_until(permit, deadline).is_err());
+        assert!(!child.wait_until(deadline)?.status().success());
+        fs::write(&record_path, record.to_cbor())?;
+        assert!(domain.registration().is_ok());
+        println!("PRODUCTION_DOMAIN_REGISTRATION_RECORD_GATE_PASS");
+
         let other_path = std::path::Path::new("/work/other-recovery");
         fs::create_dir(other_path)?;
         fs::set_permissions(other_path, fs::Permissions::from_mode(0o700))?;
@@ -423,7 +441,7 @@ impl Probe {
             .stdout(Stdio::null());
         let deadline = Instant::now() + Duration::from_secs(5);
         let (child, watch) = conglobate::process::Process::launch_supervised(command, deadline)?;
-        let watch = watch.register_helper_until(&domain, deadline)?;
+        let watch = watch.register_helper_until(domain.registration()?, deadline)?;
         assert!(!watch.peer_lost()?);
         while fs::read_to_string(path.join("cgroup.procs"))?
             .lines()
@@ -470,6 +488,8 @@ impl Probe {
         println!("PRODUCTION_COMMAND_DOMAIN_REPLACEMENT_REJECTED_PASS");
         println!("PRODUCTION_COMMAND_DOMAIN_RECORD_RECOVERY_PASS");
         let abandoned = conglobate::domain::CommandDomain::create(&lease, parent)?;
+        assert!(abandoned.registration().is_err());
+        let abandoned_record = lease.save_domain(&abandoned)?;
         let mut command = Command::new(std::env::current_exe()?);
         command
             .arg("--registration-close")
@@ -477,9 +497,14 @@ impl Probe {
             .stdout(Stdio::null());
         let deadline = Instant::now() + Duration::from_secs(5);
         let (child, watch) = conglobate::process::Process::launch_supervised(command, deadline)?;
-        assert!(watch.register_helper_until(&abandoned, deadline).is_err());
+        assert!(
+            watch
+                .register_helper_until(abandoned.registration()?, deadline)
+                .is_err()
+        );
         assert!(child.wait_until(deadline)?.status().success());
         abandoned.cancel_until(deadline)?;
+        lease.remove_domain_record(parent, &abandoned_record)?;
         println!("PRODUCTION_COMMAND_DOMAIN_MISSING_ACK_PASS");
         println!("PRODUCTION_COMMAND_DOMAIN_REGISTER_PASS");
         drop(lease);

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Paired, ProcessObservation, Supervision, SupervisionState, private};
-use crate::{domain::CommandDomain, process::identity::IdentitySocket};
+use crate::{domain::DomainRegistration, process::identity::IdentitySocket};
 use rustix::{
     event::PollFlags,
     fd::{AsFd, OwnedFd},
@@ -29,11 +29,11 @@ impl SupervisionState for Registered {
 
 impl Supervision<Paired> {
     /// Supervisor side. Domain ownership stays with the caller on every outcome.
-    /// Persist that ownership before calling, and retain the separate child wait
-    /// owner. Errors cancel the channel; they do not remove the domain or reap.
+    /// A verified persisted-domain registration capability is required. Retain
+    /// the separate child wait owner. Errors cancel the channel; they do not remove the domain or reap.
     pub fn register_helper_until(
         self,
-        domain: &CommandDomain,
+        domain: DomainRegistration<'_>,
         deadline: Instant,
     ) -> io::Result<Supervision<Registered>> {
         Packet::Offer(domain.registration_file()?.into()).send(&self.socket.0, deadline)?;

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Fresh private cgroup-v2 domains. Registration and reaping are separate gates.
+mod registration;
+pub use registration::DomainRegistration;
 mod record;
 pub use record::DomainRecord;
 
@@ -92,7 +94,7 @@ impl DomainTarget {
     }
 }
 impl CommandDomain {
-    pub(crate) fn registration_file(&self) -> io::Result<File> {
+    fn registration_file(&self) -> io::Result<File> {
         self.target.lease.verify_current()?;
         Ok(File::from(rustix::fs::openat(
             &self.root,
