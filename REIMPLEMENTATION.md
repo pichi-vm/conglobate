@@ -421,3 +421,20 @@ rules rather than silently shrinking acceptance criteria.
 - Full suite passes: 60 tests (including the subprocess fixture entry) and five
   compile-fail doctests. Clippy, formatting and diff checks pass. Existing
   validation artifacts and legacy reference code remain preserved unchanged.
+- Connected trusted launch to the identity exchange. Process<Identified> has a
+  distinct sealed state payload whose termination authority owns the helper's
+  pidfd. Explicit termination and Drop use that identity without numeric-PID
+  fallback; wait errors retain the same state and ownership. Process<Running>
+  remains the pre-handoff wait-owned child with its documented reaping contract.
+- Launch errors distinguish no child from a started child requiring recovery.
+  The parent drops Command's retained child socket endpoint before receiving,
+  ensuring EOF reflects helper loss. Trusted executable/configuration and normal
+  SIGCHLD/exclusive-reaping prerequisites remain caller obligations. No recipe
+  execution, containment registration or admission permission is implemented.
+- Tests cover identified success, wait timeout/retry and termination, missing
+  executable, expired pre-launch deadline, early peer exit, silent-peer timeout,
+  and Drop termination/reaping observed independently through pidfd HUP. A
+  compile-fail test prevents asserting Identified from an arbitrary Child.
+  Full suite passes 64 tests (including fixture entry) and six compile-fail
+  doctests; Clippy, formatting and diff checks pass. M4 remains at zero adherence
+  passes; guardian, admission gates, anchors, LSM and containment are incomplete.

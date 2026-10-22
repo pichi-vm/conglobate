@@ -225,6 +225,14 @@ only, not readiness or command admission. The eventual launcher must retain
 cleanup ownership on exchange failure and complete registration/acknowledgement
 before releasing any recipe execution. Normal child wait/reaping semantics are
 still required for child cleanup; this handoff does not establish them.
+The trusted launch primitive owns the spawned child before receiving identity.
+Pre-spawn errors have no child owner; exchange errors return the pending child
+for explicit recovery. A successful exchange yields Process<Identified>, whose
+state payload retains the pidfd for explicit and destructor termination, with
+no numeric-PID fallback after identification. Wait failures preserve that state
+and both owners. Process<Reaped> remains solely a collected exit status. The
+caller supplies trusted helper code and startup configuration; this primitive
+does not launch arbitrary recipe commands or replace containment/admission gates.
 See [pidfd_open(2)](https://man7.org/linux/man-pages/man2/pidfd_open.2.html)
 for the parent-side PID lookup constraints this identity handoff avoids.
 
