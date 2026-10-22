@@ -13,17 +13,20 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// Private bpffs directory for DISABLED policy setup. This pins the parent FD,
-/// not its mount namespace across process death; it is not a recovery anchor.
-/// The trusted caller must prevent other processes from mutating this parent.
+/// Private bpffs directory created in the deployment init's mount namespace.
+/// The trusted caller supplies a bpffs mounted there, keeps it attached until VM
+/// disposal, and excludes out-of-protocol mutation. An inherited descriptor path
+/// to another namespace's private bpffs does not satisfy that contract.
 #[derive(Debug)]
 pub struct PinDirectory {
     root: File,
     path: PathBuf,
     _parent: File,
+    namespace: crate::anchor::InitMountNamespace,
 }
 impl PinDirectory {
     pub fn create(parent: &Path) -> io::Result<Self> {
+        let namespace = crate::anchor::InitMountNamespace::capture()?;
         let parent = File::open(parent)?;
         let metadata = parent.metadata()?;
         if !metadata.is_dir()
@@ -45,6 +48,7 @@ impl PinDirectory {
             root,
             path,
             _parent: parent,
+            namespace,
         })
     }
     fn entry(&self, name: &str) -> PathBuf {
@@ -131,6 +135,15 @@ impl LabelPolicy<PinnedDisabled> {
     }
 }
 impl DisabledPinRecovery {
+    pub(super) fn config_handle(&self) -> Result<libbpf_rs::MapHandle, PolicyError> {
+        self.directory.namespace.verify_current()?;
+        let map = self
+            .object
+            .maps()
+            .find(|map| map.name() == "config")
+            .ok_or(PolicyError::Abi("config"))?;
+        Ok(libbpf_rs::MapHandle::try_from(&map)?)
+    }
     fn install(&mut self) -> Result<(), PolicyError> {
         for name in ["config", "targets"] {
             let mut map = self

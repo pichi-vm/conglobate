@@ -163,6 +163,15 @@ impl Integration {
                     .trim()
                     .is_empty()
             );
+            let scope = PrivateMountNamespace::enter()?;
+            let error = PinDirectory::create(Path::new("/work/pins")).unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains("deployment init's mount/PID namespace")
+            );
+            scope.restore().map_err(|error| error.to_string())?;
+            println!("POLICY_PRIVATE_NAMESPACE_REJECTED_PASS");
             println!("NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS");
             return Ok(());
         }
@@ -314,7 +323,12 @@ impl Integration {
                 .as_os_str()
                 .as_encoded_bytes(),
         )?;
-        let policy = EnabledPolicy::install(&lease, namespace, filesystem, mode != "policy-off")?;
+        println!("NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS");
+        if mode != "policy-off" {
+            let policy = PolicyFixture::prepare(&lease, namespace, filesystem)?;
+            return Self::protected_step(lease, reaper, policy, mode);
+        }
+        let policy = PolicyFixture::install(&lease, namespace, filesystem)?;
         println!("NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS");
 
         let parent = Path::new("/work/cgroups");
@@ -414,6 +428,159 @@ impl Integration {
         // This is the only policy teardown site: cancellation, helper reaping
         // and descendant draining have all completed above.
         policy.disable()?;
+        assert_eq!(status.success(), mode == "success" || mode == "policy-off");
+        assert!(!parent.join(name).exists());
+        assert_eq!(fs::metadata(ready)?.uid(), 0);
+        assert_eq!(fs::read_to_string(ready)?, "image-write\n");
+        assert!(
+            fs::read_to_string("/proc/thread-self/children")?
+                .trim()
+                .is_empty()
+        );
+        assert_eq!(fs::read_to_string("/supervisor-secret")?, "unchanged");
+        drop(lease);
+        fs::remove_dir(recovery)?;
+        println!("INTEGRATED_COMMAND_{}_PASS", mode.to_uppercase());
+        Ok(())
+    }
+    fn protected_step(
+        lease: RecoveryDirectory,
+        reaper: ChildReaper,
+        policy: LabelPolicy<BoundDisabled>,
+        mode: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let recovery = Path::new("/work/integration-records");
+        let parent = Path::new("/work/cgroups");
+        let domain = RecordedDomain::create(&lease, parent)?;
+        let name = domain.record().name().to_owned();
+        let mut command = Command::new(std::env::current_exe()?);
+        command.args(["helper", mode]).env_clear();
+        let helper = domain
+            .launch(command, Instant::now() + Duration::from_secs(5))
+            .map_err(|e| e.to_string())?;
+        let step = conglobate::step::Step::<conglobate::step::Ready>::new(policy, helper, reaper)
+            .map_err(|error| error.to_string())?;
+        println!("PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS");
+        if mode == "pre-admission-cancel" {
+            let deadline = Instant::now() + Duration::from_secs(5);
+            let (_, _, policy) = step
+                .cancel_until(deadline)
+                .map_err(|e| e.to_string())?
+                .reap_until(deadline)
+                .map_err(|e| e.to_string())?
+                .drain_until(deadline)
+                .map_err(|e| e.to_string())?
+                .finish_record(parent)
+                .map_err(|e| e.to_string())?
+                .disable()
+                .map_err(|e| e.to_string())?;
+            PolicyFixture::cleanup(policy)?;
+            assert!(!Path::new("/work/origin/command-started").exists());
+            assert!(
+                fs::read_to_string("/proc/thread-self/children")?
+                    .trim()
+                    .is_empty()
+            );
+            drop(lease);
+            fs::remove_dir(recovery)?;
+            println!("PRODUCTION_STEP_CANCEL_BEFORE_ADMISSION_PASS");
+            return Ok(());
+        }
+
+        if mode == "admission-timeout" {
+            let failure = step.admit_until(Instant::now()).unwrap_err();
+            let conglobate::step::StartFailure::Admission(failure) = failure else {
+                return Err(failure.to_string().into());
+            };
+            let (source, cancellation) = failure.into_parts();
+            assert_eq!(source.kind(), std::io::ErrorKind::TimedOut);
+            let deadline = Instant::now() + Duration::from_secs(5);
+            let (_, _, policy) = cancellation
+                .cancel_until(deadline)
+                .map_err(|error| error.to_string())?
+                .reap_until(deadline)
+                .map_err(|error| error.to_string())?
+                .drain_until(deadline)
+                .map_err(|error| error.to_string())?
+                .finish_record(parent)
+                .map_err(|error| error.to_string())?
+                .disable()
+                .map_err(|error| error.to_string())?;
+            PolicyFixture::cleanup(policy)?;
+            assert!(!Path::new("/work/origin/command-started").exists());
+            assert!(
+                fs::read_to_string("/proc/thread-self/children")?
+                    .trim()
+                    .is_empty()
+            );
+            drop(lease);
+            fs::remove_dir(recovery)?;
+            println!("ADMISSION_TIMEOUT_CANCELS_WITHOUT_COMMAND_PASS");
+            return Ok(());
+        }
+        let helper = step
+            .admit_until(Instant::now() + Duration::from_secs(5))
+            .map_err(|error| error.to_string())?;
+        let ready = Path::new("/work/origin/command-started");
+        let setup = Instant::now() + Duration::from_secs(5);
+        while !ready.exists() {
+            if helper.supervision().peer_lost()? {
+                return Err("helper exited before command write".into());
+            }
+            if Instant::now() >= setup {
+                return Err("command start deadline".into());
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        if mode == "vm-death" {
+            fs::write("/work/supervisor-ready", "running\n")?;
+            // The independent guest controller terminates this process. There
+            // must be no successful step receipt or in-process cleanup path.
+            helper
+                .supervision()
+                .wait_for_loss_until(Instant::now() + Duration::from_secs(30))?;
+            return Err("command ended before supervisor-death exercise".into());
+        }
+        let execution =
+            Instant::now() + Duration::from_millis(if mode == "timeout" { 200 } else { 5000 });
+        let observation = helper.supervision().wait_for_loss_until(execution);
+        if mode == "timeout" {
+            assert_eq!(
+                observation.unwrap_err().kind(),
+                std::io::ErrorKind::TimedOut
+            );
+        } else {
+            observation?;
+            // The fixture helper has closed its channel but cannot exit until
+            // explicitly released. Channel loss must not count as process exit.
+            if mode != "shell-failure" {
+                assert_eq!(
+                    helper
+                        .supervision()
+                        .wait_for_peer_exit_until(Instant::now())
+                        .unwrap_err()
+                        .kind(),
+                    std::io::ErrorKind::TimedOut,
+                );
+                ExitGate::release()?;
+            }
+            helper.supervision().wait_for_peer_exit_until(execution)?;
+        }
+        let teardown = Instant::now() + Duration::from_secs(5);
+        let (status, _, policy) = helper
+            .cancel_until(teardown)
+            .map_err(|e| e.to_string())?
+            .reap_until(teardown)
+            .map_err(|e| e.to_string())?
+            .drain_until(teardown)
+            .map_err(|e| e.to_string())?
+            .finish_record(parent)
+            .map_err(|e| e.to_string())?
+            .disable()
+            .map_err(|error| error.to_string())?;
+        // This is the only policy teardown site: cancellation, helper reaping
+        // and descendant draining have all completed above.
+        PolicyFixture::cleanup(policy)?;
         assert_eq!(status.success(), mode == "success" || mode == "policy-off");
         assert!(!parent.join(name).exists());
         assert_eq!(fs::metadata(ready)?.uid(), 0);
@@ -670,28 +837,23 @@ impl ExitGate {
     }
 }
 
-/// Validation-only activation adapter. Production exposes disabled policy only.
-/// Leak-on-error deliberately retains every pin; init owns the bpffs mount until
-/// VM disposal. Never reuse this adapter as a production admission capability.
+/// Disabled-policy baseline and post-quiescence cleanup fault injection.
+/// Enabled commands use the production Step; this fixture cannot enable maps.
 #[derive(Debug)]
-struct EnabledPolicy {
-    policy: std::mem::ManuallyDrop<LabelPolicy<BoundDisabled>>,
-    config: libbpf_rs::MapHandle,
+struct PolicyFixture {
+    policy: LabelPolicy<BoundDisabled>,
 }
-impl EnabledPolicy {
-    fn install(
+impl PolicyFixture {
+    fn prepare(
         lease: &RecoveryDirectory,
         namespace: UserNamespace<PinnedNamespace>,
         filesystem: FilesystemPin,
-        enable: bool,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
-        use libbpf_rs::{MapCore, MapFlags, MapHandle};
+    ) -> Result<LabelPolicy<BoundDisabled>, Box<dyn std::error::Error>> {
         let target = FilesystemTarget::new(
             fs::metadata("/proc/self/ns/user")?.ino(),
             filesystem.metadata()?.dev(),
         )?;
         let scope = namespace.label_scope([target])?;
-        let subject = scope.subject_value();
         let pinned = LabelPolicy::new(scope)?
             .load()?
             .pin_disabled(PinDirectory::create(Path::new("/work/pins"))?)?;
@@ -714,35 +876,26 @@ impl EnabledPolicy {
         }
         let pinned = pinned.bind(namespace, vec![filesystem])?;
         println!("BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS");
-        let paths = fs::read_dir("/work/pins")?
-            .map(|entry| entry.map(|entry| entry.path()))
-            .collect::<Result<Vec<_>, _>>()?;
-        assert_eq!(paths.len(), 1);
-        let config = MapHandle::from_pinned_path(paths[0].join("config"))?;
-        let owner = Self {
-            policy: std::mem::ManuallyDrop::new(pinned),
-            config,
-        };
-        if enable {
-            owner
-                .config
-                .update(&0u32.to_ne_bytes(), &subject, MapFlags::ANY)?;
-        }
-        Ok(owner)
+        Ok(pinned)
+    }
+    fn install(
+        lease: &RecoveryDirectory,
+        namespace: UserNamespace<PinnedNamespace>,
+        filesystem: FilesystemPin,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Self {
+            policy: Self::prepare(lease, namespace, filesystem)?,
+        })
     }
     fn disable(self) -> Result<(), Box<dyn std::error::Error>> {
-        use libbpf_rs::{MapCore, MapFlags};
-        // Caller has completed cancellation and process-wide descendant drain.
-        // Failure retains pinned policy through VM disposal, never drops guards.
-        self.config
-            .update(&0u32.to_ne_bytes(), &[0; 8], MapFlags::ANY)?;
+        Self::cleanup(self.policy)
+    }
+    fn cleanup(policy: LabelPolicy<BoundDisabled>) -> Result<(), Box<dyn std::error::Error>> {
         let paths = fs::read_dir("/work/pins")?.collect::<Result<Vec<_>, _>>()?;
         assert_eq!(paths.len(), 1);
         let blocker = paths[0].path().join("cleanup-test");
         fs::create_dir(&blocker)?;
-        let failure = std::mem::ManuallyDrop::into_inner(self.policy)
-            .close()
-            .unwrap_err();
+        let failure = policy.close().unwrap_err();
         let (source, cleanup) = failure.into_parts();
         assert_eq!(source.kind(), std::io::ErrorKind::DirectoryNotEmpty);
         assert_eq!(fs::read_dir("/work/integration-records")?.count(), 2);

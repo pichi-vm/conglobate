@@ -16,12 +16,12 @@ use std::{
 /// proof. The deployment must keep init alive and in this namespace independently
 /// of builds. No arbitrary PID, signaling or namespace-entry authority escapes.
 #[derive(Debug)]
-pub(super) struct InitMountNamespace {
+pub(crate) struct InitMountNamespace {
     init: OwnedFd,
     mount: File,
 }
 impl InitMountNamespace {
-    pub(super) fn capture() -> io::Result<Self> {
+    pub(crate) fn capture() -> io::Result<Self> {
         if getpid() == Pid::INIT
             || fs::read_link("/proc/self")?.to_str() != Some(&getpid().as_raw_nonzero().to_string())
         {
@@ -37,7 +37,7 @@ impl InitMountNamespace {
         scope.verify_current()?;
         Ok(scope)
     }
-    pub(super) fn verify_current(&self) -> io::Result<()> {
+    pub(crate) fn verify_current(&self) -> io::Result<()> {
         if fs::read_link("/proc/self")?.to_str() != Some(&getpid().as_raw_nonzero().to_string()) {
             return Err(io::Error::other("recovery procfs PID view changed"));
         }

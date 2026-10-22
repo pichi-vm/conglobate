@@ -1,7 +1,7 @@
 # Integrated command execution evidence
 
-This fixture combines production private mount/idmapped attachment, registered
-cgroup containment, helper observation, cancellation and child reaping with an
+This fixture combines production private mount/idmapped attachment, the typed
+policy/admission/teardown step, cgroup containment and child reaping with an
 actual shell running in an ext4 image. It is not the production executor or full
 sandbox qualification. All mounts, namespace and capability operations occur
 inside a disposable QEMU guest; the host only builds and packages the fixture.
@@ -11,14 +11,15 @@ The guest has no host disk/share or network device.
 
 Requires the preserved seed at
 `/var/tmp/conglobate-cap-review-fix-normal-v1`, Fedora kernel modules for
-`7.2.10-200.fc44.x86_64`, QEMU and the tools named in run.py. Build with:
+`7.2.10-200.fc44.x86_64`, QEMU and the tools named in run.py. Run with:
 
 ```
-TMPDIR=/var/tmp/conglobate-rewrite-tmp cargo build --locked --manifest-path validation/rewrite-command-integration/Cargo.toml
-python3 validation/rewrite-command-integration/run.py /var/tmp/NEW-UNUSED-DIRECTORY
+TMPDIR=/var/tmp/conglobate-rewrite-tmp python3 validation/rewrite-command-integration/run.py /var/tmp/NEW-UNUSED-DIRECTORY
 ```
 
-The seed supplies the guest initramfs tools and QEMU arguments. Per-run input
+The runner requires a successful build before packaging the binary and retains
+compiler output in build.txt. The seed supplies the guest initramfs tools and
+QEMU arguments. Per-run input
 hashes, serial logs, command, source snapshots and verdicts are in evidence/.
 Large guest artifacts remain at the paths in provenance.json; these temporary
 paths must be durably archived before reference retirement. This harness has its
@@ -600,3 +601,28 @@ agent mistakenly ran the new script with the preceding binary. Its failure and
 provenance are retained. The runner now builds with check=True, retains build.txt,
 and aborts before guest construction on build failure. Fixture error conversion
 was corrected without weakening production resource-owning errors.
+
+## Production policy and command step
+
+v65–v67 use production Step for all enabled-policy command cases. The step consumes
+bound policy, a registered helper and the installed reaper. Activation precedes
+admission; active configuration has no public mutation/removal interface. Its
+sealed states require cancellation, helper reaping, descendant drain and domain
+record cleanup before disabling policy and returning its identity-owning payload.
+Failures preserve the applicable phase; unfinished Drop retains policy/identity
+pins until VM disposal. There is no separate guardian process.
+
+v65 passes normal/shell-failure/execution-timeout/admission-timeout behavior and
+partial disabled cleanup retry. It also rejects creating policy pins in a private
+helper mount namespace. v66 passes supervisor death, active label checks and
+filesystem/namespace pin persistence until VM poweroff. v67 additionally cancels
+a Ready step before admission and confirms no command marker or children remain.
+Its disabled baseline no longer has any map-update code; the fixture's direct
+libbpf-rs dependency was removed. Root tests (24 compile-fail), root/fixture Clippy
+and formatting pass. Earlier compile diagnostics and snapshots remain preserved.
+
+The Step constructor still requires trusted helper configuration to match its
+bound scope. It is not a complete recipe runner: scoped namespace transfer,
+filesystem-owner provenance, storage/workspace assembly, complete setup/teardown
+fault coverage and broader deployment qualification remain unfinished. The
+recorded-domain adapter is transitional, not a new cross-invocation service.

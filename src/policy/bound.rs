@@ -11,7 +11,7 @@ use crate::{
 use std::{collections::BTreeSet, io, os::unix::fs::MetadataExt};
 
 /// Disabled policy with its namespace and assigned superblock pins owned as a
-/// unit. This does not permit activation or command admission.
+/// unit. Activation and command admission require the enclosing Step owner.
 ///
 /// ```compile_fail
 /// use conglobate::policy::{BoundDisabled, LabelPolicy};
@@ -144,6 +144,9 @@ pub struct BoundCleanup {
     resources: BoundResources,
 }
 impl LabelPolicy<BoundDisabled> {
+    pub(crate) fn config_handle(&self) -> Result<libbpf_rs::MapHandle, super::PolicyError> {
+        self.resources.policy.config_handle()
+    }
     /// Return identity owners only after all disabled policy resources have been
     /// removed. Failure retains cleanup-only ownership of the entire aggregate.
     pub fn close(self) -> Result<PolicyIdentities, Box<BoundCloseFailure>> {

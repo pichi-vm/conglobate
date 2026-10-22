@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Validated inputs for the replacement builder. Execution is not implemented yet.
+//! Validated inputs and owned execution primitives for the replacement builder.
+//! Full pipeline assembly and publication remain under implementation.
 #![forbid(unsafe_code)]
 
 pub mod anchor;
@@ -22,5 +23,6 @@ pub mod policy;
 pub mod process;
 pub mod recipe;
 pub mod request;
+pub mod step;
 pub mod template;
 pub mod value;

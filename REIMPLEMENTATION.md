@@ -1438,3 +1438,41 @@ rules rather than silently shrinking acceptance criteria.
   ownership, helper ordering and evidence validity. M4 remains zero adherence
   passes: production activation must be tied to this gate and same-domain drain;
   owner provenance, scoped transfer and complete late-error handling remain.
+
+- Previous goal turn made progress in 2ae03fd (explicit command admission).
+  Added production Step with sealed Ready, Running, Cancelling, Reaping, Draining,
+  Quiescent and Finishing states. It consumes bound policy, the registered helper
+  and the preinstalled child reaper. It obtains the config descriptor directly
+  from the loaded object, enables the exact subject before admission, and never
+  exposes active policy, namespace/filesystem owners or map handles to callers.
+- Failure transitions retain the appropriate owners. Admission failure closes
+  admission and returns cancellation-only state; activation failure retains a
+  still-unadmitted ready owner for cancellation. Cancellation/reaping/draining/
+  record cleanup failures retain their actual phase. Only this same domain's
+  completed drain and record cleanup permit config disable and return a disabled
+  policy for cleanup. Dropping unfinished state retains all policy/identity pins
+  through VM disposal; best-effort child Drop is not a completion receipt.
+- PinDirectory now captures/verifies deployment-init mount-namespace placement.
+  A private helper namespace is rejected before creating policy pins. Trusted
+  construction must still supply a bpffs attached in that namespace and retain
+  it until VM shutdown, excluding external privileged mutation or descriptor
+  paths into another namespace's bpffs. No independent guardian is introduced.
+- v65 passes production activation/admission, normal execution, shell failure,
+  execution timeout, admission timeout and cleanup retry. v66 passes supervisor
+  death, surviving scoped label checks and pin lifetime until independent VM
+  poweroff. Boxed one oversized internal error after Clippy's diagnostic; retained
+  the earlier evidence and diagnostic note. No privileged host operation occurred.
+- Removed direct BPF map activation from the fixture and its direct libbpf-rs
+  dependency. The negative baseline owns permanently disabled policy; all enabled
+  cases use Step. v67 adds cancellation of Ready before any admission and passes
+  that plus the complete normal/timeout/failure suite. Root tests (24 compile-fail),
+  root/fixture Clippy and formatting pass. Snapshots/logs/hashes are preserved.
+- Review checked policy-update ordering across hooks, same-command ownership,
+  cancellation-only failures, cleanup retry, namespace placement, immutable scope
+  and safe leak-on-abandon behavior. This is not a full milestone adherence pass.
+  M4 remains zero: production helper/scope construction and scoped namespace
+  transfer, RAM/storage assembly, complete late-error/fault injection coverage,
+  fixed orchestration deadlines and remaining runtime qualification are pending.
+  The existing recorded-domain adapter remains transitional; this does not add
+  a cross-invocation recovery service or require a guardian. The full CLI/pipeline,
+  distro/platform qualification and retirement milestones remain outstanding.

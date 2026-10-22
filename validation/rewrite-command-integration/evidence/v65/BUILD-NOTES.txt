@@ -1,0 +1,1 @@
+Clippy rejected the internal PolicyGuard::disable error tuple (at least 256 bytes) with result_large_err. Boxed that internal tuple while retaining policy ownership. Initial cargo check also reported an unused Registered import, removed before validation. This is a retrospective diagnostic note, not a raw compiler log.

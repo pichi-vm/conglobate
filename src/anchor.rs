@@ -25,7 +25,7 @@ pub use filesystem::{
     FilesystemPin, FilesystemPinFailure, FilesystemPinReleaseFailure, FilesystemPinTarget,
 };
 mod record;
-use namespace::InitMountNamespace;
+pub(crate) use namespace::InitMountNamespace;
 
 /// Exclusive cooperative lease on a root-only tmpfs recovery directory.
 /// The descriptor stays locked while any pin/recovery target derived from this

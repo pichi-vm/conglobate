@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Immutable descriptions for the labels.bpf.c map ABI, not authorization.
-//! Numeric identities are reusable: a future activation owner must retain
-//! namespace/mount lifetimes and command containment through teardown and the
-//! supervisor-death interval before dedicated-VM shutdown.
+//! Numeric identities are reusable: bound policies retain namespace/mount pins;
+//! Step couples activation and admission to command cancellation and drain.
+//! The dedicated-VM deployment retains kernel pins through supervisor death.
 use std::{collections::BTreeSet, num::NonZeroU32};
 
 mod object;

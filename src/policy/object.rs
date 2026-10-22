@@ -25,7 +25,8 @@ impl PolicyState for LoadedDisabled {
 
 /// Owned policy object. LoadedDisabled creates no hook attachments or pins;
 /// PinnedDisabled retains the complete disabled hook set. Neither authorizes
-/// commands. Activation is unavailable until step and VM-lifetime ownership is integrated.
+/// commands. After binding identity owners, activation is controlled by Step;
+/// raw policy owners never expose an enable operation.
 #[derive(Debug)]
 pub struct LabelPolicy<S: PolicyState> {
     pub(super) resources: S::Resources,
