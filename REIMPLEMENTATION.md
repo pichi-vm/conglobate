@@ -928,3 +928,26 @@ rules rather than silently shrinking acceptance criteria.
   across the shutdown interval remains untested. M4 remains at zero passes;
   production trusted launch and policy admission are still the next integration
   work, rather than further guardian/recovery protocol development.
+
+
+- Previous goal turn made progress through supervisor-death VM disposal evidence.
+  Added native CommandPrivileges in the production process module using safe
+  rustix APIs (thread feature). Immutable candidate profile is consumed by apply;
+  no free utility functions, runtime state flags or unsafe application code.
+  Irreversible failure explicitly requires helper exit, not rollback or retry.
+- It probes kernel-supported v3 capability bits, removes disallowed bounding bits
+  while SETPCAP remains effective, empties ambient/inheritable sets, sets
+  no_new_privs, applies/verifies permitted/effective sets and verifies bounding
+  and ambient sets. SYS_ADMIN is excluded. The candidate filesystem allowlist
+  still needs actual distro/package and syscall/LSM integration qualification.
+- v8 passed post-exec native privilege checks. v9 preserved a negative-fixture
+  ordering failure: user namespace creation restored the capability removed
+  before creation. v10 performs the removal inside the namespace and rejects
+  execution; positive user-namespace checks and existing image/timeout/remount
+  regressions pass. Native code snapshots and failed evidence are preserved.
+- Root cargo test passes, including thirteen compile-fail doctests; root and
+  fixture Clippy with warnings denied and formatting pass. Review covered
+  irreversible partial failure, unknown capability bits, private policy fields,
+  absence of host-side privilege mutation and evidence limits. M4 remains open
+  with zero adherence passes: the complete trusted launch path still uses test
+  adapters, and active policy/syscall admission has not been integrated.

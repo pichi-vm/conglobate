@@ -1,0 +1,69 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ mkdir -p /work/origin /work/mapped
++ unshare --user --map-root-user /idmap-probe privileges
+NATIVE_PRIVILEGES_EXEC_PASS
++ unshare --user --map-root-user setpriv --bounding-set=-chown /idmap-probe privileges
++ grep -q 'required capability is not available' /work/privileges-negative
++ grep -q NATIVE_PRIVILEGES_EXEC_PASS /work/privileges-negative
++ echo NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
+NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
++ modprobe loop
++ modprobe ext4
++ truncate -s 64M /work/volume.ext4
++ mke2fs -q -t ext4 -F /work/volume.ext4
++ mount -o loop /work/volume.ext4 /work/origin
++ cp -a /image-root/. /work/origin/
++ holder=166
++ unshare --user --map-users=0:100000:65536 --map-groups=0:100000:65536 sleep 60
++ echo 166
++ for attempt in {1..50}
++ grep -q 100000 /proc/166/uid_map
++ break
++ cat /proc/166/uid_map
+         0     100000      65536
++ cat /proc/166/gid_map
+         0     100000      65536
++ mkdir /work/pins
++ mount -t bpf bpf /work/pins
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ /idmap-probe supervisor success
+INTEGRATED_COMMAND_SUCCESS_PASS
++ rm /work/origin/command-started
++ /idmap-probe supervisor timeout
+INTEGRATED_COMMAND_TIMEOUT_PASS
++ umount /work/cgroups
++ umount /work/pins
++ kill -0 166
++ kill 166
++ wait 166
++ true
++ umount /work/origin
++ e2fsck -fn /work/volume.ext4
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/volume.ext4: 26/16384 files (3.8% non-contiguous), 14735/65536 blocks
++ mount -o loop,ro /work/volume.ext4 /work/origin
+++ cat /work/origin/command-completed
++ test completed = completed
+++ cat /work/origin/command-privileges
++ test privileges-checked = privileges-checked
+++ stat -c %u /work/origin/command-started
++ test 0 = 0
++ umount /work/origin
++ echo INTEGRATED_REMOUNT_PERSISTENCE_PASS
+INTEGRATED_REMOUNT_PERSISTENCE_PASS
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-yylwoJ
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-yylwoJ
++ echo POLICY_FIXTURE_CLEANUP_PASS
+POLICY_FIXTURE_CLEANUP_PASS
+IDMAP_PROBE_EXIT 0
+[    4.050644] sysrq: Resetting

@@ -9,6 +9,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod privileges;
+pub use privileges::{CommandPrivileges, PrivilegeFailure};
 mod reaper;
 pub use reaper::{ChildReaper, DrainFailure, ReapedChildren};
 mod supervision;

@@ -26,7 +26,7 @@ subprocess.run(['depmod', '-b', str(root), '7.2.10-200.fc44.x86_64'], check=True
 binary = here / 'target/debug/conglobate-command-integration'
 shutil.copy2(binary, root / 'idmap-probe')
 executables = [binary]
-for name in ['mke2fs', 'unshare', 'newuidmap', 'newgidmap', 'stat', 'bwrap', 'nsenter', 'e2fsck', 'rmdir']:
+for name in ['mke2fs', 'unshare', 'newuidmap', 'newgidmap', 'stat', 'bwrap', 'nsenter', 'e2fsck', 'rmdir', 'setpriv']:
     source = pathlib.Path(shutil.which(name))
     target = root / 'usr/bin' / name
     target.unlink(missing_ok=True)
@@ -60,6 +60,14 @@ for name in ['proc', 'dev', 'sys']:
 set -eux
 export PATH=/usr/bin:/usr/sbin
 mkdir -p /work/origin /work/mapped
+unshare --user --map-root-user /idmap-probe privileges
+if unshare --user --map-root-user setpriv --bounding-set=-chown /idmap-probe privileges > /work/privileges-negative 2>&1; then
+    echo UNEXPECTED_PRIVILEGE_FINALIZATION_SUCCESS
+    exit 1
+fi
+grep -q 'required capability is not available' /work/privileges-negative
+if grep -q NATIVE_PRIVILEGES_EXEC_PASS /work/privileges-negative; then exit 1; fi
+echo NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
 modprobe loop
 modprobe ext4
 truncate -s 64M /work/volume.ext4
@@ -166,7 +174,7 @@ if supervisor_death:
         'VM_CONTROLLER_POWER_OFF', 'Power down',
     ]) and 'INTEGRATED_COMMAND_' not in serial
 else:
-    passed = all(marker in serial for marker in ['INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
+    passed = all(marker in serial for marker in ['NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
 (out / 'verdict.json').write_text(json.dumps({'passed': passed, 'full_sandbox_qualified': False}, indent=2))
 assert passed, serial[-5000:]
 print('PASS', out)

@@ -6,11 +6,14 @@ use conglobate::{
     domain::RecordedDomain,
     filesystem::{Detached, Mount, MountPoint},
     isolation::PrivateMountNamespace,
-    process::{ChildReaper, Supervision},
+    process::{ChildReaper, CommandPrivileges, Supervision},
 };
 use std::{
     fs,
-    os::unix::fs::{MetadataExt, PermissionsExt},
+    os::unix::{
+        fs::{MetadataExt, PermissionsExt},
+        process::CommandExt,
+    },
     path::Path,
     process::{Command, Stdio},
     time::{Duration, Instant},
@@ -24,6 +27,33 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "privileges") {
+            let policy = CommandPrivileges::filesystem();
+            let expected = format!("{:016x}", policy.allowed().bits());
+            policy.apply()?;
+            let script = format!(
+                r#"
+                caps=0
+                nnp=0
+                while read -r key value rest; do
+                    case "$key" in
+                        CapEff:|CapPrm:|CapBnd:) test "$value" = {expected}; caps=$((caps+1));;
+                        CapInh:|CapAmb:) test "$value" = 0000000000000000; caps=$((caps+1));;
+                        NoNewPrivs:) test "$value" = 1; nnp=1;;
+                    esac
+                done < /proc/self/status
+                test "$caps" = 5
+                test "$nnp" = 1
+                echo NATIVE_PRIVILEGES_EXEC_PASS
+            "#
+            );
+            return Err(Command::new("/usr/bin/bash")
+                .args(["-eu", "-c", &script])
+                .env_clear()
+                .stdin(Stdio::null())
+                .exec()
+                .into());
+        }
         let mode = args.get(2).ok_or("mode required")?;
         if args.get(1).is_some_and(|a| a == "helper") {
             return Self::helper(mode);

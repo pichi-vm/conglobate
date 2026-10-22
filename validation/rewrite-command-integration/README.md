@@ -82,3 +82,32 @@ the shutdown interval remains outstanding. The helper may survive until VM
 shutdown by design. v7 reruns normal completion, timeout and filesystem checks
 with the same updated sources and passes. Both runs and their init scripts are
 preserved; Clippy and formatting pass.
+
+
+## Native privilege finalization
+
+The production CommandPrivileges policy now applies through safe rustix thread
+APIs. It is immutable and consumed by application. Kernel probing covers all 64
+v3 capability bits; unsupported bits are ignored, supported disallowed bits are
+dropped from the bounding set before effective SETPCAP is removed. Ambient and
+inheritable sets are empty and no_new_privs is set. Missing required bounding
+capabilities fail; any partial mutation error requires helper exit.
+
+The candidate filesystem profile retains CHOWN, DAC_OVERRIDE, FOWNER, FSETID,
+KILL, SETGID, SETUID, SYS_CHROOT, SETFCAP and NET_BIND_SERVICE. It excludes
+SYS_ADMIN and SETPCAP. This is not a qualified distro compatibility contract.
+
+v8 verifies exact effective/permitted/bounding sets and empty inheritable/ambient
+sets after shell exec in the trusted guest. v9's positive check also passes inside
+a user namespace, but the negative test was incorrectly ordered: dropping CHOWN
+before unshare did not remove it in the new namespace. That overall failed run is
+preserved. v10 drops CHOWN inside the new namespace and verifies rejection before
+shell execution. It passes this negative, the positive user-namespace exec check,
+and the normal image command/timeout/remount regressions. Production-source
+snapshots are included in these runs' evidence.
+
+This native component is tested in a separate trusted guest process. The image
+command fixture still uses its earlier temporary launcher/finalizer adapter.
+Moving native finalization into the complete trusted launch path, syscall
+restrictions and active LSM admission remains required. Creating a new user
+namespace after capability finalization must be denied by that syscall policy.
