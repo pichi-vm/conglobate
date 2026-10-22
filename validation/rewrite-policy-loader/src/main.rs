@@ -15,6 +15,35 @@ impl Probe {
             return Err("disposable VM marker required".into());
         }
         let arguments = std::env::args_os().collect::<Vec<_>>();
+        if arguments
+            .get(1)
+            .is_some_and(|a| a == "--independent-guardian")
+        {
+            return Self::independent_guardian(std::path::Path::new(
+                arguments.get(2).ok_or("missing recovery path")?,
+            ));
+        }
+        if arguments
+            .get(1)
+            .is_some_and(|a| a == "--independent-guardian-test")
+        {
+            return Self::independent_guardian_test();
+        }
+        if arguments
+            .get(1)
+            .is_some_and(|a| a == "--departing-supervisor")
+        {
+            let root = std::path::Path::new(arguments.get(2).ok_or("missing recovery path")?);
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+            let mut command = std::process::Command::new(std::env::current_exe()?);
+            command.arg("--independent-guardian").arg(root);
+            let (_guardian, _channel) =
+                conglobate::process::Process::launch_supervised(command, deadline)?;
+            Self::wait_for_file(&root.join("ready"), deadline)?;
+            // Exit without Rust destructors: no owner kills the guardian.
+            std::process::exit(0);
+        }
+
         if arguments.get(1).is_some_and(|a| a == "--orphan-helper") {
             let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
             let _watch = conglobate::process::Supervision::from_stdin()?
@@ -159,6 +188,12 @@ impl Probe {
         Self::recorded_domain()?;
         Self::contained_helper()?;
         Self::registered_guardian()?;
+        assert!(
+            std::process::Command::new(std::env::current_exe()?)
+                .arg("--independent-guardian-test")
+                .status()?
+                .success()
+        );
         assert!(
             std::process::Command::new(std::env::current_exe()?)
                 .arg("--guardian-drain-test")
@@ -416,6 +451,158 @@ impl Probe {
         fs::remove_dir(parent)?;
         assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
         println!("PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS");
+        Ok(())
+    }
+    fn wait_for_file(
+        path: &std::path::Path,
+        deadline: std::time::Instant,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        while !path.exists() {
+            if std::time::Instant::now() >= deadline {
+                return Err("fixture readiness deadline".into());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        Ok(())
+    }
+    fn independent_guardian(root: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+        use std::{
+            process::Command,
+            time::{Duration, Instant},
+        };
+        let reaper = conglobate::process::ChildReaper::install()?;
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let upstream = conglobate::process::Supervision::from_stdin()?.exchange_until(deadline)?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(&root.join("records"))?;
+        let parent = std::path::Path::new("/work/cgroups");
+        let domain = conglobate::domain::RecordedDomain::create(&lease, parent)?;
+        let name = domain.record().name().to_owned();
+        let mut command = Command::new(std::env::current_exe()?);
+        command.arg("--domain-helper").env_clear();
+        let helper = domain
+            .launch(command, deadline)
+            .map_err(|e| e.to_string())?;
+        while fs::read_to_string(parent.join(&name).join("cgroup.procs"))?
+            .lines()
+            .count()
+            < 2
+        {
+            if Instant::now() >= deadline {
+                return Err("independent guardian child missing".into());
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        // These files synchronize the test only; they are not the production
+        // readiness/admission protocol and are never exposed to recipe code.
+        fs::write(root.join("ready.pending"), &name)?;
+        fs::rename(root.join("ready.pending"), root.join("ready"))?;
+        let (observation, cancellation) =
+            conglobate::domain::RegisteredGuardian::new(upstream, helper)
+                .supervise_until(deadline, deadline)
+                .into_parts();
+        assert_eq!(
+            observation?,
+            conglobate::process::ShutdownTrigger::SupervisorLost
+        );
+        let (_, children) = cancellation
+            .map_err(|e| e.to_string())?
+            .reap_until(deadline)
+            .map_err(|e| e.to_string())?
+            .with_reaper(reaper)
+            .drain_until(deadline)
+            .map_err(|e| e.to_string())?
+            .finish(parent)
+            .map_err(|e| e.to_string())?;
+        assert!(children.collected() <= 1);
+        assert!(!parent.join(name).exists());
+        assert!(
+            fs::read_to_string("/proc/thread-self/children")?
+                .trim()
+                .is_empty()
+        );
+        drop(lease);
+        assert_eq!(fs::read_dir(root.join("records"))?.count(), 0);
+        fs::write(root.join("done"), b"cleanup complete")?;
+        Ok(())
+    }
+    fn independent_guardian_test() -> Result<(), Box<dyn std::error::Error>> {
+        use std::{
+            process::Command,
+            time::{Duration, Instant},
+        };
+        let reaper = conglobate::process::ChildReaper::install()?;
+        for depart in [false, true] {
+            let root = std::path::Path::new(if depart {
+                "/work/departed-supervisor"
+            } else {
+                "/work/closed-supervisor"
+            });
+            fs::create_dir(root)?;
+            fs::create_dir(root.join("records"))?;
+            fs::set_permissions(root.join("records"), fs::Permissions::from_mode(0o700))?;
+            let deadline = Instant::now() + Duration::from_secs(15);
+            let mut command = Command::new(std::env::current_exe()?);
+            if depart {
+                command.arg("--departing-supervisor").arg(root);
+                let child: conglobate::process::Process<conglobate::process::Running> =
+                    command.spawn()?.into();
+                assert!(child.wait_until(deadline)?.status().success());
+            } else {
+                command.arg("--independent-guardian").arg(root);
+                let (guardian, channel) =
+                    conglobate::process::Process::launch_supervised(command, deadline)?;
+                Self::wait_for_file(&root.join("ready"), deadline)?;
+                assert!(!Self::check_lease_in_child(&root.join("records"))?);
+                drop(channel);
+                assert!(guardian.wait_until(deadline)?.status().success());
+            }
+            Self::wait_for_file(&root.join("done"), deadline)?;
+            assert!(Self::check_lease_in_child(&root.join("records"))?);
+            assert_eq!(fs::read_dir(root.join("records"))?.count(), 0);
+            fs::remove_file(root.join("ready"))?;
+            fs::remove_file(root.join("done"))?;
+            fs::remove_dir(root.join("records"))?;
+            fs::remove_dir(root)?;
+        }
+        // Reverse failure: the supervisor has a stable guardian wait owner,
+        // excludes it, then reopens its persisted domain under the recovery lease.
+        let root = std::path::Path::new("/work/dead-guardian");
+        fs::create_dir(root)?;
+        fs::create_dir(root.join("records"))?;
+        fs::set_permissions(root.join("records"), fs::Permissions::from_mode(0o700))?;
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let mut command = Command::new(std::env::current_exe()?);
+        command.arg("--independent-guardian").arg(root);
+        let (guardian, channel) =
+            conglobate::process::Process::launch_supervised(command, deadline)?;
+        Self::wait_for_file(&root.join("ready"), deadline)?;
+        let name = fs::read_to_string(root.join("ready"))?;
+        assert!(!guardian.terminate_until(deadline)?.status().success());
+        channel.wait_for_loss_until(deadline)?;
+        drop(channel);
+        assert!(!root.join("done").exists());
+        let lease = conglobate::anchor::RecoveryDirectory::open(&root.join("records"))?;
+        let parent = std::path::Path::new("/work/cgroups");
+        let cleanup = conglobate::domain::DomainCancellation::recover(&lease, parent, &name)?
+            .retry_until(deadline)
+            .map_err(|e| e.to_string())?;
+        // No direct child wait owner remains. The outer test subreaper adopted
+        // the departed supervisor's guardian plus this guardian's helper, and
+        // possibly its sleep if the helper could not reap it before cancellation.
+        let children = reaper.drain_until(deadline)?;
+        assert!((2..=3).contains(&children.collected()));
+        cleanup.finish(parent).map_err(|e| e.to_string())?;
+        assert!(!parent.join(name).exists());
+        drop(lease);
+        assert!(
+            fs::read_to_string("/proc/thread-self/children")?
+                .trim()
+                .is_empty()
+        );
+        fs::remove_file(root.join("ready"))?;
+        fs::remove_dir(root.join("records"))?;
+        fs::remove_dir(root)?;
+        println!("PRODUCTION_INDEPENDENT_GUARDIAN_PASS");
         Ok(())
     }
     fn guardian_drain() -> Result<(), Box<dyn std::error::Error>> {

@@ -277,6 +277,15 @@ quarantined, not guessed from a numeric PID. Publication requires an intact
 supervision protocol and all completion receipts. This is the target protocol;
 its death/race/failure cases are mandatory M4 qualification.
 
+The independent-process fixture now composes the production supervision, recorded
+domain, cancellation and descendant-drain primitives across separate supervisor,
+guardian and helper processes. It exercises upstream channel closure, supervisor
+exit without destructors, and guardian termination followed by lease-protected
+supervisor recovery. Fixture files synchronize registered-phase readiness only;
+they are not an admission protocol. These checks qualify process separation for
+the domain lifecycle, not a production guardian entrypoint, setup-phase monitoring,
+concurrent death recovery or persisted policy/mount lifetime ordering.
+
 The anchor addresses a security issue independent of resource leaks: deleting
 namespaces while leaving global LSM authorization pinned can authorize later
 identity reuse. No cleanup fallback may make that tradeoff. Namespace/mount

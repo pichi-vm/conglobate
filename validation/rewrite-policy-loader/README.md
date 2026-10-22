@@ -230,3 +230,20 @@ retained throughout. Record corruption then forces cleanup failure and successfu
 retry after restoration. The final count is one adopted child, and no children or
 recovery files remain. This checks the integrated cleanup path, not independent
 guardian launch, setup supervision or policy/mount teardown.
+
+
+v33 runs the production lifecycle primitives in independent guardian processes.
+One supervisor closes its channel while alive; another exits without Rust
+destructors. The guardian retains the recovery lease and performs domain
+cancellation, helper reaping, descendant draining and record cleanup. The fixture
+checks lease exclusion before cancellation and availability after cleanup. An
+outer subreaper collects the guardian orphaned by the departing supervisor.
+
+v34 additionally terminates the guardian through its identified Process owner.
+The surviving supervisor detects loss, acquires the abandoned lease, recovers
+and cancels the recorded domain, drains adopted children and removes the record.
+The outer subreaper's expected count accounts for whether the helper reaped its
+sleep before cancellation. Readiness publication uses rename to avoid observing
+an incomplete name. These fixture files synchronize tests only; they do not
+implement production readiness/admission. Neither run establishes policy/mount
+persistence, setup monitoring or simultaneous supervisor/guardian death recovery.

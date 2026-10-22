@@ -799,3 +799,21 @@ rules rather than silently shrinking acceptance criteria.
   and prohibit unrelated wait owners. Policy/mount integration remains unfinished.
   M4 stays at zero adherence passes. Previous goal turn was progress: committed
   descendant-reaping primitive and guest-only adoption/failure evidence.
+
+- Added an independent-process guardian fixture composing production lifecycle
+  owners across supervisor, guardian and registered helper processes. v33 passes
+  upstream channel closure and supervisor exit without Rust destructors. The
+  guardian cancels, reaps, drains and removes its record; lease acquisition is
+  rejected while it owns the build and succeeds after cleanup.
+- v34 adds guardian termination through its identified owner, peer-loss detection,
+  supervisor recovery under the acquired lease, persisted-domain cancellation,
+  adopted-child draining and final record removal. Review found a fixture file
+  readiness race; v34 publishes the completed readiness file through rename.
+  Exact source and binary/kernel/initramfs evidence is retained for both versions.
+- Only the validation harness and documentation changed; probe build, Clippy and
+  formatting pass. Root tests were not repeated without production changes. This
+  is registered-phase domain qualification across real processes, not complete
+  sandbox qualification. Production startup/admission, setup monitoring, policy/
+  mount integration and concurrent death cases remain outstanding. M4 is still
+  at zero adherence passes. The previous goal turn made progress by committing
+  integrated descendant drain and ownership-preserving cleanup retries.
