@@ -87,6 +87,8 @@ pub struct ChildLease<I: Termination> {
 pub trait Termination: private::Sealed + std::fmt::Debug {
     #[doc(hidden)]
     fn kill(&self, child: &mut Child) -> io::Result<()>;
+    #[doc(hidden)]
+    fn wait_until(&self, child: &Child, deadline: Instant) -> io::Result<()>;
 }
 #[derive(Debug)]
 pub struct WaitOwned {
@@ -102,6 +104,19 @@ impl Termination for WaitOwned {
     fn kill(&self, child: &mut Child) -> io::Result<()> {
         child.kill()
     }
+    fn wait_until(&self, child: &Child, deadline: Instant) -> io::Result<()> {
+        // The exclusive wait owner retains even an exited child's PID until
+        // reaping. SIGCHLD must not be ignored or use SA_NOCLDWAIT; no other
+        // thread/reaper may collect this child during its owned lifetime.
+        let pid = i32::try_from(child.id())
+            .ok()
+            .and_then(rustix::process::Pid::from_raw)
+            .ok_or_else(|| io::Error::other("invalid owned child PID"))?;
+        ProcessObservation {
+            identity: rustix::process::pidfd_open(pid, rustix::process::PidfdFlags::empty())?,
+        }
+        .wait_until(deadline)
+    }
 }
 impl Termination for Pinned {
     fn kill(&self, _child: &mut Child) -> io::Result<()> {
@@ -112,6 +127,9 @@ impl Termination for Pinned {
             Ok(()) | Err(rustix::io::Errno::SRCH) => Ok(()),
             Err(error) => Err(error.into()),
         }
+    }
+    fn wait_until(&self, _child: &Child, deadline: Instant) -> io::Result<()> {
+        self.observation.wait_until(deadline)
     }
 }
 #[derive(Debug, thiserror::Error)]
@@ -136,6 +154,8 @@ impl<S: LiveState> WaitFailure<S> {
     }
 }
 impl From<Child> for Process<Running> {
+    /// Transfer exclusive reaping ownership. SIGCHLD must retain waitable
+    /// children (neither SIG_IGN nor SA_NOCLDWAIT); no other waiter may reap it.
     fn from(child: Child) -> Self {
         Self {
             resources: ChildLease {
@@ -203,14 +223,20 @@ impl<S: LiveState> Process<S> {
                     });
                 }
             }
-            let remaining = deadline.saturating_duration_since(Instant::now());
-            if remaining.is_zero() {
+            if let Err(error) = self
+                .resources
+                .termination
+                .wait_until(self.resources.child.as_ref().expect("live child"), deadline)
+            {
                 return Err(WaitFailure {
-                    error: WaitError::Deadline,
+                    error: if error.kind() == io::ErrorKind::TimedOut {
+                        WaitError::Deadline
+                    } else {
+                        error.into()
+                    },
                     process: self,
                 });
             }
-            std::thread::sleep(remaining.min(Duration::from_millis(5)));
         }
     }
 
@@ -249,8 +275,8 @@ impl<I: Termination> Drop for ChildLease<I> {
     fn drop(&mut self) {
         if let Some(mut child) = self.child.take() {
             // Best-effort fallback only. Never block indefinitely in Drop or
-            // manufacture a quiescence receipt. The guardian/recovery protocol
-            // must retain resource authority for unresolved process lifetimes.
+            // manufacture a quiescence receipt. The enclosing step must retain
+            // resource authority for unresolved process lifetimes until VM exit.
             let _ = self.termination.kill(&mut child);
             let deadline = Instant::now() + Duration::from_millis(250);
             loop {
@@ -262,14 +288,10 @@ impl<I: Termination> Drop for ChildLease<I> {
                     }
                     Ok(None) => {}
                 }
-                if Instant::now() >= deadline {
-                    eprintln!(
-                        "helper {} still requires recovery after termination",
-                        child.id()
-                    );
+                if let Err(error) = self.termination.wait_until(&child, deadline) {
+                    eprintln!("helper {} remains unreaped: {error}", child.id());
                     return;
                 }
-                std::thread::sleep(Duration::from_millis(5));
             }
         }
     }

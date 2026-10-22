@@ -476,3 +476,18 @@ These tests do not complete step admission or policy ownership. Namespace pin
 paths remain a fixture adapter, as does active-policy construction. The earlier
 mounted-root discovery limitation is resolved; complete partial-setup cleanup,
 production lifecycle aggregation and broader qualification remain outstanding.
+
+## Event-driven direct-child waits
+
+v51 passes the existing normal, failed-command, timeout, retained-root ownership
+and direct-child termination checks after replacing Process wait/destructor sleep
+loops with pidfd observation and separate status collection. Identified children
+reuse the transferred pidfd. Other directly owned children open a pidfd while
+exclusive wait ownership retains their PID, including after exit but before reap.
+This requires normal SIGCHLD zombie semantics and no competing reaper.
+
+Host process tests explicitly block on pipe input, test an expired deadline,
+then release by EOF or terminate. No delay establishes test ordering. The root
+suite, Clippy and formatting pass. Cgroup-empty and adopted-child-drain polling
+remain separate outstanding event-wait improvements; this is not full M4 or
+production active-policy qualification.

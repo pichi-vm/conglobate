@@ -1,0 +1,35 @@
+684: /**
+685:  * sys_pidfd_open() - Open new pid file descriptor.
+686:  *
+687:  * @pid:   pid for which to retrieve a pidfd
+688:  * @flags: flags to pass
+689:  *
+690:  * This creates a new pid file descriptor with the O_CLOEXEC flag set for
+691:  * the task identified by @pid. Without PIDFD_THREAD flag the target task
+692:  * must be a thread-group leader.
+693:  *
+694:  * Return: On success, a cloexec pidfd is returned.
+695:  *         On error, a negative errno number will be returned.
+696:  */
+697: SYSCALL_DEFINE2(pidfd_open, pid_t, pid, unsigned int, flags)
+698: {
+699: 	int fd;
+700: 	struct pid *p;
+701: 
+702: 	if (flags & ~(PIDFD_NONBLOCK | PIDFD_THREAD))
+703: 		return -EINVAL;
+704: 
+705: 	if (pid <= 0)
+706: 		return -EINVAL;
+707: 
+708: 	p = find_get_pid(pid);
+709: 	if (!p)
+710: 		return -ESRCH;
+711: 
+712: 	fd = pidfd_create(p, flags);
+713: 
+714: 	put_pid(p);
+715: 	return fd;
+716: }
+717: 
+718: #ifdef CONFIG_SYSCTL

@@ -1260,3 +1260,24 @@ rules rather than silently shrinking acceptance criteria.
   still use fixture adapters. Production step admission/policy aggregation,
   complete late-error cleanup, remaining runtime support and qualification are
   unfinished. No new guardian or cross-invocation recovery service is required.
+
+- Previous goal turn made progress in 901163b (owned mount handoff). Inspection
+  of activation ownership confirms a naked enable method would not enforce
+  assigned namespace/mount lifetimes or descendant teardown. The fixture active
+  adapter remains intentionally unavailable as a production activation API.
+- Replaced direct-child wait and destructor-reap sleep polling with pidfd event
+  observation followed by status collection. Identified helpers reuse their
+  received pidfd; Running children obtain one while exclusively wait-owned.
+  Normal SIGCHLD zombie semantics and exclusive reaping are explicit prerequisites
+  (already required by Child and numeric termination ownership). Failures retain
+  child ownership; no elapsed delay or channel closure constitutes process exit.
+- Process tests now hold a child on pipe input rather than a long sleep, prove
+  immediate-deadline owner retention, then separately test explicit EOF release
+  and cancellation. Root suite (16 compile-fail), Clippy, formatting and v51's
+  disposable-VM normal/timeout/failure pipeline pass. Preserved kernel pidfd source,
+  fixture/source snapshots, hashes and logs. No privileged host operations.
+- Review checked pidfd acquisition before reaping, error/timeout ownership,
+  SIGCHLD assumptions, and observation versus collected status. This is not a
+  full milestone adherence pass. Cgroup population and adopted-child drain still
+  use bounded condition polling; production policy/admission aggregation and
+  complete failure cleanup remain unfinished. M4 remains zero adherence passes.
