@@ -134,3 +134,19 @@ does not unshare descriptor tables. Rustix's deprecated safe general unshare was
 not used, nor its unsafe replacement. The module exposes no arbitrary flags.
 Process supervision, durable namespace/policy anchors, PID/user/network command
 namespaces and the launch protocol remain outstanding; no commands run here.
+
+## Namespace restoration failure
+
+Run v8 adds real permission fault injection inside the disposable VM. A scoped
+fixture guard removes effective SYS_ADMIN only, preserving the permitted set.
+PrivateMountNamespace::restore returns Entered/EPERM and the current namespace
+inode remains the private one. Restoring the effective set and calling restore
+on that owning error returns to the original namespace. A separate attempt to
+enter without effective SYS_ADMIN returns Before/EPERM without changing the
+namespace. The guard restores fixture capabilities on unwind as well.
+
+All prior VM assertions pass, as do probe Clippy and formatting. No production
+fault hooks or source fixes were needed. The capability changes occur in the
+QEMU probe process only; this is neither a host security change nor a test of
+untrusted commands retaining permitted SYS_ADMIN. Command policy must remove
+that capability from every capability set, as required by the design.

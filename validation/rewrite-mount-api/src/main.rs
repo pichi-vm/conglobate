@@ -136,6 +136,33 @@ impl Probe {
             original_namespace
         );
         println!("PRODUCTION_PRIVATE_NAMESPACE_PASS");
+        self.namespace_recovery(original_namespace)?;
+        Ok(())
+    }
+
+    fn namespace_recovery(&self, original: u64) -> io::Result<()> {
+        use conglobate::isolation::{NamespaceFailure, PrivateMountNamespace};
+        let scope = PrivateMountNamespace::enter().map_err(|e| io::Error::other(e.to_string()))?;
+        let private = fs::metadata("/proc/thread-self/ns/mnt")?.ino();
+        let restricted = EffectiveCapabilities::without_admin()?;
+        let failure = scope.restore().unwrap_err();
+        assert!(
+            matches!(&failure, NamespaceFailure::Entered { source, .. } if source.raw_os_error() == Some(1))
+        );
+        assert_eq!(fs::metadata("/proc/thread-self/ns/mnt")?.ino(), private);
+        drop(restricted);
+        failure
+            .restore()
+            .map_err(|e| io::Error::other(e.to_string()))?;
+        assert_eq!(fs::metadata("/proc/thread-self/ns/mnt")?.ino(), original);
+        let restricted = EffectiveCapabilities::without_admin()?;
+        let failure = PrivateMountNamespace::enter().unwrap_err();
+        assert!(
+            matches!(failure, NamespaceFailure::Before(error) if error.raw_os_error() == Some(1))
+        );
+        assert_eq!(fs::metadata("/proc/thread-self/ns/mnt")?.ino(), original);
+        drop(restricted);
+        println!("PRODUCTION_NAMESPACE_RECOVERY_PASS");
         Ok(())
     }
 
@@ -212,6 +239,32 @@ impl Probe {
         assert!(status.success());
         println!("PRODUCTION_DETACHED_MOUNT_PASS");
         Ok(())
+    }
+}
+/// VM-only fault injection: retain permitted capabilities and temporarily clear
+/// effective SYS_ADMIN. This changes only the probe thread, never the host.
+#[derive(Debug)]
+struct EffectiveCapabilities(rustix::thread::CapabilitySets);
+impl EffectiveCapabilities {
+    fn without_admin() -> io::Result<Self> {
+        let saved = rustix::thread::capabilities(None)?;
+        let mut restricted = saved;
+        assert!(
+            restricted
+                .effective
+                .contains(rustix::thread::CapabilitySet::SYS_ADMIN)
+        );
+        restricted
+            .effective
+            .remove(rustix::thread::CapabilitySet::SYS_ADMIN);
+        rustix::thread::set_capabilities(None, restricted)?;
+        Ok(Self(saved))
+    }
+}
+impl Drop for EffectiveCapabilities {
+    fn drop(&mut self) {
+        rustix::thread::set_capabilities(None, self.0)
+            .expect("restore probe effective capabilities");
     }
 }
 fn main() -> io::Result<()> {

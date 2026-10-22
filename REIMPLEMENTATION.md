@@ -368,3 +368,11 @@ rules rather than silently shrinking acceptance criteria.
   five compile-fail checks, Clippy and formatting pass. Dedicated helper launching,
   current namespace anchors, guardian protocol and command isolation remain M4
   work; these checks do not qualify untrusted command execution.
+- VM v8 validates real namespace permission failures without production fault
+  hooks: the fixture temporarily removes only effective SYS_ADMIN while retaining
+  permitted capabilities. Explicit restoration returns EPERM with recovery owner
+  and leaves the private namespace current. Restoring the effective capability
+  and retrying succeeds. Entry without the capability returns Before/EPERM and
+  leaves the original namespace unchanged. Existing probe checks also pass.
+  Probe Clippy/formatting pass; production code is unchanged. This qualifies the
+  ordinary restoration-error path, not crash recovery or command confinement.

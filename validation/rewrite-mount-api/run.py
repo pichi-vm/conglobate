@@ -94,7 +94,7 @@ command = [v.replace(str(seed), str(out)) for v in json.loads((seed / 'command.j
 with (out / 'serial.txt').open('wb') as log:
     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
 serial = (out / 'serial.txt').read_text()
-passed = all(marker in serial for marker in ['PRODUCTION_PRIVATE_NAMESPACE_PASS', 'PRODUCTION_ATTACHMENT_LIFECYCLE_PASS', 'PRODUCTION_DETACHED_MOUNT_PASS', 'IDMAP_TRANSLATION_AND_CLEANUP_PASS', 'IDMAP_PERSISTED_OWNERSHIP_PASS', 'IDMAP_PROBE_EXIT 0'])
+passed = all(marker in serial for marker in ['PRODUCTION_NAMESPACE_RECOVERY_PASS', 'PRODUCTION_PRIVATE_NAMESPACE_PASS', 'PRODUCTION_ATTACHMENT_LIFECYCLE_PASS', 'PRODUCTION_DETACHED_MOUNT_PASS', 'IDMAP_TRANSLATION_AND_CLEANUP_PASS', 'IDMAP_PERSISTED_OWNERSHIP_PASS', 'IDMAP_PROBE_EXIT 0'])
 (out / 'verdict.json').write_text(json.dumps({'passed': passed, 'full_sandbox_qualified': False}, indent=2))
 assert passed, serial[-5000:]
 print('PASS', out)
