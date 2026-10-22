@@ -597,3 +597,17 @@ rules rather than silently shrinking acceptance criteria.
   compile-fail doctests. Clippy and formatting pass. M4 remains open with zero
   adherence passes. Persisted aggregate ownership, actual guardian/containment,
   readiness/registration/acknowledgement and combined death recovery are pending.
+
+- Pre-integration review found supervision consumed unexpected traffic before
+  returning InvalidData. A caller making another observation could then see a
+  healthy channel. Changed observation to MSG_PEEK, preserving the failure without
+  a mutable error latch. A regression checks repeated observations and bounded
+  waiting all reject the same queued invalid payload.
+- Added separate mechanism tests: normal cancellation remains visible while a
+  duplicate endpoint is held, and pidfd-observed process exit remains visible
+  while the peer socket is deliberately kept open. The latter uses an exclusively
+  owned child PID solely to construct the test fixture; production startup still
+  exchanges self-pidfds. These tests do not establish descendant quiescence.
+- Three new unit tests pass, alongside the existing identity/supervision
+  integration checks, Clippy and formatting. This is an in-progress M4 correction,
+  not an adherence-gate pass. The clean streak remains zero.

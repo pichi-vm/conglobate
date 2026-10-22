@@ -288,7 +288,8 @@ observation and the retained CLOEXEC control socket. Normal Drop shuts down the
 endpoint even if a transient inherited descriptor remains; pidfd observation
 independently detects process exit without destructors. A bounded poll observes
 both mechanisms. Unexpected post-exchange payloads are errors, not accepted
-control commands. This initial protocol has no readiness or admission message.
+control commands. Observation peeks rather than consumes those payloads, so a
+second check cannot turn a protocol violation into a healthy observation. This initial protocol has no readiness or admission message.
 
 Process<Identified>::launch_supervised returns both the identified child owner
 and the paired supervision channel. Exchange/descriptor-duplication failures
