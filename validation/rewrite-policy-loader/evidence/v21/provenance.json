@@ -1,0 +1,22 @@
+{
+  "base_commit": "44e6dc870d83a28b8b3795f6fda741a76b0fe68d",
+  "full_artifacts": "/var/tmp/conglobate-rewrite-policy-loader-v21",
+  "sha256": {
+    "/var/tmp/conglobate-rewrite-policy-loader-v21/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-rewrite-policy-loader-v21/initramfs.gz": "e138444484f14200b87ceffb37822779ae85f09a8286dafb94a85a64cc79fcfb",
+    "/var/tmp/conglobate-rewrite-policy-loader-v21/root/idmap-probe": "89cd3c15152b241386cdc6f9391da903424fd4306fd28ca0359330072452ee4b",
+    "validation/rewrite-policy-loader/evidence/v21/probe.rs": "4a3fd02667e6605b9382538ca05a8813ace0de89a36d479dce60308c04471c45",
+    "validation/rewrite-policy-loader/run.py": "ed26e77853b9c30d9ff171c2c05976578909e705e4e087420d0c41c476fd99f3",
+    "validation/rewrite-policy-loader/Cargo.lock": "980c7dd3a2462713d15933463f98200e5f483d3861dacfc02e4ab5cc9be0d3ca",
+    "validation/rewrite-policy-loader/evidence/v21/anchor.rs": "78bfbb3833fff2467d76f156d9eac537e5813e2566845ec2b637a5075a5c93cf",
+    "validation/rewrite-policy-loader/evidence/v21/domain.rs": "f2dff31878175373cf4363758872ecbfa756fb0c22a7a9b49702d96c8ea9b697",
+    "validation/rewrite-policy-loader/evidence/v21/domain-record.rs": "83f6922a73867c32b8f3c395ee55c1e99d4df35ce82cfb4051f42ac10c550904",
+    "validation/rewrite-policy-loader/evidence/v21/anchor-domain.rs": "0df560995455863ed9370225730809a8d911f0d9fb7de428962dee1f94c662e3",
+    "validation/rewrite-policy-loader/evidence/v21/control-record.rs": "4621240d853205ee3b03d52a906794b1f0e40ca6e2f2863f4d23d574429ab8bd",
+    "validation/rewrite-policy-loader/evidence/v21/namespace-record.rs": "9a766732ed426f69a2e01385f2206c504fbd4acc51cab0c4c4a42490f9cb02a7"
+  },
+  "verified_markers": [
+    "PRODUCTION_COMMAND_DOMAIN_RECORD_RECOVERY_PASS"
+  ],
+  "full_sandbox_qualified": false
+}

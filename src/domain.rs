@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Fresh private cgroup-v2 domains. Registration and reaping are separate gates.
+mod record;
+pub use record::DomainRecord;
+
 use crate::anchor::{RecoveryDirectory, RecoveryLease};
 use std::{
     fs::{self, File},

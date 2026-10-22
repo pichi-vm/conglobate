@@ -17,6 +17,22 @@ impl Probe {
         let arguments = std::env::args_os().collect::<Vec<_>>();
         if arguments
             .get(1)
+            .is_some_and(|argument| argument == "--publish-domain")
+        {
+            let recovery = arguments.get(2).ok_or("missing recovery path")?;
+            let parent = arguments.get(3).ok_or("missing domain parent")?;
+            let lease =
+                conglobate::anchor::RecoveryDirectory::open(std::path::Path::new(recovery))?;
+            let domain =
+                conglobate::domain::CommandDomain::create(&lease, std::path::Path::new(parent))?;
+            let record = lease.save_domain(&domain)?;
+            println!("{}", record.name());
+            std::io::Write::flush(&mut std::io::stdout())?;
+            std::process::exit(0);
+        }
+
+        if arguments
+            .get(1)
             .is_some_and(|argument| argument == "--registration-close")
         {
             let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
@@ -347,6 +363,28 @@ impl Probe {
         empty.cancel_until(Instant::now() + Duration::from_secs(5))?;
         let lease = conglobate::anchor::RecoveryDirectory::open(recovery_path)?;
         let domain = conglobate::domain::CommandDomain::create(&lease, parent)?;
+        let record = lease.save_domain(&domain)?;
+        assert_eq!(
+            lease.save_domain(&domain).unwrap_err().kind(),
+            std::io::ErrorKind::AlreadyExists
+        );
+        assert_eq!(lease.load_domain(record.name())?, record);
+        assert!(lease.remove_domain_record(parent, &record).is_err());
+        let other_path = std::path::Path::new("/work/other-recovery");
+        fs::create_dir(other_path)?;
+        fs::set_permissions(other_path, fs::Permissions::from_mode(0o700))?;
+        let other_lease = conglobate::anchor::RecoveryDirectory::open(other_path)?;
+        assert!(other_lease.save_domain(&domain).is_err());
+        assert_eq!(fs::read_dir(other_path)?.count(), 0);
+        drop(other_lease);
+        fs::remove_dir(other_path)?;
+
+        let wrong_parent = parent.join("wrong-parent");
+        fs::create_dir(&wrong_parent)?;
+        assert!(lease.recover_domain(&wrong_parent, record.name()).is_err());
+        assert!(lease.remove_domain_record(&wrong_parent, &record).is_err());
+        fs::remove_dir(wrong_parent)?;
+
         let path = fs::read_dir(parent)?
             .filter_map(Result::ok)
             .find(|entry| {
@@ -397,11 +435,40 @@ impl Probe {
             }
             std::thread::sleep(Duration::from_millis(5));
         }
+        drop(domain);
+        let recovered_lease = conglobate::anchor::RecoveryDirectory::open(recovery_path)?;
+        assert_eq!(recovered_lease.load_domain(record.name())?, record);
+        let domain = recovered_lease.recover_domain(parent, record.name())?;
+        drop(recovered_lease);
         domain.cancel_until(deadline)?;
         assert!(!child.wait_until(deadline)?.status().success());
         assert!(!path.exists());
         assert!(watch.peer_lost()?);
         let lease = conglobate::anchor::RecoveryDirectory::open(recovery_path)?;
+        assert!(lease.recover_domain(parent, record.name()).is_err());
+        lease.remove_domain_record(parent, &record)?;
+        assert!(lease.load_domain(record.name()).is_err());
+        let replaced = conglobate::domain::CommandDomain::create(&lease, parent)?;
+        let replaced_record = lease.save_domain(&replaced)?;
+        let replaced_path = parent.join(replaced_record.name());
+        drop(replaced);
+        fs::remove_dir(&replaced_path)?;
+        fs::create_dir(&replaced_path)?;
+        fs::set_permissions(&replaced_path, fs::Permissions::from_mode(0o700))?;
+        assert!(
+            lease
+                .recover_domain(parent, replaced_record.name())
+                .is_err()
+        );
+        assert!(
+            lease
+                .remove_domain_record(parent, &replaced_record)
+                .is_err()
+        );
+        fs::remove_dir(&replaced_path)?;
+        lease.remove_domain_record(parent, &replaced_record)?;
+        println!("PRODUCTION_COMMAND_DOMAIN_REPLACEMENT_REJECTED_PASS");
+        println!("PRODUCTION_COMMAND_DOMAIN_RECORD_RECOVERY_PASS");
         let abandoned = conglobate::domain::CommandDomain::create(&lease, parent)?;
         let mut command = Command::new(std::env::current_exe()?);
         command
@@ -418,7 +485,22 @@ impl Probe {
         drop(lease);
         drop(conglobate::anchor::RecoveryDirectory::open(recovery_path)?);
         assert!(Self::check_lease_in_child(recovery_path)?);
+        let published = Command::new(std::env::current_exe()?)
+            .arg("--publish-domain")
+            .arg(recovery_path)
+            .arg(parent)
+            .output()?;
+        assert!(published.status.success());
+        let published_name = String::from_utf8(published.stdout)?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(recovery_path)?;
+        let published_record = lease.load_domain(published_name.trim())?;
+        lease
+            .recover_domain(parent, published_record.name())?
+            .cancel_until(Instant::now() + Duration::from_secs(5))?;
+        lease.remove_domain_record(parent, &published_record)?;
+        drop(lease);
         fs::remove_dir(recovery_path)?;
+        println!("PRODUCTION_COMMAND_DOMAIN_PUBLISHER_EXIT_PASS");
         println!("PRODUCTION_COMMAND_DOMAIN_LEASE_PASS");
         println!("PRODUCTION_COMMAND_DOMAIN_CANCEL_PASS");
         Ok(())

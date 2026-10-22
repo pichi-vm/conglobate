@@ -1,16 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+use super::control_record::ControlRecords;
 use super::{NamespacePin, NamespaceRecord, RecoveryDirectory};
-use std::{
-    fs::{self, File},
-    io::{self, Read, Write},
-    os::{
-        fd::AsRawFd,
-        unix::fs::{MetadataExt, PermissionsExt},
-    },
-    path::PathBuf,
-};
+use std::io;
 
 impl NamespaceRecord {
     // Bounded single-entry control record, not the build inventory/lease schema.
@@ -122,26 +115,10 @@ impl RecoveryDirectory {
         // Recheck the mount, not just the syntactic record. Dropping this view
         // leaves the kernel pin intact and releases only its shared lease ref.
         drop(NamespacePin::recover(self, record.clone())?);
-        let root = PathBuf::from(format!(
-            "/proc/self/fd/{}",
-            self.lease.directory.as_raw_fd()
-        ));
-        let mut staged = tempfile::Builder::new()
-            .prefix("record-")
-            .tempfile_in(&root)?;
-        staged
-            .as_file()
-            .set_permissions(fs::Permissions::from_mode(0o600))?;
-        staged.write_all(&record.to_cbor())?;
-        staged.as_file().sync_all()?;
-        let destination = root.join(format!(
-            "{}.cbor",
-            record.name.to_str().expect("validated ASCII name")
-        ));
-        staged
-            .persist_noclobber(destination)
-            .map_err(|error| error.error)?;
-        self.lease.directory.sync_all()
+        ControlRecords::new(self).save(
+            record.name.to_str().expect("validated ASCII name"),
+            &record.to_cbor(),
+        )
     }
 
     /// Read a bounded validated description. Recovery must still verify its
@@ -154,29 +131,7 @@ impl RecoveryDirectory {
                 "invalid namespace pin name",
             ));
         }
-        let file = File::from(rustix::fs::openat(
-            &self.lease.directory,
-            format!("{name}.cbor"),
-            rustix::fs::OFlags::RDONLY
-                | rustix::fs::OFlags::CLOEXEC
-                | rustix::fs::OFlags::NOFOLLOW
-                | rustix::fs::OFlags::NONBLOCK,
-            rustix::fs::Mode::empty(),
-        )?);
-        let metadata = file.metadata()?;
-        if !metadata.is_file()
-            || metadata.uid() != 0
-            || metadata.mode() & 0o777 != 0o600
-            || metadata.len() > NamespaceRecord::MAX_BYTES
-        {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "invalid namespace record file",
-            ));
-        }
-        let mut bytes = Vec::new();
-        file.take(NamespaceRecord::MAX_BYTES + 1)
-            .read_to_end(&mut bytes)?;
+        let bytes = ControlRecords::new(self).load(name)?;
         let record = NamespaceRecord::try_from(bytes.as_slice())?;
         if record.name != name {
             return Err(io::Error::new(

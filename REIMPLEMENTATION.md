@@ -664,3 +664,22 @@ rules rather than silently shrinking acceptance criteria.
   is complete; domain record serialization, identity-checked reopening and the
   aggregate guardian protocol are still pending. M4 remains at zero adherence
   passes; this is not a persistence or crash-recovery qualification claim.
+
+- Added canonical bounded DomainRecord with generated name plus parent/domain
+  device/inode identities. Decoding grants data only. RecoveryDirectory saves
+  only a live domain owned by that same lease, loads protected records and
+  reopens only after parent/cgroup identity, permissions and type verification.
+  Record deletion requires an exact stored match and absent target in its
+  original parent. No arbitrary decoded description becomes a domain owner.
+- Namespace/domain persistence now shares ControlRecords for bounded private
+  no-replacement publication and file validation. Post-publication errors can
+  leave a complete record and must fail the build; no silent overwrite occurs.
+- Three new codec tests cover exact bytes, bad names/IDs, truncation, oversized,
+  trailing, unknown-version and noncanonical records. VM v21 passes populated
+  domain recovery after owner Drop and wrong-parent/premature-deletion rejection.
+  v22 adds wrong-lease save rejection, replacement-directory rejection and an
+  independent publisher exiting without destructors. All evidence preserved.
+- Full suite passes 92 tests and seven compile-fail doctests. Root/probe Clippy
+  and formatting pass. M4 remains at zero adherence passes. Complete aggregate
+  persistence, exclusive recovery arbitration, guardian orchestration and final
+  admission still require implementation and combined fault qualification.

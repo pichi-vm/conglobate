@@ -131,3 +131,18 @@ allows an independent process to acquire the lease. v20 additionally attempts
 cancellation of an otherwise removable empty domain from a private mount
 namespace: it is rejected and returns the owner, which works after restoration.
 These qualify lock lifetime and namespace checks, not persisted domain recovery.
+
+
+v21 saves a canonical production domain record before registration, rejects
+replacement publication and premature record deletion, and rejects a wrong
+parent identity. With the helper and descendant still alive, it drops the domain
+owner, reacquires the lease, loads/reopens the recorded domain and cancels it.
+Record removal succeeds only after the domain directory is gone. Existing
+namespace record file checks also exercise the shared storage implementation.
+
+v22 additionally rejects saving through another recovery lease without writing
+anything there. It deletes an owned empty cgroup, recreates a private directory
+with the same name and verifies recovery rejects its different identity. A
+separate publisher saves an empty domain and exits without Rust destructors;
+the parent recovers/cancels it and removes the record. Both runs pass. These are
+component persistence checks, not complete supervisor/guardian crash recovery.

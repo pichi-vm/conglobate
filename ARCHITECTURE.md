@@ -113,7 +113,17 @@ lease, keeping the cooperative recovery lock held after the facade is dropped.
 Registration, cancellation and target removal verify the deployment namespace
 through that shared lease. No public lease clone, raw descriptor or early unlock
 is exposed. No recursive cleanup or arbitrary-existing-cgroup kill API is exposed.
-Persistent domain records and identity-checked reopening remain to be implemented.
+Domain records now use canonical bounded CBOR
+`[1, name, parent-device, parent-inode, device, inode]`. Saving verifies live path
+identity and requires the same recovery lease that owns the domain. Protected
+record loading returns data only; recovery loads that record under the lease,
+verifies the supplied parent's identity and the exact cgroup directory identity,
+permissions and domain type, then retains the lease in the recovered owner.
+Wrong parents, missing targets and substituted directories fail. Removing the
+record requires a matching stored description, the original parent identity and
+an absent target. These records do not create a complete transactional build lease
+or establish that another owner has stopped; the aggregate must enforce exclusive
+recovery and preserve all policy/mount identities through descendant cleanup.
 
 The registration exchange now places a trusted helper in this domain before its
 first fork: the parent transfers a freshly opened cgroup.procs descriptor, the
@@ -263,7 +273,8 @@ excluded until the final reference closes. Descriptor-relative access survives
 directory rename. This is cooperative locking, not protection against privileged
 protocol bypass or replacement of the directory through its parent.
 
-Namespace records use deterministic CBOR `[1, name, nsfs-device, inode]`, bounded
+Namespace and domain control records share bounded, private, no-replacement
+file storage. Namespace records use deterministic CBOR `[1, name, nsfs-device, inode]`, bounded
 at 256 bytes. Decoding validates canonical encoding, generated-name syntax and
 identity ranges; it grants no ownership or cleanup authority. Publication checks
 the mounted identity, writes and syncs a private temporary file, publishes without

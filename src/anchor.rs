@@ -17,6 +17,8 @@ use std::{
     sync::Arc,
 };
 
+mod control_record;
+mod domain;
 mod namespace;
 mod record;
 use namespace::InitMountNamespace;
@@ -33,6 +35,9 @@ pub struct RecoveryDirectory {
 #[derive(Debug, Clone)]
 pub(crate) struct RecoveryLease(Arc<DirectoryLease>);
 impl RecoveryLease {
+    pub(crate) fn belongs_to(&self, directory: &RecoveryDirectory) -> bool {
+        Arc::ptr_eq(&self.0, &directory.lease)
+    }
     pub(crate) fn verify_current(&self) -> io::Result<()> {
         self.0.namespace.verify_current()
     }
