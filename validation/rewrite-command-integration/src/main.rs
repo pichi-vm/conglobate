@@ -33,6 +33,12 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "wait-marker") {
+            let marker = args.get(2).ok_or("marker path required")?;
+            Readiness::new(Path::new(marker))?
+                .wait_until(Instant::now() + Duration::from_secs(5), || Ok(false))?;
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "snapshot-probe") {
             use conglobate::storage::{Created, Mapping};
             use std::{
@@ -58,8 +64,10 @@ impl Integration {
                 rustix::fs::makedev(id.major(), id.minor()),
             )?;
             let mut holder = fs::OpenOptions::new().read(true).write(true).open(path)?;
+            let before_usage = snapshot.usage()?;
             holder.write_all(b"snapshot data")?;
             holder.sync_all()?;
+            assert!(snapshot.usage()?.allocated_sectors() >= before_usage.allocated_sectors());
             let failure = snapshot.close().unwrap_err();
             assert_eq!(failure.source_error().raw_os_error(), Some(16));
             drop(holder);
@@ -90,6 +98,36 @@ impl Integration {
             origin.close()?;
             backing.detach().map_err(|e| e.to_string())?;
             fs::remove_file(path)?;
+            let mut scratch = workspace.scratch()?;
+            scratch.set_len(64 * 1024)?;
+            let origin = Mapping::<Created>::create()?.zero(sectors)?;
+            let backing = scratch.attach().map_err(|e| e.to_string())?;
+            let snapshot = Mapping::<Created>::create()?
+                .snapshot(&origin, backing, sectors)
+                .map_err(|e| e.to_string())?;
+            snapshot.usage()?;
+            let id = snapshot.id();
+            rustix::fs::mknodat(
+                rustix::fs::CWD,
+                path,
+                rustix::fs::FileType::BlockDevice,
+                rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
+                rustix::fs::makedev(id.major(), id.minor()),
+            )?;
+            let mut holder = fs::OpenOptions::new().read(true).write(true).open(path)?;
+            let write = holder.write_all(&vec![42; 128 * 1024]);
+            let sync = holder.sync_all();
+            assert!(write.is_err() || sync.is_err());
+            assert_eq!(
+                snapshot.usage().unwrap_err().kind(),
+                std::io::ErrorKind::InvalidData
+            );
+            drop(holder);
+            let backing = snapshot.close().map_err(|e| e.to_string())?;
+            origin.close()?;
+            backing.detach().map_err(|e| e.to_string())?;
+            fs::remove_file(path)?;
+            println!("SNAPSHOT_EXHAUSTION_REJECTS_VALID_USAGE_PASS");
             println!("OWNED_PERSISTENT_SNAPSHOT_REACTIVATION_PASS");
             return Ok(());
         }
@@ -1035,7 +1073,8 @@ impl Integration {
                     setfattr -n security.selinux -v 'system_u:object_r:var_t:s0' /labelled
                     test "$(getfattr --only-values -n security.selinux /labelled)" = 'system_u:object_r:var_t:s0'
                     if setfattr -n security.selinux -v 'system_u:object_r:var_t:s0' /dev/shm/outside-policy; then exit 1; fi
-                    printf 'checked' > /death-policy-checked
+                    printf 'checked' > /death-policy-checked.tmp
+                    mv /death-policy-checked.tmp /death-policy-checked
                     while :; do :; done
                 "#
             } else if mode == "timeout" {

@@ -65,7 +65,7 @@ subprocess.run(['git', '-C', str(context_fixture), '-c', 'user.name=Fixture',
 (root / 'conglobate-disposable-validation-vm').touch()
 image_root = root / 'image-root'
 (image_root / 'bin').mkdir(parents=True)
-for source, name in [('/usr/bin/bash', 'sh'), ('/usr/bin/setfattr', 'setfattr'), ('/usr/bin/getfattr', 'getfattr')]:
+for source, name in [('/usr/bin/bash', 'sh'), ('/usr/bin/setfattr', 'setfattr'), ('/usr/bin/getfattr', 'getfattr'), ('/usr/bin/mv', 'mv')]:
     shutil.copy2(source, image_root / 'bin' / name)
     for line in subprocess.check_output(['ldd', source], text=True).splitlines():
         match = re.search(r'(/\S+)', line)
@@ -173,10 +173,7 @@ if supervisor_death:
     fixture.write_text(setup + r"""
 /idmap-probe supervisor vm-death &
 supervisor=$!
-for attempt in {1..100}; do
-    test ! -e /work/supervisor-ready || break
-    sleep 0.05
-done
+/idmap-probe wait-marker /work/supervisor-ready
 test -e /work/supervisor-ready
 kill -KILL "$supervisor"
 set +e
@@ -201,10 +198,7 @@ done < /proc/self/mountinfo
 test -n "$pin"
 umount /work/origin
 touch "$pin/supervisor-gone"
-for attempt in {1..100}; do
-    test ! -e "$pin/death-policy-checked" || break
-    sleep 0.05
-done
+/idmap-probe wait-marker "$pin/death-policy-checked"
 test "$(cat "$pin/death-policy-checked")" = checked
 echo FILESYSTEM_PIN_AFTER_SUPERVISOR_DEATH_PASS
 echo ACTIVE_POLICY_AFTER_SUPERVISOR_DEATH_PASS

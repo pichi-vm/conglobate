@@ -105,6 +105,12 @@ impl Mapping<Created> {
     }
 }
 impl<'a, 'w> SnapshotMapping<'a, 'w> {
+    /// Current kernel health only. A successful query is not proof of stopped
+    /// writers, final metadata flush, future validity or a sealed output layer.
+    pub fn usage(&self) -> io::Result<SnapshotUsage> {
+        self.mapping.snapshot_info()?.try_into()
+    }
+
     pub fn id(&self) -> devmap_linux::DevId {
         self.mapping.id()
     }
@@ -117,5 +123,85 @@ impl<'a, 'w> SnapshotMapping<'a, 'w> {
                 backing: self.backing,
             }),
         }
+    }
+}
+
+/// Validated counters from one snapshot status observation, in 512-byte sectors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SnapshotUsage {
+    allocated: u64,
+    total: u64,
+    metadata: u64,
+}
+impl SnapshotUsage {
+    pub fn allocated_sectors(self) -> u64 {
+        self.allocated
+    }
+    pub fn total_sectors(self) -> u64 {
+        self.total
+    }
+    pub fn metadata_sectors(self) -> u64 {
+        self.metadata
+    }
+}
+impl TryFrom<devmap_snapshot::Info> for SnapshotUsage {
+    type Error = io::Error;
+    fn try_from(info: devmap_snapshot::Info) -> Result<Self, Self::Error> {
+        match info {
+            devmap_snapshot::Info::Usage {
+                allocated_sectors: allocated,
+                total_sectors: total,
+                metadata_sectors: metadata,
+            } if total != 0 && metadata <= allocated && allocated <= total => Ok(Self {
+                allocated,
+                total,
+                metadata,
+            }),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "snapshot is invalid, exhausted, unknown, or reports inconsistent usage",
+            )),
+        }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use devmap_snapshot::Info;
+    #[test]
+    fn exceptional_and_inconsistent_statuses_are_not_valid_usage() {
+        for info in [
+            Info::Invalid,
+            Info::Overflow,
+            Info::Unknown,
+            Info::MergeFailed,
+            Info::Usage {
+                allocated_sectors: 3,
+                total_sectors: 2,
+                metadata_sectors: 1,
+            },
+            Info::Usage {
+                allocated_sectors: 1,
+                total_sectors: 2,
+                metadata_sectors: 2,
+            },
+            Info::Usage {
+                allocated_sectors: 0,
+                total_sectors: 0,
+                metadata_sectors: 0,
+            },
+        ] {
+            assert_eq!(
+                SnapshotUsage::try_from(info).unwrap_err().kind(),
+                io::ErrorKind::InvalidData
+            );
+        }
+        let usage = SnapshotUsage::try_from(Info::Usage {
+            allocated_sectors: 2,
+            total_sectors: 2,
+            metadata_sectors: 1,
+        })
+        .unwrap();
+        assert_eq!(usage.allocated_sectors(), 2);
     }
 }

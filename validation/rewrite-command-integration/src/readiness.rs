@@ -118,6 +118,23 @@ mod tests {
         );
     }
     #[test]
+    fn renamed_marker_has_complete_contents() {
+        let directory = tempfile::tempdir().unwrap();
+        let marker = directory.path().join("ready");
+        let temporary = directory.path().join("preparing");
+        let watch = Readiness::new(&marker).unwrap();
+        let published = marker.clone();
+        let writer = std::thread::spawn(move || {
+            std::fs::write(&temporary, "complete").unwrap();
+            std::fs::rename(temporary, published).unwrap();
+        });
+        watch
+            .wait_until(Instant::now() + Duration::from_secs(5), || Ok(false))
+            .unwrap();
+        assert_eq!(std::fs::read_to_string(marker).unwrap(), "complete");
+        writer.join().unwrap();
+    }
+    #[test]
     fn observes_writer_after_registration_without_delay() {
         let directory = tempfile::tempdir().unwrap();
         let marker = directory.path().join("ready");

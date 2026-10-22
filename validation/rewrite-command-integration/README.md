@@ -789,3 +789,19 @@ EBUSY cleanup retention, removes it, detaches the loop, then reactivates the sam
 persistent store over fresh dm-zero and reads the bytes back. Normal suite and
 code checks pass. This is not sealing: overflow/validity inspection, finalized
 flush ordering, full chain integration and bounded orchestration remain required.
+
+## Snapshot health and event-based death readiness
+
+v85 verifies SnapshotMapping usage before/after writes and rejects kernel-invalid
+status after exhausting its own 64KiB COW store. Write/flush reports failure; cleanup
+still returns owned backing through the ordinary removal/detachment path. Usage is
+an observation, not successful finalization or a sealed layer. Normal suite passes.
+
+v86 passes replacing the two death-test sleep polls with inotify observation.
+Review then found a content publication race, corrected with write-then-rename.
+v87 preserves the resulting fixture failure: mv was missing inside the command
+root. v88 adds that executable and dependencies, then passes supervisor death,
+continued policy attachment and independent shutdown. Four host readiness tests
+pass, including atomic rename publication; the added test source is archived
+separately from the exact v88 booted source. No readiness depends on elapsed sleep.
+All runs retain raw logs and artifact hashes; full sandbox qualification is false.

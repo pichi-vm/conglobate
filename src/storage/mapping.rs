@@ -114,6 +114,24 @@ impl Mapping<Created> {
         }
     }
 }
+impl Mapping<Active> {
+    pub(super) fn snapshot_info(&self) -> io::Result<devmap_snapshot::Info> {
+        use devmap_linux::records::Records;
+        let version = self.lease.control.version("snapshot")?;
+        let mut rows = self.lease.control.info::<4096>(self.id())?;
+        let row = rows.next().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidData, "snapshot status has no target")
+        })??;
+        let info = row.parse::<devmap_snapshot::Snapshot>(version)?;
+        if rows.next().is_some() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "snapshot status has multiple targets",
+            ));
+        }
+        Ok(info)
+    }
+}
 impl<S: MappingState> Mapping<S> {
     /// Diagnostic identity; copying it does not retain the mapping's lifetime.
     pub fn id(&self) -> DevId {

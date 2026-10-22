@@ -5,7 +5,7 @@
 mod loopback;
 pub use loopback::{LoopAttachFailure, LoopAttachment, LoopDetachFailure};
 mod snapshot;
-pub use snapshot::{SnapshotMapping, SnapshotMappingFailure};
+pub use snapshot::{SnapshotMapping, SnapshotMappingFailure, SnapshotUsage};
 mod mapping;
 pub use mapping::{Active, Created, Mapping, MappingFailure, MappingState};
 

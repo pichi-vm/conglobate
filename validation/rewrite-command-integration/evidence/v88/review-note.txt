@@ -1,0 +1,1 @@
+Final supervisor-death run passed with atomic marker publication and event-based wait. readiness.rs is exact booted source; readiness-with-added-test.rs adds only a subsequent host unit test, recorded separately. Storage normal-run evidence is v85; this run does not execute snapshot-probe.

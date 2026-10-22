@@ -1,0 +1,133 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ mkdir -p /work/origin /work/mapped /work/conglobate-mount-decoy
++ unshare --user --map-root-user /idmap-probe privileges
+NATIVE_PRIVILEGES_EXEC_PASS
++ unshare --user --map-root-user /idmap-probe syscalls
+NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS
+NATIVE_PRIVILEGES_EXEC_PASS
++ unshare --user --map-root-user setpriv --bounding-set=-chown /idmap-probe privileges
++ grep -q 'required capability is not available' /work/privileges-negative
++ grep -q NATIVE_PRIVILEGES_EXEC_PASS /work/privileges-negative
++ echo NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
+NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
++ modprobe loop
++ modprobe ext4
++ truncate -s 64M /work/volume.ext4
++ mke2fs -q -t ext4 -F /work/volume.ext4
++ mount -o loop /work/volume.ext4 /work/origin
++ cp -a /image-root/. /work/origin/
++ /idmap-probe namespace-rejections
+POLICY_PRIVATE_NAMESPACE_REJECTED_PASS
+FOREIGN_CONTROL_MOUNT_DESCRIPTORS_REJECTED_PASS
+NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS
++ modprobe dm-zero
++ modprobe dm-snapshot
++ /idmap-probe snapshot-probe
+SNAPSHOT_EXHAUSTION_REJECTS_VALID_USAGE_PASS
+OWNED_PERSISTENT_SNAPSHOT_REACTIVATION_PASS
++ /idmap-probe loop-probe
+RAM_LOOP_DEFERRED_DETACH_AND_BACKING_RETURN_PASS
++ /idmap-probe mapping-probe
+OWNED_DM_ZERO_BUSY_AND_SETUP_CLEANUP_PASS
++ /idmap-probe workspace-probe
+DETACHED_CONTEXT_FAILED_SETUP_RETRY_PASS
+CONTEXT_CLEANUP_FAILURE_RETAINS_PARENT_PASS
+DETACHED_READONLY_CONTEXT_AND_READER_LIFETIME_PASS
+WORKSPACE_CONTEXT_PARENT_LIFETIME_PASS
+DETACHED_RAM_WORKSPACE_SCRATCH_PASS
++ /idmap-probe reaper-probe
+NATIVE_REAPER_TIMEOUT_AND_RELEASE_PASS
++ /idmap-probe filesystem-pin-probe
+NATIVE_FILESYSTEM_PIN_RETAINS_UNMOUNTED_SOURCE_PASS
++ rm /usr/bin/unshare
++ test '!' -e /usr/bin/nsenter
++ test '!' -e /usr/bin/bwrap
++ mkdir /work/pins
++ mount -t bpf bpf /work/pins
++ chmod 700 /work/pins
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ /idmap-probe supervisor pre-admission-cancel
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+registration peer closed
+BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+PRODUCTION_STEP_CANCEL_BEFORE_ADMISSION_PASS
++ /idmap-probe supervisor admission-timeout
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+registration peer closedBOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+ADMISSION_TIMEOUT_CANCELS_WITHOUT_COMMAND_PASS
++ supervisor=218
++ /idmap-probe supervisor vm-death
++ /idmap-probe wait-marker /work/supervisor-ready
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+SCOPED_ROOT_TERMINATION_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
++ test -e /work/supervisor-ready
++ kill -KILL 218
++ set +e
+/fixture.sh: line 47:   218 Killed                     /idmap-probe supervisor vm-death
++ wait 218
++ status=137
++ set -e
++ test 137 = 137
++ populated=0
++ for domain in /work/cgroups/conglobate-*
++ grep -q 'populated 1' /work/cgroups/conglobate-command-YU8bbZ/cgroup.events
++ populated=1
++ test 1 = 1
++ pin=
++ read -r mount_id parent_id device mount_root mount_path rest
++ case "$mount_path" in
++ read -r mount_id parent_id device mount_root mount_path rest
++ case "$mount_path" in
++ read -r mount_id parent_id device mount_root mount_path rest
++ case "$mount_path" in
++ read -r mount_id parent_id device mount_root mount_path rest
++ case "$mount_path" in
++ read -r mount_id parent_id device mount_root mount_path rest
++ case "$mount_path" in
++ read -r mount_id parent_id device mount_root mount_path rest
++ case "$mount_path" in
++ read -r mount_id parent_id device mount_root mount_path rest
++ case "$mount_path" in
++ read -r mount_id parent_id device mount_root mount_path rest
++ case "$mount_path" in
++ read -r mount_id parent_id device mount_root mount_path rest
++ case "$mount_path" in
++ read -r mount_id parent_id device mount_root mount_path rest
++ case "$mount_path" in
++ test -z ''
++ pin=/work/integration-records/filesystem-4IadBB
++ read -r mount_id parent_id device mount_root mount_path rest
++ test -n /work/integration-records/filesystem-4IadBB
++ umount /work/origin
++ touch /work/integration-records/filesystem-4IadBB/supervisor-gone
++ /idmap-probe wait-marker /work/integration-records/filesystem-4IadBB/death-policy-checked
+getfattr: Removing leading '/' from absolute path names
+setfattr: /dev/shm/outside-policy: Operation not permitted
+++ cat /work/integration-records/filesystem-4IadBB/death-policy-checked
++ test checked = checked
++ echo FILESYSTEM_PIN_AFTER_SUPERVISOR_DEATH_PASS
+FILESYSTEM_PIN_AFTER_SUPERVISOR_DEATH_PASS
++ echo ACTIVE_POLICY_AFTER_SUPERVISOR_DEATH_PASS
+ACTIVE_POLICY_AFTER_SUPERVISOR_DEATH_PASS
++ echo SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN
+SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN
+IDMAP_PROBE_EXIT 0
+VM_CONTROLLER_POWER_OFF
+[    3.730613] sysrq: Power Off
+[    3.732402] reboot: Power down

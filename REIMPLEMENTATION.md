@@ -1753,3 +1753,26 @@ rules rather than silently shrinking acceptance criteria.
   setup/teardown bounds and broader faults/crash coverage remain outstanding. No
   successful artifact receipt is produced. Findings keep M4 at zero adherence
   passes. Goal remains active with all later milestones required.
+
+- Previous turn progressed by replacing two supervisor-death fixture sleep polls
+  with the existing inotify readiness observer. This turn verified the changed
+  scenario and pending snapshot health work. SnapshotMapping now exposes an
+  immutable usage observation, rejecting invalid/overflow/unknown/inconsistent
+  status. This observation is explicitly not a quiescence or sealing receipt.
+  v85 passes healthy writes/reactivation and a bounded 64KiB COW exhaustion test:
+  write/flush fails and status is rejected, followed by owned cleanup. The normal
+  suite passes; root tests, root/fixture Clippy and formatting checks pass.
+- v86 passed event-based supervisor-death readiness, but source review identified
+  non-atomic publication of a marker whose contents are read immediately. Changed
+  publication to write-then-rename. v87 correctly failed its readiness deadline
+  because mv was absent from the command root; added it and its libraries to the
+  disposable fixture. v88 passes policy/identity retention after supervisor death
+  and independent VM poweroff. Four readiness tests pass, including rename
+  publication, without sleeps. Failed and intermediate evidence is retained.
+- No production synchronization sleeps were introduced. Fixture PID1's existing
+  pre-reset delay and terminal sleep remain shutdown mechanics, not readiness
+  evidence; historical harnesses are preserved unchanged. Shell command hold loops
+  remain fixture-only. This is focused source/error-path review, not a milestone
+  adherence pass. M4 stays at zero; cache-backed verified chain assembly, final
+  flush/sealing, fixed setup/teardown orchestration and broader qualification are
+  still required. No privileged host filesystem/BPF/device operations performed.
