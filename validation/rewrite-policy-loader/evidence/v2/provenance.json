@@ -1,0 +1,20 @@
+{
+  "base_commit": "b467ba291bb766e6ecd2ca72964b36ac4604ecfb",
+  "full_artifacts": "/var/tmp/conglobate-rewrite-policy-loader-v2",
+  "sha256": {
+    "/var/tmp/conglobate-rewrite-policy-loader-v2/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-rewrite-policy-loader-v2/initramfs.gz": "ad4238d70c76ce789d79bb13cf9e201f253ecc92211316c54f6f9c10b9871209",
+    "/var/tmp/conglobate-rewrite-policy-loader-v2/root/idmap-probe": "366c1ddf532b0a1918e1519cae13c2e340bbbd81650b7a8e11b7b639e1301770",
+    "build.rs": "ef930f44e63a34c207be183af9fc356b3cf268bf38d2787a80666013247575e4",
+    "Cargo.lock": "93143106ac82ffef177317ff94d7f8ecff03b0dd6717b7488317ad1c9a51b81b",
+    "Cargo.toml": "2dde2af5f7219897a6f8e6fcdc09479ccf7bdb12ea2251d5a5719264c1b233e0",
+    "src/policy.rs": "accd13e7a2c5788d0322c9ed881223bead909f72d1066905ddb14aa342ba6e05",
+    "src/policy/object.rs": "f1c7a4f75fabc94accc2b38eddf850346cf5263cac2246c822d37d27d1a44c8b",
+    "policy/labels.bpf.c": "cd07e59cf929e4a28991520fce00432409fe2b6be6970b89906b09f16fc8e7d1",
+    "validation/rewrite-policy-loader/src/main.rs": "a8a5aa545b4ce65fafab4bba744312c7f80fbb7feef772d476e20ce819c90a86",
+    "validation/rewrite-policy-loader/Cargo.lock": "e831f4e1a1c3a370257065627c94d95ec985395f11774f39c664c74bd80c4aad",
+    "validation/rewrite-policy-loader/Cargo.toml": "3b480e8e745c429e94f3297096578abc43bead8113057337ccd1cc4b1ac7effc",
+    "validation/rewrite-policy-loader/run.py": "fb624c5c6f4dc7533e41ae6ff4da41580faabd9d97f603f9b30c56ba39b7065c"
+  },
+  "full_sandbox_qualified": false
+}

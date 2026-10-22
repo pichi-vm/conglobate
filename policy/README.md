@@ -2,7 +2,8 @@
 
 `labels.bpf.c` is the kernel policy asset for the rewrite. It adapts the preserved
 kernel-mount validation policy to an explicit set of assigned filesystems. It is
-not yet integrated with the Rust loader, recovery anchors or command admission.
+integrated with a safe Rust loader for disabled, unattached objects. Recovery
+anchors, hook attachment and command admission remain unimplemented.
 
 The `config` array has one native-endian u32 key (zero) and an eight-byte value:
 command user-namespace inode number, then mapped root UID. A zero namespace
@@ -18,7 +19,7 @@ hook checks the command namespace and mapped root identity. Set/remove guards
 require membership in the assigned target set. Every hook preserves prior LSM
 results. Ordinary ownership, ACL, mount and filesystem checks remain active.
 
-The future loader must keep config disabled while it populates/pins targets and
+The activation owner must keep config disabled while it populates/pins targets and
 attaches/pins all three hooks. It enables config last, only with independent
 namespace/mount anchors and containment registered. Neither map may change while
 commands execute. After independently proving descendant quiescence, disable
@@ -26,10 +27,22 @@ config and remove the exception before guards, maps and identity anchors. Failed
 cleanup must preserve recovery authority. See SANDBOX-DESIGN.txt and
 ARCHITECTURE.md; this asset does not implement those lifecycle guarantees.
 
+The build compiles and embeds this source through libbpf-cargo 0.27.2, without
+generating a Rust skeleton. Runtime loading uses libbpf-rs 0.27.2 and its safe
+object/map APIs. Both libraries offer a BSD-2-Clause license alternative;
+libbpf-sys 1.7.0 uses BSD-2-Clause. Application Rust and the build script forbid
+unsafe code. Build prerequisites include clang with BPF support, a C compiler,
+make, pkg-config and development headers/libraries for libelf and zlib. libbpf
+is built from the dependency's bundled source; no host package installation is
+performed by the build script. The resulting embedded object is the only
+production object input; there is no recipe-supplied object path.
+
 The policy retains the prototype's BSD-2-Clause OR GPL-2.0-only license and
 GPL-compatible kernel declaration. Rust application code remains Apache-2.0 and
 forbids unsafe code. The validation C loader is not a production dependency.
 
 `validation/rewrite-label-policy` records disposable-VM single-target and
-two-target tests. Host policy loading is neither needed nor performed. Broader
+two-target tests. `validation/rewrite-policy-loader` tests production disabled
+loading, descriptor release and permission failure. Host policy loading is
+neither needed nor performed. Broader
 lifecycle, concurrency, Arm and confidential-hardware qualification is pending.

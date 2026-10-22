@@ -1,0 +1,10 @@
+{
+  "base_commit": "b467ba291bb766e6ecd2ca72964b36ac4604ecfb",
+  "full_artifacts": "/var/tmp/conglobate-rewrite-policy-loader-v1",
+  "sha256": {
+    "/var/tmp/conglobate-rewrite-policy-loader-v1/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-rewrite-policy-loader-v1/initramfs.gz": "fe53a485116aab8efe881dc04e220f858eb5075b1958d561f465e46a933451d2",
+    "/var/tmp/conglobate-rewrite-policy-loader-v1/root/idmap-probe": "fa7cb0938f1fb0d6ee16b9315b86b3d4389985c6baa7174b0e8966812119b2cb"
+  },
+  "full_sandbox_qualified": false
+}

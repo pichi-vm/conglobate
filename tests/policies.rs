@@ -3,6 +3,17 @@
 use conglobate::policy::{FilesystemTarget, LabelScope, ScopeError};
 
 #[test]
+fn embedded_object_matches_the_map_and_hook_contract_without_loading() {
+    let target = FilesystemTarget::new(42, rustix::fs::makedev(7, 1)).unwrap();
+    let scope = LabelScope::new(99, 100000, [target]).unwrap();
+    let prepared = conglobate::policy::LabelPolicy::new(scope).unwrap();
+    assert_eq!(
+        prepared.scope().targets().copied().collect::<Vec<_>>(),
+        vec![target]
+    );
+}
+
+#[test]
 fn map_encoding_separates_subject_from_superblock_identity() {
     let target = FilesystemTarget::new(42, rustix::fs::makedev(7, 256)).unwrap();
     let scope = LabelScope::new(99, 100000, [target]).unwrap();

@@ -461,3 +461,23 @@ rules rather than silently shrinking acceptance criteria.
   No host policy or mount was changed. Safe Rust loader integration, partial
   installation/crash recovery, concurrency, Arm and confidential qualification
   remain required; M4 still has zero adherence passes.
+- Integrated libbpf-rs/libbpf-cargo 0.27.2 with locked libbpf-sys 1.7.0. The build
+  compiles and embeds the trusted policy source without generating a Rust
+  skeleton. Reviewed safe object/map ownership APIs and BSD license alternatives;
+  documented clang/C/libelf/zlib prerequisites. No host package installation or
+  policy load was performed, and application/build-script unsafe remains forbidden.
+- Added sealed LabelPolicy<Prepared> -> LabelPolicy<LoadedDisabled>. Preparation
+  checks the embedded maps' types, sizes/capacities and all three hook sections.
+  Loading verifies zero subject config and writes the validated target entries.
+  No attachment, pinning or activation API exists yet. Errors release unattached
+  resources rather than leaving enabled authority or a misleading success token.
+- Disposable-VM loader v1 passes repeated production load/drop with descriptor
+  count returning to baseline. v2 additionally clears the probe's effective
+  capabilities, observes load failure without descriptor leakage, restores
+  capabilities and successfully reloads/drops. Both evidence sets are preserved;
+  v2 records final source hashes. These are process-FD and disabled-load checks,
+  not global leak, active-hook, crash-recovery or command-confinement proofs.
+- All 68 Rust tests (including fixture entry), six compile-fail doctests,
+  production/probe Clippy and formatting pass. M4 remains at zero adherence
+  passes. Next policy work must establish anchor ownership and disabled pinned
+  guards before any activation/admission API can be justified.

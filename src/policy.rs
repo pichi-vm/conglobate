@@ -6,6 +6,9 @@
 //! independent namespace/mount anchors and command containment through teardown.
 use std::{collections::BTreeSet, num::NonZeroU32};
 
+mod object;
+pub use object::{LabelPolicy, LoadedDisabled, PolicyError, PolicyState, Prepared};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct NamespaceId(NonZeroU32);
 impl TryFrom<u64> for NamespaceId {

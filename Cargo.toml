@@ -9,6 +9,7 @@ description = "Standalone image builder with isolated command execution"
 
 [dependencies]
 thiserror = "2"
+libbpf-rs = "0.27.2"
 nix = { version = "0.31", default-features = false, features = ["sched"] }
 serde = { version = "1", features = ["derive"] }
 serde-saphyr = { version = "2", default-features = false, features = ["deserialize"] }
@@ -33,3 +34,6 @@ unreachable_pub = "warn"
 
 [lints.clippy]
 all = "warn"
+
+[build-dependencies]
+libbpf-cargo = "0.27.2"

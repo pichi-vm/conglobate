@@ -260,6 +260,12 @@ for the parent-side PID lookup constraints this identity handoff avoids.
   application unsafe POD implementations. Dependency/version/license and actual
   hook attachment remain M4 checks. The BPF policy is separately reviewed trusted
   policy code; safe Rust in userspace does not make BPF semantics automatically safe.
+  M4 follow-up: libbpf-rs/libbpf-cargo 0.27.2 and libbpf-sys 1.7.0 are now locked.
+  The build embeds the policy object without generating unsafe Rust skeletons.
+  Prepared -> LoadedDisabled validates the embedded schema, loads programs and
+  initializes targets while checking config remains zero. No links or pins are
+  created. VM tests cover successful load/Drop and permission-failure cleanup;
+  activation, anchoring and link-lifetime ownership remain unimplemented.
 - The architecture probe in validation/rewrite-architecture/ compiles state-specific
   RAII payloads and an ownership-preserving error without unsafe code. Borrow and
   invalid-state negative examples fail with E0505 and E0599. It models API legality,
