@@ -9,8 +9,8 @@ This ledger describes required work, not claims about the current executor.
 | Milestone | Deliverables and success criteria | Status | Clean streak |
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
-| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | In progress | 0 |
-| 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Pending | 0 |
+| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete | 3 |
+| 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | In progress | 0 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, scoped LSM, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup/recovery tests and no context/control/block-device exposure. | Pending | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Pending | 0 |
 | 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Pending | 0 |
@@ -97,3 +97,18 @@ rules rather than silently shrinking acceptance criteria.
   than silently changing the carapace wire contract. Inspect assembly/devmap
   ownership APIs next, then settle formatter geometry and recovery design.
 - Architecture clean streak remains zero while these design details are open.
+- Architecture refinement: filesystem capacity is distinct from carapace's
+  fixed 64-GiB geometry; explicit formatter block count avoids wire changes.
+  Initial size syntax/label limits and recorded formatter profile are specified.
+- Safe integration gap identified: cached rustix/nix lack mount_setattr. M4 must
+  use/contribute a qualified safe library interface, not application unsafe FFI.
+- Recovery protocol now requires persistent kernel-held namespace/filesystem/
+  policy anchors, registered command containment and guardian coordination.
+  Simultaneous guardian/supervisor loss retains identities for later recovery.
+- API feasibility probe: safe state-specific resource ownership and recoverable
+  transition error pass; invalid borrow/state clients fail E0505/E0599.
+
+- M2 accepted after initial findings/fixes and three clean adherence passes:
+  preservation/MILESTONE-2-ADHERENCE.md. Architecture scope is accepted, not kernel
+  implementation qualification. The safe idmapping dependency and actual recovery
+  protocol are explicit M4 gates. M3 may begin.

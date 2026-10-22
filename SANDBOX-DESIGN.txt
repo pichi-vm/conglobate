@@ -169,6 +169,16 @@ Historical experiments are evidence, not competing specifications.
         policy/resource ownership, reject publication and fail closed. A loader-
         death test alone does not qualify supervisor-death recovery.
 
+   4.7. Before admission, anchor namespace handles, filesystem/scratch mounts and
+        policy pins in a root-only trusted mount namespace independent of build
+        process lifetime. The default deployment uses the persistent initial
+        mount namespace. Verify the prerequisite; do not claim a builder-private
+        disappearing mount namespace provides crash recovery. The guardian
+        registers command containment before execution. Concurrent guardian/
+        supervisor loss leaves anchored identities and policy for ordered trusted
+        recovery, not reusable IDs with stale authorization. Commands cannot
+        access the anchor. See ARCHITECTURE.md for ownership and recovery protocol.
+
 5. Execute the assembly pipeline without changing its inheritance rules
 
    5.1. The bootstrap section selects a tool carapace and declares the output filesystem

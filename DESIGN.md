@@ -451,8 +451,7 @@ The command sandbox has two assigned writable mounts:
 - `/mnt`: the new output filesystem. Commands populate it using ordinary
   filesystem/package-manager operations, without block-device or mount access.
 
-The proposed field spelling below illustrates the agreed filesystem declaration;
-the exact property schema and backend allowlists remain implementation work:
+The initial filesystem declaration is:
 
 ```yaml
 from: registry.example.com/fedora-tools:43
@@ -468,8 +467,14 @@ derive:
     network: true
 ```
 
-`from` is required. `filesystem` declares the logical output size, filesystem
-type and supported typed formatting properties. Validate these before privileged
+`from` is required. `filesystem` declares filesystem capacity, filesystem type and supported typed
+formatting properties. Initially `type` is `ext4`; `size` is a positive integer
+followed immediately by `B`, `KiB`, `MiB` or `GiB`, must be 4096-byte aligned and
+between 16 MiB and 64 GiB inclusive. No fractional values or implicit units.
+`properties.label` defaults to empty and is limited to 16 UTF-8 bytes without NUL.
+Unknown properties fail. The carapace logical device remains 64 GiB; trusted
+formatting uses exactly the requested number of 4096-byte blocks, leaving the
+rest zero-backed. Size is not permission to change the carapace wire geometry. Validate these before privileged
 execution; do not accept arbitrary formatter arguments, executable paths or shell
 fragments. Fail if the driver, trusted formatter or required idmapping/metadata
 support is unavailable. Ext4 is the initially validated backend; other kernel
@@ -906,6 +911,7 @@ execution:
     source: builtin
     digest: {algorithm: sha256, digest: <bytes>}
     target_present: true
+  formatters: []        # nonempty for bootstrap; records described below
   network_steps:
     - {stage: carapace, step: 0}
 outputs:
@@ -946,6 +952,20 @@ handling, ordering of arrays, and digest algorithms.
 Do not bind evidence to a human-readable reserialization. Bind the exact
 emitted CBOR bytes. Deterministic serialization does not imply a deterministic
 build or require timestamps in every inventory.
+
+Formatter receipts identify each executed backend profile, effective filesystem
+specification (type, capacity in bytes, label and logical device capacity), exact
+executable digest, captured runtime-file digests with paths, configuration digest
+and effective argument vector. Dynamic device paths are locators, not identities.
+The `formatters` array is empty when no formatting ran. Receipt creation follows
+successful execution/finalization; planned work alone is not evidence of execution.
+Each formatter receipt has exactly these fields: `stage` (initially `bootstrap`),
+`profile` (versioned backend name), `profile_digest` (Digest), `executable`
+(`path` and `digest`), `runtime` (path/digest records sorted by unique path),
+`configuration` (Digest), `arguments` (ordered strings), and `filesystem`
+(`type`, `size_bytes`, `logical_size_bytes`, `label`). All are required; Digest
+uses the algorithm/byte-string representation above. Arrays preserve execution
+order. No ad-hoc extension to version one is allowed.
 
 ### 11.2 Inventory wire profile and schema migration
 

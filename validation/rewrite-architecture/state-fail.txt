@@ -1,0 +1,15 @@
+error[E0599]: no method named `unmount` found for struct `Volume<Unmounted>` in the current scope
+  --> validation/rewrite-architecture/state-fail.rs:5:24
+   |
+ 5 |         let _ = volume.unmount(true);
+   |                        ^^^^^^^
+   |
+help: there is a method `mount` with a similar name, but with different arguments
+  --> validation/rewrite-architecture/states.rs:19:5
+   |
+19 |     pub fn mount(self) -> Volume<Mounted> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,15 @@
+error[E0505]: cannot move out of `volume` because it is borrowed
+ --> validation/rewrite-architecture/borrow-fail.rs:6:17
+  |
+4 |     fn rejected(mut volume: states::Volume<states::Mounted>) {
+  |                 ---------- binding `volume` declared here
+5 |         let root = volume.root();
+  |                    ------ borrow of `volume` occurs here
+6 |         let _ = volume.unmount(true);
+  |                 ^^^^^^ move out of `volume` occurs here
+7 |         drop(root);
+  |              ---- borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0505`.

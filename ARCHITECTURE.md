@@ -1,6 +1,6 @@
 # Replacement architecture
 
-Milestone 2 draft. This specifies the new implementation, not the reference code.
+Milestone 2 architecture candidate. This specifies the new implementation, not the reference code.
 DESIGN.md and SANDBOX-DESIGN.txt remain normative. Changes to their trust model
 require a user decision. Compile-time restrictions complement kernel checks;
 they do not prove that external state cannot change or that destructors run.
@@ -73,7 +73,12 @@ Every fallible consuming transition describes the external state on failure.
 Return the original typed owner only if its invariant remains known true.
 Otherwise return a RecoveryLease owning the remaining resources and primary plus
 cleanup diagnostics. Do not claim retryable mounted/unmounted state after an
-uncertain partial operation. No successful output token is available on failure.
+uncertain partial operation. No successful output token is available on failure. Quiescent means no remaining
+command authority, not command success. Step<Quiescent> retains a StepOutcome;
+teardown produces Step<Completed> only for successful execution and successful
+cleanup. Otherwise it returns failure/diagnostics without a completion receipt.
+An exit-zero shell with surviving descendants still requires containment cleanup;
+a timed-out, cancelled or failed command never becomes successful through cleanup.
 
 Drop is best-effort cancellation/rollback, never a successful finalization proof.
 No guarantee depends on unwinding, forgetting being impossible, or a destructor
@@ -119,21 +124,35 @@ design. Recipe key order never controls execution.
 
 ## Filesystem declaration and environment contract
 
-Proposed initial schema: filesystem.type, filesystem.size and optional
-filesystem.properties.label. Initially type is ext4; additional drivers require
-qualified backends. Size is a checked positive byte capacity using explicit
-binary-unit strings; exact accepted units and block alignment must be specified
-and tested before implementation. Unknown properties fail. Formatting flags,
-executables and shell strings cannot be supplied by the recipe. Defaults must
-be explicit in the effective spec and identified in inventory.
+Initial schema: `filesystem.type: ext4`, required `filesystem.size`, optional
+`filesystem.properties.label` (default empty, at most 16 UTF-8 bytes, no NUL).
+Size syntax is a positive decimal integer immediately followed by B, KiB, MiB
+or GiB. No fractional values, signs, whitespace or implicit units. Check
+multiplication overflow, 4096-byte alignment, and a 16 MiB..64 GiB supported
+range. The lower bound is the initial journaled-ext4 backend contract; unsupported
+sizes fail early. Additional filesystem types/properties need qualified backends.
 
-Formatter selection belongs to the trusted environment/backend. Pin or otherwise
-stabilize the executable/dependency identity used; hashing a mutable path and
-later executing its replacement is insufficient. Root formatting must receive
-only the intended block-device authority. No host configuration discovery may
-silently change formatting policy. Backend validation must reconcile requested
-filesystem capacity with carapace's logical-device geometry before accepting it.
-This geometry decision is still pending source inspection of the current APIs.
+The requested size is FILESYSTEM capacity, not a new carapace geometry. The
+pinned carapace API uses a 64 GiB zero origin. Create that geometry unchanged and
+format exactly size/4096 blocks with an explicit 4096-byte mke2fs block size.
+Unused logical space remains zero-backed. No image conversion or second full
+volume is created. Record both filesystem capacity and logical device capacity
+in effective execution metadata. Scute wire parsing belongs to devmap-snapshot;
+verified read-only chain assembly belongs to carapace. Conglobate owns writable
+activation/finalization and uses those APIs rather than reimplementing formats.
+
+Formatter selection belongs to the trusted environment/backend. Capture the
+formatter executable and dependencies into private immutable execution inputs,
+identify their bytes, and execute that captured tool, not its original pathname.
+Provide a builder-owned mke2fs configuration, clear the environment and explicitly
+select ext4, block size, label, root ownership 0:0, nodiscard and eager journal/
+inode initialization. A versioned backend profile supplies feature/inode/reserved-
+space defaults; record the profile bytes and effective arguments. Generated UUID
+and other output metadata are output bytes; no reproducibility guarantee is
+claimed. Commands cannot select arbitrary executables, flags or shell fragments.
+The formatter runs in trusted setup with only the assigned device and captured
+runtime, no context or image scripts. Complete executable/dependency capture and
+formatter-failure qualification are M4/M5 tests, not claimed prototype coverage.
 
 BPF authorization must support an explicit set of superblock owner/device pairs,
 separate from the command user namespace and mapped-root identity. No wildcard
@@ -163,16 +182,73 @@ avoid mirroring every method signature. Runtime tests validate external effects.
 | Outputs | Paired firmware validation, final DTB, deterministic CBOR, inherited blobs, OCI/ORAS, atomic failure cases |
 | Platforms | amd64/arm64 and TDX/SEV-SNP/CCA evidence; unavailable environments remain outstanding |
 
-## Milestone 2 unresolved items
+## Recovery anchor and protocol
 
-- Inspect current carapace/devmap APIs for geometry, zero-backed writable layer
-  construction and sealing ownership; identify any dependency API gaps.
-- Prototype state-specific resource transitions without unsafe application code,
-  including ownership-preserving errors and scoped root borrowing.
-- Specify supported size syntax, ext4 formatting defaults and formatter identity.
-- Specify the supervisor/guardian policy recovery protocol and safe Rust BPF
-  integration candidate; do not invent a destructor-based guarantee.
-- Map the complete normative design to maintained tests and qualification inputs.
+Before any command admission, create a root-only recovery anchor in a trusted
+mount namespace whose lifetime is independent of build processes. The default
+host/VM deployment uses the persistent initial mount namespace. The anchor
+retains bind-mounted namespace handles, assigned filesystem mounts/scratch and
+private bpffs links/config. Verify this prerequisite; a private namespace that
+will disappear with the builder is insufficient. Commands must not inherit the
+anchor path, namespace handle or controller channel. The binary does not require
+a particular init system or attestation service.
 
-No adherence pass has been claimed for this draft. Architecture edits and findings
-must settle before the three consecutive clean passes and milestone 3 admission.
+A dedicated guardian owns a per-build lease and watches the supervisor through
+stable process identity and a private control channel. It retains every identity
+and mapping needed for cleanup. Command creation registers containment before
+release to execute; an unregistered process cannot run recipe code. Supervisor
+loss triggers guardian cancellation and ordered teardown. Guardian loss triggers
+supervisor cancellation. Concurrent loss leaves the kernel-held anchor in place,
+not a policy with reusable unpinned identifiers. Recovery on a later invocation
+validates the lease, shuts down remaining command domains and removes policy
+before dropping anchored identities. Unknown or incomplete ownership is
+quarantined, not guessed from a numeric PID. Publication requires an intact
+supervision protocol and all completion receipts. This is the target protocol;
+its death/race/failure cases are mandatory M4 qualification.
+
+The anchor addresses a security issue independent of resource leaks: deleting
+namespaces while leaving global LSM authorization pinned can authorize later
+identity reuse. No cleanup fallback may make that tradeoff. Namespace/mount
+anchors can persist after a failed build until a trusted recovery pass succeeds.
+Exact lease serialization and readiness/acknowledgement messages are implementation
+choices subject to this protocol and fault-injection tests.
+
+## Safe integration and dependency evidence
+
+- carapace 99caf79: Chain::assemble uses a fixed 64 GiB zero target and returns
+  a read-only device File with deferred removal. Its public API rejects empty
+  chains; create the bootstrap zero/writable activation through devmap APIs.
+- devmap 2679426: snapshot Header/Exception and verity types supply wire parsing
+  and sealing primitives. A COW's clean kernel-produced state still needs checked
+  length/status/finalization; it is not trusted merely because a command exited.
+- Cached rustix 1.1.5 has safe open_tree/move_mount/pidfd APIs but lists
+  mount_setattr as unimplemented. Cached nix 0.30 also lacks that wrapper.
+  Treat this as a dependency gap: qualify an existing safe wrapper or contribute
+  a general safe API upstream before native idmapping integration. Do not hide
+  application FFI in a locally named dependency to bypass forbid(unsafe_code).
+- libbpf-rs provides owned links with pin/unpin and byte-slice map updates; it is
+  the candidate safe userspace LSM interface. Explicit byte encoding avoids
+  application unsafe POD implementations. Dependency/version/license and actual
+  hook attachment remain M4 checks. The BPF policy is separately reviewed trusted
+  policy code; safe Rust in userspace does not make BPF semantics automatically safe.
+- The architecture probe in validation/rewrite-architecture/ compiles state-specific
+  RAII payloads and an ownership-preserving error without unsafe code. Borrow and
+  invalid-state negative examples fail with E0505 and E0599. It models API legality,
+  not mount behavior or kernel recovery.
+
+Primary references inspected:
+- https://man7.org/linux/man-pages/man8/mke2fs.8.html (explicit block count/config).
+- https://docs.rs/libbpf-rs/latest/libbpf_rs/struct.Link.html (pinning/ownership).
+- https://docs.rs/libbpf-rs/latest/libbpf_rs/trait.MapCore.html (byte map interface).
+- Pinned carapace src/lib.rs and src/assemble.rs; cached rustix mount/process APIs.
+
+## Acceptance boundaries
+
+Architecture fixes the invariants, schema and ownership/recovery protocol. It
+identifies dependency gaps explicitly rather than claiming implementations exist.
+M3 handles pure inputs/planning. M4 must prove the actual safe syscall/policy,
+process-containment and anchor protocol. M5 must prove direct formatted snapshot
+behavior and dual mounts. Failure of those proofs reopens the architecture gate.
+Hardware and distro qualification remain M7 requirements; no absence of hardware
+can be recorded as a pass. Public library APIs may evolve within these boundaries
+without adopting mutable option bags or weakening the safety constraints.
