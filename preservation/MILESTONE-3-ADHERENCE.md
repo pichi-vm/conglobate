@@ -64,3 +64,21 @@ transform selections, and a positive case using an inherited empty DTB.
 Affected 12 context/input integration tests pass and Clippy passes for all
  targets. This is a review with a fixed finding; clean streak remains zero.
 The rest of the milestone-wide review and setup-failure evidence remain pending.
+
+## Cache error-path and setup-recovery review (baseline c42e2c5)
+
+Inspected CheckedBlob, DecodedBlob, ScuteExtent integration, ancestry traversal,
+and read-only mount owner/drop paths. Added missing tests to distinguish decoder
+validation from OCI hashing: checksum-corrupt, truncated and trailing-junk zstd
+streams have matching descriptor digests but must still fail; valid concatenated
+frames succeed. All 11 cache tests and Clippy pass.
+
+Production setup failure is now exercised in disposable-VM v5 by exhausting the
+probe's descriptor soft limit after staging. Bind/remount succeed, reopening the
+read-only view fails with EMFILE, and the returned owner retains the mount until
+cleanup retry after limit restoration. This closes the ordinary partial-setup
+coverage gap without adding production failure hooks. Previous EBUSY retry and
+Drop paths also pass in that run. Simultaneous crashes are still an M4 obligation.
+
+This expands the evidence scope, so it does not count as a frozen-scope clean
+pass. No new production-code defect was found in this portion of the review.

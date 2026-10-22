@@ -5,5 +5,5 @@ edition = "2024"
 publish = false
 
 [dependencies]
-rustix = { version = "1", features = ["fs", "mount"] }
+rustix = { version = "1", features = ["fs", "mount", "process"] }
 conglobate = { path = "../.." }

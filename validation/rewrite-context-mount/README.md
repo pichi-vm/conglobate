@@ -30,3 +30,9 @@ normal close returns an owning recovery error while a file remains open; droppin
 that file permits cleanup retry; Drop without explicit close cleans up. v4 also
 includes the tightened staged-reader API (borrowed, no raw descriptor escape).
 These runs do not qualify simultaneous crash recovery or command containment.
+
+v5 also forces production setup to fail after the bind/read-only remount but
+before reopening its directory FD. The probe temporarily sets only its own
+RLIMIT_NOFILE soft limit to zero, restores it via a guard, asserts EMFILE in the
+owning mounted error, and successfully retries cleanup. No production injection
+hooks were added. The VM scope and earlier limitations still apply.

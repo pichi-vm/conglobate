@@ -306,3 +306,51 @@ fn scute_digest_and_decoded_block_count_are_both_enforced() {
             .contains("content mismatch")
     );
 }
+
+#[test]
+fn compressed_scutes_reject_invalid_streams_even_with_matching_oci_digests() {
+    let store = Store::new();
+    let data = [7; 8192];
+    let (_, root) = store.scute(&data, [0; 32], true);
+    let mut encoder = zstd::stream::Encoder::new(Vec::new(), 1).unwrap();
+    encoder.include_checksum(true).unwrap();
+    std::io::Write::write_all(&mut encoder, &data).unwrap();
+    let valid = encoder.finish().unwrap();
+    let mut wrong_checksum = valid.clone();
+    *wrong_checksum.last_mut().unwrap() ^= 1;
+    let truncated = valid[..valid.len() - 1].to_vec();
+    let mut trailing_junk = valid.clone();
+    trailing_junk.extend(b"invalid trailing frame");
+    for bytes in [wrong_checksum, truncated, trailing_junk] {
+        // Digest the invalid compressed bytes themselves so decoder validation,
+        // not a stale OCI digest, must reject this fixture.
+        let digest = store.put(&bytes);
+        let descriptor = pichi_artifact::ScuteDescriptor {
+            digest: digest.to_string(),
+            size: bytes.len() as u64,
+            annotations: pichi_artifact::ScuteAnnotations {
+                data_blocks: Some(2),
+                salt: hex::encode([0; 32]),
+            },
+        };
+        let image = store.chain_image(vec![pichi_artifact::Layer::ScuteZstd(descriptor)], root);
+        assert!(store.open().verify_chain(&image).is_err());
+    }
+    // Concatenated valid frames describe one complete decoded scute stream.
+    let mut frames = zstd::stream::encode_all(&data[..4096], 1).unwrap();
+    frames.extend(zstd::stream::encode_all(&data[4096..], 1).unwrap());
+    let digest = store.put(&frames);
+    let descriptor = pichi_artifact::ScuteDescriptor {
+        digest: digest.to_string(),
+        size: frames.len() as u64,
+        annotations: pichi_artifact::ScuteAnnotations {
+            data_blocks: Some(2),
+            salt: hex::encode([0; 32]),
+        },
+    };
+    let image = store.chain_image(vec![pichi_artifact::Layer::ScuteZstd(descriptor)], root);
+    assert_eq!(
+        store.open().verify_chain(&image).unwrap().unwrap().root(),
+        &root
+    );
+}

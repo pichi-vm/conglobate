@@ -59,6 +59,6 @@ command = [value.replace(str(seed), str(out)) for value in json.loads((seed / 'c
 with (out / 'serial.txt').open('wb') as log:
     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
 serial = (out / 'serial.txt').read_text()
-assert 'PRODUCTION_CONTEXT_LIFECYCLE_PASS' in serial and 'READONLY_CONTEXT_VIEW_PASS' in serial and 'CONTEXT_PROBE_EXIT 0' in serial, serial[-4000:]
-(out / 'verdict.json').write_text(json.dumps({'readonly_view': True, 'pre_mount_fd_is_writable': True, 'production_checkout_lifecycle': True, 'full_sandbox_qualified': False}, indent=2))
+assert 'PRODUCTION_CONTEXT_PARTIAL_SETUP_PASS' in serial and 'PRODUCTION_CONTEXT_LIFECYCLE_PASS' in serial and 'READONLY_CONTEXT_VIEW_PASS' in serial and 'CONTEXT_PROBE_EXIT 0' in serial, serial[-4000:]
+(out / 'verdict.json').write_text(json.dumps({'readonly_view': True, 'pre_mount_fd_is_writable': True, 'production_partial_setup_cleanup': True, 'production_checkout_lifecycle': True, 'full_sandbox_qualified': False}, indent=2))
 print('PASS', out)

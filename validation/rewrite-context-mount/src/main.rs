@@ -51,6 +51,19 @@ impl Probe {
         let readonly = context.materialize(parent)?.read_only()?;
         drop(readonly);
         assert_eq!(fs::read_dir(parent)?.count(), 0);
+        let staged = context.materialize(parent)?;
+        let limit = DescriptorLimit::exhaust()?;
+        let failure = staged.read_only();
+        drop(limit);
+        let failure = failure.unwrap_err();
+        assert!(
+            matches!(&failure, conglobate::context::ContextMountFailure::Mounted { source, .. }
+            if source.raw_os_error() == Some(24))
+        );
+        assert_eq!(fs::read_dir(parent)?.count(), 1);
+        failure.cleanup()?;
+        assert_eq!(fs::read_dir(parent)?.count(), 0);
+        println!("PRODUCTION_CONTEXT_PARTIAL_SETUP_PASS");
         println!("PRODUCTION_CONTEXT_LIFECYCLE_PASS");
         Ok(())
     }
@@ -83,6 +96,28 @@ impl Probe {
         fs::remove_dir_all(&self.root)?;
         println!("READONLY_CONTEXT_VIEW_PASS");
         Ok(())
+    }
+}
+#[derive(Debug)]
+struct DescriptorLimit(rustix::process::Rlimit);
+impl DescriptorLimit {
+    fn exhaust() -> io::Result<Self> {
+        use rustix::process::{Resource, getrlimit, setrlimit};
+        let saved = getrlimit(Resource::Nofile);
+        setrlimit(
+            Resource::Nofile,
+            rustix::process::Rlimit {
+                current: Some(0),
+                maximum: saved.maximum,
+            },
+        )?;
+        Ok(Self(saved))
+    }
+}
+impl Drop for DescriptorLimit {
+    fn drop(&mut self) {
+        rustix::process::setrlimit(rustix::process::Resource::Nofile, self.0)
+            .expect("restore fixture descriptor limit");
     }
 }
 fn main() -> io::Result<()> {

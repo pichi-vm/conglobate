@@ -276,3 +276,11 @@ rules rather than silently shrinking acceptance criteria.
   Integration coverage includes omitted/empty/nonempty transforms without a DTB
   and an inherited-DTB success case. All 12 affected tests and Clippy pass.
   This finding keeps the M3 clean-pass count at zero; review continues.
+- Cache review added matching-digest invalid-zstd cases and valid concatenated
+  frames: all 11 cache tests and Clippy pass. No production change was required.
+- Disposable-VM v5 validates actual partial setup: RLIMIT_NOFILE soft exhaustion
+  causes reopening the remounted root to fail with EMFILE; owning error retains
+  the checkout; after restoring the probe limit, cleanup retry succeeds. Existing
+  normal/EBUSY/Drop checks pass too. Evidence is retained alongside earlier runs.
+  This closes the ordinary setup-failure coverage gap; crash recovery remains M4.
+  Evidence additions do not count as a clean frozen-scope adherence pass.
