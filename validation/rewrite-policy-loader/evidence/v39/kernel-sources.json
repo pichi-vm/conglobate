@@ -1,0 +1,24 @@
+{
+  "security/security.c": {
+    "sha256": "df10a8ef17d2fe2c5c788a233afcf1e92675d3acb4e0a183d88bc7d2548c63c0",
+    "ranges": [
+      [
+        1900,
+        1944
+      ],
+      [
+        2090,
+        2130
+      ]
+    ]
+  },
+  "kernel/bpf/inode.c": {
+    "sha256": "c000671c77dda178662704880b08b2c234394dc7826dc579af2cc694deaf1969",
+    "ranges": [
+      [
+        52,
+        88
+      ]
+    ]
+  }
+}

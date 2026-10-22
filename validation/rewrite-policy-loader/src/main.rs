@@ -10,11 +10,97 @@ use std::{
 #[derive(Debug)]
 struct Probe;
 impl Probe {
+    fn pin_lifetime_child() -> Result<(), Box<dyn std::error::Error>> {
+        let holder = fs::read_to_string("/work/userns-pid")?;
+        let namespace = fs::metadata(format!("/proc/{}/ns/user", holder.trim()))?.ino();
+        let target = FilesystemTarget::new(
+            fs::metadata("/proc/self/ns/user")?.ino(),
+            fs::metadata("/work/origin")?.dev(),
+        )?;
+        let scope = LabelScope::new(namespace, 100000, [target])?;
+        let _namespace = conglobate::isolation::PrivateMountNamespace::enter()?;
+        let _policy = LabelPolicy::new(scope)?
+            .load()?
+            .pin_disabled(PinDirectory::create(std::path::Path::new(
+                "/work/pins/lifetime",
+            ))?)?;
+        fs::write("/work/pins-ready", b"ready")?;
+        std::thread::sleep(std::time::Duration::from_secs(30));
+        Err("fixture parent failed to terminate loader".into())
+    }
+
+    fn pin_lifetime_test() -> Result<(), Box<dyn std::error::Error>> {
+        use libbpf_rs::{Link, MapCore, MapFlags, MapHandle};
+        use std::os::unix::process::ExitStatusExt;
+        let parent = std::path::Path::new("/work/pins/lifetime");
+        fs::create_dir(parent)?;
+        fs::set_permissions(parent, fs::Permissions::from_mode(0o700))?;
+        let mut child = std::process::Command::new(std::env::current_exe()?)
+            .arg("--pin-lifetime-child")
+            .spawn()?;
+        Self::wait_for_file(
+            std::path::Path::new("/work/pins-ready"),
+            std::time::Instant::now() + std::time::Duration::from_secs(5),
+        )?;
+        let paths = fs::read_dir(parent)?
+            .map(|entry| entry.map(|entry| entry.path()))
+            .collect::<Result<Vec<_>, _>>()?;
+        assert_eq!(paths.len(), 1);
+        let directory = &paths[0];
+        let names = ["check_set", "check_remove", "skip_label_cap"];
+        let mut identities = Vec::new();
+        for name in names {
+            let info = Link::open(directory.join(name))?.info()?;
+            identities.push((info.id, info.prog_id));
+        }
+        // All witness descriptors are closed before SIGKILL. The VM's mount
+        // namespace (held by init) owns the bpffs pins; no guardian is running.
+        child.kill()?;
+        assert_eq!(child.wait()?.signal(), Some(9));
+        for (name, identity) in names.into_iter().zip(identities) {
+            let info = Link::open(directory.join(name))?.info()?;
+            assert_eq!((info.id, info.prog_id), identity);
+            assert_ne!(info.prog_id, 0);
+        }
+        let config = MapHandle::from_pinned_path(directory.join("config"))?;
+        assert_eq!(
+            config.lookup(&0u32.to_ne_bytes(), MapFlags::ANY)?,
+            Some(vec![0; 8])
+        );
+        let targets = MapHandle::from_pinned_path(directory.join("targets"))?;
+        assert_eq!(targets.keys().count(), 1);
+        drop((config, targets));
+        // Only disabled policy is tested here. No command has been admitted.
+        for name in [
+            "skip_label_cap",
+            "check_remove",
+            "check_set",
+            "targets",
+            "config",
+        ] {
+            fs::remove_file(directory.join(name))?;
+        }
+        fs::remove_dir(directory)?;
+        fs::remove_dir(parent)?;
+        println!("PRODUCTION_POLICY_PINS_SURVIVE_LOADER_KILL_PASS");
+        Ok(())
+    }
+
     fn run() -> Result<(), Box<dyn std::error::Error>> {
         if !std::path::Path::new("/conglobate-disposable-validation-vm").exists() {
             return Err("disposable VM marker required".into());
         }
         let arguments = std::env::args_os().collect::<Vec<_>>();
+        if arguments
+            .get(1)
+            .is_some_and(|a| a == "--pin-lifetime-child")
+        {
+            return Self::pin_lifetime_child();
+        }
+        if arguments.get(1).is_some_and(|a| a == "--pin-lifetime-test") {
+            return Self::pin_lifetime_test();
+        }
+
         if arguments
             .get(1)
             .is_some_and(|a| a == "--stall-registration")

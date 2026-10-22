@@ -267,3 +267,21 @@ bound. The independent guardian fixture also switches to this watched owner path
 covering successful registration and the existing process-death cleanup cases.
 The scheduled 100ms termination is a phase-specific fixture, not exhaustive race
 qualification. Complete startup/admission and policy/mount ownership are pending.
+
+
+v38/v39 test the dedicated-VM lifetime direction without running any guardian
+fixture. Invoke run.py with a new output directory and `--pin-lifetime-test`.
+A child loads and pins the production disabled policy in bpffs already mounted
+in the VM init's namespace. The parent observes link/program IDs, closes every
+witness descriptor, SIGKILLs and reaps the loader, then reopens all three links
+and both maps. Link/program IDs are unchanged; config stays zero and the target
+map still contains one entry. Explicit fixture cleanup removes all pins.
+v39 additionally creates a production PrivateMountNamespace in the child before
+pinning: losing that namespace does not destroy the bpffs instance still mounted
+in init's namespace. Both runs pass. All privileged operations are inside QEMU.
+
+This establishes a pin-lifetime component, not enabled-policy confinement,
+identity lifetime, supervisor-death VM disposal or full command admission.
+A bpffs mounted solely inside the dying loader's private namespace is a different
+arrangement and is not covered. No activation API has been added. The earlier
+independent-guardian cases remain historical evidence, not required architecture.

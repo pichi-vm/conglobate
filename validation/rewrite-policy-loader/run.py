@@ -13,6 +13,8 @@ here = pathlib.Path(__file__).resolve().parent
 seed = pathlib.Path('/var/tmp/conglobate-cap-review-fix-normal-v1')
 out = pathlib.Path(sys.argv[1]).resolve()
 out.mkdir()
+lifetime_only = len(sys.argv) == 3 and sys.argv[2] == '--pin-lifetime-test'
+assert len(sys.argv) == 2 or lifetime_only
 root = out / 'root'
 shutil.copytree(seed / 'root', root, symlinks=True)
 for line in subprocess.check_output(['modprobe', '--show-depends', '--set-version', '7.2.10-200.fc44.x86_64', 'ext4'], text=True).splitlines():
@@ -70,6 +72,9 @@ wait "$holder" || true
 umount /work/origin
 echo POLICY_FIXTURE_CLEANUP_PASS
 ''')
+if lifetime_only:
+    fixture = root / 'fixture.sh'
+    fixture.write_text(fixture.read_text().replace('/idmap-probe\n', '/idmap-probe --pin-lifetime-test\n'))
 (root / 'init').write_text('''#!/bin/bash
 set -eu
 export PATH=/usr/bin:/usr/sbin
@@ -98,6 +103,8 @@ with (out / 'serial.txt').open('wb') as log:
     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
 serial = (out / 'serial.txt').read_text()
 passed = all(marker in serial for marker in ['PRODUCTION_COMMAND_DOMAIN_CANCEL_PASS', 'PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS', 'PRODUCTION_DISABLED_PIN_CLOSE_DROP_PASS', 'PRODUCTION_DISABLED_PIN_RECOVERY_PASS', 'PRODUCTION_POLICY_PERMISSION_FAILURE_PASS', 'PRODUCTION_POLICY_RELOAD_AFTER_FAILURE_PASS', 'PRODUCTION_DISABLED_POLICY_LOAD_DROP_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
+if lifetime_only:
+    passed = all(marker in serial for marker in ['PRODUCTION_POLICY_PINS_SURVIVE_LOADER_KILL_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
 (out / 'verdict.json').write_text(json.dumps({'passed': passed, 'full_sandbox_qualified': False}, indent=2))
 assert passed, serial[-5000:]
 print('PASS', out)

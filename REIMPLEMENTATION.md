@@ -1098,3 +1098,26 @@ rules rather than silently shrinking acceptance criteria.
   M4. Native namespace initialization, LSM admission, terminal compatibility,
   remaining proc information masks, scaffolding and full failure ownership are
   still outstanding; the M4 adherence streak remains zero.
+
+
+- Previous conversational goal turn restated the dedicated-VM correction without
+  changing authoritative state (no progress). Revalidated the worktree and resumed
+  M4 with the remaining active-policy lifetime integration question.
+- Source inspection confirms inode_xattr_skipcap receives only the attribute
+  name; the later inode_setxattr/removexattr hooks receive the target. The current
+  scoped exception cannot fold its filesystem check into skipcap. Preserve all
+  hooks throughout command execution, including a supervisor-death interval.
+- New disposable-VM v38/v39 tests kill and reap a production disabled-policy loader
+  after closing witness descriptors, then reopen the exact same three links and
+  both maps. v39 also loses the loader's private mount namespace. The existing
+  bpffs mount in init's namespace retains the pins without a guardian. Both pass;
+  source snapshots, raw logs and hashes are retained. This is a candidate lifetime
+  mechanism, not proof of enabled-policy confinement or identity lifetime.
+- Corrected policy documentation's obsolete independent-recovery requirement to
+  the dedicated-VM model. Probe build, Clippy and formatting pass. Reviewed the
+  absence of witness references across SIGKILL, bounded readiness and VM lifetime,
+  disabled-only cleanup and claim limits. No host privileged operations occurred.
+- M4 remains at zero adherence passes. Next integrate step-owned active policy,
+  namespace/superblock lifetime and descendant quiescence before admitting actual
+  commands; qualify supervisor death with that active policy before claiming the
+  complete shutdown-interval contract. No guardian expansion is required.

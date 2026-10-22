@@ -1,0 +1,19 @@
+{
+  "base_commit": "94a10fc7dcb027cf617516bde43007d8e8c81c42",
+  "full_artifacts": "/var/tmp/conglobate-policy-loader-v38",
+  "sha256": {
+    "validation/rewrite-policy-loader/evidence/v38/serial.txt": "cf3eac33a3df9fe521c9d66f6acb32bc73a8d9b3de344f968497fcb4f303b947",
+    "validation/rewrite-policy-loader/evidence/v38/verdict.json": "a6cfb41c262350f51f936e7750b36f1824c3334d22664d5b9c9af4bfdf9a5528",
+    "validation/rewrite-policy-loader/evidence/v38/command.json": "f2c54f2ff3a9771fa6fd416d78496f0cc0d9d8f002a99f13d2fa159e1df462ed",
+    "validation/rewrite-policy-loader/evidence/v38/inputs.json": "158e98d6f135a0a731ac01456f93b7beb07840c0f78c2838479804000e659fc3",
+    "validation/rewrite-policy-loader/evidence/v38/probe.rs": "10f8cf32c3d9cfee582c71ed4ac0774154ed52be6872b00a40e4a014c40b791d",
+    "validation/rewrite-policy-loader/evidence/v38/run.py": "35b9bad90cc9418e4c6ff5af6946840f962477b1c595e2dafa6dae9e6debc928",
+    "validation/rewrite-policy-loader/evidence/v38/Cargo.lock": "4b8da47e0c8225c1185279207373e166aa90bbc4865e281acbacd543674a7b58",
+    "validation/rewrite-policy-loader/evidence/v38/pins.rs": "7e163dd87f0be332d460e95059586fcf095f1cd39151a6054d48e4b5d3e4dcda",
+    "validation/rewrite-policy-loader/evidence/v38/labels.bpf.c": "cd07e59cf929e4a28991520fce00432409fe2b6be6970b89906b09f16fc8e7d1",
+    "/var/tmp/conglobate-policy-loader-v38/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-policy-loader-v38/initramfs.gz": "8d2ff0142e0e7130faecfa3d8d222d58745317073ea2928231714a5346b9b720",
+    "/var/tmp/conglobate-policy-loader-v38/root/idmap-probe": "e5d000e95c5f9e4dbe4d6026b00929dce885e4b9a48c954613695433789b2b6a"
+  },
+  "full_sandbox_qualified": false
+}
