@@ -1504,3 +1504,17 @@ rules rather than silently shrinking acceptance criteria.
   behavior and trusted mutation assumptions. M4 remains at zero adherence passes;
   scope handoff, workspace/storage construction and remaining lifecycle/runtime
   qualification are still outstanding. No goal or milestone completion claimed.
+
+- Follow-up to the user's prohibition on sleep-based race fixes: inspection found
+  no sleeps in current production Rust, but two timed holds in host lifecycle
+  fixtures and two readiness-marker polling loops in the disposable-VM fixture.
+  Replaced the host holds and external /bin/sleep unresponsive peers with local
+  socket reads whose peer remains owned until process termination. Successful
+  identity/supervision handshakes still establish readiness; elapsed time never
+  establishes readiness or completion. Timeout tests intentionally retain bounded
+  deadlines. All 15 identity/supervision tests, targeted Clippy and formatting
+  pass. The first compile attempt used rustix::pipe, which is feature-disabled;
+  corrected to std UnixStream without changing dependencies. No privileged host
+  operations. VM readiness polling remains outstanding, as does integration and
+  validation of the uncommitted CommandSetup descriptor transport. This is a
+  focused fixture correction, not a milestone adherence pass; M4 remains zero.

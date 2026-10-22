@@ -15,6 +15,12 @@ impl Fixture {
     fn deadline() -> Instant {
         Instant::now() + Duration::from_secs(5)
     }
+    fn hold_until_terminated() {
+        let (mut reader, _writer) = std::os::unix::net::UnixStream::pair().unwrap();
+        // Keep the writer alive: only process termination ends this hold.
+        std::io::Read::read_exact(&mut reader, &mut [0]).unwrap();
+        panic!("hold unexpectedly released");
+    }
     fn helper(hold: bool) -> Command {
         let mut command = Command::new(std::env::current_exe().unwrap());
         command
@@ -35,6 +41,9 @@ fn trusted_child_identity_fixture() {
     if std::env::var_os("CONGLOBATE_TEST_IDENTITY_CHILD").is_none() {
         return;
     }
+    if std::env::var_os("CONGLOBATE_TEST_NO_IDENTITY").is_some() {
+        Fixture::hold_until_terminated();
+    }
     IdentitySender::from_stdin()
         .unwrap()
         .send_current_until(Fixture::deadline())
@@ -44,7 +53,7 @@ fn trusted_child_identity_fixture() {
         0
     );
     if std::env::var_os("CONGLOBATE_TEST_IDENTITY_HOLD").is_some() {
-        std::thread::sleep(Duration::from_secs(30));
+        Fixture::hold_until_terminated();
     }
 }
 
@@ -153,8 +162,8 @@ fn launch_failure_retains_started_children_but_not_spawn_failures() {
             .success()
     );
 
-    let mut command = Command::new("/bin/sleep");
-    command.arg("30");
+    let mut command = Fixture::helper(false);
+    command.env("CONGLOBATE_TEST_NO_IDENTITY", "1");
     let failure =
         Process::<Identified>::launch(command, Instant::now() + Duration::from_millis(30))
             .unwrap_err();

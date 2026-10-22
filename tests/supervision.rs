@@ -12,6 +12,12 @@ impl Fixture {
     fn deadline() -> Instant {
         Instant::now() + Duration::from_secs(5)
     }
+    fn hold_until_terminated() {
+        let (mut reader, _writer) = std::os::unix::net::UnixStream::pair().unwrap();
+        // Keep the writer alive: only process termination ends this hold.
+        std::io::Read::read_exact(&mut reader, &mut [0]).unwrap();
+        panic!("hold unexpectedly released");
+    }
     fn command(mode: &str) -> Command {
         let mut command = Command::new(std::env::current_exe().unwrap());
         command
@@ -36,6 +42,9 @@ fn trusted_supervision_fixture() {
     let Some(mode) = std::env::var_os("CONGLOBATE_SUPERVISION_FIXTURE") else {
         return;
     };
+    if mode == "unresponsive" {
+        Fixture::hold_until_terminated();
+    }
     let watch = Supervision::from_stdin()
         .unwrap()
         .exchange_until(Fixture::deadline())
@@ -44,7 +53,7 @@ fn trusted_supervision_fixture() {
         std::process::exit(0);
     }
     if mode == "hold" {
-        std::thread::sleep(Duration::from_secs(30));
+        Fixture::hold_until_terminated();
         return;
     }
     watch.wait_for_loss_until(Fixture::deadline()).unwrap();
@@ -111,8 +120,7 @@ fn supervised_launch_retains_identity_and_wait_ownership() {
 }
 #[test]
 fn supervised_exchange_failure_retains_the_started_child() {
-    let mut command = Command::new("/bin/sleep");
-    command.arg("30");
+    let command = Fixture::command("unresponsive");
     let failure = Process::launch_supervised(command, Instant::now() + Duration::from_millis(20))
         .unwrap_err();
     let conglobate::process::LaunchFailure::Started { source, process } = failure else {
