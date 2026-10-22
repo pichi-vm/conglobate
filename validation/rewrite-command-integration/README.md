@@ -899,3 +899,14 @@ actual ID mapping, policy pins and busy-unmount/remount handling. The protected
 command path still needs its separate descriptor-transfer integration. Evidence
 includes exact changed sources, host checks and the VM run; this is not full
 sandbox qualification or an adherence pass.
+
+## Supervised volume descriptor transfer
+
+v100 adds `OWNED_VOLUME_SUPERVISED_TRANSFER_PASS`: a registered dedicated helper
+receives the owned detached volume view and pinned user namespace over the
+supervision channel, idmaps and attaches the view, and checks mapped root
+ownership. The parent waits on readiness, cancels/reaps the helper and only then
+releases its view. Existing volume cleanup and remount checks still pass. The
+helper runs no image commands in this probe. Full protected-command integration
+and aggregate Step/Volume lifetime enforcement remain outstanding. Host protocol
+tests verify descriptor count, order and CLOEXEC; all evidence is retained.

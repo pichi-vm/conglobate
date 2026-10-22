@@ -33,6 +33,25 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "volume-receiver") {
+            let deadline = Instant::now() + Duration::from_secs(5);
+            let channel = Supervision::from_stdin()?
+                .exchange_until(deadline)?
+                .join_domain_until(deadline)?;
+            let input = channel.receive_volume_until(deadline)?;
+            let scope = PrivateMountNamespace::enter()?;
+            let (view, setup) = input.prepare(&scope, CommandDevices::create(100000, 100000)?)?;
+            let view = view
+                .attach(MountPoint::create(Path::new("/work"))?)
+                .map_err(|e| e.to_string())?;
+            assert_eq!(view.root_metadata()?.uid(), 100000);
+            drop(setup);
+            fs::write("/work/volume-transfer-ready", "ready")?;
+            channel.wait_for_loss_until(deadline)?;
+            view.close().map_err(|e| e.to_string())?;
+            scope.restore().map_err(|e| e.to_string())?;
+            return Ok(());
+        }
         if args
             .get(1)
             .is_some_and(|a| a == "volume-probe" || a == "volume-supervisor")
@@ -132,6 +151,32 @@ impl Integration {
                     (pin.metadata()?.dev(), pin.metadata()?.ino()),
                     (volume.root_metadata()?.dev(), volume.root_metadata()?.ino())
                 );
+            }
+            if scope.is_none() {
+                let view = volume.view()?;
+                let parent = Path::new("/work/cgroups");
+                let domain = RecordedDomain::create(&lease, parent)?;
+                let mut command = Command::new(std::env::current_exe()?);
+                command.arg("volume-receiver").env_clear();
+                let deadline = Instant::now() + Duration::from_secs(5);
+                let helper = domain
+                    .launch(command, deadline)
+                    .map_err(|e| e.to_string())?;
+                helper
+                    .supervision()
+                    .send_volume_until(&view, &user, deadline)?;
+                let ready = Path::new("/work/volume-transfer-ready");
+                Readiness::new(ready)?.wait_until(deadline, || helper.supervision().peer_lost())?;
+                helper
+                    .cancel_until(deadline)
+                    .map_err(|e| e.to_string())?
+                    .reap_until(deadline)
+                    .map_err(|e| e.to_string())?
+                    .finish(parent)
+                    .map_err(|e| e.to_string())?;
+                fs::remove_file(ready)?;
+                drop(view);
+                println!("OWNED_VOLUME_SUPERVISED_TRANSFER_PASS");
             }
             let view = volume.view()?;
             let command_scope = PrivateMountNamespace::enter()?;

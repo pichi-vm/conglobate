@@ -1,0 +1,283 @@
+    Blocking waiting for file lock on build directory
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 32.73s
+     Running unittests src/lib.rs (target/debug/deps/conglobate-bde2df729e7b2e9d)
+
+running 29 tests
+test domain::tests::event_status_requires_exact_unambiguous_population ... ok
+test isolation::devices::tests::device_receiver_does_not_wait_for_an_unqueued_offer ... ok
+test domain::tests::ordinary_directory_is_rejected_before_creation ... ok
+test isolation::devices::tests::device_handoff_keeps_cloexec_and_independent_ownership ... ok
+test isolation::setup::tests::receiver_requires_a_queued_offer ... ok
+test isolation::setup::tests::transport_preserves_identity_and_sets_close_on_exec ... ok
+test process::identity::tests::receiver_cancellation_survives_a_duplicate_endpoint ... ok
+test isolation::user::tests::mapping_excludes_host_root_invalid_ids_and_overflow ... ok
+test process::identity::tests::transferred_identity_is_close_on_exec_and_observes_live_sender ... ok
+test isolation::devices::tests::malformed_or_truncated_device_packets_release_rights ... ok
+test process::identity::tests::reject_invalid_wire_messages_and_descriptor_counts ... ok
+test isolation::setup::tests::invalid_packets_and_object_types_release_all_rights ... ok
+test process::supervision::registration::tests::registration_packets_transfer_cloexec_ownership_and_acknowledge ... ok
+test isolation::runtime::tests::root_and_duplicate_target_aliases_are_rejected ... ok
+test process::supervision::registration::tests::registration_packets_require_exact_opcode_descriptor_pairs ... ok
+test isolation::runtime::tests::nested_targets_cannot_hide_each_others_mounts ... ok
+test process::supervision::admission::tests::registered_helper_waits_for_explicit_admission ... ok
+test isolation::runtime::tests::absolute_symlinks_resolve_inside_the_image ... ok
+test isolation::runtime::tests::outside_sibling_is_not_a_runtime_target ... ok
+test process::supervision::admission::tests::no_admission_timeout_and_wrong_phase_fail_closed ... ok
+test process::supervision::tests::invalid_traffic_cannot_be_consumed_into_a_healthy_state ... ok
+test process::supervision::tests::cancellation_does_not_depend_on_the_last_endpoint_copy_closing ... ok
+test storage::snapshot::tests::exceptional_and_inconsistent_statuses_are_not_valid_usage ... ok
+test process::supervision::tests::process_exit_is_detected_even_when_the_socket_stays_open ... ok
+test process::supervision::registration::tests::volume_descriptors_keep_order_and_are_cloexec ... ok
+test process::supervision::tests::setup_exchange_observes_upstream_loss_and_protocol_failure ... ok
+test process::observation::tests::exit_wait_times_out_then_observes_exit_without_reaping ... ok
+test process::supervision::registration::tests::registration_receive_is_bounded_and_rejects_peer_loss ... ok
+test process::supervision::tests::guardian_observes_either_peer_and_keeps_protocol_errors ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/anchors.rs (target/debug/deps/anchors-edce1aff64a5d3eb)
+
+running 1 test
+test ordinary_directory_cannot_become_a_recovery_lease ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cache.rs (target/debug/deps/cache-f07ed6d5b02500f3)
+
+running 11 tests
+test metadata_is_captured_but_later_reads_are_verified_again ... ok
+test missing_wrong_size_and_non_regular_blobs_fail ... ok
+test pinned_index_selects_only_host_vm_artifact_and_preserves_exact_metadata ... ok
+test opened_directory_authority_survives_rename_and_rejects_escape ... ok
+test manifest_resolution_does_not_silently_stand_in_for_content_verification ... ok
+test ambiguous_incompatible_and_direct_manifest_pins_fail ... ok
+test selected_manifest_envelope_is_validated_in_addition_to_shared_artifact_rules ... ok
+test scute_digest_and_decoded_block_count_are_both_enforced ... ok
+test chain_verification_orders_mixed_compressed_layers_from_authenticated_root ... ok
+test compressed_scutes_reject_invalid_streams_even_with_matching_oci_digests ... ok
+test duplicate_disconnected_and_wrong_root_chains_fail ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/chains.rs (target/debug/deps/chains-4e63517c4cf57ceb)
+
+running 5 tests
+test decoder_errors_after_the_declared_extent_are_not_lost ... ok
+test extent_validation_and_exact_eof_are_required ... ok
+test one_block_root_matches_salted_sha256_and_zero_padding ... ok
+test emitted_tree_contains_independently_calculated_leaf_hashes ... ok
+test multiple_data_blocks_hash_through_a_padded_hash_block ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contexts.rs (target/debug/deps/contexts-a29a7dacd6e08907)
+
+running 13 tests
+test failed_population_returns_cleanup_not_a_partial_checkout ... ok
+test subtree_selection_rejects_duplicate_entries_in_ancestor_trees ... ok
+test captured_and_materialized_reads_agree_on_trailing_symlink_separators ... ok
+test staging_cleanup_retains_parent_authority_across_rename ... ok
+test materialization_preserves_committed_data_modes_and_confined_links_on_tmpfs ... ok
+test tampered_blob_bytes_fail_identity_verification ... ok
+test network_recipe_requires_an_explicit_resolver_argument ... ok
+test selected_files_follow_only_confined_committed_links ... ok
+test request_planning_and_document_receipts_use_only_selected_committed_bytes ... ok
+test unsupported_lfs_and_submodules_fail ... ok
+test packed_objects_are_supported_and_capture_does_not_execute_filters ... ok
+test capture_uses_verified_commit_and_subtree_in_both_object_formats ... ok
+test resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_commands ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/copy_modes.rs (target/debug/deps/copy_modes-0fcb05ab13f429b1)
+
+running 2 tests
+test invalid_modes_fail_before_filesystem_execution ... ok
+test recipes_validate_modes_and_multiple_source_destinations ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/copy_patterns.rs (target/debug/deps/copy_patterns-c3fdd6e0f95e5c21)
+
+running 2 tests
+test linux_filepath_patterns_cover_unicode_classes_and_literal_braces ... ok
+test malformed_patterns_and_parent_traversal_fail_during_recipe_parsing ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/domain_records.rs (target/debug/deps/domain_records-08e7ff0fb14699d2)
+
+running 3 tests
+test canonical_domain_description_roundtrips ... ok
+test reject_invalid_names_and_zero_identity_inodes ... ok
+test reject_truncated_noncanonical_oversized_and_trailing_records ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/identities.rs (target/debug/deps/identities-397c6d0054c779f2)
+
+running 8 tests
+test peer_loss_is_an_error_in_both_directions ... ok
+test trusted_child_identity_fixture ... ok
+test identified_launch_preserves_identity_on_wait_timeout ... ok
+test dropping_identified_helper_requests_termination_and_reaps ... ok
+test fresh_child_hands_off_its_identity_before_parent_reaping ... ok
+test identified_launch_collects_normal_completion ... ok
+test an_unresponsive_peer_is_bounded_by_the_deadline ... ok
+test launch_failure_retains_started_children_but_not_spawn_failures ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/locks.rs (target/debug/deps/locks-2f3db2c9cd3fe07c)
+
+running 2 tests
+test pins_are_exact_top_level_identities ... ok
+test duplicate_references_and_unknown_fields_are_rejected ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/namespace_records.rs (target/debug/deps/namespace_records-02b5638b962b6bcf)
+
+running 3 tests
+test canonical_record_roundtrips_as_data ... ok
+test reject_trailing_truncated_overlong_and_noncanonical_encodings ... ok
+test reject_unsafe_names_invalid_ids_and_unknown_versions ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/plans.rs (target/debug/deps/plans-f00245472752cf94)
+
+running 3 tests
+test shared_reference_retains_roles_without_conflating_output_ancestry ... ok
+test pipeline_order_and_network_receipt_order_ignore_yaml_key_order ... ok
+test pass_through_base_does_not_require_execution_but_implicit_tools_do ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/policies.rs (target/debug/deps/policies-2cce7f4e6904f402)
+
+running 5 tests
+test map_encoding_separates_subject_from_superblock_identity ... ok
+test reject_identity_truncation_and_host_root_mapping ... ok
+test target_set_is_explicit_bounded_and_independent_of_input_order ... ok
+test embedded_object_matches_the_map_and_hook_contract_without_loading ... ok
+test pin_directory_rejects_non_bpffs_without_creating_entries ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/processes.rs (target/debug/deps/processes-8c8cd713140cd8a4)
+
+running 3 tests
+test expired_wait_retains_child_for_termination_and_reaping ... ok
+test expired_wait_can_resume_after_explicit_release ... ok
+test reaped_state_preserves_success_and_failure_status ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/recipes.rs (target/debug/deps/recipes-847f216dcd1ea692)
+
+running 6 tests
+test null_nested_mappings_and_directive_lists_are_not_empty_values ... ok
+test duplicate_unknown_sections_and_invalid_firmware_are_rejected ... ok
+test omitted_empty_and_null_have_distinct_meanings ... ok
+test run_defaults_and_directive_exclusivity ... ok
+test all_pipeline_combinations_obey_input_rules ... ok
+test typed_transform_values_are_checked_before_execution ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/requests.rs (target/debug/deps/requests-1f8f437962902ee6)
+
+running 3 tests
+test context_selection_does_not_rebase_configuration_against_recipe_directory ... ok
+test absolute_and_escaping_recipe_paths_fail ... ok
+test both_selected_configuration_paths_are_required ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/supervision.rs (target/debug/deps/supervision-d9962635d3410763)
+
+running 7 tests
+test trusted_supervision_fixture ... ok
+test normal_drop_cancels_a_live_peer ... ok
+test paired_peer_exit_is_observable_without_destructors ... ok
+test supervised_launch_retains_identity_and_wait_ownership ... ok
+test unresponsive_exchange_obeys_one_deadline ... ok
+test supervised_exchange_failure_retains_the_started_child ... ok
+test live_peer_then_forced_exit_is_observable ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/templates.rs (target/debug/deps/templates-7e5c5f82d89c5b1f)
+
+running 3 tests
+test expansion_is_single_pass_and_dollar_escaping_is_consistent ... ok
+test invalid_templates_fail_before_execution ... ok
+test captures_use_regex_semantics_and_do_not_become_build_variables ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/values.rs (target/debug/deps/values-2d821fe17f46c9aa)
+
+running 4 tests
+test capacity_is_explicit_aligned_and_bounded ... ok
+test commands_require_a_finite_positive_timeout ... ok
+test context_relative_paths_do_not_gain_resolution_authority ... ok
+test labels_use_encoded_bytes_not_character_count ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests conglobate
+
+running 37 tests
+test src/storage.rs - storage::Workspace (line 31) - compile fail ... ok
+test src/storage/chain.rs - storage::chain::ReadOnlyChain (line 20) - compile fail ... ok
+test src/storage/chain.rs - storage::chain::ReadOnlyChain (line 12) - compile fail ... ok
+test src/context/materialize.rs - context::materialize::StagedFile (line 171) - compile fail ... ok
+test src/storage/snapshot.rs - storage::snapshot::SnapshotOrigin (line 20) - compile fail ... ok
+test src/storage/snapshot.rs - storage::snapshot::SnapshotOrigin (line 11) - compile fail ... ok
+test src/storage/verity.rs - storage::verity::VerityMapping (line 10) - compile fail ... ok
+test src/storage/volume.rs - storage::volume::Volume (line 46) - compile fail ... ok
+test src/storage/snapshot.rs - storage::snapshot::SnapshotMapping (line 44) - compile fail ... ok
+test src/storage/volume.rs - storage::volume::VolumeView (line 83) - compile fail ... ok
+test src/isolation/namespaces.rs - isolation::namespaces::CommandNamespaces (line 29) - compile fail ... ok
+test src/isolation.rs - isolation::PrivateMountNamespace (line 39) - compile fail ... ok
+test src/domain/drain.rs - domain::drain::DescendantDrain (line 11) - compile fail ... ok
+test src/process.rs - process::Identified (line 42) - compile fail ... ok
+test src/policy/bound.rs - policy::bound::BoundCleanup (line 136) - compile fail ... ok
+test src/isolation/root.rs - isolation::root::CommandRoot (line 23) - compile fail ... ok
+test src/storage/snapshot.rs - storage::snapshot::SnapshotMapping (line 54) - compile fail ... ok
+test src/step.rs - step::Step (line 81) - compile fail ... ok
+test src/isolation/user.rs - isolation::user::UserNamespace (line 44) - compile fail ... ok
+test src/storage/verity.rs - storage::verity::VerityMapping (line 18) - compile fail ... ok
+test src/step.rs - step::Step (line 69) - compile fail ... ok
+test src/process/supervision.rs - process::supervision::Supervision (line 55) - compile fail ... ok
+test src/context/state.rs - context::state::Checkout (line 29) - compile fail ... ok
+test src/context/state.rs - context::state::Checkout (line 36) - compile fail ... ok
+test src/storage/mapping.rs - storage::mapping::Mapping (line 27) - compile fail ... ok
+test src/domain/recorded.rs - domain::recorded::DomainCancellation (line 47) - compile fail ... ok
+test src/filesystem/attachment.rs - filesystem::attachment::InUse (line 192) - compile fail ... ok
+test src/process/supervision/guardian.rs - process::supervision::guardian::GuardianWatch (line 20) - compile fail ... ok
+test src/step.rs - step::Step (line 75) - compile fail ... ok
+test src/domain/helper.rs - domain::helper::ContainedHelper (line 18) - compile fail ... ok
+test src/filesystem.rs - filesystem::Mount (line 53) - compile fail ... ok
+test src/isolation/user.rs - isolation::user::UserNamespace (line 50) - compile fail ... ok
+test src/domain/recorded.rs - domain::recorded::RecordedDomain (line 11) - compile fail ... ok
+test src/domain/registration.rs - domain::registration::DomainRegistration (line 10) - compile fail ... ok
+test src/domain/helper.rs - domain::helper::HelperReaping (line 63) - compile fail ... ok
+test src/policy/bound.rs - policy::bound::BoundDisabled (line 16) - compile fail ... ok
+test src/storage/volume.rs - storage::volume::Volume (line 54) - compile fail ... ok
+
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+rc/storage/mapping.rs - storage::mapping::Mapping (line 27) - compile fail ... ok
+test src/policy/bound.rs - policy::bound::BoundCleanup (line 136) - compile fail ... ok
+test src/context/state.rs - context::state::Checkout (line 36) - compile fail ... ok
+test src/step.rs - step::Step (line 75) - compile fail ... ok
+test src/domain/helper.rs - domain::helper::HelperReaping (line 63) - compile fail ... ok
+test src/storage/volume.rs - storage::volume::Volume (line 46) - compile fail ... ok
+test src/filesystem/attachment.rs - filesystem::attachment::InUse (line 192) - compile fail ... ok
+
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+

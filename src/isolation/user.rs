@@ -211,6 +211,9 @@ pub enum UserNamespaceReleaseFailure {
     },
 }
 impl UserNamespace<PinnedNamespace> {
+    pub(crate) fn descriptor(&self) -> io::Result<File> {
+        self.resources.namespace()
+    }
     /// Apply this pinned mapping without reopening its mountpoint by name.
     /// The mount retains a duplicate namespace descriptor on success; the policy
     /// owner must separately retain the pin until authorization is removed.

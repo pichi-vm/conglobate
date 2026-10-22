@@ -1960,3 +1960,29 @@ rules rather than silently shrinking acceptance criteria.
   /work/origin. Transfer over supervision and Step/Volume aggregate ownership,
   bounded setup/teardown and broader fault qualification remain outstanding.
   M4 has zero clean adherence passes; no milestone advancement is claimed.
+
+### M4 supervised volume transfer (v100)
+
+- Previous turn progressed in 9871c40. Registered supervision now transfers a
+  detached VolumeView and the typed pinned user namespace over its existing
+  seqpacket channel, with deadline-based poll, exact opcode/descriptor counts
+  and CLOEXEC receipt. The helper validates object types, idmaps the detached
+  mount and constructs the separate namespace-entry/device input without
+  reopening the source volume or namespace by pathname. Admission remains a
+  separate protocol operation; receiving a volume cannot authorize a command.
+- v100 adds a dedicated registered helper to the owned init-namespace volume
+  probe. It receives both descriptors, enters a private mount namespace, idmaps
+  and attaches the received view, checks mapped ownership and publishes a
+  readiness event. The parent retains its view through cancellation/reaping
+  before continuing the existing unmount/recovery/remount checks. No command
+  executes in this transport-only probe and no timing sleep coordinates it.
+- Host tests include missing/extra opcode descriptors, CLOEXEC and descriptor
+  order checks; full root tests (37 compile-fail), root/fixture Clippy, and VM
+  suite pass. Exact sources, logs and hashes are archived under evidence/v100.
+- Review boundary: send_volume_until is a transport primitive and does NOT
+  enforce the aggregate volume lifetime. The enclosing Step must own/retain
+  storage through descendant quiescence, including failed startup/cancellation.
+  The full protected-command fixture still uses its historical source paths.
+  Connect these owners and replace that path next; do not interpret the passing
+  probe as full command integration. Setup/teardown deadlines, broader failures
+  and qualification also remain open. M4 stays at zero clean adherence passes.

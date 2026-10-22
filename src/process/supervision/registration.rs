@@ -110,23 +110,24 @@ pub(super) enum Packet {
     Joined,
     Admit,
     Admitted,
+    Volume(OwnedFd, OwnedFd),
 }
 impl Packet {
-    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4.
+    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4, Volume=5.
     pub(super) fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
         self.send_with(socket, &deadline)
     }
     fn send_with(self, socket: &IdentitySocket, wait: &impl ExchangeWait) -> io::Result<()> {
-        let (opcode, descriptor) = match &self {
-            Self::Offer(fd) => (1, Some(fd.as_fd())),
-            Self::Joined => (2, None),
-            Self::Admit => (3, None),
-            Self::Admitted => (4, None),
+        let (opcode, descriptors) = match &self {
+            Self::Offer(fd) => (1, vec![fd.as_fd()]),
+            Self::Joined => (2, vec![]),
+            Self::Admit => (3, vec![]),
+            Self::Admitted => (4, vec![]),
+            Self::Volume(root, namespace) => (5, vec![root.as_fd(), namespace.as_fd()]),
         };
-        let descriptors: Vec<_> = descriptor.into_iter().collect();
         loop {
             wait.ready(socket, PollFlags::OUT)?;
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
+            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(2))];
             let mut ancillary = SendAncillaryBuffer::new(&mut space);
             if !descriptors.is_empty()
                 && !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors))
@@ -153,7 +154,7 @@ impl Packet {
         loop {
             wait.ready(socket, PollFlags::IN)?;
             let mut bytes = [0; 3];
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
+            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(2))];
             let mut ancillary = RecvAncillaryBuffer::new(&mut space);
             let result = match recvmsg(
                 &socket.0,
@@ -182,28 +183,28 @@ impl Packet {
                     "invalid registration packet",
                 ));
             }
-            let mut fd = None;
+            let mut descriptors = Vec::new();
             for message in ancillary.drain() {
-                let RecvAncillaryMessage::ScmRights(descriptors) = message else {
+                let RecvAncillaryMessage::ScmRights(rights) = message else {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
                         "unexpected registration control",
                     ));
                 };
-                for descriptor in descriptors {
-                    if fd.replace(descriptor).is_some() {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "extra registration descriptor",
-                        ));
-                    }
-                }
+                descriptors.extend(rights);
             }
-            return match (bytes[2], fd) {
-                (1, Some(fd)) => Ok(Self::Offer(fd)),
-                (2, None) => Ok(Self::Joined),
-                (3, None) => Ok(Self::Admit),
-                (4, None) => Ok(Self::Admitted),
+            return match (bytes[2], descriptors.len()) {
+                (1, 1) => Ok(Self::Offer(descriptors.pop().expect("one descriptor"))),
+                (2, 0) => Ok(Self::Joined),
+                (3, 0) => Ok(Self::Admit),
+                (4, 0) => Ok(Self::Admitted),
+                (5, 2) => {
+                    let namespace = descriptors.pop().expect("namespace descriptor");
+                    Ok(Self::Volume(
+                        descriptors.pop().expect("root descriptor"),
+                        namespace,
+                    ))
+                }
                 _ => Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "registration opcode/descriptor mismatch",
@@ -263,6 +264,8 @@ mod tests {
             (&[0x82, 1, 9][..], 0),
             (&[0x82, 1, 3][..], 1),
             (&[0x82, 1, 4][..], 1),
+            (&[0x82, 1, 5][..], 0),
+            (&[0x82, 1, 5][..], 1),
             (&[0x82, 1, 2, 0][..], 0),
         ] {
             let (a, b) = Fixture::pair();
@@ -293,6 +296,32 @@ mod tests {
             Packet::receive(&a, Fixture::deadline()).unwrap(),
             Packet::Joined
         ));
+    }
+    #[test]
+    fn volume_descriptors_keep_order_and_are_cloexec() {
+        let (a, b) = Fixture::pair();
+        Packet::Volume(
+            File::open("/").unwrap().into(),
+            File::open("/proc/self/ns/user").unwrap().into(),
+        )
+        .send(&a, Fixture::deadline())
+        .unwrap();
+        let Packet::Volume(root, namespace) = Packet::receive(&b, Fixture::deadline()).unwrap()
+        else {
+            panic!("expected volume");
+        };
+        for fd in [&root, &namespace] {
+            assert!(
+                rustix::io::fcntl_getfd(fd)
+                    .unwrap()
+                    .contains(rustix::io::FdFlags::CLOEXEC)
+            );
+        }
+        assert!(File::from(root).metadata().unwrap().is_dir());
+        assert_eq!(
+            rustix::fs::fstatfs(namespace).unwrap().f_type as u64,
+            0x6e73_6673
+        );
     }
     #[test]
     fn registration_receive_is_bounded_and_rejects_peer_loss() {

@@ -13,6 +13,8 @@ mod startup;
 pub(super) use startup::StartupWatch;
 mod guardian;
 pub use guardian::{GuardianWatch, ShutdownTrigger};
+mod volume;
+pub use volume::VolumeInput;
 mod admission;
 pub use admission::Admitted;
 mod registration;

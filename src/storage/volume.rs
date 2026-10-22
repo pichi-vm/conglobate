@@ -95,6 +95,9 @@ pub struct VolumeView<'volume> {
     _thread: PhantomData<Rc<()>>,
 }
 impl<'volume> VolumeView<'volume> {
+    pub(crate) fn descriptor(&self) -> io::Result<File> {
+        self.root.try_clone()
+    }
     pub fn in_namespace<'ns>(
         self,
         scope: &'ns PrivateMountNamespace,

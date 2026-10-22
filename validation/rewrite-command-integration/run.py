@@ -106,6 +106,8 @@ modprobe dm-snapshot
 modprobe dm-verity
 /idmap-probe prepare-scutes
 /idmap-probe assemble-chain
+mkdir /work/cgroups
+mount -t cgroup2 cgroup2 /work/cgroups
 /idmap-probe volume-probe
 /idmap-probe volume-supervisor
 /idmap-probe loop-probe
@@ -120,8 +122,6 @@ test ! -e /usr/bin/bwrap
 mkdir /work/pins
 mount -t bpf bpf /work/pins
 chmod 700 /work/pins
-mkdir /work/cgroups
-mount -t cgroup2 cgroup2 /work/cgroups
 /idmap-probe supervisor pre-admission-cancel
 /idmap-probe supervisor admission-timeout
 /idmap-probe supervisor policy-off
