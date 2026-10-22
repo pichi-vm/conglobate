@@ -33,6 +33,75 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "assemble-chain") {
+            use std::{
+                collections::BTreeSet,
+                io::{Read, Write},
+            };
+            let mappings = || -> std::io::Result<BTreeSet<std::ffi::OsString>> {
+                fs::read_dir("/sys/block")?
+                    .filter_map(|entry| match entry {
+                        Ok(entry) if entry.file_name().as_encoded_bytes().starts_with(b"dm-") => {
+                            Some(Ok(entry.file_name()))
+                        }
+                        Ok(_) => None,
+                        Err(error) => Some(Err(error)),
+                    })
+                    .collect()
+            };
+            let baseline = mappings()?;
+            let workspace = conglobate::storage::Workspace::create()?;
+            let cache = conglobate::cache::Cache::open(Path::new("/cache-fixture"))?;
+            for name in ["chain", "invalid-header"] {
+                let pin = fs::read_to_string(format!("/cache-fixture/{name}.pin"))?;
+                let image = cache.resolve(pin.parse()?)?;
+                let chain = cache.verify_chain(&image)?.ok_or("missing chain")?;
+                if name == "invalid-header" {
+                    let failure = chain.assemble(&cache, &workspace).unwrap_err();
+                    assert_eq!(
+                        failure.source_error().kind(),
+                        std::io::ErrorKind::InvalidData
+                    );
+                    failure.cleanup().map_err(|e| e.to_string())?;
+                    assert_eq!(mappings()?, baseline);
+                    println!("INVALID_SECOND_SCUTE_CLEANUP_PASS");
+                    continue;
+                }
+                let mounted = chain
+                    .assemble(&cache, &workspace)
+                    .map_err(|e| e.to_string())?;
+                assert_eq!(mounted.root(), chain.root());
+                let id = mounted.id();
+                let node = Path::new("/dev/conglobate-chain-probe");
+                rustix::fs::mknodat(
+                    rustix::fs::CWD,
+                    node,
+                    rustix::fs::FileType::BlockDevice,
+                    rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
+                    rustix::fs::makedev(id.major(), id.minor()),
+                )?;
+                if let Ok(mut writer) = fs::OpenOptions::new().write(true).open(node) {
+                    assert!(writer.write_all(&[0; 4096]).is_err());
+                }
+                let mut reader = fs::File::open(node)?;
+                let mut bytes = [0; 12288];
+                reader.read_exact(&mut bytes)?;
+                assert_eq!(&bytes[..4096], &[66; 4096]);
+                assert_eq!(&bytes[4096..8192], &[67; 4096]);
+                assert_eq!(&bytes[8192..], &[0; 4096]);
+                let failure = mounted.close().unwrap_err();
+                assert_eq!(
+                    failure.source_error().kind(),
+                    std::io::ErrorKind::ResourceBusy
+                );
+                drop(reader);
+                failure.cleanup().map_err(|e| e.to_string())?;
+                fs::remove_file(node)?;
+                assert_eq!(mappings()?, baseline);
+            }
+            println!("OWNED_TWO_SCUTE_CHAIN_PASS");
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "prepare-scutes") {
             use std::io::{Read, Write};
             let workspace = conglobate::storage::Workspace::create()?;

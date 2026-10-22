@@ -1828,3 +1828,33 @@ rules rather than silently shrinking acceptance criteria.
   Read-only snapshot assembly over dm-zero, verified snapshot-header parsing,
   full chain composition, setup/teardown bounds and full fault qualification remain
   outstanding. M4 remains at zero; no M5 or whole-sandbox completion claim.
+
+- Previous turn progressed in 7d3c166. Added ReadOnlyChain as an aggregate owner
+  over the format's 64GiB dm-zero, verified COW mappings and read-only snapshot
+  layers. Source-grounded comparison with carapace confirms the shared snapshot
+  decoder, 4096-byte whitelist and read-through-verity requirement. The existing
+  carapace deferred-removal API does not expose this explicit teardown contract;
+  assembly uses ecosystem devmap/lodown types with conglobate-owned resources.
+  Reference source/spec and Git state are archived without modifying carapace.
+- Mapping node opens reject symlinks and verify block-device identity against the
+  owned mapping before reading. Snapshot headers are read only through dm-verity;
+  invalidated/non-whitelisted headers fail. Kernel snapshot health is checked
+  before each new layer enters the usable aggregate. Private error phases retain
+  partially constructed stacks. Explicit and best-effort teardown order is top
+  to base, with no recursive chain representation or depth-dependent call stack.
+  Failed removal retains upper resources and all lower dependencies for retry.
+- v92 passes initial two-scute reads, holes, busy close/retry, and invalid second
+  header cleanup. Review added the explicit kernel health gate and strengthened
+  overlapping-layer coverage. v93 passes upper override, lower inherited block,
+  zero hole, rejected writes, busy cleanup retry, and invalid upper header rejection
+  after the lower layer was assembled. Mapping listings return to their baseline
+  after explicit cleanup in both cases. Existing normal suite passes. Root tests
+  (32 compile-fail), root/fixture Clippy, formatting/Python checks pass. Verified
+  artifacts, exact sources and intermediate evidence retained; no privileged host
+  device/mount operations. New lifetime tests separately identified after boot.
+- Focused review checked aggregate ownership, ordered Drop/close, authenticated
+  header provenance, retained partial-stack authority and exposed API limits.
+  This is not an M4 adherence pass. Writable snapshot integration over assembled
+  chains, mounted-volume ownership, combined primary/cleanup error reporting,
+  bounded setup/teardown and broader failure/crash qualification remain required.
+  M4 remains zero; no filesystem, M5 bootstrap, or full-build completion claim.

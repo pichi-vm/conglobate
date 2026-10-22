@@ -832,3 +832,19 @@ v91 includes exact booted source plus separately identified later compile-fail
 lifetime checks, initial compiler-failure evidence, raw logs and verified hashes.
 This qualifies these focused verity operations, not snapshot-chain assembly,
 filesystem mounting, crash behavior of this new owner, or the complete sandbox.
+
+## Owned read-only snapshot chains
+
+v92 introduces a two-scute snapshot fixture and an authenticated but invalidated
+second header. Both the successful stack and partially assembled failed stack
+release all observed device-mapper names on explicit cleanup. v93 adds kernel
+snapshot-health checks and an overlapping block: upper data replaces base data,
+while a second block is inherited and an untouched block comes from dm-zero.
+It also passes rejected writes and busy close followed by cleanup retry.
+
+Snapshot headers are read through the owned dm-verity mapping after validating
+the opened block-node identity. Shared devmap decoding supplies wire-format
+checks; conglobate enforces the carapace chunk-size/validity requirements. Local
+carapace reference sources and exact fixture blobs are included in v93 evidence.
+Root lifetime checks pass; the post-boot documentation-only additions are labeled
+separately. These are block-chain tests, not filesystem or build qualification.

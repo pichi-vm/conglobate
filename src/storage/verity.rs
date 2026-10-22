@@ -124,6 +124,21 @@ impl<'s, 'w> PreparedScute<'s, 'w> {
 }
 
 impl<'s, 'w> VerityMapping<'s, 'w> {
+    pub(super) fn snapshot_header(&self) -> io::Result<devmap_snapshot::Header> {
+        use std::os::unix::fs::FileExt;
+        let mut record = [0; 16];
+        self.mapping
+            .open_read_only()?
+            .read_exact_at(&mut record, 0)?;
+        let header = devmap_snapshot::Header::decode(record)?;
+        if !header.valid || header.chunk_size.bytes().get() != 4096 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "unsupported or invalidated scute header",
+            ));
+        }
+        Ok(header)
+    }
     /// Diagnostic identity, not an independent lifetime lease.
     pub fn id(&self) -> devmap_linux::DevId {
         self.mapping.id()

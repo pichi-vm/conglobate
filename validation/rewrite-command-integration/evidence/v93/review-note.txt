@@ -1,0 +1,2 @@
+Passed final chain source: explicit kernel snapshot health checks, overlapping upper-layer replacement, inherited base block, zero hole, rejected writes, busy cleanup retry and invalid second header cleanup. Not filesystem/build qualification.
+Booted source is in source/. chain-with-lifetime-tests.rs adds only later compile-fail documentation. Local carapace reference sources and Git state are recorded; no files in that repository were modified.

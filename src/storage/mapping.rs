@@ -59,12 +59,6 @@ impl MappingFailure {
     }
 }
 impl Mapping<Created> {
-    pub(super) fn failed(self, source: io::Error) -> MappingFailure {
-        MappingFailure {
-            source,
-            lease: self.lease,
-        }
-    }
     pub fn create() -> io::Result<Self> {
         let control = Control::open()?;
         let mut nonce = [0; 16];
@@ -115,6 +109,26 @@ impl Mapping<Created> {
     }
 }
 impl Mapping<Active> {
+    pub(super) fn open_read_only(&self) -> io::Result<File> {
+        use std::os::unix::fs::FileTypeExt;
+        let fd = rustix::fs::open(
+            format!("/dev/dm-{}", self.id().minor()),
+            rustix::fs::OFlags::RDONLY
+                | rustix::fs::OFlags::CLOEXEC
+                | rustix::fs::OFlags::NOFOLLOW
+                | rustix::fs::OFlags::NONBLOCK,
+            rustix::fs::Mode::empty(),
+        )?;
+        let file = File::from(fd);
+        let metadata = file.metadata()?;
+        if !metadata.file_type().is_block_device() || DevId::try_from(metadata)? != self.id() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "mapping node identity mismatch",
+            ));
+        }
+        Ok(file)
+    }
     pub(super) fn snapshot_info(&self) -> io::Result<devmap_snapshot::Info> {
         use devmap_linux::records::Records;
         let version = self.lease.control.version("snapshot")?;
@@ -133,6 +147,12 @@ impl Mapping<Active> {
     }
 }
 impl<S: MappingState> Mapping<S> {
+    pub(super) fn failed(self, source: io::Error) -> MappingFailure {
+        MappingFailure {
+            source,
+            lease: self.lease,
+        }
+    }
     /// Diagnostic identity; copying it does not retain the mapping's lifetime.
     pub fn id(&self) -> DevId {
         self.lease.id()

@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Supervisor-owned mutable RAM storage. Immutable layers remain cache-backed.
+mod chain;
 mod loopback;
+pub use chain::{ReadOnlyChain, ReadOnlyChainFailure};
 mod verity;
 pub use loopback::{LoopAttachFailure, LoopAttachment, LoopDetachFailure};
 pub use verity::{VerityFailure, VerityMapping};

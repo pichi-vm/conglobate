@@ -2,6 +2,7 @@
 import hashlib
 import json
 import subprocess
+import struct
 
 
 class CacheFixture:
@@ -28,21 +29,46 @@ class CacheFixture:
             layer = {'mediaType': 'application/vnd.pichi.scute.v1' + ('+zstd' if compressed else ''),
                      'digest': self.blob(blob), 'size': len(blob),
                      'annotations': {'dev.pichi.scute.verity.salt': salt.hex()}}
-            annotations = {'dev.pichi.carapace.verity.' + k: v for k, v in
-                           [('algo', 'sha256'), ('data-block-size', '4096'),
-                            ('hash-block-size', '4096'), ('version', '1'), ('hash-type', '1'),
-                            ('hash', root)]}
-            manifest = json.dumps({'schemaVersion': 2,
-                'mediaType': 'application/vnd.oci.image.manifest.v1+json',
-                'artifactType': 'application/vnd.pichi.artifact.v1+json',
-                'config': {'mediaType': 'application/vnd.oci.empty.v1+json',
-                           'digest': self.blob(b'{}'), 'size': 2, 'data': 'e30='},
-                'layers': [layer], 'annotations': annotations}).encode()
-            descriptor = {'mediaType': 'application/vnd.oci.image.manifest.v1+json',
-                          'artifactType': 'application/vnd.pichi.artifact.v1+json',
-                          'digest': self.blob(manifest), 'size': len(manifest),
-                          'platform': {'os': 'pichi', 'architecture': 'amd64'}}
-            index = json.dumps({'schemaVersion': 2,
-                                'mediaType': 'application/vnd.oci.image.index.v1+json',
-                                'manifests': [descriptor]}).encode()
-            (self.root / (name + '.pin')).write_text(self.blob(index))
+            self.image(name, [layer], root)
+        self.chains()
+
+    def image(self, name, layers, root):
+        annotations = {'dev.pichi.carapace.verity.' + k: v for k, v in
+                       [('algo', 'sha256'), ('data-block-size', '4096'),
+                        ('hash-block-size', '4096'), ('version', '1'), ('hash-type', '1'),
+                        ('hash', root)]}
+        manifest = json.dumps({'schemaVersion': 2,
+            'mediaType': 'application/vnd.oci.image.manifest.v1+json',
+            'artifactType': 'application/vnd.pichi.artifact.v1+json',
+            'config': {'mediaType': 'application/vnd.oci.empty.v1+json',
+                       'digest': self.blob(b'{}'), 'size': 2, 'data': 'e30='},
+            'layers': layers, 'annotations': annotations}).encode()
+        descriptor = {'mediaType': 'application/vnd.oci.image.manifest.v1+json',
+                      'artifactType': 'application/vnd.pichi.artifact.v1+json',
+                      'digest': self.blob(manifest), 'size': len(manifest),
+                      'platform': {'os': 'pichi', 'architecture': 'amd64'}}
+        index = json.dumps({'schemaVersion': 2,
+                            'mediaType': 'application/vnd.oci.image.index.v1+json',
+                            'manifests': [descriptor]}).encode()
+        (self.root / (name + '.pin')).write_text(self.blob(index))
+
+    def chains(self):
+        for valid in (True, False):
+            parent = bytes(32)
+            layers = []
+            for index, value in enumerate((65, 66)):
+                header = struct.pack('<IIII', 0x70416e53, int(valid or index == 0), 1, 8)
+                metadata = struct.pack('<QQ', 0, 2)
+                payload = bytes([value]) * 4096
+                if index == 0:
+                    metadata += struct.pack('<QQ', 1, 3)
+                    payload += bytes([67]) * 4096
+                data = header.ljust(4096, b'\0') + metadata.ljust(4096, b'\0') + payload
+                leaves = b''.join(hashlib.sha256(parent + data[i:i+4096]).digest()
+                                  for i in range(0, len(data), 4096))
+                root = hashlib.sha256(parent + leaves.ljust(4096, b'\0')).digest()
+                layers.append({'mediaType': 'application/vnd.pichi.scute.v1',
+                               'digest': self.blob(data), 'size': len(data),
+                               'annotations': {'dev.pichi.scute.verity.salt': parent.hex()}})
+                parent = root
+            self.image('chain' if valid else 'invalid-header', layers, parent.hex())

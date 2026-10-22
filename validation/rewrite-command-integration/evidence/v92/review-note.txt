@@ -1,0 +1,1 @@
+Passed initial two-scute assembly, zero holes, busy cleanup retry, invalid second header and full prefix cleanup. Follow-up review adds explicit kernel snapshot health gate and stronger overlapping-layer coverage.
