@@ -400,3 +400,24 @@ rules rather than silently shrinking acceptance criteria.
   tests, five compile-fail doctests, Clippy, formatting and diff checks pass.
   This is native Linux process evidence, not PID-reuse stress, supervisor-death,
   confidential-computing or full containment qualification. M4 remains open.
+- Replaced parent-side numeric-PID observation acquisition with a trusted helper
+  self-pidfd handoff. The helper pins itself while alive and transfers ownership
+  through a private sequence-packet socket; the parent does not reopen a PID.
+  This avoids that acquisition path's SIGCHLD/reaping assumptions. Normal child
+  wait semantics and termination ownership still need launcher integration.
+- The one-shot protocol uses deterministic CBOR [1, 0] plus exactly one
+  SCM_RIGHTS descriptor, bounded nonblocking waits, close-on-exec ownership and
+  strict framing/descriptor counts. Startup replaces inherited socket stdin with
+  /dev/null to avoid leaving a second descriptor available to later execs. Safe
+  rustix APIs cover every syscall. Initial socket-option API spelling error was
+  corrected before testing. No nightly API or application unsafe was introduced.
+- Native tests exercise a fresh child transferring its own identity, observation
+  after exit/reaping, live observation, CLOEXEC, stdin replacement, peer loss in
+  either direction, a silent-peer deadline, malformed/truncated CBOR and missing,
+  extra or truncated descriptors. This is identity exchange only: no readiness,
+  admission acknowledgement, guardian recovery or command containment receipt.
+  M4 remains at zero adherence passes. The launcher must now integrate this
+  exchange with stable termination ownership and the registration/admission gate.
+- Full suite passes: 60 tests (including the subprocess fixture entry) and five
+  compile-fail doctests. Clippy, formatting and diff checks pass. Existing
+  validation artifacts and legacy reference code remain preserved unchanged.

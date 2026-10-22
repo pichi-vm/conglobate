@@ -213,17 +213,20 @@ anchors can persist after a failed build until a trusted recovery pass succeeds.
 Exact lease serialization and readiness/acknowledgement messages are implementation
 choices subject to this protocol and fault-injection tests.
 
-The current child-owner primitive can acquire an independent pidfd observation
-before collecting exit status. The launcher must retain normal SIGCHLD zombie
-semantics (no explicit SIG_IGN or SA_NOCLDWAIT) and exclusive child reaping;
-those process-wide conditions keep a terminated child's PID from being reused
-between inspection and pidfd acquisition. An already collected child is rejected.
-The observer exposes only exit readiness, never signaling or namespace-entry
-authority. Reaping and observing exit are distinct from proving descendant
-quiescence. A future launch path must establish these signal/reaping prerequisites
-before using this primitive; the existing API does not establish them itself.
-See the conditions documented in
-[pidfd_open(2)](https://man7.org/linux/man-pages/man2/pidfd_open.2.html).
+The helper identity handoff uses a private close-on-exec sequence-packet socket
+and one deterministic CBOR message `[1, 0]` (version, identity-offer opcode),
+with exactly one SCM_RIGHTS descriptor. The trusted helper opens its own pidfd
+while alive and sends it; the receiver never reopens a numeric child PID.
+Received descriptors are close-on-exec and owned immediately. Truncated messages,
+unknown versions/opcodes, missing/extra descriptors, peer loss and deadlines
+fail the exchange. This channel belongs exclusively to trusted helper startup;
+it is never made available to recipe commands. Receipt establishes identity
+only, not readiness or command admission. The eventual launcher must retain
+cleanup ownership on exchange failure and complete registration/acknowledgement
+before releasing any recipe execution. Normal child wait/reaping semantics are
+still required for child cleanup; this handoff does not establish them.
+See [pidfd_open(2)](https://man7.org/linux/man-pages/man2/pidfd_open.2.html)
+for the parent-side PID lookup constraints this identity handoff avoids.
 
 ## Safe integration and dependency evidence
 

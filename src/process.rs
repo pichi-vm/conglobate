@@ -11,6 +11,8 @@ use std::{
 
 mod observation;
 pub use observation::ProcessObservation;
+mod identity;
+pub use identity::{IdentityReceiver, IdentitySender};
 
 mod private {
     pub trait Sealed {}
@@ -71,24 +73,6 @@ impl From<Child> for Process<Running> {
     }
 }
 impl Process<Running> {
-    /// Pin this child's kernel identity for independent exit observation.
-    ///
-    /// The application must retain normal SIGCHLD zombie semantics (neither
-    /// SIG_IGN nor SA_NOCLDWAIT) and must not reap owned children elsewhere.
-    /// These are process-wide launcher invariants, not enforced by Rust's
-    /// ownership of Child. Unsupported kernels fail instead of using PID polls.
-    pub fn observe(&mut self) -> io::Result<ProcessObservation> {
-        let child = self.resources.child.as_mut().expect("live child");
-        if child.try_wait()?.is_some() {
-            return Err(io::Error::other("cannot pin an already collected child"));
-        }
-        // Until this owner waits, an exited child remains a zombie, preventing
-        // PID reuse across pidfd_open under the documented launcher invariants.
-        let pid = rustix::process::Pid::from_raw(child.id() as i32)
-            .ok_or_else(|| io::Error::other("invalid child PID"))?;
-        ProcessObservation::open(pid)
-    }
-
     /// Diagnostic PID only. Signaling uses Child's retained wait relationship
     /// or recorded exit status, never an independently reopened numeric PID.
     pub fn id(&self) -> u32 {

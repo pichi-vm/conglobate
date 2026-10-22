@@ -4,7 +4,6 @@
 use rustix::{
     event::{PollFd, PollFlags, Timespec, poll},
     fd::OwnedFd,
-    process::{Pid, PidfdFlags, pidfd_open},
 };
 use std::io;
 
@@ -13,15 +12,9 @@ use std::io;
 /// exposed. Exit observation is not a descendant-quiescence receipt.
 #[derive(Debug)]
 pub struct ProcessObservation {
-    identity: OwnedFd,
+    pub(super) identity: OwnedFd,
 }
 impl ProcessObservation {
-    pub(super) fn open(pid: Pid) -> io::Result<Self> {
-        Ok(Self {
-            identity: pidfd_open(pid, PidfdFlags::empty())?,
-        })
-    }
-
     /// Sample whether the entire thread group has exited, without waiting or
     /// collecting its status. Remains true after the wait owner reaps it.
     /// Syscall errors remain errors, never evidence of exit or liveness.
