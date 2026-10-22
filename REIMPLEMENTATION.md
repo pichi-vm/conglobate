@@ -85,3 +85,15 @@ rules rather than silently shrinking acceptance criteria.
 - Reference tree: reference/legacy/. Validation remains at validation/.
 - Three clean adherence passes recorded in preservation/MILESTONE-1-ADHERENCE.md.
   Architecture work may now begin. No production rewrite code exists yet.
+
+## Milestone 2 work log
+
+- Draft ownership/module/state/error/recovery architecture in ARCHITECTURE.md.
+  It is explicitly not through the adherence gate; no new crate implementation
+  has started.
+- Current pinned carapace 99caf79 exposes read-only Chain::assemble through
+  Assemble; its internal zero origin is 64 GiB (ZERO_COUNT_SECTORS). Requested
+  bootstrap filesystem capacity must be reconciled with this geometry rather
+  than silently changing the carapace wire contract. Inspect assembly/devmap
+  ownership APIs next, then settle formatter geometry and recovery design.
+- Architecture clean streak remains zero while these design details are open.
