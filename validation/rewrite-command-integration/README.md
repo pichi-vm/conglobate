@@ -335,3 +335,51 @@ assuming a scheduling window. Both sides bound the fixture socket wait.
 v35 passes the explicit-handshake regression, active label checks, timeout,
 filesystem verification and label persistence after remount. Root tests and
 root/fixture Clippy/formatting pass. Full sandbox qualification remains false.
+
+
+## Resident command namespace init
+
+v36 adds production NamespaceInit after root entry, capability finalization and
+seccomp. The image shell becomes its child instead of PID 1. Init blocks in
+waitpid(__WALL), reaps adopted children while the shell runs, and exits with the
+shell outcome (signal termination maps to 128 + signal). Kernel PID-namespace
+teardown stops remaining members; outer cgroup cancellation/reaping/draining
+still precedes policy removal. The helper remains exit-only on setup/wait errors.
+No scheduling sleep or signal-handler loop implements this behavior.
+
+CommandRoot now consumes PrivateMountNamespace. Successful pivot/detach closes
+its restoration descriptor before returning EnteredRoot. The resident init must
+retain no extra descriptor even if CLOEXEC: its pre-spawn audit now rejects all
+nonstandard descriptors except owned null input, which is moved to stdin and
+closed. Init is non-dumpable before spawning, preventing same-UID commands from
+opening its executable, memory, maps, environment or fd/0 through /proc/1. The
+image child's exec restores ordinary child dumpability. Commands still receive
+the documented environment and no supervisor filesystem/root capability.
+
+The fixture asserts shell PID != 1 and PPID == 1, probes those denied proc views,
+and uses explicit file release to let an orphan exit. Its disappearance from proc
+while the shell remains alive demonstrates init reaping. v36 passes the existing
+policy, capability, runtime, timeout and label-persistence checks.
+
+v37 exposed the fixture's stale empty target directory after timeout when adding
+a fourth step. Selection now checks the actual mount's device/inode identity;
+production still needs scoped root transfer rather than path discovery. The
+concurrent root-test run also exposed an immediate-EOF assumption in a descriptor
+closure test. It now bounds its EOF read rather than assuming no transient
+CLOEXEC reference can exist during another test's process spawn. Both failures
+are preserved; production descriptor-transfer behavior was unchanged.
+
+v38 passes shell exit-code 37 propagation, cancellation after that failure, and
+successful shell exit with a deliberately live background child. The child
+acknowledges startup before shell exit. Completion and an empty cgroup establish
+that it cannot survive the step. Preserved kernel source excerpts explain
+PID-namespace teardown's signal/reap ordering; they do not replace the tests.
+v39 repeats supervisor SIGKILL with active labels using the resident init, checks
+continued image labeling and denied shared-memory labeling, then observes actual
+VM poweroff. Both runs pass. Root tests, Clippy and formatting pass.
+
+Remaining work includes native namespace creation (external nsenter/unshare still
+construct them), production policy admission/ownership and complete failure
+cleanup, runtime scaffolding, further proc masking, PTY compatibility, explicit
+diagnostic plumbing, distro and architecture coverage. These fixtures do not
+claim to qualify the complete sandbox or all signal/clone combinations.

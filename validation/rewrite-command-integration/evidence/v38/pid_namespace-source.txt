@@ -1,0 +1,91 @@
+/var/tmp/conglobate-cap-review-sources/linux-7.2.10/kernel/pid_namespace.c
+
+192: void zap_pid_ns_processes(struct pid_namespace *pid_ns)
+193: {
+194: 	int nr;
+195: 	int rc;
+196: 	struct task_struct *task, *me = current;
+197: 	int init_pids = thread_group_leader(me) ? 1 : 2;
+198: 	struct pid *pid;
+199: 
+200: 	/* Don't allow any more processes into the pid namespace */
+201: 	disable_pid_allocation(pid_ns);
+202: 
+203: 	/*
+204: 	 * Ignore SIGCHLD causing any terminated children to autoreap.
+205: 	 * This speeds up the namespace shutdown, plus see the comment
+206: 	 * below.
+207: 	 */
+208: 	spin_lock_irq(&me->sighand->siglock);
+209: 	me->sighand->action[SIGCHLD - 1].sa.sa_handler = SIG_IGN;
+210: 	spin_unlock_irq(&me->sighand->siglock);
+211: 
+212: 	/*
+213: 	 * The last thread in the cgroup-init thread group is terminating.
+214: 	 * Find remaining pid_ts in the namespace, signal and wait for them
+215: 	 * to exit.
+216: 	 *
+217: 	 * Note:  This signals each threads in the namespace - even those that
+218: 	 * 	  belong to the same thread group, To avoid this, we would have
+219: 	 * 	  to walk the entire tasklist looking a processes in this
+220: 	 * 	  namespace, but that could be unnecessarily expensive if the
+221: 	 * 	  pid namespace has just a few processes. Or we need to
+222: 	 * 	  maintain a tasklist for each pid namespace.
+223: 	 *
+224: 	 */
+225: 	rcu_read_lock();
+226: 	read_lock(&tasklist_lock);
+227: 	nr = 2;
+228: 	idr_for_each_entry_continue(&pid_ns->idr, pid, nr) {
+229: 		task = pid_task(pid, PIDTYPE_PID);
+230: 		if (task && !__fatal_signal_pending(task))
+231: 			group_send_sig_info(SIGKILL, SEND_SIG_PRIV, task, PIDTYPE_MAX);
+232: 	}
+233: 	read_unlock(&tasklist_lock);
+234: 	rcu_read_unlock();
+235: 
+236: 	/*
+237: 	 * Reap the EXIT_ZOMBIE children we had before we ignored SIGCHLD.
+238: 	 * kernel_wait4() will also block until our children traced from the
+239: 	 * parent namespace are detached and become EXIT_DEAD.
+240: 	 */
+241: 	do {
+242: 		clear_thread_flag(TIF_SIGPENDING);
+243: 		clear_thread_flag(TIF_NOTIFY_SIGNAL);
+244: 		rc = kernel_wait4(-1, NULL, __WALL, NULL);
+245: 	} while (rc != -ECHILD);
+246: 
+247: 	/*
+248: 	 * kernel_wait4() misses EXIT_DEAD children, and EXIT_ZOMBIE
+249: 	 * process whose parents processes are outside of the pid
+250: 	 * namespace.  Such processes are created with setns()+fork().
+251: 	 *
+252: 	 * If those EXIT_ZOMBIE processes are not reaped by their
+253: 	 * parents before their parents exit, they will be reparented
+254: 	 * to pid_ns->child_reaper.  Thus pidns->child_reaper needs to
+255: 	 * stay valid until they all go away.
+256: 	 *
+257: 	 * The code relies on the pid_ns->child_reaper ignoring
+258: 	 * SIGCHILD to cause those EXIT_ZOMBIE processes to be
+259: 	 * autoreaped if reparented.
+260: 	 *
+261: 	 * Semantically it is also desirable to wait for EXIT_ZOMBIE
+262: 	 * processes before allowing the child_reaper to be reaped, as
+263: 	 * that gives the invariant that when the init process of a
+264: 	 * pid namespace is reaped all of the processes in the pid
+265: 	 * namespace are gone.
+266: 	 *
+267: 	 * Once all of the other tasks are gone from the pid_namespace
+268: 	 * free_pid() will awaken this task.
+269: 	 */
+270: 	for (;;) {
+271: 		set_current_state(TASK_INTERRUPTIBLE);
+272: 		if (pid_ns->pid_allocated == init_pids)
+273: 			break;
+274: 		schedule();
+275: 	}
+276: 	__set_current_state(TASK_RUNNING);
+277: 
+278: 	if (pid_ns->reboot)
+279: 		current->signal->group_exit_code = pid_ns->reboot;
+280: 

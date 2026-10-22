@@ -34,7 +34,7 @@ impl Integration {
             let scope = PrivateMountNamespace::enter()?;
             let selected = CommandRoot::from_directory(
                 fs::File::open(root)?,
-                &scope,
+                scope,
                 CommandDevices::from_input()?,
             )?;
             let filter = CommandSyscalls::compile()?;
@@ -97,6 +97,13 @@ impl Integration {
         }
         // Fixture init retains the original filesystem mount and namespace
         // holder until cleanup or poweroff. No identities can be reused here.
+        for name in ["orphan-release", "survivor-ready"] {
+            match fs::remove_file(Path::new("/work/origin").join(name)) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            }
+        }
         let policy = EnabledPolicy::install(mode != "policy-off")?;
         let reaper = ChildReaper::install()?;
         let recovery = Path::new("/work/integration-records");
@@ -143,15 +150,17 @@ impl Integration {
             observation?;
             // The fixture helper has closed its channel but cannot exit until
             // explicitly released. Channel loss must not count as process exit.
-            assert_eq!(
-                helper
-                    .supervision()
-                    .wait_for_peer_exit_until(Instant::now())
-                    .unwrap_err()
-                    .kind(),
-                std::io::ErrorKind::TimedOut,
-            );
-            ExitGate::release()?;
+            if mode != "shell-failure" {
+                assert_eq!(
+                    helper
+                        .supervision()
+                        .wait_for_peer_exit_until(Instant::now())
+                        .unwrap_err()
+                        .kind(),
+                    std::io::ErrorKind::TimedOut,
+                );
+                ExitGate::release()?;
+            }
             helper.supervision().wait_for_peer_exit_until(execution)?;
         }
         let teardown = Instant::now() + Duration::from_secs(5);
@@ -196,7 +205,9 @@ impl Integration {
             .attach(MountPoint::create(Path::new("/work"))?)
             .map_err(|e| e.to_string())?;
         // Fixture adapter only: production must pass a scoped root handle, not
-        // discover generated mount paths. There is exactly one attachment here.
+        // discover generated mount paths. Match the actual mount identity so
+        // an empty target left by a cancelled prior helper cannot be selected.
+        let expected = mount.root_metadata()?;
         let targets: Vec<_> = fs::read_dir("/work")?
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
@@ -204,11 +215,31 @@ impl Integration {
                 e.file_name()
                     .as_encoded_bytes()
                     .starts_with(b"conglobate-mount-")
+                    && e.metadata().is_ok_and(|metadata| {
+                        (metadata.dev(), metadata.ino()) == (expected.dev(), expected.ino())
+                    })
             })
             .collect();
         assert_eq!(targets.len(), 1);
         let root = targets[0].path();
         let checks = r#"
+            test "$PPID" = 1
+            test "$$" -ne 1
+            for interface in exe mem maps environ fd/0; do
+                if (: < "/proc/1/$interface") 2>/dev/null; then exit 1; fi
+            done
+            # The intermediate shell exits, leaving a live orphan that waits
+            # for a file-based release. No timing delay determines adoption.
+            /bin/sh -c '/bin/sh -c "while test ! -e /orphan-release; do :; done" & echo $! > /orphan-id'
+            read -r orphan < /orphan-id
+            adopted=0
+            while read -r key value rest; do
+                if test "$key" = PPid:; then test "$value" = 1; adopted=1; fi
+            done < "/proc/$orphan/status"
+            test "$adopted" = 1
+            printf 'exit' > /orphan-release
+            while test -e "/proc/$orphan"; do :; done
+            echo NATIVE_NAMESPACE_INIT_ADOPTION_PASS
             test ! -e /supervisor-secret
             test ! -e /work
             test ! -e /idmap-probe
@@ -306,8 +337,14 @@ impl Integration {
                 "#
             } else if mode == "timeout" {
                 "while :; do :; done"
+            } else if mode == "shell-failure" {
+                "exit 37"
             } else {
-                "printf 'completed\\n' > /command-completed"
+                r#"
+                    /bin/sh -c "printf 'running' > /survivor-ready; while :; do :; done" &
+                    while test ! -e /survivor-ready; do :; done
+                    printf 'completed\n' > /command-completed
+                "#
             }
         );
         let status = Command::new("/usr/bin/nsenter")
@@ -327,6 +364,10 @@ impl Integration {
             .arg(&script)
             .stdin(CommandDevices::create(100000, 100000)?.into_input()?)
             .status()?;
+        if mode == "shell-failure" {
+            assert_eq!(status.code(), Some(37));
+            println!("NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS");
+        }
         if !status.success() {
             return Err(format!("command failed: {status}").into());
         }

@@ -281,7 +281,11 @@ mod tests {
             // EOF proves received/truncated rights were closed. This avoids
             // racing other tests by counting process-wide numeric descriptors.
             for mut peer in peers {
-                peer.set_nonblocking(true).unwrap();
+                // Concurrent process spawning can briefly duplicate CLOEXEC
+                // rights until exec. Await EOF under a bound, not a scheduling
+                // assumption; a leaked receiver reference still fails the test.
+                peer.set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                    .unwrap();
                 assert_eq!(peer.read(&mut [0u8; 1]).unwrap(), 0);
             }
         }

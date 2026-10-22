@@ -1152,3 +1152,32 @@ rules rather than silently shrinking acceptance criteria.
 - v35 passes the final explicit-release regression and label persistence checks;
   its evidence retains the tested production observation and fixture sources.
   No sleep is used to order the regression or to fix production completion.
+
+
+- Previous goal turn made progress in fd41866 (active-label validation and pidfd
+  completion). Added resident command NamespaceInit: image shell is a child;
+  blocking waitpid(__WALL) reaps adopted descendants and retains shell outcome.
+  PID-namespace exit stops remaining members; outer cancellation/drain remains
+  required before policy teardown. No timing sleeps implement init or admission.
+- Root entry now consumes the setup namespace owner and closes its restoration
+  FD after successful pivot/detach. Resident init rejects all extra descriptors,
+  including CLOEXEC handles, and becomes non-dumpable before shell spawn. Tests
+  verify denied access to init executable/memory/maps/environment/fd through proc.
+  These are confinement changes needed because exec no longer replaces PID 1.
+- v36 passes orphan adoption/reaping while the shell remains alive, existing
+  restricted command/policy checks and persistence. v37 revealed stale fixture
+  mount-point discovery after a timeout; matched the owned mount identity rather
+  than accepting every generated name. A root-test failure also required bounded
+  EOF observation instead of an immediate nonblocking read during concurrent
+  process spawning. Retained both failures; no production transport change.
+- v38 passes the corrected fixture, shell status 37, successful shell exit with
+  a live acknowledged child, timeout, label persistence and all prior checks.
+  v39 confirms supervisor death, still-scoped active labels and independent VM
+  shutdown with the resident init. Preserved source snapshots, kernel lifetime
+  excerpts, logs and hashes. Root tests (14 compile-fail), root/fixture Clippy and
+  formatting pass. No privileged host operation occurred.
+- Review checked consuming namespace ownership, absence of outside descriptors,
+  init proc visibility, wait ownership, shell status versus cleanup, and evidence
+  boundaries. M4 remains zero adherence passes: native namespace creation, scoped
+  root transfer, production active-policy step ownership/admission, complete
+  partial-setup cleanup and remaining sandbox qualification are still outstanding.

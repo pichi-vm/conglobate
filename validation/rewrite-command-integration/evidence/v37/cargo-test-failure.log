@@ -1,0 +1,42 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.00s
+     Running unittests src/lib.rs (target/debug/deps/conglobate-f1bdb93170c0b4b1)
+
+running 21 tests
+test domain::tests::event_status_requires_exact_unambiguous_population ... ok
+test isolation::devices::tests::device_receiver_does_not_wait_for_an_unqueued_offer ... ok
+test domain::tests::ordinary_directory_is_rejected_before_creation ... ok
+test process::identity::tests::receiver_cancellation_survives_a_duplicate_endpoint ... ok
+test isolation::devices::tests::device_handoff_keeps_cloexec_and_independent_ownership ... ok
+test isolation::devices::tests::malformed_or_truncated_device_packets_release_rights ... FAILED
+test isolation::runtime::tests::nested_targets_cannot_hide_each_others_mounts ... ok
+test process::identity::tests::transferred_identity_is_close_on_exec_and_observes_live_sender ... ok
+test isolation::runtime::tests::absolute_symlinks_resolve_inside_the_image ... ok
+test process::supervision::registration::tests::registration_packets_transfer_cloexec_ownership_and_acknowledge ... ok
+test process::identity::tests::reject_invalid_wire_messages_and_descriptor_counts ... ok
+test isolation::runtime::tests::outside_sibling_is_not_a_runtime_target ... ok
+test process::supervision::tests::invalid_traffic_cannot_be_consumed_into_a_healthy_state ... ok
+test process::supervision::registration::tests::registration_packets_require_exact_opcode_descriptor_pairs ... ok
+test isolation::runtime::tests::root_and_duplicate_target_aliases_are_rejected ... ok
+test process::supervision::tests::cancellation_does_not_depend_on_the_last_endpoint_copy_closing ... ok
+test process::observation::tests::exit_wait_times_out_then_observes_exit_without_reaping ... ok
+test process::supervision::tests::process_exit_is_detected_even_when_the_socket_stays_open ... ok
+test process::supervision::registration::tests::registration_receive_is_bounded_and_rejects_peer_loss ... ok
+test process::supervision::tests::setup_exchange_observes_upstream_loss_and_protocol_failure ... ok
+test process::supervision::tests::guardian_observes_either_peer_and_keeps_protocol_errors ... ok
+
+failures:
+
+---- isolation::devices::tests::malformed_or_truncated_device_packets_release_rights stdout ----
+
+thread 'isolation::devices::tests::malformed_or_truncated_device_packets_release_rights' (1576900) panicked at src/isolation/devices.rs:285:53:
+called `Result::unwrap()` on an `Err` value: Os { code: 11, kind: WouldBlock, message: "Resource temporarily unavailable" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    isolation::devices::tests::malformed_or_truncated_device_packets_release_rights
+
+test result: FAILED. 20 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `--lib`

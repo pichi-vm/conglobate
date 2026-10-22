@@ -8,8 +8,8 @@ use std::{
     fs::{self, File},
     io,
     marker::PhantomData,
-    os::unix::process::CommandExt,
-    process::{Command, Stdio},
+    os::fd::AsRawFd,
+    process::Command,
     rc::Rc,
 };
 
@@ -24,14 +24,14 @@ use std::{
 /// use conglobate::isolation::{CommandRoot, CommandDevices, PrivateMountNamespace};
 /// use std::fs::File;
 /// fn cannot_restore_with_selected_root(scope: PrivateMountNamespace, root: File, devices: CommandDevices) {
-///     let root = CommandRoot::from_directory(root, &scope, devices).unwrap();
+///     let root = CommandRoot::from_directory(root, scope, devices).unwrap();
 ///     scope.restore();
 ///     drop(root);
 /// }
 /// ```
 #[derive(Debug)]
-pub struct CommandRoot<'ns> {
-    scope: &'ns PrivateMountNamespace,
+pub struct CommandRoot {
+    scope: PrivateMountNamespace,
     root: File,
     devices: CommandDevices,
     input: File,
@@ -42,18 +42,17 @@ pub struct CommandRoot<'ns> {
 /// Failure after entering is exit-only; there is no restoration of trusted
 /// supervisor authority. The enclosing process owns namespace teardown.
 #[derive(Debug)]
-pub struct EnteredRoot<'ns> {
-    _scope: &'ns PrivateMountNamespace,
+pub struct EnteredRoot {
     input: File,
     _thread: PhantomData<Rc<()>>,
 }
 
-impl<'ns> CommandRoot<'ns> {
+impl CommandRoot {
     /// Open the supplied directory after entering scope; inherited descriptors
     /// from a previous mount namespace cannot identify its cloned mount tree.
     pub fn from_directory(
         root: File,
-        scope: &'ns PrivateMountNamespace,
+        scope: PrivateMountNamespace,
         devices: CommandDevices,
     ) -> io::Result<Self> {
         if !root.metadata()?.is_dir() {
@@ -72,7 +71,7 @@ impl<'ns> CommandRoot<'ns> {
     /// namespace/cwd/root transitions may already have happened. Call only from
     /// a single-threaded helper, never the build supervisor. No destructor is
     /// asserted to undo a root transition or finalize the filesystem.
-    pub fn enter(self) -> io::Result<EnteredRoot<'ns>> {
+    pub fn enter(self) -> io::Result<EnteredRoot> {
         if fs::read_dir("/proc/self/task")?
             .collect::<Result<Vec<_>, _>>()?
             .len()
@@ -114,18 +113,19 @@ impl<'ns> CommandRoot<'ns> {
             .map_err(|error| io::Error::other(format!("enter final root: {error}")))?;
         drop(tree);
         drop(self.root);
+        self.scope.commit();
         Ok(EnteredRoot {
-            _scope: self.scope,
             input: self.input,
             _thread: PhantomData,
         })
     }
 }
 
-impl EnteredRoot<'_> {
-    /// Finalize native restrictions in already-loaded trusted code, then replace
-    /// this process with the image shell. A returned error is always fatal to
-    /// setup. This initial entrypoint has no CARAPACE environment support yet.
+impl EnteredRoot {
+    /// Finalize restrictions and remain as the command PID namespace's init,
+    /// reaping descendants while the image shell runs. Exits with the shell's
+    /// outcome; PID namespace destruction and outer containment stop survivors.
+    /// A returned error is fatal: this helper must exit. No CARAPACE support yet.
     pub fn execute(
         self,
         script: &str,
@@ -133,9 +133,15 @@ impl EnteredRoot<'_> {
         syscalls: CommandSyscalls,
     ) -> io::Result<std::convert::Infallible> {
         self.check_descriptors()?;
+        rustix::stdio::dup2_stdin(&self.input)?;
+        drop(self.input);
         privileges.apply().map_err(io::Error::other)?;
+        // Resident init must not expose its executable/memory through procfs
+        // to commands with the same UID. Image exec resets the child's setting.
+        nix::sys::prctl::set_dumpable(false)?;
         syscalls.apply()?;
-        let error = Command::new("/bin/sh")
+        let mut command = Command::new("/bin/sh");
+        command
             .args(["-eu", "-c", script])
             .current_dir("/")
             .env_clear()
@@ -144,10 +150,8 @@ impl EnteredRoot<'_> {
                 "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             )
             .env("HOME", "/root")
-            .env("LANG", "C.UTF-8")
-            .stdin(Stdio::from(self.input))
-            .exec();
-        Err(error)
+            .env("LANG", "C.UTF-8");
+        super::init::NamespaceInit::spawn(command)?.execute()
     }
 
     fn check_descriptors(&self) -> io::Result<()> {
@@ -155,29 +159,30 @@ impl EnteredRoot<'_> {
         if rustix::fs::fstatfs(&proc)?.f_type != 0x9fa0 {
             return Err(io::Error::other("descriptor audit requires real procfs"));
         }
-        // Probe through procfs rather than manufacturing borrowed raw FDs. The
-        // only permitted inherited descriptors are diagnostic stdout/stderr and
-        // stdin, which execute replaces. All other descriptors must close on exec.
-        for entry in fs::read_dir("/proc/self/fdinfo")? {
-            let entry = entry?;
-            let name = entry.file_name();
-            let fd: u32 = name
+        drop(proc);
+        // Init remains resident instead of execing: CLOEXEC alone would leave
+        // outside handles visible through its /proc/1/fd. Reject every extra
+        // descriptor except the owned null input, which execute closes next.
+        // Collect names first so the audit's own directory descriptors close.
+        let names = fs::read_dir("/proc/self/fdinfo")?
+            .map(|entry| entry.map(|entry| entry.file_name()))
+            .collect::<io::Result<Vec<_>>>()?;
+        for name in names {
+            let fd: i32 = name
                 .to_str()
                 .and_then(|n| n.parse().ok())
                 .ok_or_else(|| io::Error::other("invalid proc descriptor entry"))?;
-            if fd <= 2 {
+            if fd <= 2 || fd == self.input.as_raw_fd() {
                 continue;
             }
-            let info = fs::read_to_string(entry.path())?;
-            let flags = info
-                .lines()
-                .find_map(|line| line.strip_prefix("flags:\t"))
-                .and_then(|v| u32::from_str_radix(v, 8).ok())
-                .ok_or_else(|| io::Error::other("missing descriptor flags"))?;
-            if flags & rustix::fs::OFlags::CLOEXEC.bits() == 0 {
-                return Err(io::Error::other(format!(
-                    "outside descriptor {fd} would survive command exec"
-                )));
+            match fs::metadata(std::path::Path::new("/proc/self/fdinfo").join(name)) {
+                Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
+                Err(error) => return Err(error),
+                Ok(_) => {
+                    return Err(io::Error::other(format!(
+                        "outside descriptor {fd} would remain in command init"
+                    )));
+                }
             }
         }
         Ok(())

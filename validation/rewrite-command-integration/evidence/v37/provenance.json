@@ -1,0 +1,21 @@
+{
+  "base_commit": "fd4186617f22ee2736d78906c7c6e5fd976b3288",
+  "full_artifacts": "/var/tmp/conglobate-command-integration-v37",
+  "sha256": {
+    "validation/rewrite-command-integration/evidence/v37/serial.txt": "127d7db47989af9f054f79d748babda244d6732fe21c3d0b76acfe9c02e9216b",
+    "validation/rewrite-command-integration/evidence/v37/verdict.json": "cd53b4987fa420dcbfcbd4cf0d9d2ba6fcdd887d822f62ff3a7ba72c23df88d1",
+    "validation/rewrite-command-integration/evidence/v37/command.json": "40d49c098101e8f4adc628478a8f90378e1fa8de77515480bfc3320a762a367c",
+    "validation/rewrite-command-integration/evidence/v37/inputs.json": "756a230ca0af4dc65ba3a80d18a3da595c77959deb6c9e253a539d81cd9c3134",
+    "validation/rewrite-command-integration/evidence/v37/probe.rs": "cd4b354fbb62bb6f6351dd1d2880340967ff9c21f1f4aa429574c7c144a34591",
+    "validation/rewrite-command-integration/evidence/v37/run.py": "1c5a93ca28b38050ab83d530f4b46493207e5690cc59f15b1031bc0d8a7f675d",
+    "validation/rewrite-command-integration/evidence/v37/Cargo.lock": "a8fde0e13198d43013b0d9d8f20503b08c31fc8ab1eae696c0884d97ce38bb18",
+    "validation/rewrite-command-integration/evidence/v37/root.rs": "62e0e2b8ab6738450ae6052db08d17f82b076ca8c31e2d846256c97e9403e3b8",
+    "validation/rewrite-command-integration/evidence/v37/init.rs": "83d8846a3476c86cf874e86c30e74eda8c664fb21072b743dc03c00cbac246ba",
+    "validation/rewrite-command-integration/evidence/v37/devices.rs": "db3094e205cfb6dcc5006d8c3cc2f0032e69b7eb150f651b6466056892c146a4",
+    "validation/rewrite-command-integration/evidence/v37/cargo-test-failure.log": "3f5882995d97b83fd62b83ef25bd540738f78938bec992d9a79ab8c74ccf0e12",
+    "/var/tmp/conglobate-command-integration-v37/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-command-integration-v37/initramfs.gz": "7d18efeea32d3f57b901a264ce4c84b3f1641f09e6ea4d7e6fc6f9ef874ed7f9",
+    "/var/tmp/conglobate-command-integration-v37/root/idmap-probe": "cbfcceaf564bc0f814772b5dd4b0e3eb34bcf1839c995537e2c644a427ac536d"
+  },
+  "full_sandbox_qualified": false
+}

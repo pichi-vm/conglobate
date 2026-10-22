@@ -3,6 +3,7 @@
 
 //! Trusted helper namespace setup; this alone is not a command sandbox.
 mod devices;
+mod init;
 mod root;
 mod runtime;
 pub use devices::CommandDevices;
@@ -91,6 +92,13 @@ impl PrivateMountNamespace {
         }
         Ok(Self { lease })
     }
+    /// Commit the helper to its current namespace after irreversible root entry.
+    /// Closing the restoration handle prevents the resident command init from
+    /// retaining outside-namespace authority. There is no restoration on Drop.
+    fn commit(mut self) {
+        self.lease.original.take();
+    }
+
     /// Restore the original namespace. Attached resources must be cleaned up
     /// before restoration. The helper may not admit commands on this basis alone.
     pub fn restore(self) -> Result<(), NamespaceFailure> {
