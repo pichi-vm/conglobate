@@ -33,6 +33,66 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "snapshot-probe") {
+            use conglobate::storage::{Created, Mapping};
+            use std::{
+                io::{Read, Write},
+                num::NonZeroU64,
+            };
+            let workspace = conglobate::storage::Workspace::create()?;
+            let mut scratch = workspace.scratch()?;
+            scratch.set_len(16 * 1024 * 1024)?;
+            let sectors = NonZeroU64::new(8192).unwrap();
+            let origin = Mapping::<Created>::create()?.zero(sectors)?;
+            let backing = scratch.attach().map_err(|e| e.to_string())?;
+            let snapshot = Mapping::<Created>::create()?
+                .snapshot(&origin, backing, sectors)
+                .map_err(|e| e.to_string())?;
+            let id = snapshot.id();
+            let path = Path::new("/dev/conglobate-snapshot-probe");
+            rustix::fs::mknodat(
+                rustix::fs::CWD,
+                path,
+                rustix::fs::FileType::BlockDevice,
+                rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
+                rustix::fs::makedev(id.major(), id.minor()),
+            )?;
+            let mut holder = fs::OpenOptions::new().read(true).write(true).open(path)?;
+            holder.write_all(b"snapshot data")?;
+            holder.sync_all()?;
+            let failure = snapshot.close().unwrap_err();
+            assert_eq!(failure.source_error().raw_os_error(), Some(16));
+            drop(holder);
+            let backing = failure.cleanup().map_err(|e| e.to_string())?;
+            origin.close()?;
+            fs::remove_file(path)?;
+            let scratch = backing.detach().map_err(|e| e.to_string())?;
+            // Reactivate the persisted exception store over a fresh dm-zero.
+            let origin = Mapping::<Created>::create()?.zero(sectors)?;
+            let backing = scratch.attach().map_err(|e| e.to_string())?;
+            let snapshot = Mapping::<Created>::create()?
+                .snapshot(&origin, backing, sectors)
+                .map_err(|e| e.to_string())?;
+            let id = snapshot.id();
+            rustix::fs::mknodat(
+                rustix::fs::CWD,
+                path,
+                rustix::fs::FileType::BlockDevice,
+                rustix::fs::Mode::RUSR,
+                rustix::fs::makedev(id.major(), id.minor()),
+            )?;
+            let mut holder = fs::File::open(path)?;
+            let mut bytes = [0; 13];
+            holder.read_exact(&mut bytes)?;
+            assert_eq!(&bytes, b"snapshot data");
+            drop(holder);
+            let backing = snapshot.close().map_err(|e| e.to_string())?;
+            origin.close()?;
+            backing.detach().map_err(|e| e.to_string())?;
+            fs::remove_file(path)?;
+            println!("OWNED_PERSISTENT_SNAPSHOT_REACTIVATION_PASS");
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "loop-probe") {
             use std::io::{Read, Seek, Write};
             let workspace = conglobate::storage::Workspace::create()?;

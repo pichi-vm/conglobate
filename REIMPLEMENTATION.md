@@ -1732,3 +1732,24 @@ rules rather than silently shrinking acceptance criteria.
   No competing trusted actor may reconfigure the owned loop. Bounded ioctl setup,
   late-error recovery, cache/verity/snapshot composition and crash qualification
   remain required. M4 remains zero; no adherence or overall completion claim.
+
+- Previous turn progressed in d241f67. Added persistent SnapshotMapping using
+  pinned devmap-snapshot, 4096-byte chunks, P metadata and disabled discard. The
+  snapshot consumes LoopAttachment, borrows its read-only origin and returns the
+  backing owner only after immediate mapping removal. Failed setup/close retains
+  cleanup-only authority plus backing; caller detaches the returned loop before
+  regaining Scratch. Mapping's target activation helper remains storage-private.
+- Review found two earlier ownership designs inadequate: shared borrows permitted
+  multiple snapshot writers (v82); exclusive borrows released backing access on
+  wrapper Drop while deferred kernel mappings could survive (v83). Both passing
+  ordinary-I/O runs and exact sources are retained with explicit superseded notes.
+  Final v84 uses ownership, and two negative-compilation checks produce E0382 for
+  backing reuse/second writer. It verifies snapshot writes, EBUSY cleanup retry,
+  removal/loop detachment, reactivation over fresh dm-zero and persisted bytes.
+  Normal suite, root tests (28 compile-fail), root/fixture Clippy, formatting and
+  Python checks pass. No privileged host operation; evidence/hashes preserved.
+- This is an M4 ownership component, not M5 bootstrap/sealing advancement. Snapshot
+  invalidation/overflow checks, finalization, cache-backed chain assembly, fixed
+  setup/teardown bounds and broader faults/crash coverage remain outstanding. No
+  successful artifact receipt is produced. Findings keep M4 at zero adherence
+  passes. Goal remains active with all later milestones required.

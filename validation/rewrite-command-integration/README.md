@@ -770,3 +770,22 @@ for retry. This assumes no competing trusted supervisor reconfigures that owned
 loop device; image commands must never receive loop/control access. Fixed setup
 bounds, cache-backed read-only loop inputs, full snapshot assembly and crash/fault
 qualification remain outstanding. Drop/autoclear is not a sealing receipt.
+
+## Persistent snapshot ownership
+
+v82/v83 passed ordinary I/O but are superseded: shared backing borrows permitted
+multiple writers; exclusive borrows still released direct access when a wrapper
+was dropped while its deferred kernel mapping could survive. Their source and
+review findings are retained. Neither is qualified as the final ownership model.
+
+v84 consumes LoopAttachment into SnapshotMapping. Setup and cleanup failures own
+that attachment; explicit successful mapping removal returns it for subsequent
+loop detachment. Drop requests deferred mapping removal and drops its backing
+owner, so no scratch owner is returned while kernel references may survive.
+The read-only origin remains borrowed; its kernel mapping also rejects immediate
+removal while referenced. Two compile-fail checks report E0382 for direct backing
+reuse and a second snapshot writer. The VM writes through the snapshot, verifies
+EBUSY cleanup retention, removes it, detaches the loop, then reactivates the same
+persistent store over fresh dm-zero and reads the bytes back. Normal suite and
+code checks pass. This is not sealing: overflow/validity inspection, finalized
+flush ordering, full chain integration and bounded orchestration remain required.

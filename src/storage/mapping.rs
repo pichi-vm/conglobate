@@ -59,6 +59,12 @@ impl MappingFailure {
     }
 }
 impl Mapping<Created> {
+    pub(super) fn failed(self, source: io::Error) -> MappingFailure {
+        MappingFailure {
+            source,
+            lease: self.lease,
+        }
+    }
     pub fn create() -> io::Result<Self> {
         let control = Control::open()?;
         let mut nonce = [0; 16];
@@ -75,17 +81,25 @@ impl Mapping<Created> {
         })
     }
     pub fn zero(self, sectors: NonZeroU64) -> Result<Mapping<Active>, MappingFailure> {
+        self.activate(sectors, &Zero, true)
+    }
+    pub(super) fn activate<T: devmap_linux::targets::Target>(
+        self,
+        sectors: NonZeroU64,
+        target: &T,
+        read_only: bool,
+    ) -> Result<Mapping<Active>, MappingFailure> {
         let loaded = (|| -> io::Result<()> {
             sectors.get().checked_mul(512).ok_or_else(|| {
                 io::Error::new(io::ErrorKind::InvalidInput, "mapping byte extent overflows")
             })?;
-            let version = self.lease.control.version("zero")?;
+            let version = self.lease.control.version(T::NAME)?;
             let table = Table::<4096>::default().add(
                 devmap_core::Span::new(0, sectors.get()),
-                &Zero,
+                target,
                 version,
             )?;
-            self.lease.control.load(self.lease.id(), table, true)?;
+            self.lease.control.load(self.lease.id(), table, read_only)?;
             self.lease.control.suspend(self.lease.id(), false)
         })();
         match loaded {

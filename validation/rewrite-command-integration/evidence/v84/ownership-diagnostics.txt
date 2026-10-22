@@ -1,0 +1,38 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
+   Doc-tests conglobate
+
+running 2 tests
+error[E0382]: borrow of moved value: `cow`
+  --> src/storage/snapshot.rs:21:31
+   |
+18 | fn cannot_write_backing(mut cow: LoopAttachment<'_>, origin: Mapping<conglobate::storage::Active>) {
+   |                         ------- move occurs because `cow` has type `LoopAttachment<'_>`, which does not implement the `Copy` trait
+19 |     let snapshot = Mapping::<Created>::create().unwrap()
+20 |         .snapshot(&origin, cow, NonZeroU64::new(8192).unwrap()).unwrap();
+   |                            --- value moved here
+21 |     std::io::Write::write_all(&mut cow, b"invalid concurrent writer").unwrap();
+   |                               ^^^^^^^^ value borrowed here after move
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.
+test src/storage/snapshot.rs - storage::snapshot::SnapshotMapping (line 14) - compile fail ... ok
+error[E0382]: use of moved value: `cow`
+  --> src/storage/snapshot.rs:33:28
+   |
+28 | fn cannot_share_store(mut cow: LoopAttachment<'_>, origin: Mapping<Active>) {
+   |                       ------- move occurs because `cow` has type `LoopAttachment<'_>`, which does not implement the `Copy` trait
+...
+31 |         .snapshot(&origin, cow, sectors).unwrap();
+   |                            --- value moved here
+32 |     let second = Mapping::<Created>::create().unwrap()
+33 |         .snapshot(&origin, cow, sectors).unwrap();
+   |                            ^^^ value used here after move
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.
+test src/storage/snapshot.rs - storage::snapshot::SnapshotMapping (line 24) - compile fail ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 26 filtered out; finished in 0.08s
+

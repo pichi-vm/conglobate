@@ -4,6 +4,8 @@
 //! Supervisor-owned mutable RAM storage. Immutable layers remain cache-backed.
 mod loopback;
 pub use loopback::{LoopAttachFailure, LoopAttachment, LoopDetachFailure};
+mod snapshot;
+pub use snapshot::{SnapshotMapping, SnapshotMappingFailure};
 mod mapping;
 pub use mapping::{Active, Created, Mapping, MappingFailure, MappingState};
 

@@ -1,0 +1,1 @@
+Superseded ownership design. Passing VM I/O does not qualify this API. v82 shared borrowing permitted concurrent snapshot writers; v83 exclusive borrowing still released backing access on wrapper Drop while deferred kernel removal might remain live. v84 consumes the backing owner and returns it only after successful removal.

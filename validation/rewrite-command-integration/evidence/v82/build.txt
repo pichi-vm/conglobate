@@ -1,0 +1,4 @@
+   Compiling devmap-snapshot v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+   Compiling conglobate-command-integration v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.54s
