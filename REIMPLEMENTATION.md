@@ -782,3 +782,20 @@ rules rather than silently shrinking acceptance criteria.
   children before invoking this process-wide wait. M4 remains at zero adherence
   passes. The previous goal turn was progress through committed guardian
   cancellation ownership and VM qualification of its failure paths.
+
+- Connected ReapedHelper and ChildReaper through consuming DescendantDrain and
+  DrainedHelper owners. Failed drain retains the helper record and reaper/count;
+  failed record cleanup retains the successful drain result. A compile-fail test
+  forbids record cleanup on the draining state. Low-level record-only cleanup
+  remains distinct and cannot establish complete step cleanup.
+- VM v32 creates a registered helper that leaves a benign sleep orphan in its
+  domain. Production cancellation removes the domain, helper wait precedes the
+  process-wide drain, an expired drain deadline retains both owners, retry reaps
+  exactly one adopted child, and corrupted-record cleanup retains/retries the
+  drained result. It verifies no children and no recovery files remain.
+- Full suite passes 93 tests and thirteen compile-fail doctests; root/probe Clippy
+  and formatting pass. Review checked failure ownership and ordering; dedicated
+  guardian startup still must guarantee subreaper installation precedes spawning
+  and prohibit unrelated wait owners. Policy/mount integration remains unfinished.
+  M4 stays at zero adherence passes. Previous goal turn was progress: committed
+  descendant-reaping primitive and guest-only adoption/failure evidence.

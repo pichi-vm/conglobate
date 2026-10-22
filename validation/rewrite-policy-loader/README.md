@@ -219,3 +219,14 @@ installation with an existing directly owned child; explicitly terminating/reapi
 it permits installation. Process-wide changes occur only in that guest child.
 __WALL is used, but this fixture does not separately exercise non-SIGCHLD clone
 children. No complete guardian/policy teardown proof is claimed by these tests.
+
+
+v32 connects production helper cancellation/reaping to DescendantDrain in a
+separate guest process. Its registered helper creates a benign sleep and exits,
+leaving the orphan in its cgroup. Cancellation removes the domain; collecting
+the helper status precedes draining the adopted child. An expired drain deadline
+forces ownership-preserving failure, followed by retry; the protected record is
+retained throughout. Record corruption then forces cleanup failure and successful
+retry after restoration. The final count is one adopted child, and no children or
+recovery files remain. This checks the integrated cleanup path, not independent
+guardian launch, setup supervision or policy/mount teardown.

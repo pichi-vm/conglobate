@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Fresh private cgroup-v2 domains. Registration and reaping are separate gates.
+mod drain;
+pub use drain::{DescendantDrain, DescendantDrainFailure, DrainedFinishFailure, DrainedHelper};
 mod guardian;
 pub use guardian::{GuardianStop, RegisteredGuardian};
 mod helper;

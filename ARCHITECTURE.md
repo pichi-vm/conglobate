@@ -393,7 +393,14 @@ first, admission closed and containment independently quiescent. No concurrent
 waiter or SIGCHLD disposition change is allowed. Drop deliberately does not disable
 adoption, since that would not clean surviving descendants. The owner is thread-
 affine and checks process identity and the enabled setting before draining.
-Integration into guardian teardown still must enforce these ordering prerequisites.
+ReapedHelper::with_reaper now consumes both owners into DescendantDrain. Failure
+retains this combined owner with its protected domain record; success yields
+DrainedHelper, whose record cleanup also retains the drain result on failure.
+The integrated path cannot remove its record before draining. The low-level
+ReapedHelper::finish remains a domain-record operation without descendant proof;
+no finalization gate may treat its returned status as complete step cleanup.
+Full guardian construction still must enforce installation before spawning,
+exclusive wait ownership and the absence of unrelated individually owned children.
 The count does not establish which containment domain a child belonged to.
 
 References: [subreaper semantics](https://man7.org/linux/man-pages/man2/PR_SET_CHILD_SUBREAPER.2const.html)

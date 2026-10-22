@@ -1,0 +1,16 @@
+{
+  "base_commit": "3a806da9f0e0d3b664af0e72da25d1a680cfd947",
+  "full_artifacts": "/var/tmp/conglobate-rewrite-policy-loader-v32",
+  "sha256": {
+    "/var/tmp/conglobate-rewrite-policy-loader-v32/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-rewrite-policy-loader-v32/initramfs.gz": "537b748584d4dd5f1c0fbade5743ea763d837f7fbab4ad9f21811b2210421d5c",
+    "/var/tmp/conglobate-rewrite-policy-loader-v32/root/idmap-probe": "d8febfcebbea0e46880c6c0450f2ff7021e988f61fbe3dc189bfd6b6ef702d6e",
+    "validation/rewrite-policy-loader/evidence/v32/drain.rs": "52c4994b23e22f627ccc15e2e70a193e64c3514fe63aea3d5c2a153ed5524c72",
+    "validation/rewrite-policy-loader/evidence/v32/domain.rs": "f742edc9119803652c11f8585b3aabd9a8faf9a80162c118820a73c6a174954f",
+    "validation/rewrite-policy-loader/evidence/v32/probe.rs": "9d1dbf63c7eed61442cd503972143f366f3adb4f9e41f5777a4968612d9f5749",
+    "validation/rewrite-policy-loader/run.py": "ed26e77853b9c30d9ff171c2c05976578909e705e4e087420d0c41c476fd99f3",
+    "validation/rewrite-policy-loader/Cargo.lock": "980c7dd3a2462713d15933463f98200e5f483d3861dacfc02e4ab5cc9be0d3ca"
+  },
+  "guardian_drain_marker_verified": true,
+  "full_sandbox_qualified": false
+}

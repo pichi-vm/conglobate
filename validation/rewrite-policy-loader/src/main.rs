@@ -15,6 +15,25 @@ impl Probe {
             return Err("disposable VM marker required".into());
         }
         let arguments = std::env::args_os().collect::<Vec<_>>();
+        if arguments.get(1).is_some_and(|a| a == "--orphan-helper") {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            let _watch = conglobate::process::Supervision::from_stdin()?
+                .exchange_until(deadline)?
+                .join_domain_until(deadline)?;
+            let _child = std::process::Command::new("/usr/bin/sleep")
+                .arg("30")
+                .spawn()?;
+            // std::process::Child does not terminate on Drop. This benign orphan
+            // remains contained for the guardian's cancellation/reaping test.
+            return Ok(());
+        }
+        if arguments
+            .get(1)
+            .is_some_and(|a| a == "--guardian-drain-test")
+        {
+            return Self::guardian_drain();
+        }
+
         if arguments.get(1).is_some_and(|a| a == "--reaper-test") {
             let child: conglobate::process::Process<conglobate::process::Running> =
                 std::process::Command::new("/usr/bin/sleep")
@@ -140,6 +159,12 @@ impl Probe {
         Self::recorded_domain()?;
         Self::contained_helper()?;
         Self::registered_guardian()?;
+        assert!(
+            std::process::Command::new(std::env::current_exe()?)
+                .arg("--guardian-drain-test")
+                .status()?
+                .success()
+        );
         assert!(
             std::process::Command::new(std::env::current_exe()?)
                 .arg("--reaper-test")
@@ -391,6 +416,58 @@ impl Probe {
         fs::remove_dir(parent)?;
         assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
         println!("PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS");
+        Ok(())
+    }
+    fn guardian_drain() -> Result<(), Box<dyn std::error::Error>> {
+        use std::{
+            process::Command,
+            time::{Duration, Instant},
+        };
+        let reaper = conglobate::process::ChildReaper::install()?;
+        let recovery = std::path::Path::new("/work/guardian-drain-recovery");
+        let parent = std::path::Path::new("/work/cgroups");
+        fs::create_dir(recovery)?;
+        fs::set_permissions(recovery, fs::Permissions::from_mode(0o700))?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(recovery)?;
+        let domain = conglobate::domain::RecordedDomain::create(&lease, parent)?;
+        let record = domain.record().clone();
+        let mut command = Command::new(std::env::current_exe()?);
+        command.arg("--orphan-helper").env_clear();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let helper = domain
+            .launch(command, deadline)
+            .map_err(|e| e.to_string())?;
+        helper.supervision().wait_for_loss_until(deadline)?;
+        // Closing the helper channel may precede process exit; reap its owned
+        // status before invoking the process-wide adopted-child drain.
+        let reaped = helper
+            .cancel_until(deadline)
+            .map_err(|e| e.to_string())?
+            .reap_until(deadline)
+            .map_err(|e| e.to_string())?;
+        assert_eq!(lease.load_domain(record.name())?, record);
+        let (source, drain) = reaped
+            .with_reaper(reaper)
+            .drain_until(Instant::now())
+            .unwrap_err()
+            .into_parts();
+        assert_eq!(source.kind(), std::io::ErrorKind::TimedOut);
+        assert_eq!(lease.load_domain(record.name())?, record);
+        let drained = drain.drain_until(deadline).map_err(|e| e.to_string())?;
+        let path = recovery.join(format!("{}.cbor", record.name()));
+        fs::write(&path, [0x86])?;
+        let (_, drained) = drained.finish(parent).unwrap_err().into_parts();
+        fs::write(&path, record.to_cbor())?;
+        let (_, children) = drained.finish(parent).map_err(|e| e.to_string())?;
+        assert_eq!(children.collected(), 1);
+        assert!(
+            fs::read_to_string("/proc/thread-self/children")?
+                .trim()
+                .is_empty()
+        );
+        drop(lease);
+        fs::remove_dir(recovery)?;
+        println!("PRODUCTION_GUARDIAN_DESCENDANT_DRAIN_PASS");
         Ok(())
     }
     fn registered_guardian() -> Result<(), Box<dyn std::error::Error>> {
