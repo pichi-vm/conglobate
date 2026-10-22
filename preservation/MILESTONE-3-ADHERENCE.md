@@ -1,6 +1,8 @@
 # Milestone 3 adherence evidence
 
-Status: complete; clean streak three. These are source-grounded self-reviews,
+Historical status at 621b34d: complete; clean streak three.
+Current context/workspace changes reopen this gate; see
+[MILESTONE-3-CONTEXT-REVISION-ADHERENCE.md](MILESTONE-3-CONTEXT-REVISION-ADHERENCE.md). These are source-grounded self-reviews,
 not independent reviews. Milestone 4 may begin; its runtime/security requirements
 remain unimplemented and unqualified.
 

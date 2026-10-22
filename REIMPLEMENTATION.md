@@ -24,7 +24,7 @@ M4 implementation. Prior passes remain historical, not approvals of this revisio
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
 | 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: revised dedicated-VM lifecycle | 3 |
-| 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Reopened: context lifecycle changes | 0 |
+| 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Reopened: context lifecycle changes | 1 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, scoped LSM, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | In progress | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Pending | 0 |
 | 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Pending | 0 |
@@ -1665,3 +1665,11 @@ rules rather than silently shrinking acceptance criteria.
   incorrectly displaying its historical three passes as current. Restore M3's
   three clean reviews before advancing the changed foundation. M4 remains zero;
   all later milestones and the full goal remain outstanding.
+
+- Previous turn progressed in a7f7217. Completed the first clean revised M3
+  self-review on frozen scope a7f7217: requirements, changed context ownership,
+  unchanged foundation contracts, Rust style, failure recovery, test assertions,
+  provenance and preservation. Verified 32 recorded hashes. No source/test edit
+  or new finding; details in preservation/MILESTONE-3-CONTEXT-REVISION-ADHERENCE.md.
+  Streak 1/3; M3 remains gated and M4 has zero clean passes. This is a review,
+  not another test run or independent/full sandbox qualification.
