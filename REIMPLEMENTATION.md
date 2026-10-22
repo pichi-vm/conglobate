@@ -249,3 +249,8 @@ rules rather than silently shrinking acceptance criteria.
 - After explicit private-root mode correction, the full 48-test suite passes,
   including rename/Drop cleanup, and Clippy passes with warnings denied. This
   correction is retained separately in history; no adherence pass was counted.
+- Initial M3 context requirements review found and fixed duplicate ancestor-tree
+  selection and trailing-separator symlink inconsistencies. Regression fixtures
+  cover both. All 50 tests and Clippy pass. Detailed findings and the still-open
+  read-only enforcement boundary are in preservation/MILESTONE-3-ADHERENCE.md.
+  This is a partial self-review with findings, not a clean adherence pass.

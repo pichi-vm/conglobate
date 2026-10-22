@@ -417,3 +417,58 @@ fn staging_cleanup_retains_parent_authority_across_rename() {
     drop(checkout);
     assert_eq!(std::fs::read_dir(&moved).unwrap().count(), 0);
 }
+
+impl Repository {
+    fn object(&self, kind: &str, bytes: &[u8]) -> String {
+        use std::{io::Write, process::Stdio};
+        let mut child = Command::new("git")
+            .args(["hash-object", "--literally", "-w", "--stdin", "-t", kind])
+            .current_dir(self.0.path())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child.stdin.take().unwrap().write_all(bytes).unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(output.status.success());
+        String::from_utf8(output.stdout).unwrap().trim().to_owned()
+    }
+}
+#[test]
+fn subtree_selection_rejects_duplicate_entries_in_ancestor_trees() {
+    let repo = Repository::new("sha1");
+    let empty = repo.object("tree", b"");
+    let mut tree = Vec::new();
+    for _ in 0..2 {
+        tree.extend_from_slice(b"40000 selected\0");
+        tree.extend(hex::decode(&empty).unwrap());
+    }
+    let tree = repo.object("tree", &tree);
+    let commit = repo.object("commit", format!("tree {tree}\nauthor Fixture <fixture@example.invalid> 1 +0000\ncommitter Fixture <fixture@example.invalid> 1 +0000\n\nfixture\n").as_bytes());
+    let commit = CommitIdentity::try_from(commit.as_str()).unwrap();
+    assert!(
+        repo.capture(&commit, "selected")
+            .unwrap_err()
+            .to_string()
+            .contains("duplicate")
+    );
+}
+#[test]
+fn captured_and_materialized_reads_agree_on_trailing_symlink_separators() {
+    use conglobate::path::ContextPath;
+    let repo = Repository::new("sha1");
+    repo.write("file", b"content");
+    std::os::unix::fs::symlink("file/", repo.0.path().join("link")).unwrap();
+    std::os::unix::fs::symlink("file/.", repo.0.path().join("dotlink")).unwrap();
+    let commit = repo.commit();
+    let captured = repo.capture(&commit, ".").unwrap();
+    let path = ContextPath::try_from(Path::new("link")).unwrap();
+    let dotpath = ContextPath::try_from(Path::new("dotlink")).unwrap();
+    assert!(captured.read(&path).is_err());
+    assert!(captured.read(&dotpath).is_err());
+    let scratch = tempfile::tempdir_in("/dev/shm").unwrap();
+    let staged = captured.materialize(scratch.path()).unwrap();
+    assert!(staged.open(&path).is_err());
+    assert!(staged.open(&dotpath).is_err());
+    staged.close().unwrap();
+}

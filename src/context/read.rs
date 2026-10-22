@@ -54,11 +54,17 @@ impl CapturedContext {
                     if followed > 40 {
                         return Err(ContextError::Invalid("too many context symlinks"));
                     }
+                    let requires_directory = target.ends_with(b"/") || target.ends_with(b"/.");
                     let target = Path::new(std::ffi::OsStr::from_bytes(target));
                     if target.is_absolute() {
                         return Err(ContextError::Invalid("absolute context symlink"));
                     }
                     resolved.pop();
+                    // Path::iter drops trailing separators. Keep their directory
+                    // requirement so captured and kernel-backed reads agree.
+                    if requires_directory {
+                        pending.push_front(OsString::from("."));
+                    }
                     for part in target.iter().rev() {
                         pending.push_front(part.to_owned());
                     }

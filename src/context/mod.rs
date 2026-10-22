@@ -10,7 +10,7 @@ pub use read::ContextFile;
 use crate::{path::ContextDirectory, request::CommitIdentity};
 use gix::{ObjectId, object::tree::EntryKind};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     ffi::OsStr,
     os::unix::ffi::OsStrExt,
     path::{Path, PathBuf},
@@ -54,9 +54,20 @@ impl ObjectReader {
         Ok(object)
     }
     fn tree(&self, id: ObjectId) -> Result<gix::Tree<'_>, ContextError> {
-        self.verified(id)?
+        let tree = self
+            .verified(id)?
             .try_into_tree()
-            .map_err(ContextError::git)
+            .map_err(ContextError::git)?;
+        let decoded = tree.decode().map_err(ContextError::git)?;
+        let mut names = BTreeSet::new();
+        for entry in &decoded.entries {
+            let bytes: &[u8] = entry.filename.as_ref();
+            EntryName::try_from(bytes)?;
+            if !names.insert(bytes) {
+                return Err(ContextError::Invalid("duplicate tree entry"));
+            }
+        }
+        Ok(tree)
     }
 }
 
