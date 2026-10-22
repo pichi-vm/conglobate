@@ -36,7 +36,8 @@ impl Integration {
         if args.get(1).is_some_and(|a| a == "assemble-chain") {
             use std::{
                 collections::BTreeSet,
-                io::{Read, Write},
+                io::{Read, Seek, SeekFrom, Write},
+                num::NonZeroU64,
             };
             let mappings = || -> std::io::Result<BTreeSet<std::ffi::OsString>> {
                 fs::read_dir("/sys/block")?
@@ -89,6 +90,85 @@ impl Integration {
                 assert_eq!(&bytes[..4096], &[66; 4096]);
                 assert_eq!(&bytes[4096..8192], &[67; 4096]);
                 assert_eq!(&bytes[8192..], &[0; 4096]);
+                let inherited = bytes;
+                let mut scratch = workspace.scratch()?;
+                scratch.set_len(1024 * 1024)?;
+                let sectors = NonZeroU64::new(8192).unwrap();
+                let snapshot =
+                    conglobate::storage::Mapping::<conglobate::storage::Created>::create()?
+                        .snapshot(
+                            &mounted,
+                            scratch.attach().map_err(|e| e.to_string())?,
+                            sectors,
+                        )
+                        .map_err(|e| e.to_string())?;
+                let snapshot_node = Path::new("/dev/conglobate-chain-writable");
+                let id = snapshot.id();
+                rustix::fs::mknodat(
+                    rustix::fs::CWD,
+                    snapshot_node,
+                    rustix::fs::FileType::BlockDevice,
+                    rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
+                    rustix::fs::makedev(id.major(), id.minor()),
+                )?;
+                let mut writer = fs::OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(snapshot_node)?;
+                writer.read_exact(&mut bytes)?;
+                assert_eq!(bytes, inherited);
+                writer.rewind()?;
+                writer.write_all(&[99; 4096])?;
+                writer.seek(SeekFrom::Start(8192))?;
+                writer.write_all(&[77; 4096])?;
+                writer.sync_all()?;
+                snapshot.usage()?;
+                reader.rewind()?;
+                reader.read_exact(&mut bytes)?;
+                assert_eq!(bytes, inherited);
+                let failure = snapshot.close().unwrap_err();
+                assert_eq!(
+                    failure.source_error().kind(),
+                    std::io::ErrorKind::ResourceBusy
+                );
+                drop(writer);
+                let backing = failure.cleanup().map_err(|e| e.to_string())?;
+                let scratch = backing.detach().map_err(|e| e.to_string())?;
+                fs::remove_file(snapshot_node)?;
+                // Reopen the persistent store against the same unchanged chain.
+                let snapshot =
+                    conglobate::storage::Mapping::<conglobate::storage::Created>::create()?
+                        .snapshot(
+                            &mounted,
+                            scratch.attach().map_err(|e| e.to_string())?,
+                            sectors,
+                        )
+                        .map_err(|e| e.to_string())?;
+                let id = snapshot.id();
+                rustix::fs::mknodat(
+                    rustix::fs::CWD,
+                    snapshot_node,
+                    rustix::fs::FileType::BlockDevice,
+                    rustix::fs::Mode::RUSR,
+                    rustix::fs::makedev(id.major(), id.minor()),
+                )?;
+                let mut changed = fs::File::open(snapshot_node)?;
+                changed.read_exact(&mut bytes)?;
+                assert_eq!(&bytes[..4096], &[99; 4096]);
+                assert_eq!(&bytes[4096..8192], &[67; 4096]);
+                assert_eq!(&bytes[8192..], &[77; 4096]);
+                drop(changed);
+                snapshot
+                    .close()
+                    .map_err(|e| e.to_string())?
+                    .detach()
+                    .map_err(|e| e.to_string())?;
+                fs::remove_file(snapshot_node)?;
+                reader.rewind()?;
+                reader.read_exact(&mut bytes)?;
+                assert_eq!(bytes, inherited);
+                assert_eq!(cache.verify_chain(&image)?.unwrap().root(), chain.root());
+                println!("WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS");
                 let failure = mounted.close().unwrap_err();
                 assert_eq!(
                     failure.source_error().kind(),

@@ -9,7 +9,7 @@ mod verity;
 pub use loopback::{LoopAttachFailure, LoopAttachment, LoopDetachFailure};
 pub use verity::{VerityFailure, VerityMapping};
 mod snapshot;
-pub use snapshot::{SnapshotMapping, SnapshotMappingFailure, SnapshotUsage};
+pub use snapshot::{SnapshotMapping, SnapshotMappingFailure, SnapshotOrigin, SnapshotUsage};
 mod mapping;
 pub use mapping::{Active, Created, Mapping, MappingFailure, MappingState};
 

@@ -157,12 +157,20 @@ impl<'s, 'w> ReadOnlyChain<'s, 'w> {
         self.stack.close()
     }
 }
+impl<'a> From<&'a ReadOnlyChain<'_, '_>> for super::SnapshotOrigin<'a> {
+    fn from(chain: &'a ReadOnlyChain<'_, '_>) -> Self {
+        Self::from(chain.stack.mapping())
+    }
+}
 impl<'s, 'w> Stack<'s, 'w> {
-    fn id(&self) -> devmap_linux::DevId {
+    fn mapping(&self) -> &Mapping<Active> {
         self.layers
             .0
             .last()
-            .map_or(self.base.id(), |layer| layer.mapping.id())
+            .map_or(&self.base, |layer| &layer.mapping)
+    }
+    fn id(&self) -> devmap_linux::DevId {
+        self.mapping().id()
     }
     fn close(mut self) -> Result<(), ReadOnlyChainFailure<'s, 'w>> {
         while let Some(Layer { mapping, cow }) = self.layers.0.pop() {

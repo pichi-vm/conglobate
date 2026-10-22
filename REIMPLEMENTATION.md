@@ -1858,3 +1858,27 @@ rules rather than silently shrinking acceptance criteria.
   chains, mounted-volume ownership, combined primary/cleanup error reporting,
   bounded setup/teardown and broader failure/crash qualification remain required.
   M4 remains zero; no filesystem, M5 bootstrap, or full-build completion claim.
+
+- Previous turn progressed in 61cdac3. SnapshotOrigin is now an immutable borrowed
+  authority obtained from a read-only mapping or an assembled ReadOnlyChain. The
+  conversion borrows the aggregate's internal top mapping without exposing it or
+  permitting individual layer removal. SnapshotMapping and its failure owner both
+  retain that borrow; loop backing remains consumed. Existing dm-zero call sites
+  continue through the same conversion. No arbitrary device-ID origin constructor,
+  runtime origin flag, or public raw handle was added.
+- v94 passes a writable snapshot over the verified two-scute chain. Reads inherit
+  the origin; writes replace one inherited block and fill a prior hole without
+  changing the original view. A busy snapshot close retains ownership until the
+  writer closes. Detach/reattach and reactivation preserve new bytes plus untouched
+  inherited bytes. The original chain is reread and its cache content reverified;
+  final explicit cleanup restores the original mapping listing. Existing normal
+  suite passes. Root tests (34 compile-fail), root/fixture Clippy, formatting and
+  Python checks pass; exact source/raw evidence/artifact hashes are preserved.
+- Focused review checked borrowed aggregate lifetime, private field authority,
+  consuming backing ownership, failure-path origin retention, and compatibility
+  of the original zero-origin API. Two compile-fail cases prohibit closing the
+  chain while either a snapshot or its setup-failure owner remains live. This is
+  not sealing, mounted-volume integration, an M4 adherence pass, or M5 advancement.
+  M4 remains zero. Next integrate owned mounted volumes with these storage owners;
+  orchestration deadlines, primary/cleanup reporting and wider fault coverage
+  remain required. No privileged host operations or sleep synchronization added.

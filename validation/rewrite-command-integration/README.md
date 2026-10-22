@@ -848,3 +848,14 @@ checks; conglobate enforces the carapace chunk-size/validity requirements. Local
 carapace reference sources and exact fixture blobs are included in v93 evidence.
 Root lifetime checks pass; the post-boot documentation-only additions are labeled
 separately. These are block-chain tests, not filesystem or build qualification.
+
+## Writable snapshots over verified chains
+
+v94 uses SnapshotOrigin's borrowed conversion from ReadOnlyChain. A fresh writable
+snapshot inherits the two-scute view, then replaces an inherited block and writes
+into a zero hole. The origin remains unchanged. Busy-close cleanup retains backing;
+subsequent loop detachment/reattachment and snapshot reactivation preserve the new
+bytes and untouched inherited data. The test rechecks the original view and cache
+roots before complete cleanup. The normal suite and 34 compile-fail checks pass.
+Exact source, fixtures, raw logs and artifact hashes are retained in evidence/v94.
+This tests writable block layering, not mounted filesystems or sealed output.

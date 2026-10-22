@@ -6,6 +6,36 @@ use std::{
     num::{NonZeroU32, NonZeroU64},
 };
 
+/// Read-only origin authority borrowed from its owner. Conversion preserves the
+/// owner's lifetime without exposing an assembled chain's individual mappings.
+/// ```compile_fail
+/// use conglobate::storage::{ReadOnlyChain, Mapping, Created, LoopAttachment};
+/// fn cannot_close_origin(chain: ReadOnlyChain<'_, '_>, backing: LoopAttachment<'_>) {
+///     let snapshot = Mapping::<Created>::create().unwrap()
+///         .snapshot(&chain, backing, std::num::NonZeroU64::new(8192).unwrap()).unwrap();
+///     chain.close().unwrap();
+///     snapshot.close().unwrap();
+/// }
+/// ```
+/// ```compile_fail
+/// use conglobate::storage::{ReadOnlyChain, Mapping, Created, LoopAttachment};
+/// fn failure_also_retains_origin(chain: ReadOnlyChain<'_, '_>, backing: LoopAttachment<'_>) {
+///     let failure = Mapping::<Created>::create().unwrap()
+///         .snapshot(&chain, backing, std::num::NonZeroU64::new(8192).unwrap()).unwrap_err();
+///     chain.close().unwrap();
+///     failure.cleanup().unwrap();
+/// }
+/// ```
+#[derive(Debug)]
+pub struct SnapshotOrigin<'owner> {
+    mapping: &'owner Mapping<Active>,
+}
+impl<'a> From<&'a Mapping<Active>> for SnapshotOrigin<'a> {
+    fn from(mapping: &'a Mapping<Active>) -> Self {
+        Self { mapping }
+    }
+}
+
 /// Persistent writable snapshot over a read-only origin. Owned loop backing
 /// prevents reuse even if deferred removal outlives this wrapper. The origin
 /// borrow prevents explicit origin release while the snapshot owner is live.
@@ -36,14 +66,14 @@ use std::{
 #[derive(Debug)]
 pub struct SnapshotMapping<'lease, 'workspace> {
     mapping: Mapping<Active>,
-    origin: &'lease Mapping<Active>,
+    origin: SnapshotOrigin<'lease>,
     backing: LoopAttachment<'workspace>,
 }
 #[derive(Debug, thiserror::Error)]
 #[error("snapshot mapping: {failure}")]
 pub struct SnapshotMappingFailure<'lease, 'workspace> {
     failure: MappingFailure,
-    origin: &'lease Mapping<Active>,
+    origin: SnapshotOrigin<'lease>,
     backing: LoopAttachment<'workspace>,
 }
 impl<'a, 'w> SnapshotMappingFailure<'a, 'w> {
@@ -64,10 +94,11 @@ impl<'a, 'w> SnapshotMappingFailure<'a, 'w> {
 impl Mapping<Created> {
     pub fn snapshot<'a, 'w>(
         self,
-        origin: &'a Mapping<Active>,
+        origin: impl Into<SnapshotOrigin<'a>>,
         backing: LoopAttachment<'w>,
         sectors: NonZeroU64,
     ) -> Result<SnapshotMapping<'a, 'w>, SnapshotMappingFailure<'a, 'w>> {
+        let origin = origin.into();
         // Device identity is obtained from a retained block FD. Metadata failure
         // must keep even the newly created empty mapping for explicit cleanup.
         let cow = match backing.id() {
@@ -81,7 +112,7 @@ impl Mapping<Created> {
             }
         };
         let target = devmap_snapshot::Snapshot::from(devmap_snapshot::Parameters {
-            origin: origin.id(),
+            origin: origin.mapping.id(),
             cow,
             persistence: devmap_snapshot::Persistence::Persistent(
                 devmap_snapshot::Persistent::Standard,
