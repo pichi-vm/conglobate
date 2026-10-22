@@ -289,3 +289,8 @@ rules rather than silently shrinking acceptance criteria.
   Existing API names are aliases. All 51 tests, three compile-fail doctests and
   Clippy pass; production lifecycle/partial-setup VM regression v6 also passes.
   The style finding is resolved and recorded; clean-pass streak remains zero.
+- First full-pass attempt found explicit null filesystem properties silently
+  becoming an empty mapping. Regression reproduced it; optional nested mappings,
+  labels and derive lists now use Presence validation consistently. All 52 tests,
+  three compile-fail doctests and Clippy pass. The attempt is recorded as failed,
+  not clean; the three-pass sequence must start on the corrected scope.

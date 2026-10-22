@@ -120,3 +120,15 @@ fn typed_transform_values_are_checked_before_execution() {
         );
     }
 }
+
+#[test]
+fn null_nested_mappings_and_directive_lists_are_not_empty_values() {
+    for recipe in [
+        "bootstrap: {from: tools, filesystem: {type: ext4, size: 16MiB, properties: null}}",
+        "bootstrap: {from: tools, filesystem: {type: ext4, size: 16MiB, properties: {label: null}}}",
+        "carapace: {from: base, derive: null}",
+        "firmware: {from: tools, derive: null, into: {pmi: /pmi, dtb: /dtb}}",
+    ] {
+        assert!(Fixture::parse(recipe).is_err(), "{recipe}");
+    }
+}

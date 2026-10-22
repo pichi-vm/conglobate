@@ -98,3 +98,20 @@ Negative compilation checks cover freezing with a live reader, freezing twice
 and sending mount ownership across threads. Disposable-VM v6 repeats normal,
 EBUSY retry, Drop and actual partial-setup cleanup successfully. This fixes a
 review finding and changes the reviewed scope, so the clean streak remains zero.
+
+## Full-pass attempt 1 (baseline 2d9d383): finding, not clean
+
+Requirements-to-parser traversal found that filesystem properties used a
+plain defaultable mapping. serde-saphyr accepted explicit `properties: null`
+as an empty mapping. A new regression failed on that exact input. Optional
+properties, label and derive fields now use the same explicit Presence decoding
+as stages: omission supplies defaults; explicit null fails; `{}`/`[]` remain
+valid where appropriate. Tests also reject null derive lists and null labels.
+
+Reviewed raw/validated separation, required CLI selections, top-level lock pins,
+stage combination rules and typed transform parsing before this finding stopped
+the clean-pass attempt. No success is inferred for unreviewed categories.
+After the fix, all 52 unit/integration tests, three compile-fail doctests and
+Clippy pass. Only recipe parsing/tests and this evidence changed; preservation
+references and runtime mount implementation are unchanged. Streak remains zero;
+the next full pass must use the corrected scope.

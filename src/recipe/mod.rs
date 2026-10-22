@@ -85,7 +85,7 @@ struct BootstrapDocument {
     from: String,
     filesystem: FilesystemDocument,
     #[serde(default)]
-    derive: Vec<DirectiveDocument>,
+    derive: Presence<Vec<DirectiveDocument>>,
 }
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -94,13 +94,13 @@ struct FilesystemDocument {
     kind: String,
     size: String,
     #[serde(default)]
-    properties: PropertiesDocument,
+    properties: Presence<PropertiesDocument>,
 }
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct PropertiesDocument {
     #[serde(default)]
-    label: String,
+    label: Presence<String>,
 }
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -108,7 +108,7 @@ struct CarapaceDocument {
     #[serde(default)]
     from: Presence<String>,
     #[serde(default)]
-    derive: Vec<DirectiveDocument>,
+    derive: Presence<Vec<DirectiveDocument>>,
 }
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -116,7 +116,7 @@ struct FirmwareDocument {
     #[serde(default)]
     from: Presence<String>,
     #[serde(default)]
-    derive: Vec<DirectiveDocument>,
+    derive: Presence<Vec<DirectiveDocument>>,
     into: OutputsDocument,
 }
 #[derive(Debug, Deserialize)]
@@ -171,7 +171,14 @@ impl TryFrom<FilesystemDocument> for FilesystemSpec {
         }
         Ok(Self {
             size: raw.size.parse()?,
-            label: raw.properties.label.try_into()?,
+            label: raw
+                .properties
+                .into_option()
+                .unwrap_or_default()
+                .label
+                .into_option()
+                .unwrap_or_default()
+                .try_into()?,
         })
     }
 }
@@ -399,6 +406,8 @@ impl TryFrom<YamlDocument<'_>> for Recipe {
                     filesystem: s.filesystem.try_into()?,
                     directives: s
                         .derive
+                        .into_option()
+                        .unwrap_or_default()
                         .into_iter()
                         .map(Directive::try_from)
                         .collect::<Result<_, _>>()?,
@@ -413,6 +422,8 @@ impl TryFrom<YamlDocument<'_>> for Recipe {
                     from: s.from.into_option().map(|r| r.parse()).transpose()?,
                     directives: s
                         .derive
+                        .into_option()
+                        .unwrap_or_default()
                         .into_iter()
                         .map(Directive::try_from)
                         .collect::<Result<_, _>>()?,
@@ -432,6 +443,8 @@ impl TryFrom<YamlDocument<'_>> for Recipe {
                     from: s.from.into_option().map(|r| r.parse()).transpose()?,
                     directives: s
                         .derive
+                        .into_option()
+                        .unwrap_or_default()
                         .into_iter()
                         .map(Directive::try_from)
                         .collect::<Result<_, _>>()?,
