@@ -79,6 +79,7 @@ mount -o loop /work/volume.ext4 /work/origin
 cp -a /image-root/. /work/origin/
 /idmap-probe namespace-rejections
 /idmap-probe reaper-probe
+/idmap-probe filesystem-pin-probe
 # Preflight probes are ready. User namespace and command setup must be native.
 rm /usr/bin/unshare
 test ! -e /usr/bin/nsenter
@@ -162,12 +163,22 @@ for domain in /work/cgroups/conglobate-*; do
     if grep -q 'populated 1' "$domain/cgroup.events"; then populated=1; fi
 done
 test "$populated" = 1
-touch /work/origin/supervisor-gone
+# Verify the production filesystem pin remains attached after supervisor death.
+pin=
+while read -r mount_id parent_id device mount_root mount_path rest; do
+    case "$mount_path" in
+        /work/integration-records/filesystem-*) test -z "$pin"; pin="$mount_path";;
+    esac
+done < /proc/self/mountinfo
+test -n "$pin"
+umount /work/origin
+touch "$pin/supervisor-gone"
 for attempt in {1..100}; do
-    test ! -e /work/origin/death-policy-checked || break
+    test ! -e "$pin/death-policy-checked" || break
     sleep 0.05
 done
-test "$(cat /work/origin/death-policy-checked)" = checked
+test "$(cat "$pin/death-policy-checked")" = checked
+echo FILESYSTEM_PIN_AFTER_SUPERVISOR_DEATH_PASS
 echo ACTIVE_POLICY_AFTER_SUPERVISOR_DEATH_PASS
 echo SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN
 # Return to PID 1, which powers off this VM. Never start another build here.
@@ -193,9 +204,10 @@ if supervisor_death:
     passed = all(marker in userspace for marker in [
         'SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN', 'IDMAP_PROBE_EXIT 0',
         'VM_CONTROLLER_POWER_OFF', 'ACTIVE_POLICY_AFTER_SUPERVISOR_DEATH_PASS',
+        'FILESYSTEM_PIN_AFTER_SUPERVISOR_DEATH_PASS',
     ]) and 'Power down' in serial and 'INTEGRATED_COMMAND_' not in serial
 else:
-    passed = all(marker in serial for marker in ['NATIVE_REAPER_TIMEOUT_AND_RELEASE_PASS', 'SCOPED_ROOT_TERMINATION_PASS', 'SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS', 'NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS', 'NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS', 'NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS', 'INTEGRATED_COMMAND_SHELL-FAILURE_PASS', 'NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS', 'NATIVE_NAMESPACE_INIT_ADOPTION_PASS', 'INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS', 'INTEGRATED_COMMAND_POLICY-OFF_PASS', 'NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
+    passed = all(marker in serial for marker in ['NATIVE_FILESYSTEM_PIN_RETAINS_UNMOUNTED_SOURCE_PASS', 'NATIVE_REAPER_TIMEOUT_AND_RELEASE_PASS', 'SCOPED_ROOT_TERMINATION_PASS', 'SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS', 'NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS', 'NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS', 'NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS', 'INTEGRATED_COMMAND_SHELL-FAILURE_PASS', 'NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS', 'NATIVE_NAMESPACE_INIT_ADOPTION_PASS', 'INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS', 'INTEGRATED_COMMAND_POLICY-OFF_PASS', 'NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
 (out / 'verdict.json').write_text(json.dumps({'passed': passed, 'full_sandbox_qualified': False}, indent=2))
 assert passed, serial[-5000:]
 print('PASS', out)

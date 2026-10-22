@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
 use conglobate::{
-    anchor::RecoveryDirectory,
+    anchor::{FilesystemPin, RecoveryDirectory},
     domain::RecordedDomain,
     filesystem::{Detached, Mount, MountPoint},
     isolation::{
@@ -31,6 +31,43 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "filesystem-pin-probe") {
+            let path = Path::new("/work/filesystem-pin-test");
+            fs::create_dir(path)?;
+            fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
+            let lease = RecoveryDirectory::open(path)?;
+            assert!(FilesystemPin::create(&lease, fs::File::open("/supervisor-secret")?).is_err());
+            assert_eq!(fs::read_dir(path)?.count(), 0);
+            let original = fs::metadata("/work/origin")?;
+            let pin = FilesystemPin::create(&lease, fs::File::open("/work/origin")?)?;
+            assert!(
+                Command::new("umount")
+                    .arg("/work/origin")
+                    .status()?
+                    .success()
+            );
+            let held = pin.metadata()?;
+            assert_eq!((held.dev(), held.ino()), (original.dev(), original.ino()));
+            // Fixture-only discovery restores its original mount after testing
+            // that the production pin alone retains the selected filesystem.
+            let entries = fs::read_dir(path)?.collect::<Result<Vec<_>, _>>()?;
+            assert_eq!(entries.len(), 1);
+            assert!(
+                Command::new("mount")
+                    .arg("--bind")
+                    .arg(entries[0].path())
+                    .arg("/work/origin")
+                    .status()?
+                    .success()
+            );
+            pin.release()?;
+            assert_eq!(fs::read_dir(path)?.count(), 0);
+            assert_eq!(fs::metadata("/work/origin")?.dev(), original.dev());
+            drop(lease);
+            fs::remove_dir(path)?;
+            println!("NATIVE_FILESYSTEM_PIN_RETAINS_UNMOUNTED_SOURCE_PASS");
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "reaper-probe") {
             let reaper = ChildReaper::install()?;
             let mut child = Command::new("/bin/sh")
@@ -269,6 +306,7 @@ impl Integration {
                 .is_empty()
         );
         let namespace = namespace.pin(&lease)?;
+        let filesystem = FilesystemPin::create(&lease, fs::File::open("/work/origin")?)?;
         fs::write(
             "/work/userns-path",
             recovery
@@ -276,7 +314,7 @@ impl Integration {
                 .as_os_str()
                 .as_encoded_bytes(),
         )?;
-        let policy = EnabledPolicy::install(&namespace, mode != "policy-off")?;
+        let policy = EnabledPolicy::install(&namespace, &filesystem, mode != "policy-off")?;
         println!("NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS");
 
         let parent = Path::new("/work/cgroups");
@@ -346,6 +384,7 @@ impl Integration {
         // This is the only policy teardown site: cancellation, helper reaping
         // and descendant draining have all completed above.
         policy.disable()?;
+        filesystem.release()?;
         namespace.release()?;
         assert_eq!(status.success(), mode == "success" || mode == "policy-off");
         assert!(!parent.join(name).exists());
@@ -613,12 +652,13 @@ struct EnabledPolicy {
 impl EnabledPolicy {
     fn install(
         namespace: &UserNamespace<PinnedNamespace>,
+        filesystem: &FilesystemPin,
         enable: bool,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         use libbpf_rs::{MapCore, MapFlags, MapHandle};
         let target = FilesystemTarget::new(
             fs::metadata("/proc/self/ns/user")?.ino(),
-            fs::metadata("/work/origin")?.dev(),
+            filesystem.metadata()?.dev(),
         )?;
         let scope = namespace.label_scope([target])?;
         let subject = scope.subject_value();

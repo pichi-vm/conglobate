@@ -1347,3 +1347,31 @@ rules rather than silently shrinking acceptance criteria.
   production policy/admission aggregation, scoped namespace handoff and full
   late-error cleanup still need integration. Original mount lifetime and enabled
   policy are still fixture adapters; no complete sandbox claim is made.
+
+- Previous goal turn made progress in 24e1adc (typed namespace/mapping lifetime).
+  Added FilesystemPin: a non-recursive bind mount under the protected initial
+  mount-namespace directory. It independently retains the selected superblock
+  across source unmount and supervisor death, without exposing root descriptors.
+  Metadata checks confirm retained device/inode before explicit release.
+- Pin creation disarms recursive directory cleanup before mounting. There are no
+  fallible operations after the successful bind. Failed mount returns an empty
+  target; failed release retains either the attached owner or the unmounted
+  target. Destructors use rmdir only, never traverse image contents or detach a
+  live pin. Active pins deliberately remain until explicit release or VM disposal.
+- Fixture policy target identity now uses pinned filesystem metadata. Its normal
+  cleanup releases filesystem and namespace pins only after policy disable and
+  descendant drain. This ordering is still fixture-enforced; the production step
+  aggregate is not implemented. Pinning alone neither identifies the superblock's
+  owning user namespace nor grants policy/admission authority or exclusive writes.
+- v56 rejects a regular-file source without residue, unmounts the original ext4
+  source, verifies the pin retains the same filesystem, restores the source mount,
+  and releases the pin. Normal/timeout/failure pipeline passes. v57 kills the
+  supervisor, verifies its filesystem pin remains attached, unmounts the original
+  source, and checks surviving command labeling through the retained pin before
+  independent VM poweroff. Both pass; no privileged host operations occurred.
+- Root tests (18 compile-fail), root/fixture Clippy and formatting pass. Preserved
+  source/log/hash evidence and a retrospective note for the initial fixture-only
+  missing-dependency compile error. Review checked leak-on-drop identity lifetime,
+  non-recursive cleanup, success/failure ownership and descriptor boundaries.
+  M4 remains zero adherence passes: production policy/admission aggregation,
+  scoped namespace handoff, late-error cleanup and runtime qualification remain.

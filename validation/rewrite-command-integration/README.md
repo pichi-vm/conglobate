@@ -536,3 +536,25 @@ scoped labeling until VM poweroff. Root tests (18 compile-fail), root/fixture
 Clippy and formatting pass. This removes policy identity reconstruction only:
 namespace paths still adapt trusted helper startup, assigned-filesystem lifetime
 is fixture-owned, and production policy activation/admission remains unfinished.
+
+## Filesystem identity pins
+
+v56 adds production FilesystemPin ownership: a non-recursive bind mount in the
+protected initial mount namespace. Its descriptor-free public interface exposes
+checked metadata and explicit release only. Dropping a live pin leaves the
+kernel mount intact; empty-target cleanup uses rmdir and cannot recursively
+traverse image contents. A regular file is rejected before target creation.
+
+The dedicated probe unmounts the original ext4 source while retaining the pin,
+checks device/inode identity, restores the fixture source and releases the pin.
+The command pipeline derives policy device identity from this owner and releases
+it only after command drain and policy removal. v56 passes all normal/timeout/
+failure cases. An initial fixture-only rustix dependency compile error and its
+correction to existing fixture setup tools are recorded in BUILD-NOTES.txt.
+
+v57 kills the supervisor and verifies its pin is still mounted. The independent
+controller unmounts the original source and uses the retained pin to coordinate
+and observe surviving-command label checks before VM poweroff. It passes.
+Root tests, root/fixture Clippy and formatting pass. This proves the pin primitive's
+lifetime behavior, not complete production admission/policy ownership, filesystem
+owner-namespace derivation, storage construction, or image finalization.
