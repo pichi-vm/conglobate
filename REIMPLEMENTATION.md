@@ -1233,3 +1233,30 @@ rules rather than silently shrinking acceptance criteria.
   zero adherence passes. Production policy/admission aggregation, scoped handle
   transfer, complete late-error cleanup and remaining runtime/qualification work
   are still pending; no complete sandbox claim is made.
+
+- Previous goal turn made progress by replacing the setup-loss test's 20 ms
+  delay with receipt of the actual setup request before upstream closure. The
+  focused test passes. Remaining deadline polling checks actual state; elapsed
+  time must never establish readiness, quiescence or cleanup success.
+- Added consuming Mount<Attached>::launch -> Mount<InUse>. The trusted setup
+  child's cwd is the owned mount; namespace cloning retargets cwd into the new
+  mount namespace, and CommandRoot captures it afterward. Removed fixture mount
+  directory discovery and root-path arguments. No mount-path/descriptor getter
+  was added. Failed launch returns Attached; failed wait returns InUse with the
+  child and mount retained; only reaping restores Attached for explicit close.
+- v47 validates the native cwd handoff. v48 adds an unrelated mount-name decoy,
+  failed launch ownership, and an IPC-blocked child proving immediate wait
+  timeout and retry without timing assumptions. v49 additionally validates
+  direct-child termination and retained mount identity. v50 passes supervisor
+  death, still-scoped labeling and independent VM shutdown with this topology.
+  All privileged operations ran in disposable guests. Preserved source snapshots,
+  raw logs, hashes, kernel cwd-retargeting source and full artifact locations.
+- Root tests (16 compile-fail), root/fixture Clippy and formatting pass. Review
+  checked namespace/cwd ownership, failure return types, descriptor closure,
+  direct child versus descendant lifetime, and limits of destructor cleanup.
+  InUse is not a descendant-quiescence or filesystem-finalization receipt; the
+  production enclosing step must enforce those before teardown/publication.
+- M4 remains zero adherence passes. Namespace pin paths and policy activation
+  still use fixture adapters. Production step admission/policy aggregation,
+  complete late-error cleanup, remaining runtime support and qualification are
+  unfinished. No new guardian or cross-invocation recovery service is required.

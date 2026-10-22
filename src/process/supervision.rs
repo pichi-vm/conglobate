@@ -214,9 +214,12 @@ mod tests {
     #[test]
     fn setup_exchange_observes_upstream_loss_and_protocol_failure() {
         let (supervisor, upstream) = Fixture::paired();
-        let (pending, _held_child) = Supervision::pair().unwrap();
+        let (pending, held_child) = Supervision::pair().unwrap();
         let closer = std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_millis(20));
+            // Wait for the actual setup request, then lose upstream without
+            // replying. Scheduler delays cannot establish this ordering.
+            let socket = IdentitySocket(held_child.0);
+            let _peer = socket.receive_until(Fixture::deadline()).unwrap();
             drop(upstream);
         });
         let error = pending

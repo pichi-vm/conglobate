@@ -184,3 +184,134 @@ impl Drop for AttachmentLease {
         }
     }
 }
+
+/// A mapped view retained by an executing trusted setup child. It cannot be
+/// explicitly unmounted until that child is reaped. Descendant containment and
+/// policy lifetime remain the enclosing step's responsibility.
+///
+/// ```compile_fail
+/// use conglobate::filesystem::{Mount, InUse};
+/// fn cannot_unmount_running_setup(mount: Mount<'_, InUse>) {
+///     mount.close();
+/// }
+/// ```
+#[derive(Debug)]
+pub struct InUse;
+impl private::Sealed for InUse {}
+impl MountState for InUse {
+    type Resources = InUseResources;
+}
+#[derive(Debug)]
+pub struct InUseResources {
+    process: crate::process::Process<crate::process::Running>,
+    attached: AttachedResources,
+}
+#[derive(Debug, thiserror::Error)]
+#[error("mounted-root setup launch: {source}")]
+pub struct RootLaunchFailure<'ns> {
+    source: io::Error,
+    mount: Mount<'ns, Attached>,
+}
+impl<'ns> RootLaunchFailure<'ns> {
+    pub fn into_parts(self) -> (io::Error, Mount<'ns, Attached>) {
+        (self.source, self.mount)
+    }
+}
+#[derive(Debug, thiserror::Error)]
+#[error("mounted-root setup wait: {source}")]
+pub struct RootWaitFailure<'ns> {
+    source: crate::process::WaitError,
+    mount: Mount<'ns, InUse>,
+}
+impl<'ns> RootWaitFailure<'ns> {
+    pub fn into_parts(self) -> (crate::process::WaitError, Mount<'ns, InUse>) {
+        (self.source, self.mount)
+    }
+}
+impl<'ns> Mount<'ns, Attached> {
+    /// Launch trusted setup with its cwd set to this owned image view. The
+    /// kernel carries cwd through subsequent namespace cloning; root entry must
+    /// capture it afterward. No generated pathname or raw descriptor escapes.
+    /// Image commands must not run until the child completes its sandbox setup.
+    pub fn launch(
+        self,
+        mut setup: std::process::Command,
+    ) -> Result<Mount<'ns, InUse>, RootLaunchFailure<'ns>> {
+        let point = &self
+            .resources
+            .lease
+            .backing
+            .as_ref()
+            .expect("attached mount")
+            .point;
+        setup.current_dir(point.directory.path());
+        let child = match setup.spawn() {
+            Ok(child) => child,
+            Err(source) => {
+                return Err(RootLaunchFailure {
+                    source,
+                    mount: self,
+                });
+            }
+        };
+        Ok(Mount {
+            resources: InUseResources {
+                process: child.into(),
+                attached: self.resources,
+            },
+            _scope: self._scope,
+            _thread: self._thread,
+        })
+    }
+}
+impl<'ns> Mount<'ns, InUse> {
+    /// Collect the direct setup child's status. This is not proof of descendant
+    /// quiescence or successful filesystem finalization. Failure retains both
+    /// mount and process ownership; callers can retry or request cancellation.
+    pub fn wait_until(
+        self,
+        deadline: std::time::Instant,
+    ) -> Result<(Mount<'ns, Attached>, std::process::ExitStatus), RootWaitFailure<'ns>> {
+        self.finish(|process| process.wait_until(deadline))
+    }
+    /// Terminate and reap this direct setup child. This does not cancel the
+    /// entire command cgroup or prove descendant quiescence.
+    pub fn terminate_until(
+        self,
+        deadline: std::time::Instant,
+    ) -> Result<(Mount<'ns, Attached>, std::process::ExitStatus), RootWaitFailure<'ns>> {
+        self.finish(|process| process.terminate_until(deadline))
+    }
+    fn finish(
+        self,
+        wait: impl FnOnce(
+            crate::process::Process<crate::process::Running>,
+        ) -> Result<
+            crate::process::Process<crate::process::Reaped>,
+            crate::process::WaitFailure,
+        >,
+    ) -> Result<(Mount<'ns, Attached>, std::process::ExitStatus), RootWaitFailure<'ns>> {
+        let InUseResources { process, attached } = self.resources;
+        match wait(process) {
+            Ok(process) => Ok((
+                Mount {
+                    resources: attached,
+                    _scope: self._scope,
+                    _thread: self._thread,
+                },
+                process.status(),
+            )),
+            Err(failure) => {
+                let (source, process) = failure.into_parts();
+                Err(RootWaitFailure {
+                    source,
+                    mount: Mount {
+                        resources: InUseResources { process, attached },
+                        _scope: self._scope,
+                        _thread: self._thread,
+                    },
+                })
+            }
+        }
+    }
+}

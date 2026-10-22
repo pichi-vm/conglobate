@@ -1,0 +1,30 @@
+4296: 	} else {
+4297: 		/*
+4298: 		 * Full copy: walk old and new trees in parallel, switching
+4299: 		 * the tsk->fs->* elements and marking new vfsmounts as
+4300: 		 * belonging to new namespace.  We have already acquired a
+4301: 		 * private fs_struct, so tsk->fs->lock is not needed.
+4302: 		 */
+4303: 		p = old;
+4304: 		q = new;
+4305: 		while (p) {
+4306: 			mnt_add_to_ns(new_ns, q);
+4307: 			new_ns->nr_mounts++;
+4308: 			if (new_fs) {
+4309: 				if (&p->mnt == new_fs->root.mnt) {
+4310: 					old_root.mnt = new_fs->root.mnt;
+4311: 					new_fs->root.mnt = mntget(&q->mnt);
+4312: 				}
+4313: 				if (&p->mnt == new_fs->pwd.mnt) {
+4314: 					old_pwd.mnt = new_fs->pwd.mnt;
+4315: 					new_fs->pwd.mnt = mntget(&q->mnt);
+4316: 				}
+4317: 			}
+4318: 			p = next_mnt(p, old);
+4319: 			q = next_mnt(q, new);
+4320: 			if (!q)
+4321: 				break;
+4322: 			// an mntns binding we'd skipped?
+4323: 			while (p->mnt.mnt_root != q->mnt.mnt_root)
+4324: 				p = next_mnt(skip_mnt_tree(p), old);
+4325: 		}

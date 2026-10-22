@@ -31,6 +31,22 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "root-launch-probe") {
+            use std::os::{fd::AsFd, unix::net::UnixDatagram};
+            let selected = fs::metadata(".")?;
+            let expected = fs::metadata("/work/origin")?;
+            assert_eq!(
+                (selected.dev(), selected.ino()),
+                (expected.dev(), expected.ino())
+            );
+            let channel = UnixDatagram::from(std::io::stdin().as_fd().try_clone_to_owned()?);
+            channel.set_read_timeout(Some(Duration::from_secs(5)))?;
+            assert_eq!(channel.send(b"ready")?, 5);
+            let mut reply = [0; 5];
+            let count = channel.recv(&mut reply)?;
+            assert_eq!(&reply[..count], b"exit");
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "namespace-seed") {
             MappedUserNamespace::serve(Instant::now() + Duration::from_secs(5))?;
             return Ok(());
@@ -91,8 +107,7 @@ impl Integration {
         }
         if args.get(1).is_some_and(|a| a == "native-namespaces") {
             let userns = args.get(2).ok_or("user namespace required")?;
-            let root = args.get(3).ok_or("root required")?;
-            let script = args.get(4).ok_or("script required")?;
+            let script = args.get(3).ok_or("script required")?;
             let userns = fs::File::open(userns)?;
             let expected_user = userns.metadata()?.ino();
             let names = ["mnt", "net", "ipc", "uts", "pid", "pid_for_children"];
@@ -130,7 +145,7 @@ impl Integration {
             }
             println!("NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS");
             let mut setup = Command::new(std::env::current_exe()?);
-            setup.args(["native-root", root, script]).env_clear();
+            setup.args(["native-root", script]).env_clear();
             // Keep the private device-transfer socket on stdin for root entry.
             let child = scope.spawn(setup)?;
             let status = child
@@ -140,14 +155,10 @@ impl Integration {
             std::process::exit(status.code().unwrap_or(128 + status.signal().unwrap_or(1)));
         }
         if args.get(1).is_some_and(|a| a == "native-root") {
-            let root = Path::new(args.get(2).ok_or("root required")?);
-            let script = args.get(3).ok_or("script required")?;
+            let script = args.get(2).ok_or("script required")?;
             let scope = PrivateMountNamespace::enter()?;
-            let selected = CommandRoot::from_directory(
-                fs::File::open(root)?,
-                scope,
-                CommandDevices::from_input()?,
-            )?;
+            let selected =
+                CommandRoot::from_current_directory(scope, CommandDevices::from_input()?)?;
             let filter = CommandSyscalls::compile()?;
             let entered = selected.enter()?;
             entered.execute(script, CommandPrivileges::filesystem(), filter)?;
@@ -327,6 +338,54 @@ impl Integration {
         println!("INTEGRATED_COMMAND_{}_PASS", mode.to_uppercase());
         Ok(())
     }
+    fn root_launch_probe<'ns>(
+        mount: Mount<'ns, conglobate::filesystem::Attached>,
+        cancel: bool,
+    ) -> Result<Mount<'ns, conglobate::filesystem::Attached>, Box<dyn std::error::Error>> {
+        use std::os::{fd::OwnedFd, unix::net::UnixDatagram};
+        let expected = mount.root_metadata()?;
+        let failure = mount
+            .launch(Command::new("/nonexistent-root-launch-test"))
+            .unwrap_err();
+        let (error, mount) = failure.into_parts();
+        assert_eq!(error.kind(), std::io::ErrorKind::NotFound);
+        let (control, child) = UnixDatagram::pair()?;
+        control.set_read_timeout(Some(Duration::from_secs(5)))?;
+        let mut setup = Command::new(std::env::current_exe()?);
+        setup
+            .arg("root-launch-probe")
+            .current_dir("/")
+            .stdin(Stdio::from(OwnedFd::from(child)));
+        let running = mount.launch(setup).map_err(|error| error.to_string())?;
+        let mut ready = [0; 6];
+        let count = control.recv(&mut ready)?;
+        assert_eq!(&ready[..count], b"ready");
+        let (error, running) = running.wait_until(Instant::now()).unwrap_err().into_parts();
+        assert!(matches!(error, conglobate::process::WaitError::Deadline));
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let (mount, status) = if cancel {
+            running.terminate_until(deadline)
+        } else {
+            assert_eq!(control.send(b"exit")?, 4);
+            running.wait_until(deadline)
+        }
+        .map_err(|error| error.to_string())?;
+        if cancel {
+            use std::os::unix::process::ExitStatusExt;
+            assert_eq!(status.signal(), Some(9));
+            println!("SCOPED_ROOT_TERMINATION_PASS");
+        } else {
+            assert!(status.success());
+        }
+        let retained = mount.root_metadata()?;
+        assert_eq!(
+            (retained.dev(), retained.ino()),
+            (expected.dev(), expected.ino())
+        );
+        println!("SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS");
+        Ok(mount)
+    }
+
     fn helper(mode: &str) -> Result<(), Box<dyn std::error::Error>> {
         let channel = Supervision::from_stdin()?
             .exchange_until(Instant::now() + Duration::from_secs(5))?
@@ -338,24 +397,8 @@ impl Integration {
             .map_err(|e| e.to_string())?
             .attach(MountPoint::create(Path::new("/work"))?)
             .map_err(|e| e.to_string())?;
-        // Fixture adapter only: production must pass a scoped root handle, not
-        // discover generated mount paths. Match the actual mount identity so
-        // an empty target left by a cancelled prior helper cannot be selected.
-        let expected = mount.root_metadata()?;
-        let targets: Vec<_> = fs::read_dir("/work")?
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .filter(|e| {
-                e.file_name()
-                    .as_encoded_bytes()
-                    .starts_with(b"conglobate-mount-")
-                    && e.metadata().is_ok_and(|metadata| {
-                        (metadata.dev(), metadata.ino()) == (expected.dev(), expected.ino())
-                    })
-            })
-            .collect();
-        assert_eq!(targets.len(), 1);
-        let root = targets[0].path();
+        let mount = Self::root_launch_probe(mount, false)?;
+        let mount = Self::root_launch_probe(mount, true)?;
         let checks = r#"
             test "$PPID" = 1
             test "$$" -ne 1
@@ -483,13 +526,16 @@ impl Integration {
                 "#
             }
         );
-        let status = Command::new(std::env::current_exe()?)
+        let mut setup = Command::new(std::env::current_exe()?);
+        setup
             .arg("native-namespaces")
             .arg(&userns)
-            .arg(root)
             .arg(&script)
-            .stdin(CommandDevices::create(100000, 100000)?.into_input()?)
-            .status()?;
+            .stdin(CommandDevices::create(100000, 100000)?.into_input()?);
+        let running = mount.launch(setup).map_err(|e| e.to_string())?;
+        let (mount, status) = running
+            .wait_until(Instant::now() + Duration::from_secs(30))
+            .map_err(|e| e.to_string())?;
         if mode == "shell-failure" {
             assert_eq!(status.code(), Some(37));
             println!("NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS");

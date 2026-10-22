@@ -22,9 +22,8 @@ use std::{
 ///
 /// ```compile_fail
 /// use conglobate::isolation::{CommandRoot, CommandDevices, PrivateMountNamespace};
-/// use std::fs::File;
-/// fn cannot_restore_with_selected_root(scope: PrivateMountNamespace, root: File, devices: CommandDevices) {
-///     let root = CommandRoot::from_directory(root, scope, devices).unwrap();
+/// fn cannot_restore_with_selected_root(scope: PrivateMountNamespace, devices: CommandDevices) {
+///     let root = CommandRoot::from_current_directory(scope, devices).unwrap();
 ///     scope.restore();
 ///     drop(root);
 /// }
@@ -48,16 +47,14 @@ pub struct EnteredRoot {
 }
 
 impl CommandRoot {
-    /// Open the supplied directory after entering scope; inherited descriptors
-    /// from a previous mount namespace cannot identify its cloned mount tree.
-    pub fn from_directory(
-        root: File,
+    /// Capture the cwd assigned by the mounted-root launcher after entering
+    /// scope. The kernel retargets cwd across namespace cloning, unlike a file
+    /// descriptor opened in a previous mount namespace.
+    pub fn from_current_directory(
         scope: PrivateMountNamespace,
         devices: CommandDevices,
     ) -> io::Result<Self> {
-        if !root.metadata()?.is_dir() {
-            return Err(io::Error::other("command root must be a directory"));
-        }
+        let root = File::open(".")?;
         Ok(Self {
             scope,
             root,

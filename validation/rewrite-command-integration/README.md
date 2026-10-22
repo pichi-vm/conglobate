@@ -451,3 +451,28 @@ root/namespace handoff and complete failure ownership remain unfinished. Late
 partial-map failures and deployment coverage are not qualified by these tests.
 The mapped range is supplied by trusted construction; this does not implement a
 general concurrent shared-host UID allocator or claim arbitrary OS ID coverage.
+
+## Owned mount handoff
+
+v47 replaces mounted-root directory discovery with Mount<Attached>::launch. The
+mount owner sets the trusted child's cwd before exec; the child inherits cwd
+through namespace cloning, then CommandRoot::from_current_directory captures
+that cloned view. The kernel namespace source excerpt retained with v50 shows
+cwd retargeting. No generated mount path is passed to root entry.
+
+The consuming launch returns Mount<InUse>, retaining both mount and process.
+Failed spawn returns the original Attached owner. A wait deadline returns InUse
+so the caller can retry or terminate the direct child. Reaping returns Attached
+and the exit status; neither proves descendant quiescence or finalization.
+A compile-fail check prevents explicitly closing InUse.
+
+v48 adds an unrelated mount-name decoy and exercises failed spawn, an explicitly
+IPC-blocked child, immediate deadline failure and successful retry. v49 also
+terminates a blocked child and verifies its signal status and retained mount
+identity. v50 exercises supervisor death and active scoped labeling until actual
+VM poweroff. All pass. Root tests, root/fixture Clippy and formatting pass.
+
+These tests do not complete step admission or policy ownership. Namespace pin
+paths remain a fixture adapter, as does active-policy construction. The earlier
+mounted-root discovery limitation is resolved; complete partial-setup cleanup,
+production lifecycle aggregation and broader qualification remain outstanding.

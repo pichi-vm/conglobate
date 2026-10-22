@@ -1,0 +1,21 @@
+{
+  "base_commit": "78bd4872530e6d03acb14820a35a6f401bc402ce",
+  "full_artifacts": "/var/tmp/conglobate-command-integration-v48",
+  "sha256": {
+    "validation/rewrite-command-integration/evidence/v48/serial.txt": "b62a57f4f45e26e2f5cd50ff433e971a4f9d146d24f6a3480bc256cbbedf70d2",
+    "validation/rewrite-command-integration/evidence/v48/verdict.json": "a6cfb41c262350f51f936e7750b36f1824c3334d22664d5b9c9af4bfdf9a5528",
+    "validation/rewrite-command-integration/evidence/v48/command.json": "74051d205de57128035555774e5d64c44b271cfbb819e8b60b6c7c650c955f82",
+    "validation/rewrite-command-integration/evidence/v48/inputs.json": "78aeac522103b0c2639097d6eff9b201660937175efc2ce10c253eb5b64992f3",
+    "validation/rewrite-command-integration/evidence/v48/probe.rs": "a7cf1510882020ef98ae07b76117d0a87953aa1f76fb4f885edf4c3d13705712",
+    "validation/rewrite-command-integration/evidence/v48/run.py": "7519ac18240690c33c56965340a74a12c3a4768aefae2d8b476a0443ccbf0086",
+    "validation/rewrite-command-integration/evidence/v48/Cargo.lock": "a8fde0e13198d43013b0d9d8f20503b08c31fc8ab1eae696c0884d97ce38bb18",
+    "validation/rewrite-command-integration/evidence/v48/attachment.rs": "8404483ba79c96ccd7d626f30194442e37eff6fdab983f4e79695c21ebdc189b",
+    "validation/rewrite-command-integration/evidence/v48/root.rs": "95b0d631622efb1dc2b66324e736f280f27238a8286c7252f04f43216beef0fc",
+    "validation/rewrite-command-integration/evidence/v48/fixture.sh.txt": "d13ea4a2a89863fb81d147cc4234b87ef6d44d8c1e8bd13a35979e8531c5db9a",
+    "validation/rewrite-command-integration/evidence/v48/init.txt": "8a950cc37b23130548b3e20436dd4daae35e6b10750124e3b87c85c942f20707",
+    "/var/tmp/conglobate-command-integration-v48/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-command-integration-v48/initramfs.gz": "6b49e2f8a0d0aa0e9e62e86cee2f10f6781855665ee0e9037ec12b25f4f07921",
+    "/var/tmp/conglobate-command-integration-v48/root/idmap-probe": "138afc0ce27961c79cd9661245fbc170d7c347a21cd97b847bff5b1d6e8023af"
+  },
+  "full_sandbox_qualified": false
+}
