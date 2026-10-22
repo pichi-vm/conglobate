@@ -20,6 +20,9 @@ regex = "1"
 gix = { version = "0.84", default-features = false, features = ["sha1", "sha256"] }
 clap = { version = "4", features = ["derive"] }
 
+devmap-core = { git = "https://github.com/pichi-vm/devmap.git", rev = "2679426fa1d4508fc5c3bbdf643efbdbe64a3edd", version = "0.1.0" }
+devmap-verity = { git = "https://github.com/pichi-vm/devmap.git", rev = "2679426fa1d4508fc5c3bbdf643efbdbe64a3edd", version = "0.1.0", features = ["sha2"] }
+
 [lints.rust]
 unsafe_code = "forbid"
 missing_debug_implementations = "warn"

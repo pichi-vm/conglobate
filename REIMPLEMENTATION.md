@@ -202,3 +202,14 @@ rules rather than silently shrinking acceptance criteria.
   These are syntax/name-selection tests, not COPY filesystem compatibility proof;
   wildcard walks, symlinks, ownership and mode evaluation remain execution work.
   M3 private materialization and image-chain verification/integration remain open.
+- Added ScuteExtent with checked decoded size/block count/salt and canonical
+  verity parameters using pinned devmap-verity. Root calculation streams bytes
+  into the library formatter and discards emitted tree bytes through a seekable
+  sink; it neither stages layer data nor allocates a complete hash tree.
+- Exact extents reject truncation before zero padding and demand EOF afterward,
+  preserving decoder trailer errors. Four tests independently check salted hash
+  vectors for one/two blocks, zero padding, overflow/count validation, short/long
+  inputs and late read errors. All 42 tests and Clippy pass.
+- This computes scute roots only: cache stream digest checks, compressed extent
+  measurement, ancestry ordering and manifest-root comparison still need to be
+  connected before claiming image-chain verification. M3 remains in progress.

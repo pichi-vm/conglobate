@@ -5,6 +5,7 @@
 #![forbid(unsafe_code)]
 
 pub mod cache;
+pub mod chain;
 pub mod context;
 pub mod copy;
 pub mod document;
