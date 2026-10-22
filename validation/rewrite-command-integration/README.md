@@ -859,3 +859,18 @@ bytes and untouched inherited data. The test rechecks the original view and cach
 roots before complete cleanup. The normal suite and 34 compile-fail checks pass.
 Exact source, fixtures, raw logs and artifact hashes are retained in evidence/v94.
 This tests writable block layering, not mounted filesystems or sealed output.
+
+## Mounted volume ownership
+
+v95 mounts an ext4 filesystem on an owned writable snapshot in a private mount
+namespace. The unformatted case first fails cleanly and returns its storage owner.
+After fixture-only formatting, the test writes a file, creates/releases a borrowed
+mount view, and forces EBUSY using an independent directory descriptor. Closing
+that descriptor allows normal-unmount retry. Remount verifies persisted content;
+final unmount and storage cleanup succeed. Empty attachment targets are removed.
+
+Volume uses sealed mounted/unmounted states. Compile-fail checks prohibit unmount
+with a live borrowed view and extracting a snapshot from a mounted volume. Exact
+booted source, separately labeled later documentation tests, raw logs and verified
+artifact hashes are in evidence/v95. These checks do not qualify production
+formatting, command/policy handoff, setup deadlines, or final layer sealing.

@@ -1882,3 +1882,32 @@ rules rather than silently shrinking acceptance criteria.
   M4 remains zero. Next integrate owned mounted volumes with these storage owners;
   orchestration deadlines, primary/cleanup reporting and wider fault coverage
   remain required. No privileged host operations or sleep synchronization added.
+
+- Previous turn progressed in 81ea79b. Added sealed Volume<Unmounted>/Volume<Mounted>
+  markers with associated resource payloads. The owner consumes SnapshotMapping,
+  borrows the private mount scope, and retains storage through mount/unmount
+  failures. ext4 setup uses fsopen/fsconfig/fsmount with a pinned source-device FD,
+  fixed nodev/nosuid flags, and an empty generated directory in a trusted tmpfs
+  parent. There is no recipe-supplied mount command/options or raw root accessor.
+- Mounted views borrow Volume; consuming unmount is unavailable while a view is
+  live. Explicit teardown checks syncfs, closes its root FD, then performs a normal
+  unmount. Flush, busy-unmount and target-cleanup failures retain distinct private
+  cleanup-only ownership. No unmounted value escapes those failures. Snapshot
+  access is restored only after successful unmount/target cleanup. Unmounted is
+  not a sealing receipt or proof that all external kernel consumers have ended.
+  Point cleanup only removes empty directories, never recursively walks images.
+  Drop may lazy-detach as best effort but cannot produce a success receipt.
+- v95 passes unformatted-mount failure with retained storage and empty-target
+  cleanup, ext4 mounting over owned snapshot, file writes, cloned view lifetime,
+  EBUSY from an independent open-directory holder, cleanup retry, remount with
+  persisted data, and final storage release. Formatting is fixture-only mke2fs;
+  production typed formatting remains M5. Root tests (36 compile-fail), root and
+  fixture Clippy, formatting/Python checks pass. Source/artifact hashes verified;
+  exact booted source distinguished from later compile-fail documentation.
+- Focused review checked field drop order, fallible operations before attachment,
+  source-device identity, nonrecursive target cleanup, borrowed-view lifetime and
+  recovery-state authority. No M4 adherence pass claimed; M4 remains zero. Next
+  integrate owned volumes with command views and initial-namespace policy identity
+  retention/handoff. Fixed setup/teardown bounds, combined error reporting and
+  fuller fault/crash coverage remain required. All privileged tests stayed inside
+  disposable QEMU; no host mount/device operations or synchronization sleeps.

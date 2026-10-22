@@ -136,6 +136,9 @@ impl Mapping<Created> {
     }
 }
 impl<'a, 'w> SnapshotMapping<'a, 'w> {
+    pub(super) fn open_read_only(&self) -> io::Result<std::fs::File> {
+        self.mapping.open_read_only()
+    }
     /// Current kernel health only. A successful query is not proof of stopped
     /// writers, final metadata flush, future validity or a sealed output layer.
     pub fn usage(&self) -> io::Result<SnapshotUsage> {

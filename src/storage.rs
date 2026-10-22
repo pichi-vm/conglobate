@@ -3,6 +3,10 @@
 
 //! Supervisor-owned mutable RAM storage. Immutable layers remain cache-backed.
 mod chain;
+mod volume;
+pub use volume::{
+    Mounted, Unmounted, Volume, VolumeMountFailure, VolumeState, VolumeUnmountFailure,
+};
 mod loopback;
 pub use chain::{ReadOnlyChain, ReadOnlyChainFailure};
 mod verity;

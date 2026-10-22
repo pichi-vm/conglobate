@@ -106,6 +106,7 @@ modprobe dm-snapshot
 modprobe dm-verity
 /idmap-probe prepare-scutes
 /idmap-probe assemble-chain
+/idmap-probe volume-probe
 /idmap-probe loop-probe
 /idmap-probe mapping-probe
 /idmap-probe workspace-probe

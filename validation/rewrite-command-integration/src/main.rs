@@ -33,6 +33,106 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "volume-probe") {
+            use conglobate::storage::{Created, Mapping, Unmounted, Volume, Workspace};
+            use std::{collections::BTreeSet, num::NonZeroU64};
+            let points = || -> std::io::Result<BTreeSet<std::path::PathBuf>> {
+                fs::read_dir("/work")?
+                    .filter_map(|entry| match entry {
+                        Ok(entry)
+                            if entry
+                                .file_name()
+                                .as_encoded_bytes()
+                                .starts_with(b"conglobate-volume-") =>
+                        {
+                            Some(Ok(entry.path()))
+                        }
+                        Ok(_) => None,
+                        Err(error) => Some(Err(error)),
+                    })
+                    .collect()
+            };
+            assert!(points()?.is_empty());
+            let workspace = Workspace::create()?;
+            let mut scratch = workspace.scratch()?;
+            scratch.set_len(32 * 1024 * 1024)?;
+            let sectors = NonZeroU64::new(32768).unwrap();
+            let origin = Mapping::<Created>::create()?.zero(sectors)?;
+            let snapshot = Mapping::<Created>::create()?
+                .snapshot(
+                    &origin,
+                    scratch.attach().map_err(|e| e.to_string())?,
+                    sectors,
+                )
+                .map_err(|e| e.to_string())?;
+            let id = snapshot.id();
+            let node = Path::new("/dev/conglobate-volume-probe");
+            rustix::fs::mknodat(
+                rustix::fs::CWD,
+                node,
+                rustix::fs::FileType::BlockDevice,
+                rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
+                rustix::fs::makedev(id.major(), id.minor()),
+            )?;
+            let scope = PrivateMountNamespace::enter()?;
+            let volume = Volume::<Unmounted>::new(snapshot, &scope);
+            let (error, volume) = volume
+                .mount_ext4(Path::new("/work"))
+                .unwrap_err()
+                .into_parts();
+            assert_eq!(error.raw_os_error(), Some(22));
+            assert!(points()?.is_empty());
+            // Fixture-only formatting; production typed formatter is an M5 task.
+            assert!(
+                Command::new("mke2fs")
+                    .args(["-q", "-t", "ext4", "-F"])
+                    .arg(node)
+                    .status()?
+                    .success()
+            );
+            let volume = volume
+                .mount_ext4(Path::new("/work"))
+                .map_err(|e| e.to_string())?;
+            assert!(volume.root_metadata()?.is_dir());
+            let paths = points()?;
+            assert_eq!(paths.len(), 1);
+            let point = paths.first().unwrap();
+            fs::write(point.join("persisted"), b"owned mounted volume")?;
+            let view = volume.view()?;
+            drop(view);
+            let holder = fs::File::open(point)?;
+            let failure = volume.unmount().unwrap_err();
+            assert_eq!(
+                failure.source_error().kind(),
+                std::io::ErrorKind::ResourceBusy
+            );
+            drop(holder);
+            let volume = failure.retry().map_err(|e| e.to_string())?;
+            assert!(points()?.is_empty());
+            let volume = volume
+                .mount_ext4(Path::new("/work"))
+                .map_err(|e| e.to_string())?;
+            let paths = points()?;
+            assert_eq!(paths.len(), 1);
+            assert_eq!(
+                fs::read(paths.first().unwrap().join("persisted"))?,
+                b"owned mounted volume"
+            );
+            let volume = volume.unmount().map_err(|e| e.to_string())?;
+            assert!(points()?.is_empty());
+            let snapshot = volume.into_snapshot();
+            snapshot.usage()?;
+            snapshot
+                .close()
+                .map_err(|e| e.to_string())?
+                .detach()
+                .map_err(|e| e.to_string())?;
+            origin.close()?;
+            scope.restore().map_err(|e| e.to_string())?;
+            fs::remove_file(node)?;
+            println!("OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS");
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "assemble-chain") {
             use std::{
                 collections::BTreeSet,
