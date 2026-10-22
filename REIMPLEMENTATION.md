@@ -340,3 +340,16 @@ rules rather than silently shrinking acceptance criteria.
   compile-fail doctests pass; production and probe Clippy/formatting pass. No M4
   adherence pass claimed: command containment, LSM, attachment ownership and
   supervision/recovery remain required implementation work.
+- Added Mount<Attached> and private tmpfs MountPoint ownership. A failed
+  move_mount returns both owners; successful attachment performs only infallible
+  ownership transfer afterward. Explicit close drops the mount descriptor before
+  normal unmount and retains a recovery lease on failure. Drop detaches as a
+  fallback; failed detach retains backing/namespace resources without recursive
+  deletion through a live writable mount. This is not durable crash recovery or
+  a filesystem sealing receipt; no commands may be admitted by these APIs alone.
+- Production VM v5 passes failed attachment/retry, mapped-root metadata,
+  parent-directory rename, held-open-file EBUSY cleanup retry and Drop cleanup
+  preserving underlying data. Evidence and source hashes retained. All 52 tests,
+  four compile-fail checks, production/probe Clippy and formatting pass. M4 remains
+  incomplete with zero adherence passes; private namespace creation, resource
+  anchors, LSM, process containment and storage integration remain outstanding.

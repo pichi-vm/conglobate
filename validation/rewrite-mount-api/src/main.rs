@@ -114,7 +114,46 @@ impl Probe {
             .map_err(|failure| io::Error::other(failure.to_string()))?;
         let metadata = mapped.root_metadata()?;
         assert_eq!((metadata.uid(), metadata.gid()), (100000, 100000));
-        drop(mapped);
+        use conglobate::filesystem::{MountPoint, UnmountFailure};
+        let parent = Path::new("/work/points");
+        let moved = Path::new("/work/points-renamed");
+        fs::create_dir(parent)?;
+        let point = MountPoint::create(parent)?;
+        let path = fs::read_dir(parent)?.next().unwrap()?.path();
+        // Benign fixture removes the empty target to force move_mount failure.
+        fs::remove_dir(&path)?;
+        let failure = mapped.attach(point).unwrap_err();
+        let (error, mapped, point) = failure.into_parts();
+        assert_eq!(error.raw_os_error(), Some(2));
+        fs::create_dir(&path)?;
+        let attached = mapped
+            .attach(point)
+            .map_err(|e| io::Error::other(e.to_string()))?;
+        assert_eq!(attached.root_metadata()?.uid(), 100000);
+        let busy = fs::File::open(path.join("file"))?;
+        fs::rename(parent, moved)?;
+        let failure = attached.close().unwrap_err();
+        assert!(
+            matches!(&failure, UnmountFailure::Mounted { source, .. } if source.raw_os_error() == Some(16))
+        );
+        assert_eq!(fs::read_dir(moved)?.count(), 1);
+        drop(busy);
+        failure
+            .cleanup()
+            .map_err(|e| io::Error::other(e.to_string()))?;
+        assert_eq!(fs::read_dir(moved)?.count(), 0);
+        let origin = fs::File::open("/work/origin")?;
+        let mapped = Mount::<Detached>::clone_from(&origin)?
+            .idmap(namespace.try_clone()?)
+            .map_err(|e| io::Error::other(e.to_string()))?;
+        drop(origin);
+        let attached = mapped
+            .attach(MountPoint::create(moved)?)
+            .map_err(|e| io::Error::other(e.to_string()))?;
+        drop(attached);
+        assert_eq!(fs::read_dir(moved)?.count(), 0);
+        assert_eq!(fs::read("/work/origin/file")?, b"fixture");
+        println!("PRODUCTION_ATTACHMENT_LIFECYCLE_PASS");
         // Detached owners must not leave an extra busy mount after dropping.
         rustix::mount::unmount("/work/origin", UnmountFlags::empty())?;
         // Reattach the fixture through its existing loop device, found by the

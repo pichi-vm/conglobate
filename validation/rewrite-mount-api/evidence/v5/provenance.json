@@ -1,0 +1,12 @@
+{
+  "source_commit_base": "55bd651",
+  "backend": "linux_raw",
+  "sources": {
+    "src/filesystem.rs": "1b2d7cadb20840b088e0e69ff8663a46599e98fb2c5b825474e0fb8ad6c1d01b",
+    "src/filesystem/attachment.rs": "5ef86f304d96cad8db449b88d6efd3c3482b2ca08912305dad4da27dcc9f8ea6",
+    "validation/rewrite-mount-api/src/main.rs": "e038dadac374de10e9ece8a5ed951542b38f4f5bcd36ebe735de9695d158fa4f",
+    "validation/rewrite-mount-api/Cargo.lock": "bc3af4001141e74ebc9c21dc9a7e5d7c093463ea79a81e326cec7d16e06bd78f"
+  },
+  "full_artifacts": "/var/tmp/conglobate-rewrite-idmap-v5",
+  "kernel_sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+}

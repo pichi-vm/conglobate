@@ -11,6 +11,8 @@ use rustix::{
     },
 };
 use std::{fs::File, io, marker::PhantomData, rc::Rc};
+mod attachment;
+pub use attachment::{Attached, AttachedResources, AttachmentFailure, MountPoint, UnmountFailure};
 
 mod private {
     pub trait Sealed {}

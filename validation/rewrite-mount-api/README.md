@@ -97,3 +97,19 @@ That correctly failed because the mount recovery owner is thread-affine whereas
 io::Error requires Send + Sync. The fixture now renders the diagnostic and drops
 the retained resources on its terminal error path; production keeps the typed
 owning error. No Send/Sync exception was added to make the fixture compile.
+
+## Production attachment owner
+
+Run v5 adds production Mount<Attached> and MountPoint coverage. The fixture
+removes its own empty target directory to make attachment fail with ENOENT,
+recovers both owners, restores that directory and successfully retries. After
+opening a fixture file through the attached view, it renames the parent path:
+explicit close reports EBUSY and retains cleanup authority. Closing the held
+file and retrying removes the mount and target using the pinned parent FD.
+A separate Drop case removes the view without deleting underlying fixture data.
+All new and prior probe markers pass, followed by persisted ownership verification.
+
+This tests ordinary attachment and cleanup, not command quiescence, durable
+recovery anchors, sealing or simultaneous process death. The production API
+requires the trusted private builder namespace; creation and lifetime enforcement
+of that namespace remain separate M4 work. No command execution is enabled.
