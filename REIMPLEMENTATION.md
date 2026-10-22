@@ -481,3 +481,25 @@ rules rather than silently shrinking acceptance criteria.
   production/probe Clippy and formatting pass. M4 remains at zero adherence
   passes. Next policy work must establish anchor ownership and disabled pinned
   guards before any activation/admission API can be justified.
+- Added LoadedDisabled -> PinnedDisabled ownership: a protected root-owned bpffs
+  parent supplies a private 0700 directory; descriptor-relative pin paths retain
+  directory authority. Both maps are pinned before set/remove guard attachment,
+  with skipcap attached/pinned last. Config remains zero and no activation API
+  exists. Reviewed libbpf link destruction: LSM link ownership closes link FDs;
+  pin paths are separately removed by the disabled resource owner.
+- Setup errors return partial disabled resources; cleanup errors retain them
+  for retry. Explicit close and Drop remove only the known pins and an empty
+  directory, never recursively deleting unknown contents. This strategy is valid
+  only for disabled policy, not enabled authorization. Directory descriptors do
+  not establish the independent namespace/mount anchors required for activation.
+- VM v3 initially failed descriptor accounting because the probe retained a
+  Vec<DirEntry> witness. Preserved that failure and source. v4 drops the witness
+  before accounting and passes normal close, Drop, and a check_remove directory
+  collision after maps/check_set were pinned. The collision also causes cleanup
+  failure; removing it and retrying through the retained recovery owner succeeds.
+  Production code did not change between v3/v4. Source/provenance evidence retained.
+- Rust checks cover rejection of ordinary filesystems as pin parents; all 69
+  tests (including fixture entry), six compile-fail doctests and production/probe
+  Clippy/formatting pass. No host BPF attachment or mount occurred. M4 remains at
+  zero adherence passes. Independent recovery anchors, enabled-policy lifetime,
+  guardian admission and command containment are still required implementation.

@@ -58,7 +58,10 @@ for attempt in {1..50}; do
 done
 cat /proc/$holder/uid_map
 cat /proc/$holder/gid_map
+mkdir /work/pins
+mount -t bpf bpf /work/pins
 /idmap-probe
+umount /work/pins
 kill "$holder"
 wait "$holder" || true
 umount /work/origin
@@ -91,7 +94,7 @@ command = [v.replace(str(seed), str(out)) for v in json.loads((seed / 'command.j
 with (out / 'serial.txt').open('wb') as log:
     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
 serial = (out / 'serial.txt').read_text()
-passed = all(marker in serial for marker in ['PRODUCTION_POLICY_PERMISSION_FAILURE_PASS', 'PRODUCTION_POLICY_RELOAD_AFTER_FAILURE_PASS', 'PRODUCTION_DISABLED_POLICY_LOAD_DROP_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
+passed = all(marker in serial for marker in ['PRODUCTION_DISABLED_PIN_CLOSE_DROP_PASS', 'PRODUCTION_DISABLED_PIN_RECOVERY_PASS', 'PRODUCTION_POLICY_PERMISSION_FAILURE_PASS', 'PRODUCTION_POLICY_RELOAD_AFTER_FAILURE_PASS', 'PRODUCTION_DISABLED_POLICY_LOAD_DROP_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
 (out / 'verdict.json').write_text(json.dumps({'passed': passed, 'full_sandbox_qualified': False}, indent=2))
 assert passed, serial[-5000:]
 print('PASS', out)

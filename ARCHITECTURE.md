@@ -266,6 +266,11 @@ for the parent-side PID lookup constraints this identity handoff avoids.
   initializes targets while checking config remains zero. No links or pins are
   created. VM tests cover successful load/Drop and permission-failure cleanup;
   activation, anchoring and link-lifetime ownership remain unimplemented.
+  A subsequent disabled-pinning owner now attaches/pins the complete hook set
+  under a private bpffs directory, returning partial resources on failure and
+  retaining cleanup authority on error. Explicit close, Drop and pin-collision
+  recovery pass in the VM. Config remains zero; this owner cannot enable policy.
+  Its directory descriptors are not process-death-resistant namespace anchors.
 - The architecture probe in validation/rewrite-architecture/ compiles state-specific
   RAII payloads and an ownership-preserving error without unsafe code. Borrow and
   invalid-state negative examples fail with E0505 and E0599. It models API legality,

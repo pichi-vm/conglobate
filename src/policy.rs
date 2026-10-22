@@ -8,6 +8,8 @@ use std::{collections::BTreeSet, num::NonZeroU32};
 
 mod object;
 pub use object::{LabelPolicy, LoadedDisabled, PolicyError, PolicyState, Prepared};
+mod pins;
+pub use pins::{DisabledPinRecovery, PinCleanupFailure, PinDirectory, PinFailure, PinnedDisabled};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct NamespaceId(NonZeroU32);

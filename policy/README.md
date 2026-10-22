@@ -2,8 +2,8 @@
 
 `labels.bpf.c` is the kernel policy asset for the rewrite. It adapts the preserved
 kernel-mount validation policy to an explicit set of assigned filesystems. It is
-integrated with a safe Rust loader for disabled, unattached objects. Recovery
-anchors, hook attachment and command admission remain unimplemented.
+integrated with a safe Rust loader and disabled hook/pin ownership. Recovery
+anchors, activation and command admission remain unimplemented.
 
 The `config` array has one native-endian u32 key (zero) and an eight-byte value:
 command user-namespace inode number, then mapped root UID. A zero namespace
@@ -26,6 +26,16 @@ commands execute. After independently proving descendant quiescence, disable
 config and remove the exception before guards, maps and identity anchors. Failed
 cleanup must preserve recovery authority. See SANDBOX-DESIGN.txt and
 ARCHITECTURE.md; this asset does not implement those lifecycle guarantees.
+
+The current `LoadedDisabled -> PinnedDisabled` transition pins both maps, then
+attaches and pins the set/remove guards before skipcap. Its private root-owned
+bpffs directory is accessed through retained descriptors. Setup errors return
+partial ownership; cleanup errors retain that ownership for retry. Drop attempts
+to remove only the known disabled pins and an empty directory, never recursively
+deleting unknown contents. This cleanup strategy is valid only while config stays
+zero. An enabled-policy owner must instead preserve independently anchored
+identities and pins until descendant quiescence. A directory FD is not such an
+anchor and does not establish a persistent mount namespace across process death.
 
 The build compiles and embeds this source through libbpf-cargo 0.27.2, without
 generating a Rust skeleton. Runtime loading uses libbpf-rs 0.27.2 and its safe

@@ -4,7 +4,7 @@
 use super::LabelScope;
 use libbpf_rs::{MapCore, MapFlags, MapType, Object, ObjectBuilder, OpenObject, ProgramType};
 
-mod private {
+pub(super) mod private {
     pub trait Sealed {}
 }
 pub trait PolicyState: private::Sealed + std::fmt::Debug {
@@ -23,15 +23,18 @@ impl PolicyState for LoadedDisabled {
     type Resources = Object;
 }
 
-/// Owned policy object. LoadedDisabled creates no hook attachments, pins or
-/// authorization. No activation API exists until anchored recovery is integrated.
+/// Owned policy object. LoadedDisabled creates no hook attachments or pins;
+/// PinnedDisabled retains the complete disabled hook set. Neither authorizes
+/// commands. Activation is unavailable until anchored recovery is integrated.
 #[derive(Debug)]
 pub struct LabelPolicy<S: PolicyState> {
-    resources: S::Resources,
-    scope: LabelScope,
+    pub(super) resources: S::Resources,
+    pub(super) scope: LabelScope,
 }
 #[derive(Debug, thiserror::Error)]
 pub enum PolicyError {
+    #[error("label policy filesystem: {0}")]
+    Io(#[from] std::io::Error),
     #[error("label policy object: {0}")]
     Object(#[from] libbpf_rs::Error),
     #[error("embedded label policy ABI mismatch: {0}")]

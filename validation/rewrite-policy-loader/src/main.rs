@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
-use conglobate::policy::{FilesystemTarget, LabelPolicy, LabelScope};
+use conglobate::policy::{FilesystemTarget, LabelPolicy, LabelScope, PinDirectory};
 use std::{fs, os::unix::fs::MetadataExt};
 
 #[derive(Debug)]
@@ -38,6 +38,61 @@ impl Probe {
         drop(LabelPolicy::new(scope)?.load()?);
         assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
         println!("PRODUCTION_POLICY_RELOAD_AFTER_FAILURE_PASS");
+        let parent = std::path::Path::new("/work/pins/parent");
+        fs::create_dir(parent)?;
+        for explicit in [true, false] {
+            let scope = LabelScope::new(namespace, 100000, [target])?;
+            let loaded = LabelPolicy::new(scope)?.load()?;
+            let pinned = loaded.pin_disabled(PinDirectory::create(parent)?)?;
+            let directories = fs::read_dir(parent)?.collect::<Result<Vec<_>, _>>()?;
+            assert_eq!(directories.len(), 1);
+            assert_eq!(fs::metadata(directories[0].path())?.mode() & 0o777, 0o700);
+            let mut entries = fs::read_dir(directories[0].path())?
+                .map(|entry| entry.map(|entry| entry.file_name()))
+                .collect::<Result<Vec<_>, _>>()?;
+            entries.sort();
+            assert_eq!(
+                entries,
+                [
+                    "check_remove",
+                    "check_set",
+                    "config",
+                    "skip_label_cap",
+                    "targets"
+                ]
+            );
+            // DirEntry retains its read_dir descriptor on Linux. Drop the
+            // witness before measuring the production owner's cleanup.
+            drop(directories);
+            if explicit {
+                pinned.close()?;
+            } else {
+                drop(pinned);
+            }
+            assert_eq!(fs::read_dir(parent)?.count(), 0);
+            assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
+        }
+        println!("PRODUCTION_DISABLED_PIN_CLOSE_DROP_PASS");
+        let directory = PinDirectory::create(parent)?;
+        let location = fs::read_dir(parent)?.next().unwrap()?.path();
+        fs::create_dir(location.join("check_remove"))?;
+        let scope = LabelScope::new(namespace, 100000, [target])?;
+        let failure = LabelPolicy::new(scope)?
+            .load()?
+            .pin_disabled(directory)
+            .unwrap_err();
+        assert!(location.join("check_set").exists());
+        assert!(location.join("config").exists());
+        assert!(location.join("targets").exists());
+        let (_, recovery) = failure.into_parts();
+        let failure = recovery.cleanup().unwrap_err();
+        let (_, recovery) = failure.into_parts();
+        fs::remove_dir(location.join("check_remove"))?;
+        recovery.cleanup()?;
+        assert_eq!(fs::read_dir(parent)?.count(), 0);
+        assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
+        fs::remove_dir(parent)?;
+        println!("PRODUCTION_DISABLED_PIN_RECOVERY_PASS");
         Ok(())
     }
 }

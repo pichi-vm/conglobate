@@ -3,6 +3,13 @@
 use conglobate::policy::{FilesystemTarget, LabelScope, ScopeError};
 
 #[test]
+fn pin_directory_rejects_non_bpffs_without_creating_entries() {
+    let parent = tempfile::tempdir().unwrap();
+    assert!(conglobate::policy::PinDirectory::create(parent.path()).is_err());
+    assert_eq!(std::fs::read_dir(parent.path()).unwrap().count(), 0);
+}
+
+#[test]
 fn embedded_object_matches_the_map_and_hook_contract_without_loading() {
     let target = FilesystemTarget::new(42, rustix::fs::makedev(7, 1)).unwrap();
     let scope = LabelScope::new(99, 100000, [target]).unwrap();
