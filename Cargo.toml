@@ -11,7 +11,7 @@ description = "Standalone image builder with isolated command execution"
 thiserror = "2"
 libbpf-rs = "0.27.2"
 minicbor = { version = "2.3.1", features = ["std"] }
-nix = { version = "0.31", default-features = false, features = ["sched"] }
+nix = { version = "0.31", default-features = false, features = ["sched", "process"] }
 serde = { version = "1", features = ["derive"] }
 serde-saphyr = { version = "2", default-features = false, features = ["deserialize"] }
 hex = "0.4"

@@ -9,6 +9,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod reaper;
+pub use reaper::{ChildReaper, DrainFailure, ReapedChildren};
 mod supervision;
 pub use supervision::{
     GuardianWatch, ObservedState, Paired, Registered, ShutdownTrigger, Supervision,

@@ -384,6 +384,21 @@ completion acknowledgement. This registered-phase owner still needs integration
 with the independent guardian process, setup monitoring, persistent mount/policy
 resources, adopted-descendant reaping and final completion acknowledgements.
 
+ChildReaper now installs process-lifetime subreaping in a dedicated single-threaded
+non-init guardian before children exist. The safe nix interface supplies the boolean
+prctl operation and waitpid with WNOHANG | __WALL. The consuming bounded drain
+retains its cumulative diagnostic count and owner on error; ECHILD yields data,
+not a successful-step receipt. Individually owned child statuses must be collected
+first, admission closed and containment independently quiescent. No concurrent
+waiter or SIGCHLD disposition change is allowed. Drop deliberately does not disable
+adoption, since that would not clean surviving descendants. The owner is thread-
+affine and checks process identity and the enabled setting before draining.
+Integration into guardian teardown still must enforce these ordering prerequisites.
+The count does not establish which containment domain a child belonged to.
+
+References: [subreaper semantics](https://man7.org/linux/man-pages/man2/PR_SET_CHILD_SUBREAPER.2const.html)
+and [wait semantics](https://man7.org/linux/man-pages/man2/waitpid.2.html).
+
 See [pidfd_open(2)](https://man7.org/linux/man-pages/man2/pidfd_open.2.html)
 for the parent-side PID lookup constraints this identity handoff avoids.
 

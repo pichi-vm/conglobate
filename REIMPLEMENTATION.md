@@ -764,3 +764,21 @@ rules rather than silently shrinking acceptance criteria.
   process, setup monitoring, adopted-descendant reaping or policy/mount teardown.
   M4 remains open at zero adherence passes. Previous goal turn was progress:
   committed contained-helper ownership with disposable-VM evidence.
+
+- Added ChildReaper for the dedicated guardian's adopted descendants, using safe
+  nix prctl/wait interfaces. Installation rejects init, multiple threads, existing
+  children and an already-enabled setting. Process-lifetime adoption is not undone
+  by Drop. The owner is thread-affine; bounded consuming drain retains its count
+  and owner on failure and uses __WALL to include Linux clone children.
+- VM v30 passes adoption after parent exit, timeout retaining the owner, retry
+  collecting one orphan and empty child-list verification. v31 additionally
+  rejects installation while a direct child exists, then succeeds after that
+  child's explicit termination/reaping. Review tightened task enumeration to
+  propagate directory-entry errors rather than merely counting them.
+- Full suite passes 93 tests and twelve compile-fail doctests; root/probe Clippy
+  pass. Clone-child behavior is implemented via __WALL but not separately exercised
+  here. The drain does not prove domain membership, sandbox quiescence or policy
+  cleanup. Guardian integration must close admission and reap individually owned
+  children before invoking this process-wide wait. M4 remains at zero adherence
+  passes. The previous goal turn was progress through committed guardian
+  cancellation ownership and VM qualification of its failure paths.

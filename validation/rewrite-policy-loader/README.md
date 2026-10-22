@@ -208,3 +208,14 @@ cleanup-only owner, and removing the fixture obstruction permits retry and reapi
 Both runs retain sources and binary/kernel/initramfs hashes. This is registered-
 phase orchestration in the trusted probe process, not a complete independently
 launched guardian or full policy/mount/crash-recovery qualification.
+
+
+v30 runs ChildReaper in a separate disposable-guest process before child creation.
+A shell starts a benign background sleep and exits; its explicitly reaped status
+leaves the sleep adopted by the production subreaper. An immediate deadline times
+out without losing the owner, then retry collects exactly one orphan and confirms
+an empty children list. Duplicate installation is rejected. v31 also rejects
+installation with an existing directly owned child; explicitly terminating/reaping
+it permits installation. Process-wide changes occur only in that guest child.
+__WALL is used, but this fixture does not separately exercise non-SIGCHLD clone
+children. No complete guardian/policy teardown proof is claimed by these tests.

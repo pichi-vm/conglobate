@@ -15,6 +15,39 @@ impl Probe {
             return Err("disposable VM marker required".into());
         }
         let arguments = std::env::args_os().collect::<Vec<_>>();
+        if arguments.get(1).is_some_and(|a| a == "--reaper-test") {
+            let child: conglobate::process::Process<conglobate::process::Running> =
+                std::process::Command::new("/usr/bin/sleep")
+                    .arg("30")
+                    .spawn()?
+                    .into();
+            assert!(conglobate::process::ChildReaper::install().is_err());
+            child.terminate_until(std::time::Instant::now() + std::time::Duration::from_secs(5))?;
+            let reaper = conglobate::process::ChildReaper::install()?;
+            assert!(conglobate::process::ChildReaper::install().is_err());
+            let mut parent = std::process::Command::new("/bin/bash")
+                .args(["-c", "sleep 1 & exit 0"])
+                .env_clear()
+                .env("PATH", "/usr/bin")
+                .spawn()?;
+            assert!(parent.wait()?.success());
+            let (source, reaper) = reaper
+                .drain_until(std::time::Instant::now())
+                .unwrap_err()
+                .into_parts();
+            assert_eq!(source.kind(), std::io::ErrorKind::TimedOut);
+            let drained = reaper
+                .drain_until(std::time::Instant::now() + std::time::Duration::from_secs(5))?;
+            assert_eq!(drained.collected(), 1);
+            assert!(
+                fs::read_to_string("/proc/thread-self/children")?
+                    .trim()
+                    .is_empty()
+            );
+            println!("PRODUCTION_CHILD_SUBREAPER_PASS");
+            return Ok(());
+        }
+
         if arguments
             .get(1)
             .is_some_and(|argument| argument == "--guardian-peer")
@@ -107,6 +140,12 @@ impl Probe {
         Self::recorded_domain()?;
         Self::contained_helper()?;
         Self::registered_guardian()?;
+        assert!(
+            std::process::Command::new(std::env::current_exe()?)
+                .arg("--reaper-test")
+                .status()?
+                .success()
+        );
         let holder = fs::read_to_string("/work/userns-pid")?;
         let namespace = fs::metadata(format!("/proc/{}/ns/user", holder.trim()))?.ino();
         let owner = fs::metadata("/proc/self/ns/user")?.ino();
