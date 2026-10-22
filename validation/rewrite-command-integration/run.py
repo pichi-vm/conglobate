@@ -43,7 +43,7 @@ for executable in executables:
 (root / 'conglobate-disposable-validation-vm').touch()
 image_root = root / 'image-root'
 (image_root / 'bin').mkdir(parents=True)
-for source, name in [('/usr/bin/bash', 'sh'), (shutil.which('setpriv'), 'setpriv')]:
+for source, name in [('/usr/bin/bash', 'sh')]:
     shutil.copy2(source, image_root / 'bin' / name)
     for line in subprocess.check_output(['ldd', source], text=True).splitlines():
         match = re.search(r'(/\S+)', line)

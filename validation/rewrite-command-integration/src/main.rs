@@ -5,7 +5,7 @@ use conglobate::{
     anchor::RecoveryDirectory,
     domain::RecordedDomain,
     filesystem::{Detached, Mount, MountPoint},
-    isolation::PrivateMountNamespace,
+    isolation::{CommandRoot, PrivateMountNamespace},
     process::{ChildReaper, CommandPrivileges, CommandSyscalls, Supervision},
 };
 use std::{
@@ -27,6 +27,27 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "native-root") {
+            let root = Path::new(args.get(2).ok_or("root required")?);
+            let script = args.get(3).ok_or("script required")?;
+            let scope = PrivateMountNamespace::enter()?;
+            let selected = CommandRoot::from_directory(fs::File::open(root)?, &scope)?;
+            // Fixture runtime-mount adapter only. The executable is still from
+            // the trusted guest root, before the native irreversible pivot.
+            let status = Command::new("/usr/bin/mount")
+                .args(["-t", "proc", "-o", "nosuid,nodev,noexec", "proc"])
+                .arg(root.join("proc"))
+                .env_clear()
+                .status()?;
+            if !status.success() {
+                return Err("fixture proc mount failed".into());
+            }
+            let filter = CommandSyscalls::compile()?;
+            selected
+                .enter()?
+                .execute(script, CommandPrivileges::filesystem(), filter)?;
+            unreachable!();
+        }
         if args
             .get(1)
             .is_some_and(|a| a == "privileges" || a == "syscalls")
@@ -180,11 +201,15 @@ impl Integration {
             test ! -e /work
             test ! -e /idmap-probe
             test ! -e /image-root
+            test ! -e /bin/setpriv
             caps=0
             nnp=0
             while read -r key value rest; do
                 case "$key" in
-                    CapInh:|CapPrm:|CapEff:|CapBnd:|CapAmb:)
+                    CapPrm:|CapEff:|CapBnd:)
+                        test "$value" = EXPECTED_CAPABILITIES
+                        caps=$((caps + 1));;
+                    CapInh:|CapAmb:)
                         test "$value" = 0000000000000000
                         caps=$((caps + 1));;
                     NoNewPrivs:) test "$value" = 1; nnp=1;;
@@ -199,6 +224,10 @@ impl Integration {
             printf 'privileges-checked\n' > /command-privileges
             printf 'image-write\n' > /command-started
         "#;
+        let checks = checks.replace(
+            "EXPECTED_CAPABILITIES",
+            &format!("{:016x}", CommandPrivileges::filesystem().allowed().bits()),
+        );
         let script = format!(
             "{checks}\n{}",
             if mode == "timeout" || mode == "vm-death" {
@@ -210,47 +239,18 @@ impl Integration {
         let status = Command::new("/usr/bin/nsenter")
             .arg(format!("--user={userns}"))
             .args([
-                "/usr/bin/bwrap",
-                "--unshare-pid",
-                "--unshare-net",
-                "--unshare-ipc",
-                "--unshare-uts",
-                "--new-session",
-                "--cap-drop",
-                "ALL",
-                "--cap-add",
-                "CAP_SETPCAP",
-                "--bind",
+                "/usr/bin/unshare",
+                "--mount",
+                "--pid",
+                "--fork",
+                "--net",
+                "--ipc",
+                "--uts",
+                "/idmap-probe",
+                "native-root",
             ])
             .arg(root)
-            .arg("/")
-            .args([
-                "--proc",
-                "/proc",
-                "--dev",
-                "/dev",
-                "--ro-bind",
-                "/empty-sys",
-                "/sys",
-                "--clearenv",
-                "--setenv",
-                "PATH",
-                "/bin",
-                "--setenv",
-                "HOME",
-                "/",
-                "--chdir",
-                "/",
-                "/bin/setpriv",
-                "--bounding-set=-all",
-                "--inh-caps=-all",
-                "--ambient-caps=-all",
-                "--no-new-privs",
-                "/bin/sh",
-                "-eu",
-                "-c",
-                &script,
-            ])
+            .arg(&script)
             .stdin(Stdio::null())
             .status()?;
         if !status.success() {

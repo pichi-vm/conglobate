@@ -143,3 +143,37 @@ finalization must next be integrated with trusted root setup and active labeling
 policy. Denial of every individual excluded syscall, compat-ABI behavior, ioctl
 argument cases and real package transactions are not demonstrated by this run.
 No arm64 runtime or confidential-computing qualification is claimed.
+
+
+## Native root transition and image execution
+
+v13-v18 replace the Bubblewrap/image-setpriv command path with native CommandRoot
+and EnteredRoot. Trusted code loads from the guest before pivoting, so an image's
+loader or libraries cannot run with setup privileges. The object borrows its
+PrivateMountNamespace; selected roots must be opened after entering that scope.
+It clones/attaches the assigned mount tree through descriptors, pivots, detaches
+the old root, and drops root descriptors. EnteredRoot verifies real procfs and
+close-on-exec flags for nonstandard descriptors, applies native privileges and
+syscalls, then execs the image shell with explicit environment and null stdin.
+Any transition/exec error requires helper exit. No rollback claim is made.
+
+v13-v16 failed during root setup and remain preserved. An fd opened before
+unsharing referenced the old mount tree; after fixing that order, pathname self
+binding still left cwd on the covered mount rather than the new view. v17 uses
+open_tree/move_mount plus fchdir on the new mount descriptor and passes. v18 also
+removes setpriv from the image, asserts its absence, and passes the same normal
+completion, timeout, capability, write/ownership and fsck/remount checks. The
+shell now has the candidate filesystem capability profile, not the earlier
+all-zero profile. Root tests (including fourteen compile-fail doctests), root
+and fixture Clippy, and formatting pass. Source-grounded comparison consulted
+Bubblewrap's pivot sequence; no implementation code was copied from it.
+
+This remains an integration fixture, not the complete launcher. External nsenter
+and unshare establish user/PID/network/IPC/UTS namespaces; trusted mount prepares
+procfs on the known fixture image. Production needs confined runtime mount
+construction, device/proc/sys restrictions, namespace init behavior and descriptor
+negative tests. The root selector still uses a fixture-discovered path. Empty
+mount-point cleanup on timeout is fixture-owned. Active LSM admission, CARAPACE
+environment, complete error/timeout ownership and distro qualification remain
+outstanding. The v6 VM-disposal test has not yet been repeated on this native root
+path. Earlier sections describe their historical versions, not the current path.

@@ -974,3 +974,26 @@ rules rather than silently shrinking acceptance criteria.
   These native restrictions still need integration into image-root launch and
   LSM admission. Candidate package compatibility, individual denied interfaces,
   arm64 runtime and confidential-computing qualification remain outstanding.
+
+
+- Previous goal turn made production progress on native syscall restrictions.
+  Added consuming CommandRoot -> EnteredRoot with a borrowed private mount
+  namespace, thread affinity, descriptor-based clone/attach/pivot/old-root detach,
+  and an exec-only native restriction path. Trusted setup code is already loaded
+  before pivot; no image-resident finalizer or library is trusted for setup.
+- Root setup failures v13-v16 are preserved. Diagnostics identified old mount
+  descriptors across namespace unshare and cwd pointing beneath a self bind.
+  Open root after entering its borrowed namespace, clone/attach via mount FDs,
+  and fchdir to the new tree. v17 passes; v18 removes image setpriv, asserts its
+  absence, and passes actual image shell, capability profile, timeout, image UID
+  persistence and clean fsck/remount checks. No production root path is exposed.
+- Exec checks real procfs and close-on-exec flags on nonstandard FDs, clears env,
+  supplies fixed PATH/HOME/LANG and null stdin, then applies native capabilities
+  and syscall restrictions. Errors are exit-only, not rollback or success. A
+  compile-fail test prevents restoring the namespace with a live selected root.
+- Root tests including fourteen compile-fail doctests, root/fixture Clippy and
+  formatting pass. Reviewed lifecycle borrow, owned descriptor closure, private
+  mount propagation, pivot failure handling and claim limits. This is not a
+  milestone adherence pass: M4 remains zero. External namespace/proc adapters,
+  runtime view hardening, FD negatives, init reaping, active policy admission,
+  complete normal-error ownership and native-path VM disposal still need work.
