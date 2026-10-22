@@ -106,6 +106,7 @@ impl Probe {
         Self::command_domain()?;
         Self::recorded_domain()?;
         Self::contained_helper()?;
+        Self::registered_guardian()?;
         let holder = fs::read_to_string("/work/userns-pid")?;
         let namespace = fs::metadata(format!("/proc/{}/ns/user", holder.trim()))?.ino();
         let owner = fs::metadata("/proc/self/ns/user")?.ino();
@@ -351,6 +352,93 @@ impl Probe {
         fs::remove_dir(parent)?;
         assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
         println!("PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS");
+        Ok(())
+    }
+    fn registered_guardian() -> Result<(), Box<dyn std::error::Error>> {
+        use std::{
+            process::{Command, Stdio},
+            time::{Duration, Instant},
+        };
+        let parent = std::path::Path::new("/work/cgroups");
+        let recovery = std::path::Path::new("/work/guardian-owner-recovery");
+        fs::create_dir(recovery)?;
+        fs::set_permissions(recovery, fs::Permissions::from_mode(0o700))?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(recovery)?;
+        for (lose_supervisor, fail_cancel) in [(false, false), (true, false), (true, true)] {
+            let domain = conglobate::domain::RecordedDomain::create(&lease, parent)?;
+            let record = domain.record().clone();
+            let retained = parent.join(record.name()).join("retained-child");
+            if fail_cancel {
+                fs::create_dir(&retained)?;
+            }
+            let mut command = Command::new(std::env::current_exe()?);
+            command
+                .arg("--domain-helper")
+                .env_clear()
+                .stdout(Stdio::null());
+            let deadline = Instant::now() + Duration::from_secs(5);
+            let helper = domain
+                .launch(command, deadline)
+                .map_err(|e| e.to_string())?;
+            let mut command = Command::new(std::env::current_exe()?);
+            command
+                .arg("--guardian-peer")
+                .env_clear()
+                .stdout(Stdio::null());
+            let (peer, channel) =
+                conglobate::process::Process::launch_supervised(command, deadline)?;
+            let guardian = conglobate::domain::RegisteredGuardian::new(channel, helper);
+            // Both cases use the owning production path, not manual watch/kill.
+            let peer = if lose_supervisor {
+                peer.terminate_until(deadline)?
+            } else {
+                let (observation, cancellation) = guardian
+                    .supervise_until(Instant::now() + Duration::from_millis(20), deadline)
+                    .into_parts();
+                assert_eq!(
+                    observation.unwrap_err().kind(),
+                    std::io::ErrorKind::TimedOut
+                );
+                cancellation
+                    .map_err(|e| e.to_string())?
+                    .reap_until(deadline)
+                    .map_err(|e| e.to_string())?
+                    .finish(parent)
+                    .map_err(|e| e.to_string())?;
+                peer.wait_until(deadline)?;
+                assert!(!parent.join(record.name()).exists());
+                assert!(lease.load_domain(record.name()).is_err());
+                continue;
+            };
+            assert!(!peer.status().success());
+            let (observation, cancellation) =
+                guardian.supervise_until(deadline, deadline).into_parts();
+            assert_eq!(
+                observation?,
+                conglobate::process::ShutdownTrigger::SupervisorLost
+            );
+            let reaping = if fail_cancel {
+                let (_, cancellation) = cancellation.unwrap_err().into_parts();
+                assert_eq!(lease.load_domain(record.name())?, record);
+                fs::remove_dir(retained)?;
+                cancellation
+                    .retry_until(deadline)
+                    .map_err(|e| e.to_string())?
+            } else {
+                cancellation.map_err(|e| e.to_string())?
+            };
+            reaping
+                .reap_until(deadline)
+                .map_err(|e| e.to_string())?
+                .finish(parent)
+                .map_err(|e| e.to_string())?;
+            assert!(!parent.join(record.name()).exists());
+            assert!(lease.load_domain(record.name()).is_err());
+        }
+        drop(lease);
+        assert!(Self::check_lease_in_child(recovery)?);
+        fs::remove_dir(recovery)?;
+        println!("PRODUCTION_REGISTERED_GUARDIAN_PASS");
         Ok(())
     }
     fn contained_helper() -> Result<(), Box<dyn std::error::Error>> {

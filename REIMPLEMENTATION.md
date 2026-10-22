@@ -748,3 +748,19 @@ rules rather than silently shrinking acceptance criteria.
   component is not recipe admission, policy/mount teardown or all-descendant
   reaping. M4 remains open at zero adherence passes; full guardian ownership and
   combined crash qualification remain required.
+
+- Added RegisteredGuardian owning upstream supervision and ContainedHelper. Its
+  consuming supervise_until attempts cancellation for every observation outcome,
+  including timeout/errors. GuardianStop keeps observation diagnostics distinct
+  from cleanup success/failure and is must-use. Callers retain only reaping or
+  cleanup-retry owners, never registered execution authority.
+- VM v28 passes supervisor loss and timeout with both peers alive through this
+  owning path, followed by helper reaping and protected-record removal. Review
+  corrected an overclaim that cancellation always sends cgroup.kill: namespace,
+  identity and I/O checks can fail before the write. v29 additionally exercises
+  cancellation failure after supervisor loss and cleanup-owner retry.
+- Root/probe Clippy pass; the full suite passes 93 tests and twelve compile-fail
+  doctests. These component checks do not qualify the independent guardian
+  process, setup monitoring, adopted-descendant reaping or policy/mount teardown.
+  M4 remains open at zero adherence passes. Previous goal turn was progress:
+  committed contained-helper ownership with disposable-VM evidence.

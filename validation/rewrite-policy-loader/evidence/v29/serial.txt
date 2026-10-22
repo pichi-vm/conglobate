@@ -1,0 +1,57 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ mkdir -p /work/origin /work/mapped
++ modprobe loop
++ modprobe ext4
++ truncate -s 64M /work/volume.ext4
++ mke2fs -q -t ext4 -F /work/volume.ext4
++ mount -o loop /work/volume.ext4 /work/origin
++ holder=162
++ unshare --user --map-users=0:100000:65536 --map-groups=0:100000:65536 sleep 60
++ echo 162
++ for attempt in {1..50}
++ grep -q 100000 /proc/162/uid_map
++ break
++ cat /proc/162/uid_map
+         0     100000      65536
++ cat /proc/162/gid_map
+         0     100000      65536
++ mkdir /work/pins
++ mount -t bpf bpf /work/pins
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ /idmap-probe
+Error: Custom { kind: UnexpectedEof, error: "registration peer closed" }
+PRODUCTION_DOMAIN_REGISTRATION_RECORD_GATE_PASS
+PRODUCTION_GUARDIAN_SUPERVISOR_LOSS_PASS
+PRODUCTION_COMMAND_DOMAIN_REPLACEMENT_REJECTED_PASS
+PRODUCTION_COMMAND_DOMAIN_RECORD_RECOVERY_PASS
+PRODUCTION_COMMAND_DOMAIN_MISSING_ACK_PASS
+PRODUCTION_COMMAND_DOMAIN_REGISTER_PASS
+PRODUCTION_COMMAND_DOMAIN_PUBLISHER_EXIT_PASS
+PRODUCTION_COMMAND_DOMAIN_LEASE_PASS
+PRODUCTION_COMMAND_DOMAIN_CANCEL_PASS
+PRODUCTION_RECORDED_DOMAIN_LIFECYCLE_PASS
+PRODUCTION_CONTAINED_HELPER_LIFECYCLE_PASS
+PRODUCTION_REGISTERED_GUARDIAN_PASS
+PRODUCTION_DISABLED_POLICY_LOAD_DROP_PASS
+libbpf: Error in bpf_object__probe_loading(): -EPERM. Couldn't load trivial BPF program. Make sure your kernel supports BPF (CONFIG_BPF_SYSCALL=y) and/or that RLIMIT_MEMLOCK is set to big enough value.
+PRODUCTION_POLICY_PERMISSION_FAILURE_PASS: label policy object: Operation not permitted (os error 1)
+PRODUCTION_POLICY_RELOAD_AFTER_FAILURE_PASS
+PRODUCTION_DISABLED_PIN_CLOSE_DROP_PASS
+PRODUCTION_DISABLED_PIN_RECOVERY_PASS
+PRODUCTION_RECOVERY_NAMESPACE_GUARD_PASS
+PRODUCTION_NAMESPACE_RECORD_PERSISTENCE_PASS
+PRODUCTION_NAMESPACE_PUBLISHER_EXIT_RECOVERY_PASS
+PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS
+/fixture.sh: line 24:   162 Killed                     unshare --user --map-users=0:100000:65536 --map-groups=0:100000:65536 sleep 60
++ umount /work/cgroups
++ umount /work/pins
++ kill -0 162
++ wait 162
++ true
++ umount /work/origin
++ echo POLICY_FIXTURE_CLEANUP_PASS
+POLICY_FIXTURE_CLEANUP_PASS
+IDMAP_PROBE_EXIT 0
+[    3.650294] sysrq: Resetting

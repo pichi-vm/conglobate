@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Fresh private cgroup-v2 domains. Registration and reaping are separate gates.
+mod guardian;
+pub use guardian::{GuardianStop, RegisteredGuardian};
 mod helper;
 pub use helper::{
     ContainedHelper, HelperCancelFailure, HelperCancellation, HelperFinishFailure,

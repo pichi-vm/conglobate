@@ -197,3 +197,14 @@ helper's exit status is diagnostic: channel closure may let it exit normally
 before cgroup.kill arrives. The run passes with the dedicated lifecycle marker.
 This does not exercise a forced reap failure, all-descendant reaping, full guardian
 startup/crash arbitration or policy/mount teardown. Source and hashes are preserved.
+
+
+v28 integrates the production RegisteredGuardian owner with a recorded contained
+helper and a separate supervisor-peer process. One case times out with both peers
+alive, the other terminates the supervisor peer. Both consume guardian ownership,
+cancel the domain, reap the helper and remove its record. v29 adds a retained child
+cgroup: supervisor loss still requests cancellation, failed removal retains a
+cleanup-only owner, and removing the fixture obstruction permits retry and reaping.
+Both runs retain sources and binary/kernel/initramfs hashes. This is registered-
+phase orchestration in the trusted probe process, not a complete independently
+launched guardian or full policy/mount/crash-recovery qualification.

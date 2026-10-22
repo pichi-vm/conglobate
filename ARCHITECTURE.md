@@ -374,8 +374,15 @@ ShutdownTrigger distinguishes supervisor/helper/both loss for diagnostics; it
 neither orders exits nor certifies command success or quiescence. Protocol and
 I/O errors must also start failed-build cancellation. It deliberately requires a
 registered helper; setup-phase monitoring remains a separate obligation.
-The guardian aggregate must still combine these observations with persisted
-resources, ordered teardown and final completion acknowledgements.
+RegisteredGuardian now owns the upstream paired channel and ContainedHelper.
+Its consuming supervise_until waits for either peer, then attempts domain
+cancellation on every outcome, including timeout and protocol/I/O error. The
+must-use GuardianStop preserves observation and cancellation outcomes separately;
+success retains HelperReaping, failure retains cleanup-only HelperCancellation.
+Neither path returns a registered helper or guardian. Upstream closure is not a
+completion acknowledgement. This registered-phase owner still needs integration
+with the independent guardian process, setup monitoring, persistent mount/policy
+resources, adopted-descendant reaping and final completion acknowledgements.
 
 See [pidfd_open(2)](https://man7.org/linux/man-pages/man2/pidfd_open.2.html)
 for the parent-side PID lookup constraints this identity handoff avoids.
