@@ -1,9 +1,8 @@
 # Safe mount API qualification
 
-M4 prerequisite investigation; no production dependency change or runtime mount
-qualification yet. This separate probe forbids unsafe application Rust and makes
-no host mount/namespace changes. The public apply method is compiled, not invoked
-by these tests.
+M4 prerequisite investigation. This separate probe forbids unsafe application
+Rust and makes no host mount/namespace changes. The doctest only compiles the
+API; the executable exercises it in a disposable QEMU guest as described below.
 
 The pinned released rustix 1.1.5 lacks mount_setattr. An existing upstream
 [proposal](https://github.com/bytecodealliance/rustix/pull/1630) supplies the safe
@@ -43,10 +42,35 @@ TMPDIR=/var/tmp/conglobate-rewrite-tmp cargo test --manifest-path validation/rew
 TMPDIR=/var/tmp/conglobate-rewrite-tmp cargo clippy --manifest-path validation/rewrite-mount-api/Cargo.toml --locked --all-targets --all-features -- -D warnings
 ```
 
-Before production adoption, use a disposable VM to create an ext4 fixture owned
-by the supervisor, clone a detached mount, apply the user-namespace idmap, attach
-it privately, and verify visible and persisted UID/GID values. Test invalid
-namespace/descriptor inputs and owned cleanup on failed attachment. Keep the
-user namespace and original superblock owned until teardown. No SELinux/LSM,
-command isolation, crash recovery, arm64 or confidential hardware qualification
-is supplied by this compile-only probe.
+## Disposable VM results
+
+The executable and run.py create an ext4 fixture in a RAM workspace inside the
+stock Fedora x86-64 guest (kernel 7.2.10-200.fc44, SELinux disabled). The fixture
+uses trusted host-VM formatting and util-linux unshare to supply a user namespace;
+this is a syscall qualification harness, not the production command launcher.
+
+- v1 failed before the Rust probe because the fixture omitted modprobe loop.
+  The failed serial log is retained. run.py now loads loop/ext4 explicitly and
+  supplies ext4 module dependencies if the selected kernel requires them.
+- v2, linux_raw backend: PASS. Detached clone and IDMAP application succeed.
+  Original 0:0 appears as 100000:100000. Chown through the mapped view to
+  100123:100456 produces 123:456 in the original view. After clean unmount and
+  remount, 123:456 remains recorded on the filesystem.
+- v3, libc backend: PASS with the same assertions.
+- Both successful runs reject a regular file supplied as the user namespace,
+  retain detached mount ownership after attachment to a nonexistent destination
+  fails, successfully retry attachment, and check explicit unmount and Drop
+  cleanup leave the destination empty.
+
+Build with cargo build using the manifest above (add --features libc-backend for
+v3), then run `python3 validation/rewrite-mount-api/run.py NEW_OUTPUT_DIRECTORY`.
+Only QEMU performs the privileged fixture operations. run.py itself copies files,
+packages an initramfs and invokes QEMU; host modprobe --show-depends only discovers
+module files and depmod indexes the copied tree. No host module is loaded.
+
+Evidence directories v1–v3 retain serial, input hashes, QEMU command and verdict.
+Provenance records the probe-source and kernel hashes and full artifact paths.
+Initial API success permits pinning this upstream revision in production, but
+the production mount/resource ownership API still needs implementation and tests.
+No SELinux/LSM, command isolation, crash recovery, arm64 or confidential hardware
+qualification is supplied by these fixture results.

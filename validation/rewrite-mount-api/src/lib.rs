@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
 
-//! Compile-only API qualification. No host mounts or namespace changes.
+//! Safe API qualification. Runtime calls belong only in the disposable VM probe.
 use rustix::{
     fd::{AsFd, BorrowedFd},
     mount::{

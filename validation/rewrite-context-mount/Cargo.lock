@@ -236,7 +236,7 @@ dependencies = [
  "hex",
  "pichi-artifact",
  "regex",
- "rustix",
+ "rustix 1.1.5 (git+https://github.com/bytecodealliance/rustix?rev=8bda151df87574f56f1e4c0b59f2d1df5d61609e)",
  "serde",
  "serde-saphyr",
  "serde_json",
@@ -1468,7 +1468,7 @@ name = "rewrite-context-mount-probe"
 version = "0.1.0"
 dependencies = [
  "conglobate",
- "rustix",
+ "rustix 1.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1476,6 +1476,18 @@ name = "rustix"
 version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d"
+dependencies = [
+ "bitflags 2.13.2",
+ "errno",
+ "libc",
+ "linux-raw-sys",
+ "windows-sys",
+]
+
+[[package]]
+name = "rustix"
+version = "1.1.5"
+source = "git+https://github.com/bytecodealliance/rustix?rev=8bda151df87574f56f1e4c0b59f2d1df5d61609e#8bda151df87574f56f1e4c0b59f2d1df5d61609e"
 dependencies = [
  "bitflags 2.13.2",
  "errno",
@@ -1678,7 +1690,7 @@ dependencies = [
  "fastrand",
  "getrandom",
  "once_cell",
- "rustix",
+ "rustix 1.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "windows-sys",
 ]
 

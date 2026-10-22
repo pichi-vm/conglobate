@@ -1,0 +1,7 @@
+{
+  "readonly_view": true,
+  "pre_mount_fd_is_writable": true,
+  "production_partial_setup_cleanup": true,
+  "production_checkout_lifecycle": true,
+  "full_sandbox_qualified": false
+}

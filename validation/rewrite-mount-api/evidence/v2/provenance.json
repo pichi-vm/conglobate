@@ -1,0 +1,7 @@
+{
+  "source_commit_base": "a6ccded",
+  "backend": "linux_raw",
+  "kernel_sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+  "probe_source_sha256": "dfbfad19e49f1ed2194dc74bf9626adb968bb66ee818817adf0c0feeaf0576f1",
+  "full_artifacts": "/var/tmp/conglobate-rewrite-idmap-v2"
+}

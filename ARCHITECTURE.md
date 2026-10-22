@@ -226,6 +226,12 @@ choices subject to this protocol and fault-injection tests.
   Treat this as a dependency gap: qualify an existing safe wrapper or contribute
   a general safe API upstream before native idmapping integration. Do not hide
   application FFI in a locally named dependency to bypass forbid(unsafe_code).
+  M4 follow-up: upstream rustix proposal 1630, revision 8bda151d, supplies a
+  borrowed-descriptor MountAttr and internal structure sizing. Both backends
+  passed the disposable-VM ext4 idmap/metadata/cleanup fixture recorded in
+  validation/rewrite-mount-api. Production now pins that revision; it is not
+  represented as a released/merged API. Production lifecycle ownership and
+  broader sandbox qualification remain required.
 - libbpf-rs provides owned links with pin/unpin and byte-slice map updates; it is
   the candidate safe userspace LSM interface. Explicit byte encoding avoids
   application unsafe POD implementations. Dependency/version/license and actual

@@ -40,3 +40,11 @@ hooks were added. The VM scope and earlier limitations still apply.
 v6 repeats the production lifecycle and partial-setup checks after migrating
 checkout ownership to Checkout<Staged>/Checkout<ReadOnly> with sealed marker
 states and associated resource payloads. All checks pass.
+# Dependency integration regression
+
+Run v7 repeats the production checkout lifecycle probe after conglobate pins
+rustix 8bda151d for mount_setattr support. All markers and exit 0 pass, including
+EROFS, busy-close retry, Drop and partial-setup recovery. Its evidence is retained
+under evidence/v7; full artifacts are at
+/var/tmp/conglobate-rewrite-context-mount-v7. This is the existing context test,
+not an idmapping or full sandbox qualification claim.

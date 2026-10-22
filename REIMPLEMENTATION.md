@@ -318,3 +318,14 @@ rules rather than silently shrinking acceptance criteria.
   No production dependency changed and no host mount was performed. Actual
   idmapping/UID-GID persistence and cleanup must be tested in a disposable VM
   before adoption. This is API feasibility, not lifecycle qualification.
+- Qualified the safe mount API in disposable x86-64 VMs on both linux_raw and
+  libc backends. Verified offset UID/GID views, chown translation persisting after
+  ext4 remount, invalid namespace rejection, failed attachment retaining detached
+  ownership for retry, explicit unmount and Drop cleanup. Initial missing-loop
+  fixture failure is preserved alongside passing v2/v3 evidence.
+- Pinned the qualified upstream rustix revision in production. All 52 foundation
+  tests, three compile-fail doctests, formatting and Clippy pass. Production
+  checkout VM regression v7 also passes normal, busy/retry, Drop and partial
+  setup cases. No host mounts/modules were changed. This closes the syscall API
+  feasibility gap, not the M4 ownership/containment/recovery gate. Next implement
+  production mount owners and namespace/identity leases using the qualified API.
