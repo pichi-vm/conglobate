@@ -16,6 +16,7 @@ pub mod isolation;
 pub mod lock;
 pub mod path;
 pub mod plan;
+pub mod process;
 pub mod recipe;
 pub mod request;
 pub mod template;

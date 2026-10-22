@@ -376,3 +376,14 @@ rules rather than silently shrinking acceptance criteria.
   leaves the original namespace unchanged. Existing probe checks also pass.
   Probe Clippy/formatting pass; production code is unchanged. This qualifies the
   ordinary restoration-error path, not crash recovery or command confinement.
+- Added a sealed Process<Running> -> Process<Reaped> owner for trusted helper
+  children. Deadline and I/O failures retain the child owner for recovery;
+  explicit termination collects status under a caller-supplied deadline. Reaped
+  records this child's exit status only, never success or descendant quiescence.
+  Drop attempts bounded termination/reaping and reports unresolved cleanup;
+  guardian-held resource authority remains required before command execution.
+- The two process tests cover successful/failed statuses and deadline ownership
+  recovery followed by termination/reaping. All 54 tests, five compile-fail
+  doctests, formatting and Clippy pass. These tests spawn only benign owned
+  children without privileged host operations. M4 remains at zero adherence
+  passes; helper launching, containment, anchors and LSM are still outstanding.
