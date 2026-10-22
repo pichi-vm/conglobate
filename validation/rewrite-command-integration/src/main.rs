@@ -6,7 +6,7 @@ use conglobate::{
     domain::RecordedDomain,
     filesystem::{Detached, Mount, MountPoint},
     isolation::PrivateMountNamespace,
-    process::{ChildReaper, CommandPrivileges, Supervision},
+    process::{ChildReaper, CommandPrivileges, CommandSyscalls, Supervision},
 };
 use std::{
     fs,
@@ -27,10 +27,32 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
-        if args.get(1).is_some_and(|a| a == "privileges") {
+        if args
+            .get(1)
+            .is_some_and(|a| a == "privileges" || a == "syscalls")
+        {
             let policy = CommandPrivileges::filesystem();
             let expected = format!("{:016x}", policy.allowed().bits());
+            let syscalls = CommandSyscalls::compile()?;
             policy.apply()?;
+            if args[1] == "syscalls" {
+                syscalls.apply()?;
+                // Benign owned-resource checks only. libc thread creation must
+                // fall back from clone3 while namespace creation is denied.
+                assert_eq!(std::thread::spawn(|| 42).join().unwrap(), 42);
+                fs::write("/work/filtered-write", "ordinary-io")?;
+                assert_eq!(fs::read_to_string("/work/filtered-write")?, "ordinary-io");
+                fs::remove_file("/work/filtered-write")?;
+                let blocked = Command::new("/usr/bin/unshare")
+                    .args(["--user", "/usr/bin/true"])
+                    .env_clear()
+                    .output()?;
+                assert!(!blocked.status.success());
+                assert!(
+                    String::from_utf8_lossy(&blocked.stderr).contains("Operation not permitted")
+                );
+                println!("NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS");
+            }
             let script = format!(
                 r#"
                 caps=0

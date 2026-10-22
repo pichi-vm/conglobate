@@ -1,0 +1,12 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ mkdir -p /work/origin /work/mapped
++ unshare --user --map-root-user /idmap-probe privileges
+NATIVE_PRIVILEGES_EXEC_PASS
++ unshare --user --map-root-user /idmap-probe syscalls
+
+thread 'main' (154) panicked at /rustc/1a98b1e135b254f209c67d447b6d8bcd56a859e0/library/std/src/sys/process/mod.rs:71:17:
+called `Result::unwrap()` on an `Err` value: Os { code: 1, kind: PermissionDenied, message: "Operation not permitted" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+IDMAP_PROBE_EXIT 101
+[    3.463658] sysrq: Resetting

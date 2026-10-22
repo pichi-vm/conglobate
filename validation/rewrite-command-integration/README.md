@@ -111,3 +111,35 @@ command fixture still uses its earlier temporary launcher/finalizer adapter.
 Moving native finalization into the complete trusted launch path, syscall
 restrictions and active LSM admission remains required. Creating a new user
 namespace after capability finalization must be denied by that syscall policy.
+
+
+## Native syscall restrictions
+
+CommandSyscalls compiles an immutable native-ABI default-deny filter using
+[seccompiler 0.5.0](https://docs.rs/seccompiler/0.5.0/seccompiler/), licensed
+Apache-2.0 OR BSD-3-Clause. Application Rust remains safe; linux-raw-sys provides
+architecture-specific constants, not application syscall FFI. The profile starts
+from the preserved capability-review ordinary syscall list, masks namespace
+flags in clone, and returns ENOSYS for clone3 via a separately installed filter.
+Both compilation and installation errors abort command setup. Mount, namespace,
+keyring, BPF, io_uring and process-inspection syscalls are absent from the allowed
+list. Socket families, prctl and ioctl have argument rules. This is a candidate
+profile: package-manager and full amd64/arm64 ABI qualification remains required.
+
+v11 failed in Rust Command::output: std read_output uses FIONBIO to make pipes
+nonblocking, and the prototype ioctl list omitted it. The local Rust standard
+library paths sys/process/mod.rs, sys/process/unix/common.rs and sys/fd/unix.rs
+identified this operation. v12 permits that descriptor-local operation, retaining
+all other ioctl restrictions. It passes native capability finalization followed
+by filter installation, thread creation/join, owned-file write/read/delete,
+subprocess capture and denial of unshare --user, then execs a shell that checks
+its exact capability sets and no_new_privs. Existing image execution, timeout and
+filesystem persistence checks also pass. The failed run and source snapshots
+remain preserved. Root cargo test output is retained with v12.
+
+The filtered process is a separate trusted fixture process; the actual image
+command path still uses the earlier launcher. Native syscall and capability
+finalization must next be integrated with trusted root setup and active labeling
+policy. Denial of every individual excluded syscall, compat-ABI behavior, ioctl
+argument cases and real package transactions are not demonstrated by this run.
+No arm64 runtime or confidential-computing qualification is claimed.

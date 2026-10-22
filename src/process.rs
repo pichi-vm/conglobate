@@ -9,6 +9,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod syscalls;
+pub use syscalls::CommandSyscalls;
 mod privileges;
 pub use privileges::{CommandPrivileges, PrivilegeFailure};
 mod reaper;

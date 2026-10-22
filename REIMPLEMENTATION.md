@@ -951,3 +951,26 @@ rules rather than silently shrinking acceptance criteria.
   absence of host-side privilege mutation and evidence limits. M4 remains open
   with zero adherence passes: the complete trusted launch path still uses test
   adapters, and active policy/syscall admission has not been integrated.
+
+
+- Previous goal turn made production progress on native capability finalization.
+  Added immutable CommandSyscalls compiled through safe seccompiler 0.5.0
+  (Apache-2.0 OR BSD-3-Clause), using linux-raw-sys ABI constants. No application
+  unsafe code or freestanding helper functions. Consuming installation documents
+  partial-filter failure as exit-only; it is not a successful admission receipt.
+- Default-deny profile preserves ordinary build syscalls, limits clone namespace
+  flags, supplies clone3 ENOSYS fallback, and constrains socket/prctl/ioctl args.
+  Review checked default action, filter installation order, architecture guard,
+  native syscall numbers and continued exclusion of mount/namespace/keyring/BPF
+  and process-inspection interfaces. Full syscall and ABI qualification remains.
+- v11 found FIONBIO missing from the inherited prototype ioctl list: local Rust
+  std uses it for Command::output pipe handling. Preserved the failure and added
+  only this descriptor-local operation. v12 passes capability finalization plus
+  filter installation, thread creation, ordinary file I/O, subprocess capture,
+  denied user-namespace creation and post-exec capability checks. Existing image
+  command/timeout/remount regressions also pass. Both runs have source snapshots.
+- Root tests including thirteen compile-fail doctests pass. Root/fixture Clippy
+  and formatting checks are recorded separately; M4 remains at zero passes.
+  These native restrictions still need integration into image-root launch and
+  LSM admission. Candidate package compatibility, individual denied interfaces,
+  arm64 runtime and confidential-computing qualification remain outstanding.
