@@ -1,0 +1,14 @@
+{
+  "base_commit": "54cfe5ff474aa61ea7eab849f7d855556bdb0883",
+  "full_artifacts": "/var/tmp/conglobate-rewrite-policy-loader-v5",
+  "sha256": {
+    "/var/tmp/conglobate-rewrite-policy-loader-v5/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-rewrite-policy-loader-v5/initramfs.gz": "2e61a506d792a3122de88e5176813fa36cd3bee06d015950da8a6c391aae87d5",
+    "/var/tmp/conglobate-rewrite-policy-loader-v5/root/idmap-probe": "1aa65ab14a98dda15f69806541ebc0c3ea8a26ff476ed5036aad1c647fa30ee8",
+    "validation/rewrite-policy-loader/evidence/v5/anchor.rs": "134708bd53ca9b39a6ea1ebaa89746f098d06d3176cdbf808152f2ecac94d92a",
+    "validation/rewrite-policy-loader/evidence/v5/probe.rs": "3a33fee235d913a0933f546796ab5ec9594b8e85a9da4f8b9d7aad720931c32c",
+    "validation/rewrite-policy-loader/Cargo.lock": "e831f4e1a1c3a370257065627c94d95ec985395f11774f39c664c74bd80c4aad",
+    "validation/rewrite-policy-loader/run.py": "ac6e1a5a3172c9fcf238d751fbdac7990beb62bce1cd89b92fedada7e6e383da"
+  },
+  "full_sandbox_qualified": false
+}

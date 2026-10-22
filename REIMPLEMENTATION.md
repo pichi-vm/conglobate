@@ -503,3 +503,26 @@ rules rather than silently shrinking acceptance criteria.
   Clippy/formatting pass. No host BPF attachment or mount occurred. M4 remains at
   zero adherence passes. Independent recovery anchors, enabled-policy lifetime,
   guardian admission and command containment are still required implementation.
+- Added kernel-held NamespacePin bind mounts with immutable identity records.
+  Dropping the userspace pin owner leaves the mount for trusted recovery. Reopen
+  verifies nsfs inode/device without following symlinks; release errors retain
+  either the mounted pin or its unmounted target. Creation errors after target
+  allocation retain that target for cleanup. No raw namespace FD escapes.
+- VM v5 demonstrates reopening after userspace-owner drop and namespace-creator
+  exit, then permission-denied unmount recovery. v6 adds denied creation cleanup
+  and substituted-symlink rejection. Review found the parent must be root-only
+  because mounted nsfs files can be readable; v7 requires mode 0700, rejects the
+  non-private fixture parent and passes the lifecycle. All versions are retained.
+  These tests do not verify production independent-mount-namespace selection,
+  persist a build lease, or establish full supervisor/guardian crash recovery.
+- The broader test run exposed peer_loss_is_an_error_in_both_directions racing
+  with temporary inherited CLOEXEC descriptors during another trusted spawn.
+  IdentityReceiver Drop now shuts down its endpoint instead of depending solely
+  on descriptor closure. A duplicate-endpoint regression tests this deterministically.
+  This establishes normal-drop cancellation, not parent-death recovery or an ACK.
+- Full suite passes 71 tests (including fixture entry) and six compile-fail
+  doctests. Final permission refinement also passes VM v7 and targeted anchor
+  tests; production/probe Clippy and formatting pass. M4 remains at zero clean
+  adherence passes. The next integration must establish a trusted independent
+  anchor namespace, persist/lock the lease, and combine namespace/filesystem/policy
+  lifetimes with containment before exposing activation or admission.

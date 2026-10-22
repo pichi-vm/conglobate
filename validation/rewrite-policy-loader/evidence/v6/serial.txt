@@ -1,0 +1,38 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ mkdir -p /work/origin /work/mapped
++ modprobe loop
++ modprobe ext4
++ truncate -s 64M /work/volume.ext4
++ mke2fs -q -t ext4 -F /work/volume.ext4
++ mount -o loop /work/volume.ext4 /work/origin
++ holder=162
++ unshare --user --map-users=0:100000:65536 --map-groups=0:100000:65536 sleep 60
++ echo 162
++ for attempt in {1..50}
++ grep -q 100000 /proc/162/uid_map
++ break
++ cat /proc/162/uid_map
+         0     100000      65536
++ cat /proc/162/gid_map
+         0     100000      65536
++ mkdir /work/pins
++ mount -t bpf bpf /work/pins
++ /idmap-probe
+PRODUCTION_DISABLED_POLICY_LOAD_DROP_PASS
+libbpf: Error in bpf_object__probe_loading(): -EPERM. Couldn't load trivial BPF program. Make sure your kernel supports BPF (CONFIG_BPF_SYSCALL=y) and/or that RLIMIT_MEMLOCK is set to big enough value.
+PRODUCTION_POLICY_PERMISSION_FAILURE_PASS: label policy object: Operation not permitted (os error 1)
+PRODUCTION_POLICY_RELOAD_AFTER_FAILURE_PASS
+PRODUCTION_DISABLED_PIN_CLOSE_DROP_PASS
+PRODUCTION_DISABLED_PIN_RECOVERY_PASS
+PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS
+/fixture.sh: line 22:   162 Killed                     unshare --user --map-users=0:100000:65536 --map-groups=0:100000:65536 sleep 60
++ umount /work/pins
++ kill -0 162
++ wait 162
++ true
++ umount /work/origin
++ echo POLICY_FIXTURE_CLEANUP_PASS
+POLICY_FIXTURE_CLEANUP_PASS
+IDMAP_PROBE_EXIT 0
+[    3.565139] sysrq: Resetting

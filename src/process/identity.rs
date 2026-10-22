@@ -26,6 +26,14 @@ struct IdentitySocket(OwnedFd);
 /// Parent half of a private one-shot trusted helper identity exchange.
 #[derive(Debug)]
 pub struct IdentityReceiver(IdentitySocket);
+impl Drop for IdentityReceiver {
+    fn drop(&mut self) {
+        // Another trusted spawn can briefly inherit CLOEXEC descriptors before
+        // exec. Cancel the endpoint itself instead of waiting for every such
+        // copy to close. This is normal-drop cancellation, not crash recovery.
+        let _ = rustix::net::shutdown(&self.0.0, rustix::net::Shutdown::Both);
+    }
+}
 /// Child half. Pass only to the trusted helper, never to a build command.
 #[derive(Debug)]
 pub struct IdentitySender(IdentitySocket);
@@ -236,6 +244,19 @@ mod tests {
         for count in [0, 2, 8] {
             Fixture::invalid_offer(&IdentitySocket::OFFER, count);
         }
+    }
+
+    #[test]
+    fn receiver_cancellation_survives_a_duplicate_endpoint() {
+        let (receiver, sender) = IdentityReceiver::pair().unwrap();
+        let duplicate = receiver.0.0.try_clone().unwrap();
+        drop(receiver);
+        assert!(
+            sender
+                .send_current_until(Instant::now() + Duration::from_secs(1))
+                .is_err()
+        );
+        drop(duplicate);
     }
 
     #[test]

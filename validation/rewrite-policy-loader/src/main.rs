@@ -93,6 +93,79 @@ impl Probe {
         assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
         fs::remove_dir(parent)?;
         println!("PRODUCTION_DISABLED_PIN_RECOVERY_PASS");
+        let parent = std::path::Path::new("/work/namespace-pins");
+        fs::create_dir(parent)?;
+        assert!(
+            conglobate::anchor::NamespacePin::create(
+                parent,
+                fs::File::open(format!("/proc/{}/ns/user", holder.trim()))?
+            )
+            .is_err()
+        );
+        fs::set_permissions(
+            parent,
+            <fs::Permissions as std::os::unix::fs::PermissionsExt>::from_mode(0o700),
+        )?;
+        let holder_pid = rustix::process::Pid::from_raw(holder.trim().parse()?).unwrap();
+        let holder_identity =
+            rustix::process::pidfd_open(holder_pid, rustix::process::PidfdFlags::empty())?;
+        let source = fs::File::open(format!("/proc/{}/ns/user", holder.trim()))?;
+        let restricted = EffectiveCapabilities::clear()?;
+        let failure = conglobate::anchor::NamespacePin::create(parent, source).unwrap_err();
+        let conglobate::anchor::CreateFailure::Mount { target, .. } = failure else {
+            panic!("expected mount failure with retained target");
+        };
+        drop(restricted);
+        target.cleanup()?;
+        assert_eq!(fs::read_dir(parent)?.count(), 0);
+        let source = fs::File::open(format!("/proc/{}/ns/user", holder.trim()))?;
+        let pin = conglobate::anchor::NamespacePin::create(parent, source)?;
+        let record = pin.record().clone();
+        drop(pin); // Persistent mount survives loss of its userspace owner.
+        rustix::process::pidfd_send_signal(&holder_identity, rustix::process::Signal::KILL)?;
+        let mut poll = [rustix::event::PollFd::new(
+            &holder_identity,
+            rustix::event::PollFlags::IN,
+        )];
+        assert_ne!(
+            rustix::event::poll(
+                &mut poll,
+                Some(&rustix::event::Timespec {
+                    tv_sec: 5,
+                    tv_nsec: 0
+                })
+            )?,
+            0
+        );
+        assert!(
+            poll[0]
+                .revents()
+                .intersects(rustix::event::PollFlags::IN | rustix::event::PollFlags::HUP)
+        );
+        drop(holder_identity);
+        let pin = conglobate::anchor::NamespacePin::recover(parent, record.clone())?;
+        assert_eq!(pin.record().inode(), namespace);
+        let restricted = EffectiveCapabilities::clear()?;
+        let failure = pin.release().unwrap_err();
+        let conglobate::anchor::ReleaseFailure::Mounted { pin, .. } = failure else {
+            panic!("expected retained namespace mount");
+        };
+        drop(restricted);
+        pin.release()?;
+        assert!(conglobate::anchor::NamespacePin::recover(parent, record).is_err());
+        assert_eq!(fs::read_dir(parent)?.count(), 0);
+        let pin = conglobate::anchor::NamespacePin::create(
+            parent,
+            fs::File::open("/proc/self/ns/user")?,
+        )?;
+        let record = pin.record().clone();
+        pin.release()?;
+        std::os::unix::fs::symlink("/proc/self/ns/user", parent.join(record.name()))?;
+        assert!(conglobate::anchor::NamespacePin::recover(parent, record.clone()).is_err());
+        fs::remove_file(parent.join(record.name()))?;
+        fs::remove_dir(parent)?;
+        assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
+        println!("PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS");
         Ok(())
     }
 }

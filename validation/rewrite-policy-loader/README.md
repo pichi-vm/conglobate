@@ -38,6 +38,21 @@ check_set pins exist when installation fails. Cleanup also fails on that
 collision, retains recovery ownership, then succeeds after the fixture removes
 the collision. Descriptor counts return to baseline.
 
+v5 adds production namespace pinning on protected tmpfs. The probe drops the
+userspace pin owner, terminates the namespace creator through its pidfd, observes
+exit, reopens the recorded pin, and tests denied-unmount ownership recovery before
+successful release. The fixture shell reaps the creator after the probe returns.
+v6 additionally tests mount denial retaining the unmounted target for cleanup and
+rejects a substituted symlink even when it names the recorded namespace. Both
+runs pass. The probe operates in the fixture init's mount namespace; these checks
+do not implement or validate production selection of an independent anchor
+namespace. They also do not exercise death of a production supervisor/guardian.
+
+Review then tightened namespace-pin parent permissions: nsfs mount permissions
+can expose handles even when the original target file was private. v7 rejects a
+non-private parent and reruns the lifecycle with mode 0700. It passes and is the
+qualification run for that final permission rule; v5/v6 retain earlier evidence.
+
 Descriptor accounting checks process-held resources, not a global kernel leak
 proof. These tests do not enable policy or qualify durable anchors,
 command containment, supervisor/guardian death,

@@ -213,6 +213,17 @@ anchors can persist after a failed build until a trusted recovery pass succeeds.
 Exact lease serialization and readiness/acknowledgement messages are implementation
 choices subject to this protocol and fault-injection tests.
 
+The NamespacePin primitive bind-mounts an owned nsfs descriptor beneath a
+root-owned mode-0700 tmpfs parent. Its immutable record identifies the generated
+name and namespace inode/device. Dropping the userspace owner leaves the kernel
+mount for recovery; reopening verifies nsfs identity without following a final
+symlink. Explicit release distinguishes a still-mounted pin from an unmounted
+target needing unlink. This primitive assumes serialized parent access and does
+not establish that the containing mount namespace survives the builder. A future
+anchor aggregate must verify that prerequisite, persist records and own all
+namespace/filesystem/policy identities before enabling authorization. Namespace
+pins alone are not a crash-recovery or command-admission receipt.
+
 The helper identity handoff uses a private close-on-exec sequence-packet socket
 and one deterministic CBOR message `[1, 0]` (version, identity-offer opcode),
 with exactly one SCM_RIGHTS descriptor. The trusted helper opens its own pidfd
