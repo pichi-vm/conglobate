@@ -1,6 +1,6 @@
 # Milestone 3 adherence evidence
 
-Status: incomplete; clean streak zero. These are source-grounded self-reviews,
+Status: incomplete; clean streak one. These are source-grounded self-reviews,
 not independent reviews. No milestone-4 advancement is authorized by this record.
 
 ## Initial requirements review (baseline 6326d48)
@@ -115,3 +115,47 @@ After the fix, all 52 unit/integration tests, three compile-fail doctests and
 Clippy pass. Only recipe parsing/tests and this evidence changed; preservation
 references and runtime mount implementation are unchanged. Streak remains zero;
 the next full pass must use the corrected scope.
+
+## Clean pass 1 — requirements-first, scope 621b34d
+
+Reviewed the active library, tests and Cargo configuration at 621b34d against
+DESIGN.md sections 2–8 and the M3/M4 boundaries in the architecture and milestone
+ledger. No implementation or test changes were made during this pass.
+
+1. Requirements: traced required CLI selections through committed document
+   capture, strict recipe parsing, fixed stage order, role aggregation and locked
+   image resolution. Bootstrap/alternate firmware tools do not become output
+   ancestry; authored transforms require an actual inherited or prospective DTB.
+   Empty/null/omitted distinctions, finite timeouts, offline defaults, resolver
+   requirement and deferred template evaluation agree with the current design.
+   COPY modes/patterns are validated descriptions; filesystem COPY and transform
+   execution remain explicitly M6, not implicitly claimed as working here.
+2. Rust style: inspected constructors, private fields, borrowed views and
+   consuming capture/resolution/mount transitions. Checkout states are sealed
+   markers with distinct owned payloads. Production behavior resides in methods;
+   no freestanding utility-function architecture or shared mutable state was
+   introduced. Optional values represent optional inputs/components; MountLease's
+   Option is the documented destructor ownership slot, not a runtime state model.
+3. Safety/recovery: traced Git object verification and confined link reads;
+   pinned cache descriptors, bounded metadata capture, exact streaming lengths,
+   decoder EOF and ancestry checks; and checkout creation/remount/unmount failure
+   paths. Staged readers cannot escape their owner. Explicit unmount failure
+   retains recovery authority. Drop is only a fallback, not a crash guarantee.
+   Cache receipts prove completed reads; later mounted reads still need verity.
+   Private namespace establishment and durable recovery anchors remain M4 gates.
+4. Evidence: reviewed positive/negative assertions in recipe, plan, template,
+   context, cache, chain and COPY tests, including independent salted hash vectors
+   and invalid zstd streams with correct OCI digests. Re-ran all 52 tests and
+   three compile-fail doctests successfully; fmt and Clippy -D warnings pass.
+   VM v6 evidence covers actual read-only enforcement, EBUSY retry, Drop and
+   partial-setup cleanup. Its verdict explicitly does not qualify the full sandbox.
+   No redundant VM run is claimed for recipe-only changes since v6.
+5. Preservation/scope: working tree was clean; active source/tests were unchanged
+   from the scope commit. Validation changes since the preservation baseline are
+   additive; old implementation remains under reference/legacy. No references
+   were retired, no CI or distro/security qualification is inferred, and no M4
+   implementation work was started.
+
+Result: clean, streak 1/3. This is a source-grounded self-review. Test execution
+supports the result but is not itself the adherence pass. Two further complete
+passes over the same implementation scope are required before advancement.
