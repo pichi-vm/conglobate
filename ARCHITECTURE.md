@@ -281,6 +281,23 @@ no numeric-PID fallback after identification. Wait failures preserve that state
 and both owners. Process<Reaped> remains solely a collected exit status. The
 caller supplies trusted helper code and startup configuration; this primitive
 does not launch arbitrary recipe commands or replace containment/admission gates.
+Supervision<Unpaired> -> Supervision<Paired> adds a mutual startup exchange:
+both trusted processes send their own pidfd over the private channel before
+receiving the peer's identity under a single deadline. Paired state owns the peer
+observation and the retained CLOEXEC control socket. Normal Drop shuts down the
+endpoint even if a transient inherited descriptor remains; pidfd observation
+independently detects process exit without destructors. A bounded poll observes
+both mechanisms. Unexpected post-exchange payloads are errors, not accepted
+control commands. This initial protocol has no readiness or admission message.
+
+Process<Identified>::launch_supervised returns both the identified child owner
+and the paired supervision channel. Exchange/descriptor-duplication failures
+cancel the channel and retain the started child for cleanup. Both successful
+owners independently retain the same kernel process identity. A sampled live
+peer is not a lifetime guarantee, and observed loss is not descendant quiescence.
+The future guardian must combine this with persisted resources, containment
+registration, ordered teardown and final completion acknowledgements.
+
 See [pidfd_open(2)](https://man7.org/linux/man-pages/man2/pidfd_open.2.html)
 for the parent-side PID lookup constraints this identity handoff avoids.
 

@@ -578,3 +578,22 @@ rules rather than silently shrinking acceptance criteria.
   recheck refinement, affected anchor/codec tests and VM v14 passed. Root/probe
   Clippy and formatting passed. M4 remains at zero adherence passes; neither
   these tests nor the primitive constitute full sandbox qualification.
+
+- Added sealed Supervision<Unpaired/Paired> startup states with mutual self-pidfd
+  handoff over a retained private CLOEXEC sequence-packet channel. Reused the
+  existing bounded strict identity codec without exposing raw descriptors.
+  ControlSocket RAII shutdown signals normal cancellation; peer pidfd observation
+  also detects exit without destructors. A bounded poll waits on both sources.
+- Added launch_supervised on the identified process owner. Before-spawn failures
+  own no child; exchange/duplication failures cancel the channel and return the
+  pending child. Success retains independent pidfd references for supervision
+  and child termination/reaping. No guardian readiness or admission is implied.
+- Maintained child-process tests cover live peer and wait deadline, forced exit,
+  exit bypassing destructors, normal channel cancellation, silent exchange
+  timeout, supervised launch identity and retained ownership on exchange failure.
+  A compile-fail test rejects observation before pairing. Initial compilation
+  corrected the rustix recv tuple return type; no unsafe interface was added.
+- Final full suite passes 81 tests (including fixture entrypoints) and seven
+  compile-fail doctests. Clippy and formatting pass. M4 remains open with zero
+  adherence passes. Persisted aggregate ownership, actual guardian/containment,
+  readiness/registration/acknowledgement and combined death recovery are pending.

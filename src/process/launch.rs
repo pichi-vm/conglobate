@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{ChildLease, Identified, IdentityReceiver, Pinned, Process, Running};
+use super::{
+    ChildLease, Identified, IdentityReceiver, Paired, Pinned, Process, Running, Supervision,
+};
 use std::{
     io,
     process::{Command, Stdio},
@@ -20,6 +22,55 @@ pub enum LaunchFailure {
 }
 
 impl Process<Identified> {
+    /// Launch a trusted helper implementing Supervision startup. The returned
+    /// channel observes mutual loss; it does not authorize commands. Uses the
+    /// same exclusive reaping/SIGCHLD prerequisites and spawn deadline limits as
+    /// launch. Exchange failure cancels the channel and retains the child owner.
+    pub fn launch_supervised(
+        mut command: Command,
+        deadline: Instant,
+    ) -> Result<(Self, Supervision<Paired>), LaunchFailure> {
+        if Instant::now() >= deadline {
+            return Err(LaunchFailure::Before(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "helper setup deadline expired",
+            )));
+        }
+        let (parent, child_endpoint) = Supervision::pair().map_err(LaunchFailure::Before)?;
+        command.stdin(Stdio::from(child_endpoint));
+        let child = command.spawn().map_err(LaunchFailure::Before)?;
+        drop(command);
+        let mut pending: Process<Running> = child.into();
+        let channel = match parent.exchange_until(deadline) {
+            Ok(channel) => channel,
+            Err(source) => {
+                return Err(LaunchFailure::Started {
+                    source,
+                    process: pending,
+                });
+            }
+        };
+        let observation = match channel.duplicate_observation() {
+            Ok(observation) => observation,
+            Err(source) => {
+                return Err(LaunchFailure::Started {
+                    source,
+                    process: pending,
+                });
+            }
+        };
+        let child = pending.resources.child.take().expect("owned pending child");
+        Ok((
+            Self {
+                resources: ChildLease {
+                    child: Some(child),
+                    termination: Pinned { observation },
+                },
+            },
+            channel,
+        ))
+    }
+
     /// Launch trusted helper code implementing IdentitySender startup. This
     /// replaces stdin with the private identity channel; all other command
     /// configuration belongs to the trusted caller. Never pass recipe commands.

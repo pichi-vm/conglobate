@@ -22,7 +22,7 @@ use std::{
 };
 
 #[derive(Debug)]
-struct IdentitySocket(OwnedFd);
+pub(super) struct IdentitySocket(pub(super) OwnedFd);
 /// Parent half of a private one-shot trusted helper identity exchange.
 #[derive(Debug)]
 pub struct IdentityReceiver(IdentitySocket);
@@ -56,13 +56,75 @@ impl IdentityReceiver {
     /// channel; the caller must cancel/reap its separately owned helper.
     /// This is neither helper readiness nor permission to admit build commands.
     pub fn receive_until(self, deadline: Instant) -> io::Result<ProcessObservation> {
+        self.0.receive_until(deadline)
+    }
+}
+
+impl IdentitySender {
+    /// Move the dedicated helper's inherited stdin socket into close-on-exec
+    /// ownership, replacing stdin with /dev/null. Call at trusted helper startup
+    /// before any concurrent stdin access. The helper must not admit
+    /// commands until the later supervision and containment protocol completes.
+    pub fn from_stdin() -> io::Result<Self> {
+        IdentitySocket::from_stdin().map(Self)
+    }
+
+    /// Pin this process while it is necessarily alive, then transfer that
+    /// identity. No parent-side PID lookup or SIGCHLD disposition assumption.
+    pub fn send_current_until(self, deadline: Instant) -> io::Result<()> {
+        self.0.send_current_until(deadline)
+    }
+}
+impl From<IdentitySender> for Stdio {
+    fn from(sender: IdentitySender) -> Self {
+        sender.0.0.into()
+    }
+}
+impl IdentitySocket {
+    pub(super) fn from_stdin() -> io::Result<Self> {
+        let socket = io::stdin().as_fd().try_clone_to_owned()?;
+        if rustix::net::sockopt::socket_type(&socket)? != SocketType::SEQPACKET {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "helper stdin is not a sequence-packet socket",
+            ));
+        }
+        rustix::stdio::dup2_stdin(std::fs::File::open("/dev/null")?)?;
+        Ok(Self(socket))
+    }
+
+    pub(super) fn send_current_until(&self, deadline: Instant) -> io::Result<()> {
+        let identity = pidfd_open(getpid(), PidfdFlags::empty())?;
         loop {
-            self.0.ready(PollFlags::IN, deadline)?;
+            self.ready(PollFlags::OUT, deadline)?;
+            let descriptors = [identity.as_fd()];
+            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
+            let mut ancillary = SendAncillaryBuffer::new(&mut space);
+            if !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors)) {
+                return Err(io::Error::other("identity ancillary buffer too small"));
+            }
+            match sendmsg(
+                &self.0,
+                &[IoSlice::new(&IdentitySocket::OFFER)],
+                &mut ancillary,
+                SendFlags::DONTWAIT | SendFlags::NOSIGNAL,
+            ) {
+                Ok(3) => return Ok(()),
+                Ok(_) => return Err(io::Error::other("incomplete identity offer")),
+                Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
+                Err(error) => return Err(error.into()),
+            }
+        }
+    }
+
+    pub(super) fn receive_until(&self, deadline: Instant) -> io::Result<ProcessObservation> {
+        loop {
+            self.ready(PollFlags::IN, deadline)?;
             let mut bytes = [0; 3];
             let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
             let mut ancillary = RecvAncillaryBuffer::new(&mut space);
             let result = match recvmsg(
-                &self.0.0,
+                &self.0,
                 &mut [IoSliceMut::new(&mut bytes)],
                 &mut ancillary,
                 RecvFlags::DONTWAIT | RecvFlags::CMSG_CLOEXEC,
@@ -116,57 +178,7 @@ impl IdentityReceiver {
                 });
         }
     }
-}
 
-impl IdentitySender {
-    /// Move the dedicated helper's inherited stdin socket into close-on-exec
-    /// ownership, replacing stdin with /dev/null. Call at trusted helper startup
-    /// before any concurrent stdin access. The helper must not admit
-    /// commands until the later supervision and containment protocol completes.
-    pub fn from_stdin() -> io::Result<Self> {
-        let socket = io::stdin().as_fd().try_clone_to_owned()?;
-        if rustix::net::sockopt::socket_type(&socket)? != SocketType::SEQPACKET {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "helper stdin is not a sequence-packet socket",
-            ));
-        }
-        rustix::stdio::dup2_stdin(std::fs::File::open("/dev/null")?)?;
-        Ok(Self(IdentitySocket(socket)))
-    }
-
-    /// Pin this process while it is necessarily alive, then transfer that
-    /// identity. No parent-side PID lookup or SIGCHLD disposition assumption.
-    pub fn send_current_until(self, deadline: Instant) -> io::Result<()> {
-        let identity = pidfd_open(getpid(), PidfdFlags::empty())?;
-        loop {
-            self.0.ready(PollFlags::OUT, deadline)?;
-            let descriptors = [identity.as_fd()];
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
-            let mut ancillary = SendAncillaryBuffer::new(&mut space);
-            if !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors)) {
-                return Err(io::Error::other("identity ancillary buffer too small"));
-            }
-            match sendmsg(
-                &self.0.0,
-                &[IoSlice::new(&IdentitySocket::OFFER)],
-                &mut ancillary,
-                SendFlags::DONTWAIT | SendFlags::NOSIGNAL,
-            ) {
-                Ok(3) => return Ok(()),
-                Ok(_) => return Err(io::Error::other("incomplete identity offer")),
-                Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
-                Err(error) => return Err(error.into()),
-            }
-        }
-    }
-}
-impl From<IdentitySender> for Stdio {
-    fn from(sender: IdentitySender) -> Self {
-        sender.0.0.into()
-    }
-}
-impl IdentitySocket {
     // Deterministic CBOR [protocol version 1, identity-offer opcode 0].
     // SCM_RIGHTS contains exactly one self-pidfd. No extensible payload yet.
     const OFFER: [u8; 3] = [0x82, 0x01, 0x00];

@@ -9,6 +9,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod supervision;
+pub use supervision::{Paired, Supervision, SupervisionChild, SupervisionState, Unpaired};
 mod observation;
 pub use observation::ProcessObservation;
 mod identity;
