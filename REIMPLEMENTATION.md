@@ -1281,3 +1281,22 @@ rules rather than silently shrinking acceptance criteria.
   full milestone adherence pass. Cgroup population and adopted-child drain still
   use bounded condition polling; production policy/admission aggregation and
   complete failure cleanup remain unfinished. M4 remains zero adherence passes.
+
+- Previous goal turn made progress in 1c2b381 (pidfd direct-child waits).
+  Replaced cgroup cancellation's sleep polling with a private DomainWatch owner
+  for one cgroup.events open description. Each bounded read begins at offset zero;
+  populated=0 alone permits directory removal. Otherwise poll waits on PRI until
+  the shared teardown deadline, then rereads. EINTR retries with the same deadline.
+- Source review confirms kernfs records its event counter before seq_show and
+  compares it after poll registration, preserving changes between read and wait.
+  Ordinary IN readiness is deliberately excluded; PRI|ERR is kernfs's normal
+  notification, whereas invalid/hung-up descriptors fail. Errors retain the
+  enclosing cancellation owner; notifications do not imply descendant reaping.
+- Root tests (16 compile-fail), Clippy, formatting and v52's disposable-VM normal,
+  timeout and failure pipeline pass. Preserved raw evidence/source snapshots,
+  full artifact hashes and kernel source/documentation excerpts. This integration
+  run checks cancellation results, not deterministic injection at every possible
+  read/poll boundary; that ordering argument is grounded in the retained source.
+- M4 remains zero adherence passes. Adopted-child drain and fixture readiness
+  polling remain; production policy/admission ownership and complete failure
+  cleanup still need implementation. No milestone-completion claim is made.

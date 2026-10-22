@@ -3,6 +3,7 @@
 
 //! Fresh private cgroup-v2 domains. Registration and reaping are separate gates.
 mod drain;
+mod events;
 pub use drain::{DescendantDrain, DescendantDrainFailure, DrainedFinishFailure, DrainedHelper};
 mod guardian;
 pub use guardian::{GuardianStop, RegisteredGuardian};
@@ -30,7 +31,7 @@ use std::{
         unix::fs::{MetadataExt, PermissionsExt},
     },
     path::{Path, PathBuf},
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 /// A fresh cgroup owned exclusively by trusted control code. It must never
@@ -201,19 +202,8 @@ impl CommandDomain {
             rustix::fs::Mode::empty(),
         )?);
         kill.write_all(b"1")?;
-        loop {
-            if !self.populated()? {
-                return fs::remove_dir(self.target.path());
-            }
-            let remaining = deadline.saturating_duration_since(Instant::now());
-            if remaining.is_zero() {
-                return Err(io::Error::new(
-                    io::ErrorKind::TimedOut,
-                    "command domain remains populated",
-                ));
-            }
-            std::thread::sleep(remaining.min(Duration::from_millis(5)));
-        }
+        events::DomainWatch::new(self.entry("cgroup.events")?).wait_empty_until(deadline)?;
+        fs::remove_dir(self.target.path())
     }
 }
 #[derive(Debug)]

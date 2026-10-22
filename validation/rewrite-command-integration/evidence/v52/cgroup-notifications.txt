@@ -1,0 +1,11 @@
+420: 
+421: Each non-root cgroup has a "cgroup.events" file which contains
+422: "populated" field indicating whether the cgroup's sub-hierarchy has
+423: live processes in it.  Its value is 0 if there is no live process in
+424: the cgroup and its descendants; otherwise, 1.  poll and [id]notify
+425: events are triggered when the value changes.  This can be used, for
+426: example, to start a clean-up operation after all processes of a given
+427: sub-hierarchy have exited.  The populated state updates and
+428: notifications are recursive.  Consider the following sub-hierarchy
+429: where the numbers in the parentheses represent the numbers of processes
+430: in each cgroup::

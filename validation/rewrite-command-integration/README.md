@@ -491,3 +491,18 @@ then release by EOF or terminate. No delay establishes test ordering. The root
 suite, Clippy and formatting pass. Cgroup-empty and adopted-child-drain polling
 remain separate outstanding event-wait improvements; this is not full M4 or
 production active-policy qualification.
+
+## Cgroup change notifications
+
+v52 passes cancellation/removal through a persistent cgroup.events watcher rather
+than a sleep loop. It reads populated, polls PRI while populated, then rewinds
+and rereads. Kernfs's event counter covers the read-to-poll interval; its normal
+PRI|ERR notification is not treated as a failure. The retained kernel excerpts
+show read-counter updates, poll registration/checking and recursive population
+notification semantics. Only populated=0 allows directory removal, and separate
+reaping/drain gates remain necessary.
+
+The existing normal/timeout/failure integration cases and root tests pass, as do
+Clippy and formatting. This run does not instrument every notification interleaving
+or deterministically force a change inside the read/poll interval. Adopted-child
+drain still polls and production policy/lifecycle integration remains unfinished.
