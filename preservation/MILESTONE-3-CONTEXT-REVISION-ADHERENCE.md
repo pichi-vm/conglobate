@@ -1,6 +1,6 @@
 # Foundation revalidation after workspace/context changes
 
-Implementation scope: a7f7217. Status: one consecutive clean self-review.
+Implementation scope: a7f7217. Status: two consecutive clean self-reviews.
 This supplements the historical MILESTONE-3-ADHERENCE.md; it does not erase its
 findings or reuse its three passes as acceptance of changed code. M3 must regain
 three passes before further milestone advancement. M4 remains unfinished.
@@ -71,3 +71,59 @@ remain M4/later obligations.
 Result: no new finding; clean streak 1/3. This is source-grounded self-review,
 not independent security review. Two further clean passes on unchanged scope are
 required; any finding or relevant edit resets the streak.
+
+## Clean pass 2: failure and evidence traversal
+
+Implementation scope remains a7f7217. Confirmed an empty diff in src, tests,
+Cargo files and the current VM harness since that scope. This pass began with
+negative assertions and cleanup authority rather than the successful pipeline.
+
+Failure inventory: before allocation, no context directory is published; once
+allocated, failed opening/population returns Partial with cleanup-only authority.
+The ENAMETOOLONG test verifies an actual earlier file exists, so it exercises
+partial population rather than merely parser rejection. Frozen setup failure
+leaves the original staged tree unchanged: the cloned detached mount is local
+and dropped before returning the staged owner. Removal failure can partially
+remove names, so its API exposes only retry, never staged/read-only recovery.
+The parent FD remains owned through retries and destructor fallback; directory
+cleanup precedes parent closure. Detached read-only roots close before backing
+removal. Surviving file FDs remain read-only, as the VM checks demonstrate.
+
+Reviewed the v77 probe's limit restoration before inspecting errors, successful
+freeze retry, EROFS assertions before/after cleanup, exact-content checks, and
+mountinfo comparison. These assertions qualify ordinary detached setup and
+EMFILE recovery, not all storage faults or kernel-consumer lifetime. Current host
+regression evidence separately covers the later population error. Re-ran only
+context compile-fail doctests to inspect diagnostics: E0505 for consuming staging
+with a borrowed reader, E0277 for moving the thread-affine ReadOnly state, E0599
+for freezing ReadOnly twice. All fail for intended reasons. Diagnostics retained
+in evidence/context-population-review/ownership-diagnostics.txt. Running this
+check does not itself count as the source review.
+
+Unchanged foundation failure paths: traced CheckedBlob and DecodedBlob finish
+through length, digest, decoder completion and buffered trailing-byte checks;
+verified chain candidate removal rejects duplicates/disconnection and terminates
+at the declared zero parent. Inspected decoder-corruption tests which deliberately
+use matching OCI digests, ensuring decoder errors are actually exercised. Cache
+mutation tests distinguish captured metadata from subsequent reads. Host index
+selection rejects incompatible/ambiguous entries and direct manifest pins. These
+remain verification of completed input reads, not live mounted-layer guarantees.
+
+Requirements and style: revisited duplicate/null/omitted YAML handling, finite
+five-minute default timeouts, disabled networking, explicit resolver preflight,
+from/input-role rules and the M3 boundary. No execution is inferred from a plan.
+Reviewed public context/storage constructors and getters, sealed markers and
+state payloads; raw mutable authority is not exported. Conversion/error types
+represent real differences in available ownership. No runtime state flags,
+freestanding production helpers or unsafe code were introduced. Read-only File
+handles intentionally rely on the mount enforcement tested in the VM; staged
+readers have stricter borrowing because pre-freeze mount authority is different.
+
+Preservation/claims: only review records changed since the frozen implementation.
+Earlier VM/source/failure evidence remains, without attributing v77 execution to
+later builds. The public docs distinguish staging, read-only mount enforcement,
+cleanup fallback and whole-build integration. M4 assembly, output, distro/hardware
+qualification and final retirement remain explicitly incomplete.
+
+Result: no new finding; clean streak 2/3. One further complete self-review of the
+unchanged scope is required. This is not independent security qualification.

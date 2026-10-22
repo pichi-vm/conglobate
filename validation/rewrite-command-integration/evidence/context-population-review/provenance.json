@@ -11,7 +11,9 @@
     "src/context/readonly.rs": "ca055c2fa044e9ffeaa03a0eab45947b5b14872b22dc60fe889cb316592b46d2",
     "src/context/mod.rs": "95ba326d3d32bb8c7fa52de74c7bb48320190f61661db6558f5cb7a53a6aba36",
     "src/storage.rs": "7cdb2f70a14bbb601cf2ee80f6f83d5b231e47f4c9899a2161d066b740330b49",
-    "tests/contexts.rs": "c4b29db4b61e09df3cf2b5115971bea5ea6ae3811a3803dbd6c6d9a69b6a4c46"
+    "tests/contexts.rs": "c4b29db4b61e09df3cf2b5115971bea5ea6ae3811a3803dbd6c6d9a69b6a4c46",
+    "validation/rewrite-command-integration/evidence/context-population-review/ownership-diagnostics.txt": "e2dee3bf45cc78c5983bd0fa85e657c16e0b94e9232ffeea7f6502df3cfc0f87"
   },
-  "full_sandbox_qualified": false
+  "full_sandbox_qualified": false,
+  "additional_evidence_note": "Ownership diagnostics inspected during revised review pass 2; implementation unchanged since a7f7217."
 }
