@@ -81,6 +81,16 @@ impl<'s> VerifiedScute {
 }
 
 impl PreparedScute<'_, '_> {
+    pub(crate) fn files(&self) -> (&File, &File) {
+        let data = match &self.data {
+            Data::Cache(file) => file,
+            Data::Materialized(scratch) => scratch.file(),
+        };
+        (data, self.hash.file())
+    }
+    pub(crate) fn header(&self) -> devmap_verity::Header {
+        self.scute.extent.header()
+    }
     pub fn root(&self) -> &[u8; 32] {
         self.scute.root()
     }

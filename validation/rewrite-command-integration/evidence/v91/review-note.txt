@@ -1,0 +1,2 @@
+Passed: three verified data formats, rejected writes, busy removal with retained resources and cleanup retry, EIO after cache corruption following activation. This is verity assembly only, not read-only snapshot-chain or filesystem qualification.
+Exact booted source is in source/. verity-with-lifetime-tests.rs adds only post-run compile-fail documentation. Initial E0106 compiler failure and its unbuilt source are preserved.

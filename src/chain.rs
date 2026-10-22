@@ -26,6 +26,9 @@ pub struct ScuteExtent {
     header: Header,
 }
 impl ScuteExtent {
+    pub(crate) fn header(&self) -> Header {
+        self.header
+    }
     pub fn new(size: u64, salt: &[u8], declared_blocks: Option<u64>) -> Result<Self, ChainError> {
         let blocks = size.div_ceil(4096);
         if size == 0 || declared_blocks.is_some_and(|count| count != blocks) {

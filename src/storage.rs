@@ -3,7 +3,9 @@
 
 //! Supervisor-owned mutable RAM storage. Immutable layers remain cache-backed.
 mod loopback;
+mod verity;
 pub use loopback::{LoopAttachFailure, LoopAttachment, LoopDetachFailure};
+pub use verity::{VerityFailure, VerityMapping};
 mod snapshot;
 pub use snapshot::{SnapshotMapping, SnapshotMappingFailure, SnapshotUsage};
 mod mapping;
@@ -85,6 +87,9 @@ pub struct Scratch<'workspace> {
     _workspace: &'workspace Workspace,
 }
 impl Scratch<'_> {
+    pub(crate) fn file(&self) -> &File {
+        &self.file
+    }
     pub fn set_len(&mut self, length: u64) -> io::Result<()> {
         self.file.set_len(length)
     }

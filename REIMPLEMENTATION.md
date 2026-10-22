@@ -1799,3 +1799,32 @@ rules rather than silently shrinking acceptance criteria.
   loop/verity/read-only snapshot assembly and corruption-through-kernel tests are
   next. The cache inode may still mutate; dm-verity remains mandatory. No M4
   adherence pass or full sandbox qualification is claimed; M4 remains zero.
+
+- Previous turn progressed in 8ad2658. M4 now consumes PreparedScute into an
+  owned read-only VerityMapping. Both loop bindings use atomic read-only/autoclear
+  configuration and one allocation attempt. Target parameters come from the
+  authenticated extent; the generated header is not reparsed as authority. Pinned
+  devmap builder defaults reject corruption/I/O errors, verify zero blocks and
+  do not enable check-at-most-once. No command obtains raw backing/control FDs.
+- Cleanup-only error variants retain exactly the mapping/loop/backing resources
+  still live. Explicit close removes the mapping first, then confirms loop
+  unbinding using status; busy removal can retry with all backing retained. Drop
+  requests deferred mapping removal, closes autoclear loops and lets kernel
+  references retain backing; this is not a teardown-success receipt. Two negative
+  compilation cases prohibit reusing consumed preparation and dropping workspace
+  before its mapping. Partial setup fault injection and combined primary/cleanup
+  error reporting remain part of broader lifecycle integration.
+- Preserved the initial E0106 compiler error and unbuilt source. v90 preserves a
+  failed fixture assumption that opening a read-only block device for writing
+  must fail. Corrected the test to attempt the actual write. v91 passes rejected
+  writes, positive reads for aligned/raw-partial/compressed data, busy mapping
+  removal followed by retry, and EIO for cache corruption after activation before
+  the first read. Existing normal suite passes. Root tests (30 compile-fail),
+  root/fixture Clippy, formatting/Python checks pass. Source/raw logs/input blobs
+  and complete artifact hashes verified; no privileged host device operations.
+- Focused review checked consuming transitions, retained dependencies and field
+  drop order, immutable target authority, no unchecked kernel reads, no polling
+  sleeps and cleanup phase ownership. This is not a milestone adherence pass.
+  Read-only snapshot assembly over dm-zero, verified snapshot-header parsing,
+  full chain composition, setup/teardown bounds and full fault qualification remain
+  outstanding. M4 remains at zero; no M5 or whole-sandbox completion claim.

@@ -817,3 +817,18 @@ Host tests independently check emitted leaf/root hashes and failed tree writes.
 This does not test read-time dm-verity protection or mountable scute metadata yet.
 The fixture generator, source snapshots, exact initial cache blobs, logs and hashes
 are retained in evidence/v89. No host mounts or device operations were performed.
+
+## Owned dm-verity mappings
+
+v90 records a failed test assumption: write-mode open may succeed even for a
+read-only device. v91 tests write rejection instead and passes. PreparedScute is
+consumed into VerityMapping, which retains both read-only loop bindings and their
+backing. Reads return expected decoded/padded bytes for all three fixture formats.
+A held block FD makes explicit close fail busy; releasing it allows cleanup retry.
+A fresh activated mapping returns EIO after corruption of cache data before its
+first read. No cached verified page is relied on for this negative test.
+
+v91 includes exact booted source plus separately identified later compile-fail
+lifetime checks, initial compiler-failure evidence, raw logs and verified hashes.
+This qualifies these focused verity operations, not snapshot-chain assembly,
+filesystem mounting, crash behavior of this new owner, or the complete sandbox.

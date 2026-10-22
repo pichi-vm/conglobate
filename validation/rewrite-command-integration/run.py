@@ -25,7 +25,7 @@ with (out / 'build.txt').open('wb') as build_log:
                    env=build_env, stdout=build_log, stderr=subprocess.STDOUT, check=True)
 root = out / 'root'
 shutil.copytree(seed / 'root', root, symlinks=True)
-for module in ['ext4', 'dm-zero', 'dm-snapshot']:
+for module in ['ext4', 'dm-zero', 'dm-snapshot', 'dm-verity']:
     for line in subprocess.check_output(['modprobe', '--show-depends', '--set-version', '7.2.10-200.fc44.x86_64', module], text=True).splitlines():
         if line.startswith('insmod '):
             source = pathlib.Path(line.split()[1])
@@ -103,6 +103,7 @@ cp -a /image-root/. /work/origin/
 modprobe dm-zero
 modprobe dm-snapshot
 /idmap-probe snapshot-probe
+modprobe dm-verity
 /idmap-probe prepare-scutes
 /idmap-probe loop-probe
 /idmap-probe mapping-probe
