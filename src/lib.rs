@@ -6,6 +6,7 @@
 
 pub mod cache;
 pub mod context;
+pub mod copy;
 pub mod document;
 pub mod image;
 pub mod input;

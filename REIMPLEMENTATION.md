@@ -179,3 +179,15 @@ rules rather than silently shrinking acceptance criteria.
   referenced content. All 34 tests and Clippy with warnings denied pass.
   M3 still requires chain verification/integration, materialization and complete
   COPY validation before its three-pass gate can begin.
+- COPY mode is now a validated immutable parsed value (octal or symbolic clauses),
+  replacing unchecked mode strings. Multiple explicit sources require a destination
+  ending in slash, enforced while parsing the recipe. Two tests cover accepted
+  forms and malformed recipe/mode rejection; all 36 tests and Clippy pass.
+- Reference review found the legacy symbolic evaluator is not a sufficient oracle:
+  https://github.com/tonistiigi/dchapes-mode/blob/master/mode.go uses original-mode
+  conditions for X and flushes partial operations around copied permission bits.
+  A provisional evaluator was removed rather than carry that mismatch forward.
+  The new code currently parses descriptions only. M6 must implement/reference-test
+  evaluation, including mixed permission/copy expressions and X after earlier edits.
+  M3 still needs filename-pattern validation, context materialization and image-chain
+  verification/integration. No adherence pass claimed.

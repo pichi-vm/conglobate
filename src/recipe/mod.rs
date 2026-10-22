@@ -15,6 +15,8 @@ pub use transform::{PropertyValue, TransformAction, TransformOperation, Transfor
 #[derive(Debug, thiserror::Error)]
 pub enum RecipeError {
     #[error(transparent)]
+    Mode(#[from] crate::copy::ModeError),
+    #[error(transparent)]
     Template(#[from] crate::template::TemplateError),
     #[error("invalid recipe YAML: {0}")]
     Document(#[from] serde_saphyr::Error),
@@ -203,7 +205,7 @@ pub struct Copy {
     destination: ImagePath,
     owner: Option<String>,
     group: Option<String>,
-    mode: Option<String>,
+    mode: Option<crate::copy::CopyMode>,
 }
 impl Copy {
     pub fn sources(&self) -> &[String] {
@@ -218,8 +220,8 @@ impl Copy {
     pub fn group(&self) -> Option<&str> {
         self.group.as_deref()
     }
-    pub fn mode(&self) -> Option<&str> {
-        self.mode.as_deref()
+    pub fn mode(&self) -> Option<&crate::copy::CopyMode> {
+        self.mode.as_ref()
     }
 }
 #[derive(Debug)]
@@ -266,10 +268,15 @@ impl TryFrom<DirectiveDocument> for Directive {
                     ));
                 }
                 let destination = ImagePath::try_from(copy.into)?;
+                if sources.len() > 1 && !destination.as_ref().ends_with('/') {
+                    return Err(RecipeError::Invalid(
+                        "multiple COPY sources require a directory destination ending in /",
+                    ));
+                }
                 let owner = copy.owner.into_option();
                 let group = copy.group.into_option();
-                let mode = copy.mode.into_option();
-                if [owner.as_deref(), group.as_deref(), mode.as_deref()]
+                let mode = copy.mode.into_option().map(|s| s.parse()).transpose()?;
+                if [owner.as_deref(), group.as_deref()]
                     .into_iter()
                     .flatten()
                     .any(|s| s.is_empty() || s.contains('\0'))
