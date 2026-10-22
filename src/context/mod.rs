@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Immutable committed objects, captured without checkout filters or hooks.
+mod readonly;
+pub use readonly::{ContextMountFailure, MountRecovery, ReadOnlyContext};
 mod materialize;
-pub use materialize::StagedContext;
+pub use materialize::{StagedContext, StagedFile};
 mod read;
 pub use read::ContextFile;
 

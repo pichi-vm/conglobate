@@ -6,7 +6,7 @@ use crate::path::ContextPath;
 use rustix::fs::{Mode, OFlags, ResolveFlags};
 use std::{
     fs::{self, File, OpenOptions},
-    io::{self, Write},
+    io::{self, Read, Seek, SeekFrom, Write},
     os::{
         fd::AsRawFd,
         unix::{
@@ -22,9 +22,9 @@ use std::{
 #[derive(Debug)]
 pub struct StagedContext {
     // Cleanup uses /proc/self/fd/<parent>/..., so parent must outlive directory.
-    directory: tempfile::TempDir,
-    root: File,
-    _parent: File,
+    pub(super) directory: tempfile::TempDir,
+    pub(super) root: File,
+    pub(super) _parent: File,
 }
 impl CapturedContext {
     pub fn materialize(&self, parent: &Path) -> Result<StagedContext, ContextError> {
@@ -81,7 +81,7 @@ impl CapturedContext {
 impl StagedContext {
     /// Read-only descriptor access, confined beneath the captured root. This
     /// does not expose the staging pathname or a writable directory descriptor.
-    pub fn open(&self, path: &ContextPath) -> Result<File, ContextError> {
+    pub fn open(&self, path: &ContextPath) -> Result<StagedFile<'_>, ContextError> {
         let fd = rustix::fs::openat2(
             &self.root,
             path.as_ref(),
@@ -96,7 +96,10 @@ impl StagedContext {
                 "selected checkout path is not a file",
             ));
         }
-        Ok(file)
+        Ok(StagedFile {
+            file,
+            _owner: std::marker::PhantomData,
+        })
     }
     /// Explicit cleanup reports failure; Drop remains best-effort fallback.
     pub fn close(self) -> Result<(), ContextError> {
@@ -109,5 +112,37 @@ impl StagedContext {
         let result = directory.close();
         drop(_parent);
         result.map_err(ContextError::from)
+    }
+}
+
+/// Borrowed read authority cannot survive the consuming read-only transition.
+/// No raw descriptor or metadata mutation methods are exposed.
+///
+/// ```compile_fail
+/// use conglobate::{context::StagedContext, path::ContextPath};
+/// fn cannot_freeze_with_open_reader(staged: StagedContext, path: ContextPath) {
+///     let file = staged.open(&path).unwrap();
+///     let frozen = staged.read_only();
+///     drop(file);
+/// }
+/// ```
+#[derive(Debug)]
+pub struct StagedFile<'a> {
+    file: File,
+    _owner: std::marker::PhantomData<&'a StagedContext>,
+}
+impl StagedFile<'_> {
+    pub fn metadata(&self) -> io::Result<fs::Metadata> {
+        self.file.metadata()
+    }
+}
+impl Read for StagedFile<'_> {
+    fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+        self.file.read(bytes)
+    }
+}
+impl Seek for StagedFile<'_> {
+    fn seek(&mut self, position: SeekFrom) -> io::Result<u64> {
+        self.file.seek(position)
     }
 }

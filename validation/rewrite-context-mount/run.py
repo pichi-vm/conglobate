@@ -24,6 +24,13 @@ for line in subprocess.check_output(['ldd', str(binary)], text=True).splitlines(
         destination = root / source.relative_to('/')
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
+fixture = root / 'fixture'
+fixture.mkdir()
+subprocess.run(['git', 'init', '-q', str(fixture)], check=True)
+(fixture / 'file').write_bytes(b'committed fixture')
+subprocess.run(['git', '-C', str(fixture), 'add', 'file'], check=True)
+subprocess.run(['git', '-C', str(fixture), '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture'], check=True)
+(root / 'fixture-commit').write_bytes(subprocess.check_output(['git', '-C', str(fixture), 'rev-parse', 'HEAD']))
 (root / 'conglobate-disposable-validation-vm').touch()
 (root / 'init').write_text('''#!/bin/bash
 set -eu
@@ -32,6 +39,8 @@ mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev
 mount --make-rprivate /
+mkdir -p /work
+mount -t tmpfs tmpfs /work
 set +e
 /context-probe
 status=$?
@@ -50,6 +59,6 @@ command = [value.replace(str(seed), str(out)) for value in json.loads((seed / 'c
 with (out / 'serial.txt').open('wb') as log:
     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
 serial = (out / 'serial.txt').read_text()
-assert 'READONLY_CONTEXT_VIEW_PASS' in serial and 'CONTEXT_PROBE_EXIT 0' in serial, serial[-4000:]
-(out / 'verdict.json').write_text(json.dumps({'readonly_view': True, 'pre_mount_fd_is_writable': True, 'production_lifecycle_qualified': False}, indent=2))
+assert 'PRODUCTION_CONTEXT_LIFECYCLE_PASS' in serial and 'READONLY_CONTEXT_VIEW_PASS' in serial and 'CONTEXT_PROBE_EXIT 0' in serial, serial[-4000:]
+(out / 'verdict.json').write_text(json.dumps({'readonly_view': True, 'pre_mount_fd_is_writable': True, 'production_checkout_lifecycle': True, 'full_sandbox_qualified': False}, indent=2))
 print('PASS', out)

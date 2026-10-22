@@ -32,3 +32,20 @@ Validation after fixes 1–2: all 50 tests pass; cargo fmt and Clippy with warni
  denied pass. Runtime sandbox, read-only mount, crash recovery and distro claims
 remain unsupported by these tests. Existing source/validation preservation is
 unchanged. No clean pass is counted while review scope and finding 3 remain open.
+
+## Read-only transition follow-up
+
+The production StagedContext::read_only transition now replaces the pre-bind root
+FD, owns the read-only mount, and retains cleanup authority on failed explicit
+unmount. Drop uses a detach fallback and retains backing storage if detach fails.
+The mount lease is thread-affine. StagedFile is borrowed and exposes no raw FD or
+metadata mutation API; a compile-fail test prevents consuming the staged checkout
+while a reader remains alive. This closes the prior escape of pre-bind descriptors
+through StagedContext::open.
+
+Disposable-VM runs v3/v4 in validation/rewrite-context-mount exercise production
+read-only enforcement, EBUSY ownership/retry and Drop cleanup. This supplies the
+missing ordinary read-only checkout transition evidence for finding 3. Private
+namespace establishment, simultaneous crashes and broader lifecycle recovery are
+still M4 requirements. Setup fault injection and the full milestone-wide review
+remain to be considered; no clean pass has yet been counted.

@@ -6,3 +6,4 @@ publish = false
 
 [dependencies]
 rustix = { version = "1", features = ["fs", "mount"] }
+conglobate = { path = "../.." }

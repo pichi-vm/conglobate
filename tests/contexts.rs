@@ -391,6 +391,8 @@ fn materialization_preserves_committed_data_modes_and_confined_links_on_tmpfs() 
             .is_err()
     );
     assert_eq!(std::fs::read_dir(scratch.path()).unwrap().count(), 1);
+    drop(file);
+    drop(executable);
     checkout.close().unwrap();
     assert_eq!(std::fs::read_dir(scratch.path()).unwrap().count(), 0);
 }

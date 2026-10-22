@@ -262,3 +262,11 @@ rules rather than silently shrinking acceptance criteria.
   log interleaving/PID1 exit; corrected v2 passes. No host mount was performed.
 - Read-only lifecycle finding remains open until the owning production transition
   and failure cleanup are implemented/tested. This probe is not an adherence pass.
+- Implemented consuming read-only context transition with owning mount cleanup,
+  reopened directory authority, thread affinity, fallible close/retry and detach
+  fallback. Staged readers now borrow their owner and cannot expose raw FDs.
+- Production transition passed disposable-VM v3/v4: metadata writes return EROFS,
+  held-open file causes owning EBUSY error, cleanup retry succeeds after release,
+  and Drop cleanup succeeds. All 50 unit/integration tests, one compile-fail
+  doctest and Clippy pass. VM evidence is preserved. Full M3 review remains open;
+  no M4 command lifecycle or crash qualification is inferred.
