@@ -284,3 +284,8 @@ rules rather than silently shrinking acceptance criteria.
   normal/EBUSY/Drop checks pass too. Evidence is retained alongside earlier runs.
   This closes the ordinary setup-failure coverage gap; crash recovery remains M4.
   Evidence additions do not count as a clean frozen-scope adherence pass.
+- Rust style review corrected checkout transitions to Checkout<Staged> and
+  Checkout<ReadOnly>, sealed empty markers with state-specific resource payloads.
+  Existing API names are aliases. All 51 tests, three compile-fail doctests and
+  Clippy pass; production lifecycle/partial-setup VM regression v6 also passes.
+  The style finding is resolved and recorded; clean-pass streak remains zero.

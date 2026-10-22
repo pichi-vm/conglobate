@@ -36,3 +36,7 @@ before reopening its directory FD. The probe temporarily sets only its own
 RLIMIT_NOFILE soft limit to zero, restores it via a guard, asserts EMFILE in the
 owning mounted error, and successfully retries cleanup. No production injection
 hooks were added. The VM scope and earlier limitations still apply.
+
+v6 repeats the production lifecycle and partial-setup checks after migrating
+checkout ownership to Checkout<Staged>/Checkout<ReadOnly> with sealed marker
+states and associated resource payloads. All checks pass.

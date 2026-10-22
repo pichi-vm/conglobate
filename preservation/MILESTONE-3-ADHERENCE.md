@@ -82,3 +82,19 @@ Drop paths also pass in that run. Simultaneous crashes are still an M4 obligatio
 
 This expands the evidence scope, so it does not count as a frozen-scope clean
 pass. No new production-code defect was found in this portion of the review.
+
+## Rust state-model review (baseline 8a4efcc)
+
+Found a style/architecture discrepancy: staged/read-only checkout transitions
+used separate concrete wrapper structs rather than the agreed sealed marker
+state methodology. Refactored to Checkout<Staged> and Checkout<ReadOnly>, with
+sealed CheckoutState, empty markers and associated opaque resource payloads.
+StagedContext/ReadOnlyContext remain aliases; resource guards retain their RAII
+and explicit cleanup behavior. No unsafe extraction or runtime state flag was
+introduced. MountLease's single Option remains solely a Drop ownership slot.
+
+All 51 unit/integration tests, three compile-fail doctests and Clippy pass.
+Negative compilation checks cover freezing with a live reader, freezing twice
+and sending mount ownership across threads. Disposable-VM v6 repeats normal,
+EBUSY retry, Drop and actual partial-setup cleanup successfully. This fixes a
+review finding and changes the reviewed scope, so the clean streak remains zero.

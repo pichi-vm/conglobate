@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{ContextError, StagedContext};
+use super::{ContextError, ReadOnlyContext, StagedContext, StagedResources};
 use crate::path::ContextPath;
 use rustix::{
     fs::{Mode, OFlags, ResolveFlags},
@@ -12,7 +12,7 @@ use std::{fs::File, io};
 /// Owns a mount-enforced read-only checkout. It must be created in the builder's
 /// private mount namespace, never a command namespace. No path is exposed.
 #[derive(Debug)]
-pub struct ReadOnlyContext {
+pub struct ReadOnlyResources {
     root: File,
     lease: MountLease,
 }
@@ -109,11 +109,11 @@ impl Drop for MountLease {
 }
 impl StagedContext {
     pub fn read_only(self) -> Result<ReadOnlyContext, ContextMountFailure> {
-        let Self {
+        let StagedResources {
             directory,
             root,
             _parent,
-        } = self;
+        } = self.resources;
         // An old directory FD bypasses the new mount view, as the VM probe shows.
         drop(root);
         let backing = BackingDirectory { directory, _parent };
@@ -141,7 +141,9 @@ impl StagedContext {
             File::open(lease.backing().directory.path())
         })();
         match result {
-            Ok(root) => Ok(ReadOnlyContext { root, lease }),
+            Ok(root) => Ok(ReadOnlyContext {
+                resources: ReadOnlyResources { root, lease },
+            }),
             Err(source) => Err(ContextMountFailure::Mounted {
                 source,
                 recovery: MountRecovery { lease },
@@ -153,7 +155,7 @@ impl ReadOnlyContext {
     pub fn open(&self, path: &ContextPath) -> Result<File, ContextError> {
         let file = File::from(
             rustix::fs::openat2(
-                &self.root,
+                &self.resources.root,
                 path.as_ref(),
                 OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC,
                 Mode::empty(),
@@ -169,7 +171,7 @@ impl ReadOnlyContext {
         Ok(file)
     }
     pub fn close(self) -> Result<(), ContextMountFailure> {
-        let Self { root, lease } = self;
+        let ReadOnlyResources { root, lease } = self.resources;
         drop(root);
         lease.close()
     }

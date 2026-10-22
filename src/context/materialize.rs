@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{CapturedContext, ContextEntry, ContextError};
+use super::{CapturedContext, ContextEntry, ContextError, StagedContext};
 use crate::path::ContextPath;
 use rustix::fs::{Mode, OFlags, ResolveFlags};
 use std::{
@@ -20,7 +20,7 @@ use std::{
 /// Private populated checkout on existing tmpfs. Read-only mount enforcement is
 /// a separate consuming lifecycle transition, not implied by file permissions.
 #[derive(Debug)]
-pub struct StagedContext {
+pub struct StagedResources {
     // Cleanup uses /proc/self/fd/<parent>/..., so parent must outlive directory.
     pub(super) directory: tempfile::TempDir,
     pub(super) root: File,
@@ -52,12 +52,14 @@ impl CapturedContext {
             .tempdir_in(pinned)?;
         let root = File::open(directory.path())?;
         let staged = StagedContext {
-            directory,
-            root,
-            _parent: parent,
+            resources: StagedResources {
+                directory,
+                root,
+                _parent: parent,
+            },
         };
         for (relative, entry) in self.entries() {
-            let target = staged.directory.path().join(relative);
+            let target = staged.resources.directory.path().join(relative);
             match entry {
                 ContextEntry::Directory => fs::create_dir(target)?,
                 ContextEntry::File { executable, bytes } => {
@@ -83,7 +85,7 @@ impl StagedContext {
     /// does not expose the staging pathname or a writable directory descriptor.
     pub fn open(&self, path: &ContextPath) -> Result<StagedFile<'_>, ContextError> {
         let fd = rustix::fs::openat2(
-            &self.root,
+            &self.resources.root,
             path.as_ref(),
             OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC,
             Mode::empty(),
@@ -103,11 +105,11 @@ impl StagedContext {
     }
     /// Explicit cleanup reports failure; Drop remains best-effort fallback.
     pub fn close(self) -> Result<(), ContextError> {
-        let Self {
+        let StagedResources {
             directory,
             root,
             _parent,
-        } = self;
+        } = self.resources;
         drop(root);
         let result = directory.close();
         drop(_parent);
