@@ -1,0 +1,2 @@
+Passed initial/private volume ownership, detached-view cloning before namespace entry, actual idmap/attachment with mapped UID, supervisor filesystem pin, wrong-namespace rejection and cleanup retry. Not full protected-command integration.
+Exact booted source is in source/. volume-with-conversion-lifetime-test.rs adds only later compile-fail documentation proving view conversion retains the volume borrow.

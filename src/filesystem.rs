@@ -83,6 +83,17 @@ impl<'ns> IdmapFailure<'ns> {
     }
 }
 impl<'ns> Mount<'ns, Detached> {
+    pub(crate) fn from_detached(
+        root: File,
+        scope: &'ns crate::isolation::PrivateMountNamespace,
+    ) -> io::Result<Self> {
+        scope.verify_current()?;
+        Ok(Self {
+            resources: DetachedResources { root },
+            _scope: scope,
+            _thread: PhantomData,
+        })
+    }
     /// Clone only this filesystem view, never recursively include submounts.
     /// The source descriptor pins the selected root during acquisition. The
     /// detached result independently pins its superblock after source closure.
@@ -90,6 +101,7 @@ impl<'ns> Mount<'ns, Detached> {
         root: &File,
         scope: &'ns crate::isolation::PrivateMountNamespace,
     ) -> io::Result<Self> {
+        scope.verify_current()?;
         let tree = rustix::mount::open_tree(
             root,
             "",

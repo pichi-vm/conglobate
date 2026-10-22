@@ -1911,3 +1911,34 @@ rules rather than silently shrinking acceptance criteria.
   retention/handoff. Fixed setup/teardown bounds, combined error reporting and
   fuller fault/crash coverage remain required. All privileged tests stayed inside
   disposable QEMU; no host mount/device operations or synchronization sleeps.
+
+- Previous turn progressed in 871f172. Integration review found that volumes also
+  need supervisor ownership in the verified init namespace, where policy identity
+  pins live; command views still need private mount namespaces. Added the typed
+  init-namespace constructor using RecoveryDirectory's existing namespace proof,
+  and Volume::pin creates the exact independent FilesystemPin without exposing a
+  root FD. Mount/unmount/cleanup verify their owner namespace; namespace mismatch
+  retains cleanup-only ownership. PrivateMountNamespace now pins its own identity
+  and checks it before detached-view assignment/cloning.
+- v96 preserves EINVAL from attempting open_tree(CLONE) on an attached root FD
+  after entering another namespace. Local kernel may_copy_tree confirms that a
+  foreign non-anonymous source cannot be cloned that way. Fixed the handoff:
+  Volume::view clones nonrecursively in the owner's namespace and returns a
+  borrowed VolumeView; consuming in_namespace assigns the detached tree to the
+  private command scope. Its lifetime bound keeps the volume borrowed through
+  later Mount states. No raw mount or namespace descriptor escapes these APIs.
+- v97 passes both private and supervisor volume paths, identity pinning and
+  namespace-rejection/retry checks. v98 additionally creates a mapped user
+  namespace, idmaps/attaches the detached view inside a new private namespace,
+  observes underlying UID 0 as mapped UID 100000, then releases views/pins and
+  remounts successfully. Wrong-namespace pin/view/cleanup attempts fail without
+  releasing their storage. Existing normal suite passes. Root tests (37 compile-
+  fail), root/fixture Clippy, formatting/Python checks pass. Failed/intermediate
+  runs, exact sources, kernel source excerpt, logs and artifact hashes retained.
+- Focused review checked pre-transition cloning, namespace identity verification,
+  borrowed view conversion, pin/device/inode identity and cleanup-only retries.
+  This resolves a construction mismatch; it does not yet couple these volumes to
+  a complete protected command Step or qualify supervisor-death behavior for the
+  new path. That integration, fixed setup/teardown bounds, combined error reporting
+  and broader faults remain required. M4 stays zero; no adherence advancement or
+  whole-sandbox claim. Privileged work remained in disposable QEMU; no sleeps added.

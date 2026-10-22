@@ -5,7 +5,7 @@
 mod chain;
 mod volume;
 pub use volume::{
-    Mounted, Unmounted, Volume, VolumeMountFailure, VolumeState, VolumeUnmountFailure,
+    Mounted, Unmounted, Volume, VolumeMountFailure, VolumeState, VolumeUnmountFailure, VolumeView,
 };
 mod loopback;
 pub use chain::{ReadOnlyChain, ReadOnlyChainFailure};

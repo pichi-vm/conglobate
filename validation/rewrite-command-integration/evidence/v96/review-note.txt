@@ -1,0 +1,1 @@
+Failed volume view creation after entering a different mount namespace: EINVAL. Kernel may_copy_tree rejects cloning a foreign attached mount. Requires detached cloning before namespace transition.

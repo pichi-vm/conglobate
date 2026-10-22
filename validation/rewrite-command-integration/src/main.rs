@@ -33,7 +33,10 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
-        if args.get(1).is_some_and(|a| a == "volume-probe") {
+        if args
+            .get(1)
+            .is_some_and(|a| a == "volume-probe" || a == "volume-supervisor")
+        {
             use conglobate::storage::{Created, Mapping, Unmounted, Volume, Workspace};
             use std::{collections::BTreeSet, num::NonZeroU64};
             let points = || -> std::io::Result<BTreeSet<std::path::PathBuf>> {
@@ -74,8 +77,30 @@ impl Integration {
                 rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
                 rustix::fs::makedev(id.major(), id.minor()),
             )?;
-            let scope = PrivateMountNamespace::enter()?;
-            let volume = Volume::<Unmounted>::new(snapshot, &scope);
+            let recovery = Path::new("/work/volume-policy-records");
+            fs::create_dir(recovery)?;
+            fs::set_permissions(recovery, fs::Permissions::from_mode(0o700))?;
+            let lease = RecoveryDirectory::open(recovery)?;
+            let mut creator = Command::new(std::env::current_exe()?);
+            creator.arg("namespace-seed").env_clear();
+            let user = UserNamespace::<Mapped>::create(
+                creator,
+                IdRange::new(100000, 65536)?,
+                IdRange::new(100000, 65536)?,
+                Instant::now() + Duration::from_secs(5),
+            )?
+            .pin(&lease)?;
+            let user_file = fs::File::open(recovery.join(user.record().name()))?;
+            let scope = if args[1] == "volume-probe" {
+                Some(PrivateMountNamespace::enter()?)
+            } else {
+                None
+            };
+            let volume = match scope.as_ref() {
+                Some(scope) => Volume::<Unmounted>::new(snapshot, scope),
+                None => Volume::<Unmounted>::in_init_namespace(snapshot, &lease)
+                    .map_err(|e| e.to_string())?,
+            };
             let (error, volume) = volume
                 .mount_ext4(Path::new("/work"))
                 .unwrap_err()
@@ -98,14 +123,45 @@ impl Integration {
             assert_eq!(paths.len(), 1);
             let point = paths.first().unwrap();
             fs::write(point.join("persisted"), b"owned mounted volume")?;
+            let pin = if scope.is_none() {
+                Some(volume.pin(&lease)?)
+            } else {
+                None
+            };
+            if let Some(pin) = &pin {
+                assert_eq!(
+                    (pin.metadata()?.dev(), pin.metadata()?.ino()),
+                    (volume.root_metadata()?.dev(), volume.root_metadata()?.ino())
+                );
+            }
             let view = volume.view()?;
-            drop(view);
+            let command_scope = PrivateMountNamespace::enter()?;
+            assert!(volume.pin(&lease).is_err());
+            assert!(volume.view().is_err());
+            let view = view
+                .in_namespace(&command_scope)?
+                .idmap(user_file)
+                .map_err(|e| e.to_string())?
+                .attach(MountPoint::create(Path::new("/work"))?)
+                .map_err(|e| e.to_string())?;
+            assert_eq!(view.root_metadata()?.uid(), 100000);
+            view.close().map_err(|e| e.to_string())?;
+            println!("OWNED_VOLUME_IDMAPPED_VIEW_PASS");
+            command_scope.restore().map_err(|e| e.to_string())?;
+            if let Some(pin) = pin {
+                pin.release()?;
+                println!("OWNED_VOLUME_POLICY_PIN_PASS");
+            }
             let holder = fs::File::open(point)?;
             let failure = volume.unmount().unwrap_err();
             assert_eq!(
                 failure.source_error().kind(),
                 std::io::ErrorKind::ResourceBusy
             );
+            let wrong_scope = PrivateMountNamespace::enter()?;
+            let failure = failure.retry().unwrap_err();
+            assert!(failure.source_error().to_string().contains("namespace"));
+            wrong_scope.restore().map_err(|e| e.to_string())?;
             drop(holder);
             let volume = failure.retry().map_err(|e| e.to_string())?;
             assert!(points()?.is_empty());
@@ -128,7 +184,12 @@ impl Integration {
                 .detach()
                 .map_err(|e| e.to_string())?;
             origin.close()?;
-            scope.restore().map_err(|e| e.to_string())?;
+            if let Some(scope) = scope {
+                scope.restore().map_err(|e| e.to_string())?;
+            }
+            user.release()?;
+            drop(lease);
+            fs::remove_dir(recovery)?;
             fs::remove_file(node)?;
             println!("OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS");
             return Ok(());

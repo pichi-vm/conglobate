@@ -53,6 +53,9 @@ impl RecoveryLease {
     }
 }
 impl RecoveryDirectory {
+    pub(crate) fn verify_current(&self) -> io::Result<()> {
+        self.lease.namespace.verify_current()
+    }
     pub(crate) fn retain(&self) -> io::Result<RecoveryLease> {
         self.lease.namespace.verify_current()?;
         Ok(RecoveryLease(Arc::clone(&self.lease)))

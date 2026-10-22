@@ -48,6 +48,7 @@ struct NamespaceLease {
 #[derive(Debug)]
 pub struct PrivateMountNamespace {
     lease: NamespaceLease,
+    current: File,
 }
 #[derive(Debug, thiserror::Error)]
 pub enum NamespaceFailure {
@@ -99,7 +100,27 @@ impl PrivateMountNamespace {
                 recovery: NamespaceRecovery { lease },
             });
         }
-        Ok(Self { lease })
+        let current = match File::open("/proc/thread-self/ns/mnt") {
+            Ok(current) => current,
+            Err(source) => {
+                return Err(NamespaceFailure::Entered {
+                    source,
+                    recovery: NamespaceRecovery { lease },
+                });
+            }
+        };
+        Ok(Self { lease, current })
+    }
+    pub(crate) fn verify_current(&self) -> io::Result<()> {
+        use std::os::unix::fs::MetadataExt;
+        let expected = self.current.metadata()?;
+        let current = File::open("/proc/thread-self/ns/mnt")?.metadata()?;
+        if (expected.dev(), expected.ino()) != (current.dev(), current.ino()) {
+            return Err(io::Error::other(
+                "private mount namespace scope is not current",
+            ));
+        }
+        Ok(())
     }
     /// Commit the helper to its current namespace after irreversible root entry.
     /// Closing the restoration handle prevents the resident command init from

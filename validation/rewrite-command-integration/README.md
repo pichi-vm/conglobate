@@ -874,3 +874,18 @@ with a live borrowed view and extracting a snapshot from a mounted volume. Exact
 booted source, separately labeled later documentation tests, raw logs and verified
 artifact hashes are in evidence/v95. These checks do not qualify production
 formatting, command/policy handoff, setup deadlines, or final layer sealing.
+
+## Supervisor volumes and private command views
+
+v96 preserves a real namespace-construction failure: open_tree(CLONE) rejects an
+attached root FD from another namespace. The archived kernel may_copy_tree excerpt
+explains the EINVAL. v97 clones the detached view before namespace transition,
+then assigns it to the command scope. v98 further idmaps and attaches that view,
+verifying UID 100000 for filesystem UID 0 in both supported volume locations.
+
+Supervisor-owned volumes create FilesystemPin directly from their root; its device
+and inode match. Wrong-namespace cloning, pinning and cleanup are rejected, and
+cleanup can retry after restoration. Remount persistence and the normal suite pass.
+Exact booted sources, failed/intermediate logs and artifact hashes are preserved;
+the later compile-fail lifetime test is identified separately. Protected-command
+and supervisor-death qualification of the new volume path remain outstanding.
