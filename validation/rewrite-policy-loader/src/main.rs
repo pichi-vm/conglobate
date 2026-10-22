@@ -11,6 +11,17 @@ impl Probe {
         if !std::path::Path::new("/conglobate-disposable-validation-vm").exists() {
             return Err("disposable VM marker required".into());
         }
+        let arguments = std::env::args_os().collect::<Vec<_>>();
+        if arguments
+            .get(1)
+            .is_some_and(|argument| argument == "--check-lease")
+        {
+            let path = arguments.get(2).ok_or("missing lease path")?;
+            drop(conglobate::anchor::RecoveryDirectory::open(
+                std::path::Path::new(path),
+            )?);
+            return Ok(());
+        }
         let holder = fs::read_to_string("/work/userns-pid")?;
         let namespace = fs::metadata(format!("/proc/{}/ns/user", holder.trim()))?.ino();
         let owner = fs::metadata("/proc/self/ns/user")?.ino();
@@ -95,32 +106,57 @@ impl Probe {
         println!("PRODUCTION_DISABLED_PIN_RECOVERY_PASS");
         let parent = std::path::Path::new("/work/namespace-pins");
         fs::create_dir(parent)?;
-        assert!(
-            conglobate::anchor::NamespacePin::create(
-                parent,
-                fs::File::open(format!("/proc/{}/ns/user", holder.trim()))?
-            )
-            .is_err()
-        );
+        assert!(conglobate::anchor::RecoveryDirectory::open(parent).is_err());
         fs::set_permissions(
             parent,
             <fs::Permissions as std::os::unix::fs::PermissionsExt>::from_mode(0o700),
         )?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(parent)?;
+        assert!(!Self::check_lease_in_child(parent)?);
+        assert_eq!(
+            conglobate::anchor::RecoveryDirectory::open(parent)
+                .unwrap_err()
+                .kind(),
+            std::io::ErrorKind::WouldBlock
+        );
+        assert!(matches!(
+            conglobate::anchor::NamespacePin::create(&lease, fs::File::open("/dev/null")?),
+            Err(conglobate::anchor::CreateFailure::Before(_))
+        ));
         let holder_pid = rustix::process::Pid::from_raw(holder.trim().parse()?).unwrap();
         let holder_identity =
             rustix::process::pidfd_open(holder_pid, rustix::process::PidfdFlags::empty())?;
         let source = fs::File::open(format!("/proc/{}/ns/user", holder.trim()))?;
         let restricted = EffectiveCapabilities::clear()?;
-        let failure = conglobate::anchor::NamespacePin::create(parent, source).unwrap_err();
+        let failure = conglobate::anchor::NamespacePin::create(&lease, source).unwrap_err();
         let conglobate::anchor::CreateFailure::Mount { target, .. } = failure else {
             panic!("expected mount failure with retained target");
         };
         drop(restricted);
+        drop(lease);
+        assert_eq!(
+            conglobate::anchor::RecoveryDirectory::open(parent)
+                .unwrap_err()
+                .kind(),
+            std::io::ErrorKind::WouldBlock
+        );
         target.cleanup()?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(parent)?;
         assert_eq!(fs::read_dir(parent)?.count(), 0);
         let source = fs::File::open(format!("/proc/{}/ns/user", holder.trim()))?;
-        let pin = conglobate::anchor::NamespacePin::create(parent, source)?;
+        let pin = conglobate::anchor::NamespacePin::create(&lease, source)?;
         let record = pin.record().clone();
+        let renamed = parent.with_file_name("renamed-namespace-pins");
+        fs::rename(parent, &renamed)?;
+        let parent = renamed.as_path();
+        drop(lease);
+        // A live pin keeps the lock even after the directory facade is gone.
+        assert_eq!(
+            conglobate::anchor::RecoveryDirectory::open(parent)
+                .unwrap_err()
+                .kind(),
+            std::io::ErrorKind::WouldBlock
+        );
         drop(pin); // Persistent mount survives loss of its userspace owner.
         rustix::process::pidfd_send_signal(&holder_identity, rustix::process::Signal::KILL)?;
         let mut poll = [rustix::event::PollFd::new(
@@ -143,7 +179,8 @@ impl Probe {
                 .intersects(rustix::event::PollFlags::IN | rustix::event::PollFlags::HUP)
         );
         drop(holder_identity);
-        let pin = conglobate::anchor::NamespacePin::recover(parent, record.clone())?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(parent)?;
+        let pin = conglobate::anchor::NamespacePin::recover(&lease, record.clone())?;
         assert_eq!(pin.record().inode(), namespace);
         let restricted = EffectiveCapabilities::clear()?;
         let failure = pin.release().unwrap_err();
@@ -152,21 +189,35 @@ impl Probe {
         };
         drop(restricted);
         pin.release()?;
-        assert!(conglobate::anchor::NamespacePin::recover(parent, record).is_err());
+        assert!(conglobate::anchor::NamespacePin::recover(&lease, record).is_err());
         assert_eq!(fs::read_dir(parent)?.count(), 0);
         let pin = conglobate::anchor::NamespacePin::create(
-            parent,
+            &lease,
             fs::File::open("/proc/self/ns/user")?,
         )?;
         let record = pin.record().clone();
         pin.release()?;
         std::os::unix::fs::symlink("/proc/self/ns/user", parent.join(record.name()))?;
-        assert!(conglobate::anchor::NamespacePin::recover(parent, record.clone()).is_err());
+        assert!(conglobate::anchor::NamespacePin::recover(&lease, record.clone()).is_err());
         fs::remove_file(parent.join(record.name()))?;
+        drop(lease);
+        drop(conglobate::anchor::RecoveryDirectory::open(parent)?);
+        assert!(Self::check_lease_in_child(parent)?);
         fs::remove_dir(parent)?;
         assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
         println!("PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS");
         Ok(())
+    }
+    fn check_lease_in_child(path: &std::path::Path) -> std::io::Result<bool> {
+        Ok(std::process::Command::new("/idmap-probe")
+            .arg("--check-lease")
+            .arg(path)
+            .env_clear()
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()?
+            .success())
     }
 }
 #[derive(Debug)]

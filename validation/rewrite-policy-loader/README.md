@@ -53,6 +53,14 @@ can expose handles even when the original target file was private. v7 rejects a
 non-private parent and reruns the lifecycle with mode 0700. It passes and is the
 qualification run for that final permission rule; v5/v6 retain earlier evidence.
 
+v8 requires the production RecoveryDirectory lease for pin creation/recovery.
+A competing open returns WouldBlock; a live pin retains the lock after dropping
+the facade. v9 also checks the failed-creation target retains it, and moves the
+directory before recovering through the original descriptor-backed pin. v10
+executes an independent probe process: acquisition fails while held and succeeds
+after release. All three runs pass. Locking is cooperative and does not establish
+the lifetime of the containing mount namespace or persist the identity records.
+
 Descriptor accounting checks process-held resources, not a global kernel leak
 proof. These tests do not enable policy or qualify durable anchors,
 command containment, supervisor/guardian death,

@@ -526,3 +526,18 @@ rules rather than silently shrinking acceptance criteria.
   adherence passes. The next integration must establish a trusted independent
   anchor namespace, persist/lock the lease, and combine namespace/filesystem/policy
   lifetimes with containment before exposing activation or admission.
+- Namespace pin creation/recovery now require RecoveryDirectory, a protected
+  tmpfs directory opened without following its final symlink and locked with
+  nonblocking exclusive flock. Pins and unmounted targets internally share the
+  open description; the lock closes only after the last resource owner releases
+  it. No public Clone, raw descriptor or early-unlock operation is exposed.
+- VM v8 passes competing-open exclusion and lock retention after facade Drop.
+  v9 extends that to failed-creation targets and recovery after directory rename.
+  v10 executes a separate probe process, which fails acquisition while held and
+  succeeds after release. Existing namespace/policy lifecycle checks still pass.
+  All evidence and source hashes retained. This remains cooperative ownership;
+  privileged protocol bypass and containing-directory replacement are outside
+  its guarantee. Persisted records and independent anchor-namespace checks remain.
+- All 71 tests (including fixture entry), six compile-fail doctests, production/
+  probe Clippy and formatting pass. M4 has zero adherence passes and remains open;
+  no activation, guardian admission or full crash-recovery claim is made.

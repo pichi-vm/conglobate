@@ -224,6 +224,15 @@ anchor aggregate must verify that prerequisite, persist records and own all
 namespace/filesystem/policy identities before enabling authorization. Namespace
 pins alone are not a crash-recovery or command-admission receipt.
 
+Creation and recovery now require a RecoveryDirectory lease: a nonblocking
+exclusive flock on the root-only tmpfs directory descriptor. Pins and unmounted
+cleanup targets share that open description internally, so dropping the directory
+facade cannot unlock their live resources. A separately opened recovery owner is
+excluded until the final reference closes. Descriptor-relative access survives
+directory rename. This is cooperative locking, not protection against privileged
+protocol bypass or replacement of the directory through its parent. A durable
+record format and independent mount-namespace verification are still required.
+
 The helper identity handoff uses a private close-on-exec sequence-packet socket
 and one deterministic CBOR message `[1, 0]` (version, identity-offer opcode),
 with exactly one SCM_RIGHTS descriptor. The trusted helper opens its own pidfd

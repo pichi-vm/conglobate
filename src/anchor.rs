@@ -13,7 +13,26 @@ use std::{
         unix::fs::{MetadataExt, PermissionsExt},
     },
     path::{Path, PathBuf},
+    sync::Arc,
 };
+
+/// Exclusive cooperative lease on a root-only tmpfs recovery directory.
+/// The descriptor stays locked while any pin/recovery target derived from this
+/// owner lives. This does not prevent privileged callers bypassing the protocol,
+/// namespace disappearance, or replacement of the directory by its parent owner.
+#[derive(Debug)]
+pub struct RecoveryDirectory {
+    directory: Arc<File>,
+}
+impl RecoveryDirectory {
+    pub fn open(path: &Path) -> io::Result<Self> {
+        let file = Backing::parent(path)?;
+        rustix::fs::flock(&file, rustix::fs::FlockOperation::NonBlockingLockExclusive)?;
+        Ok(Self {
+            directory: Arc::new(file),
+        })
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct NamespaceRecord {
@@ -31,12 +50,19 @@ impl NamespaceRecord {
 }
 #[derive(Debug)]
 struct Backing {
-    parent: File,
+    parent: Arc<File>,
     record: NamespaceRecord,
 }
 impl Backing {
     fn parent(path: &Path) -> io::Result<File> {
-        let file = File::open(path)?;
+        let file = File::from(rustix::fs::open(
+            path,
+            rustix::fs::OFlags::RDONLY
+                | rustix::fs::OFlags::DIRECTORY
+                | rustix::fs::OFlags::CLOEXEC
+                | rustix::fs::OFlags::NOFOLLOW,
+            rustix::fs::Mode::empty(),
+        )?);
         let metadata = file.metadata()?;
         if !metadata.is_dir()
             || metadata.uid() != 0
@@ -107,7 +133,7 @@ pub enum ReleaseFailure {
     },
 }
 impl NamespacePin {
-    pub fn create(parent: &Path, namespace: File) -> Result<Self, CreateFailure> {
+    pub fn create(parent: &RecoveryDirectory, namespace: File) -> Result<Self, CreateFailure> {
         if rustix::fs::fstatfs(&namespace)
             .map_err(io::Error::from)?
             .f_type as u64
@@ -116,7 +142,7 @@ impl NamespacePin {
             return Err(io::Error::other("source is not a namespace descriptor").into());
         }
         let metadata = namespace.metadata()?;
-        let parent = Backing::parent(parent)?;
+        let parent = Arc::clone(&parent.directory);
         let temporary = tempfile::Builder::new()
             .prefix("namespace-")
             .permissions(fs::Permissions::from_mode(0o600))
@@ -155,9 +181,9 @@ impl NamespacePin {
     pub fn record(&self) -> &NamespaceRecord {
         &self.backing.record
     }
-    pub fn recover(parent: &Path, record: NamespaceRecord) -> io::Result<Self> {
+    pub fn recover(parent: &RecoveryDirectory, record: NamespaceRecord) -> io::Result<Self> {
         let backing = Backing {
-            parent: Backing::parent(parent)?,
+            parent: Arc::clone(&parent.directory),
             record,
         };
         backing.verify()?;
