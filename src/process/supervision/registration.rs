@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Paired, ProcessObservation, Supervision, SupervisionState, private};
-use crate::{domain::DomainRegistration, process::identity::IdentitySocket};
+use crate::{
+    domain::DomainRegistration,
+    process::identity::{ExchangeWait, IdentitySocket},
+};
 use rustix::{
     event::PollFlags,
     fd::{AsFd, OwnedFd},
@@ -36,8 +39,24 @@ impl Supervision<Paired> {
         domain: DomainRegistration<'_>,
         deadline: Instant,
     ) -> io::Result<Supervision<Registered>> {
-        Packet::Offer(domain.registration_file()?.into()).send(&self.socket.0, deadline)?;
-        match Packet::receive(&self.socket.0, deadline)? {
+        self.register_helper_with(domain, &deadline)
+    }
+    /// Observe upstream loss during descriptor transfer and registration ACK.
+    pub fn register_helper_watched(
+        self,
+        domain: DomainRegistration<'_>,
+        supervisor: &Supervision<Paired>,
+        deadline: Instant,
+    ) -> io::Result<Supervision<Registered>> {
+        self.register_helper_with(domain, &super::StartupWatch::new(supervisor, deadline))
+    }
+    fn register_helper_with(
+        self,
+        domain: DomainRegistration<'_>,
+        wait: &impl ExchangeWait,
+    ) -> io::Result<Supervision<Registered>> {
+        Packet::Offer(domain.registration_file()?.into()).send_with(&self.socket.0, wait)?;
+        match Packet::receive_with(&self.socket.0, wait)? {
             Packet::Joined => Ok(Supervision {
                 socket: self.socket,
                 peer: self.peer,
@@ -93,13 +112,16 @@ enum Packet {
 impl Packet {
     // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2.
     fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
+        self.send_with(socket, &deadline)
+    }
+    fn send_with(self, socket: &IdentitySocket, wait: &impl ExchangeWait) -> io::Result<()> {
         let (opcode, descriptor) = match &self {
             Self::Offer(fd) => (1, Some(fd.as_fd())),
             Self::Joined => (2, None),
         };
         let descriptors: Vec<_> = descriptor.into_iter().collect();
         loop {
-            socket.ready(PollFlags::OUT, deadline)?;
+            wait.ready(socket, PollFlags::OUT)?;
             let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
             let mut ancillary = SendAncillaryBuffer::new(&mut space);
             if !descriptors.is_empty()
@@ -121,8 +143,11 @@ impl Packet {
         }
     }
     fn receive(socket: &IdentitySocket, deadline: Instant) -> io::Result<Self> {
+        Self::receive_with(socket, &deadline)
+    }
+    fn receive_with(socket: &IdentitySocket, wait: &impl ExchangeWait) -> io::Result<Self> {
         loop {
-            socket.ready(PollFlags::IN, deadline)?;
+            wait.ready(socket, PollFlags::IN)?;
             let mut bytes = [0; 3];
             let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
             let mut ancillary = RecvAncillaryBuffer::new(&mut space);

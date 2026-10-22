@@ -382,7 +382,14 @@ channel, polling both sockets and both pidfds under one deadline. Its sampled
 ShutdownTrigger distinguishes supervisor/helper/both loss for diagnostics; it
 neither orders exits nor certifies command success or quiescence. Protocol and
 I/O errors must also start failed-build cancellation. It deliberately requires a
-registered helper; setup-phase monitoring remains a separate obligation.
+registered helper. Setup exchange primitives now offer launch_watched and
+register_helper_watched: a private ExchangeWait abstraction preserves ordinary
+deadline-only behavior and adds StartupWatch polling the helper socket plus the
+supervisor socket/pidfd. Upstream loss or malformed traffic aborts setup, with
+loss checked before and after polling; launch retains a started child on error.
+This does not interrupt kernel spawn, prove continuing liveness after return or
+monitor unrelated setup operations. The owning domain/guardian startup path must
+still select these watched operations and retain cleanup ownership throughout.
 RegisteredGuardian now owns the upstream paired channel and ContainedHelper.
 Its consuming supervise_until waits for either peer, then attempts domain
 cancellation on every outcome, including timeout and protocol/I/O error. The

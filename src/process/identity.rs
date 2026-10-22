@@ -23,6 +23,14 @@ use std::{
 
 #[derive(Debug)]
 pub(super) struct IdentitySocket(pub(super) OwnedFd);
+pub(super) trait ExchangeWait {
+    fn ready(&self, socket: &IdentitySocket, interest: PollFlags) -> io::Result<()>;
+}
+impl ExchangeWait for Instant {
+    fn ready(&self, socket: &IdentitySocket, interest: PollFlags) -> io::Result<()> {
+        socket.ready(interest, *self)
+    }
+}
 /// Parent half of a private one-shot trusted helper identity exchange.
 #[derive(Debug)]
 pub struct IdentityReceiver(IdentitySocket);
@@ -94,9 +102,12 @@ impl IdentitySocket {
     }
 
     pub(super) fn send_current_until(&self, deadline: Instant) -> io::Result<()> {
+        self.send_current_with(&deadline)
+    }
+    pub(super) fn send_current_with(&self, wait: &impl ExchangeWait) -> io::Result<()> {
         let identity = pidfd_open(getpid(), PidfdFlags::empty())?;
         loop {
-            self.ready(PollFlags::OUT, deadline)?;
+            wait.ready(self, PollFlags::OUT)?;
             let descriptors = [identity.as_fd()];
             let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
             let mut ancillary = SendAncillaryBuffer::new(&mut space);
@@ -118,8 +129,11 @@ impl IdentitySocket {
     }
 
     pub(super) fn receive_until(&self, deadline: Instant) -> io::Result<ProcessObservation> {
+        self.receive_with(&deadline)
+    }
+    pub(super) fn receive_with(&self, wait: &impl ExchangeWait) -> io::Result<ProcessObservation> {
         loop {
-            self.ready(PollFlags::IN, deadline)?;
+            wait.ready(self, PollFlags::IN)?;
             let mut bytes = [0; 3];
             let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
             let mut ancillary = RecvAncillaryBuffer::new(&mut space);

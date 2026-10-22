@@ -17,6 +17,17 @@ impl Probe {
         let arguments = std::env::args_os().collect::<Vec<_>>();
         if arguments
             .get(1)
+            .is_some_and(|a| a == "--stall-registration")
+        {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            let _channel =
+                conglobate::process::Supervision::from_stdin()?.exchange_until(deadline)?;
+            std::thread::sleep(std::time::Duration::from_secs(30));
+            return Ok(());
+        }
+
+        if arguments
+            .get(1)
             .is_some_and(|a| a == "--independent-guardian")
         {
             return Self::independent_guardian(std::path::Path::new(
@@ -188,6 +199,7 @@ impl Probe {
         Self::recorded_domain()?;
         Self::contained_helper()?;
         Self::registered_guardian()?;
+        Self::watched_startup()?;
         assert!(
             std::process::Command::new(std::env::current_exe()?)
                 .arg("--independent-guardian-test")
@@ -451,6 +463,68 @@ impl Probe {
         fs::remove_dir(parent)?;
         assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
         println!("PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS");
+        Ok(())
+    }
+    fn watched_startup() -> Result<(), Box<dyn std::error::Error>> {
+        use std::{
+            process::Command,
+            time::{Duration, Instant},
+        };
+        let root = std::path::Path::new("/work/watched-startup");
+        fs::create_dir(root)?;
+        fs::set_permissions(root, fs::Permissions::from_mode(0o700))?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(root)?;
+        let parent = std::path::Path::new("/work/cgroups");
+        for registration in [false, true] {
+            let deadline = Instant::now() + Duration::from_secs(5);
+            let mut command = Command::new(std::env::current_exe()?);
+            command.arg("--guardian-peer");
+            let (upstream, supervisor) =
+                conglobate::process::Process::launch_supervised(command, deadline)?;
+            let domain = conglobate::domain::CommandDomain::create(&lease, parent)?;
+            let record = lease.save_domain(&domain)?;
+            let started = Instant::now();
+            if registration {
+                let mut command = Command::new(std::env::current_exe()?);
+                command.arg("--stall-registration");
+                let (helper, channel) =
+                    conglobate::process::Process::launch_watched(command, &supervisor, deadline)?;
+                let terminator = std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_millis(20));
+                    upstream.terminate_until(deadline).unwrap()
+                });
+                let source = channel
+                    .register_helper_watched(domain.registration()?, &supervisor, deadline)
+                    .unwrap_err();
+                assert_eq!(source.kind(), std::io::ErrorKind::ConnectionAborted);
+                terminator.join().unwrap();
+                helper.terminate_until(deadline)?;
+            } else {
+                let terminator = std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_millis(20));
+                    upstream.terminate_until(deadline).unwrap()
+                });
+                let mut command = Command::new("/usr/bin/sleep");
+                command.arg("30");
+                let failure =
+                    conglobate::process::Process::launch_watched(command, &supervisor, deadline)
+                        .unwrap_err();
+                let conglobate::process::LaunchFailure::Started { source, process } = failure
+                else {
+                    return Err("watched startup did not reach started state".into());
+                };
+                assert_eq!(source.kind(), std::io::ErrorKind::ConnectionAborted);
+                terminator.join().unwrap();
+                process.terminate_until(deadline)?;
+            }
+            assert!(started.elapsed() < Duration::from_secs(2));
+            // Neither helper received authorization to execute a recipe.
+            domain.cancel_until(deadline)?;
+            lease.remove_domain_record(parent, &record)?;
+        }
+        drop(lease);
+        fs::remove_dir(root)?;
+        println!("PRODUCTION_WATCHED_STARTUP_PASS");
         Ok(())
     }
     fn wait_for_file(

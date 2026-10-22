@@ -27,8 +27,27 @@ impl Process<Identified> {
     /// same exclusive reaping/SIGCHLD prerequisites and spawn deadline limits as
     /// launch. Exchange failure cancels the channel and retains the child owner.
     pub fn launch_supervised(
+        command: Command,
+        deadline: Instant,
+    ) -> Result<(Self, Supervision<Paired>), LaunchFailure> {
+        Self::launch_supervised_with(command, deadline, &deadline)
+    }
+
+    /// Observe upstream loss while exchanging helper identity. Errors retain any
+    /// started child. Kernel spawn itself cannot be interrupted by this poll.
+    pub fn launch_watched(
+        command: Command,
+        supervisor: &Supervision<Paired>,
+        deadline: Instant,
+    ) -> Result<(Self, Supervision<Paired>), LaunchFailure> {
+        let watch = super::supervision::StartupWatch::new(supervisor, deadline);
+        watch.check().map_err(LaunchFailure::Before)?;
+        Self::launch_supervised_with(command, deadline, &watch)
+    }
+    fn launch_supervised_with(
         mut command: Command,
         deadline: Instant,
+        wait: &impl super::identity::ExchangeWait,
     ) -> Result<(Self, Supervision<Paired>), LaunchFailure> {
         if Instant::now() >= deadline {
             return Err(LaunchFailure::Before(io::Error::new(
@@ -41,7 +60,7 @@ impl Process<Identified> {
         let child = command.spawn().map_err(LaunchFailure::Before)?;
         drop(command);
         let mut pending: Process<Running> = child.into();
-        let channel = match parent.exchange_until(deadline) {
+        let channel = match parent.exchange_with(wait) {
             Ok(channel) => channel,
             Err(source) => {
                 return Err(LaunchFailure::Started {

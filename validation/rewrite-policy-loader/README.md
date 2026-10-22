@@ -247,3 +247,13 @@ sleep before cancellation. Readiness publication uses rename to avoid observing
 an incomplete name. These fixture files synchronize tests only; they do not
 implement production readiness/admission. Neither run establishes policy/mount
 persistence, setup monitoring or simultaneous supervisor/guardian death recovery.
+
+
+v35 tests production watched startup exchanges. A real upstream process exits
+while a sleep helper stalls identity exchange, then in a separate case while an
+identified helper stalls registration ACK. Both return ConnectionAborted and
+retain the applicable child owner; explicit termination/reaping and protected
+domain cleanup follow. v36 additionally requires completion within two seconds
+of the test start against a five-second setup deadline. This measures prompt
+observation without claiming a real-time scheduling guarantee. The owning startup
+aggregate and non-exchange setup monitoring remain separate implementation work.

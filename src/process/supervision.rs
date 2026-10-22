@@ -9,6 +9,8 @@ use rustix::{
 };
 use std::{io, process::Stdio, time::Instant};
 
+mod startup;
+pub(super) use startup::StartupWatch;
 mod guardian;
 pub use guardian::{GuardianWatch, ShutdownTrigger};
 mod registration;
@@ -92,8 +94,14 @@ impl Supervision<Unpaired> {
     /// Both peers send their own pidfd, then receive the other under one deadline.
     /// Error closes/cancels the channel; separately owned children still need reaping.
     pub fn exchange_until(self, deadline: Instant) -> io::Result<Supervision<Paired>> {
-        self.socket.0.send_current_until(deadline)?;
-        let peer = self.socket.0.receive_until(deadline)?;
+        self.exchange_with(&deadline)
+    }
+    pub(super) fn exchange_with(
+        self,
+        wait: &impl super::identity::ExchangeWait,
+    ) -> io::Result<Supervision<Paired>> {
+        self.socket.0.send_current_with(wait)?;
+        let peer = self.socket.0.receive_with(wait)?;
         Ok(Supervision {
             socket: self.socket,
             peer,
@@ -194,6 +202,44 @@ mod tests {
             let parent = parent.exchange_until(Self::deadline()).unwrap();
             (parent, helper.join().unwrap())
         }
+    }
+    #[test]
+    fn setup_exchange_observes_upstream_loss_and_protocol_failure() {
+        let (supervisor, upstream) = Fixture::paired();
+        let (pending, _held_child) = Supervision::pair().unwrap();
+        let closer = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(20));
+            drop(upstream);
+        });
+        let error = pending
+            .exchange_with(&StartupWatch::new(&supervisor, Fixture::deadline()))
+            .unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::ConnectionAborted);
+        closer.join().unwrap();
+        let failure = crate::process::Process::launch_watched(
+            Command::new("/nonexistent-watched-helper"),
+            &supervisor,
+            Fixture::deadline(),
+        )
+        .unwrap_err();
+        assert!(
+            matches!(failure, crate::process::LaunchFailure::Before(source)
+            if source.kind() == io::ErrorKind::ConnectionAborted)
+        );
+        let (supervisor, upstream) = Fixture::paired();
+        send(&upstream.socket.0.0, b"invalid", SendFlags::NOSIGNAL).unwrap();
+        let (pending, _held_child) = Supervision::pair().unwrap();
+        assert_eq!(
+            pending
+                .exchange_with(&StartupWatch::new(&supervisor, Fixture::deadline()))
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::InvalidData
+        );
+        assert_eq!(
+            supervisor.peer_lost().unwrap_err().kind(),
+            io::ErrorKind::InvalidData
+        );
     }
     #[test]
     fn guardian_observes_either_peer_and_keeps_protocol_errors() {

@@ -817,3 +817,22 @@ rules rather than silently shrinking acceptance criteria.
   mount integration and concurrent death cases remain outstanding. M4 is still
   at zero adherence passes. The previous goal turn made progress by committing
   integrated descendant drain and ownership-preserving cleanup retries.
+
+- Added private ExchangeWait with deadline-only and StartupWatch implementations.
+  Watched launch/registration poll the helper socket and upstream socket/pidfd;
+  upstream loss or invalid traffic aborts exchanges without discarding child wait
+  ownership. Existing standalone exchange behavior is retained through the same
+  packet codecs. StartupWatch checks loss before and after poll, including when
+  helper readiness is simultaneous. Kernel spawn itself remains uninterruptible.
+- Unit coverage verifies stalled exchange interruption, rejection before spawning
+  when upstream is already lost and sticky malformed traffic. VM v35 exercises
+  actual upstream process termination during helper identity and registration-ACK
+  stalls, followed by explicit child and persisted-domain cleanup. v36 adds a
+  two-second response bound against the five-second setup deadline. An initial
+  probe compile caught reversed record-removal arguments; corrected before runs.
+- Full suite passes 94 tests and thirteen compile-fail doctests; the tightened
+  unit check, root/probe Clippy and formatting also pass. Evidence/source hashes
+  are preserved. The owning startup aggregate still must select watched methods;
+  other setup operations and final admission remain unimplemented. M4 remains
+  open at zero adherence passes. Previous goal turn made progress through
+  independent-process domain lifecycle and guardian-death recovery evidence.
