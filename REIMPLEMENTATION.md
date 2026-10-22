@@ -167,3 +167,15 @@ rules rather than silently shrinking acceptance criteria.
   All 30 tests and Clippy with warnings denied pass. OCI index/platform selection,
   manifest/chain validation, private materialization and remaining COPY validation
   are still M3 work; the adherence streak remains zero.
+- Added host-only OCI index selection using the ecosystem VM artifact selector,
+  exact index/manifest digest and size verification, incompatible/ambiguous
+  platform rejection, and explicit OCI envelope checks alongside shared artifact
+  validation. Captured index/manifest bytes remain available for inventory/output.
+- Added streaming verification of every non-inline selected manifest descriptor.
+  Metadata resolution, content-read receipts and scute-chain verification remain
+  distinct: none is presented as proof of a later cache read or a verified chain.
+- Seven cache tests now include direct-manifest pin rejection, ignored unrelated
+  platform entries, duplicate compatible entries, size/envelope errors and missing
+  referenced content. All 34 tests and Clippy with warnings denied pass.
+  M3 still requires chain verification/integration, materialization and complete
+  COPY validation before its three-pass gate can begin.

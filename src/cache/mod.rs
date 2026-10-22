@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Read-only content access. A receipt verifies a read, never future cache bytes.
+mod resolve;
+pub use resolve::{HostArchitecture, ResolvedImage};
+
 use pichi_artifact::Digest as ContentDigest;
 use rustix::fs::{Mode, OFlags, ResolveFlags};
 use sha2::{Digest, Sha256};
@@ -13,6 +16,10 @@ use std::{
 
 #[derive(Debug, thiserror::Error)]
 pub enum CacheError {
+    #[error("invalid OCI JSON: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("invalid artifact manifest: {0}")]
+    Manifest(String),
     #[error("cache I/O: {0}")]
     Io(#[from] io::Error),
     #[error("invalid cache content: {0}")]
