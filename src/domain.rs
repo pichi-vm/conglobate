@@ -9,8 +9,8 @@ mod guardian;
 pub use guardian::{GuardianStop, RegisteredGuardian};
 mod helper;
 pub use helper::{
-    ContainedHelper, HelperCancelFailure, HelperCancellation, HelperFinishFailure,
-    HelperLaunchFailure, HelperReapFailure, HelperReaping, ReapedHelper,
+    AdmissionFailure, ContainedHelper, HelperCancelFailure, HelperCancellation,
+    HelperFinishFailure, HelperLaunchFailure, HelperReapFailure, HelperReaping, ReapedHelper,
 };
 mod recorded;
 pub use recorded::{

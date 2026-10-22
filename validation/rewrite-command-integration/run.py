@@ -3,6 +3,7 @@
 import gzip
 import hashlib
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -14,6 +15,13 @@ seed = pathlib.Path('/var/tmp/conglobate-cap-review-fix-normal-v1')
 supervisor_death = len(sys.argv) == 3 and sys.argv[2] == '--supervisor-death'
 out = pathlib.Path(sys.argv[1]).resolve()
 out.mkdir()
+# Never qualify a preceding binary after a failed build. Retain compiler output
+# with this run and abort before constructing or starting the guest on failure.
+build_env = os.environ.copy()
+build_env.setdefault('TMPDIR', '/var/tmp/conglobate-rewrite-tmp')
+with (out / 'build.txt').open('wb') as build_log:
+    subprocess.run(['cargo', 'build', '--locked', '--manifest-path', str(here / 'Cargo.toml')],
+                   env=build_env, stdout=build_log, stderr=subprocess.STDOUT, check=True)
 root = out / 'root'
 shutil.copytree(seed / 'root', root, symlinks=True)
 for line in subprocess.check_output(['modprobe', '--show-depends', '--set-version', '7.2.10-200.fc44.x86_64', 'ext4'], text=True).splitlines():
@@ -89,6 +97,7 @@ mount -t bpf bpf /work/pins
 chmod 700 /work/pins
 mkdir /work/cgroups
 mount -t cgroup2 cgroup2 /work/cgroups
+/idmap-probe supervisor admission-timeout
 /idmap-probe supervisor policy-off
 rm /work/origin/command-started
 /idmap-probe supervisor success
@@ -207,7 +216,7 @@ if supervisor_death:
         'FILESYSTEM_PIN_AFTER_SUPERVISOR_DEATH_PASS',
     ]) and 'Power down' in serial and 'INTEGRATED_COMMAND_' not in serial
 else:
-    passed = all(marker in serial for marker in ['BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS', 'BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS', 'NATIVE_FILESYSTEM_PIN_RETAINS_UNMOUNTED_SOURCE_PASS', 'NATIVE_REAPER_TIMEOUT_AND_RELEASE_PASS', 'SCOPED_ROOT_TERMINATION_PASS', 'SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS', 'NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS', 'NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS', 'NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS', 'INTEGRATED_COMMAND_SHELL-FAILURE_PASS', 'NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS', 'NATIVE_NAMESPACE_INIT_ADOPTION_PASS', 'INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS', 'INTEGRATED_COMMAND_POLICY-OFF_PASS', 'NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
+    passed = all(marker in serial for marker in ['ADMISSION_TIMEOUT_CANCELS_WITHOUT_COMMAND_PASS', 'BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS', 'BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS', 'NATIVE_FILESYSTEM_PIN_RETAINS_UNMOUNTED_SOURCE_PASS', 'NATIVE_REAPER_TIMEOUT_AND_RELEASE_PASS', 'SCOPED_ROOT_TERMINATION_PASS', 'SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS', 'NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS', 'NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS', 'NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS', 'INTEGRATED_COMMAND_SHELL-FAILURE_PASS', 'NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS', 'NATIVE_NAMESPACE_INIT_ADOPTION_PASS', 'INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS', 'INTEGRATED_COMMAND_POLICY-OFF_PASS', 'NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
 (out / 'verdict.json').write_text(json.dumps({'passed': passed, 'full_sandbox_qualified': False}, indent=2))
 assert passed, serial[-5000:]
 print('PASS', out)

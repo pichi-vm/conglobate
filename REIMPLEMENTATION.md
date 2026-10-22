@@ -1406,3 +1406,35 @@ rules rather than silently shrinking acceptance criteria.
   quiescence must be integrated with this bound owner; active configuration is
   still fixture-only. Filesystem owner provenance, scoped namespace transfer,
   complete late-error cleanup and runtime qualification remain outstanding.
+
+- Previous goal turn made progress in 729c6a2 (bound disabled policy ownership).
+  Integration inspection found registration lacks an independent command gate.
+  Added Registered -> Admitted protocol state and descriptor-free canonical CBOR
+  admission/acknowledgment packets. A trusted helper waits after joining its
+  domain and before executing any image code. EOF, timeout and wrong-phase
+  messages fail closed; descriptor/opcode combinations remain strictly checked.
+- ContainedHelper now carries its supervision state. Consuming admission yields
+  the admitted owner; admission failure returns cancellation-only ownership of
+  the process and domain. A failed ACK can follow delivered admission, so error
+  never implies that execution did not start. Added a compile-fail double-admit
+  contract and host protocol tests for explicit admission, timeout and wrong phase.
+- Added a VM case that expires admission before send, cancels/reaps/drains the
+  blocked helper, removes policy and verifies no command marker or children.
+  Existing command flows now explicitly admit after policy setup. This gate is
+  a low-level trusted-caller protocol, not proof of policy/sandbox readiness;
+  the enclosing production step must still enforce those prerequisites.
+- Validation mistake preserved as v62: fixture build failed E0515 on returning
+  a borrowed error through Box<dyn Error>, but the runner was incorrectly started
+  and copied the preceding binary. The new mode failed in old code. v62 is
+  explicitly INVALID admission evidence, with raw failure and binary provenance.
+  Corrected fixture fatal error conversion; production errors retain their owners.
+  Runner now requires a successful build and preserves build.txt before guest
+  construction, preventing a failed build from silently reusing a prior binary.
+- v63 passes admission failure cleanup and normal/timeout/command-failure checks.
+  v64 passes supervisor-death pin/label persistence through independent VM poweroff.
+  Root tests (21 compile-fail), root/fixture Clippy and formatting pass. Preserved
+  all snapshots, logs, hashes and the invalid run. No privileged host operations.
+- Review checked packet phases/descriptors, lost acknowledgments, cancellation
+  ownership, helper ordering and evidence validity. M4 remains zero adherence
+  passes: production activation must be tied to this gate and same-domain drain;
+  owner provenance, scoped transfer and complete late-error handling remain.

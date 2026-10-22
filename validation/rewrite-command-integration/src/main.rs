@@ -325,6 +325,36 @@ impl Integration {
         let helper = domain
             .launch(command, Instant::now() + Duration::from_secs(5))
             .map_err(|e| e.to_string())?;
+        if mode == "admission-timeout" {
+            let failure = helper.admit_until(Instant::now()).unwrap_err();
+            let (source, cancellation) = failure.into_parts();
+            assert_eq!(source.kind(), std::io::ErrorKind::TimedOut);
+            let deadline = Instant::now() + Duration::from_secs(5);
+            cancellation
+                .retry_until(deadline)
+                .map_err(|error| error.to_string())?
+                .reap_until(deadline)
+                .map_err(|error| error.to_string())?
+                .with_reaper(reaper)
+                .drain_until(deadline)
+                .map_err(|error| error.to_string())?
+                .finish(parent)
+                .map_err(|error| error.to_string())?;
+            policy.disable()?;
+            assert!(!Path::new("/work/origin/command-started").exists());
+            assert!(
+                fs::read_to_string("/proc/thread-self/children")?
+                    .trim()
+                    .is_empty()
+            );
+            drop(lease);
+            fs::remove_dir(recovery)?;
+            println!("ADMISSION_TIMEOUT_CANCELS_WITHOUT_COMMAND_PASS");
+            return Ok(());
+        }
+        let helper = helper
+            .admit_until(Instant::now() + Duration::from_secs(5))
+            .map_err(|error| error.to_string())?;
         let ready = Path::new("/work/origin/command-started");
         let setup = Instant::now() + Duration::from_secs(5);
         while !ready.exists() {
@@ -450,7 +480,8 @@ impl Integration {
     fn helper(mode: &str) -> Result<(), Box<dyn std::error::Error>> {
         let channel = Supervision::from_stdin()?
             .exchange_until(Instant::now() + Duration::from_secs(5))?
-            .join_domain_until(Instant::now() + Duration::from_secs(5))?;
+            .join_domain_until(Instant::now() + Duration::from_secs(5))?
+            .await_admission_until(Instant::now() + Duration::from_secs(5))?;
         let namespace = PrivateMountNamespace::enter()?;
         let userns = fs::read_to_string("/work/userns-path")?;
         let mount = Mount::<Detached>::clone_from(&fs::File::open("/work/origin")?, &namespace)?

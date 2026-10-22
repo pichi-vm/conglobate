@@ -579,3 +579,24 @@ partial teardown. v61 passes this corrected path. Pre-correction snapshots and
 review notes are retained. Root tests (20 compile-fail), root/fixture Clippy and
 formatting pass. Production activation and command admission are still unavailable;
 this is ownership integration, not completed M4 qualification.
+
+## Explicit command admission
+
+v63/v64 add a Registered -> Admitted handshake after cgroup registration. A helper
+blocks before image execution until it receives admission, then acknowledges it.
+Packets carry no descriptors and unexpected phases fail. ContainedHelper preserves
+its protocol state; a failed admission returns a cancellation-only owner. Missing
+ACK is not proof the command never started, so all error paths require cancellation.
+
+The new admission-timeout mode expires the parent deadline before send, cancels
+and drains the waiting helper, removes policy and verifies no command marker or
+children. Normal/timeout/failure cases pass in v63; supervisor-death pin/label
+persistence and VM poweroff pass in v64. Root tests (21 compile-fail), root/fixture
+Clippy and formatting pass. This protocol does not itself certify sandbox readiness
+or policy activation: the enclosing production step still needs to enforce both.
+
+v62 is preserved as INVALID evidence: after an E0515 fixture build failure, the
+agent mistakenly ran the new script with the preceding binary. Its failure and
+provenance are retained. The runner now builds with check=True, retains build.txt,
+and aborts before guest construction on build failure. Fixture error conversion
+was corrected without weakening production resource-owning errors.

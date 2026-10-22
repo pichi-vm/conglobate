@@ -61,7 +61,7 @@ impl Supervision<Paired> {
                 socket: self.socket,
                 peer: self.peer,
             }),
-            Packet::Offer(_) => Err(io::Error::new(
+            _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "expected domain registration acknowledgment",
             )),
@@ -105,19 +105,23 @@ impl Supervision<Paired> {
 }
 
 #[derive(Debug)]
-enum Packet {
+pub(super) enum Packet {
     Offer(OwnedFd),
     Joined,
+    Admit,
+    Admitted,
 }
 impl Packet {
-    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2.
-    fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
+    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4.
+    pub(super) fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
         self.send_with(socket, &deadline)
     }
     fn send_with(self, socket: &IdentitySocket, wait: &impl ExchangeWait) -> io::Result<()> {
         let (opcode, descriptor) = match &self {
             Self::Offer(fd) => (1, Some(fd.as_fd())),
             Self::Joined => (2, None),
+            Self::Admit => (3, None),
+            Self::Admitted => (4, None),
         };
         let descriptors: Vec<_> = descriptor.into_iter().collect();
         loop {
@@ -142,7 +146,7 @@ impl Packet {
             }
         }
     }
-    fn receive(socket: &IdentitySocket, deadline: Instant) -> io::Result<Self> {
+    pub(super) fn receive(socket: &IdentitySocket, deadline: Instant) -> io::Result<Self> {
         Self::receive_with(socket, &deadline)
     }
     fn receive_with(socket: &IdentitySocket, wait: &impl ExchangeWait) -> io::Result<Self> {
@@ -198,6 +202,8 @@ impl Packet {
             return match (bytes[2], fd) {
                 (1, Some(fd)) => Ok(Self::Offer(fd)),
                 (2, None) => Ok(Self::Joined),
+                (3, None) => Ok(Self::Admit),
+                (4, None) => Ok(Self::Admitted),
                 _ => Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "registration opcode/descriptor mismatch",
@@ -254,7 +260,9 @@ mod tests {
             (&[0x82, 1, 2][..], 1),
             (&[0x82, 1, 1][..], 2),
             (&[0x82, 2, 2][..], 0),
-            (&[0x82, 1, 3][..], 0),
+            (&[0x82, 1, 9][..], 0),
+            (&[0x82, 1, 3][..], 1),
+            (&[0x82, 1, 4][..], 1),
             (&[0x82, 1, 2, 0][..], 0),
         ] {
             let (a, b) = Fixture::pair();

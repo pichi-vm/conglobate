@@ -13,6 +13,8 @@ mod startup;
 pub(super) use startup::StartupWatch;
 mod guardian;
 pub use guardian::{GuardianWatch, ShutdownTrigger};
+mod admission;
+pub use admission::Admitted;
 mod registration;
 pub use registration::Registered;
 
@@ -111,6 +113,7 @@ impl Supervision<Unpaired> {
 pub trait ObservedState: SupervisionState<Resources = ProcessObservation> {}
 impl ObservedState for Paired {}
 impl ObservedState for Registered {}
+impl ObservedState for Admitted {}
 impl<S: ObservedState> Supervision<S> {
     pub(super) fn duplicate_observation(&self) -> io::Result<ProcessObservation> {
         Ok(ProcessObservation {
