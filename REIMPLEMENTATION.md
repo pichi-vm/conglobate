@@ -731,3 +731,20 @@ rules rather than silently shrinking acceptance criteria.
   probe Clippy and formatting pass. M4 remains at zero adherence passes. The
   owning helper/guardian, complete resource ordering and combined death tests
   remain unfinished; this aggregate covers domain/record ownership only.
+
+- Added ContainedHelper, constructed only by RecordedDomain::launch through the
+  persisted registration gate. It owns the identified helper, registered channel
+  and recorded domain. Consuming cancellation closes the channel before domain
+  kill/removal; HelperReaping must collect helper status before ReapedHelper can
+  remove the record. Failed transitions retain cleanup-only resource owners.
+- VM v27 passes cancellation failure/retry, record corruption failure/retry,
+  missing registration ACK, pre-spawn failure and started-child handshake timeout.
+  The fixture explicitly reaps retained startup children and cleans their domains.
+  Evidence includes exact source snapshots and binary/kernel/initramfs hashes.
+  A compile-fail example forbids finishing record cleanup before helper reaping.
+- Full suite passes 93 tests and twelve compile-fail doctests; root/probe Clippy
+  pass. Review checked private association, consuming error ownership and channel
+  close ordering. No runtime forced helper-reaping failure was exercised. This
+  component is not recipe admission, policy/mount teardown or all-descendant
+  reaping. M4 remains open at zero adherence passes; full guardian ownership and
+  combined crash qualification remain required.

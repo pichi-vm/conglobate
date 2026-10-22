@@ -183,3 +183,17 @@ unexpected terminal fixture errors are rendered as diagnostics before the dispos
 guest exits. This is not a production error-erasure policy. v25 preserves its
 owner/probe source snapshots; v26 additionally captures the final module exports.
 Neither run establishes complete guardian or policy/filesystem teardown.
+
+
+v27 uses production ContainedHelper to combine domain publication, helper identity
+exchange and registration. A retained empty child cgroup forces cancellation
+removal failure; retry retains the process and domain, then reaps the helper.
+Corrupting the fixture-owned record forces cleanup failure, with successful retry
+after canonical restoration. Separate cases cover a helper closing before its
+registration ACK, a nonexistent executable and a started sleep process timing out
+during identity exchange. Each failure retains and explicitly cleans its resources.
+The final lease can be acquired independently and the directory is empty. The
+helper's exit status is diagnostic: channel closure may let it exit normally
+before cgroup.kill arrives. The run passes with the dedicated lifecycle marker.
+This does not exercise a forced reap failure, all-descendant reaping, full guardian
+startup/crash arbitration or policy/mount teardown. Source and hashes are preserved.

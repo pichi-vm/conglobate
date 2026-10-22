@@ -73,6 +73,10 @@ impl<'lease> RecordCleanupFailure<'lease> {
     }
 }
 impl<'lease> RecordedDomain<'lease> {
+    pub(super) fn cancellation(self) -> DomainCancellation<'lease> {
+        DomainCancellation { domain: self }
+    }
+
     /// Publication errors retain the live domain. A complete record may already
     /// exist after an error; fail and inspect rather than assuming no write.
     pub fn create(
@@ -102,7 +106,7 @@ impl<'lease> RecordedDomain<'lease> {
         self,
         deadline: Instant,
     ) -> Result<DomainRecordCleanup<'lease>, RecordedCancelFailure<'lease>> {
-        DomainCancellation { domain: self }.retry_until(deadline)
+        self.cancellation().retry_until(deadline)
     }
 }
 impl<'lease> DomainCancellation<'lease> {

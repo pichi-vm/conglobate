@@ -144,6 +144,17 @@ against the record. Post-unlink failures remain errors even if the record is now
 absent. These consuming ownership transitions enforce domain-before-record cleanup;
 they do not certify reaping, policy removal, image validity or complete build recovery.
 
+ContainedHelper now combines that recorded domain with its identified helper
+and registered supervision channel. RecordedDomain::launch constructs the pair
+through the persisted registration gate; startup failures retain any child and
+a cleanup-only domain. Cancellation first closes the channel, then consumes the
+domain into HelperReaping. Only collecting the helper status yields ReapedHelper,
+and only record cleanup releases that diagnostic status. Each failed transition
+retains its owner for retry. Private fields prevent mixing unrelated helper/domain
+owners. This is still trusted-helper containment, not recipe admission: it owns
+neither mounts nor policy, does not reap all adopted descendants, and produces no
+successful-step or image-finalization receipt. Drop is fallback, not completion.
+
 The registration exchange places a trusted helper in this domain before its
 first fork: the parent transfers a freshly opened cgroup.procs descriptor, the
 helper writes its own membership (0), closes the descriptor and acknowledges.

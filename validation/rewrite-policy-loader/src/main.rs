@@ -105,6 +105,7 @@ impl Probe {
         }
         Self::command_domain()?;
         Self::recorded_domain()?;
+        Self::contained_helper()?;
         let holder = fs::read_to_string("/work/userns-pid")?;
         let namespace = fs::metadata(format!("/proc/{}/ns/user", holder.trim()))?.ino();
         let owner = fs::metadata("/proc/self/ns/user")?.ino();
@@ -350,6 +351,127 @@ impl Probe {
         fs::remove_dir(parent)?;
         assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
         println!("PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS");
+        Ok(())
+    }
+    fn contained_helper() -> Result<(), Box<dyn std::error::Error>> {
+        use std::{
+            process::{Command, Stdio},
+            time::{Duration, Instant},
+        };
+        let parent = std::path::Path::new("/work/cgroups");
+        let recovery_path = std::path::Path::new("/work/contained-helper-recovery");
+        fs::create_dir(recovery_path)?;
+        fs::set_permissions(recovery_path, fs::Permissions::from_mode(0o700))?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(recovery_path)?;
+        let domain = conglobate::domain::RecordedDomain::create(&lease, parent)?;
+        let record = domain.record().clone();
+        let path = parent.join(record.name());
+        fs::create_dir(path.join("retained-child"))?;
+        let mut command = Command::new(std::env::current_exe()?);
+        command
+            .arg("--domain-helper")
+            .env_clear()
+            .stdout(Stdio::null());
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let helper = domain
+            .launch(command, deadline)
+            .map_err(|error| error.to_string())?;
+        assert!(!helper.supervision().peer_lost()?);
+        while fs::read_to_string(path.join("cgroup.procs"))?
+            .lines()
+            .count()
+            < 2
+        {
+            if Instant::now() >= deadline {
+                return Err("contained helper descendant missing".into());
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let (_, cancellation) = helper.cancel_until(deadline).unwrap_err().into_parts();
+        assert!(path.exists());
+        assert_eq!(lease.load_domain(record.name())?, record);
+        fs::remove_dir(path.join("retained-child"))?;
+        let reaping = cancellation
+            .retry_until(deadline)
+            .map_err(|error| error.to_string())?;
+        assert!(!path.exists());
+        let reaped = reaping
+            .reap_until(deadline)
+            .map_err(|error| error.to_string())?;
+        let record_path = recovery_path.join(format!("{}.cbor", record.name()));
+        fs::write(&record_path, [0x86])?;
+        let (_, reaped) = reaped.finish(parent).unwrap_err().into_parts();
+        fs::write(&record_path, record.to_cbor())?;
+        let _diagnostic_status = reaped.finish(parent).map_err(|error| error.to_string())?;
+        assert!(!record_path.exists());
+        // Failure after identity exchange must retain the identified wait owner
+        // and a cleanup-only domain, even if no membership was acknowledged.
+        let domain = conglobate::domain::RecordedDomain::create(&lease, parent)?;
+        let mut command = Command::new(std::env::current_exe()?);
+        command
+            .arg("--registration-close")
+            .env_clear()
+            .stdout(Stdio::null());
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let failure = domain.launch(command, deadline).unwrap_err();
+        let conglobate::domain::HelperLaunchFailure::Registration {
+            process, domain, ..
+        } = *failure
+        else {
+            return Err("expected registration failure".into());
+        };
+        assert!(process.wait_until(deadline)?.status().success());
+        domain
+            .retry_until(deadline)
+            .map_err(|error| error.to_string())?
+            .finish(parent)
+            .map_err(|error| error.to_string())?;
+        // A spawn failure still retains the persisted domain for cleanup.
+        let domain = conglobate::domain::RecordedDomain::create(&lease, parent)?;
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let failure = domain
+            .launch(
+                Command::new("/nonexistent-conglobate-fixture-helper"),
+                deadline,
+            )
+            .unwrap_err();
+        let conglobate::domain::HelperLaunchFailure::Launch {
+            source: conglobate::process::LaunchFailure::Before(_),
+            domain,
+        } = *failure
+        else {
+            return Err("expected pre-spawn failure".into());
+        };
+        domain
+            .retry_until(deadline)
+            .map_err(|error| error.to_string())?
+            .finish(parent)
+            .map_err(|error| error.to_string())?;
+        let domain = conglobate::domain::RecordedDomain::create(&lease, parent)?;
+        let mut command = Command::new("/usr/bin/sleep");
+        command.arg("30").env_clear();
+        let failure = domain
+            .launch(command, Instant::now() + Duration::from_millis(20))
+            .unwrap_err();
+        let conglobate::domain::HelperLaunchFailure::Launch {
+            source: conglobate::process::LaunchFailure::Started { source, process },
+            domain,
+        } = *failure
+        else {
+            return Err("expected started helper timeout".into());
+        };
+        assert_eq!(source.kind(), std::io::ErrorKind::TimedOut);
+        let teardown = Instant::now() + Duration::from_secs(5);
+        process.terminate_until(teardown)?;
+        domain
+            .retry_until(teardown)
+            .map_err(|error| error.to_string())?
+            .finish(parent)
+            .map_err(|error| error.to_string())?;
+        drop(lease);
+        assert!(Self::check_lease_in_child(recovery_path)?);
+        fs::remove_dir(recovery_path)?;
+        println!("PRODUCTION_CONTAINED_HELPER_LIFECYCLE_PASS");
         Ok(())
     }
     fn recorded_domain() -> Result<(), Box<dyn std::error::Error>> {
