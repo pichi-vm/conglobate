@@ -3,7 +3,8 @@
 
 //! Immutable descriptions for the labels.bpf.c map ABI, not authorization.
 //! Numeric identities are reusable: a future activation owner must retain
-//! independent namespace/mount anchors and command containment through teardown.
+//! namespace/mount lifetimes and command containment through teardown and the
+//! supervisor-death interval before dedicated-VM shutdown.
 use std::{collections::BTreeSet, num::NonZeroU32};
 
 mod object;

@@ -2,7 +2,8 @@
 
 `labels.bpf.c` is the kernel policy asset for the rewrite. It adapts the preserved
 kernel-mount validation policy to an explicit set of assigned filesystems. It is
-integrated with a safe Rust loader and disabled hook/pin ownership. Active-policy lifetime ownership, activation and command admission remain
+integrated with a safe Rust loader and disabled hook/pin ownership. Production
+active-policy lifetime ownership, activation and command admission remain
 unimplemented. The dedicated-VM lifecycle supersedes the older guardian and
 cross-invocation recovery experiments.
 
@@ -21,10 +22,10 @@ require membership in the assigned target set. Every hook preserves prior LSM
 results. Ordinary ownership, ACL, mount and filesystem checks remain active.
 
 The activation owner must keep config disabled while it populates/pins targets and
-attaches/pins all three hooks. It enables config last, only after the step owns namespace/mount lifetimes and
-command containment. The lifetime arrangement must survive supervisor death
-until the dedicated VM shuts down; no separate guardian is required. Neither map may change while
-commands execute. After proving descendant quiescence, disable
+attaches/pins all three hooks. It enables config last, only after the step owns
+namespace/mount lifetimes and command containment. The lifetime arrangement must survive supervisor death
+until the dedicated VM shuts down; no separate guardian is required. Neither map
+may change while commands execute. After proving descendant quiescence, disable
 config and remove the exception before guards, maps and identity anchors. Failed
 cleanup must retain protection, reject publication and require VM disposal if
 normal cleanup cannot finish. See SANDBOX-DESIGN.txt and
@@ -60,3 +61,13 @@ two-target tests. `validation/rewrite-policy-loader` tests production disabled
 loading, descriptor release and permission failure. Host policy loading is
 neither needed nor performed. Broader
 lifecycle, concurrency, Arm and confidential-hardware qualification is pending.
+
+The command-integration v31/v32 fixtures exercise enabled labels with the native
+root/capability/seccomp path. v32 kills the supervisor, then the still-contained
+command successfully relabels its assigned image and is still denied on private
+shared memory before the independent controller powers off the VM. The fixture
+retains the original mount, namespace holder and bpffs through shutdown. This
+supports the dedicated-VM design without a guardian, but does not supply the
+production aggregate ownership or admission API. Activation is a deliberately
+validation-only adapter; do not reuse its externally enforced teardown order as
+a production type-safety guarantee.

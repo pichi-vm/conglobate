@@ -288,3 +288,50 @@ or full terminal ioctl compatibility. The filter still needs those qualification
 cases. It also does not replace the fixture's external namespace adapters or add
 namespace init behavior. Active labeling-policy admission, complete partial-setup
 ownership, control-channel negative tests and distro/platform qualification remain.
+
+
+## Active labeling and supervisor loss
+
+v30 rejected the fixture's default mode-777 bpffs root before loading commands;
+this failed run is preserved. The fixture now protects that mount root with mode
+700. v31 passes policy-disabled denial, enabled set/read/remove of security.selinux
+on an assigned ext4 file, rejection on the private /dev/shm filesystem, and denial
+of security.selinux.extra. Commands use the existing restricted native execution
+path and no CAP_SYS_ADMIN. Normal completion and timeout both cancel the domain,
+reap the helper and drain descendants before disabling/removing the policy.
+
+v32 kills and reaps the supervisor with a command still running. Only after death,
+the independent controller signals the test command through a fixture-owned image
+file. The command relabels the assigned file, reads back its new label, confirms
+labeling private shared memory is still denied, and writes an acknowledgement.
+The controller then powers off the VM; no command-success receipt is accepted.
+This proves actual label/guard behavior during this fixture's death interval,
+not merely survival of pin names. The VM's original ext4 mount, user-namespace
+holder and bpffs remain live through poweroff. There is no guardian.
+
+EnabledPolicy is a validation-only adapter: activation uses a pinned map handle,
+and ManuallyDrop prevents an error from running the disabled owner's destructor
+against active guards. Explicit teardown is invoked only after the fixture's
+complete cancellation/reaping/drain sequence. Production still needs an aggregate
+owner that enforces that sequence, retains identities, gates command admission,
+and rejects output after failed cleanup. The adapter is not that API. External
+namespace setup, fixture control-file synchronization, incomplete failure coverage
+and lack of architecture/distro qualification remain explicit limitations.
+
+
+v33 exposed a real completion race while adding label readback after remount:
+channel closure was treated as process exit, so cgroup cancellation could kill a
+successful helper during its exit sequence. Production now offers a bounded
+pidfd exit observation distinct from channel loss. The fixture observes actual
+exit before cancelling residual descendants, then still reaps and drains them.
+No sleep was added to production. v34 passed with a timing-delay regression
+fixture and also confirmed label persistence after unmount, e2fsck and read-only
+remount. Its timing-based fixture is superseded by an explicit handshake: the
+helper binds a private Unix datagram socket before closing its channel, then
+blocks for release. The supervisor proves exit observation still times out,
+sends the release, and awaits actual exit. This forces the ordering without
+assuming a scheduling window. Both sides bound the fixture socket wait.
+
+v35 passes the explicit-handshake regression, active label checks, timeout,
+filesystem verification and label persistence after remount. Root tests and
+root/fixture Clippy/formatting pass. Full sandbox qualification remains false.

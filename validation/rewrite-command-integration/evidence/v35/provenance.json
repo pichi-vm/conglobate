@@ -1,0 +1,24 @@
+{
+  "base_commit": "be0ba894f659b02dce0cd0eaf03018c68f37e537",
+  "full_artifacts": "/var/tmp/conglobate-command-integration-v35",
+  "sha256": {
+    "validation/rewrite-command-integration/evidence/v35/serial.txt": "6b983b0ef2813700e911bf33f448f98bf6538c586aba9acb6b646c6f17b96e7a",
+    "validation/rewrite-command-integration/evidence/v35/verdict.json": "a6cfb41c262350f51f936e7750b36f1824c3334d22664d5b9c9af4bfdf9a5528",
+    "validation/rewrite-command-integration/evidence/v35/command.json": "68c77c1c172cb67ea89e3a57585533a0365fcc2dc7da4c457c179cd31e3e0b7c",
+    "validation/rewrite-command-integration/evidence/v35/inputs.json": "1426f3b6c5e845e2b24a5478f799c1f9de50de58773f568212417d686592c9ae",
+    "validation/rewrite-command-integration/evidence/v35/probe.rs": "fac06205ee1d0d94cc41e90c427cd91f5077a81ecfca97886bb53f92a29003de",
+    "validation/rewrite-command-integration/evidence/v35/run.py": "a768981bef9178e86110be0a750a796c0124722bdf0eb0fa82bdb72fd29e276a",
+    "validation/rewrite-command-integration/evidence/v35/Cargo.lock": "a8fde0e13198d43013b0d9d8f20503b08c31fc8ab1eae696c0884d97ce38bb18",
+    "validation/rewrite-command-integration/evidence/v35/observation.rs": "834eb178ff0992ec665aa5b44a741bc1a63cd0926cfb86bc005ed1057297e6f2",
+    "validation/rewrite-command-integration/evidence/v35/supervision.rs": "64ed1023c9cf1047b93afca022a88ee33d48a14a5a490d6821ed852ea3e08f3d",
+    "validation/rewrite-command-integration/evidence/v35/labels.bpf.c": "cd07e59cf929e4a28991520fce00432409fe2b6be6970b89906b09f16fc8e7d1",
+    "validation/rewrite-command-integration/evidence/v35/pins.rs": "7e163dd87f0be332d460e95059586fcf095f1cd39151a6054d48e4b5d3e4dcda",
+    "validation/rewrite-command-integration/evidence/v35/fixture.sh.txt": "e020d5fed09da640ba0864480f1b6fc9b29b98160aa3aa29d0ceb844ebbdc645",
+    "validation/rewrite-command-integration/evidence/v35/init.txt": "8a950cc37b23130548b3e20436dd4daae35e6b10750124e3b87c85c942f20707",
+    "validation/rewrite-command-integration/evidence/v35/cargo-test.log": "9e33bc80ff3c65ae2b5abfa7d4537d4bd63a1e5a233e9b32a92eb8235141113e",
+    "/var/tmp/conglobate-command-integration-v35/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-command-integration-v35/initramfs.gz": "006440457ecb3334d683efcefcf0ea08dfeccd318642e1defc9730feeb40edc5",
+    "/var/tmp/conglobate-command-integration-v35/root/idmap-probe": "2956863b035f9ef03163398e4f8f987ecae8275d9ce7ada3711504f1c9c8fdbe"
+  },
+  "full_sandbox_qualified": false
+}

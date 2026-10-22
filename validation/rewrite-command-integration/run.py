@@ -26,7 +26,7 @@ subprocess.run(['depmod', '-b', str(root), '7.2.10-200.fc44.x86_64'], check=True
 binary = here / 'target/debug/conglobate-command-integration'
 shutil.copy2(binary, root / 'idmap-probe')
 executables = [binary]
-for name in ['mke2fs', 'unshare', 'newuidmap', 'newgidmap', 'stat', 'bwrap', 'nsenter', 'e2fsck', 'rmdir', 'setpriv']:
+for name in ['mke2fs', 'unshare', 'newuidmap', 'newgidmap', 'stat', 'bwrap', 'nsenter', 'e2fsck', 'rmdir', 'setpriv', 'getfattr']:
     source = pathlib.Path(shutil.which(name))
     target = root / 'usr/bin' / name
     target.unlink(missing_ok=True)
@@ -43,7 +43,7 @@ for executable in executables:
 (root / 'conglobate-disposable-validation-vm').touch()
 image_root = root / 'image-root'
 (image_root / 'bin').mkdir(parents=True)
-for source, name in [('/usr/bin/bash', 'sh')]:
+for source, name in [('/usr/bin/bash', 'sh'), ('/usr/bin/setfattr', 'setfattr'), ('/usr/bin/getfattr', 'getfattr')]:
     shutil.copy2(source, image_root / 'bin' / name)
     for line in subprocess.check_output(['ldd', source], text=True).splitlines():
         match = re.search(r'(/\S+)', line)
@@ -86,8 +86,11 @@ cat /proc/$holder/uid_map
 cat /proc/$holder/gid_map
 mkdir /work/pins
 mount -t bpf bpf /work/pins
+chmod 700 /work/pins
 mkdir /work/cgroups
 mount -t cgroup2 cgroup2 /work/cgroups
+/idmap-probe supervisor policy-off
+rm /work/origin/command-started
 /idmap-probe supervisor success
 rm /work/origin/command-started
 /idmap-probe supervisor timeout
@@ -98,6 +101,8 @@ wait "$holder" || true
 umount /work/origin
 e2fsck -fn /work/volume.ext4
 mount -o loop,ro /work/volume.ext4 /work/origin
+test "$(getfattr --only-values -n security.selinux /work/origin/labelled)" = 'system_u:object_r:etc_t:s0'
+echo INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS
 test ! -e /work/origin/dev/null
 test ! -e /work/origin/dev/fd
 test ! -e /work/origin/dev/pts
@@ -136,7 +141,7 @@ exec sleep infinity
 ''')
 if supervisor_death:
     fixture = root / 'fixture.sh'
-    setup = fixture.read_text().split('/idmap-probe supervisor success')[0]
+    setup = fixture.read_text().split('/idmap-probe supervisor policy-off')[0]
     fixture.write_text(setup + r"""
 /idmap-probe supervisor vm-death &
 supervisor=$!
@@ -158,6 +163,13 @@ for domain in /work/cgroups/conglobate-*; do
     if grep -q 'populated 1' "$domain/cgroup.events"; then populated=1; fi
 done
 test "$populated" = 1
+touch /work/origin/supervisor-gone
+for attempt in {1..100}; do
+    test ! -e /work/origin/death-policy-checked || break
+    sleep 0.05
+done
+test "$(cat /work/origin/death-policy-checked)" = checked
+echo ACTIVE_POLICY_AFTER_SUPERVISOR_DEATH_PASS
 echo SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN
 # Return to PID 1, which powers off this VM. Never start another build here.
 """)
@@ -181,10 +193,10 @@ if supervisor_death:
     userspace = re.sub(r'\[\s*\d+\.\d+\] [^\n]*\n', '', serial)
     passed = all(marker in userspace for marker in [
         'SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN', 'IDMAP_PROBE_EXIT 0',
-        'VM_CONTROLLER_POWER_OFF',
+        'VM_CONTROLLER_POWER_OFF', 'ACTIVE_POLICY_AFTER_SUPERVISOR_DEATH_PASS',
     ]) and 'Power down' in serial and 'INTEGRATED_COMMAND_' not in serial
 else:
-    passed = all(marker in serial for marker in ['NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
+    passed = all(marker in serial for marker in ['INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS', 'INTEGRATED_COMMAND_POLICY-OFF_PASS', 'NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
 (out / 'verdict.json').write_text(json.dumps({'passed': passed, 'full_sandbox_qualified': False}, indent=2))
 assert passed, serial[-5000:]
 print('PASS', out)

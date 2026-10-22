@@ -118,6 +118,14 @@ impl<S: ObservedState> Supervision<S> {
         })
     }
 
+    /// Observe actual peer exit, independently of channel shutdown. Use after
+    /// expected channel completion to avoid killing a helper during its normal
+    /// exit. A timeout still requires cancellation; success does not reap it or
+    /// establish descendant quiescence.
+    pub fn wait_for_peer_exit_until(&self, deadline: Instant) -> io::Result<()> {
+        self.peer.wait_until(deadline)
+    }
+
     /// Wait on both the stable process identity and the private channel. Timeout
     /// is not evidence of liveness; no resource cleanup or reaping happens here.
     pub fn wait_for_loss_until(&self, deadline: Instant) -> io::Result<()> {

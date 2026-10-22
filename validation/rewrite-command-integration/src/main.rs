@@ -6,6 +6,7 @@ use conglobate::{
     domain::RecordedDomain,
     filesystem::{Detached, Mount, MountPoint},
     isolation::{CommandDevices, CommandRoot, PrivateMountNamespace},
+    policy::{FilesystemTarget, LabelPolicy, LabelScope, PinDirectory, PinnedDisabled},
     process::{ChildReaper, CommandPrivileges, CommandSyscalls, Supervision},
 };
 use std::{
@@ -94,6 +95,9 @@ impl Integration {
         if args.get(1).is_some_and(|a| a == "helper") {
             return Self::helper(mode);
         }
+        // Fixture init retains the original filesystem mount and namespace
+        // holder until cleanup or poweroff. No identities can be reused here.
+        let policy = EnabledPolicy::install(mode != "policy-off")?;
         let reaper = ChildReaper::install()?;
         let recovery = Path::new("/work/integration-records");
         fs::create_dir(recovery)?;
@@ -137,6 +141,18 @@ impl Integration {
             );
         } else {
             observation?;
+            // The fixture helper has closed its channel but cannot exit until
+            // explicitly released. Channel loss must not count as process exit.
+            assert_eq!(
+                helper
+                    .supervision()
+                    .wait_for_peer_exit_until(Instant::now())
+                    .unwrap_err()
+                    .kind(),
+                std::io::ErrorKind::TimedOut,
+            );
+            ExitGate::release()?;
+            helper.supervision().wait_for_peer_exit_until(execution)?;
         }
         let teardown = Instant::now() + Duration::from_secs(5);
         let (status, _) = helper
@@ -149,7 +165,10 @@ impl Integration {
             .map_err(|e| e.to_string())?
             .finish(parent)
             .map_err(|e| e.to_string())?;
-        assert_eq!(status.success(), mode == "success");
+        // This is the only policy teardown site: cancellation, helper reaping
+        // and descendant draining have all completed above.
+        policy.disable()?;
+        assert_eq!(status.success(), mode == "success" || mode == "policy-off");
         assert!(!parent.join(name).exists());
         assert_eq!(fs::metadata(ready)?.uid(), 0);
         assert_eq!(fs::read_to_string(ready)?, "image-write\n");
@@ -256,9 +275,36 @@ impl Integration {
             "EXPECTED_CAPABILITIES",
             &format!("{:016x}", CommandPrivileges::filesystem().allowed().bits()),
         );
+        let labels = if mode == "policy-off" {
+            r#"
+                printf 'owned' > /label-policy-off
+                if setfattr -n security.selinux -v 'system_u:object_r:etc_t:s0' /label-policy-off; then exit 1; fi
+            "#
+        } else {
+            r#"
+                printf 'owned' > /labelled
+                setfattr -n security.selinux -v 'system_u:object_r:etc_t:s0' /labelled
+                test "$(getfattr --only-values -n security.selinux /labelled)" = 'system_u:object_r:etc_t:s0'
+                setfattr -x security.selinux /labelled
+                if getfattr --only-values -n security.selinux /labelled; then exit 1; fi
+                setfattr -n security.selinux -v 'system_u:object_r:etc_t:s0' /labelled
+                printf 'owned' > /dev/shm/outside-policy
+                if setfattr -n security.selinux -v 'system_u:object_r:etc_t:s0' /dev/shm/outside-policy; then exit 1; fi
+                if setfattr -n security.selinux.extra -v 'test' /labelled; then exit 1; fi
+            "#
+        };
         let script = format!(
-            "{checks}\n{}",
-            if mode == "timeout" || mode == "vm-death" {
+            "{labels}\n{checks}\n{}",
+            if mode == "vm-death" {
+                r#"
+                    while test ! -e /supervisor-gone; do :; done
+                    setfattr -n security.selinux -v 'system_u:object_r:var_t:s0' /labelled
+                    test "$(getfattr --only-values -n security.selinux /labelled)" = 'system_u:object_r:var_t:s0'
+                    if setfattr -n security.selinux -v 'system_u:object_r:var_t:s0' /dev/shm/outside-policy; then exit 1; fi
+                    printf 'checked' > /death-policy-checked
+                    while :; do :; done
+                "#
+            } else if mode == "timeout" {
                 "while :; do :; done"
             } else {
                 "printf 'completed\\n' > /command-completed"
@@ -286,10 +332,89 @@ impl Integration {
         }
         mount.close().map_err(|e| e.to_string())?;
         namespace.restore()?;
+        let exit = ExitGate::bind()?;
         drop(channel);
+        exit.await_release()?;
         Ok(())
     }
 }
+/// Fixture-only handshake keeps the helper alive after channel closure without
+/// relying on scheduler timing. Commands cannot access this supervisor path.
+#[derive(Debug)]
+struct ExitGate(std::os::unix::net::UnixDatagram);
+impl ExitGate {
+    const PATH: &str = "/work/helper-exit-release";
+
+    fn bind() -> std::io::Result<Self> {
+        let socket = std::os::unix::net::UnixDatagram::bind(Self::PATH)?;
+        socket.set_read_timeout(Some(Duration::from_secs(5)))?;
+        Ok(Self(socket))
+    }
+    fn release() -> std::io::Result<()> {
+        let socket = std::os::unix::net::UnixDatagram::unbound()?;
+        socket.set_write_timeout(Some(Duration::from_secs(5)))?;
+        assert_eq!(socket.send_to(b"exit", Self::PATH)?, 4);
+        Ok(())
+    }
+    fn await_release(self) -> std::io::Result<()> {
+        let mut message = [0; 5];
+        let count = self.0.recv(&mut message)?;
+        assert_eq!(&message[..count], b"exit");
+        fs::remove_file(Self::PATH)?;
+        Ok(())
+    }
+}
+
+/// Validation-only activation adapter. Production exposes disabled policy only.
+/// Leak-on-error deliberately retains every pin; init owns the bpffs mount until
+/// VM disposal. Never reuse this adapter as a production admission capability.
+#[derive(Debug)]
+struct EnabledPolicy {
+    policy: std::mem::ManuallyDrop<LabelPolicy<PinnedDisabled>>,
+    config: libbpf_rs::MapHandle,
+}
+impl EnabledPolicy {
+    fn install(enable: bool) -> Result<Self, Box<dyn std::error::Error>> {
+        use libbpf_rs::{MapCore, MapFlags, MapHandle};
+        let holder = fs::read_to_string("/work/userns-pid")?;
+        let namespace = fs::metadata(format!("/proc/{}/ns/user", holder.trim()))?.ino();
+        let target = FilesystemTarget::new(
+            fs::metadata("/proc/self/ns/user")?.ino(),
+            fs::metadata("/work/origin")?.dev(),
+        )?;
+        let scope = LabelScope::new(namespace, 100000, [target])?;
+        let subject = scope.subject_value();
+        let pinned = LabelPolicy::new(scope)?
+            .load()?
+            .pin_disabled(PinDirectory::create(Path::new("/work/pins"))?)?;
+        let paths = fs::read_dir("/work/pins")?
+            .map(|entry| entry.map(|entry| entry.path()))
+            .collect::<Result<Vec<_>, _>>()?;
+        assert_eq!(paths.len(), 1);
+        let config = MapHandle::from_pinned_path(paths[0].join("config"))?;
+        let owner = Self {
+            policy: std::mem::ManuallyDrop::new(pinned),
+            config,
+        };
+        if enable {
+            owner
+                .config
+                .update(&0u32.to_ne_bytes(), &subject, MapFlags::ANY)?;
+        }
+        Ok(owner)
+    }
+    fn disable(self) -> Result<(), Box<dyn std::error::Error>> {
+        use libbpf_rs::{MapCore, MapFlags};
+        // Caller has completed cancellation and process-wide descendant drain.
+        // Failure retains pinned policy through VM disposal, never drops guards.
+        self.config
+            .update(&0u32.to_ne_bytes(), &[0; 8], MapFlags::ANY)?;
+        std::mem::ManuallyDrop::into_inner(self.policy).close()?;
+        assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
+        Ok(())
+    }
+}
+
 fn main() {
     if let Err(error) = Integration::run() {
         eprintln!("{error}");

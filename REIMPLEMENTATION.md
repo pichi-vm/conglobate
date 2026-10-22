@@ -1121,3 +1121,34 @@ rules rather than silently shrinking acceptance criteria.
   namespace/superblock lifetime and descendant quiescence before admitting actual
   commands; qualify supervisor death with that active policy before claiming the
   complete shutdown-interval contract. No guardian expansion is required.
+
+
+- Previous goal turn made progress via be0ba89 and disabled-pin lifetime tests.
+  Connected the production loader, policy asset and restricted command execution
+  in a validation-only enabled-policy adapter. The adapter retains pins on every
+  error and disables only after cgroup cancellation, helper reaping and descendant
+  draining. Production activation/admission ownership is still pending.
+- v30 failed closed on the fixture's mode-777 bpffs root; corrected it to 700.
+  v31 passes policy-off denial, assigned ext4 set/read/remove, denial on private
+  shared memory and an unauthorized attribute suffix, normal cleanup and timeout.
+  v32 kills/reaps the supervisor, then verifies continued positive/negative label
+  behavior in the surviving command before independent VM poweroff. No guardian
+  is involved. Fixture-held original mount/user namespace/bpffs retain identities.
+- v33 exposed channel-close-before-process-exit cancellation racing a successful
+  helper. Added deadline-bounded pidfd waiting to ProcessObservation/Supervision,
+  independently of channel loss and without reaping. A maintained unprivileged
+  pipe-controlled child test covers timeout, exit and post-reap observation.
+  v34 passes and additionally checks persisted labels after filesystem checking
+  and read-only remount. Its regression delay was only in the test fixture;
+  after user feedback, replaced that delay with explicit datagram release and
+  an assertion that the helper is still alive after channel closure.
+- Root tests (including fourteen compile-fail doctests), root/fixture Clippy and
+  formatting pass. All failed/successful VM runs and source snapshots are retained.
+  Review distinguishes channel completion, process exit and descendant quiescence;
+  checks pin retention on activation/teardown error and confines claims to fixture
+  topology. No host privileged operation occurred. M4 remains zero adherence
+  passes: active production step ownership/admission, native namespace init,
+  complete partial-setup cleanup and remaining sandbox coverage are unfinished.
+- v35 passes the final explicit-release regression and label persistence checks;
+  its evidence retains the tested production observation and fixture sources.
+  No sleep is used to order the regression or to fix production completion.
