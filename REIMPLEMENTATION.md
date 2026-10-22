@@ -241,5 +241,11 @@ rules rather than silently shrinking acceptance criteria.
   boundary and remains outstanding evidence; no command can be admitted yet.
 - Two materialization tests verify committed bytes, executable bits, symlinks,
   private root mode, explicit cleanup and Drop cleanup after parent rename.
-  All 48 tests and Clippy pass. Next: review M3 coverage/invariants, resolve findings
+  Initial full run failed the private-root assertion: tempfile defaults permitted
+  group/other access. The preceding all-pass claim was premature. Explicit 0700
+  creation fixes the implementation; rerun results are recorded below.
+  Next: review M3 coverage/invariants, resolve findings
   and the staged/read-only lifecycle gate before claiming clean adherence passes.
+- After explicit private-root mode correction, the full 48-test suite passes,
+  including rename/Drop cleanup, and Clippy passes with warnings denied. This
+  correction is retained separately in history; no adherence pass was counted.

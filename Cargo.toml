@@ -32,4 +32,3 @@ unreachable_pub = "warn"
 
 [lints.clippy]
 all = "warn"
-

@@ -9,7 +9,10 @@ use std::{
     io::{self, Write},
     os::{
         fd::AsRawFd,
-        unix::{ffi::OsStrExt, fs::OpenOptionsExt},
+        unix::{
+            ffi::OsStrExt,
+            fs::{OpenOptionsExt, PermissionsExt},
+        },
     },
     path::Path,
 };
@@ -45,6 +48,7 @@ impl CapturedContext {
         let pinned = format!("/proc/self/fd/{}", parent.as_raw_fd());
         let directory = tempfile::Builder::new()
             .prefix("conglobate-context-")
+            .permissions(fs::Permissions::from_mode(0o700))
             .tempdir_in(pinned)?;
         let root = File::open(directory.path())?;
         let staged = StagedContext {
