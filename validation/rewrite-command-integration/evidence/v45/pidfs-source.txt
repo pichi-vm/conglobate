@@ -1,0 +1,46 @@
+/var/tmp/conglobate-cap-review-sources/linux-7.2.10/fs/pidfs.c
+
+242:  * Pid:
+243:  * This function will print the pid that a given pidfd refers to in the
+244:  * pid namespace of the procfs instance.
+245:  * If the pid namespace of the process is not a descendant of the pid
+246:  * namespace of the procfs instance 0 will be shown as its pid. This is
+247:  * similar to calling getppid() on a process whose parent is outside of
+248:  * its pid namespace.
+249:  *
+250:  * NSpid:
+251:  * If pid namespaces are supported then this function will also print
+252:  * the pid of a given pidfd refers to for all descendant pid namespaces
+253:  * starting from the current pid namespace of the instance, i.e. the
+254:  * Pid field and the first entry in the NSpid field will be identical.
+255:  * If the pid namespace of the process is not a descendant of the pid
+256:  * namespace of the procfs instance 0 will be shown as its first NSpid
+257:  * entry and no others will be shown.
+258:  * Note that this differs from the Pid and NSpid fields in
+259:  * /proc/<pid>/status where Pid and NSpid are always shown relative to
+260:  * the  pid namespace of the procfs instance. The difference becomes
+261:  * obvious when sending around a pidfd between pid namespaces from a
+262:  * different branch of the tree, i.e. where no ancestral relation is
+263:  * present between the pid namespaces:
+264:  * - create two new pid namespaces ns1 and ns2 in the initial pid
+265:  *   namespace (also take care to create new mount namespaces in the
+266:  *   new pid namespace and mount procfs)
+267:  * - create a process with a pidfd in ns1
+268:  * - send pidfd from ns1 to ns2
+269:  * - read /proc/self/fdinfo/<pidfd> and observe that both Pid and NSpid
+270:  *   have exactly one entry, which is 0
+271:  */
+272: static void pidfd_show_fdinfo(struct seq_file *m, struct file *f)
+273: {
+274: 	struct pid *pid = pidfd_pid(f);
+275: 	struct pid_namespace *ns;
+276: 	pid_t nr = -1;
+277: 
+278: 	if (likely(pid_has_task(pid, PIDTYPE_PID))) {
+279: 		ns = proc_pid_ns(file_inode(m->file)->i_sb);
+280: 		nr = pid_nr_ns(pid, ns);
+281: 	}
+282: 
+283: 	seq_put_decimal_ll(m, "Pid:\t", nr);
+284: 
+285: #ifdef CONFIG_PID_NS

@@ -145,6 +145,37 @@ impl From<Child> for Process<Running> {
         }
     }
 }
+impl Process<Identified> {
+    /// Resolve the exclusively wait-owned child in this procfs instance only
+    /// after its stable pidfd reports that same PID in the instance's PID view.
+    /// This internal handle supports namespace maps, not arbitrary PID access.
+    pub(crate) fn proc_directory(&self) -> io::Result<std::fs::File> {
+        use std::{io::Read, os::fd::AsRawFd};
+        let identity = &self.resources.termination.observation.identity;
+        let info =
+            std::fs::File::open(format!("/proc/thread-self/fdinfo/{}", identity.as_raw_fd()))?;
+        if rustix::fs::fstatfs(&info)?.f_type != 0x9fa0 {
+            return Err(io::Error::other("process identity requires procfs"));
+        }
+        let mut text = String::new();
+        info.take(4097).read_to_string(&mut text)?;
+        let visible = text
+            .lines()
+            .find_map(|line| line.strip_prefix("Pid:\t"))
+            .and_then(|value| value.trim().parse::<u32>().ok());
+        if text.len() > 4096 || visible != Some(self.id()) {
+            return Err(io::Error::other(
+                "pidfd identity does not match procfs child PID",
+            ));
+        }
+        let directory = std::fs::File::open(format!("/proc/{}", self.id()))?;
+        if rustix::fs::fstatfs(&directory)?.f_type != 0x9fa0 {
+            return Err(io::Error::other("child directory requires procfs"));
+        }
+        Ok(directory)
+    }
+}
+
 impl<S: LiveState> Process<S> {
     /// Diagnostic PID only. Identified helpers are signaled through their pidfd.
     pub fn id(&self) -> u32 {

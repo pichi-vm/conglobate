@@ -415,3 +415,39 @@ production allocation/mapping/pinning must replace it. Scoped root transfer,
 full step admission and policy ownership, network provisioning, failure cleanup
 and broader distro/architecture qualification remain unfinished. This change
 removes command-path runtime-tool dependence; it does not complete M4.
+
+
+## Native mapped user namespace and creator lifetime
+
+v44 replaces the sleeping external user-namespace holder. Every step starts a
+short-lived trusted creator using production MappedUserNamespace::serve. It
+unshares NEWUSER and exchanges identities only afterward. The supervisor writes
+validated nonzero UID/GID ranges to the empty mapping files, retains the namespace
+FD, closes the private channel to release the creator, and reaps it. Only then
+can create return its namespace owner. Consuming pin uses the existing protected
+tmpfs namespace-pin owner; no serialized namespace record or guardian is needed.
+The fixture removes the pin only after descendant drain and policy removal.
+
+v45 additionally resolves the creator's proc directory through its owned pidfd's
+Pid field, which the kernel reports relative to the procfs instance. It requires
+a match with the exclusively wait-owned child before accessing maps, checks a
+new namespace identity and empty maps, and writes each map once at offset zero.
+A creator deliberately omitting NEWUSER is rejected before touching the parent's
+mapping. Its retained child owner is reaped, and the unchanged parent map and
+empty child list are verified. The image checks that setgroups remains allowed.
+Range boundary tests reject zero/empty/overflow/invalid-ID mappings.
+
+v46 terminates the supervisor after the creator has already been reaped. The
+protected namespace bind mount survives; label positive/negative checks pass in
+the surviving command before independent VM poweroff. Both runs pass without
+runtime tools available during namespace or command construction. All mounts,
+mapping writes and capability operations occur only inside the disposable VM.
+Root tests, Clippy and formatting pass; evidence and kernel-source excerpts are
+preserved. An initial ownership compile error is documented in BUILD-NOTES.txt.
+
+The fixture still adapts pin paths and mounted-root discovery to process startup,
+and policy activation remains fixture-only. Production step admission, scoped
+root/namespace handoff and complete failure ownership remain unfinished. Late
+partial-map failures and deployment coverage are not qualified by these tests.
+The mapped range is supplied by trusted construction; this does not implement a
+general concurrent shared-host UID allocator or claim arbitrary OS ID coverage.

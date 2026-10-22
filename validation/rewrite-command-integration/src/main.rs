@@ -5,7 +5,10 @@ use conglobate::{
     anchor::RecoveryDirectory,
     domain::RecordedDomain,
     filesystem::{Detached, Mount, MountPoint},
-    isolation::{CommandDevices, CommandNamespaces, CommandRoot, PrivateMountNamespace},
+    isolation::{
+        CommandDevices, CommandNamespaces, CommandRoot, IdRange, MappedUserNamespace,
+        PrivateMountNamespace,
+    },
     policy::{FilesystemTarget, LabelPolicy, LabelScope, PinDirectory, PinnedDisabled},
     process::{ChildReaper, CommandPrivileges, CommandSyscalls, Supervision},
 };
@@ -28,12 +31,22 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "namespace-seed") {
+            MappedUserNamespace::serve(Instant::now() + Duration::from_secs(5))?;
+            return Ok(());
+        }
+        if args.get(1).is_some_and(|a| a == "namespace-seed-unchanged") {
+            let deadline = Instant::now() + Duration::from_secs(5);
+            Supervision::from_stdin()?
+                .exchange_until(deadline)?
+                .wait_for_loss_until(deadline)?;
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "namespace-rejections") {
             let error =
                 CommandNamespaces::enter(fs::File::open("/supervisor-secret")?).unwrap_err();
             assert!(error.to_string().contains("requires nsfs"));
-            let holder = fs::read_to_string("/work/userns-pid")?;
-            let userns = fs::File::open(format!("/proc/{}/ns/user", holder.trim()))?;
+            let userns = fs::File::open("/proc/self/ns/user")?;
             let (release, gate) = std::sync::mpsc::channel::<()>();
             let (ready, entered) = std::sync::mpsc::channel::<()>();
             let thread = std::thread::spawn(move || {
@@ -45,6 +58,34 @@ impl Integration {
             release.send(())?;
             thread.join().unwrap();
             assert!(error.to_string().contains("requires one thread"));
+            let before = fs::read_to_string("/proc/self/uid_map")?;
+            let mut creator = Command::new(std::env::current_exe()?);
+            creator.arg("namespace-seed-unchanged").env_clear();
+            let deadline = Instant::now() + Duration::from_secs(5);
+            let failure = MappedUserNamespace::create(
+                creator,
+                IdRange::new(100000, 65536)?,
+                IdRange::new(100000, 65536)?,
+                deadline,
+            )
+            .unwrap_err();
+            match failure {
+                conglobate::isolation::UserNamespaceFailure::Mapping { source, process } => {
+                    assert!(
+                        source
+                            .to_string()
+                            .contains("did not create a new user namespace")
+                    );
+                    assert!(process.wait_until(deadline)?.status().success());
+                }
+                failure => return Err(failure.into()),
+            }
+            assert_eq!(fs::read_to_string("/proc/self/uid_map")?, before);
+            assert!(
+                fs::read_to_string("/proc/thread-self/children")?
+                    .trim()
+                    .is_empty()
+            );
             println!("NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS");
             return Ok(());
         }
@@ -165,8 +206,8 @@ impl Integration {
         if args.get(1).is_some_and(|a| a == "helper") {
             return Self::helper(mode);
         }
-        // Fixture init retains the original filesystem mount and namespace
-        // holder until cleanup or poweroff. No identities can be reused here.
+        // Fixture init retains the original filesystem mount. The native
+        // namespace pin below retains its identity until policy cleanup/poweroff.
         for name in ["orphan-release", "survivor-ready"] {
             match fs::remove_file(Path::new("/work/origin").join(name)) {
                 Ok(()) => {}
@@ -174,12 +215,35 @@ impl Integration {
                 Err(error) => return Err(error.into()),
             }
         }
-        let policy = EnabledPolicy::install(mode != "policy-off")?;
         let reaper = ChildReaper::install()?;
         let recovery = Path::new("/work/integration-records");
         fs::create_dir(recovery)?;
         fs::set_permissions(recovery, fs::Permissions::from_mode(0o700))?;
         let lease = RecoveryDirectory::open(recovery)?;
+        let mut creator = Command::new(std::env::current_exe()?);
+        creator.arg("namespace-seed").env_clear();
+        let namespace = MappedUserNamespace::create(
+            creator,
+            IdRange::new(100000, 65536)?,
+            IdRange::new(100000, 65536)?,
+            Instant::now() + Duration::from_secs(5),
+        )?;
+        assert!(
+            fs::read_to_string("/proc/thread-self/children")?
+                .trim()
+                .is_empty()
+        );
+        let namespace = namespace.pin(&lease)?;
+        fs::write(
+            "/work/userns-path",
+            recovery
+                .join(namespace.record().name())
+                .as_os_str()
+                .as_encoded_bytes(),
+        )?;
+        let policy = EnabledPolicy::install(mode != "policy-off")?;
+        println!("NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS");
+
         let parent = Path::new("/work/cgroups");
         let domain = RecordedDomain::create(&lease, parent)?;
         let name = domain.record().name().to_owned();
@@ -247,6 +311,7 @@ impl Integration {
         // This is the only policy teardown site: cancellation, helper reaping
         // and descendant draining have all completed above.
         policy.disable()?;
+        namespace.release()?;
         assert_eq!(status.success(), mode == "success" || mode == "policy-off");
         assert!(!parent.join(name).exists());
         assert_eq!(fs::metadata(ready)?.uid(), 0);
@@ -267,8 +332,7 @@ impl Integration {
             .exchange_until(Instant::now() + Duration::from_secs(5))?
             .join_domain_until(Instant::now() + Duration::from_secs(5))?;
         let namespace = PrivateMountNamespace::enter()?;
-        let holder = fs::read_to_string("/work/userns-pid")?;
-        let userns = format!("/proc/{}/ns/user", holder.trim());
+        let userns = fs::read_to_string("/work/userns-path")?;
         let mount = Mount::<Detached>::clone_from(&fs::File::open("/work/origin")?, &namespace)?
             .idmap(fs::File::open(&userns)?)
             .map_err(|e| e.to_string())?
@@ -365,6 +429,8 @@ impl Integration {
             done < /proc/self/status
             test "$caps" = 5
             test "$nnp" = 1
+            read -r groups_policy < /proc/self/setgroups
+            test "$groups_policy" = allow
             read -r inside outside count < /proc/self/uid_map
             test "$inside" = 0
             test "$outside" = 100000
@@ -477,8 +543,7 @@ struct EnabledPolicy {
 impl EnabledPolicy {
     fn install(enable: bool) -> Result<Self, Box<dyn std::error::Error>> {
         use libbpf_rs::{MapCore, MapFlags, MapHandle};
-        let holder = fs::read_to_string("/work/userns-pid")?;
-        let namespace = fs::metadata(format!("/proc/{}/ns/user", holder.trim()))?.ino();
+        let namespace = fs::metadata(fs::read_to_string("/work/userns-path")?)?.ino();
         let target = FilesystemTarget::new(
             fs::metadata("/proc/self/ns/user")?.ino(),
             fs::metadata("/work/origin")?.dev(),

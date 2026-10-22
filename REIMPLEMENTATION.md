@@ -1206,3 +1206,30 @@ rules rather than silently shrinking acceptance criteria.
   No guardian or separate cross-invocation recovery requirement was introduced.
 - Final documentation gate passes all fifteen compile-fail doctests, including
   the new namespace thread-affinity contract; its log is retained with v43.
+
+
+- Previous goal turn made progress in 38d35aa (native command namespaces). Added
+  immutable IdRange validation and MappedUserNamespace creation: a short-lived
+  trusted creator unshares NEWUSER, then exchanges identities; the parent writes
+  empty UID/GID maps once, retains namespace ownership and reaps the released
+  creator before returning. Mapping/reaping failures retain process cleanup
+  ownership. Initial E0382 move ownership error was corrected before execution.
+- Added an internal process proc-directory accessor that checks the pidfd's Pid
+  in the current procfs instance before using the owned child's numeric path.
+  Kernel source confirms that field's namespace-relative meaning. The wait owner
+  prevents PID reuse under the documented exclusive-reaping/SIGCHLD contract.
+- v44 passes fresh native mapped namespaces per step with creators already reaped.
+  Existing namespace pins retain identities through policy lifetime; corrected
+  their obsolete documentation requiring serialized records. v45 adds rejection
+  of a creator that never unshared, verifies the original mapping unchanged and
+  child reaped, and confirms group changes remain allowed in command namespaces.
+- v46 passes supervisor death with no external namespace holder: native pins and
+  scoped labels survive until independent VM poweroff. Root tests (15 compile-
+  fail), root/fixture Clippy and formatting pass. Preserved source snapshots,
+  logs, hashes, kernel source and the initial compile-error explanation. All
+  privileged tests ran only in disposable QEMU guests.
+- Review checked single-write map semantics, range boundaries, pidfd/proc identity,
+  creator release/reaping, pin lifetime and post-quiescence release. M4 remains
+  zero adherence passes. Production policy/admission aggregation, scoped handle
+  transfer, complete late-error cleanup and remaining runtime/qualification work
+  are still pending; no complete sandbox claim is made.

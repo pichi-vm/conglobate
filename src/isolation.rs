@@ -5,7 +5,9 @@
 mod devices;
 mod init;
 mod namespaces;
+mod user;
 pub use namespaces::CommandNamespaces;
+pub use user::{IdRange, MappedUserNamespace, UserNamespaceFailure};
 mod root;
 mod runtime;
 pub use devices::CommandDevices;

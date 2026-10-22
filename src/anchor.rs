@@ -140,9 +140,10 @@ impl Backing {
 }
 
 /// A namespace retained by a bind mount, not just an open descriptor. Dropping
-/// this owner intentionally leaves the mount for recovery. Preserve its record
-/// in the build lease before admission. Explicit release requires that every
-/// policy referencing this identity is already removed.
+/// this owner intentionally leaves the mount until explicit cleanup or VM
+/// disposal. The dedicated-VM lifecycle needs no serialized recovery record.
+/// Explicit release requires that every policy referencing this identity is
+/// already removed; the step owner must enforce this ordering.
 #[derive(Debug)]
 pub struct NamespacePin {
     backing: Backing,

@@ -77,17 +77,8 @@ truncate -s 64M /work/volume.ext4
 mke2fs -q -t ext4 -F /work/volume.ext4
 mount -o loop /work/volume.ext4 /work/origin
 cp -a /image-root/. /work/origin/
-unshare --user --map-users=0:100000:65536 --map-groups=0:100000:65536 sleep 60 &
-holder=$!
-echo "$holder" > /work/userns-pid
-for attempt in {1..50}; do
-    if grep -q 100000 /proc/$holder/uid_map; then break; fi
-    sleep 0.1
-done
-cat /proc/$holder/uid_map
-cat /proc/$holder/gid_map
 /idmap-probe namespace-rejections
-# The holder and preflight probes are ready. Command setup below must be native.
+# Preflight probes are ready. User namespace and command setup must be native.
 rm /usr/bin/unshare
 test ! -e /usr/bin/nsenter
 test ! -e /usr/bin/bwrap
@@ -105,8 +96,6 @@ rm /work/origin/command-started
 /idmap-probe supervisor shell-failure
 umount /work/cgroups
 umount /work/pins
-if kill -0 "$holder" 2>/dev/null; then kill "$holder"; fi
-wait "$holder" || true
 umount /work/origin
 e2fsck -fn /work/volume.ext4
 mount -o loop,ro /work/volume.ext4 /work/origin
@@ -205,7 +194,7 @@ if supervisor_death:
         'VM_CONTROLLER_POWER_OFF', 'ACTIVE_POLICY_AFTER_SUPERVISOR_DEATH_PASS',
     ]) and 'Power down' in serial and 'INTEGRATED_COMMAND_' not in serial
 else:
-    passed = all(marker in serial for marker in ['NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS', 'NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS', 'INTEGRATED_COMMAND_SHELL-FAILURE_PASS', 'NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS', 'NATIVE_NAMESPACE_INIT_ADOPTION_PASS', 'INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS', 'INTEGRATED_COMMAND_POLICY-OFF_PASS', 'NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
+    passed = all(marker in serial for marker in ['NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS', 'NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS', 'NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS', 'INTEGRATED_COMMAND_SHELL-FAILURE_PASS', 'NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS', 'NATIVE_NAMESPACE_INIT_ADOPTION_PASS', 'INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS', 'INTEGRATED_COMMAND_POLICY-OFF_PASS', 'NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
 (out / 'verdict.json').write_text(json.dumps({'passed': passed, 'full_sandbox_qualified': False}, indent=2))
 assert passed, serial[-5000:]
 print('PASS', out)
