@@ -1,0 +1,18 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS f77b50da7ccbd7c607c4d15941023c32c02507c0 sha256:8e1fe5a9c8f93d430a7e937376059a6aed0035b314e4a255e49606b7c3c44ec9
+CHAIN_RESTRICTED_COMMAND_PASS
+FUSE2FS (dm-3): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-3): mounted filesystem ea3dc31f-f604-466e-83c1-43c11cabba0f.
+FUSE2FS (dm-3): unmounting filesystem ea3dc31f-f604-466e-83c1-43c11cabba0f.
+
+thread 'main' (179) panicked at src/bin/chain.rs:150:9:
+worker failed: exit status: 7
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+CHAIN_COMMAND_FAILURE_NO_SEAL_CLEANUP_PASS
+GUEST_EXIT 0
+[   11.184077] sysrq: Resetting

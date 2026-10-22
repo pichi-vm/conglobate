@@ -1,0 +1,157 @@
+Core dump limits :
+	soft - NONE
+	hard - NONE
+Checking that ptrace can change system call numbers...OK
+Checking syscall emulation for ptrace...OK
+Checking environment variables for a tempdir.../dev/shm/conglobate-uml-boot-7s9_t3u9
+Checking if /dev/shm/conglobate-uml-boot-7s9_t3u9 is on tmpfs...OK
+Checking PROT_EXEC mmap in /dev/shm/conglobate-uml-boot-7s9_t3u9...OK
+Adding 1037942784 bytes to physical memory to account for exec-shield gap
+Linux version 6.12.101 (sbuild@sbuild) (gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #1 Wed Aug 12 05:59:36 UTC 2026
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x00000000a5ddbfff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x0000000045ddbfff]
+Initmem setup node 0 [mem 0x0000000000000000-0x0000000045ddbfff]
+random: crng init done
+Kernel command line: mem=128M con=null con0=fd:0,fd:1 ssl=null lsm=capability panic=1 rdinit=/init initrd=/var/tmp/conglobate-debian-uml-boot-v3/initramfs.cpio uml_dir=/dev/shm/conglobate-uml-boot-7s9_t3u9 root=98:0 console=tty0
+Unknown kernel command line parameters "mem=128M uml_dir=/dev/shm/conglobate-uml-boot-7s9_t3u9", will be passed to user space.
+Dentry cache hash table entries: 16384 (order: 5, 131072 bytes, linear)
+Inode-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 286172
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+RCU Tasks Trace: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.
+NR_IRQS: 64
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 5901.51 BogoMIPS (lpj=29507584)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+LSM: initializing lsm=capability
+Mount-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+Mountpoint-cache hash table entries: 512 (order: 0, 4096 bytes, linear)
+Memory: 98576K/1144688K available (7160K kernel code, 1552K rwdata, 2300K rodata, 229K init, 336K bss, 1045360K reserved, 0K cma-reserved)
+devtmpfs: initialized
+futex hash table entries: 256 (order: 1, 6144 bytes, linear)
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+audit: initializing netlink subsys (disabled)
+audit: type=2000 audit(1792586244.675:1): state=initialized audit_enabled=0 res=1
+raid6: int64x8  gen()  4863 MB/s
+raid6: int64x4  gen()  4201 MB/s
+raid6: int64x2  gen()  6226 MB/s
+raid6: int64x1  gen()  6505 MB/s
+raid6: using algorithm int64x1 gen() 6505 MB/s
+raid6: .... xor() 3263 MB/s, rmw enabled
+raid6: using intx1 recovery algorithm
+NetLabel: Initializing
+NetLabel:  domain hash size = 128
+NetLabel:  protocols = UNLABELED CIPSOv4 CALIPSO
+NetLabel:  unlabeled traffic allowed by default
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 2048 (order: 2, 16384 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 512 (order: 0, 4096 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 1024 (order: 1, 8192 bytes, linear)
+TCP bind hash table entries: 1024 (order: 2, 16384 bytes, linear)
+TCP: Hash tables configured (established 1024 bind 1024)
+UDP hash table entries: 256 (order: 1, 8192 bytes, linear)
+UDP-Lite hash table entries: 256 (order: 1, 8192 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /dev/shm/conglobate-uml-boot-7s9_t3u9/run6/mconsole
+Checking host MADV_REMOVE support...OK
+Mapper v0.1
+mmapper_init - find_iomem failed
+Trying to unpack rootfs image as initramfs...
+Freeing initrd memory: 1972K
+workingset: timestamp_bits=46 max_order=15 bucket_order=0
+zbud: loaded
+JFS: nTxBlock = 791, nTxLock = 6331
+SGI XFS with ACLs, security attributes, realtime, quota, no debug enabled
+xor: measuring software checksum speed
+   prefetch64-sse  : 25734 MB/sec
+   generic_sse     : 26262 MB/sec
+xor: using function: generic_sse (26262 MB/sec)
+Block layer SCSI generic (bsg) driver version 0.4 loaded (major 253)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+NET: Registered PF_PACKET protocol family
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+Failed to initialize ubd device 0 :Couldn't determine size of device's file
+registered taskstats version 1
+Btrfs loaded, zoned=no, fsverity=no
+This architecture does not have kernel memory protection.
+Run /init as init process
+UML_BOOT_READY
+Linux (none) 6.12.101 #1 Wed Aug 12 05:59:36 UTC 2026 x86_64 GNU/Linux
+0.94 0.00
+UML_LSM_CAPABILITY_ONLY
+Name:	init
+Umask:	0022
+State:	S (sleeping)
+Tgid:	1
+Ngid:	0
+Pid:	1
+PPid:	0
+TracerPid:	0
+Uid:	0	0	0	0
+Gid:	0	0	0	0
+FDSize:	64
+Groups:	 
+NStgid:	1
+NSpid:	1
+NSpgid:	0
+NSsid:	0
+Kthread:	0
+VmPeak:	    2284 kB
+VmSize:	    2284 kB
+VmLck:	       0 kB
+VmPin:	       0 kB
+VmHWM:	    1628 kB
+VmRSS:	    1628 kB
+RssAnon:	      56 kB
+RssFile:	    1572 kB
+RssShmem:	       0 kB
+VmData:	     176 kB
+VmStk:	     132 kB
+VmExe:	    1584 kB
+VmLib:	       4 kB
+VmPTE:	      16 kB
+VmSwap:	       0 kB
+CoreDumping:	0
+THP_enabled:	0
+untag_mask:	0xffffffffffffffff
+Threads:	1
+SigQ:	0/388
+SigPnd:	0000000000000000
+ShdPnd:	0000000000000000
+SigBlk:	0000000000000000
+SigIgn:	0000000000000004
+SigCgt:	0000000000010002
+CapInh:	0000000000000000
+CapPrm:	000001ffffffffff
+CapEff:	000001ffffffffff
+CapBnd:	000001ffffffffff
+CapAmb:	0000000000000000
+NoNewPrivs:	0
+Seccomp:	0
+Seccomp_filters:	0
+Speculation_Store_Bypass:	unknown
+SpeculationIndirectBranch:	unsupported
+Cpus_allowed:	1
+Cpus_allowed_list:	0
+voluntary_ctxt_switches:	645
+nonvoluntary_ctxt_switches:	1
+UML_BOOT_COMPLETE
+reboot: Power down
+

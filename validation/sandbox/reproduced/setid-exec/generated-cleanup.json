@@ -1,0 +1,9 @@
+{
+  "run": "/tmp/conglobate-setid-exec-v1",
+  "retained": "validation/sandbox/reproduced/setid-exec",
+  "removed_generated": [
+    "root",
+    "initramfs.gz",
+    "vmlinuz"
+  ]
+}

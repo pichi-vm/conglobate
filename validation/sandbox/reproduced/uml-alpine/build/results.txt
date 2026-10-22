@@ -1,0 +1,236 @@
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+SERVERS_READY
+SERVERS_READY
+BUILDER_ENDPOINT_POSITIVE_CONTROL_PASS
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+Core dump limits :
+	soft - 0
+	hard - NONE
+Checking that ptrace can change system call numbers...OK
+Checking syscall emulation for ptrace...OK
+Checking environment variables for a tempdir.../runtime
+Checking if /runtime is on tmpfs...OK
+Checking PROT_EXEC mmap in /runtime...OK
+Adding 511459328 bytes to physical memory to account for exec-shield gap
+Linux version 6.12.101 (sbuild@sbuild) (gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #1 Wed Aug 12 05:59:36 UTC 2026
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x00000000de7c3fff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x000000007e7c3fff]
+Initmem setup node 0 [mem 0x0000000000000000-0x000000007e7c3fff]
+random: crng init done
+Kernel command line: mem=1536M con=null con0=fd:0,fd:1 ssl=null lsm=capability panic=1 rdinit=/init initrd=/initrd uml_dir=/runtime ubd0=/disk eth0=tuntap,tap0 root=98:0 console=tty0
+Unknown kernel command line parameters "mem=1536M uml_dir=/runtime", will be passed to user space.
+Dentry cache hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+Inode-cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 518084
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+RCU Tasks Trace: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.
+NR_IRQS: 64
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 5879.39 BogoMIPS (lpj=29396992)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+LSM: initializing lsm=capability
+Mount-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+Mountpoint-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+Memory: 1450668K/2072336K available (7160K kernel code, 1552K rwdata, 2300K rodata, 229K init, 336K bss, 619620K reserved, 0K cma-reserved)
+devtmpfs: initialized
+futex hash table entries: 256 (order: 1, 6144 bytes, linear)
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+audit: initializing netlink subsys (disabled)
+audit: type=2000 audit(1792589421.493:1): state=initialized audit_enabled=0 res=1
+raid6: int64x8  gen()  4815 MB/s
+raid6: int64x4  gen()  3800 MB/s
+raid6: int64x2  gen()  5146 MB/s
+raid6: int64x1  gen()  6250 MB/s
+raid6: using algorithm int64x1 gen() 6250 MB/s
+raid6: .... xor() 3222 MB/s, rmw enabled
+raid6: using intx1 recovery algorithm
+NetLabel: Initializing
+NetLabel:  domain hash size = 128
+NetLabel:  protocols = UNLABELED CIPSOv4 CALIPSO
+NetLabel:  unlabeled traffic allowed by default
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 32768 (order: 6, 262144 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 1024 (order: 1, 8192 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 16384 (order: 5, 131072 bytes, linear)
+TCP bind hash table entries: 16384 (order: 6, 262144 bytes, linear)
+TCP: Hash tables configured (established 16384 bind 16384)
+UDP hash table entries: 1024 (order: 3, 32768 bytes, linear)
+UDP-Lite hash table entries: 1024 (order: 3, 32768 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /runtime/probe/mconsole
+Checking host MADV_REMOVE support...OK
+Mapper v0.1
+mmapper_init - find_iomem failed
+Trying to unpack rootfs image as initramfs...
+workingset: timestamp_bits=46 max_order=19 bucket_order=0
+zbud: loaded
+JFS: nTxBlock = 8192, nTxLock = 65536
+SGI XFS with ACLs, security attributes, realtime, quota, no debug enabled
+xor: measuring software checksum speed
+   prefetch64-sse  : 24000 MB/sec
+   generic_sse     : 22134 MB/sec
+xor: using function: prefetch64-sse (24000 MB/sec)
+Block layer SCSI generic (bsg) driver version 0.4 loaded (major 253)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+NET: Registered PF_PACKET protocol family
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+Choosing a random ethernet address for device eth0
+Netdevice 0 (52:95:d8:e3:2e:e6) : 
+TUN/TAP backend - 
+registered taskstats version 1
+Btrfs loaded, zoned=no, fsverity=no
+Freeing initrd memory: 73032K
+This architecture does not have kernel memory protection.
+Run /init as init process
+NET: Registered PF_INET6 protocol family
+Segment Routing with IPv6
+In-situ OAM (IOAM) with IPv6
+EXT4-fs (ubda): mounted filesystem df0036b1-2303-46e7-b561-f5806e8b3e4a r/w with ordered data mode. Quota mode: none.
+7[fetch https://dl-cdn.alpinelinux.org/alpine...]8[0K7[fetch https://dl-cdn.alpinelinux.org/alpine...]8[0K( 1/40) Installing alpine-baselayout-data (3.7.2-r1)
+7  0%                                             8[0K( 2/40) Installing musl (1.2.6-r2)
+7  0%                                             8[0K( 3/40) Installing busybox (1.37.0-r31)
+7  0%                                             8[0K7  1%                                             8[0K7  2%                                             8[0K  Executing busybox-1.37.0-r31.post-install
+7  2%                                             8[0K( 4/40) Installing busybox-binsh (1.37.0-r31)
+7  2%                                             8[0K( 5/40) Installing alpine-baselayout (3.7.2-r1)
+7  2%                                             8[0K7  2% #                                           8[0K  Executing alpine-baselayout-3.7.2-r1.pre-install
+7  2% #                                           8[0K  Executing alpine-baselayout-3.7.2-r1.post-install
+7  2% #                                           8[0K( 6/40) Installing bridge (1.5-r5)
+7  2% #                                           8[0K( 7/40) Installing ifupdown-ng (0.13.0-r0)
+7  2% #                                           8[0K( 8/40) Installing openrc-user (0.63.2-r0)
+7  2% #                                           8[0K( 9/40) Installing libcap2 (2.78-r0)
+7  2% #                                           8[0K(10/40) Installing openrc (0.63.2-r0)
+7  2% #                                           8[0K7  3% #                                           8[0K  Executing openrc-0.63.2-r0.post-install
+7  3% #                                           8[0K(11/40) Installing mdev-conf (4.10-r0)
+7  3% #                                           8[0K(12/40) Installing busybox-mdev-openrc (1.37.0-r31)
+7  3% #                                           8[0K(13/40) Installing alpine-conf (3.22.0-r0)
+7  3% #                                           8[0K7  4% #                                           8[0K(14/40) Installing alpine-keys (2.6-r0)
+7  4% #                                           8[0K(15/40) Installing alpine-release (3.24.2-r0)
+7  4% #                                           8[0K(16/40) Installing libcrypto3 (3.5.9-r0)
+7  4% #                                           8[0K7  4% ##                                          8[0K7  5% ##                                          8[0K7  6% ##                                          8[0K7  6% ###                                         8[0K7  7% ###                                         8[0K7  8% ###                                         8[0K(17/40) Installing libssl3 (3.5.9-r0)
+7  8% ###                                         8[0K7  9% ###                                         8[0K(18/40) Installing ssl_client (1.37.0-r31)
+7  9% ###                                         8[0K7  9% ####                                        8[0K(19/40) Installing zlib (1.3.2-r1)
+7  9% ####                                        8[0K(20/40) Installing libapk (3.0.8-r0)
+7  9% ####                                        8[0K(21/40) Installing ca-certificates-bundle (20261020-r0)
+7  9% ####                                        8[0K7 10% ####                                        8[0K(22/40) Installing apk-tools (3.0.8-r0)
+7 10% ####                                        8[0K(23/40) Installing busybox-openrc (1.37.0-r31)
+7 10% ####                                        8[0K(24/40) Installing busybox-suid (1.37.0-r31)
+7 10% ####                                        8[0K(25/40) Installing scanelf (1.3.9-r1)
+7 10% ####                                        8[0K(26/40) Installing musl-utils (1.2.6-r2)
+7 10% ####                                        8[0K(27/40) Installing alpine-base (3.24.2-r0)
+7 10% ####                                        8[0K7 11% ####                                        8[0K(28/40) Installing xz-libs (5.8.4-r0)
+7 11% ####                                        8[0K7 11% #####                                       8[0K(29/40) Installing zstd-libs (1.5.7-r2)
+7 11% #####                                       8[0K7 12% #####                                       8[0K(30/40) Installing kmod (34.2-r1)
+7 12% #####                                       8[0K(31/40) Installing lddtree (1.27-r0)
+7 12% #####                                       8[0K(32/40) Installing libeconf (0.8.3-r0)
+7 12% #####                                       8[0K(33/40) Installing libblkid (2.42.3-r1)
+7 12% #####                                       8[0K7 13% #####                                       8[0K(34/40) Installing device-mapper-libs (2.03.35-r3)
+7 13% #####                                       8[0K(35/40) Installing json-c (0.18-r1)
+7 13% #####                                       8[0K7 13% ######                                      8[0K(36/40) Installing libuuid (2.42.3-r1)
+7 13% ######                                      8[0K(37/40) Installing cryptsetup-libs (2.8.6-r0)
+7 13% ######                                      8[0K7 14% ######                                      8[0K(38/40) Installing kmod-libs (34.2-r1)
+7 14% ######                                      8[0K(39/40) Installing mkinitfs (3.14.1-r0)
+7 14% ######                                      8[0K  Executing mkinitfs-3.14.1-r0.post-install
+7 14% ######                                      8[0K(40/40) Installing linux-virt (6.18.58-r0)
+7 14% ######                                      8[0K7 15% ######                                      8[0K7 15% #######                                     8[0K7 16% #######                                     8[0K7 17% #######                                     8[0K7 18% ########                                    8[0K7 19% ########                                    8[0K7 20% ########                                    8[0K7 20% #########                                   8[0K7 21% #########                                   8[0K7 22% #########                                   8[0K7 22% ##########                                  8[0K7 23% ##########                                  8[0K7 24% ##########                                  8[0K7 25% ###########                                 8[0K7 26% ###########                                 8[0K7 27% ###########                                 8[0K7 27% ############                                8[0K7 28% ############                                8[0K7 29% ############                                8[0K7 29% #############                               8[0K7 30% #############                               8[0K7 31% #############                               8[0K7 31% ##############                              8[0K7 32% ##############                              8[0K7 33% ##############                              8[0K7 34% ###############                             8[0K7 35% ###############                             8[0K7 36% ###############                             8[0K7 36% ################                            8[0K7 37% ################                            8[0K7 38% ################                            8[0K7 38% #################                           8[0K7 39% #################                           8[0K7 40% #################                           8[0K7 40% ##################                          8[0K7 41% ##################                          8[0K7 42% ##################                          8[0K7 43% ###################                         8[0K7 44% ###################                         8[0K7 45% ###################                         8[0K7 45% ####################                        8[0K7 46% ####################                        8[0K7 47% ####################                        8[0K7 47% #####################                       8[0K7 48% #####################                       8[0K7 49% #####################                       8[0K7 50% ######################                      8[0K7 51% ######################                      8[0K7 52% ######################                      8[0K7 52% #######################                     8[0K7 53% #######################                     8[0K7 54% #######################                     8[0K7 54% ########################                    8[0K7 55% ########################                    8[0K7 56% ########################                    8[0K7 56% #########################                   8[0K7 57% #########################                   8[0K7 58% #########################                   8[0K7 59% ##########################                  8[0K7 60% ##########################                  8[0K7 61% ##########################                  8[0K7 61% ###########################                 8[0K7 62% ###########################                 8[0K7 63% ###########################                 8[0K7 63% ############################                8[0K7 64% ############################                8[0K7 65% ############################                8[0K7 65% #############################               8[0K7 66% #############################               8[0K7 67% #############################               8[0K7 68% ##############################              8[0K7 69% ##############################              8[0K7 70% ##############################              8[0K7 70% ###############################             8[0K7 71% ###############################             8[0K7 72% ###############################             8[0K7 72% ################################            8[0K7 73% ################################            8[0K7 74% ################################            8[0K7 75% #################################           8[0K7 76% #################################           8[0K7 77% #################################           8[0K7 77% ##################################          8[0K7 78% ##################################          8[0K7 79% ##################################          8[0K7 79% ###################################         8[0K7 80% ###################################         8[0K7 81% ###################################         8[0K7 81% ####################################        8[0K7 82% ####################################        8[0K7 83% ####################################        8[0K7 84% #####################################       8[0K7 85% #####################################       8[0K7 86% #####################################       8[0K7 86% ######################################      8[0K7 87% ######################################      8[0K7 88% ######################################      8[0K7 88% #######################################     8[0K7 89% #######################################     8[0K7 90% #######################################     8[0K7 90% ########################################    8[0K7 91% ########################################    8[0K7 92% ########################################    8[0K7 93% #########################################   8[0K7 94% #########################################   8[0K7 95% #########################################   8[0K7 95% ##########################################  8[0K7 96% ##########################################  8[0K7 97% ##########################################  8[0K7 97% ########################################### 8[0K7 98% ########################################### 8[0K7 99% ########################################### 8[0K7100% ############################################8[0KExecuting busybox-1.37.0-r31.trigger
+Executing kmod-34.2-r1.trigger
+Executing mkinitfs-3.14.1-r0.trigger
+* creating /boot/initramfs-virt for 6.18.58-0-virt
+OK: 61.4 MiB in 40 packages
+UML_ALPINE_BOOTSTRAP_PASS
+7[fetch https://dl-cdn.alpinelinux.org/alpine...]8[0K7[fetch https://dl-cdn.alpinelinux.org/alpine...]8[0K( 1/11) Installing acl-libs (2.3.2-r1)
+7  0%                                             8[0K( 2/11) Installing acl (2.3.2-r1)
+7  0%                                             8[0K7  4% ##                                          8[0K7  6% ##                                          8[0K( 3/11) Installing libattr (2.5.2-r2)
+7  6% ##                                          8[0K7 10% ####                                        8[0K7 11% ####                                        8[0K( 4/11) Installing attr (2.5.2-r2)
+7 11% ####                                        8[0K7 15% ######                                      8[0K7 16% #######                                     8[0K( 5/11) Installing ncurses-terminfo-base (6.6_p20260516-r0)
+7 16% #######                                     8[0K7 20% ########                                    8[0K7 21% #########                                   8[0K( 6/11) Installing libncursesw (6.6_p20260516-r0)
+7 21% #########                                   8[0K7 25% ###########                                 8[0K7 33% ##############                              8[0K7 35% ###############                             8[0K( 7/11) Installing readline (8.3.3-r1)
+7 35% ###############                             8[0K7 39% #################                           8[0K7 47% ####################                        8[0K( 8/11) Installing bash (5.3.9-r1)
+7 47% ####################                        8[0K7 51% ######################                      8[0K7 59% ##########################                  8[0K7 68% #############################               8[0K7 76% #################################           8[0K7 81% ###################################         8[0K  Executing bash-5.3.9-r1.post-install
+7 81% ###################################         8[0K( 9/11) Installing libcap-getcap (2.78-r0)
+7 81% ###################################         8[0K7 85% #####################################       8[0K7 86% #####################################       8[0K(10/11) Installing libcap-setcap (2.78-r0)
+7 86% #####################################       8[0K7 90% #######################################     8[0K(11/11) Installing libcap-utils (2.78-r0)
+7 90% #######################################     8[0K7 94% #########################################   8[0K7 95% ##########################################  8[0K7100% ############################################8[0KExecuting busybox-1.37.0-r31.trigger
+7[syncing disks...]8[0KOK: 63.7 MiB in 51 packages
+7[syncing disks...]8[0KOK: 63.7 MiB in 51 packages
+creating /boot/initramfs-virt for 6.18.58-0-virt
+acl-2.3.2-r1
+acl-libs-2.3.2-r1
+alpine-base-3.24.2-r0
+alpine-baselayout-3.7.2-r1
+alpine-baselayout-data-3.7.2-r1
+alpine-conf-3.22.0-r0
+alpine-keys-2.6-r0
+alpine-release-3.24.2-r0
+apk-tools-3.0.8-r0
+attr-2.5.2-r2
+bash-5.3.9-r1
+bridge-1.5-r5
+busybox-1.37.0-r31
+busybox-binsh-1.37.0-r31
+busybox-mdev-openrc-1.37.0-r31
+busybox-openrc-1.37.0-r31
+busybox-suid-1.37.0-r31
+ca-certificates-bundle-20261020-r0
+cryptsetup-libs-2.8.6-r0
+device-mapper-libs-2.03.35-r3
+ifupdown-ng-0.13.0-r0
+json-c-0.18-r1
+kmod-34.2-r1
+kmod-libs-34.2-r1
+lddtree-1.27-r0
+libapk-3.0.8-r0
+libattr-2.5.2-r2
+libblkid-2.42.3-r1
+libcap-getcap-2.78-r0
+libcap-setcap-2.78-r0
+libcap-utils-2.78-r0
+libcap2-2.78-r0
+libcrypto3-3.5.9-r0
+libeconf-0.8.3-r0
+libncursesw-6.6_p20260516-r0
+libssl3-3.5.9-r0
+libuuid-2.42.3-r1
+linux-virt-6.18.58-r0
+mdev-conf-4.10-r0
+mkinitfs-3.14.1-r0
+musl-1.2.6-r2
+musl-utils-1.2.6-r2
+ncurses-terminfo-base-6.6_p20260516-r0
+openrc-0.63.2-r0
+openrc-user-0.63.2-r0
+readline-8.3.3-r1
+scanelf-1.3.9-r1
+ssl_client-1.37.0-r31
+xz-libs-5.8.4-r0
+zlib-1.3.2-r1
+zstd-libs-1.5.7-r2
+UML_ALPINE_DERIVE_FIRMWARE_PASS
+EXT4-fs (ubda): unmounting filesystem df0036b1-2303-46e7-b561-f5806e8b3e4a.
+EXT4-fs (ubda): orphan cleanup on readonly fs
+EXT4-fs (ubda): mounted filesystem df0036b1-2303-46e7-b561-f5806e8b3e4a ro with ordered data mode. Quota mode: none.
+EXT4-fs (ubda): unmounting filesystem df0036b1-2303-46e7-b561-f5806e8b3e4a.
+UML_ALPINE_OUTPUT_VERIFIED
+reboot: Power down
+
+UML_ALPINE_WORKLOAD_PASS
+GUEST_EXIT 0
+[   38.163207] sysrq: Resetting

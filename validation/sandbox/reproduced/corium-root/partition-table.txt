@@ -1,0 +1,4 @@
+label: gpt
+sector-size: 512
+start=2048,size=2051240,uuid=9dc1c90d-da57-86e3-97fc-09f1f86d8e3a
+start=2054144,size=16176,uuid=fb90b268-5f2c-4880-3be1-a9dac8ce0599

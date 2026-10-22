@@ -1,0 +1,8 @@
+#!/bin/bash
+set -eu
+mount --make-rprivate /
+mount --bind "$1" /work
+if test "$1" = /runs/B; then export CHAIN_SANITIZE_LAUNCH=1; fi
+# Only the fixed, owned canary is passed to this trusted diagnostic launcher.
+export BASH_ENV=/shell-canary
+exec /publication-helper --publish

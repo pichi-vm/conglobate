@@ -1,0 +1,51 @@
+#!/bin/sh
+set -eu
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export TMPDIR=/tmp
+busybox mount -t proc proc /proc
+busybox mount -t sysfs sysfs /sys
+busybox mount -t securityfs securityfs /sys/kernel/security
+test "$(busybox cat /sys/kernel/security/lsm)" = capability
+busybox mount -t ext4 /dev/ubda /mnt
+busybox mkdir -p /mnt/packages /mnt/proc /mnt/sys /mnt/dev
+busybox mount -t hostfs -o /packages none /mnt/packages
+busybox mount -t proc proc /mnt/proc
+busybox mount -t sysfs sysfs /mnt/sys
+busybox mount -t devtmpfs devtmpfs /mnt/dev
+busybox mkdir -p /tool
+busybox mount -t hostfs -o /toolroot none /tool
+busybox mount --bind /mnt /tool/work
+busybox mount -t proc proc /tool/work/proc
+busybox mount -t sysfs sysfs /tool/work/sys
+busybox mount -t devtmpfs devtmpfs /tool/work/dev
+busybox mount -t hostfs -o /packages none /tool/rpms
+busybox mount -t proc proc /tool/proc
+busybox mount -t sysfs sysfs /tool/sys
+busybox mount -t devtmpfs devtmpfs /tool/dev
+busybox mount -t tmpfs -o size=128M tmpfs /tool/tmp
+busybox chroot /tool /usr/bin/dnf5 --installroot=/work --releasever=44 --disable-repo='*' --repofrompath=fixture,file:///rpms --setopt=fixture.gpgcheck=0 --setopt=install_weak_deps=False -y install selinux-policy-targeted policycoreutils
+busybox umount /tool/tmp
+busybox umount /tool/dev
+busybox umount /tool/sys
+busybox umount /tool/proc
+busybox umount /tool/rpms
+busybox umount /tool/work/dev
+busybox umount /tool/work/sys
+busybox umount /tool/work/proc
+busybox umount /tool/work
+busybox umount /tool
+busybox cp /boot-probe /mnt/conglobate-root-boot-probe
+busybox chmod 755 /mnt/conglobate-root-boot-probe
+printf 'SELINUX=enforcing
+SELINUXTYPE=targeted
+' > /mnt/etc/selinux/config
+busybox chroot /mnt /usr/sbin/setfiles -F -e /proc -e /sys -e /dev -e /packages /etc/selinux/targeted/contexts/files/file_contexts /
+/bin/getfattr -n security.selinux /mnt/usr/bin/bash /mnt/etc/passwd /mnt/etc/shadow /mnt/usr/lib/systemd/systemd
+busybox umount /mnt/packages
+busybox umount /mnt/proc
+busybox umount /mnt/sys
+busybox umount /mnt/dev
+busybox sync
+busybox umount /mnt
+echo UML_SELINUX_LABELING_PASS
+busybox poweroff -f

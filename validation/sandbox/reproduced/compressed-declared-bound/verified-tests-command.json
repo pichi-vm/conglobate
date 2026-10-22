@@ -1,0 +1,9 @@
+[
+  "cargo",
+  "test",
+  "--locked",
+  "--test",
+  "scutes",
+  "--test",
+  "artifacts"
+]

@@ -1,0 +1,37 @@
+Generic ioctl controls on command-owned files, pipes and sockets
+================================================================
+2026-10-20; disposable guest7.2.10-200.fc44.x86_64, two successive restricted
+command namespaces. Run guest.py policy with --kernel-version above,
+--out /tmp/NEW-policy-generic-ioctl --run. No policy relaxation was made.
+
+New assertions use only objects created by the probe. They do not operate on
+inherited standard streams, supervisor FDs, global controls or outside sockets.
+- FIONREAD on a regular tmpfs file reports remaining bytes as its offset changes.
+- FIONREAD on a pipe and its duplicate reports the same queued bytes; consuming
+  through the duplicate drains the original. An independent pipe remains empty.
+- FIONBIO on one pipe read descriptor changes O_NONBLOCK through its dup alias,
+  and an empty read returns EAGAIN. The independent pipe remains blocking.
+  Clearing through the alias restores the original's blocking status.
+- FIONCLEX/FIOCLEX change FD_CLOEXEC only on the chosen descriptor; its duplicate
+  retains its own close-on-exec flag.
+- FIONREAD on an owned Unix stream socket pair reports sent/consumed bytes on
+  the receiving endpoint and zero on the other endpoint.
+All objects are closed and the temporary regular file removed in finally.
+Both steps pass these assertions and existing policy/namespace/FD/IPC checks;
+supervisor handles, mounts and runtime backing checks remain unchanged. Exactly
+one GUEST_EXIT0 and two new success markers are required by the runner.
+
+Source corroboration, not an exact Fedora build-source audit:
+Pinned upstream f47d223627f80cb7a1eb14c585fe6cb35de5e984 fs/ioctl.c dispatches
+FIOCLEX/FIONCLEX/FIONBIO in generic VFS code; regular-file FIONREAD returns size
+minus file offset. Other file types dispatch to their ioctl implementation.
+The same revision's pipe and socket implementation files are retained for
+follow-up review. URLs/hashes are in kernel-source/sources.json. The guest
+observations, rather than upstream revision identity, establish tested behavior.
+
+Consequence: a minimal /dev or a list of fuse2fs callback requests is not the
+whole ioctl interface. Descriptor provenance, per-descriptor flags and shared
+open-file-description state matter. No outside-domain access, exploit, policy
+bypass or need to deny these ordinary operations is demonstrated. This narrows
+the reachable-interface audit; it is not a complete ioctl allowlist, anonymous-
+FD audit, FUSE regular-file test, socket protocol matrix or final-executor proof.

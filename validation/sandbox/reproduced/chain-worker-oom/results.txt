@@ -1,0 +1,23 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 621700123bcdb57c38e4055475aa41edb019a9be sha256:49c9622382e4607df61e20f84078d805c255e3e4bc333cfd02fc63b0b187d8d4
+WORKER_OOM_TWO_WRITERS_LIVE
+WORKER_OOM_REQUEST_QUEUED
+WORKER_OOM_KERNEL_KILL_EVENT_CONFIRMED
+/command: line 25: /heartbeat: Software caused connection abort
+/command: line 24: /child-heartbeat: Software caused connection abort
+WORKER_OOM_COMMAND_REAPED
+/chain-worker: line 11:   205 Killed                     /bin/bash -c 'kill -STOP $$; exec /patched -f -o kernel,acl,allow_other,nosuid,nodev "$1" /work/view' _ "$device" > /work/worker.log 2>&1
+WORKER_OOM_DAEMON_REAPED_137_UNMOUNTED
+
+thread 'main' (185) panicked at src/bin/chain.rs:150:9:
+worker failed: exit status: 125
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+WORKER_OOM_SUPERVISOR_SURVIVED_CGROUP_CLEANUP_PASS
+/work/base: OK
+WORKER_OOM_FUSE_CONNECTIONS_RELEASED
+WORKER_OOM_NO_SEAL_DEVICE_CLEANUP_PASS
+GUEST_EXIT 0
+[   20.547379] sysrq: Resetting

@@ -1,0 +1,87 @@
+[
+  {
+    "path": "sources/validation/sandbox/distro-upgrade/command",
+    "bytes": 1445,
+    "sha256": "1316ee24502f94124bcbfc2a5dbb7eae512b6e62f0daeea7abf4a6e9b4874ac1"
+  },
+  {
+    "path": "sources/validation/sandbox/distro-upgrade/download.py",
+    "bytes": 1883,
+    "sha256": "57fca9c18bf3631f295b4ba18f0b988161a37bdf109ee47fa66b43b80ea4abd0"
+  },
+  {
+    "path": "sources/validation/sandbox/entry/helper/Cargo.lock",
+    "bytes": 1681,
+    "sha256": "ae946c1d23ad2b7a5a760dfe9361b3acd09085c351cf8a906c3ec2699dc7f605"
+  },
+  {
+    "path": "sources/validation/sandbox/entry/helper/Cargo.toml",
+    "bytes": 316,
+    "sha256": "42a327b930140e2f985d48bd42f68d92bfb084098fa5442507676b450bbfe7a8"
+  },
+  {
+    "path": "sources/validation/sandbox/entry/helper/src/bin/commit-arbiter.rs",
+    "bytes": 5692,
+    "sha256": "d94282e5c71537d2ac9b4a0f761cf93e04bf95a29d7fe339fa2b7be4d9e5fd6b"
+  },
+  {
+    "path": "sources/validation/sandbox/entry/helper/src/bin/commit-output.rs",
+    "bytes": 918,
+    "sha256": "76f6f9c884ec53347b1161e5444ad153667aef0a3b058b56c48eaa802597e629"
+  },
+  {
+    "path": "sources/validation/sandbox/entry/helper/src/bin/credential-observer.rs",
+    "bytes": 655,
+    "sha256": "c99dcdc7d4e5bd2c280ddc828ec557739475836c6e5a014d52c586a538fe540a"
+  },
+  {
+    "path": "sources/validation/sandbox/entry/helper/src/bin/owned-exec.rs",
+    "bytes": 1070,
+    "sha256": "2f900578aa2fc11351bb3ea116745e0591538923d2866fcfbf7d7754bf13c028"
+  },
+  {
+    "path": "sources/validation/sandbox/entry/helper/src/bin/ownership-init.rs",
+    "bytes": 1188,
+    "sha256": "b8e9918983269e8eb56d72e33184379bb86f8b24b9d03a8b88deb41947730ab9"
+  },
+  {
+    "path": "sources/validation/sandbox/entry/helper/src/bin/parent-handoff.rs",
+    "bytes": 3230,
+    "sha256": "944cbed1db63e982d21e0e19bcafa7f423a462c9fcd1e325a7eba29f0d50ad20"
+  },
+  {
+    "path": "sources/validation/sandbox/entry/helper/src/bin/runtime-mounts.rs",
+    "bytes": 1728,
+    "sha256": "acd39bf333e37e089edb442de6ffc134b9e94a4cf886ab30b52349881e5a0df1"
+  },
+  {
+    "path": "sources/validation/sandbox/entry/helper/src/bin/runtime-pair.rs",
+    "bytes": 2111,
+    "sha256": "d3201992d6ebf9c749ac6ceb464a68568aa8b46ffe6f4dc4c179a3b33f566c55"
+  },
+  {
+    "path": "sources/validation/sandbox/entry/helper/src/main.rs",
+    "bytes": 8102,
+    "sha256": "3085f8c199366fca8b071f73471610b68a8bbec210f36a52b2754b01e70a58b9"
+  },
+  {
+    "path": "sources/validation/sandbox/policy/package.py",
+    "bytes": 19071,
+    "sha256": "8c5ddf56f3eaece7787e0e15b524b01c1eff5c2be7b9d60443dc5d5e8f0e83df"
+  },
+  {
+    "path": "sources/validation/sandbox/restricted-bootstrap/README.txt",
+    "bytes": 2255,
+    "sha256": "2468aa0736b651a0766d1bd57d4f3b9d391ab59bec752625fec9d2b3a22dbb45"
+  },
+  {
+    "path": "sources/validation/sandbox/restricted-bootstrap/command",
+    "bytes": 571,
+    "sha256": "ef910b20455139a5f10becbae2b4fd4bcf619d5317d3dc23bcb1cd6e4a091e59"
+  },
+  {
+    "path": "sources/validation/sandbox/restricted-bootstrap/launch",
+    "bytes": 1233,
+    "sha256": "54c4ec11d508d93ca75d23cd101c6ead6b82853d1f5199097b2431999b545f1e"
+  }
+]

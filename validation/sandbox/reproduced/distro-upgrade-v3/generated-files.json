@@ -1,0 +1,27 @@
+[
+  {
+    "path": "generated/bootstrap-command",
+    "bytes": 441,
+    "sha256": "dc8f21c850ed5718ff9b5b4e7a4bb5f76523a7260ae22f1567d92311e808b8e9"
+  },
+  {
+    "path": "generated/bootstrap-launch",
+    "bytes": 1224,
+    "sha256": "3d4a7269337f5cdaeddacffa48c34bb579710c3653cfe15754ac00cc3d126567"
+  },
+  {
+    "path": "generated/distro-upgrade-command",
+    "bytes": 1445,
+    "sha256": "1316ee24502f94124bcbfc2a5dbb7eae512b6e62f0daeea7abf4a6e9b4874ac1"
+  },
+  {
+    "path": "generated/init",
+    "bytes": 2550,
+    "sha256": "dad19aebdc3fd54de09728ee4e6325d1b51105eabb57304ac5f4a27f640fe0f4"
+  },
+  {
+    "path": "generated/worker",
+    "bytes": 2039,
+    "sha256": "40ae9e9ecc8713de6584328ceeddd07629121452a39f1541a4acb34ddb80b4b8"
+  }
+]

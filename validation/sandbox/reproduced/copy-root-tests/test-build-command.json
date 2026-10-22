@@ -1,0 +1,11 @@
+[
+  "cargo",
+  "test",
+  "--locked",
+  "--manifest-path",
+  "/home/nathaniel/Projects/pichi-vm/conglobate/Cargo.toml",
+  "--test",
+  "copy",
+  "--no-run",
+  "--message-format=json"
+]

@@ -1,0 +1,55 @@
+Error: "original parent is dead or its handle is invalid"
+SAFE_PARENT_HANDOFF_PASS before-arm
+SAFE_PARENT_HANDOFF_MODE_PASS same before-arm
+SAFE_PARENT_HANDOFF_PASS after-arm
+SAFE_PARENT_HANDOFF_MODE_PASS same after-arm
+SAFE_PARENT_HANDOFF_PASS after-check
+SAFE_PARENT_HANDOFF_MODE_PASS same after-check
+SAFE_PARENT_HANDOFF_PASS live-control
+SAFE_PARENT_HANDOFF_MODE_PASS same live-control
+SAFE_PARENT_HANDOFF_PASS exec-after-check
+SAFE_PARENT_HANDOFF_MODE_PASS same exec-after-check
+Error: "original parent is dead or its handle is invalid"
+SAFE_PARENT_HANDOFF_PASS credential-before-arm
+SAFE_PARENT_HANDOFF_MODE_PASS same credential-before-arm
+SAFE_PARENT_HANDOFF_PASS credential-after-check
+SAFE_PARENT_HANDOFF_MODE_PASS same credential-after-check
+SAFE_PARENT_HANDOFF_PASS credential-cleared
+SAFE_PARENT_HANDOFF_MODE_PASS same credential-cleared
+SAFE_PARENT_HANDOFF_PASS credential-live
+SAFE_PARENT_HANDOFF_MODE_PASS same credential-live
+PARENT_THREAD_PREARM_PROCESS_PIDFD_LIMITATION same
+SAFE_PARENT_HANDOFF_PASS thread-before-arm
+SAFE_PARENT_HANDOFF_MODE_PASS same thread-before-arm
+PARENT_THREAD_POSTARM_DEATH_CONFIRMED same
+SAFE_PARENT_HANDOFF_PASS thread-after-arm
+SAFE_PARENT_HANDOFF_MODE_PASS same thread-after-arm
+Error: "original parent is dead or its handle is invalid"
+SAFE_PARENT_HANDOFF_PASS before-arm
+SAFE_PARENT_HANDOFF_MODE_PASS nested before-arm
+SAFE_PARENT_HANDOFF_PASS after-arm
+SAFE_PARENT_HANDOFF_MODE_PASS nested after-arm
+SAFE_PARENT_HANDOFF_PASS after-check
+SAFE_PARENT_HANDOFF_MODE_PASS nested after-check
+SAFE_PARENT_HANDOFF_PASS live-control
+SAFE_PARENT_HANDOFF_MODE_PASS nested live-control
+SAFE_PARENT_HANDOFF_PASS exec-after-check
+SAFE_PARENT_HANDOFF_MODE_PASS nested exec-after-check
+Error: "original parent is dead or its handle is invalid"
+SAFE_PARENT_HANDOFF_PASS credential-before-arm
+SAFE_PARENT_HANDOFF_MODE_PASS nested credential-before-arm
+SAFE_PARENT_HANDOFF_PASS credential-after-check
+SAFE_PARENT_HANDOFF_MODE_PASS nested credential-after-check
+SAFE_PARENT_HANDOFF_PASS credential-cleared
+SAFE_PARENT_HANDOFF_MODE_PASS nested credential-cleared
+SAFE_PARENT_HANDOFF_PASS credential-live
+SAFE_PARENT_HANDOFF_MODE_PASS nested credential-live
+PARENT_THREAD_PREARM_PROCESS_PIDFD_LIMITATION nested
+SAFE_PARENT_HANDOFF_PASS thread-before-arm
+SAFE_PARENT_HANDOFF_MODE_PASS nested thread-before-arm
+PARENT_THREAD_POSTARM_DEATH_CONFIRMED nested
+SAFE_PARENT_HANDOFF_PASS thread-after-arm
+SAFE_PARENT_HANDOFF_MODE_PASS nested thread-after-arm
+SAFE_PARENT_HANDOFF_MATRIX_PASS
+GUEST_EXIT 0
+[    2.216832] sysrq: Resetting

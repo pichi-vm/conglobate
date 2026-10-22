@@ -1,0 +1,11 @@
+HUNG_REQUEST_OBSERVED 1
+INITIAL_NAMESPACE_ABORT_PASS
+touch: cannot touch '/work/view/blocked': Software caused connection abort
+HUNG_REQUEST_ABORTED_PASS
+/hang-worker: line 19:   159 Killed                     fuse2fs -f -o acl,allow_other /work/image /work/view > /work/fuse.log 2>&1
+fusermount3: unable to open fuse lock file: Permission denied
+HUNG_CONNECTION_CLEANUP_PASS
+CONNECTION_RELEASED_PASS
+VALIDATION_PASS
+GUEST_EXIT 0
+[    0.954901] sysrq: Resetting

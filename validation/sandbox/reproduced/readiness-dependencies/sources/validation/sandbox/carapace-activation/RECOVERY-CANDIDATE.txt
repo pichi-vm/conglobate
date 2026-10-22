@@ -1,0 +1,53 @@
+Pre-resume recovery candidate (not adopted)
+==========================================
+
+Reproduce:
+  python3 validation/sandbox/carapace-activation/build.py --death-probe \
+    --recover-incomplete --out /tmp/NEW-RECOVERY-BUILD
+  python3 validation/sandbox/guest.py carapace-activation-recovery \
+    --kernel-version 7.2.10-200.fc44.x86_64 \
+    --activation-tests-build /tmp/NEW-RECOVERY-BUILD \
+    --out /tmp/NEW-RECOVERY-GUEST --run
+
+The build script applies recover-incomplete.rs only to a copied dependency.
+On finding an existing mapping, while still holding the publication lock, it
+checks for no active table, no deferred-removal flag and zero open references.
+Only in that state does it attempt immediate removal, then retry creation.
+Failed removal propagates an error. Active mappings follow the existing
+pin-and-validate path; already-deferred mappings remain under kernel teardown.
+There is no broad name enumeration/removal or production dependency change.
+
+Observed passing checks:
+- SIGKILL at Created, Loaded, Resumed and Opened, followed by ordinary activation
+  and last-holder cleanup: all four recover, without manual fixture removal.
+- All four existing kernel lock/rollback/reuse/race tests still pass.
+- An inactive table with an independent open holder is preserved and activation
+  fails closed. Once its holder closes, subsequent activation recovers it.
+- An existing active readable target is preserved when a caller requests a
+  different table span; the conflicting request fails and old bytes remain
+  readable. Closing its holder releases the mapping.
+- A recovery process is gated immediately after removing the stale mapping,
+  killed with SIGKILL, and reaped. The parent confirms the publication lock is
+  available, then a fresh activation returns readable zero bytes and completes
+  deferred teardown. No special cleanup intervenes between death and restart.
+- Final guest DM inventory is empty.
+
+Basis and limits:
+The pinned assembler holds its publication lock across creation, load, resume,
+open and deferred-removal installation. Thus the candidate's no-active-table
+state cannot belong to an in-progress cooperating creator while it holds that
+same lock. This reasoning assumes trusted device management uses that protocol;
+it is not protection against a privileged actor changing tables without it.
+Open-count checking is followed by an immediate kernel removal, which can fail
+if a new holder appears. Existing tests cover a retained holder, not every
+possible simultaneous open. One post-remove recovery-death boundary now passes;
+other recovery boundaries, compound COW dependencies,
+multiple independent processes and API/maintenance adoption still need work.
+The DEFERRED_REMOVE bit is expressed as the existing local ABI constant pattern;
+a maintained library constant would be preferable on adoption.
+
+This is a validated candidate, not a claim the pinned production defect is
+fixed. Baseline failures remain in the earlier evidence directories. Current
+source snapshots, original/probe/patch hashes, instrumented dependency source,
+build log, guest inputs and outcomes are in reproduced/carapace-recovery-interrupted.
+The preceding candidate run is retained in reproduced/carapace-recovery-candidate.

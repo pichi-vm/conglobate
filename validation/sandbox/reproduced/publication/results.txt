@@ -1,0 +1,88 @@
+PUBLICATION_CASE patched-clean
+FUSE2FS (finalize): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FINALIZE_STATUS patched-clean 0
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 13/16384 files (0.0% non-contiguous), 9546/65536 blocks
+REAL_SCUTE_INVENTORY_PUBLICATION_PASS
+PUBLICATION_ACCEPTED patched-clean
+PUBLICATION_CASE baseline-close
+FUSE2FS (finalize): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+DIAGNOSTIC_CLOSE_ONLY_EIO
+/baseline-close: Input/output error while closing fs
+FINALIZE_STATUS baseline-close 0
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 13/16384 files (0.0% non-contiguous), 9546/65536 blocks
+REAL_SCUTE_INVENTORY_PUBLICATION_PASS
+PUBLICATION_ACCEPTED baseline-close
+PUBLICATION_CASE patched-close
+FUSE2FS (finalize): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+DIAGNOSTIC_CLOSE_ONLY_EIO
+/patched-close: Input/output error while closing fs
+FINALIZE_STATUS patched-close 32
+PUBLICATION_REJECTED patched-close
+PUBLICATION_CASE patched-error
+FUSE2FS (finalize): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (finalize): Input/output error at /tmp/conglobate-finalize-workers/source/misc/fuse2fs.c:739.
+/patched: Input/output error while closing fs
+FINALIZE_STATUS patched-error 32
+PUBLICATION_REJECTED patched-error
+PUBLICATION_CASE patched-recovered
+dd: fsync failed for '/work/view/fault-data': Input/output error
+1+0 records in
+1+0 records out
+4096 bytes (4.1 kB, 4.0 KiB) copied, 0.000561642 s, 7.3 MB/s
+FUSE2FS (finalize): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (finalize): Input/output error (inode #14) at /tmp/conglobate-finalize-workers/source/misc/fuse2fs.c:2684.
+FINALIZE_STATUS patched-recovered 32
+PUBLICATION_REJECTED patched-recovered
+PUBLICATION_CASE patched-clean-exhaust
+FUSE2FS (finalize): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FINALIZE_STATUS patched-clean-exhaust 0
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 13/16384 files (0.0% non-contiguous), 9546/65536 blocks
+ARTIFACT_ENOSPC_CONFIRMED
+PUBLICATION_REJECTED_ENOSPC
+PUBLICATION_CASE patched-publish-exhaust
+FUSE2FS (finalize): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FINALIZE_STATUS patched-publish-exhaust 0
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 13/16384 files (0.0% non-contiguous), 9546/65536 blocks
+ARTIFACT_ENOSPC_CONFIRMED
+PUBLICATION_COPY_ENOSPC_CLEANUP_PASS
+PUBLICATION_MATRIX_COMPLETE
+GUEST_EXIT 0
+[   27.379892] sysrq: Resetting

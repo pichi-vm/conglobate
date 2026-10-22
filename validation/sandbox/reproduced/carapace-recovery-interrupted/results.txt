@@ -1,0 +1,46 @@
+
+running 1 test
+test assemble::crash_validation::kernel_abrupt_death_matrix ... 
+running 1 test
+DEATH_BOUNDARY_STATUS Created flags=0x0
+CREATED_DEATH_REUSE_AND_DEFERRED_CLEANUP_PASS
+
+running 1 test
+DEATH_BOUNDARY_STATUS Loaded flags=0x40
+LOADED_DEATH_REUSE_AND_DEFERRED_CLEANUP_PASS
+
+running 1 test
+DEATH_BOUNDARY_STATUS Resumed flags=0x21
+RESUMED_DEATH_REUSE_AND_DEFERRED_CLEANUP_PASS
+
+running 1 test
+DEATH_BOUNDARY_STATUS Opened flags=0x21
+OPENED_DEATH_REUSE_AND_DEFERRED_CLEANUP_PASS
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 43 filtered out; finished in 0.23s
+
+
+running 4 tests
+test assemble::tests::kernel_competitor_waits_for_publication_or_rollback ... ok
+test assemble::tests::kernel_publication_holds_lock_and_rolls_back_before_unlocking ... ok
+test assemble::tests::kernel_removal_between_lookup_and_open_retries_creation ... ok
+test assemble::tests::kernel_reuse_releases_lock_after_pinning ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 40 filtered out; finished in 0.34s
+
+
+running 2 tests
+test assemble::recovery_controls::interrupted_recovery_can_restart ... 
+running 1 test
+RECOVERY_DEATH_AFTER_REMOVE_RESTART_PASS
+ok
+test assemble::recovery_controls::preserves_held_inactive_and_mismatched_active_targets ... RECOVERY_HELD_INACTIVE_PRESERVED
+RECOVERY_MISMATCHED_ACTIVE_PRESERVED
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 42 filtered out; finished in 0.15s
+
+CARAPACE_RECOVERY_CANDIDATE_AND_CLEANUP_PASS
+GUEST_EXIT 0
+[    1.583695] sysrq: Resetting

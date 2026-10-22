@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+export PATH=/bin
+busybox mount -t proc proc /proc
+busybox mount -t sysfs sysfs /sys
+busybox mount -t devtmpfs devtmpfs /dev
+busybox mkdir -p /runtime
+busybox mount -t tmpfs -o size=2G tmpfs /runtime
+busybox chmod 700 /runtime
+echo private > /supervisor-secret
+echo allowed > /allowed
+busybox chmod 444 /allowed
+busybox chown 1000:1000 /runtime /disk
+busybox cat /proc/uptime
+/bin/setpriv --reuid=1000 --regid=1000 --clear-groups /launch /inner.cpio
+/bin/setpriv --reuid=1000 --regid=1000 --clear-groups /launch /verify.cpio
+test "$(busybox cat /supervisor-secret)" = private
+busybox cat /proc/uptime
+echo NESTED_UML_PASS
+busybox poweroff -f

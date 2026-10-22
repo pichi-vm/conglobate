@@ -1,0 +1,10 @@
+LAUNCHER_DEATH_WITHOUT_CHILD_KILL_LEAVES_WRITER
+LIFECYCLE_WAIT_STATE 179 ['State:\tS (sleeping)', 'PPid:\t163', 'NSpid:\t179\t1'] do_wait b'/bin/bash\x00/launch\x00after-userns\x00'
+LIFECYCLE_WAIT_STATE 180 ['State:\tS (sleeping)', 'PPid:\t179', 'NSpid:\t180\t2'] hrtimer_nanosleep b'sleep\x0010\x00'
+Traceback (most recent call last):
+  File [35m"/driver.py"[0m, line [35m84[0m, in [35m<module>[0m
+    assert [1;31mtime.monotonic() < deadline[0m, "unreaped fixture descendants"
+           [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1;35mAssertionError[0m: [35munreaped fixture descendants[0m
+GUEST_EXIT 1
+[    3.508856] sysrq: Resetting

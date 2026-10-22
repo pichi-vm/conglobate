@@ -1,0 +1,20 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS af98549bb3798ec072f8d9156300c1320aa44db8 sha256:310ab901c16d0c89e1c03c9861a450757a1e68ce7e8455304fd44cf210f5b71c
+BLOCKED_CANCEL_TWO_WRITERS_LIVE
+BLOCKED_CANCEL_REQUEST_QUEUED
+BLOCKED_CANCEL_COMMAND_REAPED
+/chain-worker: line 16:   545 Killed                     /patched -f -o kernel,acl,allow_other,nosuid,nodev "$device" /work/view > /work/worker.log 2>&1
+BLOCKED_CANCEL_WORKER_REAPED_UNMOUNTED
+
+thread 'main' (182) panicked at src/bin/chain.rs:150:9:
+worker failed: exit status: 125
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+BLOCKED_CANCEL_ABORT_BEFORE_REAP_PASS
+/work/base: OK
+BLOCKED_CANCEL_FUSE_CONNECTIONS_RELEASED
+BLOCKED_CANCEL_NO_SEAL_DEVICE_CLEANUP_PASS
+GUEST_EXIT 0
+[   20.222190] sysrq: Resetting

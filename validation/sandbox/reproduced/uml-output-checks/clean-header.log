@@ -1,0 +1,58 @@
+Filesystem volume name:   <none>
+Last mounted on:          <not available>
+Filesystem UUID:          669c0781-db1e-4cd4-aaa5-f989a98dc806
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index orphan_file filetype extent 64bit flex_bg metadata_csum_seed sparse_super large_file huge_file dir_nlink extra_isize metadata_csum
+Filesystem flags:         signed_directory_hash 
+Default mount options:    user_xattr acl
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              8192
+Block count:              32768
+Reserved block count:     1638
+Overhead clusters:        6924
+Free blocks:              25798
+Free inodes:              8180
+First block:              1
+Block size:               1024
+Fragment size:            1024
+Group descriptor size:    64
+Reserved GDT blocks:      255
+Blocks per group:         8192
+Fragments per group:      8192
+Inodes per group:         2048
+Inode blocks per group:   512
+Flex block group size:    16
+Filesystem created:       Wed Oct 21 13:53:26 2026
+Last mount time:          n/a
+Last write time:          Wed Oct 21 13:53:26 2026
+Mount count:              0
+Maximum mount count:      -1
+Last checked:             Wed Oct 21 13:53:26 2026
+Check interval:           0 (<none>)
+Lifetime writes:          312 kB
+Reserved blocks uid:      0 (user unknown)
+Reserved blocks gid:      0 (group unknown)
+First inode:              11
+Inode size:               256
+Required extra isize:     32
+Desired extra isize:      32
+Journal inode:            8
+Default directory hash:   half_md4
+Directory Hash Seed:      53b8eaae-7bc5-4852-b3cc-abc7a11d4420
+Journal backup:           inode blocks
+Checksum type:            crc32c
+Checksum:                 0x20c06b85
+Checksum seed:            0xd7fe1066
+Orphan file inode:        12
+Journal features:         (none)
+Total journal size:       4096k
+Total journal blocks:     4096
+Max transaction length:   4096
+Fast commit length:       0
+Journal sequence:         0x00000001
+Journal start:            0
+
+dumpe2fs 1.47.3 (8-Jul-2025)

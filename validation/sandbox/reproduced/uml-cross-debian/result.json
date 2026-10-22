@@ -1,0 +1,28 @@
+{
+  "distro": "debian",
+  "cases": [
+    {
+      "mode": "native",
+      "seconds": 10.693698124028742,
+      "firmware_guest_seconds": 9.120000000000001,
+      "code": 0,
+      "error": null,
+      "source_unchanged": true,
+      "output": "/dev/shm/conglobate-cross-step-conglobate-uml-cross-debian-v1-native.raw",
+      "output_sha256": "84be343d2e6328d59d70a5ee0c70bdf069708edc56f8b9d7519a4f02d5213590",
+      "pass": true
+    },
+    {
+      "mode": "uml",
+      "seconds": 58.273155925038736,
+      "firmware_guest_seconds": 55.19,
+      "code": 0,
+      "error": null,
+      "source_unchanged": true,
+      "output": "/dev/shm/conglobate-cross-step-conglobate-uml-cross-debian-v1-uml.raw",
+      "output_sha256": "6023272e179e90b48c5ee6be11edac492a9a97ad252f6016ccc06146f9063d16",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

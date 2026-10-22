@@ -1,0 +1,32 @@
+[
+  {
+    "source": "validation/sandbox/publication-protocol/arbitration.py",
+    "snapshot": "review-sources/publication-protocol/arbitration.py",
+    "sha256": "216a48ff3f38d068a0cde3688d32eb9bf27ec010c63eda2357a9757a86017173",
+    "bytes": 5301
+  },
+  {
+    "source": "validation/sandbox/entry/helper/src/bin/commit-arbiter.rs",
+    "snapshot": "review-sources/entry/helper/src/bin/commit-arbiter.rs",
+    "sha256": "15bfc0dabc7a3c6f40887d7effc15329082451a0dc5e08ff12cff4a2f7fdedef",
+    "bytes": 5206
+  },
+  {
+    "source": "validation/sandbox/chain-command/launch",
+    "snapshot": "review-sources/chain-command/launch",
+    "sha256": "9d4180b00b2d8ec8fffcfc1887acb6961c8911d56d25e749ea675bb3959e4f04",
+    "bytes": 374
+  },
+  {
+    "source": "validation/sandbox/chain-command/worker",
+    "snapshot": "review-sources/chain-command/worker",
+    "sha256": "8e327f8efbd076ea321d14f39658ac4211d9c8076c1b65e16d22f29082e1a213",
+    "bytes": 616
+  },
+  {
+    "source": "validation/sandbox/restricted-bootstrap/launch",
+    "snapshot": "review-sources/restricted-bootstrap/launch",
+    "sha256": "54c4ec11d508d93ca75d23cd101c6ead6b82853d1f5199097b2431999b545f1e",
+    "bytes": 1233
+  }
+]

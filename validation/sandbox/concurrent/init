@@ -1,0 +1,42 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'echo "GUEST_EXIT $?"; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount -t tmpfs tmpfs /work
+modprobe fuse
+mount -t fusectl none /sys/fs/fuse/connections
+chmod 666 /dev/fuse
+for name in A B; do
+ mkdir -p /work/$name/view
+ truncate -s 64M /work/$name/image
+ mkfs.ext4 -qF /work/$name/image
+ if test "$name" = A; then uid=100000; else uid=200000; fi
+ chown -R "$uid:$uid" /work/$name
+ unshare --user --mount --net --map-users 0:$uid:65536 --map-groups 0:$uid:65536 --setuid 0 --setgid 0 /bin/bash /worker "$name" &
+ pid=$!
+ for ((i=0;i<100;i++)); do test -f /work/$name/ready && break; sleep .05; done
+ test -f /work/$name/ready
+ if test "$name" = A; then
+  pid_a=$pid
+  connections=(/sys/fs/fuse/connections/*)
+  test "${#connections[@]}" = 1
+  connection_a=${connections[0]}
+  exec {abort_a}>"$connection_a/abort"
+ else pid_b=$pid; fi
+done
+connections=(/sys/fs/fuse/connections/*)
+test "${#connections[@]}" = 2
+echo TWO_CONNECTIONS_ACTIVE_PASS
+echo 1 >&$abort_a
+wait "$pid_a"
+exec {abort_a}>&-
+test ! -e "$connection_a"
+touch /work/B/continue
+wait "$pid_b"
+e2fsck -fn /work/B/image
+connections=(/sys/fs/fuse/connections/*)
+test "${connections[0]}" = '/sys/fs/fuse/connections/*'
+echo CONCURRENT_CLEANUP_PASS

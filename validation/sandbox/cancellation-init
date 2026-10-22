@@ -1,0 +1,37 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'echo "GUEST_EXIT $?"; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount -t tmpfs tmpfs /work
+modprobe fuse
+mount -t fusectl none /sys/fs/fuse/connections
+chmod 666 /dev/fuse
+mkdir /work/view
+truncate -s 64M /work/image
+mkfs.ext4 -qF /work/image
+touch /work/fuse.log
+chown 100000:100000 /work /work/view /work/image /work/fuse.log
+unshare --user --mount --net --map-users 0:100000:65536 --map-groups 0:100000:65536 --setuid 0 --setgid 0 /bin/bash /hang-worker &
+worker=$!
+for ((i=0;i<100;i++)); do test -f /work/ready && break; sleep .05; done
+test -f /work/ready
+for ((i=0;i<100;i++)); do
+ for c in /sys/fs/fuse/connections/*; do
+  read -r waiting < "$c/waiting"
+  if test "$waiting" -gt 0; then
+   echo "HUNG_REQUEST_OBSERVED $waiting"
+   echo 1 > "$c/abort"
+   echo INITIAL_NAMESPACE_ABORT_PASS
+   wait "$worker"
+   test ! -e "$c"
+   echo CONNECTION_RELEASED_PASS
+   echo VALIDATION_PASS
+   exit 0
+  fi
+ done
+ sleep .05
+done
+exit 1

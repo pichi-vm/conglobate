@@ -1,0 +1,6 @@
+Disabled
+PACKAGE_INSTALL_BEGIN
+mount: /work/tool/rpms43: mount point does not exist.
+       dmesg(1) may have more information after failed mount system call.
+GUEST_EXIT 32
+[    2.934768] sysrq: Resetting

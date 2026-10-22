@@ -1,0 +1,12 @@
+#!/bin/bash
+set -eu
+for name in LD_PRELOAD LD_LIBRARY_PATH BASH_ENV PYTHONPATH GCONV_PATH EVIL_SETUP; do
+ test -z "${!name:-}"
+done
+test "$HOME" = /
+test "$PATH" = /usr/sbin:/usr/bin:/sbin:/bin
+test "$PWD" = /
+test ! -e /.old/supervisor-secret
+test ! -e /work/loader-canary
+if { true <&9; } 2>&1; then exit 1; fi
+echo IMAGE_ENV_AND_FDS_CLEAN_PASS

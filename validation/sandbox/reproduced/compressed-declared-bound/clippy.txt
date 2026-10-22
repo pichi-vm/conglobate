@@ -1,0 +1,13 @@
+    Checking conglobate v0.1.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+error: allocating a local array larger than 16384 bytes
+   --> src/artifact.rs:247:30
+    |
+247 |             let mut buffer = [0; 65536];
+    |                              ^^^^^^^^^^
+    |
+    = help: consider allocating on the heap with `vec![0; 65536].into_boxed_slice()`
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#large_stack_arrays
+    = note: `-D clippy::large-stack-arrays` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::large_stack_arrays)]`
+
+error: could not compile `conglobate` (lib) due to 1 previous error

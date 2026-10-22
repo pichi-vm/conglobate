@@ -242,3 +242,52 @@ fn copy_replaces_appended_symlinks_and_preserves_destination_directory_metadata(
     let meta = fs::metadata(root.join("owned")).unwrap();
     assert_eq!((meta.uid(), meta.gid()), (1234, 9876));
 }
+
+#[test]
+fn image_path_rejects_parent_traversal_through_a_regular_file() {
+    let directory = tempfile::tempdir().unwrap();
+    fs::write(directory.path().join("file"), b"not a directory").unwrap();
+    fs::write(
+        directory.path().join("resolver"),
+        b"nameserver 192.0.2.53\n",
+    )
+    .unwrap();
+    symlink("file/../resolver", directory.path().join("link")).unwrap();
+    for path in ["/file/../resolver", "/link"] {
+        let kernel_error =
+            fs::metadata(directory.path().join(path.trim_start_matches('/'))).unwrap_err();
+        assert_eq!(kernel_error.kind(), std::io::ErrorKind::NotADirectory);
+        let error = resolve(directory.path(), Path::new(path), true).unwrap_err();
+        assert!(
+            matches!(error, conglobate::Error::Io(ref error)
+            if error.kind() == std::io::ErrorKind::NotADirectory),
+            "{error}"
+        );
+    }
+}
+
+#[test]
+fn image_path_preserves_trailing_directory_requirements() {
+    let directory = tempfile::tempdir().unwrap();
+    fs::write(directory.path().join("file"), b"regular file").unwrap();
+    fs::create_dir(directory.path().join("dir")).unwrap();
+    symlink("file/", directory.path().join("slash-link")).unwrap();
+    symlink("file/.", directory.path().join("dot-link")).unwrap();
+    for path in ["/file/", "/file/.", "/slash-link", "/dot-link"] {
+        let kernel_error =
+            fs::metadata(directory.path().join(path.trim_start_matches('/'))).unwrap_err();
+        assert_eq!(kernel_error.kind(), std::io::ErrorKind::NotADirectory);
+        let error = resolve(directory.path(), Path::new(path), true).unwrap_err();
+        assert!(
+            matches!(error, conglobate::Error::Io(ref error)
+            if error.kind() == std::io::ErrorKind::NotADirectory),
+            "{error}"
+        );
+    }
+    for path in ["/dir/", "/dir/."] {
+        assert_eq!(
+            resolve(directory.path(), Path::new(path), true).unwrap(),
+            directory.path().join("dir")
+        );
+    }
+}

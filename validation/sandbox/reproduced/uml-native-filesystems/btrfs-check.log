@@ -1,0 +1,19 @@
+Opening filesystem to check...
+Checking filesystem on /image
+UUID: c5ece410-ab7f-4f59-9f18-ec0d4ce878ab
+found 2191360 bytes used, no error found
+total csum bytes: 1980
+total tree bytes: 163840
+total fs tree bytes: 32768
+total extent tree bytes: 16384
+btree space waste bytes: 150972
+file data blocks allocated: 2027520
+ referenced 2027520
+[1/8] checking log skipped (none written)
+[2/8] checking root items
+[3/8] checking extents
+[4/8] checking free space tree
+[5/8] checking fs roots
+[6/8] checking only csums items (without verifying data)
+[7/8] checking root refs
+[8/8] checking quota groups skipped (not enabled on this FS)

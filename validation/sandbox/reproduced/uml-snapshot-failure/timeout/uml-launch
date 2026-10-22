@@ -1,0 +1,33 @@
+#!/bin/bash
+set -euo pipefail
+export PATH=/usr/bin:/usr/sbin
+cg=/sys/fs/cgroup/uml-step
+mkdir "$cg"
+echo 805306368 > "$cg/memory.max"
+echo 0 > "$cg/memory.swap.max"
+echo 48 > "$cg/pids.max"
+echo 1 > "$cg/memory.oom.group"
+mkdir /work/uml-runtime
+chown 1000:1000 /work/uml-runtime
+chmod 700 /work/uml-runtime
+set +e
+/bin/bash /uml-child "$1" &
+child=$!
+(sleep 2; echo 1 > "$cg/cgroup.kill") &
+watcher=$!
+wait "$child"
+result=$?
+kill "$watcher" 2>/dev/null || true
+wait "$watcher" 2>/dev/null || true
+set -e
+echo 1 > "$cg/cgroup.kill"
+for ((i=0;i<500;i++)); do
+ if grep -q 'populated 0' "$cg/cgroup.events"; then break; fi
+ sleep .01
+done
+grep -q 'populated 0' "$cg/cgroup.events"
+cat "$cg/memory.peak"
+rmdir "$cg"
+rm -rf /work/uml-runtime
+test "$result" = 0
+echo UML_SNAPSHOT_CGROUP_EMPTY

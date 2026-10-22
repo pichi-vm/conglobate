@@ -1,0 +1,18 @@
+{
+  "mechanism_probes": true,
+  "production_qualified": false,
+  "rows": [
+    {
+      "case": "normal",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-bwrap-normal.ext4: 8615/131072 files (0.3% non-contiguous), 67378/524288 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "bwrap",
+      "status": "PASS",
+      "worker_rc": 0
+    }
+  ]
+}

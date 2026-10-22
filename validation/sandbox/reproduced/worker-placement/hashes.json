@@ -1,0 +1,16 @@
+{
+  "validation/sandbox/reproduced/worker-placement/fuse-lowlevel.c": "5f71fcccbfd106987afdc0629dfe9e73083fe64d13d0a8e0da9aae23c81f464e",
+  "validation/sandbox/reproduced/worker-placement/fuse2fs.c": "dd5a7f4aa1335b9e0e92fc018798e6c93dcf189a9c823224a189249b5e3fa238",
+  "validation/sandbox/reproduced/worker-placement/worker-build-inputs.json": "701404feeace1033e06f6cc8f199312baa93507484b2b047c8f8e947dd80da53",
+  "validation/sandbox/reproduced/worker-placement/initial-failure/inputs.json": "d0e6e382ec439af73b8c79a24cb34df5ec735c90e0bd0ad72d4a9fdd5e391ab4",
+  "validation/sandbox/reproduced/worker-placement/initial-failure/command.json": "825e7c0002843f1608d1e6547171edd632faa04432826bb587f365dd8df474f9",
+  "validation/sandbox/reproduced/worker-placement/initial-failure/results.txt": "f08e64fb4f669302e9bc9c25b33f87e322a7f04c7800965545ac170d0c603877",
+  "validation/sandbox/reproduced/worker-placement/initial-failure/worker-ldd.txt": "e6a9d22a8f15f707509e04d93b0ede2fc1edb39f7cc96185f24c7d903390bb6b",
+  "validation/sandbox/reproduced/worker-placement/completed/inputs.json": "0a8356846bfd282389e7b987bf6205d90a72dcf231aef2ff8edc749767c71249",
+  "validation/sandbox/reproduced/worker-placement/completed/command.json": "b701d27125749b0fcb7ab6a0de4cf71cc0020615fd70eb2ebf2cd1cc88632ad3",
+  "validation/sandbox/reproduced/worker-placement/completed/results.txt": "0b712b4fa2aae74015e96497b9d7972f12deb0151fa7024fcfbe768cd7c75933",
+  "validation/sandbox/reproduced/worker-placement/completed/worker-ldd.txt": "1243770bc19ebc5760353f5cfe46e6e5c20bbf97d570880dc5e0aa654abc1c08",
+  "validation/sandbox/worker-placement/run.py": "9002d83eb080fcd4b28a717cd06ff0601b7b196cbd5e0b70602b53321778217d",
+  "validation/sandbox/worker-placement/probe.py": "b3f3237f58f784e860c768633546475ab7be24d33633c29c6d8e01fce2b07d22",
+  "validation/sandbox/worker-placement/init": "288c26a2912b09e13696bffafaa4db8323c460a3c457de4d11768e3e339b154f"
+}

@@ -1,0 +1,19 @@
+FAULT_MODE default
+FAULT_UNMOUNT_STATUS 0
+FAULT_DAEMON_STATUS 0
+FUSE2FS (fault): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (fault): Input/output error at fuse2fs.c:737.
+fuse2fs: Input/output error while closing fs
+FAULT_MODE errors=panic
+/fault-worker: line 14:   199 Aborted                    fuse2fs -f -o acl,allow_other${1:+,$1} /dev/mapper/fault /work/view > /work/fuse.log 2>&1
+FAULT_UNMOUNT_STATUS 0
+FAULT_DAEMON_STATUS 134
+FUSE2FS (fault): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (fault): Input/output error at fuse2fs.c:737.
+FAULT_PROBE_COMPLETE
+GUEST_EXIT 0
+[    1.246950] sysrq: Resetting

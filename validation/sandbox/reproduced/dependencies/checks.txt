@@ -1,0 +1,2 @@
+DEPENDENCY_INVENTORY_PASS 8 Cargo packages; 6 native libraries/loader
+cargo clippy --locked --offline --manifest-path validation/sandbox/entry/helper/Cargo.toml --all-targets -- -D warnings: passed

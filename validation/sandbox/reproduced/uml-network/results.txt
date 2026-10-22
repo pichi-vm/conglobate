@@ -1,0 +1,275 @@
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+SERVERS_READY
+SERVERS_READY
+BUILDER_ENDPOINT_POSITIVE_CONTROL_PASS
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+DNS_QUERY mirror.build.test
+DNS_QUERY absent.invalid
+DNS_QUERY mirror.build.test
+DNS_QUERY mirror.build.test
+DNS_QUERY mirror.build.test
+DNS_QUERY mirror.build.test
+DNS_QUERY mirror.build.test
+DNS_QUERY mirror.build.test
+DNS_QUERY absent.invalid
+DNS_QUERY mirror.build.test
+DNS_QUERY mirror.build.test
+DNS_QUERY mirror.build.test
+DNS_QUERY mirror.build.test
+DNS_QUERY mirror.build.test
+UML_LISTENER_POSITIVE_CONTROLS_PASS
+UML_UNSOLICITED_INBOUND_BLOCKED_PASS
+Core dump limits :
+	soft - 0
+	hard - NONE
+Checking that ptrace can change system call numbers...OK
+Checking syscall emulation for ptrace...OK
+Checking environment variables for a tempdir.../runtime
+Checking if /runtime is on tmpfs...OK
+Checking PROT_EXEC mmap in /runtime...OK
+Adding 951324672 bytes to physical memory to account for exec-shield gap
+Linux version 6.12.101 (sbuild@sbuild) (gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #1 Wed Aug 12 05:59:36 UTC 2026
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x00000000b8b40fff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x0000000058b40fff]
+Initmem setup node 0 [mem 0x0000000000000000-0x0000000058b40fff]
+random: crng init done
+Kernel command line: mem=512M con=null con0=fd:0,fd:1 ssl=null lsm=capability panic=1 rdinit=/init initrd=/initrd uml_dir=/runtime eth0=tuntap,tap0 root=98:0 console=tty0
+Unknown kernel command line parameters "mem=512M uml_dir=/runtime", will be passed to user space.
+Dentry cache hash table entries: 65536 (order: 7, 524288 bytes, linear)
+Inode-cache hash table entries: 32768 (order: 6, 262144 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 363329
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+RCU Tasks Trace: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.
+NR_IRQS: 64
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 5488.64 BogoMIPS (lpj=27443200)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+LSM: initializing lsm=capability
+Mount-cache hash table entries: 1024 (order: 1, 8192 bytes, linear)
+Mountpoint-cache hash table entries: 1024 (order: 1, 8192 bytes, linear)
+Memory: 418916K/1453316K available (7160K kernel code, 1552K rwdata, 2300K rodata, 229K init, 336K bss, 1033152K reserved, 0K cma-reserved)
+devtmpfs: initialized
+futex hash table entries: 256 (order: 1, 6144 bytes, linear)
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+audit: initializing netlink subsys (disabled)
+audit: type=2000 audit(1792588886.315:1): state=initialized audit_enabled=0 res=1
+raid6: int64x8  gen()  4438 MB/s
+raid6: int64x4  gen()  3559 MB/s
+raid6: int64x2  gen()  5708 MB/s
+raid6: int64x1  gen()  5742 MB/s
+raid6: using algorithm int64x1 gen() 5742 MB/s
+raid6: .... xor() 3223 MB/s, rmw enabled
+raid6: using intx1 recovery algorithm
+NetLabel: Initializing
+NetLabel:  domain hash size = 128
+NetLabel:  protocols = UNLABELED CIPSOv4 CALIPSO
+NetLabel:  unlabeled traffic allowed by default
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 8192 (order: 4, 65536 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 512 (order: 0, 4096 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 4096 (order: 3, 32768 bytes, linear)
+TCP bind hash table entries: 4096 (order: 4, 65536 bytes, linear)
+TCP: Hash tables configured (established 4096 bind 4096)
+UDP hash table entries: 256 (order: 1, 8192 bytes, linear)
+UDP-Lite hash table entries: 256 (order: 1, 8192 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /runtime/probe/mconsole
+Checking host MADV_REMOVE support...OK
+Mapper v0.1
+mmapper_init - find_iomem failed
+Trying to unpack rootfs image as initramfs...
+workingset: timestamp_bits=46 max_order=17 bucket_order=0
+zbud: loaded
+JFS: nTxBlock = 3282, nTxLock = 26260
+SGI XFS with ACLs, security attributes, realtime, quota, no debug enabled
+xor: measuring software checksum speed
+   prefetch64-sse  : 23910 MB/sec
+   generic_sse     : 26208 MB/sec
+xor: using function: generic_sse (26208 MB/sec)
+Block layer SCSI generic (bsg) driver version 0.4 loaded (major 253)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+NET: Registered PF_PACKET protocol family
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+Failed to initialize ubd device 0 :Couldn't determine size of device's file
+Choosing a random ethernet address for device eth0
+Netdevice 0 (ea:e1:5a:6a:22:87) : 
+TUN/TAP backend - 
+registered taskstats version 1
+Btrfs loaded, zoned=no, fsverity=no
+Freeing initrd memory: 68976K
+epollctl add err fd 1, Operation not permitted
+epollctl add err fd 0, Operation not permitted
+This architecture does not have kernel memory protection.
+Run /init as init process
+NET: Registered PF_INET6 protocol family
+Segment Routing with IPv6
+In-situ OAM (IOAM) with IPv6
+LOOPBACK_STUB_UNREACHABLE_CONFIRMED
+DNS_SEARCH_DOMAIN_PASS
+DNS_LOOKUP [(<AddressFamily.AF_INET6: 10>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('fd42:27::2', 8080, 0, 0)), (<AddressFamily.AF_INET6: 10>, <SocketKind.SOCK_DGRAM: 2>, 17, '', ('fd42:27::2', 8080, 0, 0)), (<AddressFamily.AF_INET6: 10>, <SocketKind.SOCK_RAW: 3>, 0, '', ('fd42:27::2', 8080, 0, 0)), (<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('172.27.0.2', 8080)), (<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_DGRAM: 2>, 17, '', ('172.27.0.2', 8080)), (<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_RAW: 3>, 0, '', ('172.27.0.2', 8080))]
+NAT_PRIVATE_DESTINATION_AND_DNS_UDP_PASS
+DNS_TCP_PASS
+BUILDER_ENDPOINT_BLOCKED_PASS
+IPV6_NAT_AND_AAAA_DNS_PASS
+IPV6_BUILDER_ENDPOINT_BLOCKED_PASS
+NETWORK_RESTRICTED_CLIENT_PASS
+UML_RESOLVER_RESTORED_regular
+LOOPBACK_STUB_UNREACHABLE_CONFIRMED
+DNS_SEARCH_DOMAIN_PASS
+DNS_LOOKUP [(<AddressFamily.AF_INET6: 10>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('fd42:27::2', 8080, 0, 0)), (<AddressFamily.AF_INET6: 10>, <SocketKind.SOCK_DGRAM: 2>, 17, '', ('fd42:27::2', 8080, 0, 0)), (<AddressFamily.AF_INET6: 10>, <SocketKind.SOCK_RAW: 3>, 0, '', ('fd42:27::2', 8080, 0, 0)), (<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('172.27.0.2', 8080)), (<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_DGRAM: 2>, 17, '', ('172.27.0.2', 8080)), (<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_RAW: 3>, 0, '', ('172.27.0.2', 8080))]
+NAT_PRIVATE_DESTINATION_AND_DNS_UDP_PASS
+DNS_TCP_PASS
+BUILDER_ENDPOINT_BLOCKED_PASS
+IPV6_NAT_AND_AAAA_DNS_PASS
+IPV6_BUILDER_ENDPOINT_BLOCKED_PASS
+NETWORK_RESTRICTED_CLIENT_PASS
+UML_RESOLVER_RESTORED_symlink
+UML_LISTENER_READY
+NETWORK_RESTRICTED_LISTENERS_FINISHED
+UML_ENABLED_NETWORK_PASS
+reboot: Power down
+
+Core dump limits :
+	soft - 0
+	hard - NONE
+Checking that ptrace can change system call numbers...OK
+Checking syscall emulation for ptrace...OK
+Checking environment variables for a tempdir.../runtime
+Checking if /runtime is on tmpfs...OK
+Checking PROT_EXEC mmap in /runtime...OK
+Adding 347017216 bytes to physical memory to account for exec-shield gap
+Linux version 6.12.101 (sbuild@sbuild) (gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #1 Wed Aug 12 05:59:36 UTC 2026
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x0000000094af0fff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x0000000034af0fff]
+Initmem setup node 0 [mem 0x0000000000000000-0x0000000034af0fff]
+random: crng init done
+Kernel command line: mem=512M con=null con0=fd:0,fd:1 ssl=null lsm=capability panic=1 rdinit=/init initrd=/initrd uml_dir=/runtime probe_disabled=1 root=98:0 console=tty0
+Unknown kernel command line parameters "mem=512M uml_dir=/runtime probe_disabled=1", will be passed to user space.
+Dentry cache hash table entries: 65536 (order: 7, 524288 bytes, linear)
+Inode-cache hash table entries: 32768 (order: 6, 262144 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 215793
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+RCU Tasks Trace: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.
+NR_IRQS: 64
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 5879.39 BogoMIPS (lpj=29396992)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+LSM: initializing lsm=capability
+Mount-cache hash table entries: 1024 (order: 1, 8192 bytes, linear)
+Mountpoint-cache hash table entries: 1024 (order: 1, 8192 bytes, linear)
+Memory: 428132K/863172K available (7160K kernel code, 1552K rwdata, 2300K rodata, 229K init, 336K bss, 433792K reserved, 0K cma-reserved)
+devtmpfs: initialized
+futex hash table entries: 256 (order: 1, 6144 bytes, linear)
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+audit: initializing netlink subsys (disabled)
+audit: type=2000 audit(1792588898.671:1): state=initialized audit_enabled=0 res=1
+raid6: int64x8  gen()  4819 MB/s
+raid6: int64x4  gen()  4164 MB/s
+raid6: int64x2  gen()  6172 MB/s
+raid6: int64x1  gen()  6448 MB/s
+raid6: using algorithm int64x1 gen() 6448 MB/s
+raid6: .... xor() 3232 MB/s, rmw enabled
+raid6: using intx1 recovery algorithm
+NetLabel: Initializing
+NetLabel:  domain hash size = 128
+NetLabel:  protocols = UNLABELED CIPSOv4 CALIPSO
+NetLabel:  unlabeled traffic allowed by default
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 8192 (order: 4, 65536 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 512 (order: 0, 4096 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 4096 (order: 3, 32768 bytes, linear)
+TCP bind hash table entries: 4096 (order: 4, 65536 bytes, linear)
+TCP: Hash tables configured (established 4096 bind 4096)
+UDP hash table entries: 256 (order: 1, 8192 bytes, linear)
+UDP-Lite hash table entries: 256 (order: 1, 8192 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /runtime/probe/mconsole
+Checking host MADV_REMOVE support...OK
+Mapper v0.1
+mmapper_init - find_iomem failed
+Trying to unpack rootfs image as initramfs...
+workingset: timestamp_bits=46 max_order=17 bucket_order=0
+zbud: loaded
+JFS: nTxBlock = 3354, nTxLock = 26836
+SGI XFS with ACLs, security attributes, realtime, quota, no debug enabled
+xor: measuring software checksum speed
+   prefetch64-sse  : 24272 MB/sec
+   generic_sse     : 25995 MB/sec
+xor: using function: generic_sse (25995 MB/sec)
+Block layer SCSI generic (bsg) driver version 0.4 loaded (major 253)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+NET: Registered PF_PACKET protocol family
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+Freeing initrd memory: 68976K
+printk: legacy console [mc-1] enabled
+Failed to initialize ubd device 0 :Couldn't determine size of device's file
+registered taskstats version 1
+Btrfs loaded, zoned=no, fsverity=no
+This architecture does not have kernel memory protection.
+Run /init as init process
+UML_DISABLED_NETWORK_PASS
+reboot: Power down
+
+table inet guard {
+	chain input {
+		type filter hook input priority filter; policy accept;
+		iifname "vm-step" icmpv6 type { nd-neighbor-solicit, nd-neighbor-advert } accept
+		iifname "vm-step" drop
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+		ct state established,related accept
+		iifname "vm-step" oifname "vm-up" accept
+	}
+}
+table ip nat {
+	chain postrouting {
+		type nat hook postrouting priority srcnat; policy accept;
+		oifname "vm-up" ip saddr 10.45.0.0/24 masquerade
+	}
+}
+table ip6 nat {
+	chain postrouting {
+		type nat hook postrouting priority srcnat; policy accept;
+		oifname "vm-up" ip6 saddr fd42:45::/64 masquerade
+	}
+}
+UML_NETWORK_SUITE_PASS
+GUEST_EXIT 0
+[   15.241086] sysrq: Resetting

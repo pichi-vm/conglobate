@@ -1,0 +1,91 @@
+[package]
+name = "carapace"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+license = "Apache-2.0"
+publish = false
+repository = "https://github.com/pichi-vm/carapace"
+description = "Assemble carapace block-device chains into a read-only device."
+
+[[bin]]
+name = "carapace"
+path = "src/main.rs"
+
+[features]
+default = ["gpt"]
+# GPT/PARTUUID discovery: `Chain::from_gpt` scans block-device PARTUUIDs.
+gpt = []
+# File-backed scutes: loop-attach `data`/`hash` files via lodown.
+loop = ["dep:lodown"]
+# Async discovery adapter (with gpt); the default build needs no runtime.
+tokio = ["dep:tokio", "devmap-verity/tokio"]
+# Userspace base-scute conversion; not needed by the initrd assembler.
+image = ["dep:rustix", "dep:windows-sys"]
+
+# Portable geometry, snapshot codecs, and verity formatting.
+[dependencies]
+devmap-core = { git = "https://github.com/pichi-vm/devmap.git", rev = "2679426fa1d4508fc5c3bbdf643efbdbe64a3edd" }
+devmap-snapshot = { git = "https://github.com/pichi-vm/devmap.git", rev = "2679426fa1d4508fc5c3bbdf643efbdbe64a3edd" }
+devmap-verity = { git = "https://github.com/pichi-vm/devmap.git", rev = "2679426fa1d4508fc5c3bbdf643efbdbe64a3edd" }
+tokio = { version = "1", features = ["rt", "fs", "io-util"], optional = true }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1", features = ["fs"], optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_Ioctl", "Win32_System_Threading"], optional = true }
+
+# Device-mapper control and loop attachment are Linux-only.
+[target.'cfg(target_os = "linux")'.dependencies]
+devmap-linux = { git = "https://github.com/pichi-vm/devmap.git", rev = "2679426fa1d4508fc5c3bbdf643efbdbe64a3edd" }
+lodown = { git = "https://github.com/pichi-vm/lodown.git", rev = "31f8951293af180150e5e4c654c47a5b190097b9", optional = true }
+
+[dev-dependencies]
+criterion = "0.5.1"
+devmap-verity = { git = "https://github.com/pichi-vm/devmap.git", rev = "2679426fa1d4508fc5c3bbdf643efbdbe64a3edd", features = ["sha2"] }
+gpt = "4"
+serial_test = { version = "3", default-features = false }
+tempfile = "3"
+tokio = { version = "1", features = ["rt", "fs", "io-util"] }
+uuid = "1"
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+lodown = { git = "https://github.com/pichi-vm/lodown.git", rev = "31f8951293af180150e5e4c654c47a5b190097b9" }
+
+[[bench]]
+name = "block_device"
+harness = false
+required-features = ["gpt"]
+
+[lints.rust]
+# Only the private Windows allocated-range query may override this lint.
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unreachable_pub = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+must_use_candidate = "allow"
+doc_markdown = "allow"
+type_complexity = "allow"
+similar_names = "allow"
+struct_field_names = "allow"
+needless_continue = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_lossless = "allow"
+too_many_lines = "allow"
+missing_panics_doc = "allow"
+needless_pass_by_value = "allow"
+uninlined_format_args = "allow"
+
+# carapace ships in a guest initrd where binary size matters.
+[profile.release.package.carapace]
+opt-level = "z"
+codegen-units = 1
+strip = true

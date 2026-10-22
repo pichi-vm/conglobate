@@ -1,0 +1,23 @@
+{
+  "root_hash": "ed92c97b435df08cddcf271ea619dbe55e0aa7ced63b38eaa6b3eea52be422b8",
+  "base_root": "0dc9c19d57dae38697fc09f1f86d8e3a68b290fb2c5f80483be1a9dac8ce0599",
+  "base_disk_sha256": "73261e73ed4a6f9975099e5983fbdcf97761fb93b6be8a0a6a885f579d14c621",
+  "disk_sha256": "b01e5408e118c178d06d11870cbab956817c5d46b9740003ca59dece08e3a7ed",
+  "layer_files": [
+    {
+      "name": "data",
+      "bytes": 110592,
+      "sha256": "863f1558f2b9de12dfbdd8a373b4cf7bd83f4c187954332b5563d6c94421afdf"
+    },
+    {
+      "name": "hash",
+      "bytes": 8192,
+      "sha256": "632abfa028d61dbc16963ae32feb79850ee7fd4e592944de417237f0212a980b"
+    },
+    {
+      "name": "root",
+      "bytes": 64,
+      "sha256": "d9ec7ce0eceef33016638c2be241805fe2549f501c2675612de9c901ab87244f"
+    }
+  ]
+}

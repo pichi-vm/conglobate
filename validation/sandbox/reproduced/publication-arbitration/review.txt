@@ -1,0 +1,61 @@
+Safe-Rust publication reservation: real artifact/runtime controls
+================================================================
+2026-10-21 UTC. Diagnostic coordinator, not production adoption.
+Reproduce:
+  python3 validation/sandbox/guest.py chain-commit-arbitration \
+    --kernel-version 7.2.10-200.fc44.x86_64 \
+    --worker-build /tmp/conglobate-finalize-workers \
+    --out /tmp/NEW-arbitration --run
+
+The existing full FUSE build supplies a complete verified artifact. Trusted
+PID-init completion and DM/loop cleanup precede the arbitration matrix. Each
+case copies this internal artifact into its own owned mode0700 directory. The
+safe-Rust commit-arbiter (forbid unsafe; clippy -D warnings passes) binds a private
+Unix control socket there. Its Prepared state relies on the trusted caller's
+already-completed barrier; it does not independently establish that barrier.
+Recipe commands are already gone and their logs are not the control channel.
+
+Cancellation and reservation lock the same Mutex state. Accepted cancellation
+prevents reservation/commit. A successful reservation changes state before any
+filesystem work; later cancellation returns Pending. Commit atomically claims
+Reserved -> Committing, releases the mutex during NOREPLACE rename and parent
+sync, and records Committed, Collision, Failed or VisibleError. These last two
+error branches are implemented but not exercised by this matrix. Subsequent
+cancellation reports the terminal state instead of promising absent output.
+
+Thirteen cases pass with real filesystem operations:
+- Ordered cancellation first: Accepted, then Cancelled; commit does not publish.
+- Ordered reservation first: Reserved, then Pending; commit returns Committed.
+- Eight concurrent two-client cancellation/reservation races. Only those two
+  consistent pairs occur, with actual staged/public contents checked accordingly.
+  This run observes both winners; later runs need not depend on scheduler balance.
+- A destination created after reservation produces Collision. Its inode/sentinel
+  and all staged artifact hashes are preserved. No overwrite or delete/retry.
+- Death after reservation: pinned pidfd SIGKILL, absent output, unchanged staging.
+- Commit with deliberately withheld reply: a separate trusted status request
+  observes Committed, original client receives no reply, then pidfd SIGKILL
+  closes that connection. Complete public artifact remains byte-identical.
+Original source artifact hashes remain unchanged; case directories are removed
+only after assertions. Child processes are reaped in finally with bounded waits.
+The observer's pre-death status is test evidence, not a persistent recovery record.
+
+Limits and remaining gates
+--------------------------
+This qualifies the bounded reservation/cancellation ordering against actual
+rename/visibility and completed build bytes. It is not a final API or arbitrary
+control-server security proof. The endpoint and directory are trusted fixture
+resources; there is no identity/authentication protocol for hostile clients,
+unbounded request defense, journal/receipt, or automatic restart reconciliation.
+No script output from the image can authorize commit in this arrangement.
+
+The in-memory state disappears on process death. A new coordinator must still
+report Unknown unless protected records establish the outcome. This fixture
+uses an observer as its oracle and cannot solve that recovery problem itself.
+Parent-sync failures, real filesystem errors, death during the syscall, cancellation
+before build completion, generic executor integration and orphan-GC ownership
+are separate gates. Tmpfs sync is not power-loss persistence. No existing CLI
+new-output-directory behavior is changed; NOREPLACE remains required.
+
+Evidence: reproduced/publication-arbitration, including exact source/input
+catalogs, thirteen case results and actual race outcomes. The earlier abstract
+model remains separate evidence. Helper/control code is diagnostic only.

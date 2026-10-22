@@ -149,7 +149,15 @@ fn recover_empty_scratch() -> Result<(), Error> {
         if current.ino() != metadata.ino() || current.dev() != metadata.dev() {
             continue;
         }
-        if std::fs::read_dir(entry.path())?.next().is_some() {
+        // A live Scratch may remove its directory before releasing its
+        // lifetime lock. We can then acquire the now-unlinked directory's
+        // lock: there is no remaining lease to recover in that case.
+        let mut entries = match std::fs::read_dir(entry.path()) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(error.into()),
+        };
+        if entries.next().is_some() {
             continue;
         }
         if let Some(lease) = entry

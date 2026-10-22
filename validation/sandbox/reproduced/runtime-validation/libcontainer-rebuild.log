@@ -1,0 +1,10 @@
+    Updating git repository `https://github.com/youki-dev/youki`
+    Updating git submodule `https://github.com/opencontainers/runtime-tools.git`
+    Updating git submodule `https://github.com/opencontainers/runc.git`
+     Locking 2 packages to latest Rust 1.99.0-nightly compatible versions
+      Adding libcgroups v0.7.0 (https://github.com/youki-dev/youki?rev=cb3214c2204a03f1b99ae7c5870138439fd84345#cb3214c2)
+      Adding libcontainer v0.7.0 (https://github.com/youki-dev/youki?rev=cb3214c2204a03f1b99ae7c5870138439fd84345#cb3214c2)
+   Compiling libcgroups v0.7.0 (https://github.com/youki-dev/youki?rev=cb3214c2204a03f1b99ae7c5870138439fd84345#cb3214c2)
+   Compiling libcontainer v0.7.0 (https://github.com/youki-dev/youki?rev=cb3214c2204a03f1b99ae7c5870138439fd84345#cb3214c2)
+   Compiling conglobate-libcontainer-probe v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/runtime-validation/libcontainer)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.79s

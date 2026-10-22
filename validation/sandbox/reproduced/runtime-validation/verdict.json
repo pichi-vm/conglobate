@@ -1,0 +1,578 @@
+{
+  "results": [
+    {
+      "case": "normal",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-bwrap-normal.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "bwrap",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "exit42",
+      "command_rc": 42,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-bwrap-exit42.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "bwrap",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "descendant",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-bwrap-descendant.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "bwrap",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "launcher-death",
+      "command_rc": -9,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "bwrap",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "worker-death",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "bwrap",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "timeout",
+      "command_rc": 137,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "bwrap",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "helper-death",
+      "command_rc": "still-running",
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [
+        367,
+        369
+      ],
+      "metadata": true,
+      "runtime": "bwrap",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "normal",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-crun-normal.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "crun",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "exit42",
+      "command_rc": 42,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-crun-exit42.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "crun",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "descendant",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-crun-descendant.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "crun",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "launcher-death",
+      "command_rc": -9,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [
+        507
+      ],
+      "metadata": true,
+      "runtime": "crun",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "worker-death",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "crun",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "timeout",
+      "command_rc": 137,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "crun",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "helper-death",
+      "command_rc": "still-running",
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [
+        609
+      ],
+      "metadata": true,
+      "runtime": "crun",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "normal",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-runc-normal.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "runc",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "exit42",
+      "command_rc": 42,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-runc-exit42.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "runc",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "descendant",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-runc-descendant.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "runc",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "launcher-death",
+      "command_rc": -9,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [
+        905
+      ],
+      "metadata": true,
+      "runtime": "runc",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "worker-death",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "runc",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "timeout",
+      "command_rc": 137,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "runc",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "helper-death",
+      "command_rc": "still-running",
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [
+        1137
+      ],
+      "metadata": true,
+      "runtime": "runc",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "normal",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-youki-normal.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "youki",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "exit42",
+      "command_rc": 42,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-youki-exit42.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "youki",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "descendant",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-youki-descendant.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "youki",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "launcher-death",
+      "command_rc": -9,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [
+        1293
+      ],
+      "metadata": true,
+      "runtime": "youki",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "worker-death",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "youki",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "timeout",
+      "command_rc": 9,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "youki",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "helper-death",
+      "command_rc": "still-running",
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [
+        1393
+      ],
+      "metadata": true,
+      "runtime": "youki",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "normal",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-libcontainer-normal.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "libcontainer",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "exit42",
+      "command_rc": 42,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-libcontainer-exit42.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "libcontainer",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "descendant",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-libcontainer-descendant.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "libcontainer",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "launcher-death",
+      "command_rc": -9,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [
+        1533
+      ],
+      "metadata": true,
+      "runtime": "libcontainer",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "worker-death",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "libcontainer",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "timeout",
+      "command_rc": 137,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "libcontainer",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "helper-death",
+      "command_rc": "still-running",
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [
+        1634
+      ],
+      "metadata": true,
+      "runtime": "libcontainer",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "normal",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-nsjail-normal.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "nsjail",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "exit42",
+      "command_rc": 42,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-nsjail-exit42.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "nsjail",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "descendant",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-nsjail-descendant.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "nsjail",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "launcher-death",
+      "command_rc": -9,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "nsjail",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "worker-death",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "nsjail",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "timeout",
+      "command_rc": 137,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "nsjail",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "helper-death",
+      "command_rc": "still-running",
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [
+        1852
+      ],
+      "metadata": true,
+      "runtime": "nsjail",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "normal",
+      "command_rc": 226,
+      "connections_remaining": 0,
+      "error": "[{'caps': 'CapEff:\\t0000000000000000', 'fds': {'0': '/dev/null', '1': '/work/rv-systemd-normal-worker.log', '2': '/work/rv-systemd-normal-worker.log', '3': '/dev/fuse'}, 'namespaces': {'ipc': 'ipc:[4026532198]', 'mnt': 'mnt:[4026532200]', 'net': 'net:[4026532137]', 'pid': 'pid:[4026532199]', 'user': 'user:[4026532141]', 'uts': 'uts:[4026532201]'}, 'role': 'worker', 'uid_map': '         0     200000      65536\\n'}]",
+      "live_after_cleanup": [],
+      "runtime": "systemd",
+      "status": "FAIL"
+    },
+    {
+      "case": "normal",
+      "command_rc": 1,
+      "connections_remaining": 0,
+      "error": "[{'caps': 'CapEff:\\t0000000000000000', 'fds': {'0': '/dev/null', '1': '/work/rv-nspawn-normal-worker.log', '2': '/work/rv-nspawn-normal-worker.log', '3': '/dev/fuse'}, 'namespaces': {'ipc': 'ipc:[4026532143]', 'mnt': 'mnt:[4026532141]', 'net': 'net:[4026532145]', 'pid': 'pid:[4026532144]', 'user': 'user:[4026532140]', 'uts': 'uts:[4026532142]'}, 'role': 'worker', 'uid_map': '         0     200000      65536\\n'}]",
+      "live_after_cleanup": [],
+      "runtime": "nspawn",
+      "status": "FAIL"
+    },
+    {
+      "case": "normal",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-unshare-normal.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "unshare",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "exit42",
+      "command_rc": 42,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-unshare-exit42.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "unshare",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "descendant",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "fsck": "/private/rv-unshare-descendant.ext4: 25/16384 files (0.0% non-contiguous), 9558/65536 blocks",
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "unshare",
+      "status": "PASS",
+      "worker_rc": 0
+    },
+    {
+      "case": "launcher-death",
+      "command_rc": -9,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "unshare",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "worker-death",
+      "command_rc": 0,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "unshare",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "timeout",
+      "command_rc": -9,
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [],
+      "metadata": true,
+      "runtime": "unshare",
+      "status": "OBSERVED"
+    },
+    {
+      "case": "helper-death",
+      "command_rc": "still-running",
+      "connections_remaining": 0,
+      "live_after_cleanup": [],
+      "live_command_after_exit": [
+        2287
+      ],
+      "metadata": true,
+      "runtime": "unshare",
+      "status": "OBSERVED"
+    }
+  ],
+  "production_qualified": false
+}

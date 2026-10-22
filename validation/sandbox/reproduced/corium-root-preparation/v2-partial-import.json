@@ -1,0 +1,12 @@
+[
+  {
+    "path": "/tmp/conglobate-corium-root-v2/scute/hash",
+    "bytes": 4599808,
+    "sha256": "9145e5e38463c22e6c39e61391c477f750cf0e234f9b92e07dc6e75b8958ac96"
+  },
+  {
+    "path": "/tmp/conglobate-corium-root-v2/scute/data",
+    "bytes": 579493888,
+    "sha256": "ab2da3f644d7952a7093a7add029d55bdd09dab766ae2a8d4665e6ca2513a86c"
+  }
+]

@@ -1,0 +1,1301 @@
+
+Merging object attributes
+
+
+Merging program properties
+
+Removed property 0xc0000002 to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o (0x3) and /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o (not found)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o (0x1) and /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o (0x9)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o (0x9) and /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o (0x9) and /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o (0x9) and /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o (0x9) and /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o (0x9) and /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o (0x9) and /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o (0x1)
+Updated property 0xc0010002 (0x1) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o (0x1) and /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o (0x0)
+Removed property 0xc0000002 to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o (not found) and /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o (0x3)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o (0x9) and /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o (0x1)
+Removed property 0xc0000002 to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o (not found) and /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o (0x3)
+
+As-needed library included to satisfy reference by file (symbol)
+
+libc.so.6                     /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o (pthread_setcancelstate@@GLIBC_2.2.5)
+
+Discarded input sections
+
+ .note.gnu.property
+                0x0000000000000000       0x50 /usr/lib/gcc/x86_64-redhat-linux/16/crtbeginS.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+ .note.gnu.property
+                0x0000000000000000       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+ .note.gnu.property
+                0x0000000000000000       0x50 /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o
+ .note.gnu.property
+                0x0000000000000000       0x50 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/crtbeginS.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+LOAD /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+START GROUP
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/libdl.a
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/librt.a
+END GROUP
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc.a
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc_s_asneeded.so
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc_s.so
+START GROUP
+LOAD /lib64/libgcc_s.so.1
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc.a
+END GROUP
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libatomic_asneeded.so
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libatomic.so
+LOAD /usr/lib64/libatomic.so.1.2.0
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/libpthread.a
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/libc.so
+START GROUP
+LOAD /lib64/libc.so.6
+LOAD /usr/lib64/libc_nonshared.a
+LOAD /lib64/ld-linux-x86-64.so.2
+END GROUP
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc.a
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc_s_asneeded.so
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc_s.so
+START GROUP
+LOAD /lib64/libgcc_s.so.1
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc.a
+END GROUP
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+                0x0000000000000270                . = (SEGMENT_START ("text-segment", 0x0) + SIZEOF_HEADERS)
+
+.note.gnu.build-id
+                0x0000000000000270       0x24
+ *(.note.gnu.build-id)
+ .note.gnu.build-id
+                0x0000000000000270       0x24 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+
+.init           0x0000000000000294       0x1b
+ *(SORT_NONE(.init))
+ .init          0x0000000000000294       0x16 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+                0x0000000000000294                _init
+ .init          0x00000000000002aa        0x5 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+
+.plt            0x00000000000002b0     0x1070
+ *(.plt)
+ .plt           0x00000000000002b0     0x1070 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ *(.iplt)
+
+.plt.got        0x0000000000001320        0x0
+ *(.plt.got)
+ .plt.got       0x0000000000001320        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+
+.plt.sec
+ *(.plt.sec)
+
+.text           0x0000000000001320    0x1c9f6
+ *(.text.unlikely .text.*_unlikely .text.unlikely.*)
+ .text.unlikely
+                0x0000000000001320      0x291 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ .text.unlikely
+                0x00000000000015b1       0x1f /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+ .text.unlikely
+                0x00000000000015d0       0xc0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ .text.unlikely
+                0x0000000000001690       0x5d /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+ .text.unlikely
+                0x00000000000016ed       0x2f /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+ .text.unlikely
+                0x000000000000171c       0x25 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+ .text.unlikely
+                0x0000000000001741       0x4d /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+ .text.unlikely
+                0x000000000000178e       0x11 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+ *(.text.exit .text.exit.*)
+ *(.text.startup .text.startup.*)
+ *fill*         0x000000000000179f        0x1 
+ .text.startup  0x00000000000017a0       0x17 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ *(.text.hot .text.hot.*)
+ *(SORT_BY_NAME(.text.sorted.*))
+ *(.text .stub .text.* .gnu.linkonce.t.*)
+ .text          0x00000000000017b7        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ *fill*         0x00000000000017b7        0x9 
+ .text          0x00000000000017c0       0xb9 /usr/lib/gcc/x86_64-redhat-linux/16/crtbeginS.o
+ *fill*         0x0000000000001879        0x7 
+ .text          0x0000000000001880     0xc418 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+                0x0000000000004d70                fuse_clean_cache
+                0x0000000000004ef0                fuse_notify_poll
+                0x0000000000004f00                fuse_get_session
+                0x0000000000004f10                fuse_loop
+                0x00000000000050a0                fuse_exit
+                0x00000000000050b0                fuse_probe_setxattr_flags
+                0x00000000000050e0                fuse_get_context
+                0x00000000000050f0                fuse_fs_getattr
+                0x0000000000005900                fuse_fs_rename
+                0x0000000000005f20                fuse_fs_unlink
+                0x0000000000006240                fuse_fs_rmdir
+                0x0000000000006400                fuse_fs_symlink
+                0x0000000000006630                fuse_fs_link
+                0x0000000000006870                fuse_fs_release
+                0x0000000000006a30                fuse_fs_opendir
+                0x0000000000006b10                fuse_fs_open
+                0x0000000000006fe0                fuse_fs_read_buf
+                0x0000000000007410                fuse_fs_read
+                0x00000000000076b0                fuse_fs_write_buf
+                0x0000000000007960                fuse_fs_write
+                0x0000000000007b70                fuse_fs_fsync
+                0x0000000000007d70                fuse_fs_fsyncdir
+                0x0000000000007fa0                fuse_fs_flush
+                0x0000000000008020                fuse_fs_statfs
+                0x0000000000008260                fuse_fs_releasedir
+                0x0000000000008720                fuse_fs_readdir
+                0x0000000000008e60                fuse_fs_create
+                0x0000000000009250                fuse_fs_lock
+                0x0000000000009ad0                fuse_fs_flock
+                0x0000000000009d20                fuse_fs_chown
+                0x0000000000009df0                fuse_fs_truncate
+                0x0000000000009ea0                fuse_fs_utimens
+                0x0000000000009f90                fuse_fs_access
+                0x000000000000a150                fuse_fs_readlink
+                0x000000000000a350                fuse_fs_mknod
+                0x000000000000a620                fuse_fs_mkdir
+                0x000000000000a850                fuse_fs_setxattr
+                0x000000000000aa60                fuse_fs_getxattr
+                0x000000000000ad60                fuse_fs_listxattr
+                0x000000000000b030                fuse_fs_bmap
+                0x000000000000b250                fuse_fs_removexattr
+                0x000000000000b410                fuse_fs_ioctl
+                0x000000000000b840                fuse_fs_poll
+                0x000000000000bab0                fuse_fs_fallocate
+                0x000000000000bce0                fuse_fs_copy_file_range
+                0x000000000000c010                fuse_fs_lseek
+                0x000000000000c240                fuse_fs_statx
+                0x000000000000c670                fuse_fs_init
+                0x000000000000c7a0                fuse_fs_destroy
+                0x000000000000c7f0                fuse_fs_chmod
+                0x000000000000cd10                fuse_getgroups
+                0x000000000000cd50                fuse_interrupted
+                0x000000000000cd80                fuse_invalidate_path
+                0x000000000000cea0                fuse_lib_help
+                0x000000000000cfd0                fuse_fs_new
+                0x000000000000d070                fuse_start_cleanup_thread
+                0x000000000000d0a0                fuse_stop_cleanup_thread
+                0x000000000000d100                fuse_loop_mt_312
+                0x000000000000d100                fuse_loop_mt@@FUSE_3.12
+                0x000000000000d160                fuse_loop_mt@FUSE_3.2
+                0x000000000000d160                fuse_loop_mt_32
+                0x000000000000d1e0                fuse_loop_mt@FUSE_3.0
+                0x000000000000d1e0                fuse_loop_mt_31
+                0x000000000000d250                _fuse_new_31
+                0x000000000000d730                _fuse_new_30
+                0x000000000000d730                _fuse_new@FUSE_3.0
+                0x000000000000d820                fuse_new@FUSE_3.1
+                0x000000000000d820                fuse_new_31
+                0x000000000000d840                fuse_new_30
+                0x000000000000d840                fuse_new@FUSE_3.0
+                0x000000000000d920                fuse_destroy
+                0x000000000000dc40                fuse_mount
+                0x000000000000dc60                fuse_unmount
+                0x000000000000dc80                fuse_version
+                0x000000000000dc90                fuse_pkgversion
+ *fill*         0x000000000000dc98        0x8 
+ .text          0x000000000000dca0       0x79 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+                0x000000000000dca0                fuse_session_loop
+ *fill*         0x000000000000dd19        0x7 
+ .text          0x000000000000dd20      0xb2e /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+                0x000000000000dd20                fuse_chan_get
+                0x000000000000dd50                fuse_chan_put
+                0x000000000000ddb0                fuse_start_thread
+                0x000000000000e3f0                fuse_loop_cfg_create
+                0x000000000000e430                fuse_loop_cfg_destroy
+                0x000000000000e440                fuse_loop_cfg_verify
+                0x000000000000e460                fuse_session_loop_mt_312
+                0x000000000000e460                fuse_session_loop_mt@@FUSE_3.12
+                0x000000000000e700                fuse_loop_cfg_set_idle_threads
+                0x000000000000e730                fuse_loop_cfg_set_max_threads
+                0x000000000000e740                fuse_loop_cfg_set_clone_fd
+                0x000000000000e750                fuse_session_loop_mt@FUSE_3.0
+                0x000000000000e750                fuse_session_loop_mt_31
+                0x000000000000e7c0                fuse_loop_cfg_convert
+                0x000000000000e7f0                fuse_session_loop_mt_32
+                0x000000000000e7f0                fuse_session_loop_mt@FUSE_3.2
+ *fill*         0x000000000000e84e       0x12 
+ .text          0x000000000000e860     0x78ba /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+                0x000000000000f0c0                list_init_req
+                0x000000000000f0d0                fuse_free_req
+                0x000000000000f1a0                fuse_add_direntry
+                0x000000000000f240                fuse_reply_none
+                0x000000000000f620                fuse_add_direntry_plus
+                0x000000000000f730                fuse_passthrough_open
+                0x000000000000f7a0                fuse_passthrough_close
+                0x000000000000f810                fuse_pollhandle_destroy
+                0x000000000000f820                fuse_convert_to_conn_want_ext
+                0x000000000000f890                fuse_set_feature_flag
+                0x000000000000f8c0                fuse_unset_feature_flag
+                0x000000000000f8e0                fuse_get_feature_flag
+                0x000000000000f8f0                fuse_req_userdata
+                0x000000000000f900                fuse_req_ctx
+                0x000000000000f910                fuse_req_interrupt_func
+                0x000000000000f990                fuse_req_interrupted
+                0x000000000000f9d0                fuse_req_is_uring
+                0x000000000000f9e0                fuse_req_get_payload
+                0x000000000000f9f0                fuse_lowlevel_version
+                0x000000000000fa20                fuse_lowlevel_help
+                0x000000000000fa30                fuse_session_destroy
+                0x000000000000fb20                fuse_buf_free
+                0x000000000000fb60                fuse_session_new_versioned
+                0x0000000000010000                fuse_session_new_30
+                0x0000000000010070                fuse_session_custom_io_317
+                0x0000000000010070                fuse_session_custom_io@@FUSE_3.17
+                0x00000000000100a0                fuse_session_custom_io@FUSE_3.0
+                0x00000000000100a0                fuse_session_custom_io_30
+                0x00000000000100b0                fuse_session_mount
+                0x0000000000010200                fuse_session_fd
+                0x0000000000010210                fuse_session_unmount
+                0x0000000000010260                fuse_req_getgroups
+                0x0000000000010380                fuse_session_exit
+                0x00000000000103a0                fuse_session_reset
+                0x00000000000103c0                fuse_session_exited
+                0x0000000000010600                fuse_send_reply_iov_nofree
+                0x0000000000010690                fuse_reply_ioctl
+                0x0000000000010710                fuse_reply_err
+                0x0000000000011460                fuse_session_process_uring_cqe
+                0x0000000000011790                fuse_reply_iov
+                0x0000000000011840                fuse_reply_ioctl_retry
+                0x0000000000011a10                fuse_reply_ioctl_iov
+                0x0000000000012710                fuse_reply_bmap
+                0x0000000000012770                fuse_reply_lseek
+                0x00000000000127d0                fuse_reply_xattr
+                0x0000000000012830                fuse_reply_poll
+                0x0000000000012890                fuse_reply_buf
+                0x0000000000012970                fuse_reply_readlink
+                0x00000000000129f0                fuse_reply_lock
+                0x0000000000012a90                fuse_reply_statx
+                0x0000000000012cf0                fuse_reply_create
+                0x0000000000012df0                fuse_reply_open
+                0x0000000000013030                fuse_reply_statfs
+                0x00000000000131c0                fuse_reply_entry
+                0x0000000000013260                fuse_reply_attr
+                0x0000000000013440                fuse_reply_write
+                0x0000000000013fb0                fuse_lowlevel_notify_retrieve
+                0x00000000000141b0                fuse_session_process_buf_internal
+                0x0000000000014be0                fuse_session_process_buf
+                0x0000000000015480                fuse_lowlevel_notify_store
+                0x0000000000015550                fuse_reply_data
+                0x00000000000155f0                fuse_lowlevel_notify_increment_epoch
+                0x0000000000015670                fuse_lowlevel_notify_inval_inode
+                0x0000000000015710                fuse_lowlevel_notify_inval_entry
+                0x00000000000157c0                fuse_lowlevel_notify_delete
+                0x0000000000015870                fuse_lowlevel_notify_expire_entry
+                0x0000000000015930                fuse_lowlevel_notify_poll
+                0x00000000000160e0                fuse_session_receive_buf
+                0x00000000000160f0                fuse_session_receive_buf_internal
+ *fill*         0x000000000001611a        0x6 
+ .text          0x0000000000016120      0xc67 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+                0x00000000000163c0                fuse_opt_free_args
+                0x0000000000016440                fuse_opt_add_arg
+                0x00000000000169e0                fuse_opt_insert_arg
+                0x0000000000016a70                fuse_opt_add_opt
+                0x0000000000016a80                fuse_opt_add_opt_escaped
+                0x0000000000016a90                fuse_opt_match
+                0x0000000000016ab0                fuse_opt_parse
+ *fill*         0x0000000000016d87        0x9 
+ .text          0x0000000000016d90      0x4c9 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+                0x0000000000016ff0                fuse_set_signal_handlers
+                0x00000000000170c0                fuse_set_fail_signal_handlers
+                0x0000000000017150                fuse_remove_signal_handlers
+ *fill*         0x0000000000017259        0x7 
+ .text          0x0000000000017260      0x7a6 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+                0x0000000000017520                fuse_buf_size
+                0x0000000000017580                fuse_buf_copy
+ *fill*         0x0000000000017a06        0xa 
+ .text          0x0000000000017a10      0x92a /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+                0x0000000000017b30                cuse_lowlevel_new
+                0x0000000000017e10                _cuse_lowlevel_init
+                0x00000000000180f0                cuse_lowlevel_init
+                0x0000000000018100                cuse_lowlevel_setup
+                0x0000000000018290                cuse_lowlevel_teardown
+                0x00000000000182b0                cuse_lowlevel_main
+ *fill*         0x000000000001833a        0x6 
+ .text          0x0000000000018340      0xa76 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+                0x0000000000018460                fuse_cmdline_help
+                0x0000000000018470                fuse_parse_cmdline_312
+                0x0000000000018470                fuse_parse_cmdline@@FUSE_3.12
+                0x0000000000018580                fuse_parse_cmdline_30
+                0x0000000000018580                fuse_parse_cmdline@FUSE_3.0
+                0x00000000000185d0                fuse_daemonize
+                0x0000000000018720                fuse_main_real_versioned
+                0x00000000000189b0                fuse_main_real_30
+                0x00000000000189d0                fuse_apply_conn_info_opts
+                0x0000000000018cc0                fuse_parse_conn_info_opts
+                0x0000000000018d30                fuse_open_channel
+ *fill*         0x0000000000018db6        0xa 
+ .text          0x0000000000018dc0     0x142a /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+ *fill*         0x000000000001a1ea        0x6 
+ .text          0x000000000001a1f0      0xea2 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+                0x000000000001aaf0                fuse_mnt_add_mount
+                0x000000000001ab40                fuse_mnt_umount
+                0x000000000001abf0                fuse_mnt_remove_mount
+                0x000000000001ac30                fuse_mnt_resolve_path
+                0x000000000001af70                fuse_mnt_check_fuseblk
+                0x000000000001b010                fuse_mnt_parse_fuse_fd
+ *fill*         0x000000000001b092        0xe 
+ .text          0x000000000001b0a0       0xe5 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+                0x000000000001b0c0                fuse_set_log_func
+                0x000000000001b0e0                fuse_log
+                0x000000000001b170                fuse_log_enable_syslog
+                0x000000000001b180                fuse_log_close_syslog
+ *fill*         0x000000000001b185        0xb 
+ .text          0x000000000001b190       0x15 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+                0x000000000001b190                fuse_main_real
+                0x000000000001b1a0                fuse_session_new
+ *fill*         0x000000000001b1a5        0xb 
+ .text          0x000000000001b1b0       0xb5 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+                0x000000000001b1b0                libfuse_strtol
+                0x000000000001b250                fuse_set_thread_name
+ *fill*         0x000000000001b265       0x1b 
+ .text          0x000000000001b280     0x1313 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+                0x000000000001bf10                fuse_mount_version
+                0x000000000001bf70                get_max_read
+                0x000000000001bf80                fuse_kern_unmount
+                0x000000000001c0e0                destroy_mount_opts
+                0x000000000001c130                parse_mount_opts
+                0x000000000001c1a0                fuse_kern_mount
+ *fill*         0x000000000001c593        0xd 
+ .text          0x000000000001c5a0     0x1776 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+ .text          0x000000000001dd16        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o
+ .text          0x000000000001dd16        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+ *(.gnu.warning)
+
+.fini           0x000000000001dd18        0xd
+ *(SORT_NONE(.fini))
+ .fini          0x000000000001dd18        0x8 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+                0x000000000001dd18                _fini
+ .fini          0x000000000001dd20        0x5 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+                [!provide]                        PROVIDE (__etext = .)
+                [!provide]                        PROVIDE (_etext = .)
+                [!provide]                        PROVIDE (etext = .)
+                0x000000000001e000                . = ALIGN (CONSTANT (MAXPAGESIZE))
+                0x000000000001e000                . = SEGMENT_START ("rodata-segment", (ALIGN (CONSTANT (MAXPAGESIZE)) + (. & (CONSTANT (MAXPAGESIZE) - 0x1))))
+
+.hash
+ *(.hash)
+
+.gnu.hash       0x000000000001e000      0x598
+ *(.gnu.hash)
+ .gnu.hash      0x000000000001e000      0x598 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+
+.dynsym         0x000000000001e598     0x1f68
+ *(.dynsym)
+ .dynsym        0x000000000001e598     0x1f68 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+
+.dynstr         0x0000000000020500     0x13cf
+ *(.dynstr)
+ .dynstr        0x0000000000020500     0x13cf /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+
+.gnu.version    0x00000000000218d0      0x29e
+ *(.gnu.version)
+ .gnu.version   0x00000000000218d0      0x29e /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+
+.gnu.version_d  0x0000000000021b70      0x1a0
+ *(.gnu.version_d)
+ .gnu.version_d
+                0x0000000000021b70      0x1a0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+
+.gnu.version_r  0x0000000000021d10      0x100
+ *(.gnu.version_r)
+ .gnu.version_r
+                0x0000000000021d10      0x100 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+
+.rela.dyn       0x0000000000021e10     0x2ce8
+ *(.rela.init)
+ *(.rela.text .rela.text.* .rela.gnu.linkonce.t.*)
+ .rela.text     0x0000000000021e10        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ *(.rela.fini)
+ *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.*)
+ *(.rela.data .rela.data.* .rela.gnu.linkonce.d.*)
+ .rela.data.rel.ro.local
+                0x0000000000021e10     0x1998 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .rela.data.rel.ro
+                0x00000000000237a8     0x1230 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .rela.data.rel.local
+                0x00000000000249d8       0x48 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.*)
+ *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.*)
+ *(.rela.ctors)
+ *(.rela.dtors)
+ *(.rela.got)
+ .rela.got      0x0000000000024a20       0x90 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ *(.rela.tls)
+ .rela.tls      0x0000000000024ab0        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*)
+ *(.rela.ldata .rela.ldata.* .rela.gnu.linkonce.l.*)
+ *(.rela.lbss .rela.lbss.* .rela.gnu.linkonce.lb.*)
+ *(.rela.lrodata .rela.lrodata.* .rela.gnu.linkonce.lr.*)
+ *(.rela.ifunc)
+ .rela.ifunc    0x0000000000024ab0        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .rela.fini_array
+                0x0000000000024ab0       0x18 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .rela.init_array
+                0x0000000000024ac8       0x30 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+
+.rela.plt       0x0000000000024af8     0x1890
+ *(.rela.plt)
+ .rela.plt      0x0000000000024af8     0x1890 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ *(.rela.iplt)
+
+.relr.dyn
+ *(.relr.dyn)
+
+.rodata         0x0000000000026390     0x3364
+ *(.rodata .rodata.* .gnu.linkonce.r.*)
+ .rodata.str1.8
+                0x0000000000026390     0x1eb5 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+                                        0xa20 (size before relaxing)
+ .rodata.str1.1
+                0x0000000000028245     0x120e /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+                                        0x6e9 (size before relaxing)
+ *fill*         0x0000000000029453        0xd 
+ .rodata        0x0000000000029460       0xd2 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ *fill*         0x0000000000029532        0x6 
+ .rodata.cst8   0x0000000000029538       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+                                          0x8 (size before relaxing)
+ *fill*         0x0000000000029568        0x8 
+ .rodata.cst16  0x0000000000029570       0x60 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+                                         0x30 (size before relaxing)
+ .rodata.str1.8
+                0x00000000000295d0        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+                                        0x18b (size before relaxing)
+ .rodata.str1.1
+                0x00000000000295d0        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+                                         0x6f (size before relaxing)
+ .rodata        0x00000000000295d0        0xe /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+ .rodata.cst8   0x00000000000295de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+                                         0x10 (size before relaxing)
+ .rodata.str1.1
+                0x00000000000295de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+                                        0x4c2 (size before relaxing)
+ .rodata.str1.8
+                0x00000000000295de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+                                        0x8b2 (size before relaxing)
+ .rodata.cst16  0x00000000000295de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+                                         0x30 (size before relaxing)
+ *fill*         0x00000000000295de        0x2 
+ .rodata        0x00000000000295e0       0x7c /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ .rodata.cst8   0x000000000002965c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+                                         0x20 (size before relaxing)
+ .rodata.str1.8
+                0x000000000002965c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+                                         0x8b (size before relaxing)
+ .rodata.str1.1
+                0x000000000002965c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+                                         0x44 (size before relaxing)
+ *fill*         0x000000000002965c        0x4 
+ .rodata        0x0000000000029660       0x51 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+ .rodata.str1.8
+                0x00000000000296b1        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+                                        0x124 (size before relaxing)
+ .rodata.str1.1
+                0x00000000000296b1        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+                                         0x2b (size before relaxing)
+ .rodata.str1.1
+                0x00000000000296b1        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+                                         0x33 (size before relaxing)
+ *fill*         0x00000000000296b1        0xf 
+ .rodata        0x00000000000296c0       0x14 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+ .rodata.str1.8
+                0x00000000000296d4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+                                         0xeb (size before relaxing)
+ .rodata.str1.1
+                0x00000000000296d4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+                                         0xde (size before relaxing)
+ .rodata.cst16  0x00000000000296d4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+                                         0x10 (size before relaxing)
+ .rodata.str1.8
+                0x00000000000296d4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+                                        0x2e8 (size before relaxing)
+ .rodata.str1.1
+                0x00000000000296d4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+                                        0x2f3 (size before relaxing)
+ .rodata.str1.8
+                0x00000000000296d4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+                                        0x10e (size before relaxing)
+ .rodata.str1.1
+                0x00000000000296d4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+                                         0x28 (size before relaxing)
+ .rodata.str1.1
+                0x00000000000296d4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+                                        0x130 (size before relaxing)
+ .rodata.str1.8
+                0x00000000000296d4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+                                         0xc7 (size before relaxing)
+ .rodata.str1.1
+                0x00000000000296d4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+                                        0x264 (size before relaxing)
+ .rodata.str1.8
+                0x00000000000296d4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+                                        0x279 (size before relaxing)
+ .rodata        0x00000000000296d4       0x20 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+ .rodata.str1.1
+                0x00000000000296f4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+                                         0x33 (size before relaxing)
+ .rodata.str1.8
+                0x00000000000296f4        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+                                        0x125 (size before relaxing)
+
+.rodata1
+ *(.rodata1)
+
+.eh_frame_hdr   0x00000000000296f4     0x113c
+ *(.eh_frame_hdr)
+ .eh_frame_hdr  0x00000000000296f4     0x113c /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+                0x00000000000296f4                __GNU_EH_FRAME_HDR
+ *(.eh_frame_entry .eh_frame_entry.*)
+
+.eh_frame       0x000000000002a830     0x67f8
+ *(.eh_frame)
+ .eh_frame      0x000000000002a830       0x40 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .eh_frame      0x000000000002a870        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .eh_frame      0x000000000002a870     0x2870 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+                                       0x2888 (size before relaxing)
+ .eh_frame      0x000000000002d0e0       0x28 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+                                         0x40 (size before relaxing)
+ .eh_frame      0x000000000002d108      0x228 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+                                        0x240 (size before relaxing)
+ .eh_frame      0x000000000002d330     0x1870 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+                                       0x1888 (size before relaxing)
+ .eh_frame      0x000000000002eba0      0x290 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+                                        0x2a8 (size before relaxing)
+ .eh_frame      0x000000000002ee30      0x190 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+                                        0x1a8 (size before relaxing)
+ .eh_frame      0x000000000002efc0      0x198 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+                                        0x1b0 (size before relaxing)
+ .eh_frame      0x000000000002f158      0x1f8 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+                                        0x210 (size before relaxing)
+ .eh_frame      0x000000000002f350      0x1e0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+                                        0x1f8 (size before relaxing)
+ .eh_frame      0x000000000002f530      0x918 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+                                        0x930 (size before relaxing)
+ .eh_frame      0x000000000002fe48      0x2c8 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+                                        0x2e0 (size before relaxing)
+ .eh_frame      0x0000000000030110       0x70 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+                                         0x88 (size before relaxing)
+ .eh_frame      0x0000000000030180       0x28 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+                                         0x40 (size before relaxing)
+ .eh_frame      0x00000000000301a8       0x50 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+                                         0x68 (size before relaxing)
+ .eh_frame      0x00000000000301f8      0x290 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+                                        0x2a8 (size before relaxing)
+ .eh_frame      0x0000000000030488      0xb9c /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+                                        0xbb8 (size before relaxing)
+ .eh_frame      0x0000000000031024        0x4 /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o
+ *(.eh_frame.*)
+
+.sframe
+ *(.sframe)
+ *(.sframe.*)
+
+.gcc_except_table
+ *(.gcc_except_table .gcc_except_table.*)
+
+.gnu_extab
+ *(.gnu_extab*)
+
+.exception_ranges
+ *(.exception_ranges*)
+
+.note.build-id
+ *(.note.build-id)
+
+.note.GNU-stack
+                0x0000000000031028        0x0
+ *(.note.GNU-stack)
+ .note.GNU-stack
+                0x0000000000031028        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtbeginS.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o
+ .note.GNU-stack
+                0x0000000000031028        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+
+.note.gnu.property
+                0x0000000000031028       0x30
+ *(.note.gnu.property)
+ .note.gnu.property
+                0x0000000000031028       0x30 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+
+.note.ABI-tag
+ *(.note.ABI-tag)
+
+.note.package
+ *(.note.package)
+
+.note.dlopen
+ *(.note.dlopen)
+
+.note.netbsd.ident
+ *(.note.netbsd.ident)
+
+.note.openbsd.ident
+ *(.note.openbsd.ident)
+                0x0000000000032928                . = DATA_SEGMENT_ALIGN (CONSTANT (MAXPAGESIZE), CONSTANT (COMMONPAGESIZE))
+
+.eh_frame
+ *(.eh_frame)
+ *(.eh_frame.*)
+
+.sframe
+ *(.sframe)
+ *(.sframe.*)
+
+.gnu_extab
+ *(.gnu_extab)
+
+.gcc_except_table
+ *(.gcc_except_table .gcc_except_table.*)
+
+.exception_ranges
+ *(.exception_ranges*)
+
+.tdata
+ *(.tdata .tdata.* .gnu.linkonce.td.*)
+
+.tbss
+ *(.tbss .tbss.* .gnu.linkonce.tb.*)
+ *(.tcommon)
+
+.preinit_array
+ *(.preinit_array)
+
+.init_array     0x0000000000032928       0x10
+ *(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*))
+ *(.init_array EXCLUDE_FILE(*crtend?.o *crtend.o *crtbegin?.o *crtbegin.o) .ctors)
+ .init_array    0x0000000000032928        0x8 /usr/lib/gcc/x86_64-redhat-linux/16/crtbeginS.o
+ .init_array    0x0000000000032930        0x8 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+
+.fini_array     0x0000000000032938        0x8
+ *(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*))
+ *(.fini_array EXCLUDE_FILE(*crtend?.o *crtend.o *crtbegin?.o *crtbegin.o) .dtors)
+ .fini_array    0x0000000000032938        0x8 /usr/lib/gcc/x86_64-redhat-linux/16/crtbeginS.o
+
+.ctors
+ *crtbegin.o(.ctors)
+ *crtbegin?.o(.ctors)
+ *(EXCLUDE_FILE(*crtend?.o *crtend.o) .ctors)
+ *(SORT_BY_NAME(.ctors.*))
+ *(.ctors)
+
+.dtors
+ *crtbegin.o(.dtors)
+ *crtbegin?.o(.dtors)
+ *(EXCLUDE_FILE(*crtend?.o *crtend.o) .dtors)
+ *(SORT_BY_NAME(.dtors.*))
+ *(.dtors)
+
+.jcr
+ *(.jcr)
+
+.data.rel.ro    0x0000000000032940    0x21470
+ *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*)
+ .data.rel.ro.local
+                0x0000000000032940        0x8 /usr/lib/gcc/x86_64-redhat-linux/16/crtbeginS.o
+                0x0000000000032940                __dso_handle
+ *fill*         0x0000000000032948       0x18 
+ .data.rel.ro.local
+                0x0000000000032960      0x470 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ *fill*         0x0000000000032dd0       0x10 
+ .data.rel.ro.local
+                0x0000000000032de0       0xa8 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ *fill*         0x0000000000032e88       0x18 
+ .data.rel.ro.local
+                0x0000000000032ea0       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+ *fill*         0x0000000000032ed0       0x10 
+ .data.rel.ro.local
+                0x0000000000032ee0      0x548 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+ *fill*         0x0000000000033428       0x18 
+ .data.rel.ro.local
+                0x0000000000033440      0x1f8 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+ *fill*         0x0000000000033638        0x8 
+ .data.rel.ro.local
+                0x0000000000033640      0x560 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+ .data.rel.ro.local
+                0x0000000000033ba0      0x1d8 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+ *(.data.rel.ro .data.rel.ro.* .gnu.linkonce.d.rel.ro.*)
+ .data.rel.ro   0x0000000000033d78        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ *fill*         0x0000000000033d78        0x8 
+ .data.rel.ro   0x0000000000033d80    0x20030 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+
+.dynamic        0x0000000000053db0      0x1f0
+ *(.dynamic)
+ .dynamic       0x0000000000053db0      0x1f0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+                0x0000000000053db0                _DYNAMIC
+
+.got            0x0000000000053fa0       0x30
+ *(.got)
+ .got           0x0000000000053fa0       0x30 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ *(.igot)
+                0x0000000000053fe8                . = DATA_SEGMENT_RELRO_END (., (SIZEOF (.got.plt) >= 0x18)?0x18:0x0)
+
+.got.plt        0x0000000000053fe8      0x848
+ *(.got.plt)
+ .got.plt       0x0000000000053fe8      0x848 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+                0x0000000000053fe8                _GLOBAL_OFFSET_TABLE_
+ *(.igot.plt)
+
+.data           0x0000000000054830       0x58
+ *(.data .data.* .gnu.linkonce.d.*)
+ .data          0x0000000000054830        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .data          0x0000000000054830        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtbeginS.o
+ .data          0x0000000000054830        0x4 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ .data          0x0000000000054834        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+ .data          0x0000000000054834        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+ .data          0x0000000000054834        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ .data          0x0000000000054834        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+ *fill*         0x0000000000054834        0xc 
+ .data          0x0000000000054840       0x2c /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+ .data          0x000000000005486c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+ .data          0x000000000005486c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+ .data          0x000000000005486c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+ .data          0x000000000005486c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+ *fill*         0x000000000005486c        0x4 
+ .data.rel.local
+                0x0000000000054870        0x8 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+                0x0000000000054870                fuse_module_subdir_factory
+ .data          0x0000000000054878        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+ .data          0x0000000000054878        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+ .data.rel.local
+                0x0000000000054878        0x8 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+ .data          0x0000000000054880        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+ .data          0x0000000000054880        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+ .data          0x0000000000054880        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+ .data          0x0000000000054880        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+ .data.rel.local
+                0x0000000000054880        0x8 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+                0x0000000000054880                fuse_module_iconv_factory
+ .data          0x0000000000054888        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o
+ .data          0x0000000000054888        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+
+.tm_clone_table
+                0x0000000000054888        0x0
+ .tm_clone_table
+                0x0000000000054888        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtbeginS.o
+ .tm_clone_table
+                0x0000000000054888        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o
+
+.data1
+ *(.data1)
+                [!provide]                        PROVIDE (_edata = .)
+                [!provide]                        PROVIDE (edata = .)
+                0x0000000000054888                . = ALIGN (ALIGNOF (NEXT_SECTION))
+                [!provide]                        PROVIDE (__bss_start = .)
+
+.bss            0x00000000000548a0   0x800090
+ *(.dynbss)
+ .dynbss        0x00000000000548a0        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ *(.bss .bss.* .gnu.linkonce.b.*)
+ .bss           0x00000000000548a0        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .bss           0x00000000000548a0        0x1 /usr/lib/gcc/x86_64-redhat-linux/16/crtbeginS.o
+ *fill*         0x00000000000548a1       0x1f 
+ .bss           0x00000000000548c0       0x4c /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ .bss           0x000000000005490c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+ .bss           0x000000000005490c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+ *fill*         0x000000000005490c        0x4 
+ .bss           0x0000000000054910        0x8 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ .bss           0x0000000000054918        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+ *fill*         0x0000000000054918        0x8 
+ .bss           0x0000000000054920   0x800008 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+ .bss           0x0000000000854928        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+ .bss           0x0000000000854928        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+ .bss           0x0000000000854928        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+ .bss           0x0000000000854928        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+ .bss           0x0000000000854928        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+ .bss           0x0000000000854928        0x1 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+ .bss           0x0000000000854929        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+ .bss           0x0000000000854929        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+ .bss           0x0000000000854929        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+ .bss           0x0000000000854929        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+ .bss           0x0000000000854929        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o
+ .bss           0x0000000000854929        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+ *(COMMON)
+                0x0000000000854930                . = ALIGN ((. != 0x0)?0x8:0x1)
+ *fill*         0x0000000000854929        0x7 
+
+.lbss
+ *(.dynlbss)
+ *(.lbss .lbss.* .gnu.linkonce.lb.*)
+ *(LARGE_COMMON)
+                0x0000000000854930                . = ALIGN (0x8)
+                0x0000000000854930                . = SEGMENT_START ("ldata-segment", .)
+
+.lrodata
+ *(.lrodata .lrodata.* .gnu.linkonce.lr.*)
+
+.ldata          0x0000000000856930        0x0
+ *(.ldata .ldata.* .gnu.linkonce.l.*)
+                0x0000000000856930                . = ALIGN ((. != 0x0)?0x8:0x1)
+                0x0000000000856930                . = ALIGN (0x8)
+                [!provide]                        PROVIDE (_end = .)
+                [!provide]                        PROVIDE (end = .)
+                0x0000000000856930                . = DATA_SEGMENT_END (.)
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+
+.stab.excl
+ *(.stab.excl)
+
+.stab.exclstr
+ *(.stab.exclstr)
+
+.stab.index
+ *(.stab.index)
+
+.stab.indexstr
+ *(.stab.indexstr)
+
+.comment        0x0000000000000000       0x2e
+ *(.comment)
+ .comment       0x0000000000000000       0x2e /usr/lib/gcc/x86_64-redhat-linux/16/crtbeginS.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o
+                                         0x2f (size before relaxing)
+
+.gnu.build.attributes
+                0x0000000000856930      0x120
+ *(.gnu.build.attributes .gnu.build.attributes.*)
+ .gnu.build.attributes
+                0x0000000000856930       0x6c /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .gnu.build.attributes
+                0x000000000085699c       0x24 /usr/lib/gcc/x86_64-redhat-linux/16/crtbeginS.o
+ .gnu.build.attributes
+                0x00000000008569c0       0x24 /usr/lib/gcc/x86_64-redhat-linux/16/crtendS.o
+ .gnu.build.attributes
+                0x00000000008569e4       0x6c /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+
+.debug
+ *(.debug)
+
+.line
+ *(.line)
+
+.debug_srcinfo
+ *(.debug_srcinfo)
+
+.debug_sfnames
+ *(.debug_sfnames)
+
+.debug_aranges  0x0000000000000000      0x3a0
+ *(.debug_aranges)
+ .debug_aranges
+                0x0000000000000000       0x40 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ .debug_aranges
+                0x0000000000000040       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+ .debug_aranges
+                0x0000000000000070       0x40 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+ .debug_aranges
+                0x00000000000000b0       0x50 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ .debug_aranges
+                0x0000000000000100       0x40 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+ .debug_aranges
+                0x0000000000000140       0x40 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+ .debug_aranges
+                0x0000000000000180       0x50 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+ .debug_aranges
+                0x00000000000001d0       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+ .debug_aranges
+                0x0000000000000200       0x40 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+ .debug_aranges
+                0x0000000000000240       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+ .debug_aranges
+                0x0000000000000270       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+ .debug_aranges
+                0x00000000000002a0       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+ .debug_aranges
+                0x00000000000002d0       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+ .debug_aranges
+                0x0000000000000300       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+ .debug_aranges
+                0x0000000000000330       0x30 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+ .debug_aranges
+                0x0000000000000360       0x40 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+
+.debug_pubnames
+ *(.debug_pubnames)
+
+.debug_info     0x0000000000000000    0x4d79a
+ *(.debug_info .gnu.linkonce.wi.*)
+ .debug_info    0x0000000000000000    0x1c596 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ .debug_info    0x000000000001c596     0x15fe /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+ .debug_info    0x000000000001db94     0x30ca /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+ .debug_info    0x0000000000020c5e    0x12a95 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ .debug_info    0x00000000000336f3     0x19ee /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+ .debug_info    0x00000000000350e1     0x23c0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+ .debug_info    0x00000000000374a1      0xde2 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+ .debug_info    0x0000000000038283     0x302e /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+ .debug_info    0x000000000003b2b1     0x37fd /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+ .debug_info    0x000000000003eaae     0x45ee /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+ .debug_info    0x000000000004309c     0x1d3a /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+ .debug_info    0x0000000000044dd6      0x638 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+ .debug_info    0x000000000004540e      0x259 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+ .debug_info    0x0000000000045667      0x21d /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+ .debug_info    0x0000000000045884     0x25e6 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+ .debug_info    0x0000000000047e6a     0x5930 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+
+.debug_abbrev   0x0000000000000000     0x4b53
+ *(.debug_abbrev)
+ .debug_abbrev  0x0000000000000000      0x8c8 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ .debug_abbrev  0x00000000000008c8      0x2b4 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+ .debug_abbrev  0x0000000000000b7c      0x66a /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+ .debug_abbrev  0x00000000000011e6      0x8e2 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ .debug_abbrev  0x0000000000001ac8      0x521 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+ .debug_abbrev  0x0000000000001fe9      0x50f /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+ .debug_abbrev  0x00000000000024f8      0x3db /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+ .debug_abbrev  0x00000000000028d3      0x592 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+ .debug_abbrev  0x0000000000002e65      0x55d /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+ .debug_abbrev  0x00000000000033c2      0x48d /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+ .debug_abbrev  0x000000000000384f      0x40a /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+ .debug_abbrev  0x0000000000003c59      0x256 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+ .debug_abbrev  0x0000000000003eaf       0xf0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+ .debug_abbrev  0x0000000000003f9f      0x171 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+ .debug_abbrev  0x0000000000004110      0x582 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+ .debug_abbrev  0x0000000000004692      0x4c1 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+
+.debug_line     0x0000000000000000    0x17cf6
+ *(.debug_line .debug_line.* .debug_line_end)
+ .debug_line    0x0000000000000000     0x9da5 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ .debug_line    0x0000000000009da5      0x133 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+ .debug_line    0x0000000000009ed8      0x915 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+ .debug_line    0x000000000000a7ed     0x6888 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ .debug_line    0x0000000000011075      0xc8f /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+ .debug_line    0x0000000000011d04      0x4fb /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+ .debug_line    0x00000000000121ff      0x772 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+ .debug_line    0x0000000000012971      0x920 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+ .debug_line    0x0000000000013291      0x828 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+ .debug_line    0x0000000000013ab9     0x1535 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+ .debug_line    0x0000000000014fee      0x979 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+ .debug_line    0x0000000000015967       0xfc /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+ .debug_line    0x0000000000015a63       0x78 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+ .debug_line    0x0000000000015adb      0x116 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+ .debug_line    0x0000000000015bf1      0xc36 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+ .debug_line    0x0000000000016827     0x14cf /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+
+.debug_frame
+ *(.debug_frame)
+
+.debug_str      0x0000000000000000     0x757c
+ *(.debug_str)
+ .debug_str     0x0000000000000000     0x757c /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+                                       0x2fda (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+                                        0xa7a (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+                                       0x1330 (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+                                       0x2f51 (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+                                        0x4a3 (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+                                        0xdfe (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+                                        0x405 (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+                                        0xf6f (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+                                       0x1386 (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+                                        0xfe8 (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+                                        0x74b (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+                                        0x473 (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+                                        0x1b6 (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+                                        0x1c6 (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+                                        0xbf9 (size before relaxing)
+ .debug_str     0x000000000000757c        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+                                       0x2c19 (size before relaxing)
+
+.debug_loc
+ *(.debug_loc)
+
+.debug_macinfo
+ *(.debug_macinfo)
+
+.debug_weaknames
+ *(.debug_weaknames)
+
+.debug_funcnames
+ *(.debug_funcnames)
+
+.debug_typenames
+ *(.debug_typenames)
+
+.debug_varnames
+ *(.debug_varnames)
+
+.debug_pubtypes
+ *(.debug_pubtypes)
+
+.debug_ranges
+ *(.debug_ranges)
+
+.debug_addr
+ *(.debug_addr)
+
+.debug_line_str
+                0x0000000000000000      0x5de
+ *(.debug_line_str)
+ .debug_line_str
+                0x0000000000000000      0x5de /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+                                        0x360 (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+                                        0x201 (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+                                        0x2c1 (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+                                        0x328 (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+                                        0x13a (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+                                        0x286 (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+                                        0x16d (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+                                        0x275 (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+                                        0x268 (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+                                        0x1e2 (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+                                        0x1f4 (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+                                        0x175 (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+                                         0xcc (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+                                         0xda (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+                                        0x23a (size before relaxing)
+ .debug_line_str
+                0x00000000000005de        0x0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+                                        0x249 (size before relaxing)
+
+.debug_loclists
+                0x0000000000000000    0x2b804
+ *(.debug_loclists)
+ .debug_loclists
+                0x0000000000000000    0x1317f /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ .debug_loclists
+                0x000000000001317f       0x5c /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop.c.o
+ .debug_loclists
+                0x00000000000131db      0x8c2 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+ .debug_loclists
+                0x0000000000013a9d     0xdbfa /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ .debug_loclists
+                0x0000000000021697     0x12d3 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+ .debug_loclists
+                0x000000000002296a      0x5ac /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+ .debug_loclists
+                0x0000000000022f16     0x1462 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+ .debug_loclists
+                0x0000000000024378      0xd83 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+ .debug_loclists
+                0x00000000000250fb      0x8cf /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+ .debug_loclists
+                0x00000000000259ca     0x1ea5 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+ .debug_loclists
+                0x000000000002786f      0xaf8 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+ .debug_loclists
+                0x0000000000028367      0x126 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_log.c.o
+ .debug_loclists
+                0x000000000002848d       0xae /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/compat.c.o
+ .debug_loclists
+                0x000000000002853b       0xb5 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/util.c.o
+ .debug_loclists
+                0x00000000000285f0      0xcea /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+ .debug_loclists
+                0x00000000000292da     0x252a /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+
+.debug_macro
+ *(.debug_macro)
+
+.debug_names
+ *(.debug_names)
+
+.debug_rnglists
+                0x0000000000000000     0x3832
+ *(.debug_rnglists)
+ .debug_rnglists
+                0x0000000000000000     0x1ec6 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse.c.o
+ .debug_rnglists
+                0x0000000000001ec6       0xe6 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_loop_mt.c.o
+ .debug_rnglists
+                0x0000000000001fac      0xc13 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_lowlevel.c.o
+ .debug_rnglists
+                0x0000000000002bbf      0x230 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_opt.c.o
+ .debug_rnglists
+                0x0000000000002def       0xa3 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/fuse_signals.c.o
+ .debug_rnglists
+                0x0000000000002e92      0x1a6 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/buffer.c.o
+ .debug_rnglists
+                0x0000000000003038       0xb0 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/cuse_lowlevel.c.o
+ .debug_rnglists
+                0x00000000000030e8       0x9c /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/helper.c.o
+ .debug_rnglists
+                0x0000000000003184      0x298 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_subdir.c.o
+ .debug_rnglists
+                0x000000000000341c       0x6b /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount_util.c.o
+ .debug_rnglists
+                0x0000000000003487       0x96 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/mount.c.o
+ .debug_rnglists
+                0x000000000000351d      0x315 /tmp/conglobate-fuse-recompile-v1/lib/libfuse3.so.3.18.3.p/modules_iconv.c.o
+
+.debug_str_offsets
+ *(.debug_str_offsets)
+
+.debug_sup
+ *(.debug_sup)
+
+.gnu.attributes
+ *(.gnu.attributes)
+
+/DISCARD/
+ *(.note.GNU-stack)
+ *(.gnu_debuglink)
+ *(.gnu.lto_*)
+ *(.gnu_object_only)
+OUTPUT(/tmp/conglobate-fuse-recompile-v1/rebuilt-libfuse.so elf64-x86-64)

@@ -1,0 +1,9 @@
+{
+  "run": "/tmp/conglobate-capability-transitions-v1",
+  "retained": "validation/sandbox/reproduced/capability-transitions",
+  "removed_generated": [
+    "root",
+    "initramfs.gz",
+    "vmlinuz"
+  ]
+}

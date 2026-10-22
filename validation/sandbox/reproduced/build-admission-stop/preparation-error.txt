@@ -1,0 +1,1 @@
+gzip stdout: Disk quota exceeded; guest.py packaging failed before QEMU launch. No runtime result.

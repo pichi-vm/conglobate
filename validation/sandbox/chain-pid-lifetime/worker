@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+device=$1
+/patched -f -o kernel,acl,allow_other,nosuid,nodev "$device" /work/view >/work/worker.log 2>&1 &
+daemon=$!
+printf '%s\n' "$daemon" >/work/outer-worker.pid
+trap 'fusermount3 -u /work/view; wait "$daemon"; cat /work/worker.log' EXIT
+for ((i=0;i<100;i++)); do mountpoint -q /work/view && break; sleep .05; done
+mountpoint -q /work/view
+python3 /cancel-driver.py

@@ -1,0 +1,14 @@
+#!/bin/bash
+set -eu
+mode=$1
+root=/work/$mode
+mount --make-rprivate /
+mount --bind "$root" "$root"
+if test "$mode" = vulnerable; then
+ cd "$root"
+ pivot_root . .old
+ # Read-only canary checks instrument the image interpreter's entry point.
+ exec /usr/bin/python3 -c 'cleanup would have happened inside this interpreter'
+else
+ exec /entry-helper "$root" /usr/bin/python3
+fi

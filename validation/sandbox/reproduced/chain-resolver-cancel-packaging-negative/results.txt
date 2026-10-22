@@ -1,0 +1,24 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 1c7768a911ed240663e7a0a287f107d95ee9e782 sha256:f9c299b5f950e7c91dfb61f1362114bd55c2477dd4e06f7277ab3c5ba327e8e7
+Traceback (most recent call last):
+  File [35m"/cancel-driver.py"[0m, line [35m29[0m, in [35m<module>[0m
+    assert [1;31mchild.poll() is None[0m, 'setup exited before its gate'
+           [1;31m^^^^^^^^^^^^^^^^^^^^[0m
+[1;35mAssertionError[0m: [35msetup exited before its gate[0m
+FUSE2FS (dm-3): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-3): mounted filesystem f39e05b3-3972-437b-98ce-cb002912f782.
+FUSE2FS (dm-3): unmounting filesystem f39e05b3-3972-437b-98ce-cb002912f782.
+
+thread 'main' (190) panicked at src/bin/chain.rs:150:9:
+worker failed: exit status: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+/work/base: OK
+RESOLVER_CANCEL_FUSE_CONNECTIONS_RELEASED
+RESOLVER_CANCEL_NO_SEAL_DEVICE_CLEANUP_PASS
+GUEST_EXIT 0
+[   19.896669] sysrq: Resetting

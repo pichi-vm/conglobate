@@ -1,0 +1,23 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 4091b6175916d67753668f6c05f1a21c62c7745c sha256:4e86e5e55a64a44a512459843940f95844d39cbbc8c1e1af67f5ee2dc468f594
+/command: line 19: /changed: Read-only file system
+FUSE2FS (dm-3): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-3): mounted filesystem 6dc90fc5-6672-442b-9d3f-40e69af6538a.
+DIAGNOSTIC_RELEASE_ONLY_EIO
+FUSE2FS (dm-3): Input/output error (inode #46) at /tmp/conglobate-clean-pair-v2/worker-source/misc/fuse2fs.c:2823.
+FUSE2FS (dm-3): unmounting filesystem 6dc90fc5-6672-442b-9d3f-40e69af6538a.
+RELEASE_CHAIN_WORKER_EXIT 32
+
+thread 'main' (183) panicked at src/bin/chain.rs:189:9:
+worker failed: exit status: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+/work/base: OK
+/proc/self/mountinfo: OK
+RELEASE_FAILURE_BASE_MOUNTS_FUSE_STORAGE_CLEANUP_PASS
+GUEST_EXIT 0
+[   11.042464] sysrq: Resetting

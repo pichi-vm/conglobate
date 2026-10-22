@@ -1,0 +1,12 @@
+{
+  "cases": [
+    "live-owner-blocks-independent-acquisition",
+    "negative-shared-description-unlock-releases-live-holder",
+    "negative-recreated-lease-allows-two-lock-domains",
+    "exited-owner-surviving-descendant-retains-lease",
+    "all-holders-exited-lease-becomes-acquirable",
+    "independent-recoverer-excluded-on-stable-lease-inode"
+  ],
+  "count": 6,
+  "status": "pass"
+}

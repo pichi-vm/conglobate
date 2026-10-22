@@ -126,13 +126,33 @@ impl Scute {
         compressed: bool,
         directory: &Path,
     ) -> Result<Self, Error> {
+        let declared_extent = descriptor
+            .annotations
+            .data_blocks
+            .map(|blocks| {
+                blocks
+                    .checked_mul(BLOCK)
+                    .filter(|extent| *extent != 0)
+                    .ok_or_else(|| invalid("invalid declared scute data_blocks"))
+            })
+            .transpose()?;
         std::fs::create_dir(directory)?;
         let source = directory.join("source");
         cache.copy_blob(&descriptor.digest, descriptor.size, &mut new_file(&source)?)?;
         let data = if compressed {
             let path = directory.join("data");
             let mut decoder = zstd::stream::read::Decoder::new(File::open(&source)?)?;
-            std::io::copy(&mut decoder, &mut new_file(&path)?)?;
+            let mut output = new_file(&path)?;
+            if let Some(extent) = declared_extent {
+                std::io::copy(&mut decoder.by_ref().take(extent), &mut output)?;
+                // Require decoder EOF, including checksum/trailer validation,
+                // without writing beyond the declared padded data extent.
+                if decoder.read(&mut [0])? != 0 {
+                    return Err(invalid("scute length exceeds declared data_blocks"));
+                }
+            } else {
+                std::io::copy(&mut decoder, &mut output)?;
+            }
             path
         } else {
             source
@@ -228,7 +248,9 @@ fn format_exact(
     root.as_ref().try_into().map_err(format_error)
 }
 
-/// Fully verified, privately staged scutes in base-to-top order.
+/// Authenticated, privately staged scutes in base-to-top order.
+/// Staging verifies bytes and ancestry, not snapshot exception semantics.
+/// Assembly and the kernel snapshot target perform structural interpretation.
 #[derive(Debug)]
 pub struct Chain {
     pub scutes: Vec<Scute>,

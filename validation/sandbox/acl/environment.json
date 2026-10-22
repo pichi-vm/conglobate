@@ -1,0 +1,32 @@
+{
+  "files": [
+    {
+      "path": "/usr/bin/fuse2fs",
+      "sha256": "dc2bd1b13d77baea99fb269a930916c911d7cd025a56d67b374bc556f2cc730c"
+    },
+    {
+      "path": "/usr/lib64/libfuse3.so.4",
+      "sha256": "c2ffce1d98969ed8db35678585037bae8716063e4d2e78d0916b649c4054e782"
+    },
+    {
+      "path": "/tmp/conglobate-fuse-cancellation/vmlinuz",
+      "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+    },
+    {
+      "path": "/tmp/conglobate-acl-source/fuse3-3.18.3-1.fc44.src.rpm",
+      "sha256": "25642b301cb7c017c2d7ffa37c2a4393490e987dc73bd9026739493dfcffebfe"
+    },
+    {
+      "path": "/tmp/conglobate-acl-source/e2fsprogs-1.47.3-4.fc44.src.rpm",
+      "sha256": "c9fb7311f0e72d27d8afe99770f665d6a647d36d6e64f24f7eb74bb783d9ac49"
+    }
+  ],
+  "packages": [
+    "e2fsprogs-1.47.3-4.fc44.x86_64",
+    "fuse3-libs-3.18.3-1.fc44.x86_64"
+  ],
+  "source_urls": [
+    "https://raw.githubusercontent.com/tytso/e2fsprogs/v1.47.3/misc/fuse2fs.c",
+    "https://github.com/libfuse/libfuse/releases/download/fuse-3.18.3/fuse-3.18.3.tar.gz"
+  ]
+}

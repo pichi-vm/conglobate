@@ -1,0 +1,10 @@
+#!/bin/bash
+set -eu
+e2fsck -fn "$1"
+mount -o loop,ro "$1" /work/view
+trap 'umount /work/view' EXIT
+test "$(cat /work/view/inherited)" = 'base fixture'
+test "$(cat /work/view/derived)" = 'derived fixture'
+test "$(cat /work/view/changed)" = 'derived value'
+test "$(stat -c '%a:%u:%g' /work/view/derived)" = '640:1234:2345'
+echo DERIVED_KERNEL_FILESYSTEM_PASS

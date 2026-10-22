@@ -1,0 +1,8 @@
+{
+  "fuse-source/include/fuse.h": "b1efdadac5ab378e3a674783a45e3d63773080d7e8be0ca9ab9bbbd2c877d334",
+  "fuse-source/lib/fuse_i.h": "9a5ccb90833d5e3530ee652fb0e7a1c6b5cd0e9a9e678249aa2fc028ad9a0ce2",
+  "fuse-source/lib/fuse_lowlevel.c": "f3c1690969963f9be772b0ef5775d20481152a2a3dd2c598413f45546ae74e9e",
+  "fuse-source/lib/fuse.c": "53ace9f0f86cb5b8bee2de4ff624dc53ca99f23dd076dc7bf383d3bb8d789068",
+  "fuse-source/lib/fuse_versionscript": "dedd51d4ef249ea7bd20ca404a08b8d0d4dbe289f780ac701ace46804285e8cf",
+  "worker-source/misc/fuse2fs.c": "ded81ba25ab74dda4a3e45e2f7c92339c8be3118d09dfa0ee9259cbad424b65b"
+}

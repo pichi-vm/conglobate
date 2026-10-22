@@ -1,0 +1,25 @@
+{
+  "command": [
+    "cc",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-D_FILE_OFFSET_BITS=64",
+    "-I/tmp/conglobate-finalize-workers/fuse-headers",
+    "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/cyclic-fuse/worker.c",
+    "/lib64/libfuse3.so.4",
+    "-o",
+    "/tmp/conglobate-cyclic-fuse-v2/root/cyclic-worker"
+  ],
+  "headers_sha256": {
+    "/tmp/conglobate-finalize-workers/fuse-headers/cuse_lowlevel.h": "198370730a3b38bc574434ef24bc3657a983f081ffc2e5a6a99bc64d719827da",
+    "/tmp/conglobate-finalize-workers/fuse-headers/fuse.h": "b1efdadac5ab378e3a674783a45e3d63773080d7e8be0ca9ab9bbbd2c877d334",
+    "/tmp/conglobate-finalize-workers/fuse-headers/fuse_common.h": "5fb0d39c4972fe23b93f3b0c400be630cb2ffb0a0bafcba9a1b5f16cbb0cf6d0",
+    "/tmp/conglobate-finalize-workers/fuse-headers/fuse_kernel.h": "f587c894b3b193a37445e620b43adefbc8043f4dd44fb2b7ee8ba4f1a99655ca",
+    "/tmp/conglobate-finalize-workers/fuse-headers/fuse_log.h": "568b5d90bdc73a1b14aef3eb6355a100b5bac11079469b90c61e01f2c48c9b2c",
+    "/tmp/conglobate-finalize-workers/fuse-headers/fuse_lowlevel.h": "ded6e9f2f5f124cf043db1ee5a7c665b5bcba98acb585f4659e0293a80139c0c",
+    "/tmp/conglobate-finalize-workers/fuse-headers/fuse_mount_compat.h": "e09a74d1af9a8374d7e43a1f8a678b247df1cb0137cc8e6f02b331a4cd6ddd9f",
+    "/tmp/conglobate-finalize-workers/fuse-headers/fuse_opt.h": "bb59f3ae105bd325948c100435cc99fb495729d7e2ba75706afb905fd202992c",
+    "/tmp/conglobate-finalize-workers/fuse-headers/libfuse_config.h": "3898c615dba4784ceca9590a1bb9f531d68e893333599aabd171b74fff689a67"
+  }
+}

@@ -1,0 +1,13 @@
+[
+  "cargo",
+  "clippy",
+  "--locked",
+  "--lib",
+  "--test",
+  "scutes",
+  "--test",
+  "artifacts",
+  "--",
+  "-D",
+  "warnings"
+]

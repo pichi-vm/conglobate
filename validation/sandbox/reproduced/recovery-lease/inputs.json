@@ -1,0 +1,8 @@
+{
+  "source": "validation/sandbox/publication-protocol/recovery/lease.py",
+  "sha256": "94a0c812249c83a0279d77083a43ce5e27d12cfd8bb0f3f62819fbd297d53be4",
+  "kernel": "7.2.11-dm-bufio-test1-dirty",
+  "python": "3.14.8",
+  "storage": "owned TemporaryDirectory in /dev/shm",
+  "command": "python3 validation/sandbox/publication-protocol/recovery/lease.py"
+}

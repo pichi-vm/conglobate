@@ -1,0 +1,61 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+SHARED_BLOCK_BASE_PREPARED
+CARAPACE-safbb0de0da6a5c5484ba434ce79eea5e-252:0-252:1: 0 134217728 snapshot 252:0 252:1 P 8
+CARAPACE-v6390d85ef6e47415a721fb96dd5d0c35-7:0-7:1: 0 34904 verity 1 7:0 7:1 4096 4096 4363 1 sha256 6390d85ef6e47415a721fb96dd5d0c35afbb0de0da6a5c5484ba434ce79eea5e 0000000000000000000000000000000000000000000000000000000000000000
+CARAPACE-z: 0 134217728 zero 
+conglobate-192-KAXzQr-0: 0 134217728 snapshot 252:2 7:3 P 8
+conglobate-200-gydA0E-0: 0 134217728 snapshot 252:2 7:2 P 8
+CONCURRENT_SHARED_BLOCK_STACK_PASS
+/shared/base/data: OK
+/shared/base/hash: OK
+CONCURRENT_FIRST_FAILED_SECOND_ACTIVE_PASS
+/shared/base/data: OK
+/shared/base/hash: OK
+CONCURRENT_FAILURE_SURVIVOR_CLEANUP_PASS
+BEGIN_BUILD_LOG /runs/A/log
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 0691e063a9b743dff8fe4e851b6d91da89a557de sha256:1301da4da8b414c053fe5827b868b6e35e16fbf315849896a1273b0a5fe1a965
+SHARED_BLOCK_CHAIN_ASSEMBLED
+CHAIN_RESTRICTED_COMMAND_PASS
+FUSE2FS (dm-4): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-4): mounted filesystem 9c1caf6c-ac22-484d-95ce-d962147ac5fb.
+FUSE2FS (dm-4): unmounting filesystem 9c1caf6c-ac22-484d-95ce-d962147ac5fb.
+
+thread 'main' (192) panicked at src/bin/chain.rs:175:9:
+worker failed: exit status: 7
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+END_BUILD_LOG /runs/A/log
+BEGIN_BUILD_LOG /runs/B/log
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 0691e063a9b743dff8fe4e851b6d91da89a557de sha256:1301da4da8b414c053fe5827b868b6e35e16fbf315849896a1273b0a5fe1a965
+SHARED_BLOCK_CHAIN_ASSEMBLED
+CHAIN_RESTRICTED_COMMAND_PASS
+CHAIN_COMMAND_DESCENDANTS_STOPPED_WORKER_ALIVE
+FUSE2FS (dm-3): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-3): mounted filesystem 9c1caf6c-ac22-484d-95ce-d962147ac5fb.
+FUSE2FS (dm-3): unmounting filesystem 9c1caf6c-ac22-484d-95ce-d962147ac5fb.
+FUSE_DERIVED_LAYER_SEALED
+CHAIN_ROUND_SEALED 1
+DERIVED_CHAIN_RESTAGED
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/verified: 53/16384 files (3.8% non-contiguous), 26565/65536 blocks
+DERIVED_KERNEL_FILESYSTEM_PASS
+POST_STAGE_CORRUPTION_REJECTED Err(Io(Os { code: 5, kind: InputOutputError, message: "Input/output error" }))
+POST_STAGE_RESTORATION_READ_PASS
+BASE_SCUTE_UNCHANGED_PASS
+CHAIN_COMMITTED_INVENTORY_PUBLICATION_PASS
+END_BUILD_LOG /runs/B/log
+GUEST_EXIT 0
+[   30.017409] sysrq: Resetting

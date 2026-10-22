@@ -1,0 +1,55 @@
+ACL_INITIAL_NAMESPACE_BEGIN
+getfacl: Removing leading '/' from absolute path names
+# file: work/view/dir/file
+# owner: 0
+# group: 0
+user::rw-
+user:1234:r--
+group::---
+mask::r--
+other::---
+
+cat: /work/view/dir/file: Permission denied
+ACL_ALLOW_FAIL
+cat: /work/view/dir/file: Permission denied
+ACL_DENY_PASS
+getfacl: Removing leading '/' from absolute path names
+# file: work/view/dir/inherited
+# owner: 0
+# group: 0
+user::rw-
+group::r--
+other::r--
+
+ACL_CHILD_NAMESPACE_BEGIN
+getfacl: Removing leading '/' from absolute path names
+# file: work/view/dir/file
+# owner: 0
+# group: 0
+user::rw-
+user:1234:r--
+group::---
+mask::r--
+other::---
+
+cat: /work/view/dir/file: Permission denied
+ACL_ALLOW_FAIL
+cat: /work/view/dir/file: Permission denied
+ACL_DENY_PASS
+getfacl: Removing leading '/' from absolute path names
+# file: work/view/dir/inherited
+# owner: 0
+# group: 0
+user::rw-
+group::r--
+other::r--
+
+HUNG_REQUEST_OBSERVED 1
+INITIAL_NAMESPACE_ABORT_PASS
+touch: cannot touch '/work/view/blocked': Software caused connection abort
+HUNG_REQUEST_ABORTED_PASS
+/hang-worker: line 19:   208 Killed                     fuse2fs -f -o acl,allow_other /work/image /work/view > /work/fuse.log 2>&1
+HUNG_CONNECTION_CLEANUP_PASS
+CONNECTION_RELEASED_PASS
+VALIDA[    0.840509] sysrq: Resetting
+T

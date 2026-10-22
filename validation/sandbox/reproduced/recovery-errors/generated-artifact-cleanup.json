@@ -1,0 +1,20 @@
+[
+  {
+    "run": "/tmp/conglobate-recovery-records-v1",
+    "retained": "validation/sandbox/reproduced/recovery-records",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-publication-arbitration-v1",
+    "retained": "validation/sandbox/reproduced/publication-arbitration",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  }
+]

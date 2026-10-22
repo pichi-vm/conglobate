@@ -1,0 +1,33 @@
+New file-attribute API review — 2026-10-21
+========================================
+No policy change. Bounded owned-file controls in both restricted policy steps.
+
+Pinned upstream fs/file_attr.c implements file_getattr/file_setattr through the
+same vfs_fileattr_get/vfs_fileattr_set helpers used by FSGETXATTR/FSSETXATTR and
+legacy flags ioctls. fileattr_set_prepare checks capable(CAP_LINUX_IMMUTABLE)
+when immutable or append-only bits change. These new syscall entry points do not
+remove that generic check. Full sources/UAPI and hashes are retained in
+reproduced/file-attribute-source, revision
+f47d223627f80cb7a1eb14c585fe6cb35de5e984. It is source corroboration, not an exact
+Fedora build-source identification.
+
+Runtime controls:
+- Create one owned scratch file on the policy fixture's tmpfs-backed filesystem.
+- Read 24-byte file_attr through file_getattr with a genuine owned FD and
+  AT_EMPTY_PATH. Preserve the complete initial attributes.
+- Set only the reversible NODUMP bit through file_setattr. Read it back through
+  both file_getattr and FS_IOC_FSGETXATTR, requiring equal xflags.
+- Attempt immutable and append-only bit additions separately. Each must return
+  EPERM and leave the previously observed flags unchanged.
+- Verify file bytes, restore all original attributes, read/compare the complete
+  structure, close the FD and remove the owned file. No other inode is targeted.
+
+Interpretation/limits:
+The new API remains usable for ordinary owned metadata, with the observed
+privileged-bit restrictions preserved. No denial is added just because the API
+is new. This does not resolve the mapped FUSE OS-metadata compatibility blocker:
+this runtime control is tmpfs, not the FUSE backend, and does not qualify every
+attribute, directory inheritance, filesystem or distro workflow. Existing
+backend/immutable/trusted-xattr/device-node limitations remain in area11.
+These checks narrow the reachable-interface review; they are not a complete
+syscall allowlist or final-executor proof.

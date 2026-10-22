@@ -1,0 +1,32 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'echo "GUEST_EXIT $?"; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount -t tmpfs tmpfs /work
+if test -x /export-tests; then mknod /export-block b 7 0; fi
+modprobe fuse
+chmod 666 /dev/fuse
+mkdir /work/view /work/context
+mkdir /work/runtime
+mknod /work/runtime/null c 1 3
+chmod 666 /work/runtime/null
+chown 100000:100000 /work/runtime/null
+truncate -s 256M /work/image
+mkfs.ext4 -qF /work/image
+chown 100000:100000 /work/image /work/view /work/context
+touch /work/view.log
+chown 100000:100000 /work/view.log
+printf 'supervisor fixture\n' >/outside-canary
+unshare --user --mount --net --map-users 0:100000:65536 \
+ --map-groups 0:100000:65536 --setuid 0 --setgid 0 /bin/bash /worker
+test "$(cat /outside-canary)" = 'supervisor fixture'
+e2fsck -fn /work/image
+modprobe loop
+mkdir /work/remount
+mount -o loop,ro /work/image /work/remount
+/copy-helper disk
+umount /work/remount
+echo COPY_WORKER_ISOLATION_VALIDATION_PASS

@@ -1,0 +1,9 @@
+{
+  "bin": "usr/bin",
+  "sbin": "usr/sbin",
+  "lib": "usr/lib",
+  "lib64": "usr/lib64",
+  "etc/mtab": "/proc/mounts",
+  "pkg-etc/mtab": "/proc/mounts",
+  "usr/lib/rpm/redhat/redhat-annobin-cc1": "redhat-annobin-select-gcc-built-plugin"
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "path": "fhandle.c",
+    "url": "https://raw.githubusercontent.com/torvalds/linux/f47d223627f80cb7a1eb14c585fe6cb35de5e984/fs/fhandle.c",
+    "sha256": "81dbe398a50eef3fb6ad178a79d59f0794167771a03a0be3cf7a527f713fc948",
+    "bytes": 13993
+  },
+  {
+    "path": "expfs.c",
+    "url": "https://raw.githubusercontent.com/torvalds/linux/f47d223627f80cb7a1eb14c585fe6cb35de5e984/fs/exportfs/expfs.c",
+    "sha256": "9ad4fa073859082c8930cac50d25e01c941d70f19a895cf974206ecffb8a456b",
+    "bytes": 15847
+  },
+  {
+    "path": "exportfs.h",
+    "url": "https://raw.githubusercontent.com/torvalds/linux/f47d223627f80cb7a1eb14c585fe6cb35de5e984/include/linux/exportfs.h",
+    "sha256": "69543af1a44f395ada72cd284a39cb81aa23ea3c02e30921aabf1ba863071184",
+    "bytes": 12791
+  }
+]

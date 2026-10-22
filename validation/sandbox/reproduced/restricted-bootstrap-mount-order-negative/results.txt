@@ -1,0 +1,45 @@
+Disabled
+PACKAGE_INSTALL_BEGIN
++ mount --make-rprivate /
++ p=/work/tool
++ mkdir -p /work/tool/usr /work/tool/etc /work/tool/rpms /work/tool/proc /work/tool/dev /work/tool/sys /work/tool/tmp /work/tool/var/tmp /work/tool/run /work/tool/output /work/tool/.old
++ for directory in usr etc rpms
++ mount --bind /usr /work/tool/usr
++ mount -o remount,bind,ro /work/tool/usr
++ for directory in usr etc rpms
++ mount --bind /etc /work/tool/etc
++ mount -o remount,bind,ro /work/tool/etc
++ for directory in usr etc rpms
++ mount --bind /rpms /work/tool/rpms
++ mount -o remount,bind,ro /work/tool/rpms
++ for directory in bin sbin lib lib64
++ ln -s usr/bin /work/tool/bin
++ for directory in bin sbin lib lib64
++ ln -s usr/sbin /work/tool/sbin
++ for directory in bin sbin lib lib64
++ ln -s usr/lib /work/tool/lib
++ for directory in bin sbin lib lib64
++ ln -s usr/lib64 /work/tool/lib64
++ cp /bootstrap-command /work/tool/command
++ chmod 755 /work/tool/command
++ mount --bind /work/view /work/tool/output
++ mount --bind /work/tool /work/tool
++ mount -t proc -o nosuid,nodev,noexec proc /work/tool/proc
++ mount -t tmpfs -o nosuid,noexec tmpfs /work/tool/dev
++ for d in null zero random urandom
++ touch /work/tool/dev/null
++ mount --bind /work/runtime/null /work/tool/dev/null
++ for d in null zero random urandom
++ touch /work/tool/dev/zero
++ mount --bind /work/runtime/zero /work/tool/dev/zero
++ for d in null zero random urandom
++ touch /work/tool/dev/random
++ mount --bind /work/runtime/random /work/tool/dev/random
++ for d in null zero random urandom
++ touch /work/tool/dev/urandom
++ mount --bind /work/runtime/urandom /work/tool/dev/urandom
++ mount -t tmpfs -o ro,nosuid,nodev,noexec tmpfs /work/tool/sys
++ exec /entry-helper /work/tool /command --restricted
+Error: "exec /command after isolation: ENOENT: No such file or directory"
+GUEST_EXIT 1
+[    2.810001] sysrq: Resetting

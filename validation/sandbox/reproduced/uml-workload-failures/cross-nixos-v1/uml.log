@@ -1,0 +1,178 @@
+Core dump limits :
+	soft - 0
+	hard - NONE
+Checking that ptrace can change system call numbers...OK
+Checking syscall emulation for ptrace...OK
+Checking environment variables for a tempdir.../runtime
+Checking if /runtime is on tmpfs...OK
+Checking PROT_EXEC mmap in /runtime...OK
+Adding 94298112 bytes to physical memory to account for exec-shield gap
+Linux version 6.12.101 (sbuild@sbuild) (gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #1 Wed Aug 12 05:59:36 UTC 2026
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x00000000c59edfff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x00000000659edfff]
+Initmem setup node 0 [mem 0x0000000000000000-0x00000000659edfff]
+random: crng init done
+Kernel command line: mem=1536M con=null con0=fd:0,fd:1 ssl=null lsm=capability panic=1 rdinit=/init initrd=/initrd uml_dir=/runtime ubd0=/disk probe_disabled=1 root=98:0 console=tty0
+Unknown kernel command line parameters "mem=1536M uml_dir=/runtime probe_disabled=1", will be passed to user space.
+Dentry cache hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+Inode-cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 416238
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+RCU Tasks Trace: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.
+NR_IRQS: 64
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 5879.39 BogoMIPS (lpj=29396992)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+LSM: initializing lsm=capability
+Mount-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+Mountpoint-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+Memory: 1524320K/1664952K available (7160K kernel code, 1552K rwdata, 2300K rodata, 229K init, 336K bss, 138584K reserved, 0K cma-reserved)
+devtmpfs: initialized
+futex hash table entries: 256 (order: 1, 6144 bytes, linear)
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+audit: initializing netlink subsys (disabled)
+audit: type=2000 audit(1792592157.931:1): state=initialized audit_enabled=0 res=1
+raid6: int64x8  gen()  4812 MB/s
+raid6: int64x4  gen()  4165 MB/s
+raid6: int64x2  gen()  6155 MB/s
+raid6: int64x1  gen()  6452 MB/s
+raid6: using algorithm int64x1 gen() 6452 MB/s
+raid6: .... xor() 3042 MB/s, rmw enabled
+raid6: using intx1 recovery algorithm
+NetLabel: Initializing
+NetLabel:  domain hash size = 128
+NetLabel:  protocols = UNLABELED CIPSOv4 CALIPSO
+NetLabel:  unlabeled traffic allowed by default
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 32768 (order: 6, 262144 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 1024 (order: 1, 8192 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 16384 (order: 5, 131072 bytes, linear)
+TCP bind hash table entries: 16384 (order: 6, 262144 bytes, linear)
+TCP: Hash tables configured (established 16384 bind 16384)
+UDP hash table entries: 1024 (order: 3, 32768 bytes, linear)
+UDP-Lite hash table entries: 1024 (order: 3, 32768 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /runtime/probe/mconsole
+Checking host MADV_REMOVE support...OK
+Mapper v0.1
+mmapper_init - find_iomem failed
+Trying to unpack rootfs image as initramfs...
+Freeing initrd memory: 5716K
+workingset: timestamp_bits=46 max_order=19 bucket_order=0
+zbud: loaded
+JFS: nTxBlock = 8192, nTxLock = 65536
+SGI XFS with ACLs, security attributes, realtime, quota, no debug enabled
+xor: measuring software checksum speed
+   prefetch64-sse  : 27620 MB/sec
+   generic_sse     : 26479 MB/sec
+xor: using function: prefetch64-sse (27620 MB/sec)
+Block layer SCSI generic (bsg) driver version 0.4 loaded (major 253)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+NET: Registered PF_PACKET protocol family
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+registered taskstats version 1
+Btrfs loaded, zoned=no, fsverity=no
+This architecture does not have kernel memory protection.
+Run /init as init process
+EXT4-fs (ubda): mounted filesystem a06d25b2-7bc0-4b51-be20-452d96045a61 r/w with ordered data mode. Quota mode: none.
+mount: mounting proc on /mnt/proc failed: No such file or directory
+Kernel panic - not syncing: Attempted to kill init! exitcode=0x0000ff00
+CPU: 0 UID: 0 PID: 1 Comm: init Not tainted 6.12.101 #1 
+Stack:
+ 00000002 60883ea3 6689bcd0 60700a6f
+ 6689bcb0 6087d0dd 00000001 60883ea3
+ 6071961c 00000001 6689bd00 6072532e
+Call Trace:
+ [<6071961c>] ? _printk+0x0/0x45
+ [<6002f66f>] show_stack+0x150/0x15f
+ [<60700a6f>] ? dump_stack_print_info+0x12f/0x13f
+ [<6071961c>] ? _printk+0x0/0x45
+ [<6072532e>] dump_stack_lvl+0x5c/0x77
+ [<60725363>] dump_stack+0x1a/0x1c
+ [<607186ca>] panic+0x143/0x366
+ [<60046c55>] ? um_set_signals+0x34/0x3a
+ [<60718587>] ? panic+0x0/0x366
+ [<60046b55>] ? block_signals+0x0/0xf
+ [<60051057>] do_exit+0x227/0xa5d
+ [<60046b64>] ? unblock_signals+0x0/0xbd
+ [<60059910>] ? zap_other_threads+0x45/0x94
+ [<60051b11>] sys_exit_group+0x0/0x16
+ [<60051b27>] pid_child_should_wake+0x0/0x42
+ [<60030d8e>] handle_syscall+0x79/0xa7
+ [<60049730>] userspace+0x4c3/0x4f2
+ [<6002e819>] ? interrupt_end+0x0/0xe0
+ [<6002e6c5>] new_thread_handler+0xaa/0xb1
+[    1.810635] Kernel panic - not syncing: Attempted to kill init! exitcode=0x00008600
+[    1.812784] CPU: 0 UID: 0 PID: 1 Comm: init Not tainted 7.2.10-200.fc44.x86_64 #1 PREEMPT(lazy) 
+[    1.815206] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.17.0-10.fc44 06/10/2025
+[    1.817646] Call Trace:
+[    1.818368]  <TASK>
+[    1.818988]  dump_stack_lvl+0x5d/0x80
+[    1.820029]  vpanic+0x246/0x450
+[    1.820944]  panic+0x6b/0x70
+[    1.821778]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.823129]  do_exit.cold+0x15/0x15
+[    1.824124]  do_group_exit+0x2d/0xc0
+[    1.825149]  __x64_sys_exit_group+0x18/0x20
+[    1.826328]  x64_sys_call+0x102c/0x1530
+[    1.827417]  do_syscall_64+0xe2/0x570
+[    1.828463]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.829818]  ? folio_add_file_rmap_ptes+0x57/0x270
+[    1.831173]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.832519]  ? xas_find+0x83/0x1a0
+[    1.833491]  ? __pte_offset_map+0x1b/0x100
+[    1.834646]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.836005]  ? next_uptodate_folio+0x93/0x320
+[    1.837246]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.838584]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.839954]  ? filemap_map_pages+0x2e6/0x480
+[    1.841175]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.842524]  ? __pte_offset_map+0x1b/0x100
+[    1.843683]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.845045]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.846399]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.847741]  ? wp_page_reuse+0x8d/0xa0
+[    1.848817]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.850165]  ? do_wp_page+0x1ff/0x590
+[    1.851209]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.852551]  ? __handle_mm_fault+0x47c/0x6c0
+[    1.853760]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.855103]  ? count_memcg_events+0xd9/0x210
+[    1.856316]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.857668]  ? handle_mm_fault+0x24b/0x340
+[    1.858855]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.860207]  ? do_user_addr_fault+0x2cd/0x840
+[    1.861451]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.862816]  ? irqentry_exit+0x45/0x740
+[    1.863909]  ? srso_alias_return_thunk+0x5/0xfbef5
+[    1.865282]  ? do_syscall_64+0x99/0x570
+[    1.866368]  ? exc_page_fault+0x90/0x1e0
+[    1.867484]  entry_SYSCALL_64_after_hwframe+0x76/0x7e
+[    1.868911] RIP: 0033:0x7fcb4761e1b8
+[    1.869936] Code: 00 f7 d8 bb ff ff ff ff 64 89 02 eb c8 e8 50 31 04 00 f3 0f 1e fa 48 8b 35 2d ec 12 00 eb 04 0f 1f 00 f4 b8 e7 00 00 00 0f 05 <48> 3d 00 f0 ff ff 76 f0 f7 d8 64 89 06 eb e9 66 0f 1f 84 00 00 00
+[    1.875051] RSP: 002b:00007ffcc21e0318 EFLAGS: 00000246 ORIG_RAX: 00000000000000e7
+[    1.877160] RAX: ffffffffffffffda RBX: 00007fcb4774ef88 RCX: 00007fcb4761e1b8
+[    1.879145] RDX: 00007fcb4755ba48 RSI: ffffffffffffffb0 RDI: 0000000000000086
+[    1.881137] RBP: 00007ffcc21e0370 R08: 0000000000000000 R09: 0000000000000000
+[    1.883125] R10: 00007ffcc21e01b0 R11: 0000000000000246 R12: 0000000000000001
+[    1.885110] R13: 0000000000000086 R14: 00007fcb4774d680 R15: 00007fcb4774efa0
+[    1.887100]  </TASK>
+[    1.887919] Kernel Offset: 0x1f000000 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffffbfffffff)
+[    1.890887] Rebooting in 1 seconds..

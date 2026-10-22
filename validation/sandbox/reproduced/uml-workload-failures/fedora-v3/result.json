@@ -1,0 +1,15 @@
+{
+  "seconds": 600.0633160980069,
+  "returncode": null,
+  "error": "600s timeout",
+  "output": "/dev/shm/conglobate-fedora-conglobate-uml-fedora-v3.raw",
+  "markers": {
+    "UML_FEDORA_BOOTSTRAP_PASS": 0,
+    "UML_FEDORA_DERIVE_FIRMWARE_PASS": 0,
+    "UML_FEDORA_OUTPUT_VERIFIED": 0,
+    "UML_FEDORA_WORKLOAD_PASS": 0,
+    "GUEST_EXIT 0": 0
+  },
+  "pass": false,
+  "output_sha256": "73b279a5a8e4f0fba7360f2a6ef9641e8c6dd39d37b666ff880834140ad561f0"
+}

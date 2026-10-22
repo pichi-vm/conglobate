@@ -1,0 +1,775 @@
+Disabled
+PACKAGE_INSTALL_BEGIN
+Updating and loading repositories:
+Repositories loaded.
+Package                        Arch   Version                      Repository        Size
+Installing:
+ acl                           x86_64 0:2.4.0-1.fc44               @commandline 222.8 KiB
+ alternatives                  x86_64 0:1.33-5.fc44                @commandline  62.1 KiB
+ attr                          x86_64 0:2.6.0-1.fc44               @commandline 178.2 KiB
+ audit-libs                    i686   0:4.2.1-1.fc44               @commandline 400.3 KiB
+ audit-libs                    x86_64 0:4.2.1-1.fc44               @commandline 390.5 KiB
+ bash                          x86_64 0:5.3.9-3.fc44               @commandline   8.5 MiB
+ bzip2-libs                    x86_64 0:1.0.8-23.fc44              @commandline  80.5 KiB
+ ca-certificates               noarch 0:2026.2.90_v9.0.317-1.fc44  @commandline   2.7 MiB
+ coreutils                     x86_64 0:9.10-5.fc44                @commandline   5.7 MiB
+ coreutils-common              x86_64 0:9.10-5.fc44                @commandline  10.7 MiB
+ crypto-policies               noarch 0:20251128-3.git19878fe.fc44 @commandline 132.6 KiB
+ crypto-policies-scripts       noarch 0:20251128-3.git19878fe.fc44 @commandline 392.7 KiB
+ expat                         x86_64 0:2.8.5-1.fc44               @commandline 342.2 KiB
+ fedora-gpg-keys               noarch 0:44-2                       @commandline 257.6 KiB
+ fedora-release                noarch 0:44-18                      @commandline   0.0   B
+ fedora-release-common         noarch 0:44-18                      @commandline  20.6 KiB
+ fedora-release-identity-basic noarch 0:44-18                      @commandline 629.0   B
+ fedora-repos                  noarch 0:44-2                       @commandline   4.9 KiB
+ filesystem                    x86_64 0:3.18-52.fc44               @commandline 112.0   B
+ findutils                     x86_64 1:4.10.0-7.fc44              @commandline   1.9 MiB
+ gdbm-libs                     x86_64 1:1.23-11.fc44               @commandline 129.6 KiB
+ glibc                         i686   0:2.43-9.fc44                @commandline   5.7 MiB
+ glibc                         x86_64 0:2.43-9.fc44                @commandline   6.9 MiB
+ glibc-common                  x86_64 0:2.43-9.fc44                @commandline   1.0 MiB
+ glibc-gconv-extra             i686   0:2.43-9.fc44                @commandline   6.7 MiB
+ glibc-gconv-extra             x86_64 0:2.43-9.fc44                @commandline   7.4 MiB
+ glibc-minimal-langpack        x86_64 0:2.43-9.fc44                @commandline   0.0   B
+ gmp                           x86_64 1:6.3.0-5.fc44               @commandline 815.2 KiB
+ gnulib-l10n                   noarch 0:20241231-2.fc44            @commandline 655.0 KiB
+ grep                          x86_64 0:3.12-3.fc44                @commandline   1.0 MiB
+ libacl                        x86_64 0:2.4.0-1.fc44               @commandline  39.9 KiB
+ libattr                       x86_64 0:2.6.0-1.fc44               @commandline  24.3 KiB
+ libcap                        i686   0:2.78-1.fc44                @commandline 193.1 KiB
+ libcap                        x86_64 0:2.78-1.fc44                @commandline 212.1 KiB
+ libcap-ng                     i686   0:0.9.6-1.fc44               @commandline  67.3 KiB
+ libcap-ng                     x86_64 0:0.9.6-1.fc44               @commandline  68.8 KiB
+ libeconf                      i686   0:0.7.9-3.fc44               @commandline  64.0 KiB
+ libeconf                      x86_64 0:0.7.9-3.fc44               @commandline  64.8 KiB
+ libffi                        x86_64 0:3.5.2-2.fc44               @commandline  87.7 KiB
+ libgcc                        i686   0:16.2.1-2.fc44              @commandline 293.7 KiB
+ libgcc                        x86_64 0:16.2.1-2.fc44              @commandline 270.6 KiB
+ libselinux                    x86_64 0:3.11-2.fc44                @commandline 205.2 KiB
+ libsepol                      x86_64 0:3.11-1.fc44                @commandline 862.1 KiB
+ libtasn1                      x86_64 0:4.21.0-1.fc44              @commandline 180.6 KiB
+ libuuid                       x86_64 0:2.41.5-1.fc44              @commandline  37.2 KiB
+ libzstd                       x86_64 0:1.5.7-5.fc44               @commandline 956.1 KiB
+ mpdecimal                     x86_64 0:4.0.1-3.fc44               @commandline 217.1 KiB
+ ncurses-base                  noarch 0:6.6-1.fc44                 @commandline 329.7 KiB
+ ncurses-libs                  x86_64 0:6.6-1.fc44                 @commandline 968.9 KiB
+ openssl-libs                  x86_64 1:3.5.9-1.fc44               @commandline   9.2 MiB
+ p11-kit                       x86_64 0:0.26.5-1.fc44              @commandline   2.6 MiB
+ p11-kit-trust                 x86_64 0:0.26.5-1.fc44              @commandline 478.3 KiB
+ pam-libs                      i686   0:1.7.2-2.fc44               @commandline 128.2 KiB
+ pam-libs                      x86_64 0:1.7.2-2.fc44               @commandline 130.5 KiB
+ pcre2                         x86_64 0:10.47-1.fc44.1             @commandline 718.6 KiB
+ pcre2-syntax                  noarch 0:10.47-1.fc44.1             @commandline 281.9 KiB
+ pkcs11-provider               x86_64 0:1.1-3.fc44                 @commandline 476.3 KiB
+ python-pip-wheel              noarch 0:26.0.1-3.fc44              @commandline   1.2 MiB
+ python-unversioned-command    noarch 0:3.14.8-1.fc44              @commandline  23.0   B
+ python3                       x86_64 0:3.14.8-1.fc44              @commandline  28.7 KiB
+ python3-libs                  x86_64 0:3.14.8-1.fc44              @commandline  44.1 MiB
+ readline                      x86_64 0:8.3-4.fc44                 @commandline 519.5 KiB
+ sed                           x86_64 0:4.9-7.fc44                 @commandline 857.2 KiB
+ setup                         noarch 0:2.15.0-28.fc44             @commandline 724.9 KiB
+ sqlite-libs                   x86_64 0:3.51.2-2.fc44              @commandline   1.6 MiB
+ systemd-libs                  x86_64 0:259.9-1.fc44               @commandline   2.4 MiB
+ tzdata                        noarch 0:2026e-1.fc44               @commandline   1.3 MiB
+ xz-libs                       x86_64 1:5.8.2-2.fc44               @commandline 217.7 KiB
+ zlib-ng-compat                x86_64 0:2.3.3-3.fc44               @commandline 165.6 KiB
+
+Transaction Summary:
+ Installing:        69 packages
+
+Total size of inbound packages is 39 MiB. Need to download 0 B.
+After this operation, 134 MiB extra will be used (install 134 MiB, remove 0 B).
+Running transaction
+[ 1/71] Verify package files            100% | 313.0   B/s |  69.0   B |  00m00s
+>>> Running %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
+>>> Finished %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
+>>> [RPM] /rpms/acl-2.4.0-1.fc44.x86_64.rpm: Header OpenPGP V4 RSA/SHA256 signature, key ID dbfcf71c6d9f90a6: NOKEY
+[ 2/71] Prepare transaction             100% |  70.0   B/s |  69.0   B |  00m01s
+[ 3/71] Installing libgcc-0:16.2.1-2.fc 100% |   9.2 MiB/s | 272.3 KiB |  00m00s
+[ 4/71] Installing tzdata-0:2026e-1.fc4 100% | 684.7 KiB/s |   1.5 MiB |  00m02s
+[ 5/71] Installing pcre2-syntax-0:10.47 100% |   9.0 MiB/s | 284.3 KiB |  00m00s
+[ 6/71] Installing ncurses-base-0:6.6-1 100% |   1.5 MiB/s | 355.3 KiB |  00m00s
+[ 7/71] Installing gnulib-l10n-0:202412 100% |   4.8 MiB/s | 661.9 KiB |  00m00s
+[ 8/71] Installing coreutils-common-0:9 100% |  20.6 MiB/s |  10.7 MiB |  00m01s
+[ 9/71] Installing fedora-release-ident 100% |  86.7 KiB/s | 888.0   B |  00m00s
+[10/71] Installing fedora-gpg-keys-0:44 100% | 603.3 KiB/s | 355.3 KiB |  00m01s
+[11/71] Installing fedora-repos-0:44-2. 100% | 437.8 KiB/s |   5.7 KiB |  00m00s
+[12/71] Installing fedora-release-commo 100% | 553.6 KiB/s |  24.9 KiB |  00m00s
+[13/71] Installing fedora-release-0:44- 100% |   3.8 KiB/s | 124.0   B |  00m00s
+>>> Running sysusers scriptlet: setup-0:2.15.0-28.fc44.noarch
+>>> Finished sysusers scriptlet: setup-0:2.15.0-28.fc44.noarch
+>>> Scriptlet output:
+>>> Creating group 'adm' with GID 4.
+>>> Creating group 'audio' with GID 63.
+>>> Creating group 'cdrom' with GID 11.
+>>> Creating group 'clock' with GID 103.
+>>> Creating group 'dialout' with GID 18.
+>>> Creating group 'disk' with GID 6.
+>>> Creating group 'floppy' with GID 19.
+>>> Creating group 'ftp' with GID 50.
+>>> Creating group 'games' with GID 20.
+>>> Creating group 'input' with GID 104.
+>>> Creating group 'kmem' with GID 9.
+>>> Creating group 'kvm' with GID 36.
+>>> Creating group 'lock' with GID 54.
+>>> Creating group 'lp' with GID 7.
+>>> Creating group 'mail' with GID 12.
+>>> Creating group 'man' with GID 15.
+>>> Creating group 'mem' with GID 8.
+>>> Creating group 'nobody' with GID 65534.
+>>> Creating group 'render' with GID 105.
+>>> Creating group 'root' with GID 0.
+>>> Creating group 'sgx' with GID 106.
+>>> Creating group 'sys' with GID 3.
+>>> Creating group 'tape' with GID 33.
+>>> Creating group 'tty' with GID 5.
+>>> Creating group 'users' with GID 100.
+>>> Creating group 'utmp' with GID 22.
+>>> Creating group 'video' with GID 39.
+>>> Creating group 'wheel' with GID 10.
+>>> Creating user 'adm' (adm) with UID 3 and GID 4.
+>>> Creating group 'bin' with GID 1.
+>>> Creating user 'bin' (bin) with UID 1 and GID 1.
+>>> Creating group 'daemon' with GID 2.
+>>> Creating user 'daemon' (daemon) with UID 2 and GID 2.
+>>> Creating user 'ftp' (FTP User) with UID 14 and GID 50.
+>>> Creating user 'games' (games) with UID 12 and GID 100.
+>>> Creating user 'halt' (halt) with UID 7 and GID 0.
+>>> Creating user 'lp' (lp) with UID 4 and GID 7.
+>>> Creating user 'mail' (mail) with UID 8 and GID 12.
+>>> Creating user 'nobody' (Kernel Overflow User) with UID 65534 and GID 65534.
+>>> Creating user 'operator' (operator) with UID 11 and GID 0.
+>>> Creating user 'root' (Super User) with UID 0 and GID 0.
+>>> Creating user 'shutdown' (shutdown) with UID 6 and GID 0.
+>>> Creating user 'sync' (sync) with UID 5 and GID 0.
+>>> 
+[14/71] Installing setup-0:2.15.0-28.fc 100% |   7.8 MiB/s | 730.6 KiB |  00m00s
+[15/71] Installing filesystem-0:3.18-52 100% | 100.4 KiB/s | 212.8 KiB |  00m02s
+[16/71] Installing bash-0:5.3.9-3.fc44. 100% |  30.1 MiB/s |   8.5 MiB |  00m00s
+[17/71] Installing glibc-common-0:2.43- 100% |   8.8 MiB/s |   1.0 MiB |  00m00s
+[18/71] Installing glibc-minimal-langpa 100% |  10.1 KiB/s | 124.0   B |  00m00s
+[19/71] Installing glibc-0:2.43-9.fc44. 100% |  27.9 MiB/s |   6.9 MiB |  00m00s
+[20/71] Installing ncurses-libs-0:6.6-1 100% |  14.2 MiB/s | 975.4 KiB |  00m00s
+[21/71] Installing glibc-gconv-extra-0: 100% |   8.6 MiB/s |   7.5 MiB |  00m01s
+[22/71] Installing libacl-0:2.4.0-1.fc4 100% |   2.5 MiB/s |  40.7 KiB |  00m00s
+[23/71] Installing libffi-0:3.5.2-2.fc4 100% |   4.1 MiB/s |  89.1 KiB |  00m00s
+[24/71] Installing libattr-0:2.6.0-1.fc 100% |   1.5 MiB/s |  25.2 KiB |  00m00s
+[25/71] Installing libtasn1-0:4.21.0-1. 100% |   6.9 MiB/s | 182.4 KiB |  00m00s
+[26/71] Installing p11-kit-0:0.26.5-1.f 100% |   8.9 MiB/s |   2.6 MiB |  00m00s
+[27/71] Installing pcre2-0:10.47-1.fc44 100% |  28.1 MiB/s | 720.0 KiB |  00m00s
+[28/71] Installing zlib-ng-compat-0:2.3 100% |   4.8 MiB/s | 166.5 KiB |  00m00s
+[29/71] Installing crypto-policies-0:20 100% | 638.3 KiB/s | 157.7 KiB |  00m00s
+[30/71] Installing grep-0:3.12-3.fc44.x 100% |   5.7 MiB/s |   1.0 MiB |  00m00s
+[31/71] Installing readline-0:8.3-4.fc4 100% |  17.0 MiB/s | 521.6 KiB |  00m00s
+[32/71] Installing alternatives-0:1.33- 100% |   1.8 MiB/s |  63.6 KiB |  00m00s
+[33/71] Installing p11-kit-trust-0:0.26 100% |   8.1 MiB/s | 480.1 KiB |  00m00s
+[34/71] Installing bzip2-libs-0:1.0.8-2 100% |   4.2 MiB/s |  81.6 KiB |  00m00s
+[35/71] Installing expat-0:2.8.5-1.fc44 100% |   7.5 MiB/s | 344.3 KiB |  00m00s
+[36/71] Installing gdbm-libs-1:1.23-11. 100% |   5.3 MiB/s | 131.3 KiB |  00m00s
+[37/71] Installing gmp-1:6.3.0-5.fc44.x 100% |  22.8 MiB/s | 817.5 KiB |  00m00s
+[38/71] Installing libcap-ng-0:0.9.6-1. 100% |   2.8 MiB/s |  70.6 KiB |  00m00s
+[39/71] Installing audit-libs-0:4.2.1-1 100% |  11.6 MiB/s | 393.1 KiB |  00m00s
+[40/71] Installing libeconf-0:0.7.9-3.f 100% |   2.7 MiB/s |  66.4 KiB |  00m00s
+[41/71] Installing pam-libs-0:1.7.2-2.f 100% |   4.5 MiB/s | 132.7 KiB |  00m00s
+[42/71] Installing libcap-0:2.78-1.fc44 100% |   3.0 MiB/s | 217.2 KiB |  00m00s
+[43/71] Installing libsepol-0:3.11-1.fc 100% |  32.4 MiB/s | 863.0 KiB |  00m00s
+[44/71] Installing libselinux-0:3.11-2. 100% |   8.8 MiB/s | 206.5 KiB |  00m00s
+[45/71] Installing findutils-1:4.10.0-7 100% |  10.9 MiB/s |   1.9 MiB |  00m00s
+[46/71] Installing sed-0:4.9-7.fc44.x86 100% |   5.5 MiB/s | 865.4 KiB |  00m00s
+[47/71] Installing libuuid-0:2.41.5-1.f 100% |   1.8 MiB/s |  38.3 KiB |  00m00s
+[48/71] Installing libzstd-0:1.5.7-5.fc 100% |  34.6 MiB/s | 957.4 KiB |  00m00s
+[49/71] Installing mpdecimal-0:4.0.1-3. 100% |   8.2 MiB/s | 218.6 KiB |  00m00s
+[50/71] Installing sqlite-libs-0:3.51.2 100% |  44.2 MiB/s |   1.6 MiB |  00m00s
+[51/71] Installing systemd-libs-0:259.9 100% |  39.5 MiB/s |   2.5 MiB |  00m00s
+[52/71] Installing openssl-libs-1:3.5.9 100% |  66.8 MiB/s |   9.2 MiB |  00m00s
+[53/71] Installing coreutils-0:9.10-5.f 100% |  14.8 MiB/s |   5.7 MiB |  00m00s
+[54/71] Installing ca-certificates-0:20 100% | 662.0 KiB/s |   2.5 MiB |  00m04s
+[55/71] Installing python-pip-wheel-0:2 100% |  39.5 MiB/s |   1.2 MiB |  00m00s
+[56/71] Installing xz-libs-1:5.8.2-2.fc 100% |   7.6 MiB/s | 218.8 KiB |  00m00s
+[57/71] Installing python3-libs-0:3.14. 100% |  13.0 MiB/s |  44.5 MiB |  00m03s
+[58/71] Installing python3-0:3.14.8-1.f 100% | 553.1 KiB/s |  30.4 KiB |  00m00s
+[59/71] Installing libgcc-0:16.2.1-2.fc 100% |  15.2 MiB/s | 295.4 KiB |  00m00s
+[60/71] Installing crypto-policies-scri 100% |   2.9 MiB/s | 407.0 KiB |  00m00s
+[61/71] Installing python-unversioned-c 100% |  18.8 KiB/s | 424.0   B |  00m00s
+[62/71] Installing pkcs11-provider-0:1. 100% |  15.1 MiB/s | 477.9 KiB |  00m00s
+[63/71] Installing attr-0:2.6.0-1.fc44. 100% |   2.3 MiB/s | 182.6 KiB |  00m00s
+[64/71] Installing acl-0:2.4.0-1.fc44.x 100% |   3.1 MiB/s | 226.7 KiB |  00m00s
+[65/71] Installing glibc-0:2.43-9.fc44. 100% |  19.6 MiB/s |   5.7 MiB |  00m00s
+[66/71] Installing glibc-gconv-extra-0: 100% |   8.6 MiB/s |   6.8 MiB |  00m01s
+[67/71] Installing libcap-ng-0:0.9.6-1. 100% |   2.9 MiB/s |  69.1 KiB |  00m00s
+[68/71] Installing audit-libs-0:4.2.1-1 100% |  13.6 MiB/s | 402.8 KiB |  00m00s
+[69/71] Installing libeconf-0:0.7.9-3.f 100% |   3.6 MiB/s |  65.7 KiB |  00m00s
+[70/71] Installing pam-libs-0:1.7.2-2.f 100% |   4.3 MiB/s | 130.6 KiB |  00m00s
+[71/71] Installing libcap-0:2.78-1.fc44 100% |  37.9 KiB/s | 198.3 KiB |  00m05s
+Warning: skipped OpenPGP checks for 69 packages from repository: @commandline
+Complete!
+Updating and loading repositories:
+Repositories loaded.
+Package "alternatives-1.33-5.fc44.x86_64" is already installed.
+Package "audit-libs-4.2.1-1.fc44.x86_64" is already installed.
+Package "bash-5.3.9-3.fc44.x86_64" is already installed.
+Package "bzip2-libs-1.0.8-23.fc44.x86_64" is already installed.
+Package "ca-certificates-2026.2.90_v9.0.317-1.fc44.noarch" is already installed.
+Package "coreutils-9.10-5.fc44.x86_64" is already installed.
+Package "coreutils-common-9.10-5.fc44.x86_64" is already installed.
+Package "crypto-policies-20251128-3.git19878fe.fc44.noarch" is already installed.
+Package "crypto-policies-scripts-20251128-3.git19878fe.fc44.noarch" is already installed.
+Package "expat-2.8.5-1.fc44.x86_64" is already installed.
+Package "fedora-gpg-keys-44-2.noarch" is already installed.
+Package "fedora-release-44-18.noarch" is already installed.
+Package "fedora-release-common-44-18.noarch" is already installed.
+Package "fedora-release-identity-basic-44-18.noarch" is already installed.
+Package "fedora-repos-44-2.noarch" is already installed.
+Package "filesystem-3.18-52.fc44.x86_64" is already installed.
+Package "findutils-1:4.10.0-7.fc44.x86_64" is already installed.
+Package "gdbm-libs-1:1.23-11.fc44.x86_64" is already installed.
+Package "glibc-2.43-9.fc44.x86_64" is already installed.
+Package "glibc-common-2.43-9.fc44.x86_64" is already installed.
+Package "glibc-gconv-extra-2.43-9.fc44.x86_64" is already installed.
+Package "glibc-minimal-langpack-2.43-9.fc44.x86_64" is already installed.
+Package "gmp-1:6.3.0-5.fc44.x86_64" is already installed.
+Package "gnulib-l10n-20241231-2.fc44.noarch" is already installed.
+Package "grep-3.12-3.fc44.x86_64" is already installed.
+Package "libacl-2.4.0-1.fc44.x86_64" is already installed.
+Package "libattr-2.6.0-1.fc44.x86_64" is already installed.
+Package "libcap-2.78-1.fc44.x86_64" is already installed.
+Package "libcap-ng-0.9.6-1.fc44.x86_64" is already installed.
+Package "libeconf-0.7.9-3.fc44.x86_64" is already installed.
+Package "libffi-3.5.2-2.fc44.x86_64" is already installed.
+Package "libgcc-16.2.1-2.fc44.x86_64" is already installed.
+Package "libselinux-3.11-2.fc44.x86_64" is already installed.
+Package "libsepol-3.11-1.fc44.x86_64" is already installed.
+Package "libtasn1-4.21.0-1.fc44.x86_64" is already installed.
+Package "libuuid-2.41.5-1.fc44.x86_64" is already installed.
+Package "libzstd-1.5.7-5.fc44.x86_64" is already installed.
+Package "mpdecimal-4.0.1-3.fc44.x86_64" is already installed.
+Package "ncurses-base-6.6-1.fc44.noarch" is already installed.
+Package "ncurses-libs-6.6-1.fc44.x86_64" is already installed.
+Package "openssl-libs-1:3.5.9-1.fc44.x86_64" is already installed.
+Package "p11-kit-0.26.5-1.fc44.x86_64" is already installed.
+Package "p11-kit-trust-0.26.5-1.fc44.x86_64" is already installed.
+Package "pam-libs-1.7.2-2.fc44.x86_64" is already installed.
+Package "pcre2-10.47-1.fc44.1.x86_64" is already installed.
+Package "pcre2-syntax-10.47-1.fc44.1.noarch" is already installed.
+Package "pkcs11-provider-1.1-3.fc44.x86_64" is already installed.
+Package "python-pip-wheel-26.0.1-3.fc44.noarch" is already installed.
+Package "python-unversioned-command-3.14.8-1.fc44.noarch" is already installed.
+Package "python3-3.14.8-1.fc44.x86_64" is already installed.
+Package "python3-libs-3.14.8-1.fc44.x86_64" is already installed.
+Package "readline-8.3-4.fc44.x86_64" is already installed.
+Package "sed-4.9-7.fc44.x86_64" is already installed.
+Package "setup-2.15.0-28.fc44.noarch" is already installed.
+Package "sqlite-libs-3.51.2-2.fc44.x86_64" is already installed.
+Package "tzdata-2026e-1.fc44.noarch" is already installed.
+Package "xz-libs-1:5.8.2-2.fc44.x86_64" is already installed.
+Package "zlib-ng-compat-2.3.3-3.fc44.x86_64" is already installed.
+
+Package                      Arch   Version           Repository        Size
+Upgrading:
+ systemd-libs                x86_64 0:259.10-1.fc44   @commandline   2.5 MiB
+   replacing systemd-libs    x86_64 0:259.9-1.fc44    @commandline   2.4 MiB
+Installing:
+ amd-gpu-firmware            noarch 0:20260916-1.fc44 @commandline  28.0 MiB
+ amd-ucode-firmware          noarch 0:20260916-1.fc44 @commandline 667.4 KiB
+ atheros-firmware            noarch 0:20260916-1.fc44 @commandline  47.1 MiB
+ authselect                  x86_64 0:1.7.1-1.fc44    @commandline 202.0 KiB
+ authselect-libs             x86_64 0:1.7.1-1.fc44    @commandline 889.7 KiB
+ brcmfmac-firmware           noarch 0:20260916-1.fc44 @commandline   9.5 MiB
+ cirrus-audio-firmware       noarch 0:20260916-1.fc44 @commandline   2.9 MiB
+ cpio                        x86_64 0:2.15-9.fc44     @commandline   1.1 MiB
+ cracklib                    x86_64 0:2.10.3-1.fc44   @commandline 234.6 KiB
+ cracklib-dicts              x86_64 0:2.10.3-1.fc44   @commandline   9.4 MiB
+ cryptsetup-libs             x86_64 0:2.8.8-1.fc44    @commandline   3.0 MiB
+ cyrus-sasl-lib              x86_64 0:2.1.28-35.fc44  @commandline   2.3 MiB
+ dbus                        x86_64 1:1.16.2-1.fc44   @commandline   0.0   B
+ dbus-broker                 x86_64 0:37-8.fc44       @commandline 394.9 KiB
+ dbus-common                 noarch 1:1.16.2-1.fc44   @commandline  11.2 KiB
+ device-mapper               x86_64 0:1.02.212-2.fc44 @commandline 346.8 KiB
+ device-mapper-libs          x86_64 0:1.02.212-2.fc44 @commandline 430.1 KiB
+ diffutils                   x86_64 0:3.12-5.fc44     @commandline   1.6 MiB
+ dracut                      x86_64 0:108-8.fc44      @commandline   1.6 MiB
+ elfutils-debuginfod-client  x86_64 0:0.196-1.fc44    @commandline  83.8 KiB
+ elfutils-default-yama-scope noarch 0:0.196-1.fc44    @commandline   1.8 KiB
+ elfutils-libelf             x86_64 0:0.196-1.fc44    @commandline   1.4 MiB
+ elfutils-libs               x86_64 0:0.196-1.fc44    @commandline 715.4 KiB
+ file                        x86_64 0:5.46-10.fc44    @commandline 100.1 KiB
+ file-libs                   x86_64 0:5.46-10.fc44    @commandline  11.9 MiB
+ fuse3-libs                  x86_64 0:3.18.3-1.fc44   @commandline 297.8 KiB
+ gdbm                        x86_64 1:1.23-11.fc44    @commandline 459.8 KiB
+ gettext-envsubst            x86_64 0:0.26-5.fc44     @commandline  87.5 KiB
+ gettext-libs                x86_64 0:0.26-5.fc44     @commandline   2.4 MiB
+ gettext-runtime             x86_64 0:0.26-5.fc44     @commandline 738.3 KiB
+ grub2-common                noarch 1:2.12-66.fc44    @commandline   6.2 MiB
+ grub2-tools                 x86_64 1:2.12-66.fc44    @commandline   7.8 MiB
+ grub2-tools-minimal         x86_64 1:2.12-66.fc44    @commandline   4.1 MiB
+ grubby                      x86_64 0:8.40-88.fc44    @commandline  45.9 KiB
+ gzip                        x86_64 0:1.14-2.fc44     @commandline 401.6 KiB
+ intel-audio-firmware        noarch 0:20260916-1.fc44 @commandline   3.6 MiB
+ intel-gpu-firmware          noarch 0:20260916-1.fc44 @commandline  12.1 MiB
+ intel-npu-firmware          noarch 0:20260916-1.fc44 @commandline 939.8 KiB
+ json-c                      x86_64 0:0.18-8.fc44     @commandline  82.6 KiB
+ kbd                         x86_64 0:2.9.0-4.fc44    @commandline   1.4 MiB
+ kbd-legacy                  noarch 0:2.9.0-4.fc44    @commandline 559.6 KiB
+ kbd-misc                    noarch 0:2.9.0-4.fc44    @commandline   2.4 MiB
+ kernel-core                 x86_64 0:7.2.11-200.fc44 @commandline 101.3 MiB
+ kernel-modules-core         x86_64 0:7.2.11-200.fc44 @commandline  46.9 MiB
+ keyutils-libs               x86_64 0:1.6.3-7.fc44    @commandline  54.2 KiB
+ kmod                        x86_64 0:34.2-4.fc44     @commandline 251.0 KiB
+ kmod-libs                   x86_64 0:34.2-4.fc44     @commandline 139.0 KiB
+ kpartx                      x86_64 0:0.13.1-1.fc44   @commandline  87.5 KiB
+ krb5-libs                   x86_64 0:1.22.2-4.fc44   @commandline   2.4 MiB
+ libarchive                  x86_64 0:3.8.7-1.fc44    @commandline   1.0 MiB
+ libblkid                    x86_64 0:2.41.5-1.fc44   @commandline 274.3 KiB
+ libbpf                      x86_64 2:1.6.3-2.fc44    @commandline 442.7 KiB
+ libbrotli                   x86_64 0:1.2.0-3.fc44    @commandline 865.0 KiB
+ libcbor                     x86_64 0:0.13.0-2.fc44   @commandline  79.5 KiB
+ libcom_err                  x86_64 0:1.47.3-4.fc44   @commandline  63.0 KiB
+ libcurl                     x86_64 0:8.18.0-14.fc44  @commandline   1.0 MiB
+ libevent                    x86_64 0:2.1.13-1.fc44   @commandline 980.7 KiB
+ libfdisk                    x86_64 0:2.41.5-1.fc44   @commandline 388.3 KiB
+ libfido2                    x86_64 0:1.16.0-5.fc44   @commandline 246.4 KiB
+ libidn2                     x86_64 0:2.3.8-3.fc44    @commandline 556.4 KiB
+ libkcapi                    x86_64 0:1.5.0-7.fc44    @commandline  98.7 KiB
+ libkcapi-hasher             x86_64 0:1.5.0-7.fc44    @commandline  37.4 KiB
+ libkcapi-hmaccalc           x86_64 0:1.5.0-7.fc44    @commandline 175.0   B
+ liblastlog2                 x86_64 0:2.41.5-1.fc44   @commandline  41.6 KiB
+ libmount                    x86_64 0:2.41.5-1.fc44   @commandline 392.6 KiB
+ libnghttp2                  x86_64 0:1.68.0-5.fc44   @commandline 166.1 KiB
+ libnghttp3                  x86_64 0:1.18.0-1.fc44   @commandline 163.4 KiB
+ libnsl2                     x86_64 0:2.0.1-5.fc44    @commandline  57.7 KiB
+ libpkgconf                  x86_64 0:2.5.1-1.fc44    @commandline  90.1 KiB
+ libpsl                      x86_64 0:0.21.5-7.fc44   @commandline  76.3 KiB
+ libpwquality                x86_64 0:1.4.5-15.fc44   @commandline 408.7 KiB
+ libseccomp                  x86_64 0:2.6.1-2.fc44    @commandline 222.2 KiB
+ libsmartcols                x86_64 0:2.41.5-1.fc44   @commandline 188.3 KiB
+ libssh                      x86_64 0:0.12.2-1.fc44   @commandline 725.5 KiB
+ libssh-config               noarch 0:0.12.2-1.fc44   @commandline 277.0   B
+ libstdc++                   x86_64 0:16.2.1-2.fc44   @commandline   3.1 MiB
+ libtextstyle                x86_64 0:0.26-5.fc44     @commandline 382.0 KiB
+ libtirpc                    x86_64 0:1.3.8-0.fc44    @commandline 208.3 KiB
+ libtool-ltdl                x86_64 0:2.5.4-10.fc44   @commandline  70.0 KiB
+ libunistring                x86_64 0:1.1-11.fc44     @commandline   1.7 MiB
+ libusb1                     x86_64 0:1.0.30-1.fc44   @commandline 176.0 KiB
+ libverto                    x86_64 0:0.3.2-12.fc44   @commandline  25.3 KiB
+ libxcrypt                   x86_64 0:4.5.2-3.fc44    @commandline 293.2 KiB
+ libxkbcommon                x86_64 0:1.13.1-2.fc44   @commandline 432.2 KiB
+ libxml2                     x86_64 0:2.12.10-6.fc44  @commandline   1.8 MiB
+ linux-firmware              noarch 0:20260916-1.fc44 @commandline  33.0 MiB
+ linux-firmware-whence       noarch 0:20260916-1.fc44 @commandline 463.3 KiB
+ lz4-libs                    x86_64 0:1.10.0-4.fc44   @commandline 157.3 KiB
+ memstrack                   x86_64 0:0.2.5-8.fc44    @commandline 119.8 KiB
+ mkpasswd                    x86_64 0:5.6.6-1.fc44    @commandline  39.1 KiB
+ mt7xxx-firmware             noarch 0:20260916-1.fc44 @commandline  31.6 MiB
+ ngtcp2                      x86_64 0:1.22.1-1.fc44   @commandline 338.2 KiB
+ ngtcp2-crypto-ossl          x86_64 0:1.22.1-1.fc44   @commandline  51.6 KiB
+ nvidia-gpu-firmware         noarch 0:20260916-1.fc44 @commandline 101.0 MiB
+ nxpwireless-firmware        noarch 0:20260916-1.fc44 @commandline   1.5 MiB
+ openldap                    x86_64 0:2.6.15-1.fc44   @commandline 671.3 KiB
+ os-prober                   x86_64 0:1.81-11.fc44    @commandline 110.7 KiB
+ pam                         x86_64 0:1.7.2-2.fc44    @commandline   1.6 MiB
+ pkgconf                     x86_64 0:2.5.1-1.fc44    @commandline  92.7 KiB
+ pkgconf-m4                  noarch 0:2.5.1-1.fc44    @commandline  14.3 KiB
+ pkgconf-pkg-config          x86_64 0:2.5.1-1.fc44    @commandline 989.0   B
+ popt                        x86_64 0:1.19-10.fc44    @commandline 132.6 KiB
+ procps-ng                   x86_64 0:4.0.6-1.fc44    @commandline   1.1 MiB
+ publicsuffix-list-dafsa     noarch 0:20260116-1.fc44 @commandline  70.4 KiB
+ qcom-wwan-firmware          noarch 0:20260916-1.fc44 @commandline 749.7 KiB
+ qrencode-libs               x86_64 0:4.1.1-12.fc44   @commandline 164.7 KiB
+ realtek-firmware            noarch 0:20260916-1.fc44 @commandline   6.9 MiB
+ systemd                     x86_64 0:259.10-1.fc44   @commandline  12.9 MiB
+ systemd-networkd            x86_64 0:259.10-1.fc44   @commandline   2.3 MiB
+ systemd-pam                 x86_64 0:259.10-1.fc44   @commandline   1.2 MiB
+ systemd-resolved            x86_64 0:259.10-1.fc44   @commandline 655.3 KiB
+ systemd-shared              x86_64 0:259.10-1.fc44   @commandline   5.5 MiB
+ systemd-sysusers            x86_64 0:259.10-1.fc44   @commandline  79.7 KiB
+ systemd-udev                x86_64 0:259.10-1.fc44   @commandline  13.1 MiB
+ tiwilink-firmware           noarch 0:20260916-1.fc44 @commandline   4.6 MiB
+ tpm2-tools                  x86_64 0:5.7-5.fc44      @commandline   1.5 MiB
+ tpm2-tss                    x86_64 0:4.1.3-9.fc44    @commandline   1.6 MiB
+ tpm2-tss-fapi               x86_64 0:4.1.3-9.fc44    @commandline 909.9 KiB
+ util-linux                  x86_64 0:2.41.5-1.fc44   @commandline   3.5 MiB
+ util-linux-core             x86_64 0:2.41.5-1.fc44   @commandline   1.5 MiB
+ whois-nls                   noarch 0:5.6.6-1.fc44    @commandline 132.2 KiB
+ xkeyboard-config            noarch 0:2.47-1.fc44     @commandline   6.4 MiB
+ xz                          x86_64 1:5.8.2-2.fc44    @commandline   1.3 MiB
+ zstd                        x86_64 0:1.5.7-5.fc44    @commandline 502.4 KiB
+
+Transaction Summary:
+ Installing:       124 packages
+ Upgrading:          1 package
+ Replacing:          1 package
+
+Total size of inbound packages is 393 MiB. Need to download 0 B.
+After this operation, 572 MiB extra will be used (install 575 MiB, remove 2 MiB).
+Running transaction
+[  1/128] Verify package files          100% |  76.0   B/s | 125.0   B |  00m02s
+>>> Running %pretrans scriptlet: xkeyboard-config-0:2.47-1.fc44.noarch
+>>> Finished %pretrans scriptlet: xkeyboard-config-0:2.47-1.fc44.noarch
+>>> [RPM] /initramfs-rpms/amd-gpu-firmware-20260916-1.fc44.noarch.rpm: Header OpenPGP V4 RSA/SHA256 signature, key ID dbfcf71c6d9f90a6: NOKEY
+[  2/128] Prepare transaction           100% |  74.0   B/s | 126.0   B |  00m02s
+[  3/128] Installing linux-firmware-whe 100% |  26.6 MiB/s | 463.9 KiB |  00m00s
+[  4/128] Upgrading systemd-libs-0:259. 100% |  34.1 MiB/s |   2.5 MiB |  00m00s
+[  5/128] Installing libblkid-0:2.41.5- 100% |  14.1 MiB/s | 275.3 KiB |  00m00s
+[  6/128] Installing libxcrypt-0:4.5.2- 100% |   7.8 MiB/s | 295.9 KiB |  00m00s
+[  7/128] Installing systemd-shared-0:2 100% |  55.1 MiB/s |   5.5 MiB |  00m00s
+[  8/128] Installing libxml2-0:2.12.10- 100% |  13.2 MiB/s |   1.8 MiB |  00m00s
+[  9/128] Installing json-c-0:0.18-8.fc 100% |   3.7 MiB/s |  83.9 KiB |  00m00s
+[ 10/128] Installing libfdisk-0:2.41.5- 100% |  15.8 MiB/s | 389.4 KiB |  00m00s
+[ 11/128] Installing libmount-0:2.41.5- 100% |  16.0 MiB/s | 393.7 KiB |  00m00s
+[ 12/128] Installing libunistring-0:1.1 100% |  41.3 MiB/s |   1.7 MiB |  00m00s
+[ 13/128] Installing libidn2-0:2.3.8-3. 100% |   5.3 MiB/s | 562.6 KiB |  00m00s
+[ 14/128] Installing elfutils-libelf-0: 100% |  25.8 MiB/s |   1.4 MiB |  00m00s
+[ 15/128] Installing ngtcp2-0:1.22.1-1. 100% |  12.3 MiB/s | 339.8 KiB |  00m00s
+[ 16/128] Installing libstdc++-0:16.2.1 100% |  31.8 MiB/s |   3.1 MiB |  00m00s
+[ 17/128] Installing libsmartcols-0:2.4 100% |   8.0 MiB/s | 189.5 KiB |  00m00s
+[ 18/128] Installing util-linux-core-0: 100% |   5.0 MiB/s |   1.5 MiB |  00m00s
+[ 19/128] Installing libcom_err-0:1.47. 100% |   3.0 MiB/s |  64.1 KiB |  00m00s
+[ 20/128] Installing kmod-libs-0:34.2-4 100% |   5.7 MiB/s | 140.1 KiB |  00m00s
+[ 21/128] Installing grub2-common-1:2.1 100% |  31.0 MiB/s |   6.2 MiB |  00m00s
+[ 22/128] Installing authselect-libs-0: 100% |   3.8 MiB/s | 906.2 KiB |  00m00s
+[ 23/128] Installing zstd-0:1.5.7-5.fc4 100% |   3.9 MiB/s | 506.0 KiB |  00m00s
+[ 24/128] Installing ngtcp2-crypto-ossl 100% |   2.8 MiB/s |  52.5 KiB |  00m00s
+[ 25/128] Installing libbpf-2:1.6.3-2.f 100% |  18.8 MiB/s | 443.5 KiB |  00m00s
+[ 26/128] Installing libtextstyle-0:0.2 100% |  17.8 MiB/s | 382.8 KiB |  00m00s
+[ 27/128] Installing gettext-libs-0:0.2 100% |  42.2 MiB/s |   2.4 MiB |  00m00s
+[ 28/128] Installing systemd-sysusers-0 100% | 808.4 KiB/s |  80.8 KiB |  00m00s
+[ 29/128] Installing cyrus-sasl-lib-0:2 100% |  13.7 MiB/s |   2.3 MiB |  00m00s
+[ 30/128] Installing libusb1-0:1.0.30-1 100% |   3.0 MiB/s | 177.7 KiB |  00m00s
+>>> Running sysusers scriptlet: tpm2-tss-0:4.1.3-9.fc44.x86_64
+>>> Finished sysusers scriptlet: tpm2-tss-0:4.1.3-9.fc44.x86_64
+>>> Scriptlet output:
+>>> Creating group 'tss' with GID 59.
+>>> Creating user 'tss' (Account used for TPM access) with UID 59 and GID 59.
+>>> 
+[ 31/128] Installing tpm2-tss-0:4.1.3-9 100% |  11.7 MiB/s |   1.6 MiB |  00m00s
+[ 32/128] Installing procps-ng-0:4.0.6- 100% |   4.9 MiB/s |   1.1 MiB |  00m00s
+[ 33/128] Installing linux-firmware-0:2 100% |  11.6 MiB/s |  33.3 MiB |  00m03s
+[ 34/128] Installing xz-1:5.8.2-2.fc44. 100% |   4.0 MiB/s |   1.4 MiB |  00m00s
+[ 35/128] Installing xkeyboard-config-0 100% |   9.5 MiB/s |   6.5 MiB |  00m01s
+[ 36/128] Installing whois-nls-0:5.6.6- 100% |   2.4 MiB/s | 134.8 KiB |  00m00s
+[ 37/128] Installing publicsuffix-list- 100% |   4.6 MiB/s |  71.1 KiB |  00m00s
+[ 38/128] Installing libpsl-0:0.21.5-7. 100% |   3.4 MiB/s |  77.4 KiB |  00m00s
+[ 39/128] Installing popt-0:1.19-10.fc4 100% |   1.1 MiB/s | 139.3 KiB |  00m00s
+[ 40/128] Installing pkgconf-m4-0:2.5.1 100% |   1.1 MiB/s |  14.7 KiB |  00m00s
+[ 41/128] Installing lz4-libs-0:1.10.0- 100% |   7.0 MiB/s | 158.4 KiB |  00m00s
+[ 42/128] Installing libverto-0:0.3.2-1 100% | 902.6 KiB/s |  27.1 KiB |  00m00s
+[ 43/128] Installing libtool-ltdl-0:2.5 100% |   3.5 MiB/s |  71.1 KiB |  00m00s
+[ 44/128] Installing libssh-config-0:0. 100% |  61.3 KiB/s | 816.0   B |  00m00s
+[ 45/128] Installing libseccomp-0:2.6.1 100% |   7.1 MiB/s | 224.0 KiB |  00m00s
+[ 46/128] Installing libpkgconf-0:2.5.1 100% |   3.9 MiB/s |  91.3 KiB |  00m00s
+[ 47/128] Installing pkgconf-0:2.5.1-1. 100% | 820.9 KiB/s |  95.2 KiB |  00m00s
+[ 48/128] Installing pkgconf-pkg-config 100% |  18.9 KiB/s |   1.8 KiB |  00m00s
+[ 49/128] Installing kmod-0:34.2-4.fc44 100% |   1.7 MiB/s | 256.9 KiB |  00m00s
+[ 50/128] Installing libnghttp3-0:1.18. 100% |   6.2 MiB/s | 164.8 KiB |  00m00s
+[ 51/128] Installing libnghttp2-0:1.68. 100% |   7.1 MiB/s | 167.3 KiB |  00m00s
+[ 52/128] Installing liblastlog2-0:2.41 100% | 992.5 KiB/s |  43.7 KiB |  00m00s
+[ 53/128] Installing libevent-0:2.1.13- 100% |  17.8 MiB/s | 984.4 KiB |  00m00s
+[ 54/128] Installing openldap-0:2.6.15- 100% |  12.0 MiB/s | 675.1 KiB |  00m00s
+[ 55/128] Installing libcbor-0:0.13.0-2 100% |   3.4 MiB/s |  80.9 KiB |  00m00s
+[ 56/128] Installing libfido2-0:1.16.0- 100% |   8.3 MiB/s | 247.9 KiB |  00m00s
+[ 57/128] Installing libbrotli-0:1.2.0- 100% |  20.7 MiB/s | 867.3 KiB |  00m00s
+[ 58/128] Installing keyutils-libs-0:1. 100% |   2.0 MiB/s |  55.6 KiB |  00m00s
+[ 59/128] Installing krb5-libs-0:1.22.2 100% |  18.7 MiB/s |   2.4 MiB |  00m00s
+[ 60/128] Installing libtirpc-0:1.3.8-0 100% |   5.7 MiB/s | 210.3 KiB |  00m00s
+[ 61/128] Installing libnsl2-0:2.0.1-5. 100% |   2.7 MiB/s |  58.8 KiB |  00m00s
+[ 62/128] Installing libssh-0:0.12.2-1. 100% |  18.2 MiB/s | 727.6 KiB |  00m00s
+[ 63/128] Installing libcurl-0:8.18.0-1 100% |  32.2 MiB/s |   1.0 MiB |  00m00s
+[ 64/128] Installing tpm2-tss-fapi-0:4. 100% |  28.7 MiB/s | 910.9 KiB |  00m00s
+[ 65/128] Installing kbd-misc-0:2.9.0-4 100% |   2.4 MiB/s |   2.5 MiB |  00m01s
+[ 66/128] Installing kbd-legacy-0:2.9.0 100% |   1.1 MiB/s | 610.1 KiB |  00m01s
+[ 67/128] Installing kbd-0:2.9.0-4.fc44 100% |   4.4 MiB/s |   1.5 MiB |  00m00s
+[ 68/128] Installing gzip-0:1.14-2.fc44 100% |   2.7 MiB/s | 407.1 KiB |  00m00s
+[ 69/128] Installing cracklib-0:2.10.3- 100% | 934.5 KiB/s | 246.7 KiB |  00m00s
+[ 70/128] Installing libpwquality-0:1.4 100% |   1.5 MiB/s | 421.0 KiB |  00m00s
+[ 71/128] Installing gettext-envsubst-0 100% | 838.9 KiB/s |  88.9 KiB |  00m00s
+[ 72/128] Installing gettext-runtime-0: 100% |   2.9 MiB/s | 748.8 KiB |  00m00s
+[ 73/128] Installing gdbm-1:1.23-11.fc4 100% |   2.8 MiB/s | 464.7 KiB |  00m00s
+[ 74/128] Installing pam-0:1.7.2-2.fc44 100% |   2.6 MiB/s |   1.7 MiB |  00m01s
+[ 75/128] Installing util-linux-0:2.41. 100% |   4.5 MiB/s |   3.6 MiB |  00m01s
+>>> Running sysusers scriptlet: systemd-0:259.10-1.fc44.x86_64
+>>> Finished sysusers scriptlet: systemd-0:259.10-1.fc44.x86_64
+>>> Scriptlet output:
+>>> Creating group 'empower' with GID 999.
+>>> 
+>>> Running sysusers scriptlet: systemd-0:259.10-1.fc44.x86_64
+>>> Finished sysusers scriptlet: systemd-0:259.10-1.fc44.x86_64
+>>> Scriptlet output:
+>>> Creating group 'systemd-journal' with GID 190.
+>>> 
+>>> Running sysusers scriptlet: systemd-0:259.10-1.fc44.x86_64
+>>> Finished sysusers scriptlet: systemd-0:259.10-1.fc44.x86_64
+>>> Scriptlet output:
+>>> Creating group 'systemd-oom' with GID 998.
+>>> Creating user 'systemd-oom' (systemd Userspace OOM Killer) with UID 998 and GID 998.
+>>> 
+[ 76/128] Installing systemd-0:259.10-1 100% |   3.9 MiB/s |  13.1 MiB |  00m03s
+>>> Running %post scriptlet: systemd-0:259.10-1.fc44.x86_64
+>>> Finished %post scriptlet: systemd-0:259.10-1.fc44.x86_64
+>>> Scriptlet output:
+>>> Failed to connect to audit log, ignoring: Operation not permitted
+>>> 
+[ 77/128] Installing device-mapper-0:1. 100% |   2.5 MiB/s | 350.3 KiB |  00m00s
+[ 78/128] Installing device-mapper-libs 100% |  14.5 MiB/s | 431.3 KiB |  00m00s
+[ 79/128] Installing cryptsetup-libs-0: 100% |  24.8 MiB/s |   3.0 MiB |  00m00s
+[ 80/128] Installing libkcapi-0:1.5.0-7 100% |   2.9 MiB/s | 101.0 KiB |  00m00s
+[ 81/128] Installing libkcapi-hasher-0: 100% | 366.0 KiB/s |  40.6 KiB |  00m00s
+[ 82/128] Installing libkcapi-hmaccalc- 100% |  11.6 KiB/s |   1.1 KiB |  00m00s
+[ 83/128] Installing fuse3-libs-0:3.18. 100% |  10.4 MiB/s | 298.9 KiB |  00m00s
+[ 84/128] Installing grub2-tools-minima 100% |  25.7 MiB/s |   4.1 MiB |  00m00s
+[ 85/128] Installing file-libs-0:5.46-1 100% |  92.7 MiB/s |  11.9 MiB |  00m00s
+[ 86/128] Installing file-0:5.46-10.fc4 100% | 967.4 KiB/s | 101.6 KiB |  00m00s
+[ 87/128] Installing elfutils-default-y 100% | 113.5 KiB/s |   2.0 KiB |  00m00s
+[ 88/128] Installing elfutils-libs-0:0. 100% |  10.0 MiB/s | 717.2 KiB |  00m00s
+>>> Running sysusers scriptlet: dbus-common-1:1.16.2-1.fc44.noarch
+>>> Finished sysusers scriptlet: dbus-common-1:1.16.2-1.fc44.noarch
+>>> Scriptlet output:
+>>> Creating group 'dbus' with GID 81.
+>>> Creating user 'dbus' (System Message Bus) with UID 81 and GID 81.
+>>> 
+[ 89/128] Installing dbus-common-1:1.16 100% | 111.1 KiB/s |  13.6 KiB |  00m00s
+>>> Running %post scriptlet: dbus-common-1:1.16.2-1.fc44.noarch
+>>> Finished %post scriptlet: dbus-common-1:1.16.2-1.fc44.noarch
+>>> Scriptlet output:
+>>> Created symlink '/etc/systemd/system/sockets.target.wants/dbus.socket' → '/usr/lib/systemd/system/dbus.socket'.
+>>> Created symlink '/etc/systemd/user/sockets.target.wants/dbus.socket' → '/usr/lib/systemd/user/dbus.socket'.
+>>> 
+[ 90/128] Installing dbus-broker-0:37-8 100% |   2.0 MiB/s | 397.5 KiB |  00m00s
+>>> Running %post scriptlet: dbus-broker-0:37-8.fc44.x86_64
+>>> Finished %post scriptlet: dbus-broker-0:37-8.fc44.x86_64
+>>> Scriptlet output:
+>>> Created symlink '/etc/systemd/system/dbus.service' → '/usr/lib/systemd/system/dbus-broker.service'.
+>>> Created symlink '/etc/systemd/user/dbus.service' → '/usr/lib/systemd/user/dbus-broker.service'.
+>>> 
+[ 91/128] Installing cpio-0:2.15-9.fc44 100% |   5.3 MiB/s |   1.1 MiB |  00m00s
+[ 92/128] Installing grubby-0:8.40-88.f 100% | 276.4 KiB/s |  47.0 KiB |  00m00s
+>>> Running sysusers scriptlet: systemd-udev-0:259.10-1.fc44.x86_64
+>>> Finished sysusers scriptlet: systemd-udev-0:259.10-1.fc44.x86_64
+>>> Scriptlet output:
+>>> Creating group 'systemd-coredump' with GID 997.
+>>> Creating user 'systemd-coredump' (systemd Core Dumper) with UID 997 and GID 997.
+>>> 
+>>> Running sysusers scriptlet: systemd-udev-0:259.10-1.fc44.x86_64
+>>> Finished sysusers scriptlet: systemd-udev-0:259.10-1.fc44.x86_64
+>>> Scriptlet output:
+>>> Creating group 'systemd-timesync' with GID 996.
+>>> Creating user 'systemd-timesync' (systemd Time Synchronization) with UID 996 and GID 996.
+>>> 
+[ 93/128] Installing systemd-udev-0:259 100% |   4.7 MiB/s |  13.2 MiB |  00m03s
+>>> Running %post scriptlet: systemd-udev-0:259.10-1.fc44.x86_64
+>>> Finished %post scriptlet: systemd-udev-0:259.10-1.fc44.x86_64
+>>> Scriptlet output:
+>>> Failed to preset unit: Unit systemd-tmpfiles-clear.service does not exist
+>>> Created symlink '/etc/systemd/system/multi-user.target.wants/remote-cryptsetup.target' → '/usr/lib/systemd/system/remote-cryptsetup.target'.
+>>> Created symlink '/etc/systemd/system/multi-user.target.wants/remote-veritysetup.target' → '/usr/lib/systemd/system/remote-veritysetup.target'.
+>>> Created symlink '/etc/systemd/system/systemd-homed.service.wants/systemd-homed-activate.service' → '/usr/lib/systemd/system/systemd-homed-activate.service'.
+>>> Created symlink '/etc/systemd/system/dbus-org.freedesktop.home1.service' → '/usr/lib/systemd/system/systemd-homed.service'.
+>>> Created symlink '/etc/systemd/system/multi-user.target.wants/systemd-homed.service' → '/usr/lib/systemd/system/systemd-homed.service'.
+>>> Created symlink '/etc/systemd/system/sysinit.target.wants/systemd-network-generator.service' → '/usr/lib/systemd/system/systemd-network-generator.service'.
+>>> Created symlink '/etc/systemd/system/dbus-org.freedesktop.oom1.service' → '/usr/lib/systemd/system/systemd-oomd.service'.
+>>> Created symlink '/etc/systemd/system/multi-user.target.wants/systemd-oomd.service' → '/usr/lib/systemd/system/systemd-oomd.service'.
+>>> Created symlink '/etc/systemd/system/sockets.target.wants/systemd-oomd.socket' → '/usr/lib/systemd/system/systemd-oomd.socket'.
+>>> Created symlink '/etc/systemd/system/sysinit.target.wants/systemd-pstore.service' → '/usr/lib/systemd/system/systemd-pstore.service'.
+>>> 
+[ 94/128] Installing dracut-0:108-8.fc4 100% |   1.9 MiB/s |   1.6 MiB |  00m01s
+[ 95/128] Installing os-prober-0:1.81-1 100% | 746.9 KiB/s | 117.3 KiB |  00m00s
+[ 96/128] Installing grub2-tools-1:2.12 100% |  24.3 MiB/s |   7.8 MiB |  00m00s
+>>> Running %post scriptlet: grub2-tools-1:2.12-66.fc44.x86_64
+>>> Finished %post scriptlet: grub2-tools-1:2.12-66.fc44.x86_64
+>>> Scriptlet output:
+>>> Created symlink '/etc/systemd/user/timers.target.wants/grub-boot-success.timer' → '/usr/lib/systemd/user/grub-boot-success.timer'.
+>>> 
+[ 97/128] Installing kernel-core-0:7.2. 100% |  39.7 MiB/s |  30.8 MiB |  00m01s
+[ 98/128] Installing kernel-modules-cor 100% |   5.8 MiB/s |  47.5 MiB |  00m08s
+[ 99/128] Installing dbus-1:1.16.2-1.fc 100% |  13.5 KiB/s | 124.0   B |  00m00s
+[100/128] Installing elfutils-debuginfo 100% | 712.0 KiB/s |  86.2 KiB |  00m00s
+[101/128] Installing kpartx-0:0.13.1-1. 100% | 608.3 KiB/s |  89.4 KiB |  00m00s
+>>> Running sysusers scriptlet: systemd-networkd-0:259.10-1.fc44.x86_64
+>>> Finished sysusers scriptlet: systemd-networkd-0:259.10-1.fc44.x86_64
+>>> Scriptlet output:
+>>> Creating group 'systemd-network' with GID 192.
+>>> Creating user 'systemd-network' (systemd Network Management) with UID 192 and GID 192.
+>>> 
+[102/128] Installing systemd-networkd-0 100% |   7.1 MiB/s |   2.3 MiB |  00m00s
+[103/128] Installing systemd-pam-0:259. 100% |  16.3 MiB/s |   1.2 MiB |  00m00s
+>>> Running sysusers scriptlet: systemd-resolved-0:259.10-1.fc44.x86_64
+>>> Finished sysusers scriptlet: systemd-resolved-0:259.10-1.fc44.x86_64
+>>> Scriptlet output:
+>>> Creating group 'systemd-resolve' with GID 193.
+>>> Creating user 'systemd-resolve' (systemd Resolver) with UID 193 and GID 193.
+>>> 
+[104/128] Installing systemd-resolved-0 100% |   2.9 MiB/s | 659.7 KiB |  00m00s
+>>> Running %post scriptlet: systemd-resolved-0:259.10-1.fc44.x86_64
+>>> Finished %post scriptlet: systemd-resolved-0:259.10-1.fc44.x86_64
+>>> Scriptlet output:
+>>> Created symlink '/etc/systemd/system/dbus-org.freedesktop.resolve1.service' → '/usr/lib/systemd/system/systemd-resolved.service'.
+>>> Created symlink '/etc/systemd/system/sysinit.target.wants/systemd-resolved.service' → '/usr/lib/systemd/system/systemd-resolved.service'.
+>>> Created symlink '/etc/systemd/system/sockets.target.wants/systemd-resolved-varlink.socket' → '/usr/lib/systemd/system/systemd-resolved-varlink.socket'.
+>>> Created symlink '/etc/systemd/system/sockets.target.wants/systemd-resolved-monitor.socket' → '/usr/lib/systemd/system/systemd-resolved-monitor.socket'.
+>>> 
+[105/128] Installing cracklib-dicts-0:2 100% |  45.9 MiB/s |   9.4 MiB |  00m00s
+[106/128] Installing tpm2-tools-0:5.7-5 100% |   3.2 MiB/s |   1.6 MiB |  00m00s
+[107/128] Installing libarchive-0:3.8.7 100% |  22.2 MiB/s |   1.0 MiB |  00m00s
+[108/128] Installing authselect-0:1.7.1 100% |   1.1 MiB/s | 207.9 KiB |  00m00s
+[109/128] Installing mkpasswd-0:5.6.6-1 100% | 383.1 KiB/s |  40.6 KiB |  00m00s
+[110/128] Installing libxkbcommon-0:1.1 100% |  12.5 MiB/s | 433.9 KiB |  00m00s
+[111/128] Installing amd-gpu-firmware-0 100% |  16.2 MiB/s |  28.1 MiB |  00m02s
+[112/128] Installing amd-ucode-firmware 100% |  12.4 MiB/s | 671.1 KiB |  00m00s
+[113/128] Installing atheros-firmware-0 100% |  36.4 MiB/s |  47.2 MiB |  00m01s
+[114/128] Installing brcmfmac-firmware- 100% |  30.9 MiB/s |   9.5 MiB |  00m00s
+[115/128] Installing cirrus-audio-firmw 100% | 625.5 KiB/s |   3.2 MiB |  00m05s
+[116/128] Installing intel-audio-firmwa 100% |  19.5 MiB/s |   3.6 MiB |  00m00s
+[117/128] Installing intel-gpu-firmware 100% |  14.2 MiB/s |  12.2 MiB |  00m01s
+[118/128] Installing intel-npu-firmware 100% |  20.4 MiB/s | 941.3 KiB |  00m00s
+[119/128] Installing mt7xxx-firmware-0: 100% |  64.2 MiB/s |  31.7 MiB |  00m00s
+[120/128] Installing nvidia-gpu-firmwar 100% |  43.9 MiB/s | 101.1 MiB |  00m02s
+[121/128] Installing nxpwireless-firmwa 100% |  36.3 MiB/s |   1.5 MiB |  00m00s
+[122/128] Installing qcom-wwan-firmware 100% |  19.8 MiB/s | 751.4 KiB |  00m00s
+[123/128] Installing realtek-firmware-0 100% |  24.5 MiB/s |   6.9 MiB |  00m00s
+[124/128] Installing tiwilink-firmware- 100% |  39.5 MiB/s |   4.6 MiB |  00m00s
+[125/128] Installing qrencode-libs-0:4. 100% |   5.2 MiB/s | 166.5 KiB |  00m00s
+[126/128] Installing memstrack-0:0.2.5- 100% |   1.2 MiB/s | 121.1 KiB |  00m00s
+[127/128] Installing diffutils-0:3.12-5 100% |   6.6 MiB/s |   1.6 MiB |  00m00s
+[128/128] Removing systemd-libs-0:259.9 100% |   0.0   B/s |  22.0   B |  00m57s
+>>> Running %posttrans scriptlet: grub2-common-1:2.12-66.fc44.noarch
+>>> Finished %posttrans scriptlet: grub2-common-1:2.12-66.fc44.noarch
+>>> Scriptlet output:
+>>> /usr/bin/grub2-probe: error: failed to get canonical path of `/work/image'.
+>>> 
+>>> Running %posttrans scriptlet: kernel-core-0:7.2.11-200.fc44.x86_64
+>>> Finished %posttrans scriptlet: kernel-core-0:7.2.11-200.fc44.x86_64
+>>> Scriptlet output:
+>>> grub2-probe: error: failed to get canonical path of `/work/image'.
+>>> No path or device is specified.
+>>> Usage: grub2-probe [OPTION...] [OPTION]... [PATH|DEVICE]
+>>> Try 'grub2-probe --help' or 'grub2-probe --usage' for more information.
+>>> grub2-editenv: error: failed to get canonical path of `/work/image'.
+>>> /sbin/dracut: line 1140: /sys/module/firmware_class/parameters/path: No such file or directory
+>>> dracut[E]: No '/dev/log' or 'logger' included for syslog logging
+>>> grub2-editenv: error: failed to get canonical path of `/work/image'.
+>>> 
+>>> Running %posttrans scriptlet: systemd-resolved-0:259.10-1.fc44.x86_64
+>>> Finished %posttrans scriptlet: systemd-resolved-0:259.10-1.fc44.x86_64
+>>> Scriptlet output:
+>>> '/etc/resolv.conf' -> '../run/systemd/resolve/stub-resolv.conf'
+>>> 
+>>> Running %triggerin scriptlet: systemd-0:259.10-1.fc44.x86_64
+>>> Finished %triggerin scriptlet: systemd-0:259.10-1.fc44.x86_64
+>>> Scriptlet output:
+>>> Failed to connect to audit log, ignoring: Operation not permitted
+>>> 
+Warning: skipped OpenPGP checks for 125 packages from repository: @commandline
+Complete!
+RESTRICTED_INITIAL_DNF_INSTALL_PASS
+PACKAGE_INSTALL_PASS
+SANDBOX_BEGIN
+         0     100000      65536
+666 0:0 1:3
+44 36 0:26 / / rw,nosuid,nodev,relatime - fuse.ext4 /work/image rw,user_id=0,group_id=0,default_permissions,allow_other
+45 44 0:28 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw
+46 44 0:29 / /dev rw,nosuid,noexec,relatime - tmpfs tmpfs rw,uid=100000,gid=100000,inode64
+47 46 0:25 /runtime/null /dev/null rw,relatime - tmpfs tmpfs rw,mode=755,inode64
+48 46 0:25 /runtime/zero /dev/zero rw,relatime - tmpfs tmpfs rw,mode=755,inode64
+49 46 0:25 /runtime/random /dev/random rw,relatime - tmpfs tmpfs rw,mode=755,inode64
+50 46 0:25 /runtime/urandom /dev/urandom rw,relatime - tmpfs tmpfs rw,mode=755,inode64
+DAEMON_PID_INACCESSIBLE_PASS
+/dev/null
+pipe:[9315]
+pipe:[9315]
+VISIBILITY_PASS
+/test-caps cap_net_bind_service=ep
+getfattr: Removing leading '/' from absolute path names
+# file: test-owned
+security.selinux="system_u:object_r:conglobate_target_only_t:s0"
+
+mknod: /test-device: Operation not permitted
+MKNOD_EXPECTED_DENIAL
+ATTACK_BLOCKED worker kill/pidfd/ptrace
+ATTACK_BLOCKED inherited descriptors
+ATTACK_BLOCKED outside paths and absolute symlink
+ATTACK_BLOCKED abstract Unix control socket
+ATTACK_BLOCKED new proc mount denied by policy
+ATTACK_BLOCKED retained cwd chroot escape stays within pivot root
+ADVERSARIAL_RESULT PASS
+ANCESTOR_MODES 0o40555 0o40755
+ACL_RESULT 1234 True True
+CHILD_STATUS 0
+ACL_DENIAL 1235 PermissionError(13, 'Permission denied')
+ACL_RESULT 1235 False False
+CHILD_STATUS 0
+ACL_ENFORCEMENT_PROBE_END
+getfacl: Removing leading '/' from absolute path names
+INHERITED_ACL # file: semantics/inherited
+# owner: 0
+# group: 0
+user::rw-
+user:1234:rwx	#effective:rw-
+group::r-x	#effective:r--
+mask::rw-
+other::r--
+
+
+PAIRED_WORKER_PACKAGE_ACL_ASSERTIONS_PASS
+ACL_INHERITANCE_PROBE_END
+ID_RANGE_BOUNDARY_PASS
+SPARSE_MMAP_FSYNC_LOCK_LINK_RENAME_PASS
+dd5cf70812119c4838f5d5aabdbe29b87b57950bc17dc8680b582fc5d476361b  /boot/validation-initramfs.img
+RESTRICTED_DRACUT_GENERATION_PASS
+getfattr: Removing leading '/' from absolute path names
+# file: test-owned
+security.selinux="system_u:object_r:conglobate_target_only_t:s0"
+
+RESTRICTED_RPM_REINSTALL_REMOVE_INSTALL_PASS
+warning: /etc/conglobate-upgrade.conf created as /etc/conglobate-upgrade.conf.rpmnew
+RESTRICTED_VERSION_UPGRADE_CONFIG_SCRIPTLETS_PASS
+RUNTIME_DEVICE_MUTATED
+DESCENDANTS_ALIVE_BEFORE_EXIT_PASS
+SANDBOX_PASS
+DETACHED_DESCENDANT_TERMINATION_PASS
+BUILDER_DEVICE_UNCHANGED_PASS
+DESCENDANT_TERMINATION_PASS
+DAEMON_SURVIVED_PASS
+WORKER_PASS
+FUSE2FS (image): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (image): mounted filesystem 3bfadc60-5b9a-4bca-b501-a8f18f73fc85.
+FUSE2FS (image): unmounting filesystem 3bfadc60-5b9a-4bca-b501-a8f18f73fc85.
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 25381/131072 files (0.4% non-contiguous), 242990/524288 blocks
+1000:1000
+getfacl: Removing leading '/' from absolute path names
+# file: work/raw/test-owned
+# owner: 1000
+# group: 1000
+user::rw-
+user:1234:rw-
+group::r--
+mask::rw-
+other::r--
+
+getfattr: Removing leading '/' from absolute path names
+# file: work/raw/test-owned
+security.selinux="system_u:object_r:conglobate_target_only_t:s0"
+
+/work/raw/test-caps cap_net_bind_service=ep
+0: cap_net_bind_service=ep
+INSTALLED_SHELL_PASS
+TRUSTED_BOOT_ARTIFACT_EXPORT_PASS
+/boot/validation-initramfs.img: OK
+INITRAMFS_KERNEL_REMOUNT_PASS
+UPGRADE_KERNEL_REMOUNT_PASS
+0 4194304 snapshot 2007296/4194304 7824
+/work/origin: OK
+/crash-worker: line 10: 11587 Killed                     fuse2fs -f -o acl,allow_other /work/failure /work/view > /work/fuse.log 2>&1
+DAEMON_FAILURE_DETECTED_PASS
+touch: cannot touch '/work/view/after': Transport endpoint is not connected
+DEAD_DAEMON_IO_FAILURE_PASS
+FAILED_MOUNT_CLEANUP_PASS
+VALIDATION_PASS
+GUEST_EXIT 0
+[  202.681221] sysrq: Resetting

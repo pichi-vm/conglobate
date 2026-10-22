@@ -1,0 +1,38 @@
+   Compiling conglobate v0.1.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.05s
+     Running unittests src/lib.rs (target/debug/deps/conglobate-61f3cdefb340d1a0)
+
+running 1 test
+test execute::tests::trusted_helper_does_not_inherit_shell_startup_environment ... FAILED
+
+failures:
+
+---- execute::tests::trusted_helper_does_not_inherit_shell_startup_environment stdout ----
+
+thread 'execute::tests::trusted_helper_does_not_inherit_shell_startup_environment' (2982757) panicked at src/execute.rs:334:9:
+
+running 1 test
+test execute::tests::trusted_helper_does_not_inherit_shell_startup_environment ... FAILED
+
+failures:
+
+failures:
+    execute::tests::trusted_helper_does_not_inherit_shell_startup_environment
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+
+
+
+thread 'execute::tests::trusted_helper_does_not_inherit_shell_startup_environment' (2982760) panicked at src/execute.rs:305:13:
+assertion failed: status.success()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    execute::tests::trusted_helper_does_not_inherit_shell_startup_environment
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `--lib`

@@ -1,0 +1,15 @@
+
+running 7 tests
+test authenticated_chain_rejects_disconnected_duplicate_and_missing_ancestry ... ok
+test compressed_scutes_validate_complete_streams_and_decoded_root ... ok
+test imported_scutes_reconstruct_the_authenticated_root ... ok
+test kernel_snapshot_changes_become_a_verified_layer ... ok
+test planned_import_captures_exact_bytes_and_full_metadata_terminator ... ok
+test staging_preserves_partial_block_padding_and_rejects_wrong_extents ... ok
+test startup_recovers_an_interrupted_device_activation ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.80s
+
+SCUTE_ROOT_TESTS_AND_CLEANUP_PASS
+GUEST_EXIT 0
+[    1.996536] sysrq: Resetting

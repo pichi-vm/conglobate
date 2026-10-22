@@ -1,0 +1,65 @@
+#!/bin/bash
+set -euo pipefail
+export PATH=/usr/bin:/usr/sbin:/bin:/sbin
+export TMPDIR=/tmp
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+modprobe ipv6
+ip link set lo up
+ip addr add 10.45.0.2/24 dev eth0
+ip link set eth0 up
+ip route add default via 10.45.0.1
+mkdir -p /mnt /tmp
+printf 'nameserver 10.0.2.3\n' >/etc/resolv.conf
+mkfs.ext4 -F -q /dev/ubda
+mount -t ext4 /dev/ubda /mnt
+debootstrap --arch=amd64 --variant=minbase --keyring=/usr/share/keyrings/debian-archive-keyring.pgp trixie /mnt http://deb.debian.org/debian
+echo UML_DEBIAN_BOOTSTRAP_PASS
+mount -t proc proc /mnt/proc
+mount -t sysfs sysfs /mnt/sys
+mount -t devtmpfs devtmpfs /mnt/dev
+cp /etc/resolv.conf /mnt/etc/resolv.conf
+printf '#!/bin/sh\nexit 101\n' >/mnt/usr/sbin/policy-rc.d
+chmod 755 /mnt/usr/sbin/policy-rc.d
+export DEBIAN_FRONTEND=noninteractive
+chroot /mnt /usr/bin/apt-get update
+chroot /mnt /usr/bin/apt-get -y --no-install-recommends install linux-image-amd64 initramfs-tools acl attr libcap2-bin
+chroot /mnt /usr/bin/apt-get -y upgrade
+chroot /mnt /bin/sh -eu -c '
+ groupadd -g 2345 buildgroup
+ useradd -u 1234 -g 2345 builduser
+ echo derived > /debian-derived
+ chown 1234:2345 /debian-derived
+ setfattr -n user.validation -v persisted /debian-derived
+ setfacl -m u:3456:r-- /debian-derived
+ update-initramfs -u -k all
+ dpkg-query -W
+'
+cat >/mnt/sbin/validation-init <<'BOOT'
+#!/bin/sh
+set -eu
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+test "$$" = 1
+test "$(cat /debian-derived)" = derived
+test "$(stat -c '%u:%g' /debian-derived)" = 1234:2345
+test -f /etc/debian_version
+getfattr -n user.validation /debian-derived
+getfacl -n /debian-derived
+uname -a
+echo UML_DEBIAN_NATIVE_ROOT_BOOT_PASS
+/bin/busybox poweroff -f
+BOOT
+cp /usr/bin/busybox /mnt/bin/busybox
+chmod 755 /mnt/sbin/validation-init
+ls -l /mnt/boot
+echo UML_DEBIAN_DERIVE_FIRMWARE_PASS
+umount /mnt/dev /mnt/sys /mnt/proc
+/usr/bin/busybox sync
+umount /mnt
+mount -t ext4 -o ro /dev/ubda /mnt
+test "$(cat /mnt/debian-derived)" = derived
+test "$(stat -c '%u:%g' /mnt/debian-derived)" = 1234:2345
+umount /mnt
+echo UML_DEBIAN_OUTPUT_VERIFIED
+/usr/bin/busybox poweroff -f

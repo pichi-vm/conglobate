@@ -1,0 +1,107 @@
+METADATA_FEATURE metadata-csum
+METADATA_NAMESPACE kernel
+METADATA_OBSERVATIONS {"append-append": {"ok": null}, "append-chmod": {"errno": "EPERM"}, "append-get": {"ok": 524320}, "append-set": {"ok": null}, "append-write": {"errno": "EPERM"}, "device-node": {"ok": null}, "immutable-append": {"errno": "EPERM"}, "immutable-chmod": {"errno": "EPERM"}, "immutable-get": {"ok": 524304}, "immutable-set": {"ok": null}, "immutable-write": {"errno": "EPERM"}, "nodump-append": {"ok": null}, "nodump-chmod": {"ok": null}, "nodump-get": {"ok": 524352}, "nodump-set": {"ok": null}, "nodump-write": {"ok": null}, "security.selinux": {"ok": null}, "time-after-2038": {"exact": true, "ok": null}, "time-before-epoch": {"exact": true, "ok": null}, "time-normal": {"exact": true, "ok": null}, "time-symlink": {"ok": null}, "trusted.fixture": {"ok": null}, "user.fixture": {"ok": null}}
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 24/16384 files (0.0% non-contiguous), 9555/65536 blocks
+METADATA_KERNEL_REMOUNT_MATCH_PASS
+METADATA_NAMESPACE initial
+METADATA_OBSERVATIONS {"append-append": {"ok": null}, "append-chmod": {"errno": "EPERM"}, "append-get": {"ok": 524320}, "append-set": {"ok": null}, "append-write": {"errno": "EPERM"}, "device-node": {"ok": null}, "immutable-append": {"errno": "EPERM"}, "immutable-chmod": {"errno": "EPERM"}, "immutable-get": {"ok": 524304}, "immutable-set": {"ok": null}, "immutable-write": {"errno": "EPERM"}, "nodump-append": {"ok": null}, "nodump-chmod": {"ok": null}, "nodump-get": {"ok": 524352}, "nodump-set": {"ok": null}, "nodump-write": {"ok": null}, "security.selinux": {"ok": null}, "time-after-2038": {"exact": true, "ok": null}, "time-before-epoch": {"exact": true, "ok": null}, "time-normal": {"exact": true, "ok": null}, "time-symlink": {"ok": null}, "trusted.fixture": {"ok": null}, "user.fixture": {"ok": null}}
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 24/16384 files (0.0% non-contiguous), 9555/65536 blocks
+METADATA_KERNEL_REMOUNT_MATCH_PASS
+METADATA_REFERENCE_COMPARED initial metadata-csum
+METADATA_NAMESPACE mapped
+METADATA_OBSERVATIONS {"append-get": {"ok": 524288}, "append-set": {"errno": "EPERM"}, "device-node": {"errno": "EPERM"}, "immutable-get": {"ok": 524288}, "immutable-set": {"errno": "EPERM"}, "nodump-append": {"ok": null}, "nodump-chmod": {"ok": null}, "nodump-get": {"ok": 524352}, "nodump-set": {"ok": null}, "nodump-write": {"ok": null}, "security.selinux": {"ok": null}, "time-after-2038": {"exact": true, "ok": null}, "time-before-epoch": {"exact": true, "ok": null}, "time-normal": {"exact": true, "ok": null}, "time-symlink": {"ok": null}, "trusted.fixture": {"errno": "EPERM"}, "user.fixture": {"ok": null}}
+FUSE2FS (image): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (image): mounted filesystem b0df7449-dc0c-41fd-94f9-f292accc6a7e.
+FUSE2FS (image): unmounting filesystem b0df7449-dc0c-41fd-94f9-f292accc6a7e.
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 23/16384 files (0.0% non-contiguous), 9555/65536 blocks
+METADATA_KERNEL_REMOUNT_MATCH_PASS
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"gid": 0, "mode": 8576, "uid": 0}, "name": "device", "section": "disk"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"flags": {"ok": 524288}, "gid": 0, "mode": 33188, "uid": 0, "xattrs": {}}, "kernel": {"flags": {"ok": 524288}, "gid": 0, "mode": 33188, "uid": 0, "xattrs": {"trusted.fixture": "66697874757265"}}, "name": "trusted.fixture", "section": "disk"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"ok": null}, "name": "append-append", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "append-chmod", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 524288}, "kernel": {"ok": 524320}, "name": "append-get", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "append-set", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "append-write", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "device-node", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "immutable-append", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "immutable-chmod", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 524288}, "kernel": {"ok": 524304}, "name": "immutable-get", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "immutable-set", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "immutable-write", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "trusted.fixture", "section": "operations"}
+METADATA_REFERENCE_COMPARED mapped metadata-csum
+METADATA_FEATURE without-metadata-csum
+METADATA_NAMESPACE kernel
+METADATA_OBSERVATIONS {"append-append": {"ok": null}, "append-chmod": {"errno": "EPERM"}, "append-get": {"ok": 524320}, "append-set": {"ok": null}, "append-write": {"errno": "EPERM"}, "device-node": {"ok": null}, "immutable-append": {"errno": "EPERM"}, "immutable-chmod": {"errno": "EPERM"}, "immutable-get": {"ok": 524304}, "immutable-set": {"ok": null}, "immutable-write": {"errno": "EPERM"}, "nodump-append": {"ok": null}, "nodump-chmod": {"ok": null}, "nodump-get": {"ok": 524352}, "nodump-set": {"ok": null}, "nodump-write": {"ok": null}, "security.selinux": {"ok": null}, "time-after-2038": {"exact": true, "ok": null}, "time-before-epoch": {"exact": true, "ok": null}, "time-normal": {"exact": true, "ok": null}, "time-symlink": {"ok": null}, "trusted.fixture": {"ok": null}, "user.fixture": {"ok": null}}
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 24/16384 files (0.0% non-contiguous), 9555/65536 blocks
+METADATA_KERNEL_REMOUNT_MATCH_PASS
+METADATA_NAMESPACE initial
+METADATA_OBSERVATIONS {"append-append": {"ok": null}, "append-chmod": {"errno": "EPERM"}, "append-get": {"ok": 524320}, "append-set": {"ok": null}, "append-write": {"errno": "EPERM"}, "device-node": {"ok": null}, "immutable-append": {"errno": "EPERM"}, "immutable-chmod": {"errno": "EPERM"}, "immutable-get": {"ok": 524304}, "immutable-set": {"ok": null}, "immutable-write": {"errno": "EPERM"}, "nodump-append": {"ok": null}, "nodump-chmod": {"ok": null}, "nodump-get": {"ok": 524352}, "nodump-set": {"ok": null}, "nodump-write": {"ok": null}, "security.selinux": {"ok": null}, "time-after-2038": {"exact": true, "ok": null}, "time-before-epoch": {"exact": true, "ok": null}, "time-normal": {"exact": true, "ok": null}, "time-symlink": {"ok": null}, "trusted.fixture": {"ok": null}, "user.fixture": {"ok": null}}
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 24/16384 files (0.0% non-contiguous), 9555/65536 blocks
+METADATA_KERNEL_REMOUNT_MATCH_PASS
+METADATA_REFERENCE_COMPARED initial without-metadata-csum
+METADATA_NAMESPACE mapped
+METADATA_OBSERVATIONS {"append-get": {"ok": 524288}, "append-set": {"errno": "EPERM"}, "device-node": {"errno": "EPERM"}, "immutable-get": {"ok": 524288}, "immutable-set": {"errno": "EPERM"}, "nodump-append": {"ok": null}, "nodump-chmod": {"ok": null}, "nodump-get": {"ok": 524352}, "nodump-set": {"ok": null}, "nodump-write": {"ok": null}, "security.selinux": {"ok": null}, "time-after-2038": {"exact": true, "ok": null}, "time-before-epoch": {"exact": true, "ok": null}, "time-normal": {"exact": true, "ok": null}, "time-symlink": {"ok": null}, "trusted.fixture": {"errno": "EPERM"}, "user.fixture": {"ok": null}}
+FUSE2FS (image): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (image): mounted filesystem f52f54ba-5e5e-45f3-ab03-703554f38038.
+FUSE2FS (image): unmounting filesystem f52f54ba-5e5e-45f3-ab03-703554f38038.
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 23/16384 files (0.0% non-contiguous), 9555/65536 blocks
+METADATA_KERNEL_REMOUNT_MATCH_PASS
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"gid": 0, "mode": 8576, "uid": 0}, "name": "device", "section": "disk"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"flags": {"ok": 524288}, "gid": 0, "mode": 33188, "uid": 0, "xattrs": {}}, "kernel": {"flags": {"ok": 524288}, "gid": 0, "mode": 33188, "uid": 0, "xattrs": {"trusted.fixture": "66697874757265"}}, "name": "trusted.fixture", "section": "disk"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"ok": null}, "name": "append-append", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "append-chmod", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 524288}, "kernel": {"ok": 524320}, "name": "append-get", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "append-set", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "append-write", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "device-node", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "immutable-append", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "immutable-chmod", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 524288}, "kernel": {"ok": 524304}, "name": "immutable-get", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "immutable-set", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "immutable-write", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "trusted.fixture", "section": "operations"}
+METADATA_REFERENCE_COMPARED mapped without-metadata-csum
+METADATA_MATRIX_COMPLETE
+GUEST_EXIT 0
+[    2.148558] sysrq: Resetting

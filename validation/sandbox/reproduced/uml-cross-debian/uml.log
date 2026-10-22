@@ -1,0 +1,211 @@
+Core dump limits :
+	soft - 0
+	hard - NONE
+Checking that ptrace can change system call numbers...OK
+Checking syscall emulation for ptrace...OK
+Checking environment variables for a tempdir.../runtime
+Checking if /runtime is on tmpfs...OK
+Checking PROT_EXEC mmap in /runtime...OK
+Adding 1043648512 bytes to physical memory to account for exec-shield gap
+Linux version 6.12.101 (sbuild@sbuild) (gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #1 Wed Aug 12 05:59:36 UTC 2026
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x00000000fe34cfff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x000000009e34cfff]
+Initmem setup node 0 [mem 0x0000000000000000-0x000000009e34cfff]
+random: crng init done
+Kernel command line: mem=1536M con=null con0=fd:0,fd:1 ssl=null lsm=capability panic=1 rdinit=/init initrd=/initrd uml_dir=/runtime ubd0=/disk probe_disabled=1 root=98:0 console=tty0
+Unknown kernel command line parameters "mem=1536M uml_dir=/runtime probe_disabled=1", will be passed to user space.
+Dentry cache hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+Inode-cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 648013
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+RCU Tasks Trace: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.
+NR_IRQS: 64
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 5872.02 BogoMIPS (lpj=29360128)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+LSM: initializing lsm=capability
+Mount-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+Mountpoint-cache hash table entries: 4096 (order: 3, 32768 bytes, linear)
+Memory: 1509856K/2592052K available (7160K kernel code, 1552K rwdata, 2300K rodata, 229K init, 336K bss, 1080148K reserved, 0K cma-reserved)
+devtmpfs: initialized
+futex hash table entries: 256 (order: 1, 6144 bytes, linear)
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+audit: initializing netlink subsys (disabled)
+audit: type=2000 audit(1792591085.099:1): state=initialized audit_enabled=0 res=1
+raid6: int64x8  gen()  4818 MB/s
+raid6: int64x4  gen()  4159 MB/s
+raid6: int64x2  gen()  6185 MB/s
+raid6: int64x1  gen()  6459 MB/s
+raid6: using algorithm int64x1 gen() 6459 MB/s
+raid6: .... xor() 3230 MB/s, rmw enabled
+raid6: using intx1 recovery algorithm
+NetLabel: Initializing
+NetLabel:  domain hash size = 128
+NetLabel:  protocols = UNLABELED CIPSOv4 CALIPSO
+NetLabel:  unlabeled traffic allowed by default
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 32768 (order: 6, 262144 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 1024 (order: 1, 8192 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 16384 (order: 5, 131072 bytes, linear)
+TCP bind hash table entries: 16384 (order: 6, 262144 bytes, linear)
+TCP: Hash tables configured (established 16384 bind 16384)
+UDP hash table entries: 1024 (order: 3, 32768 bytes, linear)
+UDP-Lite hash table entries: 1024 (order: 3, 32768 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /runtime/probe/mconsole
+Checking host MADV_REMOVE support...OK
+Mapper v0.1
+mmapper_init - find_iomem failed
+Trying to unpack rootfs image as initramfs...
+workingset: timestamp_bits=46 max_order=19 bucket_order=0
+zbud: loaded
+JFS: nTxBlock = 8192, nTxLock = 65536
+Freeing initrd memory: 5716K
+SGI XFS with ACLs, security attributes, realtime, quota, no debug enabled
+xor: measuring software checksum speed
+   prefetch64-sse  : 25529 MB/sec
+   generic_sse     : 26424 MB/sec
+xor: using function: generic_sse (26424 MB/sec)
+Block layer SCSI generic (bsg) driver version 0.4 loaded (major 253)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+NET: Registered PF_PACKET protocol family
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+registered taskstats version 1
+Btrfs loaded, zoned=no, fsverity=no
+This architecture does not have kernel memory protection.
+Run /init as init process
+EXT4-fs (ubda): mounted filesystem 5157e7d0-c405-4146-88e8-4cebea0a4ab8 r/w with ordered data mode. Quota mode: none.
+getfattr: Removing leading '/' from absolute path names
+user.validation="persisted"
+getfacl: Removing leading '/' from absolute path names
+user:3456:r--
+FIRMWARE_START
+1.32 0.00
+acl	2.3.2-2+b1
+apt	3.0.3
+attr	1:2.5.2-3
+base-files	13.8+deb13u7
+base-passwd	3.6.7
+bash	5.2.37-2+b10
+bsdutils	1:2.41.5-0+deb13u1
+coreutils	9.7-3
+cpio	2.15+dfsg-2
+dash	0.5.12-12
+debconf	1.5.91
+debian-archive-keyring	2025.1
+debianutils	5.23.2
+diffutils	1:3.10-4
+dpkg	1.22.22
+dracut-install	106-6
+findutils	4.10.0-3
+gcc-14-base:amd64	14.2.0-19
+grep	3.11-4
+gzip	1.13-1+deb13u1
+hostname	3.25
+init-system-helpers	1.69~deb13u1
+initramfs-tools	0.148.4
+initramfs-tools-bin	0.148.4
+initramfs-tools-core	0.148.4
+klibc-utils	2.0.14-1
+kmod	34.2-2
+libacl1:amd64	2.3.2-2+b1
+libapparmor1:amd64	4.1.0-1
+libapt-pkg7.0:amd64	3.0.3
+libattr1:amd64	1:2.5.2-3
+libaudit-common	1:4.0.2-2+deb13u1
+libaudit1:amd64	1:4.0.2-2+deb13u1
+libblkid1:amd64	2.41.5-0+deb13u1
+libbsd0:amd64	0.12.2-2
+libbz2-1.0:amd64	1.0.8-6
+libc-bin	2.41-12+deb13u4
+libc6:amd64	2.41-12+deb13u4
+libcap-ng0:amd64	0.8.5-4+b1
+libcap2:amd64	1:2.75-10+deb13u1+b3
+libcap2-bin	1:2.75-10+deb13u1+b3
+libcrypt1:amd64	1:4.4.38-1
+libdb5.3t64:amd64	5.3.28+dfsg2-9
+libdebconfclient0:amd64	0.280
+libgcc-s1:amd64	14.2.0-19
+libgmp10:amd64	2:6.3.0+dfsg-3
+libhogweed6t64:amd64	3.10.1-1
+libklibc:amd64	2.0.14-1
+libkmod2:amd64	34.2-2
+liblastlog2-2:amd64	2.41.5-0+deb13u1
+liblz4-1:amd64	1.10.0-4
+liblzma5:amd64	5.8.1-1+deb13u1
+libmd0:amd64	1.1.0-2+b1
+libmount1:amd64	2.41.5-0+deb13u1
+libnettle8t64:amd64	3.10.1-1
+libpam-modules:amd64	1.7.0-5
+libpam-modules-bin	1.7.0-5
+libpam-runtime	1.7.0-5
+libpam0g:amd64	1.7.0-5
+libpcre2-8-0:amd64	10.46-1~deb13u2
+libseccomp2:amd64	2.6.0-2
+libselinux1:amd64	3.8.1-1
+libsemanage-common	3.8.1-1
+libsemanage2:amd64	3.8.1-1
+libsepol2:amd64	3.8.1-1
+libsmartcols1:amd64	2.41.5-0+deb13u1
+libsqlite3-0:amd64	3.46.1-7+deb13u2
+libssl3t64:amd64	3.5.7-1~deb13u2
+libstdc++6:amd64	14.2.0-19
+libsystemd-shared:amd64	257.13-1~deb13u1
+libsystemd0:amd64	257.13-1~deb13u1
+libtinfo6:amd64	6.5+20250216-2
+libudev1:amd64	257.13-1~deb13u1
+libuuid1:amd64	2.41.5-0+deb13u1
+libxxhash0:amd64	0.8.3-2
+libzstd1:amd64	1.5.7+dfsg-1
+linux-base	4.12.1
+linux-image-6.12.107+deb13-amd64	6.12.107-1
+linux-image-amd64	6.12.107-1
+login	1:4.16.0-2+really2.41.5-0+deb13u1
+login.defs	1:4.17.4-2
+logsave	1.47.2-3+b12
+mawk	1.3.4.20250131-1
+mount	2.41.5-0+deb13u1
+ncurses-base	6.5+20250216-2
+ncurses-bin	6.5+20250216-2
+openssl-provider-legacy	3.5.7-1~deb13u2
+passwd	1:4.17.4-2
+perl-base	5.40.1-6+deb13u1
+sed	4.9-2+deb13u1
+sqv	1.3.0-3+b2
+systemd	257.13-1~deb13u1
+sysvinit-utils	3.14-4
+tar	1.35+dfsg-3.1
+tzdata	2026c-0+deb13u1
+udev	257.13-1~deb13u1
+util-linux	2.41.5-0+deb13u1
+zlib1g:amd64	1:1.3.dfsg+really1.3.1-1+b1
+update-initramfs: Generating /boot/initrd.img-6.12.107+deb13-amd64
+W: No zstd in /usr/bin:/sbin:/bin, using gzip
+FIRMWARE_DONE
+56.51 0.00
+EXT4-fs (ubda): unmounting filesystem 5157e7d0-c405-4146-88e8-4cebea0a4ab8.
+EXT4-fs (ubda): orphan cleanup on readonly fs
+EXT4-fs (ubda): mounted filesystem 5157e7d0-c405-4146-88e8-4cebea0a4ab8 ro with ordered data mode. Quota mode: none.
+EXT4-fs (ubda): unmounting filesystem 5157e7d0-c405-4146-88e8-4cebea0a4ab8.
+CROSS_STEP_PASS
+reboot: Power down
+
+BENCH_OUTER_PASS
+[   57.798985] reboot: Power down

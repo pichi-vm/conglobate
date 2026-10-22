@@ -1,0 +1,10 @@
+{
+  "kernel": {
+    "size": 19020136,
+    "sha256": "515dcb6e407dff32e970274670fb357187c672fdd7f68d4ed0dbf0c1d7138055"
+  },
+  "initramfs": {
+    "size": 43118373,
+    "sha256": "b2b1ff8b5dd2ba447cd2cd852d484d91fe7b226335faf6c8fabdf5bb7b4d8b60"
+  }
+}

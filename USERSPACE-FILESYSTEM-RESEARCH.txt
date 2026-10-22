@@ -1,0 +1,612 @@
+HISTORICAL EVIDENCE — retained for results, sources, and reproduction.
+Current policy: SANDBOX-DESIGN.txt and DESIGN.md. Earlier proposals, pending
+items, and candidate trust models below are superseded where they differ.
+
+Userspace filesystem research
+=============================
+
+Conclusion
+----------
+fuse2fs is the strongest existing candidate for a bounded experiment:
+it edits ext4 images directly, and FUSE supports user-namespace-owned
+mounts. This could retain carapace's block snapshots while avoiding
+idmapped mounts. It is not a complete validated root sandbox solution.
+
+Proposed experiment architecture, not an approved implementation
+---------------------------------------------------------------
+The trusted builder assembles the carapace block chain and writable
+snapshot. A separate filesystem worker receives access only to that
+snapshot, serving ext4 through FUSE mounted in the child user namespace.
+Commands see that FUSE root and isolated runtime mounts, but not the
+backing device, cache, context, builder, or attestation interfaces.
+No simultaneous kernel/filesystem-server access to the writable image.
+Stop commands, flush and cleanly stop the server, then seal the snapshot.
+
+FUSE protocol IDs are interpreted relative to its connection user
+namespace. A server operating in that namespace can receive target IDs
+0/1000 and store them directly into the ext4 image, without storing
+subordinate host IDs. The server must be isolated from commands so it
+cannot be ptraced or have its backing descriptors stolen. A backing
+device descriptor also needs consideration of ioctl authority; filesystem
+worker confinement is not solved merely by handing it one descriptor.
+How to wire an already-open snapshot to the selected fuse2fs release is
+an integration question; no conglobate integration was performed.
+
+Local smoke experiment
+----------------------
+Installed fuse2fs 1.47.3, Fedora 44, SELinux enforcing. Disposable ext4
+image on a private tmpfs. Child user namespace mapped 0..65535 to
+100000..165535, with its own mount namespace. fuse2fs and the test client
+ran inside that namespace. No idmapped mount and no fakeroot option.
+
+* Created a file successfully as namespace UID 0.
+* chown to UID/GID 1000 succeeded.
+* After FUSE unmount, debugfs saw on-disk UID/GID 1000, not 101000.
+* e2fsck -fn completed all five passes without reporting corruption.
+* Target-only security.selinux write failed with EOPNOTSUPP on this
+  SELinux-enabled host.
+* Device-node mknod failed with EPERM.
+* Installed fuse2fs warned that it does not support using the journal
+  and requires graceful unmount to avoid corruption/data loss.
+
+Artifacts: /tmp/conglobate-fs-research/smoke.py, smoke.sh,
+smoke-results.txt. All image data and mounts were discarded. This is
+not a DNF, performance, crash-consistency, capability-execution, or
+escape-resistance test. SELinux was not disabled.
+
+Important kernel boundaries
+---------------------------
+FUSE declares FS_USERNS_MOUNT, unlike ext4/XFS kernel drivers. Without
+SELinux, commoncap checks security.selinux against the superblock's user
+namespace. Therefore a FUSE superblock genuinely owned by the worker
+namespace should permit its namespace-root security xattr writes, and
+fuse2fs supports writing security.* attributes into the image. This is
+a source-grounded inference, pending an SELinux-disabled-kernel test.
+Other active security modules can impose additional restrictions.
+
+With SELinux active, the earlier policy problem remains; FUSE does not
+bypass the client's LSM hooks. Userspace filesystem selection alone does
+not fulfill independent-policy labeling on arbitrary SELinux hosts.
+
+vfs_mknod checks capable(CAP_MKNOD) before calling the filesystem for
+ordinary block/character devices. Namespace root therefore cannot make
+arbitrary device-node metadata simply because the filesystem is FUSE.
+Kernel-enforced nodev and a separately provided minimal runtime /dev
+remain desirable, but do not remove that creation check. A narrower
+device-creation facility or a different execution boundary is still
+needed if arbitrary mknod is a required build operation.
+
+Candidate comparison
+--------------------
+fuse2fs / e2fsprogs:
+  Direct writable ext2/3/4 image backend. Existing implementation; best
+  first prototype. Installed release's journaling limitations are real;
+  current development source differs, so pin and test a specific version.
+  Performance and package-manager fidelity are unmeasured. GPLv2 utility;
+  upstream NOTICE identifies libext2fs as LGPLv2. External executable
+  integration is distinct from copying/linking source into conglobate.
+
+fuse-overlayfs:
+  Existing rootless directory-layer implementation. NEWS documents virtual
+  ownership/mode/device metadata and security-xattr remapping. Those are
+  useful precedents, but this is not an ext4/XFS image writer. Preserving
+  existing carapace block layers would require applying its file changes
+  and virtual metadata back to the image. Same-kernel LSM/VFS checks remain.
+  No claim that adopting it would eliminate the problem.
+
+lwext4 / fuse-lwext4 / Rust wrappers:
+  Direct writable ext-family library with xattrs and journal support;
+  advertises explicit unsupported ext4 features. Safe Rust wrappers exist,
+  but a complete, reviewed sandbox filesystem is not implied by a wrapper.
+  Important license trap: many headers are BSD-3-Clause, but upstream says
+  ext4_xattr.c and ext4_extents.c make the complete library GPLv2. The xattr
+  implementation is essential to this use case. Not a clean permissive
+  embedded alternative without inspecting the exact chosen fork/closure.
+
+XFS userspace implementations:
+  The Rust xfuse project inspected explicitly describes itself as read-only.
+  Other read/write projects surfaced, including macOS-oriented ports, but
+  no comparably well-established Linux writable backend was established
+  by this research. Do not infer that every XFS userspace implementation
+  is read-only or that a reliable one cannot exist.
+
+Rust FUSE frameworks:
+  Provide protocol/server plumbing, not ext4/XFS semantics. Selecting one
+  would still leave a substantial filesystem implementation/integration
+  task. Safe APIs can keep conglobate free of unsafe code; they do not
+  establish correctness of the backing filesystem or its sandbox.
+
+Next validation gate
+--------------------
+Use a disposable kernel environment with SELinux absent; do not change
+this workstation's policy. Test child-owned fuse2fs label set/get/list/
+remove, inherited unknown labels, SELinux tooling with offline policy,
+DNF, ACLs, persisted file capabilities and execution after ordinary mount,
+service-account switching, hardlinks, sparse files, and snapshot sealing.
+Then compare representative build time/RAM with kernel ext4 and test daemon
+crash/cancellation so failed writes cannot be published as a valid build.
+No numerical performance claim is justified by the current evidence.
+
+Primary sources
+---------------
+https://github.com/tytso/e2fsprogs/blob/master/misc/fuse2fs.c
+https://github.com/tytso/e2fsprogs/blob/master/misc/fuse2fs.1.in
+https://github.com/tytso/e2fsprogs/blob/master/NOTICE
+https://github.com/torvalds/linux/blob/master/fs/fuse/inode.c
+https://github.com/torvalds/linux/blob/master/fs/namei.c
+https://github.com/torvalds/linux/blob/master/security/commoncap.c
+https://github.com/containers/fuse-overlayfs/blob/main/NEWS
+https://github.com/gkostka/lwext4/blob/master/README.md
+https://github.com/KhaledEmaraDev/xfuse
+https://github.com/arcboxlabs/ext4-lwext4
+
+Research and prototype only. No executor code changes or approvals implied.
+
+Follow-up: disposable VM with SELinux disabled
+=============================================
+
+Executed a QEMU/KVM guest using Fedora kernel 7.2.10-200.fc44.x86_64,
+2 GiB RAM, a custom initramfs, and selinux=0. getenforce inside the guest
+reported Disabled. No network device, host filesystem export, or host
+disk was attached. The host's SELinux remained enforcing.
+
+Inside the guest, created an ext4 image on tmpfs, seeded a target-only
+label through an ordinary kernel mount, then unmounted it. Launched
+fuse2fs 1.47.3 and commands in a child user namespace with map
+0:100000:65536, plus private mount/network namespaces. Used no idmapped
+mount and no fakeroot option. The final FUSE options were acl,allow_other.
+allow_other was used to exercise service-account access within the same
+user namespace; this is not a final sandbox mount-policy decision.
+
+Final results
+-------------
+* Namespace-root create/chown: success, raw image ownership 0 and 1000
+  verified afterward, without subordinate host-ID leakage.
+* security.selinux set/get/list/remove: success. Reading immediately
+  after removal returned the expected missing-attribute error.
+* Read an inherited target-only label: exact bytes returned.
+* chcon with target-only type: success.
+* setfiles -c OFFLINE_TARGET_POLICY: success. Policy was not loaded.
+* Named POSIX ACL UID 1234: success and correct after ordinary remount.
+* Switch to UID/GID 1000 and write its owned file: success.
+* setcap cap_net_bind_service=ep: success. After FUSE shutdown and ordinary
+  ext4 mounting, execution as initial-namespace UID 12345 with cleared
+  inheritable/ambient sets reported cap_net_bind_service=ep.
+* e2fsck -fn: all five passes completed, exit status 0.
+* FUSE teardown and final kernel unmount: completed successfully.
+
+The first completed run omitted the acl option and setfacl returned
+EOPNOTSUPP. Source inspection of the installed release identified the
+explicit acl setting; rerunning with it passed. This corrected a test
+configuration issue, not a filesystem implementation bug.
+The earliest harness attempt lacked a loop module and accessible /dev/fuse;
+that run is retained separately and does not substantiate any result.
+The final initramfs supplies loop/fuse modules and /etc/mtab -> /proc/mounts.
+
+Interpretation
+--------------
+The previously source-inferred independent-label mechanism is now
+demonstrated on this kernel/software combination. No label syscall
+interception or privileged label helper was required. The installed
+fuse2fs journaling warning remains, and earlier mknod limitations are
+not resolved by this result.
+
+This was a metadata compatibility experiment, not a complete DNF/tool
+carapace build, dm-snapshot integration, performance measurement, crash
+test, or security assessment. The test daemon shared a user namespace
+with commands and was not hardened against them. A real design must
+protect its backing-image access and coordinate lifecycle/finalization.
+
+Artifacts: /tmp/conglobate-fuse-vm/
+  results.txt                          final complete serial output
+  results-without-acl-option.txt        initial completed run
+  results-initial-harness.txt           incomplete harness attempt
+  root/init, root/worker                guest test scripts
+  build.py, build-loop.py               initramfs dependency staging
+  vmlinuz, initramfs.gz                 exact boot inputs
+  fuse2fs-1.47.3.c                      ACL configuration source reference
+
+The guest rebooted after printing CONGLOBATE_TEST_COMPLETE, causing QEMU
+with -no-reboot to exit. Its tmpfs image disappeared with the guest.
+
+Other filesystem backends (2026-10-20 source review)
+--------------------------------------------------
+FUSE is a protocol, not a universal writable Linux filesystem driver.
+
+* ext2/ext3/ext4: fuse2fs is the tested backend. Pin the tested e2fsprogs
+  release (1.47.3 here); do not infer newer-version behavior from this test.
+* Bcachefs: upstream bcachefs-tools v1.39.7 documents writable FUSE mounts,
+  xattrs, caller ownership, fsync/fsyncdir/syncfs and xfstests coverage.
+  Upstream explicitly positions it as a recovery option with performance
+  and feature limitations. It has NOT been tested in our namespace setup.
+  https://github.com/koverstreet/bcachefs-tools/blob/master/Changelog.mdwn
+* XFS: KhaledEmaraDev/xfuse is read-only. karan-vk/fuse-xfs advertises
+  read/write support for macOS; this is not evidence of a qualified Linux
+  backend for our use case.
+  https://github.com/KhaledEmaraDev/xfuse
+  https://github.com/karan-vk/fuse-xfs
+* Btrfs: adam900710/btrfs-fuse explicitly supports read-only access and
+  documents missing xattr support, unsuitable for this writable path.
+  https://github.com/adam900710/btrfs-fuse
+* LKL/lklfuse: a broader alternative that runs Linux kernel filesystem
+  implementations as a userspace library, exposed through FUSE. Current
+  defconfig enables ext4, XFS and Btrfs. Its FUSE adapter implements writes
+  and xattrs. This is a candidate, not a validated drop-in replacement:
+  caller credential/ownership handling and ACL semantics need particular
+  attention (the inspected create path calls lkl_sys_open without visibly
+  switching credentials to the FUSE caller).
+  https://github.com/lkl/linux/blob/master/tools/lkl/lklfuse.c
+  https://github.com/lkl/linux/blob/master/arch/lkl/configs/defconfig
+
+Do not conclude that no writable XFS/Btrfs option can exist merely because
+individual native FUSE projects are read-only. LKL is an alternate route.
+
+Expanded validation: package installation, snapshot, isolation, failure
+--------------------------------------------------------------------
+Harness: /tmp/conglobate-fuse-validation/
+Entry points: run.sh, root/init, root/worker, root/sandbox-entry,
+root/sandbox-test, root/crash-worker. Results: results.txt.
+Guest: Fedora kernel 7.2.10-200.fc44.x86_64, 4GiB RAM, no network devices,
+no host shares or disks, SELinux disabled only inside the disposable VM.
+Host SELinux remains enforcing. All image data lives in guest tmpfs.
+
+Storage arrangement:
+  2GiB ext4 origin -> read-only loop device
+  2GiB sparse COW -> loop device
+  persistent dm-snapshot (8-sector chunks) -> fuse2fs 1.47.3
+The mapped worker has access to the snapshot block device. Target IDs
+0..65535 map to guest IDs 100000..165535. FUSE runs in the owning user
+namespace; there is no idmapped mount and no fakeroot option.
+
+The harness installs the 69 previously downloaded Fedora RPMs using DNF5
+with network disabled, plugins disabled and OpenPGP checking disabled for
+this compatibility test. It then enters the installed root with a separate
+mount/PID namespace, pivot_root, detached old root, PID-local procfs and
+minimal bind-mounted devices. The filesystem daemon stays outside the
+command PID namespace, but in the SAME owning user namespace. Moving
+commands to a nested user namespace is not established by these tests.
+
+Important scope distinction: package installation runs as mapped namespace
+root using DNF --installroot, before the command-root isolation test. This
+is not yet a complete tool-carapace bootstrap pipeline or a production
+conglobate integration test. The installed shell and metadata tools are
+then exercised inside the isolated command root.
+
+Initial harness errors were fixed, not suppressed: libdnf plugins/repo
+configuration; writable /tmp and /var/tmp; missing outer /bin/sh and
+systemd-sysusers; availability of the unmount operation after pivot_root;
+and devtmpfs /dev/null permissions. SQLite I/O errors occurred with the
+unwritable temporary directory and disappeared after that correction.
+Earlier failed logs are retained under results-harness-*.txt.
+
+Successful checks include:
+* Fedora RPM transaction and package scriptlets.
+* No backing image, RPM inputs, worker script, context, /dev/fuse, or old
+  root reachable at the tested paths inside the command root.
+* Daemon absent from command procfs. The final test requires ESRCH from
+  kill(daemon_pid, 0), rather than accepting an arbitrary command failure.
+* Background child writes a heartbeat; after PID1 exits its size stays
+  fixed. The outer daemon remains alive and is unmounted/waited separately.
+* Files authored by namespace root retain UID/GID 1000, ACL UID1234,
+  independent-target security.selinux, and file capabilities after an
+  ordinary kernel ext4 remount. A nonroot process actually acquires the
+  stored cap_net_bind_service capability on execution after that remount.
+* e2fsck -fn completes cleanly after normal FUSE shutdown.
+* Origin SHA256 unchanged; snapshot status remains valid; dm device and
+  loops removed normally after the test.
+* In a separate disposable filesystem, SIGKILL of fuse2fs is observed as
+  exit137, subsequent new-file I/O fails with disconnected endpoint, and
+  the failed mount can be removed. The failed image is discarded.
+* mknod for a character device still fails EPERM. This is an unresolved
+  root-experience limitation, not a passed compatibility requirement.
+
+Security/production limits:
+This is evidence for storage semantics and particular isolation properties,
+not a complete security proof. The worker itself is not yet confined to
+only its device and runtime; seccomp/capability policy, resource exhaustion,
+network/DNS integration, adversarial FUSE inputs, build cancellation races,
+and production artifact rejection paths remain unvalidated. The test uses
+a dm snapshot, not an actual carapace dm-verity chain or OCI export.
+The fuse2fs release warns that it does not journal writes. A crashed worker
+must invalidate the build; a successful command exit cannot override it.
+
+Final run completed with VALIDATION_PASS and GUEST_EXIT 0. The log was
+checked for every expected pass marker and absence of Permission denied,
+Transaction failed, and disk I/O error. Extracted final evidence:
+/tmp/conglobate-fuse-validation/validated-summary.txt
+
+Runtime-device correction: mode0666 alone did not make the bound devtmpfs
+/dev/null usable after pivot_root in this harness. Giving the selected
+runtime device nodes mapped ownership (guest100000:100000, sandbox0:0)
+resolved the failure. The final test opens /dev/null successfully and
+checks ESRCH explicitly for the daemon PID. This is an experimentally
+established setup requirement here; the precise kernel denial path was
+not traced. Production should create dedicated per-sandbox runtime nodes
+with mapped ownership, rather than change shared appliance /dev nodes.
+
+Documentation audit: block interfaces and FUSE limitations (2026-10-20)
+---------------------------------------------------------------------
+Read kernel FUSE overview/I/O documentation; libfuse README and capability
+API comments; fuse2fs 1.47.3 manual/release notes; current fuse4fs manual;
+Btrfs-fuse, xfuse, fuse-xfs, fuse-ext2, lwext4 and fuse-overlayfs READMEs;
+LKL overview and lklfuse manual; ublk kernel documentation and ublksrv README;
+NBD kernel overview and CUSE API header. Local copies of most documents:
+/tmp/conglobate-fuse-docs/ . This audits the candidates discussed, not every
+FUSE implementation in existence.
+
+Block equivalents:
+* ublk exports a block device with requests handled by a userspace daemon
+  over io_uring. Unprivileged mode needs administrator-provisioned control
+  device access and ownership of per-device nodes. ublksrv documents that
+  server and device clients must use different mount namespaces to avoid
+  daemon-exit/unmount-writeback self-deadlock. Recovery policy may reissue
+  writes or fail requests; these semantics must be selected deliberately.
+  https://docs.kernel.org/block/ublk.html
+  https://github.com/ublk-org/ublksrv/blob/master/README.rst
+* NBD provides a kernel block device backed by a userspace server over a
+  transport. It is another block transport, not a userspace filesystem.
+  https://docs.kernel.org/admin-guide/blockdev/nbd.html
+* CUSE exports CHARACTER devices. It does not provide a mountable block
+  device interface in the way ublk/NBD do.
+  https://github.com/libfuse/libfuse/blob/master/include/cuse_lowlevel.h
+* fuseblk consumes a block device and exports a filesystem. It does not
+  export a block device. Crucially, current Linux fuseblk lacks
+  FS_USERNS_MOUNT while ordinary fuse has it. A driver choosing fuseblk
+  cannot simply be substituted into our child-userns-owned FUSE design.
+  https://github.com/torvalds/linux/blob/master/fs/fuse/inode.c
+
+Inference for our architecture: mounting ext4/XFS on ublk/NBD still uses
+that kernel filesystem implementation and its mount/LSM restrictions.
+Changing the block transport does not transfer superblock ownership to
+our child user namespace. ublk is potentially useful for userspace block
+assembly, not a replacement for the filesystem layer that solved labeling.
+
+Additional limitations from the documentation:
+* FUSE lazy unmount does NOT terminate the connection. SIGKILL is not a
+  complete answer for documented malicious deadlocks. Keep an independently
+  reachable connection-abort path in the supervisor, outside the command
+  filesystem; exercise cancellation and hung-daemon cases before adoption.
+* allow_other in a child userns does not generally admit ancestor-userns
+  processes. COPY/output traversal must not assume initial-root access.
+* libfuse warns of cross-user permission-cache problems without
+  default_permissions. Its README's blanket ACL caveat is outdated relative
+  to its own FUSE_CAP_POSIX_ACL API documentation: negotiated POSIX ACL
+  support enables kernel ACL enforcement and default_permissions. Our
+  mountinfo showed default_permissions, but correct enforcement (including
+  denied accesses/default ACL inheritance) still needs adversarial tests.
+* Default unprivileged mounts are nosuid,nodev. Storing capabilities and
+  setuid bits is not evidence that these execute with privilege during
+  the build; previous execution tests were AFTER ordinary kernel remount.
+* FUSE writeback-cache assumes all mutation goes through FUSE. Direct I/O
+  disables shared mmap by default unless the relevant capability is
+  negotiated. Neither backend storage O_DIRECT nor a fast write proves
+  successful final persistence. Require correct flush/fsync/teardown.
+  https://github.com/torvalds/linux/blob/master/Documentation/filesystems/fuse/fuse.rst
+  https://github.com/torvalds/linux/blob/master/Documentation/filesystems/fuse/fuse-io.rst
+  https://github.com/libfuse/libfuse/blob/master/README.md
+  https://github.com/libfuse/libfuse/blob/master/include/fuse_common.h
+* fuse2fs 1.47.3 does not support RENAME_EXCHANGE/RENAME_WHITEOUT. Its
+  'kernel' option enables suid/dev as well as kernel permissions; it is
+  not an innocuous compatibility switch for our sandbox. Default cache
+  32MiB, maximum2GiB. A newer fuse4fs exists in upstream; its current source
+  still explicitly warns that journal writes are unsupported. It has not
+  been tested here and must not be conflated with installed fuse2fs.
+  https://github.com/tytso/e2fsprogs/blob/master/doc/RelNotes/v1.47.3.txt
+  https://github.com/tytso/e2fsprogs/blob/v1.47.3/misc/fuse2fs.1.in
+  https://github.com/tytso/e2fsprogs/blob/master/fuse4fs/fuse4fs.c
+* fuse-xfs for macOS: NO writable xattrs or ACLs, NO reflinks/quotas,
+  external logs or realtime devices. This rules it out for our metadata
+  requirements even before Linux portability is considered.
+* fuse-ext2: explicitly warns against relying on write support and says
+  multithreading is broken. Not a safer alternative to fuse2fs.
+* lwext4: journaling exists, but its documented unsupported features include
+  ea_inode, inline_data, largedir, bigalloc and quota. Cannot accept arbitrary
+  ext4 images. Full library is GPLv2 despite BSD-licensed portions.
+* Btrfs-fuse: read-only, missing xattrs, subvolume device-number mismatch.
+* xfuse: explicitly read-only.
+* fuse-overlayfs: overlays directories and maps ownership; does not directly
+  author the existing ext4/XFS block snapshot. Output conversion would be a
+  different design and must retain metadata and layering semantics.
+* lklfuse: documentation confirms unprivileged use of Linux filesystem
+  implementations, configurable memory (default64MiB), and external backing
+  device access. It does not establish complete caller credential, ACL or
+  ioctl compatibility through its adapter. Do not infer equivalence to a
+  native kernel mount solely because it reuses filesystem code.
+* Bcachefs: current documentation presents FUSE as recovery-oriented, with
+  performance/feature limits. Block-device mounts use fuseblk: that conflicts
+  with the child-userns mount requirement above unless another mode is
+  supported and independently validated.
+
+Correction to prior wording: ext4 is experimentally promising, not a
+qualified production backend. The namespace and metadata smoke tests do
+not close the permission-enforcement, ioctl, cancellation and durability
+requirements identified in this documentation audit.
+
+Special xattr names and unprivileged block setup (2026-10-20)
+----------------------------------------------------------
+User correctly distinguishes userspace block assembly from the filesystem
+labeling problem: ublk could replace privileged loop/device-mapper setup,
+allowing the conglobate process to run without initial-namespace root.
+This requires userspace implementations of the existing layer/snapshot/
+integrity behavior, and environment provisioning of ublk device access.
+Multiple target identities additionally need subordinate UID/GID mappings
+(or already provisioned namespaces); a single-ID rootless map is not enough.
+Thus rootless conglobate is plausible, not established by the root-launched
+experiments. ublk does not by itself provide filesystem mount permission.
+
+Read current drivers/block/ublk_drv.c as well as the documented interface:
+unprivileged ADD_DEV is supported with UBLK_F_UNPRIVILEGED_DEV, but current
+code clears USER_RECOVERY/USER_RECOVERY_REISSUE and rejects USER_COPY,
+SUPPORT_ZERO_COPY and AUTO_BUF_REG for unprivileged devices. Do not assume
+all privileged-mode performance/recovery features apply to rootless mode.
+https://github.com/torvalds/linux/blob/master/drivers/block/ublk_drv.c
+
+New experiment: /tmp/conglobate-fuse-xattrs/results.txt and root/{init,worker}.
+Same disposable no-SELinux guest and child-userns-owned fuse2fs filesystem.
+Initial root seeded trusted.conglobate=inherited on /inherited using a
+normal ext4 mount before the namespace test. Namespace-root results:
+  set user.conglobate: success
+  set trusted.conglobate: EPERM
+  get existing trusted.conglobate: ENODATA
+  remove existing trusted.conglobate: EPERM
+  set security.conglobate: success
+  set system.conglobate: success (not proof of native ext4 compatibility)
+  independent security.selinux, ACL, security.capability probes: success
+After ordinary ext4 remount, initial root read trusted.conglobate=inherited.
+Thus failed namespace read does not mean the attribute was absent.
+
+Source grounding: fs/xattr.c xattr_permission checks capable(CAP_SYS_ADMIN)
+for trusted.*, i.e. initial-user-namespace capability, before dispatching to
+the filesystem. Write/remove are denied and get reports ENODATA. FUSE's
+catch-all xattr handler does not bypass this. commoncap uses a different
+check for generic security.*: ns_capable(superblock->s_user_ns,CAP_SYS_ADMIN).
+security.capability and POSIX ACL names get additional special treatment;
+active LSMs may intercept their security attributes. Arbitrary named xattrs
+are not a transparent byte channel through the build kernel.
+https://github.com/torvalds/linux/blob/master/fs/xattr.c
+https://github.com/torvalds/linux/blob/master/fs/fuse/xattr.c
+https://github.com/torvalds/linux/blob/master/security/commoncap.c
+
+Consequence: FUSE namespace-root commands cannot provide unrestricted
+initial-root metadata semantics. This affects trusted.overlay.* as well
+as arbitrary trusted attributes; chown/idmapping/FUSE backend replacement
+cannot change a pre-dispatch initial-namespace capability check. lklfuse
+still crosses the same host VFS and therefore does not fix this restriction.
+Out-of-band metadata authoring or name translation could store the bytes,
+but would require a new API or altered tool behavior, not transparently
+support ordinary setxattr/trusted.* commands. Existing attributes may survive
+block layering while becoming unreadable to copying/archiving tools.
+
+mkosi comparison (2026-10-20)
+-----------------------------
+Inspected systemd/mkosi commit f7e32882d26e2c5f3daba48e1aff5b411e6b4d92
+at /tmp/conglobate-mkosi-audit. Its root is a workspace directory with bind
+or overlay mounts (context.py rootoptions). make_image invokes
+systemd-repart --root=/buildroot --offline=yes by default. It does not
+need a mounted writable final block filesystem for the normal offline path.
+
+Current startup tries systemd-nsresourced for foreign/delegated ranges and
+falls back to a single-user namespace where permitted. Package-manager
+options request --suppress-chown; sandbox.py activates suppression only for
+a single-user mapping (or when setting up that mapping). Script suppression
+is opt-in. The manual documents non-root ownership limitations and service
+runtime StateDirectory/CacheDirectory/LogsDirectory as an alternative for
+some directories. Do not describe all modern mkosi builds as single-ID:
+newer namespace-resource paths exist.
+
+The SELinuxRelabel manual explicitly documents inability to assign labels
+unknown to the host policy when unprivileged. auto ignores setfiles errors;
+explicit enabled fails. The code performs a final setfiles -c target-policy
+pass. RepartOffline=no requires root; the manual identifies XFS+SELinux
+and repart Subvolumes as cases requiring that mode. The tree-copy code also
+conditionally skips xattr preservation for problematic SELinux/IMA copying.
+Overlay setup uses userxattr rather than relying on trusted.overlay.*.
+
+Implications for conglobate: missing trusted.* is an edge of compatibility,
+not sufficient evidence that ordinary distro root builds fail. Existing
+attributes survive untouched block layers. Relevant workloads include
+prepopulated overlay/container stores and backup/restore that must reproduce
+trusted metadata. mknod can be irrelevant for runtime /dev supplied by the
+kernel, yet still matters for explicitly authored static device nodes.
+Ownership, ACLs, file capabilities and independent SELinux labels are central
+requirements, not optional metadata. mkosi demonstrates viable constrained
+rootless image creation; it does not demonstrate complete privileged metadata
+semantics or preserve our existing block image by constructing a fresh FS.
+
+Metadata compatibility: which architectural changes could address the blocker?
+=============================================================================
+2026-10-20. Source review only; no new runtime adopted or gVisor test executed.
+The required trust model remains: kernel/supervisor/worker trusted, commands
+untrusted and without initial-user-namespace root. Ordinary OS tools must retain
+required metadata semantics. No compatibility waiver is inferred.
+
+Existing bounded evidence
+-------------------------
+metadata/README.txt and reproduced/clean-native-pair/metadata establish actual
+mapped-FUSE EPERM for device metadata creation, trusted xattrs and changes to
+immutable/append-only bits, including clearing inherited flags. Initial-FUSE and
+kernel references succeed. Retained kernel source identifies pre-dispatch
+initial-userns capability checks. Patched ACL behavior is a separate worker/API
+issue with a demonstrated correction; it does not remove those kernel checks.
+
+Consequences for candidate fixes (reasoned from those checks)
+-----------------------------------------------------------
+- A new FUSE implementation, alternate UID mapping or additional child-userns
+  capabilities cannot by itself satisfy the same initial-userns VFS checks.
+  A userspace block device changes block transport, not the caller's VFS rights.
+- A trusted offline metadata operation could store selected bytes in the image,
+  but does not give ordinary in-step tools their expected reads, writes, errors
+  and enforcement. It cannot silently replace the requested root experience.
+- Host syscall mediation needs an explicitly designed operation protocol and
+  credentials/path/FD/concurrency semantics. It is not enough to replay a path
+  as supervisor root. No such broker is implemented or qualified here.
+- A virtualized syscall/filesystem implementation or a separate guest kernel
+  could move the permission checks to a different boundary in principle. These
+  are architecture changes requiring full metadata and isolation validation,
+  not demonstrated remedies or permission to add another VM requirement.
+- Initial-userns capabilities for recipe processes would change the selected
+  isolation premise. No such relaxation is selected.
+
+Comparison with an existing syscall-virtualizing implementation
+--------------------------------------------------------------
+Inspected google/gvisor at 8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb.
+The exact source URLs and hashes are in sources.json; Apache-2.0 LICENSE retained.
+This is an implementation comparison, not a proposal to adopt runsc.
+
+pkg/sentry/fsimpl/gofer/gofer.go checkXattrPermissions returns EOPNOTSUPP for
+system.* and trusted.*; writes to security.* are also rejected. getXattr,
+setXattr and removeXattr call this gate before the backend implementation.
+Consequently a replacement gofer backend alone would not make those ordinary
+operations succeed on this path. This is material to ACL and SELinux authoring,
+not merely an obscure extra attribute. listXattr uses a different path; this
+review does not claim that all attribute-name listing is suppressed.
+
+runsc/fsgofer/lisafs.go controlFDLisa.Mknod permits regular files and 0:0 character
+whiteouts, rejecting other node kinds with EPERM. Its attribute handlers invoke
+host xattr syscalls. This stock filesystem path is not an already-qualified
+solution for the conglobate metadata requirements. No claim is made about every
+gVisor filesystem, custom fork, device-registration API or runtime configuration.
+
+The pinned filesystem guide describes custom Gofer extensions through LISAFS;
+it also distinguishes directfs and a writable overlay. An extension point is
+not proof of filesystem compatibility or durable block-layer output. The sentry
+checks above would still need addressing for this gofer path. No immutable-flag
+compatibility conclusion is drawn from absence of a search hit in a few files.
+Primary guide: https://gvisor.dev/docs/user_guide/filesystem/
+Pinned implementation:
+https://github.com/google/gvisor/blob/8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb/pkg/sentry/fsimpl/gofer/gofer.go
+https://github.com/google/gvisor/blob/8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb/runsc/fsgofer/lisafs.go
+
+Design gate
+-----------
+The existing mapped-FUSE architecture has a demonstrated compatibility boundary.
+Maintaining the ACL fix and repeating namespace teardown tests cannot remove it.
+A complete selection must either demonstrate a new boundary that supports the
+required in-step semantics or obtain an explicit change to the requirements.
+This review selects neither, and the existing requirements remain in force.
+Independent runtime/interface, DNS and publication validations can continue;
+the whole goal is not blocked. Area11 remains a design blocker, not a test pass.
+
+UML candidate comparison (2026-10-21 UTC): pinned kernel documentation, UBD
+implementation, configuration and license reviewed in reproduced/uml-source-
+review (under validation/sandbox). A separate userspace kernel could move the
+metadata permission boundary, but this is an inference awaiting feasibility
+tests and user acceptance of the architectural direction. Hostfs, management,
+module/driver admission and outer isolation need explicit treatment. No runtime
+executed, backend selected, metadata requirement waived or area marked complete.
+
+Worker metadata source classification (2026-10-21 UTC): exact tested sources
+show libfuse statx support but no fuse2fs statx callback; birth-time visibility
+is a worker omission with a potential API correction, not a general FUSE limit.
+The worker also deliberately reserves blocks against complete-exhaustion
+corruption, corroborating earlier ENOSPC as policy without deriving the exact
+capacity delta. See validation/sandbox/metadata/WORKER-SOURCE-REVIEW.txt and
+reproduced/worker-metadata-source. No backend patch or reserve change adopted.
+
+Birth-time prototype follow-up (2026-10-21 UTC): a separate worker statx
+callback exposes/stabilizes/persists birth time in all six metadata configurations.
+Open-file after unlink, symlink, missing-path and existing metadata/exhaustion
+checks pass. See validation/sandbox/statx-worker/README.txt and reproduced/
+statx-{metadata,worker-build}. This demonstrates a bounded worker correction;
+small-inode/optional-field/portability and maintained adoption remain open.
+Mapped privileged metadata restrictions are unchanged; no production adoption.

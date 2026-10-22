@@ -1,0 +1,11 @@
+--- a/lib/fuse_lowlevel.c
++++ b/lib/fuse_lowlevel.c
+@@ -2817,6 +2817,8 @@
+ 	 * LL_SET_DEFAULT(1, FUSE_CAP_SETXATTR_EXT);
+ 	 */
+ 
++	/* Diagnostic only: simulate a peer lacking SETXATTR_EXT. */
++	se->conn.capable_ext &= ~FUSE_CAP_SETXATTR_EXT;
+ 	se->conn.time_gran = 1;
+ 
+ 	if (se->op.init) {

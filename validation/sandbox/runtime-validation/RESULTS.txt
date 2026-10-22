@@ -1,0 +1,106 @@
+Runtime validation results — 2026-10-21
+======================================
+
+FOLLOW-UP: ../capability-review/REPORT.txt investigates the unresolved command
+capability question and demonstrates a scoped BPF LSM alternative without
+command SYS_ADMIN. The generic-kernel-path observations below remain valid;
+neither retaining the capability nor adopting the policy is production-approved.
+
+Completed a common disposable-VM selection pass across nine runtime/library
+options. Seven supported the tested sibling-worker/command topology. Two remain
+unvalidated because their command setup failed in this fixture. No runtime has
+been selected or qualified for production by this experiment.
+
+Candidate             Normal / exit42 / child cleanup    Launcher killed
+Bubblewrap 0.12.0     PASS / PASS / PASS                   command stopped
+crun 1.28             PASS / PASS / PASS                   command remained
+runc 1.5.2            PASS / PASS / PASS                   command remained
+Youki CLI 0.7.0       PASS / PASS / PASS                   command remained
+libcontainer helper   PASS / PASS / PASS                   command remained
+NsJail pinned source  PASS / PASS / PASS                   command stopped
+systemd services      command setup failed (226/NAMESPACE); worker started
+systemd-nspawn        command setup failed (proc mount EPERM); worker started
+unshare + adapter     PASS / PASS / PASS                   command stopped
+
+'Command stopped' was sampled after a half-second grace. 'Command remained'
+means at that observation point, before harness cleanup; it is not a claim that
+it would run forever. OCI runtime client death need not imply container death.
+The exact runtime/adapter arguments and process namespace identities are logged.
+
+For all seven successful candidates:
+- Explicit capabilities and distinct user/mount/PID/network/IPC/UTS namespaces
+  were checked for both roles, along with handles, private paths and offline
+  routing. The worker had zero effective capabilities and no_new_privs.
+- FUSE default_permissions and actual FUSE filesystem identity were checked.
+  Ownership, ACL/default inheritance, supplementary-group/setgid cases, foreign
+  SELinux labels and file capabilities passed. Normal/exit42/descendant cases
+  completed worker shutdown and e2fsck successfully.
+- Killing the worker caused command I/O to fail, as expected. The benign probe
+  exited zero because it recognized the failure; a real build must fail closed,
+  not publish output on that basis.
+- Explicitly terminating the command stopped its processes. CLI signal-exit
+  representation differed: Youki reported 9, most others 137, and direct
+  unshare was observed as -9 by Python. An integration must normalize outcomes
+  instead of assuming every CLI returns shell-style 128+signal.
+- Killing only the mount helper did not terminate commands. Its mount had been
+  exported and remained held. None of these launchers automatically coordinates
+  that resource relationship for conglobate.
+- The outer harness finally left zero recorded live sandbox processes and zero
+  FUSE connections. That includes the two failed setups. This proves fixture
+  cleanup in these cases; it does not credit the runtime with the harness's work.
+
+The final run contains 51 case records: 21 PASS, 28 lifecycle OBSERVED, two FAIL.
+The 28 observations are intentionally not presented as 28 extra passing tests.
+Each backend's subsequent cases are skipped if its initial setup fails.
+
+Important design correction
+---------------------------
+Foreign SELinux-label writes in this topology require CAP_SYS_ADMIN in the
+filesystem-owning command user namespace. Dropping it in a negative control
+causes EPERM. The previous sibling test unintentionally retained it by adding
+capabilities without first dropping ALL. This does NOT require initial-user-
+namespace CAP_SYS_ADMIN for commands. The design and historical evidence notes
+now state this correctly. The complete policy constraining that authority still
+needs qualification; the small seccomp probe is not the production policy.
+
+Recommendation after execution
+------------------------------
+Keep Bubblewrap as the first integration candidate. Its topology works, launcher
+failure behavior fits the command lifetime expectation, and it adds neither an
+OCI state model nor a service-manager requirement. Its FD transport adapter and
+conglobate-owned resource supervision remain real work.
+
+Keep crun as the executable alternative if OCI namespace/FD interfaces simplify
+the implementation enough to justify container state and explicit cleanup. runc
+and Youki also work in the tested topology but did not demonstrate an additional
+requirement-specific advantage in this pass.
+
+The safe Rust libcontainer caller is now demonstrated, not just hypothetical.
+It is worth retaining as the library alternative if embedding is preferred.
+Its process/subreaper/cgroup lifecycle still requires deliberate architecture.
+
+NsJail also works and has useful launcher-death behavior. Its namespace pre-entry
+adapter and configuration model remain tradeoffs; the test did not compare its
+native resource-limit and seccomp engines with other tools.
+
+Do not select systemd or nspawn based on theoretical feature coverage yet. Their
+workers launched, but the required command namespace/mount integration remains
+unresolved. These failures do not establish impossibility. Further investigation
+is justified if the user prefers their manager or machine-oriented model.
+
+Unshare works with custom construction, but the custom adapter is precisely the
+mount/root/credential/process machinery we were hoping a runtime would replace.
+It is a useful reference implementation, not the lowest-maintenance default.
+
+Evidence and limits
+-------------------
+README.txt describes versions, exact checks, adapter choices, reproduction,
+fixture corrections and exclusions. ../reproduced/runtime-validation/ holds raw
+results.txt, verdict.json, input hashes, symlink targets, launch command, source
+snapshots, provenance and earlier diagnostic logs. The final recorded execution
+is /var/tmp/conglobate-runtime-pass-v24; production_qualified is explicitly false.
+
+This pass did not test full distro-root builds, NAT/DNS, the integrated device-
+mapper storage chain, all cancellation/resource-exhaustion paths, a complete
+syscall/ioctl policy, native Arm, or confidential-computing hardware. It is not
+a performance benchmark or proof of security isolation against kernel bugs.

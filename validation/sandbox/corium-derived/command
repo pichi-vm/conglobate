@@ -1,0 +1,23 @@
+#!/bin/bash
+set -euo pipefail
+test "$$" = 1
+for path in /context /work /entry-helper /derive-root /dev/fuse /dev/mapper/control /.old/work; do test ! -e "$path"; done
+nnp=; seccomp=
+while read -r key value rest; do
+ case "$key" in NoNewPrivs:) nnp=$value ;; Seccomp:) seccomp=$value ;; esac
+done </proc/self/status
+test "$nnp:$seccomp" = 1:2
+test "$(cat /conglobate-root-identity)" = 'owned Fedora root boot fixture'
+printf 'restricted derived layer\n' >/conglobate-derived-identity
+# Existing service invokes this path. Keep its original checks after the new checks.
+mv /conglobate-root-boot-probe /conglobate-base-boot-probe
+cat >/conglobate-root-boot-probe <<'PROBE'
+#!/bin/bash
+set -euo pipefail
+test "$(cat /conglobate-derived-identity)" = 'restricted derived layer'
+test ! -e /command
+echo DERIVED_CORIUM_ROOT_CONTENT_PASS >/dev/console
+exec /bin/bash /conglobate-base-boot-probe
+PROBE
+chmod 755 /conglobate-root-boot-probe
+echo RESTRICTED_FEDORA_DERIVATION_PASS

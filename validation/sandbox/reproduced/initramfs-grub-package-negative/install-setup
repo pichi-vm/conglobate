@@ -1,0 +1,16 @@
+#!/bin/bash
+# Recipe-owned target configuration for direct kernel/initramfs boot, not GRUB.
+set -euo pipefail
+mkdir -p /output/etc/kernel/install.d /output/etc/dracut.conf.d /output/boot
+printf 'layout=other\n' >/output/etc/kernel/install.conf
+for hook in 20-grub.install 95-set-boot-entry.install 99-grub-mkconfig.install; do
+ ln -s /dev/null "/output/etc/kernel/install.d/$hook"
+done
+cat >/output/etc/dracut.conf.d/99-conglobate-fixture.conf <<'CONFIG'
+hostonly=no
+hostonly_cmdline=no
+fw_dir="/usr/lib/firmware"
+sysloglvl=0
+kmsgloglvl=0
+CONFIG
+echo DIRECT_FIRMWARE_INSTALL_CONFIGURATION_PASS

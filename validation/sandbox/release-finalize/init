@@ -1,0 +1,60 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'echo "GUEST_EXIT $?"; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount -t tmpfs tmpfs /work
+modprobe fuse
+modprobe loop
+modprobe dm_mod
+chmod 666 /dev/fuse
+mkdir /work/view
+chown 100000:100000 /work /work/view
+mkdir /work/check
+for variant in release-control release-error; do
+ case "$variant" in
+  release-control) binary=/normal-worker; mode=clean; expected=0 ;;
+  release-error) binary=/release-worker; mode=clean; expected=32 ;;
+ esac
+ echo "FINALIZE_CASE $variant"
+ rm -f /work/ready /work/finish /work/do-error /work/error-observed /work/fuse.log
+ truncate -s 0 /work/image
+ truncate -s 64M /work/image
+ mkfs.ext4 -qF /work/image
+ loop=$(losetup --find --show /work/image)
+ dmsetup create finalize --noudevsync --table "0 131072 linear $loop 0"
+ dmsetup mknodes --noudevsync
+ chown 100000:100000 /dev/mapper/finalize
+ unshare --user --mount --net --map-users 0:100000:65536 \
+  --map-groups 0:100000:65536 --setuid 0 --setgid 0 \
+  /bin/bash /worker "$binary" "$variant" "$expected" &
+ worker=$!
+ for ((i=0;i<100;i++)); do test -f /work/ready && break; sleep .05; done
+ test -f /work/ready
+ if test "$mode" != clean; then
+  dmsetup suspend --noflush --nolockfs finalize
+  dmsetup load finalize --table '0 131072 error'
+  dmsetup resume --noflush --nolockfs finalize
+ fi
+ if test "$mode" = recovered; then
+  touch /work/do-error
+  for ((i=0;i<100;i++)); do test -f /work/error-observed && break; sleep .05; done
+  test -f /work/error-observed
+  dmsetup suspend --noflush --nolockfs finalize
+  dmsetup load finalize --table "0 131072 linear $loop 0"
+  dmsetup resume --noflush --nolockfs finalize
+ fi
+ touch /work/finish
+ wait "$worker"
+ dmsetup remove --noudevsync finalize
+ losetup -d "$loop"
+ mount -o loop,ro /work/image /work/check
+ test "$(cat /work/check/dirty)" = dirty
+ umount /work/check
+ echo "RELEASE_FIXTURE_CONTENT_PRESERVED $variant"
+done
+test -z "$(losetup -a)"
+test "$(dmsetup ls)" = 'No devices found'
+echo RELEASE_FINALIZATION_MATRIX_PASS

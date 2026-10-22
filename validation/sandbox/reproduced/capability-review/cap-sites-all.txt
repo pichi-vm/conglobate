@@ -1,0 +1,639 @@
+ipc/util.c:740:	    ns_capable(ns->user_ns, CAP_SYS_ADMIN))
+ipc/namespace.c:237:	if (!ns_capable(ns->user_ns, CAP_SYS_ADMIN) ||
+ipc/namespace.c:238:	    !ns_capable(nsset->cred->user_ns, CAP_SYS_ADMIN))
+kernel/utsname.c:132:	if (!ns_capable(ns->user_ns, CAP_SYS_ADMIN) ||
+kernel/utsname.c:133:	    !ns_capable(nsset->cred->user_ns, CAP_SYS_ADMIN))
+kernel/user_namespace.c:986:	if (cap_valid(cap_setid) && !file_ns_capable(file, map_ns, CAP_SYS_ADMIN))
+kernel/user_namespace.c:1361:	if (!ns_capable(user_ns, CAP_SYS_ADMIN))
+fs/xfs/xfs_xattr.c:298:		if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_verify_media.c:425:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_rtalloc.c:1414:	if (!capable(CAP_SYS_ADMIN))
+security/landlock/syscalls.c:507: * Enforcing a ruleset requires that the task has %CAP_SYS_ADMIN in its
+security/landlock/syscalls.c:519: *   %CAP_SYS_ADMIN in its namespace.
+security/landlock/syscalls.c:543:	    !ns_capable_noaudit(current_user_ns(), CAP_SYS_ADMIN))
+net/phonet/socket.c:640:	if (!capable(CAP_SYS_ADMIN))
+net/phonet/socket.c:659:	if (!capable(CAP_SYS_ADMIN))
+net/phonet/pn_netlink.c:65:	if (!netlink_capable(skb, CAP_SYS_ADMIN))
+net/phonet/pn_netlink.c:246:	if (!netlink_capable(skb, CAP_SYS_ADMIN))
+kernel/trace/trace_events_user.c:225:	/* Persistent events require CAP_PERFMON / CAP_SYS_ADMIN */
+net/phonet/af_phonet.c:58:	if (!capable(CAP_SYS_ADMIN))
+security/landlock/fs.c:150:	 * given file belongs to.  Requires CAP_SYS_ADMIN.
+drivers/xen/xenbus/xenbus_dev_backend.c:24:	if (!capable(CAP_SYS_ADMIN))
+drivers/xen/xenbus/xenbus_dev_backend.c:77:	if (!capable(CAP_SYS_ADMIN))
+drivers/xen/xenbus/xenbus_dev_backend.c:96:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_ioctl32.c:241:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_ioctl32.c:350:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_ioctl32.c:377:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_ioctl.c:99:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_ioctl.c:277:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_ioctl.c:327:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_ioctl.c:1049:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_ioctl.c:1156:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_ioctl.c:1407:		if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_ioctl.c:1419:		if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_ioctl.c:1429:		if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_ioctl.c:1438:		if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_healthmon.c:1203:	if (!capable(CAP_SYS_ADMIN))
+security/keys/trusted-keys/trusted_tpm1.c:355:	if (!capable(CAP_SYS_ADMIN))
+drivers/xen/xen-balloon.c:168:	if (!capable(CAP_SYS_ADMIN))
+drivers/xen/xen-balloon.c:195:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_handle.c:242:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_handle.c:297:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_handle.c:477:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_handle.c:615:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_handle.c:858:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_handle.c:888:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_fsops.c:298:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_fsops.c:350:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_fsmap.c:1178:		   has_capability_noaudit(current, CAP_SYS_ADMIN);
+security/keys/keyctl.c:433:		if (capable(CAP_SYS_ADMIN)) {
+security/keys/keyctl.c:478:		if (capable(CAP_SYS_ADMIN)) {
+security/keys/keyctl.c:996:		if (is_privileged_op && !capable(CAP_SYS_ADMIN))
+security/keys/keyctl.c:1097:	if (uid_eq(key->uid, current_fsuid()) || capable(CAP_SYS_ADMIN)) {
+net/unix/af_unix.c:1932:		return !capable(CAP_SYS_RESOURCE) && !capable(CAP_SYS_ADMIN);
+drivers/xen/pcpu.c:116:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/xfs_discard.c:824:	if (!capable(CAP_SYS_ADMIN))
+security/selinux/hooks.c:2269:	return cred_has_capability(current_cred(), CAP_SYS_ADMIN,
+drivers/xen/mcelog.c:157:	if (!capable(CAP_SYS_ADMIN))
+net/netlink/genetlink.c:1847:		if ((grp->flags & GENL_MCAST_CAP_SYS_ADMIN) &&
+net/netlink/genetlink.c:1848:		    !ns_capable(net->user_ns, CAP_SYS_ADMIN))
+fs/xfs/scrub/scrub.c:807:	if (!capable(CAP_SYS_ADMIN))
+fs/xfs/scrub/scrub.c:910:	if (!capable(CAP_SYS_ADMIN))
+kernel/delayacct.c:65:	if (write && !capable(CAP_SYS_ADMIN))
+security/integrity/ima/ima_fs.c:304:	if (write && !capable(CAP_SYS_ADMIN))
+security/integrity/ima/ima_fs.c:714:		if (!capable(CAP_SYS_ADMIN))
+kernel/trace/bpf_trace.c:1299:	if (!bpf_token_capable(prog->aux->token, CAP_SYS_ADMIN))
+security/integrity/ima/ima_appraise.c:666:		if (!capable(CAP_SYS_ADMIN))
+kernel/cgroup/namespace.c:64:	if (!ns_capable(user_ns, CAP_SYS_ADMIN))
+kernel/cgroup/namespace.c:97:	if (!ns_capable(nsset->cred->user_ns, CAP_SYS_ADMIN) ||
+kernel/cgroup/namespace.c:98:	    !ns_capable(cgroup_ns->user_ns, CAP_SYS_ADMIN))
+security/integrity/evm/evm_secfs.c:71:	if (!capable(CAP_SYS_ADMIN) || (evm_initialized & EVM_SETUP_COMPLETE))
+security/integrity/evm/evm_secfs.c:194:	if (!capable(CAP_SYS_ADMIN) || evm_xattrs_locked)
+security/integrity/evm/evm_main.c:527:		if (!capable(CAP_SYS_ADMIN))
+security/integrity/evm/evm_main.c:608: * requires CAP_SYS_ADMIN privileges.
+security/integrity/evm/evm_main.c:639: * Removing 'security.evm' requires CAP_SYS_ADMIN privileges and that
+kernel/cgroup/cpuset.c:1541:	if (!capable(CAP_SYS_ADMIN))
+kernel/cgroup/cpuset.c:1659:		if (!capable(CAP_SYS_ADMIN))
+kernel/cgroup/cgroup-v1.c:568:	    !file_ns_capable(of->file, &init_user_ns, CAP_SYS_ADMIN))
+kernel/cgroup/cgroup-v1.c:1004:		if ((fc->user_ns != &init_user_ns) || !capable(CAP_SYS_ADMIN))
+kernel/cgroup/cgroup-v1.c:1262:	if (!ns_capable(ctx->ns->user_ns, CAP_SYS_ADMIN))
+kernel/time/namespace.c:199:	if (!ns_capable(ns->user_ns, CAP_SYS_ADMIN) ||
+kernel/time/namespace.c:200:	    !ns_capable(nsset->cred->user_ns, CAP_SYS_ADMIN))
+security/device_cgroup.c:593: * CAP_SYS_ADMIN is needed for this.  It's at least separate from CAP_MKNOD
+security/device_cgroup.c:597: * us to also grant CAP_SYS_ADMIN to containers without giving away the
+security/device_cgroup.c:598: * device exception list controls, but for now we'll stick with CAP_SYS_ADMIN
+security/device_cgroup.c:600: * Taking rules away is always allowed (given CAP_SYS_ADMIN).  Granting
+security/device_cgroup.c:614:	if (!capable(CAP_SYS_ADMIN))
+security/commoncap.c:1042:	if (!ns_capable(user_ns, CAP_SYS_ADMIN))
+security/commoncap.c:1086:	if (!ns_capable(user_ns, CAP_SYS_ADMIN))
+security/commoncap.c:1455:	return cap_capable(current_cred(), &init_user_ns, CAP_SYS_ADMIN,
+kernel/sysctl.c:1358:	if (SYSCTL_USER_TO_KERN(dir) && !capable(CAP_SYS_ADMIN))
+kernel/sys.c:1424:	if (!ns_capable(current->nsproxy->uts_ns->user_ns, CAP_SYS_ADMIN))
+kernel/sys.c:1478:	if (!ns_capable(current->nsproxy->uts_ns->user_ns, CAP_SYS_ADMIN))
+kernel/sys.c:2106:		 * At the time of this writing, it checks for CAP_SYS_ADMIN
+kernel/bpf/verifier.c:2803:			verbose(env, "loading/calling other bpf or kernel functions are allowed for CAP_BPF and CAP_SYS_ADMIN\n");
+kernel/bpf/verifier.c:5809:			"'struct %s' access is allowed only to CAP_PERFMON and CAP_SYS_ADMIN\n",
+kernel/bpf/verifier.c:5988:			"'struct %s' access is allowed only to CAP_PERFMON and CAP_SYS_ADMIN\n",
+kernel/bpf/token.c:14:	return ns_capable(ns, cap) || (cap != CAP_SYS_ADMIN && ns_capable(ns, CAP_SYS_ADMIN));
+kernel/seccomp.c:687:	 * CAP_SYS_ADMIN in its namespace or be running with no_new_privs.
+kernel/seccomp.c:692:			!ns_capable_noaudit(current_user_ns(), CAP_SYS_ADMIN))
+kernel/seccomp.c:2220:	if (!capable(CAP_SYS_ADMIN) ||
+kernel/seccomp.c:2258:	if (!capable(CAP_SYS_ADMIN) ||
+kernel/seccomp.c:2417:	if (!capable(CAP_SYS_ADMIN))
+kernel/seccomp.c:2540:	if (!file_ns_capable(m->file, &init_user_ns, CAP_SYS_ADMIN))
+kernel/bpf/syscall.c:4903:	if (!capable(CAP_SYS_ADMIN))
+kernel/bpf/syscall.c:4984:	if (!capable(CAP_SYS_ADMIN))
+kernel/bpf/syscall.c:5011:	if (!capable(CAP_SYS_ADMIN))
+kernel/bpf/syscall.c:5697:	if (!bpf_token_capable(token, CAP_SYS_ADMIN)) {
+kernel/bpf/syscall.c:5758:	if (!capable(CAP_SYS_ADMIN))
+kernel/bpf/syscall.c:6151:	if (!capable(CAP_SYS_ADMIN))
+kernel/bpf/syscall.c:6207:	if (!capable(CAP_SYS_ADMIN))
+kernel/bpf/syscall.c:6756:	if (write && !capable(CAP_SYS_ADMIN))
+kernel/bpf/syscall.c:6784:	if (write && !capable(CAP_SYS_ADMIN))
+kernel/sched/topology.c:280:	if (write && !capable(CAP_SYS_ADMIN))
+security/apparmor/lsm.c:670:				      cred_label(new), CAP_SYS_ADMIN, &ad));
+security/apparmor/lsm.c:694:				      NULL, CAP_SYS_ADMIN, &ad));
+kernel/bpf/offload.c:510:	if (!capable(CAP_SYS_ADMIN))
+kernel/bpf/inode.c:1104:		if (msk && !capable(CAP_SYS_ADMIN))
+kernel/bpf/inode.c:1192:	if (fc->user_ns != &init_user_ns && !capable(CAP_SYS_ADMIN))
+kernel/bpf/hashtab.c:432:	if (zero_seed && !capable(CAP_SYS_ADMIN))
+fs/xattr.c:149:		if (!capable(CAP_SYS_ADMIN))
+fs/xattr.c:1609:	bool trusted = ns_capable_noaudit(&init_user_ns, CAP_SYS_ADMIN);
+kernel/sched/core.c:4684:	if (write && !capable(CAP_SYS_ADMIN))
+kernel/sched/core.c:4753:	if (write && !capable(CAP_SYS_ADMIN))
+kernel/sched/autogroup.c:251:	if (!capable(CAP_SYS_ADMIN) && time_before(jiffies, next))
+kernel/acct.c:31: *	Question: what should we do if we have CAP_SYS_ADMIN but not
+kernel/resource.c:138:	if (file_ns_capable(m->file, &init_user_ns, CAP_SYS_ADMIN)) {
+kernel/reboot.c:1087:	if (!capable(CAP_SYS_ADMIN))
+include/net/genetlink.h:21:/* Binding to multicast group requires %CAP_SYS_ADMIN */
+include/net/genetlink.h:22:#define GENL_MCAST_CAP_SYS_ADMIN	BIT(1)
+kernel/power/user.c:275:	if (!capable(CAP_SYS_ADMIN))
+kernel/pid_sysctl.h:15:	if (write && !ns_capable(ns->user_ns, CAP_SYS_ADMIN))
+kernel/ptrace.c:393:		if (!capable(CAP_SYS_ADMIN))
+kernel/pid_namespace.c:398:	if (!ns_capable(new->user_ns, CAP_SYS_ADMIN) ||
+kernel/pid_namespace.c:399:	    !ns_capable(nsset->cred->user_ns, CAP_SYS_ADMIN))
+fs/udf/file.c:153:		if (!capable(CAP_SYS_ADMIN))
+kernel/pid.c:736:	if (ns_capable_noaudit(pidns->user_ns, CAP_SYS_ADMIN) ||
+kernel/printk/sysctl.c:16:	if (write && !capable(CAP_SYS_ADMIN))
+kernel/panic.c:103:	if (write && !capable(CAP_SYS_ADMIN))
+kernel/nsproxy.c:181:	} else if (!ns_capable(user_ns, CAP_SYS_ADMIN))
+kernel/nsproxy.c:222:	if (!ns_capable(user_ns, CAP_SYS_ADMIN))
+fs/ubifs/xattr.c:377:		    XATTR_TRUSTED_PREFIX_LEN) == 0 && !capable(CAP_SYS_ADMIN))
+kernel/nscommon.c:316:	       ns_capable_noaudit(init_pid_ns.user_ns, CAP_SYS_ADMIN);
+kernel/fork.c:2087:		 * after being spawned, so require CAP_SYS_ADMIN.
+kernel/fork.c:2092:		    !ns_capable(current_user_ns(), CAP_SYS_ADMIN))
+kernel/fork.c:2163:		    !capable(CAP_SYS_RESOURCE) && !capable(CAP_SYS_ADMIN))
+kernel/events/hw_breakpoint.c:707:		if (!capable(CAP_SYS_ADMIN))
+kernel/events/core.c:11601:	if (!capable(CAP_SYS_ADMIN))
+fs/super.c:682:		return capable(CAP_SYS_ADMIN);
+fs/super.c:684:		return ns_capable(fc->user_ns, CAP_SYS_ADMIN);
+fs/squashfs/xattr.c:227:	return capable(CAP_SYS_ADMIN);
+include/uapi/drm/i915_drm.h:3502:	 * Requires CAP_PERFMON or CAP_SYS_ADMIN to get reliable accounting.
+include/uapi/drm/i915_drm.h:3551:			 * Requires CAP_PERFMON or CAP_SYS_ADMIN to get reliable
+include/uapi/drm/drm.h:1285: * If the client is DRM master or has &CAP_SYS_ADMIN, &drm_mode_fb_cmd2.handles
+fs/smb/client/smb2ops.c:1697:		if (!capable(CAP_SYS_ADMIN)) {
+fs/smb/client/smb2ops.c:1711:		if (!capable(CAP_SYS_ADMIN)) {
+fs/smb/client/ioctl.c:284:	if (!capable(CAP_SYS_ADMIN))
+fs/smb/client/ioctl.c:612:			if (!capable(CAP_SYS_ADMIN)) {
+fs/smb/client/ioctl.c:651:			if (!capable(CAP_SYS_ADMIN)) {
+net/core/sysctl_net_core.c:385:	if (write && !capable(CAP_SYS_ADMIN))
+net/core/sysctl_net_core.c:412:	if (!capable(CAP_SYS_ADMIN))
+net/core/sysctl_net_core.c:423:	if (!capable(CAP_SYS_ADMIN))
+include/uapi/linux/btrfs.h:959: * the page cache. Encoded I/O requires CAP_SYS_ADMIN.
+include/uapi/linux/bpf.h:909: *		CAP_BPF, CAP_PERFMON, CAP_NET_ADMIN, CAP_SYS_ADMIN) within
+net/core/scm.c:59:	     ns_capable(task_active_pid_ns(current)->user_ns, CAP_SYS_ADMIN)) &&
+drivers/virt/nitro_enclaves/ne_misc_dev.c:435:	if (!capable(CAP_SYS_ADMIN))
+fs/remap_range.c:421:	if (capable(CAP_SYS_ADMIN))
+fs/quota/quota.c:47:		if (!capable(CAP_SYS_ADMIN))
+net/core/net_namespace.c:1535:	if (!ns_capable(net->user_ns, CAP_SYS_ADMIN) ||
+net/core/net_namespace.c:1536:	    !ns_capable(nsset->cred->user_ns, CAP_SYS_ADMIN))
+net/core/net-sysfs.c:2164:	return ns_capable(net->user_ns, CAP_SYS_ADMIN);
+include/uapi/linux/capability.h:281:#define CAP_SYS_ADMIN        21
+include/uapi/linux/capability.h:406: * CAP_SYS_ADMIN is required to use bpf_probe_write_user.
+include/uapi/linux/capability.h:408: * CAP_SYS_ADMIN is required to iterate system wide loaded
+fs/proc/task_mmu.c:2324:	pm.show_pfn = file_ns_capable(file, &init_user_ns, CAP_SYS_ADMIN);
+fs/proc/root.c:154:	if (!ns_capable(target->user_ns, CAP_SYS_ADMIN)) {
+net/core/drop_monitor.c:186:	{ .name = "events", .flags = GENL_MCAST_CAP_SYS_ADMIN, },
+fs/crypto/keyring.c:752:	    !capable(CAP_SYS_ADMIN))
+fs/crypto/keyring.c:1064:	    !capable(CAP_SYS_ADMIN))
+fs/crypto/keyring.c:1138:	if (!capable(CAP_SYS_ADMIN))
+fs/proc/base.c:478:	if (!file_ns_capable(m->file, &init_user_ns, CAP_SYS_ADMIN))
+fs/proc/base.c:2274: * Only allow CAP_SYS_ADMIN and CAP_CHECKPOINT_RESTORE to follow the links, due
+fs/proc/base.c:3165:		if (!ns_capable(ns, CAP_SYS_ADMIN))
+fs/pipe.c:887:	return !capable(CAP_SYS_RESOURCE) && !capable(CAP_SYS_ADMIN);
+fs/overlayfs/xattrs.c:102:	return ns_capable_noaudit(&init_user_ns, CAP_SYS_ADMIN);
+fs/overlayfs/params.c:1014:	if (!config->userxattr && !capable(CAP_SYS_ADMIN)) {
+net/core/bpf_sk_storage.c:485:	/* bpf_local_storage_map is currently limited to CAP_SYS_ADMIN as
+include/uapi/linux/nsm.h:22:/* Raw NSM message. Only available with CAP_SYS_ADMIN. */
+fs/ocfs2/xattr.c:933:		if (!capable(CAP_SYS_ADMIN))
+fs/cachefiles/daemon.c:97:	if (!capable(CAP_SYS_ADMIN))
+fs/ocfs2/ioctl.c:937:		if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/transaction.c:1934:		 * Creation of a snapshot does not require CAP_SYS_ADMIN, so
+fs/autofs/root.c:870:	if (!autofs_oz_mode(sbi) && !capable(CAP_SYS_ADMIN))
+arch/x86/net/bpf_jit_comp.c:2890:			    !ns_capable_noaudit(&init_user_ns, CAP_SYS_ADMIN)) {
+fs/autofs/dev-ioctl.c:685:	    !capable(CAP_SYS_ADMIN))
+fs/btrfs/sysfs.c:775:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/sysfs.c:864:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/super.c:2269:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/send.c:7965:	if (!capable(CAP_SYS_ADMIN))
+fs/ntfs3/xattr.c:970:	if (ntfs_is_reserved_lxattr(name) && !capable(CAP_SYS_ADMIN)) {
+fs/btrfs/ioctl.c:456:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:1009:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:1611:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:1642:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:1906:	if (!capable(CAP_SYS_ADMIN)) {
+fs/btrfs/ioctl.c:2377:	if (!capable(CAP_SYS_ADMIN)) {
+fs/btrfs/ioctl.c:2457:		if (!capable(CAP_SYS_ADMIN)) {
+fs/btrfs/ioctl.c:2469:		if (!capable(CAP_SYS_ADMIN) &&
+fs/btrfs/ioctl.c:2527:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:2588:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:2655:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:2803:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3072:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3120:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3132:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3157:	if ((sa->flags & BTRFS_DEV_STATS_RESET) && !capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3174:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3284:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3423:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3508:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3527:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3558:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3630:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3698:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3759:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3806:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3839:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:3855:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:4070:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:4211:	if (!capable(CAP_SYS_ADMIN))
+fs/btrfs/ioctl.c:4324:	if (!capable(CAP_SYS_ADMIN)) {
+fs/btrfs/ioctl.c:4428:	if (!capable(CAP_SYS_ADMIN)) {
+fs/btrfs/ioctl.c:4716:	if (!capable(CAP_SYS_ADMIN)) {
+fs/btrfs/ioctl.c:4857:	if (!capable(CAP_SYS_ADMIN)) {
+fs/btrfs/ioctl.c:5125:	if (!capable(CAP_SYS_ADMIN))
+arch/x86/mm/mmap.c:235:	if (pfn >= l1tf_pfn_limit() && !capable(CAP_SYS_ADMIN))
+fs/ntfs3/file.c:69:	if (!capable(CAP_SYS_ADMIN))
+fs/ntfs3/file.c:183:	if (!capable(CAP_SYS_ADMIN))
+fs/ntfs3/file.c:218:	if (!capable(CAP_SYS_ADMIN))
+drivers/video/fbdev/uvesafb.c:77:	if (!capable(CAP_SYS_ADMIN))
+fs/exfat/file.c:524:	if (!capable(CAP_SYS_ADMIN))
+fs/exfat/file.c:550:	if (!capable(CAP_SYS_ADMIN))
+fs/exfat/file.c:586:	if (!capable(CAP_SYS_ADMIN))
+fs/erofs/xattr.c:413:	return capable(CAP_SYS_ADMIN);
+fs/file_table.c:253:	    !capable(CAP_SYS_ADMIN)) {
+fs/fhandle.c:298:	return mnt_ns && ns_capable(mnt_ns->user_ns, CAP_SYS_ADMIN);
+fs/fhandle.c:333:	if (ns_capable(root->mnt->mnt_sb->s_user_ns, CAP_SYS_ADMIN))
+fs/ntfs/file.c:716:	if (!capable(CAP_SYS_ADMIN))
+fs/ntfs/file.c:754:	if (!capable(CAP_SYS_ADMIN))
+fs/ntfs/file.c:779:	if (!capable(CAP_SYS_ADMIN))
+fs/ntfs/ea.c:774:	if (ntfs_is_reserved_lxattr(name) && !capable(CAP_SYS_ADMIN))
+fs/fat/file.c:135:	if (!capable(CAP_SYS_ADMIN))
+fs/f2fs/xattr.c:101:	return capable(CAP_SYS_ADMIN);
+fs/dlm/user.c:411:	if (!capable(CAP_SYS_ADMIN))
+fs/dlm/user.c:441:	if (!capable(CAP_SYS_ADMIN))
+fs/notify/fanotify/fanotify_user.c:1608:	    !capable(CAP_SYS_ADMIN))
+fs/notify/fanotify/fanotify_user.c:1611:	if (!ns_capable_noaudit(&init_user_ns, CAP_SYS_ADMIN)) {
+fs/notify/fanotify/fanotify_user.c:1969:	    !ns_capable(group->user_ns, CAP_SYS_ADMIN))
+fs/notify/fanotify/fanotify_user.c:2081:	if (user_ns && !ns_capable(user_ns, CAP_SYS_ADMIN))
+fs/f2fs/file.c:2609:	if (!capable(CAP_SYS_ADMIN))
+fs/f2fs/file.c:2699:	if (!capable(CAP_SYS_ADMIN))
+fs/f2fs/file.c:2859:	if (!capable(CAP_SYS_ADMIN))
+fs/f2fs/file.c:2903:	if (!capable(CAP_SYS_ADMIN))
+fs/f2fs/file.c:2959:	if (!capable(CAP_SYS_ADMIN))
+fs/f2fs/file.c:3153:	if (!capable(CAP_SYS_ADMIN))
+fs/f2fs/file.c:3395:	if (!capable(CAP_SYS_ADMIN))
+fs/f2fs/file.c:3768:	if (!capable(CAP_SYS_ADMIN))
+fs/f2fs/file.c:3846:	if (!capable(CAP_SYS_ADMIN))
+fs/ext4/xattr_trusted.c:19:	return capable(CAP_SYS_ADMIN);
+fs/jfs/xattr.c:869:		capable(CAP_SYS_ADMIN));
+fs/ext4/sysfs.c:123:	if (!capable(CAP_SYS_ADMIN))
+fs/dlm/config.c:140:	if (!capable(CAP_SYS_ADMIN))
+fs/dlm/config.c:164:	if (!capable(CAP_SYS_ADMIN))
+fs/jfs/ioctl.c:116:		if (!capable(CAP_SYS_ADMIN))
+fs/ext4/ioctl.c:407:	    !capable(CAP_SYS_ADMIN)) {
+fs/ext4/ioctl.c:862:	if (!capable(CAP_SYS_ADMIN))
+fs/ext4/ioctl.c:1083:	if (!capable(CAP_SYS_ADMIN))
+fs/ext4/ioctl.c:1124:	if (!capable(CAP_SYS_ADMIN))
+fs/ext4/ioctl.c:1213:	if (!capable(CAP_SYS_ADMIN))
+fs/ext4/ioctl.c:1400:	if (!capable(CAP_SYS_ADMIN))
+fs/ext4/ioctl.c:1780:		if (!capable(CAP_SYS_ADMIN))
+fs/jffs2/xattr_trusted.c:39:	return capable(CAP_SYS_ADMIN);
+fs/ext2/xattr_trusted.c:15:	return capable(CAP_SYS_ADMIN);
+fs/nilfs2/ioctl.c:203:	if (!capable(CAP_SYS_ADMIN))
+fs/nilfs2/ioctl.c:255:	if (!capable(CAP_SYS_ADMIN))
+fs/nilfs2/ioctl.c:866:	if (!capable(CAP_SYS_ADMIN))
+fs/nilfs2/ioctl.c:1014:	if (!capable(CAP_SYS_ADMIN))
+fs/nilfs2/ioctl.c:1050:	if (!capable(CAP_SYS_ADMIN))
+fs/nilfs2/ioctl.c:1094:	if (!capable(CAP_SYS_ADMIN))
+fs/nilfs2/ioctl.c:1202:	if (!capable(CAP_SYS_ADMIN))
+fs/nilfs2/ioctl.c:1295:	if (!capable(CAP_SYS_ADMIN))
+fs/hpfs/super.c:213:			if (!capable(CAP_SYS_ADMIN))
+fs/ioctl.c:389:	if (!ns_capable(sb->s_user_ns, CAP_SYS_ADMIN))
+fs/ioctl.c:406:	if (!ns_capable(sb->s_user_ns, CAP_SYS_ADMIN))
+drivers/cdrom/cdrom.c:2460:	if (!capable(CAP_SYS_ADMIN))
+drivers/cdrom/cdrom.c:2482:	if (cdi->use_count != 1 && !arg && !capable(CAP_SYS_ADMIN))
+drivers/cdrom/cdrom.c:2492:	if (!capable(CAP_SYS_ADMIN))
+fs/hfsplus/xattr.c:731:				capable(CAP_SYS_ADMIN);
+fs/hfsplus/ioctl.c:36:	if (!capable(CAP_SYS_ADMIN))
+fs/gfs2/xattr.c:1491:	return capable(CAP_SYS_ADMIN);
+fs/gfs2/sys.c:164:	if (!capable(CAP_SYS_ADMIN))
+fs/gfs2/sys.c:196:	if (!capable(CAP_SYS_ADMIN))
+fs/gfs2/sys.c:217:	if (!capable(CAP_SYS_ADMIN))
+fs/gfs2/sys.c:236:	if (!capable(CAP_SYS_ADMIN))
+fs/gfs2/sys.c:257:	if (!capable(CAP_SYS_ADMIN))
+fs/gfs2/sys.c:279:	if (!capable(CAP_SYS_ADMIN))
+fs/gfs2/sys.c:304:	if (!capable(CAP_SYS_ADMIN))
+fs/gfs2/sys.c:626:	if (!capable(CAP_SYS_ADMIN))
+fs/gfs2/sys.c:646:	if (!capable(CAP_SYS_ADMIN))
+fs/gfs2/rgrp.c:1401:	if (!capable(CAP_SYS_ADMIN))
+fs/namespace.c:1933:		if (!ns_capable(sb->s_user_ns, CAP_SYS_ADMIN))
+fs/namespace.c:2009:	return ns_capable(current->nsproxy->mnt_ns->user_ns, CAP_SYS_ADMIN);
+fs/namespace.c:2034:	if (flags & MNT_FORCE && !ns_capable(sb->s_user_ns, CAP_SYS_ADMIN))
+fs/namespace.c:2126:		if (!ns_capable_noaudit(mntns->user_ns, CAP_SYS_ADMIN))
+fs/namespace.c:2401:	if (!ns_capable(old_mnt->mnt_ns->user_ns, CAP_SYS_ADMIN))
+fs/namespace.c:2856:	 if (!ns_capable(ns->user_ns, CAP_SYS_ADMIN))
+fs/namespace.c:3225:	    !ns_capable(current_user_ns(), CAP_SYS_ADMIN))
+fs/namespace.c:3406:		if (ns_capable(sb->s_user_ns, CAP_SYS_ADMIN)) {
+fs/namespace.c:4450:	    !ns_capable(current_user_ns(), CAP_SYS_ADMIN))
+fs/namespace.c:4830:	if (!ns_capable(fs_userns, CAP_SYS_ADMIN))
+fs/namespace.c:5041:	if (!ns_capable(mnt_userns, CAP_SYS_ADMIN))
+fs/namespace.c:5767:			    !ns_capable_noaudit(ns->user_ns, CAP_SYS_ADMIN))
+fs/namespace.c:5991:		    !ns_capable_noaudit(ns->user_ns, CAP_SYS_ADMIN))
+fs/namespace.c:6057:	    !ns_capable_noaudit(ns->user_ns, CAP_SYS_ADMIN))
+fs/namespace.c:6154:	    !ns_capable_noaudit(kls.ns->user_ns, CAP_SYS_ADMIN))
+fs/namespace.c:6488:	if (!ns_capable(mnt_ns->user_ns, CAP_SYS_ADMIN) ||
+fs/namespace.c:6490:	    !ns_capable(user_ns, CAP_SYS_ADMIN))
+fs/fuse/inode.c:1240:	int cap_sys_admin = capable(CAP_SYS_ADMIN);
+fs/fuse/dir.c:27:		 "Allow users with CAP_SYS_ADMIN in initial userns to bypass allow_other access check");
+fs/fuse/dir.c:1694:	if (!allow && allow_sys_admin_access && capable(CAP_SYS_ADMIN))
+drivers/android/binderfs.c:290:		if (!capable(CAP_SYS_ADMIN))
+fs/fuse/control.c:89:	if (!capable(CAP_SYS_ADMIN))
+fs/fuse/backing.c:92:	/* TODO: relax CAP_SYS_ADMIN once backing files are visible to lsof */
+fs/fuse/backing.c:94:	if (!fc->passthrough || !capable(CAP_SYS_ADMIN))
+fs/fuse/backing.c:148:	/* TODO: relax CAP_SYS_ADMIN once backing files are visible to lsof */
+fs/fuse/backing.c:150:	if (!fc->passthrough || !capable(CAP_SYS_ADMIN))
+fs/fsopen.c:262:	if (!ns_capable(sb->s_user_ns, CAP_SYS_ADMIN)) {
+drivers/android/binder/rust_binderfs.c:282:		if (!capable(CAP_SYS_ADMIN))
+drivers/ata/libata-scsi.c:701:		if (!capable(CAP_SYS_ADMIN) || !capable(CAP_SYS_RAWIO))
+drivers/ata/libata-scsi.c:706:		if (!capable(CAP_SYS_ADMIN) || !capable(CAP_SYS_RAWIO))
+arch/x86/kernel/vm86_32.c:811:			if (!capable(CAP_SYS_ADMIN)) return -EPERM;
+drivers/acpi/apei/erst-dbg.c:157:	if (!capable(CAP_SYS_ADMIN))
+drivers/block/ublk_drv.c:1332:	if (capable(CAP_SYS_ADMIN))
+drivers/block/ublk_drv.c:3053:	if (!ub->unprivileged_daemons && !capable(CAP_SYS_ADMIN))
+drivers/block/ublk_drv.c:4691:	if (capable(CAP_SYS_ADMIN))
+drivers/block/ublk_drv.c:5682:		if (!capable(CAP_SYS_ADMIN))
+drivers/block/swim3.c:892:	if ((cmd & 0x80) && !capable(CAP_SYS_ADMIN))
+drivers/block/swim.c:693:	if ((cmd & 0x80) && !capable(CAP_SYS_ADMIN))
+drivers/cpuidle/sysfs.c:294:	if (!capable(CAP_SYS_ADMIN))
+drivers/block/rbd.c:5080:	if (!capable(CAP_SYS_ADMIN))
+drivers/block/rbd.c:5194:	if (!capable(CAP_SYS_ADMIN))
+drivers/block/rbd.c:7087:	if (!capable(CAP_SYS_ADMIN))
+drivers/block/rbd.c:7239:	if (!capable(CAP_SYS_ADMIN))
+drivers/block/nbd.c:1684:	if (!capable(CAP_SYS_ADMIN))
+drivers/block/nbd.c:2118:	if (!netlink_capable(skb, CAP_SYS_ADMIN))
+drivers/block/nbd.c:2317:	if (!netlink_capable(skb, CAP_SYS_ADMIN))
+drivers/block/nbd.c:2355:	if (!netlink_capable(skb, CAP_SYS_ADMIN))
+drivers/block/mtip32xx/mtip32xx.c:3045:	if (!capable(CAP_SYS_ADMIN))
+drivers/block/mtip32xx/mtip32xx.c:3085:	if (!capable(CAP_SYS_ADMIN))
+drivers/block/drbd/drbd_nl.c:3645:							!capable(CAP_SYS_ADMIN));
+drivers/block/drbd/drbd_nl.c:3843:	exclude_sensitive = sib || !capable(CAP_SYS_ADMIN);
+drivers/block/loop.c:1542:		if ((mode & BLK_OPEN_WRITE) || capable(CAP_SYS_ADMIN))
+drivers/block/loop.c:1549:		if ((mode & BLK_OPEN_WRITE) || capable(CAP_SYS_ADMIN))
+drivers/block/loop.c:1555:		if (!(mode & BLK_OPEN_WRITE) && !capable(CAP_SYS_ADMIN))
+drivers/block/loop.c:1560:		if (!(mode & BLK_OPEN_WRITE) && !capable(CAP_SYS_ADMIN))
+drivers/block/floppy.c:3237:		if (!capable(CAP_SYS_ADMIN))
+drivers/block/floppy.c:3430:	    ((cmd & 0x80) && !capable(CAP_SYS_ADMIN)))
+drivers/block/floppy.c:3708:	if (!capable(CAP_SYS_ADMIN))
+include/drm/drm_file.h:223:	 * This is used to ensure that CAP_SYS_ADMIN is not enforced, if the
+drivers/base/memory.c:610:	if (!capable(CAP_SYS_ADMIN))
+drivers/base/memory.c:626:	if (!capable(CAP_SYS_ADMIN))
+arch/x86/kernel/cpu/mtrr/if.c:392:	if (!capable(CAP_SYS_ADMIN))
+include/linux/bpf.h:3382:	return capable(cap) || (cap != CAP_SYS_ADMIN && capable(CAP_SYS_ADMIN));
+include/linux/bpf.h:3590:	return capable(CAP_NET_ADMIN) || capable(CAP_SYS_ADMIN);
+arch/x86/kernel/cpu/mce/dev-mcelog.c:259:	if (!capable(CAP_SYS_ADMIN))
+arch/x86/kernel/cpu/mce/dev-mcelog.c:291:	if (!capable(CAP_SYS_ADMIN))
+drivers/comedi/comedi_fops.c:892:	if (!capable(CAP_SYS_ADMIN))
+drivers/comedi/comedi_fops.c:973:		if (!capable(CAP_SYS_ADMIN))
+drivers/comedi/comedi_fops.c:2983:	if (!dev->attached && !capable(CAP_SYS_ADMIN)) {
+drivers/comedi/comedi_fops.c:2984:		dev_dbg(dev->class_dev, "not attached and not CAP_SYS_ADMIN\n");
+arch/x86/kernel/cpu/amd_cache_disable.c:155:	if (!capable(CAP_SYS_ADMIN))
+arch/x86/kernel/cpu/amd_cache_disable.c:203:	if (!capable(CAP_SYS_ADMIN))
+include/linux/capability.h:192:	return capable(CAP_PERFMON) || capable(CAP_SYS_ADMIN);
+include/linux/capability.h:197:	return capable(CAP_BPF) || capable(CAP_SYS_ADMIN);
+include/linux/capability.h:203:		ns_capable(ns, CAP_SYS_ADMIN);
+include/linux/capability.h:209:		ns_capable_noaudit(ns, CAP_SYS_ADMIN);
+arch/x86/kernel/apm_32.c:1594:	as->suser = capable(CAP_SYS_ADMIN);
+drivers/iommu/iommu.c:3259:	if (!capable(CAP_SYS_ADMIN) || !capable(CAP_SYS_RAWIO))
+drivers/firmware/efi/test/efi_test.c:733:	if (!capable(CAP_SYS_ADMIN))
+drivers/firmware/efi/mokvar-table.c:271:	if (!capable(CAP_SYS_ADMIN))
+drivers/firmware/dmi-sysfs.c:105:	if (!capable(CAP_SYS_ADMIN))
+include/linux/fanotify.h:31: * fanotify_init() flags that require CAP_SYS_ADMIN.
+include/linux/fanotify.h:44: * fanotify_init() flags that are allowed for user without CAP_SYS_ADMIN.
+drivers/input/serio/serport.c:78:	if (!capable(CAP_SYS_ADMIN))
+drivers/usb/serial/usb-serial.c:480:	if (!capable(CAP_SYS_ADMIN)) {
+include/linux/key.h:86:	KEY_SYSADMIN_OVERRIDE,	/* Special: override by CAP_SYS_ADMIN */
+drivers/char/tpm/tpm_vtpm_proxy.c:633:	if (!capable(CAP_SYS_ADMIN))
+drivers/usb/serial/ftdi_sio.c:1449:	if (!capable(CAP_SYS_ADMIN)) {
+drivers/gpu/drm/vmwgfx/vmwgfx_drv.c:203:	 * DRM_MASTER or capable(CAP_SYS_ADMIN).
+drivers/gpu/drm/vmwgfx/vmwgfx_drv.c:1252:			    !capable(CAP_SYS_ADMIN))
+drivers/char/random.c:1499:		if (!capable(CAP_SYS_ADMIN))
+drivers/char/random.c:1512:		if (!capable(CAP_SYS_ADMIN))
+drivers/char/random.c:1535:		if (!capable(CAP_SYS_ADMIN))
+drivers/char/random.c:1539:		if (!capable(CAP_SYS_ADMIN))
+drivers/char/nvram.c:320:		if (!capable(CAP_SYS_ADMIN))
+drivers/char/nvram.c:329:		if (!capable(CAP_SYS_ADMIN))
+drivers/char/lp.c:651:			if (capable(CAP_SYS_ADMIN))
+drivers/gpu/drm/drm_auth.c:191: * CAP_SYS_ADMIN was not set. This was used to prevent rogue applications
+drivers/gpu/drm/drm_auth.c:198: * If the CAP_SYS_ADMIN was missing, no other client could become master...
+drivers/gpu/drm/drm_auth.c:215: * * Either due missing CAP_SYS_ADMIN or simply not calling DROP_MASTER.
+drivers/gpu/drm/drm_auth.c:239:	if (!capable(CAP_SYS_ADMIN))
+drivers/char/ds1620.c:251:		if (!capable(CAP_SYS_ADMIN))
+drivers/char/ds1620.c:305:		if (!capable(CAP_SYS_ADMIN))
+drivers/char/apm-emulation.c:355:		as->suser = capable(CAP_SYS_ADMIN);
+drivers/gpu/drm/drm_framebuffer.c:557:	if (!drm_is_current_master(file_priv) && !capable(CAP_SYS_ADMIN)) {
+drivers/gpu/drm/drm_framebuffer.c:635:	if (!drm_is_current_master(file_priv) && !capable(CAP_SYS_ADMIN)) {
+drivers/gpu/drm/drm_file.c:149:	file->authenticated = capable(CAP_SYS_ADMIN);
+drivers/gpu/drm/drm_ioctl.c:613:	/* ROOT_ONLY is only for CAP_SYS_ADMIN */
+drivers/gpu/drm/drm_ioctl.c:614:	if (unlikely((flags & DRM_ROOT_ONLY) && !capable(CAP_SYS_ADMIN)))
+drivers/gpib/common/gpib_os.c:819:	if (!capable(CAP_SYS_ADMIN))
+drivers/gpib/common/gpib_os.c:1415:	if (!capable(CAP_SYS_ADMIN))
+drivers/gpib/common/gpib_os.c:1605:	if (!capable(CAP_SYS_ADMIN))
+drivers/gpib/common/gpib_os.c:1624:	if (!capable(CAP_SYS_ADMIN))
+drivers/gpib/common/gpib_os.c:1641:	if (!capable(CAP_SYS_ADMIN))
+drivers/gpib/common/gpib_os.c:1856:	if (!capable(CAP_SYS_ADMIN))
+drivers/gpib/common/gpib_os.c:1874:	if (!capable(CAP_SYS_ADMIN))
+drivers/gpu/drm/i915/i915_getparam.c:75:		value = HAS_SECURE_BATCHES(i915) && capable(CAP_SYS_ADMIN);
+drivers/infiniband/hw/hfi1/sysfs.c:596:	if (!capable(CAP_SYS_ADMIN))
+drivers/infiniband/hw/hfi1/hfi.h:1605:	if (capable(CAP_SYS_ADMIN))
+drivers/gpu/drm/i915/i915_perf.c:3865:	 * without CAP_PERFMON or CAP_SYS_ADMIN privileges.
+drivers/gpu/drm/i915/i915_perf.c:4082:					"OA exponent would exceed the max sampling frequency (sysctl dev.i915.oa_max_sample_rate) %uHz without CAP_PERFMON or CAP_SYS_ADMIN privileges\n",
+drivers/usb/class/cdc-acm.c:1013:	if (!capable(CAP_SYS_ADMIN)) {
+drivers/hwmon/dell-smm-hwmon.c:134:MODULE_PARM_DESC(restricted, "Restrict fan control and serial number to CAP_SYS_ADMIN (default: 1)");
+drivers/hwmon/dell-smm-hwmon.c:576:		if (restricted && !capable(CAP_SYS_ADMIN))
+drivers/hwmon/dell-smm-hwmon.c:616:		if (restricted && !capable(CAP_SYS_ADMIN))
+drivers/hwmon/dell-smm-hwmon.c:689:		   (restricted && !capable(CAP_SYS_ADMIN)) ? "-1" : data->bios_machineid,
+drivers/tty/vt/vt.c:3573:	if (current->signal->tty != tty && !capable(CAP_SYS_ADMIN))
+drivers/tty/vt/vt.c:3583:		if (!capable(CAP_SYS_ADMIN))
+drivers/tty/vt/vt.c:3591:		if (!capable(CAP_SYS_ADMIN))
+drivers/tty/vt/vt.c:3613:		if (!capable(CAP_SYS_ADMIN))
+drivers/tty/vt/selection.c:196:	 * CAP_SYS_ADMIN as they do not modify the selection.
+drivers/tty/vt/selection.c:203:		if (!capable(CAP_SYS_ADMIN))
+drivers/tty/vt/keyboard.c:2029:	if ((oldval == K_SAK || val == K_SAK) && !capable(CAP_SYS_ADMIN))
+drivers/hv/mshv_vtl_main.c:1053:	if (!capable(CAP_SYS_ADMIN))
+drivers/hv/mshv_vtl_main.c:1221:	if (capable(CAP_SYS_ADMIN)) {
+drivers/hv/mshv_vtl_main.c:1224:		pr_err("%s: VTL low open failed: CAP_SYS_ADMIN required. task group %d, uid %d",
+drivers/tty/tty_jobctrl.c:390:		if (arg == 1 && capable(CAP_SYS_ADMIN)) {
+drivers/tty/tty_jobctrl.c:402:	if ((file->f_mode & FMODE_READ) == 0 && !capable(CAP_SYS_ADMIN)) {
+drivers/tty/tty_io.c:1341:	if (test_bit(TTY_EXCLUSIVE, &tty->flags) && !capable(CAP_SYS_ADMIN))
+drivers/tty/tty_io.c:2279:	if (!tty_legacy_tiocsti && !capable(CAP_SYS_ADMIN))
+drivers/tty/tty_io.c:2282:	if ((current->signal->tty != tty) && !capable(CAP_SYS_ADMIN))
+drivers/tty/tty_io.c:2384:	if (!capable(CAP_SYS_ADMIN))
+drivers/tty/tty_io.c:2747:		if (!capable(CAP_SYS_ADMIN))
+drivers/gpu/drm/i915/gem/i915_gem_execbuffer.c:3391:		if (!drm_is_current_master(file) || !capable(CAP_SYS_ADMIN))
+drivers/gpu/drm/i915/gem/i915_gem_context.c:904:		else if (!capable(CAP_SYS_ADMIN) && !args->value)
+drivers/gpu/drm/i915/gem/i915_gem_context.c:2216:		else if (!capable(CAP_SYS_ADMIN) && !args->value)
+drivers/gpu/drm/i915/gem/i915_gem_context.c:2662:	if (capable(CAP_SYS_ADMIN))
+drivers/tty/serial/serial_core.c:349:	if (retval && capable(CAP_SYS_ADMIN))
+drivers/tty/serial/serial_core.c:938:	if (!capable(CAP_SYS_ADMIN)) {
+drivers/tty/serial/serial_core.c:1136:	if (!capable(CAP_SYS_ADMIN))
+drivers/tty/serial/serial_core.c:1996:	if (capable(CAP_SYS_ADMIN)) {
+drivers/mtd/mtdchar.c:546:	if (!capable(CAP_SYS_ADMIN))
+drivers/gpu/drm/msm/msm_gpu.h:436:	 * pps-producer (perfetto), and restricted to CAP_SYS_ADMIN.
+drivers/tty/mxser.c:750:		if (capable(CAP_SYS_ADMIN)) {
+drivers/tty/mxser.c:997:	if (!capable(CAP_SYS_ADMIN)) {
+drivers/tty/moxa.c:2102:	if (!capable(CAP_SYS_ADMIN)) {
+drivers/tty/amiserial.c:475:		if (capable(CAP_SYS_ADMIN)) {
+drivers/tty/amiserial.c:937:	if (!capable(CAP_SYS_ADMIN)) {
+drivers/thermal/thermal_netlink.c:693:	if (!capable(CAP_SYS_ADMIN))
+drivers/thermal/thermal_netlink.c:718:	if (!capable(CAP_SYS_ADMIN))
+drivers/thermal/thermal_netlink.c:743:	if (!capable(CAP_SYS_ADMIN))
+drivers/mmc/core/sdio_uart.c:957:			if (capable(CAP_SYS_ADMIN)) {
+drivers/gpu/drm/msm/adreno/a5xx_debugfs.c:101:	if (!capable(CAP_SYS_ADMIN))
+drivers/gpu/drm/msm/adreno/a5xx_debugfs.c:105:	 * Since this is just a debug feature limited to CAP_SYS_ADMIN,
+drivers/misc/sgi-gru/grufault.c:671:	if (!capable(CAP_SYS_ADMIN))
+drivers/misc/genwqe/card_dev.c:464:	if (capable(CAP_SYS_ADMIN) && (vsize > sizeof(dma_addr_t)))
+drivers/misc/genwqe/card_dev.c:1094:		if (!capable(CAP_SYS_ADMIN))
+drivers/misc/genwqe/card_dev.c:1130:		if (!capable(CAP_SYS_ADMIN))
+drivers/misc/genwqe/card_dev.c:1216:		if (!capable(CAP_SYS_ADMIN))
+drivers/target/iscsi/iscsi_target_configfs.c:371:	if (!capable(CAP_SYS_ADMIN))					\
+drivers/target/iscsi/iscsi_target_configfs.c:383:	if (!capable(CAP_SYS_ADMIN))					\
+drivers/target/iscsi/iscsi_target_configfs.c:435:	if (!capable(CAP_SYS_ADMIN))					\
+drivers/target/iscsi/iscsi_target_configfs.c:826:	if (!capable(CAP_SYS_ADMIN))						\
+drivers/target/iscsi/iscsi_target_configfs.c:838:	if (!capable(CAP_SYS_ADMIN))						\
+drivers/target/iscsi/iscsi_target_configfs.c:885:	if (!capable(CAP_SYS_ADMIN))						\
+drivers/misc/eeprom/at24.c:145:	if (capable(CAP_SYS_ADMIN))
+arch/s390/kvm/kvm-s390.c:3279:	if ((type & KVM_VM_S390_UCONTROL) && (!capable(CAP_SYS_ADMIN)))
+drivers/pci/syscall.c:26:	if (!capable(CAP_SYS_ADMIN))
+drivers/pci/syscall.c:95:	if (!capable(CAP_SYS_ADMIN) ||
+drivers/pci/switch/switchtec.c:536:	    !capable(CAP_SYS_ADMIN)) {
+drivers/pci/proc.c:44:	if (file_ns_capable(file, &init_user_ns, CAP_SYS_ADMIN))
+drivers/pci/pcie/aer_inject.c:492:	if (!capable(CAP_SYS_ADMIN))
+drivers/pci/pcie/aer.c:679:		if (!capable(CAP_SYS_ADMIN))				\
+drivers/pci/pcie/aer.c:714:		if (!capable(CAP_SYS_ADMIN))				\
+drivers/pci/pci-sysfs.c:329:	if (!capable(CAP_SYS_ADMIN))
+drivers/pci/pci-sysfs.c:367:	if (!capable(CAP_SYS_ADMIN))
+drivers/pci/pci-sysfs.c:433:	if (!capable(CAP_SYS_ADMIN))
+drivers/pci/pci-sysfs.c:559:	if (!capable(CAP_SYS_ADMIN))
+drivers/pci/pci-sysfs.c:716:	if (file_ns_capable(filp, &init_user_ns, CAP_SYS_ADMIN))
+drivers/pci/pci-sysfs.c:1744:	if (!capable(CAP_SYS_ADMIN))
+arch/s390/hypfs/hypfs_sprp.c:116:	if (!capable(CAP_SYS_ADMIN))
+drivers/media/v4l2-core/v4l2-subdev.c:760:		if (!capable(CAP_SYS_ADMIN))
+drivers/media/v4l2-core/v4l2-subdev.c:768:		if (!capable(CAP_SYS_ADMIN))
+drivers/media/v4l2-core/v4l2-ioctl.c:2659:	if (!capable(CAP_SYS_ADMIN))
+drivers/media/v4l2-core/v4l2-ioctl.c:2687:	if (!capable(CAP_SYS_ADMIN))
+drivers/staging/greybus/uart.c:624:	if (!capable(CAP_SYS_ADMIN)) {
+drivers/parisc/pdc_stable.c:460:	if (!capable(CAP_SYS_ADMIN))
+drivers/parisc/pdc_stable.c:771:	if (!capable(CAP_SYS_ADMIN))
+drivers/parisc/pdc_stable.c:877:	if (!capable(CAP_SYS_ADMIN))
+drivers/parisc/pdc_stable.c:918:	if (!capable(CAP_SYS_ADMIN))
+drivers/nvme/host/ioctl.c:58:	return capable(CAP_SYS_ADMIN);
+drivers/nvme/host/ioctl.c:73:		return capable(CAP_SYS_ADMIN);
+drivers/nvme/host/ioctl.c:82:		return capable(CAP_SYS_ADMIN);
+drivers/nvme/host/ioctl.c:91:		return capable(CAP_SYS_ADMIN);
+drivers/nvme/host/ioctl.c:105:		return capable(CAP_SYS_ADMIN);
+drivers/nvme/host/ioctl.c:113:		return capable(CAP_SYS_ADMIN);
+drivers/nvme/host/ioctl.c:895:		if (!capable(CAP_SYS_ADMIN))
+drivers/nvme/host/ioctl.c:900:		if (!capable(CAP_SYS_ADMIN))
+drivers/nvme/host/ioctl.c:904:		if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/st.c:3651:		if (mtc.mt_op == MTSETDRVBUFFER && !capable(CAP_SYS_ADMIN)) {
+drivers/rapidio/rio-sysfs.c:126:	if (capable(CAP_SYS_ADMIN))
+drivers/scsi/sg.c:2392:	if (!capable(CAP_SYS_ADMIN) || !capable(CAP_SYS_RAWIO))
+drivers/scsi/sg.c:2413:	if (!capable(CAP_SYS_ADMIN) || !capable(CAP_SYS_RAWIO))
+drivers/scsi/sd.c:330:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/sd.c:361:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/sd.c:390:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/sd.c:419:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/sd.c:447:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/sd.c:498:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/sd.c:583:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/sd.c:626:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/sd.c:656:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/sd.c:684:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/scsi_transport_iscsi.c:132:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/scsi_transport_iscsi.c:3894:	if (!netlink_capable(skb, CAP_SYS_ADMIN))
+drivers/scsi/scsi_transport_iscsi.c:4348:	if (perm && !capable(CAP_SYS_ADMIN))				\
+drivers/scsi/scsi_sysfs.c:718:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/scsi_netlink.c:66:		if (!netlink_capable(skb, CAP_SYS_ADMIN)) {
+arch/powerpc/platforms/pseries/suspend.c:83:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/scsi_error.c:2526:	if (!capable(CAP_SYS_ADMIN) || !capable(CAP_SYS_RAWIO))
+drivers/scsi/scsi_debug.c:7519:	if (!capable(CAP_SYS_ADMIN) || !capable(CAP_SYS_RAWIO))
+arch/powerpc/platforms/pseries/cmm.c:356:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/aacraid/linit.c:1344:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/aacraid/commctrl.c:508:	if (!capable(CAP_SYS_ADMIN)){
+drivers/scsi/3w-xxxx.c:1040:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/3w-sas.c:108:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/3w-sas.c:139:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/3w-sas.c:836:	if (!capable(CAP_SYS_ADMIN)) {
+drivers/scsi/3w-9xxx.c:894:	if (!capable(CAP_SYS_ADMIN)) {
+arch/m68k/kernel/sys_m68k.c:389:		if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/qla2xxx/qla_attr.c:192:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/qla2xxx/qla_attr.c:231:	if (!capable(CAP_SYS_ADMIN) || off != 0 || count != ha->nvram_size ||
+drivers/scsi/qla2xxx/qla_attr.c:555:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/qla2xxx/qla_attr.c:603:	if (!capable(CAP_SYS_ADMIN) || off != 0 || count != ha->vpd_size ||
+drivers/scsi/qla2xxx/qla_attr.c:663:	if (!capable(CAP_SYS_ADMIN) || off != 0 || count < SFP_DEV_SIZE)
+drivers/scsi/qla2xxx/qla_attr.c:846:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/qla2xxx/qla_attr.c:890:	if (!capable(CAP_SYS_ADMIN) || off != 0 || count > XGMAC_DATA_SIZE)
+drivers/scsi/qla2xxx/qla_attr.c:952:	if (!capable(CAP_SYS_ADMIN) || off != 0 || count > DCBX_TLV_DATA_SIZE)
+drivers/scsi/pmcraid.c:3358:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/pm8001/pm8001_ctl.c:803:	if (!capable(CAP_SYS_ADMIN))
+drivers/platform/x86/lenovo/thinkpad_acpi.c:4927:	if (!capable(CAP_SYS_ADMIN))
+drivers/platform/x86/lenovo/thinkpad_acpi.c:4964:	if (!capable(CAP_SYS_ADMIN))
+drivers/platform/x86/lenovo/think-lmi.c:462:	if (!capable(CAP_SYS_ADMIN))
+drivers/platform/x86/lenovo/think-lmi.c:781:	if (!capable(CAP_SYS_ADMIN))
+drivers/platform/x86/lenovo/think-lmi.c:830:	if (!capable(CAP_SYS_ADMIN))
+drivers/platform/x86/lenovo/think-lmi.c:929:	if (!capable(CAP_SYS_ADMIN))
+drivers/platform/x86/lenovo/think-lmi.c:956:	if (!capable(CAP_SYS_ADMIN))
+drivers/platform/x86/intel/speed_select_if/isst_tpmi_core.c:628:		if (power_domain_info->write_blocked || !capable(CAP_SYS_ADMIN))
+drivers/platform/x86/intel/speed_select_if/isst_tpmi_core.c:687:		if (power_domain_info->write_blocked || !capable(CAP_SYS_ADMIN))
+drivers/platform/x86/intel/speed_select_if/isst_tpmi_core.c:799:					   !capable(CAP_SYS_ADMIN)))
+drivers/platform/x86/intel/speed_select_if/isst_tpmi_core.c:980:	if (power_domain_info->write_blocked || !capable(CAP_SYS_ADMIN))
+drivers/platform/x86/intel/speed_select_if/isst_tpmi_core.c:1040:	if (power_domain_info->write_blocked || !capable(CAP_SYS_ADMIN))
+drivers/platform/x86/intel/speed_select_if/isst_if_mmio.c:53:	if (io_reg->read_write && !capable(CAP_SYS_ADMIN))
+drivers/platform/x86/intel/speed_select_if/isst_if_mbox_pci.c:129:	if (isst_if_mbox_cmd_set_req(mbox_cmd) && !capable(CAP_SYS_ADMIN))
+drivers/platform/x86/intel/speed_select_if/isst_if_mbox_msr.c:116:	    !capable(CAP_SYS_ADMIN))
+drivers/platform/x86/intel/speed_select_if/isst_if_common.c:500:		if (!capable(CAP_SYS_ADMIN))
+drivers/s390/char/vmcp.c:104:	if (!capable(CAP_SYS_ADMIN))
+drivers/s390/char/keyboard.c:427:		    !capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_ioctl.c:43:	if (!capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_ioctl.c:64:	if (!capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_ioctl.c:97:	if (!capable (CAP_SYS_ADMIN))
+drivers/s390/block/dasd_ioctl.c:118:	if (!capable (CAP_SYS_ADMIN))
+drivers/s390/block/dasd_ioctl.c:142:	if (!capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_ioctl.c:176:	if (!capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_ioctl.c:256:	if (!capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_ioctl.c:344:	if (!capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_ioctl.c:387:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/megaraid/megaraid_sas_base.c:8150:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/megaraid/megaraid_mm.c:91:	if (!capable(CAP_SYS_ADMIN)) return (-EACCES);
+drivers/s390/block/dasd_eckd.c:5072:	if (!capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_eckd.c:5127:	if (!capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_eckd.c:5181:	if (!capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_eckd.c:5237:	if (!capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_eckd.c:5365:        if (!capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_eckd.c:5388:	if (!capable(CAP_SYS_ADMIN))
+drivers/s390/block/dasd_eckd.c:5416:	if (!capable(CAP_SYS_ADMIN) && !capable(CAP_SYS_RAWIO))
+drivers/scsi/megaraid.c:2939:	if( !capable(CAP_SYS_ADMIN) ) return -EACCES;
+drivers/scsi/arcmsr/arcmsr_attr.c:74:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/arcmsr/arcmsr_attr.c:121:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/arcmsr/arcmsr_attr.c:168:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/ipr.c:3509:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/ipr.c:3596:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/ipr.c:3648:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/ipr.c:4004:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/ipr.c:4187:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/ipr.c:4372:	if (!capable(CAP_SYS_ADMIN))
+arch/m68k/bvme6000/rtc.c:77:		if (!capable(CAP_SYS_ADMIN))
+drivers/platform/x86/dell/dell-smbios-base.c:57:	{CAP_SYS_ADMIN,	CLASS_TOKEN_READ,	SELECT_TOKEN_STD},
+drivers/platform/x86/dell/dell-smbios-base.c:58:	{CAP_SYS_ADMIN,	CLASS_TOKEN_READ,	SELECT_TOKEN_AC},
+drivers/platform/x86/dell/dell-smbios-base.c:59:	{CAP_SYS_ADMIN,	CLASS_TOKEN_READ,	SELECT_TOKEN_BAT},
+drivers/platform/x86/dell/dell-smbios-base.c:60:	{CAP_SYS_ADMIN,	CLASS_TOKEN_WRITE,	SELECT_TOKEN_STD},
+drivers/platform/x86/dell/dell-smbios-base.c:61:	{CAP_SYS_ADMIN,	CLASS_TOKEN_WRITE,	SELECT_TOKEN_AC},
+drivers/platform/x86/dell/dell-smbios-base.c:62:	{CAP_SYS_ADMIN,	CLASS_TOKEN_WRITE,	SELECT_TOKEN_BAT},
+drivers/platform/x86/dell/dell-smbios-base.c:64:	{CAP_SYS_ADMIN, CLASS_ADMIN_PROP,	SELECT_ADMIN_PROP},
+drivers/platform/x86/dell/dell-smbios-base.c:66:	{CAP_SYS_ADMIN,	CLASS_INFO,		SELECT_DOCK},
+drivers/platform/x86/dell/dell-smbios-base.c:67:	{CAP_SYS_ADMIN,	CLASS_FLASH_INTERFACE,	SELECT_FLASH_INTERFACE},
+drivers/platform/x86/dell/dell-smbios-base.c:93:	{CAP_SYS_ADMIN,	CAPSULE_EN_TOKEN,	CAPSULE_DIS_TOKEN},
+drivers/platform/x86/dell/dell-smbios-base.c:464:	if (!capable(CAP_SYS_ADMIN))
+drivers/platform/x86/dell/dell-smbios-base.c:475:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/iscsi_boot_sysfs.c:42:	if (!capable(CAP_SYS_ADMIN))
+drivers/scsi/hpsa.c:461:	if (!capable(CAP_SYS_ADMIN) || !capable(CAP_SYS_RAWIO))
+drivers/scsi/hpsa.c:481:	if (!capable(CAP_SYS_ADMIN) || !capable(CAP_SYS_RAWIO))
+arch/arm64/net/bpf_jit_comp.c:1015:	if (ns_capable_noaudit(&init_user_ns, CAP_SYS_ADMIN))
+drivers/gpu/drm/amd/amdkfd/kfd_smi_events.c:412:	client->suser = capable(CAP_SYS_ADMIN);
+drivers/gpu/drm/amd/amdkfd/kfd_chardev.c:3664:	 * CAP_CHECKPOINT_RESTORE, so we also allow access if CAP_SYS_ADMIN as CAP_SYS_ADMIN is a
+drivers/gpu/drm/amd/amdkfd/kfd_chardev.c:3669:						!capable(CAP_SYS_ADMIN)) {
+arch/powerpc/kernel/rtas.c:1859:	if (!capable(CAP_SYS_ADMIN))
+arch/powerpc/kernel/dexcr.c:106:	    !capable(CAP_SYS_ADMIN))
+drivers/media/pci/cobalt/cobalt-v4l2.c:439:	if (!capable(CAP_SYS_ADMIN))
+drivers/media/dvb-core/dvb_net.c:1445:		if (!capable(CAP_SYS_ADMIN)) {
+drivers/media/dvb-core/dvb_net.c:1491:		if (!capable(CAP_SYS_ADMIN)) {
+drivers/media/dvb-core/dvb_net.c:1511:		if (!capable(CAP_SYS_ADMIN)) {
+drivers/macintosh/via-pmu.c:2360:		if (!capable(CAP_SYS_ADMIN))
+drivers/macintosh/ans-lcd.c:112:		if (!capable(CAP_SYS_ADMIN))
+drivers/macintosh/ans-lcd.c:118:		if (!capable(CAP_SYS_ADMIN))
+drivers/md/dm-log-userspace-transfer.c:137:	if (!capable(CAP_SYS_ADMIN))
+drivers/md/md.c:3749:	if (!capable(CAP_SYS_ADMIN))
+drivers/md/md.c:6135:	if (!capable(CAP_SYS_ADMIN))
+drivers/md/md.c:8277:		if (!capable(CAP_SYS_ADMIN))
+drivers/md/dm-ioctl.c:2198:	if (!capable(CAP_SYS_ADMIN))

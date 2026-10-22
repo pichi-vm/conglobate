@@ -1,0 +1,32 @@
+#!/bin/bash
+set -eu
+mode=$1
+fuse2fs -f -o acl,allow_other,errors=panic "$2" /work/view >/work/fuse.log 2>&1 &
+daemon=$!
+for ((i=0;i<100;i++)); do mountpoint -q /work/view && break; sleep .05; done
+mountpoint -q /work/view
+if test "$mode" = exhaust; then
+ set +e
+ dd if=/dev/zero of=/work/view/fill bs=1M count=8 conv=fsync
+ writer_status=$?
+ fusermount3 -u /work/view
+ unmount_status=$?
+ wait "$daemon"
+ daemon_status=$?
+ set -e
+ echo "EXHAUST_WRITER_STATUS $writer_status"
+ echo "EXHAUST_DAEMON_STATUS $daemon_status"
+ test "$writer_status" != 0
+ test "$daemon_status" != 0
+ echo SNAPSHOT_EXHAUSTION_DETECTED_PASS
+else
+ # Primitive teardown probe, not the full pivot-root command sandbox.
+ unshare --pid --fork /bin/bash -c '(while :; do echo writer >>/work/view/heartbeat; sleep .01; done) & sleep .15'
+ before=$(stat -c %s /work/view/heartbeat)
+ sleep .1
+ test "$before" = "$(stat -c %s /work/view/heartbeat)"
+ echo SEAL_DESCENDANTS_REAPED_PASS
+ fusermount3 -u /work/view
+ wait "$daemon"
+ echo SEAL_WORKER_EXITED_PASS
+fi

@@ -1,0 +1,44 @@
+Owned log collector failure cleanup
+==================================
+Reproduce:
+ python3 validation/sandbox/guest.py policy --kernel-version 7.2.10-200.fc44.x86_64 \
+   --out NEW-DIRECTORY --run
+Evidence: reproduced/policy-collector-v2, guest exit0 at9.23s.
+
+The existing policy driver's owned-pipe collector is extracted into one function
+used by both original restricted steps and three bounded failure fixtures. Its
+normal10-second/1MiB behavior is unchanged. No production logger changes. Each
+failure command runs through the same user/mount/PID/IPC/UTS/network namespaces
+and restricted entry helper; only its owned root's probe script is temporarily
+replaced and then restored. No command gets the guest console or outside paths.
+
+Cases (three-second collector deadline, command maximum sleep10seconds):
+1. Write2MiB of ordinary bytes to stdout, then sleep. Collector rejects at more
+   than1MiB, with buffered size no greater than1MiB+one64KiB read. This bounds
+   fixture memory; it does not claim an exact1MiB allocation ceiling.
+2. Write a readiness line, fork one ordinary child, and both sleep with their
+   output FDs open. Collector times out with exactly the readiness line captured.
+3. Recipe closes stdout/stderr and sleeps. The waiting unshare --fork parent
+   still holds the pipe writer, so collector times out with no captured bytes.
+   This is a launcher-held pipe case, not an EOF-before-process-exit control.
+
+In all three cases the collector's finally path kills only its owned new process
+group if the launcher remains live, waits for the launcher, and closes its read
+FD. An independent owned duplicate of that reader then drains bounded queued
+bytes and must reach EOF within2seconds. Launcher returncode must be terminal;
+collector operation takes less than6seconds; the supervisor's FD-number set
+returns to baseline. Existing supervisor memfd/shared-memory/event/socket/key,
+mount and runtime backing canaries remain unchanged. Both ordinary restricted
+steps still pass exact stdio identity/access/duplication and normal EOF checks.
+
+v1 is retained as a failed test assumption: output-limit and descendant-held
+pipe cases passed, but the third case expected subprocess.wait TimeoutExpired
+instead of collector timeout. The launcher retained the writer; no EOF occurred.
+v2 corrects that expected topology. No production defect is claimed from v1.
+
+Limits: this small fixture's synchronous collector and process-group ownership,
+not the generic executor's logging, PID-init publication controller, arbitrary
+output encoding, disk-backed logs or every failure point in process creation.
+EOF demonstrates no surviving writers to this pipe, not absence of all possible
+processes/resources. The existing process-lifetime tests remain necessary. A
+recipe closing its own output FDs must never serve as completion authority.

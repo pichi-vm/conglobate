@@ -1,0 +1,7 @@
+{
+  "scope": "Availability/identity only; negative results retained; NOT semantic completion",
+  "index_sha256": "e83853914db5b78801e6019184ae1a4e7cdb0a8ece1ce4f7adacdd3bf58bd3c8",
+  "areas": 21,
+  "unique_artifacts": 184,
+  "errors": []
+}

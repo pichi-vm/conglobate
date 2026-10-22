@@ -1,0 +1,3222 @@
+Archive member included to satisfy reference by file (symbol)
+
+../lib/libext2fs.a(ext2_err.o)
+                              fuse2fs.o (et_ext2_error_table)
+../lib/libext2fs.a(alloc.o)   fuse2fs.o (ext2fs_new_inode)
+../lib/libext2fs.a(alloc_stats.o)
+                              fuse2fs.o (ext2fs_inode_alloc_stats2)
+../lib/libext2fs.a(bitmaps.o)
+                              ../lib/libext2fs.a(alloc.o) (ext2fs_get_bitmap_granularity)
+../lib/libext2fs.a(blknum.o)  ../lib/libext2fs.a(alloc.o) (ext2fs_group_of_blk2)
+../lib/libext2fs.a(block.o)   journal.o (ext2fs_block_iterate3)
+../lib/libext2fs.a(bmap.o)    fuse2fs.o (ext2fs_bmap2)
+../lib/libext2fs.a(closefs.o)
+                              ../lib/libext2fs.a(blknum.o) (ext2fs_update_dynamic_rev)
+../lib/libext2fs.a(crc32c.o)  journal.o (ext2fs_crc32c_le)
+../lib/libext2fs.a(csum.o)    journal.o (ext2fs_superblock_csum_verify)
+../lib/libext2fs.a(dirblock.o)
+                              fuse2fs.o (ext2fs_write_dir_block4)
+../lib/libext2fs.a(dir_iterate.o)
+                              ../lib/libext2fs.a(csum.o) (ext2fs_set_rec_len)
+../lib/libext2fs.a(expanddir.o)
+                              fuse2fs.o (ext2fs_expand_dir)
+../lib/libext2fs.a(ext_attr.o)
+                              fuse2fs.o (ext2fs_free_ext_attr)
+../lib/libext2fs.a(extent.o)  fuse2fs.o (ext2fs_extent_free)
+../lib/libext2fs.a(fallocate.o)
+                              fuse2fs.o (ext2fs_fallocate)
+../lib/libext2fs.a(fileio.o)  fuse2fs.o (ext2fs_file_open)
+../lib/libext2fs.a(freefs.o)  journal.o (ext2fs_free)
+../lib/libext2fs.a(gen_bitmap.o)
+                              ../lib/libext2fs.a(bitmaps.o) (ext2fs_make_generic_bitmap)
+../lib/libext2fs.a(gen_bitmap64.o)
+                              ../lib/libext2fs.a(bitmaps.o) (ext2fs_alloc_generic_bmap)
+../lib/libext2fs.a(get_num_dirs.o)
+                              ../lib/libext2fs.a(gen_bitmap64.o) (ext2fs_get_num_dirs)
+../lib/libext2fs.a(getenv.o)  ../lib/libext2fs.a(gen_bitmap64.o) (ext2fs_safe_getenv)
+../lib/libext2fs.a(hashmap.o)
+                              ../lib/libext2fs.a(fileio.o) (ext2fs_hashmap_add)
+../lib/libext2fs.a(i_block.o)
+                              ../lib/libext2fs.a(bmap.o) (ext2fs_iblk_add_blocks)
+../lib/libext2fs.a(ind_block.o)
+                              ../lib/libext2fs.a(block.o) (ext2fs_read_ind_block)
+../lib/libext2fs.a(inline_data.o)
+                              ../lib/libext2fs.a(dir_iterate.o) (ext2fs_inline_data_dir_iterate)
+../lib/libext2fs.a(inode.o)   ../lib/libext2fs.a(freefs.o) (ext2fs_free_inode_cache)
+../lib/libext2fs.a(io_manager.o)
+                              fuse2fs.o (io_channel_set_options)
+../lib/libext2fs.a(link.o)    fuse2fs.o (ext2fs_link)
+../lib/libext2fs.a(mkdir.o)   fuse2fs.o (ext2fs_mkdir2)
+../lib/libext2fs.a(mkjournal.o)
+                              ../lib/libext2fs.a(alloc.o) (ext2fs_zero_blocks2)
+../lib/libext2fs.a(mmp.o)     journal.o (ext2fs_mmp_stop)
+../lib/libext2fs.a(namei.o)   fuse2fs.o (ext2fs_namei)
+../lib/libext2fs.a(newdir.o)  fuse2fs.o (ext2fs_new_dir_block)
+../lib/libext2fs.a(openfs.o)  ../lib/libext2fs.a(blknum.o) (ext2fs_descriptor_block_loc2)
+../lib/libext2fs.a(punch.o)   fuse2fs.o (ext2fs_punch)
+../lib/libext2fs.a(read_bb.o)
+                              ../lib/libext2fs.a(inode.o) (ext2fs_read_bb_inode)
+../lib/libext2fs.a(rw_bitmaps.o)
+                              ../lib/libext2fs.a(bitmaps.o) (ext2fs_write_bitmaps)
+../lib/libext2fs.a(sha512.o)  ../lib/libext2fs.a(fileio.o) (ext2fs_sha512)
+../lib/libext2fs.a(symlink.o)
+                              fuse2fs.o (ext2fs_symlink)
+../lib/libext2fs.a(unix_io.o)
+                              fuse2fs.o (unix_io_manager)
+../lib/libext2fs.a(unlink.o)  fuse2fs.o (ext2fs_unlink)
+../lib/libext2fs.a(valid_blk.o)
+                              fuse2fs.o (ext2fs_inode_has_valid_blocks2)
+../lib/libext2fs.a(alloc_sb.o)
+                              ../lib/libext2fs.a(rw_bitmaps.o) (ext2fs_reserve_super_and_bgd)
+../lib/libext2fs.a(badblocks.o)
+                              ../lib/libext2fs.a(read_bb.o) (ext2fs_badblocks_list_create)
+../lib/libext2fs.a(bitops.o)  ../lib/libext2fs.a(gen_bitmap.o) (ext2fs_set_bit)
+../lib/libext2fs.a(blkmap64_ba.o)
+                              ../lib/libext2fs.a(gen_bitmap64.o) (ext2fs_blkmap64_bitarray)
+../lib/libext2fs.a(blkmap64_rb.o)
+                              ../lib/libext2fs.a(gen_bitmap64.o) (ext2fs_blkmap64_rbtree)
+../lib/libext2fs.a(crc16.o)   ../lib/libext2fs.a(csum.o) (ext2fs_crc16)
+../lib/libext2fs.a(dirhash.o)
+                              ../lib/libext2fs.a(link.o) (ext2fs_dirhash2)
+../lib/libext2fs.a(getsectsize.o)
+                              ../lib/libext2fs.a(mmp.o) (ext2fs_get_dio_alignment)
+../lib/libext2fs.a(inline.o)  ../lib/libext2fs.a(openfs.o) (ext2fs_get_array)
+../lib/libext2fs.a(ismounted.o)
+                              ../lib/libext2fs.a(mkjournal.o) (ext2fs_check_mount_point)
+../lib/libext2fs.a(llseek.o)  ../lib/libext2fs.a(mmp.o) (ext2fs_llseek)
+../lib/libext2fs.a(lookup.o)  ../lib/libext2fs.a(mkdir.o) (ext2fs_lookup)
+../lib/libext2fs.a(nls_utf8.o)
+                              ../lib/libext2fs.a(openfs.o) (ext2fs_load_nls_table)
+../lib/libext2fs.a(rbtree.o)  ../lib/libext2fs.a(blkmap64_rb.o) (ext2fs_rb_insert_color)
+../lib/libcom_err.a(error_message.o)
+                              fuse2fs.o (error_message)
+../lib/libcom_err.a(et_name.o)
+                              ../lib/libcom_err.a(error_message.o) (error_table_name)
+../lib/libcom_err.a(com_err.o)
+                              fuse2fs.o (com_err)
+../lib/libe2p.a(parse_num.o)  fuse2fs.o (parse_num_blocks2)
+
+Merging object attributes
+
+
+Merging program properties
+
+Removed property 0xc0000002 to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x3) and fuse2fs.o (not found)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x1) and fuse2fs.o (0x9)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and revoke.o (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(alloc.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(alloc_stats.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(bitmaps.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(blknum.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(bmap.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(closefs.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(crc32c.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(csum.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(dirblock.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(dir_iterate.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(expanddir.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(freefs.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(gen_bitmap.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(get_num_dirs.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(getenv.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(i_block.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(ind_block.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(io_manager.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(link.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(mmp.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(namei.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(newdir.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(openfs.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(read_bb.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(unlink.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(valid_blk.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(alloc_sb.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(blkmap64_ba.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(crc16.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(getsectsize.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(inline.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(llseek.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libext2fs.a(lookup.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libcom_err.a(error_message.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libcom_err.a(et_name.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and ../lib/libe2p.a(parse_num.o) (0x1)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o (0x1)
+Updated property 0xc0010002 (0x1) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x1) and /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o (0x0)
+Removed property 0xc0000002 to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (not found) and /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o (0x3)
+Updated property 0xc0010001 (0x9) to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (0x9) and /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o (0x1)
+Removed property 0xc0000002 to merge /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o (not found) and /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o (0x3)
+
+Discarded input sections
+
+ .note.gnu.property
+                0x0000000000000000       0x50 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .note.gnu.property
+                0x0000000000000000       0x50 /usr/lib/gcc/x86_64-redhat-linux/16/crtbegin.o
+ .note.gnu.property
+                0x0000000000000000       0x30 fuse2fs.o
+ .note.gnu.property
+                0x0000000000000000       0x30 journal.o
+ .note.gnu.property
+                0x0000000000000000       0x30 recovery.o
+ .note.gnu.property
+                0x0000000000000000       0x30 revoke.o
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(ext2_err.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(alloc.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(alloc_stats.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(bitmaps.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(blknum.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(block.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(bmap.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(closefs.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(crc32c.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(csum.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(dirblock.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(dir_iterate.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(expanddir.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(ext_attr.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(extent.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(fallocate.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(fileio.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(freefs.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(gen_bitmap.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(gen_bitmap64.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(get_num_dirs.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(getenv.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(hashmap.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(i_block.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(ind_block.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(inline_data.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(inode.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(io_manager.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(link.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(mkdir.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(mkjournal.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(mmp.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(namei.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(newdir.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(openfs.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(punch.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(read_bb.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(rw_bitmaps.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(sha512.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(symlink.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(unix_io.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(unlink.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(valid_blk.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(alloc_sb.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(badblocks.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(bitops.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(blkmap64_ba.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(blkmap64_rb.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(crc16.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(dirhash.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(getsectsize.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(inline.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(ismounted.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(llseek.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(lookup.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(nls_utf8.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libext2fs.a(rbtree.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libcom_err.a(error_message.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libcom_err.a(et_name.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libcom_err.a(com_err.o)
+ .note.gnu.property
+                0x0000000000000000       0x30 ../lib/libe2p.a(parse_num.o)
+ .note.gnu.property
+                0x0000000000000000       0x50 /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o
+ .note.gnu.property
+                0x0000000000000000       0x50 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/crtbegin.o
+LOAD fuse2fs.o
+LOAD journal.o
+LOAD recovery.o
+LOAD revoke.o
+LOAD ../lib/libext2fs.a
+LOAD ../lib/libcom_err.a
+LOAD ../lib/libsupport.a
+LOAD /tmp/conglobate-acl-protocol-v5/fuse-build/lib/libfuse3.so.3.18.3
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/libacl.so
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/libblkid.so
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/libuuid.so
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/libuuid.so
+LOAD ../lib/libext2fs.a
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/libpthread.a
+LOAD ../lib/libe2p.a
+LOAD ../lib/libcom_err.a
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc.a
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc_s_asneeded.so
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc_s.so
+START GROUP
+LOAD /lib64/libgcc_s.so.1
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc.a
+END GROUP
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libatomic_asneeded.so
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libatomic.so
+LOAD /usr/lib64/libatomic.so.1.2.0
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/libpthread.a
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/libc.so
+START GROUP
+LOAD /lib64/libc.so.6
+LOAD /usr/lib64/libc_nonshared.a
+LOAD /lib64/ld-linux-x86-64.so.2
+END GROUP
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc.a
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc_s_asneeded.so
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc_s.so
+START GROUP
+LOAD /lib64/libgcc_s.so.1
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/libgcc.a
+END GROUP
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o
+LOAD /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+                [!provide]                        PROVIDE (__executable_start = SEGMENT_START ("text-segment", 0x400000))
+                0x0000000000400350                . = (SEGMENT_START ("text-segment", 0x400000) + SIZEOF_HEADERS)
+
+.note.gnu.build-id
+                0x0000000000400350       0x24
+ *(.note.gnu.build-id)
+ .note.gnu.build-id
+                0x0000000000400350       0x24 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.init           0x0000000000400374       0x1b
+ *(SORT_NONE(.init))
+ .init          0x0000000000400374       0x16 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+                0x0000000000400374                _init
+ .init          0x000000000040038a        0x5 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+
+.plt            0x0000000000400390      0x7c0
+ *(.plt)
+ .plt           0x0000000000400390      0x7c0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                0x00000000004003a0                getenv@@GLIBC_2.2.5
+                0x00000000004003b0                __isoc23_strtoul@@GLIBC_2.38
+                0x00000000004003c0                fuse_opt_parse@@FUSE_3.0
+                0x00000000004003d0                free@@GLIBC_2.2.5
+                0x00000000004003e0                putchar@@GLIBC_2.2.5
+                0x00000000004003f0                endmntent@@GLIBC_2.2.5
+                0x0000000000400400                acl_add_perm@@ACL_1.0
+                0x0000000000400410                abort@@GLIBC_2.2.5
+                0x0000000000400420                __errno_location@@GLIBC_2.2.5
+                0x0000000000400430                fuse_main_real_versioned@@FUSE_3.17
+                0x0000000000400440                acl_valid@@ACL_1.0
+                0x0000000000400450                srandom@@GLIBC_2.2.5
+                0x0000000000400460                unlink@@GLIBC_2.2.5
+                0x0000000000400470                uuid_unparse@@UUID_1.0
+                0x0000000000400480                strncpy@@GLIBC_2.2.5
+                0x0000000000400490                strncmp@@GLIBC_2.2.5
+                0x00000000004004a0                __isoc23_strtoull@@GLIBC_2.38
+                0x00000000004004b0                strcpy@@GLIBC_2.2.5
+                0x00000000004004c0                secure_getenv@@GLIBC_2.17
+                0x00000000004004d0                acl_get_permset@@ACL_1.0
+                0x00000000004004e0                puts@@GLIBC_2.2.5
+                0x00000000004004f0                qsort@@GLIBC_2.2.5
+                0x0000000000400500                isatty@@GLIBC_2.2.5
+                0x0000000000400510                fcntl@@GLIBC_2.2.5
+                0x0000000000400520                clock_gettime@@GLIBC_2.17
+                0x0000000000400530                write@@GLIBC_2.2.5
+                0x0000000000400540                getpid@@GLIBC_2.2.5
+                0x0000000000400550                fclose@@GLIBC_2.2.5
+                0x0000000000400560                fuse_get_context@@FUSE_3.0
+                0x0000000000400570                fuse_probe_setxattr_flags@@FUSE_PROBE_1.0
+                0x0000000000400580                stpcpy@@GLIBC_2.2.5
+                0x0000000000400590                blkid_put_cache@@BLKID_1.0
+                0x00000000004005a0                strlen@@GLIBC_2.2.5
+                0x00000000004005b0                getuid@@GLIBC_2.2.5
+                0x00000000004005c0                stat64@@GLIBC_2.33
+                0x00000000004005d0                strchr@@GLIBC_2.2.5
+                0x00000000004005e0                printf@@GLIBC_2.2.5
+                0x00000000004005f0                acl_set_tag_type@@ACL_1.0
+                0x0000000000400600                pthread_mutex_destroy@@GLIBC_2.2.5
+                0x0000000000400610                snprintf@@GLIBC_2.2.5
+                0x0000000000400620                __isoc23_strtoll@@GLIBC_2.38
+                0x0000000000400630                strrchr@@GLIBC_2.2.5
+                0x0000000000400640                ftruncate@@GLIBC_2.2.5
+                0x0000000000400650                uname@@GLIBC_2.2.5
+                0x0000000000400660                lseek@@GLIBC_2.2.5
+                0x0000000000400670                acl_create_entry@@ACL_1.0
+                0x0000000000400680                gettimeofday@@GLIBC_2.2.5
+                0x0000000000400690                __assert_fail@@GLIBC_2.2.5
+                0x00000000004006a0                fputs@@GLIBC_2.2.5
+                0x00000000004006b0                memset@@GLIBC_2.2.5
+                0x00000000004006c0                geteuid@@GLIBC_2.2.5
+                0x00000000004006d0                ioctl@@GLIBC_2.2.5
+                0x00000000004006e0                strnlen@@GLIBC_2.2.5
+                0x00000000004006f0                acl_equiv_mode@@ACL_1.0
+                0x0000000000400700                close@@GLIBC_2.2.5
+                0x0000000000400710                fuse_opt_insert_arg@@FUSE_3.0
+                0x0000000000400720                posix_fadvise@@GLIBC_2.2.5
+                0x0000000000400730                fputc@@GLIBC_2.2.5
+                0x0000000000400740                read@@GLIBC_2.2.5
+                0x0000000000400750                memcmp@@GLIBC_2.2.5
+                0x0000000000400760                pthread_attr_init@@GLIBC_2.2.5
+                0x0000000000400770                fgets@@GLIBC_2.2.5
+                0x0000000000400780                fallocate@@GLIBC_2.10
+                0x0000000000400790                calloc@@GLIBC_2.2.5
+                0x00000000004007a0                fuse_getgroups@@FUSE_3.0
+                0x00000000004007b0                blkid_get_devname@@BLKID_1.0
+                0x00000000004007c0                strcmp@@GLIBC_2.2.5
+                0x00000000004007d0                fprintf@@GLIBC_2.2.5
+                0x00000000004007e0                acl_set_qualifier@@ACL_1.0
+                0x00000000004007f0                stat@@GLIBC_2.33
+                0x0000000000400800                acl_clear_perms@@ACL_1.0
+                0x0000000000400810                realpath@@GLIBC_2.3
+                0x0000000000400820                memcpy@@GLIBC_2.14
+                0x0000000000400830                prctl@@GLIBC_2.2.5
+                0x0000000000400840                time@@GLIBC_2.2.5
+                0x0000000000400850                __isoc23_strtol@@GLIBC_2.38
+                0x0000000000400860                fileno@@GLIBC_2.2.5
+                0x0000000000400870                getgid@@GLIBC_2.2.5
+                0x0000000000400880                pwrite64@@GLIBC_2.2.5
+                0x0000000000400890                random@@GLIBC_2.2.5
+                0x00000000004008a0                pthread_mutex_unlock@@GLIBC_2.2.5
+                0x00000000004008b0                malloc@@GLIBC_2.2.5
+                0x00000000004008c0                fflush@@GLIBC_2.2.5
+                0x00000000004008d0                getmntent@@GLIBC_2.2.5
+                0x00000000004008e0                setmntent@@GLIBC_2.2.5
+                0x00000000004008f0                uuid_is_null@@UUID_1.0
+                0x0000000000400900                acl_init@@ACL_1.0
+                0x0000000000400910                getegid@@GLIBC_2.2.5
+                0x0000000000400920                setrlimit@@GLIBC_2.2.5
+                0x0000000000400930                realloc@@GLIBC_2.2.5
+                0x0000000000400940                pthread_create@@GLIBC_2.34
+                0x0000000000400950                open64@@GLIBC_2.2.5
+                0x0000000000400960                memmove@@GLIBC_2.2.5
+                0x0000000000400970                fsync@@GLIBC_2.2.5
+                0x0000000000400980                pread64@@GLIBC_2.2.5
+                0x0000000000400990                tcgetattr@@GLIBC_2.2.5
+                0x00000000004009a0                open@@GLIBC_2.2.5
+                0x00000000004009b0                fopen@@GLIBC_2.2.5
+                0x00000000004009c0                perror@@GLIBC_2.2.5
+                0x00000000004009d0                sysconf@@GLIBC_2.2.5
+                0x00000000004009e0                vfprintf@@GLIBC_2.2.5
+                0x00000000004009f0                pthread_attr_destroy@@GLIBC_2.2.5
+                0x0000000000400a00                fuse_opt_add_arg@@FUSE_3.0
+                0x0000000000400a10                blkid_devno_to_devname@@BLKID_1.0
+                0x0000000000400a20                gethostname@@GLIBC_2.2.5
+                0x0000000000400a30                sprintf@@GLIBC_2.2.5
+                0x0000000000400a40                exit@@GLIBC_2.2.5
+                0x0000000000400a50                fwrite@@GLIBC_2.2.5
+                0x0000000000400a60                fstat64@@GLIBC_2.33
+                0x0000000000400a70                getrlimit@@GLIBC_2.2.5
+                0x0000000000400a80                posix_memalign@@GLIBC_2.2.5
+                0x0000000000400a90                pthread_join@@GLIBC_2.34
+                0x0000000000400aa0                strdup@@GLIBC_2.2.5
+                0x0000000000400ab0                strerror@@GLIBC_2.2.5
+                0x0000000000400ac0                blkid_get_cache@@BLKID_1.0
+                0x0000000000400ad0                hasmntopt@@GLIBC_2.2.5
+                0x0000000000400ae0                sleep@@GLIBC_2.2.5
+                0x0000000000400af0                pthread_mutex_init@@GLIBC_2.2.5
+                0x0000000000400b00                fstat@@GLIBC_2.33
+                0x0000000000400b10                pthread_mutex_lock@@GLIBC_2.2.5
+                0x0000000000400b20                fuse_opt_free_args@@FUSE_3.0
+                0x0000000000400b30                __ctype_b_loc@@GLIBC_2.3
+                0x0000000000400b40                acl_free@@ACL_1.0
+ *(.iplt)
+ .iplt          0x0000000000400b50        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.plt.got        0x0000000000400b50        0x0
+ *(.plt.got)
+ .plt.got       0x0000000000400b50        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.plt.sec
+ *(.plt.sec)
+
+.text           0x0000000000400b80    0x34a95
+ *(.text.unlikely .text.*_unlikely .text.unlikely.*)
+ .text.unlikely
+                0x0000000000400b80       0x28 fuse2fs.o
+ .text.unlikely
+                0x0000000000400ba8       0x19 recovery.o
+ .text.unlikely
+                0x0000000000400bc1       0x7d revoke.o
+ .text.unlikely
+                0x0000000000400c3e        0x2 ../lib/libext2fs.a(extent.o)
+ .text.unlikely
+                0x0000000000400c40       0x3d ../lib/libext2fs.a(gen_bitmap64.o)
+ .text.unlikely
+                0x0000000000400c7d        0x5 ../lib/libext2fs.a(blkmap64_rb.o)
+ *(.text.exit .text.exit.*)
+ *(.text.startup .text.startup.*)
+ *fill*         0x0000000000400c82        0xe 
+ .text.startup  0x0000000000400c90      0xbdf fuse2fs.o
+                0x0000000000400c90                main
+ *(.text.hot .text.hot.*)
+ *(SORT_BY_NAME(.text.sorted.*))
+ *(.text .stub .text.* .gnu.linkonce.t.*)
+ *fill*         0x000000000040186f        0x1 
+ .text          0x0000000000401870       0x35 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                0x0000000000401870                _start
+                0x00000000004018a0                _dl_relocate_static_pie
+ .text          0x00000000004018a5        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ *fill*         0x00000000004018a5        0xb 
+ .text          0x00000000004018b0       0xa6 /usr/lib/gcc/x86_64-redhat-linux/16/crtbegin.o
+ *fill*         0x0000000000401956        0xa 
+ .text          0x0000000000401960     0x98ad fuse2fs.o
+ *fill*         0x000000000040b20d        0x3 
+ .text          0x000000000040b210     0x1d03 journal.o
+                0x000000000040b8c0                jbd2_has_feature_checksum
+                0x000000000040b8e0                jbd2_set_feature_checksum
+                0x000000000040b8f0                jbd2_clear_feature_checksum
+                0x000000000040b900                jbd2_has_feature_revoke
+                0x000000000040b920                jbd2_set_feature_revoke
+                0x000000000040b930                jbd2_clear_feature_revoke
+                0x000000000040b940                jbd2_has_feature_64bit
+                0x000000000040b960                jbd2_set_feature_64bit
+                0x000000000040b970                jbd2_clear_feature_64bit
+                0x000000000040b980                jbd2_has_feature_async_commit
+                0x000000000040b9a0                jbd2_set_feature_async_commit
+                0x000000000040b9b0                jbd2_clear_feature_async_commit
+                0x000000000040b9c0                jbd2_has_feature_csum2
+                0x000000000040b9e0                jbd2_set_feature_csum2
+                0x000000000040b9f0                jbd2_clear_feature_csum2
+                0x000000000040ba00                jbd2_has_feature_csum3
+                0x000000000040ba20                jbd2_set_feature_csum3
+                0x000000000040ba30                jbd2_clear_feature_csum3
+                0x000000000040ba40                jbd2_has_feature_fast_commit
+                0x000000000040ba60                jbd2_set_feature_fast_commit
+                0x000000000040ba70                jbd2_clear_feature_fast_commit
+                0x000000000040ba80                journal_tag_bytes
+                0x000000000040bad0                jbd2_journal_has_csum_v2or3
+                0x000000000040baf0                jbd2_journal_get_num_fc_blks
+                0x000000000040bb00                tid_gt
+                0x000000000040bb10                tid_geq
+                0x000000000040bb20                kmem_cache_create
+                0x000000000040bb40                kmem_cache_destroy
+                0x000000000040bb50                kmem_cache_alloc
+                0x000000000040bb60                kmem_cache_free
+                0x000000000040bb70                kmalloc
+                0x000000000040bb80                kfree
+                0x000000000040bb90                __hash_32
+                0x000000000040bba0                hash_32
+                0x000000000040bbb0                hash_64
+                0x000000000040bbd0                kmalloc_array
+                0x000000000040bbf0                jbd2_chksum
+                0x000000000040bc00                jbd2_descriptor_block_csum_set
+                0x000000000040bc60                jbd2_journal_bmap
+                0x000000000040bcb0                getblk
+                0x000000000040bd10                sync_blockdev
+                0x000000000040bd50                ll_rw_block
+                0x000000000040bea0                mark_buffer_dirty
+                0x000000000040beb0                brelse
+                0x000000000040c720                buffer_uptodate
+                0x000000000040c730                mark_buffer_uptodate
+                0x000000000040c750                wait_on_buffer
+                0x000000000040c7e0                ext2fs_open_journal
+                0x000000000040c950                ext2fs_run_ext3_journal
+                0x000000000040cd20                ext2fs_close_journal
+                0x000000000040cd60                jbd2_commit_block_csum_set
+                0x000000000040cdc0                jbd2_revoke_csum_set
+                0x000000000040ce20                jbd2_descr_block_csum_set
+                0x000000000040ce80                jbd2_block_tag_csum_set
+ *fill*         0x000000000040cf13       0x2d 
+ .text          0x000000000040cf40      0xf51 recovery.o
+                0x000000000040dd20                jbd2_journal_recover
+                0x000000000040de20                jbd2_journal_skip_recovery
+ *fill*         0x000000000040de91        0xf 
+ .text          0x000000000040dea0      0x498 revoke.o
+                0x000000000040dfa0                jbd2_journal_destroy_revoke_record_cache
+                0x000000000040dfc0                jbd2_journal_destroy_revoke_table_cache
+                0x000000000040dfe0                jbd2_journal_init_revoke_record_cache
+                0x000000000040e020                jbd2_journal_init_revoke_table_cache
+                0x000000000040e060                jbd2_journal_init_revoke
+                0x000000000040e100                jbd2_journal_destroy_revoke
+                0x000000000040e170                jbd2_journal_set_revoke
+                0x000000000040e240                jbd2_journal_test_revoke
+                0x000000000040e2b0                jbd2_journal_clear_revoke
+ *fill*         0x000000000040e338        0x8 
+ .text          0x000000000040e340       0x9a ../lib/libext2fs.a(ext2_err.o)
+                0x000000000040e340                initialize_ext2_error_table_r
+                0x000000000040e3d0                initialize_ext2_error_table
+ *fill*         0x000000000040e3da        0x6 
+ .text          0x000000000040e3e0      0xe05 ../lib/libext2fs.a(alloc.o)
+                0x000000000040e530                ext2fs_clear_block_uninit
+                0x000000000040e590                ext2fs_new_inode
+                0x000000000040e840                ext2fs_new_block3
+                0x000000000040ea70                ext2fs_new_block2
+                0x000000000040ea80                ext2fs_new_block
+                0x000000000040eab0                ext2fs_alloc_block3
+                0x000000000040ebd0                ext2fs_alloc_block2
+                0x000000000040ebe0                ext2fs_alloc_block
+                0x000000000040ec10                ext2fs_get_free_blocks2
+                0x000000000040ec30                ext2fs_get_free_blocks
+                0x000000000040ec80                ext2fs_set_alloc_block_callback
+                0x000000000040ecb0                ext2fs_find_inode_goal
+                0x000000000040edd0                ext2fs_new_range
+                0x000000000040f0c0                ext2fs_set_new_range_callback
+                0x000000000040f0f0                ext2fs_alloc_range
+ *fill*         0x000000000040f1e5        0xb 
+ .text          0x000000000040f1f0      0x505 ../lib/libext2fs.a(alloc_stats.o)
+                0x000000000040f1f0                ext2fs_inode_alloc_stats2
+                0x000000000040f360                ext2fs_inode_alloc_stats
+                0x000000000040f370                ext2fs_block_alloc_stats2
+                0x000000000040f480                ext2fs_block_alloc_stats
+                0x000000000040f490                ext2fs_set_block_alloc_stats_callback
+                0x000000000040f4c0                ext2fs_block_alloc_stats_range
+                0x000000000040f6d0                ext2fs_set_block_alloc_stats_range_callback
+ *fill*         0x000000000040f6f5        0xb 
+ .text          0x000000000040f700      0x505 ../lib/libext2fs.a(bitmaps.o)
+                0x000000000040f810                ext2fs_free_inode_bitmap
+                0x000000000040f820                ext2fs_free_block_bitmap
+                0x000000000040f830                ext2fs_copy_bitmap
+                0x000000000040f840                ext2fs_set_bitmap_padding
+                0x000000000040f850                ext2fs_allocate_inode_bitmap
+                0x000000000040f8f0                ext2fs_allocate_block_bitmap
+                0x000000000040f910                ext2fs_allocate_subcluster_bitmap
+                0x000000000040fa10                ext2fs_get_bitmap_granularity
+                0x000000000040fa30                ext2fs_fudge_inode_bitmap_end
+                0x000000000040fa60                ext2fs_fudge_block_bitmap_end
+                0x000000000040fa80                ext2fs_fudge_block_bitmap_end2
+                0x000000000040fa90                ext2fs_clear_inode_bitmap
+                0x000000000040faa0                ext2fs_clear_block_bitmap
+                0x000000000040fab0                ext2fs_resize_inode_bitmap
+                0x000000000040fad0                ext2fs_resize_inode_bitmap2
+                0x000000000040faf0                ext2fs_resize_block_bitmap
+                0x000000000040fb10                ext2fs_resize_block_bitmap2
+                0x000000000040fb30                ext2fs_compare_block_bitmap
+                0x000000000040fb40                ext2fs_compare_inode_bitmap
+                0x000000000040fb50                ext2fs_set_inode_bitmap_range
+                0x000000000040fb70                ext2fs_set_inode_bitmap_range2
+                0x000000000040fb80                ext2fs_get_inode_bitmap_range
+                0x000000000040fba0                ext2fs_get_inode_bitmap_range2
+                0x000000000040fbb0                ext2fs_set_block_bitmap_range
+                0x000000000040fbd0                ext2fs_set_block_bitmap_range2
+                0x000000000040fbe0                ext2fs_get_block_bitmap_range
+                0x000000000040fc00                ext2fs_get_block_bitmap_range2
+ *fill*         0x000000000040fc05        0xb 
+ .text          0x000000000040fc10      0x9ed ../lib/libext2fs.a(blknum.o)
+                0x000000000040fc10                ext2fs_group_of_blk2
+                0x000000000040fc30                ext2fs_group_first_block2
+                0x000000000040fc50                ext2fs_group_last_block2
+                0x000000000040fca0                ext2fs_group_blocks_count
+                0x000000000040fcf0                ext2fs_inode_data_blocks2
+                0x000000000040fd30                ext2fs_inode_i_blocks
+                0x000000000040fd50                ext2fs_get_stat_i_blocks
+                0x000000000040fd80                ext2fs_blocks_count
+                0x000000000040fda0                ext2fs_blocks_count_set
+                0x000000000040fdc0                ext2fs_blocks_count_add
+                0x000000000040fe00                ext2fs_r_blocks_count
+                0x000000000040fe20                ext2fs_r_blocks_count_set
+                0x000000000040fe40                ext2fs_r_blocks_count_add
+                0x000000000040fe80                ext2fs_free_blocks_count
+                0x000000000040fea0                ext2fs_free_blocks_count_set
+                0x000000000040fec0                ext2fs_free_blocks_count_add
+                0x000000000040ff00                ext2fs_group_desc
+                0x00000000004100a0                ext2fs_block_bitmap_checksum
+                0x00000000004100e0                ext2fs_block_bitmap_loc
+                0x0000000000410110                ext2fs_block_bitmap_loc_set
+                0x0000000000410150                ext2fs_inode_bitmap_checksum
+                0x0000000000410190                ext2fs_inode_bitmap_loc
+                0x00000000004101c0                ext2fs_inode_bitmap_loc_set
+                0x0000000000410200                ext2fs_inode_table_loc
+                0x0000000000410230                ext2fs_inode_table_loc_set
+                0x0000000000410270                ext2fs_bg_free_blocks_count
+                0x00000000004102a0                ext2fs_bg_free_blocks_count_set
+                0x00000000004102e0                ext2fs_bg_free_inodes_count
+                0x0000000000410310                ext2fs_bg_free_inodes_count_set
+                0x0000000000410350                ext2fs_bg_used_dirs_count
+                0x0000000000410380                ext2fs_bg_used_dirs_count_set
+                0x00000000004103c0                ext2fs_bg_itable_unused
+                0x00000000004103f0                ext2fs_bg_itable_unused_set
+                0x0000000000410430                ext2fs_bg_flags
+                0x0000000000410450                ext2fs_bg_flags_zap
+                0x0000000000410470                ext2fs_bg_flags_test
+                0x0000000000410490                ext2fs_bg_flags_set
+                0x00000000004104b0                ext2fs_bg_flags_clear
+                0x00000000004104d0                ext2fs_bg_checksum
+                0x00000000004104f0                ext2fs_bg_checksum_set
+                0x0000000000410510                ext2fs_file_acl_block
+                0x0000000000410530                ext2fs_file_acl_block_set
+                0x0000000000410550                ext2fs_inode_size_set
+ *fill*         0x00000000004105fd        0x3 
+ .text          0x0000000000410600     0x1691 ../lib/libext2fs.a(block.o)
+                0x0000000000411c00                ext2fs_block_iterate3
+                0x0000000000411c20                ext2fs_block_iterate2
+                0x0000000000411c50                ext2fs_block_iterate
+ *fill*         0x0000000000411c91        0xf 
+ .text          0x0000000000411ca0     0x1322 ../lib/libext2fs.a(bmap.o)
+                0x00000000004123c0                ext2fs_map_cluster_block
+                0x0000000000412460                ext2fs_file_block_offset_too_big
+                0x00000000004124a0                ext2fs_bmap2
+                0x0000000000412f70                ext2fs_bmap
+ *fill*         0x0000000000412fc2       0x1e 
+ .text          0x0000000000412fe0      0xc17 ../lib/libext2fs.a(closefs.o)
+                0x0000000000412fe0                ext2fs_bg_has_super
+                0x00000000004130e0                ext2fs_super_and_bgd_loc2
+                0x0000000000413810                ext2fs_super_and_bgd_loc
+                0x00000000004138e0                ext2fs_update_dynamic_rev
+                0x0000000000413910                ext2fs_flush
+                0x0000000000413960                ext2fs_flush2
+                0x00000000004139a0                ext2fs_close2
+                0x0000000000413ba0                ext2fs_close_free
+                0x0000000000413bf0                ext2fs_close
+ *fill*         0x0000000000413bf7        0x9 
+ .text          0x0000000000413c00      0x15f ../lib/libext2fs.a(crc32c.o)
+                0x0000000000413d40                ext2fs_crc32c_le
+                0x0000000000413d50                ext2fs_crc32_be
+ *fill*         0x0000000000413d5f        0x1 
+ .text          0x0000000000413d60     0x13ed ../lib/libext2fs.a(csum.o)
+                0x00000000004141e0                ext2fs_init_csum_seed
+                0x0000000000414240                ext2fs_mmp_csum_verify
+                0x0000000000414280                ext2fs_mmp_csum_set
+                0x00000000004142c0                ext2fs_verify_csum_type
+                0x00000000004142e0                ext2fs_superblock_csum_verify
+                0x0000000000414320                ext2fs_superblock_csum_set
+                0x0000000000414360                ext2fs_ext_attr_block_csum_verify
+                0x00000000004143d0                ext2fs_ext_attr_block_csum_set
+                0x0000000000414430                ext2fs_get_dx_countlimit
+                0x0000000000414440                ext2fs_initialize_dirent_tail
+                0x0000000000414470                ext2fs_dirent_has_tail
+                0x0000000000414490                ext2fs_dirent_csum_verify
+                0x0000000000414520                ext2fs_dx_csum
+                0x0000000000414700                ext2fs_dir_block_csum_verify
+                0x00000000004147d0                ext2fs_dir_block_csum_set
+                0x00000000004148d0                ext2fs_extent_block_csum_verify
+                0x0000000000414920                ext2fs_extent_block_csum_set
+                0x0000000000414970                ext2fs_inode_bitmap_csum_verify
+                0x0000000000414a20                ext2fs_inode_bitmap_csum_set
+                0x0000000000414ab0                ext2fs_block_bitmap_csum_verify
+                0x0000000000414b60                ext2fs_block_bitmap_csum_set
+                0x0000000000414bf0                ext2fs_inode_csum_verify
+                0x0000000000414ce0                ext2fs_inode_csum_set
+                0x0000000000414d90                ext2fs_group_desc_csum
+                0x0000000000414e80                ext2fs_group_desc_csum_verify
+                0x0000000000414ed0                ext2fs_group_desc_csum_set
+                0x0000000000414f10                ext2fs_set_gdt_csum
+ *fill*         0x000000000041514d        0x3 
+ .text          0x0000000000415150      0x2b8 ../lib/libext2fs.a(dirblock.o)
+                0x0000000000415150                ext2fs_read_dir_block4
+                0x00000000004151c0                ext2fs_read_dir_block3
+                0x0000000000415230                ext2fs_read_dir_block2
+                0x00000000004152a0                ext2fs_read_dir_block
+                0x0000000000415310                ext2fs_write_dir_block4
+                0x0000000000415350                ext2fs_write_dir_block3
+                0x0000000000415390                ext2fs_write_dir_block2
+                0x00000000004153d0                ext2fs_write_dir_block
+ *fill*         0x0000000000415408        0x8 
+ .text          0x0000000000415410      0x700 ../lib/libext2fs.a(dir_iterate.o)
+                0x0000000000415430                ext2fs_process_dir_block
+                0x00000000004158f0                ext2fs_get_rec_len
+                0x0000000000415940                ext2fs_set_rec_len
+                0x00000000004159b0                ext2fs_dir_iterate2
+                0x0000000000415af0                ext2fs_dir_iterate
+ .text          0x0000000000415b10      0x33f ../lib/libext2fs.a(expanddir.o)
+                0x0000000000415cd0                ext2fs_expand_dir
+ *fill*         0x0000000000415e4f       0x11 
+ .text          0x0000000000415e60     0x32e5 ../lib/libext2fs.a(ext_attr.o)
+                0x0000000000416050                ext2fs_ext_attr_hash_entry
+                0x0000000000416460                ext2fs_ext_attr_hash_entry_signed
+                0x00000000004164e0                ext2fs_ext_attr_hash_entry3
+                0x0000000000416b90                ext2fs_ext_attr_hash_entry2
+                0x0000000000416bf0                ext2fs_ext_attr_block_rehash
+                0x0000000000416c40                ext2fs_get_ea_inode_hash
+                0x0000000000416c50                ext2fs_set_ea_inode_hash
+                0x0000000000416c60                ext2fs_get_ea_inode_ref
+                0x0000000000416c70                ext2fs_set_ea_inode_ref
+                0x0000000000416c80                ext2fs_read_ext_attr3
+                0x0000000000416eb0                ext2fs_read_ext_attr2
+                0x0000000000416f60                ext2fs_read_ext_attr
+                0x0000000000417010                ext2fs_write_ext_attr3
+                0x0000000000417060                ext2fs_write_ext_attr2
+                0x00000000004170b0                ext2fs_write_ext_attr
+                0x0000000000417100                ext2fs_adjust_ea_refcount3
+                0x0000000000417250                ext2fs_adjust_ea_refcount2
+                0x0000000000417260                ext2fs_adjust_ea_refcount
+                0x0000000000417270                ext2fs_free_ext_attr
+                0x0000000000417dc0                ext2fs_xattrs_write
+                0x0000000000418340                ext2fs_xattrs_read_inode
+                0x0000000000418360                ext2fs_xattrs_read
+                0x00000000004184a0                ext2fs_xattrs_iterate
+                0x0000000000418540                ext2fs_xattr_get
+                0x0000000000418710                ext2fs_xattr_inode_max_size
+                0x0000000000418890                ext2fs_xattr_set
+                0x0000000000418dd0                ext2fs_xattr_remove
+                0x0000000000418f30                ext2fs_xattr_remove_all
+                0x0000000000418fd0                ext2fs_xattrs_open
+                0x00000000004190a0                ext2fs_xattrs_close
+                0x0000000000419100                ext2fs_xattrs_count
+                0x0000000000419120                ext2fs_xattrs_flags
+ *fill*         0x0000000000419145       0x1b 
+ .text          0x0000000000419160     0x328b ../lib/libext2fs.a(extent.o)
+                0x0000000000419c70                ext2fs_extent_header_verify
+                0x0000000000419cc0                ext2fs_extent_free
+                0x0000000000419f80                ext2fs_extent_open
+                0x0000000000419fc0                ext2fs_extent_open2
+                0x000000000041a000                ext2fs_extent_get
+                0x000000000041a040                ext2fs_extent_goto2
+                0x000000000041a330                ext2fs_extent_goto
+                0x000000000041a340                ext2fs_extent_replace
+                0x000000000041a420                ext2fs_extent_fix_parents
+                0x000000000041a6c0                ext2fs_extent_insert
+                0x000000000041b1f0                ext2fs_extent_node_split
+                0x000000000041b200                ext2fs_extent_delete
+                0x000000000041b240                ext2fs_extent_set_bmap
+                0x000000000041bee0                ext2fs_extent_get_info
+                0x000000000041bf90                ext2fs_max_extent_depth
+                0x000000000041bff0                ext2fs_fix_extents_checksums
+                0x000000000041c1f0                ext2fs_decode_extent
+                0x000000000041c240                ext2fs_count_blocks
+ *fill*         0x000000000041c3eb        0x5 
+ .text          0x000000000041c3f0     0x189b ../lib/libext2fs.a(fallocate.o)
+                0x000000000041d690                ext2fs_fallocate
+ *fill*         0x000000000041dc8b        0x5 
+ .text          0x000000000041dc90     0x1228 ../lib/libext2fs.a(fileio.o)
+                0x000000000041dee0                ext2fs_file_open2
+                0x000000000041e070                ext2fs_file_open
+                0x000000000041e080                ext2fs_file_get_fs
+                0x000000000041e090                ext2fs_file_get_inode
+                0x000000000041e0b0                ext2fs_file_get_inode_num
+                0x000000000041e0c0                ext2fs_file_flush
+                0x000000000041e0e0                ext2fs_file_close
+                0x000000000041e130                ext2fs_file_read
+                0x000000000041e3f0                ext2fs_file_llseek
+                0x000000000041e460                ext2fs_file_lseek
+                0x000000000041e4e0                ext2fs_file_get_lsize
+                0x000000000041e510                ext2fs_file_get_size
+                0x000000000041e540                ext2fs_file_set_size2
+                0x000000000041e8b0                ext2fs_file_write
+                0x000000000041eeb0                ext2fs_file_set_size
+ *fill*         0x000000000041eeb8        0x8 
+ .text          0x000000000041eec0      0x2e5 ../lib/libext2fs.a(freefs.o)
+                0x000000000041eec0                ext2fs_u32_list_free
+                0x000000000041ef00                ext2fs_badblocks_list_free
+                0x000000000041ef40                ext2fs_free_dblist
+                0x000000000041efe0                ext2fs_free
+ *fill*         0x000000000041f1a5       0x1b 
+ .text          0x000000000041f1c0      0xf41 ../lib/libext2fs.a(gen_bitmap.o)
+                0x000000000041f1c0                ext2fs_warn_bitmap2
+                0x000000000041f200                ext2fs_make_generic_bitmap
+                0x000000000041f370                ext2fs_allocate_generic_bitmap
+                0x000000000041f3a0                ext2fs_copy_generic_bitmap
+                0x000000000041f3d0                ext2fs_free_generic_bitmap
+                0x000000000041f420                ext2fs_test_generic_bitmap
+                0x000000000041f500                ext2fs_mark_generic_bitmap
+                0x000000000041f5e0                ext2fs_unmark_generic_bitmap
+                0x000000000041f6c0                ext2fs_get_generic_bitmap_start
+                0x000000000041f730                ext2fs_get_generic_bitmap_end
+                0x000000000041f7a0                ext2fs_clear_generic_bitmap
+                0x000000000041f820                ext2fs_fudge_generic_bitmap_end
+                0x000000000041f850                ext2fs_resize_generic_bitmap
+                0x000000000041f940                ext2fs_compare_generic_bitmap
+                0x000000000041fa70                ext2fs_set_generic_bitmap_padding
+                0x000000000041fad0                ext2fs_get_generic_bitmap_range
+                0x000000000041fb30                ext2fs_set_generic_bitmap_range
+                0x000000000041fb80                ext2fs_mem_is_zero
+                0x000000000041fd00                ext2fs_find_first_zero_generic_bitmap
+                0x000000000041fe00                ext2fs_find_first_set_generic_bitmap
+                0x000000000041ff00                ext2fs_test_block_bitmap_range
+                0x000000000041ff50                ext2fs_test_inode_bitmap_range
+                0x000000000041ffa0                ext2fs_mark_block_bitmap_range
+                0x0000000000420050                ext2fs_unmark_block_bitmap_range
+ *fill*         0x0000000000420101        0xf 
+ .text          0x0000000000420110     0x140e ../lib/libext2fs.a(gen_bitmap64.o)
+                0x0000000000420110                ext2fs_alloc_generic_bmap
+                0x0000000000420360                ext2fs_free_generic_bmap
+                0x0000000000420410                ext2fs_copy_generic_bmap
+                0x0000000000420580                ext2fs_resize_generic_bmap
+                0x00000000004205d0                ext2fs_fudge_generic_bmap_end
+                0x0000000000420660                ext2fs_get_generic_bmap_start
+                0x00000000004206b0                ext2fs_get_generic_bmap_end
+                0x0000000000420700                ext2fs_clear_generic_bmap
+                0x0000000000420720                ext2fs_mark_generic_bmap
+                0x00000000004207e0                ext2fs_unmark_generic_bmap
+                0x00000000004208a0                ext2fs_test_generic_bmap
+                0x0000000000420960                ext2fs_set_generic_bmap_range
+                0x00000000004209f0                ext2fs_get_generic_bmap_range
+                0x0000000000420a80                ext2fs_compare_generic_bmap
+                0x0000000000420bb0                ext2fs_set_generic_bmap_padding
+                0x0000000000420bf0                ext2fs_test_block_bitmap_range2
+                0x0000000000420ce0                ext2fs_mark_block_bitmap_range2
+                0x0000000000420de0                ext2fs_unmark_block_bitmap_range2
+                0x0000000000420ee0                ext2fs_warn_bitmap32
+                0x0000000000420f20                ext2fs_find_first_zero_generic_bmap
+                0x00000000004210d0                ext2fs_find_first_set_generic_bmap
+                0x0000000000421280                ext2fs_convert_subcluster_bitmap
+                0x00000000004213a0                ext2fs_count_used_blocks
+                0x00000000004214d0                ext2fs_count_used_clusters
+ *fill*         0x000000000042151e        0x2 
+ .text          0x0000000000421520       0xc6 ../lib/libext2fs.a(get_num_dirs.o)
+                0x0000000000421520                ext2fs_get_num_dirs
+ *fill*         0x00000000004215e6        0xa 
+ .text          0x00000000004215f0       0x62 ../lib/libext2fs.a(getenv.o)
+                0x00000000004215f0                ext2fs_safe_getenv
+ *fill*         0x0000000000421652        0xe 
+ .text          0x0000000000421660      0x261 ../lib/libext2fs.a(hashmap.o)
+                0x0000000000421660                ext2fs_djb2_hash
+                0x00000000004216b0                ext2fs_hashmap_create
+                0x00000000004216f0                ext2fs_hashmap_add
+                0x00000000004217a0                ext2fs_hashmap_lookup
+                0x0000000000421800                ext2fs_hashmap_iter_in_order
+                0x0000000000421830                ext2fs_hashmap_free
+ *fill*         0x00000000004218c1        0xf 
+ .text          0x00000000004218d0      0x188 ../lib/libext2fs.a(i_block.o)
+                0x00000000004218d0                ext2fs_iblk_add_blocks
+                0x0000000000421950                ext2fs_iblk_sub_blocks
+                0x00000000004219f0                ext2fs_iblk_set
+ *fill*         0x0000000000421a58        0x8 
+ .text          0x0000000000421a60       0x73 ../lib/libext2fs.a(ind_block.o)
+                0x0000000000421a60                ext2fs_read_ind_block
+                0x0000000000421ab0                ext2fs_write_ind_block
+ *fill*         0x0000000000421ad3        0xd 
+ .text          0x0000000000421ae0      0xf57 ../lib/libext2fs.a(inline_data.o)
+                0x0000000000421c10                ext2fs_inline_data_init
+                0x0000000000421c50                ext2fs_inline_data_size
+                0x0000000000421cd0                ext2fs_inline_data_dir_iterate
+                0x0000000000422030                ext2fs_inline_data_ea_remove
+                0x0000000000422090                ext2fs_inline_data_expand
+                0x0000000000422660                ext2fs_inline_data_get
+                0x0000000000422760                ext2fs_inline_data_set
+ *fill*         0x0000000000422a37        0x9 
+ .text          0x0000000000422a40     0x1ce1 ../lib/libext2fs.a(inode.o)
+                0x00000000004233c0                ext2fs_flush_icache
+                0x0000000000423430                ext2fs_free_inode_cache
+                0x0000000000423650                ext2fs_create_inode_cache
+                0x0000000000423670                ext2fs_open_inode_scan
+                0x0000000000423950                ext2fs_close_inode_scan
+                0x00000000004239a0                ext2fs_set_inode_callback
+                0x00000000004239c0                ext2fs_inode_scan_flags
+                0x00000000004239f0                ext2fs_inode_scan_goto_blockgroup
+                0x0000000000423a10                ext2fs_get_next_inode_full
+                0x0000000000423a30                ext2fs_get_next_inode
+                0x0000000000423a50                ext2fs_read_inode2
+                0x0000000000423f90                ext2fs_read_inode_full
+                0x0000000000423fa0                ext2fs_read_inode
+                0x0000000000423fb0                ext2fs_write_inode2
+                0x0000000000424320                ext2fs_write_inode_full
+                0x0000000000424330                ext2fs_write_inode
+                0x0000000000424340                ext2fs_write_new_inode
+                0x0000000000424600                ext2fs_get_blocks
+                0x00000000004246a0                ext2fs_check_directory
+ *fill*         0x0000000000424721        0xf 
+ .text          0x0000000000424730      0x306 ../lib/libext2fs.a(io_manager.o)
+                0x0000000000424730                io_channel_set_options
+                0x0000000000424850                io_channel_write_byte
+                0x0000000000424890                io_channel_read_blk64
+                0x00000000004248e0                io_channel_write_blk64
+                0x0000000000424930                io_channel_discard
+                0x0000000000424970                io_channel_zeroout
+                0x00000000004249b0                io_channel_alloc_buf
+                0x0000000000424a20                io_channel_cache_readahead
+ *fill*         0x0000000000424a36        0xa 
+ .text          0x0000000000424a40     0x12ac ../lib/libext2fs.a(link.o)
+                0x0000000000424ef0                ext2fs_link
+ *fill*         0x0000000000425cec        0x4 
+ .text          0x0000000000425cf0      0x608 ../lib/libext2fs.a(mkdir.o)
+                0x0000000000425cf0                ext2fs_mkdir2
+                0x00000000004262e0                ext2fs_mkdir
+ *fill*         0x00000000004262f8        0x8 
+ .text          0x0000000000426300      0xf68 ../lib/libext2fs.a(mkjournal.o)
+                0x0000000000426300                ext2fs_create_journal_superblock2
+                0x0000000000426410                ext2fs_create_journal_superblock
+                0x0000000000426430                ext2fs_zero_blocks2
+                0x0000000000426630                ext2fs_zero_blocks
+                0x0000000000426660                ext2fs_default_journal_size
+                0x00000000004266e0                ext2fs_get_journal_params
+                0x0000000000426820                ext2fs_journal_sb_start
+                0x0000000000426830                ext2fs_add_journal_device
+                0x0000000000426a40                ext2fs_add_journal_inode3
+                0x0000000000427220                ext2fs_add_journal_inode2
+                0x0000000000427240                ext2fs_add_journal_inode
+ *fill*         0x0000000000427268        0x8 
+ .text          0x0000000000427270      0xa57 ../lib/libext2fs.a(mmp.o)
+                0x0000000000427400                ext2fs_mmp_read
+                0x0000000000427460                ext2fs_mmp_write
+                0x00000000004275e0                ext2fs_mmp_new_seq
+                0x0000000000427680                ext2fs_mmp_clear
+                0x00000000004276a0                ext2fs_mmp_init
+                0x0000000000427770                ext2fs_mmp_start
+                0x0000000000427ab0                ext2fs_mmp_stop
+                0x0000000000427bb0                ext2fs_mmp_update2
+                0x0000000000427cc0                ext2fs_mmp_update
+ *fill*         0x0000000000427cc7       0x19 
+ .text          0x0000000000427ce0      0x596 ../lib/libext2fs.a(namei.o)
+                0x0000000000428050                ext2fs_namei
+                0x0000000000428120                ext2fs_namei_follow
+                0x00000000004281f0                ext2fs_follow_link
+ *fill*         0x0000000000428276        0xa 
+ .text          0x0000000000428280      0x1e7 ../lib/libext2fs.a(newdir.o)
+                0x0000000000428280                ext2fs_new_dir_block
+                0x0000000000428440                ext2fs_new_dir_inline_data
+ *fill*         0x0000000000428467        0x9 
+ .text          0x0000000000428470      0xd04 ../lib/libext2fs.a(openfs.o)
+                0x0000000000428480                ext2fs_descriptor_block_loc2
+                0x0000000000429010                ext2fs_descriptor_block_loc
+                0x0000000000429020                ext2fs_open
+                0x0000000000429050                ext2fs_open2
+                0x0000000000429070                ext2fs_get_data_io
+                0x00000000004290a0                ext2fs_set_data_io
+                0x00000000004290d0                ext2fs_rewrite_to_io
+ *fill*         0x0000000000429174        0xc 
+ .text          0x0000000000429180      0xbcd ../lib/libext2fs.a(punch.o)
+                0x00000000004293b0                ext2fs_punch
+ *fill*         0x0000000000429d4d        0x3 
+ .text          0x0000000000429d50      0x165 ../lib/libext2fs.a(read_bb.o)
+                0x0000000000429dc0                ext2fs_read_bb_inode
+ *fill*         0x0000000000429eb5        0xb 
+ .text          0x0000000000429ec0     0x1706 ../lib/libext2fs.a(rw_bitmaps.o)
+                0x000000000042aae0                ext2fs_write_bitmaps
+                0x000000000042ae00                ext2fs_rw_bitmaps
+                0x000000000042b540                ext2fs_read_inode_bitmap
+                0x000000000042b550                ext2fs_read_block_bitmap
+                0x000000000042b560                ext2fs_write_inode_bitmap
+                0x000000000042b570                ext2fs_write_block_bitmap
+                0x000000000042b580                ext2fs_read_bitmaps
+ *fill*         0x000000000042b5c6        0xa 
+ .text          0x000000000042b5d0     0x138c ../lib/libext2fs.a(sha512.o)
+                0x000000000042c440                ext2fs_sha512
+ *fill*         0x000000000042c95c        0x4 
+ .text          0x000000000042c960      0x4fc ../lib/libext2fs.a(symlink.o)
+                0x000000000042c960                ext2fs_symlink
+                0x000000000042ce30                ext2fs_is_fast_symlink
+ *fill*         0x000000000042ce5c        0x4 
+ .text          0x000000000042ce60     0x29d5 ../lib/libext2fs.a(unix_io.o)
+                0x000000000042f800                ext2fs_open_file
+                0x000000000042f820                ext2fs_stat
+                0x000000000042f830                ext2fs_fstat
+ *fill*         0x000000000042f835        0xb 
+ .text          0x000000000042f840      0x1d9 ../lib/libext2fs.a(unlink.o)
+                0x000000000042f950                ext2fs_unlink
+ *fill*         0x000000000042fa19        0x7 
+ .text          0x000000000042fa20      0x134 ../lib/libext2fs.a(valid_blk.o)
+                0x000000000042fa20                ext2fs_inode_has_valid_blocks2
+                0x000000000042fac0                ext2fs_inode_has_valid_blocks
+ *fill*         0x000000000042fb54        0xc 
+ .text          0x000000000042fb60      0x1ea ../lib/libext2fs.a(alloc_sb.o)
+                0x000000000042fb60                ext2fs_reserve_super_and_bgd
+                0x000000000042fcf0                ext2fs_reserve_super_and_bgd2
+ *fill*         0x000000000042fd4a       0x16 
+ .text          0x000000000042fd60      0x664 ../lib/libext2fs.a(badblocks.o)
+                0x000000000042ffa0                ext2fs_u32_list_create
+                0x000000000042ffb0                ext2fs_badblocks_list_create
+                0x000000000042ffc0                ext2fs_u32_copy
+                0x0000000000430000                ext2fs_badblocks_copy
+                0x0000000000430040                ext2fs_u32_list_add
+                0x0000000000430060                ext2fs_badblocks_list_add
+                0x0000000000430080                ext2fs_u32_list_find
+                0x00000000004300f0                ext2fs_u32_list_test
+                0x0000000000430100                ext2fs_badblocks_list_test
+                0x0000000000430110                ext2fs_u32_list_del
+                0x0000000000430170                ext2fs_badblocks_list_del
+                0x0000000000430180                ext2fs_u32_list_iterate_begin
+                0x00000000004301e0                ext2fs_badblocks_list_iterate_begin
+                0x0000000000430240                ext2fs_u32_list_iterate
+                0x0000000000430290                ext2fs_badblocks_list_iterate
+                0x00000000004302e0                ext2fs_u32_list_iterate_end
+                0x0000000000430300                ext2fs_badblocks_list_iterate_end
+                0x0000000000430320                ext2fs_u32_list_equal
+                0x0000000000430370                ext2fs_badblocks_equal
+                0x00000000004303c0                ext2fs_u32_list_count
+ *fill*         0x00000000004303c4       0x3c 
+ .text          0x0000000000430400      0x359 ../lib/libext2fs.a(bitops.o)
+                0x0000000000430400                ext2fs_set_bit
+                0x0000000000430420                ext2fs_clear_bit
+                0x0000000000430450                ext2fs_test_bit
+                0x0000000000430470                ext2fs_warn_bitmap
+                0x00000000004304b0                ext2fs_set_bit64
+                0x00000000004304e0                ext2fs_clear_bit64
+                0x0000000000430510                ext2fs_test_bit64
+                0x0000000000430530                ext2fs_bitcount
+ *fill*         0x0000000000430759       0x27 
+ .text          0x0000000000430780      0x7d9 ../lib/libext2fs.a(blkmap64_ba.o)
+ *fill*         0x0000000000430f59       0x27 
+ .text          0x0000000000430f80     0x1245 ../lib/libext2fs.a(blkmap64_rb.o)
+ *fill*         0x00000000004321c5       0x1b 
+ .text          0x00000000004321e0       0x43 ../lib/libext2fs.a(crc16.o)
+                0x00000000004321e0                ext2fs_crc16
+ *fill*         0x0000000000432223       0x1d 
+ .text          0x0000000000432240      0x6aa ../lib/libext2fs.a(dirhash.o)
+                0x00000000004322f0                ext2fs_dirhash
+                0x0000000000432820                ext2fs_dirhash2
+ *fill*         0x00000000004328ea        0x6 
+ .text          0x00000000004328f0      0x11e ../lib/libext2fs.a(getsectsize.o)
+                0x00000000004328f0                ext2fs_get_device_sectsize
+                0x0000000000432950                ext2fs_get_dio_alignment
+                0x00000000004329b0                ext2fs_get_device_phys_sectsize
+ *fill*         0x0000000000432a0e       0x12 
+ .text          0x0000000000432a20      0x855 ../lib/libext2fs.a(inline.o)
+                0x0000000000432a20                ext2fs_fast_set_bit
+                0x0000000000432a40                ext2fs_fast_clear_bit
+                0x0000000000432a60                ext2fs_fast_set_bit64
+                0x0000000000432a80                ext2fs_fast_clear_bit64
+                0x0000000000432aa0                ext2fs_swab16
+                0x0000000000432ab0                ext2fs_swab32
+                0x0000000000432ac0                ext2fs_swab64
+                0x0000000000432ad0                ext2fs_mark_block_bitmap
+                0x0000000000432ae0                ext2fs_unmark_block_bitmap
+                0x0000000000432af0                ext2fs_test_block_bitmap
+                0x0000000000432b00                ext2fs_mark_inode_bitmap
+                0x0000000000432b10                ext2fs_unmark_inode_bitmap
+                0x0000000000432b20                ext2fs_test_inode_bitmap
+                0x0000000000432b30                ext2fs_fast_mark_block_bitmap
+                0x0000000000432b40                ext2fs_fast_unmark_block_bitmap
+                0x0000000000432b50                ext2fs_fast_test_block_bitmap
+                0x0000000000432b60                ext2fs_fast_mark_inode_bitmap
+                0x0000000000432b70                ext2fs_fast_unmark_inode_bitmap
+                0x0000000000432b80                ext2fs_fast_test_inode_bitmap
+                0x0000000000432b90                ext2fs_get_block_bitmap_start
+                0x0000000000432ba0                ext2fs_get_inode_bitmap_start
+                0x0000000000432bb0                ext2fs_get_block_bitmap_end
+                0x0000000000432bc0                ext2fs_get_inode_bitmap_end
+                0x0000000000432bd0                ext2fs_fast_test_block_bitmap_range
+                0x0000000000432be0                ext2fs_fast_mark_block_bitmap_range
+                0x0000000000432bf0                ext2fs_fast_unmark_block_bitmap_range
+                0x0000000000432c00                ext2fs_mark_block_bitmap2
+                0x0000000000432c10                ext2fs_unmark_block_bitmap2
+                0x0000000000432c20                ext2fs_test_block_bitmap2
+                0x0000000000432c30                ext2fs_mark_inode_bitmap2
+                0x0000000000432c40                ext2fs_unmark_inode_bitmap2
+                0x0000000000432c50                ext2fs_test_inode_bitmap2
+                0x0000000000432c60                ext2fs_fast_mark_block_bitmap2
+                0x0000000000432c70                ext2fs_fast_unmark_block_bitmap2
+                0x0000000000432c80                ext2fs_fast_test_block_bitmap2
+                0x0000000000432c90                ext2fs_fast_mark_inode_bitmap2
+                0x0000000000432ca0                ext2fs_fast_unmark_inode_bitmap2
+                0x0000000000432cb0                ext2fs_fast_test_inode_bitmap2
+                0x0000000000432cc0                ext2fs_find_first_zero_block_bitmap2
+                0x0000000000432cf0                ext2fs_find_first_zero_inode_bitmap2
+                0x0000000000432d20                ext2fs_find_first_set_block_bitmap2
+                0x0000000000432d50                ext2fs_find_first_set_inode_bitmap2
+                0x0000000000432d80                ext2fs_get_block_bitmap_start2
+                0x0000000000432d90                ext2fs_get_inode_bitmap_start2
+                0x0000000000432da0                ext2fs_get_block_bitmap_end2
+                0x0000000000432db0                ext2fs_get_inode_bitmap_end2
+                0x0000000000432dc0                ext2fs_fast_test_block_bitmap_range2
+                0x0000000000432dd0                ext2fs_fast_mark_block_bitmap_range2
+                0x0000000000432de0                ext2fs_fast_unmark_block_bitmap_range2
+                0x0000000000432df0                ext2fs_get_mem
+                0x0000000000432e10                ext2fs_get_memzero
+                0x0000000000432e40                ext2fs_get_array
+                0x0000000000432e70                ext2fs_get_arrayzero
+                0x0000000000432eb0                ext2fs_free_mem
+                0x0000000000432ed0                ext2fs_resize_mem
+                0x0000000000432ef0                ext2fs_resize_array
+                0x0000000000432f70                ext2fs_mark_super_dirty
+                0x0000000000432f80                ext2fs_mark_changed
+                0x0000000000432f90                ext2fs_test_changed
+                0x0000000000432fa0                ext2fs_mark_valid
+                0x0000000000432fb0                ext2fs_unmark_valid
+                0x0000000000432fc0                ext2fs_test_valid
+                0x0000000000432fd0                ext2fs_mark_ib_dirty
+                0x0000000000432fe0                ext2fs_mark_bb_dirty
+                0x0000000000432ff0                ext2fs_test_ib_dirty
+                0x0000000000433000                ext2fs_test_bb_dirty
+                0x0000000000433010                ext2fs_group_of_blk
+                0x0000000000433020                ext2fs_group_of_ino
+                0x0000000000433030                ext2fs_group_first_block
+                0x0000000000433040                ext2fs_group_last_block
+                0x0000000000433050                ext2fs_inode_data_blocks
+                0x0000000000433060                ext2fs_htree_intnode_maxrecs
+                0x0000000000433080                ext2fs_log2_u32
+                0x0000000000433090                ext2fs_log2_u64
+                0x00000000004330b0                ext2fs_log10_u32
+                0x0000000000433110                ext2fs_log10_u64
+                0x0000000000433170                ext2fs_div_ceil
+                0x0000000000433190                ext2fs_div64_ceil
+                0x00000000004331b0                ext2fs_dirent_name_len
+                0x00000000004331c0                ext2fs_dirent_set_name_len
+                0x00000000004331d0                ext2fs_dirent_file_type
+                0x00000000004331e0                ext2fs_dirent_set_file_type
+                0x00000000004331f0                ext2fs_inode
+                0x0000000000433200                ext2fs_const_inode
+                0x0000000000433210                ext2fs_inodes_per_orphan_block
+                0x0000000000433220                ext2fs_orphan_block_tail
+                0x0000000000433230                ext2fs_get_memalign
+ *fill*         0x0000000000433275        0xb 
+ .text          0x0000000000433280      0x819 ../lib/libext2fs.a(ismounted.o)
+                0x0000000000433700                ext2fs_check_mount_point
+                0x0000000000433a90                ext2fs_check_if_mounted
+ *fill*         0x0000000000433a99        0x7 
+ .text          0x0000000000433aa0       0x5f ../lib/libext2fs.a(llseek.o)
+                0x0000000000433aa0                ext2fs_llseek
+ *fill*         0x0000000000433aff        0x1 
+ .text          0x0000000000433b00       0xb9 ../lib/libext2fs.a(lookup.o)
+                0x0000000000433b60                ext2fs_lookup
+ *fill*         0x0000000000433bb9        0x7 
+ .text          0x0000000000433bc0      0xa9a ../lib/libext2fs.a(nls_utf8.o)
+                0x0000000000434600                ext2fs_load_nls_table
+                0x0000000000434620                ext2fs_check_encoded_name
+                0x0000000000434640                ext2fs_casefold_cmp
+ *fill*         0x000000000043465a        0x6 
+ .text          0x0000000000434660      0x6e6 ../lib/libext2fs.a(rbtree.o)
+                0x0000000000434780                ext2fs_rb_insert_color
+                0x00000000004348a0                ext2fs_rb_erase
+                0x0000000000434bc0                ext2fs_rb_first
+                0x0000000000434bf0                ext2fs_rb_last
+                0x0000000000434c20                ext2fs_rb_next
+                0x0000000000434c80                ext2fs_rb_prev
+                0x0000000000434ce0                ext2fs_rb_replace_node
+ *fill*         0x0000000000434d46       0x1a 
+ .text          0x0000000000434d60      0x5a9 ../lib/libcom_err.a(error_message.o)
+                0x0000000000434f10                et_list_lock
+                0x0000000000434f20                et_list_unlock
+                0x0000000000434f30                set_com_err_gettext
+                0x0000000000434f40                error_message
+                0x00000000004351a0                add_error_table
+                0x0000000000435210                remove_error_table
+                0x0000000000435300                add_to_error_table
+ *fill*         0x0000000000435309        0x7 
+ .text          0x0000000000435310       0x41 ../lib/libcom_err.a(et_name.o)
+                0x0000000000435310                error_table_name
+ *fill*         0x0000000000435351        0xf 
+ .text          0x0000000000435360      0x213 ../lib/libcom_err.a(com_err.o)
+                0x0000000000435480                com_err_va
+                0x0000000000435490                com_err
+                0x0000000000435540                set_com_err_hook
+                0x0000000000435560                reset_com_err_hook
+ *fill*         0x0000000000435573        0xd 
+ .text          0x0000000000435580       0x95 ../lib/libe2p.a(parse_num.o)
+                0x0000000000435580                parse_num_blocks2
+                0x0000000000435610                parse_num_blocks
+ .text          0x0000000000435615        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o
+ .text          0x0000000000435615        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+ *(.gnu.warning)
+
+.fini           0x0000000000435618        0xd
+ *(SORT_NONE(.fini))
+ .fini          0x0000000000435618        0x8 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+                0x0000000000435618                _fini
+ .fini          0x0000000000435620        0x5 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+                [!provide]                        PROVIDE (__etext = .)
+                [!provide]                        PROVIDE (_etext = .)
+                [!provide]                        PROVIDE (etext = .)
+                0x0000000000436000                . = ALIGN (CONSTANT (MAXPAGESIZE))
+                0x0000000000436000                . = SEGMENT_START ("rodata-segment", (ALIGN (CONSTANT (MAXPAGESIZE)) + (. & (CONSTANT (MAXPAGESIZE) - 0x1))))
+
+.interp         0x0000000000436000       0x1c
+ *(.interp)
+ .interp        0x0000000000436000       0x1c /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.hash
+ *(.hash)
+
+.gnu.hash       0x0000000000436020       0x28
+ *(.gnu.hash)
+ .gnu.hash      0x0000000000436020       0x28 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.dynsym         0x0000000000436048      0xc00
+ *(.dynsym)
+ .dynsym        0x0000000000436048      0xc00 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.dynstr         0x0000000000436c48      0x5d3
+ *(.dynstr)
+ .dynstr        0x0000000000436c48      0x5d3 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.gnu.version    0x000000000043721c      0x100
+ *(.gnu.version)
+ .gnu.version   0x000000000043721c      0x100 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.gnu.version_d  0x0000000000437320        0x0
+ *(.gnu.version_d)
+ .gnu.version_d
+                0x0000000000437320        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.gnu.version_r  0x0000000000437320      0x130
+ *(.gnu.version_r)
+ .gnu.version_r
+                0x0000000000437320      0x130 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.rela.dyn       0x0000000000437450       0x60
+ *(.rela.init)
+ *(.rela.text .rela.text.* .rela.gnu.linkonce.t.*)
+ .rela.text     0x0000000000437450        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+ .rela.text.startup
+                0x0000000000437450        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+ *(.rela.fini)
+ *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.*)
+ *(.rela.data .rela.data.* .rela.gnu.linkonce.d.*)
+ .rela.data.rel.ro
+                0x0000000000437450        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+ *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.*)
+ *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.*)
+ *(.rela.ctors)
+ *(.rela.dtors)
+ *(.rela.got)
+ .rela.got      0x0000000000437450       0x30 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+ *(.rela.tls)
+ .rela.tls      0x0000000000437480        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+ *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*)
+ .rela.bss      0x0000000000437480       0x30 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+ *(.rela.ldata .rela.ldata.* .rela.gnu.linkonce.l.*)
+ *(.rela.lbss .rela.lbss.* .rela.gnu.linkonce.lb.*)
+ *(.rela.lrodata .rela.lrodata.* .rela.gnu.linkonce.lr.*)
+ *(.rela.ifunc)
+
+.rela.plt       0x00000000004374b0      0xb88
+ *(.rela.plt)
+ .rela.plt      0x00000000004374b0      0xb88 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                [!provide]                        PROVIDE (__rela_iplt_start = .)
+ *(.rela.iplt)
+ .rela.iplt     0x0000000000438038        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                [!provide]                        PROVIDE (__rela_iplt_end = .)
+
+.relr.dyn
+ *(.relr.dyn)
+
+.rodata         0x0000000000438040    0x18dd0
+ *(.rodata .rodata.* .gnu.linkonce.r.*)
+ .rodata.cst4   0x0000000000438040        0x4 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                0x0000000000438040                _IO_stdin_used
+ *fill*         0x0000000000438044        0x4 
+ .rodata        0x0000000000438048        0x8 /usr/lib/gcc/x86_64-redhat-linux/16/crtbegin.o
+                0x0000000000438048                __dso_handle
+ .rodata.str1.8
+                0x0000000000438050     0x29ae fuse2fs.o
+                                        0xf14 (size before relaxing)
+ .rodata.str1.1
+                0x000000000043a9fe      0xe84 fuse2fs.o
+                                        0x4cb (size before relaxing)
+ *fill*         0x000000000043b882       0x1e 
+ .rodata        0x000000000043b8a0      0x868 fuse2fs.o
+ *fill*         0x000000000043c108        0x8 
+ .rodata.cst32  0x000000000043c110       0x20 fuse2fs.o
+ .rodata.cst16  0x000000000043c130       0xc0 fuse2fs.o
+                                         0x30 (size before relaxing)
+ .rodata.cst8   0x000000000043c1f0        0x8 fuse2fs.o
+ .rodata.str1.1
+                0x000000000043c1f8        0x0 journal.o
+                                         0x39 (size before relaxing)
+ .rodata.str1.8
+                0x000000000043c1f8        0x0 recovery.o
+                                        0x1c9 (size before relaxing)
+ .rodata.str1.1
+                0x000000000043c1f8        0x0 recovery.o
+                                         0x31 (size before relaxing)
+ .rodata        0x000000000043c1f8        0xc recovery.o
+ .rodata.str1.8
+                0x000000000043c204        0x0 revoke.o
+                                         0xb7 (size before relaxing)
+ .rodata.str1.1
+                0x000000000043c204        0x0 revoke.o
+                                         0x49 (size before relaxing)
+ *fill*         0x000000000043c204       0x1c 
+ .rodata        0x000000000043c220       0xc6 revoke.o
+ *fill*         0x000000000043c2e6       0x1a 
+ .rodata        0x000000000043c300      0x5e0 ../lib/libext2fs.a(ext2_err.o)
+                0x000000000043c300                et_ext2_error_table
+ .rodata.str1.1
+                0x000000000043c8e0        0x0 ../lib/libext2fs.a(ext2_err.o)
+                                        0x5fa (size before relaxing)
+ .rodata.str1.8
+                0x000000000043c8e0        0x0 ../lib/libext2fs.a(ext2_err.o)
+                                       0x1627 (size before relaxing)
+ .rodata.cst8   0x000000000043c8e0        0x8 ../lib/libext2fs.a(ext2_err.o)
+ .rodata.str1.1
+                0x000000000043c8e8        0x0 ../lib/libext2fs.a(alloc_stats.o)
+                                         0x67 (size before relaxing)
+ .rodata.str1.8
+                0x000000000043c8e8        0x0 ../lib/libext2fs.a(alloc_stats.o)
+                                         0x3f (size before relaxing)
+ *fill*         0x000000000043c8e8       0x18 
+ .rodata        0x000000000043c900     0x4000 ../lib/libext2fs.a(crc32c.o)
+ .rodata.str1.1
+                0x0000000000440900        0x0 ../lib/libext2fs.a(ext_attr.o)
+                                         0x72 (size before relaxing)
+ .rodata        0x0000000000440900       0x70 ../lib/libext2fs.a(extent.o)
+ .rodata.cst16  0x0000000000440970        0x0 ../lib/libext2fs.a(extent.o)
+                                         0x20 (size before relaxing)
+ .rodata.str1.1
+                0x0000000000440970        0x0 ../lib/libext2fs.a(gen_bitmap.o)
+                                         0x68 (size before relaxing)
+ *fill*         0x0000000000440970       0x10 
+ .rodata        0x0000000000440980      0x1bb ../lib/libext2fs.a(gen_bitmap.o)
+ .rodata.str1.1
+                0x0000000000440b3b        0x0 ../lib/libext2fs.a(gen_bitmap64.o)
+                                         0x87 (size before relaxing)
+ .rodata.str1.8
+                0x0000000000440b3b        0x0 ../lib/libext2fs.a(gen_bitmap64.o)
+                                         0x5c (size before relaxing)
+ .rodata.str1.1
+                0x0000000000440b3b        0x0 ../lib/libext2fs.a(inline_data.o)
+                                          0xc (size before relaxing)
+ .rodata.str1.1
+                0x0000000000440b3b        0x0 ../lib/libext2fs.a(openfs.o)
+                                         0x26 (size before relaxing)
+ .rodata.str1.1
+                0x0000000000440b3b        0x0 ../lib/libext2fs.a(rw_bitmaps.o)
+                                         0x13 (size before relaxing)
+ .rodata.cst16  0x0000000000440b3b        0x0 ../lib/libext2fs.a(rw_bitmaps.o)
+                                         0x20 (size before relaxing)
+ *fill*         0x0000000000440b3b        0x5 
+ .rodata        0x0000000000440b40      0x280 ../lib/libext2fs.a(sha512.o)
+ .rodata.cst16  0x0000000000440dc0        0x0 ../lib/libext2fs.a(sha512.o)
+                                         0x50 (size before relaxing)
+ .rodata.str1.1
+                0x0000000000440dc0        0x0 ../lib/libext2fs.a(unix_io.o)
+                                         0x6a (size before relaxing)
+ .rodata.str1.1
+                0x0000000000440dc0        0x0 ../lib/libext2fs.a(bitops.o)
+                                         0x11 (size before relaxing)
+ .rodata.str1.8
+                0x0000000000440dc0        0x0 ../lib/libext2fs.a(blkmap64_ba.o)
+                                         0x1f (size before relaxing)
+ .rodata.str1.1
+                0x0000000000440dc0        0x0 ../lib/libext2fs.a(blkmap64_rb.o)
+                                         0x37 (size before relaxing)
+ .rodata.str1.8
+                0x0000000000440dc0        0x0 ../lib/libext2fs.a(blkmap64_rb.o)
+                                         0xa1 (size before relaxing)
+ .rodata        0x0000000000440dc0      0x200 ../lib/libext2fs.a(crc16.o)
+ .rodata        0x0000000000440fc0       0x30 ../lib/libext2fs.a(dirhash.o)
+ .rodata.str1.1
+                0x0000000000440ff0        0x0 ../lib/libext2fs.a(ismounted.o)
+                                         0xb6 (size before relaxing)
+ *fill*         0x0000000000440ff0       0x10 
+ .rodata        0x0000000000441000     0xfc5c ../lib/libext2fs.a(nls_utf8.o)
+ .rodata.str1.1
+                0x0000000000450c5c        0x0 ../lib/libcom_err.a(error_message.o)
+                                         0x46 (size before relaxing)
+ .rodata.str1.8
+                0x0000000000450c5c        0x0 ../lib/libcom_err.a(error_message.o)
+                                         0x76 (size before relaxing)
+ *fill*         0x0000000000450c5c        0x4 
+ .rodata        0x0000000000450c60       0x40 ../lib/libcom_err.a(et_name.o)
+ .rodata.str1.1
+                0x0000000000450ca0        0x0 ../lib/libcom_err.a(com_err.o)
+                                          0x3 (size before relaxing)
+ .rodata        0x0000000000450ca0      0x170 ../lib/libe2p.a(parse_num.o)
+
+.rodata1
+ *(.rodata1)
+
+.eh_frame_hdr   0x0000000000450e10     0x197c
+ *(.eh_frame_hdr)
+ .eh_frame_hdr  0x0000000000450e10     0x197c /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                0x0000000000450e10                __GNU_EH_FRAME_HDR
+ *(.eh_frame_entry .eh_frame_entry.*)
+
+.eh_frame       0x0000000000452790     0x8674
+ *(.eh_frame)
+ .eh_frame      0x0000000000452790       0x40 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                                         0x5c (size before relaxing)
+ *fill*         0x00000000004527d0        0x0 
+ .eh_frame      0x00000000004527d0       0x28 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                                         0x40 (size before relaxing)
+ .eh_frame      0x00000000004527f8        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+ .eh_frame      0x00000000004527f8     0x1088 fuse2fs.o
+                                       0x10a0 (size before relaxing)
+ .eh_frame      0x0000000000453880      0x678 journal.o
+                                        0x690 (size before relaxing)
+ .eh_frame      0x0000000000453ef8      0x148 recovery.o
+                                        0x160 (size before relaxing)
+ .eh_frame      0x0000000000454040      0x1c0 revoke.o
+                                        0x1d8 (size before relaxing)
+ .eh_frame      0x0000000000454200       0x30 ../lib/libext2fs.a(ext2_err.o)
+                                         0x48 (size before relaxing)
+ .eh_frame      0x0000000000454230      0x300 ../lib/libext2fs.a(alloc.o)
+                                        0x318 (size before relaxing)
+ .eh_frame      0x0000000000454530      0x170 ../lib/libext2fs.a(alloc_stats.o)
+                                        0x188 (size before relaxing)
+ .eh_frame      0x00000000004546a0      0x2c0 ../lib/libext2fs.a(bitmaps.o)
+                                        0x2d8 (size before relaxing)
+ .eh_frame      0x0000000000454960      0x488 ../lib/libext2fs.a(blknum.o)
+                                        0x4a0 (size before relaxing)
+ .eh_frame      0x0000000000454de8      0x1c0 ../lib/libext2fs.a(block.o)
+                                        0x1d8 (size before relaxing)
+ .eh_frame      0x0000000000454fa8      0x200 ../lib/libext2fs.a(bmap.o)
+                                        0x218 (size before relaxing)
+ .eh_frame      0x00000000004551a8      0x1e8 ../lib/libext2fs.a(closefs.o)
+                                        0x200 (size before relaxing)
+ .eh_frame      0x0000000000455390       0x50 ../lib/libext2fs.a(crc32c.o)
+                                         0x68 (size before relaxing)
+ .eh_frame      0x00000000004553e0      0x630 ../lib/libext2fs.a(csum.o)
+                                        0x648 (size before relaxing)
+ .eh_frame      0x0000000000455a10      0x1c0 ../lib/libext2fs.a(dirblock.o)
+                                        0x1d8 (size before relaxing)
+ .eh_frame      0x0000000000455bd0      0x130 ../lib/libext2fs.a(dir_iterate.o)
+                                        0x148 (size before relaxing)
+ .eh_frame      0x0000000000455d00       0xb0 ../lib/libext2fs.a(expanddir.o)
+                                         0xc8 (size before relaxing)
+ .eh_frame      0x0000000000455db0      0x950 ../lib/libext2fs.a(ext_attr.o)
+                                        0x968 (size before relaxing)
+ .eh_frame      0x0000000000456700      0x520 ../lib/libext2fs.a(extent.o)
+                                        0x538 (size before relaxing)
+ .eh_frame      0x0000000000456c20      0x138 ../lib/libext2fs.a(fallocate.o)
+                                        0x150 (size before relaxing)
+ .eh_frame      0x0000000000456d58      0x3a0 ../lib/libext2fs.a(fileio.o)
+                                        0x3b8 (size before relaxing)
+ .eh_frame      0x00000000004570f8       0x78 ../lib/libext2fs.a(freefs.o)
+                                         0x90 (size before relaxing)
+ .eh_frame      0x0000000000457170      0x3b8 ../lib/libext2fs.a(gen_bitmap.o)
+                                        0x3d0 (size before relaxing)
+ .eh_frame      0x0000000000457528      0x408 ../lib/libext2fs.a(gen_bitmap64.o)
+                                        0x420 (size before relaxing)
+ .eh_frame      0x0000000000457930       0x38 ../lib/libext2fs.a(get_num_dirs.o)
+                                         0x50 (size before relaxing)
+ .eh_frame      0x0000000000457968       0x38 ../lib/libext2fs.a(getenv.o)
+                                         0x50 (size before relaxing)
+ .eh_frame      0x00000000004579a0       0xf8 ../lib/libext2fs.a(hashmap.o)
+                                        0x110 (size before relaxing)
+ .eh_frame      0x0000000000457a98       0x40 ../lib/libext2fs.a(i_block.o)
+                                         0x58 (size before relaxing)
+ .eh_frame      0x0000000000457ad8       0x30 ../lib/libext2fs.a(ind_block.o)
+                                         0x48 (size before relaxing)
+ .eh_frame      0x0000000000457b08      0x1d0 ../lib/libext2fs.a(inline_data.o)
+                                        0x1e8 (size before relaxing)
+ .eh_frame      0x0000000000457cd8      0x370 ../lib/libext2fs.a(inode.o)
+                                        0x388 (size before relaxing)
+ .eh_frame      0x0000000000458048       0xf8 ../lib/libext2fs.a(io_manager.o)
+                                        0x110 (size before relaxing)
+ .eh_frame      0x0000000000458140      0x208 ../lib/libext2fs.a(link.o)
+                                        0x220 (size before relaxing)
+ .eh_frame      0x0000000000458348       0x60 ../lib/libext2fs.a(mkdir.o)
+                                         0x78 (size before relaxing)
+ .eh_frame      0x00000000004583a8      0x250 ../lib/libext2fs.a(mkjournal.o)
+                                        0x268 (size before relaxing)
+ .eh_frame      0x00000000004585f8      0x248 ../lib/libext2fs.a(mmp.o)
+                                        0x260 (size before relaxing)
+ .eh_frame      0x0000000000458840      0x1a8 ../lib/libext2fs.a(namei.o)
+                                        0x1c0 (size before relaxing)
+ .eh_frame      0x00000000004589e8       0x60 ../lib/libext2fs.a(newdir.o)
+                                         0x78 (size before relaxing)
+ .eh_frame      0x0000000000458a48      0x148 ../lib/libext2fs.a(openfs.o)
+                                        0x160 (size before relaxing)
+ .eh_frame      0x0000000000458b90      0x130 ../lib/libext2fs.a(punch.o)
+                                        0x148 (size before relaxing)
+ .eh_frame      0x0000000000458cc0       0x58 ../lib/libext2fs.a(read_bb.o)
+                                         0x70 (size before relaxing)
+ .eh_frame      0x0000000000458d18      0x2b8 ../lib/libext2fs.a(rw_bitmaps.o)
+                                        0x2d0 (size before relaxing)
+ .eh_frame      0x0000000000458fd0       0x88 ../lib/libext2fs.a(sha512.o)
+                                         0xa0 (size before relaxing)
+ .eh_frame      0x0000000000459058       0x70 ../lib/libext2fs.a(symlink.o)
+                                         0x88 (size before relaxing)
+ .eh_frame      0x00000000004590c8      0x5f8 ../lib/libext2fs.a(unix_io.o)
+                                        0x610 (size before relaxing)
+ .eh_frame      0x00000000004596c0       0x40 ../lib/libext2fs.a(unlink.o)
+                                         0x58 (size before relaxing)
+ .eh_frame      0x0000000000459700       0x40 ../lib/libext2fs.a(valid_blk.o)
+                                         0x58 (size before relaxing)
+ .eh_frame      0x0000000000459740       0x68 ../lib/libext2fs.a(alloc_sb.o)
+                                         0x80 (size before relaxing)
+ .eh_frame      0x00000000004597a8      0x220 ../lib/libext2fs.a(badblocks.o)
+                                        0x238 (size before relaxing)
+ .eh_frame      0x00000000004599c8       0xa0 ../lib/libext2fs.a(bitops.o)
+                                         0xb8 (size before relaxing)
+ .eh_frame      0x0000000000459a68      0x260 ../lib/libext2fs.a(blkmap64_ba.o)
+                                        0x278 (size before relaxing)
+ .eh_frame      0x0000000000459cc8      0x358 ../lib/libext2fs.a(blkmap64_rb.o)
+                                        0x370 (size before relaxing)
+ .eh_frame      0x000000000045a020       0x18 ../lib/libext2fs.a(crc16.o)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000045a038       0xb0 ../lib/libext2fs.a(dirhash.o)
+                                         0xc8 (size before relaxing)
+ .eh_frame      0x000000000045a0e8       0x70 ../lib/libext2fs.a(getsectsize.o)
+                                         0x88 (size before relaxing)
+ .eh_frame      0x000000000045a158      0x790 ../lib/libext2fs.a(inline.o)
+                                        0x7a8 (size before relaxing)
+ .eh_frame      0x000000000045a8e8       0xb8 ../lib/libext2fs.a(ismounted.o)
+                                         0xd0 (size before relaxing)
+ .eh_frame      0x000000000045a9a0       0x20 ../lib/libext2fs.a(llseek.o)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000045a9c0       0x38 ../lib/libext2fs.a(lookup.o)
+                                         0x50 (size before relaxing)
+ .eh_frame      0x000000000045a9f8      0x158 ../lib/libext2fs.a(nls_utf8.o)
+                                        0x170 (size before relaxing)
+ .eh_frame      0x000000000045ab50       0xb8 ../lib/libext2fs.a(rbtree.o)
+                                         0xd0 (size before relaxing)
+ .eh_frame      0x000000000045ac08       0xf8 ../lib/libcom_err.a(error_message.o)
+                                        0x110 (size before relaxing)
+ .eh_frame      0x000000000045ad00       0x18 ../lib/libcom_err.a(et_name.o)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000045ad18       0xa0 ../lib/libcom_err.a(com_err.o)
+                                         0xb8 (size before relaxing)
+ .eh_frame      0x000000000045adb8       0x48 ../lib/libe2p.a(parse_num.o)
+                                         0x60 (size before relaxing)
+ .eh_frame      0x000000000045ae00        0x4 /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o
+ *(.eh_frame.*)
+
+.sframe
+ *(.sframe)
+ *(.sframe.*)
+
+.gcc_except_table
+ *(.gcc_except_table .gcc_except_table.*)
+
+.gnu_extab
+ *(.gnu_extab*)
+
+.exception_ranges
+ *(.exception_ranges*)
+
+.note.build-id
+ *(.note.build-id)
+
+.note.GNU-stack
+                0x000000000045ae04        0x0
+ *(.note.GNU-stack)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+ .note.GNU-stack
+                0x000000000045ae04        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .note.GNU-stack
+                0x000000000045ae04        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtbegin.o
+ .note.GNU-stack
+                0x000000000045ae04        0x0 fuse2fs.o
+ .note.GNU-stack
+                0x000000000045ae04        0x0 journal.o
+ .note.GNU-stack
+                0x000000000045ae04        0x0 recovery.o
+ .note.GNU-stack
+                0x000000000045ae04        0x0 revoke.o
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(ext2_err.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(alloc.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(alloc_stats.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(bitmaps.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(blknum.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(block.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(bmap.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(closefs.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(crc32c.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(csum.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(dirblock.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(dir_iterate.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(expanddir.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(ext_attr.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(extent.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(fallocate.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(fileio.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(freefs.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(gen_bitmap.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(gen_bitmap64.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(get_num_dirs.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(getenv.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(hashmap.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(i_block.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(ind_block.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(inline_data.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(inode.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(io_manager.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(link.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(mkdir.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(mkjournal.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(mmp.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(namei.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(newdir.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(openfs.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(punch.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(read_bb.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(rw_bitmaps.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(sha512.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(symlink.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(unix_io.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(unlink.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(valid_blk.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(alloc_sb.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(badblocks.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(bitops.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(blkmap64_ba.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(blkmap64_rb.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(crc16.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(dirhash.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(getsectsize.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(inline.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(ismounted.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(llseek.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(lookup.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(nls_utf8.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libext2fs.a(rbtree.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libcom_err.a(error_message.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libcom_err.a(et_name.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libcom_err.a(com_err.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 ../lib/libe2p.a(parse_num.o)
+ .note.GNU-stack
+                0x000000000045ae04        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o
+ .note.GNU-stack
+                0x000000000045ae04        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+
+.note.gnu.property
+                0x000000000045ae08       0x40
+ *(.note.gnu.property)
+ .note.gnu.property
+                0x000000000045ae08       0x40 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.note.ABI-tag   0x000000000045ae48       0x20
+ *(.note.ABI-tag)
+ .note.ABI-tag  0x000000000045ae48       0x20 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.note.package
+ *(.note.package)
+
+.note.dlopen
+ *(.note.dlopen)
+
+.note.netbsd.ident
+ *(.note.netbsd.ident)
+
+.note.openbsd.ident
+ *(.note.openbsd.ident)
+                0x000000000045bdb8                . = DATA_SEGMENT_ALIGN (CONSTANT (MAXPAGESIZE), CONSTANT (COMMONPAGESIZE))
+
+.eh_frame
+ *(.eh_frame)
+ *(.eh_frame.*)
+
+.sframe
+ *(.sframe)
+ *(.sframe.*)
+
+.gnu_extab
+ *(.gnu_extab)
+
+.gcc_except_table
+ *(.gcc_except_table .gcc_except_table.*)
+
+.exception_ranges
+ *(.exception_ranges*)
+
+.tdata          0x000000000045bdb8        0x0
+                [!provide]                        PROVIDE (__tdata_start = .)
+ *(.tdata .tdata.* .gnu.linkonce.td.*)
+
+.tbss           0x000000000045bdb8       0x19
+ *(.tbss .tbss.* .gnu.linkonce.tb.*)
+ .tbss          0x000000000045bdb8       0x19 ../lib/libcom_err.a(error_message.o)
+ *(.tcommon)
+
+.preinit_array  0x000000000045bdb8        0x0
+                [!provide]                        PROVIDE (__preinit_array_start = .)
+ *(.preinit_array)
+                [!provide]                        PROVIDE (__preinit_array_end = .)
+
+.init_array     0x000000000045bdb8        0x8
+                [!provide]                        PROVIDE (__init_array_start = .)
+ *(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*))
+ *(.init_array EXCLUDE_FILE(*crtend?.o *crtend.o *crtbegin?.o *crtbegin.o) .ctors)
+ .init_array    0x000000000045bdb8        0x8 /usr/lib/gcc/x86_64-redhat-linux/16/crtbegin.o
+                [!provide]                        PROVIDE (__init_array_end = .)
+
+.fini_array     0x000000000045bdc0        0x8
+                [!provide]                        PROVIDE (__fini_array_start = .)
+ *(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*))
+ *(.fini_array EXCLUDE_FILE(*crtend?.o *crtend.o *crtbegin?.o *crtbegin.o) .dtors)
+ .fini_array    0x000000000045bdc0        0x8 /usr/lib/gcc/x86_64-redhat-linux/16/crtbegin.o
+                [!provide]                        PROVIDE (__fini_array_end = .)
+
+.ctors
+ *crtbegin.o(.ctors)
+ *crtbegin?.o(.ctors)
+ *(EXCLUDE_FILE(*crtend?.o *crtend.o) .ctors)
+ *(SORT_BY_NAME(.ctors.*))
+ *(.ctors)
+
+.dtors
+ *crtbegin.o(.dtors)
+ *crtbegin?.o(.dtors)
+ *(EXCLUDE_FILE(*crtend?.o *crtend.o) .dtors)
+ *(SORT_BY_NAME(.dtors.*))
+ *(.dtors)
+
+.jcr
+ *(.jcr)
+
+.data.rel.ro    0x000000000045bdc8        0x0
+ *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*)
+ *(.data.rel.ro .data.rel.ro.* .gnu.linkonce.d.rel.ro.*)
+ .data.rel.ro   0x000000000045bdc8        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.dynamic        0x000000000045bdc8      0x210
+ *(.dynamic)
+ .dynamic       0x000000000045bdc8      0x210 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                0x000000000045bdc8                _DYNAMIC
+
+.got            0x000000000045bfd8       0x10
+ *(.got)
+ .got           0x000000000045bfd8       0x10 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+ *(.igot)
+                0x000000000045bfe8                . = DATA_SEGMENT_RELRO_END (., (SIZEOF (.got.plt) >= 0x18)?0x18:0x0)
+
+.got.plt        0x000000000045bfe8      0x3f0
+ *(.got.plt)
+ .got.plt       0x000000000045bfe8      0x3f0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                0x000000000045bfe8                _GLOBAL_OFFSET_TABLE_
+ *(.igot.plt)
+ .igot.plt      0x000000000045c3d8        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+
+.data           0x000000000045c3e0      0x7f0
+ *(.data .data.* .gnu.linkonce.d.*)
+ .data          0x000000000045c3e0        0x4 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                0x000000000045c3e0                data_start
+                0x000000000045c3e0                __data_start
+ .data          0x000000000045c3e4        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .data          0x000000000045c3e4        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtbegin.o
+ *fill*         0x000000000045c3e4       0x1c 
+ .data          0x000000000045c400      0x3d8 fuse2fs.o
+ .data          0x000000000045c7d8        0x0 journal.o
+ .data          0x000000000045c7d8        0x0 recovery.o
+ .data          0x000000000045c7d8        0x0 revoke.o
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(ext2_err.o)
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(alloc.o)
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(alloc_stats.o)
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(bitmaps.o)
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(blknum.o)
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(block.o)
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(bmap.o)
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(closefs.o)
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(crc32c.o)
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(csum.o)
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(dirblock.o)
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(dir_iterate.o)
+ .data          0x000000000045c7d8        0x0 ../lib/libext2fs.a(expanddir.o)
+ *fill*         0x000000000045c7d8        0x8 
+ .data          0x000000000045c7e0       0x90 ../lib/libext2fs.a(ext_attr.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(extent.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(fallocate.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(fileio.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(freefs.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(gen_bitmap.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(gen_bitmap64.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(get_num_dirs.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(getenv.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(hashmap.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(i_block.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(ind_block.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(inline_data.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(inode.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(io_manager.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(link.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(mkdir.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(mkjournal.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(mmp.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(namei.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(newdir.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(openfs.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(punch.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(read_bb.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(rw_bitmaps.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(sha512.o)
+ .data          0x000000000045c870        0x0 ../lib/libext2fs.a(symlink.o)
+ *fill*         0x000000000045c870       0x10 
+ .data          0x000000000045c880      0x210 ../lib/libext2fs.a(unix_io.o)
+                0x000000000045c880                unixfd_io_manager
+                0x000000000045c990                unix_io_manager
+ .data          0x000000000045ca90        0x0 ../lib/libext2fs.a(unlink.o)
+ .data          0x000000000045ca90        0x0 ../lib/libext2fs.a(valid_blk.o)
+ .data          0x000000000045ca90        0x0 ../lib/libext2fs.a(alloc_sb.o)
+ .data          0x000000000045ca90        0x0 ../lib/libext2fs.a(badblocks.o)
+ .data          0x000000000045ca90        0x0 ../lib/libext2fs.a(bitops.o)
+ *fill*         0x000000000045ca90       0x10 
+ .data          0x000000000045caa0       0x88 ../lib/libext2fs.a(blkmap64_ba.o)
+                0x000000000045caa0                ext2fs_blkmap64_bitarray
+ *fill*         0x000000000045cb28       0x18 
+ .data          0x000000000045cb40       0x88 ../lib/libext2fs.a(blkmap64_rb.o)
+                0x000000000045cb40                ext2fs_blkmap64_rbtree
+ .data          0x000000000045cbc8        0x0 ../lib/libext2fs.a(crc16.o)
+ .data          0x000000000045cbc8        0x0 ../lib/libext2fs.a(dirhash.o)
+ .data          0x000000000045cbc8        0x0 ../lib/libext2fs.a(getsectsize.o)
+ .data          0x000000000045cbc8        0x0 ../lib/libext2fs.a(inline.o)
+ .data          0x000000000045cbc8        0x0 ../lib/libext2fs.a(ismounted.o)
+ .data          0x000000000045cbc8        0x0 ../lib/libext2fs.a(llseek.o)
+ .data          0x000000000045cbc8        0x0 ../lib/libext2fs.a(lookup.o)
+ .data          0x000000000045cbc8        0x0 ../lib/libext2fs.a(nls_utf8.o)
+ .data          0x000000000045cbc8        0x0 ../lib/libext2fs.a(rbtree.o)
+ .data          0x000000000045cbc8        0x0 ../lib/libcom_err.a(error_message.o)
+ .data          0x000000000045cbc8        0x0 ../lib/libcom_err.a(et_name.o)
+ .data          0x000000000045cbc8        0x8 ../lib/libcom_err.a(com_err.o)
+                0x000000000045cbc8                com_err_hook
+ .data          0x000000000045cbd0        0x0 ../lib/libe2p.a(parse_num.o)
+ .data          0x000000000045cbd0        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o
+ .data          0x000000000045cbd0        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+
+.tm_clone_table
+                0x000000000045cbd0        0x0
+ .tm_clone_table
+                0x000000000045cbd0        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtbegin.o
+ .tm_clone_table
+                0x000000000045cbd0        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o
+
+.data1
+ *(.data1)
+                0x000000000045cbd0                _edata = .
+                [!provide]                        PROVIDE (edata = .)
+                0x000000000045cbd0                . = ALIGN (ALIGNOF (NEXT_SECTION))
+                0x000000000045cbe0                __bss_start = .
+
+.bss            0x000000000045cbe0       0xc8
+ *(.dynbss)
+ .dynbss        0x000000000045cbe0       0x28 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                0x000000000045cbe0                stdout@@GLIBC_2.2.5
+                0x000000000045cc00                stderr@@GLIBC_2.2.5
+ *(.bss .bss.* .gnu.linkonce.b.*)
+ .bss           0x000000000045cc08        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+ .bss           0x000000000045cc08        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .bss           0x000000000045cc08        0x1 /usr/lib/gcc/x86_64-redhat-linux/16/crtbegin.o
+ *fill*         0x000000000045cc09        0x7 
+ .bss           0x000000000045cc10        0x8 fuse2fs.o
+ .bss           0x000000000045cc18        0x0 journal.o
+ .bss           0x000000000045cc18        0x0 recovery.o
+ .bss           0x000000000045cc18       0x10 revoke.o
+ *fill*         0x000000000045cc28        0x8 
+ .bss           0x000000000045cc30       0x10 ../lib/libext2fs.a(ext2_err.o)
+ .bss           0x000000000045cc40        0x0 ../lib/libext2fs.a(alloc.o)
+ .bss           0x000000000045cc40        0x0 ../lib/libext2fs.a(alloc_stats.o)
+ .bss           0x000000000045cc40        0x0 ../lib/libext2fs.a(bitmaps.o)
+ .bss           0x000000000045cc40        0xc ../lib/libext2fs.a(blknum.o)
+ .bss           0x000000000045cc4c        0x0 ../lib/libext2fs.a(block.o)
+ .bss           0x000000000045cc4c        0x0 ../lib/libext2fs.a(bmap.o)
+ .bss           0x000000000045cc4c        0x0 ../lib/libext2fs.a(closefs.o)
+ .bss           0x000000000045cc4c        0x0 ../lib/libext2fs.a(crc32c.o)
+ .bss           0x000000000045cc4c        0x0 ../lib/libext2fs.a(csum.o)
+ .bss           0x000000000045cc4c        0x0 ../lib/libext2fs.a(dirblock.o)
+ .bss           0x000000000045cc4c        0x0 ../lib/libext2fs.a(dir_iterate.o)
+ .bss           0x000000000045cc4c        0x0 ../lib/libext2fs.a(expanddir.o)
+ .bss           0x000000000045cc4c        0x0 ../lib/libext2fs.a(ext_attr.o)
+ *fill*         0x000000000045cc4c        0x4 
+ .bss           0x000000000045cc50        0xc ../lib/libext2fs.a(extent.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(fallocate.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(fileio.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(freefs.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(gen_bitmap.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(gen_bitmap64.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(get_num_dirs.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(getenv.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(hashmap.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(i_block.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(ind_block.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(inline_data.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(inode.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(io_manager.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(link.o)
+ .bss           0x000000000045cc5c        0x0 ../lib/libext2fs.a(mkdir.o)
+ *fill*         0x000000000045cc5c        0x4 
+ .bss           0x000000000045cc60       0x10 ../lib/libext2fs.a(mkjournal.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(mmp.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(namei.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(newdir.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(openfs.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(punch.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(read_bb.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(rw_bitmaps.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(sha512.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(symlink.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(unix_io.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(unlink.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(valid_blk.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(alloc_sb.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(badblocks.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(bitops.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(blkmap64_ba.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(blkmap64_rb.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(crc16.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(dirhash.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(getsectsize.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(inline.o)
+ .bss           0x000000000045cc70        0x0 ../lib/libext2fs.a(ismounted.o)
+ .bss           0x000000000045cc70        0x4 ../lib/libext2fs.a(llseek.o)
+ .bss           0x000000000045cc74        0x0 ../lib/libext2fs.a(lookup.o)
+ .bss           0x000000000045cc74        0x0 ../lib/libext2fs.a(nls_utf8.o)
+ .bss           0x000000000045cc74        0x0 ../lib/libext2fs.a(rbtree.o)
+ *fill*         0x000000000045cc74        0x4 
+ .bss           0x000000000045cc78       0x28 ../lib/libcom_err.a(error_message.o)
+                0x000000000045cc78                _et_dynamic_list
+                0x000000000045cc80                _et_list
+ .bss           0x000000000045cca0        0x6 ../lib/libcom_err.a(et_name.o)
+ .bss           0x000000000045cca6        0x0 ../lib/libcom_err.a(com_err.o)
+ .bss           0x000000000045cca6        0x0 ../lib/libe2p.a(parse_num.o)
+ .bss           0x000000000045cca6        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o
+ .bss           0x000000000045cca6        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+ *(COMMON)
+                0x000000000045cca8                . = ALIGN ((. != 0x0)?0x8:0x1)
+ *fill*         0x000000000045cca6        0x2 
+
+.lbss
+ *(.dynlbss)
+ *(.lbss .lbss.* .gnu.linkonce.lb.*)
+ *(LARGE_COMMON)
+                0x000000000045cca8                . = ALIGN (0x8)
+                0x000000000045cca8                . = SEGMENT_START ("ldata-segment", .)
+
+.lrodata
+ *(.lrodata .lrodata.* .gnu.linkonce.lr.*)
+
+.ldata          0x000000000045eca8        0x0
+ *(.ldata .ldata.* .gnu.linkonce.l.*)
+                0x000000000045eca8                . = ALIGN ((. != 0x0)?0x8:0x1)
+                0x000000000045eca8                . = ALIGN (0x8)
+                0x000000000045cca8                _end = .
+                [!provide]                        PROVIDE (end = .)
+                0x000000000045eca8                . = DATA_SEGMENT_END (.)
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+
+.stab.excl
+ *(.stab.excl)
+
+.stab.exclstr
+ *(.stab.exclstr)
+
+.stab.index
+ *(.stab.index)
+
+.stab.indexstr
+ *(.stab.indexstr)
+
+.comment        0x0000000000000000       0x2e
+ *(.comment)
+ .comment       0x0000000000000000       0x2e /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                                         0x8d (size before relaxing)
+ .comment       0x000000000000002e        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtbegin.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 fuse2fs.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 journal.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 recovery.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 revoke.o
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(ext2_err.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(alloc.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(alloc_stats.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(bitmaps.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(blknum.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(block.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(bmap.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(closefs.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(crc32c.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(csum.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(dirblock.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(dir_iterate.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(expanddir.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(ext_attr.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(extent.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(fallocate.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(fileio.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(freefs.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(gen_bitmap.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(gen_bitmap64.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(get_num_dirs.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(getenv.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(hashmap.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(i_block.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(ind_block.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(inline_data.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(inode.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(io_manager.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(link.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(mkdir.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(mkjournal.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(mmp.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(namei.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(newdir.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(openfs.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(punch.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(read_bb.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(rw_bitmaps.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(sha512.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(symlink.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(unix_io.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(unlink.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(valid_blk.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(alloc_sb.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(badblocks.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(bitops.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(blkmap64_ba.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(blkmap64_rb.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(crc16.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(dirhash.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(getsectsize.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(inline.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(ismounted.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(llseek.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(lookup.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(nls_utf8.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libext2fs.a(rbtree.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libcom_err.a(error_message.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libcom_err.a(et_name.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libcom_err.a(com_err.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 ../lib/libe2p.a(parse_num.o)
+                                         0x2f (size before relaxing)
+ .comment       0x000000000000002e        0x0 /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o
+                                         0x2f (size before relaxing)
+
+.annobin.notes  0x0000000000000000      0x14f
+ .annobin.notes
+                0x0000000000000000      0x14f /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+                                        0x216 (size before relaxing)
+
+.gnu.build.attributes
+                0x000000000045eca8      0x144
+ *(.gnu.build.attributes .gnu.build.attributes.*)
+ .gnu.build.attributes
+                0x000000000045eca8       0x24 /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crt1.o
+ .gnu.build.attributes
+                0x000000000045eccc       0x6c /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crti.o
+ .gnu.build.attributes
+                0x000000000045ed38       0x24 /usr/lib/gcc/x86_64-redhat-linux/16/crtbegin.o
+ .gnu.build.attributes
+                0x000000000045ed5c       0x24 /usr/lib/gcc/x86_64-redhat-linux/16/crtend.o
+ .gnu.build.attributes
+                0x000000000045ed80       0x6c /usr/lib/gcc/x86_64-redhat-linux/16/../../../../lib64/crtn.o
+
+.debug
+ *(.debug)
+
+.line
+ *(.line)
+
+.debug_srcinfo
+ *(.debug_srcinfo)
+
+.debug_sfnames
+ *(.debug_sfnames)
+
+.debug_aranges  0x0000000000000000      0xca0
+ *(.debug_aranges)
+ .debug_aranges
+                0x0000000000000000       0x50 fuse2fs.o
+ .debug_aranges
+                0x0000000000000050       0x30 journal.o
+ .debug_aranges
+                0x0000000000000080       0x40 recovery.o
+ .debug_aranges
+                0x00000000000000c0       0x40 revoke.o
+ .debug_aranges
+                0x0000000000000100       0x30 ../lib/libext2fs.a(ext2_err.o)
+ .debug_aranges
+                0x0000000000000130       0x30 ../lib/libext2fs.a(alloc.o)
+ .debug_aranges
+                0x0000000000000160       0x30 ../lib/libext2fs.a(alloc_stats.o)
+ .debug_aranges
+                0x0000000000000190       0x30 ../lib/libext2fs.a(bitmaps.o)
+ .debug_aranges
+                0x00000000000001c0       0x30 ../lib/libext2fs.a(blknum.o)
+ .debug_aranges
+                0x00000000000001f0       0x30 ../lib/libext2fs.a(block.o)
+ .debug_aranges
+                0x0000000000000220       0x30 ../lib/libext2fs.a(bmap.o)
+ .debug_aranges
+                0x0000000000000250       0x30 ../lib/libext2fs.a(closefs.o)
+ .debug_aranges
+                0x0000000000000280       0x30 ../lib/libext2fs.a(crc32c.o)
+ .debug_aranges
+                0x00000000000002b0       0x30 ../lib/libext2fs.a(csum.o)
+ .debug_aranges
+                0x00000000000002e0       0x30 ../lib/libext2fs.a(dirblock.o)
+ .debug_aranges
+                0x0000000000000310       0x30 ../lib/libext2fs.a(dir_iterate.o)
+ .debug_aranges
+                0x0000000000000340       0x30 ../lib/libext2fs.a(expanddir.o)
+ .debug_aranges
+                0x0000000000000370       0x30 ../lib/libext2fs.a(ext_attr.o)
+ .debug_aranges
+                0x00000000000003a0       0x40 ../lib/libext2fs.a(extent.o)
+ .debug_aranges
+                0x00000000000003e0       0x30 ../lib/libext2fs.a(fallocate.o)
+ .debug_aranges
+                0x0000000000000410       0x30 ../lib/libext2fs.a(fileio.o)
+ .debug_aranges
+                0x0000000000000440       0x30 ../lib/libext2fs.a(freefs.o)
+ .debug_aranges
+                0x0000000000000470       0x30 ../lib/libext2fs.a(gen_bitmap.o)
+ .debug_aranges
+                0x00000000000004a0       0x40 ../lib/libext2fs.a(gen_bitmap64.o)
+ .debug_aranges
+                0x00000000000004e0       0x30 ../lib/libext2fs.a(get_num_dirs.o)
+ .debug_aranges
+                0x0000000000000510       0x30 ../lib/libext2fs.a(getenv.o)
+ .debug_aranges
+                0x0000000000000540       0x30 ../lib/libext2fs.a(hashmap.o)
+ .debug_aranges
+                0x0000000000000570       0x30 ../lib/libext2fs.a(i_block.o)
+ .debug_aranges
+                0x00000000000005a0       0x30 ../lib/libext2fs.a(ind_block.o)
+ .debug_aranges
+                0x00000000000005d0       0x30 ../lib/libext2fs.a(inline_data.o)
+ .debug_aranges
+                0x0000000000000600       0x30 ../lib/libext2fs.a(inode.o)
+ .debug_aranges
+                0x0000000000000630       0x30 ../lib/libext2fs.a(io_manager.o)
+ .debug_aranges
+                0x0000000000000660       0x30 ../lib/libext2fs.a(link.o)
+ .debug_aranges
+                0x0000000000000690       0x30 ../lib/libext2fs.a(mkdir.o)
+ .debug_aranges
+                0x00000000000006c0       0x30 ../lib/libext2fs.a(mkjournal.o)
+ .debug_aranges
+                0x00000000000006f0       0x30 ../lib/libext2fs.a(mmp.o)
+ .debug_aranges
+                0x0000000000000720       0x30 ../lib/libext2fs.a(namei.o)
+ .debug_aranges
+                0x0000000000000750       0x30 ../lib/libext2fs.a(newdir.o)
+ .debug_aranges
+                0x0000000000000780       0x30 ../lib/libext2fs.a(openfs.o)
+ .debug_aranges
+                0x00000000000007b0       0x30 ../lib/libext2fs.a(punch.o)
+ .debug_aranges
+                0x00000000000007e0       0x30 ../lib/libext2fs.a(read_bb.o)
+ .debug_aranges
+                0x0000000000000810       0x30 ../lib/libext2fs.a(rw_bitmaps.o)
+ .debug_aranges
+                0x0000000000000840       0x30 ../lib/libext2fs.a(sha512.o)
+ .debug_aranges
+                0x0000000000000870       0x30 ../lib/libext2fs.a(symlink.o)
+ .debug_aranges
+                0x00000000000008a0       0x30 ../lib/libext2fs.a(unix_io.o)
+ .debug_aranges
+                0x00000000000008d0       0x30 ../lib/libext2fs.a(unlink.o)
+ .debug_aranges
+                0x0000000000000900       0x30 ../lib/libext2fs.a(valid_blk.o)
+ .debug_aranges
+                0x0000000000000930       0x30 ../lib/libext2fs.a(alloc_sb.o)
+ .debug_aranges
+                0x0000000000000960       0x30 ../lib/libext2fs.a(badblocks.o)
+ .debug_aranges
+                0x0000000000000990       0x30 ../lib/libext2fs.a(bitops.o)
+ .debug_aranges
+                0x00000000000009c0       0x30 ../lib/libext2fs.a(blkmap64_ba.o)
+ .debug_aranges
+                0x00000000000009f0       0x40 ../lib/libext2fs.a(blkmap64_rb.o)
+ .debug_aranges
+                0x0000000000000a30       0x30 ../lib/libext2fs.a(crc16.o)
+ .debug_aranges
+                0x0000000000000a60       0x30 ../lib/libext2fs.a(dirhash.o)
+ .debug_aranges
+                0x0000000000000a90       0x30 ../lib/libext2fs.a(getsectsize.o)
+ .debug_aranges
+                0x0000000000000ac0       0x30 ../lib/libext2fs.a(inline.o)
+ .debug_aranges
+                0x0000000000000af0       0x30 ../lib/libext2fs.a(ismounted.o)
+ .debug_aranges
+                0x0000000000000b20       0x30 ../lib/libext2fs.a(llseek.o)
+ .debug_aranges
+                0x0000000000000b50       0x30 ../lib/libext2fs.a(lookup.o)
+ .debug_aranges
+                0x0000000000000b80       0x30 ../lib/libext2fs.a(nls_utf8.o)
+ .debug_aranges
+                0x0000000000000bb0       0x30 ../lib/libext2fs.a(rbtree.o)
+ .debug_aranges
+                0x0000000000000be0       0x30 ../lib/libcom_err.a(error_message.o)
+ .debug_aranges
+                0x0000000000000c10       0x30 ../lib/libcom_err.a(et_name.o)
+ .debug_aranges
+                0x0000000000000c40       0x30 ../lib/libcom_err.a(com_err.o)
+ .debug_aranges
+                0x0000000000000c70       0x30 ../lib/libe2p.a(parse_num.o)
+
+.debug_pubnames
+ *(.debug_pubnames)
+
+.debug_info     0x0000000000000000    0x9e07c
+ *(.debug_info .gnu.linkonce.wi.*)
+ .debug_info    0x0000000000000000    0x14674 fuse2fs.o
+ .debug_info    0x0000000000014674     0x57ea journal.o
+ .debug_info    0x0000000000019e5e     0x377b recovery.o
+ .debug_info    0x000000000001d5d9     0x285a revoke.o
+ .debug_info    0x000000000001fe33      0x20a ../lib/libext2fs.a(ext2_err.o)
+ .debug_info    0x000000000002003d     0x3017 ../lib/libext2fs.a(alloc.o)
+ .debug_info    0x0000000000023054     0x2077 ../lib/libext2fs.a(alloc_stats.o)
+ .debug_info    0x00000000000250cb     0x2a75 ../lib/libext2fs.a(bitmaps.o)
+ .debug_info    0x0000000000027b40     0x36fe ../lib/libext2fs.a(blknum.o)
+ .debug_info    0x000000000002b23e     0x28bf ../lib/libext2fs.a(block.o)
+ .debug_info    0x000000000002dafd     0x2fa2 ../lib/libext2fs.a(bmap.o)
+ .debug_info    0x0000000000030a9f     0x278d ../lib/libext2fs.a(closefs.o)
+ .debug_info    0x000000000003322c      0x534 ../lib/libext2fs.a(crc32c.o)
+ .debug_info    0x0000000000033760     0x481c ../lib/libext2fs.a(csum.o)
+ .debug_info    0x0000000000037f7c     0x204c ../lib/libext2fs.a(dirblock.o)
+ .debug_info    0x0000000000039fc8     0x2286 ../lib/libext2fs.a(dir_iterate.o)
+ .debug_info    0x000000000003c24e     0x1d00 ../lib/libext2fs.a(expanddir.o)
+ .debug_info    0x000000000003df4e     0x7768 ../lib/libext2fs.a(ext_attr.o)
+ .debug_info    0x00000000000456b6     0x552e ../lib/libext2fs.a(extent.o)
+ .debug_info    0x000000000004abe4     0x2865 ../lib/libext2fs.a(fallocate.o)
+ .debug_info    0x000000000004d449     0x3218 ../lib/libext2fs.a(fileio.o)
+ .debug_info    0x0000000000050661     0x1dba ../lib/libext2fs.a(freefs.o)
+ .debug_info    0x000000000005241b     0x36a0 ../lib/libext2fs.a(gen_bitmap.o)
+ .debug_info    0x0000000000055abb     0x40b4 ../lib/libext2fs.a(gen_bitmap64.o)
+ .debug_info    0x0000000000059b6f     0x16ad ../lib/libext2fs.a(get_num_dirs.o)
+ .debug_info    0x000000000005b21c      0x1ba ../lib/libext2fs.a(getenv.o)
+ .debug_info    0x000000000005b3d6      0x58a ../lib/libext2fs.a(hashmap.o)
+ .debug_info    0x000000000005b960     0x1445 ../lib/libext2fs.a(i_block.o)
+ .debug_info    0x000000000005cda5     0x13f7 ../lib/libext2fs.a(ind_block.o)
+ .debug_info    0x000000000005e19c     0x314b ../lib/libext2fs.a(inline_data.o)
+ .debug_info    0x00000000000612e7     0x419a ../lib/libext2fs.a(inode.o)
+ .debug_info    0x0000000000065481      0xabe ../lib/libext2fs.a(io_manager.o)
+ .debug_info    0x0000000000065f3f     0x3eb3 ../lib/libext2fs.a(link.o)
+ .debug_info    0x0000000000069df2     0x1f0a ../lib/libext2fs.a(mkdir.o)
+ .debug_info    0x000000000006bcfc     0x370b ../lib/libext2fs.a(mkjournal.o)
+ .debug_info    0x000000000006f407     0x2724 ../lib/libext2fs.a(mmp.o)
+ .debug_info    0x0000000000071b2b     0x2318 ../lib/libext2fs.a(namei.o)
+ .debug_info    0x0000000000073e43     0x189b ../lib/libext2fs.a(newdir.o)
+ .debug_info    0x00000000000756de     0x2ab3 ../lib/libext2fs.a(openfs.o)
+ .debug_info    0x0000000000078191     0x26d2 ../lib/libext2fs.a(punch.o)
+ .debug_info    0x000000000007a863     0x165f ../lib/libext2fs.a(read_bb.o)
+ .debug_info    0x000000000007bec2     0x3d35 ../lib/libext2fs.a(rw_bitmaps.o)
+ .debug_info    0x000000000007fbf7      0x439 ../lib/libext2fs.a(sha512.o)
+ .debug_info    0x0000000000080030     0x1cfb ../lib/libext2fs.a(symlink.o)
+ .debug_info    0x0000000000081d2b     0x59b5 ../lib/libext2fs.a(unix_io.o)
+ .debug_info    0x00000000000876e0     0x15fb ../lib/libext2fs.a(unlink.o)
+ .debug_info    0x0000000000088cdb     0x13c1 ../lib/libext2fs.a(valid_blk.o)
+ .debug_info    0x000000000008a09c     0x1790 ../lib/libext2fs.a(alloc_sb.o)
+ .debug_info    0x000000000008b82c     0x118f ../lib/libext2fs.a(badblocks.o)
+ .debug_info    0x000000000008c9bb      0x5c7 ../lib/libext2fs.a(bitops.o)
+ .debug_info    0x000000000008cf82     0x2b4c ../lib/libext2fs.a(blkmap64_ba.o)
+ .debug_info    0x000000000008face     0x3a4e ../lib/libext2fs.a(blkmap64_rb.o)
+ .debug_info    0x000000000009351c      0x143 ../lib/libext2fs.a(crc16.o)
+ .debug_info    0x000000000009365f      0x89c ../lib/libext2fs.a(dirhash.o)
+ .debug_info    0x0000000000093efb      0x88d ../lib/libext2fs.a(getsectsize.o)
+ .debug_info    0x0000000000094788     0x38e5 ../lib/libext2fs.a(inline.o)
+ .debug_info    0x000000000009806d     0x1487 ../lib/libext2fs.a(ismounted.o)
+ .debug_info    0x00000000000994f4      0x22a ../lib/libext2fs.a(llseek.o)
+ .debug_info    0x000000000009971e     0x163b ../lib/libext2fs.a(lookup.o)
+ .debug_info    0x000000000009ad59     0x111c ../lib/libext2fs.a(nls_utf8.o)
+ .debug_info    0x000000000009be75      0x99f ../lib/libext2fs.a(rbtree.o)
+ .debug_info    0x000000000009c814      0xc24 ../lib/libcom_err.a(error_message.o)
+ .debug_info    0x000000000009d438      0x138 ../lib/libcom_err.a(et_name.o)
+ .debug_info    0x000000000009d570      0x95e ../lib/libcom_err.a(com_err.o)
+ .debug_info    0x000000000009dece      0x1ae ../lib/libe2p.a(parse_num.o)
+
+.debug_abbrev   0x0000000000000000     0xfa2c
+ *(.debug_abbrev)
+ .debug_abbrev  0x0000000000000000      0x732 fuse2fs.o
+ .debug_abbrev  0x0000000000000732      0x7f4 journal.o
+ .debug_abbrev  0x0000000000000f26      0x5e6 recovery.o
+ .debug_abbrev  0x000000000000150c      0x589 revoke.o
+ .debug_abbrev  0x0000000000001a95      0x150 ../lib/libext2fs.a(ext2_err.o)
+ .debug_abbrev  0x0000000000001be5      0x591 ../lib/libext2fs.a(alloc.o)
+ .debug_abbrev  0x0000000000002176      0x36b ../lib/libext2fs.a(alloc_stats.o)
+ .debug_abbrev  0x00000000000024e1      0x440 ../lib/libext2fs.a(bitmaps.o)
+ .debug_abbrev  0x0000000000002921      0x56c ../lib/libext2fs.a(blknum.o)
+ .debug_abbrev  0x0000000000002e8d      0x48c ../lib/libext2fs.a(block.o)
+ .debug_abbrev  0x0000000000003319      0x521 ../lib/libext2fs.a(bmap.o)
+ .debug_abbrev  0x000000000000383a      0x5a0 ../lib/libext2fs.a(closefs.o)
+ .debug_abbrev  0x0000000000003dda      0x1c2 ../lib/libext2fs.a(crc32c.o)
+ .debug_abbrev  0x0000000000003f9c      0x58c ../lib/libext2fs.a(csum.o)
+ .debug_abbrev  0x0000000000004528      0x2fd ../lib/libext2fs.a(dirblock.o)
+ .debug_abbrev  0x0000000000004825      0x48a ../lib/libext2fs.a(dir_iterate.o)
+ .debug_abbrev  0x0000000000004caf      0x31c ../lib/libext2fs.a(expanddir.o)
+ .debug_abbrev  0x0000000000004fcb      0x696 ../lib/libext2fs.a(ext_attr.o)
+ .debug_abbrev  0x0000000000005661      0x5c7 ../lib/libext2fs.a(extent.o)
+ .debug_abbrev  0x0000000000005c28      0x492 ../lib/libext2fs.a(fallocate.o)
+ .debug_abbrev  0x00000000000060ba      0x557 ../lib/libext2fs.a(fileio.o)
+ .debug_abbrev  0x0000000000006611      0x308 ../lib/libext2fs.a(freefs.o)
+ .debug_abbrev  0x0000000000006919      0x511 ../lib/libext2fs.a(gen_bitmap.o)
+ .debug_abbrev  0x0000000000006e2a      0x5b2 ../lib/libext2fs.a(gen_bitmap64.o)
+ .debug_abbrev  0x00000000000073dc      0x204 ../lib/libext2fs.a(get_num_dirs.o)
+ .debug_abbrev  0x00000000000075e0       0xfb ../lib/libext2fs.a(getenv.o)
+ .debug_abbrev  0x00000000000076db      0x1ed ../lib/libext2fs.a(hashmap.o)
+ .debug_abbrev  0x00000000000078c8      0x228 ../lib/libext2fs.a(i_block.o)
+ .debug_abbrev  0x0000000000007af0      0x1ec ../lib/libext2fs.a(ind_block.o)
+ .debug_abbrev  0x0000000000007cdc      0x4d9 ../lib/libext2fs.a(inline_data.o)
+ .debug_abbrev  0x00000000000081b5      0x5c4 ../lib/libext2fs.a(inode.o)
+ .debug_abbrev  0x0000000000008779      0x230 ../lib/libext2fs.a(io_manager.o)
+ .debug_abbrev  0x00000000000089a9      0x55f ../lib/libext2fs.a(link.o)
+ .debug_abbrev  0x0000000000008f08      0x31e ../lib/libext2fs.a(mkdir.o)
+ .debug_abbrev  0x0000000000009226      0x598 ../lib/libext2fs.a(mkjournal.o)
+ .debug_abbrev  0x00000000000097be      0x4e0 ../lib/libext2fs.a(mmp.o)
+ .debug_abbrev  0x0000000000009c9e      0x390 ../lib/libext2fs.a(namei.o)
+ .debug_abbrev  0x000000000000a02e      0x35b ../lib/libext2fs.a(newdir.o)
+ .debug_abbrev  0x000000000000a389      0x5cd ../lib/libext2fs.a(openfs.o)
+ .debug_abbrev  0x000000000000a956      0x4a6 ../lib/libext2fs.a(punch.o)
+ .debug_abbrev  0x000000000000adfc      0x2cf ../lib/libext2fs.a(read_bb.o)
+ .debug_abbrev  0x000000000000b0cb      0x5e3 ../lib/libext2fs.a(rw_bitmaps.o)
+ .debug_abbrev  0x000000000000b6ae      0x1fe ../lib/libext2fs.a(sha512.o)
+ .debug_abbrev  0x000000000000b8ac      0x34e ../lib/libext2fs.a(symlink.o)
+ .debug_abbrev  0x000000000000bbfa      0x5c3 ../lib/libext2fs.a(unix_io.o)
+ .debug_abbrev  0x000000000000c1bd      0x296 ../lib/libext2fs.a(unlink.o)
+ .debug_abbrev  0x000000000000c453      0x22a ../lib/libext2fs.a(valid_blk.o)
+ .debug_abbrev  0x000000000000c67d      0x2c0 ../lib/libext2fs.a(alloc_sb.o)
+ .debug_abbrev  0x000000000000c93d      0x3d9 ../lib/libext2fs.a(badblocks.o)
+ .debug_abbrev  0x000000000000cd16      0x1eb ../lib/libext2fs.a(bitops.o)
+ .debug_abbrev  0x000000000000cf01      0x4c2 ../lib/libext2fs.a(blkmap64_ba.o)
+ .debug_abbrev  0x000000000000d3c3      0x5f9 ../lib/libext2fs.a(blkmap64_rb.o)
+ .debug_abbrev  0x000000000000d9bc       0xd3 ../lib/libext2fs.a(crc16.o)
+ .debug_abbrev  0x000000000000da8f      0x2d9 ../lib/libext2fs.a(dirhash.o)
+ .debug_abbrev  0x000000000000dd68      0x16a ../lib/libext2fs.a(getsectsize.o)
+ .debug_abbrev  0x000000000000ded2      0x43f ../lib/libext2fs.a(inline.o)
+ .debug_abbrev  0x000000000000e311      0x399 ../lib/libext2fs.a(ismounted.o)
+ .debug_abbrev  0x000000000000e6aa      0x168 ../lib/libext2fs.a(llseek.o)
+ .debug_abbrev  0x000000000000e812      0x2c7 ../lib/libext2fs.a(lookup.o)
+ .debug_abbrev  0x000000000000ead9      0x353 ../lib/libext2fs.a(nls_utf8.o)
+ .debug_abbrev  0x000000000000ee2c      0x2fd ../lib/libext2fs.a(rbtree.o)
+ .debug_abbrev  0x000000000000f129      0x42b ../lib/libcom_err.a(error_message.o)
+ .debug_abbrev  0x000000000000f554       0xc8 ../lib/libcom_err.a(et_name.o)
+ .debug_abbrev  0x000000000000f61c      0x303 ../lib/libcom_err.a(com_err.o)
+ .debug_abbrev  0x000000000000f91f      0x10d ../lib/libe2p.a(parse_num.o)
+
+.debug_line     0x0000000000000000    0x3126b
+ *(.debug_line .debug_line.* .debug_line_end)
+ .debug_line    0x0000000000000000     0x82c3 fuse2fs.o
+ .debug_line    0x00000000000082c3     0x2250 journal.o
+ .debug_line    0x000000000000a513     0x1121 recovery.o
+ .debug_line    0x000000000000b634      0x7e5 revoke.o
+ .debug_line    0x000000000000be19       0xdf ../lib/libext2fs.a(ext2_err.o)
+ .debug_line    0x000000000000bef8      0xce6 ../lib/libext2fs.a(alloc.o)
+ .debug_line    0x000000000000cbde      0x589 ../lib/libext2fs.a(alloc_stats.o)
+ .debug_line    0x000000000000d167      0x4d2 ../lib/libext2fs.a(bitmaps.o)
+ .debug_line    0x000000000000d639     0x10e2 ../lib/libext2fs.a(blknum.o)
+ .debug_line    0x000000000000e71b     0x11f6 ../lib/libext2fs.a(block.o)
+ .debug_line    0x000000000000f911      0xf4e ../lib/libext2fs.a(bmap.o)
+ .debug_line    0x000000000001085f      0xcb8 ../lib/libext2fs.a(closefs.o)
+ .debug_line    0x0000000000011517      0x1c4 ../lib/libext2fs.a(crc32c.o)
+ .debug_line    0x00000000000116db     0x133e ../lib/libext2fs.a(csum.o)
+ .debug_line    0x0000000000012a19      0x3d7 ../lib/libext2fs.a(dirblock.o)
+ .debug_line    0x0000000000012df0      0x7dd ../lib/libext2fs.a(dir_iterate.o)
+ .debug_line    0x00000000000135cd      0x36a ../lib/libext2fs.a(expanddir.o)
+ .debug_line    0x0000000000013937     0x312d ../lib/libext2fs.a(ext_attr.o)
+ .debug_line    0x0000000000016a64     0x28a7 ../lib/libext2fs.a(extent.o)
+ .debug_line    0x000000000001930b     0x1210 ../lib/libext2fs.a(fallocate.o)
+ .debug_line    0x000000000001a51b      0xe1d ../lib/libext2fs.a(fileio.o)
+ .debug_line    0x000000000001b338      0x475 ../lib/libext2fs.a(freefs.o)
+ .debug_line    0x000000000001b7ad      0xf8a ../lib/libext2fs.a(gen_bitmap.o)
+ .debug_line    0x000000000001c737     0x13d1 ../lib/libext2fs.a(gen_bitmap64.o)
+ .debug_line    0x000000000001db08      0x14c ../lib/libext2fs.a(get_num_dirs.o)
+ .debug_line    0x000000000001dc54       0xc8 ../lib/libext2fs.a(getenv.o)
+ .debug_line    0x000000000001dd1c      0x2f2 ../lib/libext2fs.a(hashmap.o)
+ .debug_line    0x000000000001e00e      0x2ba ../lib/libext2fs.a(i_block.o)
+ .debug_line    0x000000000001e2c8       0xf3 ../lib/libext2fs.a(ind_block.o)
+ .debug_line    0x000000000001e3bb      0xc3b ../lib/libext2fs.a(inline_data.o)
+ .debug_line    0x000000000001eff6     0x1b5d ../lib/libext2fs.a(inode.o)
+ .debug_line    0x0000000000020b53      0x300 ../lib/libext2fs.a(io_manager.o)
+ .debug_line    0x0000000000020e53     0x1396 ../lib/libext2fs.a(link.o)
+ .debug_line    0x00000000000221e9      0x4a2 ../lib/libext2fs.a(mkdir.o)
+ .debug_line    0x000000000002268b      0xfd3 ../lib/libext2fs.a(mkjournal.o)
+ .debug_line    0x000000000002365e      0x8c0 ../lib/libext2fs.a(mmp.o)
+ .debug_line    0x0000000000023f1e      0x5c4 ../lib/libext2fs.a(namei.o)
+ .debug_line    0x00000000000244e2      0x2e8 ../lib/libext2fs.a(newdir.o)
+ .debug_line    0x00000000000247ca      0xcb0 ../lib/libext2fs.a(openfs.o)
+ .debug_line    0x000000000002547a      0x9ee ../lib/libext2fs.a(punch.o)
+ .debug_line    0x0000000000025e68      0x1f1 ../lib/libext2fs.a(read_bb.o)
+ .debug_line    0x0000000000026059     0x1358 ../lib/libext2fs.a(rw_bitmaps.o)
+ .debug_line    0x00000000000273b1      0x4b3 ../lib/libext2fs.a(sha512.o)
+ .debug_line    0x0000000000027864      0x46c ../lib/libext2fs.a(symlink.o)
+ .debug_line    0x0000000000027cd0     0x2b82 ../lib/libext2fs.a(unix_io.o)
+ .debug_line    0x000000000002a852      0x25e ../lib/libext2fs.a(unlink.o)
+ .debug_line    0x000000000002aab0      0x191 ../lib/libext2fs.a(valid_blk.o)
+ .debug_line    0x000000000002ac41      0x262 ../lib/libext2fs.a(alloc_sb.o)
+ .debug_line    0x000000000002aea3      0x81b ../lib/libext2fs.a(badblocks.o)
+ .debug_line    0x000000000002b6be      0x518 ../lib/libext2fs.a(bitops.o)
+ .debug_line    0x000000000002bbd6      0xa93 ../lib/libext2fs.a(blkmap64_ba.o)
+ .debug_line    0x000000000002c669     0x1405 ../lib/libext2fs.a(blkmap64_rb.o)
+ .debug_line    0x000000000002da6e       0xaf ../lib/libext2fs.a(crc16.o)
+ .debug_line    0x000000000002db1d      0x58d ../lib/libext2fs.a(dirhash.o)
+ .debug_line    0x000000000002e0aa      0x1c2 ../lib/libext2fs.a(getsectsize.o)
+ .debug_line    0x000000000002e26c      0x8c2 ../lib/libext2fs.a(inline.o)
+ .debug_line    0x000000000002eb2e      0x68a ../lib/libext2fs.a(ismounted.o)
+ .debug_line    0x000000000002f1b8       0xe0 ../lib/libext2fs.a(llseek.o)
+ .debug_line    0x000000000002f298      0x165 ../lib/libext2fs.a(lookup.o)
+ .debug_line    0x000000000002f3fd      0xcec ../lib/libext2fs.a(nls_utf8.o)
+ .debug_line    0x00000000000300e9      0x956 ../lib/libext2fs.a(rbtree.o)
+ .debug_line    0x0000000000030a3f      0x4ed ../lib/libcom_err.a(error_message.o)
+ .debug_line    0x0000000000030f2c       0xbb ../lib/libcom_err.a(et_name.o)
+ .debug_line    0x0000000000030fe7      0x1bb ../lib/libcom_err.a(com_err.o)
+ .debug_line    0x00000000000311a2       0xc9 ../lib/libe2p.a(parse_num.o)
+
+.debug_frame
+ *(.debug_frame)
+
+.debug_str      0x0000000000000000     0xb001
+ *(.debug_str)
+ .debug_str     0x0000000000000000     0xb001 fuse2fs.o
+                                       0x4283 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 journal.o
+                                       0x1e9e (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 recovery.o
+                                       0x17c9 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 revoke.o
+                                       0x1499 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(ext2_err.o)
+                                        0x188 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(alloc.o)
+                                       0x1483 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(alloc_stats.o)
+                                       0x124b (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(bitmaps.o)
+                                       0x1648 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(blknum.o)
+                                       0x15eb (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(block.o)
+                                       0x115d (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(bmap.o)
+                                       0x1289 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(closefs.o)
+                                       0x1361 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(crc32c.o)
+                                        0x1c7 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(csum.o)
+                                       0x1a2e (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(dirblock.o)
+                                        0xf6b (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(dir_iterate.o)
+                                       0x117b (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(expanddir.o)
+                                       0x10f1 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(ext_attr.o)
+                                       0x1c89 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(extent.o)
+                                       0x17cd (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(fallocate.o)
+                                       0x1232 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(fileio.o)
+                                       0x13b1 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(freefs.o)
+                                       0x101c (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(gen_bitmap.o)
+                                       0x159d (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(gen_bitmap64.o)
+                                       0x1b0a (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(get_num_dirs.o)
+                                        0xf85 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(getenv.o)
+                                        0x167 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(hashmap.o)
+                                        0x230 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(i_block.o)
+                                        0xe93 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(ind_block.o)
+                                        0xe5e (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(inline_data.o)
+                                       0x154d (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(inode.o)
+                                       0x178e (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(io_manager.o)
+                                        0x3ec (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(link.o)
+                                       0x1560 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(mkdir.o)
+                                       0x11b3 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(mkjournal.o)
+                                       0x172e (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(mmp.o)
+                                       0x1241 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(namei.o)
+                                       0x10bb (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(newdir.o)
+                                       0x1014 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(openfs.o)
+                                       0x148e (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(punch.o)
+                                       0x12ac (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(read_bb.o)
+                                        0xf42 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(rw_bitmaps.o)
+                                       0x27b3 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(sha512.o)
+                                        0x1a2 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(symlink.o)
+                                       0x109d (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(unix_io.o)
+                                        0xdbe (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(unlink.o)
+                                        0xebe (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(valid_blk.o)
+                                        0xe65 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(alloc_sb.o)
+                                        0xfe8 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(badblocks.o)
+                                        0x4a5 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(bitops.o)
+                                        0x1ee (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(blkmap64_ba.o)
+                                       0x15f7 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(blkmap64_rb.o)
+                                       0x1717 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(crc16.o)
+                                        0x119 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(dirhash.o)
+                                        0x24a (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(getsectsize.o)
+                                       0x1096 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(inline.o)
+                                       0x1af7 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(ismounted.o)
+                                        0x6de (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(llseek.o)
+                                        0x168 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(lookup.o)
+                                        0xeb5 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(nls_utf8.o)
+                                        0x33a (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libext2fs.a(rbtree.o)
+                                        0x24d (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libcom_err.a(error_message.o)
+                                        0x521 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libcom_err.a(et_name.o)
+                                         0xcd (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libcom_err.a(com_err.o)
+                                        0x481 (size before relaxing)
+ .debug_str     0x000000000000b001        0x0 ../lib/libe2p.a(parse_num.o)
+                                        0x138 (size before relaxing)
+
+.debug_loc
+ *(.debug_loc)
+
+.debug_macinfo
+ *(.debug_macinfo)
+
+.debug_weaknames
+ *(.debug_weaknames)
+
+.debug_funcnames
+ *(.debug_funcnames)
+
+.debug_typenames
+ *(.debug_typenames)
+
+.debug_varnames
+ *(.debug_varnames)
+
+.debug_pubtypes
+ *(.debug_pubtypes)
+
+.debug_ranges
+ *(.debug_ranges)
+
+.debug_addr
+ *(.debug_addr)
+
+.debug_line_str
+                0x0000000000000000     0x173e
+ *(.debug_line_str)
+ .debug_line_str
+                0x0000000000000000     0x173e fuse2fs.o
+                                        0x488 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 journal.o
+                                        0x338 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 recovery.o
+                                        0x27f (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 revoke.o
+                                        0x274 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(ext2_err.o)
+                                         0xa7 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(alloc.o)
+                                        0x22f (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(alloc_stats.o)
+                                        0x1ff (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(bitmaps.o)
+                                        0x22f (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(blknum.o)
+                                        0x1fd (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(block.o)
+                                        0x1fa (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(bmap.o)
+                                        0x201 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(closefs.o)
+                                        0x21c (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(crc32c.o)
+                                        0x1a9 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(csum.o)
+                                        0x227 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(dirblock.o)
+                                        0x1ed (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(dir_iterate.o)
+                                        0x216 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(expanddir.o)
+                                        0x210 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(ext_attr.o)
+                                        0x243 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(extent.o)
+                                        0x255 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(fallocate.o)
+                                        0x1f9 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(fileio.o)
+                                        0x225 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(freefs.o)
+                                        0x211 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(gen_bitmap.o)
+                                        0x251 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(gen_bitmap64.o)
+                                        0x2a6 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(get_num_dirs.o)
+                                        0x203 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(getenv.o)
+                                        0x14f (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(hashmap.o)
+                                        0x192 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(i_block.o)
+                                        0x20b (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(ind_block.o)
+                                        0x211 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(inline_data.o)
+                                        0x22a (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(inode.o)
+                                        0x24a (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(io_manager.o)
+                                        0x1ba (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(link.o)
+                                        0x215 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(mkdir.o)
+                                        0x22e (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(mkjournal.o)
+                                        0x2c5 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(mmp.o)
+                                        0x28a (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(namei.o)
+                                        0x218 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(newdir.o)
+                                        0x211 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(openfs.o)
+                                        0x255 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(punch.o)
+                                        0x20d (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(read_bb.o)
+                                        0x20b (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(rw_bitmaps.o)
+                                        0x2a3 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(sha512.o)
+                                        0x171 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(symlink.o)
+                                        0x235 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(unix_io.o)
+                                        0x2f6 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(unlink.o)
+                                        0x1fd (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(valid_blk.o)
+                                        0x1f0 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(alloc_sb.o)
+                                        0x217 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(badblocks.o)
+                                        0x1a6 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(bitops.o)
+                                        0x170 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(blkmap64_ba.o)
+                                        0x294 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(blkmap64_rb.o)
+                                        0x29d (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(crc16.o)
+                                        0x120 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(dirhash.o)
+                                        0x1a5 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(getsectsize.o)
+                                        0x1b8 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(inline.o)
+                                        0x23b (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(ismounted.o)
+                                        0x269 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(llseek.o)
+                                        0x158 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(lookup.o)
+                                        0x1fd (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(nls_utf8.o)
+                                        0x14d (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libext2fs.a(rbtree.o)
+                                        0x11c (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libcom_err.a(error_message.o)
+                                        0x1c5 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libcom_err.a(et_name.o)
+                                         0xfa (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libcom_err.a(com_err.o)
+                                        0x1c4 (size before relaxing)
+ .debug_line_str
+                0x000000000000173e        0x0 ../lib/libe2p.a(parse_num.o)
+                                        0x110 (size before relaxing)
+
+.debug_loclists
+                0x0000000000000000    0x48114
+ *(.debug_loclists)
+ .debug_loclists
+                0x0000000000000000     0xb954 fuse2fs.o
+ .debug_loclists
+                0x000000000000b954     0x221e journal.o
+ .debug_loclists
+                0x000000000000db72     0x1c9f recovery.o
+ .debug_loclists
+                0x000000000000f811      0x871 revoke.o
+ .debug_loclists
+                0x0000000000010082       0x61 ../lib/libext2fs.a(ext2_err.o)
+ .debug_loclists
+                0x00000000000100e3     0x174e ../lib/libext2fs.a(alloc.o)
+ .debug_loclists
+                0x0000000000011831      0x5cf ../lib/libext2fs.a(alloc_stats.o)
+ .debug_loclists
+                0x0000000000011e00      0x9bf ../lib/libext2fs.a(bitmaps.o)
+ .debug_loclists
+                0x00000000000127bf     0x1464 ../lib/libext2fs.a(blknum.o)
+ .debug_loclists
+                0x0000000000013c23     0x2102 ../lib/libext2fs.a(block.o)
+ .debug_loclists
+                0x0000000000015d25     0x1a3b ../lib/libext2fs.a(bmap.o)
+ .debug_loclists
+                0x0000000000017760      0xcaf ../lib/libext2fs.a(closefs.o)
+ .debug_loclists
+                0x000000000001840f      0x2e8 ../lib/libext2fs.a(crc32c.o)
+ .debug_loclists
+                0x00000000000186f7     0x1b35 ../lib/libext2fs.a(csum.o)
+ .debug_loclists
+                0x000000000001a22c     0x11b1 ../lib/libext2fs.a(dirblock.o)
+ .debug_loclists
+                0x000000000001b3dd      0xb5b ../lib/libext2fs.a(dir_iterate.o)
+ .debug_loclists
+                0x000000000001bf38      0x4b2 ../lib/libext2fs.a(expanddir.o)
+ .debug_loclists
+                0x000000000001c3ea     0x515c ../lib/libext2fs.a(ext_attr.o)
+ .debug_loclists
+                0x0000000000021546     0x467b ../lib/libext2fs.a(extent.o)
+ .debug_loclists
+                0x0000000000025bc1     0x1acb ../lib/libext2fs.a(fallocate.o)
+ .debug_loclists
+                0x000000000002768c     0x1bb3 ../lib/libext2fs.a(fileio.o)
+ .debug_loclists
+                0x000000000002923f      0x447 ../lib/libext2fs.a(freefs.o)
+ .debug_loclists
+                0x0000000000029686     0x1fda ../lib/libext2fs.a(gen_bitmap.o)
+ .debug_loclists
+                0x000000000002b660     0x2e4a ../lib/libext2fs.a(gen_bitmap64.o)
+ .debug_loclists
+                0x000000000002e4aa       0xe0 ../lib/libext2fs.a(get_num_dirs.o)
+ .debug_loclists
+                0x000000000002e58a       0x3d ../lib/libext2fs.a(getenv.o)
+ .debug_loclists
+                0x000000000002e5c7      0x349 ../lib/libext2fs.a(hashmap.o)
+ .debug_loclists
+                0x000000000002e910      0x2d5 ../lib/libext2fs.a(i_block.o)
+ .debug_loclists
+                0x000000000002ebe5       0xd5 ../lib/libext2fs.a(ind_block.o)
+ .debug_loclists
+                0x000000000002ecba      0xdaf ../lib/libext2fs.a(inline_data.o)
+ .debug_loclists
+                0x000000000002fa69     0x24b8 ../lib/libext2fs.a(inode.o)
+ .debug_loclists
+                0x0000000000031f21      0x5f4 ../lib/libext2fs.a(io_manager.o)
+ .debug_loclists
+                0x0000000000032515     0x1f45 ../lib/libext2fs.a(link.o)
+ .debug_loclists
+                0x000000000003445a      0x3f6 ../lib/libext2fs.a(mkdir.o)
+ .debug_loclists
+                0x0000000000034850     0x14ca ../lib/libext2fs.a(mkjournal.o)
+ .debug_loclists
+                0x0000000000035d1a      0xa8f ../lib/libext2fs.a(mmp.o)
+ .debug_loclists
+                0x00000000000367a9      0xaa2 ../lib/libext2fs.a(namei.o)
+ .debug_loclists
+                0x000000000003724b      0x385 ../lib/libext2fs.a(newdir.o)
+ .debug_loclists
+                0x00000000000375d0     0x105e ../lib/libext2fs.a(openfs.o)
+ .debug_loclists
+                0x000000000003862e     0x1312 ../lib/libext2fs.a(punch.o)
+ .debug_loclists
+                0x0000000000039940      0x1d5 ../lib/libext2fs.a(read_bb.o)
+ .debug_loclists
+                0x0000000000039b15     0x1abb ../lib/libext2fs.a(rw_bitmaps.o)
+ .debug_loclists
+                0x000000000003b5d0      0x84b ../lib/libext2fs.a(sha512.o)
+ .debug_loclists
+                0x000000000003be1b      0x563 ../lib/libext2fs.a(symlink.o)
+ .debug_loclists
+                0x000000000003c37e     0x3fad ../lib/libext2fs.a(unix_io.o)
+ .debug_loclists
+                0x000000000004032b      0x211 ../lib/libext2fs.a(unlink.o)
+ .debug_loclists
+                0x000000000004053c       0xb0 ../lib/libext2fs.a(valid_blk.o)
+ .debug_loclists
+                0x00000000000405ec      0x1dd ../lib/libext2fs.a(alloc_sb.o)
+ .debug_loclists
+                0x00000000000407c9      0x9f3 ../lib/libext2fs.a(badblocks.o)
+ .debug_loclists
+                0x00000000000411bc      0x45d ../lib/libext2fs.a(bitops.o)
+ .debug_loclists
+                0x0000000000041619      0xfa5 ../lib/libext2fs.a(blkmap64_ba.o)
+ .debug_loclists
+                0x00000000000425be     0x209b ../lib/libext2fs.a(blkmap64_rb.o)
+ .debug_loclists
+                0x0000000000044659       0x92 ../lib/libext2fs.a(crc16.o)
+ .debug_loclists
+                0x00000000000446eb      0xb33 ../lib/libext2fs.a(dirhash.o)
+ .debug_loclists
+                0x000000000004521e       0xe9 ../lib/libext2fs.a(getsectsize.o)
+ .debug_loclists
+                0x0000000000045307      0xea5 ../lib/libext2fs.a(inline.o)
+ .debug_loclists
+                0x00000000000461ac      0x45a ../lib/libext2fs.a(ismounted.o)
+ .debug_loclists
+                0x0000000000046606       0xc9 ../lib/libext2fs.a(llseek.o)
+ .debug_loclists
+                0x00000000000466cf      0x159 ../lib/libext2fs.a(lookup.o)
+ .debug_loclists
+                0x0000000000046828      0xcc7 ../lib/libext2fs.a(nls_utf8.o)
+ .debug_loclists
+                0x00000000000474ef      0x63a ../lib/libext2fs.a(rbtree.o)
+ .debug_loclists
+                0x0000000000047b29      0x2ce ../lib/libcom_err.a(error_message.o)
+ .debug_loclists
+                0x0000000000047df7       0x72 ../lib/libcom_err.a(et_name.o)
+ .debug_loclists
+                0x0000000000047e69      0x20d ../lib/libcom_err.a(com_err.o)
+ .debug_loclists
+                0x0000000000048076       0x9e ../lib/libe2p.a(parse_num.o)
+
+.debug_macro
+ *(.debug_macro)
+
+.debug_names
+ *(.debug_names)
+
+.debug_rnglists
+                0x0000000000000000     0x3f6f
+ *(.debug_rnglists)
+ .debug_rnglists
+                0x0000000000000000      0xb19 fuse2fs.o
+ .debug_rnglists
+                0x0000000000000b19      0x436 journal.o
+ .debug_rnglists
+                0x0000000000000f4f      0x3a1 recovery.o
+ .debug_rnglists
+                0x00000000000012f0      0x147 revoke.o
+ .debug_rnglists
+                0x0000000000001437       0xae ../lib/libext2fs.a(alloc.o)
+ .debug_rnglists
+                0x00000000000014e5       0x5c ../lib/libext2fs.a(alloc_stats.o)
+ .debug_rnglists
+                0x0000000000001541      0x264 ../lib/libext2fs.a(blknum.o)
+ .debug_rnglists
+                0x00000000000017a5       0xd1 ../lib/libext2fs.a(block.o)
+ .debug_rnglists
+                0x0000000000001876      0x14b ../lib/libext2fs.a(bmap.o)
+ .debug_rnglists
+                0x00000000000019c1       0x9f ../lib/libext2fs.a(closefs.o)
+ .debug_rnglists
+                0x0000000000001a60       0x94 ../lib/libext2fs.a(csum.o)
+ .debug_rnglists
+                0x0000000000001af4      0x10c ../lib/libext2fs.a(dirblock.o)
+ .debug_rnglists
+                0x0000000000001c00       0x82 ../lib/libext2fs.a(dir_iterate.o)
+ .debug_rnglists
+                0x0000000000001c82       0x38 ../lib/libext2fs.a(expanddir.o)
+ .debug_rnglists
+                0x0000000000001cba      0x47d ../lib/libext2fs.a(ext_attr.o)
+ .debug_rnglists
+                0x0000000000002137      0x3d5 ../lib/libext2fs.a(extent.o)
+ .debug_rnglists
+                0x000000000000250c       0x56 ../lib/libext2fs.a(fallocate.o)
+ .debug_rnglists
+                0x0000000000002562      0x12b ../lib/libext2fs.a(fileio.o)
+ .debug_rnglists
+                0x000000000000268d       0x87 ../lib/libext2fs.a(freefs.o)
+ .debug_rnglists
+                0x0000000000002714       0xfb ../lib/libext2fs.a(gen_bitmap.o)
+ .debug_rnglists
+                0x000000000000280f      0x125 ../lib/libext2fs.a(gen_bitmap64.o)
+ .debug_rnglists
+                0x0000000000002934       0x18 ../lib/libext2fs.a(hashmap.o)
+ .debug_rnglists
+                0x000000000000294c       0x29 ../lib/libext2fs.a(i_block.o)
+ .debug_rnglists
+                0x0000000000002975       0xce ../lib/libext2fs.a(inline_data.o)
+ .debug_rnglists
+                0x0000000000002a43      0x182 ../lib/libext2fs.a(inode.o)
+ .debug_rnglists
+                0x0000000000002bc5       0x17 ../lib/libext2fs.a(io_manager.o)
+ .debug_rnglists
+                0x0000000000002bdc      0x279 ../lib/libext2fs.a(link.o)
+ .debug_rnglists
+                0x0000000000002e55       0x2f ../lib/libext2fs.a(mkdir.o)
+ .debug_rnglists
+                0x0000000000002e84      0x160 ../lib/libext2fs.a(mkjournal.o)
+ .debug_rnglists
+                0x0000000000002fe4       0x6e ../lib/libext2fs.a(mmp.o)
+ .debug_rnglists
+                0x0000000000003052       0x8e ../lib/libext2fs.a(namei.o)
+ .debug_rnglists
+                0x00000000000030e0       0x36 ../lib/libext2fs.a(newdir.o)
+ .debug_rnglists
+                0x0000000000003116       0x6d ../lib/libext2fs.a(openfs.o)
+ .debug_rnglists
+                0x0000000000003183       0xf0 ../lib/libext2fs.a(punch.o)
+ .debug_rnglists
+                0x0000000000003273       0x26 ../lib/libext2fs.a(read_bb.o)
+ .debug_rnglists
+                0x0000000000003299      0x141 ../lib/libext2fs.a(rw_bitmaps.o)
+ .debug_rnglists
+                0x00000000000033da       0x46 ../lib/libext2fs.a(sha512.o)
+ .debug_rnglists
+                0x0000000000003420       0x3a ../lib/libext2fs.a(symlink.o)
+ .debug_rnglists
+                0x000000000000345a      0x45c ../lib/libext2fs.a(unix_io.o)
+ .debug_rnglists
+                0x00000000000038b6       0x26 ../lib/libext2fs.a(valid_blk.o)
+ .debug_rnglists
+                0x00000000000038dc       0x17 ../lib/libext2fs.a(alloc_sb.o)
+ .debug_rnglists
+                0x00000000000038f3       0xd8 ../lib/libext2fs.a(badblocks.o)
+ .debug_rnglists
+                0x00000000000039cb       0x31 ../lib/libext2fs.a(bitops.o)
+ .debug_rnglists
+                0x00000000000039fc       0x61 ../lib/libext2fs.a(blkmap64_ba.o)
+ .debug_rnglists
+                0x0000000000003a5d      0x217 ../lib/libext2fs.a(blkmap64_rb.o)
+ .debug_rnglists
+                0x0000000000003c74       0x17 ../lib/libext2fs.a(crc16.o)
+ .debug_rnglists
+                0x0000000000003c8b       0x56 ../lib/libext2fs.a(dirhash.o)
+ .debug_rnglists
+                0x0000000000003ce1       0x37 ../lib/libext2fs.a(inline.o)
+ .debug_rnglists
+                0x0000000000003d18       0x47 ../lib/libext2fs.a(ismounted.o)
+ .debug_rnglists
+                0x0000000000003d5f      0x115 ../lib/libext2fs.a(nls_utf8.o)
+ .debug_rnglists
+                0x0000000000003e74       0xcd ../lib/libext2fs.a(rbtree.o)
+ .debug_rnglists
+                0x0000000000003f41       0x17 ../lib/libcom_err.a(error_message.o)
+ .debug_rnglists
+                0x0000000000003f58       0x17 ../lib/libcom_err.a(com_err.o)
+
+.debug_str_offsets
+ *(.debug_str_offsets)
+
+.debug_sup
+ *(.debug_sup)
+
+.gnu.attributes
+ *(.gnu.attributes)
+
+/DISCARD/
+ *(.note.GNU-stack)
+ *(.gnu_debuglink)
+ *(.gnu.lto_*)
+ *(.gnu_object_only)
+OUTPUT(/tmp/conglobate-native-closure-v2/relinked-worker elf64-x86-64)

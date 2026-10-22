@@ -1,0 +1,20 @@
+#!/bin/bash
+set -eu
+fuse2fs -f -o kernel,acl,allow_other,nosuid,nodev /work/acl-image /work/view >/work/acl.log 2>&1 &
+daemon=$!
+for ((i=0;i<100;i++)); do mountpoint -q /work/view && break; sleep .05; done
+mountpoint -q /work/view
+chmod 755 /work/view
+mkdir /work/view/dir
+chmod 755 /work/view/dir
+echo secret >/work/view/dir/file
+chmod 600 /work/view/dir/file
+setfacl -m u:1234:r /work/view/dir/file
+getfacl -n /work/view/dir/file
+if setpriv --reuid=1234 --regid=1234 --clear-groups cat /work/view/dir/file; then echo ACL_ALLOW_PASS; else echo ACL_ALLOW_FAIL; fi
+if setpriv --reuid=1235 --regid=1235 --clear-groups cat /work/view/dir/file; then echo ACL_DENY_FAIL; else echo ACL_DENY_PASS; fi
+setfacl -m d:u:1234:rwx /work/view/dir
+touch /work/view/dir/inherited
+getfacl -n /work/view/dir/inherited
+fusermount3 -u /work/view
+wait "$daemon"

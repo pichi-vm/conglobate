@@ -1,0 +1,111 @@
+PRESSURE_QUEUED abort 32
+CLIENT_STATUS abort 201 1
+CLIENT_STATUS abort 202 1
+CLIENT_STATUS abort 203 1
+CLIENT_STATUS abort 204 1
+CLIENT_STATUS abort 205 1
+CLIENT_STATUS abort 206 1
+CLIENT_STATUS abort 207 1
+CLIENT_STATUS abort 208 1
+CLIENT_STATUS abort 209 1
+CLIENT_STATUS abort 210 1
+CLIENT_STATUS abort 211 1
+CLIENT_STATUS abort 212 1
+CLIENT_STATUS abort 213 1
+CLIENT_STATUS abort 214 1
+CLIENT_STATUS abort 215 1
+CLIENT_STATUS abort 216 1
+CLIENT_STATUS abort 217 1
+CLIENT_STATUS abort 218 1
+CLIENT_STATUS abort 219 1
+CLIENT_STATUS abort 220 1
+CLIENT_STATUS abort 221 1
+CLIENT_STATUS abort 222 1
+CLIENT_STATUS abort 223 1
+CLIENT_STATUS abort 224 1
+CLIENT_STATUS abort 225 1
+CLIENT_STATUS abort 226 1
+CLIENT_STATUS abort 227 1
+CLIENT_STATUS abort 228 1
+CLIENT_STATUS abort 229 1
+CLIENT_STATUS abort 230 1
+CLIENT_STATUS abort 231 1
+CLIENT_STATUS abort 233 1
+PRESSURE_ABORT_ERRORS_VERIFIED
+PRESSURE_CLIENTS_REAPED abort
+/worker: line 50:   159 Killed                     fuse2fs -f -o acl,allow_other "$p/image" "$p/view" > "$p/log" 2>&1
+PRESSURE_WORKER_REAPED_UNMOUNTED abort
+PRESSURE_CLEANUP_PASS abort
+PRESSURE_QUEUED clients-first 32
+/worker: line 25:   320 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   321 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   322 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   323 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   324 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   325 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   326 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   327 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   328 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   329 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   330 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   331 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   332 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   333 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   334 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   335 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   336 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   337 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   338 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   339 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   340 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   342 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   343 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   344 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   345 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   346 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   347 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   348 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   349 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   350 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 25:   351 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+/worker: line 26:   319 Killed                     touch "$p/view/d$i/new" > "$p/client-$i.log" 2>&1
+CLIENT_STATUS clients-first 319 137
+CLIENT_STATUS clients-first 320 137
+CLIENT_STATUS clients-first 321 137
+CLIENT_STATUS clients-first 322 137
+CLIENT_STATUS clients-first 323 137
+CLIENT_STATUS clients-first 324 137
+CLIENT_STATUS clients-first 325 137
+CLIENT_STATUS clients-first 326 137
+CLIENT_STATUS clients-first 327 137
+CLIENT_STATUS clients-first 328 137
+CLIENT_STATUS clients-first 329 137
+CLIENT_STATUS clients-first 330 137
+CLIENT_STATUS clients-first 331 137
+CLIENT_STATUS clients-first 332 137
+CLIENT_STATUS clients-first 333 137
+CLIENT_STATUS clients-first 334 137
+CLIENT_STATUS clients-first 335 137
+CLIENT_STATUS clients-first 336 137
+CLIENT_STATUS clients-first 337 137
+CLIENT_STATUS clients-first 338 137
+CLIENT_STATUS clients-first 339 137
+CLIENT_STATUS clients-first 340 137
+CLIENT_STATUS clients-first 342 137
+CLIENT_STATUS clients-first 343 137
+CLIENT_STATUS clients-first 344 137
+CLIENT_STATUS clients-first 345 137
+CLIENT_STATUS clients-first 346 137
+CLIENT_STATUS clients-first 347 137
+CLIENT_STATUS clients-first 348 137
+CLIENT_STATUS clients-first 349 137
+CLIENT_STATUS clients-first 350 137
+CLIENT_STATUS clients-first 351 137
+PRESSURE_CLIENTS_REAPED clients-first
+PRESSURE_NEW_REQUEST_REJECTED
+/worker: line 50:   276 Killed                     fuse2fs -f -o acl,allow_other "$p/image" "$p/view" > "$p/log" 2>&1
+PRESSURE_WORKER_REAPED_UNMOUNTED clients-first
+PRESSURE_CLEANUP_PASS clients-first
+PRESSURE_MATRIX_PASS
+GUEST_EXIT 0
+[    1.111108] sysrq: Resetting

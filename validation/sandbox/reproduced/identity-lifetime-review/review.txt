@@ -1,0 +1,70 @@
+Identity reuse: evidence and the missing ownership contract
+==========================================================
+Source-grounded reconciliation, not a new runtime pass or adopted allocator.
+Exact sources are retained in reproduced/identity-lifetime-review.
+
+What the retained experiments actually establish
+------------------------------------------------
+keys/reuse.py deliberately runs an UNFILTERED mapped-root reader after the old
+UID300000 worker has exited. A trusted observer retains a worker-created memfd.
+The new same-UID reader can read the old owner-only canary; UID400000 is denied.
+Known-canary revocation works. This is real UID-associated residue, but it neither
+proves that the memfd is its only anchor nor measures eventual garbage collection.
+
+entry/helper/src/main.rs puts keyctl, add_key and request_key in unconditional
+denial rules for the exercised ABI. Existing policy probes supply a valid readable
+key: namespace-only read succeeds, restricted reads return EPERM in two steps.
+Thus the unfiltered reuse experiment is NOT a demonstrated bypass of the command
+policy. Waiting for key garbage collection is not an established prerequisite
+for those three syscall denials to remain effective. This conclusion is about
+those APIs, not every kernel interface or key description/metadata visibility.
+
+worker-identity.py separately demonstrates that equal mapped host identities in
+sibling user namespaces permit signal-permission queries to a visible worker.
+Different identities deny them. Private command PID namespaces reject the tested
+ancestor-pidfd signal query. Distinct user namespaces alone are not an adequate
+same-UID signal boundary; private PID/proc visibility and FD admission matter.
+
+The whole-build fixture still hardcodes UID/GID100000..165535 and chowns its owned
+snapshot to100000. It does not allocate ranges, reserve them globally or prove
+safe identity reuse. The successful two-build shared-storage tests cannot be
+reported as an allocator test. Rooted pathname isolation and descriptor closure
+remain necessary even when different ranges are used.
+
+What a concrete binary contract still needs
+------------------------------------------
+- Environment supplies an identity pool reserved for this purpose, or equivalent
+  explicit deployment ownership. The binary must not silently choose arbitrary
+  host users. A /proc scan alone cannot reserve a UID range against future use.
+- One trusted allocator owns assignment before user-namespace mapping/device
+  ownership changes. Any reuse decision must use the same protected registration
+  and lifetime protocol as teardown. Numeric PIDs or an unlocked lease alone
+  cannot authorize reuse; existing pidfd/lease ordering tests demonstrate why.
+- State explicitly whether ranges are disjoint across active builds. Disjoint
+  ranges remove same-UID permission overlap, but do not replace confinement.
+  Sharing ranges would require a complete supported-interface argument; the
+  current fixed fixtures do not supply that argument.
+- Account for surviving filesystem workers, commands, mounts, control sockets,
+  exported FDs and trusted holders of credentials when deciding resource lifetime.
+  Parent process exit alone is insufficient. Which resources must be destroyed
+  versus remain harmless behind enforced restrictions must be stated individually.
+- Preserve command key-API denial irrespective of range reuse. Do not revoke
+  arbitrary host per-UID keyrings, assume a fresh session erases owner permission,
+  or substitute an arbitrary garbage-collection delay for ownership evidence.
+- If authoritative lifetime evidence is lost, retain an unresolved registration
+  rather than declaring the range reusable from disk records alone. Recovery
+  needs a separately qualified quiescence rule; this review does not invent one.
+
+These are unresolved design inputs, not an implementation of range allocation.
+The kernel key residue finding is one constraint on that design, not proof that
+all UID reuse is forbidden or that a never-reuse pool is the only solution.
+The current backend semantics blocker also remains independent of this issue.
+
+Finite next validation once the contract is chosen
+-------------------------------------------------
+Exercise concurrent allocation (no conflicting assignments), complete teardown
+and release, crash before/after registration, retained handles, and restart with
+lost authoritative handles. Test actual namespace mappings/device ownership and
+protected registration identities, not just allocator return values. Tie those
+cases to the selected coordinator's tested lifetime boundaries. Do not expand
+this into unbounded testing of every key type or kernel garbage-collection timing.

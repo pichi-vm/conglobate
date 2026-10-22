@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+mount --make-rprivate /
+p=/work/tool
+mkdir -p "$p"/{usr,etc,rpms,proc,dev,sys,tmp,var/tmp,run,output,.old}
+mount --bind "$p" "$p"
+for directory in usr etc rpms; do
+ mount --bind "/$directory" "$p/$directory"
+ mount -o remount,bind,ro "$p/$directory"
+done
+for directory in bin sbin lib lib64; do ln -s "usr/$directory" "$p/$directory"; done
+cp /bootstrap-command "$p/command"
+chmod 755 "$p/command"
+mount --bind /work/view "$p/output"
+mount -t proc -o nosuid,nodev,noexec proc "$p/proc"
+mount -t tmpfs -o nosuid,noexec tmpfs "$p/dev"
+for d in null zero random urandom; do
+ touch "$p/dev/$d"
+ mount --bind "/work/runtime/$d" "$p/dev/$d"
+done
+mount -t tmpfs -o ro,nosuid,nodev,noexec tmpfs "$p/sys"
+exec /entry-helper "$p" /command --restricted

@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+# Called only after the trusted remount checks and final unmount.
+gzip -1 -c /work/image >/work/rootfs.gz
+{
+ printf 'CONGLOBATE_ROOT_FIXTURE_V1\n'
+ printf '%s %s\n' "$(stat -Lc %s /work/rootfs.gz)" "$(sha256sum /work/rootfs.gz | { read -r digest rest; echo "$digest"; })"
+ cat /work/rootfs.gz
+} >/dev/vport0p2
+echo TRUSTED_ROOT_FILESYSTEM_EXPORT_PASS

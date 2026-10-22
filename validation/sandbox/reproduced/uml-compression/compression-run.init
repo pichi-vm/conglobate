@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+export PATH=/bin
+busybox mount -t proc proc /proc
+busybox mount -t devtmpfs devtmpfs /dev
+echo READY
+echo HOSTFS_BOUNDARY_OK
+busybox dd if=/dev/urandom of=/tmp/data bs=1M count=8
+for mode in --single-thread -T1 -T0; do
+ echo "COMPRESSION_START $mode"
+ busybox cat /proc/uptime
+ zstd -q -f "$mode" -3 /tmp/data -o /tmp/data.zst
+ zstd -q -t /tmp/data.zst
+ echo "COMPRESSION_END $mode"
+ busybox cat /proc/uptime
+done
+echo COMPLETE
+busybox poweroff -f

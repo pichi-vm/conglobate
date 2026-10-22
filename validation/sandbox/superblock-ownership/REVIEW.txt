@@ -1,0 +1,132 @@
+Native filesystem superblock ownership — source review, 2026-10-21
+================================================================
+
+Question
+--------
+Can a trusted supervisor give sandbox commands a native filesystem whose
+superblock belongs to their user namespace, without FUSE or initial-userns
+privileges in those commands? The build VM need not run SELinux. The output
+must preserve foreign SELinux labels and eventually boot under its own policy.
+
+Finding
+-------
+Linux has both userns-mountable and privileged-delegatable filesystems. Thus
+"only FUSE can have a child-userns superblock" is false. However, the inspected
+ext4, XFS and Btrfs implementations support neither mechanism. Their creation
+in a child user namespace is explicitly rejected by the VFS, including when
+a privileged parent completes a context created in the child. No reviewed
+mount API transfers an already-created superblock's namespace ownership.
+
+This is source analysis, not a new runtime test. It does not replace the
+outstanding native-ext4/idmapped/SELinux-disabled differential experiment.
+
+Revisions and scope
+-------------------
+Upstream Linux: a804c5742bff224d4cb4d25dd383554d598be32b
+Upstream stable v7.2.10: 7b20d05fd38de8e0be168956f6fd241d750c7d69
+Sources, exact download URLs and SHA256s are in sources/sources.json and
+sources/stable-7.2.10/sources.json. All 37 source hashes verified on retention.
+Stable v7.2.10 matches the base version of the earlier Fedora guest kernel;
+this is not an audit of all Fedora patches or the currently booted custom
+7.2.11-dm-bufio-test1-dirty host kernel. No kernel/config/runtime code changed.
+
+Creation path (line numbers refer to the first revision)
+-------------------------------------------------------
+1. fs/fs_context.c:258 alloc_fs_context captures current credentials. The
+   mount case at283 obtains fc->user_ns from those credentials. Reconfigure
+   and submount cases inherit the existing superblock namespace instead.
+2. fs/fsopen.c:220 vfs_cmd_create calls mount_capable before vfs_get_tree.
+   fs/super.c:799 mount_capable requires initial-userns CAP_SYS_ADMIN unless
+   the filesystem advertises FS_USERNS_MOUNT. A privileged parent can pass
+   this check even when the context was created in the child.
+3. fs/super.c:839 sget_fc derives the candidate superblock namespace from
+   fc->user_ns (or init_user_ns for a global context). At854 it rejects a
+   non-initial namespace unless the filesystem advertises FS_USERNS_MOUNT
+   or FS_USERNS_DELEGATABLE. The comment explicitly covers fsconfig called
+   by initial-userns root using a context opened in another user namespace.
+4. fs/super.c:333 alloc_super assigns s_user_ns from the accepted namespace.
+   Reuse at907 rejects an existing superblock owned by another namespace.
+   It does not reassign ownership; changing the requested namespace cannot
+   take over an already-mounted instance of the same filesystem.
+
+The two mechanisms differ intentionally:
+- FS_USERNS_MOUNT permits namespace-root mounting.
+- FS_USERNS_DELEGATABLE permits a child-owned superblock while retaining the
+  privileged mount-creation check. include/linux/fs.h:2300 defines the flag.
+
+Filesystem opt-ins
+------------------
+ext4 (fs/ext4/super.c:7543), XFS (fs/xfs/xfs_super.c:2342), and Btrfs
+(fs/btrfs/super.c:2250) lack BOTH flags. FS_ALLOW_IDMAP is a separate flag.
+The same decision gates and absence of opt-ins were checked in v7.2.10.
+Current ext2, F2FS, EROFS and SquashFS registrations also lack both flags.
+No claim is made about every Linux filesystem or out-of-tree driver.
+
+NFS and NFS4 explicitly set FS_USERNS_DELEGATABLE in fs/nfs/fs_context.c
+at1774/1788, also present in v7.2.10. The upstream rationale is the exact
+child-fsopen/privileged-parent-completion arrangement:
+https://kernel.googlesource.com/pub/scm/linux/kernel/git/vfs/vfs/+/c5d6cac28646b0d5d81ef632be748ae93c1f36c7
+That is a working kernel mechanism, not proof that an NFS service meets our
+metadata, identity, isolation, lifetime or image-export requirements. NFS would
+introduce a server/protocol boundary rather than directly mount our block image.
+
+tmpfs (mm/shmem.c:5316) and ramfs (fs/ramfs/inode.c:322) set FS_USERNS_MOUNT.
+tmpfs is a potential non-FUSE staging filesystem: generic security-xattr
+permission can be satisfied by namespace root when it owns the superblock.
+It does not write the existing carapace snapshot. Exporting/merging that tree
+into a persistent filesystem, preserving all required metadata and layering,
+would be a different construction pipeline requiring its own validation.
+The registration flag alone does not establish ramfs metadata suitability.
+
+Why related APIs do not transfer ownership
+-----------------------------------------
+- Bind/clone/move mounts provide another view or location of the same backing
+  filesystem. They do not allocate a replacement child-owned disk superblock.
+- mount_setattr ID mapping updates mnt_idmap, not s_user_ns. See
+  fs/namespace.c:4975 can_idmap_mount and5078 do_idmap_mount. The former itself
+  checks authority in the existing superblock namespace.
+- Reconfiguration explicitly keeps the existing superblock namespace.
+- FSMOUNT_NAMESPACE creates a mount namespace after superblock creation; it
+  does not bypass sget_fc's filesystem opt-in or change s_user_ns.
+- Loop, device mapper and userspace block transports change backing storage;
+  ext4/XFS/Btrfs still encounter the same filesystem-type gate above them.
+- OverlayFS can have a child-owned superblock but still delegates operations
+  to real lower/upper filesystems. It is not a transfer of their superblocks.
+  Its ovl_fill_super rejects a context completed in a different user namespace
+  (fs/overlayfs/super.c:1567); override_creds also constrains credential capture
+  (fs/overlayfs/params.c:708). A child-owned overlay cannot simply be given
+  initial-userns mounting credentials to evade the upper filesystem boundary.
+  No complete overlay-based labeling/export alternative is validated here.
+
+Connection to SELinux and remaining restrictions
+------------------------------------------------
+With no active LSM taking over the attribute check, security_inode_setxattr
+calls cap_inode_setxattr (security/security.c:1956). commoncap.c:1025 uses
+the dentry superblock's s_user_ns and requires CAP_SYS_ADMIN there for
+security.* other than the separately handled security.capability.
+Thus owning the superblock is directly relevant to writing security.selinux
+with build-VM SELinux disabled/absent. Ext4's security-xattr handler stores
+the supplied value; it does not itself validate it against a running policy.
+Other enabled LSMs/filesystem configuration may impose additional conditions.
+
+This would not remove every earlier restriction: trusted.* still checks
+initial-userns capable(CAP_SYS_ADMIN) in fs/xattr.c:148; immutable/append
+changes check capable(CAP_LINUX_IMMUTABLE) in fs/file_attr.c:195. alloc_super
+also sets SB_I_NODEV for a non-initial superblock. Namespace ownership is
+not a promise of unrestricted host-root filesystem semantics.
+
+Consequence for conglobate
+-------------------------
+On the reviewed unmodified kernels, there is no supported direct native
+ext4/XFS/Btrfs route to the requested child-owned superblock. A privileged
+helper plus FS_USERNS_DELEGATABLE is the relevant kernel extension model if
+we later investigate changing a driver. Merely adding the flag is not a
+validated fix: namespace-aware UID/GID interpretation, ACLs, file capabilities,
+quotas, ioctls, reserved IDs, shared-superblock lifetime and storage access
+would need driver-specific review and differential tests. Existing hard-coded
+init_user_ns handling in ext4 is one reason not to assume a one-line change.
+
+No kernel patch, new filesystem backend or architectural adoption is proposed
+as completed work. The next bounded runtime comparison remains initial-root
+native ext4 versus child-userns/idmapped native ext4 with SELinux disabled;
+it should record ordinary ownership controls and exact foreign-label errors.

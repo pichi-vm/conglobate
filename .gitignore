@@ -1,1 +1,6 @@
 /target
+# Preserved byte-for-byte in the baseline archive, not source inputs.
+/validation/**/target/
+/validation/**/__pycache__/
+/reference/**/target/
+/reference/**/__pycache__/

@@ -1,0 +1,117 @@
+Trusted entry and launcher comparison, 2026-10-20
+=================================================
+Exact source snapshots: reproduced/runtime-path/review-sources and hashes.
+This is a retained source comparison with a new runtime-path experiment, not
+complete reachable-interface or production executor qualification.
+
+Order and trust
+---------------
+Small policy: initial-root fixture constructs a tmpfs root and dedicated runtime
+null inode, then unshare creates mapped-user/mount/PID/network/IPC/UTS namespaces.
+Trusted bash mounts proc/dev/devpts and calls trusted entry-helper. Full chain:
+trusted Rust helper launches mapped worker, trusted worker starts FUSE, unshare
+creates command mount/PID/IPC/UTS/net namespaces, then trusted bash mounts runtime
+proc/dev and invokes the same entry-helper --restricted. The worker is outside
+the command PID namespace. No image executable is invoked in these setup scripts.
+
+Entry enumerates trusted /proc/self/fd, changes into the supplied root, pivots
+through .old, changes cwd to /, lazily detaches old root, closes descriptors >=3,
+then installs capabilities/no_new_privs/seccomp and execs image command. Arguments
+and final environment are constructed explicitly; final environment contains
+PATH and HOME. File descriptor enumeration/closure assumes the documented
+single-threaded helper. Standard FDs remain the launcher's responsibility.
+The capability policy retains 12 listed user-namespace capabilities, notably
+SYS_ADMIN for SELinux xattrs and SYS_CHROOT for installroot workloads. Ambient
+and inheritable sets are cleared; permitted/effective/bounding are constrained.
+
+The native syscall policy is default ALLOW with explicit denials; it is not a
+syscall allowlist. It denies mount/new-mount APIs, unshare/setns, selected process
+access APIs, key APIs, bpf/perf/userfaultfd, modules/kexec/reboot/swap and io_uring
+setup. Legacy clone namespace bits are filtered, clone3 gets ENOSYS, x32 numbers
+are denied separately. Socket family/protocol/type filters restrict acquisition.
+No generic ioctl rule exists. Remaining FD/API review is in IOCTL-REVIEW.txt.
+
+What differs between exercised launchers
+----------------------------------------
+Small policy root has dedicated null plus private devpts/PTMX and no sys tree.
+Full simple chain supplies empty private dev and existing safe standard handles;
+it does not exercise that PTY/device set. Restricted Fedora bootstrap supplies
+null/zero/random/urandom, fd links, empty read-only sys, proc for both tool and
+installroot, plus a writable output mount. Tool usr/etc/rpms are read-only binds.
+Therefore devpts/ioctl controls from the small fixture do not establish the full
+Fedora device/runtime contract, and the simple-chain empty-dev result cannot
+substitute for the package-build launcher's checks.
+
+Environment sanitization occurs at final image exec, AFTER the trusted helper
+and setup shell have already loaded. Current fixed guest environment is controlled;
+no env_clear on the Rust worker spawn establishes arbitrary inherited-environment
+safety. Earlier loader negative/control evidence remains relevant. Bind the
+trusted executables, interpreters, dynamic loader, libraries and loader config,
+and sanitize before trusted helper exec. A hash of the helper alone does not
+measure these dependencies or protect mutable paths. This is still unresolved.
+
+New demonstrated gap
+--------------------
+chain-command/launch mounts /work/view/proc and /work/view/dev by pathname with
+no image-root-relative no-symlink check. runtime-path runs that exact script with
+only disposable canary symlinks. Mounts are redirected outside intended image
+root but within private command mount namespace. Outer canaries/mounts remain
+unchanged. No image code runs. Thus the known-directory small policy test does
+not qualify image-authored runtime path handling. The production legacy executor
+has its own mountpoint checks; this finding is about the FUSE prototype launcher,
+not a claim that identical production checks are absent. Test a pinned-directory
+contract with actual FUSE and no-writer/race conditions before adoption.
+
+Remaining gates
+---------------
+- Final runtime path resolution and all supported launch variants.
+- Trusted executable/library/configuration identity and pre-exec environment.
+- Standard FD provenance, namespace ownership, worker identity allocation and
+  resource lifetime (including retained file credentials/key anchors).
+- Reachable ioctl/proc/anonymous-FD surfaces and final syscall/capability review.
+- Full selected-executor reruns and workload compatibility after policy changes.
+Fixture log markers are test evidence only; untrusted stdout must never become
+an authoritative completion or attestation message in the final protocol.
+
+Runtime-path candidate follow-up
+--------------------------------
+runtime-path-fixed pins proc/dev/.old with safe root-relative directory opens,
+rejecting symlinks and non-directories before mounts. Eight path controls pass.
+chain-runtime-pinned passes the actual FUSE build through final verification and
+publication using the same mount helper and real restricted entry. Trusted stable
+root and no concurrent writers remain required. Missing-directory creation,
+nested/multi-root runtime variants and partial-mount failure tests remain open;
+this does not turn the whole entry policy into a completed security review.
+
+Partial runtime setup follow-up: injected helper errors after proc and after dev
+now reject the actual FUSE build with unchanged base/outer mountinfo and no
+output, FUSE connections, DM targets or loops. Eight normal/rejection controls
+also pass with the diagnostic gates disabled. These are cooperative helper-error
+boundaries, not asynchronous cancellation or arbitrary mount-error qualification.
+
+Actual-FUSE path rejection follow-up: three imported/authenticated images with
+proc/dev/.old symlinks now fail ENOTDIR before either runtime mount through the
+candidate helper. Base and owned canary are unchanged; no execution/seal/output
+or FUSE/storage residue. This closes those FUSE path controls, not concurrent
+writer/race, missing-directory creation or other launcher variants.
+
+Static runtime identity follow-up (2026-10-20)
+---------------------------------------------
+Read-only audit of the retained runtime-link-proc package matches 98 files and
+all recorded symlinks; 65 ELF files have packaged interpreter/library candidates
+and no RPATH/RUNPATH. Four identity-audit controls pass. This is static identity,
+not dynamic resolution or runtime immutability. The harness inventory omits
+permissions/ownership/xattrs/directories; inherited pre-exec environment and
+loader/import configuration remain trust assumptions. See reproduced/runtime-identity
+(report, controls and retained source review) and runtime-identity/README.txt
+under validation/sandbox. Areas 3/19/21 remain open; no production change.
+
+Full-build trusted launch environment control (2026-10-21 UTC)
+------------------------------------------------------------
+Two complete FUSE builds compare inherited versus explicitly constructed worker
+launch environments. A benign BASH_ENV marker executes before recipe admission
+only with inheritance; env_clear plus an absolute launcher and explicit PATH/
+HOME/LC_ALL prevents it. Both builds verify, publish and clean storage. See
+validation/sandbox/chain-launch-env and reproduced/chain-launch-env. This is a
+validated diagnostic launch candidate, not immutable runtime identity, initial
+supervisor startup protection or production executor adoption.

@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+test "$$" = 1
+/bin/busybox mount -t proc proc /proc
+echo UML_BOOT_READY
+/bin/busybox uname -a
+/bin/busybox cat /proc/uptime
+/bin/busybox mount -t sysfs sysfs /sys
+/bin/busybox mount -t securityfs securityfs /sys/kernel/security
+test "$(/bin/busybox cat /sys/kernel/security/lsm)" = capability
+echo UML_LSM_CAPABILITY_ONLY
+/bin/busybox cat /proc/1/status
+echo UML_BOOT_COMPLETE
+/bin/busybox poweroff -f

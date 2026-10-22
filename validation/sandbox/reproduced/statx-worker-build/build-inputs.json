@@ -1,0 +1,9 @@
+{
+  "/tmp/conglobate-statx-worker-v2/worker-source/misc/fuse2fs.c": "492ed5e7b710cee3dfda291333d8dd91c1de25db4c050903f60a42d8fc3fb123",
+  "/tmp/conglobate-clean-pair-v2/worker-source/misc/fuse2fs.c": "58294477753784e5cbebb1fd1350ba40911d9589fb7e7b4f3d41e2211ca3bcef",
+  "/tmp/conglobate-statx-worker-v2/acl-patched": "40a51e958d6ab3d8d700ab41ef1cf5cd607fc219c2a7bad6934c1c8796fc5a4d",
+  "/tmp/conglobate-statx-worker-v2/libfuse3.so.4": "a702930e895cc9f439477f0e1698a53cb805d49110d75e644cb693c7e752827f",
+  "/tmp/conglobate-statx-worker-v2/statx.patch": "774fe420e279ae9fc6682bad88879b6d8e0c90a06c860a37792a054cb0533563",
+  "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/statx-worker/build.py": "166078ad11ebfe973194a3aa783efb09b67b2084a649c55f4ed388f7adce9696",
+  "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/statx-worker/callback.c": "87042c4e34c14ee38353ae5f61712c8049785c818ad43312b3668ac9546f392c"
+}

@@ -1,0 +1,92 @@
+{
+  "cases": [
+    {
+      "build": "/var/tmp/conglobate-uml-cross-fedora-v2/uml-artifact",
+      "output": "/dev/shm/conglobate-cross-step-conglobate-uml-cross-fedora-v2-uml.raw",
+      "state": [
+        "clean"
+      ],
+      "checks": {
+        "check": {
+          "code": 0,
+          "command": [
+            "bwrap",
+            "--unshare-all",
+            "--die-with-parent",
+            "--new-session",
+            "--cap-drop",
+            "ALL",
+            "--clearenv",
+            "--setenv",
+            "PATH",
+            "/usr/sbin:/usr/bin",
+            "--ro-bind",
+            "/usr",
+            "/usr",
+            "--symlink",
+            "usr/lib",
+            "/lib",
+            "--symlink",
+            "usr/lib64",
+            "/lib64",
+            "--proc",
+            "/proc",
+            "--dev",
+            "/dev",
+            "--tmpfs",
+            "/tmp",
+            "--ro-bind",
+            "/dev/shm/conglobate-cross-step-conglobate-uml-cross-fedora-v2-uml.raw",
+            "/image",
+            "--chdir",
+            "/",
+            "e2fsck",
+            "-fn",
+            "/image"
+          ]
+        },
+        "header": {
+          "code": 0,
+          "command": [
+            "bwrap",
+            "--unshare-all",
+            "--die-with-parent",
+            "--new-session",
+            "--cap-drop",
+            "ALL",
+            "--clearenv",
+            "--setenv",
+            "PATH",
+            "/usr/sbin:/usr/bin",
+            "--ro-bind",
+            "/usr",
+            "/usr",
+            "--symlink",
+            "usr/lib",
+            "/lib",
+            "--symlink",
+            "usr/lib64",
+            "/lib64",
+            "--proc",
+            "/proc",
+            "--dev",
+            "/dev",
+            "--tmpfs",
+            "/tmp",
+            "--ro-bind",
+            "/dev/shm/conglobate-cross-step-conglobate-uml-cross-fedora-v2-uml.raw",
+            "/image",
+            "--chdir",
+            "/",
+            "dumpe2fs",
+            "-h",
+            "/image"
+          ]
+        }
+      },
+      "unchanged": true,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

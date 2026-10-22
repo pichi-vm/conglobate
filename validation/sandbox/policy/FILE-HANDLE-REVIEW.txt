@@ -1,0 +1,59 @@
+Exported file-handle permission boundary — 2026-10-21
+====================================================
+Policy unchanged; read-only tests using genuine handles from owned guest objects.
+No fabricated handle fields, guessed IDs, namespace entry or outside file access.
+
+Source correction to an overly broad assumption:
+Dropping CAP_DAC_READ_SEARCH does not categorically block open_by_handle_at.
+Pinned fs/fhandle.c handle_to_path consults a filesystem export permission callback
+when supplied, otherwise may_decode_fh. The default path accepts global
+CAP_DAC_READ_SEARCH or a narrower directory-only path with namespace/mount checks
+and current-userns CAP_DAC_READ_SEARCH. The command retains neither form of that
+capability. This does not subsume filesystem-specific export authorization.
+
+Pinned fs/nsfs.c supplies its own permission callback and defers checks to
+nsfs_fh_to_dentry. A current namespace may be reopened without DAC_READ_SEARCH.
+A noncurrent namespace requires may_see_all_namespaces, whose initial-PID and
+initial-userns authority condition is reviewed in NAMESPACE-QUERY-REVIEW.txt.
+Sources are pinned to Linux f47d223627f80cb7a1eb14c585fe6cb35de5e984; complete
+fhandle/exportfs sources are retained in reproduced/file-handle-source, and nsfs/
+nscommon in reproduced/namespace-query-source. These are source corroboration,
+not an exact Fedora source-tree identification.
+
+Runtime controls in each of two restricted command namespaces:
+1. Create an ordinary owned tmpfs-backed file, obtain a genuine kernel handle
+   through name_to_handle_at(AT_EMPTY_PATH), then request read-only reopening.
+   open_by_handle_at returns EPERM; the existing ordinary FD still reads the
+   unchanged canary. The file and FD are then removed/closed normally.
+2. Obtain a genuine handle for /proc/self/ns/mnt, reopen it read-only, and verify
+   matching inode and NS_GET_ID. Both FDs close without any namespace operation.
+3. The trusted outer guest fixture supplies a genuine handle for its own mount
+   namespace. The restricted command attempts to reopen that handle using its
+   own nsfs anchor; the tested kernel returns ESTALE. No returned handle is used to access any
+   namespace contents or enter it. No host object is involved.
+   The trusted fixture reopens the same outer handle successfully before and
+   after both restricted steps, comparing inode identity. It retains a private
+   control FD that is not passed to commands. Thus ordinary handle expiry is
+   not sufficient to explain the restricted rejection.
+
+Interpretation:
+This directly distinguishes current nsfs access from a real noncurrent namespace
+and from ordinary-file handle permissions. Successful current-namespace reopening
+is not evidence of escape; ordinary-file denial is not a blanket syscall denial.
+No additional seccomp rule is inferred solely from these outcomes.
+
+Limits:
+A bounded regular-file/current-mount/outer-mount matrix, not every filesystem's
+export callback, directory-handle relaxation, PID namespace lifecycle, alternate
+handle versions/flags or arbitrary descriptor provenance. Complete policy review
+and final executor qualification remain open. Initial own-only controls are
+retained separately from the final outside-namespace boundary case.
+
+Errno reconciliation:
+The first outer test incorrectly expected EPERM and is retained as a failed
+expectation (file-handle-errno-negative). The corrected fixture requires observed
+ESTALE and adds the before/after validity controls. The pinned upstream permission
+branch returns EPERM; that source revision is not the exact guest kernel source.
+We do not claim to have identified the tested kernel's exact internal errno path.
+The result establishes no returned FD for a still-valid owned outer handle under
+the restricted credentials/topology, not a universal errno or all-handle proof.

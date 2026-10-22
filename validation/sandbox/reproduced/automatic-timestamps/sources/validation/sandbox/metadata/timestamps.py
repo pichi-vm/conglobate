@@ -1,0 +1,95 @@
+#!/usr/bin/python3
+"""Owned-file automatic timestamp observations; native Linux statx ABI only."""
+import ctypes
+import json
+import os
+from pathlib import Path
+import struct
+import sys
+import time
+
+libc = ctypes.CDLL(None, use_errno=True)
+libc.statx.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
+                      ctypes.c_uint, ctypes.c_void_p]
+libc.statx.restype = ctypes.c_int
+
+
+def observe(path):
+    buf = ctypes.create_string_buffer(256)
+    if libc.statx(-100, os.fsencode(path), 0x100 | 0x2000, 0xfff, buf):
+        code = ctypes.get_errno()
+        raise OSError(code, os.strerror(code))
+    mask = struct.unpack_from('=I', buf)[0]
+    result = {}
+    for name, offset, bit in [('atime', 64, 0x20), ('btime', 80, 0x800),
+                               ('ctime', 96, 0x80), ('mtime', 112, 0x40)]:
+        if mask & bit:
+            seconds, nanos = struct.unpack_from('=qI', buf, offset)
+            assert nanos < 1_000_000_000
+            result[name] = seconds * 1_000_000_000 + nanos
+    assert all(name in result for name in ['atime', 'ctime', 'mtime'])
+    return result
+
+
+def main():
+    action, root_arg, report_arg = sys.argv[1:]
+    root, report = Path(root_arg), Path(report_arg)
+    path = root / 'auto-times-renamed'
+    if action == 'verify':
+        saved = json.loads(report.read_text())
+        actual = observe(path)
+        expected = saved['final']
+        differences = {key: [value, actual.get(key)] for key, value in expected.items()
+                       if actual.get(key) != value}
+        print('AUTOMATIC_TIMESTAMPS_REMOUNT ' + json.dumps({
+            'differences': differences, 'before': expected, 'after': actual}), flush=True)
+        if differences:
+            print('AUTOMATIC_TIMESTAMPS_PERSISTENCE_LIMITATION', flush=True)
+        else:
+            print('AUTOMATIC_TIMESTAMPS_PERSISTED_PASS', flush=True)
+        return
+    assert action == 'exercise'
+    path = root / 'auto-times'
+    path.write_bytes(b'owned timestamp fixture\n')
+    created = observe(path)
+    time.sleep(1.1)
+    with path.open('ab') as stream:
+        stream.write(b'ordinary write\n')
+        stream.flush()
+        os.fsync(stream.fileno())
+    written = observe(path)
+    time.sleep(1.1)
+    path.chmod(0o640)
+    changed = observe(path)
+    time.sleep(1.1)
+    renamed = path.with_name('auto-times-renamed')
+    path.rename(renamed)
+    moved = observe(renamed)
+    # Force a stale atime, making this check independent of relatime's window.
+    os.utime(renamed, ns=(1_000_000_000, moved['mtime']))
+    before_read = observe(renamed)
+    assert renamed.read_bytes() == b'owned timestamp fixture\nordinary write\n'
+    final = observe(renamed)
+    checks = {
+        'write_updates_mtime': written['mtime'] > created['mtime'],
+        'write_updates_ctime': written['ctime'] > created['ctime'],
+        'chmod_updates_ctime': changed['ctime'] > written['ctime'],
+        'chmod_preserves_mtime': changed['mtime'] == written['mtime'],
+        'rename_updates_ctime': moved['ctime'] > changed['ctime'],
+        'rename_preserves_mtime': moved['mtime'] == changed['mtime'],
+        'read_updates_stale_atime': final['atime'] > before_read['atime'],
+        'read_preserves_mtime': final['mtime'] == before_read['mtime'],
+        'read_preserves_ctime': final['ctime'] == before_read['ctime'],
+    }
+    snapshots = [created, written, changed, moved, before_read, final]
+    if 'btime' in created:
+        checks['birthtime_stable'] = all(s.get('btime') == created['btime'] for s in snapshots)
+    result = {'checks': checks, 'birthtime_exposed': 'btime' in created,
+              'snapshots': snapshots, 'final': final}
+    report.write_text(json.dumps(result, sort_keys=True) + '\n')
+    print('AUTOMATIC_TIMESTAMPS_OBSERVATIONS ' + json.dumps(result, sort_keys=True), flush=True)
+    print('AUTOMATIC_TIMESTAMPS_SEMANTICS_' + ('PASS' if all(checks.values()) else 'LIMITATION'), flush=True)
+
+
+if __name__ == '__main__':
+    main()

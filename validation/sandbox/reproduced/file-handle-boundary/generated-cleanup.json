@@ -1,0 +1,29 @@
+[
+  {
+    "run": "/tmp/conglobate-file-handle-v1",
+    "retained": "validation/sandbox/reproduced/file-handle-own-control",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-file-handle-boundary-v1",
+    "retained": "validation/sandbox/reproduced/file-handle-errno-negative",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-file-handle-boundary-v2",
+    "retained": "validation/sandbox/reproduced/file-handle-boundary",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  }
+]

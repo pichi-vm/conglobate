@@ -1,0 +1,12 @@
+{
+  "outputs": {
+    "acl-patched": "f9812cc433f8cf37bc350c8fd1af222771e49d72c98e9930c913659ebb2cf867",
+    "libfuse3.so.4": "a702930e895cc9f439477f0e1698a53cb805d49110d75e644cb693c7e752827f"
+  },
+  "worker_source_matches_prior_pair": true,
+  "limits": [
+    "Host compiler, headers, tools and Meson module are provisioned inputs.",
+    "Release aclocal.m4 and auxiliary scripts are not bootstrapped.",
+    "Fresh-path binaries need new behavior validation; byte identity is not claimed."
+  ]
+}

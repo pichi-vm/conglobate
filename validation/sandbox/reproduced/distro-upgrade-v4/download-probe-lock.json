@@ -1,0 +1,16 @@
+[
+  {
+    "release": 43,
+    "url": "https://dl.fedoraproject.org/pub/fedora/linux/releases/43/Everything/x86_64/os/Packages/d/dbus-1.16.0-4.fc43.x86_64.rpm",
+    "path": "rpms43/dbus-1.16.0-4.fc43.x86_64.rpm",
+    "bytes": 7657,
+    "sha256": "f349474f863c52809233344abe6c27e12049034714a91a661e3ec9b8ac3e5a33"
+  },
+  {
+    "release": 44,
+    "url": "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/d/dbus-1.16.2-1.fc44.x86_64.rpm",
+    "path": "rpms44/dbus-1.16.2-1.fc44.x86_64.rpm",
+    "bytes": 7649,
+    "sha256": "95e855674c4e3a419335f5b110ef1931a8df1635c9276ec468c1cc34381e6620"
+  }
+]

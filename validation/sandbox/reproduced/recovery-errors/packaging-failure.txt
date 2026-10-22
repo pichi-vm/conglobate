@@ -1,0 +1,1 @@
+First attempt: /tmp/conglobate-recovery-errors-v1. gzip exited1 with Disk quota exceeded while producing initramfs.gz. No guest ran; not a runtime test failure. Redundant generated images from two completed, evidence-matched runs removed; retry used a fresh output directory.

@@ -1,0 +1,21 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'echo "GUEST_EXIT $?"; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount -t tmpfs tmpfs /work
+echo supervisor-canary >/supervisor-secret
+chmod 644 /supervisor-secret
+for mode in vulnerable safe; do
+ root=/work/$mode
+ mkdir -p "$root/bin" "$root/usr/bin" "$root/lib64" "$root/.old"
+ cp /usr/bin/bash "$root/bin/bash"
+ cp /usr/bin/cat "$root/bin/cat"
+ cp -a /usr/lib64/. "$root/lib64/"
+ cp /check "$root/usr/bin/python3"
+ chmod 755 "$root/usr/bin/python3"
+ EVIL_SETUP=must-not-inherit unshare --user --mount --pid --net --ipc --uts --fork --map-users 0:100000:65536 --map-groups 0:100000:65536 --setuid 0 --setgid 0 /bin/bash /launch "$mode" 9</supervisor-secret
+done
+echo ENTRY_ORDERING_VALIDATION_PASS

@@ -1,0 +1,57 @@
+[
+  {
+    "path": "sources/Cargo.lock",
+    "bytes": 50062,
+    "sha256": "6f42a8b05c535116071bd0e7329076c5c69e064c04e69136325526cbe0fdfa59"
+  },
+  {
+    "path": "sources/DESIGN.md",
+    "bytes": 53561,
+    "sha256": "8217469c03182d019c5bc306a82db09824dd99f5d38edb9be4bfc548755aa733"
+  },
+  {
+    "path": "sources/carapace-assemble.rs",
+    "bytes": 27096,
+    "sha256": "04dab6f5c24f9b3e1fea76ca931a193c49c612cfe0af35bff398edcaa733bec2"
+  },
+  {
+    "path": "sources/carapace-snapshot.rs",
+    "bytes": 4709,
+    "sha256": "f3c2b136c7e3b9dca78b2e5a8c3e520ff006bb6b0d04b0e7aa8e05bf0f89e50b"
+  },
+  {
+    "path": "sources/src/build.rs",
+    "bytes": 19214,
+    "sha256": "80feac5d37f0a59fd07726787754c58dbd5b09deb7498a8b380908d4cf167c7f"
+  },
+  {
+    "path": "sources/src/cache.rs",
+    "bytes": 6855,
+    "sha256": "12ac8be911e1b803149c6603c3a177d923f461f4d50160bd38eab565bf616260"
+  },
+  {
+    "path": "sources/src/scute.rs",
+    "bytes": 13352,
+    "sha256": "f91e4821a4b0351d1ed20a9fdfeef73617c274895fc1697a9315b3154e810815"
+  },
+  {
+    "path": "sources/validation/sandbox/chain-header/README.txt",
+    "bytes": 1939,
+    "sha256": "70cc10512b8ab08527006cadf3295881575a95b5bd1f61498e6e8a14e7ddee65"
+  },
+  {
+    "path": "sources/validation/sandbox/chain-publication/README.txt",
+    "bytes": 5860,
+    "sha256": "53e1c75c9acd3b6a451a97f496c2ca5c367c46af91ffd47afd82039e8ef30c2a"
+  },
+  {
+    "path": "sources/validation/sandbox/exception-kernel/README.txt",
+    "bytes": 5157,
+    "sha256": "e17db202c39991494f4ba13dcc10fc170135827f865e65ba8a785ff70d9de35f"
+  },
+  {
+    "path": "sources/validation/sandbox/input-admission/CONTRACT.txt",
+    "bytes": 4952,
+    "sha256": "2d3a5c4f649d39cfe6c07262467166cf1ae7142472ce338b2c014b218624eb6c"
+  }
+]

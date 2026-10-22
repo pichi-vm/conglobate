@@ -1,0 +1,12 @@
+#!/bin/bash
+set -eu
+printf 'ready\n' >/work/ready
+for ((i=0;i<1200;i++)); do test -e /work/go && break; sleep .05; done
+test -e /work/go
+mount --make-rprivate /
+mount --bind /work/view /work/view
+mount -t proc -o nosuid,nodev,noexec proc /work/view/proc
+mount -t tmpfs -o nosuid,noexec tmpfs /work/view/dev
+# No runtime device nodes are needed by this bounded command; stdin is already
+# the trusted /dev/null handle and output is a pipe.
+exec /entry-helper /work/view /command --restricted

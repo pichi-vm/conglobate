@@ -1,0 +1,9 @@
+{
+  "run": "/tmp/conglobate-namespace-query-v1",
+  "retained": "validation/sandbox/reproduced/namespace-query",
+  "removed_generated": [
+    "root",
+    "initramfs.gz",
+    "vmlinuz"
+  ]
+}

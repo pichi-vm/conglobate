@@ -1,0 +1,61 @@
+Proc and command-local anonymous descriptors
+===========================================
+Scope: finite review of the exercised launcher, plus ordinary bounded operations
+in two restricted command steps. Kernel correctness remains trusted. This is not
+an exhaustive syscall review or a new production restriction policy.
+
+Source-grounded boundary
+-----------------------
+entry/helper/src/main.rs enumerates trusted proc FDs before pivot_root, closes
+FDs>=3 after detaching the old root, clears command environment and applies the
+candidate filter before exec. Its single-threaded premise matters. policy/launch
+mounts private PID proc and private dev/devpts; /dev/null is the one supplied
+non-PTY device. driver.py supplies owned null/pipe standard streams and specific
+synthetic inherited handles, and checks the original supervisor objects after
+both steps. The existing positive namespace-only control can use those handles;
+the restricted control cannot. This is the authority boundary being tested.
+
+The filter denies pidfd_getfd, ptrace, process_vm operations, namespace/mount
+acquisition and io_uring_setup/bpf/perf_event_open/userfaultfd as recorded in
+prior interface reviews. Closing inherited descriptors remains necessary even
+for APIs whose creation syscall is denied. Proc FD reopening is permitted;
+closing a leaked trusted FD only after image code runs would be too late.
+
+New runtime evidence
+--------------------
+Reproduce:
+ python3 validation/sandbox/guest.py policy \
+   --kernel-version 7.2.10-200.fc44.x86_64 \
+   --out /tmp/conglobate-policy-anonymous-NEW --run
+Retained: reproduced/policy-anonymous (guest exit zero).
+
+Both restricted steps pass:
+* Create a small owned memfd, reopen only that FD via /proc/self/fd, verify inode
+  and contents and independent file offset. Seal against writes/size changes;
+  an attempted one-byte write fails EPERM and contents remain unchanged.
+* Create a nonblocking eventfd, register with epoll, duplicate it, write count3
+  through the duplicate and consume that exact count through the original.
+* Register a nonblocking one-shot timerfd, arm for10ms, require readiness within
+  one second and consume exactly one expiration. No readiness remains afterward.
+* Close owned descriptors and verify the proc FD-number set returns to baseline.
+The full existing policy fixture, including supervisor canaries, inherited FD
+closure, owned streams and command-local socket FD transfer, also passes.
+
+Interpretation and limits
+-------------------------
+Anonymous-object compatibility is not a claim that user namespaces independently
+isolate every FD. Inheritance, reachable peers and proc visibility determine which
+objects commands can address. New objects consume kernel memory/FDs and can retain
+resources; teardown and limits remain separate existing lifecycle/pressure gates.
+No pressure claim follows from this tiny bounded test. FD-set restoration is a
+fixture leak check, not a kernel object lifetime proof.
+
+inotify/signalfd are not denied explicitly, and no direct use is present in the
+reviewed Rust executor/helper/build-admission sources. Library internals and image
+programs can use them. This run does not qualify those APIs or propose denying
+them: inotify must be assessed against accessible filesystem paths, signalfd
+against signal/process ownership, and both against descriptor inheritance/lifetime.
+Existing process and pathname tests remain relevant; no new supervisor peer or
+handle is intentionally exposed by this fixture. Final runtime selection and
+actual-executor reruns remain outstanding, as do the filesystem semantics blocker
+and identity allocation/reuse contract.

@@ -1,0 +1,84 @@
+mkosi comparison for the FUSE decision — 2026-10-21
+
+Source audit, not a new runtime test. GitHub main resolved to
+f7e32882d26e2c5f3daba48e1aff5b411e6b4d92, matching the earlier audit.
+Fresh selected sources and SHA256 manifest: /tmp/conglobate-mkosi-platform-review.
+Earlier complete source tree: /tmp/conglobate-mkosi-audit.
+Pinned source base:
+https://github.com/systemd/mkosi/tree/f7e32882d26e2c5f3daba48e1aff5b411e6b4d92
+
+Result
+mkosi does not supply a transparent remedy for our remaining mapped-FUSE
+restrictions. It combines directory-tree construction, user namespaces,
+offline image creation, explicitly limited rootless behavior, and rootful
+execution for some cases. These are useful design precedents, not evidence
+of hostile-recipe isolation with complete privileged filesystem semantics.
+
+Storage
+context.py rootoptions() supplies a directory bind or overlay. __init__.py
+make_image() invokes systemd-repart --root=/buildroot --offline=yes by default.
+The final disk therefore need not be the filesystem on which scripts ran.
+The manual requires rootful RepartOffline=no for XFS+SELinux and repart
+Subvolumes. Rebuilding from a directory is not equivalent to extending our
+existing block snapshot while preserving arbitrary inherited metadata.
+
+Ownership
+Startup tries systemd-nsresourced delegated/foreign ranges; fallback supports
+single-user mappings. sandbox.py seccomp_suppress() can make chown syscalls
+return success without performing them. Activation is conditional on the
+mapping and requested suppression; package managers request it, scripts opt
+in through MKOSI_CHROOT_SUPPRESS_CHOWN. This is not fakeroot metadata recording:
+suppressed intended owners are not stored for later restoration by that filter.
+The manual suggests root/multiple mappings or boot-time service/tmpfiles setup.
+Our tested FUSE UID/GID round trips should be retained, not replaced by no-ops.
+
+SELinux
+run_selinux_relabel() runs setfiles with the target binary policy and target
+file_contexts. SELinuxRelabel=yes makes failure fatal; auto ignores command
+failure. The manual explicitly documents unprivileged failure for labels
+unknown to the host policy, suggesting root or a matching policy.
+Target-policy-driven final labeling is useful but does not bypass permission
+checks or preserve arbitrary author-written labels by definition. Our tested
+FUSE foreign-label path already addresses a case mkosi's rootless path limits.
+
+Special xattrs
+sandbox.py mounts overlayfs with userxattr, avoiding trusted.overlay metadata
+for its own overlay. It does not generally translate trusted.* for programs.
+tree.py copy_tree() conditionally omits xattr preservation when SELinux/IMA
+attributes meet its overlay/non-root checks. This is an explicit compatibility
+compromise; it cannot be adopted as silent metadata loss in conglobate.
+
+Devices
+DevOperation creates private runtime tmpfs and bind mounts selected existing
+device nodes, with devpts and FD links. It does not require commands to mknod
+those runtime devices. That pattern is reusable with our own narrower device
+policy. It does not solve author-requested persistent device nodes in an image.
+Do not copy mkosi's exposed /dev/fuse or /proc/kcore link without our own review.
+
+Flags
+The inspected tree-copy path explicitly handles FS_NOCOW_FL. No general
+immutable/append-only emulation or deferred restoration mechanism was found
+in these paths. Do not infer support from a successful mkosi distro build.
+Our existing inability to clear inherited restrictive flags remains material.
+
+Trust and portability
+mkosi's rootless machinery needs Linux facilities rather than nested KVM.
+Its setup and script helpers do not establish our required supervisor/command
+boundary. In particular, rootful execution as the documented escape hatch
+for metadata limits is not permission to grant our commands initial-userns
+capabilities. This audit neither alleges mkosi is insecure for its intended
+use nor certifies any conglobate confinement policy from its implementation.
+
+Recommendations
+Retain FUSE as the leading candidate. Reuse the distinction between temporary
+runtime devices and persistent image contents. Use full UID/GID mapping and
+our demonstrated metadata fidelity. Allow authors to run target-policy setfiles
+without making a final relabel a substitute for arbitrary labeling support.
+Do not adopt silent chown success, dropped xattrs, or ignored labeling failures.
+
+Next investigate actual package/phase incidence of the remaining restrictions:
+trusted.* (including inherited stores), persistent devices and clearing/setting
+immutable or append-only flags. Successful common distro builds would establish
+practical coverage, not remove those limitations or authorize a requirements
+waiver. Any trusted metadata API must state how ordinary tools invoke it and
+how reads/enforcement behave; finalization alone does not supply that contract.

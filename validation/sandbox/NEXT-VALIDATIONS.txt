@@ -1,0 +1,82 @@
+Remaining validation dependencies after the workload/control follow-ups
+======================================================================
+Scope reconciliation, not a completion verdict. The21 numbered requirements in
+SANDBOX-VALIDATION.txt remain authoritative, including its explicit separation
+of prototype validation from after-implementation executor reruns.
+
+Recent gates actually closed in their stated scope
+--------------------------------------------------
+Paired runtime mount preflight and ordinary setup-error teardown; command-local
+anonymous descriptors; single-scute and restricted-derived two-scute corium root
+boots; repository-solved Fedora43->44 distribution transaction and kernel remount;
+live coordinator socket exclusion during success and accepted cancellation.
+Their sources/logs and limitations are indexed; none resolves backend semantics.
+
+Unresolved architecture choices and their dependent tests
+---------------------------------------------------------
+1. Required filesystem semantics (area11): the mapped-FUSE boundary cannot
+   provide the tested trusted.* attributes, immutable/append changes and device
+   operations. Further successful package runs cannot establish those missing
+   semantics. A different boundary must preserve them. UML remains a proposed
+   investigation, not an accepted architecture or an executed prototype. Do not
+   silently waive these requirements or deploy an alternative to close a box.
+   Once a candidate is chosen: repeat the failing semantic matrix first, then
+   port the restriction/process/metadata/workload/lifecycle tests it affects.
+2. Identity ownership (8/20): no reserved pool/allocation/reuse protocol is
+   adopted. Fixed numeric ranges in fixtures are not an allocator. Select the
+   environment-provided pool and coordinator ownership rule, then validate
+   concurrent assignment, retained resources, complete release and interrupted
+   registration/recovery. Key residue is not a bypass of the tested key-API deny.
+3. Coordinator/recovery selection (14–18): passing normal/cancel/death/OOM
+   prototypes do not choose a final composition. Keep authoritative lifetime
+   handles; an unlocked lease or reused numeric PID is insufficient. Once the
+   composition is selected, enumerate its concrete transitions and test those;
+   do not keep inventing unnamed phase combinations or promise kernel I/O bounds.
+4. Runtime/profile adoption (1–4/7/19/21): qualification must name actual worker,
+   loader/config/device/descriptor ownership and maintenance. The existing
+   binary/appliance contract already assigns startup trust and future full-
+   runtime attestation to the environment. A new standalone self-measurement
+   inventory schema is NOT an unresolved requirement. Child runtime protection
+   and real recipe/inventory/control integration remain binary obligations.
+
+Work that does not require choosing a new filesystem backend
+-----------------------------------------------------------
+- Candidate carapace recovery now has compound snapshot/shared-reader evidence
+  at all four activation-death boundaries (COMPOUND-RECOVERY.txt). Two-process
+  recovery/reuse and ordered reader release also pass (CONCURRENT-RECOVERY.txt).
+  Maintained adoption and selected ownership protocol remain distinct. Local/pinned carapace is99caf7941ac8930a5761f6f843b6d8e53dd89587;
+  the incomplete-activation correction is only applied by the validation copy
+  builder. RECOVERY-CANDIDATE.txt and COMPOUND-RECOVERY.txt state the bounded
+  passed states. Repeating them would not establish maintained adoption.
+- Small policy-fixture standard-stream failure checks now pass: output-limit,
+  descendant-held pipe and launcher-held pipe timeouts (COLLECTOR-FAILURES.txt).
+  Generic executor logger integration remains deferred; do not reopen these
+  completed bounded checks or treat pipe EOF as publication authority.
+- Input admission is reconciled in input-admission/CONTRACT.txt: existing
+  authentication/header/kernel interpretation checks are distinct, and no extra
+  canonical exception parser is required by the design. Actual supported-format
+  error propagation and publication eligibility still need final-executor
+  integration; existing arithmetic/malformed-layer/extent probes remain valid.
+- A real VPN-only hostname is still needed from the user for that requested
+  DNS integration check. Synthetic split DNS and public lookup are already
+  demonstrated. Do not guess private names or label another public lookup VPN.
+
+Deferred rather than silently missing
+------------------------------------
+The original checklist explicitly requires after-implementation reruns against
+the real executor. Prototype evidence cannot satisfy those reruns in advance.
+Hardware attestation and appliance transport are explicitly deferred. Fully
+rootless assembly is conditional on selection; it is not a new mandatory target.
+Booting the upgraded output, arbitrary layer depth, all-service health and every
+possible kernel syscall are not new requirements introduced by the recent tests.
+Their absence limits those claims; it does not justify endless replacement gates.
+
+The full goal remains incomplete. These distinctions preserve its scope and
+identify where executable tests can make progress versus where an architecture
+choice is necessary. The named independent recovery, collector and admission
+follow-ups above are now recorded as completed within their stated scopes.
+They are not remaining work that can substitute for the backend decision.
+Next decision: investigate a bounded UML prototype, or compare other filesystem
+isolation boundaries first. Neither choice constitutes adoption. The actual
+VPN-only DNS check separately awaits a hostname. Final-executor reruns remain
+after-implementation work, not runnable prototype checks being deferred here.

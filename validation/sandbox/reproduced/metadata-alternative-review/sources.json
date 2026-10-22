@@ -1,0 +1,45 @@
+{
+  "revision": "8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb",
+  "files": {
+    "pkg/sentry/fsimpl/gofer/xattr.go": {
+      "url": "https://raw.githubusercontent.com/google/gvisor/8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb/pkg/sentry/fsimpl/gofer/xattr.go",
+      "sha256": "cf807ddf71cc0176e34d7f9f6ed1bf7391682d712302b91a0dee66f1d2ae4f94"
+    },
+    "pkg/sentry/fsimpl/gofer/filesystem.go": {
+      "url": "https://raw.githubusercontent.com/google/gvisor/8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb/pkg/sentry/fsimpl/gofer/filesystem.go",
+      "sha256": "2ca5355bb7c7610183143a331c8275bc4ab6a1c17a20958f1783e62d7310d608"
+    },
+    "pkg/sentry/fsimpl/gofer/regular_file.go": {
+      "url": "https://raw.githubusercontent.com/google/gvisor/8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb/pkg/sentry/fsimpl/gofer/regular_file.go",
+      "sha256": "461044dc7a308cfaefee5b97c9361508dbecb3ceb178d7b8be1c73a9a0f7720c"
+    },
+    "runsc/fsgofer/lisafs.go": {
+      "url": "https://raw.githubusercontent.com/google/gvisor/8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb/runsc/fsgofer/lisafs.go",
+      "sha256": "9e3bd847c10d5e17dcfe0a49498da8c608189fc554029fbd7879fa0c69242cf4"
+    },
+    "LICENSE": {
+      "url": "https://raw.githubusercontent.com/google/gvisor/8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb/LICENSE",
+      "sha256": "0fbab5c58efbdf6d31e8085214f2dd821659c03d73cff3ed2b08e98826ea1cd9"
+    },
+    "g3doc/user_guide/filesystem.md": {
+      "url": "https://raw.githubusercontent.com/google/gvisor/8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb/g3doc/user_guide/filesystem.md",
+      "sha256": "08f4dbd4fc665b0ec8750d86bbc4c283e64046eaf1c955443fb79458c43f68d8"
+    },
+    "pkg/sentry/fsimpl/gofer/inode_impl.go": {
+      "url": "https://raw.githubusercontent.com/google/gvisor/8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb/pkg/sentry/fsimpl/gofer/inode_impl.go",
+      "sha256": "c6eb426942557c2636cc3194b20cddafdb4e1b059cee4d22b08b27f5aeb48304"
+    },
+    "pkg/sentry/fsimpl/gofer/lisafs_inode.go": {
+      "url": "https://raw.githubusercontent.com/google/gvisor/8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb/pkg/sentry/fsimpl/gofer/lisafs_inode.go",
+      "sha256": "4d163c4df0751f2048d888504411709f51bf5f705627c9896062212cb3b4f3a8"
+    },
+    "pkg/sentry/fsimpl/gofer/directfs_inode.go": {
+      "url": "https://raw.githubusercontent.com/google/gvisor/8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb/pkg/sentry/fsimpl/gofer/directfs_inode.go",
+      "sha256": "4a00e042f6e4e13002057df100cd99f924cb3ff1a04040d4f96d3c3cd69c958b"
+    },
+    "pkg/sentry/fsimpl/gofer/gofer.go": {
+      "url": "https://raw.githubusercontent.com/google/gvisor/8a05f48c4c1b1da0bbb360abf8df41ca9302cfbb/pkg/sentry/fsimpl/gofer/gofer.go",
+      "sha256": "64528bf55f698569caeaf7ba33ed16c71c531f4446ed652098a4927a202cc636"
+    }
+  }
+}

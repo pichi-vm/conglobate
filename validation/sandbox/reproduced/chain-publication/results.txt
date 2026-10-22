@@ -1,0 +1,30 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 904deb830b943be12af10faa4822550c1dbee353 sha256:f70a5b6c0ce014dbe190b8da1acdfc366268e16455bffc05f9ece08af04d37b4
+CHAIN_RESTRICTED_COMMAND_PASS
+CHAIN_COMMAND_DESCENDANTS_STOPPED_WORKER_ALIVE
+FUSE2FS (dm-3): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-3): mounted filesystem 3ce48a35-6b87-40a7-8938-fca1acce9035.
+FUSE2FS (dm-3): unmounting filesystem 3ce48a35-6b87-40a7-8938-fca1acce9035.
+FUSE_DERIVED_LAYER_SEALED
+CHAIN_ROUND_SEALED 1
+DERIVED_CHAIN_RESTAGED
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/verified: 53/16384 files (3.8% non-contiguous), 26565/65536 blocks
+DERIVED_KERNEL_FILESYSTEM_PASS
+POST_STAGE_CORRUPTION_REJECTED Err(Io(Os { code: 5, kind: InputOutputError, message: "Input/output error" }))
+POST_STAGE_RESTORATION_READ_PASS
+BASE_SCUTE_UNCHANGED_PASS
+CHAIN_COMMITTED_INVENTORY_PUBLICATION_PASS
+CHAIN_PUBLICATION_MATRIX_PASS
+GUEST_EXIT 0
+[   28.476620] sysrq: Resetting

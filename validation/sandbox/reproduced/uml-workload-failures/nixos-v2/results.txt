@@ -1,0 +1,232 @@
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+SERVERS_READY
+SERVERS_READY
+BUILDER_ENDPOINT_POSITIVE_CONTROL_PASS
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+Core dump limits :
+	soft - 0
+	hard - NONE
+Checking that ptrace can change system call numbers...OK
+Checking syscall emulation for ptrace...OK
+Checking environment variables for a tempdir.../runtime
+Checking if /runtime is on tmpfs...OK
+Checking PROT_EXEC mmap in /runtime...OK
+Adding 164270080 bytes to physical memory to account for exec-shield gap
+Linux version 6.12.101 (sbuild@sbuild) (gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #1 Wed Aug 12 05:59:36 UTC 2026
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x0000000169ca8fff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x0000000109ca8fff]
+Initmem setup node 0 [mem 0x0000000000000000-0x0000000109ca8fff]
+random: crng init done
+Kernel command line: mem=4096M con=null con0=fd:0,fd:1 ssl=null lsm=capability panic=1 rdinit=/init initrd=/initrd uml_dir=/runtime ubd0=/disk eth0=tuntap,tap0 root=98:0 console=tty0
+Unknown kernel command line parameters "mem=4096M uml_dir=/runtime", will be passed to user space.
+Dentry cache hash table entries: 524288 (order: 10, 4194304 bytes, linear)
+Inode-cache hash table entries: 262144 (order: 9, 2097152 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 1088681
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+RCU Tasks Trace: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.
+NR_IRQS: 64
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 5864.65 BogoMIPS (lpj=29323264)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+LSM: initializing lsm=capability
+Mount-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+Mountpoint-cache hash table entries: 8192 (order: 4, 65536 bytes, linear)
+Memory: 3969160K/4354724K available (7160K kernel code, 1552K rwdata, 2300K rodata, 229K init, 336K bss, 383388K reserved, 0K cma-reserved)
+devtmpfs: initialized
+futex hash table entries: 256 (order: 1, 6144 bytes, linear)
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+audit: initializing netlink subsys (disabled)
+audit: type=2000 audit(1792590581.746:1): state=initialized audit_enabled=0 res=1
+raid6: int64x8  gen()  3875 MB/s
+raid6: int64x4  gen()  4160 MB/s
+raid6: int64x2  gen()  6165 MB/s
+raid6: int64x1  gen()  6427 MB/s
+raid6: using algorithm int64x1 gen() 6427 MB/s
+raid6: .... xor() 3229 MB/s, rmw enabled
+raid6: using intx1 recovery algorithm
+NetLabel: Initializing
+NetLabel:  domain hash size = 128
+NetLabel:  protocols = UNLABELED CIPSOv4 CALIPSO
+NetLabel:  unlabeled traffic allowed by default
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 65536 (order: 7, 524288 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 2048 (order: 2, 16384 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 32768 (order: 6, 262144 bytes, linear)
+TCP bind hash table entries: 32768 (order: 7, 524288 bytes, linear)
+TCP: Hash tables configured (established 32768 bind 32768)
+UDP hash table entries: 2048 (order: 4, 65536 bytes, linear)
+UDP-Lite hash table entries: 2048 (order: 4, 65536 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /runtime/probe/mconsole
+Checking host MADV_REMOVE support...OK
+Mapper v0.1
+mmapper_init - find_iomem failed
+Trying to unpack rootfs image as initramfs...
+workingset: timestamp_bits=46 max_order=20 bucket_order=0
+zbud: loaded
+JFS: nTxBlock = 8192, nTxLock = 65536
+SGI XFS with ACLs, security attributes, realtime, quota, no debug enabled
+xor: measuring software checksum speed
+   prefetch64-sse  : 24045 MB/sec
+   generic_sse     : 26208 MB/sec
+xor: using function: generic_sse (26208 MB/sec)
+Block layer SCSI generic (bsg) driver version 0.4 loaded (major 253)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+NET: Registered PF_PACKET protocol family
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+Choosing a random ethernet address for device eth0
+Netdevice 0 (82:bf:a3:7c:83:b6) : 
+TUN/TAP backend - 
+registered taskstats version 1
+Btrfs loaded, zoned=no, fsverity=no
+Freeing initrd memory: 137068K
+This architecture does not have kernel memory protection.
+Run /init as init process
+NET: Registered PF_INET6 protocol family
+Segment Routing with IPv6
+In-situ OAM (IOAM) with IPv6
+[?25l[0m[Knix (Nix) 2.35.3
+[K[?25hthis derivation will be built:
+  /nix/store/za81hibfhpi3fn9lj476dm1l591c72k0-uml-compile-validation.drv
+these 45 paths will be fetched (120.2 MiB download, 394.0 MiB unpacked):
+  /nix/store/j7gw09i8msa13fvpv20j98hp6id9k2ql-acl-2.4.0
+  /nix/store/zfsvnb0vxwck1hq55j4900f7rrpm5y9y-attr-2.6.0
+  /nix/store/jnyfsf2mp08d1xyz2m72ic2vz2kcx0sd-bash-5.3p9
+  /nix/store/g2i5zxslx9msaqjy14hdp2af064i9pbv-binutils-2.46
+  /nix/store/znsjfmcnjvwvj3ccm7zkhaksg6r2yj8m-binutils-2.46-lib
+  /nix/store/2gjbrb8nwqf1225n3zhca56s2rxrqqhx-binutils-wrapper-2.46
+  /nix/store/pddqhhpjip4p5l93nxdkvbmm23fp7fd9-bzip2-1.0.8
+  /nix/store/a7501p1w90nhbln9259viwql8m4mnbx5-bzip2-1.0.8-bin
+  /nix/store/bhv6xyvqw6gjs3j488gi1z6wdv18bdpa-coreutils-9.11
+  /nix/store/aqq53g5lgr9n9hxzmbblpfzds5z067ca-diffutils-3.12
+  /nix/store/3bvj5yzgwsf4dcl9cwnq81d94a3qs759-ed-1.22.5
+  /nix/store/vamvnrq8rdxgfqrqky2qlfwwldwkg8mx-expand-response-params
+  /nix/store/24ppwxxymwv6p22ag41mk4vvb79cmr0k-file-5.47
+  /nix/store/nl0wq6d4bpjrxmlax141liq0qr9z87gn-findutils-4.10.0
+  /nix/store/xbqis14s3fvckwlayc6vxvglws1v2mcw-gawk-5.4.1
+  /nix/store/s2f0mfx0iiap9yxmlfvq0psn26jsbind-gcc-15.3.0
+  /nix/store/dqj57l1prad38vjrad4bs9d977i4q5zm-gcc-15.3.0-lib
+  /nix/store/0vw7gvcazcjqc762x7vg3l31cpx65l7i-gcc-15.3.0-libgcc
+  /nix/store/dy6j7267wrgjlr2z748sbx83zj16vs3c-gcc-wrapper-15.3.0
+  /nix/store/fsd4vbp9zjd9iaicq2fb9lpc1h5j973y-glibc-2.42-100
+  /nix/store/kgd806ssw99qaxwiislhfx5dwnc8k893-glibc-2.42-100-bin
+  /nix/store/sr08dm9x0fsa1mrzjrlb3csdcmilsraz-glibc-2.42-100-dev
+  /nix/store/1sf1j6c8rbipp4yayll7vy6v4bpwz95y-gmp-6.3.0
+  /nix/store/xj8g46bl0ps12qw46gi9gacm493m3pff-gmp-with-cxx-6.3.0
+  /nix/store/9cijskzlh8l5lwqhk8r9hgwns76qrk5z-gnu-config-2024-01-01
+  /nix/store/cqhgy07rpxdwk9kd2qlc3cw4s9ajzm9f-gnugrep-3.12
+  /nix/store/q5wf35q7dabb5m8mszqjn3d55ff5c1pl-gnumake-4.4.1
+  /nix/store/0s17nja4n8b63by0nlg1m31mxn2bq1g1-gnused-4.10
+  /nix/store/rc7c5al4hdcv0dc42g1jabx2r68l45jq-gnutar-1.35
+  /nix/store/k1z3ys65nbrdc60975wajrj4xjwaqqm4-gzip-1.14
+  /nix/store/69vxm6ghyd02741nbsnal14f8rj4as2d-isl-0.20
+  /nix/store/l5y42bimjvvn8h3v5y40w13vv7y2p3k5-libidn2-2.3.8
+  /nix/store/m590d394alyh9kf7a9jk7kk9743rkfdq-libmpc-1.4.0
+  /nix/store/g6mvl9ns7k52zfv9pcfw3dbh65z3j7id-libunistring-1.4.2
+  /nix/store/9licwzbc8pzhrh43vz5wg137gky9anz3-linux-headers-6.18.7
+  /nix/store/cws4d1snbysh854az8fh7hfla0z3im3d-mpfr-4.2.2
+  /nix/store/2dcxwfz9n8xpzrnrfgnl0yz7dw0f60gz-patch-2.8
+  /nix/store/xdnaya02qicjfdczyjqwy2yl04b8x3pw-patchelf-0.15.2
+  /nix/store/04g5vymcgsnka23cxpl10q679g9yw6hv-pcre2-10.49
+  /nix/store/4lgbwpg4r41kcsms7nlwrzdlmhw83skj-stdenv-linux
+  /nix/store/yjrrxfjfrlp3ws38vqmlipy7xy3nzr88-update-autotools-gnu-config-scripts-hook
+  /nix/store/l1n6wi2lyzglvgzbwzw9n9w2pzkcj41i-xgcc-15.3.0-libgcc
+  /nix/store/v3imdn9s2021ssh45ps62kksg2d1k7xm-xz-5.8.4
+  /nix/store/fr31df17rksfki6nv00xq4s5apvqpyhw-xz-5.8.4-bin
+  /nix/store/6s4wm3zl2y0v5g998n2g88k1zh3vf2pr-zlib-1.3.2
+copying path '/nix/store/0vw7gvcazcjqc762x7vg3l31cpx65l7i-gcc-15.3.0-libgcc' from 'https://cache.nixos.org'...
+copying path '/nix/store/9cijskzlh8l5lwqhk8r9hgwns76qrk5z-gnu-config-2024-01-01' from 'https://cache.nixos.org'...
+copying path '/nix/store/9licwzbc8pzhrh43vz5wg137gky9anz3-linux-headers-6.18.7' from 'https://cache.nixos.org'...
+copying path '/nix/store/l1n6wi2lyzglvgzbwzw9n9w2pzkcj41i-xgcc-15.3.0-libgcc' from 'https://cache.nixos.org'...
+copying path '/nix/store/g6mvl9ns7k52zfv9pcfw3dbh65z3j7id-libunistring-1.4.2' from 'https://cache.nixos.org'...
+copying path '/nix/store/yjrrxfjfrlp3ws38vqmlipy7xy3nzr88-update-autotools-gnu-config-scripts-hook' from 'https://cache.nixos.org'...
+copying path '/nix/store/l5y42bimjvvn8h3v5y40w13vv7y2p3k5-libidn2-2.3.8' from 'https://cache.nixos.org'...
+copying path '/nix/store/fsd4vbp9zjd9iaicq2fb9lpc1h5j973y-glibc-2.42-100' from 'https://cache.nixos.org'...
+copying path '/nix/store/j7gw09i8msa13fvpv20j98hp6id9k2ql-acl-2.4.0' from 'https://cache.nixos.org'...
+copying path '/nix/store/zfsvnb0vxwck1hq55j4900f7rrpm5y9y-attr-2.6.0' from 'https://cache.nixos.org'...
+copying path '/nix/store/jnyfsf2mp08d1xyz2m72ic2vz2kcx0sd-bash-5.3p9' from 'https://cache.nixos.org'...
+copying path '/nix/store/pddqhhpjip4p5l93nxdkvbmm23fp7fd9-bzip2-1.0.8' from 'https://cache.nixos.org'...
+copying path '/nix/store/vamvnrq8rdxgfqrqky2qlfwwldwkg8mx-expand-response-params' from 'https://cache.nixos.org'...
+copying path '/nix/store/xbqis14s3fvckwlayc6vxvglws1v2mcw-gawk-5.4.1' from 'https://cache.nixos.org'...
+copying path '/nix/store/dqj57l1prad38vjrad4bs9d977i4q5zm-gcc-15.3.0-lib' from 'https://cache.nixos.org'...
+copying path '/nix/store/kgd806ssw99qaxwiislhfx5dwnc8k893-glibc-2.42-100-bin' from 'https://cache.nixos.org'...
+copying path '/nix/store/1sf1j6c8rbipp4yayll7vy6v4bpwz95y-gmp-6.3.0' from 'https://cache.nixos.org'...
+copying path '/nix/store/3bvj5yzgwsf4dcl9cwnq81d94a3qs759-ed-1.22.5' from 'https://cache.nixos.org'...
+copying path '/nix/store/q5wf35q7dabb5m8mszqjn3d55ff5c1pl-gnumake-4.4.1' from 'https://cache.nixos.org'...
+copying path '/nix/store/0s17nja4n8b63by0nlg1m31mxn2bq1g1-gnused-4.10' from 'https://cache.nixos.org'...
+copying path '/nix/store/04g5vymcgsnka23cxpl10q679g9yw6hv-pcre2-10.49' from 'https://cache.nixos.org'...
+copying path '/nix/store/v3imdn9s2021ssh45ps62kksg2d1k7xm-xz-5.8.4' from 'https://cache.nixos.org'...
+copying path '/nix/store/6s4wm3zl2y0v5g998n2g88k1zh3vf2pr-zlib-1.3.2' from 'https://cache.nixos.org'...
+copying path '/nix/store/a7501p1w90nhbln9259viwql8m4mnbx5-bzip2-1.0.8-bin' from 'https://cache.nixos.org'...
+copying path '/nix/store/rc7c5al4hdcv0dc42g1jabx2r68l45jq-gnutar-1.35' from 'https://cache.nixos.org'...
+copying path '/nix/store/k1z3ys65nbrdc60975wajrj4xjwaqqm4-gzip-1.14' from 'https://cache.nixos.org'...
+copying path '/nix/store/69vxm6ghyd02741nbsnal14f8rj4as2d-isl-0.20' from 'https://cache.nixos.org'...
+copying path '/nix/store/cws4d1snbysh854az8fh7hfla0z3im3d-mpfr-4.2.2' from 'https://cache.nixos.org'...
+copying path '/nix/store/xj8g46bl0ps12qw46gi9gacm493m3pff-gmp-with-cxx-6.3.0' from 'https://cache.nixos.org'...
+copying path '/nix/store/xdnaya02qicjfdczyjqwy2yl04b8x3pw-patchelf-0.15.2' from 'https://cache.nixos.org'...
+copying path '/nix/store/sr08dm9x0fsa1mrzjrlb3csdcmilsraz-glibc-2.42-100-dev' from 'https://cache.nixos.org'...
+copying path '/nix/store/cqhgy07rpxdwk9kd2qlc3cw4s9ajzm9f-gnugrep-3.12' from 'https://cache.nixos.org'...
+copying path '/nix/store/2dcxwfz9n8xpzrnrfgnl0yz7dw0f60gz-patch-2.8' from 'https://cache.nixos.org'...
+copying path '/nix/store/znsjfmcnjvwvj3ccm7zkhaksg6r2yj8m-binutils-2.46-lib' from 'https://cache.nixos.org'...
+copying path '/nix/store/24ppwxxymwv6p22ag41mk4vvb79cmr0k-file-5.47' from 'https://cache.nixos.org'...
+copying path '/nix/store/fr31df17rksfki6nv00xq4s5apvqpyhw-xz-5.8.4-bin' from 'https://cache.nixos.org'...
+copying path '/nix/store/m590d394alyh9kf7a9jk7kk9743rkfdq-libmpc-1.4.0' from 'https://cache.nixos.org'...
+copying path '/nix/store/bhv6xyvqw6gjs3j488gi1z6wdv18bdpa-coreutils-9.11' from 'https://cache.nixos.org'...
+copying path '/nix/store/g2i5zxslx9msaqjy14hdp2af064i9pbv-binutils-2.46' from 'https://cache.nixos.org'...
+copying path '/nix/store/aqq53g5lgr9n9hxzmbblpfzds5z067ca-diffutils-3.12' from 'https://cache.nixos.org'...
+copying path '/nix/store/nl0wq6d4bpjrxmlax141liq0qr9z87gn-findutils-4.10.0' from 'https://cache.nixos.org'...
+copying path '/nix/store/s2f0mfx0iiap9yxmlfvq0psn26jsbind-gcc-15.3.0' from 'https://cache.nixos.org'...
+copying path '/nix/store/4lgbwpg4r41kcsms7nlwrzdlmhw83skj-stdenv-linux' from 'https://cache.nixos.org'...
+copying path '/nix/store/2gjbrb8nwqf1225n3zhca56s2rxrqqhx-binutils-wrapper-2.46' from 'https://cache.nixos.org'...
+copying path '/nix/store/dy6j7267wrgjlr2z748sbx83zj16vs3c-gcc-wrapper-15.3.0' from 'https://cache.nixos.org'...
+[31;1merror:[0m
+       … while setting up the build environment
+
+       [31;1merror:[0m cannot pivot old root directory onto [35;1m"/nix/store/za81hibfhpi3fn9lj476dm1l591c72k0-uml-compile-validation.drv.chroot/root/real-root"[0m: [35;1mInvalid argument[0m
+Kernel panic - not syncing: Attempted to kill init! exitcode=0x00000100
+CPU: 0 UID: 0 PID: 1 Comm: init Not tainted 6.12.101 #1 
+Stack:
+ 00000002 60883ea3 6a883cd0 60700a6f
+ 6a883cb0 6087d0dd 00000001 60883ea3
+ 6071961c 00000001 6a883d00 6072532e
+Call Trace:
+ [<6071961c>] ? _printk+0x0/0x45
+ [<6002f66f>] show_stack+0x150/0x15f
+ [<60700a6f>] ? dump_stack_print_info+0x12f/0x13f
+ [<6071961c>] ? _printk+0x0/0x45
+ [<6072532e>] dump_stack_lvl+0x5c/0x77
+ [<60725363>] dump_stack+0x1a/0x1c
+ [<607186ca>] panic+0x143/0x366
+ [<60046c55>] ? um_set_signals+0x34/0x3a
+ [<60718587>] ? panic+0x0/0x366
+ [<60046b55>] ? block_signals+0x0/0xf
+ [<60051057>] do_exit+0x227/0xa5d
+ [<60046b64>] ? unblock_signals+0x0/0xbd
+ [<60059910>] ? zap_other_threads+0x45/0x94
+ [<60051b11>] sys_exit_group+0x0/0x16
+ [<60051b27>] pid_child_should_wake+0x0/0x42
+ [<60030d8e>] handle_syscall+0x79/0xa7
+ [<60049730>] userspace+0x4c3/0x4f2
+ [<6002e819>] ? interrupt_end+0x0/0xe0
+ [<6002e6c5>] new_thread_handler+0xaa/0xb1
+GUEST_EXIT 134
+[   45.349886] sysrq: Resetting

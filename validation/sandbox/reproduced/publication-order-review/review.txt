@@ -1,0 +1,83 @@
+Publication eligibility source audit, 2026-10-20
+===============================================
+Scope: exact source snapshots in sources.json plus referenced retained runtime
+experiments. This is a source audit, not a new guest failure-injection test.
+
+Current binary order
+--------------------
+1. Build::run calls Environment::derive, which returns Step::run status. The step
+   supervisor reaps its PID init and calls finish_step after mountpoint cleanup.
+   finish_step rejects cleanup errors even if command status was successful;
+   command failure is preserved when cleanup also fails.
+2. Carapace stage calls Filesystem::finish (checked ordinary umount) before
+   Snapshot::finish. Snapshot checks sync/status, suspends mapping, drops its
+   device/loop/origin handles, trims COW and seals. This is the kernel-mounted
+   executor, not the experimental FUSE worker implementation.
+3. Build::run constructs inventory, Artifact::finalize validates manifest/blobs
+   and inventory relationships, then checks cancellation and calls publish.
+4. Artifact::publish checks inventory presence, stages a copy in a private
+   sibling directory, syncs copied files/directories, checks cancellation, then
+   renameat_with(NOREPLACE) makes destination visible. Its signature carries no
+   worker/process cleanup completion evidence; the caller owns that obligation.
+5. Build::run returns Ok only after publish, but Scratch remains in scope during
+   publication. Scratch::drop attempts lazy detach and ignores its result;
+   rollback Drop handlers also have best-effort semantics. Therefore final scratch
+   cleanup errors cannot revoke publication or turn this path into a returned
+   build error. This ordering alone does NOT prove corrupted output or leaked
+   command writers: checked per-step and filesystem barriers occur earlier.
+
+Existing experimental evidence
+------------------------------
+- artifact-cancellation-boundary: handler-observed cancellation before final
+  check rejects; after it can still publish. A second check cannot eliminate
+  the final check/rename interval.
+- artifact-death: pre-rename death leaves private staging but no destination;
+  post-rename death leaves complete output without a success response.
+- chain-rust-complete: publication precedes outer init's final descendant check.
+  It passed with one adopted zombie reaped, but a failed late check would not
+  automatically remove or invalidate the already visible output.
+- chain-launcher-rust(-blocked): active-owner death prevents sealing/publication
+  at the tested early phase; this is not a publication-time ownership test.
+
+Checked regression
+------------------
+Command executed in this audit:
+  cargo test --locked --lib cleanup_failure_keeps_child_status_and_stays_fatal -- --exact execute::tests::cleanup_failure_keeps_child_status_and_stays_fatal
+Observed: one test passed, zero failed, eleven filtered out. This checks error
+aggregation, not namespace teardown or a real unmount failure.
+
+Requirements for the candidate completion protocol (not implemented here)
+-------------------------------------------------------------------------
+A. Establish no active recipe writers before export or filesystem finalization.
+B. Require trusted worker/backend successful flush and shutdown, then seal and
+   verify immutable output. Merely observing worker exit 0 is insufficient for
+   the currently known backend error-reporting limitations.
+C. Retain explicit trusted ownership of sealed bytes and private publication
+   staging while execution resources are cleaned up. A supervisor outside the
+   build PID namespace can own final publication; do not kill the sole holder of
+   needed tmpfs output before it has transferred/copied the bytes.
+D. Validate all completion conditions that can reject the build before the
+   destination rename. A post-publication descendant check cannot enforce this.
+   Resource cleanup errors need an explicit result, not only ignored Drop errors.
+E. Define cancellation/commit ordering: before the committed transition, abort
+   leaves no destination; after it, a complete artifact may exist even if response
+   delivery fails. Do not claim both a universally effective late cancellation
+   and atomic publication based on the existing cooperative flag.
+F. Separate committed output from acknowledgment. If the process dies after
+   rename, callers need an unambiguous way to inspect the resulting artifact;
+   blindly retrying must not replace a pre-existing destination. Current
+   NOREPLACE protects the latter, not response/commit reconciliation.
+G. Keep inventory claims tied to actual measured inputs/verified outputs. A
+   runtime completion acknowledgment and eventual appliance attestation are
+   separate from the already emitted inventory, unless their format explicitly
+   says otherwise. No attestation claim is introduced here.
+
+Still required before declaring these areas complete
+----------------------------------------------------
+Select/implement the trusted completion protocol and test actual late worker
+failure, leftover descendants, cleanup failure, owner death during transfer,
+cancellation around commit and death after commit/before response. Test private
+staging cleanup/recovery and concurrent destination collisions with that protocol.
+Existing local artifact tests and prototype lifetime tests cannot substitute for
+these combined tests. This audit neither approves production sandbox security nor
+changes the publication API or attestation format.

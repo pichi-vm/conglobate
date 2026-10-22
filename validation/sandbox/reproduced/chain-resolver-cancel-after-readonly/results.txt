@@ -1,0 +1,26 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 1b26f7352df439e4fe2373da9af59876a6805a02 sha256:ab4b77ab73d813294a5aff2f30c665e47e3e7caf702314939e8f4dd95aa84643
+RESOLVER_FUSE_REJECT_PASS /etc/dangling
+RESOLVER_FUSE_REJECT_PASS /etc/cycle
+RESOLVER_FUSE_REJECT_PASS /missing/../etc/regular-resolv
+RESOLVER_FUSE_REJECT_PASS /etc/file-slash
+RESOLVER_FUSE_REJECT_PASS /resolver-fifo
+RESOLVER_FUSE_REJECT_PASS /resolver-device
+RESOLVER_CANCEL_STAGE_PASS after-readonly
+FUSE2FS (dm-3): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-3): mounted filesystem 706d4fb0-2f99-46a1-a950-9e1b50aaefc3.
+FUSE2FS (dm-3): unmounting filesystem 706d4fb0-2f99-46a1-a950-9e1b50aaefc3.
+
+thread 'main' (191) panicked at src/bin/chain.rs:150:9:
+worker failed: exit status: 125
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+/work/base: OK
+RESOLVER_CANCEL_FUSE_CONNECTIONS_RELEASED
+RESOLVER_CANCEL_NO_SEAL_DEVICE_CLEANUP_PASS
+GUEST_EXIT 0
+[   19.885985] sysrq: Resetting

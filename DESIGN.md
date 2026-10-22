@@ -1,14 +1,64 @@
 # Conglobate image build design
 
-Status: design draft for implementation. Requirements use “must” or direct
-statements of behavior. Candidate interfaces are labeled “proposed”; unresolved
-details are collected in [Remaining decisions](#13-remaining-decisions).
+Status: consolidated target design for implementation. Requirements use “must”
+or direct statements of behavior. The final sandbox contract and ordered
+implementation outline are in [SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt).
+Deferred ecosystem work is collected in [Remaining decisions](#13-remaining-decisions).
 This document specifies the target design, not the current implementation.
 
 Conglobate builds images from committed source and immutable image inputs. It
 can create a new carapace using a tool carapace, extend an existing image, build
 replacement firmware, and transform the final device tree. It emits an
 importable image and an inventory binding its supplied inputs to its outputs.
+
+## Trust model — required for attested builds
+
+**The sandbox must work inside confidential VMs on Intel, AMD, and Arm.**
+Ordinary-VM validation alone does not satisfy this requirement. Backend selection
+must preserve command isolation and image metadata semantics on all three
+platforms. See [the platform review](validation/sandbox/CONFIDENTIAL-PLATFORM-REVIEW.txt)
+for candidate constraints and the distinction between source analysis and
+hardware validation.
+
+**Build commands are untrusted. The build kernel, supervisor, scoped BPF LSM
+policy and formatting tools are trusted.** Running without host root does not
+by itself establish this boundary.
+
+The builder verifies inputs, interprets recipes, assembles storage, formats and
+mounts filesystems, enforces execution policy, finalizes outputs, and generates
+the inventory. Kernel filesystem drivers replace the separately sandboxed FUSE
+worker. Commands run in mapped user namespaces with private mount/PID/IPC/UTS/
+network namespaces. Idmapped mount views preserve target ownership on disk.
+The kernel parses filesystem contents: this increases the shared-kernel attack
+surface compared with an isolated userspace worker. Content verification does
+not prove that filesystem metadata is safe to parse.
+
+Commands may modify only their assigned working filesystems and explicitly
+authorized outputs, and use explicitly provided runtime resources. They must
+not access or interfere with builder processes, backing devices, namespace
+handles, control interfaces, inventory, output staging, or immutable inputs.
+The build context is not mounted into commands; COPY exposes selected files.
+Untrusted filesystem paths, symlinks, and metadata must not redirect trusted
+builder operations outside those authorized effects.
+
+Isolation must cover process access, inherited descriptors, mount reachability,
+IPC, and network interfaces, not merely hide paths or process names. Sharing
+a UID or using namespace root is not by itself evidence of isolation.
+The builder must retain an independent way to stop commands and abort failed
+filesystem service. Resource exhaustion may fail a build; it must not cause
+an incomplete or compromised build to be accepted.
+
+Before sealing an output, the builder must terminate and reap all command
+descendants, revoke their write access, and finish filesystem writeback and clean unmount.
+The bytes hashed for the inventory must remain stable through publication.
+Future attestation must bind the trusted execution environment, including the
+kernel, scoped labeling policy, formatter identities and effective configuration, to that inventory; measuring conglobate alone is
+insufficient.
+
+This is the agreed target model, not a claim about the existing executor.
+The kernel-mount/LSM prototype demonstrates selected ext4 compatibility and
+isolation properties. Full bootstrap integration and platform qualification
+remain required; historical FUSE experiments are not the current backend.
 
 The sections follow a build from input selection through execution and output
 verification. Read the architecture and input sections first, then the pipeline
@@ -58,8 +108,10 @@ the carapace root.
 ### 1.1 Component responsibilities
 
 1. **Conglobate** is a standalone Linux binary. Given a Git commit, a context
-   subdirectory, and a read-only pichi-style image cache, it runs as root and
-   produces an importable artifact. It does not require a VM, virtiofs, GPT
+   subdirectory, and a read-only image cache, it produces an
+   importable artifact. The supervisor runs as root for storage assembly. Commands never
+   receive that initial-namespace root authority in the target design.
+   Conglobate does not require a VM, virtiofs, GPT
    transport, PID 1, or a particular hypervisor.
 2. **The official build appliance** wraps that same binary in a bootable pichi
    image. Its wrapper initializes the guest, exposes the supplied inputs,
@@ -118,24 +170,38 @@ claim a closed set of all influences when commands can acquire external input.
 ## 2. Standalone CLI
 
 Required logical inputs are a local Git repository path, a full commit identity,
-a subdirectory within that commit, and a read-only image cache. Proposed CLI:
+a subdirectory within that commit, context-relative recipe and lock paths,
+and a read-only image cache. CLI:
 
 ```sh
 conglobate build \
   --repository <local-path> \
   --commit <full-object-id> \
   --context <relative-subdirectory> \
+  --recipe <context-relative-yaml-path> \
+  --lock <context-relative-lock-path> \
   --cache <read-only-image-cache> \
   --output <directory>
 ```
 
-Proposed defaults and failure behavior:
+Defaults and failure behavior:
 
 - `--context` defaults to `.`. It cannot escape the checkout.
+- `--recipe` and `--lock` are required, with no default filenames or discovery.
+  Both paths are relative to the selected context, not the current directory or
+  each other's parent. Resolve them through the existing committed-context path
+  rules, including confined symlink handling. Absolute paths, escapes, missing
+  files and non-file targets fail. Both inputs must come from the selected commit.
+  The inventory records their selected paths and exact content identities.
 - `--commit` identifies a commit, not a branch, tag, abbreviated hash, or index
   snapshot. Locator and identity are separate inputs.
 - The cache is never mutated. Missing locked objects are errors; image tags
-  are never resolved opportunistically during a build.
+  are never resolved opportunistically during a build. Conglobate downloads
+  no additional image artifacts.
+- `--resolv-conf PATH` is required when any run step enables networking. Capture
+  its contents once and inject them temporarily, read-only, following symlinks
+  confined to the command root. No implicit resolver or DNS relay. Resolver
+  contents and their digest are omitted from inventory.
 - Successful output is published only when all components and the inventory
   are complete. Refuse an existing output destination rather than overwrite it.
 - Logs go to stderr; the process exit status distinguishes success from
@@ -180,8 +246,7 @@ not establish the author's intended identity.
 
 ## 4. Image locks
 
-A committed YAML `pichi.build/refs.lock`, relative to the context directory,
-maps each recipe image reference to one immutable OCI index digest. Proposed
+The committed YAML file selected by `--lock` maps each recipe image reference to one immutable OCI index digest. Proposed
 wire shape:
 
 ```yaml
@@ -219,31 +284,41 @@ belong to the caller.
 
 ## 5. Context and pipeline
 
-The proposed context layout uses a `pichi.build/` recipe directory:
+The context has no required configuration directory or filenames. For example:
 
 ```text
 <committed-context>/
-  pichi.build/
-    bootstrap.yaml
-    carapace.yaml
-    firmware.yaml
-    platform.yaml       # reserved; implementation deferred
-    refs.lock
-    transform.yaml
-  ...                   # source, configuration, scripts, patches
+  recipes/image.yaml
+  locks/images.lock
+  config/
+  sources/
 ```
 
-The stage filenames sort in execution order:
+Select those files with `--recipe recipes/image.yaml --lock locks/images.lock`.
+These names are examples, not defaults. COPY sources remain relative to the
+context root, even when the recipe lives in a subdirectory.
+
+The recipe is one YAML mapping with optional `bootstrap`, `carapace`, `firmware`
+and `transform` sections. `platform` remains reserved and unsupported initially.
+Execution order is fixed, regardless of YAML key order:
 
 ```text
-bootstrap -> carapace -> firmware -> platform -> transform
+bootstrap -> carapace -> firmware -> [platform, deferred] -> transform
 ```
 
-`refs.lock` is an input, not a stage. Whether to retain the `pichi.build/` name
-permanently is open; it does not imply dependence on the pichi CLI.
+The lock is a separate input, not a stage. Reject duplicate or unknown keys and
+unsupported sections rather than merging or ignoring them. Execution sections
+are mappings; `transform` is a sequence. Use explicit `{}` or `[]` for empty
+sections; YAML null is not an alias for omission or emptiness. An empty recipe
+cannot produce an image.
 
-The path passed as `--context` selects `<committed-context>`, not its
-`pichi.build/` child. Copy sources are relative to that same context root.
+For example, an inherited image with an explicitly disabled default transform:
+
+```yaml
+carapace:
+  from: registry.example.com/fedora:43
+transform: []
+```
 
 The pipeline carries an assembled image forward. Separately, a stage may use
 a carapace as its execution environment. **A tool input does not become output
@@ -253,7 +328,7 @@ ancestry merely because commands execute inside it.**
 
 | Stage | Execution input | Retained output |
 | --- | --- | --- |
-| Bootstrap | Required tool carapace | A separately generated filesystem imported as a new base carapace |
+| Bootstrap | Required tool carapace | A new zero-backed carapace layer, formatted and populated directly |
 | Carapace | Bootstrap output, otherwise required `from` image | Inherited image with additional scutes |
 | Firmware | Resulting carapace, or explicit tool carapace | Replacement PMI and DTB together |
 | Platform | Tool carapace, details deferred | Transformed DTB |
@@ -262,15 +337,15 @@ ancestry merely because commands execute inside it.**
 Omitted stages pass existing output forward. If bootstrap is present and
 carapace is omitted, firmware can use the bootstrap result directly. A carapace
 recipe with no directives is also a valid pass-through when an input exists.
-Without bootstrap, that recipe still needs `from`; a literally empty file
-cannot select an input image.
+Without bootstrap, that recipe still needs `from`; `carapace: {}`
+cannot select an input image without bootstrap output.
 
 All components of a base image propagate unless a stage replaces them.
 There is no feature for explicitly discarding inherited firmware to obtain a
 carapace-only derivative. A bootstrap tool image's components are not inherited
 because it is not the base of the output image.
 
-### 5.2 Output kinds and file combinations
+### 5.2 Output kinds and section combinations
 
 Valid image kinds are carapace-only, carapace plus PMI/DTB, and PMI/DTB-only.
 The last kind lives entirely within its firmware/initramfs environment.
@@ -286,7 +361,7 @@ The last kind lives entirely within its firmware/initramfs environment.
 | Absent | Present | Present | Derived carapace and replacement PMI/DTB |
 | Present | Present | Present | New carapace plus layers and new PMI/DTB |
 
-For an existing image requiring only DTB edits, a `carapace.yaml` with `from`
+For an existing image requiring only DTB edits, a `carapace` section with `from`
 and no directives selects and passes through the base image.
 
 Existing launch configuration and other image components propagate with the
@@ -295,11 +370,20 @@ the pipeline described here defines carapace and firmware production only.
 
 ## 6. Execution recipes
 
-The shared vocabulary is `from`, `derive`, and `into`. A `derive` list contains
+Examples in sections 6.1–6.4 show the contents of the named top-level section;
+place them under that key in the single recipe file. Transform examples show
+sequence contents unless explicitly wrapped in `transform`.
+
+The shared vocabulary includes `from` and `derive`; firmware export uses `into`.
+Bootstrap declares its output volume through `filesystem`. A `derive` list contains
 ordered `run` and `copy` directives. Unknown fields and unsupported combinations
 are errors rather than ignored instructions.
 
-Commands execute as real root in a disposable or layered working filesystem.
+Commands execute as UID/GID 0 in a mapped user namespace, with a disposable
+or layered working filesystem exposed through an idmapped kernel mount.
+A scoped BPF LSM policy permits foreign SELinux labels without command
+`CAP_SYS_ADMIN`; that capability is absent from every command capability set.
+They never receive initial-user-namespace root authority.
 Tools may be installed during execution; a tool carapace only needs enough
 initial functionality to obtain and run them. A Fedora image with `dnf` can
 build a new Fedora image containing `dnf`, which can then serve as a future
@@ -309,18 +393,27 @@ tool carapace. The first tool carapace is bootstrapped externally.
 derive:
   - run: dnf install -y kernel-devel
     network: true
+    timeout: 5m
   - copy:
       from: ./source
       into: /build/source
 ```
 
-Network access is opt-in per `run` directive and defaults to false. Network
-policy is enforced by the execution environment, not merely by an environment
-variable or package-manager setting.
+Network access is opt-in per `run` directive and defaults to false. Conglobate
+enforces private network namespaces and outbound NAT for enabled steps, with
+reply traffic allowed, no inbound forwarding, and no destination filtering.
+The environment supplies upstream connectivity and explicit resolver configuration.
+
+Every `run` has a finite positive command-execution timeout, defaulting to `5m`.
+The optional `timeout` field accepts duration strings such as `30m` or `1h`;
+zero, infinite, invalid, and overflowing values fail validation. Setup and
+teardown have separate fixed internal deadlines, not recipe or CLI settings.
+Fresh filesystem mounts and a fresh command sandbox are used for each run step.
 
 Common execution behavior:
 
-- The committed context is available read-only at `/context`.
+- The committed context remains private to the builder. Commands receive
+  selected contents only through explicit `copy` directives.
 - Commands run through `/bin/sh -eu -c`, starting at `/`. Environment and
   working-directory changes are expressed within a command rather than
   persisted implicitly between shells. Processes cannot outlive a step.
@@ -345,33 +438,62 @@ Unicode `?` and bracket classes, without shell brace expansion.
 
 ### 6.1 Bootstrap
 
-`bootstrap.yaml` creates a separate filesystem using a tool carapace:
+`bootstrap` section creates a new carapace directly, using a separate tool carapace.
+The supervisor creates a writable snapshot layer over dm-zero and formats its
+block-device view with a trusted formatter. Formatting and all subsequent output
+writes land in that layer. There is no intermediate rootfs image, image import,
+or image-to-scute conversion.
+
+The command sandbox has two assigned writable mounts:
+
+- `/`: the tool carapace with a disposable writable layer. Authors may install
+  additional tools here; those changes persist across bootstrap steps only.
+- `/mnt`: the new output filesystem. Commands populate it using ordinary
+  filesystem/package-manager operations, without block-device or mount access.
+
+The proposed field spelling below illustrates the agreed filesystem declaration;
+the exact property schema and backend allowlists remain implementation work:
 
 ```yaml
 from: registry.example.com/fedora-tools:43
+filesystem:
+  type: ext4
+  size: 4GiB
+  properties:
+    label: rootfs
 derive:
-  - run: dnf install -y mkosi
+  - run: dnf install -y dnf-plugins-core
     network: true
-  - copy:
-      from: ./mkosi-project
-      into: /build
-  - run: cd /build && mkosi --output-dir=/out
+  - run: dnf --installroot=/mnt --releasever=43 install -y filesystem bash dnf
     network: true
-into: /out/rootfs.raw
 ```
 
-The example assumes the mkosi configuration emits that filesystem filename.
-`from` is required. Commands share a disposable writable filesystem. Only the
-filesystem image named by `into` is imported into a new base carapace, using the
-carapace planned image reader and devmap verity formatter. No tool scutes are
-inherited.
-The proposed initial filesystem-image contract is a bare filesystem image.
-The binary does not impose an ext4-only policy: available filesystem support
-belongs to the execution environment and, for VM builds, the appliance image.
+`from` is required. `filesystem` declares the logical output size, filesystem
+type and supported typed formatting properties. Validate these before privileged
+execution; do not accept arbitrary formatter arguments, executable paths or shell
+fragments. Fail if the driver, trusted formatter or required idmapping/metadata
+support is unavailable. Ext4 is the initially validated backend; other kernel
+filesystems require qualification. Record the effective formatting configuration
+and formatter identity with an explicit inventory schema revision.
+
+`/mnt` is reserved for the output mount during bootstrap. Resolve its mountpoint
+within the pinned tool root; never follow an image symlink outside that root.
+COPY destinations use this same layout, so `/mnt/...` addresses output and other
+paths address the tool root. Context is never mounted into commands. Scope the
+LSM authorization to both assigned filesystems so tool installation and output
+population can label files; neither authorizes unrelated supervisor mounts.
+
+After writers stop and both filesystems are cleanly unmounted, seal/hash the
+output scute and package its carapace. Discard the tool writable layer. No tool
+scutes or firmware components are inherited; deliberate file copies can still
+contribute output bytes. Bootstrap has no image-file `into` export. The output
+becomes the implicit input of the `carapace` section, or passes forward when it is omitted.
+The exact dual-mount flow on the actual snapshot chain remains an integration
+validation gate, separate from the passing kernel-ext4 mechanism tests.
 
 ### 6.2 Carapace
 
-`carapace.yaml` retains filesystem modifications as new layers:
+`carapace` section retains filesystem modifications as new layers:
 
 ```yaml
 from: registry.example.com/fedora:43
@@ -394,7 +516,7 @@ means no new scutes. Skipping empty deltas is not part of the initial model.
 
 ### 6.3 Firmware
 
-`firmware.yaml` replaces the PMI and DTB as a pair. It commonly invokes arma,
+`firmware` section replaces the PMI and DTB as a pair. It commonly invokes arma,
 but is not restricted to Linux firmware. A custom firmware or UEFI-oriented
 recipe can produce the supported output artifacts through its own tools.
 
@@ -435,13 +557,16 @@ compiler, arma, corium, and appropriately configured initramfs tooling. A
 firmware-only recipe omits the carapace argument and includes its workload in
 the initramfs. The example is a recipe shape, not a universal distro build.
 
-All directives share a disposable writable environment. Intermediate changes
+All directives share a disposable writable tool root at `/`. Firmware has no
+special `/mnt` output mount. `into` selects explicit paths inside the tool root;
+extract both files through confined handles after all command writers stop.
+Intermediate changes
 do not become scutes. Only the declared PMI and DTB survive. When the stage is
 absent, existing firmware propagates unchanged to DTB finalization.
 
 ### 6.4 Platform
 
-`platform.yaml` is reserved for arbitrary DTB transformations executed in a
+`platform` section is reserved for arbitrary DTB transformations executed in a
 tool carapace, with the same recipe vocabulary. Implementation and the exact
 working-DTB interface are deferred until there is a user requiring it.
 
@@ -452,7 +577,7 @@ not silently ignore it. Declarative transforms do not require this stage.
 
 After carapace construction, `CARAPACE` identifies the final output carapace
 root as plain hex. It also exists when bootstrap produced that carapace and
-`carapace.yaml` was omitted.
+`carapace` section was omitted.
 
 - Shell commands access `$CARAPACE` or `${CARAPACE}` through the environment.
 - Transformation replacements access `${CARAPACE}` through template expansion.
@@ -483,7 +608,7 @@ The DTB is the canonical boot configuration artifact. In particular, Linux's
 kernel command line, when present, is the string `/chosen/bootargs`. There is
 no second persistent command-line definition outside the DTB.
 
-`transform.yaml` is an ordered list of operations executed directly through
+`transform` section is an ordered list of operations executed directly through
 safe Rust libraries. Each item has exactly one `op` discriminator. `set` also
 has a flat `type` discriminator selecting the encoding of `data`.
 `property` names an absolute node path followed by the property name; for
@@ -607,9 +732,9 @@ examples preserves the whitespace consumed by the boundary capture.
 
 ### 8.3 Default selection
 
-- Absent `transform.yaml`: select the built-in sequence.
-- Present `transform.yaml`: use exactly the authored sequence.
-- Empty file or empty sequence: perform no transformations.
+- Absent `transform` section: select the built-in sequence.
+- Present `transform` section: use exactly the authored sequence.
+- `transform: []`: perform no transformations (a DTB is still required).
 - There is no inclusion or automatic appending of defaults to authored edits.
 
 The built-in sequence is:
@@ -629,8 +754,8 @@ authors establish the initial binding. A matched binding with undefined
 regex does not validate all corium arguments or repair duplicate bindings.
 
 When no DTB exists, skip only the implicit default transformation stage.
-An authored `transform.yaml` requires a DTB, including an explicitly empty
-file. Within an existing DTB, the default uses `if.exists` to skip an absent
+An authored `transform` section requires a DTB, including an explicitly empty
+sequence. Within an existing DTB, the default uses `if.exists` to skip an absent
 command line. No operation reads a missing property successfully, and a
 missing DTB never makes an existence condition return false.
 
@@ -640,62 +765,63 @@ ancestor nodes, but there are no explicit whole-node creation/removal operations
 
 ## 9. Privileged execution and resource ownership
 
-Real root is required for filesystem assembly and recipe execution. Use
-private mount and PID namespaces without user-namespace remapping. Every run
-step's descendants must terminate before the next step or output finalization.
-The precise capability set and any additional IPC/UTS isolation remain
-implementation-design details.
+[SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt) is the authoritative sandbox contract.
+It specifies the ordered setup, execution, teardown, finalization, and validation
+requirements. This section summarizes its relationship to the build pipeline.
 
-The intended ownership split is:
+The root supervisor owns verified inputs, cache handles, loop/device-mapper
+assembly, writable snapshots, inventory, and publication. Immutable carapace
+layers remain cache-backed with verified reads. One private build-wide tmpfs
+holds mutable snapshots and scratch; ordinary tmpfs behavior applies. The
+execution environment configures capacity and resource limits, with no disk
+fallback or per-step memory policy. Final artifact storage is separate.
 
-| Resource | Owner |
-| --- | --- |
-| Input cache and completed artifact | Supervisor |
-| Loop devices and device-mapper stack | Supervisor with explicit cleanup |
-| Working mounts | Private mount namespace with private propagation |
-| Recipe descendants | Execution process group/PID namespace, fully reaped |
-| Per-step network attachment | Explicitly provisioned namespace/resources |
-| Context | Immutable, read-only materialization |
+The supervisor mounts assigned kernel filesystems and creates idmapped views
+for commands. Superblocks remain supervisor-owned; commands receive namespace
+root semantics through mapping, without backing-device access. No userspace
+filesystem worker is required. Ext4 is initially validated. Other drivers,
+formatters and metadata combinations require explicit qualification.
 
-Mount namespaces do not make device-mapper or loop-device objects private.
-Names, handles, and cleanup must remain safe for concurrent builds. Access to
-`/dev`, `/sys`, `/proc`, and `/tmp` needs a deliberate exposure policy; binding
-the supervisor's directories wholesale is not an isolation design.
+A scoped BPF LSM policy delegates the generic capability check for the exact
+`security.selinux` attribute. Separate set/remove guards restrict changes to an
+explicit set of assigned superblocks and the authorized command identity. Both
+the tool and output filesystems may be authorized during bootstrap. Install/pin
+all guards before admission; configuration stays immutable while commands run.
+Keep policy controls private. Hold namespace and superblock identities until
+policy removal; reusable numeric IDs alone are insufficient authorization tokens.
+Fail on unavailable policy prerequisites, with no capability fallback.
 
-The implementation mounts a private `/proc`, an empty read-only `/sys`, and
-a private `/dev` containing null, zero, random, urandom, standard descriptor
-links, and a tmpfs `/dev/shm`. Runtime mountpoints must be directories; newly
-created mountpoint directories are removed before sealing a layer. Commands
-retain the execution environment's root capabilities without introducing user
-namespaces. They receive only a fixed PATH, HOME, LANG, and the applicable
-CARAPACE value. Helpers use a private copy of the running builder executable.
-Standard input is `/dev/null`; recipes do not consume unrecorded caller input.
+Each run remounts its assigned filesystems and launches a fresh command sandbox.
+COPY and extraction occur only while command writers are stopped, using scoped
+handles and root-confined paths. Commands have no `CAP_SYS_ADMIN` in any
+capability set, restricted syscalls/ioctls, `no_new_privs`, private proc/dev/devpts/
+shm, empty read-only sysfs, and explicit environment and stdio. Namespace/mount
+creation and control access are prohibited. Context enters only through COPY.
 
-Conglobate presumes its existing environment has network access. A step with
-`network: true` uses that environment. A step without network access runs in a
-temporary isolated network namespace configured by conglobate. Conglobate does
-not provision host connectivity or toggle the host's primary NIC.
+Commands never share the supervisor network namespace. Enabled steps use
+outbound NAT without destination filtering; supervisor controls must not be
+exposed on reachable network addresses. The environment supplies `--resolv-conf`;
+there is no built-in DNS relay, resolver inventory entry or persistent injection.
 
-Terminate remaining recipe descendants before starting another step or
-finalizing output. Clean up mounts, devices, and scratch storage on success,
-error, cancellation, and recoverable startup after a crash. Do not rely on
-poweroff.
+On every exit path, stop/reap all descendants before mutating policy or detaching
+its guards. Then remove authorization, runtime mounts and networking, flush and
+cleanly unmount the filesystems before sealing. Hold identities and storage
+leases until cleanup completes. If quiescence cannot be proved, retain protection
+and recovery ownership and reject publication. Partial installation, abandoned
+pins and supervisor death require independent recovery; pinned-policy survival
+across loader death is only one validated case. Propagate filesystem/writeback
+errors; forced/lazy unmount is not evidence of clean finalization.
 
-Writable snapshots and build scratch storage use RAM-backed storage with
-ordinary tmpfs behavior. The execution environment supplies capacity and
-resource limits; conglobate does not configure memory budgets, tmpfs sizing,
-or swapping policy. There is no `--scratch-size` interface. The binary owns
-its temporary objects, handles allocation/write failures, and cleans up after
-the build. There is no disk fallback. Output artifact storage is separate from
-execution scratch.
+Foreign target SELinux labels, ownership, ACL semantics, and file capabilities
+must survive into the booted image independently of the build VM policy. The
+validated foreign-label environment disables build-VM SELinux; an enforcing
+configuration requires separate qualification. Initially unsupported are
+`trusted.*` access, persistent device creation, and immutable/append-only flag
+changes (including clearing inherited flags). Document failures explicitly.
 
-SELinux metadata preservation and the build host's enforcing policy are
-separate concerns. Tests must establish real behavior for labels, capabilities,
-ACLs, ownership, and xattrs. Root alone is not a specification of that behavior.
-
-Standalone privileged recipe execution is not promised to safely contain
-arbitrary hostile code. Namespace isolation and the VM/CC threat boundary must
-be documented separately from convenient execution isolation.
+This contract requires containment of untrusted commands. It is not a claim
+that the legacy executor already meets it or that prototype checks prove
+absence of sandbox vulnerabilities.
 
 ## 10. Firmware measurement boundary
 
@@ -719,7 +845,7 @@ accept the edit. A pre-signed SEV identity, bundled-only DTB, unknown target,
 or opaque firmware rejects a changed DTB. Unchanged DTBs require no resealing
 and pass through, including opaque custom firmware. Authors using unsupported
 signing contracts must generate the final DTB during firmware production and
-disable subsequent transforms with an empty `transform.yaml`.
+disable subsequent transforms with `transform: []`.
 
 ## 11. Artifact and inventory
 
@@ -746,7 +872,7 @@ of its proposed logical shape, not a second emitted inventory format or a
 finalized CBOR wire schema:
 
 ```yaml
-version: 1
+version: 2
 builder:
   name: conglobate
   version: ...
@@ -770,15 +896,18 @@ inputs:
     carapace_root: <bytes>
 execution:
   architecture: amd64
-  recipes:
-    carapace.yaml: {algorithm: sha256, digest: <bytes>}
-    firmware.yaml: {algorithm: sha256, digest: <bytes>}
+  recipe:
+    path: recipes/image.yaml
+    content: {algorithm: sha256, digest: <bytes>}
+  lock:
+    path: locks/images.lock
+    content: {algorithm: sha256, digest: <bytes>}
   transform:
     source: builtin
     digest: {algorithm: sha256, digest: <bytes>}
     target_present: true
   network_steps:
-    - {recipe: carapace.yaml, step: 0}
+    - {stage: carapace, step: 0}
 outputs:
   manifest: {algorithm: sha256, digest: <bytes>}
   carapace_root: <bytes>
@@ -792,12 +921,17 @@ outputs:
 ```
 
 Digest payloads are CBOR byte strings with explicit algorithm identifiers.
-Absent output components are omitted. Recipe identifiers are relative to the
-recipe directory. Input roles refer to use, not output ancestry. Source locators
+Absent output components are omitted. Recipe and lock paths are relative to
+the selected context. Their digests identify the exact committed file bytes,
+not a YAML reserialization. Network steps identify the stage section and its
+zero-based directive index. Input roles refer to use, not output ancestry. Source locators
 are provenance hints, not authenticated identities, and must not expose
 embedded credentials.
 
-Inventory coverage must include effective build options, selected architecture,
+Resolver configuration and its digest are deliberately excluded from inventory;
+network-enabled steps are still recorded. This environment configuration is not
+claimed to be an exhaustively measured input. Inventory coverage otherwise must
+include effective build options, selected architecture,
 the committed lock, all supplied image manifests, recipe contents, and the
 effective built-in transform version/content when applicable. Some identities
 are transitively covered by the context or image manifest; explicit entries
@@ -813,9 +947,10 @@ Do not bind evidence to a human-readable reserialization. Bind the exact
 emitted CBOR bytes. Deterministic serialization does not imply a deterministic
 build or require timestamps in every inventory.
 
-### 11.2 Version-one inventory wire profile
+### 11.2 Inventory wire profile and schema migration
 
-The implementation uses RFC 8949 section 4.2.1 core deterministic CBOR:
+The deterministic encoding profile uses RFC 8949 section 4.2.1 core
+deterministic CBOR:
 shortest integer and length encodings, definite-length containers, and map keys
 ordered by the bytewise lexicographic order of their deterministic encodings.
 Floating-point values and CBOR tags are not part of this schema. Digests and
@@ -824,8 +959,8 @@ identities have 20 or 32 bytes according to `object_format`.
 
 The required top-level fields are `version`, `builder`, `context`, `inputs`,
 `execution`, and `outputs`, with the nested fields illustrated above. Version
-is exactly 1. Consumers reject unknown fields, unsupported versions, duplicate
-keys, noncanonical encodings, and trailing data. Absent optional output roots
+is 2 for the target schema described here. Consumers reject unknown fields,
+unsupported versions, duplicate keys, noncanonical encodings, and trailing data. Absent optional output roots
 and firmware digests are omitted. An input's `carapace_root` is also omitted
 when a firmware-only base passes through without execution; execution-tool
 inputs must have a 32-byte root. Such a base retains the `carapace-base` role,
@@ -835,7 +970,12 @@ including when empty. Scutes are recorded in base-to-top chain order; inputs
 are sorted by reference, with unique sorted roles. Network steps occur in
 pipeline and directive order.
 
-`execution.recipes` also includes `refs.lock`. The transform record adds a
+The single-recipe design replaces version one's `execution.recipes` map with
+explicit `execution.recipe` and `execution.lock` path/content records, and
+replaces per-file network-step identifiers with `stage`. This requires a schema
+version change; the existing version-one implementation must not silently emit
+these fields as version one. Version-two integration remains implementation work.
+The transform record adds a
 required boolean `default_skipped`, indicating that the implicit default
 encountered no DTB or no bootargs property; an authored transform always records
 false for this field. `target_present` records whether a DTB was supplied.
@@ -874,35 +1014,41 @@ intended the pinned inputs without a separate authenticity policy.
 
 ## 12. Validation and implementation sequence
 
-Recommended implementation sequence:
+The sandbox design is selected; production integration and qualification remain.
+Follow the ordered implementation and qualification gates in
+[SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt), section 12. The chronological
+[SANDBOX-VALIDATION.txt](SANDBOX-VALIDATION.txt) ledger retains earlier failures
+and follow-ups; its old candidate descriptions are not current requirements.
 
-1. Finalize the remaining recipe/transform schema details as portable types;
-   encode the inheritance rules specified here.
-2. Implement the generic DTB editor and default dispatch with unit tests.
-3. Specify committed-context materialization and the architecture-aware lock.
-4. Build the standalone executor with safe storage APIs and explicit cleanup.
-5. Package importable images and emit deterministic CBOR inventory.
-6. Add the appliance wrapper and pichi orchestration against that interface.
-7. Add attestation evidence without changing the standalone build semantics.
+The [kernel-mount LSM validation](validation/sandbox/kernel-mount-lsm/REPORT.txt)
+passed native ext4/idmapping, foreign labels without command SYS_ADMIN, ownership,
+ACLs, file capabilities, an offline Fedora package workload, scoped negative
+controls, clean remount and coordinator-failure teardown on x86_64. It uses a
+regular RAM-backed image and `/image` test mount, not the production snapshot
+chain or full dual-mount bootstrap. The [LSM review](validation/sandbox/capability-review/REPORT.txt)
+records exact-attribute and cleanup-order regressions that must remain covered.
+Earlier FUSE worker tests remain comparative historical evidence.
 
-Validation should cover:
+Required integration tests include trusted formatting directly on a zero-backed
+carapace layer; concurrent tool `/` and output `/mnt` mounts; LSM authorization
+of both and denial elsewhere; full tool-root package installation; direct scute
+finalization without conversion; safe COPY/export; identity/FD lifetime; actual
+capability/syscall profiles on both architectures; concurrent builds; parent
+death and abandoned-policy recovery; blocked I/O and fixed deadlines; writeback
+errors; and publication ordering. Validate NAT/DNS and resolver cleanup under
+this final topology. Old component passes do not qualify the complete design.
 
-- Every supported recipe combination and prohibited `from` combination.
-- Tool-carapace mutations never appearing as inherited output scutes.
-- Firmware-only output and undefined `CARAPACE` behavior.
-- Pairwise firmware replacement and propagation of other base components.
-- Typed DTB encoding, wrong types, missing targets, and ordered operations.
-- Regex zero/one/many matches, whitespace captures, and lazy variable expansion.
-- Absent/authored/empty transforms, including missing default command lines.
-- Locked digest selection despite moved cache tags and mismatched content.
-- Git context isolation from subsequent host working-tree changes.
-- Failure/cancellation cleanup and concurrent builds without device collisions.
-- Real metadata behavior under enforcing SELinux where supported.
-- OCI import round trips and inventory-to-output digest verification.
-- Appliance transport tests separately from standalone privileged tests.
+Preserve tests for pipeline combinations, inheritance and tool ancestry,
+firmware-only output, unavailable CARAPACE, typed DTB operations and defaults,
+locked images, Git capture, deterministic CBOR, OCI/ORAS interoperability,
+and output digest verification. No VM is intrinsically required by the binary;
+privileged integration tests can use disposable VMs for test containment.
 
-No VM is required to validate the main build pipeline. Namespace and device
-tests may still require privileged Linux runners and their kernel facilities.
+Build and boot Fedora, Debian, Alpine, and NixOS images, exercising package
+transactions, initramfs/kernel construction, permissions and labeling. Fedora
+must support SELinux under its own target policy. Qualify Intel TDX, AMD SEV-SNP,
+and Arm CCA separately; ordinary x86 tests establish no confidential-platform
+pass. Appliance transport and attestation remain separate integration work.
 
 ## 13. Remaining decisions
 
@@ -918,9 +1064,16 @@ Remaining ecosystem decisions are authentication of the intended Git identity,
 creation/override of components beyond carapace and firmware, additional
 firmware signing/resealing contracts, and appliance transport and attestation.
 
+Sandbox policy is settled in SANDBOX-DESIGN.txt. Exact capability/syscall/ioctl
+profiles, fixed internal deadline values, trusted formatter/property schemas,
+multi-filesystem LSM lifecycle, identity allocation, and runtime mount mechanics
+are implementation work constrained by
+that contract. Production integration and platform qualification are required;
+fully unprivileged storage assembly is outside the selected design.
+
 The initial scope excludes remote Git retrieval, uncommitted working-tree
 inputs, submodules, Git LFS, cross-architecture builds, build-time lock updates,
 output-cache mutation, firmware discard, partial PMI/DTB replacement,
 transform-default inclusion, regex match-count options, whole-node operations,
-and execution of `platform.yaml`. Caller working-tree policy is outside this
+and execution of `platform` section. Caller working-tree policy is outside this
 interface.

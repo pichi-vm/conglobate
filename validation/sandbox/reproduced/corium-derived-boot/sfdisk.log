@@ -1,0 +1,39 @@
+GPT PMBR size mismatch (2072575 != 2078719) will be corrected by write.
+The backup GPT table is not on the end of the device. This problem will be corrected by write.
+Checking that no-one is using this disk right now ... OK
+
+Disk /tmp/conglobate-corium-derived-boot-v1/carapace.gpt: 1015 MiB, 1064304640 bytes, 2078720 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: 1A9E97DC-85B5-4543-BF71-A91B549A1CF0
+
+Old situation:
+
+Device                                                 Start     End Sectors    Size Type
+/tmp/conglobate-corium-derived-boot-v1/carapace.gpt1    2048 2053287 2051240 1001.6M Linux filesystem
+/tmp/conglobate-corium-derived-boot-v1/carapace.gpt2 2054144 2070319   16176    7.9M Linux filesystem
+
+>>> Script header accepted.
+>>> Script header accepted.
+>>> Created a new GPT disklabel (GUID: 3873917F-762E-40BA-BE21-5168CE04E61D).
+/tmp/conglobate-corium-derived-boot-v1/carapace.gpt1: Created a new partition 1 of type 'Linux filesystem' and of size 1001.6 MiB.
+Partition #1 contains a DM_snapshot_cow signature.
+/tmp/conglobate-corium-derived-boot-v1/carapace.gpt2: Created a new partition 2 of type 'Linux filesystem' and of size 7.9 MiB.
+Partition #2 contains a DM_verity_hash signature.
+/tmp/conglobate-corium-derived-boot-v1/carapace.gpt3: Created a new partition 3 of type 'Linux filesystem' and of size 172 KiB.
+/tmp/conglobate-corium-derived-boot-v1/carapace.gpt4: Created a new partition 4 of type 'Linux filesystem' and of size 8 KiB.
+/tmp/conglobate-corium-derived-boot-v1/carapace.gpt5: Done.
+
+New situation:
+Disklabel type: gpt
+Disk identifier: 3873917F-762E-40BA-BE21-5168CE04E61D
+
+Device                                                 Start     End Sectors    Size Type
+/tmp/conglobate-corium-derived-boot-v1/carapace.gpt1    2048 2053287 2051240 1001.6M Linux filesystem
+/tmp/conglobate-corium-derived-boot-v1/carapace.gpt2 2054144 2070319   16176    7.9M Linux filesystem
+/tmp/conglobate-corium-derived-boot-v1/carapace.gpt3 2072576 2072919     344    172K Linux filesystem
+/tmp/conglobate-corium-derived-boot-v1/carapace.gpt4 2074624 2074639      16      8K Linux filesystem
+
+The partition table has been altered.

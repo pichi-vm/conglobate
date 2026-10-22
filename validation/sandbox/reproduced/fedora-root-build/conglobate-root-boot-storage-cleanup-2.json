@@ -1,0 +1,182 @@
+[
+  {
+    "run": "/tmp/conglobate-acl-fix-v6",
+    "retained": "validation/sandbox/reproduced/acl-fix",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-acl-protocol-guest-v3",
+    "retained": "validation/sandbox/reproduced/acl-protocol",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-acl-protocol-status-control",
+    "retained": "validation/sandbox/reproduced/acl-protocol-status-control",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-acl-unsupported-guest-v1",
+    "retained": "validation/sandbox/reproduced/acl-unsupported-negative",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-acl-unsupported-guest-v2",
+    "retained": "validation/sandbox/reproduced/acl-unsupported",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-activation-recovery-v2",
+    "retained": "validation/sandbox/reproduced/activation-recovery",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-artifact-cancellation-boundary-v1",
+    "retained": "validation/sandbox/reproduced/artifact-cancellation-boundary",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-artifact-death-v1",
+    "retained": "validation/sandbox/reproduced/artifact-death",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-capability-metadata-v2",
+    "retained": "validation/sandbox/reproduced/capability-metadata",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-carapace-activation-guest-v1",
+    "retained": "validation/sandbox/reproduced/carapace-activation",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-carapace-death-guest-v1",
+    "retained": "validation/sandbox/reproduced/carapace-activation-death",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-carapace-death-guest-v2",
+    "retained": "validation/sandbox/reproduced/carapace-activation-death-boundaries",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-carapace-recovery-guest-v2",
+    "retained": "validation/sandbox/reproduced/carapace-recovery-candidate",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-carapace-recovery-guest-v3",
+    "retained": "validation/sandbox/reproduced/carapace-recovery-interrupted",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-chain-acl-v1",
+    "retained": "validation/sandbox/reproduced/chain-acl",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-chain-active-cancel-v2",
+    "retained": "validation/sandbox/reproduced/chain-active-cancel",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-chain-blocked-cancel-v1",
+    "retained": "validation/sandbox/reproduced/chain-blocked-cancel",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-chain-command-failure-v1",
+    "retained": "validation/sandbox/reproduced/chain-command-failure",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-chain-command-v1",
+    "retained": "validation/sandbox/reproduced/chain-command",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-chain-commit-death-v1",
+    "retained": "validation/sandbox/reproduced/chain-commit-death",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  }
+]

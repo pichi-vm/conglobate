@@ -1,0 +1,5 @@
+{
+  "/tmp/conglobate-rpm-upgrade-tools/rpm-build-6.0.2-1.fc44.x86_64.rpm": "8043f8ada9b1e12f5fe66e81fa72170fe97c7dd0c0ddafadf6732560f4bb00b3",
+  "validation/sandbox/package-upgrade/command": "3478c87b72565feff6896161b7d77216d4f15fb1fa899b92e5ccdfb60f9ca240",
+  "validation/sandbox/policy/package.py": "6bfdff5162240a2657fef2bb9445cb8b1cc04b1a5c3f5a51a14d9221c057b42b"
+}

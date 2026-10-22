@@ -1,0 +1,21 @@
+#!/bin/bash
+set -eu
+checkpoint() {
+ if test "$1" = "$stage"; then
+  printf '%s\n' "$1" >/work/phase
+  sleep 10
+  exit 1
+ fi
+}
+stage=$1
+checkpoint after-userns
+mount --make-rprivate /
+mount --bind /work/root /work/root
+checkpoint after-root-bind
+mount -t proc proc /work/root/proc
+checkpoint after-proc
+mount -t tmpfs -o nosuid,noexec tmpfs /work/root/dev
+touch /work/root/dev/null
+mount --bind /work/runtime/null /work/root/dev/null
+checkpoint before-entry
+exec /entry-helper /work/root /probe --restricted

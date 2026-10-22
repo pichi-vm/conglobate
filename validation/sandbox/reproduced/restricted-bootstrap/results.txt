@@ -1,0 +1,313 @@
+Disabled
+PACKAGE_INSTALL_BEGIN
+Updating and loading repositories:
+Repositories loaded.
+Package                        Arch   Version                      Repository        Size
+Installing:
+ acl                           x86_64 0:2.4.0-1.fc44               @commandline 222.8 KiB
+ alternatives                  x86_64 0:1.33-5.fc44                @commandline  62.1 KiB
+ attr                          x86_64 0:2.6.0-1.fc44               @commandline 178.2 KiB
+ audit-libs                    i686   0:4.2.1-1.fc44               @commandline 400.3 KiB
+ audit-libs                    x86_64 0:4.2.1-1.fc44               @commandline 390.5 KiB
+ bash                          x86_64 0:5.3.9-3.fc44               @commandline   8.5 MiB
+ bzip2-libs                    x86_64 0:1.0.8-23.fc44              @commandline  80.5 KiB
+ ca-certificates               noarch 0:2026.2.90_v9.0.317-1.fc44  @commandline   2.7 MiB
+ coreutils                     x86_64 0:9.10-5.fc44                @commandline   5.7 MiB
+ coreutils-common              x86_64 0:9.10-5.fc44                @commandline  10.7 MiB
+ crypto-policies               noarch 0:20251128-3.git19878fe.fc44 @commandline 132.6 KiB
+ crypto-policies-scripts       noarch 0:20251128-3.git19878fe.fc44 @commandline 392.7 KiB
+ expat                         x86_64 0:2.8.5-1.fc44               @commandline 342.2 KiB
+ fedora-gpg-keys               noarch 0:44-2                       @commandline 257.6 KiB
+ fedora-release                noarch 0:44-18                      @commandline   0.0   B
+ fedora-release-common         noarch 0:44-18                      @commandline  20.6 KiB
+ fedora-release-identity-basic noarch 0:44-18                      @commandline 629.0   B
+ fedora-repos                  noarch 0:44-2                       @commandline   4.9 KiB
+ filesystem                    x86_64 0:3.18-52.fc44               @commandline 112.0   B
+ findutils                     x86_64 1:4.10.0-7.fc44              @commandline   1.9 MiB
+ gdbm-libs                     x86_64 1:1.23-11.fc44               @commandline 129.6 KiB
+ glibc                         i686   0:2.43-9.fc44                @commandline   5.7 MiB
+ glibc                         x86_64 0:2.43-9.fc44                @commandline   6.9 MiB
+ glibc-common                  x86_64 0:2.43-9.fc44                @commandline   1.0 MiB
+ glibc-gconv-extra             i686   0:2.43-9.fc44                @commandline   6.7 MiB
+ glibc-gconv-extra             x86_64 0:2.43-9.fc44                @commandline   7.4 MiB
+ glibc-minimal-langpack        x86_64 0:2.43-9.fc44                @commandline   0.0   B
+ gmp                           x86_64 1:6.3.0-5.fc44               @commandline 815.2 KiB
+ gnulib-l10n                   noarch 0:20241231-2.fc44            @commandline 655.0 KiB
+ grep                          x86_64 0:3.12-3.fc44                @commandline   1.0 MiB
+ libacl                        x86_64 0:2.4.0-1.fc44               @commandline  39.9 KiB
+ libattr                       x86_64 0:2.6.0-1.fc44               @commandline  24.3 KiB
+ libcap                        i686   0:2.78-1.fc44                @commandline 193.1 KiB
+ libcap                        x86_64 0:2.78-1.fc44                @commandline 212.1 KiB
+ libcap-ng                     i686   0:0.9.6-1.fc44               @commandline  67.3 KiB
+ libcap-ng                     x86_64 0:0.9.6-1.fc44               @commandline  68.8 KiB
+ libeconf                      i686   0:0.7.9-3.fc44               @commandline  64.0 KiB
+ libeconf                      x86_64 0:0.7.9-3.fc44               @commandline  64.8 KiB
+ libffi                        x86_64 0:3.5.2-2.fc44               @commandline  87.7 KiB
+ libgcc                        i686   0:16.2.1-2.fc44              @commandline 293.7 KiB
+ libgcc                        x86_64 0:16.2.1-2.fc44              @commandline 270.6 KiB
+ libselinux                    x86_64 0:3.11-2.fc44                @commandline 205.2 KiB
+ libsepol                      x86_64 0:3.11-1.fc44                @commandline 862.1 KiB
+ libtasn1                      x86_64 0:4.21.0-1.fc44              @commandline 180.6 KiB
+ libuuid                       x86_64 0:2.41.5-1.fc44              @commandline  37.2 KiB
+ libzstd                       x86_64 0:1.5.7-5.fc44               @commandline 956.1 KiB
+ mpdecimal                     x86_64 0:4.0.1-3.fc44               @commandline 217.1 KiB
+ ncurses-base                  noarch 0:6.6-1.fc44                 @commandline 329.7 KiB
+ ncurses-libs                  x86_64 0:6.6-1.fc44                 @commandline 968.9 KiB
+ openssl-libs                  x86_64 1:3.5.9-1.fc44               @commandline   9.2 MiB
+ p11-kit                       x86_64 0:0.26.5-1.fc44              @commandline   2.6 MiB
+ p11-kit-trust                 x86_64 0:0.26.5-1.fc44              @commandline 478.3 KiB
+ pam-libs                      i686   0:1.7.2-2.fc44               @commandline 128.2 KiB
+ pam-libs                      x86_64 0:1.7.2-2.fc44               @commandline 130.5 KiB
+ pcre2                         x86_64 0:10.47-1.fc44.1             @commandline 718.6 KiB
+ pcre2-syntax                  noarch 0:10.47-1.fc44.1             @commandline 281.9 KiB
+ pkcs11-provider               x86_64 0:1.1-3.fc44                 @commandline 476.3 KiB
+ python-pip-wheel              noarch 0:26.0.1-3.fc44              @commandline   1.2 MiB
+ python-unversioned-command    noarch 0:3.14.8-1.fc44              @commandline  23.0   B
+ python3                       x86_64 0:3.14.8-1.fc44              @commandline  28.7 KiB
+ python3-libs                  x86_64 0:3.14.8-1.fc44              @commandline  44.1 MiB
+ readline                      x86_64 0:8.3-4.fc44                 @commandline 519.5 KiB
+ sed                           x86_64 0:4.9-7.fc44                 @commandline 857.2 KiB
+ setup                         noarch 0:2.15.0-28.fc44             @commandline 724.9 KiB
+ sqlite-libs                   x86_64 0:3.51.2-2.fc44              @commandline   1.6 MiB
+ systemd-libs                  x86_64 0:259.9-1.fc44               @commandline   2.4 MiB
+ tzdata                        noarch 0:2026e-1.fc44               @commandline   1.3 MiB
+ xz-libs                       x86_64 1:5.8.2-2.fc44               @commandline 217.7 KiB
+ zlib-ng-compat                x86_64 0:2.3.3-3.fc44               @commandline 165.6 KiB
+
+Transaction Summary:
+ Installing:        69 packages
+
+Total size of inbound packages is 39 MiB. Need to download 0 B.
+After this operation, 134 MiB extra will be used (install 134 MiB, remove 0 B).
+Running transaction
+[ 1/71] Verify package files            100% | 312.0   B/s |  69.0   B |  00m00s
+>>> Running %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
+>>> Finished %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
+>>> [RPM] /rpms/acl-2.4.0-1.fc44.x86_64.rpm: Header OpenPGP V4 RSA/SHA256 signature, key ID dbfcf71c6d9f90a6: NOKEY
+[ 2/71] Prepare transaction             100% |  70.0   B/s |  69.0   B |  00m01s
+[ 3/71] Installing libgcc-0:16.2.1-2.fc 100% |   9.2 MiB/s | 272.3 KiB |  00m00s
+[ 4/71] Installing tzdata-0:2026e-1.fc4 100% | 690.1 KiB/s |   1.5 MiB |  00m02s
+[ 5/71] Installing pcre2-syntax-0:10.47 100% |   9.0 MiB/s | 284.3 KiB |  00m00s
+[ 6/71] Installing ncurses-base-0:6.6-1 100% |   1.5 MiB/s | 355.3 KiB |  00m00s
+[ 7/71] Installing gnulib-l10n-0:202412 100% |   4.9 MiB/s | 661.9 KiB |  00m00s
+[ 8/71] Installing coreutils-common-0:9 100% |  20.7 MiB/s |  10.7 MiB |  00m01s
+[ 9/71] Installing fedora-release-ident 100% |  86.7 KiB/s | 888.0   B |  00m00s
+[10/71] Installing fedora-gpg-keys-0:44 100% | 612.6 KiB/s | 355.3 KiB |  00m01s
+[11/71] Installing fedora-repos-0:44-2. 100% | 437.8 KiB/s |   5.7 KiB |  00m00s
+[12/71] Installing fedora-release-commo 100% | 553.6 KiB/s |  24.9 KiB |  00m00s
+[13/71] Installing fedora-release-0:44- 100% |   3.8 KiB/s | 124.0   B |  00m00s
+>>> Running sysusers scriptlet: setup-0:2.15.0-28.fc44.noarch
+>>> Finished sysusers scriptlet: setup-0:2.15.0-28.fc44.noarch
+>>> Scriptlet output:
+>>> Creating group 'adm' with GID 4.
+>>> Creating group 'audio' with GID 63.
+>>> Creating group 'cdrom' with GID 11.
+>>> Creating group 'clock' with GID 103.
+>>> Creating group 'dialout' with GID 18.
+>>> Creating group 'disk' with GID 6.
+>>> Creating group 'floppy' with GID 19.
+>>> Creating group 'ftp' with GID 50.
+>>> Creating group 'games' with GID 20.
+>>> Creating group 'input' with GID 104.
+>>> Creating group 'kmem' with GID 9.
+>>> Creating group 'kvm' with GID 36.
+>>> Creating group 'lock' with GID 54.
+>>> Creating group 'lp' with GID 7.
+>>> Creating group 'mail' with GID 12.
+>>> Creating group 'man' with GID 15.
+>>> Creating group 'mem' with GID 8.
+>>> Creating group 'nobody' with GID 65534.
+>>> Creating group 'render' with GID 105.
+>>> Creating group 'root' with GID 0.
+>>> Creating group 'sgx' with GID 106.
+>>> Creating group 'sys' with GID 3.
+>>> Creating group 'tape' with GID 33.
+>>> Creating group 'tty' with GID 5.
+>>> Creating group 'users' with GID 100.
+>>> Creating group 'utmp' with GID 22.
+>>> Creating group 'video' with GID 39.
+>>> Creating group 'wheel' with GID 10.
+>>> Creating user 'adm' (adm) with UID 3 and GID 4.
+>>> Creating group 'bin' with GID 1.
+>>> Creating user 'bin' (bin) with UID 1 and GID 1.
+>>> Creating group 'daemon' with GID 2.
+>>> Creating user 'daemon' (daemon) with UID 2 and GID 2.
+>>> Creating user 'ftp' (FTP User) with UID 14 and GID 50.
+>>> Creating user 'games' (games) with UID 12 and GID 100.
+>>> Creating user 'halt' (halt) with UID 7 and GID 0.
+>>> Creating user 'lp' (lp) with UID 4 and GID 7.
+>>> Creating user 'mail' (mail) with UID 8 and GID 12.
+>>> Creating user 'nobody' (Kernel Overflow User) with UID 65534 and GID 65534.
+>>> Creating user 'operator' (operator) with UID 11 and GID 0.
+>>> Creating user 'root' (Super User) with UID 0 and GID 0.
+>>> Creating user 'shutdown' (shutdown) with UID 6 and GID 0.
+>>> Creating user 'sync' (sync) with UID 5 and GID 0.
+>>> 
+[14/71] Installing setup-0:2.15.0-28.fc 100% |   6.2 MiB/s | 730.6 KiB |  00m00s
+[15/71] Installing filesystem-0:3.18-52 100% | 101.0 KiB/s | 212.8 KiB |  00m02s
+[16/71] Installing bash-0:5.3.9-3.fc44. 100% |  30.0 MiB/s |   8.5 MiB |  00m00s
+[17/71] Installing glibc-common-0:2.43- 100% |  10.1 MiB/s |   1.0 MiB |  00m00s
+[18/71] Installing glibc-minimal-langpa 100% |  10.1 KiB/s | 124.0   B |  00m00s
+[19/71] Installing glibc-0:2.43-9.fc44. 100% |  27.6 MiB/s |   6.9 MiB |  00m00s
+[20/71] Installing ncurses-libs-0:6.6-1 100% |  14.4 MiB/s | 975.4 KiB |  00m00s
+[21/71] Installing glibc-gconv-extra-0: 100% |   8.7 MiB/s |   7.5 MiB |  00m01s
+[22/71] Installing libacl-0:2.4.0-1.fc4 100% |   2.5 MiB/s |  40.7 KiB |  00m00s
+[23/71] Installing libffi-0:3.5.2-2.fc4 100% |   4.3 MiB/s |  89.1 KiB |  00m00s
+[24/71] Installing libattr-0:2.6.0-1.fc 100% |   1.5 MiB/s |  25.2 KiB |  00m00s
+[25/71] Installing libtasn1-0:4.21.0-1. 100% |   7.1 MiB/s | 182.4 KiB |  00m00s
+[26/71] Installing p11-kit-0:0.26.5-1.f 100% |   9.0 MiB/s |   2.6 MiB |  00m00s
+[27/71] Installing pcre2-0:10.47-1.fc44 100% |  28.1 MiB/s | 720.0 KiB |  00m00s
+[28/71] Installing zlib-ng-compat-0:2.3 100% |   4.4 MiB/s | 166.5 KiB |  00m00s
+[29/71] Installing crypto-policies-0:20 100% | 651.5 KiB/s | 157.7 KiB |  00m00s
+[30/71] Installing grep-0:3.12-3.fc44.x 100% |   5.8 MiB/s |   1.0 MiB |  00m00s
+[31/71] Installing readline-0:8.3-4.fc4 100% |  17.0 MiB/s | 521.6 KiB |  00m00s
+[32/71] Installing alternatives-0:1.33- 100% |   1.8 MiB/s |  63.6 KiB |  00m00s
+[33/71] Installing p11-kit-trust-0:0.26 100% |   7.9 MiB/s | 480.1 KiB |  00m00s
+[34/71] Installing bzip2-libs-0:1.0.8-2 100% |   4.2 MiB/s |  81.6 KiB |  00m00s
+[35/71] Installing expat-0:2.8.5-1.fc44 100% |   7.5 MiB/s | 344.3 KiB |  00m00s
+[36/71] Installing gdbm-libs-1:1.23-11. 100% |   5.3 MiB/s | 131.3 KiB |  00m00s
+[37/71] Installing gmp-1:6.3.0-5.fc44.x 100% |  23.5 MiB/s | 817.5 KiB |  00m00s
+[38/71] Installing libcap-ng-0:0.9.6-1. 100% |   2.9 MiB/s |  70.6 KiB |  00m00s
+[39/71] Installing audit-libs-0:4.2.1-1 100% |  11.6 MiB/s | 393.1 KiB |  00m00s
+[40/71] Installing libeconf-0:0.7.9-3.f 100% |   2.7 MiB/s |  66.4 KiB |  00m00s
+[41/71] Installing pam-libs-0:1.7.2-2.f 100% |   4.6 MiB/s | 132.7 KiB |  00m00s
+[42/71] Installing libcap-0:2.78-1.fc44 100% |   3.0 MiB/s | 217.2 KiB |  00m00s
+[43/71] Installing libsepol-0:3.11-1.fc 100% |  32.4 MiB/s | 863.0 KiB |  00m00s
+[44/71] Installing libselinux-0:3.11-2. 100% |   8.8 MiB/s | 206.5 KiB |  00m00s
+[45/71] Installing findutils-1:4.10.0-7 100% |  11.1 MiB/s |   1.9 MiB |  00m00s
+[46/71] Installing sed-0:4.9-7.fc44.x86 100% |   5.6 MiB/s | 865.4 KiB |  00m00s
+[47/71] Installing libuuid-0:2.41.5-1.f 100% |   1.9 MiB/s |  38.3 KiB |  00m00s
+[48/71] Installing libzstd-0:1.5.7-5.fc 100% |  36.0 MiB/s | 957.4 KiB |  00m00s
+[49/71] Installing mpdecimal-0:4.0.1-3. 100% |   8.5 MiB/s | 218.6 KiB |  00m00s
+[50/71] Installing sqlite-libs-0:3.51.2 100% |  44.2 MiB/s |   1.6 MiB |  00m00s
+[51/71] Installing systemd-libs-0:259.9 100% |  40.2 MiB/s |   2.5 MiB |  00m00s
+[52/71] Installing openssl-libs-1:3.5.9 100% |  66.8 MiB/s |   9.2 MiB |  00m00s
+[53/71] Installing coreutils-0:9.10-5.f 100% |  14.8 MiB/s |   5.7 MiB |  00m00s
+[54/71] Installing ca-certificates-0:20 100% | 643.2 KiB/s |   2.5 MiB |  00m04s
+[55/71] Installing python-pip-wheel-0:2 100% |  40.8 MiB/s |   1.2 MiB |  00m00s
+[56/71] Installing xz-libs-1:5.8.2-2.fc 100% |   7.9 MiB/s | 218.8 KiB |  00m00s
+[57/71] Installing python3-libs-0:3.14. 100% |  12.7 MiB/s |  44.5 MiB |  00m04s
+[58/71] Installing python3-0:3.14.8-1.f 100% | 405.6 KiB/s |  30.4 KiB |  00m00s
+[59/71] Installing libgcc-0:16.2.1-2.fc 100% |  15.2 MiB/s | 295.4 KiB |  00m00s
+[60/71] Installing crypto-policies-scri 100% |   2.9 MiB/s | 407.0 KiB |  00m00s
+[61/71] Installing python-unversioned-c 100% |  18.8 KiB/s | 424.0   B |  00m00s
+[62/71] Installing pkcs11-provider-0:1. 100% |  15.1 MiB/s | 477.9 KiB |  00m00s
+[63/71] Installing attr-0:2.6.0-1.fc44. 100% |   2.2 MiB/s | 182.6 KiB |  00m00s
+[64/71] Installing acl-0:2.4.0-1.fc44.x 100% |   2.9 MiB/s | 226.7 KiB |  00m00s
+[65/71] Installing glibc-0:2.43-9.fc44. 100% |  17.2 MiB/s |   5.7 MiB |  00m00s
+[66/71] Installing glibc-gconv-extra-0: 100% |   8.3 MiB/s |   6.8 MiB |  00m01s
+[67/71] Installing libcap-ng-0:0.9.6-1. 100% |   2.9 MiB/s |  69.1 KiB |  00m00s
+[68/71] Installing audit-libs-0:4.2.1-1 100% |  13.1 MiB/s | 402.8 KiB |  00m00s
+[69/71] Installing libeconf-0:0.7.9-3.f 100% |   3.6 MiB/s |  65.7 KiB |  00m00s
+[70/71] Installing pam-libs-0:1.7.2-2.f 100% |   4.1 MiB/s | 130.6 KiB |  00m00s
+[71/71] Installing libcap-0:2.78-1.fc44 100% |  38.3 KiB/s | 198.3 KiB |  00m05s
+Warning: skipped OpenPGP checks for 69 packages from repository: @commandline
+Complete!
+RESTRICTED_INITIAL_DNF_INSTALL_PASS
+PACKAGE_INSTALL_PASS
+SANDBOX_BEGIN
+         0     100000      65536
+666 0:0 1:3
+44 36 0:26 / / rw,nosuid,nodev,relatime - fuse.ext4 /work/image rw,user_id=0,group_id=0,default_permissions,allow_other
+45 44 0:28 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw
+46 44 0:29 / /dev rw,nosuid,noexec,relatime - tmpfs tmpfs rw,uid=100000,gid=100000,inode64
+47 46 0:25 /runtime/null /dev/null rw,relatime - tmpfs tmpfs rw,mode=755,inode64
+48 46 0:25 /runtime/zero /dev/zero rw,relatime - tmpfs tmpfs rw,mode=755,inode64
+49 46 0:25 /runtime/random /dev/random rw,relatime - tmpfs tmpfs rw,mode=755,inode64
+50 46 0:25 /runtime/urandom /dev/urandom rw,relatime - tmpfs tmpfs rw,mode=755,inode64
+DAEMON_PID_INACCESSIBLE_PASS
+/dev/null
+pipe:[1920]
+pipe:[1920]
+VISIBILITY_PASS
+/test-caps cap_net_bind_service=ep
+getfattr: Removing leading '/' from absolute path names
+# file: test-owned
+security.selinux="system_u:object_r:conglobate_target_only_t:s0"
+
+mknod: /test-device: Operation not permitted
+MKNOD_EXPECTED_DENIAL
+ATTACK_BLOCKED worker kill/pidfd/ptrace
+ATTACK_BLOCKED inherited descriptors
+ATTACK_BLOCKED outside paths and absolute symlink
+ATTACK_BLOCKED abstract Unix control socket
+ATTACK_BLOCKED new proc mount denied by policy
+ATTACK_BLOCKED retained cwd chroot escape stays within pivot root
+ADVERSARIAL_RESULT PASS
+ANCESTOR_MODES 0o40555 0o40755
+ACL_RESULT 1234 True True
+CHILD_STATUS 0
+ACL_DENIAL 1235 PermissionError(13, 'Permission denied')
+ACL_RESULT 1235 False False
+CHILD_STATUS 0
+ACL_ENFORCEMENT_PROBE_END
+getfacl: Removing leading '/' from absolute path names
+INHERITED_ACL # file: semantics/inherited
+# owner: 0
+# group: 0
+user::rw-
+user:1234:rwx	#effective:rw-
+group::r-x	#effective:r--
+mask::rw-
+other::r--
+
+
+PAIRED_WORKER_PACKAGE_ACL_ASSERTIONS_PASS
+ACL_INHERITANCE_PROBE_END
+ID_RANGE_BOUNDARY_PASS
+SPARSE_MMAP_FSYNC_LOCK_LINK_RENAME_PASS
+getfattr: Removing leading '/' from absolute path names
+# file: test-owned
+security.selinux="system_u:object_r:conglobate_target_only_t:s0"
+
+RESTRICTED_RPM_REINSTALL_REMOVE_INSTALL_PASS
+warning: /etc/conglobate-upgrade.conf created as /etc/conglobate-upgrade.conf.rpmnew
+RESTRICTED_VERSION_UPGRADE_CONFIG_SCRIPTLETS_PASS
+RUNTIME_DEVICE_MUTATED
+SANDBOX_PASS
+DETACHED_DESCENDANT_TERMINATION_PASS
+BUILDER_DEVICE_UNCHANGED_PASS
+DESCENDANT_TERMINATION_PASS
+DAEMON_SURVIVED_PASS
+WORKER_PASS
+FUSE2FS (image): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (image): mounted filesystem c3642fe7-bcdd-4166-a38c-068fb87b35e6.
+FUSE2FS (image): unmounting filesystem c3642fe7-bcdd-4166-a38c-068fb87b35e6.
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 8976/131072 files (0.5% non-contiguous), 76597/524288 blocks
+1000:1000
+getfacl: Removing leading '/' from absolute path names
+# file: work/raw/test-owned
+# owner: 1000
+# group: 1000
+user::rw-
+user:1234:rw-
+group::r--
+mask::rw-
+other::r--
+
+getfattr: Removing leading '/' from absolute path names
+# file: work/raw/test-owned
+security.selinux="system_u:object_r:conglobate_target_only_t:s0"
+
+/work/raw/test-caps cap_net_bind_service=ep
+0: cap_net_bind_service=ep
+INSTALLED_SHELL_PASS
+UPGRADE_KERNEL_REMOUNT_PASS
+0 4194304 snapshot 409784/4194304 1608
+/work/origin: OK
+/crash-worker: line 10:  2125 Killed                     fuse2fs -f -o acl,allow_other /work/failure /work/view > /work/fuse.log 2>&1
+DAEMON_FAILURE_DETECTED_PASS
+touch: cannot touch '/work/view/after': Transport endpoint is not connected
+DEAD_DAEMON_IO_FAILURE_PASS
+FAILED_MOUNT_CLEANUP_PASS
+VALIDATION_PASS
+GUEST_EXIT 0
+[   37.461323] sysrq: Resetting

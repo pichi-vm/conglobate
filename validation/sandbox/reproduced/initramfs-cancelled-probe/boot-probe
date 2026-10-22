@@ -1,0 +1,12 @@
+#!/bin/bash
+set -euo pipefail
+trap 'echo "INITRAMFS_PROBE_FAILED_LINE_$LINENO" >/dev/console' ERR
+read -r init </proc/1/comm
+test "$init" = systemd
+test -d /sys/class
+test -c /dev/null
+grep -q ext4 /proc/filesystems
+modprobe dm_snapshot
+test -d /sys/module/dm_snapshot
+printf 'INITRAMFS_SYSTEMD_MODULE_BOOT_PASS %s\n' "$(uname -r)" >/dev/console
+systemctl --no-block poweroff

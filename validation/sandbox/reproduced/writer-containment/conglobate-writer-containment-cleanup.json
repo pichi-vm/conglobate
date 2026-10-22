@@ -1,0 +1,29 @@
+[
+  {
+    "run": "/tmp/conglobate-recovery-atomic-lease-v1",
+    "retained": "validation/sandbox/reproduced/recovery-atomic-lease",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-recovery-lifetime-v1",
+    "retained": "validation/sandbox/reproduced/recovery-lifetime",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-writer-containment-v1",
+    "retained": null,
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  }
+]

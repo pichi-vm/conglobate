@@ -1,0 +1,9 @@
+/usr/bin/python3: line 11: 9: Bad file descriptor
+IMAGE_ENV_AND_FDS_CLEAN_PASS
+HELPER_LOADER_ENV_NEGATIVE_CONTROL_CONFIRMED
+/usr/bin/python3: line 11: 9: Bad file descriptor
+IMAGE_ENV_AND_FDS_CLEAN_PASS
+HELPER_LAUNCH_ENV_SANITIZED_PASS
+LOADER_MATRIX_PASS
+GUEST_EXIT 0
+[    0.958274] sysrq: Resetting

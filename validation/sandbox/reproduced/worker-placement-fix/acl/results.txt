@@ -1,0 +1,121 @@
+ACL_FEATURE metadata-csum
+ACL_NAMESPACE kernel
+ACL_SET_CHMOD_ENFORCEMENT_PASS
+ACL_NAMED_GROUP_AND_MASK_PASS
+ACL_INHERITANCE_UMASK_AND_CREATE_MODE_PASS
+ACL_LINK_REMOVE_AND_MALFORMED_UPDATE_PASS
+ACL_OWNER_AUTHORIZATION_PASS
+ACL_NONROOT_FSETID_SGID_PRESERVED
+ACL_ROOT_WITHOUT_FSETID_SGID_CLEARED
+ACL_COMMON_SEMANTICS_PASS
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 23/16384 files (0.0% non-contiguous), 9556/65536 blocks
+ACL_KERNEL_REMOUNT_MATCH_PASS
+ACL_NAMESPACE initial
+ACL_SET_CHMOD_ENFORCEMENT_PASS
+ACL_NAMED_GROUP_AND_MASK_PASS
+ACL_INHERITANCE_UMASK_AND_CREATE_MODE_PASS
+ACL_LINK_REMOVE_AND_MALFORMED_UPDATE_PASS
+ACL_OWNER_AUTHORIZATION_PASS
+ACL_NONROOT_FSETID_SGID_PRESERVED
+ACL_ROOT_WITHOUT_FSETID_SGID_CLEARED
+ACL_COMMON_SEMANTICS_PASS
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 23/16384 files (0.0% non-contiguous), 9556/65536 blocks
+ACL_KERNEL_REMOUNT_MATCH_PASS
+ACL_REFERENCE_MATCH_PASS initial metadata-csum
+ACL_NAMESPACE mapped
+ACL_SET_CHMOD_ENFORCEMENT_PASS
+ACL_NAMED_GROUP_AND_MASK_PASS
+ACL_INHERITANCE_UMASK_AND_CREATE_MODE_PASS
+ACL_LINK_REMOVE_AND_MALFORMED_UPDATE_PASS
+ACL_OWNER_AUTHORIZATION_PASS
+ACL_NONROOT_FSETID_SGID_PRESERVED
+ACL_ROOT_WITHOUT_FSETID_SGID_CLEARED
+ACL_COMMON_SEMANTICS_PASS
+FUSE2FS (image): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (image): mounted filesystem 3ef9a5b8-cd88-4263-8697-33bf336c191c.
+FUSE2FS (image): unmounting filesystem 3ef9a5b8-cd88-4263-8697-33bf336c191c.
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 23/16384 files (0.0% non-contiguous), 9556/65536 blocks
+ACL_KERNEL_REMOUNT_MATCH_PASS
+ACL_REFERENCE_MATCH_PASS mapped metadata-csum
+ACL_FEATURE without-metadata-csum
+ACL_NAMESPACE kernel
+ACL_SET_CHMOD_ENFORCEMENT_PASS
+ACL_NAMED_GROUP_AND_MASK_PASS
+ACL_INHERITANCE_UMASK_AND_CREATE_MODE_PASS
+ACL_LINK_REMOVE_AND_MALFORMED_UPDATE_PASS
+ACL_OWNER_AUTHORIZATION_PASS
+ACL_NONROOT_FSETID_SGID_PRESERVED
+ACL_ROOT_WITHOUT_FSETID_SGID_CLEARED
+ACL_COMMON_SEMANTICS_PASS
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 23/16384 files (0.0% non-contiguous), 9556/65536 blocks
+ACL_KERNEL_REMOUNT_MATCH_PASS
+ACL_NAMESPACE initial
+ACL_SET_CHMOD_ENFORCEMENT_PASS
+ACL_NAMED_GROUP_AND_MASK_PASS
+ACL_INHERITANCE_UMASK_AND_CREATE_MODE_PASS
+ACL_LINK_REMOVE_AND_MALFORMED_UPDATE_PASS
+ACL_OWNER_AUTHORIZATION_PASS
+ACL_NONROOT_FSETID_SGID_PRESERVED
+ACL_ROOT_WITHOUT_FSETID_SGID_CLEARED
+ACL_COMMON_SEMANTICS_PASS
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 23/16384 files (0.0% non-contiguous), 9556/65536 blocks
+ACL_KERNEL_REMOUNT_MATCH_PASS
+ACL_REFERENCE_MATCH_PASS initial without-metadata-csum
+ACL_NAMESPACE mapped
+ACL_SET_CHMOD_ENFORCEMENT_PASS
+ACL_NAMED_GROUP_AND_MASK_PASS
+ACL_INHERITANCE_UMASK_AND_CREATE_MODE_PASS
+ACL_LINK_REMOVE_AND_MALFORMED_UPDATE_PASS
+ACL_OWNER_AUTHORIZATION_PASS
+ACL_NONROOT_FSETID_SGID_PRESERVED
+ACL_ROOT_WITHOUT_FSETID_SGID_CLEARED
+ACL_COMMON_SEMANTICS_PASS
+FUSE2FS (image): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (image): mounted filesystem 31667150-1084-49ed-b4ff-cdab2566dbff.
+FUSE2FS (image): unmounting filesystem 31667150-1084-49ed-b4ff-cdab2566dbff.
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 23/16384 files (0.0% non-contiguous), 9556/65536 blocks
+ACL_KERNEL_REMOUNT_MATCH_PASS
+ACL_REFERENCE_MATCH_PASS mapped without-metadata-csum
+ACL_COMMON_SEMANTICS_MATRIX_PASS
+GUEST_EXIT 0
+[    2.752301] sysrq: Resetting

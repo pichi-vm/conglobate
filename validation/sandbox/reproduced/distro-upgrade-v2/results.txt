@@ -1,0 +1,16 @@
+Disabled
+PACKAGE_INSTALL_BEGIN
+DUAL_RUNTIME_ALL_TARGETS_PINNED
+DUAL_RUNTIME_MOUNTS_INSTALLED
+Updating and loading repositories:
+Repositories loaded.
+Failed to resolve the transaction:
+Problem 1: package coreutils-9.7-6.fc43.x86_64 from @commandline conflicts with coreutils-single provided by coreutils-single-9.7-6.fc43.x86_64 from @commandline
+  - conflicting requests
+Problem 2: package systemd-sysusers-258-1.fc43.x86_64 from @commandline conflicts with systemd-standalone-sysusers provided by systemd-standalone-sysusers-258-1.fc43.x86_64 from @commandline
+  - conflicting requests
+You can try to add to command line:
+  --allowerasing to allow removing of installed packages to resolve problems
+  --skip-broken to skip uninstallable packages
+GUEST_EXIT 1
+[    3.135923] sysrq: Resetting

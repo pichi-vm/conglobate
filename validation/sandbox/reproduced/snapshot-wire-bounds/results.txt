@@ -1,0 +1,37 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.46
+   Compiling unicode-ident v1.0.24
+   Compiling zerocopy v0.8.52
+   Compiling libc v0.2.189
+   Compiling getrandom v0.4.3
+   Compiling rustix v1.1.4
+   Compiling cfg-if v1.0.4
+   Compiling linux-raw-sys v0.12.1
+   Compiling bitflags v2.13.1
+   Compiling once_cell v1.21.4
+   Compiling fastrand v2.5.0
+   Compiling syn v2.0.118
+   Compiling tempfile v3.27.0
+   Compiling zerocopy-derive v0.8.52
+   Compiling iocuddle v0.4.0
+   Compiling devmap-core v0.1.0 (/tmp/conglobate-snapshot-wire-bounds/devmap/core)
+   Compiling devmap-linux v0.1.0 (/tmp/conglobate-snapshot-wire-bounds/devmap/linux)
+   Compiling devmap-snapshot v0.1.0 (/tmp/conglobate-snapshot-wire-bounds/devmap/snapshot)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.12s
+     Running tests/validation_bounds.rs (/tmp/conglobate-snapshot-wire-bounds/target/debug/deps/validation_bounds-548f27b485bf63a1)
+
+running 3 tests
+test exception_wire_decode_does_not_claim_semantic_validation ... ok
+test all_supported_chunk_sizes_and_rejected_conversion_bounds ... ok
+test last_representable_metadata_index_and_first_overflow ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/wire.rs (/tmp/conglobate-snapshot-wire-bounds/target/debug/deps/wire-c50bcf7985395905)
+
+running 2 tests
+test exception_records_include_terminators ... ok
+test header_records_and_layout ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

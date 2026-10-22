@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "case": "failure",
+      "seconds": 2.6205323560279794,
+      "code": 0,
+      "error": null,
+      "base_unchanged": true,
+      "export_bytes": 0,
+      "cleanup_marker": 1,
+      "guest_exit": 1,
+      "pass": true
+    },
+    {
+      "case": "timeout",
+      "seconds": 3.2732831959729083,
+      "code": 0,
+      "error": null,
+      "base_unchanged": true,
+      "export_bytes": 0,
+      "cleanup_marker": 1,
+      "guest_exit": 1,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

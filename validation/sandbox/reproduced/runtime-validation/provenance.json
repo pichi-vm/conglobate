@@ -1,0 +1,29 @@
+{
+  "final_run": "/var/tmp/conglobate-runtime-pass-v24",
+  "packages": [
+    "bubblewrap-0.12.0-1.fc44.x86_64",
+    "crun-1.28-1.fc44.x86_64",
+    "systemd-259.9-1.fc44.x86_64",
+    "systemd-container-259.9-1.fc44.x86_64",
+    "util-linux-2.41.5-1.fc44.x86_64",
+    "dbus-broker-37-8.fc44.x86_64"
+  ],
+  "kernel_sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+  "initramfs_sha256": "790dc9703603773571c507c7db8a554e853f667e8c200902ab4455120a24a8b7",
+  "download_sha256": {
+    "rpms/libnl3-devel-3.12.0-3.fc44.x86_64.rpm": "96d04d9d1a41d7e644dfeb21cfb868142fe363e7d09478cbb9f8e411ee6aafad",
+    "rpms/libpathrs-0.2.6-1.fc44.x86_64.rpm": "44555c0624e6e9c1046231e38c8434c2ff3b0bf4fac7a0fed9c78ff1dbd2d8d1",
+    "rpms/libseccomp-devel-2.6.1-2.fc44.x86_64.rpm": "e4f23028456ebd53e9b539fde220194243ab9082ce4535c22ddec2f48a7e3acb",
+    "rpms/protobuf-3.19.6-20.fc44.x86_64.rpm": "f1237999a0fc0e7e780da26ba5e0cad3defb130d51645ae8b7918b497f909607",
+    "rpms/protobuf-c-1.5.2-2.fc44.x86_64.rpm": "545b9e8fbf26446371ff206c58bbbc8e4c6738a55bd8ae6edccdab7f6371a1fb",
+    "rpms/protobuf-compiler-3.19.6-20.fc44.x86_64.rpm": "4129d67d4270d6c1f64908625628836fc6385d890992d6925b1fc4cfe8df1caa",
+    "rpms/protobuf-devel-3.19.6-20.fc44.x86_64.rpm": "d7ba66784495196e5343630f75c89bb5be033cd2b3b7adcbd8f2077980fdadc3",
+    "rpms/runc-1.5.2-3.fc44.x86_64.rpm": "942f448d31bb6eeaf610af90d0102db5076ef6463e5042e4926f70413ca019fa",
+    "youki-0.7.0-x86_64-musl.tar.gz": "a211a16b6b1a985f8ca61bba9a30b9ae40352d04dd7eca04cdecfe7b98b47038"
+  },
+  "upstream_sources": {
+    "nsjail": "4ff54a6e0d5b65a0e1633d6e2fd1425ba6c882ce",
+    "libcontainer": "cb3214c2204a03f1b99ae7c5870138439fd84345",
+    "youki_cli": "v0.7.0"
+  }
+}

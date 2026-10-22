@@ -1,0 +1,198 @@
+Core dump limits :
+	soft - NONE
+	hard - NONE
+Checking that ptrace can change system call numbers...OK
+Checking syscall emulation for ptrace...OK
+Checking environment variables for a tempdir.../runtime
+Checking if /runtime is on tmpfs...OK
+Checking PROT_EXEC mmap in /runtime...OK
+Adding 232861696 bytes to physical memory to account for exec-shield gap
+Linux version 6.12.101 (sbuild@sbuild) (gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #1 Wed Aug 12 05:59:36 UTC 2026
+Zone ranges:
+  Normal   [mem 0x0000000000000000-0x000000009de12fff]
+Movable zone start for each node
+Early memory node ranges
+  node   0: [mem 0x0000000000000000-0x000000003de12fff]
+Initmem setup node 0 [mem 0x0000000000000000-0x000000003de12fff]
+random: crng init done
+Kernel command line: mem=768M con=null con0=fd:0,fd:1 ssl=null lsm=capability panic=1 rdinit=/init initrd=/initrd uml_dir=/runtime ubd0=/disk root=98:0 console=tty0
+Unknown kernel command line parameters "mem=768M uml_dir=/runtime", will be passed to user space.
+Dentry cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+Inode-cache hash table entries: 65536 (order: 7, 524288 bytes, linear)
+Sorting __ex_table...
+Built 1 zonelists, mobility grouping on.  Total pages: 253459
+mem auto-init: stack:off, heap alloc:off, heap free:off
+SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+RCU Tasks Trace: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.
+NR_IRQS: 64
+clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+clocksource: timer: mask: 0xffffffffffffffff max_cycles: 0x1cd42e205, max_idle_ns: 881590404426 ns
+Calibrating delay loop... 5923.63 BogoMIPS (lpj=29618176)
+Checking that host ptys support output SIGIO...Yes
+pid_max: default: 32768 minimum: 301
+LSM: initializing lsm=capability
+Mount-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)
+Mountpoint-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)
+Memory: 749360K/1013836K available (7160K kernel code, 1552K rwdata, 2300K rodata, 229K init, 336K bss, 262188K reserved, 0K cma-reserved)
+devtmpfs: initialized
+futex hash table entries: 256 (order: 1, 6144 bytes, linear)
+NET: Registered PF_NETLINK/PF_ROUTE protocol family
+audit: initializing netlink subsys (disabled)
+audit: type=2000 audit(1792588131.529:1): state=initialized audit_enabled=0 res=1
+raid6: int64x8  gen()  4715 MB/s
+raid6: int64x4  gen()  4207 MB/s
+raid6: int64x2  gen()  6066 MB/s
+raid6: int64x1  gen()  6511 MB/s
+raid6: using algorithm int64x1 gen() 6511 MB/s
+raid6: .... xor() 3263 MB/s, rmw enabled
+raid6: using intx1 recovery algorithm
+NetLabel: Initializing
+NetLabel:  domain hash size = 128
+NetLabel:  protocols = UNLABELED CIPSOv4 CALIPSO
+NetLabel:  unlabeled traffic allowed by default
+clocksource: Switched to clocksource timer
+VFS: Disk quotas dquot_6.6.0
+VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+NET: Registered PF_INET protocol family
+IP idents hash table entries: 16384 (order: 5, 131072 bytes, linear)
+tcp_listen_portaddr_hash hash table entries: 512 (order: 0, 4096 bytes, linear)
+Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+TCP established hash table entries: 8192 (order: 4, 65536 bytes, linear)
+TCP bind hash table entries: 8192 (order: 5, 131072 bytes, linear)
+TCP: Hash tables configured (established 8192 bind 8192)
+UDP hash table entries: 512 (order: 2, 16384 bytes, linear)
+UDP-Lite hash table entries: 512 (order: 2, 16384 bytes, linear)
+NET: Registered PF_UNIX/PF_LOCAL protocol family
+printk: legacy console [stderr0] disabled
+mconsole (version 2) initialized on /runtime/probe/mconsole
+Checking host MADV_REMOVE support...OK
+Mapper v0.1
+mmapper_init - find_iomem failed
+Trying to unpack rootfs image as initramfs...
+Freeing initrd memory: 5716K
+workingset: timestamp_bits=46 max_order=18 bucket_order=0
+zbud: loaded
+JFS: nTxBlock = 5916, nTxLock = 47335
+SGI XFS with ACLs, security attributes, realtime, quota, no debug enabled
+xor: measuring software checksum speed
+   prefetch64-sse  : 25943 MB/sec
+   generic_sse     : 26101 MB/sec
+xor: using function: generic_sse (26101 MB/sec)
+Block layer SCSI generic (bsg) driver version 0.4 loaded (major 253)
+io scheduler mq-deadline registered
+io scheduler kyber registered
+NET: Registered PF_PACKET protocol family
+Initialized stdio console driver
+Console initialized on /dev/tty0
+printk: legacy console [tty0] enabled
+Initializing software serial port version 1
+printk: legacy console [mc-1] enabled
+registered taskstats version 1
+Btrfs loaded, zoned=no, fsverity=no
+This architecture does not have kernel memory protection.
+Run /init as init process
+EXT4-fs (ubda): mounted filesystem 4791ae4e-7a66-40d5-a10b-453de4ad2d76 r/w with ordered data mode. Quota mode: none.
+Updating and loading repositories:
+[?25l fixture                                100% |   1.4 MiB/s |  45.8 KiB |  00m00s
+]9;4;0;0\[?25hRepositories loaded.
+[1mPackage                 [0m [1mArch   [0m [1mVersion                 [0m [1mRepository [0m [1m      Size[0m
+Installing:
+[32m policycoreutils        [0m x86_64  0:3.11-2.fc44            fixture      884.8 KiB
+[32m selinux-policy-targeted[0m noarch  0:44.11-1.fc44           fixture       18.6 MiB
+Installing dependencies:
+[32m gawk                   [0m x86_64  0:5.3.2-3.fc44           fixture        1.8 MiB
+[32m libselinux-utils       [0m x86_64  0:3.11-2.fc44            fixture      305.8 KiB
+[32m libsemanage            [0m x86_64  0:3.11-1.fc44            fixture      316.4 KiB
+[32m mpfr                   [0m x86_64  0:4.2.2-3.fc44           fixture      849.1 KiB
+[32m selinux-policy         [0m noarch  0:44.11-1.fc44           fixture       32.1 KiB
+
+Transaction Summary:
+ Installing:         7 packages
+
+Total size of inbound packages is 9 MiB. Need to download 9 MiB.
+After this operation, 23 MiB extra will be used (install 23 MiB, remove 0 B).
+[?25l[1/7] selinux-policy-targeted-0:44.11-1   0% | 100.0   B/s |   0.0   B |  19h45m
+--------------------------------------------------------------------------------
+[0/7] Total                               0% |  90.0   B/s |   0.0   B |  01d04h]9;4;1;0\[2A[0J[1/7] selinux-policy-targeted-0:44.11-1  72% | 100.0   B/s |   5.0 MiB |  05h20m
+--------------------------------------------------------------------------------
+[0/7] Total                              56% |  90.0   B/s |   5.0 MiB |  12h25m]9;4;1;56\[2A[0J[1/7] selinux-policy-targeted-0:44.11-1 100% |  24.8 MiB/s |   6.8 MiB |  00m00s
+[2/7] policycoreutils-0:3.11-2.fc44.x86 100% | 911.9 KiB/s | 259.0 KiB |  00m00s
+[3/7] selinux-policy-0:44.11-1.fc44.noa 100% |  94.9 KiB/s |  27.0 KiB |  00m00s
+--------------------------------------------------------------------------------
+[1/7] Total                              80% |  90.0   B/s |   7.1 MiB |  05h35m]9;4;1;80\[3A[0J[2/7] policycoreutils-0:3.11-2.fc44.x86 100% |   1.8 MiB/s | 259.0 KiB |  00m00s
+[3/7] selinux-policy-0:44.11-1.fc44.noa 100% |  94.9 KiB/s |  27.0 KiB |  00m00s
+--------------------------------------------------------------------------------
+[2/7] Total                              80% |  90.0   B/s |   7.1 MiB |  05h35m]9;4;1;80\[2A[0J[3/7] selinux-policy-0:44.11-1.fc44.noa 100% | 195.3 KiB/s |  27.0 KiB |  00m00s
+--------------------------------------------------------------------------------
+[3/7] Total                              80% |  90.0   B/s |   7.1 MiB |  05h35m]9;4;1;80\[1A[0J[4/7] gawk-0:5.3.2-3.fc44.x86_64          0% |   3.0   B/s |   0.0   B |  04d14h
+--------------------------------------------------------------------------------
+[3/7] Total                              80% |  90.0   B/s |   7.1 MiB |  05h35m]9;4;1;80\[2A[0J[4/7] gawk-0:5.3.2-3.fc44.x86_64        100% |  20.6 MiB/s |   1.1 MiB |  00m00s
+[5/7] libselinux-utils-0:3.11-2.fc44.x8 100% | 337.2 KiB/s | 119.7 KiB |  00m00s
+[6/7] libsemanage-0:3.11-1.fc44.x86_64  100% | 358.6 KiB/s | 127.3 KiB |  00m00s
+--------------------------------------------------------------------------------
+[4/7] Total                              96% |  90.0   B/s |   8.4 MiB |  01h07m]9;4;1;96\[3A[0J[5/7] libselinux-utils-0:3.11-2.fc44.x8 100% |   3.1 MiB/s | 119.7 KiB |  00m00s
+[6/7] libsemanage-0:3.11-1.fc44.x86_64  100% | 358.6 KiB/s | 127.3 KiB |  00m00s
+--------------------------------------------------------------------------------
+[5/7] Total                              96% |  90.0   B/s |   8.4 MiB |  01h07m]9;4;1;96\[2A[0J[6/7] libsemanage-0:3.11-1.fc44.x86_64  100% |   3.1 MiB/s | 127.3 KiB |  00m00s
+--------------------------------------------------------------------------------
+[6/7] Total                              96% |  90.0   B/s |   8.4 MiB |  01h07m]9;4;1;96\[1A[0J[7/7] mpfr-0:4.2.2-3.fc44.x86_64        100% |  20.6 MiB/s | 357.8 KiB |  00m00s
+--------------------------------------------------------------------------------
+[7/7] Total                             100% |  22.8 MiB/s |   8.8 MiB |  00m00s]9;4;0;0\
+Running transaction
+[?25l[1/9] Verify package files                0% |   0.0   B/s |   0.0   B |  00m00s[0J[1/9] Verify package files              100% |  58.0   B/s |   7.0   B |  00m00s[0J[1/9] Verify package files              100% |  58.0   B/s |   7.0   B |  00m00s
+>>> Running %pretrans scriptlet: selinux-policy-targeted-0:44.11-1.fc44.noarch[1A[0J[1/9] Verify package files              100% |  58.0   B/s |   7.0   B |  00m00s
+>>> Running %pretrans scriptlet: selinux-policy-targeted-0:44.11-1.fc44.noarch
+>>> Finished %pretrans scriptlet: selinux-policy-targeted-0:44.11-1.fc44.noarch
+>>> [33m[RPM] /work/var/cache/libdnf5/fixture-98b8ebdec4eb73a9/packages/selinux-policy-targeted-44.11-1.fc44.noarch.rpm: Header OpenPGP V4 RSA/SHA256 signature, key ID dbfcf71c6d9f90a6: NOKEY[0m[5A[0J[1/9] Verify package files              100% |  47.0   B/s |   7.0   B |  00m00s
+>>> Running %pretrans scriptlet: selinux-policy-targeted-0:44.11-1.fc44.noarch
+>>> Finished %pretrans scriptlet: selinux-policy-targeted-0:44.11-1.fc44.noarch
+>>> [33m[RPM] /work/var/cache/libdnf5/fixture-98b8ebdec4eb73a9/packages/selinux-policy-targeted-44.11-1.fc44.noarch.rpm: Header OpenPGP V4 RSA/SHA256 signature, key ID dbfcf71c6d9f90a6: NOKEY[0m
+[2/9] Prepare transaction                 0% |   4.0   B/s |   0.0   B |  00m01s[0J[2/9] Prepare transaction               100% |   4.0   B/s |   7.0   B |  00m00s[0J[2/9] Prepare transaction               100% |  15.0   B/s |   7.0   B |  00m00s
+[3/9] Installing mpfr-0:4.2.2-3.fc44.x8   0% |   0.0   B/s |   0.0   B |  00m00s[0J[3/9] Installing mpfr-0:4.2.2-3.fc44.x8 100% |  13.4 MiB/s | 850.8 KiB |  00m00s[0J[3/9] Installing mpfr-0:4.2.2-3.fc44.x8 100% |  10.8 MiB/s | 850.8 KiB |  00m00s
+[4/9] Installing gawk-0:5.3.2-3.fc44.x8  47% |  37.8 MiB/s | 891.3 KiB |  00m00s[0J[4/9] Installing gawk-0:5.3.2-3.fc44.x8  61% |  37.8 MiB/s |   1.1 MiB |  00m00s[0J[4/9] Installing gawk-0:5.3.2-3.fc44.x8 100% |  37.8 MiB/s |   1.8 MiB |  00m00s[0J[4/9] Installing gawk-0:5.3.2-3.fc44.x8 100% |  37.8 MiB/s |   1.8 MiB |  00m00s
+>>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[4/9] Installing gawk-0:5.3.2-3.fc44.x8 100% |  37.8 MiB/s |   1.8 MiB |  00m00s[0J[4/9] Installing gawk-0:5.3.2-3.fc44.x8 100% |   5.0 MiB/s |   1.8 MiB |  00m00s
+[5/9] Installing libsemanage-0:3.11-1.f   0% |   0.0   B/s |   0.0   B |  00m00s[0J[5/9] Installing libsemanage-0:3.11-1.f 100% |  10.4 MiB/s | 318.2 KiB |  00m00s[0J[5/9] Installing libsemanage-0:3.11-1.f 100% |   6.2 MiB/s | 318.2 KiB |  00m00s
+[6/9] Installing libselinux-utils-0:3.1  88% |   5.4 MiB/s | 284.5 KiB |  00m00s[0J[6/9] Installing libselinux-utils-0:3.1 100% |   5.4 MiB/s | 320.2 KiB |  00m00s[0J[6/9] Installing libselinux-utils-0:3.1 100% |   5.4 MiB/s | 320.2 KiB |  00m00s[0J[6/9] Installing libselinux-utils-0:3.1 100% |   5.4 MiB/s | 320.2 KiB |  00m00s
+>>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[6/9] Installing libselinux-utils-0:3.1 100% |   5.4 MiB/s | 320.2 KiB |  00m00s[0J[6/9] Installing libselinux-utils-0:3.1 100% |   1.0 MiB/s | 320.2 KiB |  00m00s
+[7/9] Installing policycoreutils-0:3.11   0% |   0.0   B/s |   0.0   B |  00m00s[0J[7/9] Installing policycoreutils-0:3.11  56% |   4.9 MiB/s | 518.8 KiB |  00m00s[0J[7/9] Installing policycoreutils-0:3.11  75% |   4.9 MiB/s | 685.0 KiB |  00m00s[0J[7/9] Installing policycoreutils-0:3.11  98% |   4.9 MiB/s | 897.9 KiB |  00m00s[0J[7/9] Installing policycoreutils-0:3.11 100% |   4.9 MiB/s | 913.0 KiB |  00m00s[0J[7/9] Installing policycoreutils-0:3.11 100% |   4.9 MiB/s | 913.0 KiB |  00m00s[0J[7/9] Installing policycoreutils-0:3.11 100% |   4.9 MiB/s | 913.0 KiB |  00m00s
+>>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[7/9] Installing policycoreutils-0:3.11 100% |   4.9 MiB/s | 913.0 KiB |  00m00s[0J[7/9] Installing policycoreutils-0:3.11 100% |   4.9 MiB/s | 913.0 KiB |  00m00s
+>>> Running %post scriptlet: policycoreutils-0:3.11-2.fc44.x86_64[1A[0J[7/9] Installing policycoreutils-0:3.11 100% |   4.9 MiB/s | 913.0 KiB |  00m00s
+>>> Running %post scriptlet: policycoreutils-0:3.11-2.fc44.x86_64
+>>> Finished %post scriptlet: policycoreutils-0:3.11-2.fc44.x86_64
+>>> [33mScriptlet output:[0m
+>>> [33mCreated symlink '/etc/systemd/system/sysinit.target.wants/selinux-autorelabel-mark.service' → '/usr/lib/systemd/system/selinux-autorelabel-mark.service'.[0m
+>>> [33m[0m[6A[0J[7/9] Installing policycoreutils-0:3.11 100% | 968.1 KiB/s | 913.0 KiB |  00m01s
+>>> Running %post scriptlet: policycoreutils-0:3.11-2.fc44.x86_64
+>>> Finished %post scriptlet: policycoreutils-0:3.11-2.fc44.x86_64
+>>> [33mScriptlet output:[0m
+>>> [33mCreated symlink '/etc/systemd/system/sysinit.target.wants/selinux-autorelabel-mark.service' → '/usr/lib/systemd/system/selinux-autorelabel-mark.service'.[0m
+>>> [33m[0m
+[8/9] Installing selinux-policy-0:44.11   0% |   0.0   B/s |   0.0   B |  00m00s[0J[8/9] Installing selinux-policy-0:44.11 100% | 822.3 KiB/s |  34.5 KiB |  00m00s[0J[8/9] Installing selinux-policy-0:44.11 100% | 822.3 KiB/s |  34.5 KiB |  00m00s
+>>> Running %post scriptlet: selinux-policy-0:44.11-1.fc44.noarch[1A[0J[8/9] Installing selinux-policy-0:44.11 100% | 822.3 KiB/s |  34.5 KiB |  00m00s[0J[8/9] Installing selinux-policy-0:44.11 100% | 822.3 KiB/s |  34.5 KiB |  00m00s
+>>> Running %triggerin scriptlet: selinux-policy-0:44.11-1.fc44.noarch[1A[0J[8/9] Installing selinux-policy-0:44.11 100% | 822.3 KiB/s |  34.5 KiB |  00m00s[0J[8/9] Installing selinux-policy-0:44.11 100% | 822.3 KiB/s |  34.5 KiB |  00m00s
+>>> Running %pre scriptlet: selinux-policy-targeted-0:44.11-1.fc44.noarch[1A[0J[8/9] Installing selinux-policy-0:44.11 100% | 822.3 KiB/s |  34.5 KiB |  00m00s[0J[8/9] Installing selinux-policy-0:44.11 100% |  54.7 KiB/s |  34.5 KiB |  00m01s
+[9/9] Installing selinux-policy-targete   0% |   0.0   B/s |   0.0   B |  00m00s[0J[9/9] Installing selinux-policy-targete   2% |   4.1 MiB/s | 427.9 KiB |  00m03s[0J[9/9] Installing selinux-policy-targete  13% |   4.1 MiB/s |   2.0 MiB |  00m03s[0J[9/9] Installing selinux-policy-targete  26% |   4.1 MiB/s |   4.0 MiB |  00m02s[0J[9/9] Installing selinux-policy-targete  31% |   4.1 MiB/s |   4.6 MiB |  00m02s[0J[9/9] Installing selinux-policy-targete  33% |   4.1 MiB/s |   5.0 MiB |  00m02s[0J[9/9] Installing selinux-policy-targete  35% |   4.1 MiB/s |   5.2 MiB |  00m02s[0J[9/9] Installing selinux-policy-targete  36% |   4.1 MiB/s |   5.5 MiB |  00m02s[0J[9/9] Installing selinux-policy-targete  38% |   4.1 MiB/s |   5.7 MiB |  00m02s[0J[9/9] Installing selinux-policy-targete  39% |   4.1 MiB/s |   6.0 MiB |  00m02s[0J[9/9] Installing selinux-policy-targete  41% |   6.0 MiB/s |   6.2 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete  43% |   6.0 MiB/s |   6.4 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete  45% |   6.0 MiB/s |   6.7 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete  46% |   6.0 MiB/s |   6.9 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete  48% |   6.0 MiB/s |   7.2 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete  49% |   6.0 MiB/s |   7.4 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete  51% |   6.0 MiB/s |   7.7 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete  53% |   6.0 MiB/s |   8.0 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete  54% |   6.0 MiB/s |   8.2 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete  56% |   6.0 MiB/s |   8.4 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete  58% |   2.4 MiB/s |   8.7 MiB |  00m02s[0J[9/9] Installing selinux-policy-targete  60% |   2.4 MiB/s |   9.0 MiB |  00m02s[0J[9/9] Installing selinux-policy-targete  63% |   2.4 MiB/s |   9.4 MiB |  00m02s[0J[9/9] Installing selinux-policy-targete  65% |   2.4 MiB/s |   9.8 MiB |  00m02s[0J[9/9] Installing selinux-policy-targete  69% |   2.4 MiB/s |  10.3 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete  71% |   2.4 MiB/s |  10.7 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete  74% |   2.4 MiB/s |  11.1 MiB |  00m01s[0J[9/9] Installing selinux-policy-targete 100% |   4.6 MiB/s |  14.9 MiB |  00m00s[0J[9/9] Installing selinux-policy-targete 100% |   4.6 MiB/s |  14.9 MiB |  00m00s[0J[9/9] Installing selinux-policy-targete 100% |   4.6 MiB/s |  14.9 MiB |  00m00s
+>>> Running %post scriptlet: selinux-policy-targeted-0:44.11-1.fc44.noarch[1A[0J[9/9] Installing selinux-policy-targete 100% |   4.6 MiB/s |  14.9 MiB |  00m00s[0J[9/9] Installing selinux-policy-targete 100% |   4.6 MiB/s |  14.9 MiB |  00m00s
+>>> Running %posttrans scriptlet: selinux-policy-targeted-0:44.11-1.fc44.noarch[1A[0J[9/9] Installing selinux-policy-targete 100% |   0.0   B/s |  14.9 MiB |  00m00s[0J[9/9] Installing selinux-policy-targete 100% |   0.0   B/s |  14.9 MiB |  00m00s
+>>> Running %triggerin scriptlet: glibc-common-0:2.43-9.fc44.x86_64[1A[0J[9/9] Installing selinux-policy-targete 100% |   0.0   B/s |  14.9 MiB |  00m00s[0J[9/9] Installing selinux-policy-targete 100% |   0.0   B/s |  14.9 MiB |  00m00s
+>>> Running %triggerin scriptlet: systemd-0:259.10-1.fc44.x86_64[1A[0J[9/9] Installing selinux-policy-targete 100% |   0.0   B/s |  14.9 MiB |  00m00s[0J[9/9] Installing selinux-policy-targete 100% |   0.0   B/s |  14.9 MiB |  00m00s
+>>> Running %triggerin scriptlet: systemd-0:259.10-1.fc44.x86_64[1A[0J[9/9] Installing selinux-policy-targete 100% |   0.0   B/s |  14.9 MiB |  00m00s[0J[9/9] Installing selinux-policy-targete 100% | 645.3 KiB/s |  14.9 MiB |  00m24s
+]9;4;0;0\[?25hWarning: skipped OpenPGP checks for 7 packages from repository: fixture
+Complete!
+]9;4;0;0\[?25hgetfattr: Removing leading '/' from absolute path names
+# file: mnt/usr/bin/bash
+security.selinux="system_u:object_r:shell_exec_t:s0"
+
+# file: mnt/etc/passwd
+security.selinux="system_u:object_r:passwd_file_t:s0"
+
+# file: mnt/etc/shadow
+security.selinux="system_u:object_r:shadow_t:s0"
+
+# file: mnt/usr/lib/systemd/systemd
+security.selinux="system_u:object_r:init_exec_t:s0"
+
+EXT4-fs (ubda): unmounting filesystem 4791ae4e-7a66-40d5-a10b-453de4ad2d76.
+UML_SELINUX_LABELING_PASS
+reboot: Power down
+

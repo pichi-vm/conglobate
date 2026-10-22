@@ -1,0 +1,13 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.13s
+     Running tests/artifacts.rs (target/debug/deps/artifacts-b37809472c3ca2c2)
+
+running 6 tests
+test deterministic_inventory_roundtrip_and_strict_decoding ... ok
+test firmware_only_input_omits_root_but_execution_inputs_require_one ... ok
+test unfinished_corrupt_or_mismatched_artifacts_cannot_publish ... ok
+test output_is_self_contained_and_existing_destinations_are_never_overwritten ... ok
+test artifact_stream_cancellation_is_isolated_and_cleans_staging ... ok
+test export_streams_with_bounded_reads_and_rejects_partial_io_failure ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+

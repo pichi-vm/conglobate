@@ -1,0 +1,11 @@
+{
+  "conglobate-uml-alpine-v4-check.log": "91fac348243ff8669790faf7dc1faa8486eca0e96566e5855cda466d3dfac777",
+  "conglobate-uml-alpine-v4-header.log": "791a80a1b256dfd7ba526834c8cabf70f0e8981be1ba0654e0fd9c97c4ca9df6",
+  "conglobate-uml-debian-v5-check.log": "a95f8c132c465e0153841534b9e0feb98c86b0fe3819ecfef31663e58f9a268f",
+  "conglobate-uml-debian-v5-header.log": "1337bf156039ac77997e153f6f276865e92ae30f8f416c361af81c76bfef0232",
+  "conglobate-uml-nixos-v4-check.log": "639c250a5693adff27253f4b2f24a87624d3cd6d469c26883e62cc4437b9fd51",
+  "conglobate-uml-nixos-v4-header.log": "197e5026a89667a3104fd90228cdc2ef5d6b2f7fe8a438880553859f9885835a",
+  "conglobate-uml-fedora-v4-check.log": "5c3a5fdcd1efa1cc03c82ea83b3ca904d11daa149d5a9e039e65f55555f9bdf9",
+  "conglobate-uml-fedora-v4-header.log": "b33a5572353a073248a62100aafef0d2a3ff0407bdb06320e1a7970d5b24331e",
+  "result.json": "3ecdbea1604173e8b4cbc99bb1ec837972e22ed9e7784bfa234f935b908e4ee3"
+}

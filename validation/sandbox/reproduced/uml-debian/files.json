@@ -1,0 +1,13 @@
+{
+  "build/runtime-inputs.json": "cbf7446fbae77cf15b061baf7936134b52cbd757b98d3d0a11707a93ee1c8e2b",
+  "build/command.json": "751e7f1a672f9a072c61ea0f1b74c55ffb77a34d5541813d605da0376837d3b3",
+  "build/tool.json": "70d3f4ee243bab09cfc1df1e3eeb27fa166deb368cc61fe57d2d4c9654ea5946",
+  "build/results.txt": "c05fc30ee2da30ea34045471643decda0c2a3f24b69a8689267f673ceebfb000",
+  "build/result.json": "f49bb219bbcfc334547cc3740cdf47cedb51b4f18a173d6c05f018168182e77a",
+  "build/init": "f1ee538113a6e0708f0efb990f6d2ae8522a4e8aa1d4dde2b68451a9de1cb73f",
+  "boot/kernel-extract.log": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+  "boot/initramfs-extract.log": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+  "boot/command.json": "e16080d7fe11b4ae039097af6cb7b99e19d13ca098ae8378069907d83ac6801d",
+  "boot/results.txt": "9688362b82fd833baa2e33aaef17764d7a00e829b19e4468c6a57ccfd00f1fe8",
+  "boot/result.json": "a081a54a2a426703d8c64fd07fcf5668d64ab6368c0b921a7c2c22c4d7f0a164"
+}

@@ -1,0 +1,17 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "--locked",
+    "--test",
+    "artifacts"
+  ],
+  "exit_code": 0,
+  "sources_sha256": {
+    "src/artifact.rs": "8149872d0da592f44a59e46d8866bfdf6807d0e5d092d07bebb2efef34f72d25",
+    "src/cancel.rs": "afc0a68989c7915bab8ea327558371db01c301e4f234e81aae0b1f782f27028d",
+    "tests/artifacts.rs": "c771df31dafd229b513ebfe4ec4f433409206fbe01cd8ec61e5165778e684cec",
+    "Cargo.toml": "77387517b553cb6f1fd509c3738e443f06ea21f9eed2c8ace8ebb74fe6b768a4",
+    "Cargo.lock": "6f42a8b05c535116071bd0e7329076c5c69e064c04e69136325526cbe0fdfa59"
+  }
+}

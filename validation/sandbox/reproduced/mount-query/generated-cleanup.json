@@ -1,0 +1,9 @@
+{
+  "run": "/tmp/conglobate-mount-query-v1",
+  "retained": "validation/sandbox/reproduced/mount-query",
+  "removed_generated": [
+    "root",
+    "initramfs.gz",
+    "vmlinuz"
+  ]
+}

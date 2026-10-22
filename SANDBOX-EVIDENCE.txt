@@ -1,0 +1,2461 @@
+HISTORICAL EVIDENCE — retained for results, sources, and reproduction.
+Current policy: SANDBOX-DESIGN.txt and DESIGN.md. Earlier proposals, pending
+items, and candidate trust models below are superseded where they differ.
+
+User namespace and idmapped mount experiment
+===========================================
+
+Environment
+-----------
+Fedora 44, SELinux enforcing throughout, kernel
+7.2.11-dm-bufio-test1-dirty, util-linux 2.41.5.
+Commands inherited unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023.
+This is a custom kernel and an unconfined SELinux domain, not a validation
+of a future restricted appliance profile or every supported kernel.
+
+Method
+------
+Used disposable ext4 and XFS loopback images in a private mount namespace
+on tmpfs. Each worker had a user namespace mapping UID/GID 0..65535 to
+100000..165535, plus an isolated network namespace. The privileged parent
+created a bind mount idmapped to the worker's user namespace using:
+
+  mount --bind --map-users /proc/WORKER_PID/ns/user RAW VIEW
+
+Workers accessed VIEW; the parent inspected RAW. After workers exited,
+both mounts were unmounted and the image mounted again without idmapping
+to check persisted ownership and metadata.
+
+This was a compatibility experiment using util-linux, Python, and host
+tools. It did not implement a sandbox or change conglobate's executor.
+Workers retained access to host tool paths; no pivot_root, seccomp,
+capability allowlist, or comprehensive descriptor isolation was tested.
+The chosen subordinate ID range was illustrative, not a final policy.
+
+Results (same on ext4 and XFS)
+----------------------------
+* Namespace UID/GID 0 successfully created files stored as UID/GID 0.
+* chown to 1000:1000 persisted as 1000:1000, not 101000:101000.
+* A named ACL entry for UID 1234 persisted as UID 1234.
+* Setting the setuid mode bit succeeded and persisted.
+* setcap cap_net_bind_service=ep succeeded. The raw security.capability
+  attribute was revision 2, without a subordinate-root namespace ID.
+* A copy of getpcaps given that capability inside the namespace was then
+  executed through RAW as initial-namespace UID/GID 12345. It reported
+  cap_net_bind_service in its effective/permitted sets. This is an actual
+  execution check, not just successful xattr readback. An unrelated
+  inherited cap_wake_alarm bit was also present in its inheritable set.
+* chcon to system_u:object_r:bin_t:s0 succeeded.
+* DNF5 running inside the user namespace installed a Fedora package set
+  into VIEW using --installroot. Both transactions completed with status
+  0 and 71 installation actions (including multilib dependencies).
+  Requested packages were bash, coreutils, acl, attr, and libcap, with
+  their downloaded dependencies. No scriptlet errors were reported.
+* The installed /bin/sh ran via chroot as namespace UID/GID 0.
+* setfiles -F -r VIEW /etc/selinux/targeted/contexts/files/file_contexts
+  VIEW completed with status 0. /usr/bin/bash received
+  system_u:object_r:shell_exec_t:s0.
+* After relabeling, the installed shell still ran and could create a file,
+  chown it to 1000:1000, and assign bin_t. Ownership and label persisted
+  after ordinary remount.
+* chown to unmapped UID/GID 65536 failed with EINVAL.
+* mknod for a character device (1,3) failed with EPERM.
+* Setting a deliberately nonexistent SELinux type failed with EINVAL.
+  A parent-root control also failed; this is not evidence of a failure
+  unique to user namespaces. Cross-policy labeling remains unresolved.
+* A worker attempt to write beneath the host /root failed with EACCES.
+  This single DAC check is not an escape-resistance assessment.
+
+Package handling
+----------------
+Packages were downloaded as the ordinary host user into a dedicated
+temporary directory. Worker installations were offline, with repositories
+disabled and no external connectivity. --use-host-config supplied DNF
+configuration, but not access to an enabled repository. Local RPM signature
+checks were disabled for this compatibility experiment; it does not test
+the eventual package-authentication policy. Package hashes are recorded.
+DNF itself ran from the host tooling against an installroot; this does not
+demonstrate DNF executing from a complete tool carapace. Only the resulting
+shell and its commands were executed inside that root.
+
+Interpretation
+--------------
+User namespaces plus idmapped mounts have demonstrated the desired numeric
+ownership behavior, ordinary file capabilities, and same-policy SELinux
+labeling on both tested filesystems. There is no demonstrated need for a
+privileged helper for these successful operations.
+
+Still to validate: different target SELinux policies; device-node needs;
+restricted SELinux domains; capability and seccomp policies; complete tool
+carapace builds; other kernels/filesystems; UID allocation; process cleanup
+and escape resistance; networking/DNS; attestation interface isolation.
+
+Artifacts and cleanup
+---------------------
+Detailed local artifacts: /tmp/conglobate-idmap-evidence/
+  probe.py             final experiment driver
+  run.sh               private tmpfs lifecycle wrapper
+  final-results.txt    final raw results, including full DNF output
+  environment.txt      environment/package versions
+  packages.json        downloaded RPM filenames and SHA-256 digests
+  results.txt          initial metadata experiment
+  extended-results*.txt intermediate runs, including harness corrections
+
+Reproduce with sudo -n unshare --mount --propagation private bash
+/tmp/conglobate-idmap-evidence/run.sh (requires the downloaded RPMs).
+The driver reports per-operation outcomes; a zero driver exit code alone
+does not mean every tested operation succeeded.
+
+All experimental image mounts were released; no associated loop devices
+remained after completion. Images vanished with the temporary tmpfs.
+SELinux remains enforcing. No host package installation or policy change
+was performed. Repository changes are this evidence note only; the earlier
+design/review documents remain unchanged and are not an approved design.
+
+Follow-up: target policy independent of the build VM policy
+=========================================================
+
+Requirement
+-----------
+The target filesystem's SELinux labels must come from its own policy,
+which need not define the same users, roles, or types as the build VM.
+Same-policy success above is insufficient to establish this behavior.
+
+Experiment
+----------
+Created an OFFLINE binary policy by decompiling a copy of the running
+policy with checkpolicy -M -b -F, adding type conglobate_target_only_t,
+and recompiling with checkpolicy -M -c 35. This provides a controlled
+policy difference: the new type exists in the target policy but is absent
+from the running policy. Verified both facts using setools. The target
+policy was never loaded; the active VM policy was not modified.
+
+Repeated experiments on disposable ext4 and XFS images with normal and
+context=system_u:object_r:unlabeled_t:s0 mounts. Workers used the same
+user-namespace and mount idmapping as the earlier experiment.
+
+Results (both filesystems)
+-------------------------
+1. Direct worker setxattr(security.selinux) of the target-only label
+   failed with EINVAL; a known label succeeded on a normal mount.
+2. Worker setfiles -c TARGET_POLICY also failed with EINVAL. Supplying
+   the target policy fixes userspace validation, but not kernel checks.
+3. Running the worker's setfiles in setfiles_mac_t still failed with
+   EINVAL. Permission in that SELinux domain does not give a child user
+   namespace CAP_MAC_ADMIN in the initial user namespace.
+4. Ordinary sudo root in unconfined_t also failed. The audit log records
+   an explicit mac_admin denial for that domain. "Unconfined" is not a
+   guarantee of permission for this operation.
+5. Initial-user-namespace root running:
+
+     runcon -t setfiles_mac_t setfiles -c TARGET_POLICY -F -v \
+       -r ROOT FILE_CONTEXTS ROOT/parent
+
+   succeeded on a normal mount. FILE_CONTEXTS assigned:
+
+     /parent system_u:object_r:conglobate_target_only_t:s0
+
+   Without -c TARGET_POLICY, setfiles rejected the label in userspace.
+6. After the worker exited and the filesystem was fully unmounted and
+   remounted normally, an authorized reader in setfiles_mac_t retrieved
+   exactly system_u:object_r:conglobate_target_only_t:s0 on both ext4 and
+   XFS. This establishes persistence, not merely setfiles' success status.
+7. Readers without the necessary MAC administration permission, including
+   ordinary sudo root in unconfined_t, saw system_u:object_r:unlabeled_t:s0
+   instead. The stored target-only label was not lost: SELinux mediated
+   its readback. The worker could read the file's content in this policy.
+8. context= mounts rejected per-file SELinux label writes with EOPNOTSUPP
+   for known and unknown labels, including the privileged setfiles path.
+   They are not a solution for storing independent per-file labels.
+
+The authorized readback used a disposable copy of getfattr labeled
+setfiles_exec_t, run in setfiles_mac_t in the initial user namespace.
+An initial attempt from /tmp was blocked by nosuid_transition; moving
+the disposable executable into the experiment's private tmpfs permitted
+the transition without changing host mounts or policy. This was a test
+tool, not an implemented or hardened privileged service.
+
+Kernel source explanation
+-------------------------
+security/selinux/hooks.c: selinux_inode_setxattr() attempts a forced
+context conversion for an unknown label only if has_cap_mac_admin()
+succeeds. That helper explicitly checks CAP_MAC_ADMIN against
+init_user_ns and the SELinux capability permission. The getsecurity path
+similarly distinguishes authorized raw-context readers.
+Source inspected: https://github.com/torvalds/linux/blob/master/security/selinux/hooks.c
+
+Implication
+-----------
+The tested direct user-namespace workflow does not meet the independent
+policy requirement. A separate privileged labeling operation CAN store
+and recover target-only labels without loading the target policy into
+the VM, at least under the tested Fedora policy. Its privilege and process
+boundary would require design and hardening before adoption.
+
+Finalization-time setfiles is not a transparent substitute for arbitrary
+chcon/setxattr calls during a build. Nor does it preserve arbitrary custom
+labels automatically. Transparent writes AND reads inside the worker,
+including inherited target-only labels, remain unresolved. No claim is
+made that all possible target policies or labels have been tested.
+
+Artifacts: /tmp/conglobate-selinux-independent/
+  probe.py, run.sh       reproducible experiment drivers
+  target.conf/.policy   offline policy sources/binary, never loaded
+  final-results.txt     final results including namespace/domain controls
+  results.txt, mac-domain-results.txt, target-policy-results.txt,
+  verified-results.txt  intermediate evidence and harness development
+
+All temporary mounts and associated loop devices were released. SELinux
+remains enforcing; no policy was installed and no global enforcement,
+boolean, or domain-permissiveness settings were changed.
+
+Adversarial command-boundary validation — 2026-10-20
+==================================================
+Trust model: supervisor, filesystem worker, and build kernel are trusted;
+commands are not. DESIGN.md now records this prominently and supersedes the
+old shared-root assumptions. A separate worker trust domain is not required.
+
+Harness: /tmp/conglobate-fuse-adversarial/
+Scripts: root/init, root/worker, root/sandbox-entry, root/sandbox-test,
+root/adversarial.py, root/trusted-canary, root/crash-worker; run.sh.
+Logs: results-before-isolation-fix.txt, results-namespace-fix.txt,
+results.txt (final), validated-summary.txt (final relevant portion).
+
+This extends the disposable Fedora no-SELinux guest test, with no host shares,
+network devices or host storage, using guest tmpfs, a read-only origin, dm
+snapshot, and fuse2fs. Host SELinux remained enforcing. DNF installs69local
+RPMs in the mapped user namespace first; hostile probes then execute in the
+installed root. This is a prototype, not the production executor.
+
+Initial results exposed an actual abstract Unix socket reachability gap:
+the trusted-side test listener was reachable despite pivot_root because the
+command shared its network namespace. A separate per-step net namespace
+blocked it. IPC/UTS namespaces were also separated, though their isolation
+was not independently attacked in this run. An open libffi descriptor also
+appeared in the initial FD probe; explicit descriptor closure was added
+before exec, and the final probe snapshots descriptors before loading its
+own ctypes libraries to distinguish inheritance from probe activity.
+
+Final passing properties:
+* Worker PID cannot be addressed via kill(pid,0), pidfd_open, or ptrace attach
+  from command PID namespace (ESRCH); worker remains alive after the step.
+* Only stdin=/dev/null and stdout/stderr pipes are inherited at probe entry.
+* Tested outside-root paths, backing devices, old root, context and supervisor
+  secret are absent; an absolute symlink cannot reach the outside secret.
+* A new procfs mount still exposes the command PID namespace, not ancestor
+  PIDs. It cannot recover worker access.
+* A retained-cwd chroot escape remains inside the pivot-root filesystem.
+* The trusted-side abstract Unix listener is unreachable from command netns.
+* A double-forked setsid grandchild's heartbeat stops when step PID1 exits,
+  as does the original simple background child. The builder checks stable
+  heartbeat size after exit and waits before proceeding.
+* Dedicated runtime device nodes are bind-mounted into commands. The command
+  chmods its /dev/null to000; the builder's original /dev/null remains0666
+  and usable. Private inodes do not isolate the underlying device; the only
+  permitted devices here are null/zero/random/urandom.
+* Ownership, ACL and independent SELinux label round trips still pass;
+  stored capabilities still work after ordinary kernel remount; e2fsck is
+  clean, origin hash unchanged, snapshot cleanup completes.
+* Existing forced worker-death test still detects exit137, observes failed
+  I/O, removes the failed mount and discards its image.
+
+Final result: ADVERSARIAL_RESULT PASS, VALIDATION_PASS, GUEST_EXIT0. A local
+log check required every expected marker and rejected SECURITY_FAILURE.
+
+Limits: these probes are finite, not a proof against kernel/filesystem bugs.
+No production Rust executor changes were made. Trusted COPY/export path
+resolution under hostile symlinks, cross-build isolation, explicit FUSE abort
+for hung/deadlocked workers, syscall/capability restrictions, resource limits,
+networked egress/DNS, cancellation races, and final inventory/sealing races
+still need validation. The canary listener is test instrumentation, not an
+actual conglobate control service. Storage setup remains initially privileged.
+
+2026-10-20: expanded validation (see SANDBOX-VALIDATION.txt)
+---------------------------------------------------------
+New negative finding: explicit ACL storage is not sufficient. With Fedora
+fuse2fs 1.47.3-4.fc44, named-user access grants fail and default ACLs do not
+appear on newly created files. This reproduces both outside and inside the
+mapped user namespace, including -o kernel,acl,allow_other,nosuid,nodev.
+Ancestor traversal permissions were explicitly set to 0755. Do not interpret
+prior package-install/metadata-storage passes as validation of ACL semantics.
+This is an unresolved backend blocker, not an approved limitation.
+
+Passed additional probes: mapping boundary (65535 accepted, 65536 EINVAL),
+sparse files, writable mmap, fsync, flock exclusion, hardlinks, symlinks and
+rename. Hangs: SIGSTOP daemon plus blocked filesystem request, initial-userns
+fusectl abort, client ECONNABORTED, kill/reap/unmount and connection removal.
+
+Disposable guest network lab (no host NIC or host shares): private-destination
+outbound NAT, UDP/TCP DNS, builder endpoint blocked, unsolicited inbound blocked,
+disabled IPv4/IPv6 fail. Resource lab: tmpfs block/inode ENOSPC, descriptor EMFILE,
+cgroup PID EAGAIN and memory OOM kill with supervisor alive outside cgroup.
+Final production restrictions, IPv6 outbound, split DNS/VPN and finalization
+integration remain unvalidated. See retained scripts/logs in validation/sandbox.
+
+2026-10-20 follow-up: ACL diagnosis and final-flush I/O failure
+------------------------------------------------------------
+The ACL blocker is narrowed, not removed: setfacl creates the named-user ACL
+but leaves mode 0600; explicit chmod 0640 makes that read succeed, in initial
+and child user namespaces. Default-ACL inheritance still fails. The inference
+that a libfuse debug INIT flag line showed failed ACL negotiation was withdrawn:
+libfuse 3.18.3 prints that field before its final assignment. An observational
+init-callback interposer shows the worker requesting ACL support. See retained
+probes, package/source hashes and notes in validation/sandbox/acl/.
+
+Fault injection adds a separate sealing concern. Supervisor changes the live
+block target to dm-error before worker unmount. Default fuse2fs logs flush and
+close EIO but both worker and unmount exit zero. With errors=panic worker aborts
+(status134), though unmount still exits zero. This proves the default success
+signal is inadequate. The panic mode handles this tested fault; it is not a
+proof covering every final close failure. Do not publish based on unmount or
+default worker exit alone. Probe is in validation/sandbox/faults/.
+
+validation/sandbox/guest.py now builds the small fixtures from repository
+scripts and locally installed tools/modules; it records every packaged file
+hash, symlink and QEMU command. No root or host mounts/network changes. The
+Fedora package-install fixture remains separate and needs packaging consolidation.
+
+Reconciliation: storage, keyrings, and entry ordering
+----------------------------------------------------
+Retained inputs, launch command and logs now live under
+validation/sandbox/reproduced/storage/ and validation/sandbox/reproduced/keys/.
+
+Storage: full COW caused failed write, worker abort and Invalid snapshot while
+base SHA256 stayed unchanged. Bad ext4 magic and truncated image failed bounded
+startup. An open descriptor remained writable after path permissions/owner were
+revoked. With command descendants gone and worker cleanly unmounted/reaped,
+fsck and repeated image hashes passed. This does not certify complete sealing
+or repair the independently observed final-write error-reporting defect.
+
+Keyrings: supervisor session-key canary was readable after the full user,
+mount, PID, network, IPC and UTS namespace setup. A new anonymous session
+keyring prevented the tested read. Per-UID/shared-worker keyrings remain open.
+
+Entry ordering: source review found that the larger prototype executes the
+image's Python before detaching old root and closing inherited FDs. Its prior
+successful post-cleanup probes do not establish safety against an image that
+replaces that interpreter. A separate safe-Rust helper compiled, and an entry
+fixture is prepared; the fixture has NOT run. Do not count it as a tested fix.
+
+SANDBOX-VALIDATION.txt now includes an explicit outstanding checklist for all
+21 areas, separating future real-executor acceptance from prototype evidence.
+
+Read-only entry validation and IPv6 extension
+--------------------------------------------
+Entry fixture now passes with a safe-Rust helper that completes pivot, cwd
+reset, old-root detach and FD closure before executing the image program.
+The negative control reads only synthetic canaries; the corrected path cannot
+read either old-root canary or inherited FD9. No supervisor-state mutation is
+performed. The larger Fedora/FUSE fixture was rerun with this helper and passed
+its prior non-ACL assertions. ACL diagnostics still show the known failures.
+
+IPv6 NAT, AAAA DNS, builder-listener blocking and unsolicited inbound blocking
+pass in the disposable network fixture. Neighbor solicitation/advertisement are
+allowed explicitly on the command link; no host routing/firewall is modified.
+Retained evidence: reproduced/entry, reproduced/package-entry and
+reproduced/network-v6 under validation/sandbox. See ledger for remaining checks.
+
+Candidate restrictions and restricted RPM operations
+----------------------------------------------------
+The entry helper now optionally reduces capabilities, sets no_new_privs and
+installs syscall filters through safe Rust interfaces. First testing without
+userns SYS_ADMIN caused security.selinux writes through FUSE to fail with EPERM.
+Restoring that capability only inside the user namespace allows the labels;
+mount/namespace-changing syscalls remain denied. This is a candidate requiring
+further reachable-interface/ioctl review, not permission to give commands
+initial-namespace root. The failed case is retained.
+
+The candidate passes bounded syscall assertions, ordinary fork/thread and file
+operations, closure of inherited files/TCP/Unix sockets/pipes, private devpts
+ioctls and own-userns parent-handle denial across two successive steps.
+Source inspection of seccompiler found audit-architecture checking alone does
+not reject x32. An explicit safe BPF syscall-number gate was added and a harmless
+x32 getpid request verifies EPERM.
+
+The larger FUSE workload passes isolation and detached-descendant checks with
+the candidate, including expected denial of new proc mounts. RPM reinstall,
+removal and installation of a staged attr package run successfully INSIDE the
+restricted command. Initial full-package installation still precedes filtering.
+Known ACL diagnostics remain failures. No full OS/kernel build qualification.
+
+See validation/sandbox/policy/README.txt, reproduced/policy,
+reproduced/package-policy and reproduced/policy-without-sys-admin. These runs
+retain hashes of all packaged files and their QEMU command. The larger fixture
+still depends on a local seed, so portable package-fixture assembly remains open.
+
+Trusted COPY bridge and account-database FIFO
+--------------------------------------------
+The copy fixture calls the actual repository Copy::apply from the trusted
+worker's owning FUSE user namespace after restricted command PID teardown.
+Commands have no context mount; worker context is a read-only bind and EROFS
+is asserted. Path/link and metadata checks pass, including explicit ACL bytes,
+SELinux labels, capabilities and nanosecond timestamps after an ordinary kernel
+ext4 remount. This does not fix the ACL backend's enforcement/inheritance defects.
+
+A synthetic passwd FIFO reproduced an unbounded account lookup; outer timeout
+terminated the diagnostic helper after 1 second. src/copy.rs now checks that
+account databases are regular files before reading. The same guest check returns
+an error immediately and the existing COPY tests plus new account-type tests
+pass. The stopped-writers prerequisite remains explicit; this is not a
+concurrent path-resolution fix.
+
+Retained runs: validation/sandbox/reproduced/copy and copy-fifo-before-fix.
+See validation/sandbox/copy/README.txt for reproduction and exact scope.
+
+Export/inspection probes
+------------------------
+Actual private build-module export functions are now exercised inside the
+owning FUSE namespace after command teardown. Tests cover image-root links,
+cycles/depth/path length, special file and device metadata rejection, and PMI/
+DTB hardlink/symlink alias rejection. Device probes never open the device.
+Sparse 1GiB output acceptance establishes that path validation has no size cap.
+A deterministic regular-file-to-FIFO replacement demonstrates why the
+stopped-writers invariant must persist after path validation; no FIFO is opened.
+
+Actual Artifact::put tests stream 4MiB in bounded read requests and inject EIO
+after three chunks. The partial tempfile is removed, no complete blob is created
+and unfinished output cannot publish. This does not prove complete FUSE flush,
+late-writer, cancellation or exhaustion behavior. Those linked gates remain.
+See validation/sandbox/export/README.txt and reproduced/export.
+
+Finalization exit-status correction prototype
+--------------------------------------------
+Separate baseline and patched fuse2fs 1.47.3 workers were built without host
+installation. The patch atomically remembers serious translated filesystem
+errors and explicit close errors; it returns status32 if either occurred.
+A diagnostic link wrapper returns EIO after an otherwise successful real close.
+The baseline returns0 for this close-only error; patched returns32. Real
+dm-error during final flush likewise yields baseline0/patched32. A real fsync
+failure followed by restoration of the device still yields patched32 even
+though closing succeeds. Normal runs remain exit0 and pass fsck.
+
+This is a tested remedy for the reproduced reporting defect, not qualification
+of every backend error path or the complete publish sequence. No production
+worker was installed or selected. The ACL defects are unchanged.
+Evidence and reproduction: validation/sandbox/finalize/README.txt and
+validation/sandbox/reproduced/finalize/.
+
+ACL corrections and remaining capability mismatch
+-------------------------------------------------
+An experimental external worker patch now passes the bounded common ACL matrix:
+named-user/group grants and denial, chmod mask changes, default inheritance and
+creation modes/umask, owner authorization, malformed ACL rejection, removal,
+hardlinks/rename, and kernel-remount fidelity. All six fresh images pass fsck:
+kernel reference plus initial/mapped FUSE, with/without metadata_csum.
+
+Two diagnostic cases still disagree with kernel ext4. A nonroot caller with
+effective CAP_FSETID loses SGID in FUSE but retains it under kernel ext4. Root
+without effective CAP_FSETID retains SGID in FUSE but loses it under kernel
+ext4. These occur in all four FUSE runs. The current helper's UID/group heuristic
+cannot implement the capability decision, and libfuse 3.18.3's setxattr callback
+does not expose the protocol's ACL_KILL_SGID indication. No production workaround
+or backend adoption is implied. The test restores common mode only after
+recording these failures, allowing independent final metadata comparisons.
+
+The ACL blocker remains. Reproduction, scope and retained hashes/logs:
+validation/sandbox/acl-fix/README.txt and reproduced/acl-fix/.
+
+Timestamp, xattr and file-flag comparison
+---------------------------------------
+Six fresh images compare ordinary kernel ext4 and the experimental FUSE worker
+in initial/mapped user namespaces, with/without metadata_csum. Nanosecond times
+before epoch and after 2038, symlink times, user xattrs, foreign SELinux labels
+and nodump persist correctly. All six fsck and recorded-metadata remount checks
+pass. Initial-userns FUSE matches the recorded kernel operations.
+
+Mapped FUSE cannot set immutable or append-only flags (EPERM); the kernel and
+initial-userns FUSE both set and enforce them. Mapped trusted.* and device-node
+creation also return EPERM. No device is opened, no host state is changed, and
+no metadata workaround is adopted. These results narrow the remaining OS
+semantics gap; they do not demonstrate a complete root experience or cover
+ctime/birthtime and every filesystem flag. The command restriction policy is
+not applied in this worker-semantics fixture.
+
+Reproduction and retained evidence: validation/sandbox/metadata/README.txt and
+validation/sandbox/reproduced/metadata/.
+
+Explicit socket-family restrictions
+-----------------------------------
+The existing candidate allowed creation of AF_ALG and netlink usersock/audit/
+generic/uevent sockets inside the command namespace. These were create/close
+observations only, not demonstrations of privileged control or breakout. VSOCK
+creation failed due unavailable support, which does not establish policy.
+
+The safe-Rust entry prototype now filters socket/socketpair argument values.
+Unix, IPv4/IPv6 and route netlink remain permitted; other families/protocols and
+non-netlink raw sockets return EPERM. Two consecutive command namespaces pass
+family0..63 checks, type-flag and high-register-bit cases, Unix IPC, route query
+and disabled IPv4/IPv6 routing. The larger Fedora/FUSE fixture still passes its
+restricted RPM transactions and previous isolation/lifecycle assertions, with
+the existing ACL diagnostic failures unchanged. Safe helper clippy passes.
+
+Retained baseline/new policy/package evidence lives in reproduced/socket-baseline,
+socket-policy and package-sockets. policy/README.txt records primary references,
+scope and reproduction. Enabled network/DNS with this helper and full interface
+qualification remain open; no production executor change was made.
+
+Restricted enabled network and resolver mount integration
+--------------------------------------------------------
+The isolated NAT/DNS topology now runs clients/listeners through the candidate
+safe-Rust launcher and its current capability/seccomp/socket policy. Explicit
+IPv4/IPv6 upstream traffic, UDP/TCP DNS and search-domain resolution pass;
+builder endpoints and unsolicited inbound remain blocked. Trusted positive
+controls establish that builder listeners exist before the denial tests.
+
+Both regular-file and absolute-symlink resolver layouts pass read-only mount
+injection, EROFS on modification and restoration of original target bytes after
+namespace teardown. Builder resolver contents are unchanged. A negative control
+using the image's unconfigured 127.0.0.53 stub fails with EAI_AGAIN. The fixture
+DNS server rejects unknown names, so search-domain success is not a wildcard
+answer artifact.
+
+This is a synthetic command root, with known mount targets, not the entire FUSE
+build pipeline. General path safety, interrupted injection, dynamic resolver
+configuration and real VPN/split-DNS behavior remain open. See network-policy/
+README.txt and reproduced/network-policy for scope, references and evidence.
+
+Cancellation boundaries and unshare parent-death limitation
+----------------------------------------------------------
+Killing a fixture unshare launcher leaves its detached command writer alive.
+Adding --kill-child=KILL also fails in the tested mapped-ID/setuid/setgid
+sequence. The inspected util-linux2.41.5 source sets the parent-death signal
+before changing credentials; the documented clearing on credential change
+explains this result. The first strict test observed a surviving setup bash
+and sleep. This was not a descendant-reaping-order defect.
+
+With a retained namespace-init pidfd and explicit supervisor cancellation,
+five checkpoints pass: userns mapping, root bind, private proc, runtime mounts,
+and the executing restricted command. All children are reaped, the bounded
+heartbeat stops, and the supervisor mount table is unchanged. The negative
+controls receive the same explicit cleanup.
+
+No conclusion is drawn about supervisor death, the pre-handle acquisition
+window, or full storage/network/publication teardown. Evidence and reproduction:
+lifecycle/README.txt, reproduced/lifecycle and lifecycle-kill-child-failure.
+
+Independent cleanup when the supervisor dies
+--------------------------------------------
+A separate trusted cgroup owner survives outside the fixture build group.
+It observes supervisor death through a pidfd, kills the subtree, waits for
+populated=0, reaps adopted descendants and verifies stopped writes and unchanged
+mounts before removing the group. Tests pass before launching commands, during
+mapped namespace setup and during a restricted detached writer. A negative
+control confirms supervisor death alone leaves writes running.
+
+The supervisor is gated before its first fork until group placement is complete.
+This is evidence for a bounded independent cleanup mechanism, not a production
+launch protocol or environment policy change. Monitor death, FUSE cleanup,
+storage revocation and no-publication remain separate gates. Reproduction:
+guardian/README.txt; retained input/command/result evidence: reproduced/guardian.
+
+Worker-finalization gate connected to real publication
+-----------------------------------------------------
+A safe-Rust probe now calls repository Scute::import, Artifact and Inventory
+after mapped FUSE unmount/reap and dm/loop teardown. Clean completion publishes
+and passes inventory roundtrip, published-scute digest/size and stable raw-image
+checks. Patched close-only, real final-flush and recovered-I/O failures reject
+before conversion. The unpatched false-success close publishes in the negative
+control, demonstrating why publication validation cannot replace worker status.
+
+Actual staging and final-publication copy are each exhausted with a 4KiB tmpfs.
+Both report StorageFull and leave no external destination; the final-copy case
+also leaves no temporary copy directory. The first exhaustion probe incorrectly
+required a raw errno despite tempfile's StorageFull wrapper; its check was
+corrected to require the specific error kind, not merely any failure.
+
+This is a synthetic inventory and trusted worker fixture, not a real checkout,
+untrusted recipe, authenticated base-layer extension or attested execution.
+Full cancellation/guardian/storage integration and remaining resource phases
+stay open. See publication/README.txt and reproduced/publication for exact
+scope, source identities and the seven-case results.
+
+Authenticated base through FUSE to a verified derived layer
+----------------------------------------------------------
+Actual Scute/Chain/Snapshot APIs now form a single bounded guest pipeline:
+import and pin base root, verify cache, assemble dm-verity, create snapshot,
+modify through mapped FUSE, unmount/reap, seal, restage reversed-order layers
+and assemble/read the result. Kernel fsck/mount confirms inherited/changed/new
+file contents and target ownership/mode. Raw base and base-scute hashes remain
+unchanged.
+
+Wrong-root and cache-byte mutations reject before assembly. A separate private
+staged-data mutation after verification returns EIO through the device path;
+restoring the byte allows a fresh full-extent read. Only a 64MiB ext4 extent is
+materialized. No untrusted recipe or Git/lock/inventory provenance is claimed.
+See chain/README.txt and reproduced/chain for evidence and remaining scope.
+
+Version-changing package/config/scriptlet transaction
+----------------------------------------------------
+Two data-only test RPMs built from the retained spec now run in the restricted
+Fedora/FUSE command. Installing version1 then upgrading to version2 changes the
+RPM database/payload as expected, preserves an edited config, writes the new
+default as .rpmnew, and runs the exact expected scriptlet sequence/arguments.
+A scriptlet's mode0640/UID1234/GID2345 state file survives kernel ext4 remount,
+as do the version2 payload and both config files.
+
+The extracted Fedora rpmbuild package was signature-checked and not installed
+on the host. Its hashes, build logs, generated RPM identities and full guest
+inputs/results are retained. Initial Fedora bootstrap still precedes command
+restrictions; the test uses --nodeps and does not establish a distribution
+upgrade or kernel/initramfs build. Known ACL failures remain. The local seed
+dependency also remains. See package-upgrade/README.txt and
+reproduced/package-upgrade.
+
+Helper startup loader environment
+--------------------------------
+A benign shared-library constructor writes one guest-only fixed marker when
+loaded. Passing it through LD_PRELOAD to the trusted entry helper creates the
+marker before pivot/detach, even though the image command sees a clean env and
+closed descriptors. Constructing the helper's environment before exec prevents
+the marker. Both cases use the restricted helper and assert inherited FD9 is
+present before exec and absent at image entry.
+
+The initial new FD check redirected errors to an absent /dev/null, which could
+conceal a faulty closure check. That test was corrected before retaining the
+final result. The C constructor is bounded instrumentation, not production
+code or an unsafe-Rust exception. Broader loader/library integrity is still
+unqualified. See loader/README.txt and reproduced/loader.
+
+Repository-based Fedora fixture assembly
+---------------------------------------
+Eight retained source scripts and a 69-package SHA256 catalog now replace the
+opaque historical seed. The builder copies explicit host tools/runtime libraries,
+RPM support files and selected kernel/modules, recording all inputs. No host
+repository credentials/configuration or unused policy binary is copied.
+
+The first rebuild identified implicit dependencies on a matching repository
+definition for DNF's disable filter and /etc/mtab for FUSE cleanup. A disabled
+local-only synthetic repository and /proc/mounts symlink resolve those fixture
+requirements. The rebuilt seed passes restricted package/isolation/remount
+tests and the version-changing config/scriptlet upgrade; ACL diagnostics remain
+failures. Heartbeat loops in the retained scripts are now finite.
+
+A disposable one-byte RPM change is rejected before output-directory creation.
+This is repeatable assembly with explicit provisioned tools/packages, not
+bit-identical reproduction across tool versions or full OS build qualification.
+See package-fixture/README.txt and reproduced/package-rebuilt.
+
+Restricted execution connected to authenticated layer creation
+------------------------------------------------------------
+The chain fixture now puts a shell/tool runtime and bounded command into its
+base before scute import. Through the mapped FUSE snapshot, the command runs
+after the safe entry helper's restrictions and root/FD isolation. It verifies
+PID1, no_new_privs/seccomp and absent context/helper/device paths, modifies files
+and starts a finite background writer. The trusted worker verifies heartbeat
+quiescence and daemon survival before unmount/reap and Snapshot::finish.
+Reconstruction, kernel filesystem metadata, unchanged base and corruption
+EIO/restoration checks all pass.
+
+A second measured command ends with exit7. Worker pipeline status propagates
+through cleanup; the diagnostic Rust assertion rejects it before layer sealing.
+The runner requires the exact status diagnostic and no sealing marker; the
+guest verifies no result, dm mappings or loop attachments remain. This tests
+normal command failure, not cancellation, a full recipe parser or inventory
+publication in the same run. See chain-command/README.txt and retained runs.
+
+Four-layer authenticated chain follow-up
+---------------------------------------
+Three restricted command rounds now extend one imported base. Each reads and
+updates a round counter/history, clears and writes a fresh heartbeat, then
+passes command/descendant/worker teardown before sealing. Hashes of every prior
+scute remain unchanged after each round. Reverse-ordered OCI layers reconstruct
+the exact four-root/parent sequence; kernel ext4 confirms round3 and history1-3.
+Missing and duplicate middle layers are rejected for the expected distinct
+chain errors while the unchanged complete chain passes. Post-stage corruption
+still yields EIO; byte restoration permits reading the full filesystem extent.
+
+An initial passing run exposed Bash's implicit /dev/null background-stdin
+warning. Explicit inherited stdin removes the warning in the retained rerun,
+and resetting heartbeat prevents earlier rounds from satisfying later checks.
+See validation/sandbox/chain-long/README.txt and reproduced/chain-long. This
+advances item13 but does not close malformed-format qualification or the
+combined recipe/input/inventory/cancellation gates.
+
+Bounded FUSE request-pressure cleanup
+------------------------------------
+The pressure fixture prepares separate parent directories, stops the mapped
+fuse2fs worker, and confirms 32 pending requests before cleanup. Abort-first
+produces expected client exit1/connection errors. The second case signals all
+32 clients with SIGKILL, aborts, and reaps each with status137. New requests
+after abort fail promptly. Both paths kill/reap the worker, unmount and release
+the exact connection, with a ten-second cleanup assertion and guest timeout.
+
+A negative control exposed an unreliable cleanup order: waiting for all killed
+clients BEFORE abort could stall until the supervisor timed out. Some runs
+passed, but repeat testing did not. The corrected handshake signals clients,
+allows the supervisor to abort independently, then completes waits. Kernel
+FUSE documentation distinguishes cancellation of queued and delivered requests;
+this is consistent with the failure, but the test does not trace the exact
+request transitions. It is a test/design ordering finding, not a kernel-bug
+claim. The failed run and its scripts are retained in
+reproduced/pressure-reap-before-abort-failure.
+
+This advances items15/17 at the primitive level, not their full integration
+requirements. Cyclic callback deadlock, controlled active requests, background
+saturation and failed-build publication remain open. See
+validation/sandbox/pressure/README.txt for sources and reproduction.
+
+The corrected pressure fixture passed the initial run and three exact-input
+repeats. Shell/Python syntax and git diff --check also pass.
+
+Committed chain execution through actual inventory/publication
+-------------------------------------------------------------
+chain-publication creates an actual Git context and OCI-index lock, resolves
+via Inputs::resolve, verifies the fixed offline /command recipe, and stages
+the resolved authenticated base. A working-tree edit after capture does not
+change execution or the inventory recipe digest. The restricted command,
+writer/worker teardown, Snapshot::finish and kernel ext4 verification precede
+Record construction and Artifact finalization/publication. Published CBOR
+round-trips deterministically, every scute blob verifies, and the self-contained
+published chain reconstructs to the expected root. Inventory assertions cover
+commit/tree, locked input root, inherited/produced origins and probe executable.
+
+A separate base contains /command ending with exit7. The resolved committed
+recipe fails before sealing/publication; no output, dm or loop resource remains.
+This combines prior primitives with real input and inventory APIs for one fixed
+recipe. It does not validate the general production executor or concurrent
+input mutation, cancellation, external-worker identity, or hardware attestation.
+The worker/kernel/library identities are retained in reproduction inputs only.
+See validation/sandbox/chain-publication/README.txt and retained success/failure
+runs. Rust clippy --all-targets -- -D warnings, syntax and diff checks pass.
+
+Inherited IPC and Unix socket boundaries under the candidate entry policy
+------------------------------------------------------------------------
+The expanded policy driver proves that separate user/mount/PID/net/IPC/UTS
+namespaces alone preserve synthetic inherited memfd, /dev/shm-file, eventfd and
+connected socketpair access. A reachable pathname socket also accepts a bounded
+message. An abstract listener is live in the supervisor namespace but its name
+is unavailable in the child network namespace. With actual restricted entry,
+all added high descriptors are EBADF and old paths are absent in two steps;
+supervisor data, event counter and socketpair remain intact afterward.
+The existing candidate-policy syscall/socket/PTY tests pass in the same run.
+Evidence: validation/sandbox/reproduced/ipc-policy; reproduction and primary
+references: validation/sandbox/policy/README.txt. This is not complete IPC or
+cross-build/keyring qualification. Python syntax and diff checks pass.
+
+Worker-owned keys and real-operation policy check
+------------------------------------------------
+A live UID100000 fixture worker anchors an owner-only user key in its per-UID
+keyring. An independent command with fresh anonymous session mapped to the
+same host UID can read it; one mapped to UID200000 is denied. Thus session
+replacement does not isolate owner-readable keys from the same host identity.
+The worker's value remains unchanged and is revoked after the test.
+
+The candidate-policy fixture now provides a real readable session key: a
+namespace-only control reads it successfully, whereas two restricted steps
+receive EPERM for the same valid READ. Supervisor readback remains unchanged.
+Evidence is retained under reproduced/worker-keys and reproduced/key-policy.
+See validation/sandbox/keys/README.txt for reproduction, primary reference and
+scope. This does not qualify UID reuse, every key type or workloads requiring
+key APIs. Python syntax and diff checks pass.
+
+File-capability metadata persistence and clearing
+------------------------------------------------
+The six-way metadata matrix now includes non-executable files bearing one
+revision2 security.capability value. Kernel ext4, initial-userns FUSE and mapped
+FUSE all store the exact same bytes with/without metadata_csum. Kernel remount
+confirms persistence, including no build-host UID appearing in a revision3
+rootid. Content replacement and ownership change clear the xattr; chmod
+preserves it. Exact operation and metadata assertions pass along with fsck.
+No capability-bearing file is executed. This advances item11 without resolving
+ACL SGID, trusted.*, device-node or immutable/append-only blockers. Evidence:
+validation/sandbox/reproduced/capability-metadata; documentation in metadata/
+README.txt. Python syntax and diff checks pass.
+
+Inherited restrictive file flags: compatibility boundary
+--------------------------------------------------------
+Initial root seeded immutable/append-only files on each of six ext4 images.
+Kernel and initial-userns FUSE clear and restore those flags; mapped FUSE reads
+but cannot clear them (EPERM). Kernel remount confirms preserved flags in all
+cases, with/without metadata_csum. Existing metadata/capability assertions and
+fsck also pass. This extends the known creation limitation to inherited images.
+
+Pinned upstream source at f47d223627f80cb7a1eb14c585fe6cb35de5e984 places the
+initial-userns CAP_LINUX_IMMUTABLE check in generic fileattr preparation before
+FUSE dispatch. That corroborates the observed kernel boundary; it is not exact
+Fedora build provenance. Source identities and detailed scope are recorded in
+validation/sandbox/metadata/kernel-source/sources.json and metadata/README.txt.
+Run evidence: reproduced/inherited-flags. No privileged workaround is adopted.
+
+Evidence-harness source snapshots and exact exit acceptance
+----------------------------------------------------------
+guest.py now snapshots local Rust/manifest/lock and selected fixture sources
+before build/copy, compares them afterward, and records hashes plus source
+bytes. This prevents silently associating current helper source with a different
+new build. It does not retroactively strengthen old evidence or attest external
+dependencies/compiler/runtime. A fresh pressure run passes and retained source
+bytes verify against all recorded hashes (reproduced/evidence-harness).
+
+Guest success now requires exactly one full GUEST_EXIT 0 record. A regression
+check rejects missing, failed, malformed, prefixed and duplicate exit records.
+This closes the earlier substring acceptance gap without treating diagnostic
+markers as general security verdicts. Top-level reproduction instructions now
+point to repository-based packagers instead of obsolete /tmp seeds. Python
+syntax and diff checks pass. Full dependency/license qualification remains.
+
+Prototype dependency and safe-API inventory
+------------------------------------------
+Offline locked Cargo metadata resolves eight entry-helper packages, all with
+declared licenses. The retained report records graph features/edges and local
+manifest/license/lock identities. The trusted ACL-patched worker's six dynamic
+libraries/loader have byte hashes, RPM versions and declared license labels;
+e2fsprogs/libfuse source notices are identified separately. This does not prove
+source-to-binary correspondence or a complete static/native-source closure.
+The entry helper's operations use safe public APIs and compile with forbidden
+unsafe code and clippy warnings denied. Dependency-internal/native unsafe code
+remains part of the trusted runtime; no transitive safety claim is made.
+See validation/sandbox/dependencies/README.txt and reproduced/dependencies.
+Functional backend blockers, maintenance and performance qualification remain.
+
+Runtime mounts and proc control opens
+------------------------------------
+The candidate policy fixture adds explicit proc nosuid/nodev/noexec and devpts
+nosuid/noexec flags and checks those mounts from both command steps. Private
+PTY ioctls and /dev/null work. Writable opens (no writes) of sysrq-trigger,
+core_pattern, modprobe and drop_caches are denied; missing files do not count.
+A disposable /dev canary is fresh each step, and supervisor mountinfo plus
+underlying /dev listing are unchanged after teardown. Existing IPC/key/socket/
+capability tests pass in the same run. Retained source-bound evidence:
+validation/sandbox/reproduced/runtime-mounts. Final proc masking, sysfs policy,
+device/ioctl scope and cancellation remain separate gates. Syntax and diff
+checks pass; no production executor change is made.
+
+Publication cancellation after finalized inventory
+--------------------------------------------------
+The committed-input/restricted-command/chain fixture now exercises actual
+cancel::install and SIGTERM after Artifact::finalize. Private inventory CBOR
+validates before the signal. Cancellation is observed, Artifact::publish
+returns build-cancelled, and no public output or temporary publication copy
+remains. The private inventory stays unchanged; resource-guard teardown leaves
+no dm mappings or loop attachments. The expected error is handled by the test,
+not mistaken for successful production publication. Retained source-bound run:
+validation/sandbox/reproduced/chain-publication-cancel. This is a deterministic
+pre-publication boundary, not cancellation during active workers/copy/rename
+or abrupt supervisor death. Rust clippy, syntax and diff checks pass.
+
+Protocol-aware ACL SGID correction
+---------------------------------
+The paired libfuse3.18.3/worker prototype preserves the kernel's negotiated
+SETXATTR_ACL_KILL_SGID flag in private request state and supplies it through a
+prototype-only versioned accessor. Worker ACL updates use that decision rather
+than UID/group privilege guesses. Both formerly failing CAP_FSETID cases now
+match kernel ext4 in all six initial/mapped/feature configurations. Common ACL
+checks, fsck and kernel-remount reference comparisons also pass.
+
+The public context ABI remains unchanged. The stock-library mismatch control
+fails to load with the new symbol version; the matched library succeeds.
+The complete saved patch reverse-checks against built sources. Build/run inputs,
+source snapshots, patch and controls are retained in reproduced/acl-protocol;
+reproduction and limitations are in validation/sandbox/acl-protocol/README.txt.
+This supplies a working interface correction for the demonstrated cases, not
+an adopted public API or a complete ACL/backend qualification. Device-node,
+trusted.* and immutable/append-only kernel boundaries remain unresolved.
+
+Unsupported ACL extension: initialization error propagation
+-----------------------------------------------------------
+A diagnostic paired library masks SETXATTR_EXT before negotiation. The worker
+still requests it, so libfuse reports the unsupported flag and exits. The first
+run exposed fuse2fs mapping fuse_main status8 to success0; the harness rejects
+that run (reproduced/acl-unsupported-negative). The experimental builder now
+maps the nonzero default branch to failure32. The corrected case requires the
+exact unsupported-bit diagnostic, status32 and no remaining mount/connection,
+and passes. The full normal ACL matrix also passes with the status correction.
+This is a reproducible simulation of feature absence, not old-kernel coverage
+or qualification of all initialization errors. Retained evidence/build patches:
+reproduced/acl-unsupported and reproduced/acl-protocol-status-control.
+
+Protocol-corrected worker in authenticated command/publication path
+------------------------------------------------------------------
+chain-acl selects the corrected worker/libfuse pair, resolves a committed lock,
+and runs measured setfacl/getfacl tooling under the restricted command helper.
+Named-user ACL creation and chmod mask revocation/restoration pass. After
+writer/worker teardown and sealing, kernel ext4 verifies ACL/mode/content;
+base hashes and corruption/EIO checks still pass. Actual inventory/publication
+and self-contained scute reconstruction also pass. Packaged worker/library
+hashes match the pair's build record; local source snapshots are retained in
+reproduced/chain-acl. This connects the isolated correction to the output path,
+not broader workload or fault qualification. Syntax and diff checks pass.
+
+Corrected ACL worker in Fedora package/upgrade workload
+-------------------------------------------------------
+The package fixture now optionally selects the corrected worker/libfuse pair
+and upgrades ACL access/inheritance observations to assertions. The paired run
+passes DNF installation, restricted attr reinstall/remove/install, version1->2
+config/scriptlet upgrade, ACL access/inheritance, descendant cleanup, kernel
+remount and unchanged-origin checks. Exact worker/library hashes match the
+pair build record; evidence is retained in reproduced/paired-package with seed
+catalog and local source identities. The package runner now rejects malformed
+or duplicate guest-exit records.
+
+The initial DNF installation still precedes command restrictions. Its separate
+crash-worker remains stock fuse2fs, so those failure checks do not qualify the
+corrected worker's fault behavior. This expands package compatibility evidence
+without claiming a full restricted bootstrap, kernel/initramfs or representative
+performance result. Reproduction/scope: validation/sandbox/policy/README.txt.
+
+Restricted initial Fedora bootstrap
+-----------------------------------
+The initial offline DNF install now runs inside the restricted entry helper,
+using a separate tool root with read-only synthetic guest tool/package inputs
+and a writable FUSE target at /output. Mapped root, PID1, no_new_privs, seccomp
+and private namespaces remain enabled; supervisor paths are absent. The bounded
+package transaction, subsequent restricted RPM upgrade, ACL assertions, worker
+teardown, fsck, kernel remount and unchanged origin all pass (guest exit0).
+No scriptlet failure diagnostic occurred; skipped package signatures are an
+explicit property of this offline fixture, not a production trust policy.
+
+The first launch failed before exec: a late nonrecursive root bind hid its
+existing child mounts. Root binding now precedes those mounts. Retained negative
+and successful evidence, input catalogs and source snapshots are under
+reproduced/restricted-bootstrap-mount-order-negative and restricted-bootstrap.
+The entry probe now identifies exec errors explicitly. The separate crash-worker
+is still stock; full OS/kernel/initramfs and integrated failure qualification
+remain open. No production executor changes were made for this experiment.
+
+Bounded extent operations and sparse seek behavior
+--------------------------------------------------
+Six kernel/initial-FUSE/mapped-FUSE configurations now exercise allocation,
+hole punching, zeroing, collapse and reflink on bounded regular files. Exact
+bytes and size persist through fsync, fsck and kernel remount. Allocation,
+punching and zeroing succeed. Collapse succeeds on kernel ext4 but returns
+ENOTSUP without mutation on FUSE. Reflink returns ENOTSUP on both. FUSE reports
+the punched hole as data and EOF as the next hole, unlike kernel ext4; sparse
+seek consumers cannot infer matching allocation/efficiency from byte fidelity.
+
+The initial expanded run failed the old blanket equivalence assertion. The
+harness now separately asserts these explicit extent outcomes while retaining
+strict original metadata comparisons. A fresh run passes those assertions and
+all six remount checks. Evidence, source snapshots, matching worker build
+catalog and syscall-header references: reproduced/extent-metadata. No broad
+extent or restricted-command qualification is claimed. See metadata/README.txt.
+
+Unaligned range and allocation accounting follow-up
+---------------------------------------------------
+The metadata matrix now tests cross-block, single-block and past-EOF punch/zero
+ranges with exact byte expectations. All six configurations pass with both
+the common-ACL worker and corrected ACL/libfuse pair. The paired bytes match
+the recorded version5 build. st_blocks deltas and kernel-remount persistence
+confirm that the aligned punch frees16KiB even though sparse seek hides it.
+Allocation adds64KiB, zero preserves allocation and rejected collapse leaves
+both bytes and accounting unchanged. Retained catalogs, source snapshots and
+results: reproduced/unaligned-extents and unaligned-extents-paired.
+
+The existing limitations are unchanged, including mapped metadata restrictions.
+This expands backend compatibility evidence, not arbitrary fragmentation,
+ENOSPC, command-policy integration or a representative OS workload claim.
+Harness self-check, Python syntax and diff checks pass.
+
+First restricted dracut workload (partial, follow-up required)
+-------------------------------------------------------------
+An explicit 183-package catalog adds Fedora7.2.11 kernel-core/modules-core and
+dracut108 to the restricted bootstrap fixture. The VM still uses7.2.10; the
+matching old kernel RPM is no longer available from the configured repository.
+The offline install and restricted non-hostonly dracut finish. Archive listing
+contains systemd/modules, and its SHA256 survives worker teardown, fsck and
+kernel remount. The runner's existing success assertions pass.
+
+This is not a clean workload qualification: /dev/fd is absent, causing a
+module-setup process-substitution diagnostic; sysfs/logging and package
+scriptlet warnings remain. A bounded detached-child probe also falls through
+to waitpid after its loop expires, exposing a fixture ECHILD bug on this longer
+run. These findings need correction/classification and another run, followed
+by boot validation. Evidence/input catalog/source snapshots are retained in
+reproduced/initramfs-first; see initramfs/README.txt.
+
+Runtime-mount and long-workload follow-up
+---------------------------------------
+Evidence: reproduced/initramfs-runtime (relative to validation/sandbox). The
+bootstrap tool and installroot now each have private proc/dev mounts and an
+empty read-only sys view. Device descriptor/stdin/stdout/stderr links refer to
+the command's proc, not supervisor descriptors. The later command receives
+these links too. Missing-proc/catalog and /dev/fd diagnostics disappear; dracut
+generation and post-teardown fsck/kernel-remount hash checks pass.
+
+Detached children now exit explicitly when their bounded loop ends. Both
+heartbeat probes and trusted canary have bounds beyond the300-second guest
+timeout; commands require both heartbeats to grow immediately before exiting.
+Subsequent stable-heartbeat checks therefore exercise termination, not natural
+expiry. The rerun has no traceback and passes liveness and teardown assertions.
+
+The runner now checks the exact initramfs RPM set and SHA256 catalog before
+creating output. Bounded missing/corrupt input tests confirm early rejection.
+Package-source evidence shows systemd-udev's script references the missing
+systemd-tmpfiles-clear.service; neither systemd nor systemd-udev ships it. The
+audit warning is consistent with the candidate policy rejecting audit netlink.
+Remaining dracut warnings concern absent firmware sysfs discovery and syslog;
+local dracut source records their cause. Explicit target firmware directory
+and stderr-only logger configuration are available follow-ups. No VM logging
+service or host sysfs exposure is required by that source analysis. Boot testing
+and source-kernel compilation remain open; no complete OS qualification claim.
+
+Exported restricted-build initramfs boots (bounded milestone)
+------------------------------------------------------------
+Trusted post-worker export now supplies a second diskless/offline VM with the
+actual generated initramfs and kernel. Export framing/digest/size rejection
+tests pass. Boot reaches systemd PID1 and udev, loads FUSE, confirms runtime
+filesystems, emits the exact7.2.11 marker and shuts down. Exported kernel bytes
+match the pinned RPM payload. Evidence: reproduced/initramfs-boot and
+initramfs-exported-build; binary artifacts remain at the recorded/tmp paths.
+
+The first probe incorrectly treated built-in ext4 as a module; failure evidence
+and target kernel config are retained. Explicit dracut's firmware/logging
+configuration now works via a late drop-in. The automatic kernel posttrans still
+emits dracut/GRUB diagnostics about logging/sysfs/hidden backing devices, so
+the build harness rejects that run. Do not conflate the successful artifact
+boot with a clean package-install pass. Proper automatic install configuration,
+full OS root-switch and source-kernel compilation remain unvalidated.
+
+Configured kernel-install and boot follow-up: bounded workload passes
+--------------------------------------------------------------------
+Evidence: validation/sandbox/reproduced/initramfs-configured-build and
+initramfs-configured-boot (repository-relative). Recipe-owned install-setup runs
+before the additional kernel RPM installation. It selects layout=other, masks
+20-grub/95-set-boot-entry/99-grub-mkconfig using the documented /etc override
+mechanism, and supplies an explicit comment-only grub.cfg for this direct-boot
+fixture. grub2-common's posttrans generates a configuration only if none exists;
+that separate script caused the preceding retained failure. These are deliberate
+image-author boot-policy choices, not conglobate defaults or GRUB qualification.
+No backing-device visibility, command capabilities or syscall rules changed.
+
+A target dracut drop-in configures non-hostonly generation, image firmware paths
+and stderr-only logging before automatic kernel posttrans. Automatic depmod
+and initramfs generation remain enabled and their outputs are asserted. Both
+automatic and explicit dracut, package/ACL checks, live-before-exit descendants,
+teardown, fsck, remount hashes and trusted export pass. The strict harness finds
+no dracut errors, firmware-discovery errors or GRUB errors. Independent boot of
+the exported output reaches systemd/udev, loads FUSE and shuts down; exported
+kernel identity matches the pinned RPM payload.
+
+Known nonfatal audit-netlink denials and the separately source-grounded missing
+systemd-tmpfiles-clear preset warning remain. This is a bounded distribution
+package/firmware workload, not a claim of zero package warnings, all metadata
+compatibility, GRUB boot support, switch-root into a complete OS, source-kernel
+compilation or production executor security. The source/hook/manpage evidence
+is retained; installed hook bytes matched the pinned RPM payloads.
+
+Active command cancellation before sealing/publication
+------------------------------------------------------
+The new chain-active-cancel fixture uses actual committed/locked input resolution
+and authenticated Chain/Snapshot setup. A trusted gated handoff pins command
+namespace-init with a pidfd before untrusted code runs. Both bounded writer
+counters must grow before cancellation. SIGKILL through that handle stops
+namespace init and child; launcher reaping and stable counters pass. FUSE
+unmount/daemon wait completes, and worker exit125 triggers the chain probe's
+expected failure assertion before sealing. Base hash is unchanged, no output
+or reconstructed image exists, and no dm/loop/FUSE connection remains. The
+host rejects any sealing/restaging/publication success marker.
+
+Evidence/source catalogs: reproduced/chain-active-cancel. The first run passed
+command cancellation; a second adds unchanged-base and explicit FUSE-connection
+checks and passes. This is an integration step for items14-16, not a production
+signal-handler or supervisor-death proof. Blocked I/O and cancellation at other
+resource/publication boundaries remain open. See chain-active-cancel/README.txt.
+
+Blocked I/O abort integrated with authenticated snapshot failure gate
+-------------------------------------------------------------------
+chain-blocked-cancel extends the live-command fixture. Two writers are active
+before the trusted driver stops the filesystem worker. Controller observes a
+queued FUSE request and retains the connection abort FD. It authorizes command
+pidfd SIGKILL, aborts before reaping, then waits for launcher/daemon termination
+and unmount. Actual chain worker-status gate rejects exit125 before sealing;
+the expected probe panic returns101. Cleanup completes within10 seconds, base
+SHA256 is unchanged, no output exists and dm/loop/FUSE resources are gone.
+
+Evidence/source catalogs: reproduced/chain-blocked-cancel. This connects the
+previous pressure-abort sequencing to real committed/locked snapshot setup.
+It does not establish production signal handling, cyclic-deadlock recovery,
+supervisor death or every lifecycle boundary. See chain-blocked-cancel/README.txt.
+Python/shell syntax, harness source/exit checks and diff checks pass.
+
+Artifact streaming cancellation
+===============================
+The regression in tests/artifacts.rs demonstrated that Artifact::put returned
+success after the installed SIGTERM handler had already flagged cancellation.
+Checks before/after reads and before blob persistence now reject cancellation.
+Four isolated subprocess modes cover before reading, during a data read, after
+one staged 64KiB chunk, and at EOF. Every mode verifies the cancellation error,
+reader call count and removal of temporary bytes without a persisted blob.
+All six artifact integration tests pass. Reproduction command, source snapshots,
+SHA256 inputs and result are in validation/sandbox/reproduced/artifact-stream-cancellation.
+The original failing output was observed interactively, not retained in that
+evidence directory. This is cooperative cancellation in private staging only;
+blocked syscalls, final publication copying and the check/rename race remain
+separate validation work.
+
+Cancellation while copying a finalized artifact
+==============================================
+The actual Artifact::publish path now has a bounded partial-copy SIGTERM test.
+A real 128MiB PMI artifact is finalized with a matching manifest and inventory.
+A trusted observer must see the output blob length strictly between zero and
+the full length before raising SIGTERM. Publication returns build cancelled,
+leaves no visible destination, and removes the temporary sibling directory.
+Private finalized workspace bytes remain owned by the workspace. All seven
+artifact integration tests pass. The production copy loop now checks between
+64KiB reads instead of calling std::io::copy on each entire file. Source hashes,
+snapshots and a direct child-test log with observed byte count are retained in
+validation/sandbox/reproduced/publication-copy-cancellation.
+
+This demonstrates a successful cooperative-cancellation path during partial
+copy, not a hard latency/byte bound or interruption of blocked I/O. No baseline
+timed failure or performance comparison is claimed. Signal delivery and the
+final rename are not atomic: cancellation after the last check can lose to a
+successful rename. This observation does not establish crash durability or
+cleanup on supervisor death, and does not redefine those remaining gates.
+
+Publication destination collision
+=================================
+A separate mkdir process creates the destination while actual publication is
+copying a finalized 32MiB artifact. Atomic NOREPLACE returns EEXIST, preserves
+the empty competing directory's device/inode, and cleans only the temporary
+sibling copy. Changing just the rename flag to ordinary rename makes this
+test fail with publish returning Ok, confirming the test detects replacement.
+The original flag was restored and all eight artifact tests pass. Retained
+source snapshots, hashes, commands, negative output and final suite output:
+validation/sandbox/reproduced/publication-destination-race. This does not prove
+full concurrent build cleanup, interrupted recovery, hostile ancestor-path
+mutation, crash durability or the cancellation-check/rename boundary.
+
+Supervisor death through real chain and FUSE execution
+======================================================
+The chain-supervisor-death disposable guest fixture connects a surviving trusted
+guardian to the actual locked-input Chain/Snapshot pipeline and restricted
+namespace-root commands. Both command and child heartbeats grow before the
+guardian kills the supervisor through its pinned pidfd. The guardian observes
+death, kills the inherited cgroup, aborts FUSE, waits for an empty cgroup and
+reaps all adopted descendants. FUSE disappears, but the base verity target and
+CARAPACE-z remain. Explicit removal of the captured targets then releases all
+DM/loop devices. Base SHA256 remains unchanged; no sealing or publication is
+observed or permitted by the host verifier. The successful guest exits zero.
+
+This establishes a bounded single-build recovery sequence and demonstrates
+why process cleanup alone is insufficient. It does not qualify shared-target
+ownership or reused names in concurrent builds, guardian death/restart, empty
+scratch-directory scavenging, cyclic deadlocks or other lifecycle boundaries.
+The initial run stopped at a DM-output parsing mistake before launching the
+chain; its source catalog/log is retained separately as a harness negative.
+Reproduction, source snapshots, kernel/tool hashes and worker build inputs:
+validation/sandbox/chain-supervisor-death/README.txt and
+validation/sandbox/reproduced/chain-supervisor-death.
+
+Correction: supervisor-death device teardown is deferred
+========================================================
+The initial supervisor-death experiment removed two device names immediately
+after reaping. That did not establish that they leaked or required explicit
+recovery. Pinned carapace 99caf794 schedules deferred removal before returning
+each mapping. A follow-up fixture removes all explicit dmsetup remove calls
+and instead waits for kernel teardown: all DM and loop devices disappear,
+base bytes remain unchanged, no output is sealed/published, and the guest
+exits zero. The immediate post-reap names were transient. This supersedes the
+earlier inference that process cleanup was insufficient without explicit
+device removal. It still does not qualify shared-consumer concurrency or
+interruption before deferred removal is installed. Current logs, source
+snapshots, dependency source/hash and worker catalog are retained in
+validation/sandbox/reproduced/chain-supervisor-death-deferred.
+
+Shared base consumers survive failed-build teardown
+==================================================
+Extended chain-supervisor-death with independent trusted read-only handles to
+the base carapace snapshot, verity and zero mappings. After supervisor death,
+cgroup kill, FUSE abort and descendant reaping, only those held mappings remain.
+Each retains its device identity and identical first 4096 bytes; loop backing
+remains present. Closing the handles permits automatic teardown of every DM
+and loop device. No explicit device removal is used. Base SHA256 remains
+unchanged and no output is sealed or published. Guest exits zero. Evidence:
+validation/sandbox/reproduced/chain-supervisor-shared-consumer. This establishes
+held-reader lifetime across failure, not simultaneous assembler races, two full
+builds, name-reuse recovery or interrupted mapping activation.
+
+Interrupted activation recovery states
+======================================
+A disposable guest now exercises the production Scratch::new recovery entry
+point against constructed created/unloaded and active nondeferred DM targets.
+Both root-owned empty 0700 dead leases and their devices are removed. Recovery
+preserves controls with a held lifetime lock, nonempty directory, wrong mode,
+symlink or foreign UID ownership. Releasing the live lock permits subsequent
+recovery. An already-deferred mapping remains readable through an independent
+FD after its empty dead directory is collected; closing that FD completes
+automatic device teardown. Final DM inventory is empty; guest exits zero.
+
+Evidence and exact scope: validation/sandbox/activation-recovery/README.txt and
+validation/sandbox/reproduced/activation-recovery. These are bounded constructed
+post-interruption states with zero targets, not live death injection inside
+Snapshot::create or a full restart with COW dependencies. Carapace activation
+recovery, concurrent namespace/identity races and recovery interruption remain
+separate gates. No production behavior change was required for these passes.
+
+Pinned carapace activation concurrency and rollback
+===================================================
+Four unchanged kernel activation tests from pinned carapace 99caf794 pass in
+the disposable guest with device-mapper access required (no silent skips).
+They check lock-held creation/resume, cooperative rollback before unlock,
+competing-thread publication/rollback ordering, pin-before-unlock reuse, and
+retry when last-holder removal occurs between lookup and open. The guest ends
+with no DM devices. Source snapshots, test-build catalog, binary hash, kernel
+and tool hashes, command and output are retained in
+validation/sandbox/reproduced/carapace-activation. The dependency's own lock
+file is used for its test build; this is not the full production dependency
+graph. These bounded zero-target tests do not exercise SIGKILL during creation,
+two full build pipelines or arbitrary device identity replacement.
+
+Abrupt death before carapace deferred removal: unresolved creation window
+=======================================================================
+Test-only instrumentation appended to a copy of pinned carapace uses its
+existing activation observer to gate child processes at Created and Resumed.
+The parent sends SIGKILL after readiness and verifies signal termination, then
+attempts ordinary activation of the same private test name. At Created, the
+unloaded target persists and reuse fails with 'is being removed; retry
+assembly'. The mapping still exists; explicit test-owned cleanup is required.
+This demonstrates an unresolved recovery gap and misleading retry diagnostic.
+At Resumed, reuse adopts the same identity, installs deferred removal and
+closing the final handle removes the target. The successful test exit asserts
+both outcomes, including the known defect; it is not a recovery success claim.
+
+No production dependency source was modified. Instrumented source, original
+and probe hashes, guest/kernel/tool inputs, command and output are retained in
+validation/sandbox/reproduced/carapace-activation-death. Other activation
+boundaries and a concurrency-safe fix remain open; see
+validation/sandbox/carapace-activation/DEATH-PROBE.txt.
+
+Extended carapace abrupt-death boundary matrix
+=============================================
+Added test-only observer points after table load and after device open, before
+deferred removal, in the copied dependency source. The Created and Loaded
+cases both leave stale targets blocking reuse: status flags are respectively
+0x0 and 0x40 (inactive table). Loaded returns 'not an active read-only device'.
+Resumed and Opened both have flags 0x21 and recover by adopting the same
+identity, installing deferred removal and closing the final handle. All four
+existing kernel activation tests also pass with the extra hooks compiled in;
+those hooks are invoked only for the explicitly selected death-probe stage.
+The fixture explicitly cleans the two known stale targets; a successful test
+exit does not mean the recovery defects are fixed. Evidence:
+validation/sandbox/reproduced/carapace-activation-death-boundaries. A fix must
+address abandoned pre-resume mappings without disrupting active consumers;
+production dependency code remains unchanged.
+
+Pre-resume carapace recovery candidate
+=====================================
+An optional copied-source patch removes only unopened, non-active, nondeferred
+mappings under the existing publication lock, then retries activation. All four
+SIGKILL boundaries now recover with deferred cleanup; no explicit test cleanup
+is needed. Four original kernel activation tests also pass. Additional controls
+preserve a held inactive mapping and an active mapping with a conflicting
+requested table. Releasing the inactive holder permits subsequent recovery;
+the active mapping remains readable. Final guest DM inventory is empty.
+
+This candidate assumes cooperating trusted creators use the existing lock.
+Concurrent external table mutation, every open/remove race, recovery interruption,
+COW dependencies and adoption remain unqualified. The pinned dependency remains
+unchanged and still has the demonstrated baseline defect. Evidence and scope:
+validation/sandbox/carapace-activation/RECOVERY-CANDIDATE.txt and
+validation/sandbox/reproduced/carapace-recovery-candidate.
+
+Recovery interrupted after stale-device removal
+===============================================
+The copied-source candidate now has a test-only gate immediately after removal
+and before recreation. A child recovering an abandoned mapping reaches that
+gate; its parent confirms the mapping is absent, sends SIGKILL and verifies
+signal death. The publication lock becomes available; ordinary activation
+returns a readable target and last-holder close completes deferred removal.
+No explicit device cleanup occurs between the interruption and restart. The
+four activation-death cases, four original kernel tests and held/conflicting
+mapping preservation controls also pass in this guest. All DM devices are gone
+at completion. Evidence: reproduced/carapace-recovery-interrupted. This covers
+one recovery-death boundary in the candidate only; production adoption, COW
+dependencies and broader concurrency remain open.
+
+Split-DNS flattening and domain-routing comparison
+==================================================
+Two reachable private fixture authorities answer disjoint domains and deny
+each other's names. Restricted command libc lookup with a flat two-nameserver
+resolv.conf resolves only the first authority's domain; reversing the list
+reverses the failure. Direct queries confirm both authorities are reachable.
+An external upstream resolver forwarding by domain suffix enables resolution
+of both names through libc UDP and explicit TCP queries. Forwarding logs show
+the correct upstream destinations. Known resolver target bytes survive all
+three command namespace exits. Guest exits zero. Evidence:
+validation/sandbox/reproduced/split-dns; scope and reproduction in split-dns/README.txt.
+This demonstrates a split-DNS contract and flattening limitation, not real VPN
+or systemd-resolved integration, and introduces no production resolver service
+or builder-local network-policy exception.
+
+Resolver setup cancellation boundaries
+=======================================
+Trusted setup in private mount/PID namespaces is cancelled by pinned init pidfd
+before bind, after bind, and after read-only remount. All three cases preserve
+parent mountinfo and source/target device/inode, ownership, mode and bytes. No
+process retains the failed setup mount namespace after bounded launcher reap.
+At the final gate, injected bytes are visible only in the child and a write
+through the mount fails read-only. No untrusted command is launched. Evidence:
+validation/sandbox/reproduced/resolver-lifecycle. This covers known regular
+files and trusted initial-root setup, not arbitrary image paths or integration
+with the mapped FUSE worker; the binary has no resolver injection implementation
+yet. See resolver-lifecycle/README.txt for reproduction and limits.
+
+Resolver overmounting through actual layered output
+===================================================
+The chain-resolver fixture integrates locked inputs, mapped FUSE, restricted
+commands, graceful worker shutdown, sealing, kernel reconstruction, inventory
+and publication. A regular file and an absolute resolver symlink see captured
+read-only bytes only in the command mount namespace; both writes fail EROFS.
+The worker sees original image bytes after command exit. The sealed reconstructed
+image preserves those original bytes, ownership/modes and exact symlink target.
+Base-scute checks and trusted source resolver contents remain unchanged.
+Evidence: validation/sandbox/reproduced/chain-resolver. Paths are known fixture
+targets; arbitrary resolution and cancellation in this combined path are not
+covered. No production resolver implementation or maintained worker adoption
+is claimed. See chain-resolver/README.txt for exact reproduction and limits.
+
+Image-path traversal through a non-directory
+===========================================
+Resolver-target inspection found a production paths::resolve correctness bug:
+/file/../resolver and a symlink containing that traversal were accepted when
+file was a regular file. The regression failed on baseline. Resolution now
+rejects an existing non-directory when additional components remain; tests
+compare NotADirectory with actual kernel metadata lookup for both cases. Two
+path tests and twelve library tests pass. Three root-required COPY tests were
+ignored in this local run and are not newly validated. Evidence/source hashes:
+validation/sandbox/reproduced/image-path-nondirectory. This does not implement
+resolver injection or remove the documented stopped-writer precondition.
+
+Root COPY tests after path-resolution correction
+===============================================
+The actual tests/copy.rs executable now runs in the disposable guest with all
+ignored tests enabled. Five tests pass, none ignored: COPY content/pattern/link/
+ownership behavior, access ACL and revision-2 capability xattrs, appended-link
+replacement/directory metadata, absolute-link confinement/cycles and the new
+non-directory parent traversal regression. This supplies the root-required
+checks skipped in the preceding local run. Evidence:
+validation/sandbox/reproduced/copy-root-tests. These tests use initial-root
+kernel tmpfs. SELinux is disabled in the guest and the SELinux attribute is
+absent, so enforcing/foreign-label semantics are not validated by this run.
+Mapped-FUSE COPY integration and concurrent-writer safety remain separate.
+
+Validation ledger reconciliation
+================================
+The ledger now begins with a current 21-area synthesis separating reproduced
+behavior, remaining experiments, demonstrated compatibility blockers and
+prototype adoption work. Historical pending/follow-up language is retained
+but no longer serves as the only summary. Fifty-five nonempty evidence files
+were read and hashed across all areas; the availability record is retained in
+validation/sandbox/reproduced/status-audit.json. That record includes negative
+controls and does not claim semantic completeness from file existence or exit
+codes. No original area was dropped or declared production-qualified. DESIGN.md
+now accurately describes the later paired ACL/SGID correction instead of
+presenting the earlier common-ACL prototype's defect as the latest result.
+
+Controlled cyclic callback abort
+================================
+A single-thread test FUSE filesystem's read callback requests a read through its
+own mount. Mapped worker setup and the external client produce two outstanding
+requests with neither nested operation nor client finished. The independent
+controller aborts the pinned fusectl connection. Client receives ENOTCONN107,
+nested callback returns ECONNABORTED103; both processes exit, unmount succeeds
+and the connection disappears within the measured cleanup bound. Guest exits
+zero. Evidence, compile/header/runtime identities and source snapshots:
+validation/sandbox/reproduced/cyclic-fuse. This extends stopped-worker evidence
+to a real controlled callback dependency, not arbitrary deadlocks or integrated
+fuse2fs/publication. The test daemon returns success after abort; supervisor
+failure state must prevent publication regardless. Primary mechanism reference
+and exact watchdog limits are in cyclic-fuse/README.txt.
+
+Process limit through locked chain execution and failure gate
+============================================================
+A restricted mapped-root command in the actual Chain/Snapshot/FUSE pipeline
+writes a partial image file, attempts fork once under pids.max=1, observes
+EAGAIN and exits125. The trusted controller confirms a pids.events limit event
+and an empty/removable cgroup. Worker teardown completes; its failure status
+reaches the pre-sealing gate. No output is sealed/reconstructed/published; base
+SHA256 remains unchanged and FUSE/DM/loop resources disappear. Evidence:
+validation/sandbox/reproduced/chain-pids-limit. This integrates the previously
+standalone process-limit primitive with actual chain failure handling, not all
+resource exhaustion or production error handling. Limits are provisioned by
+the test environment; no binary resource-policy requirement is introduced.
+
+Command FD and OOM failures through actual chain
+===============================================
+The descriptor fixture applies hard/soft RLIMIT_NOFILE32 before image entry,
+verifies it in the command, observes EMFILE in at most40 opens after a partial
+write, closes descriptors and exits125. The memory fixture limits only the
+command cgroup to64MiB with no swap; a bounded128MiB allocation/page-touch loop
+triggers an observed oom_kill event and worker exit137. Both actual locked
+Chain/Snapshot/FUSE paths reject sealing/publication, preserve the base hash
+and release cgroup/FUSE/DM/loop resources. Supervisor and worker survive outside
+the command limits. Evidence: reproduced/chain-fd-limit and chain-memory-limit.
+These do not qualify worker/supervisor exhaustion or combined pressure; resource
+provisioning remains environmental, not a new binary responsibility.
+
+Filesystem-worker OOM in the authenticated chain
+===============================================
+A trusted pre-exec gate places only the mapped FUSE daemon in a memory cgroup.
+After two restricted writers are live and a stopped-worker request is queued,
+the independent controller lowers the charged worker's memory.max to zero and
+requires a kernel oom_kill event. Commands receive filesystem errors; command
+cancellation/abort/reap, daemon wait137 and unmount complete. Worker wrapper
+exit125 rejects sealing/publication through the actual chain gate. Base SHA256
+is unchanged, supervisor survives, and cgroup/FUSE/DM/loop resources disappear.
+Evidence: validation/sandbox/reproduced/chain-worker-oom. This is bounded forced
+worker-OOM injection, not system-wide pressure or all allocator/writeback
+failures; limits are test-environment policy rather than new binary duties.
+
+Repeated restricted Fedora workload measurement
+===============================================
+Two serial fresh 2-vCPU/8192-MiB guests completed the same restricted Fedora
+bootstrap, package/ACL/upgrade, automatic and explicit dracut, final remount,
+export and teardown fixture. Runner wall times were 238.428 and 227.298 seconds
+(median 232.863); guest uptimes were 220.167 and 209.904 seconds (median 215.036).
+All 632 input-file SHA256 values and six symlink targets match between runs.
+Each passed the strict package runner, exact single GUEST_EXIT0 and final
+validation gates. Evidence: validation/sandbox/reproduced/initramfs-measurement;
+reproduce using validation/sandbox/initramfs/MEASUREMENT.txt and measure.py.
+
+These times include control probes and teardown, not only DNF/dracut. Host
+caches were not flushed. The host kernel was 7.2.11-dm-bufio-test1-dirty; the
+stock guest kernel and complete guest inputs are cataloged. Two runs provide a
+bounded representative-workload baseline, not a performance distribution or
+comparison with kernel-mounted ext4. These outputs were not independently
+booted; the earlier configured-build boot evidence remains separately scoped.
+Source snapshots, worker build catalog, commands, logs and measured input/output
+catalog hashes are retained. This advances areas12/21's measurement requirement;
+backend compatibility blockers, maintenance/native closure and final executor
+qualification remain open.
+
+Valid-argument process isolation controls
+========================================
+Evidence: validation/sandbox/reproduced/process-valid-arguments. Valid self
+process_vm read/write, own pidfd_getfd and child PTRACE_TRACEME controls succeed
+unrestricted and return EPERM in both restricted steps. A separate inspector
+can access a dedicated initial-root parent's canary buffer/descriptor and open
+namespace handles in the unrestricted control, but is denied after entering a
+mapped user namespace without PID isolation or a command seccomp filter. The
+parent remains visible, pidfd_open succeeds, and canary bytes are unchanged.
+No real supervisor/worker data or host resources are used. See policy/README.txt
+for operation details, timeouts, mechanism references and the retained initial
+ctypes-width fixture failure. This advances areas1–3 without qualifying same-UID
+worker arrangements, every tracing request or final production integration.
+
+Same-UID worker and PID boundary controls
+=========================================
+Evidence: validation/sandbox/reproduced/worker-identity. With visible PIDs and
+without the command filter, same-outer-UID sibling userns inspectors pass both
+kill-zero and pidfd-signal-zero permission queries; memory read/getfd fail.
+Sharing the worker userns permits all four operations. Disjoint mapped IDs deny
+all four. Initial-root controls succeed, and the dummy worker's dedicated
+memory/memfd canaries remain unchanged. No nonzero signal or unrelated memory
+access occurs. Private child PID namespaces deny an explicitly supplied
+ancestor-worker pidfd signal query with EINVAL in both sibling/shared-userns
+arrangements. Namespace identity and valid-FD checks distinguish this from
+invalid arguments or closed descriptors. Existing restricted policy tests pass.
+This documents a namespace-only limitation and a bounded PID-boundary control,
+not a breakout from the combined sandbox or certification of shared identities.
+Full worker/policy integration, capability variants and identity reuse remain
+open. See policy/README.txt for reproduction, source references and limits.
+
+Trailing-directory path semantics regression
+============================================
+Resolver-path review found that Path::components removes trailing slash and dot
+components. The existing path resolver therefore accepted /file/ as a regular
+file, while the kernel reports ENOTDIR. A regression failed before correction.
+parts() now retains a final directory requirement for both original paths and
+symlink targets. Direct /file/ and /file/., and symlinks to file/ and file/.,
+reject with NotADirectory; real directory targets still resolve. The existing
+non-directory parent traversal correction remains in place.
+
+Local tests:3 non-root COPY/path tests and12 library tests pass. The disposable
+root guest runs all6 COPY tests successfully, with none ignored. Evidence:
+validation/sandbox/reproduced/image-path-trailing-directory, including actual
+production/test sources, build command/log and guest results. Root guest uses
+kernel tmpfs and SELinux disabled; this is not mapped-FUSE or SELinux-label
+qualification. The resolver still deliberately allows missing components for
+COPY destination creation. Arbitrary resolver injection needs a strict existing
+regular-target selection path and stopped writers; this path correction alone
+does not close that remaining area10 integration requirement.
+
+Strict resolver selection / descriptor overmount prototype
+=========================================================
+A separate safe-Rust prototype now selects existing regular image files using
+O_PATH, openat2 IN_ROOT|NO_MAGICLINKS|NO_XDEV and fstat. Eleven invalid-path/type
+cases reject without opening FIFO/device content; nested-mount and proc-magiclink
+controls also reject. Four accepted regular/absolute/relative/clamped-parent
+paths receive read-only captured bytes through descriptor-based bind mounts.
+Write-open returns EROFS. After detaching and closing the pinned covering mount,
+original bytes, inode, mode and ownership match, and source/outside canaries
+are unchanged. Initial ordinary unmount returned EBUSY with the handle held;
+that negative and the corrected successful run are retained.
+
+Evidence: validation/sandbox/reproduced/resolver-target and resolver-target-negative.
+Reproduction and mechanism references: validation/sandbox/resolver-target/README.txt.
+This is kernel-tmpfs selection/mount evidence, not mapped FUSE, actual DNS lookup,
+concurrent writer safety or full chain cancellation. NO_XDEV intentionally
+requires selection before runtime mounts. Full-chain integration remains open;
+existing known-target chain evidence is not silently generalized to this helper.
+
+Strict resolver selection in the authenticated FUSE chain
+========================================================
+The actual Chain/Snapshot fixture now uses the safe-Rust resolver helper in its
+trusted launcher. Six explicit invalid path/type cases reject on mapped FUSE.
+Selection precedes runtime mounts; accepted image paths are resolved with
+IN_ROOT|NO_MAGICLINKS|NO_XDEV and regular-file metadata checks. Descriptor-based
+read-only mounts are installed, handles closed, and the trusted continuation
+executes the restricted command. Regular, absolute-link and relative-link reads
+see captured resolver bytes; writes fail. Namespace teardown restores the live
+worker's view. Sealing/reconstruction/kernel remount preserve original resolver
+contents, ownership/mode and exact symlinks. The missing target stays absent;
+base hash, committed inventory and publication gates pass.
+Evidence: validation/sandbox/reproduced/chain-resolver-selected. The standalone
+matrix rerun also passes (resolver-target-cli-regression), and helper Clippy
+passes with warnings denied. No production executor or public CLI changes.
+Combined cancellation, writer races and real host/VPN resolver policy remain
+open; these results do not qualify those separate requirements.
+
+Resolver cancellation through actual chain setup
+================================================
+All three defined boundaries pass: before the first bind, after its bind, and
+after its read-only remount, with the second target still pending. A trusted
+bounded test gate hands off the setup namespace-init PID; the controller pins
+it by pidfd before SIGKILL. No image command runs. Source/image resolver bytes,
+inode/mode/ownership and parent mountinfo remain unchanged. The init disappears
+and no readable process namespace link retains its mount namespace. Returning
+failure through the actual worker status gate prevents sealing/reconstruction/
+publication. The worker unmounts and exits; FUSE connections, DM mappings and
+loops disappear, base SHA256 matches and output/verified files remain absent.
+
+Evidence: validation/sandbox/reproduced/chain-resolver-cancel-before-bind,
+chain-resolver-cancel-after-bind, chain-resolver-cancel-after-readonly. The
+packaging-negative directory retains the first rejected missing-helper attempt.
+Reproduction/limits: validation/sandbox/chain-resolver-cancel/README.txt.
+Safe-Rust helper Clippy passes with warnings denied. This covers three setup
+boundaries with a healthy supervisor/worker; controller death, blocked worker
+operations, later continuation windows and concurrent writers are not inferred
+from these passes. Actual host/VPN DNS policy remains a separate open issue.
+
+Deployment prerequisite matrix and negative controls
+====================================================
+The deployment guest records the stock kernel config and confirms storage
+control-device opens, module availability, cgroup2 memory/pids controllers,
+and full65536-ID user/group mappings. Simple namespace creation rejects a zero
+userns quota; restoring the quota restores normal mapping. Dropping parent
+SETUID/SETGID mapping authority rejects the requested mapping. A UID100000
+FUSE-device open is denied at root-only mode and succeeds under the fixture's
+permissive control, with original mode restored and no connection residue.
+Evidence: validation/sandbox/reproduced/deployment. The initial full mapping
+CLI timed out under zero quota; that negative is retained separately, with no
+unproven kernel-cause claim. The corrected subprocess wrapper bounds its process
+group. Source references, exact scope and the cross-fixture prerequisite matrix
+are in validation/sandbox/deployment/README.txt.
+This documents the tested environment, not minimal privileges, portability,
+production-runtime provisioning or fully rootless storage. Final runtime/LSM
+qualification, concurrent identity allocation and maintained backend binding
+remain open. Resource provisioning stays with the environment.
+
+Native static-link membership and identical relink
+=================================================
+The retained experimental worker was relinked from its existing trusted objects
+and libraries into a separate output with a link map/trace. Its SHA256 is exactly
+the tested worker's SHA256. The map identifies61 static archive members
+(57 libext2fs,3 libcom_err,1 libe2p); libsupport contributes none in this build.
+All29 traced link input files, extracted members, tool binaries and external
+owning RPMs are cataloged. Conservative complete source-tree manifests and
+configuration hashes supplement that binary/object inventory.
+Evidence: validation/sandbox/reproduced/native-link-closure; reproduction and
+limits: validation/sandbox/dependencies/README.txt. This resolves static member
+visibility missing from ldd, not original compilation provenance, clean-build
+reproducibility, legal approval, maintained backend selection or whole-appliance
+runtime binding. Those remaining area21 requirements stay open.
+
+Native source/object reproduction witness
+=========================================
+The retained worker's65 contributing C objects were recompiled to fresh output
+paths and are byte-identical to their recorded direct objects/archive members.
+Compiler commands and338 unique source/header inputs are recorded and rehashed.
+The paired libfuse's16 objects also reproduce exactly (256 source/header inputs);
+a fresh link of those rebuilt objects matches the tested shared library byte
+for byte. Combined with the preceding worker relink, this supplies a concrete
+source/object relationship for81 contributing native objects.
+Evidence: validation/sandbox/reproduced/native-source-reproduction. Reproduction
+commands and limitations are in validation/sandbox/dependencies/README.txt.
+Existing generated configuration/source, compile paths and system toolchain are
+inputs; this is not a pristine release bootstrap, historical attestation or
+maintained package workflow. Runtime binding, maintenance and backend/API
+selection remain open. Existing behavioral results are not generalized beyond
+their original scope merely because these bytes reproduce.
+
+Guardian death: demonstrated one-way ownership limitation
+=========================================================
+An actual authenticated chain build now confirms that killing only its cleanup
+guardian leaves both bounded command writers active and its cgroup populated.
+The trusted observer checks post-death growth, then independently kills the
+build cgroup, aborts FUSE and reaps descendants. Base SHA256 is unchanged;
+FUSE/DM/loop resources disappear and no verified/published output exists.
+That final cleanup belongs to the test harness and is not a candidate recovery
+pass. Evidence: validation/sandbox/reproduced/chain-guardian-death. Reproduction,
+trust boundaries and limits: validation/sandbox/chain-guardian-death/README.txt.
+The missing guardian-loss protocol is now a demonstrated design gap rather than
+an untested case. Supervisor monitoring, cleanup ownership and publication
+eligibility after guardian loss remain unresolved; no complete lifecycle
+qualification or automatic takeover is claimed.
+
+Candidate active-build guardian-loss response
+=============================================
+A trusted supervisor-side monitor now watches a pidfd supplied by its guardian,
+without passing that handle to the builder/commands. After filesystem ownership
+is registered and both writers are live, killing the guardian causes the monitor
+to observe death, kill the build cgroup, abort FUSE before waiting, reap all its
+descendants and remove the empty cgroup. The outer observer performs no cleanup
+on the passing path. Base hash is unchanged, DM/loop/FUSE resources disappear,
+and sealing/publication markers and output files remain absent.
+Evidence: validation/sandbox/reproduced/chain-guardian-watch. The prior one-way
+negative remains retained. This is a candidate response for the tested active
+state, not a full lifecycle protocol: registration, normal completion/final
+publication, simultaneous failures and multi-build ownership remain open.
+Reproduction and exact limits: validation/sandbox/chain-guardian-watch/README.txt.
+
+Guardian-loss startup ownership matrix
+======================================
+The supervisor-side guardian watch now passes before-launch, before-group-
+assignment, before-resume and an active-build regression. Startup checkpoints
+occur after watch registration but before executing the builder. The observer
+requires no child at the first checkpoint, and a stopped/childless builder at
+the next two, absent/present in its cgroup respectively. The monitor retains
+its pidfd across cgroup assignment and cancels that handle on guardian loss,
+then performs group/worker cleanup as applicable. No observer fallback is used.
+No output/storage resources remain and base SHA256 is unchanged.
+Evidence: validation/sandbox/reproduced/guardian-watch-startup. This qualifies
+the tested child-created-before-cgroup window, not loss before registration,
+normal completion/publication races, concurrent setup or simultaneous owner
+failure. Exact commands and scope: validation/sandbox/chain-guardian-watch/README.txt.
+
+Already-dead guardian at monitor registration
+============================================
+The monitor now polls its inherited guardian pidfd before launching a builder.
+A bounded fixture stops the trusted monitor launcher before exec, kills/reaps
+the guardian, then resumes the monitor. It observes the existing guardian death,
+launches no builder and cleans up without observer fallback. The observer
+verifies group/helper absence before resumption and no helper/progress markers
+or output afterward. A fresh live-guardian before-launch control also passes.
+Evidence: validation/sandbox/reproduced/guardian-watch-pre-registration.
+This addresses death after pidfd handoff but before monitor registration;
+failure before handoff, all instruction-level interleavings, simultaneous loss
+and publication protocol remain open. It is not full lifecycle qualification.
+
+Concurrent complete file-backed builds
+======================================
+The actual Chain/Snapshot/restricted-command/Record pipeline passes twice with
+overlapping mounted workers and identical base content. Mapping tables show
+separate stacks sharing a single zero origin; names include backing device IDs,
+so equal content alone does not share the entire stack. First-build publication
+and exit do not prevent the retained second build from completing. Kernel
+remount verification, unchanged inputs and final DM/loop cleanup all pass.
+Evidence: validation/sandbox/reproduced/chain-concurrent. Earlier harness errors
+are retained separately. This does not validate shared block-input stacks,
+concurrent failure recovery, cross-build UID allocation or the final executor.
+
+Concurrent command failure preserves surviving build
+====================================================
+The actual concurrent chain fixture now fails one restricted command with status
+7 after writes. Its helper exits 101 without sealing or publication. The second
+mounted build survives and then completes kernel verification and inventory
+publication. Per-build log checks distinguish the failure from the success;
+bases stay unchanged and DM/loop attachments disappear after both exit.
+Evidence: validation/sandbox/reproduced/chain-concurrent-failure. Ordinary
+unwinding only; abrupt owner failure and interrupted COW recovery remain open.
+
+Recovery with real persistent COW dependencies
+==============================================
+The extended activation-recovery matrix passes production Scratch::new against
+two constructed dead-lease snapshots with loop-backed COW files. Unheld devices
+and their dependencies disappear; held writable snapshot access survives recovery
+until the FD closes. Reassembly verifies persisted canary exceptions. Original
+lease-preservation controls also pass. Evidence: reproduced/cow-recovery. This
+is not exact creator-death injection, filesystem crash recovery or build restart.
+
+Actual Snapshot::create death transitions
+=========================================
+Six safe stop hooks in an isolated source copy exercise SIGKILL after COW attach,
+DM create/load/resume/open/deferred-remove. Production Scratch::new recovery
+passes every case with no dead lease, DM mapping or loop attachment remaining.
+Observer uses a pinned pidfd, validates stopped state, and reaps before recovery.
+Evidence: reproduced/snapshot-death, including instrumented sources and hashes.
+No production edits. This is bounded transition evidence, not exhaustive
+interleaving coverage, full build restart or filesystem crash consistency.
+
+Concurrent recovery ENOENT regression and correction
+====================================================
+Actual same-inode flock contention between two recovery processes exposed an
+ENOENT failure. src/mounts.rs now skips a lease that disappears before read_dir
+after its directory handle/lock were obtained. Deterministic negative/control
+checks prove the former expression fails and the current path succeeds under
+that condition. Six creator-death boundaries now pass concurrent recovery and
+final dependency cleanup. Evidence: reproduced/snapshot-concurrent-recovery;
+initial failure retained in snapshot-concurrent-recovery-negative. Twelve
+library tests pass. Source analysis explains the race; the original failing
+run did not trace its exact syscall interleaving.
+
+Full fixed-pipeline retry after supervisor death
+================================================
+The chain-restart fixture passes actual active-supervisor SIGKILL/guardian cleanup
+followed by a full fresh-workspace rebuild. Both attempts have the same base
+bytes, command, Git commit and locked image index. Only the second seals,
+kernel-verifies and publishes. Base bytes stay unchanged and DM/loop/FUSE cleanup
+passes. Evidence: reproduced/chain-restart. Healthy guardian and immutable-input
+retry only; no partial-COW resume, reboot or late-publication failure claim.
+
+Artifact publication death boundaries
+=====================================
+Safe gates in an isolated source copy test SIGKILL during copy, before rename,
+and after rename. Actual finalize/CBOR roundtrip precede publication. Before
+rename no destination is visible but private staging survives; after rename a
+complete output survives without a returned success. All file hashes match the
+expected finalized state where complete; source artifact is unchanged. Evidence:
+reproduced/artifact-death. These are visibility observations, including staging
+cleanup/acknowledgment limitations, not power-loss or guardian-health proof.
+
+Publication cancellation check/rename window
+==========================================
+SIGTERM/SIGCONT at four gates explicitly confirms the production cancellation
+flag before resuming publication. Copy/pre-check cases fail with no output or
+staging. Post-check/pre-rename and post-rename cases return success with complete
+output, despite the observed flag. The three SIGKILL visibility controls still
+pass. Evidence: reproduced/artifact-cancellation-boundary. This records the late
+cancellation limitation; commit/cancellation and guardian-health protocol remain
+open. No production code was changed for this experiment.
+
+Authenticated chain graph validation
+=====================================
+The new three-layer non-root test passes valid reconstruction and six malformed
+graph rejection cases, including duplicate authenticated roots across raw/zstd
+encodings. All four non-root tests/scutes.rs tests pass; two privileged tests
+remain ignored in this invocation. Evidence and source hashes: reproduced/chain-graph.
+Malformed persistent metadata and generic executor integration remain separate.
+
+Authenticated malformed snapshot-header rejection
+=================================================
+Actual staging accepts correctly rehashed altered header bytes; actual assembly
+rejects invalid magic/valid/version/chunk-size fields with InvalidData. Valid
+control reads correctly and all five cases fully release DM/loop attachments.
+Evidence: reproduced/chain-header, including pinned carapace parser/assembly
+sources. Header constraints only; exception-record corruption remains separate.
+
+Compressed scute validation
+===========================
+Eight correctly OCI-hashed small stream cases pass expected outcomes: single and
+split valid frames decode identically; invalid/truncated/checksum/trailing junk
+streams reject with I/O errors; appended valid frame changes plaintext and fails
+root authentication. Full scutes target: five pass, two privileged tests ignored.
+Evidence: reproduced/compressed-input. No production changes or broad parser
+security claim.
+
+All seven scute integration tests in guest
+==========================================
+Repository tests/scutes.rs ran with --include-ignored, serially, on guest tmpfs.
+Seven passed, none ignored. Privileged snapshot write/seal/reassembly and startup
+recovery tests ran directly; final DM/loop cleanup passed. Evidence:
+reproduced/scute-root-tests. This complements focused fixture tests and does not
+claim broader parser/sandbox qualification.
+
+Private ioctl object identity checks
+====================================
+Two restricted steps pass independent PTY window state, TIOCGPTPEER matching
+slave identity and own-namespace type/owner queries. Full existing policy fixture
+passes. Source review confirms generic ioctl is allowed and enumerates seven
+backend callback requests, with reachable-FD and runtime-contract gaps explicit.
+Evidence: reproduced/policy-ioctl; review: policy/IOCTL-REVIEW.txt. This is not
+exhaustive kernel ioctl coverage or a production policy endorsement.
+
+FITRIM on actual restricted snapshot-backed FUSE
+===============================================
+The 64MiB bounded root-directory request returns EOPNOTSUPP (95). Fixture records
+that compatibility limitation and continues; subsequent seal/restage/kernel
+verification/publication and final storage cleanup pass, with base unchanged.
+Evidence: reproduced/chain-trim. Not successful trimming. Snapshot discard is
+disabled in source, but errno origin was not traced across layers.
+
+Supervisor-only OOM during live build commands
+=============================================
+Kernel memory.events confirms OOM kill of the isolated supervisor while workers
+and guardian remain outside its constrained leaf. Guardian cleanup then passes
+with no seal/publication, unchanged base, preserved independent base readers
+and eventual complete DM/loop/FUSE cleanup. Evidence:
+reproduced/chain-supervisor-oom. Does not model global OOM or guardian starvation.
+
+Guardian OOM and monitor-owned cleanup
+=====================================
+Kernel-confirmed guardian-only cgroup OOM during active writers is detected by
+the candidate monitor. Monitor performs cleanup without observer fallback; no
+seal/output, base unchanged, all DM/loop/FUSE resources released. Evidence:
+reproduced/chain-guardian-oom. Does not model simultaneous owner loss or global
+OOM; the monitor arrangement remains an experimental lifecycle prototype.
+
+Both lifecycle owners lost: writers continue
+===========================================
+Candidate monitor is stopped before guardian kill, then itself killed. Pinned
+handles confirm deaths; both command writers continue and group remains populated.
+Only external fixture cleanup stops them and releases resources. Evidence:
+reproduced/chain-owners-death. This is a reproduced lifecycle limitation, not a
+cleanup pass for the candidate. A stronger kernel/appliance lifetime boundary
+remains unresolved.
+
+Whole-build PID namespace candidate: init death
+==============================================
+With every build actor inside an outer PID namespace, stopped monitor plus
+namespace-init SIGKILL leads to kernel descendant teardown and FUSE release.
+No observer build-kill/abort on passing path; base/output/storage checks pass.
+Evidence: reproduced/chain-pid-lifetime. Contrasts with the retained noncontained
+two-owner failure. Candidate only; normal completion, startup handoff, blocked
+requests and production trusted launch remain to be qualified.
+
+Outer PID lifetime with queued FUSE requests
+===========================================
+Stopped worker produces two queued FUSE requests. With monitor also stopped,
+outer-init death causes kernel teardown and FUSE release without external abort
+or build kill. Base/no-output/final-device checks pass. Evidence:
+reproduced/chain-pid-blocked. Does not qualify uninterruptible kernel I/O or
+system-wide exhaustion; candidate remains unintegrated.
+
+Whole-build PID init normal completion
+======================================
+Full real pipeline succeeds inside outer PID namespace. Init observes/reaps one
+adopted zombie, verifies no live/remaining descendants, then exits normally.
+Kernel filesystem/output/base checks and final DM/loop cleanup pass. Evidence:
+reproduced/chain-pid-complete; failed initial no-adoption assumption retained.
+This does not resolve guardian/monitor completion and attestation protocol.
+
+Outer launcher lifetime linkage
+===============================
+Plain launcher death leaves namespace init/writers alive, confirmed before
+manual init cleanup. --kill-child=KILL variant tears down the active build with
+stopped monitor and no observer build intervention. Evidence:
+reproduced/chain-launcher-unlinked and chain-launcher-linked. This is established
+link behavior, not pre-link startup-race coverage or a runtime adoption decision.
+
+Safe-Rust original-parent ownership handoff
+==========================================
+Safe nix APIs arm parent-death SIGKILL and poll an inherited original-parent
+pidfd before admission. Three death gates and live control pass in both same
+and nested PID namespaces (nested child PID 1, parent PID 0). Evidence:
+reproduced/parent-handoff and parent-handoff-nested; initial nested self-stop
+fixture failure retained separately. No commands execute in this primitive.
+Final launcher integration and credential/thread/exec qualification remain.
+
+Parent-death credential/exec/thread boundary
+==========================================
+reproduced/parent-handoff-credentials and parent-handoff-thread retain 18/22
+expected outcomes. Ordinary exec preserves the signal; UID/GID changes clear it;
+re-arm plus original-parent check handles tested death gates. Un-rearmed child
+survival is a recorded limitation. Creating-thread death before arm is invisible
+to a live process pidfd; after arm the child dies while leader remains alive.
+These constrain the launcher to persistent thread ownership and explicit signal
+setup ordering. No claim of full executor or privileged-exec qualification.
+
+Safe-Rust ownership boundary with actual build actors
+=====================================================
+chain-launcher-rust and chain-launcher-rust-blocked retained under reproduced/.
+Ownership-init uses safe Rust to arm/check the original launcher, then execs the
+fixture guardian. Killing launcher with monitor stopped tears down real writers,
+FUSE and storage without observer kill/abort cleanup. Stopped-worker variant has
+two queued requests and also passes. Base/output checks pass. Python still
+creates namespaces/spawns; this is prototype integration, not production launch.
+
+Normal completion through safe-Rust ownership helper
+=====================================================
+reproduced/chain-rust-complete passes complete fixed pipeline, kernel verification,
+base preservation and inventory publication. Init reaps one adopted zombie and
+requires no descendants before exit; launcher status 0 and no DM/loop residue.
+This complements death tests, but direct-wait init is not the final monitor
+completion protocol and output publication precedes final descendant checks.
+
+Publication order source reconciliation
+=======================================
+reproduced/publication-order-review snapshots actual build/step/filesystem/
+snapshot/artifact/cancellation sources and prototype init. Checked step and
+filesystem barriers precede sealing; Scratch best-effort detach occurs after
+publication. Artifact API has no worker completion evidence. Source review maps
+these facts to commit/cancellation/ack tests still required, without inferring
+corrupt bytes from cleanup ordering. Focused cleanup-error unit test: 1 passed.
+
+Outer completion gate before public rename
+==========================================
+reproduced/chain-commit-gate(-failure): actual fixed build stages verified artifact
+on outer-owned tmpfs. Init success plus storage cleanup permits safe-Rust NOREPLACE
+rename with identical hashes. Injected late init status 17 leaves no public result
+and preserves internal staging. Both guest controls pass. This validates the
+completion gate's placement, not a complete transactional publication protocol.
+
+Live-descendant completion failure prevents public commit
+=========================================================
+reproduced/chain-commit-gate-descendant: benign sleep process remains after actual
+internal artifact staging; init's real liveness check fails. Outer pinned pidfd
+confirms kernel teardown without a direct child signal. No public output; DM/loop
+cleanup passes and staged bytes remain. Bounded completion-gate evidence only.
+
+Outer committer death and collision matrix
+==========================================
+reproduced/chain-commit-death: completed real build supplies immutable staged
+bytes; death before rename leaves retryable staging, death after rename/sync
+leaves complete output without returned success. Re-staged retries and a
+concurrently created destination reject EEXIST without replacing output. Three
+death gates plus collision pass. Reconciliation/cancel/orphan policy remains open.
+
+UID reuse after worker reaping
+==============================
+reproduced/keys-reuse: with worker-opened memfd retained by trusted observer,
+fresh same-UID mapped namespace reads the reaped worker's owner-only key. Other
+UID denied; explicit owned-key revocation blocks later access. No actual secrets
+or host keys used. Resource-lifetime limitation, not a command-policy bypass.
+
+Authenticated exception metadata boundary
+=========================================
+reproduced/exception-metadata: seven userspace-only bounded fixtures pass staging
+with their correct hashes, including invalid-offset and duplicate cases. No
+assembly or kernel device exposure. Source review distinguishes authenticated
+bytes from validated exception semantics; kernel handling remains unqualified.
+
+Kernel exception-record read and cleanup observations
+=====================================================
+reproduced/exception-kernel: all seven small owned fixtures assemble and clean up.
+Reads show A/B controls, metadata mapping, EIO past COW end, unused out-of-origin
+mapping and duplicate redirects. No filesystem mounted or code executed. Exact
+outcomes/limits in exception-kernel/README.txt; no blanket rejection claim.
+
+Original checklist and evidence reconciliation
+==============================================
+validation/sandbox/audit-evidence.py verifies the current status-audit index:
+21 numbered areas, 112 unique indexed artifacts, zero missing/content mismatches;
+indexed guest-exit lines match. Report pins index hash. This includes known
+negative evidence and is not semantic completion. VALIDATION-WORKQUEUE.txt maps
+all original areas to concrete remaining tests, decisions and acceptance gates.
+
+Trusted launcher comparison and runtime path handling
+=====================================================
+reproduced/runtime-path: unchanged simple-chain launcher redirects proc/dev
+mounts through owned image symlinks within child mount namespace. Four cases;
+outer canaries/mountinfo unchanged, no image code run. policy/ENTRY-REVIEW.txt
+maps setup order, environment and device differences to remaining trust gates.
+
+Pinned runtime directories: candidate and full FUSE control
+==========================================================
+reproduced/runtime-path-fixed: eight path controls pass with safe-Rust pinned
+root-relative directory opens and FD-based mounts. reproduced/chain-runtime-pinned:
+actual FUSE command-to-publication pipeline and cleanup pass using same helper.
+Stopped-writer/stable-root scope; broader runtime setup and fault cases remain.
+
+Pinned runtime partial-mount failure cleanup
+============================================
+reproduced/runtime-failure-proc and runtime-failure-dev: actual build rejects
+injected post-proc/post-dev setup errors, no execution/seal/output, base and outer
+mountinfo unchanged, no FUSE/DM/loop residue. Normal eight-case path regression
+passes. Initial packaging failure retained separately; not an isolation result.
+
+Actual-FUSE runtime symlink rejection
+=====================================
+reproduced/runtime-link-{proc,dev,old}: real authenticated images with owned
+canary symlinks reject ENOTDIR before runtime mounts, no injection selector.
+No image command/seal/output, unchanged base/canary/mountinfo and no FUSE/DM/loop
+residue. Normal FUSE control and small path matrix remain separately retained.
+
+Static runtime identity follow-up (2026-10-20)
+---------------------------------------------
+Read-only audit of the retained runtime-link-proc package matches 98 files and
+all recorded symlinks; 65 ELF files have packaged interpreter/library candidates
+and no RPATH/RUNPATH. Four identity-audit controls pass. This is static identity,
+not dynamic resolution or runtime immutability. The harness inventory omits
+permissions/ownership/xattrs/directories; inherited pre-exec environment and
+loader/import configuration remain trust assumptions. See reproduced/runtime-identity
+(report, controls and retained source review) and runtime-identity/README.txt
+under validation/sandbox. Areas 3/19/21 remain open; no production change.
+
+Clean native pair build follow-up (2026-10-20)
+--------------------------------------------
+Fresh release archives plus recorded patches now build with regenerated
+configure/config.h.in, fresh Meson/configure and no reused objects. New binaries
+pass six-configuration ACL and metadata matrices; guest manifests match both
+new binary hashes. Mapped device/trusted-xattr/immutable/append-only restrictions
+remain reproduced blockers. See validation/sandbox/reproduced/clean-native-pair.
+This closes the reused-generated-input build gap, not maintained adoption,
+hermetic toolchain provisioning, metadata compatibility or runtime binding.
+
+Metadata architectural boundary review (2026-10-20)
+--------------------------------------------------
+Pinned gVisor implementation comparison finds its gofer path rejects system.*
+and trusted.* access and security.* writes before backend dispatch; stock LISAFS
+node creation admits only regular files/whiteouts. A custom worker alone is not
+a demonstrated remedy. See reproduced/metadata-alternative-review under
+validation/sandbox for source hashes, exact scope and architectural alternatives.
+No runtime adoption, initial-root relaxation or metadata waiver is selected.
+Area11 remains a design blocker; independent validation work remains available.
+
+Shared block-backed base concurrency (2026-10-20)
+------------------------------------------------
+Two independent full build fixtures now share one read-only data/hash block
+pair. DM tables prove two writable snapshots share the same single-scute base
+and verity stack. Success and one-command-fails/other-completes cases preserve
+base bytes, verify accepted outputs, reject failed output and clean all storage.
+See validation/sandbox/chain-shared-block/README.txt and reproduced/shared-block-
+concurrent{,-failure}. This covers the single-base block-input lifetime case,
+not multi-layer block sharing, activation death, UID isolation or production.
+
+Generic ioctl interface follow-up (2026-10-20)
+--------------------------------------------
+Two restricted steps pass owned regular-file/pipe/Unix-socket FIONREAD, pipe
+FIONBIO alias-versus-independent-object checks and per-FD FIOCLEX/FIONCLEX.
+Existing supervisor/namespace checks pass. Pinned upstream generic VFS dispatch
+corroborates why these calls do not require exposed devices or a worker ioctl
+callback. See validation/sandbox/reproduced/policy-generic-ioctl. This advances
+areas1/7, not an exhaustive interface policy or final-executor qualification.
+
+Host-backed DNS follow-up (2026-10-21 UTC)
+----------------------------------------
+Redacted host observation finds an active VPN/tun, per-link search domains and
+a local resolved stub. A restricted guest command now resolves a public name
+through QEMU user-network upstream for both resolver layouts; loopback-stub
+negative and read-only/restoration checks pass. Initial DAC-masked EROFS check
+is retained as a corrected fixture failure. See validation/sandbox/host-dns.
+VPN-only hostname/expected result requested; real-VPN validation remains pending.
+No host network changes or runtime/transport adoption are implied.
+
+Full-build trusted launch environment control (2026-10-21 UTC)
+------------------------------------------------------------
+Two complete FUSE builds compare inherited versus explicitly constructed worker
+launch environments. A benign BASH_ENV marker executes before recipe admission
+only with inheritance; env_clear plus an absolute launcher and explicit PATH/
+HOME/LC_ALL prevents it. Both builds verify, publish and clean storage. See
+validation/sandbox/chain-launch-env and reproduced/chain-launch-env. This is a
+validated diagnostic launch candidate, not immutable runtime identity, initial
+supervisor startup protection or production executor adoption.
+
+Exception metadata termination boundary (2026-10-21 UTC)
+-------------------------------------------------------
+A full first metadata area without a following terminator authenticates but
+assembly rejects EIO; a paired next-area zero-terminator control assembles and
+returns the expected bytes. Nine-case matrix passes eight assemblies, one EIO
+rejection, nine cleanups and all exact prior read outcomes. See validation/
+sandbox/reproduced/exception-termination; initial stale runner-count failure
+is separately retained. This closes that bounded termination case, not general
+format admission, overflow/resource limits or full-build failure propagation.
+
+Release-callback error follow-up (2026-10-21 UTC)
+------------------------------------------------
+Diagnostic EIO after a successful release flush is sticky: command write returns
+success, worker exits32. A full authenticated FUSE build now rejects that worker
+status before sealing/publication, preserves base/mountinfo and releases FUSE/
+DM/loops. Control exits0 and both standalone files retain correct content.
+Earlier integrated case failed a later write with EROFS and is separately
+retained; final last-write case isolates worker-status rejection. See validation/
+sandbox/release-finalize. This does not qualify every error class or completion
+protocol, nor adopt the experimental backend.
+
+Publication arbitration candidate (2026-10-21 UTC)
+------------------------------------------------
+Source-grounded publication-protocol/PROPOSAL.txt now separates completion,
+commit reservation, rename visibility, acknowledgment and unknown outcomes. A
+finite model exposes check-then-rename plus hypothetical accepted-cancellation
+contradictions; the reservation graph has no violation of its stated ordering
+invariants. This is NOT runtime validation, recovery implementation or adoption.
+Concrete coordinator/receipt/orphan tests remain required; area16 stays open.
+Evidence: validation/sandbox/reproduced/publication-protocol-model.
+
+Publication reservation runtime matrix (2026-10-21 UTC)
+-----------------------------------------------------
+Safe-Rust private-control coordinator passes13 cases on copies of a completed
+verified build artifact: ordered and racing cancel/reserve outcomes, destination
+collision, death after reservation and committed output without original reply.
+Actual output/staging hashes match replies; no accepted cancellation publishes.
+See validation/sandbox/publication-protocol/RUNTIME-VALIDATION.txt. In-memory
+state does not supply protected receipts, restart reconciliation or orphan GC;
+those and generic-executor integration remain open. No production adoption.
+
+2026-10-21: recovery-lease
+Six host-owned tmpfs cases pass expected outcomes, including two negative
+controls (explicit shared unlock and replacement inode). Sources, environment
+and JSON outcomes retained in validation/sandbox/reproduced/recovery-lease.
+See publication-protocol/recovery/README.txt for exact scope and unresolved
+trusted-keeper/writer lifetime composition. No publication receipt/GC claim.
+
+2026-10-21: recovery-records
+chain-recovery-records guest exits0 with ten exact distinct recovery outcomes,
+following verified FUSE build completion and storage cleanup. Fresh recovery
+processes use records/actual filesystem identity, not the caller's memory.
+Identical bytes in a foreign directory yield Collision; invalid evidence yields
+Unknown. Source catalogs, command, inputs and results retained in validation/
+sandbox/reproduced/recovery-records. Scope and protected-parent assumptions in
+publication-protocol/recovery/RECORDS.txt. Not generic recovery or orphan GC.
+
+2026-10-21: recovery-errors
+Thirteen-case guest exits0; includes real rename failure and post-rename sync
+EBADF with preserved output and receipt-aware fresh recovery. Safe-Rust helper
+clippy -D warnings and harness checks pass. Evidence, source catalogs, local
+open/fsync man pages, quota cleanup provenance and exact limits retained under
+validation/sandbox/reproduced/recovery-errors. No backend EIO or durability claim.
+
+2026-10-21: receipt-write-failure
+Fifteen-case guest exits0. Two receipt writers encounter real RLIMIT_FSIZE EFBIG,
+leaving partial temp files without altering public output or an existing valid
+receipt. Fresh recovery ignores partial temps. Sources/results/inputs/review and
+packaging-quota cleanup provenance retained in validation/sandbox/reproduced/
+receipt-write-failure. No power-loss, media error or orphan-cleanup claim.
+
+2026-10-21: recovery ownership and atomic lease startup
+Initial full-build fifteen-case ownership matrix passed readiness-bound controls;
+source review found a pre-readiness create/lock gap. Safe-Rust correction publishes
+an already-locked private inode with NOREPLACE. Four host startup/death/collision
+checks pass, followed by the complete fifteen-case guest matrix with 30 ownership
+exclusion checks and guest exit0. All three source/result catalogs retained under
+validation/sandbox/reproduced/{recovery-ownership,atomic-lease-bootstrap,recovery-
+atomic-lease}. No earlier worker-lifetime composition or orphan collection claim.
+
+2026-10-21: recovery-lifetime
+Guest exits0 after full record/ownership matrix and deterministic PID-namespace
+lease-versus-termination control. Pinned upstream exit.c/pid_namespace.c and hashes
+retained alongside runtime sources/results. A deliberately unreaped owned zombie
+holds init shutdown after lease release; pinned init pidfd defers cleanup until
+reaping. No surviving-live-writer, orphan-GC or generic lifetime composition claim.
+Evidence: validation/sandbox/reproduced/recovery-lifetime and
+validation/sandbox/reproduced/recovery-lifetime-source.
+
+2026-10-21: writer-containment
+Actual active-build stopped-worker matrix passes read-only FD inventory before
+and after pinned outer-init termination. Corrected classifier separates fusectl
+from image filesystem FDs. Exact rows/counts, source catalogs, results, failed
+harness attempts and generated-image cleanup provenance are retained under
+validation/sandbox/reproduced/writer-containment*. Final guest exits0 with no
+fallback cleanup, unchanged base and no seal/publication/device residue.
+
+2026-10-21: mount-api-policy
+Bounded owned-directory baseline demonstrates open_tree_attr omission. Safe-Rust
+candidate now denies open_tree_attr467 (explicit x86_64/aarch64 ABI scope) and
+libc::SYS_fspick. Combined policy guest exits0 with two valid-object denials each,
+one trusted owned-mount fspick positive control and existing two-step checks.
+Pinned upstream sources/number tables, baseline/fixed sources, result catalogs
+and generated-image cleanup records retained in reproduced/open-tree-attr-* and
+reproduced/mount-api-policy. Broader policy/runtime validation remains open.
+
+2026-10-21: namespace-query
+Policy guest exits0 with own namespace ID/info and bounded listns result checks
+in two successive restricted steps, plus EPERM for adjacent mount-namespace
+handle requests. No outside handle acquisition or namespace mutation. Pinned
+primary sources, source/result catalogs and scope retained in validation/sandbox/
+reproduced/namespace-query and namespace-query-source. Policy unchanged.
+
+2026-10-21: mount-query
+Two-step policy guest exits0 with exact own mount-ID/proc agreement and rejection
+of known outer-fixture namespace enumeration. Results/sources/input catalogs and
+scope retained in validation/sandbox/reproduced/mount-query. No mount mutation,
+outside file traversal, additional restriction or exhaustive API claim.
+
+2026-10-21: file-handle-boundary
+Final policy guest exits0 with two ordinary/current/outer namespace handle checks
+and trusted before/after outer-handle validity controls. Earlier incorrect EPERM
+expectation yielded ESTALE and remains recorded as guest exit1, not a pass.
+Sources and exact interpretation retained under reproduced/file-handle-* and
+policy/FILE-HANDLE-REVIEW.txt. No returned outer handle or namespace entry.
+
+2026-10-21: file-attributes
+Policy guest exits0 with two owned-file new-syscall/legacy-ioctl parity controls,
+privileged flag rejection, exact attribute restoration and unchanged file data.
+Complete sources/results/inputs and pinned fs/file_attr.c review retained under
+validation/sandbox/reproduced/file-attributes and file-attribute-source. No new
+seccomp restriction or FUSE compatibility claim.
+
+2026-10-21: capability-transitions
+Two-step policy guest exits0; six valid self capset attempts per step and two
+ambient raises reject absent bits while exact capget data stays unchanged.
+Retained capability-role review, source catalogs and pinned commoncap source in
+validation/sandbox/reproduced/capability-transitions and capability-transition-
+source. No other process targeted, identity change, or policy modification.
+
+2026-10-21: setid-exec
+Policy guest exits0 with one real set-ID positive control and two restricted
+no-gain exec checks using a forbid-unsafe Rust reporter. Clippy -D warnings and
+harness checks pass. Sources/input catalogs/results and scope in validation/
+sandbox/reproduced/setid-exec. No host executable changed or arbitrary command
+executed by the set-ID reporter; all UID ownership is mapped within the guest.
+
+2026-10-21: filecap-exec
+Policy guest exits0: one working executable-filecap positive control and two
+restricted no-gain controls, alongside the existing set-ID controls. Exact
+results, inputs, command and source snapshot retained in validation/sandbox/
+reproduced/filecap-exec. No policy change or host executable modification.
+
+2026-10-21: runtime-packaging-metadata
+Six bounded metadata controls pass using the exact guest newc packaging command.
+Source, parsed archive records, cpio identity and findings retained under
+validation/sandbox/reproduced/runtime-packaging-metadata. This demonstrates an
+inventory limitation; it does not establish immutable runtime execution.
+
+2026-10-21: uml-source-review
+Nine pinned Linux primary files and architectural review retained under
+validation/sandbox/reproduced/uml-source-review; source comparison only.
+Separates host block-byte I/O from the proposed inner permission boundary.
+No runtime feasibility or isolation pass claimed.
+
+Two-layer shared-block concurrency (2026-10-21 UTC): success and one-command-
+failure cases pass with two inherited layers, full shared DM stack, independent
+outputs, second-layer persistence, unchanged inputs and complete device cleanup.
+See validation/sandbox/chain-shared-block/TWO-LAYER-REVIEW.txt and reproduced/
+two-layer-shared-*. Area18 bounded multi-layer gap is closed; final integration
+and activation-death ownership remain. Area12 gains a compatibility finding:
+1KiB ext4 fails kernel mount on the4KiB assembled device; current concurrency
+fixtures explicitly use4KiB ext4. FUSE success alone is not boot compatibility.
+
+Direct derived-carapace kernel mount (2026-10-21 UTC): both concurrent success
+outputs and the survivor of the failure case directly kernel-mount their final
+three-scute4KiB ext4 chain and preserve expected base/inherited/produced data.
+Existing fsck, inventory, unchanged inputs and cleanup checks also pass. See
+validation/sandbox/chain-shared-block/DIRECT-MOUNT-REVIEW.txt and reproduced/
+direct-root-mount-{success,failure}. Prior initramfs boot did not switch root;
+prior raw-copy mounts did not prove assembled-device geometry compatibility.
+This closes that bounded mount gap, not full distribution-root boot validation.
+
+Automatic file timestamps (2026-10-21 UTC): all54 update/preservation checks
+pass across kernel/initial-FUSE/mapped-FUSE with both checksum configurations.
+Visible timestamps persist exactly after fsck/kernel remount. Kernel birth time
+is stable; FUSE does not expose STATX_BTIME although birth time exists on disk
+after remount. This is a build-side visibility limitation, not proof of FUSE
+birth-time stability. See validation/sandbox/metadata/TIMESTAMP-REVIEW.txt and
+reproduced/automatic-timestamps. Area11 privileged metadata blockers remain.
+
+Filesystem ENOSPC follow-up (2026-10-21 UTC): all six backend configurations
+return ENOSPC, preserve accepted file contents, recover free space after unlink,
+and persist a subsequent write across fsck/kernel remount. Kernel accepts52MiB
+versus50MiB for FUSE in this fixture; capacity parity is not claimed. See
+validation/sandbox/metadata/ENOSPC-REVIEW.txt and reproduced/filesystem-enospc.
+A host checker import bug was corrected and all assertions rerun on the complete
+saved guest log. Delayed-write errors and full-build propagation remain distinct.
+
+Whole-build filesystem ENOSPC (2026-10-21 UTC): bounded ordinary writes inside
+the restricted command reach real ENOSPC; command failure propagates before
+sealing/publication, preserves the base, and leaves no DM mappings/attached loops.
+See validation/sandbox/chain-filesystem-full/README.txt and reproduced/
+chain-filesystem-full. This closes the bounded filesystem-full propagation gap
+in6/16/17; delayed errors, other phases and final executor remain separate.
+
+Worker metadata source classification (2026-10-21 UTC): exact tested sources
+show libfuse statx support but no fuse2fs statx callback; birth-time visibility
+is a worker omission with a potential API correction, not a general FUSE limit.
+The worker also deliberately reserves blocks against complete-exhaustion
+corruption, corroborating earlier ENOSPC as policy without deriving the exact
+capacity delta. See validation/sandbox/metadata/WORKER-SOURCE-REVIEW.txt and
+reproduced/worker-metadata-source. No backend patch or reserve change adopted.
+
+Birth-time prototype follow-up (2026-10-21 UTC): a separate worker statx
+callback exposes/stabilizes/persists birth time in all six metadata configurations.
+Open-file after unlink, symlink, missing-path and existing metadata/exhaustion
+checks pass. See validation/sandbox/statx-worker/README.txt and reproduced/
+statx-{metadata,worker-build}. This demonstrates a bounded worker correction;
+small-inode/optional-field/portability and maintained adoption remain open.
+Mapped privileged metadata restrictions are unchanged; no production adoption.
+
+Small-inode statx follow-up (2026-10-21 UTC): kernel/initial-FUSE/mapped-FUSE
+all correctly omit BTIME for128-byte ext4 inodes, agree on pathname/FD results,
+and preserve supported timestamps/content across fsck/kernel remount. Existing
+six regular-inode metadata cases also pass with the same prototype worker. See
+validation/sandbox/statx-worker/SMALL-INODE-REVIEW.txt and reproduced/
+statx-small-inode. Broader API/portability and maintained adoption remain open.
+
+Representative Fedora root boot (2026-10-21 UTC): restricted pinned Fedora44
+bootstrap/upgrade/kernel-install/dracut/ACL checks pass with prototype worker.
+Exported kernel/initramfs/raw filesystem boots in a separate offline guest,
+switches into ext4 root, runs systemd and installed-package/root-identity checks,
+and powers off. Export remains unchanged. See validation/sandbox/root-boot/
+README.txt and reproduced/fedora-root-{build,boot}. This closes the representative
+raw-root switch/boot gap, not corium/carapace boot composition, SELinux enforcement
+or a distribution-version upgrade. Other backend/design gates remain open.
+
+Interface composition source review: policy/INTERFACE-COMPOSITION.txt under
+validation/sandbox compares entry closure, standard-stream provenance and device
+sets across small policy, full-chain and restricted-bootstrap launchers. The
+policy driver inherits stdio; chain/bootstrap explicitly use null and a pipe.
+Retained source snapshots: reproduced/interface-composition-review. Named gaps
+are admission-time stream identity, collector lifecycle, reachable pathname
+socket peers/FD transfer and selected proc/anonymous-FD coverage. No runtime
+pass or production qualification is claimed by this source comparison.
+
+Owned standard-stream follow-up: two restricted policy steps now receive
+explicit fixture null/pipe handles. Exact descriptor identity/type/access modes,
+null EOF, duplicate writes and collector EOF pass alongside existing policy
+checks. See validation/sandbox/reproduced/policy-owned-stdio. The bounded
+collector timeout/output-limit failure branches and full-build logging are not
+qualified by this normal-path run. No production executor change.
+
+Command-local descriptor transfer: socketpair and pathname SCM_RIGHTS pass
+in both restricted steps, with received identity/content/CLOEXEC and shared
+offset checks. Existing path visibility and inherited-FD controls also pass.
+See validation/sandbox/reproduced/policy-local-rights. Source review locates
+the trusted arbitration socket outside exposed command roots; the arbitration
+fixture runs after build completion, so live integrated-coordinator exclusion
+remains unproven. No trusted-boundary transfer or production change claimed.
+
+Live-build publication admission: optional diagnostic Building state rejects
+reservation/commit while an actual restricted FUSE command is active. Successful
+owner/namespace completion and storage cleanup permit trusted prepare then
+publication; cancellation accepted during the command remains Cancelled even
+after full successful completion and prevents public output. Both cases pass,
+as does the previous thirteen-case arbitration regression. Initial private-mount
+rendezvous error is retained as a failing fixture control. See validation/
+sandbox/build-admission/README.txt and reproduced/build-admission*. Cancellation
+here deliberately permits work to finish; prompt teardown, owner-death and
+recovery in this exact topology remain separate. No production adoption.
+
+Prompt live-build cancellation: accepted cancellation followed by pinned
+launcher termination now passes in the build-admission topology. Independently
+pinned namespace-init terminal state, absent FUSE/DM/loop resources, unchanged
+base and no sealing/internal/public output are required. No explicit FUSE abort
+or device removal occurs on pass. See validation/sandbox/build-admission/
+STOP-VALIDATION.txt and reproduced/build-admission-stop. Coordinator/arbiter
+death and blocked-worker/combined-pressure composition remain unqualified.
+
+Coordinator-death composition: unlinked arbiter/launcher/namespace-init
+survive trusted coordinator death (negative control), requiring fixture cleanup.
+Safe-Rust owned-exec parent links produce terminal pidfds and automatic FUSE/
+DM/loop cleanup after signaling only the coordinator, with unchanged base and
+no sealing/output. See validation/sandbox/build-admission/OWNER-DEATH.txt and
+reproduced/build-admission-owner-{death,unlinked}. This covers active pre-reserve
+builds, not all startup/commit-phase/blocked-worker/pressure cases or orphan GC.
+
+Linked coordinator pressure composition: stopped FUSE daemon with four queued
+requests terminates after coordinator death without observer abort/removal. A
+separate real cgroup OOM run includes coordinator/arbiter/launcher/init together,
+records oom_group_kill1/oom_kill16 and releases all FUSE/DM/loop resources. Both
+preserve base bytes and forbid sealing/output. See validation/sandbox/build-
+admission/PRESSURE-VALIDATION.txt and reproduced/build-admission-owner-{blocked,oom}.
+These are bounded active-build cases, not system-wide OOM, arbitrary kernel
+allocation failure, commit-phase loss or production executor qualification.
+
+Commit-phase coordinator death: real finalized artifact, linked arbiter and
+trusted completion barrier now pass Reserved and visible-unacknowledged gates.
+Owner death terminates arbiter; Reserved preserves staging/no output, while
+visible-unacknowledged preserves public inode/bytes and closes the unanswered
+commit socket. See validation/sandbox/build-admission/COMMIT-DEATH.txt and
+reproduced/commit-coordinator-death. Lost reply remains ambiguous to a restarted
+caller without trusted records. No generic executor, orphan GC or durability
+claim; this is not death injected inside rename/fsync.
+
+Identity-lifetime source reconciliation: the retained same-UID key-residue
+experiment is unfiltered, not a demonstrated bypass of unconditional command
+key-API denial. Current real-build fixtures hardcode a range and do not allocate
+or reserve identities. See validation/sandbox/policy/IDENTITY-LIFETIME.txt and
+reproduced/identity-lifetime-review for exact evidence and unresolved pool/
+ownership/reuse contract. No general reuse safety or new runtime pass claimed.
+
+Compressed-scute declared output bound: reproduced32KiB staging despite8KiB
+declaration, then fixed enforcement during decode in src/scute.rs with checked
+extent and mandatory decoder EOF/trailer validation. Declared/undeclared stream
+matrix and padding/overflow controls pass;6 scute and8 artifact tests pass,
+2 kernel tests ignored. Strict targeted clippy/format checks pass after minor
+artifact buffer/style fixes. See validation/sandbox/reproduced/compressed-declared-
+bound. Undeclared streams gain no new arbitrary cap; general decoder/snapshot
+semantic qualification remains separate.
+
+Snapshot wire bounds: copied pinned devmap source passes all22 chunk-size
+roundtrips, rejected conversion boundaries, last/first-overflow metadata-index
+checks and explicit all-bit-pattern exception decode controls, plus upstream
+wire tests (5 tests total). No kernel/device/large allocation occurs. See
+validation/sandbox/reproduced/snapshot-wire-bounds. This is representation/
+arithmetic validation, not a semantic image-admission validator; prior kernel
+exception interpretation and generic executor requirements remain separate.
+
+Trusted runtime reconciliation and helper fix: Step::command now constructs
+PATH/HOME/LC_ALL before trusted helper exec. Isolated benign shell-startup
+regression fails before and passes after;13 library tests and strict library
+clippy/format pass. See validation/sandbox/reproduced/helper-launch-environment
+and runtime-identity/CONTRACT.txt. Initial loading and future attestation belong
+to the environment/appliance; executable hashing is not self-attestation.
+Selected worker/runtime path protection and final executor remain unqualified.
+
+Paired runtime mounts: all six proc/dev/sys destinations across tool and output
+roots are pinned before mounting. Nineteen mapped-namespace cases pass: valid
+mount flags/types and eighteen symlink/file/missing-target preflight rejections.
+Fedora restricted paired-FUSE package/upgrade/remount and worker-failure fixture
+also passes (guest exit zero). See validation/sandbox/runtime-pair/README.txt and
+reproduced/{runtime-pair,fedora-pinned-runtime}. Trusted stable roots and stopped
+writers are premises; missing-directory restoration, partial mount failures,
+generic executor adoption and backend metadata blockers remain separate.
+
+Paired runtime setup-error teardown: six bounded errors after successive
+successful mounts now pass, along with the original19 controls. Namespace
+launcher exit leaves outer mountinfo/canary unchanged and underlying runtime
+and attachment directories empty. See runtime-pair/PARTIAL-FAILURE.txt and
+reproduced/runtime-pair-partial. No retained namespace FD/background-process or
+arbitrary mount-error coverage is inferred; generic executor remains separate.
+
+Proc/anonymous descriptor follow-up: both restricted steps pass owned memfd
+proc reopening/sealing, eventfd duplication, epoll notification and one-shot
+timerfd checks, alongside existing inherited-handle/supervisor-canary controls.
+See policy/ANONYMOUS-DESCRIPTORS.txt and reproduced/policy-anonymous. This is
+bounded compatibility and descriptor-boundary evidence, not anonymous-object
+resource isolation or full inotify/signalfd qualification. Final runtime and
+identity/lifecycle contracts remain separate.
+
+Single-scute corium boot composition now passes: the restricted Fedora raw
+output is imported through actual conglobate Scute::import, packed into read-only
+GPT, booted with fresh static corium and matching modules, and reaches the root
+systemd probe. Input/disk digests remain unchanged. See corium-root/README.txt
+and reproduced/corium-root. Derived multi-scute boot and distro-version upgrade
+remain; login/home service failures and busy DM shutdown messages are retained
+and do not count as all-service/teardown qualification. Preparation failures and
+verified generated-storage cleanup are retained separately.
+
+Restricted two-scute corium composition passes: actual recipe writes through
+mapped FUSE into conglobate Snapshot, clean worker/DM/loop teardown, conglobate
+sealing, bounded export, then boot of base plus derived layer. Both inherited
+Fedora root and new derived-content checks pass; base/layer/packed-disk hashes
+remain unchanged. See corium-derived/README.txt and reproduced/corium-derived-boot.
+Failed fixtures remain retained. This closes representative layered boot, not
+all-service health, arbitrary depth, generic executor or backend semantics.
+
+Representative distribution upgrade passes: real Fedora43 install and44 distro-
+sync execute under restricted mapped-FUSE commands using locked local repos.
+Release identity/glibc/dependency checks and preserved canary content/ownership/
+mode pass, including subsequent kernel remount. Existing metadata/isolation/
+failure controls also pass. See distro-upgrade/README.txt and reproduced/distro-
+upgrade-v4; failed fixture attempts and initial/expanded package locks retained.
+This closes the minimal Fedora distribution-transaction gate, not all packages,
+live-host system-upgrade, combined upgraded-image boot or final executor adoption.
+
+Live coordinator socket composition now passes normal and accepted-cancellation
+builds. Trusted peer responds before/after recipe checks; four fixed direct/
+detached-root/proc-root paths return NotFound inside restricted commands. Normal
+completion publishes; cancellation prevents late publication. See build-admission/
+LIVE-CONTROL.txt and reproduced/live-control-{success,cancel}. This closes the
+post-build-only peer-visibility evidence gap for this topology, not arbitrary
+endpoints/aliases, FD admission or final executor qualification.
+
+Owned collector failure cleanup passes: bounded output-limit, descendant-held
+pipe and launcher-held pipe timeout cases run through the restricted policy
+launcher. Owned launcher reaped, observed pipe reaches EOF, FD set restored and
+supervisor canaries unchanged; normal collector controls still pass. See policy/
+COLLECTOR-FAILURES.txt and reproduced/policy-collector-v2. v1's incorrect EOF
+assumption is retained as a failed fixture. This is not generic-executor logging
+or an inference that pipe EOF alone proves complete process/resource teardown.
+
+Compound activation-recovery candidate passes all four child-death boundaries
+with real persistent COW dependencies and a retained lower-snapshot reader.
+Recovered upper bytes, unchanged lower identity/COW files and automatic final
+DM/loop cleanup pass; earlier recovery controls also pass. See carapace-activation/
+COMPOUND-RECOVERY.txt and reproduced/carapace-compound-recovery. Candidate remains
+in a copied dependency; simultaneous creators, full verity crash composition and
+maintained adoption are not inferred.
+
+Two-process compound recovery/reuse now passes: barrier-released independent
+assemblers recover the same abandoned upper snapshot and retain identical device
+IDs. First-reader release preserves the second; last-reader release removes upper
+while the lower reader remains valid. Earlier recovery/byte/final-cleanup controls
+also pass. See carapace-activation/CONCURRENT-RECOVERY.txt and reproduced/carapace-
+concurrent-recovery. This is not every scheduler ordering or maintained adoption.
+
+Input-admission scope reconciled against current source and design: staging
+verifies bytes/verity parameters/ancestry; assembly checks supported headers;
+trusted kernel interprets exceptions. No additional canonical exception parser
+is an implicit requirement. Actual format/error/finalization propagation through
+the generic restricted executor remains open. See input-admission/CONTRACT.txt
+and reproduced/input-admission-review. Source review only; no new runtime pass
+or waiver of malformed-input, resource or trusted-worker requirements.
+
+Kernel-mount LSM follow-up
+-------------------------
+validation/sandbox/kernel-mount-lsm/REPORT.txt records successful native ext4 +
+idmapped mount + scoped BPF LSM tests, including offline Fedora installation,
+unshifted on-disk metadata and labels, negative controls and failure teardown.
+This supersedes the earlier assumption that foreign labeling necessarily needs
+a filesystem superblock owned by the command user namespace. The exception
+allows supervisor-owned ext4 without command SYS_ADMIN. It does not approve a
+production backend or qualify shared-kernel filesystem parsing risks.

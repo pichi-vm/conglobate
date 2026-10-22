@@ -1,0 +1,22 @@
+[
+  {
+    "path": "generated/chain-worker",
+    "sha256": "97d8ed16f73be5918a8a5b26de7577dd3d639a8bcb43c9fe75ec8869cc8ff6f2",
+    "bytes": 844
+  },
+  {
+    "path": "generated/command",
+    "sha256": "84c0216c8c44b6c802fcd9144208ca8f1fb555d5f60bdf3550e8bbedead07519",
+    "bytes": 969
+  },
+  {
+    "path": "generated/command-launch",
+    "sha256": "9d4180b00b2d8ec8fffcfc1887acb6961c8911d56d25e749ea675bb3959e4f04",
+    "bytes": 374
+  },
+  {
+    "path": "generated/init",
+    "sha256": "8965024937716498877631b589f184acef0ae4886cc6d92d9096db6fd8ac55db",
+    "bytes": 976
+  }
+]

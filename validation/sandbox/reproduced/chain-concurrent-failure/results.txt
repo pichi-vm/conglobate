@@ -1,0 +1,56 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+CARAPACE-s588867fbff7e4346e0dd7e152d1b4d73-252:0-252:1: 0 134217728 snapshot 252:0 252:1 P 8
+CARAPACE-s588867fbff7e4346e0dd7e152d1b4d73-252:0-252:4: 0 134217728 snapshot 252:0 252:4 P 8
+CARAPACE-v93b206e2f04f0dfb5ef803ab734457c7-7:0-7:1: 0 34896 verity 1 7:0 7:1 4096 4096 4362 1 sha256 93b206e2f04f0dfb5ef803ab734457c7588867fbff7e4346e0dd7e152d1b4d73 0000000000000000000000000000000000000000000000000000000000000000
+CARAPACE-v93b206e2f04f0dfb5ef803ab734457c7-7:3-7:4: 0 34896 verity 1 7:3 7:4 4096 4096 4362 1 sha256 93b206e2f04f0dfb5ef803ab734457c7588867fbff7e4346e0dd7e152d1b4d73 0000000000000000000000000000000000000000000000000000000000000000
+CARAPACE-z: 0 134217728 zero 
+conglobate-185-jfs8mT-0: 0 134217728 snapshot 252:2 7:2 P 8
+conglobate-193-sD5pGf-0: 0 134217728 snapshot 252:5 7:5 P 8
+CONCURRENT_SHARED_ZERO_DISTINCT_STACKS_PASS
+CONCURRENT_FIRST_FAILED_SECOND_ACTIVE_PASS
+CONCURRENT_FAILURE_SURVIVOR_CLEANUP_PASS
+BEGIN_BUILD_LOG /runs/A/log
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 9a61774529d5796a9e214d9ea4be88bfde81851b sha256:c6626464165593367bbded21a33898fcac5cff1653c6dda1b4c84d29b7702130
+CHAIN_RESTRICTED_COMMAND_PASS
+FUSE2FS (dm-3): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-3): mounted filesystem 0f631483-692b-4133-ae70-c824ef55e4c2.
+FUSE2FS (dm-3): unmounting filesystem 0f631483-692b-4133-ae70-c824ef55e4c2.
+
+thread 'main' (185) panicked at src/bin/chain.rs:150:9:
+worker failed: exit status: 7
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+END_BUILD_LOG /runs/A/log
+BEGIN_BUILD_LOG /runs/B/log
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 9a61774529d5796a9e214d9ea4be88bfde81851b sha256:c6626464165593367bbded21a33898fcac5cff1653c6dda1b4c84d29b7702130
+CHAIN_RESTRICTED_COMMAND_PASS
+CHAIN_COMMAND_DESCENDANTS_STOPPED_WORKER_ALIVE
+FUSE2FS (dm-6): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-6): mounted filesystem 0f631483-692b-4133-ae70-c824ef55e4c2.
+FUSE2FS (dm-6): unmounting filesystem 0f631483-692b-4133-ae70-c824ef55e4c2.
+FUSE_DERIVED_LAYER_SEALED
+CHAIN_ROUND_SEALED 1
+DERIVED_CHAIN_RESTAGED
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/verified: 53/16384 files (3.8% non-contiguous), 26565/65536 blocks
+DERIVED_KERNEL_FILESYSTEM_PASS
+POST_STAGE_CORRUPTION_REJECTED Err(Io(Os { code: 5, kind: InputOutputError, message: "Input/output error" }))
+POST_STAGE_RESTORATION_READ_PASS
+BASE_SCUTE_UNCHANGED_PASS
+CHAIN_COMMITTED_INVENTORY_PUBLICATION_PASS
+END_BUILD_LOG /runs/B/log
+GUEST_EXIT 0
+[   28.476522] sysrq: Resetting

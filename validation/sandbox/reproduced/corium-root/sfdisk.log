@@ -1,0 +1,28 @@
+Checking that no-one is using this disk right now ... OK
+
+Disk /tmp/conglobate-corium-root-v3/carapace.gpt: 1012 MiB, 1061158912 bytes, 2072576 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+>>> Script header accepted.
+>>> Script header accepted.
+>>> Created a new GPT disklabel (GUID: 1A9E97DC-85B5-4543-BF71-A91B549A1CF0).
+/tmp/conglobate-corium-root-v3/carapace.gpt1: Created a new partition 1 of type 'Linux filesystem' and of size 1001.6 MiB.
+/tmp/conglobate-corium-root-v3/carapace.gpt2: Created a new partition 2 of type 'Linux filesystem' and of size 7.9 MiB.
+/tmp/conglobate-corium-root-v3/carapace.gpt3: Done.
+
+New situation:
+Disklabel type: gpt
+Disk identifier: 1A9E97DC-85B5-4543-BF71-A91B549A1CF0
+
+Device                                         Start     End Sectors    Size Type
+/tmp/conglobate-corium-root-v3/carapace.gpt1    2048 2053287 2051240 1001.6M Linux filesystem
+/tmp/conglobate-corium-root-v3/carapace.gpt2 2054144 2070319   16176    7.9M Linux filesystem
+
+The partition table has been altered.
+/tmp/conglobate-corium-root-v3/carapace.gpt:
+No errors detected.
+Header version: 1.0
+Using 2 out of 128 partitions.
+A total of 3079 free sectors is available in 2 segments (the largest is 1.1 MiB).

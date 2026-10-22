@@ -1,0 +1,17 @@
+[
+  {
+    "name": "data",
+    "bytes": 176128,
+    "sha256": "9e0f638d56bf73d87f4d1caf2b17cb62ec8065ac027f4e6681e643c6ddb1ff07"
+  },
+  {
+    "name": "hash",
+    "bytes": 8192,
+    "sha256": "8c0f353e7e1c115f19cf631335fbceed4b24d5f7c6db57d3923eb9190ff0828d"
+  },
+  {
+    "name": "root",
+    "bytes": 64,
+    "sha256": "0de53c672a9600a33afdedf511c48cf7d20d5252e81ba75edd9c693aeabe7f06"
+  }
+]

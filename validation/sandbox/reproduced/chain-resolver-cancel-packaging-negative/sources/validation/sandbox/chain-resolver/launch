@@ -1,0 +1,12 @@
+#!/bin/bash
+set -eu
+mount --make-rprivate /
+mount --bind /work/view /work/view
+/resolver-target --reject /work/view /etc/dangling 2
+/resolver-target --reject /work/view /etc/cycle 40
+/resolver-target --reject /work/view /missing/../etc/regular-resolv 2
+/resolver-target --reject /work/view /etc/file-slash 20
+/resolver-target --reject /work/view /resolver-fifo 22
+/resolver-target --reject /work/view /resolver-device 22
+exec /resolver-target --install /work/view /work/resolver \
+ /etc/resolv.conf /etc/regular-resolv -- /bin/bash /resolver-continue

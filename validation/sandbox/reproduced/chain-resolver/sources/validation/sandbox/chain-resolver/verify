@@ -1,0 +1,17 @@
+#!/bin/bash
+set -eu
+e2fsck -fn "$1"
+mount -o loop,ro "$1" /work/view
+trap 'umount /work/view' EXIT
+test "$(cat /work/view/inherited)" = 'base fixture'
+test "$(cat /work/view/derived)" = 'derived fixture'
+test "$(cat /work/view/changed)" = 'derived value'
+test "$(stat -c '%a:%u:%g' /work/view/derived)" = '640:1234:2345'
+echo DERIVED_KERNEL_FILESYSTEM_PASS
+for target in /work/view/run/image-resolv /work/view/etc/regular-resolv; do
+ test "$(cat "$target")" = "$(printf '# image resolver\nnameserver 127.0.0.53')"
+ test "$(stat -c '%a:%u:%g' "$target")" = '644:0:0'
+done
+test -L /work/view/etc/resolv.conf
+test "$(stat -c %N /work/view/etc/resolv.conf)" = "'/work/view/etc/resolv.conf' -> '/run/image-resolv'"
+echo CHAIN_RESOLVER_SEALED_IMAGE_ORIGINAL_PASS

@@ -1,0 +1,153 @@
+METADATA_FEATURE metadata-csum
+METADATA_NAMESPACE kernel
+UNALIGNED_RANGE_CONTENT_CHECKS_PASS
+BOUNDED_EXTENT_CONTENT_CHECKS_PASS
+METADATA_OBSERVATIONS {"append-append": {"ok": null}, "append-chmod": {"errno": "EPERM"}, "append-get": {"ok": 524320}, "append-set": {"ok": null}, "append-write": {"errno": "EPERM"}, "cap-chmod-after": {"ok": "0100000200040000000000000000000000000000"}, "cap-chmod-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-chmod-operation": {"ok": null}, "cap-chmod-set": {"ok": null}, "cap-chown-after": {"errno": "ENODATA"}, "cap-chown-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-chown-operation": {"ok": null}, "cap-chown-set": {"ok": null}, "cap-persist-after": {"ok": "0100000200040000000000000000000000000000"}, "cap-persist-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-persist-set": {"ok": null}, "cap-write-after": {"errno": "ENODATA"}, "cap-write-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-write-operation": {"ok": 12}, "cap-write-set": {"ok": null}, "device-node": {"ok": null}, "immutable-append": {"errno": "EPERM"}, "immutable-chmod": {"errno": "EPERM"}, "immutable-get": {"ok": 524304}, "immutable-set": {"ok": null}, "immutable-write": {"errno": "EPERM"}, "inherited-append-clear": {"ok": null}, "inherited-immutable-clear": {"ok": null}, "io-allocate": {"ok": null}, "io-allocate-blocks-delta": 128, "io-allocate-seek-data": {"ok": 16384}, "io-allocate-seek-hole": {"ok": 131072}, "io-collapse": {"ok": null}, "io-collapse-blocks-delta": -32, "io-collapse-seek-data": {"ok": 16384}, "io-collapse-seek-hole": {"ok": 49152}, "io-punch": {"ok": null}, "io-punch-blocks-delta": -32, "io-punch-seek-data": {"ok": 32768}, "io-punch-seek-hole": {"ok": 16384}, "io-reflink": {"errno": "ENOTSUP"}, "io-zero": {"ok": null}, "io-zero-blocks-delta": 0, "io-zero-seek-data": {"ok": 16384}, "io-zero-seek-hole": {"ok": 65536}, "nodump-append": {"ok": null}, "nodump-chmod": {"ok": null}, "nodump-get": {"ok": 524352}, "nodump-set": {"ok": null}, "nodump-write": {"ok": null}, "range-punch-middle": {"ok": null}, "range-punch-past-eof": {"ok": null}, "range-punch-single-block": {"ok": null}, "range-zero-middle": {"ok": null}, "range-zero-past-eof": {"ok": null}, "range-zero-single-block": {"ok": null}, "security.selinux": {"ok": null}, "time-after-2038": {"exact": true, "ok": null}, "time-before-epoch": {"exact": true, "ok": null}, "time-normal": {"exact": true, "ok": null}, "time-symlink": {"ok": null}, "trusted.fixture": {"ok": null}, "user.fixture": {"ok": null}}
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 42/16384 files (16.7% non-contiguous), 10299/65536 blocks
+INHERITED_FLAGS_KERNEL_REMOUNT_PASS
+METADATA_KERNEL_REMOUNT_MATCH_PASS
+METADATA_NAMESPACE initial
+UNALIGNED_RANGE_CONTENT_CHECKS_PASS
+BOUNDED_EXTENT_CONTENT_CHECKS_PASS
+METADATA_OBSERVATIONS {"append-append": {"ok": null}, "append-chmod": {"errno": "EPERM"}, "append-get": {"ok": 524320}, "append-set": {"ok": null}, "append-write": {"errno": "EPERM"}, "cap-chmod-after": {"ok": "0100000200040000000000000000000000000000"}, "cap-chmod-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-chmod-operation": {"ok": null}, "cap-chmod-set": {"ok": null}, "cap-chown-after": {"errno": "ENODATA"}, "cap-chown-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-chown-operation": {"ok": null}, "cap-chown-set": {"ok": null}, "cap-persist-after": {"ok": "0100000200040000000000000000000000000000"}, "cap-persist-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-persist-set": {"ok": null}, "cap-write-after": {"errno": "ENODATA"}, "cap-write-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-write-operation": {"ok": 12}, "cap-write-set": {"ok": null}, "device-node": {"ok": null}, "immutable-append": {"errno": "EPERM"}, "immutable-chmod": {"errno": "EPERM"}, "immutable-get": {"ok": 524304}, "immutable-set": {"ok": null}, "immutable-write": {"errno": "EPERM"}, "inherited-append-clear": {"ok": null}, "inherited-immutable-clear": {"ok": null}, "io-allocate": {"ok": null}, "io-allocate-blocks-delta": 128, "io-allocate-seek-data": {"ok": 16384}, "io-allocate-seek-hole": {"ok": 131072}, "io-collapse": {"errno": "ENOTSUP"}, "io-collapse-blocks-delta": 0, "io-collapse-seek-data": {"ok": 16384}, "io-collapse-seek-hole": {"ok": 65536}, "io-punch": {"ok": null}, "io-punch-blocks-delta": -32, "io-punch-seek-data": {"ok": 16384}, "io-punch-seek-hole": {"ok": 65536}, "io-reflink": {"errno": "ENOTSUP"}, "io-zero": {"ok": null}, "io-zero-blocks-delta": 0, "io-zero-seek-data": {"ok": 16384}, "io-zero-seek-hole": {"ok": 65536}, "nodump-append": {"ok": null}, "nodump-chmod": {"ok": null}, "nodump-get": {"ok": 524352}, "nodump-set": {"ok": null}, "nodump-write": {"ok": null}, "range-punch-middle": {"ok": null}, "range-punch-past-eof": {"ok": null}, "range-punch-single-block": {"ok": null}, "range-zero-middle": {"ok": null}, "range-zero-past-eof": {"ok": null}, "range-zero-single-block": {"ok": null}, "security.selinux": {"ok": null}, "time-after-2038": {"exact": true, "ok": null}, "time-before-epoch": {"exact": true, "ok": null}, "time-normal": {"exact": true, "ok": null}, "time-symlink": {"ok": null}, "trusted.fixture": {"ok": null}, "user.fixture": {"ok": null}}
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 42/16384 files (9.5% non-contiguous), 10315/65536 blocks
+INHERITED_FLAGS_KERNEL_REMOUNT_PASS
+METADATA_KERNEL_REMOUNT_MATCH_PASS
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"blocks": 128, "flags": {"ok": 524288}, "gid": 0, "mode": 33188, "sha256": "a7d508cc0b6c71db1e5b24e7411a19598afa30f2e4c524c4b78724bd8cd6811e", "size": 65536, "uid": 0, "xattrs": {}}, "kernel": {"blocks": 96, "flags": {"ok": 524288}, "gid": 0, "mode": 33188, "sha256": "4f32db31ecec8ba1db99d0e92c65d0597d1bc2112e13c0290e506935d39000a8", "size": 49152, "uid": 0, "xattrs": {}}, "name": "io-collapse", "section": "disk"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "ENOTSUP"}, "kernel": {"ok": null}, "name": "io-collapse", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": 0, "kernel": -32, "name": "io-collapse-blocks-delta", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 65536}, "kernel": {"ok": 49152}, "name": "io-collapse-seek-hole", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 16384}, "kernel": {"ok": 32768}, "name": "io-punch-seek-data", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 65536}, "kernel": {"ok": 16384}, "name": "io-punch-seek-hole", "section": "operations"}
+METADATA_REFERENCE_COMPARED initial metadata-csum
+METADATA_NAMESPACE mapped
+UNALIGNED_RANGE_CONTENT_CHECKS_PASS
+BOUNDED_EXTENT_CONTENT_CHECKS_PASS
+METADATA_OBSERVATIONS {"append-get": {"ok": 524288}, "append-set": {"errno": "EPERM"}, "cap-chmod-after": {"ok": "0100000200040000000000000000000000000000"}, "cap-chmod-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-chmod-operation": {"ok": null}, "cap-chmod-set": {"ok": null}, "cap-chown-after": {"errno": "ENODATA"}, "cap-chown-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-chown-operation": {"ok": null}, "cap-chown-set": {"ok": null}, "cap-persist-after": {"ok": "0100000200040000000000000000000000000000"}, "cap-persist-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-persist-set": {"ok": null}, "cap-write-after": {"errno": "ENODATA"}, "cap-write-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-write-operation": {"ok": 12}, "cap-write-set": {"ok": null}, "device-node": {"errno": "EPERM"}, "immutable-get": {"ok": 524288}, "immutable-set": {"errno": "EPERM"}, "inherited-append-clear": {"errno": "EPERM"}, "inherited-immutable-clear": {"errno": "EPERM"}, "io-allocate": {"ok": null}, "io-allocate-blocks-delta": 128, "io-allocate-seek-data": {"ok": 16384}, "io-allocate-seek-hole": {"ok": 131072}, "io-collapse": {"errno": "ENOTSUP"}, "io-collapse-blocks-delta": 0, "io-collapse-seek-data": {"ok": 16384}, "io-collapse-seek-hole": {"ok": 65536}, "io-punch": {"ok": null}, "io-punch-blocks-delta": -32, "io-punch-seek-data": {"ok": 16384}, "io-punch-seek-hole": {"ok": 65536}, "io-reflink": {"errno": "ENOTSUP"}, "io-zero": {"ok": null}, "io-zero-blocks-delta": 0, "io-zero-seek-data": {"ok": 16384}, "io-zero-seek-hole": {"ok": 65536}, "nodump-append": {"ok": null}, "nodump-chmod": {"ok": null}, "nodump-get": {"ok": 524352}, "nodump-set": {"ok": null}, "nodump-write": {"ok": null}, "range-punch-middle": {"ok": null}, "range-punch-past-eof": {"ok": null}, "range-punch-single-block": {"ok": null}, "range-zero-middle": {"ok": null}, "range-zero-past-eof": {"ok": null}, "range-zero-single-block": {"ok": null}, "security.selinux": {"ok": null}, "time-after-2038": {"exact": true, "ok": null}, "time-before-epoch": {"exact": true, "ok": null}, "time-normal": {"exact": true, "ok": null}, "time-symlink": {"ok": null}, "trusted.fixture": {"errno": "EPERM"}, "user.fixture": {"ok": null}}
+FUSE2FS (image): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (image): mounted filesystem 809d4f63-d4b0-4049-928f-0b06fde3c1d7.
+FUSE2FS (image): unmounting filesystem 809d4f63-d4b0-4049-928f-0b06fde3c1d7.
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 41/16384 files (9.8% non-contiguous), 10315/65536 blocks
+INHERITED_FLAGS_KERNEL_REMOUNT_PASS
+METADATA_KERNEL_REMOUNT_MATCH_PASS
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"gid": 0, "mode": 8576, "uid": 0}, "name": "device", "section": "disk"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"blocks": 128, "flags": {"ok": 524288}, "gid": 0, "mode": 33188, "sha256": "a7d508cc0b6c71db1e5b24e7411a19598afa30f2e4c524c4b78724bd8cd6811e", "size": 65536, "uid": 0, "xattrs": {}}, "kernel": {"blocks": 96, "flags": {"ok": 524288}, "gid": 0, "mode": 33188, "sha256": "4f32db31ecec8ba1db99d0e92c65d0597d1bc2112e13c0290e506935d39000a8", "size": 49152, "uid": 0, "xattrs": {}}, "name": "io-collapse", "section": "disk"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"flags": {"ok": 524288}, "gid": 0, "mode": 33188, "uid": 0, "xattrs": {}}, "kernel": {"flags": {"ok": 524288}, "gid": 0, "mode": 33188, "uid": 0, "xattrs": {"trusted.fixture": "66697874757265"}}, "name": "trusted.fixture", "section": "disk"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"ok": null}, "name": "append-append", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "append-chmod", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 524288}, "kernel": {"ok": 524320}, "name": "append-get", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "append-set", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "append-write", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "device-node", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "immutable-append", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "immutable-chmod", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 524288}, "kernel": {"ok": 524304}, "name": "immutable-get", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "immutable-set", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "immutable-write", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "inherited-append-clear", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "inherited-immutable-clear", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "ENOTSUP"}, "kernel": {"ok": null}, "name": "io-collapse", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": 0, "kernel": -32, "name": "io-collapse-blocks-delta", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 65536}, "kernel": {"ok": 49152}, "name": "io-collapse-seek-hole", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 16384}, "kernel": {"ok": 32768}, "name": "io-punch-seek-data", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 65536}, "kernel": {"ok": 16384}, "name": "io-punch-seek-hole", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "trusted.fixture", "section": "operations"}
+METADATA_REFERENCE_COMPARED mapped metadata-csum
+METADATA_FEATURE without-metadata-csum
+METADATA_NAMESPACE kernel
+UNALIGNED_RANGE_CONTENT_CHECKS_PASS
+BOUNDED_EXTENT_CONTENT_CHECKS_PASS
+METADATA_OBSERVATIONS {"append-append": {"ok": null}, "append-chmod": {"errno": "EPERM"}, "append-get": {"ok": 524320}, "append-set": {"ok": null}, "append-write": {"errno": "EPERM"}, "cap-chmod-after": {"ok": "0100000200040000000000000000000000000000"}, "cap-chmod-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-chmod-operation": {"ok": null}, "cap-chmod-set": {"ok": null}, "cap-chown-after": {"errno": "ENODATA"}, "cap-chown-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-chown-operation": {"ok": null}, "cap-chown-set": {"ok": null}, "cap-persist-after": {"ok": "0100000200040000000000000000000000000000"}, "cap-persist-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-persist-set": {"ok": null}, "cap-write-after": {"errno": "ENODATA"}, "cap-write-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-write-operation": {"ok": 12}, "cap-write-set": {"ok": null}, "device-node": {"ok": null}, "immutable-append": {"errno": "EPERM"}, "immutable-chmod": {"errno": "EPERM"}, "immutable-get": {"ok": 524304}, "immutable-set": {"ok": null}, "immutable-write": {"errno": "EPERM"}, "inherited-append-clear": {"ok": null}, "inherited-immutable-clear": {"ok": null}, "io-allocate": {"ok": null}, "io-allocate-blocks-delta": 128, "io-allocate-seek-data": {"ok": 16384}, "io-allocate-seek-hole": {"ok": 131072}, "io-collapse": {"ok": null}, "io-collapse-blocks-delta": -32, "io-collapse-seek-data": {"ok": 16384}, "io-collapse-seek-hole": {"ok": 49152}, "io-punch": {"ok": null}, "io-punch-blocks-delta": -32, "io-punch-seek-data": {"ok": 32768}, "io-punch-seek-hole": {"ok": 16384}, "io-reflink": {"errno": "ENOTSUP"}, "io-zero": {"ok": null}, "io-zero-blocks-delta": 0, "io-zero-seek-data": {"ok": 16384}, "io-zero-seek-hole": {"ok": 65536}, "nodump-append": {"ok": null}, "nodump-chmod": {"ok": null}, "nodump-get": {"ok": 524352}, "nodump-set": {"ok": null}, "nodump-write": {"ok": null}, "range-punch-middle": {"ok": null}, "range-punch-past-eof": {"ok": null}, "range-punch-single-block": {"ok": null}, "range-zero-middle": {"ok": null}, "range-zero-past-eof": {"ok": null}, "range-zero-single-block": {"ok": null}, "security.selinux": {"ok": null}, "time-after-2038": {"exact": true, "ok": null}, "time-before-epoch": {"exact": true, "ok": null}, "time-normal": {"exact": true, "ok": null}, "time-symlink": {"ok": null}, "trusted.fixture": {"ok": null}, "user.fixture": {"ok": null}}
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 42/16384 files (16.7% non-contiguous), 10299/65536 blocks
+INHERITED_FLAGS_KERNEL_REMOUNT_PASS
+METADATA_KERNEL_REMOUNT_MATCH_PASS
+METADATA_NAMESPACE initial
+UNALIGNED_RANGE_CONTENT_CHECKS_PASS
+BOUNDED_EXTENT_CONTENT_CHECKS_PASS
+METADATA_OBSERVATIONS {"append-append": {"ok": null}, "append-chmod": {"errno": "EPERM"}, "append-get": {"ok": 524320}, "append-set": {"ok": null}, "append-write": {"errno": "EPERM"}, "cap-chmod-after": {"ok": "0100000200040000000000000000000000000000"}, "cap-chmod-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-chmod-operation": {"ok": null}, "cap-chmod-set": {"ok": null}, "cap-chown-after": {"errno": "ENODATA"}, "cap-chown-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-chown-operation": {"ok": null}, "cap-chown-set": {"ok": null}, "cap-persist-after": {"ok": "0100000200040000000000000000000000000000"}, "cap-persist-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-persist-set": {"ok": null}, "cap-write-after": {"errno": "ENODATA"}, "cap-write-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-write-operation": {"ok": 12}, "cap-write-set": {"ok": null}, "device-node": {"ok": null}, "immutable-append": {"errno": "EPERM"}, "immutable-chmod": {"errno": "EPERM"}, "immutable-get": {"ok": 524304}, "immutable-set": {"ok": null}, "immutable-write": {"errno": "EPERM"}, "inherited-append-clear": {"ok": null}, "inherited-immutable-clear": {"ok": null}, "io-allocate": {"ok": null}, "io-allocate-blocks-delta": 128, "io-allocate-seek-data": {"ok": 16384}, "io-allocate-seek-hole": {"ok": 131072}, "io-collapse": {"errno": "ENOTSUP"}, "io-collapse-blocks-delta": 0, "io-collapse-seek-data": {"ok": 16384}, "io-collapse-seek-hole": {"ok": 65536}, "io-punch": {"ok": null}, "io-punch-blocks-delta": -32, "io-punch-seek-data": {"ok": 16384}, "io-punch-seek-hole": {"ok": 65536}, "io-reflink": {"errno": "ENOTSUP"}, "io-zero": {"ok": null}, "io-zero-blocks-delta": 0, "io-zero-seek-data": {"ok": 16384}, "io-zero-seek-hole": {"ok": 65536}, "nodump-append": {"ok": null}, "nodump-chmod": {"ok": null}, "nodump-get": {"ok": 524352}, "nodump-set": {"ok": null}, "nodump-write": {"ok": null}, "range-punch-middle": {"ok": null}, "range-punch-past-eof": {"ok": null}, "range-punch-single-block": {"ok": null}, "range-zero-middle": {"ok": null}, "range-zero-past-eof": {"ok": null}, "range-zero-single-block": {"ok": null}, "security.selinux": {"ok": null}, "time-after-2038": {"exact": true, "ok": null}, "time-before-epoch": {"exact": true, "ok": null}, "time-normal": {"exact": true, "ok": null}, "time-symlink": {"ok": null}, "trusted.fixture": {"ok": null}, "user.fixture": {"ok": null}}
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 42/16384 files (9.5% non-contiguous), 10315/65536 blocks
+INHERITED_FLAGS_KERNEL_REMOUNT_PASS
+METADATA_KERNEL_REMOUNT_MATCH_PASS
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"blocks": 128, "flags": {"ok": 524288}, "gid": 0, "mode": 33188, "sha256": "a7d508cc0b6c71db1e5b24e7411a19598afa30f2e4c524c4b78724bd8cd6811e", "size": 65536, "uid": 0, "xattrs": {}}, "kernel": {"blocks": 96, "flags": {"ok": 524288}, "gid": 0, "mode": 33188, "sha256": "4f32db31ecec8ba1db99d0e92c65d0597d1bc2112e13c0290e506935d39000a8", "size": 49152, "uid": 0, "xattrs": {}}, "name": "io-collapse", "section": "disk"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "ENOTSUP"}, "kernel": {"ok": null}, "name": "io-collapse", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": 0, "kernel": -32, "name": "io-collapse-blocks-delta", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 65536}, "kernel": {"ok": 49152}, "name": "io-collapse-seek-hole", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 16384}, "kernel": {"ok": 32768}, "name": "io-punch-seek-data", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 65536}, "kernel": {"ok": 16384}, "name": "io-punch-seek-hole", "section": "operations"}
+METADATA_REFERENCE_COMPARED initial without-metadata-csum
+METADATA_NAMESPACE mapped
+UNALIGNED_RANGE_CONTENT_CHECKS_PASS
+BOUNDED_EXTENT_CONTENT_CHECKS_PASS
+METADATA_OBSERVATIONS {"append-get": {"ok": 524288}, "append-set": {"errno": "EPERM"}, "cap-chmod-after": {"ok": "0100000200040000000000000000000000000000"}, "cap-chmod-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-chmod-operation": {"ok": null}, "cap-chmod-set": {"ok": null}, "cap-chown-after": {"errno": "ENODATA"}, "cap-chown-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-chown-operation": {"ok": null}, "cap-chown-set": {"ok": null}, "cap-persist-after": {"ok": "0100000200040000000000000000000000000000"}, "cap-persist-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-persist-set": {"ok": null}, "cap-write-after": {"errno": "ENODATA"}, "cap-write-before": {"ok": "0100000200040000000000000000000000000000"}, "cap-write-operation": {"ok": 12}, "cap-write-set": {"ok": null}, "device-node": {"errno": "EPERM"}, "immutable-get": {"ok": 524288}, "immutable-set": {"errno": "EPERM"}, "inherited-append-clear": {"errno": "EPERM"}, "inherited-immutable-clear": {"errno": "EPERM"}, "io-allocate": {"ok": null}, "io-allocate-blocks-delta": 128, "io-allocate-seek-data": {"ok": 16384}, "io-allocate-seek-hole": {"ok": 131072}, "io-collapse": {"errno": "ENOTSUP"}, "io-collapse-blocks-delta": 0, "io-collapse-seek-data": {"ok": 16384}, "io-collapse-seek-hole": {"ok": 65536}, "io-punch": {"ok": null}, "io-punch-blocks-delta": -32, "io-punch-seek-data": {"ok": 16384}, "io-punch-seek-hole": {"ok": 65536}, "io-reflink": {"errno": "ENOTSUP"}, "io-zero": {"ok": null}, "io-zero-blocks-delta": 0, "io-zero-seek-data": {"ok": 16384}, "io-zero-seek-hole": {"ok": 65536}, "nodump-append": {"ok": null}, "nodump-chmod": {"ok": null}, "nodump-get": {"ok": 524352}, "nodump-set": {"ok": null}, "nodump-write": {"ok": null}, "range-punch-middle": {"ok": null}, "range-punch-past-eof": {"ok": null}, "range-punch-single-block": {"ok": null}, "range-zero-middle": {"ok": null}, "range-zero-past-eof": {"ok": null}, "range-zero-single-block": {"ok": null}, "security.selinux": {"ok": null}, "time-after-2038": {"exact": true, "ok": null}, "time-before-epoch": {"exact": true, "ok": null}, "time-normal": {"exact": true, "ok": null}, "time-symlink": {"ok": null}, "trusted.fixture": {"errno": "EPERM"}, "user.fixture": {"ok": null}}
+FUSE2FS (image): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (image): mounted filesystem 721e0e2b-735f-42ef-94f2-ea155c88cf09.
+FUSE2FS (image): unmounting filesystem 721e0e2b-735f-42ef-94f2-ea155c88cf09.
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/image: 41/16384 files (9.8% non-contiguous), 10315/65536 blocks
+INHERITED_FLAGS_KERNEL_REMOUNT_PASS
+METADATA_KERNEL_REMOUNT_MATCH_PASS
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"gid": 0, "mode": 8576, "uid": 0}, "name": "device", "section": "disk"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"blocks": 128, "flags": {"ok": 524288}, "gid": 0, "mode": 33188, "sha256": "a7d508cc0b6c71db1e5b24e7411a19598afa30f2e4c524c4b78724bd8cd6811e", "size": 65536, "uid": 0, "xattrs": {}}, "kernel": {"blocks": 96, "flags": {"ok": 524288}, "gid": 0, "mode": 33188, "sha256": "4f32db31ecec8ba1db99d0e92c65d0597d1bc2112e13c0290e506935d39000a8", "size": 49152, "uid": 0, "xattrs": {}}, "name": "io-collapse", "section": "disk"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"flags": {"ok": 524288}, "gid": 0, "mode": 33188, "uid": 0, "xattrs": {}}, "kernel": {"flags": {"ok": 524288}, "gid": 0, "mode": 33188, "uid": 0, "xattrs": {"trusted.fixture": "66697874757265"}}, "name": "trusted.fixture", "section": "disk"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"ok": null}, "name": "append-append", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "append-chmod", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 524288}, "kernel": {"ok": 524320}, "name": "append-get", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "append-set", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "append-write", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "device-node", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "immutable-append", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "immutable-chmod", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 524288}, "kernel": {"ok": 524304}, "name": "immutable-get", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "immutable-set", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": null, "kernel": {"errno": "EPERM"}, "name": "immutable-write", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "inherited-append-clear", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "inherited-immutable-clear", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "ENOTSUP"}, "kernel": {"ok": null}, "name": "io-collapse", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": 0, "kernel": -32, "name": "io-collapse-blocks-delta", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 65536}, "kernel": {"ok": 49152}, "name": "io-collapse-seek-hole", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 16384}, "kernel": {"ok": 32768}, "name": "io-punch-seek-data", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"ok": 65536}, "kernel": {"ok": 16384}, "name": "io-punch-seek-hole", "section": "operations"}
+METADATA_REFERENCE_DIFFERENCE {"fuse": {"errno": "EPERM"}, "kernel": {"ok": null}, "name": "trusted.fixture", "section": "operations"}
+METADATA_REFERENCE_COMPARED mapped without-metadata-csum
+METADATA_MATRIX_COMPLETE
+GUEST_EXIT 0
+[    3.255066] sysrq: Resetting

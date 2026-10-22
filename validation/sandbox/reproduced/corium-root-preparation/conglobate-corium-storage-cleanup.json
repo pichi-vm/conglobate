@@ -1,0 +1,14 @@
+[
+  "/tmp/conglobate-runtime-pair-v1/root",
+  "/tmp/conglobate-runtime-pair-v1/initramfs.gz",
+  "/tmp/conglobate-runtime-pair-v1/vmlinuz",
+  "/tmp/conglobate-fedora-pinned-runtime-v1/root",
+  "/tmp/conglobate-fedora-pinned-runtime-v1/initramfs.gz",
+  "/tmp/conglobate-fedora-pinned-runtime-v1/vmlinuz",
+  "/tmp/conglobate-runtime-pair-partial-v1/root",
+  "/tmp/conglobate-runtime-pair-partial-v1/initramfs.gz",
+  "/tmp/conglobate-runtime-pair-partial-v1/vmlinuz",
+  "/tmp/conglobate-policy-anonymous-v1/root",
+  "/tmp/conglobate-policy-anonymous-v1/initramfs.gz",
+  "/tmp/conglobate-policy-anonymous-v1/vmlinuz"
+]

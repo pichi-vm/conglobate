@@ -1,0 +1,8 @@
+FUSE2FS (dm-3): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-3): mounted filesystem 4791ae4e-7a66-40d5-a10b-453de4ad2d76.
+FUSE2FS (dm-3): unmounting filesystem 4791ae4e-7a66-40d5-a10b-453de4ad2d76.
+Error: "restricted derivation failed"
+GUEST_EXIT 1
+[    0.718089] sysrq: Resetting

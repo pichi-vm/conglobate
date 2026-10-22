@@ -1,0 +1,15 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'echo "GUEST_EXIT $?"; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount --make-rprivate /
+mount -t tmpfs tmpfs /work
+for module in fuse loop dm_mod dm_snapshot dm_verity dm_zero veth nf_tables nft_chain_nat nft_masq nft_ct; do
+ modprobe "$module"
+done
+mount -t fusectl none /sys/fs/fuse/connections
+mount -t cgroup2 none /sys/fs/cgroup
+timeout 30 python3 /probe.py

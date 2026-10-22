@@ -1,0 +1,119 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'echo "GUEST_EXIT $?"; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount -t tmpfs tmpfs /work
+mount --make-rprivate /
+ip link set lo up
+for m in veth nf_tables nft_chain_nat nft_masq nft_ct; do modprobe "$m"; done
+ip netns add upstream
+ip netns add command
+ip netns add disabled
+ip link add vm-up type veth peer name outside
+ip link set outside netns upstream
+ip addr add 172.27.0.1/24 dev vm-up
+ip -6 addr add fd42:27::1/64 dev vm-up nodad
+ip link set vm-up up
+ip -n upstream addr add 172.27.0.2/24 dev outside
+ip -n upstream -6 addr add fd42:27::2/64 dev outside nodad
+ip -n upstream link set outside up
+ip -n upstream link set lo up
+ip -n upstream route add 10.44.0.0/24 via 172.27.0.1
+ip -n upstream -6 route add fd42:44::/64 via fd42:27::1
+ip link add vm-step type veth peer name inside
+ip link set inside netns command
+ip addr add 10.44.0.1/24 dev vm-step
+ip -6 addr add fd42:44::1/64 dev vm-step nodad
+ip link set vm-step up
+ip -n command addr add 10.44.0.2/24 dev inside
+ip -n command -6 addr add fd42:44::2/64 dev inside nodad
+ip -n command link set inside up
+ip -n command link set lo up
+ip -n command route add default via 10.44.0.1
+ip -n command -6 route add default via fd42:44::1
+sysctl -w net.ipv4.ip_forward=1
+sysctl -w net.ipv6.conf.all.forwarding=1
+nft -f - <<'NFT'
+table inet guard {
+ chain input { type filter hook input priority 0; policy accept; iifname "vm-step" icmpv6 type { nd-neighbor-solicit, nd-neighbor-advert } accept; iifname "vm-step" drop; }
+ chain forward { type filter hook forward priority 0; policy drop; ct state established,related accept; iifname "vm-step" oifname "vm-up" accept; }
+}
+table ip nat {
+ chain postrouting { type nat hook postrouting priority 100; oifname "vm-up" ip saddr 10.44.0.0/24 masquerade; }
+}
+table ip6 nat {
+ chain postrouting { type nat hook postrouting priority 100; oifname "vm-up" ip6 saddr fd42:44::/64 masquerade; }
+}
+NFT
+ip netns exec upstream python3 /server.py &
+python3 /server.py &
+sleep .2
+python3 - <<'PY'
+import socket
+for address in [('127.0.0.1',8080),('::1',8080)]:
+ with socket.create_connection(address,2) as connection:
+  connection.sendall(b'GET / HTTP/1.0\r\n\r\n')
+  assert b'200 OK' in connection.recv(1024)
+print('BUILDER_ENDPOINT_POSITIVE_CONTROL_PASS',flush=True)
+PY
+printf 'nameserver 172.27.0.2\nsearch build.test\noptions timeout:1 attempts:1\n' >/work/resolv
+root=/work/root
+mkdir -p "$root/usr" "$root/.old" "$root/proc" "$root/dev" "$root/tmp" "$root/etc" "$root/run"
+cp -a /usr/bin /usr/lib /usr/lib64 "$root/usr/"
+ln -s usr/bin "$root/bin"
+ln -s usr/lib "$root/lib"
+ln -s usr/lib64 "$root/lib64"
+cp /stub.py "$root/stub"
+chmod 755 "$root/stub"
+cp /client.py "$root/client"
+cp /listener.py "$root/listener"
+chmod 755 "$root/client" "$root/listener"
+cp /etc/nsswitch.conf "$root/etc/"
+chown 100000:100000 "$root/tmp"
+mkdir /work/runtime
+mknod /work/runtime/null c 1 3
+chmod 666 /work/runtime/null
+chown 100000:100000 /work/runtime/null
+launch() {
+ ip netns exec command unshare --user --mount --pid --ipc --uts --fork \
+  --map-users 0:100000:65536 --map-groups 0:100000:65536 \
+  --setuid 0 --setgid 0 /bin/bash /launch "$1"
+}
+for style in regular symlink; do
+ if test "$style" = symlink; then
+  rm "$root/etc/resolv.conf"
+  ln -s /run/resolv.original "$root/etc/resolv.conf"
+ fi
+ if test "$style" = regular; then target="$root/etc/resolv.conf"; else target="$root/run/resolv.original"; fi
+ printf 'nameserver 127.0.0.53\n# image resolver sentinel\n' >"$target"
+ launch /stub
+ launch /client
+ test "$(cat "$target")" = "$(printf 'nameserver 127.0.0.53\n# image resolver sentinel')"
+ if test "$style" = symlink; then
+  python3 -c 'import os; assert os.readlink("/work/root/etc/resolv.conf") == "/run/resolv.original"'
+ else
+  test ! -L "$root/etc/resolv.conf"
+ fi
+ test ! -s /etc/resolv.conf
+ echo "RESOLVER_BIND_RESTORED_PASS $style"
+done
+launch /listener &
+listener=$!
+for ((i=0;i<100;i++)); do test -e "$root/tmp/listener-ready" && break; sleep .05; done
+test -e "$root/tmp/listener-ready"
+
+ip netns exec upstream python3 - <<'PY'
+import socket
+try: socket.create_connection(('10.44.0.2',8081),.5)
+except OSError:print('UNSOLICITED_INBOUND_BLOCKED_PASS',flush=True)
+else:raise AssertionError('unsolicited inbound accepted')
+try:socket.create_connection(('fd42:44::2',8081),.5)
+except OSError:print('IPV6_UNSOLICITED_INBOUND_BLOCKED_PASS',flush=True)
+else:raise AssertionError('IPv6 unsolicited inbound accepted')
+PY
+wait "$listener"
+nft list ruleset
+echo NETWORK_POLICY_PASS

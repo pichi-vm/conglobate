@@ -1,0 +1,18 @@
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+LOOPBACK_STUB_UNREACHABLE_CONFIRMED
+Traceback (most recent call last):
+  File [35m"/client"[0m, line [35m12[0m, in [35m<module>[0m
+    with [31mopen[0m[1;31m('/etc/resolv.conf', 'a')[0m as stream:
+         [31m~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1;35mPermissionError[0m: [35m[Errno 13] Permission denied: '/etc/resolv.conf'[0m
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File [35m"/client"[0m, line [35m15[0m, in [35m<module>[0m
+    assert [1;31merror.errno == errno.EROFS[0m
+           [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1;35mAssertionError[0m
+GUEST_EXIT 1
+[    1.373831] sysrq: Resetting

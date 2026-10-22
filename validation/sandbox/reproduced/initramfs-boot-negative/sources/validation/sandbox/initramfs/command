@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+kernel=$(rpm -q --qf '%{VERSION}-%{RELEASE}.%{ARCH}' kernel-core)
+test -d "/usr/lib/modules/$kernel"
+mkdir -p /boot /var/tmp
+# No host firmware discovery or external logging endpoint in the clean room.
+printf 'sysloglvl=0\nkmsgloglvl=0\n' >/var/tmp/validation-dracut.conf
+mkdir -p /var/tmp/boot-validation/usr/lib/systemd/system/initrd.target.wants
+cp /boot-probe /var/tmp/boot-validation/conglobate-boot-probe
+cp /boot-probe.service /var/tmp/boot-validation/usr/lib/systemd/system/conglobate-boot-probe.service
+ln -s ../conglobate-boot-probe.service /var/tmp/boot-validation/usr/lib/systemd/system/initrd.target.wants/conglobate-boot-probe.service
+dracut --force --no-hostonly --kver "$kernel" --conf /var/tmp/validation-dracut.conf \
+ --fwdir /usr/lib/firmware --add-drivers ext4 --include /var/tmp/boot-validation / \
+ /boot/validation-initramfs.img
+lsinitrd /boot/validation-initramfs.img >/boot/validation-initramfs.list
+grep -q 'usr/lib/systemd/systemd' /boot/validation-initramfs.list
+grep -q 'usr/lib/modules/' /boot/validation-initramfs.list
+sha256sum /boot/validation-initramfs.img >/boot/validation-initramfs.sha256
+cat /boot/validation-initramfs.sha256
+echo RESTRICTED_DRACUT_GENERATION_PASS

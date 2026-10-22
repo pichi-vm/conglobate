@@ -1,0 +1,10 @@
+{
+  "/tmp/conglobate-fedora-root-build-v3/boot-artifacts.bin": {
+    "sha256": "2c67564fc13f0efbc077603151c8eaaf2471cb678a56aefcda1c81d369bf89c7",
+    "bytes": 62132306
+  },
+  "/tmp/conglobate-fedora-root-build-v3/root-artifact.bin": {
+    "sha256": "7b34a03e47da5904fe29782f13d82aad970df7d2bc23441a88dd62a4eb90f6ea",
+    "bytes": 734555829
+  }
+}

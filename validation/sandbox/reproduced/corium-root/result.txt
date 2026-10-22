@@ -1,0 +1,2 @@
+FEDORA_CONGLOBATE_IMPORT_CORIUM_SYSTEMD_PASS
+Runner exit0; post-boot disk/raw digests verified. Single-scute scope.

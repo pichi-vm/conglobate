@@ -1,0 +1,1 @@
+Booted exact artifacts exported by initramfs-exported-build. Original binary artifacts retained in /tmp/conglobate-initramfs-boot-v2; hashes and reproduction sources in this directory. Standalone initramfs milestone only; no full OS root switch.

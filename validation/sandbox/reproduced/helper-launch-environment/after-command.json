@@ -1,0 +1,6 @@
+[
+  "cargo",
+  "test",
+  "--locked",
+  "--lib"
+]

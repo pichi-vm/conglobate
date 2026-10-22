@@ -1,0 +1,32 @@
+#!/bin/bash
+set -euo pipefail
+device=$1
+/patched -f -o kernel,acl,allow_other,nosuid,nodev "$device" /work/view >/work/worker.log 2>&1 &
+daemon=$!
+trap 'fusermount3 -u /work/view; wait "$daemon"; cat /work/worker.log' EXIT
+for ((i=0;i<100;i++)); do mountpoint -q /work/view && break; sleep .05; done
+mountpoint -q /work/view
+# Bridge the owned rendezvous across the worker's private mount view.
+(
+ for ((i=0;i<500;i++)); do
+  if test -f /work/view/admission-active; then break; fi
+  sleep .01
+ done
+ test -f /work/view/admission-active
+ : >/work/admission-active
+ for ((i=0;i<500;i++)); do
+  if test -f /work/admission-continue; then break; fi
+  sleep .01
+ done
+ test -f /work/admission-continue
+ : >/work/view/admission-continue
+) &
+relay=$!
+unshare --mount --pid --ipc --uts --net --fork /bin/bash /command-launch </dev/null 2>&1 | cat
+wait "$relay"
+before=$(stat -c %s /work/view/heartbeat)
+test "$before" -gt 0
+sleep .2
+test "$(stat -c %s /work/view/heartbeat)" = "$before"
+kill -0 "$daemon"
+echo CHAIN_COMMAND_DESCENDANTS_STOPPED_WORKER_ALIVE

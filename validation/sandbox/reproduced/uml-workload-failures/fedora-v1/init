@@ -1,0 +1,68 @@
+#!/bin/bash
+set -euo pipefail
+export PATH=/usr/bin:/usr/sbin:/bin:/sbin
+export TMPDIR=/tmp
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+modprobe ipv6
+ip link set lo up
+ip addr add 10.45.0.2/24 dev eth0
+ip link set eth0 up
+ip route add default via 10.45.0.1
+mkdir -p /tool /mnt /tmp
+/usr/bin/busybox tar -xpf /tool.tar -C /tool
+printf 'nameserver 10.0.2.3\n' >/tool/etc/resolv.conf
+cp /fedora-key /tool/fedora-key
+mkfs.ext4 -F -q /dev/ubda
+mount -t ext4 /dev/ubda /mnt
+mkdir -p /tool/target /mnt/dev /mnt/proc /mnt/sys /mnt/etc
+cp /tool/etc/resolv.conf /mnt/etc/resolv.conf
+mount --bind /mnt /tool/target
+mount -t proc proc /tool/proc
+mount -t sysfs sysfs /tool/sys
+mount -t devtmpfs devtmpfs /tool/dev
+mount -t proc proc /tool/target/proc
+mount -t sysfs sysfs /tool/target/sys
+mount -t devtmpfs devtmpfs /tool/target/dev
+/usr/bin/busybox chroot /tool /usr/bin/dnf5 --installroot=/target --releasever=44 --disable-repo='*' --repofrompath=fixture,https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/ --setopt=fixture.gpgcheck=1 --setopt=fixture.gpgkey=file:///fedora-key --setopt=install_weak_deps=False -y install fedora-release bash coreutils systemd passwd dnf5 kernel-core kernel-modules dracut acl attr libcap
+printf 'UML_FEDORA_BOOTSTRAP_PASS\n'
+umount /tool/target/dev /tool/target/sys /tool/target/proc /tool/target
+mount -t proc proc /mnt/proc
+mount -t sysfs sysfs /mnt/sys
+mount -t devtmpfs devtmpfs /mnt/dev
+/usr/bin/busybox chroot /mnt /bin/bash -eu -c '
+ echo derived > /fedora-derived
+ chown 1234:2345 /fedora-derived
+ setfattr -n user.validation -v persisted /fedora-derived
+ setfacl -m u:3456:r-- /fedora-derived
+ k=$(ls /lib/modules)
+ dracut --force --no-hostonly --add-drivers "virtio_pci virtio_blk" /boot/validation-initrd "$k"
+ cp /lib/modules/"$k"/vmlinuz /boot/validation-kernel
+ rpm -qa
+'
+cp /usr/bin/busybox /mnt/bin/validation-busybox
+cat >/mnt/sbin/validation-init <<'BOOT'
+#!/bin/bash
+set -eu
+test "$$" = 1
+test "$(cat /fedora-derived)" = derived
+test "$(stat -c '%u:%g' /fedora-derived)" = 1234:2345
+test -f /etc/fedora-release
+getfattr -n user.validation /fedora-derived
+getfacl -n /fedora-derived
+uname -a
+echo UML_FEDORA_NATIVE_ROOT_BOOT_PASS
+/bin/validation-busybox poweroff -f
+BOOT
+chmod 755 /mnt/sbin/validation-init
+echo UML_FEDORA_DERIVE_FIRMWARE_PASS
+umount /mnt/dev /mnt/sys /mnt/proc
+/usr/bin/busybox sync
+umount /mnt
+mount -t ext4 -o ro /dev/ubda /mnt
+test "$(cat /mnt/fedora-derived)" = derived
+test "$(stat -c '%u:%g' /mnt/fedora-derived)" = 1234:2345
+umount /mnt
+echo UML_FEDORA_OUTPUT_VERIFIED
+/usr/bin/busybox poweroff -f

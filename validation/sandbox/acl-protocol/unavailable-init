@@ -1,0 +1,27 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'echo "GUEST_EXIT $?"; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount -t tmpfs tmpfs /work
+modprobe fuse
+mount -t fusectl none /sys/fs/fuse/connections
+chmod 666 /dev/fuse
+mkdir /work/view
+truncate -s 64M /work/image
+mkfs.ext4 -qF /work/image
+chown 100000:100000 /work/image /work/view
+set +e
+timeout 10 unshare --user --mount --map-users 0:100000:65536 --map-groups 0:100000:65536 --setuid 0 --setgid 0 /acl-patched -f -o kernel,acl,allow_other,nosuid,nodev /work/image /work/view >/work/worker.log 2>&1
+status=$?
+set -e
+cat /work/worker.log
+echo "UNSUPPORTED_EXTENSION_WORKER_STATUS $status"
+test "$status" != 0
+test "$status" != 124
+if mountpoint -q /work/view; then exit 1; fi
+connections=(/sys/fs/fuse/connections/*)
+test "${connections[0]}" = '/sys/fs/fuse/connections/*'
+echo UNSUPPORTED_EXTENSION_REJECTED_CLEANUP_PASS

@@ -1,0 +1,5 @@
+{
+  "source": "/tmp/conglobate-acl-protocol-v5/worker-source/misc/fuse2fs.c",
+  "sha256": "58294477753784e5cbebb1fd1350ba40911d9589fb7e7b4f3d41e2211ca3bcef",
+  "scope": "Static paired backend source review; not the filesystem mounted by the small policy fixture."
+}

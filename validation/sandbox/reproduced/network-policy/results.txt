@@ -1,0 +1,70 @@
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+SERVERS_READY
+SERVERS_READY
+BUILDER_ENDPOINT_POSITIVE_CONTROL_PASS
+LOOPBACK_STUB_UNREACHABLE_CONFIRMED
+DNS_QUERY mirror.build.test
+DNS_QUERY absent.invalid
+DNS_SEARCH_DOMAIN_PASS
+DNS_QUERY mirror.build.test
+DNS_QUERY mirror.build.test
+DNS_LOOKUP [(<AddressFamily.AF_INET6: 10>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('fd42:27::2', 8080, 0, 0)), (<AddressFamily.AF_INET6: 10>, <SocketKind.SOCK_DGRAM: 2>, 17, '', ('fd42:27::2', 8080, 0, 0)), (<AddressFamily.AF_INET6: 10>, <SocketKind.SOCK_RAW: 3>, 0, '', ('fd42:27::2', 8080, 0, 0)), (<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('172.27.0.2', 8080)), (<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_DGRAM: 2>, 17, '', ('172.27.0.2', 8080)), (<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_RAW: 3>, 0, '', ('172.27.0.2', 8080))]
+DNS_QUERY mirror.build.test
+NAT_PRIVATE_DESTINATION_AND_DNS_UDP_PASS
+DNS_QUERY mirror.build.test
+DNS_TCP_PASS
+BUILDER_ENDPOINT_BLOCKED_PASS
+DNS_QUERY mirror.build.test
+IPV6_NAT_AND_AAAA_DNS_PASS
+IPV6_BUILDER_ENDPOINT_BLOCKED_PASS
+NETWORK_RESTRICTED_CLIENT_PASS
+RESOLVER_BIND_RESTORED_PASS regular
+LOOPBACK_STUB_UNREACHABLE_CONFIRMED
+DNS_QUERY mirror.build.test
+DNS_QUERY absent.invalid
+DNS_SEARCH_DOMAIN_PASS
+DNS_QUERY mirror.build.test
+DNS_QUERY mirror.build.test
+DNS_LOOKUP [(<AddressFamily.AF_INET6: 10>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('fd42:27::2', 8080, 0, 0)), (<AddressFamily.AF_INET6: 10>, <SocketKind.SOCK_DGRAM: 2>, 17, '', ('fd42:27::2', 8080, 0, 0)), (<AddressFamily.AF_INET6: 10>, <SocketKind.SOCK_RAW: 3>, 0, '', ('fd42:27::2', 8080, 0, 0)), (<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_STREAM: 1>, 6, '', ('172.27.0.2', 8080)), (<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_DGRAM: 2>, 17, '', ('172.27.0.2', 8080)), (<AddressFamily.AF_INET: 2>, <SocketKind.SOCK_RAW: 3>, 0, '', ('172.27.0.2', 8080))]
+DNS_QUERY mirror.build.test
+NAT_PRIVATE_DESTINATION_AND_DNS_UDP_PASS
+DNS_QUERY mirror.build.test
+DNS_TCP_PASS
+BUILDER_ENDPOINT_BLOCKED_PASS
+DNS_QUERY mirror.build.test
+IPV6_NAT_AND_AAAA_DNS_PASS
+IPV6_BUILDER_ENDPOINT_BLOCKED_PASS
+NETWORK_RESTRICTED_CLIENT_PASS
+RESOLVER_BIND_RESTORED_PASS symlink
+UNSOLICITED_INBOUND_BLOCKED_PASS
+IPV6_UNSOLICITED_INBOUND_BLOCKED_PASS
+NETWORK_RESTRICTED_LISTENERS_FINISHED
+table inet guard {
+	chain input {
+		type filter hook input priority filter; policy accept;
+		iifname "vm-step" icmpv6 type { nd-neighbor-solicit, nd-neighbor-advert } accept
+		iifname "vm-step" drop
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+		ct state established,related accept
+		iifname "vm-step" oifname "vm-up" accept
+	}
+}
+table ip nat {
+	chain postrouting {
+		type nat hook postrouting priority srcnat; policy accept;
+		oifname "vm-up" ip saddr 10.44.0.0/24 masquerade
+	}
+}
+table ip6 nat {
+	chain postrouting {
+		type nat hook postrouting priority srcnat; policy accept;
+		oifname "vm-up" ip6 saddr fd42:44::/64 masquerade
+	}
+}
+NETWORK_POLICY_PASS
+GUEST_EXIT 0
+[    8.951181] sysrq: Resetting

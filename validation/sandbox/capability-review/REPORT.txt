@@ -1,0 +1,337 @@
+CAP_SYS_ADMIN decision investigation — 2026-10-21
+================================================
+
+Conclusion
+----------
+Do not approve command CAP_SYS_ADMIN on the strength of the earlier runtime
+comparison. Both requested investigations now have source analysis and executable
+probes. A more promising alternative emerged: a small trusted BPF LSM policy can
+permit security.selinux mutations on the assigned FUSE filesystem while commands
+have CAP_SYS_ADMIN absent from ALL capability sets. This worked on the existing
+Fedora kernel, without rebuilding the kernel or patching the worker.
+
+The alternative is a prototype, not an approved production policy. It trades a
+broad command capability for a narrow, explicit kernel access-control exception.
+It adds BPF LSM/BTF and policy-lifetime requirements to the trusted environment.
+The filesystem worker still has no effective capabilities; the privileged loader
+runs in the trusted supervisor domain, never in the command sandbox.
+
+Retaining namespace CAP_SYS_ADMIN can also be meaningfully constrained. A new
+default-deny syscall probe preserves metadata operations and a Fedora package
+bootstrap while blocking selected additional interfaces. That is compatibility
+and enforcement evidence, not proof of breakout resistance. We should prefer
+removing the unnecessary command authority if the policy alternative survives
+review, rather than treating the retained-capability route as already accepted.
+
+1. Why the worker cannot fix this by itself
+------------------------------------------
+In Linux 7.2.10, security_inode_setxattr/removexattr invokes the generic capability
+check unless an LSM claims responsibility through inode_xattr_skipcap.
+cap_inode_setxattr/removexattr requires CAP_SYS_ADMIN in the superblock's owning
+user namespace for security.* other than security.capability. These checks occur
+before the filesystem xattr handler/FUSE request. Moving the worker, giving it
+extra privilege, or remapping the name only inside the worker cannot change that
+client-side gate. The worker is deliberately left unprivileged.
+
+security.capability has a separate CAP_SETFCAP path. trusted.* is separately
+restricted by initial-user-namespace authority; it is not enabled by this work.
+
+With SELinux disabled, ordinary get/list operations do not have the same generic
+SYS_ADMIN requirement. The no-capability control reads labels through paths and
+FDs, lists them, and writes an ordinary user attribute, while both path and FD
+set/remove of security.selinux fail EPERM. Thus the earlier concern about needing
+to mediate arbitrary read replies does not apply to this tested SELinux-disabled
+configuration. It still matters to different LSM configurations.
+
+2. Alternatives without command CAP_SYS_ADMIN
+---------------------------------------------
+A. Worker-only changes or an ordinary FUSE mount flag: no working path found.
+   The VFS/LSM check is earlier than FUSE dispatch. Our positive/negative probes
+   and kernel source agree; merely trusting the daemon is insufficient.
+
+B. Final labeling outside commands: feasible as a separate author-visible phase,
+   but not equivalent to arbitrary label writes during the build. Recomputing
+   file_contexts can discard custom labels. It changes the agreed semantics and
+   is not silently substituted here.
+
+C. Narrow userspace broker: demonstrated only as a mechanism. A privileged helper
+   in the filesystem-owning user namespace changes/removes security.selinux on a
+   single pre-opened inode FD. A client with SYS_ADMIN absent can read the results
+   and remains unable to perform direct mutations. This cooperative socket test
+   accepts no path or file descriptor from the client; it is NOT a transparent
+   syscall broker or a production extra-sandbox design.
+
+   Transparent mutation mediation could use seccomp notification, but must cover
+   set/lset/fset/removexattr and new *xattrat variants, bounded copied strings,
+   symlinks, relative paths/cwd, flags, FD reuse and caller credentials. Never
+   validate a pointer/path and then CONTINUE a privileged original syscall.
+   Stable inode selection and confinement must be enforced by the broker itself.
+   Read/list calls can remain native for this environment. Incus demonstrates
+   limited mutation interception, not a ready-made SELinux broker; its documented
+   handled attribute is trusted.overlay.opaque. No transparent broker was built.
+
+D. Narrow BPF LSM exception: demonstrated with normal xattr APIs, no application
+   shim or author-specific command. The kernel already exports the skipcap hook;
+   kernel/bpf/bpf_lsm.c explicitly permits its boolean 0/1 return range. Fedora's
+   tested kernel has CONFIG_BPF_LSM=y and CONFIG_DEBUG_INFO_BTF=y. SELinux was
+   disabled in the disposable build VM; no host policy was changed.
+
+   The prototype allows the exception only for:
+   - an exact configured command user-namespace identity;
+   - that namespace's configured root effective UID (outer UID100000 here);
+   - the exact attribute security.selinux;
+   - an inode on the designated superblock, with the expected owning userns.
+
+   inode_xattr_skipcap only sees the attribute name, not the inode. Therefore it
+   cannot alone implement the filesystem restriction. Separate inode_setxattr and
+   inode_removexattr hooks enforce the target superblock and preserve prior LSM
+   errors. Normal VFS permissions, mount writability, FUSE default_permissions
+   and worker checks still apply. Commands gain no general capability and cannot
+   load, replace, or access the policy programs, maps, or control descriptors.
+
+   The tested root UID is hardcoded in the test loader; production must derive it
+   from its trusted identity allocation. Namespace inode numbers and device IDs
+   require lifetime ownership, not indefinite reuse as authorization tokens.
+
+   This initial policy does not allow security.sehash, IMA/EVM attributes or
+   arbitrary security.* names. security.sehash support, if required by setfiles
+   digest workflows, needs an explicit reviewed extension. security.capability
+   remains on its ordinary separately tested path. An active unrelated SELinux
+   policy is not bypassed; this is not a solution for foreign labels under every
+   possible host LSM stack.
+
+3. Policy lifecycle is part of the security boundary
+----------------------------------------------------
+A naive loader holding three independent BPF links is insufficient. If it dies,
+links may detach separately, temporarily leaving the capability exception without
+its inode guard. We identified this in review before treating the probe as a
+recommendation.
+
+The revised fixture starts with a disabled config; attaches and pins both target
+guards and the exception; pins configuration; and only then enables the scoped
+entry. Pins reside in a supervisor-only bpffs mount absent from command roots.
+Killing the loader leaves the COMPLETE policy active rather than partially
+removing it. The actual package/label workload runs after this SIGKILL.
+
+After commands have exited, the coordinator zeroes configuration before removing
+links/pins. It retains a user-namespace FD until policy cleanup is complete so the
+namespace identity cannot be reused in the cleanup interval. A second capless
+command confirms label mutations are denied after policy removal. Its reads
+still work. A descendant user namespace with the same underlying root UID is also denied
+while the policy is active. Filesystem shutdown then completes, with fsck, an
+independent read-only native ext4 label check, and no surviving
+recorded command processes or FUSE connections.
+
+Production still needs a complete cleanup protocol for supervisor/guardian death,
+partial setup, concurrent builds, namespace/superblock lifetime and abandoned
+pins. The build must not publish output if required policy supervision fails.
+Policy installation/removal/config changes must be ordered with command admission
+and quiescence. This prototype's successful loader-death test is not a proof of
+all those cases. No fallback to broad capabilities on policy-load failure is
+acceptable. The kernel, bytecode, loader and policy configuration are trusted
+build-environment inputs and belong in the attestation story.
+
+4. What namespace CAP_SYS_ADMIN exposes, and how to constrain it
+---------------------------------------------------------------
+The review uses the full upstream Linux 7.2.10 source archive and records a
+mechanical inventory of 639 CAP_SYS_ADMIN mentions in arch/drivers/fs/include/
+ipc/kernel/net/security C and header files. Mentions include comments and initial-
+namespace checks; this count is NOT a count of accessible operations. The table
+below is a focused interface analysis, not an exhaustive kernel security audit.
+
+Surface                         Necessary controls / source grounding
+Mount topology and filesystem   Deny mount/umount2/pivot_root and the new mount
+context APIs                    API (fsopen/fsconfig/fsmount/fspick/open_tree/
+                                move_mount/mount_setattr), not just mount(2).
+                                fs/namespace.c, fs/fsopen.c and fs/super.c use
+                                owning/current-userns checks in several paths.
+Namespace creation/join         Deny setns/unshare; mask namespace bits in clone.
+                                Return ENOSYS for clone3 so ordinary libc thread/
+                                process creation can fall back. Its flags live
+                                behind a pointer that classic seccomp cannot
+                                safely inspect. Block namespace creation even
+                                in the no-capability design: a new userns grants
+                                capabilities in that new namespace.
+Filesystem ioctls               Default-deny ioctl with a minimal reviewed list.
+                                FIFREEZE/FITHAW check the superblock userns in
+                                fs/ioctl.c; ordinary writes need not imply
+                                permission to freeze the entire build filesystem.
+                                No block/FUSE/control/namespace handles exposed.
+File handles                    Deny name_to_handle_at/open_by_handle_at. Newer
+                                fs/fhandle.c contains namespace-aware paths;
+                                do not rely on an old blanket claim that all
+                                handle access needs initial-namespace authority.
+Process inspection/FD access     Private PID/proc, no outside descriptors, and
+                                deny ptrace/process_vm*/pidfd_getfd. A child
+                                userns does not automatically have authority
+                                over the supervisor or worker userns.
+BPF/perf/userfaultfd/io_uring     Deny these command interfaces. Many checks are
+                                initial-namespace capabilities, so command
+                                SYS_ADMIN does not automatically grant all of
+                                them; tokens/delegation and unprivileged entry
+                                paths still make explicit exclusion useful.
+                                io_uring would add operations not mediated by a
+                                simple per-syscall xattr notification scheme.
+Credentials over Unix sockets   net/core/scm.c allows a PID-namespace SYS_ADMIN
+                                holder to specify other SCM_CREDENTIALS PIDs.
+                                Do not authenticate a privileged build service
+                                using such claimed PID metadata. Keep trusted
+                                service sockets/FDs outside the command view.
+Netlink/socket families         Namespace-aware generic-netlink checks exist.
+                                Probe permits AF_UNIX/INET/INET6 only, not
+                                AF_NETLINK/PACKET/other families; private netns
+                                remains necessary. Production discovery/NAT
+                                compatibility needs separate review.
+UTS, IPC and proc/sys controls   Namespace ownership limits scope, but deny unused
+                                administration syscalls and hide/read-only bind
+                                sensitive proc/sys paths. Bubblewrap masks
+                                writable proc sys/sysrq-trigger/irq/bus entries.
+Keys, modules, reboot, tracing   Default-deny unused interfaces; private mounts
+and initial-namespace resources and absent devices are independent protections.
+                                Most system-wide operations retain initial-userns
+                                capability checks, not command-userns checks.
+Open/read/write and regular I/O These remain broad by necessity. Filesystem/FD
+                                construction is the boundary; seccomp alone
+                                cannot confine paths. Keep cache/context/control
+                                objects absent; immutable runtime read-only;
+                                actual root pivot and old-root detachment.
+Resource exhaustion             Build memory/process/deadline controls and worker
+                                supervision remain necessary regardless of
+                                SYS_ADMIN. These probes do not qualify them.
+
+The default-deny probe allows ordinary filesystem/process/credential primitives,
+normal networking socket families, selected prctl operations and a small ioctl
+list. Namespace clone flags are filtered; clone3 returns ENOSYS. It is installed
+before executing the tested workload. The negative probes use owned mountpoints,
+self identifiers, or dummy descriptors, never outside targets or exploit code.
+
+Compatibility required allowing harmless descriptor/terminal-query operations
+(FIOCLEX, FIONCLEX, TCGETS2) and setpriv's keep-capability/ambient controls. We did
+not turn ioctl/prctl into unqualified allow-all operations. Initial failures and
+strace diagnostics are retained. The filter is architecture-native; hardcoded
+probe syscall numbers are x86_64 only. Arm needs independently checked ABI tests.
+It is not a ready-to-ship seccomp profile or a guarantee arbitrary recipes work.
+
+5. Capability bookkeeping correction
+------------------------------------
+The previous Bubblewrap test verified CapEff but did not clamp CapBnd. In this
+probe its bounding set initially still contained all kernel capabilities, even
+though effective/permitted/inheritable/ambient sets were restricted and NNP was
+set. That is not evidence of a demonstrated privilege escalation, but it is not
+an exact all-set allowlist either.
+
+The trusted command adapter now explicitly drops excluded bounding capabilities
+before the payload. Recorded masks across all five sets are:
+  retained SYS_ADMIN: 00000000802401db
+  no SYS_ADMIN:       00000000800401db
+The no-cap controls assert absence from all five. Production must verify all
+sets, NNP, identity and descriptor state for both roles, not just requested argv
+or CapEff. The worker's existing zero-effective-capability topology is reused;
+complete worker bounding-set minimization remains an implementation requirement.
+
+6. Validation results and limits
+--------------------------------
+The final evidence directory records the exact runs and kernel/tool/fixture input
+hashes. Mechanism tests establish:
+- native reads/list without SYS_ADMIN, native mutation denial;
+- fixed-inode cooperative delegation without granting client SYS_ADMIN;
+- harmless tmpfs mount positive control with unconstrained namespace authority;
+- default-deny enforcement of selected mount, namespace, inspection, keyring,
+  BPF, perf, userfaultfd, io_uring and ioctl entries, with exec inheritance;
+- preservation of ownership, ACL/default inheritance, supplementary-group/setgid,
+  foreign-label and file-capability operations under the restricted profile;
+- normal transparent label APIs with the scoped LSM and no command SYS_ADMIN,
+  including FD operations, hardlinks, symlinks, xattr flags and negative controls;
+- pinned-policy survival across loader SIGKILL and mutation denial after removal;
+- offline Fedora44 bootstrap from 69 supplied RPMs under both configurations,
+  RPM queries, installed Bash/Python execution and an explicit foreign label on
+  an installed executable; normal worker finalization, e2fsck and persisted
+  labels checked through an independent read-only kernel ext4 remount.
+
+This is a real package installation into an ext4 image, not a complete bootable
+Fedora image/kernel/initramfs build. Package inputs include multilib candidates,
+but only native x86_64 programs were exercised. Signature checks are explicitly
+disabled in this pre-existing pinned test fixture. No network or downloaded
+build inputs are exposed to commands. No Debian/Alpine/NixOS build, Arm run or
+confidential-hardware run is claimed here. Resource-exhaustion and all production
+supervisor-death paths remain separate qualification work.
+
+7. Recommendation
+------------------
+Take the capless, scoped-LSM design forward for review before choosing a runtime
+or implementing it in conglobate. It directly removes the broad command privilege
+that prompted this investigation while preserving normal label APIs. Keep the
+strict syscall/FD/namespace restrictions in either design; removing one capability
+does not remove the shared-kernel boundary or make kernel bugs impossible.
+
+Decisions still needed before adoption: requiring BPF LSM/BTF in the trusted VM,
+precise allowed attribute set, policy identity/lifetime/attestation contract,
+interaction with other LSMs, and platform qualification. This investigation does
+not silently change the normative design to require BPF or approve CAP_SYS_ADMIN.
+
+Sources
+-------
+Primary source archive:
+ https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.2.10.tar.xz
+Selected source files and hashes are retained with the evidence; see especially:
+ security/security.c; security/commoncap.c; kernel/bpf/bpf_lsm.c;
+ security/selinux/hooks.c; fs/xattr.c; fs/fuse/xattr.c;
+ fs/namespace.c; fs/ioctl.c; fs/fhandle.c; kernel/nsproxy.c;
+ kernel/fork.c; net/core/scm.c; net/netlink/genetlink.c.
+
+ https://docs.kernel.org/userspace-api/seccomp_filter.html
+ https://man7.org/linux/man-pages/man2/seccomp_unotify.2.html
+ https://linuxcontainers.org/incus/docs/main/syscall-interception/
+ https://docs.kernel.org/bpf/prog_lsm.html
+ https://www.kernel.org/doc/html/v7.2/userspace-api/landlock.html
+
+Landlock's newer development documentation also describes capability/namespace
+rules. Those are not assumed available in the tested kernel and cannot magically
+make SYS_ADMIN's xattr use independent of its other uses. Existing Landlock can
+add defense in depth, but was not used to justify this probe's outcome.
+
+8. Follow-up review corrections and regression evidence
+-------------------------------------------------------
+Review found and corrected two prototype defects. Earlier successful runs did
+not establish exact attribute matching or safe exceptional teardown ordering.
+
+The BPF string helper truncates strings and inserts NUL. A 17-byte buffer thus
+accepted longer names beginning with security.selinux. The policy now reads into
+18 bytes and still requires a 17-byte result and exact comparison. New tests
+require EPERM for setting/removing three longer names. Running those tests with
+the OLD policy reproduces an unexpected successful set; the corrected policy
+passes. This is a demonstrated overbroad attribute exception on the assigned
+filesystem, not a demonstrated supervisor escape.
+
+Exceptional cleanup previously disabled the policy before waiting for commands
+to stop. Because skipcap and target checks are separate hooks, changing config
+between them can invalidate the target check. The fixture now kills processes
+in recorded command PID namespaces, waits until none remain alive, and reaps the
+launcher before clearing policy or unmounting. If command scope cannot be
+established or the fixed deadline expires, it retains the pinned policy and
+aborts the disposable VM test. It does not proceed with permissive cleanup.
+
+Final runs (all no-NIC disposable VMs; command SYS_ADMIN absent):
+- fix-normal-v1: corrected policy, loader SIGKILL, offline 69-RPM Fedora workload,
+  exact-name negatives, existing namespace/filesystem/nonroot negatives, native
+  ext4 persisted labels, fsck, zero remaining processes/FUSE connections: PASS.
+- fix-failure-v2: live command plus forked sleeping child observed before an
+  injected coordinator error; command quiescence precedes policy clearing;
+  zero remaining processes/FUSE connections: PASS (expected injected failure).
+- fix-negative-v1: old policy with new tests: expected FAIL at the longer-name
+  set operation, confirming the regression test detects the original defect.
+- fix-failure-v1: discarded diagnostic run. Its sleeping fixture lacked a time
+  import; its apparent cleanup success is NOT evidence of live-child teardown.
+  The corrected v2 imports time and asserts live processes before injection.
+
+Evidence and actual generated guest scripts/bytecode are under
+../reproduced/capability-review/review-fixes/. Source/guest hashes are preserved.
+No conglobate production source was changed by this correction.
+
+Remaining boundaries: successful ordinary cleanup plus injected coordinator
+exception handling is not abrupt supervisor-death recovery. Partial install,
+abandoned pins, stable identity ownership, concurrent builds, Arm and complete
+production process containment still require qualification. The fixture uses
+recorded PID namespace identities; unknown startup scope fails closed. It is not
+a replacement for a production lifecycle protocol. No production approval is
+implied by these passing mechanism tests.

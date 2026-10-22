@@ -1,0 +1,22 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 8a16d1d1db8f42ed3b55a227ad8b53a4ee3aaff7 sha256:d2f4fa4aa95511614b70f64d29e0591db08cc3e5be20054e74aad0ea464b40f8
+RUNTIME_TARGETS_PINNED
+INJECTED_RUNTIME_SETUP_FAILURE after-dev
+Error: "injected fixture setup failure"
+FUSE2FS (dm-3): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-3): mounted filesystem 2837bd6a-c1b0-4631-9f07-3d2fc44f565f.
+FUSE2FS (dm-3): unmounting filesystem 2837bd6a-c1b0-4631-9f07-3d2fc44f565f.
+
+thread 'main' (182) panicked at src/bin/chain.rs:153:9:
+worker failed: exit status: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+/work/base: OK
+/proc/self/mountinfo: OK
+RUNTIME_SETUP_FAILURE_BASE_MOUNTS_FUSE_STORAGE_CLEANUP_PASS
+GUEST_EXIT 0
+[   10.433358] sysrq: Resetting

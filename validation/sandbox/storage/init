@@ -1,0 +1,83 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'echo "GUEST_EXIT $?"; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount -t tmpfs tmpfs /work
+modprobe fuse
+modprobe loop
+modprobe dm_snapshot
+chmod 666 /dev/fuse
+mkdir /work/view
+chown 100000:100000 /work /work/view
+truncate -s 64M /work/origin
+mkfs.ext4 -qF /work/origin
+sha256sum /work/origin >/work/origin.sha
+truncate -s 1M /work/cow
+origin=$(losetup --find --show --read-only /work/origin)
+cow=$(losetup --find --show /work/cow)
+dmsetup create exhausted --noudevsync --table "0 131072 snapshot $origin $cow P 8"
+dmsetup mknodes --noudevsync
+chown 100000:100000 /dev/mapper/exhausted
+unshare --user --mount --net --map-users 0:100000:65536 --map-groups 0:100000:65536 --setuid 0 --setgid 0 /bin/bash /worker exhaust /dev/mapper/exhausted
+status=$(dmsetup status exhausted)
+echo "SNAPSHOT_STATUS $status"
+[[ "$status" == *Invalid* ]]
+sha256sum -c /work/origin.sha
+echo SNAPSHOT_BASE_UNCHANGED_PASS
+dmsetup remove --noudevsync exhausted
+losetup -d "$origin" "$cow"
+# Negative control: permission changes do not revoke an already opened writer.
+touch /work/permission-only
+chmod 600 /work/permission-only
+chown 100000:100000 /work/permission-only
+setpriv --reuid=100000 --regid=100000 --clear-groups /bin/bash -c '
+ exec 9>/work/permission-only
+ touch /work/opened
+ for ((i=0;i<100;i++)); do test -f /work/revoked && break; sleep .02; done
+ test -f /work/revoked
+ echo stale-writer >&9
+' &
+writer=$!
+for ((i=0;i<100;i++)); do test -f /work/opened && break; sleep .02; done
+test -f /work/opened
+chown 0:0 /work/permission-only
+chmod 400 /work/permission-only
+touch /work/revoked
+wait "$writer"
+test "$(cat /work/permission-only)" = stale-writer
+echo PERMISSIONS_ALONE_DO_NOT_REVOKE_WRITERS_CONFIRMED
+# Positive sequence: command PID namespace dies; worker unmounts and exits;
+# only then revoke path access and hash. Trusted supervisor owns the artifact.
+truncate -s 64M /work/seal-image
+mkfs.ext4 -qF /work/seal-image
+chown 100000:100000 /work/seal-image
+unshare --user --mount --net --map-users 0:100000:65536 --map-groups 0:100000:65536 --setuid 0 --setgid 0 /bin/bash /worker seal /work/seal-image
+e2fsck -fn /work/seal-image
+chown 0:0 /work/seal-image
+chmod 400 /work/seal-image
+if setpriv --reuid=100000 --regid=100000 --clear-groups /bin/bash -c 'echo forbidden >/work/seal-image'; then exit 1; fi
+sha256sum /work/seal-image >/work/sealed.sha
+sleep .2
+sha256sum -c /work/sealed.sha
+echo QUIESCENT_IMAGE_HASH_STABLE_PASS
+# Authenticated bytes are not necessarily a structurally valid filesystem.
+# Exercise bounded startup rejection before any command is launched.
+for corruption in magic truncated; do
+ cp /work/origin /work/corrupt
+ if test "$corruption" = magic; then
+  dd if=/dev/zero of=/work/corrupt bs=1 seek=1080 count=2 conv=notrunc
+ else
+  truncate -s 32K /work/corrupt
+ fi
+ chown 100000:100000 /work/corrupt
+ set +e
+ timeout 5 unshare --user --mount --net --map-users 0:100000:65536 --map-groups 0:100000:65536 --setuid 0 --setgid 0 fuse2fs -f -o errors=panic /work/corrupt /work/view
+ result=$?
+ set -e
+ test "$result" != 0
+ test "$result" != 124
+ echo "MALFORMED_IMAGE_REJECTED $corruption $result"
+done

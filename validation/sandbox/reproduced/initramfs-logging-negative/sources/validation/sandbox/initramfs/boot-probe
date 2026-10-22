@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+read -r init </proc/1/comm
+test "$init" = systemd
+test -d /sys/class
+test -c /dev/null
+modprobe ext4
+test -d /sys/module/ext4
+printf 'INITRAMFS_SYSTEMD_MODULE_BOOT_PASS %s\n' "$(uname -r)" >/dev/console
+systemctl --no-block poweroff

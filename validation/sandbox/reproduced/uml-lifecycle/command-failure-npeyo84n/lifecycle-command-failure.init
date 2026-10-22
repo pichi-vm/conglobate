@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+export PATH=/bin
+busybox mount -t proc proc /proc
+echo READY
+echo HOSTFS_BOUNDARY_OK
+exit 42

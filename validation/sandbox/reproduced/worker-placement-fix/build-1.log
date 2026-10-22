@@ -1,0 +1,212 @@
+cd ./util ; make subst
+cd ./util ; make symlinks
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/util'
+	CREATE dirpaths.h
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/util'
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/util/symlinks.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/util/subst.c
+	LD subst
+	LD symlinks
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/util'
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/util'
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build'
+make[1]: 'util/subst.conf' is up to date.
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build'
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build'
+make[1]: 'lib/config.h' is up to date.
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build'
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build'
+	SUBST lib/dirpaths.h
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build'
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build'
+cd .; CONFIG_FILES=./lib/ext2fs/ext2_types.h ./config.status
+config.status: creating ./lib/ext2fs/ext2_types.h
+config.status: creating lib/config.h
+config.status: lib/config.h is unchanged
+config.status: executing po-directories commands
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build'
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/et'
+	SUBST compile_et
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/et'
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/ext2fs'
+	SUBST ext2_err.et
+	COMPILE_ET ext2_err.et
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/ext2fs'
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/support'
+	COMPILE_ET prof_err.et
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/support'
+making all in lib/et
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/et'
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/et/error_message.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/et/et_name.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/et/com_err.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/et/init_et.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/et/com_right.c
+	GEN_LIB libcom_err.a
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/et'
+making all in lib/ss
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/ss'
+	SUBST mk_cmds
+	COMPILE_ET ss_err.et
+	MK_CMDS std_rqs.c
+	COMPILE_ET ss_err.et
+	CC ss_err.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/invocation.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/help.c
+	CC std_rqs.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/execute_cmd.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/listen.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/error.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/parse.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/prompt.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/request_tbl.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/list_rqs.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/pager.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/requests.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/data.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ss/get_readline.c
+	GEN_LIB libss.a
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/ss'
+making all in lib/e2p
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/e2p'
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/feature.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/fgetflags.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/fsetversion.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/fsetflags.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/fgetversion.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/getversion.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/getflags.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/hashstr.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/iod.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/ls.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/ljs.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/mntopts.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/parse_num.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/pe.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/pf.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/ps.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/setflags.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/setversion.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/uuid.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/ostype.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/percent.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/fgetproject.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/crypto_mode.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/fsetproject.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/encoding.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/e2p/errcode.c
+	GEN_LIB libe2p.a
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/e2p'
+making all in lib/support
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/support'
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/cstring.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/mkquota.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/plausible.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/print_fs_flags.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/profile.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/parse_qtype.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/profile_helpers.c
+	CC prof_err.c
+/var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/profile.c: In function ‘profile_set_default’:
+/var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/profile.c:425:21: warning: assignment discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  425 |                 end = strchr(in, '\n');
+      |                     ^
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/quotaio.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/quotaio_v2.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/quotaio_tree.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/dict.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/support/devname.c
+	GEN_LIB libsupport.a
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/support'
+making all in lib/ext2fs
+make[1]: Entering directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/ext2fs'
+	CC gen_crc32ctable
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/bb_compat.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/inode_io.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/write_bb_file.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/dupfs.c
+	CC ext2_err.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/test_io.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/imager.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/alloc.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/alloc_sb.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/alloc_stats.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/alloc_tables.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/atexit.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/badblocks.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/bb_inode.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/bitmaps.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/bitops.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/blkmap64_ba.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/blkmap64_rb.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/blknum.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/block.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/bmap.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/check_desc.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/closefs.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/crc16.c
+	GEN32CTABLE crc32c_table.h
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/csum.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/dblist.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/dblist_dir.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/dirblock.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/dirhash.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/dir_iterate.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/expanddir.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/ext_attr.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/extent.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/fallocate.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/fileio.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/finddev.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/flushb.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/freefs.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/gen_bitmap.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/gen_bitmap64.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/get_num_dirs.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/get_pathname.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/getenv.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/getsize.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/getsectsize.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/hashmap.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/i_block.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/icount.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/ind_block.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/initialize.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/inline.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/inline_data.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/inode.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/io_manager.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/ismounted.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/link.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/llseek.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/lookup.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/mkdir.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/mkjournal.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/mmp.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/namei.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/native.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/newdir.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/nls_utf8.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/openfs.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/orphan.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/progress.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/punch.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/qcow2.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/read_bb.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/read_bb_file.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/res_gdt.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/rw_bitmaps.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/sha512.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/swapfs.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/symlink.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/tdb.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/undo_io.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/unix_io.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/sparse_io.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/unlink.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/valid_blk.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/version.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/rbtree.c
+	CC /var/tmp/conglobate-placement-fixed-v2/worker-source/lib/ext2fs/crc32c.c
+	GEN_LIB libext2fs.a
+make[1]: Leaving directory '/var/tmp/conglobate-placement-fixed-v2/worker-build/lib/ext2fs'

@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+kernel=$(rpm -q --qf '%{VERSION}-%{RELEASE}.%{ARCH}' kernel-core)
+mkdir -p /etc/systemd/system/multi-user.target.wants
+cp /root-boot-probe /conglobate-root-boot-probe
+cp /root-boot-probe.service /etc/systemd/system/conglobate-root-boot-probe.service
+ln -s ../conglobate-root-boot-probe.service /etc/systemd/system/multi-user.target.wants/conglobate-root-boot-probe.service
+printf 'owned Fedora root boot fixture\n' >/conglobate-root-identity
+# The earlier initramfs-only probe is deliberately not included here.
+dracut --force --no-hostonly --kver "$kernel" --add-confdir /var/tmp/validation-dracut.conf.d \
+ --fwdir /usr/lib/firmware --add-drivers "ext4 virtio_blk virtio_pci" /boot/validation-root-initramfs.img
+sha256sum /boot/validation-root-initramfs.img >/boot/validation-root-initramfs.sha256
+echo RESTRICTED_ROOT_BOOT_PREPARATION_PASS

@@ -1,0 +1,32 @@
+Receipt write failure controls — 2026-10-21
+==========================================
+Diagnostic extension of chain-recovery-records. Two cases use the actual completed
+FUSE build artifact and normal safe-Rust publication. Existing thirteen cases are
+retained. Production machine formats remain CBOR; these JSON records are fixtures.
+
+After a successful Committed reply, a separate trusted fixture child attempts
+record() with a real valid receipt. Only that child sets RLIMIT_FSIZE=16 and
+ignores SIGXFSZ. The write/flush encounters actual EFBIG and leaves a sixteen-byte
+partial receipt.tmp. The diagnostic catches only EFBIG; another errno or success
+fails the case. No fault is injected into the filesystem or supervisor process.
+
+receipt-write-failure:
+There was no previous receipt. The failed temporary write cannot install one.
+The public artifact's file hashes remain identical, the publisher is killed and
+reaped, and a fresh reader reports VisibleAcknowledgmentUnknown. A partial temp
+record is not evidence of success and its contents are not parsed by recovery.
+
+receipt-replacement-failure:
+A complete valid receipt already exists before the limited replacement attempt.
+The same EFBIG leaves the prior receipt byte-identical. After publisher death,
+the fresh reader reports Committed using the old final record; the partial temp
+record neither invalidates it nor becomes its replacement.
+
+Both cases preserve output and partial temporary data until harness assertions
+finish. Recovery performs no retry or deletion. The stable prepared record,
+parent protection and stopped-writer assumptions from RECORDS.txt still apply.
+The existing record() creates its temp file exclusively; a leftover temp requires
+an explicit recovery policy rather than blind repeated writes. That policy and
+orphan cleanup are not implemented here. This test covers write failure before
+atomic replacement, not record fsync/replace/parent-sync failure or process death
+inside those operations. EFBIG is not a simulated media/writeback EIO or ENOSPC.

@@ -1,0 +1,52 @@
+{
+  "cases": [
+    {
+      "case": "clean",
+      "expected_accept": true,
+      "accepted": true,
+      "state": [
+        "clean"
+      ],
+      "unchanged": true,
+      "codes": {
+        "check": 0,
+        "header": 0
+      },
+      "pass": true
+    },
+    {
+      "case": "missing",
+      "expected_accept": false,
+      "accepted": false,
+      "reason": "missing",
+      "pass": true
+    },
+    {
+      "case": "truncated",
+      "expected_accept": false,
+      "accepted": false,
+      "state": [],
+      "unchanged": true,
+      "codes": {
+        "check": 8,
+        "header": 139
+      },
+      "pass": true
+    },
+    {
+      "case": "unclean",
+      "expected_accept": false,
+      "accepted": false,
+      "state": [
+        "not clean"
+      ],
+      "unchanged": true,
+      "codes": {
+        "check": 0,
+        "header": 0
+      },
+      "pass": true
+    }
+  ],
+  "pass": true
+}

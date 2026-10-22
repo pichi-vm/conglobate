@@ -1,0 +1,15 @@
+{
+  "seconds": 743.788891469012,
+  "returncode": 0,
+  "error": null,
+  "output": "/dev/shm/conglobate-nixos-conglobate-uml-nixos-v3.raw",
+  "markers": {
+    "UML_NIX_COMPILE_PASS": 1,
+    "UML_NIXOS_INSTALL_FIRMWARE_PASS": 1,
+    "UML_NIXOS_OUTPUT_VERIFIED": 0,
+    "UML_NIXOS_WORKLOAD_PASS": 0,
+    "GUEST_EXIT 0": 0
+  },
+  "pass": false,
+  "output_sha256": "337d8f79aebc192dea9e637635d45cf915564403e74444256a56d07db3a66326"
+}

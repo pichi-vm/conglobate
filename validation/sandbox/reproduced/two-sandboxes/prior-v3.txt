@@ -1,0 +1,23 @@
+TOPOLOGY_BEGIN
+SUPERVISOR_ENDPOINT_CONTROLS_PASS {"ipc": "ipc:[4026531839]", "mnt": "mnt:[4026531832]", "net": "net:[4026531833]", "pid": "pid:[4026531836]", "user": "user:[4026531837]", "uts": "uts:[4026531838]"}
+ISOLATION_PASS worker {"ipc": "ipc:[4026532204]", "mnt": "mnt:[4026532202]", "net": "net:[4026532206]", "pid": "pid:[4026532205]", "user": "user:[4026532264]", "uts": "uts:[4026532203]"}
+Traceback (most recent call last):
+  File "/topology.py", line 63, in <module>
+    isolated('command',int(sys.argv[2]));stage=sys.argv[3]
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/topology.py", line 28, in isolated
+    assert set(fds)==({0,1,2,3} if role=='worker' else {0,1,2}),fds
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [0, 1, 2, 3]
+Traceback (most recent call last):
+  File [35m"/topology.py"[0m, line [35m90[0m, in [35m<module>[0m
+    assert [1;31mrc==({'command-failure':42,'command-death':-9}.get(stage,0))[0m,rc
+           [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1;35mAssertionError[0m: [35m1[0m
+Traceback (most recent call last):
+  File [35m"/topology.py"[0m, line [35m120[0m, in [35m<module>[0m
+    assert [1;31ma.recv(100)==b'done'[0m;assert h.wait(timeout=5)==0
+           [1;31m^^^^^^^^^^^^^^^^^^^^[0m
+[1;35mAssertionError[0m
+GUEST_EXIT 1
+[    1.491450] sysrq: Resetting

@@ -1,0 +1,8 @@
+[
+  "cargo",
+  "build",
+  "--locked",
+  "--offline",
+  "--manifest-path",
+  "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/resolver-target/helper/Cargo.toml"
+]

@@ -1,0 +1,41 @@
+POLICY_FSPICK_OWNED_CONTROL_PASS
+PROCESS_VALID_ARGUMENT_CONTROLS_PASS
+CROSS_PROCESS_VALID_CONTROLS_PASS
+CROSS_PROCESS_MAPPED_DENIALS_PASS
+CROSS_PROCESS_PARENT_CANARIES_UNCHANGED_PASS
+WORKER_IDENTITY_RESULT root {"getfd": "allowed", "kill_zero": "allowed", "memory_read": "allowed", "pidfd_signal_zero": "allowed"}
+WORKER_IDENTITY_RESULT same {"getfd": "EPERM", "kill_zero": "allowed", "memory_read": "EPERM", "pidfd_signal_zero": "allowed"}
+WORKER_IDENTITY_RESULT shared {"getfd": "allowed", "kill_zero": "allowed", "memory_read": "allowed", "pidfd_signal_zero": "allowed"}
+WORKER_IDENTITY_RESULT different {"getfd": "EPERM", "kill_zero": "EPERM", "memory_read": "EPERM", "pidfd_signal_zero": "EPERM"}
+WORKER_IDENTITY_ANCESTOR_PIDFD_DENIED_PASS
+WORKER_IDENTITY_ANCESTOR_PIDFD_DENIED_PASS
+WORKER_IDENTITY_CANARIES_UNCHANGED_PASS
+WORKER_IDENTITY_MATRIX_PASS
+SUPERVISOR_ABSTRACT_SOCKET_POSITIVE_CONTROL
+NAMESPACE_ONLY_REAL_KEY_READ_PASS
+NAMESPACE_ONLY_INHERITED_IPC_AND_PATH_VISIBLE
+PRIVATE_NETWORK_ABSTRACT_SOCKET_HIDDEN
+POLICY_REAL_KEY_READ_DENIED_PASS
+POLICY_INHERITED_IPC_HANDLES_CLOSED_PASS
+POLICY_IDENTITY_ENV_FDS_PASS
+POLICY_OPEN_TREE_ATTR_DENIED_PASS
+POLICY_FSPICK_DENIED_PASS
+POLICY_CURRENT_NAMESPACE_QUERY_BOUNDARY_PASS
+POLICY_NEIGHBOR_NAMESPACE_HANDLES_DENIED_PASS
+POLICY_OWN_MOUNT_QUERY_MATCHES_PROC_PASS
+POLICY_OUTER_MOUNT_QUERY_REJECTED_PASS
+Traceback (most recent call last):
+  File [35m"/probe"[0m, line [35m209[0m, in [35m<module>[0m
+    assert [1;31moutside == -1 and error == errno.EPERM[0m, ('outer namespace handle', outside, error)
+           [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1;35mAssertionError[0m: [35m('outer namespace handle', -1, 116)[0m
+Traceback (most recent call last):
+  File [35m"/driver.py"[0m, line [35m134[0m, in [35m<module>[0m
+    [31msubprocess.run[0m[1;31m(command, check=True, timeout=10, pass_fds=handles)[0m
+    [31m~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/usr/lib64/python3.14/subprocess.py"[0m, line [35m578[0m, in [35mrun[0m
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+[1;35msubprocess.CalledProcessError[0m: [35mCommand '['unshare', '--user', '--mount', '--pid', '--net', '--ipc', '--uts', '--fork', '--map-users', '0:100000:65536', '--map-groups', '0:100000:65536', '--setuid', '0', '--setgid', '0', '/bin/bash', '/launch']' returned non-zero exit status 1.[0m
+GUEST_EXIT 1
+[    2.238370] sysrq: Resetting

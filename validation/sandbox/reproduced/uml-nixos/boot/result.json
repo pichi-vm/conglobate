@@ -1,0 +1,10 @@
+{
+  "returncode": 0,
+  "error": null,
+  "seconds": 6.883119360951241,
+  "marker_count": 1,
+  "root_unchanged": true,
+  "kernel_sha256": "5c995e8707b7a2148268831292c1f664ef1c57c4ab5d4bfdd86cdab5bb167e53",
+  "initramfs_sha256": "4ae174bc3cec3a816792718d220ba38e195fe9ddbb549dd2f2568ed83a8eb784",
+  "pass": true
+}

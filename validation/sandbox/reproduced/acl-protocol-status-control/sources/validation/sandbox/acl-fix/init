@@ -1,0 +1,48 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'echo "GUEST_EXIT $?"; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount -t tmpfs tmpfs /work
+modprobe fuse
+modprobe loop
+chmod 666 /dev/fuse
+mkdir /work/view
+for feature in metadata-csum without-metadata-csum; do
+echo "ACL_FEATURE $feature"
+for namespace in kernel initial mapped; do
+ echo "ACL_NAMESPACE $namespace"
+ truncate -s 0 /work/image
+ truncate -s 64M /work/image
+ if test "$feature" = metadata-csum; then
+  mkfs.ext4 -qF /work/image
+ else
+  mkfs.ext4 -qF -O ^metadata_csum /work/image
+ fi
+ touch /work/report.json /work/fuse.log
+ chown 100000:100000 /work/image /work/view /work/report.json /work/fuse.log
+ if test "$namespace" = kernel; then
+  mount -o loop /work/image /work/view
+  python3 /probe.py create /work/view/probe /work/report.json
+  umount /work/view
+ elif test "$namespace" = initial; then
+  /bin/bash /worker
+ else
+  unshare --user --mount --map-users 0:100000:65536 --map-groups 0:100000:65536 \
+   --setuid 0 --setgid 0 /bin/bash /worker
+ fi
+ e2fsck -fn /work/image
+ mount -o loop,ro /work/image /work/view
+ python3 /probe.py verify /work/view/probe /work/report.json
+ umount /work/view
+ if test "$namespace" = kernel; then
+  cp /work/report.json /work/reference.json
+ else
+  python3 -c 'import json; assert json.load(open("/work/report.json")) == json.load(open("/work/reference.json"))'
+  echo "ACL_REFERENCE_MATCH_PASS $namespace $feature"
+ fi
+done
+done
+echo ACL_COMMON_SEMANTICS_MATRIX_PASS

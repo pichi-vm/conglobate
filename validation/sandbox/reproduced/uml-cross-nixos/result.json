@@ -1,0 +1,28 @@
+{
+  "distro": "nixos",
+  "cases": [
+    {
+      "mode": "native",
+      "seconds": 1.1673670169548132,
+      "firmware_guest_seconds": 0.21999999999999997,
+      "code": 0,
+      "error": null,
+      "source_unchanged": true,
+      "output": "/dev/shm/conglobate-cross-step-conglobate-uml-cross-nixos-v2-native.raw",
+      "output_sha256": "e101f7a51f3fd4d6ed7da9e058f9ef15d3a962106509a3194e4e19362fc4c82d",
+      "pass": true
+    },
+    {
+      "mode": "uml",
+      "seconds": 3.1708148890174925,
+      "firmware_guest_seconds": 0.8199999999999998,
+      "code": 0,
+      "error": null,
+      "source_unchanged": true,
+      "output": "/dev/shm/conglobate-cross-step-conglobate-uml-cross-nixos-v2-uml.raw",
+      "output_sha256": "4fd75b8420f871a0e3da30a307939b37cfe5af920f89a2ac29eb7b3e52c150ea",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

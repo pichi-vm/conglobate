@@ -1,0 +1,7 @@
+{
+  "configurations": 6,
+  "automatic_update_checks": 54,
+  "kernel_birthtime_stability_checks": 2,
+  "persisted_comparisons": 6,
+  "fuse_birthtime_visibility_limitations": 4
+}

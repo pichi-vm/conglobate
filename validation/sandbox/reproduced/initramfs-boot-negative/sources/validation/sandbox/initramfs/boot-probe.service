@@ -1,0 +1,12 @@
+[Unit]
+Description=Disposable initramfs validation milestone
+DefaultDependencies=no
+Requires=systemd-udevd.service
+After=systemd-udevd.service
+Before=initrd.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /conglobate-boot-probe
+StandardOutput=journal+console
+StandardError=journal+console

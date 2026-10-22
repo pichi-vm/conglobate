@@ -1,0 +1,54 @@
+{
+  "inputs": {
+    "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/release-finalize/release-fault.c": "6c66cc8ecaf628df468281ad4d9a5a8c073526bfa6a629ece2669c6cb1d1a748",
+    "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/release-finalize/build.py": "2793005e6d83d3eef45fa9c21380ff9cf35b4b9c90e9a9920ab4c81221ad2289",
+    "/tmp/conglobate-clean-pair-v2/libfuse3.so.4": "a702930e895cc9f439477f0e1698a53cb805d49110d75e644cb693c7e752827f",
+    "/tmp/conglobate-clean-pair-v2/worker-build/misc/fuse2fs.o": "b3094b13608ea801ba5ac28986f6bf659c7e6f73c0779992d430022e4e55f0ac",
+    "/tmp/conglobate-clean-pair-v2/worker-build/misc/journal.o": "4af49b7a844fe8ddb163252e7632251f3ed28ef93be27256290805cd00321dca",
+    "/tmp/conglobate-clean-pair-v2/worker-build/misc/recovery.o": "9d13d0661cd38ee53f324dc07563a5058d9b325c991e7ec40b5a4112a002a477",
+    "/tmp/conglobate-clean-pair-v2/worker-build/misc/revoke.o": "d65ac1e1c2ee0cad11e1c82ddebe17be44529c526e044fdaa985729c1223d570",
+    "/tmp/conglobate-clean-pair-v2/worker-build/lib/libext2fs.a": "0b89d4f5897c8032345bc18f7723b4c5aa0e132afad7ddf9adcbbf6589aebfdf",
+    "/tmp/conglobate-clean-pair-v2/worker-build/lib/libcom_err.a": "90335652e38fbef10832a97424b8ec6e8daf9a6e4b23d27305cbc5f4f27b4c4d",
+    "/tmp/conglobate-clean-pair-v2/worker-build/lib/libsupport.a": "f143ec09304327b8b94151bbead3610291d65749589276d279157d125fe1d80c",
+    "/tmp/conglobate-clean-pair-v2/worker-build/lib/libe2p.a": "c4b24a4346e1207dc83a869336158f1b3b39109cdd6a8f6b2a3bdcb2d8cead2a"
+  },
+  "commands": [
+    [
+      "gcc",
+      "-I/tmp/conglobate-clean-pair-v2/worker-build/lib",
+      "-I/tmp/conglobate-clean-pair-v2/worker-source/lib",
+      "-c",
+      "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/release-finalize/release-fault.c",
+      "-o",
+      "/tmp/conglobate-release-worker-v1/release-fault.o"
+    ],
+    [
+      "gcc",
+      "-pthread",
+      "-Wl,--wrap=ext2fs_flush2",
+      "-o",
+      "/tmp/conglobate-release-worker-v1/acl-patched",
+      "/tmp/conglobate-release-worker-v1/release-fault.o",
+      "fuse2fs.o",
+      "journal.o",
+      "recovery.o",
+      "revoke.o",
+      "../lib/libext2fs.a",
+      "../lib/libcom_err.a",
+      "../lib/libsupport.a",
+      "/tmp/conglobate-clean-pair-v2/libfuse3.so.4",
+      "-lacl",
+      "-lblkid",
+      "-luuid",
+      "../lib/libext2fs.a",
+      "-lpthread",
+      "../lib/libe2p.a",
+      "../lib/libcom_err.a"
+    ]
+  ],
+  "cwd": "/tmp/conglobate-clean-pair-v2/worker-build/misc",
+  "outputs": {
+    "acl-patched": "9acb622930f798533bd622951df1f266e20ee5d1ece01e0a40fb31195264f009",
+    "libfuse3.so.4": "a702930e895cc9f439477f0e1698a53cb805d49110d75e644cb693c7e752827f"
+  }
+}

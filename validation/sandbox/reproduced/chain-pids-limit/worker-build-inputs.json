@@ -1,0 +1,13 @@
+{
+  "source_file_before": "a00756d5e7b74c936c8574b18acc24d2584b2bb0fc0b6e69887d07b655be4555",
+  "files": {
+    "/tmp/conglobate-finalize-workers/baseline": "1db9b740b73040a270cff475ae0ec452411a1ad04d3fb20e5196190478bc770d",
+    "/tmp/conglobate-finalize-workers/baseline-close": "1c71412f121c904d2932aced09f97ba792f30de3cbccbae89c99de2e7f3d8399",
+    "/tmp/conglobate-finalize-workers/patched": "4cd51c1ec5aceaa904ba2ca2e4740d475982caf6ab35462e539d40666fe81ffa",
+    "/tmp/conglobate-finalize-workers/patched-close": "672d8255682aaba358280f588a20b61f76a8f2c9fb5bca7eff9f83de2768fe34",
+    "/tmp/conglobate-finalize-workers/finalization.patch": "2ddeadb3a6b3924db57fc3117b80841e4241d02c030bf1bc98f65c07f84c65c4",
+    "/usr/lib64/libfuse3.so.3.18.3": "c2ffce1d98969ed8db35678585037bae8716063e4d2e78d0916b649c4054e782",
+    "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/finalize/close-fault.c": "fd45631d4ecb84e47d4ea0fb0fd80db8ad2f1f6a9e4346f594b80f0fafeb77f1",
+    "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/finalize/build.py": "ea8a419e57df106debfab0fdc38cc176866af9af4cf84ab92a076fe4a947e7ac"
+  }
+}

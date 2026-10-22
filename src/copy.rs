@@ -138,7 +138,15 @@ fn expand_sources(context: &Path, source: &str) -> Result<Vec<PathBuf>, Error> {
 }
 
 fn account(root: &Path, path: &str, name: &str) -> Result<Vec<String>, Error> {
-    let text = fs::read_to_string(resolve(root, Path::new(path), true)?)?;
+    let resolved = resolve(root, Path::new(path), true)?;
+    // As with resolve(), recipe writers must already have stopped. In
+    // particular, never open an image-controlled FIFO for account lookup.
+    if !fs::metadata(&resolved)?.is_file() {
+        return Err(Error::Invalid(format!(
+            "COPY account database {path} must be a regular file"
+        )));
+    }
+    let text = fs::read_to_string(resolved)?;
     text.lines()
         .find(|line| line.split(':').next() == Some(name))
         .map(|line| line.split(':').map(str::to_owned).collect())
@@ -448,5 +456,30 @@ mod tests {
         }
         assert!(ownership(root.path(), Some("missing"), None).is_err());
         assert!(ownership(root.path(), None, Some("missing")).is_err());
+    }
+
+    #[test]
+    fn account_databases_must_be_regular_files() {
+        use nix::{sys::stat::Mode, unistd::mkfifo};
+        use std::os::unix::{fs::symlink, net::UnixListener};
+        let root = tempfile::tempdir().unwrap();
+        fs::create_dir(root.path().join("etc")).unwrap();
+        let passwd = root.path().join("etc/passwd");
+        mkfifo(&passwd, Mode::S_IRUSR).unwrap();
+        let error = ownership(root.path(), Some("builder"), None).unwrap_err();
+        assert!(error.to_string().contains("must be a regular file"));
+        // Numeric ownership does not consult image account databases.
+        assert_eq!(
+            ownership(root.path(), Some("1234"), None).unwrap(),
+            (1234, 1234)
+        );
+        fs::rename(&passwd, root.path().join("fifo")).unwrap();
+        symlink("/fifo", &passwd).unwrap();
+        assert!(ownership(root.path(), Some("builder"), None).is_err());
+        fs::remove_file(&passwd).unwrap();
+        fs::create_dir(&passwd).unwrap();
+        assert!(ownership(root.path(), Some("builder"), None).is_err());
+        let _listener = UnixListener::bind(root.path().join("etc/group")).unwrap();
+        assert!(ownership(root.path(), None, Some("builders")).is_err());
     }
 }

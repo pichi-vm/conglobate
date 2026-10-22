@@ -1,0 +1,8 @@
+{
+  "/tmp/conglobate-acl-source/e2fs/e2fsprogs-1.47.3.tar.xz": "857e6ef800feaa2bb4578fbc810214be5d3c88b072ea53c5384733a965737329",
+  "/tmp/conglobate-acl-source/fuse/fuse-3.18.3.tar.gz": "bcd19582c5e30f7fe45dd86a5540e998590aa01903afc7ebcbeea6c8ac5421ee",
+  "/tmp/conglobate-finalize-workers/finalization.patch": "2ddeadb3a6b3924db57fc3117b80841e4241d02c030bf1bc98f65c07f84c65c4",
+  "/tmp/conglobate-finalize-workers/acl.patch": "8e4e8490ff04cd0c99b06b45ab93ba40820c8ccf79f8657199e3dd1fb4d6192e",
+  "/tmp/conglobate-acl-protocol-v5/protocol.patch": "8a4a027939a3483190a864e719edbef2f778e9a152f7bb7a6d5b218e4a76eaa3",
+  "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/dependencies/clean_pair.py": "197bb132bccb62b37d9e6dd2c23808ba0e4c43cdd07bce98e9fe094f69122d09"
+}

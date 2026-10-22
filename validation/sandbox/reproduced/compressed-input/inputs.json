@@ -1,0 +1,35 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "--locked",
+    "--test",
+    "scutes"
+  ],
+  "sources": {
+    "tests/scutes.rs": "3d2151d150d680c23fd489d63670c976ffa38e1f6d554eb2e57795a9d37adde8",
+    "Cargo.toml": "77387517b553cb6f1fd509c3738e443f06ea21f9eed2c8ace8ebb74fe6b768a4",
+    "Cargo.lock": "6f42a8b05c535116071bd0e7329076c5c69e064c04e69136325526cbe0fdfa59",
+    "src/artifact.rs": "437f80edf0a0f5656a7eaa0a739964c5e92435123557444e554e79cdd8d3430c",
+    "src/build.rs": "80feac5d37f0a59fd07726787754c58dbd5b09deb7498a8b380908d4cf167c7f",
+    "src/cache.rs": "12ac8be911e1b803149c6603c3a177d923f461f4d50160bd38eab565bf616260",
+    "src/cancel.rs": "afc0a68989c7915bab8ea327558371db01c301e4f234e81aae0b1f782f27028d",
+    "src/context.rs": "8f9502e5f7541808fa6ff6e635af28ba0ba978e8ecdf2ed47c0f29ca0f5b6f95",
+    "src/copy.rs": "45ed3696d6cc23d16b96aa41d9bfbd82bb6b8b6dc8008ea616d5ed62b490b226",
+    "src/copy_pattern.rs": "6d4530376c897e424d4067d524d8b1c3ccd489ece6502429f41c522953dd3f76",
+    "src/execute.rs": "f1c0bd2e7cf07a68f26e5dfe25d8b01254c2f2ce5fe107237a9262495c983d29",
+    "src/firmware.rs": "e8060d1aea630581fba87a936a4f87cdd025cf5e6e5e9afc5b476cbffcfa5091",
+    "src/input.rs": "a4125426a4a50e56249d99d9a628c66363ce5313d6ca862247e16b66055adf1b",
+    "src/inventory.rs": "8e137d36ec1022728aa117954ec5d4d1bb541c0d6297e0797417289cd3c72d58",
+    "src/lib.rs": "26b88888974edbe1c8a24521ac8f565ed02d954d1d768a0e2156985805f47d21",
+    "src/main.rs": "339ad593ac0ec691bed7dd6e606a1b94b447c9e248c6d518f11f1552f8e35d37",
+    "src/mounts.rs": "9d00b3d0c60203991b281e14257e166fea8e4228eb0eee016a063562e544d0df",
+    "src/paths.rs": "449604404ffa2dd55ccee8f8405e3530bc40960dd3d0bcac6bd62e857a87c374",
+    "src/recipe.rs": "f3755715ebee4db096c0825e527b36a8249f09ad266dee88185b069311943e95",
+    "src/scute.rs": "32ef1a4eacf074e67400d07222abc7009ca492134244ff838fd86d72bb97d05b",
+    "src/snapshot.rs": "1159a4d17e94c166dc8acea586e19e74cec0af889730ccaf55b04519070b1d79",
+    "src/template.rs": "314150802308d72dfa728b8330c71b7a62241e0a24dc82df7722ecb045765c14",
+    "src/transform.rs": "08b0e3956128e782c15917f8443a03d037d8d76d4226df0ebf38c420d95bdc4d",
+    "src/yaml.rs": "0e6d8e295bae964df1d2411399eb5f0789c2ac8e7203cf6c32c17a7bc8efea3d"
+  }
+}

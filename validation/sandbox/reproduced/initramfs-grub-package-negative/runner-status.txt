@@ -1,0 +1,1 @@
+Automatic and explicit dracut, export and remount passed; strict harness rejected grub2-common posttrans attempting grub.cfg generation.

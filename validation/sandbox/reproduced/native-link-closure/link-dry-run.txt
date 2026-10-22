@@ -1,0 +1,4 @@
+# "	LD fuse2fs"
+gcc  -pthread    -o fuse2fs fuse2fs.o journal.o recovery.o revoke.o ../lib/libext2fs.a ../lib/libcom_err.a    ../lib/libsupport.a \
+	/tmp/conglobate-acl-protocol-v5/fuse-build/lib/libfuse3.so.3.18.3 -lacl -lblkid  -luuid  -luuid  ../lib/libext2fs.a  \
+	 -lpthread ../lib/libe2p.a ../lib/libcom_err.a  

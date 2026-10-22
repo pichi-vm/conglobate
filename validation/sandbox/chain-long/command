@@ -1,0 +1,32 @@
+#!/bin/bash
+set -eu
+test "$$" = 1
+for path in /work /context /entry-helper /publication-helper /dev/fuse /dev/mapper/control /.old/work; do
+ test ! -e "$path"
+done
+nnp=
+seccomp=
+while read -r key value rest; do
+ case "$key" in
+  NoNewPrivs:) nnp=$value ;;
+  Seccomp:) seccomp=$value ;;
+ esac
+done </proc/self/status
+test "$nnp" = 1
+test "$seccomp" = 2
+test "$(cat /inherited)" = 'base fixture'
+round=0
+if test -f /round; then round=$(cat /round); fi
+case "$round" in 0|1|2) ;; *) exit 9 ;; esac
+round=$((round + 1))
+printf '%s\n' "$round" >/round
+printf 'round %s\n' "$round" >>/history
+echo "CHAIN_COMMAND_ROUND $round"
+printf 'derived fixture\n' >/derived
+printf 'derived value\n' >/changed
+chmod 640 /derived
+chown 1234:2345 /derived
+: >/heartbeat
+(for ((i=0;i<100;i++)); do printf '.' >>/heartbeat; sleep .02; done) <&0 &
+sleep .1
+echo CHAIN_RESTRICTED_COMMAND_PASS

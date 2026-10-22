@@ -1,0 +1,31 @@
+Executable file capabilities under no_new_privs — 2026-10-21
+==========================================================
+Extends SETID-EXEC-REVIEW.txt with the same safe-Rust credential-only reporter.
+No arbitrary command execution, outside objects or actual network operation.
+
+Trusted guest setup makes a separate mode0755 copy owned by guest UID/GID100000.
+It writes a genuine revision3 security.capability value with effective flag,
+permitted CAP_NET_BIND_SERVICE only, empty inheritable bits and rootid100000.
+That root ID is fixture-specific for the mapped user namespace; it is not a
+proposal for target OS image metadata or the conglobate output format. The exact
+24-byte stored value is checked in setup before any command runs.
+
+Baseline mapped/private-namespace execution drops real/effective IDs to1234 and
+executes the fixed reporter. All reported UID/GID values must remain1234, while
+effective capabilities must equal only NET_BIND_SERVICE and NNP must be0. This
+establishes that the selected filecap and mapped-root ID are actually honored
+in the test environment rather than accidentally ignored by mount policy.
+
+The two restricted steps execute the same file after the same ID drop. They
+must retain all IDs1234, effective capabilities0, NNP1 and seccomp2. Each verifies
+the filecap xattr remains unchanged from its pre-exec view, and the invoking
+mapped-root process's credential/security fields remain unchanged. Namespace
+xattr presentation may normalize a rev3 value, so the command compares its own
+before/after view instead of requiring the initial namespace's raw representation.
+Existing set-ID positive/restricted controls remain in the same matrix.
+
+This closes the lack of an actual executable-filecap/no-new-privileges control
+for this topology. It does not validate FUSE-specific exec/nosuid semantics,
+all capability masks/root IDs/securebits, target-boot privilege behavior, dynamic
+loader closure or UID recycling. Existing commoncap source review provides
+context; runtime evidence is specific to the tested guest. No policy change.

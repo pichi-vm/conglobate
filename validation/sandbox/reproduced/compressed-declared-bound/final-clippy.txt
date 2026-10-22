@@ -1,0 +1,87 @@
+    Checking conglobate v0.1.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+error: adding items after statements is confusing, since items exist from the start of the scope
+   --> tests/artifacts.rs:309:5
+    |
+309 | /     struct CancelReader {
+310 | |         calls: usize,
+311 | |         eof: bool,
+312 | |         cancel_at: usize,
+313 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+    = note: `-D clippy::items-after-statements` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::items_after_statements)]`
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+   --> tests/artifacts.rs:314:5
+    |
+314 | /     impl std::io::Read for CancelReader {
+315 | |         fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+316 | |             self.calls += 1;
+317 | |             if self.calls < self.cancel_at {
+...   |
+330 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+   --> tests/artifacts.rs:386:5
+    |
+386 |     const SIZE: u64 = 128 * 1024 * 1024;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+
+error: this `if` statement can be collapsed
+   --> tests/artifacts.rs:410:17
+    |
+410 | /                 if let Ok(metadata) = fs::metadata(path) {
+411 | |                     if metadata.len() > 0 && metadata.len() < SIZE {
+...   |
+417 | |                 }
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+    = note: `-D clippy::collapsible-if` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+    |
+410 ~                 if let Ok(metadata) = fs::metadata(path)
+411 ~                     && metadata.len() > 0 && metadata.len() < SIZE {
+412 |                         // The production publication copy is active. The handler
+...
+415 |                         return metadata.len();
+416 ~                     }
+    |
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+   --> tests/artifacts.rs:442:5
+    |
+442 |     const SIZE: u64 = 32 * 1024 * 1024;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+
+error: this `if` statement can be collapsed
+   --> tests/artifacts.rs:468:17
+    |
+468 | /                 if let Ok(metadata) = fs::metadata(path) {
+469 | |                     if metadata.len() > 0 && metadata.len() < SIZE {
+...   |
+482 | |                 }
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+help: collapse nested if block
+    |
+468 ~                 if let Ok(metadata) = fs::metadata(path)
+469 ~                     && metadata.len() > 0 && metadata.len() < SIZE {
+470 |                         // A separate process creates an empty directory after the
+...
+480 |                         return (created.dev(), created.ino(), metadata.len());
+481 ~                     }
+    |
+
+error: could not compile `conglobate` (test "artifacts") due to 6 previous errors

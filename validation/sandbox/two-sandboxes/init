@@ -1,0 +1,13 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'echo "GUEST_EXIT $?"; sleep .1; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount --make-rprivate /
+mount -t tmpfs tmpfs /work
+modprobe fuse
+modprobe loop
+mount -t fusectl none /sys/fs/fuse/connections
+timeout 90 python3 /topology.py

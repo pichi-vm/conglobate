@@ -1,0 +1,27 @@
+#!/bin/bash
+set -eu
+binary=$1
+variant=$2
+expected=$3
+"$binary" -f -o acl,allow_other /dev/mapper/finalize /work/view >/work/fuse.log 2>&1 &
+daemon=$!
+for ((i=0;i<100;i++)); do mountpoint -q /work/view && break; sleep .05; done
+mountpoint -q /work/view
+echo dirty >/work/view/dirty
+touch /work/ready
+if test "$variant" = patched-recovered; then
+ for ((i=0;i<100;i++)); do test -f /work/do-error && break; sleep .05; done
+ test -f /work/do-error
+ if dd if=/dev/zero of=/work/view/fault-data bs=4096 count=1 conv=fsync; then exit 1; fi
+ touch /work/error-observed
+fi
+for ((i=0;i<200;i++)); do test -f /work/finish && break; sleep .05; done
+test -f /work/finish
+fusermount3 -u /work/view
+set +e
+wait "$daemon"
+status=$?
+set -e
+cat /work/fuse.log
+echo "FINALIZE_STATUS $variant $status"
+test "$status" = "$expected"

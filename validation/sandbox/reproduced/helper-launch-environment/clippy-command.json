@@ -1,0 +1,9 @@
+[
+  "cargo",
+  "clippy",
+  "--locked",
+  "--lib",
+  "--",
+  "-D",
+  "warnings"
+]

@@ -1,0 +1,7 @@
+#!/bin/bash
+set -eu
+mount --make-rprivate /
+mount --bind /work/tool /work/tool
+mount --bind /work/image /work/tool/output
+/runtime-pair /work/tool /work/tool/output
+exec python3 /inspect.py

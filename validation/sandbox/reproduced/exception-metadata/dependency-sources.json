@@ -1,0 +1,14 @@
+{
+  "carapace-assemble.rs": {
+    "source": "/home/nathaniel/.cargo/git/checkouts/carapace-b2ab9dedc31f91d5/99caf79/src/assemble.rs",
+    "sha256": "04dab6f5c24f9b3e1fea76ca931a193c49c612cfe0af35bff398edcaa733bec2"
+  },
+  "carapace-snapshot.rs": {
+    "source": "/home/nathaniel/.cargo/git/checkouts/carapace-b2ab9dedc31f91d5/99caf79/src/snapshot.rs",
+    "sha256": "f3c2b136c7e3b9dca78b2e5a8c3e520ff006bb6b0d04b0e7aa8e05bf0f89e50b"
+  },
+  "snapshot-exception.rs": {
+    "source": "/home/nathaniel/.cargo/git/checkouts/devmap-2a57cdaeb567648e/2679426/snapshot/src/exception.rs",
+    "sha256": "2c6b0455e013db35afea9544b80493205f97d4064e8903eb0372acafec0f1e6c"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "observed_at": "2026-10-21T00:05:00.150847+00:00",
+  "scope": "configuration observation, not DNS reachability or VPN routing proof",
+  "resolver_is_symlink": true,
+  "resolver_is_systemd_stub": true,
+  "resolv_conf_nameserver_classes": [
+    {
+      "family": 4,
+      "loopback": true
+    }
+  ],
+  "nmcli_exit": 0,
+  "active_connection_types": [
+    "802-3-ethernet",
+    "bridge",
+    "loopback",
+    "tun",
+    "vpn"
+  ],
+  "resolved_domain_query_exit": 0,
+  "domain_routing_counts": [
+    {
+      "scope": "global",
+      "routing_domains": 0,
+      "search_domains": 0,
+      "route_all": false
+    },
+    {
+      "scope": "link",
+      "routing_domains": 0,
+      "search_domains": 0,
+      "route_all": false
+    },
+    {
+      "scope": "link",
+      "routing_domains": 0,
+      "search_domains": 0,
+      "route_all": false
+    },
+    {
+      "scope": "link",
+      "routing_domains": 0,
+      "search_domains": 0,
+      "route_all": false
+    },
+    {
+      "scope": "link",
+      "routing_domains": 0,
+      "search_domains": 0,
+      "route_all": false
+    },
+    {
+      "scope": "link",
+      "routing_domains": 0,
+      "search_domains": 0,
+      "route_all": false
+    },
+    {
+      "scope": "link",
+      "routing_domains": 0,
+      "search_domains": 0,
+      "route_all": false
+    },
+    {
+      "scope": "link",
+      "routing_domains": 0,
+      "search_domains": 0,
+      "route_all": false
+    },
+    {
+      "scope": "link",
+      "routing_domains": 0,
+      "search_domains": 0,
+      "route_all": false
+    },
+    {
+      "scope": "link",
+      "routing_domains": 0,
+      "search_domains": 0,
+      "route_all": false
+    },
+    {
+      "scope": "link",
+      "routing_domains": 0,
+      "search_domains": 0,
+      "route_all": false
+    },
+    {
+      "scope": "link",
+      "routing_domains": 0,
+      "search_domains": 3,
+      "route_all": false
+    }
+  ],
+  "ip_query_exit": 0,
+  "link_kind_counts": {
+    "unspecified": 10,
+    "bridge": 1,
+    "tun": 1
+  }
+}

@@ -1,0 +1,1 @@
+First attempt /tmp/conglobate-statx-worker-v1 stopped during source copy with EDQUOT; no build/guest ran. Partial generated source removed after recording failure. Retained earlier guest evidence checked before deleting its disposable root/boot images to reclaim space.

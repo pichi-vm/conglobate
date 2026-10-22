@@ -1,0 +1,2 @@
+RESTRICTED_TWO_SCUTE_CORIUM_SYSTEMD_PASS
+Runner exit0; base/derived/disk identities verified unchanged.

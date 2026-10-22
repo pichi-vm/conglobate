@@ -1,0 +1,16 @@
+{
+  "returncode": 0,
+  "error": null,
+  "markers": {
+    "UML_NETWORK_SUITE_PASS": 1,
+    "UML_ENABLED_NETWORK_PASS": 1,
+    "UML_DISABLED_NETWORK_PASS": 1,
+    "UML_RESOLVER_RESTORED_regular": 1,
+    "UML_RESOLVER_RESTORED_symlink": 1,
+    "UML_LISTENER_POSITIVE_CONTROLS_PASS": 1,
+    "UML_UNSOLICITED_INBOUND_BLOCKED_PASS": 1,
+    "GUEST_EXIT 0": 1,
+    "UML_PUBLIC_DNS_HTTP_PASS": 1
+  },
+  "pass": true
+}

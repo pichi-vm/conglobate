@@ -1,0 +1,97 @@
+Reachable ioctl interfaces: current candidate review
+===================================================
+Source reviewed: entry/helper/src/main.rs, policy/{init,driver.py,launch,probe.py},
+and paired worker-source/misc/fuse2fs.c recorded with reproduced/policy-ioctl.
+This is bounded source/test evidence, not a completed policy qualification.
+
+The seccomp candidate has no SYS_ioctl rule. No general ioctl allowlist is in
+place. Confinement therefore depends on descriptor provenance, reachable device
+nodes/mounts, per-operation kernel checks and backend dispatch. Prior FD closure,
+private proc, no backing-device exposure and separate devpts are material parts
+of this boundary, not incidental setup details.
+
+Observed surfaces in the small policy fixture:
+- /dev/null is a separate fixture inode, not the host/VM supervisor's device
+  inode. /dev has only null, ptmx and pts. No /dev/fuse, loop, mapper control,
+  console, GPU or other device node is exposed by this launcher.
+- New private devpts supports window-size get/set. New tests create two pairs,
+  verify changing one leaves the other unchanged, and verify TIOCGPTPEER returns
+  exactly the original slave's device/inode identity. No other terminal is used.
+- /proc/self/ns handles support NS_GET_NSTYPE and NS_GET_USERNS. mnt/pid/net/ipc/
+  uts queries return the expected types and the same user namespace identity as
+  /proc/self/ns/user. Existing NS_GET_PARENT negative remains in the fixture.
+- Pipes, local/IP/route sockets and ordinary files are also reachable objects.
+  This turn did not enumerate their ioctl commands or every proc/anonymous FD.
+
+FUSE root filesystem backend (separate from tmpfs policy fixture):
+The recorded fuse2fs op_ioctl dispatch explicitly recognizes seven requests:
+EXT2_IOC_GETFLAGS, SETFLAGS, GETVERSION, SETVERSION, FS_IOC_FSGETXATTR,
+FS_IOC_FSSETXATTR and FITRIM, subject to compile-time feature guards. Unknown
+requests return ENOTTY at this callback. This is not an inventory of every ioctl
+that the kernel can handle without forwarding to the callback. Handlers operate
+on the worker's opened filesystem; FITRIM invokes io_channel_discard on that
+filesystem's I/O channel. It is not a general arbitrary-device ioctl forwarding
+facility. Underlying writable snapshot ownership and discard behavior therefore
+remain part of the trusted-worker/storage contract.
+
+Outstanding decisions/validation:
+- Final runtime device set across all launchers and actual distribution builds.
+- Which ioctl requests to deny independently of FD provenance, and compatibility
+  of that decision with terminals, sockets, files and metadata operations.
+- Backend per-operation authorization/error handling, FITRIM behavior against the
+  chosen snapshot target, and corrupted filesystem metadata interactions.
+- Every reachable FD acquisition/transfer path in the final executor.
+Do not infer that seven backend callbacks or these local probes exhaust the
+kernel interface. Same-UID worker/key/terminal exposure through a different
+launcher remains a distinct concern; these tests use only fixture-owned objects.
+
+Reproduce:
+  python3 validation/sandbox/guest.py policy \
+    --kernel-version 7.2.10-200.fc44.x86_64 \
+    --out /tmp/NEW-policy-ioctl --run
+Two successive command namespaces run the new checks along with the existing
+policy matrix. Evidence: reproduced/policy-ioctl. No production/policy changes.
+
+FITRIM follow-up: chain-trim now sends a valid bounded request from the actual
+restricted FUSE/snapshot command. It returns EOPNOTSUPP (95); subsequent sealed
+output/base verification and cleanup pass. See ../chain-trim/README.txt. This
+qualifies the observed unsupported path, not successful discard or all FITRIM
+authorization paths.
+
+Generic ioctl controls on command-owned files, pipes and sockets
+================================================================
+2026-10-20; disposable guest7.2.10-200.fc44.x86_64, two successive restricted
+command namespaces. Run guest.py policy with --kernel-version above,
+--out /tmp/NEW-policy-generic-ioctl --run. No policy relaxation was made.
+
+New assertions use only objects created by the probe. They do not operate on
+inherited standard streams, supervisor FDs, global controls or outside sockets.
+- FIONREAD on a regular tmpfs file reports remaining bytes as its offset changes.
+- FIONREAD on a pipe and its duplicate reports the same queued bytes; consuming
+  through the duplicate drains the original. An independent pipe remains empty.
+- FIONBIO on one pipe read descriptor changes O_NONBLOCK through its dup alias,
+  and an empty read returns EAGAIN. The independent pipe remains blocking.
+  Clearing through the alias restores the original's blocking status.
+- FIONCLEX/FIOCLEX change FD_CLOEXEC only on the chosen descriptor; its duplicate
+  retains its own close-on-exec flag.
+- FIONREAD on an owned Unix stream socket pair reports sent/consumed bytes on
+  the receiving endpoint and zero on the other endpoint.
+All objects are closed and the temporary regular file removed in finally.
+Both steps pass these assertions and existing policy/namespace/FD/IPC checks;
+supervisor handles, mounts and runtime backing checks remain unchanged. Exactly
+one GUEST_EXIT0 and two new success markers are required by the runner.
+
+Source corroboration, not an exact Fedora build-source audit:
+Pinned upstream f47d223627f80cb7a1eb14c585fe6cb35de5e984 fs/ioctl.c dispatches
+FIOCLEX/FIONCLEX/FIONBIO in generic VFS code; regular-file FIONREAD returns size
+minus file offset. Other file types dispatch to their ioctl implementation.
+The same revision's pipe and socket implementation files are retained for
+follow-up review. URLs/hashes are in kernel-source/sources.json. The guest
+observations, rather than upstream revision identity, establish tested behavior.
+
+Consequence: a minimal /dev or a list of fuse2fs callback requests is not the
+whole ioctl interface. Descriptor provenance, per-descriptor flags and shared
+open-file-description state matter. No outside-domain access, exploit, policy
+bypass or need to deny these ordinary operations is demonstrated. This narrows
+the reachable-interface audit; it is not a complete ioctl allowlist, anonymous-
+FD audit, FUSE regular-file test, socket protocol matrix or final-executor proof.

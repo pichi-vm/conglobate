@@ -45,7 +45,9 @@ impl Artifact {
         let mut size = 0;
         let mut buffer = vec![0; 65536];
         loop {
+            crate::cancel::check()?;
             let n = reader.read(&mut buffer)?;
+            crate::cancel::check()?;
             if n == 0 {
                 break;
             }
@@ -58,6 +60,7 @@ impl Artifact {
             digest: hash.finalize().to_vec(),
         };
         let destination = self.blob_path(&digest.oci())?;
+        crate::cancel::check()?;
         if !destination.exists() {
             file.persist_noclobber(destination)
                 .map_err(|error| error.error)?;
@@ -241,7 +244,16 @@ fn copy_tree(source: &Path, destination: &Path) -> Result<(), Error> {
         } else if entry.file_type()?.is_file() {
             let mut input = File::open(entry.path())?;
             let mut output = File::create(target)?;
-            std::io::copy(&mut input, &mut output)?;
+            let mut buffer = vec![0; 65536];
+            loop {
+                crate::cancel::check()?;
+                let count = input.read(&mut buffer)?;
+                crate::cancel::check()?;
+                if count == 0 {
+                    break;
+                }
+                output.write_all(&buffer[..count])?;
+            }
             output.sync_all()?;
         } else {
             return Err(Error::Invalid(

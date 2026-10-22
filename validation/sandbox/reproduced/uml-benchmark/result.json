@@ -1,0 +1,94 @@
+{
+  "cases": [
+    {
+      "mode": "native",
+      "trial": 0,
+      "seconds": 1.2167040490312502,
+      "code": 0,
+      "error": null,
+      "values": {
+        "cpu": 0.187083,
+        "metadata": 0.048071,
+        "io": 0.162964,
+        "maxrss_kib": 1740.0
+      },
+      "pass": true
+    },
+    {
+      "mode": "uml",
+      "trial": 0,
+      "seconds": 4.275301413028501,
+      "code": 0,
+      "error": null,
+      "values": {
+        "cpu": 0.18359,
+        "metadata": 0.278638,
+        "io": 1.612696,
+        "maxrss_kib": 1716.0
+      },
+      "pass": true
+    },
+    {
+      "mode": "native",
+      "trial": 1,
+      "seconds": 1.2177806249819696,
+      "code": 0,
+      "error": null,
+      "values": {
+        "cpu": 0.182175,
+        "metadata": 0.048542,
+        "io": 0.16824,
+        "maxrss_kib": 1604.0
+      },
+      "pass": true
+    },
+    {
+      "mode": "uml",
+      "trial": 1,
+      "seconds": 4.275479873991571,
+      "code": 0,
+      "error": null,
+      "values": {
+        "cpu": 0.18341,
+        "metadata": 0.27735,
+        "io": 1.606563,
+        "maxrss_kib": 1716.0
+      },
+      "pass": true
+    },
+    {
+      "mode": "native",
+      "trial": 2,
+      "seconds": 1.3178915560129099,
+      "code": 0,
+      "error": null,
+      "values": {
+        "cpu": 0.199047,
+        "metadata": 0.048361,
+        "io": 0.185608,
+        "maxrss_kib": 1744.0
+      },
+      "pass": true
+    },
+    {
+      "mode": "uml",
+      "trial": 2,
+      "seconds": 4.526335073984228,
+      "code": 0,
+      "error": null,
+      "values": {
+        "cpu": 0.183494,
+        "metadata": 0.277928,
+        "io": 1.853903,
+        "maxrss_kib": 1716.0
+      },
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "input_sha256": {
+    "/var/tmp/conglobate-uml-benchmark-v2/bench": "d8656ed91d771a3aa84f5f6d203e4dd49f45d6613d4f7aa3a49929f8a3adafcb",
+    "/var/tmp/conglobate-uml-benchmark-v2/initramfs": "161b6e4e5e3fa27c30a55be7a6502ec35b3393a53765a447d96d09195be51334",
+    "/tmp/conglobate-network-policy-v4/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+  }
+}

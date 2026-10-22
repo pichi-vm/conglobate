@@ -1,0 +1,14 @@
+
+running 6 tests
+test copy_contents_links_patterns_metadata_and_ownership ... ok
+test copy_preserves_security_metadata ... ok
+test copy_replaces_appended_symlinks_and_preserves_destination_directory_metadata ... ok
+test image_path_preserves_trailing_directory_requirements ... ok
+test image_path_rejects_parent_traversal_through_a_regular_file ... ok
+test image_paths_never_resolve_absolute_links_against_the_host ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+COPY_ROOT_TESTS_PASS
+GUEST_EXIT 0
+[    0.948116] sysrq: Resetting

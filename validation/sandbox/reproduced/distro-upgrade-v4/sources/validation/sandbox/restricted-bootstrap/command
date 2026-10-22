@@ -1,0 +1,13 @@
+#!/bin/bash
+set -eu
+test "$$" = 1
+for path in /work /supervisor-secret /entry-helper /dev/fuse /dev/mapper/control /.old/work; do test ! -e "$path"; done
+nnp= seccomp=
+while read -r key value rest; do
+ case "$key" in NoNewPrivs:) nnp=$value ;; Seccomp:) seccomp=$value ;; esac
+done </proc/self/status
+test "$nnp" = 1
+test "$seccomp" = 2
+dnf5 --no-plugins --disable-repo='*' --installroot=/output --releasever=44 --use-host-config --setopt=install_weak_deps=False --no-gpgchecks -y install /rpms/*.rpm
+test -x /output/usr/bin/bash
+echo RESTRICTED_INITIAL_DNF_INSTALL_PASS

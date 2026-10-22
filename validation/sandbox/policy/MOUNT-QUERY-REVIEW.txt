@@ -1,0 +1,31 @@
+Mount query visibility — 2026-10-21
+==================================
+Diagnostic policy unchanged. Runs as part of the two-step policy guest.
+
+The trusted fixture records its own guest mount namespace ID before launching
+commands. This is an owned guest canary, not a host namespace or filesystem path.
+Inside each restricted command, listmount with either default namespace or the
+explicit current namespace ID returns a bounded list (64 slots, no pagination).
+For every returned unique ID, statmount requests basic mount data and namespace
+ID in a 512-byte buffer. Returned IDs must match the request, namespace IDs must
+be the command's own, and the complete set of legacy mount IDs must exactly equal
+/proc/self/mountinfo. A full buffer, duplicates, mismatched IDs or error fails.
+
+A listmount request naming the known outer guest fixture namespace must return
+ENOENT and leave the zeroed result buffer unchanged. No returned ID or FD is used
+to traverse an outside mount, change attributes, or open files there. No namespace
+or mount is created by these queries. This tests one genuinely existing outside
+namespace rather than assuming an arbitrary nonexistent number proves isolation.
+
+Pinned upstream fs/namespace.c (f47d223627f80cb7a1eb14c585fe6cb35de5e984), retained
+in reproduced/open-tree-attr-source, corroborates the distinction: explicit
+foreign-ID listmount checks CAP_SYS_ADMIN in the target's owning user namespace
+and masks denial as ENOENT; statmount has a separate EPERM path. This runtime
+matrix does not claim to have exercised the foreign statmount path. Existing
+current-ID nsfs tests independently establish the own namespace ID used here.
+
+Limits: a bounded fixed mount topology on the tested x86_64 guest; not exhaustive
+pagination/ABI/string/attribute tests, namespace-FD selection, exported file
+handles or final-executor qualification. Current namespace root privileges must
+not be confused with authority in the outer fixture's owning user namespace.
+The default-Allow policy is not proved complete by these read-only results.

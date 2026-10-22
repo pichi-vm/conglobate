@@ -1,0 +1,91 @@
+{
+  "scope": "finite abstract arbitration only; no runtime or recovery proof",
+  "negative_check_then_rename": {
+    "states": 32,
+    "transitions": 33,
+    "violations": [
+      {
+        "problem": "accepted cancellation followed by visible output",
+        "trace": [
+          "completion-barrier-passes",
+          "check-cancel",
+          "cancel-accepted",
+          "rename-noreplace-succeeds"
+        ]
+      },
+      {
+        "problem": "accepted cancellation followed by visible output",
+        "trace": [
+          "completion-barrier-passes",
+          "check-cancel",
+          "cancel-accepted",
+          "rename-noreplace-succeeds",
+          "parent-sync-fails"
+        ]
+      },
+      {
+        "problem": "accepted cancellation followed by visible output",
+        "trace": [
+          "completion-barrier-passes",
+          "check-cancel",
+          "cancel-accepted",
+          "rename-noreplace-succeeds",
+          "parent-sync-succeeds"
+        ]
+      },
+      {
+        "problem": "accepted cancellation followed by visible output",
+        "trace": [
+          "completion-barrier-passes",
+          "check-cancel",
+          "cancel-accepted",
+          "rename-noreplace-succeeds",
+          "parent-sync-succeeds",
+          "return-committed"
+        ]
+      },
+      {
+        "problem": "accepted cancellation followed by visible output",
+        "trace": [
+          "completion-barrier-passes",
+          "check-cancel",
+          "cancel-accepted",
+          "rename-noreplace-succeeds",
+          "parent-sync-succeeds",
+          "publisher-dies"
+        ]
+      },
+      {
+        "problem": "accepted cancellation followed by visible output",
+        "trace": [
+          "completion-barrier-passes",
+          "check-cancel",
+          "cancel-accepted",
+          "rename-noreplace-succeeds",
+          "publisher-dies"
+        ]
+      }
+    ],
+    "terminal_outcomes": [
+      "collision",
+      "committed",
+      "failed",
+      "none",
+      "unknown",
+      "visible-error"
+    ]
+  },
+  "candidate_reservation": {
+    "states": 26,
+    "transitions": 28,
+    "violations": [],
+    "terminal_outcomes": [
+      "collision",
+      "committed",
+      "failed",
+      "none",
+      "unknown",
+      "visible-error"
+    ]
+  }
+}

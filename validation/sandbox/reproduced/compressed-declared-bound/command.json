@@ -1,0 +1,10 @@
+[
+  "cargo",
+  "test",
+  "--locked",
+  "--test",
+  "scutes",
+  "compressed_scutes_stop_writing_at_the_declared_extent",
+  "--",
+  "--exact"
+]

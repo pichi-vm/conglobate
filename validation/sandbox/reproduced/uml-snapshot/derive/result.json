@@ -1,0 +1,14 @@
+{
+  "returncode": 0,
+  "markers": {
+    "RESTRICTED_FEDORA_DERIVATION_PASS": 1,
+    "UML_SNAPSHOT_UNMOUNTED": 1,
+    "UML_SNAPSHOT_CGROUP_EMPTY": 1,
+    "DERIVED_BOOT_LAYER_SEALED": 1,
+    "DERIVED_BOOT_SERIAL_EXPORT_PASS": 1,
+    "DERIVED_BOOT_EXPORT_AND_CLEANUP_PASS": 1,
+    "GUEST_EXIT 0": 1
+  },
+  "base_unchanged": true,
+  "pass": true
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "run": "/tmp/conglobate-chain-release-error-v3",
+    "retained": "validation/sandbox/reproduced/chain-release-error",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-chain-release-error-v2",
+    "retained": "validation/sandbox/reproduced/chain-release-error-early",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-release-finalize-v1",
+    "retained": "validation/sandbox/reproduced/release-finalize",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-host-dns-public-v2",
+    "retained": "validation/sandbox/reproduced/host-dns-public",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-host-dns-public-v1",
+    "retained": "validation/sandbox/reproduced/host-dns-fixture-negative",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-policy-generic-ioctl-v1",
+    "retained": "validation/sandbox/reproduced/policy-generic-ioctl",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-runtime-link-dev-v1",
+    "retained": "validation/sandbox/reproduced/runtime-link-dev",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-runtime-link-old-v1",
+    "retained": "validation/sandbox/reproduced/runtime-link-old",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-runtime-link-proc-v1",
+    "retained": "validation/sandbox/reproduced/runtime-link-proc",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-runtime-path-fixed-v2",
+    "retained": "validation/sandbox/reproduced/runtime-path-fixed-regression",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  }
+]

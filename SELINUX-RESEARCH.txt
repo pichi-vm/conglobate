@@ -1,0 +1,124 @@
+HISTORICAL EVIDENCE — retained for results, sources, and reproduction.
+Current policy: SANDBOX-DESIGN.txt and DESIGN.md. Earlier proposals, pending
+items, and candidate trust models below are superseded where they differ.
+
+Independent target SELinux metadata: solution research
+=====================================================
+
+Scope
+-----
+Preserve the agreed user-namespace/idmapped-mount direction, trusted build
+VM kernel, and hostile-command isolation. Target labels are output data;
+commands must not administer the VM's policy. This is research, not an
+approved design or a validated implementation.
+
+Findings
+--------
+The tested mount configuration cannot directly provide these semantics.
+SELinux checks unknown-label writes and raw-context reads against
+CAP_MAC_ADMIN in the initial user namespace as well as SELinux permissions.
+A mount namespace or UID mapping does not change that policy domain.
+
+Disabling SELinux is not a complete answer either: absent an LSM owning
+the xattr check, commoncap.c requires CAP_SYS_ADMIN in the filesystem
+superblock's user namespace for security.* attributes other than
+security.capability. Our ext4/XFS superblocks are mounted by the privileged
+builder. An idmapped view does not change that superblock ownership.
+This is source analysis, not a test with SELinux disabled.
+
+Existing image-builder approach
+-------------------------------
+mkosi run_selinux_relabel() runs setfiles -mFr /buildroot -T0 -c
+TARGET_BINARY_POLICY TARGET_FILE_CONTEXTS /buildroot as an explicit build
+operation. This validates the final-labeling approach, not transparent
+arbitrary xattr operations during build scripts. Our experiments have
+already demonstrated the corresponding privileged kernel operation.
+
+Potential userspace direction: narrowly scoped metadata mediation
+---------------------------------------------------------------
+Keep normal filesystem IO in the kernel and commands in the child user
+namespace. A separate trusted component operates on security.selinux
+metadata for the designated output filesystem, with the necessary initial
+namespace privilege and SELinux domain. Writes and raw reads are both
+required, along with removal, enumeration semantics, inherited labels,
+symlinks, hardlinks, FD-based operations, and error/size/flag behavior.
+
+Seccomp notification is an established mechanism for privileged operation
+delegation: Incus implements selected mknod and setxattr interception. Its
+current inspected setxattr handler specifically handles
+trusted.overlay.opaque=y; it is NOT a ready-made SELinux implementation.
+
+This is a candidate for a prototype, not a proven transparent solution.
+The notifier must not become the security boundary: native kernel
+restrictions must remain effective if interception is bypassed. Privileged
+operations must use copied, bounded input and stable, validated object
+references confined to the output filesystem. Checking a path and then
+allowing the original privileged operation to continue is not sufficient.
+Delegating an existing command-supplied FD must not allow targeting other
+filesystems, even if the FD is valid. Other privileged state and the
+attestation interface must be absent from the broker's reachable objects.
+
+Read replies are a particular blocker: seccomp notification does not
+provide a general race-free copy-to-caller-memory operation. Its documented
+signal/exec/thread lifetime races require careful treatment; successful
+setxattr forwarding alone does not validate a getxattr implementation.
+Ptrace or an explicit cooperative protocol are alternatives with different
+costs and compatibility limits, not automatically equivalent solutions.
+
+Userspace validation is separate from kernel mediation. chcon checks a
+full supplied context against the active policy when is_selinux_enabled()
+reports true. setfiles -c allows validation against an offline target
+policy. The worker must not be presented with the VM's policy as though
+it were the target policy. Hiding selinuxfs also changes tool autodetection;
+package installation and relabel behavior need explicit compatibility tests.
+
+Stored labels can influence build-time enforcement even when their writes
+are delegated. A VM execution domain must not acquire privileges through
+target-controlled labels or unexpectedly reject target files. A complete
+design must address this alongside xattr mediation, rather than assuming
+that a successful unknown-label write decouples all policy behavior.
+
+Other approaches
+----------------
+* FUSE/virtiofs xattr remapping: virtiofs has a real precedent for separating
+  guest security.selinux from host labels. It normally has a separate guest
+  kernel. A same-kernel FUSE layer still has to pass client-side LSM hooks;
+  daemon-side renaming alone does not establish that it solves this problem.
+  No working same-kernel drop-in solution was found or tested here.
+* Shadow metadata plus finalization: can separate target metadata from live
+  enforcement, but requires complete read/write mediation, inherited-label
+  handling, stable inode semantics, cleanup, and materialization into each
+  sealed layer. Recomputing all labels from file_contexts loses arbitrary
+  author-supplied labels. It is not merely another mount option.
+* A dedicated execution kernel could isolate policies, but changes the
+  architecture to a separate VM/execution environment. This is not assumed
+  acceptable for the standalone binary.
+* A kernel facility for delegated opaque target metadata would directly
+  address the gap. No existing mount option providing that facility was
+  identified; introducing one is a kernel-design project.
+
+Recommendation
+--------------
+Do not weaken the requirements or silently replace arbitrary labeling
+with a final setfiles pass. First investigate a minimal metadata-mediation
+prototype, with raw inherited-label READS and process/FD/path races as
+early go/no-go tests, not later hardening. If these cannot be implemented
+with an acceptably small safe-library-based trusted component, reconsider
+the execution boundary instead of shipping partial emulation as complete.
+
+Primary sources inspected
+-------------------------
+https://github.com/torvalds/linux/blob/master/security/selinux/hooks.c
+https://github.com/torvalds/linux/blob/master/security/commoncap.c
+https://github.com/systemd/mkosi/blob/main/mkosi/__init__.py
+https://linuxcontainers.org/incus/docs/main/syscall-interception/
+https://github.com/lxc/incus/blob/main/internal/server/seccomp/seccomp.go
+https://man7.org/linux/man-pages/man2/seccomp_unotify.2.html
+https://github.com/coreutils/coreutils/blob/master/src/chcon.c
+https://qemu.readthedocs.io/en/v7.2.19/tools/virtiofsd.html
+https://docs.kernel.org/filesystems/overlayfs.html
+
+Local source snapshots: /tmp/conglobate-selinux-research/.
+Earlier empirical results: SANDBOX-EVIDENCE.txt.
+No executor changes, host policy changes, or new privileged experiments
+were performed during this research follow-up.

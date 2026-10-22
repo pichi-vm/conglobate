@@ -1,0 +1,48 @@
+[
+  {
+    "run": 1,
+    "command": [
+      "python3",
+      "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/policy/package.py",
+      "--restricted-bootstrap",
+      "--out",
+      "/tmp/conglobate-initramfs-measurement-v1/run-1",
+      "--seed",
+      "/tmp/conglobate-rebuilt-package-seed-v2",
+      "--upgrade-rpms",
+      "/tmp/conglobate-upgrade-rpms",
+      "--protocol-worker-build",
+      "/tmp/conglobate-acl-protocol-v5",
+      "--initramfs-rpms",
+      "/tmp/conglobate-initramfs-rpms-v1"
+    ],
+    "exit_code": 0,
+    "runner_wall_seconds": 238.42806437495165,
+    "guest_uptime_seconds": 220.167355,
+    "inputs_sha256": "04e35dfaefd3254a2077daa6da85aa0581bb823ba93403e823a9db1c2dde471b",
+    "results_sha256": "b9ab6bd7c64e9d5e522e158834f92dd8116fe39126448883eb31d051036aa44f"
+  },
+  {
+    "run": 2,
+    "command": [
+      "python3",
+      "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/policy/package.py",
+      "--restricted-bootstrap",
+      "--out",
+      "/tmp/conglobate-initramfs-measurement-v1/run-2",
+      "--seed",
+      "/tmp/conglobate-rebuilt-package-seed-v2",
+      "--upgrade-rpms",
+      "/tmp/conglobate-upgrade-rpms",
+      "--protocol-worker-build",
+      "/tmp/conglobate-acl-protocol-v5",
+      "--initramfs-rpms",
+      "/tmp/conglobate-initramfs-rpms-v1"
+    ],
+    "exit_code": 0,
+    "runner_wall_seconds": 227.2976579630049,
+    "guest_uptime_seconds": 209.903778,
+    "inputs_sha256": "04e35dfaefd3254a2077daa6da85aa0581bb823ba93403e823a9db1c2dde471b",
+    "results_sha256": "1c75c069a66552aa8de93bf20a8f6c8d6e65d1df41f8de1c494d756fab0fc2a8"
+  }
+]

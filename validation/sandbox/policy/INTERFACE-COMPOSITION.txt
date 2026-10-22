@@ -1,0 +1,89 @@
+Descriptor/interface composition review
+======================================
+Scope: source comparison of current prototype launchers, not a new runtime pass.
+Exact reviewed files are retained in reproduced/interface-composition-review/
+sources with sources.json identities. No production policy changes.
+
+Entry boundary
+--------------
+entry/helper closes enumerated FDs >=3 before command exec. It intentionally
+preserves 0/1/2. Consequently the caller, not this helper, establishes standard
+stream provenance. Closing high FDs cannot qualify an inherited console or
+socket accidentally assigned to a standard FD. The helper is single-threaded;
+its directory enumeration is not a general concurrent-process close guarantee.
+
+Launcher                 stdin             stdout/stderr       runtime devices
+policy driver            inherited         inherited           null, private PTY
+chain-command worker     /dev/null         pipe to trusted cat  empty dev
+restricted bootstrap     /dev/null         pipe to trusted cat  null/zero/random/urandom
+
+The policy driver's subprocess.run calls do not specify stdin/stdout/stderr.
+Their actual object types therefore depend on the guest runner. This review
+does NOT establish that commands receive a console, nor that these inherited
+streams meet the intended final contract. The full-chain and generated Fedora
+launcher explicitly redirect stdin and both output streams. Their pipe writer
+is intentionally available to commands, while the reader belongs to the trusted
+logging process. stdout and stderr share the writer. The existing generic ioctl
+probe tests owned pipes, not these inherited endpoints.
+
+The bootstrap launcher adds /dev/fd and standard-stream symlinks through private
+proc, plus proc in the tool and installroot views. It supplies an empty read-only
+sys tree. It does not provide the policy fixture's private devpts. A successful
+PTY ioctl probe therefore establishes compatibility for that fixture only.
+
+Acquisition and transfer paths
+------------------------------
+1. Path opens: image files, private runtime mounts and proc remain available.
+   Root-relative mountpoint rejection has separate actual-FUSE evidence; the
+   bootstrap's multi-root setup still requires equivalent composition coverage.
+2. dup/fcntl and proc fd paths can reuse descriptors already accessible to the
+   command. No statement that these operations create new authority is needed;
+   retained standard streams and any leaked descriptor must be assessed first.
+3. Unix sockets/socketpair are permitted. SCM_RIGHTS is not explicitly denied by
+   this policy. Only a peer possessing an FD can send it; the relevant remaining
+   review is which trusted peers can be reached, especially pathname sockets in
+   shared writable mounts. A private network namespace alone does not establish
+   that pathname-socket separation. Existing inherited-socket closure controls
+   are not a post-entry descriptor-transfer test.
+4. pidfd_getfd, ptrace and process_vm operations are explicitly denied. Their
+   denial does not replace private PID/proc visibility and lifetime ownership.
+5. memfd/eventfd/timerfd/signalfd/epoll/inotify are not explicitly denied by the
+   default-allow policy. Objects created by commands must not be confused with
+   inherited trusted objects. Existing memfd/eventfd inheritance controls cover
+   closure, not all operations on anonymous descriptors.
+6. io_uring_setup, bpf, perf_event_open and userfaultfd are explicitly denied;
+   entry closure is still necessary for any already-created object descriptor.
+
+Finite remaining checks for the selected launcher
+------------------------------------------------
+- Inspect 0/1/2 object type/access mode at admission in both policy and full-build
+  fixtures; use dedicated owned pipes/null, with no operations on guest console.
+- Exercise ordinary reads/writes and duplicate/close behavior on those owned
+  endpoints; verify collector EOF and bounded output handling on termination.
+  Untrusted log text must never authorize publication or attestation.
+- Inventory trusted pathname-socket endpoints in every exposed mount and test
+  local FD transfer only between disposable command peers. Keep trusted control
+  sockets out of those mounts; do not rely on network namespaces for that rule.
+- Review the proc/anonymous-descriptor subset actually required by the selected
+  runtime, tied to resource limits and process ownership. This is not a request
+  to prove all default-allowed syscalls safe or to add a speculative allowlist.
+- Rerun the resulting device/descriptor contract on the adopted executor.
+
+Existing ioctl/proc and namespace probes remain useful. This comparison narrows
+their scope: neither the small fixture nor the full-chain fixture alone covers
+the union of launcher interfaces. The filesystem semantics blocker is unchanged.
+
+Follow-up: the small policy driver now explicitly supplies owned null/pipe
+streams in its two restricted steps. Exact identities/access modes, duplicate
+writes and normal collector EOF pass; see reproduced/policy-owned-stdio. The
+comparison above describes the retained pre-change snapshot. Exceptional
+collection paths, other control launches and full-build collectors remain
+separate; this does not close the complete standard-stream lifecycle gate.
+
+Descriptor-transfer follow-up: command-local socketpair/pathname SCM_RIGHTS
+passes in two restricted steps; see reproduced/policy-local-rights. The source
+inventory identifies commit-arbiter control.sock under supervisor-owned
+/work/arbitrate-CASE, outside the selected command roots. Because that fixture
+runs after the build, live-command exclusion in the composed coordinator remains
+a required integration check. No trusted-peer authority is transferred in this
+local compatibility test.

@@ -1,0 +1,20 @@
+[
+  {
+    "run": "/tmp/conglobate-writer-containment-v2",
+    "retained": "validation/sandbox/reproduced/writer-containment-packaging-negative",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-writer-containment-v3",
+    "retained": "validation/sandbox/reproduced/writer-containment-proc-negative",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  }
+]

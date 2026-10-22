@@ -1,0 +1,64 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+CARAPACE-s8a030fc351abb164733e90046d08b790-252:0-252:1: 0 134217728 snapshot 252:0 252:1 P 8
+CARAPACE-s8a030fc351abb164733e90046d08b790-252:0-252:4: 0 134217728 snapshot 252:0 252:4 P 8
+CARAPACE-vb55ecd2c2886293906b0726e4698ff03-7:0-7:1: 0 34904 verity 1 7:0 7:1 4096 4096 4363 1 sha256 b55ecd2c2886293906b0726e4698ff038a030fc351abb164733e90046d08b790 0000000000000000000000000000000000000000000000000000000000000000
+CARAPACE-vb55ecd2c2886293906b0726e4698ff03-7:3-7:4: 0 34904 verity 1 7:3 7:4 4096 4096 4363 1 sha256 b55ecd2c2886293906b0726e4698ff038a030fc351abb164733e90046d08b790 0000000000000000000000000000000000000000000000000000000000000000
+CARAPACE-z: 0 134217728 zero 
+conglobate-185-UKxgdj-0: 0 134217728 snapshot 252:2 7:2 P 8
+conglobate-193-pynBQq-0: 0 134217728 snapshot 252:5 7:5 P 8
+CONCURRENT_SHARED_ZERO_DISTINCT_STACKS_PASS
+CONCURRENT_FIRST_PUBLISHED_SECOND_ACTIVE_PASS
+CONCURRENT_COMPLETE_BUILDS_CLEANUP_PASS
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS e6687d0eebd165fc7c0104103f0adabe005a1f9f sha256:1e7bd3dde311183bf0d86ff4fbd4a647096c9ec67c02a84d5b0fd5567655f07f
+CHAIN_RESTRICTED_COMMAND_PASS
+CHAIN_COMMAND_DESCENDANTS_STOPPED_WORKER_ALIVE
+FUSE2FS (dm-3): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-3): mounted filesystem 86bad984-e69b-4532-8c95-6d1b1222ab51.
+FUSE2FS (dm-3): unmounting filesystem 86bad984-e69b-4532-8c95-6d1b1222ab51.
+FUSE_DERIVED_LAYER_SEALED
+CHAIN_ROUND_SEALED 1
+DERIVED_CHAIN_RESTAGED
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/verified: 53/16384 files (3.8% non-contiguous), 26565/65536 blocks
+DERIVED_KERNEL_FILESYSTEM_PASS
+POST_STAGE_CORRUPTION_REJECTED Err(Io(Os { code: 5, kind: InputOutputError, message: "Input/output error" }))
+POST_STAGE_RESTORATION_READ_PASS
+BASE_SCUTE_UNCHANGED_PASS
+CHAIN_COMMITTED_INVENTORY_PUBLICATION_PASS
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS e6687d0eebd165fc7c0104103f0adabe005a1f9f sha256:1e7bd3dde311183bf0d86ff4fbd4a647096c9ec67c02a84d5b0fd5567655f07f
+CHAIN_RESTRICTED_COMMAND_PASS
+CHAIN_COMMAND_DESCENDANTS_STOPPED_WORKER_ALIVE
+FUSE2FS (dm-6): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-6): mounted filesystem 86bad984-e69b-4532-8c95-6d1b1222ab51.
+FUSE2FS (dm-6): unmounting filesystem 86bad984-e69b-4532-8c95-6d1b1222ab51.
+FUSE_DERIVED_LAYER_SEALED
+CHAIN_ROUND_SEALED 1
+DERIVED_CHAIN_RESTAGED
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/verified: 53/16384 files (3.8% non-contiguous), 26565/65536 blocks
+DERIVED_KERNEL_FILESYSTEM_PASS
+POST_STAGE_CORRUPTION_REJECTED Err(Io(Os { code: 5, kind: InputOutputError, message: "Input/output error" }))
+POST_STAGE_RESTORATION_READ_PASS
+BASE_SCUTE_UNCHANGED_PASS
+CHAIN_COMMITTED_INVENTORY_PUBLICATION_PASS
+GUEST_EXIT 0
+[   45.249685] sysrq: Resetting

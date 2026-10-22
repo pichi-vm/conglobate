@@ -1,0 +1,15 @@
+{
+  "seconds": 31.049578051024582,
+  "returncode": 0,
+  "error": null,
+  "output": "/dev/shm/conglobate-debian-conglobate-uml-debian-v3.raw",
+  "markers": {
+    "UML_DEBIAN_BOOTSTRAP_PASS": 0,
+    "UML_DEBIAN_DERIVE_FIRMWARE_PASS": 0,
+    "UML_DEBIAN_OUTPUT_VERIFIED": 0,
+    "UML_DEBIAN_WORKLOAD_PASS": 0,
+    "GUEST_EXIT 0": 0
+  },
+  "pass": false,
+  "output_sha256": "be5d2a8d62313ee27d16733a6afcfbc765bd50136066662ac24185a499dda9ff"
+}

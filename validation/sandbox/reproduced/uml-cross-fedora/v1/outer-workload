@@ -1,0 +1,34 @@
+#!/bin/sh
+set -eu
+export PATH=/bin:/usr/bin:/sbin:/usr/sbin
+busybox mount -t proc proc /proc 2>/dev/null || true
+busybox mount -t sysfs sysfs /sys 2>/dev/null || true
+busybox mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+for pair in fd:/proc/self/fd stdin:/proc/self/fd/0 stdout:/proc/self/fd/1 stderr:/proc/self/fd/2; do
+ name="${pair%%:*}"; target="${pair#*:}"
+ test -L "/dev/$name" || busybox ln -s "$target" "/dev/$name"
+done
+busybox mkdir -p /mnt
+busybox mount -t ext4 /dev/vda /mnt
+busybox mkdir -p /mnt/proc /mnt/sys /mnt/dev
+busybox mount -t proc proc /mnt/proc
+busybox mount -t sysfs sysfs /mnt/sys
+busybox mount -t devtmpfs devtmpfs /mnt/dev
+test "$(busybox cat /mnt/fedora-derived)" = derived
+test "$(busybox stat -c '%u:%g' /mnt/fedora-derived)" = 1234:2345
+/bin/getfattr -n user.validation /mnt/fedora-derived | busybox grep 'user.validation="persisted"'
+/bin/getfacl -n /mnt/fedora-derived | busybox grep 'user:3456:r--'
+echo FIRMWARE_START
+busybox cat /proc/uptime
+busybox chroot /mnt /bin/sh -eu -c 'test "$(cat <(echo process-substitution))" = process-substitution; rpm -qa; k=$(ls /lib/modules); dracut --force --no-hostonly --drivers "virtio_pci virtio_blk ext4" --filesystems ext4 /boot/validation-initrd "$k"'
+echo FIRMWARE_DONE
+busybox cat /proc/uptime
+echo new-step >/mnt/cross-step
+busybox umount /mnt/dev /mnt/sys /mnt/proc
+busybox sync
+busybox umount /mnt
+busybox mount -t ext4 -o ro /dev/vda /mnt
+test "$(busybox cat /mnt/cross-step)" = new-step
+busybox umount /mnt
+echo CROSS_STEP_PASS
+busybox poweroff -f

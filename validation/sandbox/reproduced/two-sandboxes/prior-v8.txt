@@ -1,0 +1,111 @@
+TOPOLOGY_BEGIN
+SUPERVISOR_ENDPOINT_CONTROLS_PASS {"ipc": "ipc:[4026531839]", "mnt": "mnt:[4026531832]", "net": "net:[4026531833]", "pid": "pid:[4026531836]", "user": "user:[4026531837]", "uts": "uts:[4026531838]"}
+FD_OBSERVATION command 0 /dev/null
+FD_OBSERVATION command 1 pipe:[221]
+FD_OBSERVATION command 2 pipe:[221]
+FD_OBSERVATION command 3 /usr/lib64/libffi.so.8
+ISOLATION_PASS command {"ipc": "ipc:[4026532141]", "mnt": "mnt:[4026532139]", "net": "net:[4026532143]", "pid": "pid:[4026532142]", "user": "user:[4026532137]", "uts": "uts:[4026532140]"}
+SUPPLEMENTARY_SETGID {"preserved": true, "mode": "0o2750"}
+SUPPLEMENTARY_GROUP_CONTROL_PASS
+CHMOD_PERMISSION_MATRIX_PASS
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/private/normal: 24/16384 files (0.0% non-contiguous), 9558/65536 blocks
+TOPOLOGY_CASE_PASS normal
+FD_OBSERVATION worker 0 /dev/null
+FD_OBSERVATION worker 1 /work/normal.worker.log
+FD_OBSERVATION worker 2 /work/normal.worker.log
+FD_OBSERVATION worker 3 /dev/fuse
+ISOLATION_PASS worker {"ipc": "ipc:[4026532204]", "mnt": "mnt:[4026532202]", "net": "net:[4026532206]", "pid": "pid:[4026532205]", "user": "user:[4026532264]", "uts": "uts:[4026532203]"}
+
+FD_OBSERVATION command 0 /dev/null
+FD_OBSERVATION command 1 pipe:[1375]
+FD_OBSERVATION command 2 pipe:[1375]
+FD_OBSERVATION command 3 /usr/lib64/libffi.so.8
+ISOLATION_PASS command {"ipc": "ipc:[4026532141]", "mnt": "mnt:[4026532139]", "net": "net:[4026532143]", "pid": "pid:[4026532142]", "user": "user:[4026532137]", "uts": "uts:[4026532140]"}
+SUPPLEMENTARY_SETGID {"preserved": true, "mode": "0o2750"}
+SUPPLEMENTARY_GROUP_CONTROL_PASS
+CHMOD_PERMISSION_MATRIX_PASS
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/private/command-failure: 24/16384 files (0.0% non-contiguous), 9558/65536 blocks
+TOPOLOGY_CASE_PASS command-failure
+FD_OBSERVATION worker 0 /dev/null
+FD_OBSERVATION worker 1 /work/command-failure.worker.log
+FD_OBSERVATION worker 2 /work/command-failure.worker.log
+FD_OBSERVATION worker 3 /dev/fuse
+ISOLATION_PASS worker {"ipc": "ipc:[4026532204]", "mnt": "mnt:[4026532202]", "net": "net:[4026532206]", "pid": "pid:[4026532205]", "user": "user:[4026532264]", "uts": "uts:[4026532203]"}
+
+FD_OBSERVATION command 0 /dev/null
+FD_OBSERVATION command 1 pipe:[391]
+FD_OBSERVATION command 2 pipe:[391]
+FD_OBSERVATION command 3 /usr/lib64/libffi.so.8
+ISOLATION_PASS command {"ipc": "ipc:[4026532141]", "mnt": "mnt:[4026532139]", "net": "net:[4026532143]", "pid": "pid:[4026532142]", "user": "user:[4026532137]", "uts": "uts:[4026532140]"}
+SUPPLEMENTARY_SETGID {"preserved": true, "mode": "0o2750"}
+SUPPLEMENTARY_GROUP_CONTROL_PASS
+CHMOD_PERMISSION_MATRIX_PASS
+COMMAND_WAITING
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/private/command-death: 24/16384 files (0.0% non-contiguous), 9558/65536 blocks
+TOPOLOGY_CASE_PASS command-death
+FD_OBSERVATION worker 0 /dev/null
+FD_OBSERVATION worker 1 /work/command-death.worker.log
+FD_OBSERVATION worker 2 /work/command-death.worker.log
+FD_OBSERVATION worker 3 /dev/fuse
+ISOLATION_PASS worker {"ipc": "ipc:[4026532204]", "mnt": "mnt:[4026532202]", "net": "net:[4026532206]", "pid": "pid:[4026532205]", "user": "user:[4026532264]", "uts": "uts:[4026532203]"}
+
+FD_OBSERVATION command 0 /dev/null
+FD_OBSERVATION command 1 pipe:[462]
+FD_OBSERVATION command 2 pipe:[462]
+FD_OBSERVATION command 3 /usr/lib64/libffi.so.8
+ISOLATION_PASS command {"ipc": "ipc:[4026532141]", "mnt": "mnt:[4026532139]", "net": "net:[4026532143]", "pid": "pid:[4026532142]", "user": "user:[4026532137]", "uts": "uts:[4026532140]"}
+SUPPLEMENTARY_SETGID {"preserved": true, "mode": "0o2750"}
+SUPPLEMENTARY_GROUP_CONTROL_PASS
+CHMOD_PERMISSION_MATRIX_PASS
+COMMAND_WAITING
+WORKER_DEATH_IO_REJECTED
+FAILED_BUILD_NOT_PUBLISHED worker-death
+TOPOLOGY_CASE_PASS worker-death
+FD_OBSERVATION worker 0 /dev/null
+FD_OBSERVATION worker 1 /work/worker-death.worker.log
+FD_OBSERVATION worker 2 /work/worker-death.worker.log
+FD_OBSERVATION worker 3 /dev/fuse
+ISOLATION_PASS worker {"ipc": "ipc:[4026532204]", "mnt": "mnt:[4026532202]", "net": "net:[4026532206]", "pid": "pid:[4026532205]", "user": "user:[4026532264]", "uts": "uts:[4026532203]"}
+
+FD_OBSERVATION command 0 /dev/null
+FD_OBSERVATION command 1 pipe:[541]
+FD_OBSERVATION command 2 pipe:[541]
+FD_OBSERVATION command 3 /usr/lib64/libffi.so.8
+ISOLATION_PASS command {"ipc": "ipc:[4026532141]", "mnt": "mnt:[4026532137]", "net": "net:[4026532143]", "pid": "pid:[4026532142]", "user": "user:[4026532138]", "uts": "uts:[4026532140]"}
+SUPPLEMENTARY_SETGID {"preserved": true, "mode": "0o2750"}
+SUPPLEMENTARY_GROUP_CONTROL_PASS
+CHMOD_PERMISSION_MATRIX_PASS
+COMMAND_WAITING
+FAILED_BUILD_NOT_PUBLISHED helper-death
+TOPOLOGY_CASE_PASS helper-death
+FD_OBSERVATION worker 0 /dev/null
+FD_OBSERVATION worker 1 /work/helper-death.worker.log
+FD_OBSERVATION worker 2 /work/helper-death.worker.log
+FD_OBSERVATION worker 3 /dev/fuse
+ISOLATION_PASS worker {"ipc": "ipc:[4026532204]", "mnt": "mnt:[4026532202]", "net": "net:[4026532206]", "pid": "pid:[4026532205]", "user": "user:[4026532264]", "uts": "uts:[4026532203]"}
+
+Traceback (most recent call last):
+  File [35m"/topology.py"[0m, line [35m174[0m, in [35m<module>[0m
+    assert [1;31mnot live[0m,live
+           [1;31m^^^^^^^^[0m
+[1;35mAssertionError[0m: [35m[152][0m
+GUEST_EXIT 1
+[    4.703203] sysrq: Resetting

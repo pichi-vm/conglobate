@@ -1,0 +1,306 @@
+Current gate summary: see READINESS-GATES.txt (2026-10-21 reconciliation).
+The dated table below is historical; later follow-ups supersede closed gaps.
+
+Reconciliation of the original 21-area checklist, 2026-10-20
+===========================================================
+Authority: SANDBOX-VALIDATION.txt, especially its original numbered Validation
+checklist and its explicit After implementation paragraph. This workqueue does
+not replace or reduce those requirements. Chronological pending statements are
+not new independent requirements when later evidence addresses them. No entire
+area is promoted to production qualification here.
+
+Evidence identity audit: evidence-reconciliation-20261020.json checks 112 unique
+indexed artifacts covering all 21 areas, with zero missing/hash/size mismatches.
+Where indexed, guest-exit lines also match. Known failures are intentionally
+included. This is availability/identity, not a verdict that all requirements are
+satisfied. The report pins the audit-index hash; rerun after adding evidence.
+
+Area  What the remaining work actually requires
+----  -----------------------------------------
+1     Finish a retained review of the candidate's capabilities, default-allow
+      syscall filter and reachable interfaces. Representative Fedora workload
+      already ran; repeating it alone cannot close this review. Link to 3/4/7.
+2     Existing valid-argument process, worker identity, namespace and descendant
+      probes constrain worker placement. Qualify that placement with the final
+      launcher; do not substitute same-UID namespace-only assumptions.
+3     Bind trusted executable, loader, libraries/configuration before any image
+      code runs. Sanitized-env/FD controls pass, but dynamic dependency identity
+      and all supported entry paths still need a retained review and integration.
+4     Review namespace/mount acquisition paths against the exact policy in 1.
+      Existing pivot, detach and syscall-denial probes are evidence, not an
+      exhaustive interface proof. Final executor rerun is a later acceptance gate.
+5     Original bounded COPY prototype checks are explicitly completed. Keep its
+      quiescent-writer precondition. Rerun on adopted executor/backend after
+      implementation; do not invent a new standalone COPY task from old prose.
+6     Export path/type/stream checks are exercised. Remaining late write,
+      finalization/cancellation and output eligibility work is shared with 16,
+      not a separate request to repeat every pathname fixture.
+7     Complete reachable-FD/device/ioctl review. Existing review explicitly
+      leaves regular-file, pipe/socket and proc/anonymous-FD surfaces open.
+      Final device set and backend authorization/error handling need decisions.
+8     Include retained credentials/key anchors in identity lifetime accounting.
+      Same-UID access after worker reaping is demonstrated; fresh session is
+      insufficient. Keep tested key-syscall restrictions. Final allocator and
+      trusted-worker integration are missing, not another null-argument test.
+9     Original bounded alternate-family policy check is explicitly completed.
+      Enabled-network and final policy integration remain linked to 1 and 10.
+10    Modeled split DNS, strict resolver selection, actual-FUSE restoration and
+      three setup-cancellation boundaries pass. Real host/VPN resolver behavior
+      and remaining later combined failures still require environment-specific
+      tests. Do not claim modeled routing proves an actual VPN configuration.
+11    This is a design/backend blocker: stock ACL defects, no maintained adoption
+      of paired fixes, and mapped immutable/append-only/trusted-xattr/device-node
+      incompatibilities. Required OS semantics must be supported or explicitly
+      resolved; unsupported behavior cannot silently become a pass. Broader
+      metadata/runtime feature cases depend on that solution.
+12    Fedora bootstrap, synthetic version upgrade, dracut and separate boot are
+      demonstrated. Distribution-version upgrade/additional OS workflows and
+      filesystem-feature compatibility remain distinct from rerunning DNF.
+13    Authenticated FUSE layering and additional header/stream/exception cases
+      now have bounded evidence. Exception assembly is NOT blanket semantic
+      rejection. First-area missing termination rejection and next-area positive control now
+      pass. Other parser failure boundaries and generic recipe integration remain
+      unqualified. Future generic executor acceptance
+      cannot be certified by the fixed single-command fixture.
+14    Lifetime/ownership and final publication are now linked in prototypes.
+      Qualify the final coordinator's remaining setup/teardown and cancellation
+      boundaries, including credential/exec assumptions. Dedicated persistent
+      owner is required. Death/normal completion controls are not production
+      integration; late public-commit checks are shared with 16.
+15    Controlled cyclic callback and stopped-worker/queued-request cases pass,
+      including whole-namespace teardown. Review dependency/abort coverage of
+      the chosen worker/coordinator; bounded cases do not promise arbitrary
+      uninterruptible kernel I/O can be killed.
+16    Select and validate backend error-reporting and completion/commit/cancel
+      protocol. Outer gate rejects actual live descendants; commit death/retry
+      states are characterized. Automatic acknowledgment reconciliation, orphan
+      recovery and integrated late write failure are not implemented/qualified.
+      Repeating the same rename race does not close these protocol requirements.
+17    Whole-build PID/FD/OOM failures and worker/supervisor/guardian OOM cases
+      pass. Simultaneous-owner/system pressure and remaining phase combinations
+      need bounded tests of the selected coordinator, with no-publication checks.
+18    Concurrent full builds, one-build failure, six snapshot death transitions,
+      competing recovery and retry are exercised. Pinned carapace pre-resume
+      recovery defect remains; a copied candidate is not maintained adoption.
+      Single-scute shared block-backed success and command-failure cases now pass.
+      Multi-layer shared block inputs and remaining ownership interleavings
+      require targeted tests/adoption, not repeating file-backed coexistence.
+19    Fixed pipeline Record binds actual Git/lock/scute/output data. Generic
+      executor and trusted runtime/environment identity remain to integrate.
+      Inventory claims must not imply deferred appliance attestation is present.
+20    Deployment prerequisite/mapping/device controls pass. Final runtime/LSM
+      profile and concurrent identity allocation still need qualification.
+      Fully rootless storage remains conditional, not newly selected here.
+21    Version/license inventories, safe API review, static/source reproduction
+      and two representative timings exist. Fresh archive build with regenerated configure/config.h.in and fresh
+      Meson/configure now passes ACL/metadata regression. Maintained backend
+      ownership and final runtime dependency binding remain.
+      A successful relink or timing run does not close those requirements.
+
+Sequencing to avoid circular or redundant work
+---------------------------------------------
+A. Finish the retained trusted-entry/reachable-interface review (1/3/4/7/9),
+   including the actual differences between small policy and full build launchers.
+B. Resolve metadata/backend support and maintained implementation paths (11/21).
+   Compatibility limitations are currently demonstrated blockers, not missing
+   permission or an excuse to discard the full OS-image-building requirement.
+C. Qualify completion/cancellation/recovery protocol and shared-storage ownership
+   with fault matrices (6/14/15/16/17/18). New tests should target a missing gate
+   or a proposed correction, rather than only adding variants of known outcomes.
+D. Bind runtime/input/inventory behavior and run real environment/workload cases
+   (8/10/12/13/19/20). Final generic-executor reruns remain explicitly required
+   after implementation, as in the original checklist.
+
+The goal remains active and incomplete. There is useful independent work in A
+and C; this is not an overall blocked status. No commit, runtime adoption,
+unsupported-feature waiver or production-security approval is implied.
+
+Evidence identity recheck (2026-10-21 UTC):
+  evidence-reconciliation-20261021.json pins the current index and checks184
+  unique artifacts across21 areas with zero missing/hash/size/exit mismatches.
+  This includes known-negative results and is not a semantic completion verdict.
+  The full-build constructed-environment control now passes; runtime identity
+  and other launcher paths remain separate. Real VPN DNS awaits the requested
+  VPN-only hostname; public host-backed lookup is already demonstrated.
+
+Area16 follow-up (2026-10-21): diagnostic prepared/receipt records now pass ten
+fresh-process classifications on real completed artifact bytes, including a
+same-bytes foreign destination and malformed/missing evidence. This closes the
+absence of any record-based restart prototype; it does not close protected
+record admission, exclusive ownership/writer lifetime integration, orphan GC,
+error injection inside record/commit syscalls or production adoption. JSON is
+fixture-only; no change to the CBOR machine-format requirement.
+
+Area16 ownership follow-up (2026-10-21): publication coordinator and recovery
+reader now have tested exclusive admission on a stable lease. Atomic publication
+of an already-locked inode closes the identified startup gap; bounded controls
+and the full artifact matrix pass. Remaining ownership work concerns earlier
+worker/writer lifetime and delegated recorder composition, parent-path protection,
+stale/private lease and record cleanup, not an absence of basic publisher/reader
+mutual exclusion evidence. General orphan collection remains unimplemented.
+
+Areas14/16 lifetime follow-up (2026-10-21): lock availability before namespace
+init termination is now demonstrated using an owned outside-parent zombie; source
+ordering corroborates early FD closure. A lease-plus-pinned-init-pidfd barrier
+waits correctly in that topology. Remaining integration must retain authoritative
+lifetime handles independently of publisher ownership; losing all such handles
+must not silently authorize GC based on a stale PID or lease availability alone.
+
+Areas14/16 actual-writer follow-up (2026-10-21): selected real supervisor/worker/
+command writable FDs now have direct before/after containment evidence in the
+stopped-worker launcher-loss fixture. The pinned init termination barrier joins
+those observed holders to cleanup. This closes the absence of an actual-handle
+composition check, not all FD/mapping/queued-reference lifetimes, persisted-handle
+recovery or general orphan collection. Explicit scope is in writer-containment.
+
+Areas1/4 mount-policy follow-up (2026-10-21): open_tree_attr and fspick omissions
+are corrected with retained negative/control and two-step rejection evidence.
+Default-Allow still requires review of newer query/metadata calls and reachable
+FD/ioctl paths; this is concrete coverage improvement, not a completed general
+policy audit. ABI evidence and exact limits are in policy/MOUNT-API-REVIEW.txt.
+
+Areas1/4/7 query follow-up (2026-10-21): own/current listns and nsfs info behavior
+plus adjacent mount-namespace handle rejection now have two-step runtime evidence
+and pinned source review. This closes that bounded query distinction, not all
+nsfs/exported-handle acquisition or statmount/listmount semantics. See
+policy/NAMESPACE-QUERY-REVIEW.txt; no additional policy denial was inferred from
+successful read-only current-namespace queries.
+
+Areas1/4 query follow-up (2026-10-21): bounded listmount/statmount current-ID
+results now match proc exactly, and a known outer namespace listmount request
+rejects. This closes the absence of runtime mount-ID query evidence. Exported
+file-handle and broader reachable-interface review remain; see
+policy/MOUNT-QUERY-REVIEW.txt for the exact tested variants.
+
+Areas1/4/7 exported-handle follow-up (2026-10-21): genuine own-file/current-
+namespace/outer-namespace controls now distinguish filesystem-specific export
+permission from default DAC_READ_SEARCH gating. Outer rejection is observed
+ESTALE with trusted validity controls; exact guest errno routing remains distinct
+from pinned upstream source. General callback/descriptor policy review remains,
+not a blanket assumption that all open_by_handle_at calls are denied.
+
+Areas1/7 new-metadata-API follow-up (2026-10-21): file_getattr/file_setattr now
+have bounded owned-tmpfs parity/restoration and immutable/append rejection
+controls, corroborated by common VFS source routing. Area11's FUSE metadata
+blockers remain separate; this is not an alternative implementation for them.
+
+Areas1/2 capability follow-up (2026-10-21): retained capability roles and boundary
+dependencies are explicitly reviewed; self-transition tests reject regain of two
+excluded capabilities despite SETPCAP. This closes that bounded ambiguity, not
+minimal capability selection or complete credential/exec lifecycle qualification.
+
+Areas1/2 exec follow-up (2026-10-21): actual owned set-user/group-ID executable
+comparison now verifies no-new-privileges across dropped-UID exec, with a working
+mapped-root positive control. Other credential/filecap/runtime paths remain
+separate; this is more than entry-field observation, not all-exec qualification.
+
+Areas1/2 filecap exec follow-up (2026-10-21): actual executable file capability
+now has a working mapped-root-ID positive control and two NNP no-gain controls.
+This closes the missing bounded filecap exec check; FUSE-specific behavior,
+trusted executable dependency binding and final launcher integration remain.
+
+Areas3/19/21 packaging follow-up (2026-10-21): source-only metadata omission is
+now runtime-demonstrated with owned text controls. Content hashes do not bind
+modes or hardlink relationships; actual archive does, but omits tested xattrs.
+Complete runtime artifact/setup identity remains a requirement, not a pass.
+
+UML candidate comparison (2026-10-21 UTC): pinned kernel documentation, UBD
+implementation, configuration and license reviewed in reproduced/uml-source-
+review (under validation/sandbox). A separate userspace kernel could move the
+metadata permission boundary, but this is an inference awaiting feasibility
+tests and user acceptance of the architectural direction. Hostfs, management,
+module/driver admission and outer isolation need explicit treatment. No runtime
+executed, backend selected, metadata requirement waived or area marked complete.
+
+Two-layer shared-block concurrency (2026-10-21 UTC): success and one-command-
+failure cases pass with two inherited layers, full shared DM stack, independent
+outputs, second-layer persistence, unchanged inputs and complete device cleanup.
+See validation/sandbox/chain-shared-block/TWO-LAYER-REVIEW.txt and reproduced/
+two-layer-shared-*. Area18 bounded multi-layer gap is closed; final integration
+and activation-death ownership remain. Area12 gains a compatibility finding:
+1KiB ext4 fails kernel mount on the4KiB assembled device; current concurrency
+fixtures explicitly use4KiB ext4. FUSE success alone is not boot compatibility.
+
+Direct derived-carapace kernel mount (2026-10-21 UTC): both concurrent success
+outputs and the survivor of the failure case directly kernel-mount their final
+three-scute4KiB ext4 chain and preserve expected base/inherited/produced data.
+Existing fsck, inventory, unchanged inputs and cleanup checks also pass. See
+validation/sandbox/chain-shared-block/DIRECT-MOUNT-REVIEW.txt and reproduced/
+direct-root-mount-{success,failure}. Prior initramfs boot did not switch root;
+prior raw-copy mounts did not prove assembled-device geometry compatibility.
+This closes that bounded mount gap, not full distribution-root boot validation.
+
+Automatic file timestamps (2026-10-21 UTC): all54 update/preservation checks
+pass across kernel/initial-FUSE/mapped-FUSE with both checksum configurations.
+Visible timestamps persist exactly after fsck/kernel remount. Kernel birth time
+is stable; FUSE does not expose STATX_BTIME although birth time exists on disk
+after remount. This is a build-side visibility limitation, not proof of FUSE
+birth-time stability. See validation/sandbox/metadata/TIMESTAMP-REVIEW.txt and
+reproduced/automatic-timestamps. Area11 privileged metadata blockers remain.
+
+Filesystem ENOSPC follow-up (2026-10-21 UTC): all six backend configurations
+return ENOSPC, preserve accepted file contents, recover free space after unlink,
+and persist a subsequent write across fsck/kernel remount. Kernel accepts52MiB
+versus50MiB for FUSE in this fixture; capacity parity is not claimed. See
+validation/sandbox/metadata/ENOSPC-REVIEW.txt and reproduced/filesystem-enospc.
+A host checker import bug was corrected and all assertions rerun on the complete
+saved guest log. Delayed-write errors and full-build propagation remain distinct.
+
+Whole-build filesystem ENOSPC (2026-10-21 UTC): bounded ordinary writes inside
+the restricted command reach real ENOSPC; command failure propagates before
+sealing/publication, preserves the base, and leaves no DM mappings/attached loops.
+See validation/sandbox/chain-filesystem-full/README.txt and reproduced/
+chain-filesystem-full. This closes the bounded filesystem-full propagation gap
+in6/16/17; delayed errors, other phases and final executor remain separate.
+
+Worker metadata source classification (2026-10-21 UTC): exact tested sources
+show libfuse statx support but no fuse2fs statx callback; birth-time visibility
+is a worker omission with a potential API correction, not a general FUSE limit.
+The worker also deliberately reserves blocks against complete-exhaustion
+corruption, corroborating earlier ENOSPC as policy without deriving the exact
+capacity delta. See validation/sandbox/metadata/WORKER-SOURCE-REVIEW.txt and
+reproduced/worker-metadata-source. No backend patch or reserve change adopted.
+
+Birth-time prototype follow-up (2026-10-21 UTC): a separate worker statx
+callback exposes/stabilizes/persists birth time in all six metadata configurations.
+Open-file after unlink, symlink, missing-path and existing metadata/exhaustion
+checks pass. See validation/sandbox/statx-worker/README.txt and reproduced/
+statx-{metadata,worker-build}. This demonstrates a bounded worker correction;
+small-inode/optional-field/portability and maintained adoption remain open.
+Mapped privileged metadata restrictions are unchanged; no production adoption.
+
+Small-inode statx follow-up (2026-10-21 UTC): kernel/initial-FUSE/mapped-FUSE
+all correctly omit BTIME for128-byte ext4 inodes, agree on pathname/FD results,
+and preserve supported timestamps/content across fsck/kernel remount. Existing
+six regular-inode metadata cases also pass with the same prototype worker. See
+validation/sandbox/statx-worker/SMALL-INODE-REVIEW.txt and reproduced/
+statx-small-inode. Broader API/portability and maintained adoption remain open.
+
+Representative Fedora root boot (2026-10-21 UTC): restricted pinned Fedora44
+bootstrap/upgrade/kernel-install/dracut/ACL checks pass with prototype worker.
+Exported kernel/initramfs/raw filesystem boots in a separate offline guest,
+switches into ext4 root, runs systemd and installed-package/root-identity checks,
+and powers off. Export remains unchanged. See validation/sandbox/root-boot/
+README.txt and reproduced/fedora-root-{build,boot}. This closes the representative
+raw-root switch/boot gap, not corium/carapace boot composition, SELinux enforcement
+or a distribution-version upgrade. Other backend/design gates remain open.
+
+Live-build admission composition now passes success/accepted-cancellation and
+existing arbitration regression; see build-admission/README.txt. It connects
+early cancellation eligibility to the full completion barrier but deliberately
+lets the cancelled work finish. Prompt cleanup/death composition stays open.
+
+Prompt cancellation now passes in build-admission (STOP-VALIDATION.txt).
+Coordinator/arbiter death and blocked-worker/pressure composition remain open.
+
+Active pre-reservation coordinator death now has linked/unlinked composition
+evidence (build-admission/OWNER-DEATH.txt). Commit-phase death and blocked-worker/
+pressure integration remain distinct; no production adoption or orphan GC.
+
+Linked active-build stopped-worker/queued-request and whole-build group-OOM
+composition now pass; see build-admission/PRESSURE-VALIDATION.txt. Commit-phase
+coordinator loss, identity/recovery and generic execution remain distinct.
+
+Defined reservation and visible/unacknowledged coordinator-death gates now
+pass with real build bytes (build-admission/COMMIT-DEATH.txt). Recovery identity/
+lifetime, final composition and generic execution remain separate.

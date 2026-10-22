@@ -1,0 +1,20 @@
+[
+  {
+    "run": "/tmp/conglobate-recovery-ownership-v1",
+    "retained": "validation/sandbox/reproduced/recovery-ownership",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  },
+  {
+    "run": "/tmp/conglobate-receipt-write-v2",
+    "retained": "validation/sandbox/reproduced/receipt-write-failure",
+    "removed_generated": [
+      "root",
+      "initramfs.gz",
+      "vmlinuz"
+    ]
+  }
+]

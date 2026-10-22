@@ -1,0 +1,28 @@
+{
+  "distro": "fedora",
+  "cases": [
+    {
+      "mode": "native",
+      "seconds": 10.192137982987333,
+      "firmware_guest_seconds": 9.27,
+      "code": 0,
+      "error": null,
+      "source_unchanged": true,
+      "output": "/dev/shm/conglobate-cross-step-conglobate-uml-cross-fedora-v2-native.raw",
+      "output_sha256": "6bb2e2a612cceba754a20809d8d76e148bab7af4d8b17d9ee5993789ca7e416d",
+      "pass": true
+    },
+    {
+      "mode": "uml",
+      "seconds": 197.56138260802254,
+      "firmware_guest_seconds": 195.17000000000002,
+      "code": 0,
+      "error": null,
+      "source_unchanged": true,
+      "output": "/dev/shm/conglobate-cross-step-conglobate-uml-cross-fedora-v2-uml.raw",
+      "output_sha256": "1f7d28befead865a0b1e8716aa8365eba48447ba4176f939dc09d56aae67b809",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

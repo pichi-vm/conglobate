@@ -1,0 +1,28 @@
+{
+  "distro": "alpine",
+  "cases": [
+    {
+      "mode": "native",
+      "seconds": 2.170425693038851,
+      "firmware_guest_seconds": null,
+      "code": 0,
+      "error": null,
+      "source_unchanged": true,
+      "output": "/dev/shm/conglobate-cross-step-conglobate-uml-cross-alpine-v1-native.raw",
+      "output_sha256": "f58ef6d344fbb6d9f8c7f111319086fa6353301b0f5956d0e5be84677a3821ed",
+      "pass": false
+    },
+    {
+      "mode": "uml",
+      "seconds": 10.644049511000048,
+      "firmware_guest_seconds": 7.9,
+      "code": 0,
+      "error": null,
+      "source_unchanged": true,
+      "output": "/dev/shm/conglobate-cross-step-conglobate-uml-cross-alpine-v1-uml.raw",
+      "output_sha256": "ff79c3dcf041951443b8649dc44f8167fed178eae248ed2c5f653b52eb7e5914",
+      "pass": true
+    }
+  ],
+  "pass": false
+}

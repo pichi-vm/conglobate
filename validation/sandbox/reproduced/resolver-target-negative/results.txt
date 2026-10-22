@@ -1,0 +1,18 @@
+RESOLVER_TARGET_REJECT_PASS /etc/dangling
+RESOLVER_TARGET_REJECT_PASS /etc/cycle
+RESOLVER_TARGET_REJECT_PASS /etc/outside
+RESOLVER_TARGET_REJECT_PASS /missing/../etc/regular
+RESOLVER_TARGET_REJECT_PASS /etc/regular/
+RESOLVER_TARGET_REJECT_PASS /etc/file-slash
+RESOLVER_TARGET_REJECT_PASS /etc/file-dot
+RESOLVER_TARGET_REJECT_PASS /fifo
+RESOLVER_TARGET_REJECT_PASS /socket
+RESOLVER_TARGET_REJECT_PASS /device
+RESOLVER_TARGET_REJECT_PASS /run
+RESOLVER_TARGET_MOUNT_AND_MAGICLINK_DENIALS_PASS
+
+thread 'main' (150) panicked at src/main.rs:170:45:
+called `Result::unwrap()` on an `Err` value: EBUSY
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+GUEST_EXIT 101
+[    0.620882] sysrq: Resetting

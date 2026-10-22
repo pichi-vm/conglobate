@@ -1,0 +1,23 @@
+#!/bin/bash
+set -euo pipefail
+fuse2fs -f -o acl,allow_other /work/failure /work/view >/work/fuse.log 2>&1 &
+daemon=$!
+for ((i=0;i<100;i++)); do mountpoint -q /work/view && break; sleep .1; done
+mountpoint -q /work/view
+echo before >/work/view/before
+kill -KILL "$daemon"
+set +e
+wait "$daemon"
+status=$?
+set -e
+test "$status" = 137
+echo DAEMON_FAILURE_DETECTED_PASS
+set +e
+timeout 5 touch /work/view/after
+status=$?
+set -e
+test "$status" != 0
+test "$status" != 124
+echo DEAD_DAEMON_IO_FAILURE_PASS
+fusermount3 -u /work/view
+echo FAILED_MOUNT_CLEANUP_PASS

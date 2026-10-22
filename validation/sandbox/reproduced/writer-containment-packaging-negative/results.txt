@@ -1,0 +1,42 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+Traceback (most recent call last):
+  File [35m"/outer-launcher.py"[0m, line [35m9[0m, in [35m<module>[0m
+    child = subprocess.Popen(['/ownership-init'], stdin=fd)
+  File [35m"/usr/lib64/python3.14/subprocess.py"[0m, line [35m1039[0m, in [35m__init__[0m
+    [31mself._execute_child[0m[1;31m(args, executable, preexec_fn, close_fds,[0m
+    [31m~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                        [1;31mpass_fds, cwd, env,[0m
+                        [1;31m^^^^^^^^^^^^^^^^^^^[0m
+    ...<5 lines>...
+                        [1;31mgid, gids, uid, umask,[0m
+                        [1;31m^^^^^^^^^^^^^^^^^^^^^^[0m
+                        [1;31mstart_new_session, process_group)[0m
+                        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/usr/lib64/python3.14/subprocess.py"[0m, line [35m1875[0m, in [35m_execute_child[0m
+    [31mself._posix_spawn[0m[1;31m(args, executable, env, restore_signals, close_fds,[0m
+    [31m~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                      [1;31mp2cread, p2cwrite,[0m
+                      [1;31m^^^^^^^^^^^^^^^^^^[0m
+                      [1;31mc2pread, c2pwrite,[0m
+                      [1;31m^^^^^^^^^^^^^^^^^^[0m
+                      [1;31merrread, errwrite)[0m
+                      [1;31m^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/usr/lib64/python3.14/subprocess.py"[0m, line [35m1819[0m, in [35m_posix_spawn[0m
+    self.pid = [31mos.posix_spawn[0m[1;31m(executable, args, env, **kwargs)[0m
+               [31m~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1;35mFileNotFoundError[0m: [35m[Errno 2] No such file or directory: '/ownership-init'[0m
+OUTER_PID_LIFETIME_HARNESS_FALLBACK_FAILURE
+Traceback (most recent call last):
+  File [35m"/observer.py"[0m, line [35m37[0m, in [35m<module>[0m
+    [31muntil[0m[1;31m(lambda: Path('/work/writers-progress').exists()[0m
+    [31m~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+          [1;31mand Path('/work/guardian-watch-armed').exists()[0m
+          [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+          [1;31mand Path('/work/watch-monitor-pid').exists(), 60)[0m
+          [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/observer.py"[0m, line [35m16[0m, in [35muntil[0m
+    raise AssertionError('outer PID lifetime deadline')
+[1;35mAssertionError[0m: [35mouter PID lifetime deadline[0m
+GUEST_EXIT 1
+[   61.694313] sysrq: Resetting

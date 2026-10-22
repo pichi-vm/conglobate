@@ -1,0 +1,38 @@
+[
+  {
+    "distro": "alpine",
+    "log": "/var/tmp/conglobate-uml-alpine-boot-v1/results.txt",
+    "sha256": "cf0a3e0cb9fcf4e10baf22b06c86bc2478d129b7a4872812e8e80add75b61420",
+    "no_kernel_panic": true,
+    "powered_off": true,
+    "existing_result_pass": true,
+    "pass": true
+  },
+  {
+    "distro": "debian",
+    "log": "/var/tmp/conglobate-uml-debian-boot-v1/results.txt",
+    "sha256": "9688362b82fd833baa2e33aaef17764d7a00e829b19e4468c6a57ccfd00f1fe8",
+    "no_kernel_panic": true,
+    "powered_off": true,
+    "existing_result_pass": true,
+    "pass": true
+  },
+  {
+    "distro": "nixos",
+    "log": "/var/tmp/conglobate-uml-nixos-boot-v1/results.txt",
+    "sha256": "0099dc5852a55cfcfec1beedf922ba7885e9de247b90e14b6ae2a5e3c7ff64f0",
+    "no_kernel_panic": true,
+    "powered_off": true,
+    "existing_result_pass": true,
+    "pass": true
+  },
+  {
+    "distro": "fedora",
+    "log": "/var/tmp/conglobate-uml-fedora-boot-v2/results.txt",
+    "sha256": "21196b9b5eaefcaaa30f26846dfb4cfd24a09e22d7ad6d80c9c12400886c524f",
+    "no_kernel_panic": true,
+    "powered_off": true,
+    "existing_result_pass": true,
+    "pass": true
+  }
+]

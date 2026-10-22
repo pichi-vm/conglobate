@@ -8,6 +8,66 @@ use conglobate::{
 use pichi_artifact::{ConfigDescriptor, Layer, Manifest, PmiDescriptor};
 use std::{collections::BTreeMap, fs};
 
+#[test]
+fn export_streams_with_bounded_reads_and_rejects_partial_io_failure() {
+    use std::io::{self, Read};
+    struct FixtureReader {
+        remaining: usize,
+        fail_at_end: bool,
+        largest_request: usize,
+    }
+    impl Read for FixtureReader {
+        fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+            self.largest_request = self.largest_request.max(buffer.len());
+            if self.remaining == 0 && self.fail_at_end {
+                return Err(io::Error::from_raw_os_error(nix::libc::EIO));
+            }
+            let count = buffer.len().min(self.remaining);
+            buffer[..count].fill(0x5a);
+            self.remaining -= count;
+            Ok(count)
+        }
+    }
+    let directory = tempfile::tempdir().unwrap();
+    let good = Artifact::new(&directory.path().join("good")).unwrap();
+    let mut reader = FixtureReader {
+        remaining: 4 * 1024 * 1024,
+        fail_at_end: false,
+        largest_request: 0,
+    };
+    let (digest, size) = good.put(&mut reader).unwrap();
+    assert_eq!(size, 4 * 1024 * 1024);
+    assert!(reader.largest_request <= 65536);
+    assert_eq!(
+        fs::metadata(good.blob_path(&digest.oci()).unwrap())
+            .unwrap()
+            .len(),
+        size
+    );
+
+    let failed_path = directory.path().join("failed");
+    let failed = Artifact::new(&failed_path).unwrap();
+    let mut reader = FixtureReader {
+        remaining: 3 * 65536,
+        fail_at_end: true,
+        largest_request: 0,
+    };
+    let error = failed.put(&mut reader).unwrap_err();
+    assert!(
+        matches!(error, conglobate::Error::Io(error) if error.raw_os_error() == Some(nix::libc::EIO))
+    );
+    assert_eq!(
+        fs::read_dir(failed_path.join("image.oci/blobs/sha256"))
+            .unwrap()
+            .count(),
+        0
+    );
+    assert_eq!(fs::read_dir(&failed_path).unwrap().count(), 1);
+    let destination = directory.path().join("output");
+    assert!(failed.publish(&destination).is_err());
+    assert!(!destination.exists());
+}
+
 fn fixture(manifest: &Manifest) -> Inventory {
     let digest = Digest::sha256(b"fixture");
     Inventory {
@@ -219,4 +279,226 @@ fn firmware_only_input_omits_root_but_execution_inputs_require_one() {
     assert!(inventory.encode().is_err());
     inventory.inputs[0].carapace_root = Some(vec![0; 32].into());
     Inventory::decode(&inventory.encode().unwrap()).unwrap();
+}
+
+#[test]
+fn artifact_stream_cancellation_is_isolated_and_cleans_staging() {
+    struct CancelReader {
+        calls: usize,
+        eof: bool,
+        cancel_at: usize,
+    }
+    impl std::io::Read for CancelReader {
+        fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+            self.calls += 1;
+            if self.calls < self.cancel_at {
+                buffer.fill(0x5a);
+                return Ok(buffer.len());
+            }
+            if self.calls == self.cancel_at {
+                nix::sys::signal::raise(nix::sys::signal::Signal::SIGTERM).unwrap();
+                if !self.eof {
+                    buffer.fill(0x5a);
+                    return Ok(buffer.len());
+                }
+            }
+            Ok(0)
+        }
+    }
+    const MODE: &str = "CONGLOBATE_ARTIFACT_CANCEL_TEST";
+    let Ok(mode) = std::env::var(MODE) else {
+        // The cancellation flag is process-global and intentionally irreversible.
+        for mode in ["before-read", "during-read", "after-chunk", "at-eof"] {
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "artifact_stream_cancellation_is_isolated_and_cleans_staging",
+                    "--nocapture",
+                ])
+                .env(MODE, mode)
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{mode}: {}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        return;
+    };
+    conglobate::cancel::install().unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let private = directory.path().join("private");
+    let artifact = Artifact::new(&private).unwrap();
+    let mut reader = CancelReader {
+        calls: 0,
+        eof: mode == "at-eof",
+        cancel_at: if mode == "after-chunk" { 2 } else { 1 },
+    };
+    if mode == "before-read" {
+        nix::sys::signal::raise(nix::sys::signal::Signal::SIGTERM).unwrap();
+    }
+    let error = artifact.put(&mut reader).unwrap_err();
+    assert_eq!(error.to_string(), "build cancelled");
+    assert_eq!(
+        reader.calls,
+        match mode.as_str() {
+            "before-read" => 0,
+            "after-chunk" => 2,
+            _ => 1,
+        }
+    );
+    assert_eq!(
+        fs::read_dir(private.join("image.oci/blobs/sha256"))
+            .unwrap()
+            .count(),
+        0
+    );
+    assert_eq!(fs::read_dir(&private).unwrap().count(), 1);
+}
+
+#[test]
+fn cancellation_during_publication_copy_removes_sibling_staging() {
+    const SIZE: u64 = 128 * 1024 * 1024;
+    const CHILD: &str = "CONGLOBATE_PUBLICATION_CANCEL_TEST";
+    if std::env::var_os(CHILD).is_none() {
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "cancellation_during_publication_copy_removes_sibling_staging",
+                "--nocapture",
+            ])
+            .env(CHILD, "1")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return;
+    }
+    conglobate::cancel::install().unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let private = directory.path().join("private");
+    let artifact = Artifact::new(&private).unwrap();
+    let (digest, size) = artifact
+        .put(std::io::Read::take(std::io::repeat(0x5a), SIZE))
+        .unwrap();
+    let mut manifest = manifest();
+    manifest.layers = vec![Layer::Pmi(PmiDescriptor {
+        digest: digest.oci(),
+        size,
+    })];
+    artifact.finalize(&manifest, &fixture(&manifest)).unwrap();
+    let root = directory.path().to_owned();
+    let blob = digest.oci()[7..].to_owned();
+    let observer = std::thread::spawn(move || {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while std::time::Instant::now() < deadline {
+            for entry in fs::read_dir(&root).unwrap().flatten() {
+                if !entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(".conglobate-output-")
+                {
+                    continue;
+                }
+                let path = entry.path().join("image.oci/blobs/sha256").join(&blob);
+                if let Ok(metadata) = fs::metadata(path)
+                    && metadata.len() > 0
+                    && metadata.len() < SIZE
+                {
+                    // The production publication copy is active. The handler
+                    // is process-wide even though this signal targets this thread.
+                    nix::sys::signal::raise(nix::sys::signal::Signal::SIGTERM).unwrap();
+                    return metadata.len();
+                }
+            }
+            std::thread::yield_now();
+        }
+        panic!("did not observe a partially copied publication blob");
+    });
+    let output = directory.path().join("published");
+    let result = artifact.publish(&output);
+    let observed = observer.join().unwrap();
+    assert!(observed > 0 && observed < SIZE);
+    assert_eq!(result.unwrap_err().to_string(), "build cancelled");
+    assert!(!output.exists());
+    assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 1);
+    assert!(private.join("inventory.cbor").is_file());
+    println!(
+        "cancelled during publication: observed {observed}/{SIZE} copied bytes; no output or sibling staging remains"
+    );
+}
+
+#[test]
+fn publication_race_preserves_a_new_empty_destination() {
+    const SIZE: u64 = 32 * 1024 * 1024;
+    use std::os::unix::fs::MetadataExt;
+    let directory = tempfile::tempdir().unwrap();
+    let private = directory.path().join("private");
+    let artifact = Artifact::new(&private).unwrap();
+    let (digest, size) = artifact
+        .put(std::io::Read::take(std::io::repeat(0x5a), SIZE))
+        .unwrap();
+    let mut manifest = manifest();
+    manifest.layers = vec![Layer::Pmi(PmiDescriptor {
+        digest: digest.oci(),
+        size,
+    })];
+    artifact.finalize(&manifest, &fixture(&manifest)).unwrap();
+    let output = directory.path().join("published");
+    let competing_output = output.clone();
+    let root = directory.path().to_owned();
+    let blob = digest.oci()[7..].to_owned();
+    let observer = std::thread::spawn(move || {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while std::time::Instant::now() < deadline {
+            for entry in fs::read_dir(&root).unwrap().flatten() {
+                if !entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(".conglobate-output-")
+                {
+                    continue;
+                }
+                let path = entry.path().join("image.oci/blobs/sha256").join(&blob);
+                if let Ok(metadata) = fs::metadata(path)
+                    && metadata.len() > 0
+                    && metadata.len() < SIZE
+                {
+                    // A separate process creates an empty directory after the
+                    // early existence check. Plain rename could replace it.
+                    assert!(
+                        std::process::Command::new("mkdir")
+                            .arg(&competing_output)
+                            .status()
+                            .unwrap()
+                            .success()
+                    );
+                    let created = fs::metadata(&competing_output).unwrap();
+                    return (created.dev(), created.ino(), metadata.len());
+                }
+            }
+            std::thread::yield_now();
+        }
+        panic!("did not observe a partially copied publication blob");
+    });
+    let result = artifact.publish(&output);
+    let (dev, ino, observed) = observer.join().unwrap();
+    assert!(
+        matches!(result, Err(conglobate::Error::Io(ref error)) if error.raw_os_error() == Some(nix::libc::EEXIST)),
+        "{result:?}"
+    );
+    let preserved = fs::metadata(&output).unwrap();
+    assert_eq!((preserved.dev(), preserved.ino()), (dev, ino));
+    assert_eq!(fs::read_dir(&output).unwrap().count(), 0);
+    assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 2);
+    assert!(private.join("inventory.cbor").is_file());
+    println!(
+        "destination created during copy at {observed}/{SIZE} bytes: EEXIST; empty directory inode preserved; sibling staging removed"
+    );
 }

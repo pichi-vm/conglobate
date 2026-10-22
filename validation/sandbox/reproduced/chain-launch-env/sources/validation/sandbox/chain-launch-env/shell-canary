@@ -1,0 +1,4 @@
+# Benign fixture, sourced by bash: create one owned marker, only in worker setup.
+if test "$0" = /chain-worker; then
+ printf 'owned shell initialization\n' >/work/launcher-canary
+fi

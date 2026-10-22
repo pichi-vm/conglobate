@@ -1,0 +1,1 @@
+OSError Errno122 Disk quota exceeded copying publication-helper into generated root. Packaging failed before guest launch; no runtime result.

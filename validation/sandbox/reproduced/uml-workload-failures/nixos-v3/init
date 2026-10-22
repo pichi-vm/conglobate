@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+/usr/bin/busybox mkdir /newroot
+/usr/bin/busybox mount -t tmpfs -o size=6G tmpfs /newroot
+for p in /*; do
+ case "$p" in /newroot) continue;; esac
+ /usr/bin/busybox cp -a "$p" /newroot/
+done
+/usr/bin/busybox mv /newroot/real-init /newroot/init
+exec /usr/bin/busybox switch_root /newroot /init

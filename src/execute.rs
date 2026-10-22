@@ -42,6 +42,12 @@ impl Step {
     fn command(&self, executable: &Path, mode: &str) -> Result<Command, Error> {
         let mut command = Command::new(executable);
         command
+            .env_clear()
+            .envs([
+                ("PATH", "/usr/sbin:/usr/bin:/sbin:/bin"),
+                ("HOME", "/"),
+                ("LC_ALL", "C"),
+            ])
             .arg(mode)
             .arg("--expected-parent")
             .arg(std::fs::read_link("/proc/self")?)
@@ -286,6 +292,81 @@ mod tests {
     use super::finish_step;
     use std::os::unix::process::ExitStatusExt;
     use std::process::ExitStatus;
+
+    #[test]
+    fn trusted_helper_does_not_inherit_shell_startup_environment() {
+        use std::{fs, os::unix::fs::PermissionsExt, path::PathBuf, process::Command};
+        const CHILD: &str = "CONGLOBATE_HELPER_ENV_TEST";
+        if let Some(root) = std::env::var_os(CHILD) {
+            let root = PathBuf::from(root);
+            let step = super::Step {
+                expected_parent: None,
+                root: root.clone(),
+                context: root.clone(),
+                network: false,
+                carapace: None,
+                command: "unused fixture argument".into(),
+            };
+            let status = step
+                .command(&root.join("probe"), "__step")
+                .unwrap()
+                .status()
+                .unwrap();
+            assert!(status.success());
+            assert!(!root.join("marker").exists());
+            return;
+        }
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        fs::write(
+            root.join("hook"),
+            "printf fixture > \"$CONGLOBATE_ENV_CANARY\"\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("probe"),
+            concat!(
+                "#!/bin/bash\nset -eu\n",
+                "test -z \"${BASH_ENV+x}\"\n",
+                "test -z \"${CONGLOBATE_ENV_CANARY+x}\"\n",
+                "test \"$HOME\" = /\n",
+                "test \"$PATH\" = /usr/sbin:/usr/bin:/sbin:/bin\n",
+                "test \"$LC_ALL\" = C\n"
+            ),
+        )
+        .unwrap();
+        fs::set_permissions(root.join("probe"), fs::Permissions::from_mode(0o700)).unwrap();
+        // Positive control: the hook writes only this owned temporary marker.
+        assert!(
+            Command::new("/bin/bash")
+                .args(["-c", "true"])
+                .env("BASH_ENV", root.join("hook"))
+                .env("CONGLOBATE_ENV_CANARY", root.join("marker"))
+                .status()
+                .unwrap()
+                .success()
+        );
+        assert_eq!(fs::read(root.join("marker")).unwrap(), b"fixture");
+        fs::remove_file(root.join("marker")).unwrap();
+        let output = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "execute::tests::trusted_helper_does_not_inherit_shell_startup_environment",
+                "--nocapture",
+            ])
+            .env(CHILD, root)
+            .env("BASH_ENV", root.join("hook"))
+            .env("CONGLOBATE_ENV_CANARY", root.join("marker"))
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(!root.join("marker").exists());
+    }
 
     #[test]
     fn cleanup_failure_keeps_child_status_and_stays_fatal() {

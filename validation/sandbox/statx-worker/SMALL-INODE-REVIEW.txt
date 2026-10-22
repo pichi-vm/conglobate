@@ -1,0 +1,22 @@
+Small-inode statx mask validation — 2026-10-21 UTC
+================================================
+Reproduce with the statx-worker README metadata command and --expect-birthtime;
+the updated metadata init additionally formats three owned64MiB filesystems with
+128-byte inodes and4KiB blocks. Tests run through kernel ext4, initial-userns FUSE
+and mapped FUSE, using the unchanged statx-worker-v2 binary/library. No host
+filesystem mount or source/backend change is involved in this follow-up.
+
+In each small-inode case the probe creates/fsyncs a regular file, compares
+pathname and open-descriptor statx results, verifies exact contents, and requires
+BTIME absent. The supported atime/mtime/ctime values have whole-second precision.
+After unmount and fsck, a kernel read-only remount must expose the same timestamps,
+no birth time and identical file bytes. All three cases pass. The existing six
+regular-inode cases also pass, exposing stable/persisted birth time, along with
+the prior metadata and ENOSPC checks. The runner requires all markers/counts.
+
+This closes the previously untested absent-i_crtime branch of this prototype
+for the tested128-byte format. It does not qualify every inode extension layout,
+optional statx attribute, concurrent mutation, architecture or maintained
+backend packaging. The inode format's timestamp precision and2038 limits are
+not changed or hidden. Privileged-metadata blockers remain separate.
+Sources/input hashes/results are retained in reproduced/statx-small-inode.

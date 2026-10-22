@@ -1,0 +1,50 @@
+Abrupt creator death inside pinned carapace activation
+======================================================
+
+Reproduce:
+  python3 validation/sandbox/carapace-activation/build.py --death-probe \
+    --out /tmp/NEW-DEATH-BUILD
+  python3 validation/sandbox/guest.py carapace-activation-death \
+    --kernel-version 7.2.10-200.fc44.x86_64 \
+    --activation-tests-build /tmp/NEW-DEATH-BUILD --out /tmp/NEW-DEATH-GUEST --run
+
+Test-only death-probe.rs is appended to a copied pinned dependency's assemble.rs;
+production code and the Cargo checkout remain unchanged. Original source hashes,
+probe hash and compiled assemble.rs hash are recorded. The existing cfg(test)
+activation observer exposes Created and Resumed boundaries. The build script
+adds cfg(test) Loaded and Opened observations to the copy, enabled only by
+the death-probe environment variable; existing test observations are unchanged. A child test process
+publishes a ready file at the chosen boundary and waits at a bounded gate. Its
+parent waits for the gate, sends SIGKILL through Child::kill, verifies signal 9,
+and attempts normal activation of the same private test name. Thirty-second
+guest timeout bounds the matrix; only disposable guest targets are affected.
+
+Created result: the mapping survives process death with no table. A subsequent
+normal activation fails with 'is being removed; retry assembly', and the mapping
+still exists. This is a demonstrated unresolved recovery gap, not a clean pass.
+The test explicitly removes its own private mapping only to clean up the fixture.
+The error message conflates a stale unloaded mapping with deferred-removal races.
+
+Loaded result: death after table load but before resume leaves flags 0x40
+(INACTIVE_TABLE). Reuse fails with 'not an active read-only device', and the
+mapping remains. This is a second pre-resume recovery gap requiring fixture
+cleanup. Created reported flags 0; Resumed and Opened reported flags 0x21
+(READ_ONLY | ACTIVE_TABLE).
+
+Resumed and Opened results: subsequent activation adopts the same active read-only mapping,
+schedules deferred removal and returns the same device identity. Closing the
+handle removes the mapping automatically. Final guest DM inventory is empty.
+
+The test suite reports success because it asserts these observed outcomes,
+including the known failure. This is not a claim that abrupt-death recovery is
+complete. It uses zero targets and unique private names; real CARAPACE-z can be
+shared globally, so deleting names without synchronization/validation is not a
+valid general fix. Loaded-but-not-resumed and post-open/pre-deferred are now covered. Other
+instruction boundaries, COW-dependent targets and recovery races remain open.
+All four existing kernel activation tests also pass with this instrumentation. No changes to the pinned dependency
+have been proposed or adopted by this probe.
+
+Current evidence: reproduced/carapace-activation-death-boundaries; the earlier
+two-boundary run is retained in reproduced/carapace-activation-death. These
+records include source snapshots, dependency
+build catalog, instrumented source, build log, guest inputs and output.

@@ -1,0 +1,21 @@
+Error: "original parent is dead or its handle is invalid"
+SAFE_PARENT_HANDOFF_PASS before-arm
+SAFE_PARENT_HANDOFF_MODE_PASS same before-arm
+SAFE_PARENT_HANDOFF_PASS after-arm
+SAFE_PARENT_HANDOFF_MODE_PASS same after-arm
+SAFE_PARENT_HANDOFF_PASS after-check
+SAFE_PARENT_HANDOFF_MODE_PASS same after-check
+SAFE_PARENT_HANDOFF_PASS live-control
+SAFE_PARENT_HANDOFF_MODE_PASS same live-control
+Error: "original parent is dead or its handle is invalid"
+SAFE_PARENT_HANDOFF_PASS before-arm
+SAFE_PARENT_HANDOFF_MODE_PASS nested before-arm
+SAFE_PARENT_HANDOFF_PASS after-arm
+SAFE_PARENT_HANDOFF_MODE_PASS nested after-arm
+SAFE_PARENT_HANDOFF_PASS after-check
+SAFE_PARENT_HANDOFF_MODE_PASS nested after-check
+SAFE_PARENT_HANDOFF_PASS live-control
+SAFE_PARENT_HANDOFF_MODE_PASS nested live-control
+SAFE_PARENT_HANDOFF_MATRIX_PASS
+GUEST_EXIT 0
+[    1.261629] sysrq: Resetting

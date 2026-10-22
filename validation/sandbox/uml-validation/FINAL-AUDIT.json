@@ -1,0 +1,2027 @@
+{
+  "timestamp": "2026-10-21T14:35:26.975234+00:00",
+  "validation_areas": 14,
+  "scripts_parsed": 23,
+  "retained_files_verified": 403,
+  "hash_errors": [],
+  "qemu_processes_observed": "",
+  "shutdown_audit_sha256": "bba9ac0c7a0a5b8f3dbb5cd455be2dd8d5f27db0a35bba092ed1a3852fe93fe1",
+  "pass": true,
+  "checks": [
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/alpine.py",
+      "sha256": "4d4d6645aa6586a1925dbacefe1432e4c16b3e153a153f3af6e132be8c0477f9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/boot-alpine.py",
+      "sha256": "f0264df1914c91ab479eb832a08ec8d0a8ae8f9814bb8a19365197e05903b604",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/probe.py",
+      "sha256": "c3db78acdc3f6e636fe833331e90e4bf9f2cd99cb1c55e51ebcc396456edf6af",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/latest-releases.yaml",
+      "sha256": "bc18024533cc71791d59d74a8e6599031e35aac92d8ef92ade2f95aaa5761998",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/build/command.json",
+      "sha256": "14831274424642364d5f1f023038fa0759c8a715ac627c2f293e16d2d228e7dc",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/build/tool.json",
+      "sha256": "5d11dd99e9ab52404f18fe64616079dc7d11abb496de019146d82f2163d4c9e5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/build/results.txt",
+      "sha256": "c94c855988cf61c8984d864c31200765827cba3e33ae63f971c47b84b9c89972",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/build/result.json",
+      "sha256": "8e908883f619cd8314e9da4b4d7e10b92d7846656731d93b0b3e3e1b1c05f44d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/build/runtime-inputs.json",
+      "sha256": "d8bc6dea33c605813d5d8c8d97843d41a2d7f6dba6ec3325f59106b4c70a5c11",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/boot/kernel-extract.log",
+      "sha256": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/boot/initramfs-extract.log",
+      "sha256": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/boot/command.json",
+      "sha256": "595a408bf171f4c3c36fdb8759c3231bfd0217842b73c1b3ed54abbaaa1b10ca",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/boot/results.txt",
+      "sha256": "cf0a3e0cb9fcf4e10baf22b06c86bc2478d129b7a4872812e8e80add75b61420",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/boot/result.json",
+      "sha256": "7cfe82d8d19b87399565e3637e9240abf3561b7096d95bae3e1280410dd9da04",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/inner/init",
+      "sha256": "13c32dc557bc20f75d14efac99b9166c93c475e2b035800b3d6b3fc951bac246",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/inner/launch",
+      "sha256": "897b15a7f7dba5158815379ca9274ce44a19e54ce97093c99493034cca39e9e6",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/outer/init",
+      "sha256": "3dd54a283db7527c62ee7191c530918b05b0f8b577d2cefa1c9dadd350a5ad5b",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-alpine/outer/launch",
+      "sha256": "45b1da34bdd417b759a71ddbf420f7b70247137f0403362cd30e74ec8231704d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/native-0.log",
+      "sha256": "b7c2936731437ec94bd5f615672d12dd669dc6da020f4fa9bd4a193e15de584f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/native-0-time.txt",
+      "sha256": "8d415cb7afb714f70879cd9429883678ee423aa144eca6e4de49ef22f820bff4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/uml-0.log",
+      "sha256": "61dd408a7af81fbe6feef0e2d4d7e9e412536e965f9ba20c36321d347a545484",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/uml-0-time.txt",
+      "sha256": "e7f0fc469ac5c190c6024ea153038e24059c082c09e2940a5432a8ec0aa649e4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/native-1.log",
+      "sha256": "8792dd24feec39f8391a78bc2b32485d60d81c13d5820a8f3a84ffb0ddc7ad6f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/native-1-time.txt",
+      "sha256": "f47268c726c05bd08917acfcf47ee18cc1da886add2703e7d4e89b6b0943be3e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/uml-1.log",
+      "sha256": "b76271df158cbbd5c1590b88acf623740764d19b342206f7c14d6b3ecd4de38c",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/uml-1-time.txt",
+      "sha256": "30a583452d3db268ab480a85d4443fa185890d6c6d534d113ad6d9daf1e1d924",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/native-2.log",
+      "sha256": "61ab9293f74ef1df9c802a18e0dd04ccb83615a3e75fa5ff57588c086a9e65be",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/native-2-time.txt",
+      "sha256": "bbb283aaa01c707b747ecf8b6d9cac75b8ee1a446a9866f3aa34d04a7611b471",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/uml-2.log",
+      "sha256": "a2dfead36cb7f8e9e9cb2872755fc81ef01806f8a53eaf9806631f871f861a45",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/uml-2-time.txt",
+      "sha256": "24d840a0bf5d805838c5effd392fee7404f0ecebfd7f138f3a73850188193aec",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-benchmark/result.json",
+      "sha256": "8efc6c67992746e55d27591de5ef28212144acc95eebb29cc87292a2311d6e6e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-compression/compression-run.init",
+      "sha256": "3a8d961f2ee1da3a529524acb473624eb312a88e245e445f01da9e64c3e76efe",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-compression/compression-run.log",
+      "sha256": "f86e4a02613ba9ce9056392c5c71ac444350007df5e2008d2d59d3f0a3b27cb9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-compression/compression-run.json",
+      "sha256": "2c012934e577cd9da68de5f9b168e93734266b87dd030910457f3ab489875eb9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-compression/result.json",
+      "sha256": "2c012934e577cd9da68de5f9b168e93734266b87dd030910457f3ab489875eb9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-compression/zstd_probe.py",
+      "sha256": "740a6d0c84f3fae2a6b1320adbbb15dedebe1bc2b5480ce0c59c443a1e8b7b34",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-alpine/native.log",
+      "sha256": "3fb77563f4cd9693831705e6ef6209edd4590f67c2e1b3e0e6f11d652b7c2199",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-alpine/native-time.txt",
+      "sha256": "8fceca6702a182327db0142cbba1c03d3741a0141fb42893121591355f6f6300",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-alpine/uml.log",
+      "sha256": "e5c469a0ef0c6644a59fb87f747398c09f85aacec16c0a462ac6f433a7e9ba35",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-alpine/uml-time.txt",
+      "sha256": "5b7f6a3fb27fafd5be931ab5fbfea3cf56cd9502622edf9133c9900934ec6779",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-alpine/result.json",
+      "sha256": "1c9f4c87b4c767b0435b97b7081444bdeb4725851ac5f337fe0a458078a75fca",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-debian/native.log",
+      "sha256": "78e27597785041bb1b3837ca23f22705a8aeae9bdccf66aa18158da02fcdf8c4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-debian/native-time.txt",
+      "sha256": "317b32c2f6513b52a484fa612ad87b0bd77fb77491423e5cf3ef185958f6a819",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-debian/uml.log",
+      "sha256": "d7cd1b404d0acc65ce7ec7452b2f728079426d28f26fc4b7dcc3b023b73ad26c",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-debian/uml-time.txt",
+      "sha256": "59e4f4b5b61ee604998312ae63ef8a0648aeeddc3ecbdd8399ff3fe4da0cc348",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-debian/result.json",
+      "sha256": "e5f9f9aab638015364e241b4dee6a8a97b419b681114d37eeda10c0e9da4d193",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/v1/native.log",
+      "sha256": "3d4667e21a33e41e45e3b7fe5cfa44f67c7865e660813bb1ceca4c1da54cab6b",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/v1/native-time.txt",
+      "sha256": "40da3093f00db22af3e6cd68f0ff789aa58fae3708cd653f40cdafd23a5c865f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/v1/uml.log",
+      "sha256": "fa67fd921a7693e9cf5f4569bbf341b89ce165bc3645ff5b254418db15eafc28",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/v1/uml-time.txt",
+      "sha256": "4087d169927d45b1fea98e8de0a0dbb12fc0ebd6a3d089dd3095eefeb7ab160c",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/v1/result.json",
+      "sha256": "74094c071417c07ab0d4734be1281e8334abacfed5c0d33f9ce3138afa2fa677",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/v1/outer-workload",
+      "sha256": "6c1f7f9c85a9645381c1cf45830f86f4183e76d4945488b1a6bba1a898d0649b",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/v2/native.log",
+      "sha256": "2882401fe0339fe190dd95bbdad2c46bac7af782822b8a3fab122b0ae6df8958",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/v2/native-time.txt",
+      "sha256": "37e940d15a8c12dbc133506548cf6fb449f4e7d4299493f49fcdc4ea19ca5bc8",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/v2/uml.log",
+      "sha256": "264446c9aa32a8e9200c94342ca83cc1e1dd715c4e08fa2571437e6fd2e62b9a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/v2/uml-time.txt",
+      "sha256": "243e0a2565042ccf430760ac3037a4c19e703cbed412b6d435e3c2ee5016c3f0",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/v2/result.json",
+      "sha256": "71a247985cfee0f7f5e62b92ca5fcc5f7112764403ee62fdcf80ab3b2280823f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/v2/outer-workload",
+      "sha256": "b7f7bb41d5f7b8b833cf835eff442074642c7e874ea9db338891f06f71983bab",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-fedora/final-artifact/result.json",
+      "sha256": "173e77e522eaea1025cba593509c647aef2b15ac8ccbb9470d60ac7704adcbfe",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-nixos/native.log",
+      "sha256": "0b9dc373c8ea07261eb255c2f00ef273c41d6dc8ce6da187440c7974fa7f39b0",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-nixos/native-time.txt",
+      "sha256": "7709e8e687b59e94e7e8fba556eaa452a272761feccedb37b742e6a475f39185",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-nixos/uml.log",
+      "sha256": "b556c1a06d755323e25e6c2cbe409752d0a748b1a8a9dcb75b40c49ad00d9596",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-nixos/uml-time.txt",
+      "sha256": "f05d625ccd55672feaf7aafa4d704c5cffe886e606e81fc919459fbeeaf04420",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-nixos/result.json",
+      "sha256": "c8ea99d525beda24ff8e9f623d28b56619b30d7ea6889ca77971b27460feb78b",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-cross-nixos/cross-step.py",
+      "sha256": "fb4d27f2605567111e1a543eda046e7fce15d85582c2b011302d0af7e76a9c54",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-debian/build/runtime-inputs.json",
+      "sha256": "cbf7446fbae77cf15b061baf7936134b52cbd757b98d3d0a11707a93ee1c8e2b",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-debian/build/command.json",
+      "sha256": "751e7f1a672f9a072c61ea0f1b74c55ffb77a34d5541813d605da0376837d3b3",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-debian/build/tool.json",
+      "sha256": "70d3f4ee243bab09cfc1df1e3eeb27fa166deb368cc61fe57d2d4c9654ea5946",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-debian/build/results.txt",
+      "sha256": "c05fc30ee2da30ea34045471643decda0c2a3f24b69a8689267f673ceebfb000",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-debian/build/result.json",
+      "sha256": "f49bb219bbcfc334547cc3740cdf47cedb51b4f18a173d6c05f018168182e77a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-debian/build/init",
+      "sha256": "f1ee538113a6e0708f0efb990f6d2ae8522a4e8aa1d4dde2b68451a9de1cb73f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-debian/boot/kernel-extract.log",
+      "sha256": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-debian/boot/initramfs-extract.log",
+      "sha256": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-debian/boot/command.json",
+      "sha256": "e16080d7fe11b4ae039097af6cb7b99e19d13ca098ae8378069907d83ac6801d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-debian/boot/results.txt",
+      "sha256": "9688362b82fd833baa2e33aaef17764d7a00e829b19e4468c6a57ccfd00f1fe8",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-debian/boot/result.json",
+      "sha256": "a081a54a2a426703d8c64fd07fcf5668d64ab6368c0b921a7c2c22c4d7f0a164",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-fsck/conglobate-uml-alpine-v4-check.log",
+      "sha256": "91fac348243ff8669790faf7dc1faa8486eca0e96566e5855cda466d3dfac777",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-fsck/conglobate-uml-alpine-v4-header.log",
+      "sha256": "791a80a1b256dfd7ba526834c8cabf70f0e8981be1ba0654e0fd9c97c4ca9df6",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-fsck/conglobate-uml-debian-v5-check.log",
+      "sha256": "a95f8c132c465e0153841534b9e0feb98c86b0fe3819ecfef31663e58f9a268f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-fsck/conglobate-uml-debian-v5-header.log",
+      "sha256": "1337bf156039ac77997e153f6f276865e92ae30f8f416c361af81c76bfef0232",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-fsck/conglobate-uml-nixos-v4-check.log",
+      "sha256": "639c250a5693adff27253f4b2f24a87624d3cd6d469c26883e62cc4437b9fd51",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-fsck/conglobate-uml-nixos-v4-header.log",
+      "sha256": "197e5026a89667a3104fd90228cdc2ef5d6b2f7fe8a438880553859f9885835a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-fsck/conglobate-uml-fedora-v4-check.log",
+      "sha256": "5c3a5fdcd1efa1cc03c82ea83b3ca904d11daa149d5a9e039e65f55555f9bdf9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-fsck/conglobate-uml-fedora-v4-header.log",
+      "sha256": "b33a5572353a073248a62100aafef0d2a3ff0407bdb06320e1a7970d5b24331e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-fsck/result.json",
+      "sha256": "3ecdbea1604173e8b4cbc99bb1ec837972e22ed9e7784bfa234f935b908e4ee3",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-inputs/debian/packages.json",
+      "sha256": "70d3f4ee243bab09cfc1df1e3eeb27fa166deb368cc61fe57d2d4c9654ea5946",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-inputs/nix/inputs.json",
+      "sha256": "279d4b6db6f87c690bac4c31c4c6d74601e0076ec9f81c47eb941ff40efbfd7a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-inputs/nix/install",
+      "sha256": "69d0fe8fba8fe88f94c98b09964691ac9950abc7ecbf2ba861dc0533cfd901e9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-distro-inputs/nix/install-inner",
+      "sha256": "84701fe50083c7d70a3921b7b07e1a9700ea0d1e295713239e23fd21e1e406ae",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/build/runtime-inputs.json",
+      "sha256": "75abdaf7c70fe85af6078d92878b40da678346a04ea6f983233c67fcb9b8df0f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/build/command.json",
+      "sha256": "6bbb59829a9a869b1f7f4092f6959dbe1fce3d588cd9afc93d6bef1a76f33eb7",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/build/tool.json",
+      "sha256": "cdba7de98a1464b870399a987dd6acfac141a64e34327e831fdb131e447f9869",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/build/results.txt",
+      "sha256": "f73fe8bae39a55c6916dbdc87dc562dec4ee475760b9c36b245ad9b6b461a343",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/build/result.json",
+      "sha256": "bd535975a07689cacd43b6587e2df773c75c2248bcda1ceb271f0eccad085beb",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/build/inner-init",
+      "sha256": "6e2a3710f37fcdfb0cf6429013739ab0d463e6016143e30aed10a272af2b7bb4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/boot-failed/kernel-extract.log",
+      "sha256": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/boot-failed/initramfs-extract.log",
+      "sha256": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/boot-failed/command.json",
+      "sha256": "a8b40fa21d70361a4943ee23ed8d0bcef351432cc6d3e695811274be1745cf3a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/boot-failed/results.txt",
+      "sha256": "5d049f79c41ab91fd539ea1f2c7ae5025a67bb13df55f2225d8d6613ea877b16",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/boot-failed/result.json",
+      "sha256": "996285332a573c2ae439a5100d9adeec9f15d70c9ef0ed4a226d124262e011fd",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/boot-failed/result-original.json",
+      "sha256": "4f2f9802fb666635a4492ee94a89a8fb190ea2fb6d0fa68e239e8a400b7ececc",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/boot/kernel-extract.log",
+      "sha256": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/boot/initramfs-extract.log",
+      "sha256": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/boot/command.json",
+      "sha256": "8a668b71e1db38bf8a6a226320bc329dcf92973da40f1ad6d08810601d51d3f3",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/boot/results.txt",
+      "sha256": "21196b9b5eaefcaaa30f26846dfb4cfd24a09e22d7ad6d80c9c12400886c524f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/boot/result.json",
+      "sha256": "f98afbd6f4f999a44e1a5f3985d046997a873556ef1a7d588910b43bf6908823",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/final-fsck/uml-artifact-check.log",
+      "sha256": "5ec6ad87d21dd29a3aaf3850dcec5da520d89379f08031db5599c1bebb430e28",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/final-fsck/uml-artifact-header.log",
+      "sha256": "4b4bffb6201a84e6e89e933c64b4002474aa643d5987bd457aedbe6a4dc52d7c",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-fedora/final-fsck/result.json",
+      "sha256": "6293130b09d379823b274affca161a80ed77184f9fd31a18fbf399db4108ce9f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/results.json",
+      "sha256": "b3a418054b926b1f738081ea7e5ceb22ea991136a25b5881321c36943196fb2d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/lifecycle.py",
+      "sha256": "7f4084241e9f19d5c0b383ae25f2aa012550731977a5ab3cbe0cc682e50a1bb0",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/probe.py",
+      "sha256": "c3db78acdc3f6e636fe833331e90e4bf9f2cd99cb1c55e51ebcc396456edf6af",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/background-sp4jxorw/lifecycle-background.init",
+      "sha256": "d0d586dc7d36ffba1d77eb1f098269f37a730593f9ad7af688ab4877da61608c",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/background-sp4jxorw/lifecycle-background.log",
+      "sha256": "48ce7e7c31071b31ccb0326aeb267d9755b31ca10fec0bd20dfcaea37acf2765",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/background-sp4jxorw/lifecycle-background.json",
+      "sha256": "81b2e1c95a218d77672f540a9b49ea2c2cea515b7e9258000adb46d1b7773495",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/command-failure-npeyo84n/lifecycle-command-failure.init",
+      "sha256": "c1d8a8d8aea72af123eb9d783e25547b2a30df6e5dc1bb509d3a3ff9960bd520",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/command-failure-npeyo84n/lifecycle-command-failure.log",
+      "sha256": "b465122f39f72810b667c2bc449c9d9db3fce8a45583565c2892f0a7123639a4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/command-failure-npeyo84n/lifecycle-command-failure.json",
+      "sha256": "dd83a2703e6cd428e2d0db3dab8d18fb2efbc0aa6b1086935de3e61ba372cbe7",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/false-success-qcc6iq2y/lifecycle-false-success.init",
+      "sha256": "137ef31647289734eb03103082dab0db46b03e46d87477bc389d827c4841e000",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/false-success-qcc6iq2y/lifecycle-false-success.log",
+      "sha256": "ce0d5a0186518e3eaaa68204625c01ca06256620d0b0cd0e313769ee9baefc09",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/false-success-qcc6iq2y/lifecycle-false-success.json",
+      "sha256": "45e8c06656fab918bd165717aa1712b39fddc13fb2979b5644abcf1fc91496a5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/timeout-_6qcfr_y/lifecycle-timeout.init",
+      "sha256": "b538dedb5f5e16373fb3f20b28e1a82d10b7ba4d3f4a7e73e476192af715ea79",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/timeout-_6qcfr_y/lifecycle-timeout.log",
+      "sha256": "8950794c5130ba5f41efac27410c19b7f42bf3a9f1d73572e6d9c885a0e8fded",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/timeout-_6qcfr_y/lifecycle-timeout.json",
+      "sha256": "76f0d1124b4e923c11766b720674076b29880e782f93ba3276db5e0648fe2664",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/timeout-3wpva3_o/lifecycle-timeout.init",
+      "sha256": "b538dedb5f5e16373fb3f20b28e1a82d10b7ba4d3f4a7e73e476192af715ea79",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/timeout-3wpva3_o/lifecycle-timeout.log",
+      "sha256": "0fdfd22281ed98dd8026521709b4e96cec1fa6d7d620b246364239701916c359",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/timeout-3wpva3_o/lifecycle-timeout.json",
+      "sha256": "f14f122fc23dfa5b186f2893c528924b939acbbcb29bf91f304aa3ddae59da66",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/background-u803l8rm/lifecycle-background.init",
+      "sha256": "d0d586dc7d36ffba1d77eb1f098269f37a730593f9ad7af688ab4877da61608c",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/background-u803l8rm/lifecycle-background.log",
+      "sha256": "abbc5d1e7e33dee812811f3fda6d9642775b6a5ffda5664e3e0089d401e01933",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-lifecycle/background-u803l8rm/lifecycle-background.json",
+      "sha256": "8758e7afe791a17dd3f2c07a8775610d1174f3d1ccdd55e49eeb61d7e54e0103",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/ext4-mkfs.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/ext4-write.init",
+      "sha256": "e11b09bb020504af22a28d0c1c83db9a9fa66b385205dc3995c9897f681e6dbc",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/ext4-write.log",
+      "sha256": "2aab509d9ea07dfdfa790003aedee2d1a2da7ad79ac329fd9fc1f6830211a285",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/ext4-write.json",
+      "sha256": "78487b5bbc694cbd9a40d07bc273f32f355c3a5cdb48765a6594295dee157eb0",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/ext4-verify.init",
+      "sha256": "e32a34b2662e9be0f9f6a15549c344ef4b3d7300daebf5595fadac358b9d4199",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/ext4-verify.log",
+      "sha256": "86e25b233c827103aec7ab54a080bbc729d63886adc3abc4e62e24df82b06263",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/ext4-verify.json",
+      "sha256": "5bd17936fe3feaa07c0d43575dd0349de883a4e1994fb84a2c77857d46eb9061",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/xfs-mkfs.log",
+      "sha256": "0cd67f1b074b07b36336d74de0ab5a2001c8f4bb53ed98dfeb568493dc1e1ceb",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/xfs-write.init",
+      "sha256": "0a9d16d879199d6de24e5a036f6470c51a87b13f7239c58f394aadf406f2c469",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/xfs-write.log",
+      "sha256": "e09d84224e1ab94ad62f353342413e03b1f5e42c8ed894615741a37fa06a67e2",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/xfs-write.json",
+      "sha256": "9289c07c7cf8ce3b58c6798a7f046cddef266f7acbf85a21084d702ef72fc15f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/xfs-verify.init",
+      "sha256": "183b4a1f1a531c3520beb7f7a65e285c54fa9c5a589b5dcc849f2b706dbd7d0f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/xfs-verify.log",
+      "sha256": "5b9a6e8dea3e5af17839834e5ec2c55ae61f83b4f8452dd9d245b2e44543fcd8",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/xfs-verify.json",
+      "sha256": "d52b4af2358e79273555a4184a835c87188f3e158cea524dd4c5e1788d336785",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/btrfs-mkfs.log",
+      "sha256": "a24dbd5b4e1440024907f807229de25170d905ad41d940d3b01895f32e4fbc4a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/btrfs-write.init",
+      "sha256": "2b5bd038f5594a4e5b5b634a1c066730d7ec5818f695b06397914e3f27c0e124",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/btrfs-write.log",
+      "sha256": "1da3a451ed95c3f26184ee1c17e2da9fc49f67b61b89e2300aa9c34899a358ad",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/btrfs-write.json",
+      "sha256": "f57c42b953e4e7784dc94272ec2c16a58e52eb8c066012ed56dfe37476a69603",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/btrfs-verify.init",
+      "sha256": "a32a3862aef0bf00830f2419cf229a9124ae2764349a48f2af728fe3dbc77615",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/btrfs-verify.log",
+      "sha256": "66975fa108fa312dd84fe91ec17b0be06d4fb80164c4377bed4cda6e00a9a05f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/btrfs-verify.json",
+      "sha256": "0d237072c43f8672b9e3497153b88ff45848fd21fb04d2c6ce839034b3361689",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/results.json",
+      "sha256": "4958cc46609ab973e4e3863d28177ffd3bb359e8471cd5587ab5d3bd829e71a3",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/check-summary.txt",
+      "sha256": "a4d1607b7b315125d846c41ecbc059ce97252de2dcf356e21c47619e3740cd45",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/ext4-check.log",
+      "sha256": "21a4d712b7bb0d4568df2690fcb09d9d2d5c9802a08fbeec838dec8e60a2eb4d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/xfs-check.log",
+      "sha256": "5d8a3fd460162cc6c4abef3e751a832b001d6990c04c525617ced42428467622",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/btrfs-check.log",
+      "sha256": "f99882d19b937c43c244f3057e3c959d5145323a61cfb8baa4cce9d9e411bf76",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/checks.json",
+      "sha256": "a4d1607b7b315125d846c41ecbc059ce97252de2dcf356e21c47619e3740cd45",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/probe.py",
+      "sha256": "80c5d1ba1870aaaefc789e0d1ef02a8352535187cc7c9163eead257577c8af1d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/check-images.py",
+      "sha256": "f8178c128544888065cade295413b78e0393693835af3ffcdae059db6893690c",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-native-filesystems/PLAN.txt",
+      "sha256": "7221cb81fe656412254c1beaecfbb2089917bed78218c7abd762b83505519a17",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nested/outer.init",
+      "sha256": "e566d56e31ea1dc374742853e97c5fb1d6a59211db1252cfbd574f05f0524520",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nested/launch",
+      "sha256": "98fc9162154e3efbb0df4cf77b04025df97bf6ad752717df66d08d097beb3d0c",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nested/run.log",
+      "sha256": "f97b04e5a6f3e93b2f0c267e9d97ed5304d623138005018d1e4085875f015590",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nested/result.json",
+      "sha256": "91f23b2e44140e94e5c946c945a4bd933adb383aaf1f5587ac4f5ecc7743d8b1",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nested/nested.py",
+      "sha256": "bf2ad0a7e40b2647b07b23592ad3015c76a85407685dd3a9651b4011cc9ba5da",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nested/probe.py",
+      "sha256": "3507105d8c2f99eec38317acd4237ace7a67d49609429d06a6e843f91b1a8753",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/inputs.json",
+      "sha256": "20ebe00002f0cd1e272a59612e67ce81e0cb33d1a517d802c8aa4f648409173e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/command.json",
+      "sha256": "6bcf29d0afd8726256ee4f390a99aeba8fb0420f624825b6e0df834101dca302",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/result.json",
+      "sha256": "94cbe778d5aa22635963cfa4fecefd9bb7a379526754f596065756a7a3ce4956",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/results.txt",
+      "sha256": "b3a22f415d64e89aa9eefd4d08c0b6a4219799eaca7966146f97bdee0ce1daed",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/network.py",
+      "sha256": "b1b1bae11a01c021bc4cd6afd0003bb95e7929e9468c149cb62f01c4b8b59df2",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/probe.py",
+      "sha256": "c3db78acdc3f6e636fe833331e90e4bf9f2cd99cb1c55e51ebcc396456edf6af",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/filter.bpf",
+      "sha256": "2ba15a8f6f2b8d5ad229753b1b14208884ae9c5258b616baa1a44407d93a2653",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/outer/init",
+      "sha256": "4cb570dc2005137abf6ad7e56d66651307ee3078acc624791dd5fac1bbe0a882",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/outer/launch",
+      "sha256": "1ff4d7b45f2174b4d91ffb34b2767fb80411462104e26b3446a86ef5382afa2d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/inner/init",
+      "sha256": "a3a058ca88a195e30d1c1742c435732431cbfc109328c595a4d8e9081e5d878a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/inner/client.py",
+      "sha256": "2a2250ea2631bf5305070fe0b490534ac2b81f99de890edf7d3ad074be6ea890",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/inner/listener.py",
+      "sha256": "f8d0ed22e68a0aa350e2662cf830b3b2fedc7f45337ca38f7677eef9fe9e28f9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/inner/disabled.py",
+      "sha256": "95587dcf633cdd672c0491fbad120fdea6f91b7a087dd23abf4290d2e83b238d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network/inner/resolver",
+      "sha256": "a5b6bc8731d7729251411af0e53c40c66710326e1f1fbb389b86007ca2125345",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/inputs.json",
+      "sha256": "58a0335e5fdac02e158ad8fd7447f42ea8ca27bf011946d27263c2cd20a799ac",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/command.json",
+      "sha256": "688a1081034a50edd5caf95794fe8dbd23e0cd936818dd42bfc4eafef8f238d6",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/result.json",
+      "sha256": "b838cbd0b300ee0907cfe24f88186b65cf86d3119144a3fe78057a2af604759c",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/results.txt",
+      "sha256": "b34f1c155f02d1cb1e891f5763c99be1d3354e6ad68d12e7ff391eba29b3bc68",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/network.py",
+      "sha256": "b1b1bae11a01c021bc4cd6afd0003bb95e7929e9468c149cb62f01c4b8b59df2",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/probe.py",
+      "sha256": "c3db78acdc3f6e636fe833331e90e4bf9f2cd99cb1c55e51ebcc396456edf6af",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/filter.bpf",
+      "sha256": "2ba15a8f6f2b8d5ad229753b1b14208884ae9c5258b616baa1a44407d93a2653",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/outer/init",
+      "sha256": "5a51c11df61b94062a008d1446b53905d827b0f7a09b579217d6d9f2e4458b42",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/outer/launch",
+      "sha256": "1ff4d7b45f2174b4d91ffb34b2767fb80411462104e26b3446a86ef5382afa2d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/inner/init",
+      "sha256": "1df6b25ffdc2207870ad2a01fd46e5d140b4b8edb00db43165fcb233fe4f0cde",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/inner/client.py",
+      "sha256": "2a2250ea2631bf5305070fe0b490534ac2b81f99de890edf7d3ad074be6ea890",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/inner/listener.py",
+      "sha256": "f8d0ed22e68a0aa350e2662cf830b3b2fedc7f45337ca38f7677eef9fe9e28f9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/inner/disabled.py",
+      "sha256": "95587dcf633cdd672c0491fbad120fdea6f91b7a087dd23abf4290d2e83b238d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/inner/resolver",
+      "sha256": "a5b6bc8731d7729251411af0e53c40c66710326e1f1fbb389b86007ca2125345",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-network-public/inner/public.py",
+      "sha256": "18ff7457908fee11c9c05c9973b41e3e9d814eceb118801ac8a8f562e00ec534",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/nixos.py",
+      "sha256": "67d1642c7664d5186be9b22f1292cae215ac8417ee8c2dcc8c7194128d0fb58d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/boot-nixos.py",
+      "sha256": "5ca6ba64031d023bab8852b945b538eeae94535571f3d757dab4d79806296262",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/build/runtime-inputs.json",
+      "sha256": "a5be423a95bb50208d45abe2317716781a78400e2a11097e58db986ee0568bc4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/build/command.json",
+      "sha256": "760d0593544b0e7585a4a4a837886b3bfe060fd433757e617cd4087fb23abf30",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/build/tool.json",
+      "sha256": "279d4b6db6f87c690bac4c31c4c6d74601e0076ec9f81c47eb941ff40efbfd7a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/build/results.txt",
+      "sha256": "e20730dbf494bf6735bf2efd2f0f53bf10dc5e9555067206fe263ee0d770becf",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/build/result.json",
+      "sha256": "50fac03916e3f343e1f42f5eae66c56ba44f417b0f39d5bab73d5d1d0fbeb859",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/build/init",
+      "sha256": "e9566310687274d8d4728d78a8fe502631a7a7e92ff5d9205176af4d95808670",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/build/real-init",
+      "sha256": "1e44c558ffb1597745e3d6902439ff5fb86c9ab97e259dd966da9b550b11af3d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/build/configuration.nix",
+      "sha256": "6760e467dff06bb7474f132c3a06496cd3aac26bc9e32216ee6a4af4c80d5d36",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/build/compile.nix",
+      "sha256": "96bf1f1ccfd2e8de08f9a4106abc550a8dbb06e6d730774ca407c3a5bd0b9356",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/boot/kernel-extract.log",
+      "sha256": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/boot/initramfs-extract.log",
+      "sha256": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/boot/system-init-extract.log",
+      "sha256": "e9c9d11dd8e0d4cb1ea24217d1cdc76581932a839d263b393b15a109131789d5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/boot/command.json",
+      "sha256": "1bc3faa8be0ce99152cfef21f618308d697983d495c19e958e4734625eccd5b7",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/boot/results.txt",
+      "sha256": "0099dc5852a55cfcfec1beedf922ba7885e9de247b90e14b6ae2a5e3c7ff64f0",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-nixos/boot/result.json",
+      "sha256": "5f63dd08a982c1ae4e7feae5eff62552e81b8e9c2ab32d2aa232074d8bde11f8",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-output-checks/clean-check.log",
+      "sha256": "4695358c4ba4f5a05ba7df5e99a959131429a7712d4fd91684e176c316cca0c4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-output-checks/clean-header.log",
+      "sha256": "48d9b1929c16dcac283156da70c9a11bca6ed024ed8f6e3bdcb449a8d32c7516",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-output-checks/truncated-check.log",
+      "sha256": "38ca7e1c24caf28e1ed776c4aae6be2d118512df71197750d4e8837bfa28f6d7",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-output-checks/truncated-header.log",
+      "sha256": "0133c57bbe9a21bf5dd0053ce97a94e3e66925c24d6ad7c7f0145f361318bbc5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-output-checks/unclean-check.log",
+      "sha256": "4695358c4ba4f5a05ba7df5e99a959131429a7712d4fd91684e176c316cca0c4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-output-checks/unclean-header.log",
+      "sha256": "e4c99838d5a5980df41e9fe263b69f2f4082b5817e3f956c91ed8f9ba8ca55dd",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-output-checks/result.json",
+      "sha256": "1946eae4a85beb04057a7950ac0fababcfd74979fa6423568ceaeb6e65949c8a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/results.json",
+      "sha256": "401160ddb589cfaeb8f747b58bdf056bfec2a06b4632e1ce6336c202c413d902",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/recovery.py",
+      "sha256": "2b504a62f5c3a167bd51c451d08edd0b8325f581c182798a291aeeba64339bae",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/probe.py",
+      "sha256": "c3db78acdc3f6e636fe833331e90e4bf9f2cd99cb1c55e51ebcc396456edf6af",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/before-launch/init",
+      "sha256": "51d637e30e8d248de5332e6fcb6194ae2a059b4d539ce7724bb9ec4ba8aafa3e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/before-launch/config.json",
+      "sha256": "4e7036be52f5c086c8db434ea62511145521577300afea934548ae305008c7ec",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/before-launch/owner-ready.json",
+      "sha256": "8e100cd54ec6b466ded760764dcf502bf8b6d280e31c35132fe1c00ecde19320",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/before-launch/state.json",
+      "sha256": "974cd5558f56c4b92f2c9b7c32e71863b6b12b45aa0d1166cf50cc15315bf057",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/running/init",
+      "sha256": "51d637e30e8d248de5332e6fcb6194ae2a059b4d539ce7724bb9ec4ba8aafa3e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/running/config.json",
+      "sha256": "5c790c3b6303a3b99423cff89eeb2f73c2250babd57df19a3bbae1d4168c444b",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/running/owner-ready.json",
+      "sha256": "317d82fd4e14845893fd23835bd6dcaa9a9a56d00e49d35716856e80deb0b6d2",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/running/uml.log",
+      "sha256": "28694cbf670c1bf74b7d117afc03d8e01eacc857c7d1734970113fcf82f6da85",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/running/state.json",
+      "sha256": "028b2aa5c2806ea3717887c14f1c1bd1402b3dc929698b35fa75391c9da89e0c",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/after-exit/init",
+      "sha256": "9e26998c61423d5d982e7a52f64f54202b4652cceee7c60c4e57225e8a2431e0",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/after-exit/config.json",
+      "sha256": "f7bdbbc2161585cd3904a5a54eb45944136ee36d239fae88591059a2f1cf6b04",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/after-exit/owner-ready.json",
+      "sha256": "9503462f62ae1476e0ef06af97532305015f8c8d687b8c4660a169a5e29d3774",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/after-exit/uml.log",
+      "sha256": "53d357bebf15fd8a5163344cc6f6475493d48414662e1f0df7a403ea200a8f2a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/after-exit/owner-result.json",
+      "sha256": "df4d721d233a2334088d2d2e0110346ae9e509ff46bf0b379fbcfa85c715af4d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-recovery/after-exit/state.json",
+      "sha256": "31f157cd679eb7676c52464c0da11b21c76ee8b7f7c6cb7141b2168134ba07a5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/visibility.py",
+      "sha256": "724b8681d327cd504bacac4bdbe4f128e5cb8aac9fa3a20d60db63acefb9c8ad",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/visibility.log",
+      "sha256": "60cc92218ad1c9dd531ae8b945e433e4358960b4d2274a17186c51fb13d69c90",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/visibility.json",
+      "sha256": "ec011a74a03ff072fa71d155eae1dbf6b74db72eafb7e74669782230b477ce52",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/memory.py",
+      "sha256": "d4fce91a15f6a292888e83ef71d6dfe6c93bbef39678a8df6f97abfeef4cd8a2",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/memory.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/memory.json",
+      "sha256": "af1675717ca3b50cbd9de2d48c89372092129881056356f3109f3bbe6b6c1d65",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/tasks.py",
+      "sha256": "5199b401b5d48db71283aa06892b49496cfd9677453e209a62b425b350f7cf45",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/tasks.log",
+      "sha256": "ded052bb882cbc927fb2714692f638d5e577a07154c951fc69f64a1eeff445e4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/tasks.json",
+      "sha256": "b500102a9f07eefcdb8c134f16cfc47a8d1925b8a6cc37e4e9f52b01ab3ab46a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/storage.py",
+      "sha256": "6338ed892c999d64f43607530a08ebeb8bb3812177f347b6e6d9693d72d284af",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/storage.log",
+      "sha256": "55ca5ca67354f411bf410412a0c565bdae0b55e3866be4f4967a6a147a100e44",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/storage.json",
+      "sha256": "34c41402de067cd9f2548953c0e3afdccd024c236f2875862fd1604cef34b03b",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/logs.py",
+      "sha256": "6efd005200f2dedb8b377d331c813a4afd10b47fa639643a3f6b4af1f9acbbac",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/logs.log",
+      "sha256": "9c8b1781234851083571a23900c6d1630829d1ade1717d5dbcfc05b30e40de67",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/logs.json",
+      "sha256": "80594139a26ef22f4266483e94ae8dfaf7cc343c5f402aeb2c74dbfcea6cae6e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/uml-normal.log",
+      "sha256": "3a9df45a16402159bc579db281f32908900edda8d3965632a6d0b51b05298be4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/uml-normal.json",
+      "sha256": "c7e9cf2857e11492e2e9e46a5cb28353deb745cf2834087267a963c115ae9dae",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/uml-timeout.log",
+      "sha256": "16aefdffaccc016cd0dcfcb3b2097e376b85f88b5f422c67b3e10362165b0afc",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/uml-timeout.json",
+      "sha256": "eb8023c14bca0585c10dd858e81873a88aff233dcb8a6bec5d85199a7a8b25e3",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/results.json",
+      "sha256": "ca55f61177f7b4981da233c666f0312520affebaa36bd78ef5142d507ea7f792",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/resources.py",
+      "sha256": "3790ccaecf66a0f8608782f477ded18c86dd8d6f1ec05d535aeef3f6a09f4e69",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources/probe.py",
+      "sha256": "c3db78acdc3f6e636fe833331e90e4bf9f2cd99cb1c55e51ebcc396456edf6af",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/visibility.py",
+      "sha256": "28ae77b3c9c5131bb73d69a51f35197ab43a17b2c4e1c12065ff539d9c9be5b3",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/visibility.log",
+      "sha256": "10b859a978b5870c78cfdf84a4a6f3946a3e12e971a646d01243c9bf9328a9ec",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/visibility.json",
+      "sha256": "542391e18e984dd292c19a05144be919f0ce01e79bb95c7a71e53d5b90007dfc",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/filter.py",
+      "sha256": "d345409d524bf604afd0143f9bc30ad12d06567fd39c2e0571ba91b8dcf72c46",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/filter.log",
+      "sha256": "08efec2bc66f911e7fd92bfa5d8dd6455576efd2bee38c4b65490eee64d56302",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/filter.json",
+      "sha256": "e7378bb0f11532776947490304bc22aefb77d63ddeeb30e27e50cb235662f7b6",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/memory.py",
+      "sha256": "d4fce91a15f6a292888e83ef71d6dfe6c93bbef39678a8df6f97abfeef4cd8a2",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/memory.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/memory.json",
+      "sha256": "df1d7b8855864cb5ede73eebe8b26af4ed10aa0d05dd1d26e784ad942a2e9f25",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/tasks.py",
+      "sha256": "5199b401b5d48db71283aa06892b49496cfd9677453e209a62b425b350f7cf45",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/tasks.log",
+      "sha256": "ded052bb882cbc927fb2714692f638d5e577a07154c951fc69f64a1eeff445e4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/tasks.json",
+      "sha256": "6593e4d65085e0ec3676345ae6f4ab04e7b182a3752a97c423caadf4152185f9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/storage.py",
+      "sha256": "6338ed892c999d64f43607530a08ebeb8bb3812177f347b6e6d9693d72d284af",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/storage.log",
+      "sha256": "55ca5ca67354f411bf410412a0c565bdae0b55e3866be4f4967a6a147a100e44",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/storage.json",
+      "sha256": "6b5588712335af1d256b7810616c7a6f64f8202a32e3dc4b9d423dfa53accf91",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/logs.py",
+      "sha256": "6efd005200f2dedb8b377d331c813a4afd10b47fa639643a3f6b4af1f9acbbac",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/logs.log",
+      "sha256": "15601535eca4a38b7e31ad6494861121cb9f84ccf55d4beb6a707d4f7a87813d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/logs.json",
+      "sha256": "c552d5dfb4ebf3f5b48099e4b60f67ab4abf69fedad048ee6620fe5db9ed5c2a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/uml-normal.log",
+      "sha256": "d34e79d364e495fe5224bd8d609053fdf8b0677ef133ca2558425a3439024bad",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/uml-normal.json",
+      "sha256": "a4723bf6583c8dedeaa79d52263901e3f277e060044251629c492c8c08d67ed0",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/uml-timeout.log",
+      "sha256": "444252f5cc1156d3353ff8324fa674a892377824ec9c576e0ff4b6e5a3c28689",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/uml-timeout.json",
+      "sha256": "6518111c733bb059150dc8cbeac9898438f45928ada7be224d94394a9f6be401",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/results.json",
+      "sha256": "cfa87a2712373cbbf7506291cdb8d54a1db4c6ac02d6fab80f7155361271e18e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/resources.py",
+      "sha256": "d1f608bf2a75e888b717f7e9478129ac243d8d0160d2f4fcd8d16a1f47e672cd",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/probe.py",
+      "sha256": "c3db78acdc3f6e636fe833331e90e4bf9f2cd99cb1c55e51ebcc396456edf6af",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/filter.bpf",
+      "sha256": "2ba15a8f6f2b8d5ad229753b1b14208884ae9c5258b616baa1a44407d93a2653",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/filter/Cargo.toml",
+      "sha256": "6469858afeeab8d04004cebe01d5d983980a750fc221b7953c03f61f3e52143d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/filter/Cargo.lock",
+      "sha256": "8c652bb573d042b894eb9145a7a1b81af2dd162f4a1b7027a8fee2e827a5f43c",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-resources-filter/filter/src/main.rs",
+      "sha256": "bdab23924835eb64b6ac1fac8969dfca79bec315fcd8c6a9f2bc7306d32a0e2c",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/tool-inputs.json",
+      "sha256": "b23b4ef5cc14ea7d5d9a34dde091e84a6f10f3c5e5e222a27c205ed792e5e651",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/inputs.json",
+      "sha256": "14143be93ecd14b306d4dfd92510889bc2096d2224f1714e44d19e0abe172d57",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/init",
+      "sha256": "b9915a1b8099d444d42e7b6e823ee1bbdbebba6541c07f80ea06169e5540ae0f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/boot-probe",
+      "sha256": "0d59f3045010a58f8d27b98ddcd3bcb63878fbdf6d2a7530169f0c4da538e0da",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/build.log",
+      "sha256": "28282a94f418be46d90cc75ab091f3aa58d1731737d019af95f9f9debb9183cd",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/build.json",
+      "sha256": "ea5af8c97429caab836b125c0eb6ea65005cd35b5343f01df3ebddf95827eed4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/boot.log",
+      "sha256": "63e6275d32802b1e7027b43a2da0a8a4c41ec982e7ee2d10c9d53655062b15c2",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/boot.json",
+      "sha256": "bbd4c314fb3a0316450835e875f7311f50b3cadd8018805ce3a26d6ba552e400",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/selinux.py",
+      "sha256": "c451f8a83b2ee0a7944c539d8abfeedc39d94b450de54f33e9d208cc2b22eaec",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/probe.py",
+      "sha256": "c3db78acdc3f6e636fe833331e90e4bf9f2cd99cb1c55e51ebcc396456edf6af",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/download.log",
+      "sha256": "301d3944443c2743663b57ceb80027e429fc6b1d1b25f3bd13b254fe2996813e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/signatures.log",
+      "sha256": "7891865a9e28c8386cad87907523e1350e9565b163b8e41a6a4dc8203a5d6f2b",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-selinux/createrepo.log",
+      "sha256": "9c90ba100ee282b3c3d68810c701f4837bd1227ca048dc0b62e9f7cbe2e39696",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/snapshot.py",
+      "sha256": "f120f71f6e21f6127280117a2abbebc72e1e932930f1c80f164692da9cd020c8",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/probe.py",
+      "sha256": "c3db78acdc3f6e636fe833331e90e4bf9f2cd99cb1c55e51ebcc396456edf6af",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive-uml.rs",
+      "sha256": "6482e915dd8bbc0747e175e91454b607a1eb9d6edf868c33e98295e040cb99a3",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/helper-Cargo.lock",
+      "sha256": "8bf58c92fe65e2698c733549c0bfce7ac0f9567f9986a46fa5e46a8bf08d41d5",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/boot.py",
+      "sha256": "8304be7c8e88ad61b10690336a420cb11dcc049c3e617f098e3677f40f77d224",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive/inputs.json",
+      "sha256": "8b9ef68ba9762c96ab78f0874a4c28bc872495075cab042326aa1c4ff8017403",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive/cpio.log",
+      "sha256": "19ae30eafb452a04ef1dba0c7be7b9268bb4178eaeed8a5c2a00f6491a74e62a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive/command.json",
+      "sha256": "cb5fbf9bf397bf2a1e1d1a0d8106f70079c5e92b17e9cd976ddc1af03eb59143",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive/results.txt",
+      "sha256": "465557ff9459431c1b8f589a0dc39baf20405072fa3ee919463a79ca7b215c86",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive/result.json",
+      "sha256": "046791ad33e89cd231aadaf080de18208fa168c50e0e427ab5bffe6ba5c2bb92",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive/data",
+      "sha256": "863f1558f2b9de12dfbdd8a373b4cf7bd83f4c187954332b5563d6c94421afdf",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive/hash",
+      "sha256": "632abfa028d61dbc16963ae32feb79850ee7fd4e592944de417237f0212a980b",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive/root",
+      "sha256": "d9ec7ce0eceef33016638c2be241805fe2549f501c2675612de9c901ab87244f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive/export.json",
+      "sha256": "cf68e8c9d302ce41215bbf494c94cbf1b468bb8d09d063995d61235870f3b19d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive/init",
+      "sha256": "4a74d3ebbed002c48690865f547ca224285edb4859cb03fcfc37fa6f2a3ef2b4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive/uml-launch",
+      "sha256": "4d87380599db68cecf8fd455b9761ec2d40de9ab496489243a6436e7c6610af0",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/derive/uml-child",
+      "sha256": "67cd83615b5ce3c4817b4da2abce1095f996db2fcedb3af55492d37825239bfd",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/boot/partition-table.txt",
+      "sha256": "f385f249e92b732c98b9b462b194ef71537bd599ff2e4ffce182b7bbe7ce42dd",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/boot/sfdisk.log",
+      "sha256": "ffdaf8af8f60dc4b5bf371e8818301a70cd50d4c01b0b65e5c46b75c65b3cb07",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/boot/artifacts.json",
+      "sha256": "86b6a4ed583b19f7b67509370703d7774d0839f7d92c1c85e548b68dc14564d9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/boot/command.json",
+      "sha256": "3ffb176790f459e0f799fc9f07356e9ab4ae5bd641a190a2e135773109759261",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot/boot/results.txt",
+      "sha256": "d459814b4b23a8641afe1497de463923dd8437885a52ea31737ac5a73d3fca87",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot-failure/result.json",
+      "sha256": "7cdab49ec1123c4bcf164d84e4da84fdfc2a9f568aeb944440f745212fe9a3bb",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot-failure/failure/results.txt",
+      "sha256": "0351641f5c89808e7c3df23191febd2c45ff9f708c9c259a2da985e9ab0ab37e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot-failure/failure/init",
+      "sha256": "b07143806c0cfb725a2f2c10def5cdee3e82a2676f5aa6f8aaef6a73f3e3c33d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot-failure/failure/uml-launch",
+      "sha256": "4d87380599db68cecf8fd455b9761ec2d40de9ab496489243a6436e7c6610af0",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot-failure/failure/uml-child",
+      "sha256": "67cd83615b5ce3c4817b4da2abce1095f996db2fcedb3af55492d37825239bfd",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot-failure/timeout/results.txt",
+      "sha256": "13710696f5009b02345ce94edde8a06cea5ccede1f8bb8ecb805f909731b5615",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot-failure/timeout/init",
+      "sha256": "b07143806c0cfb725a2f2c10def5cdee3e82a2676f5aa6f8aaef6a73f3e3c33d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot-failure/timeout/uml-launch",
+      "sha256": "f0bd644e886cd2cb2fdef47d590d6cb79d62a693c964c7b3f5e4a4c96b844d9a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-snapshot-failure/timeout/uml-child",
+      "sha256": "67cd83615b5ce3c4817b4da2abce1095f996db2fcedb3af55492d37825239bfd",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/removed-owned-outputs.json",
+      "sha256": "46afb4240ad48428965a10c35d165b9841c2413aa0ad64c7091c9307016a90ec",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/removed-later-owned-outputs.json",
+      "sha256": "06863735a75f49f1887690d7be8f1b620dd4a0e4533ad0b03a202289121ff0bf",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v1/runtime-inputs.json",
+      "sha256": "486218e8dd27562f76bccf7e86ac81ee96bb5f99e6f895132a2308877ba84e80",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v1/command.json",
+      "sha256": "611069df9480bbf77bf2eb9a4e6b1e233187cad521cbf1ca09f42270828f9c0a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v1/tool.json",
+      "sha256": "70d3f4ee243bab09cfc1df1e3eeb27fa166deb368cc61fe57d2d4c9654ea5946",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v1/results.txt",
+      "sha256": "07420a3382b4a019df8502d50c95094698ce2769d4fed5e8ecc6c90bbb2f0983",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v1/result.json",
+      "sha256": "d76fcd4a7a733b05c6082d64cf0d77cccca2aef5591d8abc23bf3845f3f84dcf",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v1/init",
+      "sha256": "28fd315fa2ebe93a0084ca2b68aefa74ad9c7897b9caacd0360b16bc2ff651e9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v2/runtime-inputs.json",
+      "sha256": "e994749b96cd10213b992433d3edf6373bdc67b1738dc78494db3803415f630a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v2/command.json",
+      "sha256": "1d29b5ca8a2099d852c77b751387a4c9916c6aa009cec8464476b786e07c12e7",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v2/tool.json",
+      "sha256": "70d3f4ee243bab09cfc1df1e3eeb27fa166deb368cc61fe57d2d4c9654ea5946",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v2/results.txt",
+      "sha256": "5733593bd016acad88bb9319a927bda0fb5f7def39650c22fe986c09e2cece3e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v2/result.json",
+      "sha256": "f7d4c9f8d5b44172e0437657f75f33a7f4013ec9be5e9b0e7364324c9d7a5527",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v2/init",
+      "sha256": "28fd315fa2ebe93a0084ca2b68aefa74ad9c7897b9caacd0360b16bc2ff651e9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v3/runtime-inputs.json",
+      "sha256": "3b26c3d45d739d2ba5e9fcdc54c583efa4bbb430ca74a54b36a93634fa6564e3",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v3/command.json",
+      "sha256": "957eb0faef2e8aa6acc723aa0859a36668f278b7b03d025aa97ff6ffc084ff3e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v3/tool.json",
+      "sha256": "70d3f4ee243bab09cfc1df1e3eeb27fa166deb368cc61fe57d2d4c9654ea5946",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v3/results.txt",
+      "sha256": "13f5e9b6cf491f499c57ec553b7ec934a6b1d5dfa6ba05e0467d9b2511aa19da",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v3/result.json",
+      "sha256": "f35ff7bd6353a08ecc4f0e2bf8eb1141951c1bd58b186d1081eda11638f5093b",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v3/init",
+      "sha256": "28fd315fa2ebe93a0084ca2b68aefa74ad9c7897b9caacd0360b16bc2ff651e9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v4/runtime-inputs.json",
+      "sha256": "9db3291356e2a40439954cc380f3b8ddf4b280f6e344ea33a03afbdb9342df47",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v4/command.json",
+      "sha256": "cc972ea0cd287f86e9a2c335c968d75262cf04b865a235afcbbc908b5765a349",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v4/tool.json",
+      "sha256": "70d3f4ee243bab09cfc1df1e3eeb27fa166deb368cc61fe57d2d4c9654ea5946",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v4/results.txt",
+      "sha256": "276bc035e43deb867fc7f71252f8495e4c986da57b9345240ad603a2f9e2d56e",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v4/result.json",
+      "sha256": "f693832eae56dbff8b9a08d05f1d73fcd1c1d2aa127708bd916f9c176ec9b41f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/debian-v4/init",
+      "sha256": "f1ee538113a6e0708f0efb990f6d2ae8522a4e8aa1d4dde2b68451a9de1cb73f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v1/runtime-inputs.json",
+      "sha256": "0bf52bd3107eb6cc1af43776f5ee34928cbc9b8d14017995c2d75d341708349f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v1/command.json",
+      "sha256": "79e95e24d4d8c9b811b3797a5f1f38f26506ef57d161f80c7f2bfaaaaa8940b2",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v1/tool.json",
+      "sha256": "2836c79a66b09f605d3173ac29e5acd9f577196b90d20f48338e05ff5ddb288a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v1/results.txt",
+      "sha256": "08c8187839ff367a07f71a1f65eede9202af2c17f99179d9fa8e8277eb2718a9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v1/result.json",
+      "sha256": "557cf31d3426e9595f5fb5a05c3f550f546cad47f78287c95e2fc5f471f76df7",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v1/init",
+      "sha256": "0fbbd0a6bc88c1eda4f25e6039bfd6d81e7011903be69ce9e1de22d7301723d9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v2/runtime-inputs.json",
+      "sha256": "f8f187021e24f639bcbe9ec12fa24dd0a5767f9ededc7b40216815962d60e004",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v2/command.json",
+      "sha256": "7dc8972e0c01eaca8608bfa1213cf58b1ace43b6d979202135e1f8fd30d2b1fc",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v2/tool.json",
+      "sha256": "cdba7de98a1464b870399a987dd6acfac141a64e34327e831fdb131e447f9869",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v2/results.txt",
+      "sha256": "a16307dd1134b1c74f91088277295d88f8f272a822207725e7ac3168d53f8940",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v2/result.json",
+      "sha256": "524fde115705facd92fe5ce4b05f2ffae982d0187c76f3ef07c8c2cdd4097153",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v2/init",
+      "sha256": "725f5858f82659ddba6f27a8eeb42f53cbfd42e8a282fb4bd4afc17027fe6e06",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v1/runtime-inputs.json",
+      "sha256": "fd7922df1b8a8751927c4410618f75ff288e277c98455b806519aab548685178",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v1/command.json",
+      "sha256": "85e930fff3b5f5be1841c16ac4c0079966dd3fbdb0cfcc1428a12a34148487c9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v1/tool.json",
+      "sha256": "279d4b6db6f87c690bac4c31c4c6d74601e0076ec9f81c47eb941ff40efbfd7a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v1/results.txt",
+      "sha256": "ab5a6c1d5b3e7a99ab9e93a8bb849b01e3bd4abb10fc64871e339c411c9bd9c9",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v1/result.json",
+      "sha256": "86532562aefafcdbb286e0bb3df2774b46f47f77df828cda0d4699056f322969",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v1/init",
+      "sha256": "5f25fe61767f4fb5f579c193f32d74eb0bdb3647fa5d5f000e84a05a2977b1b3",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v2/runtime-inputs.json",
+      "sha256": "b37bc61a3181c898da68461856a66f4784831faf2928bdbef4e3634110287fd2",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v2/command.json",
+      "sha256": "2948b92df5b8d00bfe32f958262f80245f4c81b6ea2dcc78eef03eec1b436c74",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v2/tool.json",
+      "sha256": "279d4b6db6f87c690bac4c31c4c6d74601e0076ec9f81c47eb941ff40efbfd7a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v2/results.txt",
+      "sha256": "c752b7bbfb0abc1c2c0fae89b9067b26d0ef7830ba1e0962298d9a365b4710c8",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v2/result.json",
+      "sha256": "f1fa0052c0d451d05bf47a8bfab524368f046aab2b202525b6217f457e688e37",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v2/init",
+      "sha256": "bea2c1f86f811a8dc50eca2dc79c87c2957dab31becc29a52a675ffc6511adf3",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v3/runtime-inputs.json",
+      "sha256": "21ff76b3e1b8a6422379d61def4700f44b9068a2268300bab16de29684f0e079",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v3/command.json",
+      "sha256": "9dd2d71f02dcd9c2eda00035b41b75f1442f14d78f460b442018cd3d08d4a351",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v3/tool.json",
+      "sha256": "279d4b6db6f87c690bac4c31c4c6d74601e0076ec9f81c47eb941ff40efbfd7a",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v3/results.txt",
+      "sha256": "6807081bfa155fe1a2633402ba6a3897fe1dcfd9b89a6c3efcb4b7cbf9dd379b",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v3/result.json",
+      "sha256": "f02f745eb73bca021bf8b47a4205c7843e94cda4a03e1d8f7078ac6e8ec14ca0",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/nixos-v3/init",
+      "sha256": "e9566310687274d8d4728d78a8fe502631a7a7e92ff5d9205176af4d95808670",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v3/runtime-inputs.json",
+      "sha256": "ea2feee201e15ac7cf9cc41b9ca3ea42f597f522d504e46fba080effc96289da",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v3/command.json",
+      "sha256": "9fc98391f1dbd3605e7b64ba5f99d21507dc811247c62519041e346722743b42",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v3/tool.json",
+      "sha256": "cdba7de98a1464b870399a987dd6acfac141a64e34327e831fdb131e447f9869",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v3/results.txt",
+      "sha256": "dbcb030f3885c5a86427d848189adc49621a1984ff287cf1d896b402e533b1b4",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/fedora-v3/result.json",
+      "sha256": "1f7923825d5b396ff18c4c62830c304017cc48fd6f93244290ce45136379484d",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/cross-nixos-v1/native.log",
+      "sha256": "904c87c44d5fee635c52f6d32e7f71a6ce310df341916deab11960f597a2aa47",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/cross-nixos-v1/native-time.txt",
+      "sha256": "4b2e6668b4eb07db7dfaa467f267a60adf19548a2ddc3827177ccd683bcd1eab",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/cross-nixos-v1/uml.log",
+      "sha256": "ad6c4842f86a4ef01a717da40b160cb8c66500eea1585739625514328bc59b58",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/cross-nixos-v1/uml-time.txt",
+      "sha256": "dc93d70e9e800661b17c6fe134f6ee2928e0ecb041fd142965c39e7c1980e2a3",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/cross-nixos-v1/result.json",
+      "sha256": "4a391007cfaf01360e8d5ab0c5b94a05a5a0eb7368df669c359caf5c603ed73f",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/cross-alpine-v1/native.log",
+      "sha256": "2035c6670d447308f266ce8c60a11c77d367d589c67541074a6fe9d61392fe00",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/cross-alpine-v1/native-time.txt",
+      "sha256": "3eef7891c9ee95b58ec8de2f01fa00760d877afd84f2f24073a18b573acc908b",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/cross-alpine-v1/uml.log",
+      "sha256": "21ff9817304324b8d6f9281966f7cc62797a8bbce0fa76fb81be3d864bbecb70",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/cross-alpine-v1/uml-time.txt",
+      "sha256": "1ef00b159171377d2d2742ebe7810a8cf07a9168d0ee111f742fd12baa99ebb0",
+      "pass": true
+    },
+    {
+      "file": "validation/sandbox/reproduced/uml-workload-failures/cross-alpine-v1/result.json",
+      "sha256": "02ccf3149c4688ac901bfd0ada14b5b16f7f2830605a8c64b26357eb7ebe9f37",
+      "pass": true
+    }
+  ]
+}

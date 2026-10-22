@@ -1,0 +1,37 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+SAFE_RUST_OUTER_INIT_OWNERSHIP_ARMED
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS dfcfad1186df52ff1aa53b9ae632a073970506a2 sha256:6be2f19ec1fa7fccbafc1445e8f195c62afa4633a04901e51be9cb4a59ee97d1
+RUNTIME_TARGETS_PINNED
+PINNED_RUNTIME_MOUNTS_INSTALLED
+CHAIN_RESTRICTED_COMMAND_PASS
+CHAIN_COMMAND_DESCENDANTS_STOPPED_WORKER_ALIVE
+FUSE2FS (dm-3): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-3): mounted filesystem fae899a0-814a-4dc6-95cf-6ed97741ee0a.
+FUSE2FS (dm-3): unmounting filesystem fae899a0-814a-4dc6-95cf-6ed97741ee0a.
+FUSE_DERIVED_LAYER_SEALED
+CHAIN_ROUND_SEALED 1
+DERIVED_CHAIN_RESTAGED
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/verified: 750/16384 files (0.5% non-contiguous), 51750/65536 blocks
+DERIVED_KERNEL_FILESYSTEM_PASS
+POST_STAGE_CORRUPTION_REJECTED Err(Io(Os { code: 5, kind: InputOutputError, message: "Input/output error" }))
+POST_STAGE_RESTORATION_READ_PASS
+BASE_SCUTE_UNCHANGED_PASS
+CHAIN_COMMITTED_INVENTORY_PUBLICATION_PASS
+OUTER_PID_ADOPTED_CHILD_STATE 7 State:	Z (zombie)
+OUTER_PID_ADOPTED_EXITED_CHILDREN_REAPED 1
+OUTER_PID_INIT_COMPLETE_BUILD_NO_DESCENDANTS_PASS
+CHAIN_PUBLICATION_MATRIX_PASS
+OUTER_PID_COMPLETE_STORAGE_CLEANUP_PASS
+GUEST_EXIT 0
+[   45.773466] sysrq: Resetting

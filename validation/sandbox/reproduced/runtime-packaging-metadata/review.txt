@@ -1,0 +1,28 @@
+Runtime packaging metadata controls (2026-10-21 UTC)
+==================================================
+Reproduce: python3 validation/sandbox/runtime-identity/check-packaging.py --out NEW.json
+Six bounded controls pass using owned text files and the exact newc cpio
+invocation from guest.py. No sandbox escape, privileged file, or image command.
+The parser consumes all archive records and checks only zero padding remains.
+
+The existing files/symlinks inventory misses permission changes that the archive
+actually preserves. Both regular-file and directory mode changes are demonstrated
+with unchanged content hash. Hardlink identity is represented by archive inode,
+device and nlink fields, with one data payload; the per-file hashes do not bind
+that relationship. Archive ownership is explicitly normalized to 0:0. A user.*
+xattr exists on the staging file but adds no serialized property to the newc
+archive. This is fixture packaging evidence, not a FUSE metadata test. Filecap
+and SELinux labels in other tests are created by guest setup, not this archive.
+
+Implications for areas3/19/21:
+- Do not upgrade the old file-hash inventory into a full runtime identity claim.
+- A retained digest of the actual boot/runtime artifact can bind its serialized
+  modes/link graph/ownership; it cannot bind metadata omitted by that format.
+- Setup-created metadata must be accounted for through trusted setup and runtime
+  validation. No evidence here establishes immutability after setup.
+- Conglobate's standalone binary need not construct a VM or appliance. The final
+  runtime identity contract and appliance attestation remain separate work.
+
+No runtime manifest format or production behavior changed. JSON is diagnostic
+output only. This closes a previously source-only packaging ambiguity, not the
+trusted runtime binding or dynamic dependency qualification requirements.

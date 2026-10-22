@@ -1,0 +1,22 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'echo "GUEST_EXIT $?"; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount -t tmpfs tmpfs /work
+mount --make-rprivate /
+for module in fuse loop dm_mod dm_snapshot dm_verity dm_zero; do modprobe "$module"; done
+dmsetup version
+chmod 666 /dev/fuse
+mkdir /work/view
+truncate -s 64M /work/base
+mkfs.ext4 -qF /work/base
+mount -o loop /work/base /work/view
+printf 'base fixture\n' >/work/view/inherited
+printf 'base value\n' >/work/view/changed
+umount /work/view
+chown 100000:100000 /work/view
+/publication-helper
+echo CHAIN_MATRIX_PASS

@@ -1,0 +1,14 @@
+#!/bin/bash
+set -eu
+/cyclic-worker -f -s -o allow_other /work/view >/work/daemon.log 2>&1 &
+daemon=$!
+for ((i=0;i<100;i++)); do mountpoint -q /work/view && break; sleep .02; done
+mountpoint -q /work/view
+python3 /client.py &
+client=$!
+wait "$client"
+wait "$daemon"
+cat /work/daemon.log
+fusermount3 -u /work/view
+cat /work/nested-error
+echo CYCLIC_WORKER_AND_CLIENT_REAPED

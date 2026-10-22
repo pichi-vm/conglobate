@@ -1,0 +1,10 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+mount: /work/view: wrong fs type, bad option, bad superblock on /dev/dm-3, missing codepage or helper program, or other error.
+       dmesg(1) may have more information after failed mount system call.
+
+thread 'main' (182) panicked at src/bin/shared-base.rs:16:5:
+assertion failed: Command::new("mount").arg(snapshot.device_path()).arg("/work/view").status()?.success()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+GUEST_EXIT 101
+[    3.123187] sysrq: Resetting

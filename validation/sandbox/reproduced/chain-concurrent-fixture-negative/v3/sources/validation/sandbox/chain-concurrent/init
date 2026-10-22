@@ -1,0 +1,67 @@
+#!/bin/bash
+set -eu
+export PATH=/usr/bin:/usr/sbin
+trap 'status=$?; for log in /runs/*/log; do test ! -f "$log" || cat "$log"; done; echo "GUEST_EXIT $status"; echo b >/proc/sysrq-trigger' EXIT
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mount -t tmpfs tmpfs /work
+mount --make-rprivate /
+for module in fuse loop dm_mod dm_snapshot dm_verity dm_zero; do modprobe "$module"; done
+dmsetup version
+chmod 666 /dev/fuse
+mkdir /work/view
+truncate -s 64M /work/base
+mkfs.ext4 -qF /work/base
+mount -o loop /work/base /work/view
+printf 'base fixture\n' >/work/view/inherited
+printf 'base value\n' >/work/view/changed
+mkdir -p /work/view/bin /work/view/lib64 /work/view/.old /work/view/proc /work/view/dev /work/view/tmp
+for tool in bash cat chmod chown stat sleep; do cp "/usr/bin/$tool" /work/view/bin/; done
+cp -a /usr/lib64/. /work/view/lib64/
+cp /command /work/view/command
+chmod 755 /work/view/command
+umount /work/view
+chown 100000:100000 /work/view
+# Both builds start with the same filesystem bytes and authenticated root.
+mkdir /runs
+for id in A B; do
+ mkdir /runs/$id /runs/$id/view
+ chmod 1777 /runs/$id
+ cp --sparse=always /work/base /runs/$id/base
+ chown 100000:100000 /runs/$id/view
+ : >/runs/$id/ready
+ chmod 666 /runs/$id/ready
+ unshare --mount /bin/bash /concurrent-run /runs/$id > /runs/$id/log 2>&1 &
+ if test "$id" = A; then a=$!; else b=$!; fi
+done
+for ((i=0;i<1200;i++)); do
+ if test -s /runs/A/ready && test -s /runs/B/ready; then break; fi
+ kill -0 "$a"; kill -0 "$b"
+ sleep .05
+done
+test -s /runs/A/ready; test -s /runs/B/ready
+dmsetup table > /runs/overlap.tables
+cat /runs/overlap.tables
+# Exactly two writable snapshots must refer to the same immutable origin.
+awk '$1 ~ /^conglobate-/ && $4 == "snapshot" {n++; if (n==1) origin=$5; else if ($5!=origin) exit 1} END {if(n!=2) exit 1}' /runs/overlap.tables
+echo CONCURRENT_SHARED_ORIGIN_OVERLAP_PASS
+: >/runs/A/go
+wait "$a" || { cat /runs/A/log; exit 1; }
+test -f /runs/A/published/inventory.cbor
+test ! -e /runs/B/published
+kill -0 "$b"
+echo CONCURRENT_FIRST_PUBLISHED_SECOND_ACTIVE_PASS
+: >/runs/B/go
+wait "$b" || { cat /runs/B/log; exit 1; }
+test -f /runs/B/published/inventory.cbor
+cmp /work/base /runs/A/base
+cmp /work/base /runs/B/base
+for ((i=0;i<100;i++)); do
+ test -z "$(ls /sys/block | sed -n '/^dm-/p')" && break
+ sleep .05
+done
+# Loop devices can persist as empty kernel objects; only attached ones count.
+test -z "$(losetup -a)"
+test -z "$(ls /sys/block | sed -n '/^dm-/p')"
+echo CONCURRENT_COMPLETE_BUILDS_CLEANUP_PASS

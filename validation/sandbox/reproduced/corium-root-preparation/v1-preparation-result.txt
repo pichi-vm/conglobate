@@ -1,0 +1,3 @@
+Preparation failed before QEMU: depmod returned exit1 because the RPM extraction
+pattern selected usr/lib/modules, while the supplied Fedora RPMs contain
+lib/modules. See depmod.log. Corrected pattern in later runs; no guest ran here.

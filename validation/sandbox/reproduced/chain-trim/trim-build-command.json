@@ -1,0 +1,9 @@
+[
+  "cc",
+  "-Wall",
+  "-Wextra",
+  "-Werror",
+  "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/chain-trim/probe.c",
+  "-o",
+  "/tmp/conglobate-chain-trim-v1/root/trim-probe"
+]

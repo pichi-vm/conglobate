@@ -1,0 +1,1 @@
+Both runs passed the strict workload runner and measurement gates. All 632 input-file hashes and six symlink targets match. Sources remained unchanged between evidence capture and completion. See summary.json for scope and host kernel.

@@ -1,0 +1,34 @@
+#!/bin/bash
+set -euo pipefail
+export PATH=/usr/bin:/usr/sbin
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+if [[ "$(cat /proc/cmdline)" == *probe_disabled=1* ]]; then
+ python3 /disabled.py
+ /usr/bin/busybox poweroff -f
+fi
+modprobe ipv6
+ip link set lo up
+ip addr add 10.45.0.2/24 dev eth0
+ip -6 addr add fd42:45::2/64 dev eth0 nodad
+ip link set eth0 up
+ip route add default via 10.45.0.1
+ip -6 route add default via fd42:45::1
+for style in regular symlink; do
+ if test "$style" = symlink; then rm /etc/resolv.conf; ln -s /run/resolv.original /etc/resolv.conf; fi
+ mkdir -p /run
+ printf 'nameserver 127.0.0.53
+options timeout:1 attempts:1
+' >/etc/resolv.conf
+ python3 /stub.py
+ mount --bind /resolver /etc/resolv.conf
+ mount -o remount,bind,ro /etc/resolv.conf
+ python3 /client.py
+ umount /etc/resolv.conf
+ python3 -c 'from pathlib import Path; assert "127.0.0.53" in Path("/etc/resolv.conf").read_text()'
+ echo UML_RESOLVER_RESTORED_$style
+done
+python3 /listener.py
+echo UML_ENABLED_NETWORK_PASS
+/usr/bin/busybox poweroff -f

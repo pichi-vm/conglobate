@@ -1,0 +1,48 @@
+Trusted runtime versus inventory: binary/appliance boundary
+==========================================================
+Grounding: DESIGN.md trust model and sections11.2/11.3, src/inventory.rs,
+src/build.rs and src/execute.rs. No new inventory schema or appliance requirement
+is implemented by this reconciliation.
+
+The agreed standalone output is an inventory of verified build inputs and
+finalized outputs. Inventory::Builder also identifies the running executable;
+Record reads /proc/self/exe, not a replaceable installation pathname. Build's
+helper copy likewise comes from /proc/self/exe. These identify/copy executable
+bytes; they do not identify the loader, libraries, worker, configuration or kernel.
+Neither is an independent measurement that proves its own trustworthiness.
+
+Binary-side obligations:
+- Construct the trusted child launch environment before loading child helpers.
+  The actual Step::command now does so; helper-launch-environment retains its
+  subprocess regression. This cannot retroactively sanitize initial startup.
+- Keep the selected trusted runtime and configuration outside recipe-writable
+  mounts and handles. Protect them for their whole use, not only while hashing.
+  Metadata and symlink/loader resolution matter as earlier packaging tests show.
+- Verify image/context inputs, restrict commands, finalize bytes after writers
+  stop, and generate/protect inventory and output publication through trusted
+  control paths. Logs from commands are not completion authority.
+- When a selected backend needs an external trusted worker, use an explicit
+  environment-owned runtime contract rather than treating an arbitrary image's
+  program as trusted because its file was hashed. Tool carapace recipe commands
+  remain untrusted even though their inputs are measured.
+
+Environment/appliance-side obligations:
+- Establish trusted initial loading and protected runtime contents, including
+  executable, interpreter/loader, libraries, privileged worker and configuration.
+  Standalone conglobate assumes the trusted environment; it cannot defend its
+  own startup against a hostile loader or prove that environment from inside it.
+- Future appliance evidence binds the exact output inventory digest to the
+  measured execution environment. Its verification policy must cover the full
+  trusted execution path. Appliance packaging/evidence is explicitly deferred.
+- The inventory's existing executable digest must not be represented as that
+  complete runtime measurement. A future external evidence binding can provide
+  the broader identity without making the binary implement hardware attestation.
+
+Consequences for the checklist:
+Initial host-loading trust and future evidence packaging are not newly mandatory
+binary self-measurement features. Child runtime/path protection still needs
+qualification in the selected executor; fixture file hashes and static DT_NEEDED
+graphs do not prove it. The earlier dynamic runtime identity and metadata work
+remains useful packaging evidence, not an attestation implementation. Areas3/19/21
+must distinguish these obligations instead of treating all of them as one missing
+inventory field. No security boundary or filesystem-semantic requirement is waived.

@@ -1,0 +1,14 @@
+#!/bin/bash
+set -euo pipefail
+echo $$ > /sys/fs/cgroup/uml-step/cgroup.procs
+exec 9</uml-filter.bpf
+exec /usr/bin/setpriv --reuid=1000 --regid=1000 --clear-groups \
+ /usr/bin/bwrap --unshare-all --die-with-parent --new-session --cap-drop ALL \
+ --seccomp 9 --clearenv --setenv PATH /bin --setenv TMPDIR /runtime \
+ --setenv HOME /runtime --setenv LC_ALL C --proc /proc --dev /dev --dir /lib64 \
+ --ro-bind /lib64/libc.so.6 /lib64/libc.so.6 \
+ --ro-bind /lib64/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 \
+ --ro-bind /linux.uml /linux --ro-bind /uml.cpio /initrd \
+ --dev-bind "$1" /disk --bind /work/uml-runtime /runtime --chdir / \
+ /linux mem=256M con=null con0=fd:0,fd:1 ssl=null lsm=capability panic=1 rdinit=/init \
+ initrd=/initrd uml_dir=/runtime umid=probe ubd0=/disk

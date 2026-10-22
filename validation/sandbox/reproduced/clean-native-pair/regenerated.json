@@ -1,0 +1,10 @@
+{
+  "configure": {
+    "release_sha256": "d6b4000c7bc9b61203d81422590d9df38e1c4d59eaa022411de7738b3938903a",
+    "regenerated_sha256": "f93a8f71bb4157d12ee7e162e3fe4fca1f84f8a94f838c07a52982b823922cdd"
+  },
+  "lib/config.h.in": {
+    "release_sha256": "7a77e67252b46ebee640c595fdbc827de63b6b48fede81a31d4c309bff115651",
+    "regenerated_sha256": "5fc849eeb5e5cb0e3c240cadf6abfe84c8a3dce4cd56b167b49e52a09cabaeec"
+  }
+}

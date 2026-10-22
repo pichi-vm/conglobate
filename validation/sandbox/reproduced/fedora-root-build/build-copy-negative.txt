@@ -1,0 +1,1 @@
+EDQUOT while copying pinned RPMs. No guest started. Partial generated root removed.

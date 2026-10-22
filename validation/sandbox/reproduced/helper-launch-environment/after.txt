@@ -1,0 +1,21 @@
+   Compiling conglobate v0.1.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.90s
+     Running unittests src/lib.rs (target/debug/deps/conglobate-61f3cdefb340d1a0)
+
+running 13 tests
+test build::export_tests::output_rejects_device_metadata_without_opening_devices ... ok
+test copy::tests::modes_follow_buildkit_sticky_scoping_and_unsigned_octal ... ok
+test build::export_tests::firmware_aliases_are_rejected_but_distinct_files_are_allowed ... ok
+test execute::tests::cleanup_failure_keeps_child_status_and_stays_fatal ... ok
+test build::export_tests::validated_path_requires_writers_to_remain_stopped ... ok
+test build::export_tests::output_rejects_special_files_without_opening_them ... ok
+test copy::tests::account_databases_must_be_regular_files ... ok
+test build::export_tests::output_size_is_not_bounded_by_path_validation ... ok
+test copy_pattern::tests::docker_filepath_grammar ... ok
+test copy::tests::named_owner_uses_passwd_primary_group_unless_overridden ... ok
+test scute::tests::verity_requires_exact_input_and_reports_late_read_errors ... ok
+test execute::tests::trusted_helper_does_not_inherit_shell_startup_environment ... ok
+test build::export_tests::output_resolution_confines_links_and_bounds_cycles ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

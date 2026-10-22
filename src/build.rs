@@ -177,13 +177,7 @@ impl Build {
                 firmware.into.dtb.as_ref(),
                 root.as_deref(),
             )?;
-            let pmi_meta = std::fs::metadata(&pmi)?;
-            let dtb_meta = std::fs::metadata(&dtb)?;
-            if pmi_meta.dev() == dtb_meta.dev() && pmi_meta.ino() == dtb_meta.ino() {
-                return Err(Error::Invalid(
-                    "firmware outputs resolve to the same file".into(),
-                ));
-            }
+            require_distinct_firmware_outputs(&pmi, &dtb)?;
             let (pmi, pmi_size) = artifact.put(File::open(pmi)?)?;
             let (dtb, dtb_size) = artifact.put(File::open(dtb)?)?;
             filesystem.finish()?;
@@ -333,6 +327,17 @@ fn output_file(root: &Path, path: &str, carapace: Option<&str>) -> Result<PathBu
     Ok(path)
 }
 
+fn require_distinct_firmware_outputs(pmi: &Path, dtb: &Path) -> Result<(), Error> {
+    let pmi_meta = std::fs::metadata(pmi)?;
+    let dtb_meta = std::fs::metadata(dtb)?;
+    if pmi_meta.dev() == dtb_meta.dev() && pmi_meta.ino() == dtb_meta.ino() {
+        return Err(Error::Invalid(
+            "firmware outputs resolve to the same file".into(),
+        ));
+    }
+    Ok(())
+}
+
 fn empty_manifest() -> Manifest {
     Manifest {
         schema_version: 2,
@@ -368,4 +373,132 @@ fn append(artifact: &Artifact, manifest: &mut Manifest, scute: &Scute) -> Result
         hex::encode(scute.root),
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod export_tests {
+    use super::{output_file, require_distinct_firmware_outputs};
+    use nix::{sys::stat::Mode, unistd::mkfifo};
+    use std::{
+        fs,
+        os::unix::{
+            fs::{FileTypeExt, symlink},
+            net::UnixListener,
+        },
+    };
+
+    #[test]
+    fn output_resolution_confines_links_and_bounds_cycles() {
+        let scratch = tempfile::tempdir().unwrap();
+        let root = scratch.path().join("image");
+        fs::create_dir_all(root.join("nested")).unwrap();
+        fs::write(root.join("payload"), b"image fixture").unwrap();
+        fs::write(scratch.path().join("outside"), b"outside fixture").unwrap();
+        symlink("/payload", root.join("absolute")).unwrap();
+        symlink("../../../../payload", root.join("nested/relative")).unwrap();
+        for name in ["/absolute", "/nested/relative"] {
+            assert_eq!(
+                fs::read(output_file(&root, name, None).unwrap()).unwrap(),
+                b"image fixture"
+            );
+        }
+        // Absolute links are interpreted inside the image, never the worker.
+        symlink(scratch.path().join("outside"), root.join("outside-link")).unwrap();
+        assert!(output_file(&root, "/outside-link", None).is_err());
+        symlink("/cycle", root.join("cycle")).unwrap();
+        assert!(
+            output_file(&root, "/cycle", None)
+                .unwrap_err()
+                .to_string()
+                .contains("too many symlinks")
+        );
+        let mut deep = String::new();
+        for _ in 0..64 {
+            deep.push_str("/d");
+            fs::create_dir(root.join(deep.trim_start_matches('/'))).unwrap();
+        }
+        fs::write(
+            root.join(deep.trim_start_matches('/')).join("payload"),
+            b"deep",
+        )
+        .unwrap();
+        assert!(output_file(&root, &format!("{deep}/payload"), None).is_ok());
+        // Exceed the platform path length with a bounded synthetic string.
+        assert!(output_file(&root, &"/d".repeat(3000), None).is_err());
+    }
+
+    #[test]
+    fn output_rejects_special_files_without_opening_them() {
+        let root = tempfile::tempdir().unwrap();
+        mkfifo(&root.path().join("fifo"), Mode::S_IRUSR).unwrap();
+        let _socket = UnixListener::bind(root.path().join("socket")).unwrap();
+        fs::create_dir(root.path().join("directory")).unwrap();
+        symlink("/fifo", root.path().join("fifo-link")).unwrap();
+        for name in ["/fifo", "/fifo-link", "/socket", "/directory", "/missing"] {
+            assert!(output_file(root.path(), name, None).is_err(), "{name}");
+        }
+    }
+
+    #[test]
+    fn output_rejects_device_metadata_without_opening_devices() {
+        let root = std::path::Path::new("/");
+        assert!(
+            fs::metadata("/dev/null")
+                .unwrap()
+                .file_type()
+                .is_char_device()
+        );
+        assert!(output_file(root, "/dev/null", None).is_err());
+        // The disposable guest supplies an unconnected synthetic block node.
+        // No block device is opened or read by this test.
+        if let Ok(path) = std::env::var("CONGLOBATE_EXPORT_BLOCK_DEVICE") {
+            assert!(fs::metadata(&path).unwrap().file_type().is_block_device());
+            assert!(output_file(root, &path, None).is_err());
+        }
+    }
+
+    #[test]
+    fn firmware_aliases_are_rejected_but_distinct_files_are_allowed() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(root.path().join("pmi"), b"fixture").unwrap();
+        fs::hard_link(root.path().join("pmi"), root.path().join("hardlink")).unwrap();
+        symlink("/pmi", root.path().join("symlink")).unwrap();
+        fs::write(root.path().join("dtb"), b"fixture").unwrap();
+        let pmi = output_file(root.path(), "/pmi", None).unwrap();
+        for alias in ["/pmi", "/hardlink", "/symlink"] {
+            let alias = output_file(root.path(), alias, None).unwrap();
+            assert!(require_distinct_firmware_outputs(&pmi, &alias).is_err());
+        }
+        let dtb = output_file(root.path(), "/dtb", None).unwrap();
+        require_distinct_firmware_outputs(&pmi, &dtb).unwrap();
+    }
+
+    #[test]
+    fn output_size_is_not_bounded_by_path_validation() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("sparse");
+        fs::File::create(&path).unwrap().set_len(1 << 30).unwrap();
+        let resolved = output_file(root.path(), "/sparse", None).unwrap();
+        assert_eq!(fs::metadata(resolved).unwrap().len(), 1 << 30);
+        // This deliberately establishes a limitation, not a size-limit pass.
+        // The sparse file is never read or materialized by this test.
+    }
+
+    #[test]
+    fn validated_path_requires_writers_to_remain_stopped() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("output");
+        fs::write(&path, b"fixture").unwrap();
+        let resolved = output_file(root.path(), "/output", None).unwrap();
+        fs::remove_file(&path).unwrap();
+        mkfifo(&path, Mode::S_IRUSR).unwrap();
+        // Deterministic negative control: a returned path is not a sealed FD.
+        // Do not open/read the FIFO. No race loop or outside resource is used.
+        assert!(
+            fs::symlink_metadata(resolved)
+                .unwrap()
+                .file_type()
+                .is_fifo()
+        );
+    }
 }

@@ -1,0 +1,9 @@
+[Unit]
+Description=Owned root filesystem boot validation
+After=local-fs.target systemd-udevd.service
+Requires=systemd-udevd.service
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /conglobate-root-boot-probe
+StandardOutput=journal+console
+StandardError=journal+console

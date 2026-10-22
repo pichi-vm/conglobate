@@ -1,0 +1,14 @@
+#!/bin/bash
+set -euo pipefail
+mount --make-rprivate /
+p=/work/view
+mount --bind "$p" "$p"
+mount -t proc -o nosuid,nodev,noexec proc "$p/proc"
+mount -t tmpfs -o nosuid,noexec tmpfs "$p/dev"
+touch "$p/dev/null" "$p/dev/zero" "$p/dev/random" "$p/dev/urandom"
+for d in null zero random urandom; do mount --bind "/work/runtime/$d" "$p/dev/$d"; done
+ln -s /proc/self/fd "$p/dev/fd"
+ln -s /proc/self/fd/0 "$p/dev/stdin"
+ln -s /proc/self/fd/1 "$p/dev/stdout"
+ln -s /proc/self/fd/2 "$p/dev/stderr"
+exec /entry-helper "$p" /sandbox-test --restricted

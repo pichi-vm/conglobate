@@ -1,0 +1,37 @@
+Direct derived-carapace kernel mount — 2026-10-21 UTC
+===================================================
+Reproduce with chain-shared-block and chain-shared-block-failure using guest.py,
+kernel7.2.10-200.fc44.x86_64 and /tmp/conglobate-finalize-workers as worker-build.
+The current helper adds a check after derived output is authenticated/restaged,
+before the existing raw-copy/fsck check. The trusted supervisor keeps the
+assembled device FD alive and passes its own /proc/PID/fd/N path to mount. The
+mountpoint belongs to the disposable guest fixture; no host path is mounted.
+
+The final three-scute chain (two inherited, one produced) is mounted directly
+with kernel ext4 read-only. The base file, inherited second-layer file, produced
+file and overwritten file must contain their expected bytes. Reads are collected
+before unmount; errors are asserted after unmount. Device is dropped after the
+mount is released. Existing fsck/raw-copy checks, publication/inventory checks,
+unchanged-input checks and complete device cleanup remain required.
+
+Both successful builds produce the direct-mount marker, then publish. In the
+controlled failure case only the surviving build produces that marker and
+publishes; the failed build has no output. Both guests exit0. This covers a
+4KiB ext4 filesystem on the actual assembled block stack, not just a copied raw
+image on a different loop geometry. Exact guest logs, inputs and source snapshots
+are retained in direct-root-mount-{success,failure}.
+
+Reconciled earlier boot evidence
+-------------------------------
+initramfs/boot.py attaches only exported kernel/initramfs; its milestone is
+INITRAMFS_SYSTEMD_MODULE_BOOT_PASS. It proves the bounded initramfs workload,
+not a switch-root into a built carapace. The prior chain/verify mounts the
+64MiB raw copy using a loop device; those checks prove content/fsck and that
+loop mount, not compatibility with the assembled device's logical block size.
+The new direct test fills that specific gap. Prior negative evidence for1KiB
+ext4 remains valid and is not overwritten by the4KiB positive result.
+
+Remaining: representative distribution root switch/boot, other geometry and
+filesystem configurations, final generic executor and backend selection. No
+claim that every built root filesystem boots, or that the FUSE metadata blockers
+are resolved. No production code or image-author defaults changed.

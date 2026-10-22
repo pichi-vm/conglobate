@@ -1,0 +1,11 @@
+{
+  "validation/sandbox/policy/package.py": "4df03ebbe2a53d12eaad1a5a0e80a07d78bfc0d2e1ece6a49d379d875143f900",
+  "validation/sandbox/initramfs/command": "9d3cdca7d2a7dfd124744aba79f94bc7dae9536e517be9d83a29ad79d12cb76b",
+  "validation/sandbox/initramfs/rpms.json": "c2e392f161c7225f7b71a7dcbfc6a4e3145538d66fb29ccca014a1634202ccb9",
+  "validation/sandbox/restricted-bootstrap/launch": "6642869d9ace03cc9795e477aea959c777b76f9f3270d4f5fb4b4e68736b13b8",
+  "validation/sandbox/restricted-bootstrap/command": "ef910b20455139a5f10becbae2b4fd4bcf619d5317d3dc23bcb1cd6e4a091e59",
+  "validation/sandbox/entry/helper/src/main.rs": "23bb77f3653a09765a5ea82191d3d9b4eeed83a738d8281bde4cb9418eb8696b",
+  "validation/sandbox/entry/helper/Cargo.toml": "85023ebc8b9d3abaac410fef2a71489cdbffa5991f79128fe408b26acb22581f",
+  "validation/sandbox/entry/helper/Cargo.lock": "ae946c1d23ad2b7a5a760dfe9361b3acd09085c351cf8a906c3ec2699dc7f605",
+  "validation/sandbox/package-upgrade/command": "3478c87b72565feff6896161b7d77216d4f15fb1fa899b92e5ccdfb60f9ca240"
+}

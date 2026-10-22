@@ -1,0 +1,33 @@
+Two-process recovery and reader-release ordering
+===============================================
+Reproduce with the current compound-recovery.rs through the commands in
+COMPOUND-RECOVERY.txt, using new build/guest directories. Evidence:
+reproduced/carapace-concurrent-recovery; guest exit0 at1.67s.
+
+After the existing child is killed at Loaded, the upper snapshot has an abandoned
+inactive table over a live lower snapshot and a read-only COW loop attachment.
+Two new independent test processes announce readiness, then the parent releases
+both through one start barrier. Both call the ordinary candidate assembler for
+that same name/table and retain their returned files. Both verify the combined
+0x41/0x62 data and report the returned device identity through owned fixture files.
+
+The parent requires both processes to remain live and both identities to equal
+the currently installed upper mapping. It releases/reaps the first reader only;
+the second remains live, the mapping identity remains unchanged, and a temporary
+independent open reads the expected combined data. The lower reader still returns
+its unchanged0x41/zero data. Releasing/reaping the second permits automatic upper
+mapping removal while the lower reader remains valid. Existing final lower/zero
+and loop cleanup and byte-preservation checks pass, as do all prior controls.
+
+This is concurrent process admission from a barrier, not a deterministic schedule
+of each kernel lock instruction. It demonstrates same-mapping reuse and ordered
+reader lifetime under the cooperating publication-lock protocol. It does not
+qualify privileged noncooperating table changes, arbitrarily many clients, every
+possible scheduler order or generic orphan cleanup. No broad removal or manual
+teardown is used as a passing recovery path. A fresh ordinary activation after
+the two readers release also passes as part of the original four-stage matrix.
+
+The candidate patch remains confined to a copied pinned dependency. Maintained
+adoption, final ownership protocol and executor integration are still open. This
+closes the named two-process compound recovery/reuse case; additional repetitions
+must have a distinct requirement rather than merely accumulating passing runs.

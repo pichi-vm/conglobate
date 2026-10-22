@@ -1,0 +1,12 @@
+
+running 4 tests
+test assemble::tests::kernel_competitor_waits_for_publication_or_rollback ... ok
+test assemble::tests::kernel_publication_holds_lock_and_rolls_back_before_unlocking ... ok
+test assemble::tests::kernel_removal_between_lookup_and_open_retries_creation ... ok
+test assemble::tests::kernel_reuse_releases_lock_after_pinning ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 37 filtered out; finished in 0.28s
+
+CARAPACE_ACTIVATION_TESTS_AND_CLEANUP_PASS
+GUEST_EXIT 0
+[    0.935313] sysrq: Resetting

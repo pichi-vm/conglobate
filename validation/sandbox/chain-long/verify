@@ -1,0 +1,13 @@
+#!/bin/bash
+set -eu
+e2fsck -fn "$1"
+mount -o loop,ro "$1" /work/view
+trap 'umount /work/view' EXIT
+test "$(cat /work/view/inherited)" = 'base fixture'
+test "$(cat /work/view/derived)" = 'derived fixture'
+test "$(cat /work/view/changed)" = 'derived value'
+test "$(stat -c '%a:%u:%g' /work/view/derived)" = '640:1234:2345'
+test "$(cat /work/view/round)" = 3
+test "$(cat /work/view/history)" = "$(printf 'round 1\nround 2\nround 3')"
+echo THREE_ROUNDS_KERNEL_STATE_PASS
+echo DERIVED_KERNEL_FILESYSTEM_PASS

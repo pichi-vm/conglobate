@@ -40,6 +40,9 @@ pub fn resolve(root: &Path, path: &Path, follow_final: bool) -> Result<PathBuf, 
                     pending = target;
                     continue;
                 }
+                Ok(metadata) if !pending.is_empty() && !metadata.is_dir() => {
+                    return Err(std::io::Error::from(std::io::ErrorKind::NotADirectory).into());
+                }
                 Ok(_) => {}
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
                 Err(error) => return Err(error.into()),
@@ -51,7 +54,8 @@ pub fn resolve(root: &Path, path: &Path, follow_final: bool) -> Result<PathBuf, 
 }
 
 fn parts(path: &Path) -> VecDeque<OsString> {
-    path.components()
+    let mut parts: VecDeque<_> = path
+        .components()
         .map(|component| match component {
             Component::RootDir => OsString::from("/"),
             Component::CurDir => OsString::from("."),
@@ -59,5 +63,13 @@ fn parts(path: &Path) -> VecDeque<OsString> {
             Component::Normal(name) => name.to_owned(),
             Component::Prefix(prefix) => prefix.as_os_str().to_owned(),
         })
-        .collect()
+        .collect();
+    // Path::components removes a trailing slash or dot. Both require the
+    // preceding component to be a directory during kernel path traversal,
+    // including when they occur in a symlink's target.
+    let bytes = path.as_os_str().as_encoded_bytes();
+    if bytes.ends_with(b"/") || bytes.ends_with(b"/.") {
+        parts.push_back(OsString::from("."));
+    }
+    parts
 }

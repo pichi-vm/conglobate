@@ -1,0 +1,79 @@
+Library version:   1.02.212 (2025-12-15)
+Driver version:    4.50.0
+SHARED_BLOCK_TWO_LAYER_BASE_PREPARED
+SHARED_BLOCK_BASE_PREPARED
+CARAPACE-s3ee80fb5c64832aa6e3fd5f686e35027-252:0-252:1: 0 134217728 snapshot 252:0 252:1 P 8
+CARAPACE-s58799a22d1044a4ef43490c761f94ba9-252:2-252:3: 0 134217728 snapshot 252:2 252:3 P 8
+CARAPACE-v95b249a022429d05fe4dd8a5c6bcd517-7:4-7:5: 0 160 verity 1 7:4 7:5 4096 4096 20 1 sha256 95b249a022429d05fe4dd8a5c6bcd51758799a22d1044a4ef43490c761f94ba9 c19431cb34028a771731ee06bf9300bb3ee80fb5c64832aa6e3fd5f686e35027
+CARAPACE-vc19431cb34028a771731ee06bf9300bb-7:2-7:3: 0 34720 verity 1 7:2 7:3 4096 4096 4340 1 sha256 c19431cb34028a771731ee06bf9300bb3ee80fb5c64832aa6e3fd5f686e35027 0000000000000000000000000000000000000000000000000000000000000000
+CARAPACE-z: 0 134217728 zero 
+conglobate-207-v5xVV0-0: 0 134217728 snapshot 252:4 7:0 P 8
+conglobate-215-k6wtfC-0: 0 134217728 snapshot 252:4 7:1 P 8
+CONCURRENT_TWO_LAYER_SHARED_BLOCK_STACK_PASS
+CONCURRENT_SHARED_BLOCK_STACK_PASS
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 41bac4e08249656cf53d8a345c1fbabf1a8849ec sha256:1a5cc22ac26c9d5a20498039d3f120c8138d0e75ac4c0c96028b6d6f6a1f19e0
+SHARED_BLOCK_CHAIN_ASSEMBLED
+CHAIN_RESTRICTED_COMMAND_PASS
+CHAIN_COMMAND_DESCENDANTS_STOPPED_WORKER_ALIVE
+FUSE2FS (dm-5): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-5): mounted filesystem a0278a21-f696-4948-ab06-3cc16705266d.
+FUSE2FS (dm-5): unmounting filesystem a0278a21-f696-4948-ab06-3cc16705266d.
+FUSE_DERIVED_LAYER_SEALED
+CHAIN_ROUND_SEALED 1
+DERIVED_CHAIN_RESTAGED
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/verified: 54/16384 files (1.9% non-contiguous), 6370/16384 blocks
+SHARED_SECOND_LAYER_PERSISTED_PASS
+DERIVED_KERNEL_FILESYSTEM_PASS
+POST_STAGE_CORRUPTION_REJECTED Err(Io(Os { code: 5, kind: InputOutputError, message: "Input/output error" }))
+POST_STAGE_RESTORATION_READ_PASS
+BASE_SCUTE_UNCHANGED_PASS
+
+thread 'main' (207) panicked at src/bin/../chain_publication.rs:114:5:
+assertion failed: inventory.outputs.scutes[1..].iter().all(|s| s.origin == "produced")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 41bac4e08249656cf53d8a345c1fbabf1a8849ec sha256:1a5cc22ac26c9d5a20498039d3f120c8138d0e75ac4c0c96028b6d6f6a1f19e0
+SHARED_BLOCK_CHAIN_ASSEMBLED
+CHAIN_RESTRICTED_COMMAND_PASS
+CHAIN_COMMAND_DESCENDANTS_STOPPED_WORKER_ALIVE
+FUSE2FS (dm-5): Warning: fuse2fs does not support using the journal.
+There may be file system corruption or data loss if
+the file system is not gracefully unmounted.
+FUSE2FS (dm-5): mounted filesystem a0278a21-f696-4948-ab06-3cc16705266d.
+FUSE2FS (dm-5): unmounting filesystem a0278a21-f696-4948-ab06-3cc16705266d.
+FUSE_DERIVED_LAYER_SEALED
+CHAIN_ROUND_SEALED 1
+DERIVED_CHAIN_RESTAGED
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/verified: 54/16384 files (1.9% non-contiguous), 6370/16384 blocks
+SHARED_SECOND_LAYER_PERSISTED_PASS
+DERIVED_KERNEL_FILESYSTEM_PASS
+POST_STAGE_CORRUPTION_REJECTED Err(Io(Os { code: 5, kind: InputOutputError, message: "Input/output error" }))
+POST_STAGE_RESTORATION_READ_PASS
+BASE_SCUTE_UNCHANGED_PASS
+
+thread 'main' (207) panicked at src/bin/../chain_publication.rs:114:5:
+assertion failed: inventory.outputs.scutes[1..].iter().all(|s| s.origin == "produced")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+BASE_WRONG_ROOT_REJECTED
+BASE_CORRUPT_BLOB_REJECTED
+COMMITTED_LOCKED_CHAIN_INPUTS_PASS 41bac4e08249656cf53d8a345c1fbabf1a8849ec sha256:1a5cc22ac26c9d5a20498039d3f120c8138d0e75ac4c0c96028b6d6f6a1f19e0
+SHARED_BLOCK_CHAIN_ASSEMBLED
+GUEST_EXIT 1
+[   22.485215] sysrq: Resetting

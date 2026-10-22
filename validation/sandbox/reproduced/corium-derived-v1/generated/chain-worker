@@ -1,0 +1,17 @@
+#!/bin/bash
+set -euo pipefail
+/patched -f -o kernel,acl,allow_other,nosuid,nodev "$1" /work/view >/work/worker.log 2>&1 &
+daemon=$!
+trap 'fusermount3 -u /work/view; wait "$daemon"; cat /work/worker.log' EXIT
+for ((i=0;i<100;i++)); do mountpoint -q /work/view && break; sleep .05; done
+mountpoint -q /work/view
+# Trusted diagnostic recipe installation; context is never mounted in command root.
+test ! -e /work/view/command
+test ! -e /work/view/.old
+mkdir /work/view/.old
+cp /command /work/view/command
+chmod 755 /work/view/command
+unshare --mount --pid --ipc --uts --net --fork /bin/bash /command-launch </dev/null 2>&1 | cat
+rm /work/view/command
+rmdir /work/view/.old
+kill -0 "$daemon"

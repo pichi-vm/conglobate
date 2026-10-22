@@ -1,0 +1,56 @@
+Building target platforms: noarch
+Building for target noarch
+Executing(%mkbuilddir): /bin/sh -e /var/tmp/rpm-tmp.yKxUP0
+Executing(%install): /bin/sh -e /var/tmp/rpm-tmp.VWF6Rx
++ umask 022
++ cd /tmp/conglobate-upgrade-rpms/build-1/BUILD/conglobate-validation-fixture-1-build
++ '[' /tmp/conglobate-upgrade-rpms/build-1/BUILD/conglobate-validation-fixture-1-build/BUILDROOT '!=' / ']'
++ rm -rf /tmp/conglobate-upgrade-rpms/build-1/BUILD/conglobate-validation-fixture-1-build/BUILDROOT
+++ dirname /tmp/conglobate-upgrade-rpms/build-1/BUILD/conglobate-validation-fixture-1-build/BUILDROOT
++ mkdir -p /tmp/conglobate-upgrade-rpms/build-1/BUILD/conglobate-validation-fixture-1-build
++ mkdir /tmp/conglobate-upgrade-rpms/build-1/BUILD/conglobate-validation-fixture-1-build/BUILDROOT
++ CFLAGS='-O2 -flto=auto -ffat-lto-objects -fexceptions -g -grecord-gcc-switches -pipe -Wall -Werror=format-security -Wp,-U_FORTIFY_SOURCE,-D_FORTIFY_SOURCE=3 -Wp,-D_GLIBCXX_ASSERTIONS -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -fstack-protector-strong -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1  -m64 -march=x86-64 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -mtls-dialect=gnu2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer  '
++ export CFLAGS
++ CXXFLAGS='-O2 -flto=auto -ffat-lto-objects -fexceptions -g -grecord-gcc-switches -pipe -Wall -Werror=format-security -Wp,-U_FORTIFY_SOURCE,-D_FORTIFY_SOURCE=3 -Wp,-D_GLIBCXX_ASSERTIONS -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -fstack-protector-strong -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1  -m64 -march=x86-64 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -mtls-dialect=gnu2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer  '
++ export CXXFLAGS
++ FFLAGS='-O2 -flto=auto -ffat-lto-objects -fexceptions -g -grecord-gcc-switches -pipe -Wall -Wp,-U_FORTIFY_SOURCE,-D_FORTIFY_SOURCE=3 -Wp,-D_GLIBCXX_ASSERTIONS -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -fstack-protector-strong -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1  -m64 -march=x86-64 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -mtls-dialect=gnu2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -I/usr/lib/gfortran/modules  '
++ export FFLAGS
++ FCFLAGS='-O2 -flto=auto -ffat-lto-objects -fexceptions -g -grecord-gcc-switches -pipe -Wall -Wp,-U_FORTIFY_SOURCE,-D_FORTIFY_SOURCE=3 -Wp,-D_GLIBCXX_ASSERTIONS -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -fstack-protector-strong -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1  -m64 -march=x86-64 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -mtls-dialect=gnu2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -I/usr/lib/gfortran/modules  '
++ export FCFLAGS
++ VALAFLAGS=-g
++ export VALAFLAGS
++ RUSTFLAGS='-Copt-level=3 -Cdebuginfo=2 -Ccodegen-units=1 -Cstrip=none -Cforce-frame-pointers=yes --cap-lints=warn'
++ export RUSTFLAGS
++ LDFLAGS='-Wl,-z,relro -Wl,--as-needed   -Wl,-z,now -specs=/usr/lib/rpm/redhat/redhat-hardened-ld -specs=/usr/lib/rpm/redhat/redhat-hardened-ld-errors -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1  -Wl,--build-id=sha1   '
++ export LDFLAGS
++ LT_SYS_LIBRARY_PATH=/usr/lib:
++ export LT_SYS_LIBRARY_PATH
++ CC=gcc
++ export CC
++ CXX=g++
++ export CXX
++ mkdir -p /tmp/conglobate-upgrade-rpms/build-1/BUILD/conglobate-validation-fixture-1-build/BUILDROOT/usr/share/conglobate-upgrade /tmp/conglobate-upgrade-rpms/build-1/BUILD/conglobate-validation-fixture-1-build/BUILDROOT/etc
++ printf '%s\n' 1
++ printf '%s\n' default-1
+Processing files: conglobate-validation-fixture-1-1.noarch
+warning: Ignoring invalid regex %{__elf_magic}
+Provides: conglobate-validation-fixture = 1-1
+Requires(interp): /bin/sh /bin/sh /bin/sh /bin/sh
+Requires(rpmlib): rpmlib(CompressedFileNames) <= 3.0.4-1 rpmlib(FileDigests) <= 4.6.0-1 rpmlib(PayloadFilesHavePrefix) <= 4.0-1
+Requires(pre): /bin/sh
+Requires(post): /bin/sh
+Requires(preun): /bin/sh
+Requires(postun): /bin/sh
+Wrote: /tmp/conglobate-upgrade-rpms/build-1/RPMS/noarch/conglobate-validation-fixture-1-1.noarch.rpm
+Executing(rmbuild): /bin/sh -e /var/tmp/rpm-tmp.erEDC4
++ umask 022
++ cd /tmp/conglobate-upgrade-rpms/build-1/BUILD/conglobate-validation-fixture-1-build
++ test -d /tmp/conglobate-upgrade-rpms/build-1/BUILD/conglobate-validation-fixture-1-build
++ /usr/bin/chmod -Rf a+rX,u+w,g-w,o-w /tmp/conglobate-upgrade-rpms/build-1/BUILD/conglobate-validation-fixture-1-build
++ rm -rf /tmp/conglobate-upgrade-rpms/build-1/BUILD/conglobate-validation-fixture-1-build
++ RPM_EC=0
+++ jobs -p
++ exit 0
+
+RPM build warnings:
+    Ignoring invalid regex %{__elf_magic}
