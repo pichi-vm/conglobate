@@ -8,4 +8,8 @@ pub mod document;
 pub mod image;
 pub mod lock;
 pub mod path;
+pub mod plan;
+pub mod recipe;
+pub mod request;
+pub mod template;
 pub mod value;

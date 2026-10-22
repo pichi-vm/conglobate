@@ -128,3 +128,13 @@ rules rather than silently shrinking acceptance criteria.
 - M3 remains incomplete: single-file recipe/stage parsing and immutable planning,
   request/CLI selection, verified Git context and local image-cache resolution
   still need implementation and their tests. No M3 adherence pass claimed.
+- Added single-document stage/directive validation, distinguishing absent, empty
+  and null sections; immutable pipeline order/input-role/network-step planning;
+  required explicit CLI recipe/lock paths and typed context-directory selection.
+- Added typed DTB values and parsed single-pass templates with dollar escaping,
+  deferred undefined-variable evaluation and regex capture semantics. Shell run
+  text remains shell text and is not processed by this template parser.
+- Twenty behavioral tests, formatting and Clippy with warnings denied pass.
+  This is a foundation slice, not completion of M3: committed private context,
+  local verified cache resolution, complete COPY validation and integration
+  remain. No M3 adherence pass or executor/security qualification claimed.
