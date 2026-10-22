@@ -57,9 +57,32 @@ impl Integration {
             assert_eq!(&data, b"workspace");
             assert_eq!(second.read(&mut data)?, 0);
             second.write_all(b"independent")?;
+            let commit = fs::read_to_string("/workspace-context-commit")?;
+            let context = conglobate::context::CapturedContext::capture(
+                Path::new("/workspace-context"),
+                &conglobate::request::CommitIdentity::try_from(commit.trim())?,
+                &conglobate::path::ContextDirectory::try_from(Path::new("."))?,
+            )?;
+            let staged = workspace.materialize(&context)?;
+            let path = conglobate::path::ContextPath::try_from(Path::new("input"))?;
+            let mut reader = staged.open(&path)?;
+            assert_eq!(reader.metadata()?.dev(), first.metadata()?.dev());
+            let mut input = String::new();
+            reader.read_to_string(&mut input)?;
+            assert_eq!(input, "committed context\n");
+            drop(reader);
             drop(first);
             drop(second);
             drop(workspace);
+            // Its owned parent descriptor retains tmpfs even after the initial
+            // workspace owner is gone. Cleanup must still resolve and succeed.
+            let mut reader = staged.open(&path)?;
+            input.clear();
+            reader.read_to_string(&mut input)?;
+            assert_eq!(input, "committed context\n");
+            drop(reader);
+            staged.close()?;
+            println!("WORKSPACE_CONTEXT_PARENT_LIFETIME_PASS");
             assert_eq!(fs::read_to_string("/proc/self/mountinfo")?, before);
             println!("DETACHED_RAM_WORKSPACE_SCRATCH_PASS");
             return Ok(());

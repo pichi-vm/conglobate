@@ -50,6 +50,17 @@ for executable in executables:
             shutil.copy2(source, target)
 for name in ['nsenter', 'bwrap']:
     (root / 'usr/bin' / name).unlink(missing_ok=True)
+# A committed, local input repository for production context materialization.
+context_fixture = root / 'workspace-context'
+context_fixture.mkdir()
+(context_fixture / 'input').write_text('committed context\n')
+subprocess.run(['git', 'init', '--quiet', str(context_fixture)], check=True)
+subprocess.run(['git', '-C', str(context_fixture), 'add', 'input'], check=True)
+subprocess.run(['git', '-C', str(context_fixture), '-c', 'user.name=Fixture',
+                '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgsign=false',
+                'commit', '--quiet', '-m', 'Fixture'], check=True)
+(root / 'workspace-context-commit').write_text(subprocess.check_output(
+    ['git', '-C', str(context_fixture), 'rev-parse', 'HEAD'], text=True))
 (root / 'conglobate-disposable-validation-vm').touch()
 image_root = root / 'image-root'
 (image_root / 'bin').mkdir(parents=True)

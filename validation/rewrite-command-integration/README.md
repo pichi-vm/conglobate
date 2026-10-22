@@ -692,3 +692,14 @@ no attached pathname needs rollback. This does not establish allocation-failure,
 OOM, kernel-device-consumer lifetime or whole-build workspace qualification.
 The context, snapshots and device-map owners still require integration. No new
 supervisor-death run was needed for this standalone owner; no death claim added.
+
+## Context staging on the workspace
+
+v75 stages a captured Git commit through Workspace::materialize. The staged file
+shares the scratch filesystem device and contains the committed bytes. After all
+scratch files and the initial workspace owner are dropped, the staged context
+still reads correctly and explicitly cleans up through its retained parent
+reference. The exact Git input is preserved as context.bundle and its commit ID.
+Root tests, Clippy and the normal VM suite pass. This is staging only: the existing
+attached-bind read-only transition has not been qualified on a detached workspace.
+It must be integrated before this becomes the production build context flow.

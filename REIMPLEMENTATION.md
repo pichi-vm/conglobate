@@ -1582,3 +1582,21 @@ rules rather than silently shrinking acceptance criteria.
   build-wide integration (context, writable snapshots, intermediate/output storage),
   fault injection and storage/device lifecycle remain outstanding. M4 has zero
   clean adherence passes; no milestone or goal completion claimed.
+
+- Previous turn progressed in d81f7d4. Connected CapturedContext staging to the
+  owned workspace with an internal descriptor-based materialization method.
+  Workspace::materialize clones only internal parent authority; no path or raw
+  writable handle is public. The staged context owns its parent reference through
+  recursive cleanup, so dropping the initial Workspace cannot invalidate its
+  proc-fd cleanup authority or destroy its underlying tmpfs prematurely.
+- v75 verifies committed context bytes, same-filesystem placement with scratch,
+  successful read and cleanup after the original workspace owner is dropped,
+  plus the existing normal command suite. Root tests (25 compile-fail), root and
+  fixture Clippy and formatting pass. Exact Git fixture bundle, commit identity,
+  sources, raw logs and hashes retained; no privileged host operations.
+- Existing StagedContext::read_only uses an attached bind/remount; it is not yet
+  qualified against this detached workspace. Do not claim a read-only workspace
+  context or completed context pipeline. That transition, whole-build storage and
+  kernel/device lifetimes remain required. This focused ownership change is not
+  a milestone adherence pass; M4 remains zero. Context integration changes must
+  be included in subsequent adherence review, not inherit M3's earlier evidence.

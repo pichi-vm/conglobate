@@ -36,6 +36,12 @@ impl CapturedContext {
             )
             .map_err(io::Error::from)?,
         );
+        self.materialize_in(parent)
+    }
+
+    /// Internal descriptor authority from the workspace, never a command path.
+    /// The returned context owns this parent reference through cleanup.
+    pub(crate) fn materialize_in(&self, parent: File) -> Result<StagedContext, ContextError> {
         // Linux tmpfs superblock magic, from linux/magic.h. This only verifies
         // backing type; environment policy governs ordinary tmpfs swap behavior.
         if rustix::fs::fstatfs(&parent)

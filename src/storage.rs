@@ -42,6 +42,16 @@ impl Workspace {
         )?;
         Ok(Self { root: root.into() })
     }
+    /// Stage committed inputs on this workspace's tmpfs. The staged owner keeps
+    /// an independent reference to the filesystem until its cleanup completes.
+    /// This does not yet enforce a read-only mount or authorize command access.
+    pub fn materialize(
+        &self,
+        context: &crate::context::CapturedContext,
+    ) -> Result<crate::context::StagedContext, crate::context::ContextError> {
+        context.materialize_in(self.root.try_clone()?)
+    }
+
     /// New anonymous scratch storage, removed on last close. Neither names nor
     /// raw descriptors escape; future kernel consumers must retain an owner, not
     /// merely claim this Rust borrow represents a device's kernel lifetime.
