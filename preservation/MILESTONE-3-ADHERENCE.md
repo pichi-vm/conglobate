@@ -1,6 +1,6 @@
 # Milestone 3 adherence evidence
 
-Status: incomplete; clean streak one. These are source-grounded self-reviews,
+Status: incomplete; clean streak two. These are source-grounded self-reviews,
 not independent reviews. No milestone-4 advancement is authorized by this record.
 
 ## Initial requirements review (baseline 6326d48)
@@ -159,3 +159,48 @@ ledger. No implementation or test changes were made during this pass.
 Result: clean, streak 1/3. This is a source-grounded self-review. Test execution
 supports the result but is not itself the adherence pass. Two further complete
 passes over the same implementation scope are required before advancement.
+
+## Clean pass 2 — failures/evidence first, scope 621b34d
+
+Started with the VM fixture and regression assertions, then traced their failure
+conditions back through production APIs and the architecture. Only ledger changes
+exist since the implementation scope; no source or test edits during this pass.
+
+1. Evidence: the production VM fixture checks EROFS, holds a file across an
+   unsuccessful normal unmount, retries through the returned recovery owner, and
+   exercises post-remount EMFILE using a restored descriptor limit. These are
+   actual library calls, not mock lifecycle state changes. Re-ran compile-fail
+   doctests with diagnostics visible: E0505 for the live-reader transition,
+   E0599 for freezing ReadOnly again, E0277 for moving the mount lease to a
+   thread. They fail for the intended restrictions, not unrelated syntax/import
+   errors. Examined independent chain vectors and decoder-error fixtures; the
+   prior full-suite/fmt/Clippy results still apply to unchanged source/tests.
+2. Safety/recovery: followed each fixture into MountLease and consuming
+   transitions. A failed close preserves the lease; a failed post-bind operation
+   cannot return a ReadOnly checkout. Before-bind errors own no mounted resource.
+   Explicit successful close drops the root FD before unmount. Descriptor and
+   mount views are not interchangeable, and the API/VM test account for that.
+   Checked cache errors through exact stream completion and ancestry traversal:
+   no receipt or ResolvedBuild is returned after a digest, length, decoder,
+   missing-parent or duplicate-root failure. No command admission exists yet.
+3. Requirements: traced rejected requests/recipes and all eight stage combinations
+   to DESIGN.md. Role aggregation preserves separate input purposes and implicit
+   firmware tool requirements. The inherited-DTB preflight fixture demonstrates
+   component presence, not valid final output shape or firmware pairing; those
+   remain M6 validation obligations. Resolver presence is preflight; capture and
+   isolation are later setup work. Undefined templates fail when evaluated,
+   while parsing preserves deferred CARAPACE availability.
+4. Rust style: reviewed owning error variants, private validated fields,
+   sealed states, consuming transitions and read-only getters. Raw recipe types
+   cannot construct verified image/mount authority. Parser accumulators and
+   stream counters are local algorithm state, not mutable build-wide state.
+   Test entrypoints and the validation executable are justified freestanding
+   harness functions. No application unsafe code or writable handle escape added.
+5. Preservation/scope: confirmed only the two adherence ledgers changed since
+   621b34d, no baseline validation files were deleted, and the baseline manifest,
+   archive locator and legacy tree remain. No temporary external evidence was
+   retired. Public library documentation still says execution is unimplemented;
+   this pass does not widen claims to the full sandbox, distros or CI.
+
+Result: clean, streak 2/3. One further complete pass is required. No milestone-4
+advancement follows from this record.
