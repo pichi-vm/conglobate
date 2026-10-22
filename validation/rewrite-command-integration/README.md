@@ -210,3 +210,22 @@ This closes the former external proc-mount adapter and native-path VM-disposal
 coverage gaps. It does not qualify active LSM lifetime, private device/devpts/shm
 setup, sensitive proc masking, missing-directory scaffolding, namespace init,
 complete cleanup ownership, or appliance/architecture/distro compatibility.
+
+
+## Read-only proc control views
+
+v22 adds ProcRestrictions to native runtime setup. After mounting fresh procfs,
+it resolves kernel-generated sys, sysrq-trigger, irq and bus entries through the
+proc mount descriptor, clones each view and attaches it read-only with nosuid,
+nodev and noexec. Symlinks and mount crossings are rejected. Kernel-configuration
+ENOENT is tolerated because no such interface exists; all other errors abort.
+Partial attached setup remains owned by the private command namespace, whose
+process must exit on failure. No command is admitted during construction.
+
+The actual image shell counts four expected read-only mountinfo entries on this
+known guest kernel and verifies that opening sysrq-trigger for output fails.
+It performs no write to a kernel control. v22 passes these checks plus native
+execution, capability profile, timeout, reaping and filesystem persistence.
+Repository tests, root/fixture Clippy and formatting pass. Logs and source hashes
+are retained. Other sensitive proc information masking and private device/runtime
+construction still require work; this is not a complete sandbox qualification.

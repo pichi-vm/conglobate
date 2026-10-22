@@ -193,6 +193,19 @@ impl Integration {
             test ! -e /image-root
             test ! -e /bin/setpriv
             if (printf no > /sys/must-be-read-only) 2>/dev/null; then exit 1; fi
+            restricted=0
+            while read -r id parent device root point options rest; do
+                case "$point" in
+                    /proc/sys|/proc/sysrq-trigger|/proc/irq|/proc/bus)
+                        case ",$options," in
+                            *,ro,*) restricted=$((restricted + 1));;
+                            *) exit 1;;
+                        esac;;
+                esac
+            done < /proc/self/mountinfo
+            test "$restricted" = 4
+            # Open-only denial: do not send a command to any kernel control.
+            if (: > /proc/sysrq-trigger) 2>/dev/null; then exit 1; fi
             caps=0
             nnp=0
             while read -r key value rest; do

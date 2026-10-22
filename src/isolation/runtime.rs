@@ -3,7 +3,10 @@
 
 use rustix::{
     fs::{Mode, OFlags, ResolveFlags},
-    mount::{self, FsMountFlags, FsOpenFlags, MountAttrFlags, MoveMountFlags},
+    mount::{
+        self, FsMountFlags, FsOpenFlags, MountAttr, MountAttrFlags, MountPropagationFlags,
+        MountSetAttrFlags, MoveMountFlags, OpenTreeFlags,
+    },
 };
 use std::{fs::File, io, os::unix::fs::MetadataExt};
 
@@ -113,6 +116,67 @@ impl RuntimeFilesystem {
             "",
             MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH | MoveMountFlags::MOVE_MOUNT_T_EMPTY_PATH,
         )?;
+        if matches!(self, Self::Proc) {
+            ProcRestrictions::new(tree.into()).install()?;
+        }
+        Ok(())
+    }
+}
+
+/// Owns the new proc mount while restricting kernel-created control paths.
+/// Commands have not been admitted; these paths cannot be image symlinks.
+#[derive(Debug)]
+struct ProcRestrictions {
+    root: File,
+}
+impl ProcRestrictions {
+    fn new(root: File) -> Self {
+        Self { root }
+    }
+
+    fn install(self) -> io::Result<()> {
+        for path in ["sys", "sysrq-trigger", "irq", "bus"] {
+            let target = match rustix::fs::openat2(
+                &self.root,
+                path,
+                OFlags::PATH | OFlags::CLOEXEC,
+                Mode::empty(),
+                ResolveFlags::BENEATH | ResolveFlags::NO_SYMLINKS | ResolveFlags::NO_XDEV,
+            ) {
+                Ok(fd) => fd,
+                // These kernel interfaces are configuration-dependent. An
+                // absent interface supplies no authority; all other errors fail.
+                Err(rustix::io::Errno::NOENT) => continue,
+                Err(error) => return Err(error.into()),
+            };
+            let view = mount::open_tree(
+                &target,
+                "",
+                OpenTreeFlags::AT_EMPTY_PATH
+                    | OpenTreeFlags::OPEN_TREE_CLONE
+                    | OpenTreeFlags::OPEN_TREE_CLOEXEC,
+            )?;
+            mount::mount_setattr(
+                &view,
+                "",
+                MountSetAttrFlags::AT_EMPTY_PATH,
+                MountAttr::new(
+                    MountAttrFlags::MOUNT_ATTR_RDONLY
+                        | MountAttrFlags::MOUNT_ATTR_NOSUID
+                        | MountAttrFlags::MOUNT_ATTR_NODEV
+                        | MountAttrFlags::MOUNT_ATTR_NOEXEC,
+                    MountAttrFlags::empty(),
+                    MountPropagationFlags::PRIVATE,
+                ),
+            )?;
+            mount::move_mount(
+                &view,
+                "",
+                &target,
+                "",
+                MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH | MoveMountFlags::MOVE_MOUNT_T_EMPTY_PATH,
+            )?;
+        }
         Ok(())
     }
 }

@@ -1021,3 +1021,21 @@ rules rather than silently shrinking acceptance criteria.
   M4 remains at zero adherence passes. No active policy or full launcher/distro/
   platform qualification is implied; namespace adapters and remaining runtime
   views still require implementation and integration.
+
+
+- Previous goal turn made progress on confined native proc/sys mount setup and
+  native-path VM disposal evidence. Added ProcRestrictions over the newly owned
+  proc mount: sys, sysrq-trigger, irq and bus receive read-only nosuid/nodev/noexec
+  cloned views through descriptor APIs. Only absent kernel-configuration entries
+  are skipped; unexpected errors stop setup. No recipe path or raw mount handle
+  is exposed, and no command runs during partial construction.
+- v22 verifies all four read-only mountinfo entries and denied open-only access
+  to sysrq-trigger without issuing a kernel-control write. Actual native image
+  command, capability, timeout, reaping and clean filesystem persistence checks
+  pass. Root tests, root/fixture Clippy and formatting pass; source/log/provenance
+  are preserved. Review checked mount ownership, attribute application before
+  attachment, configuration absence handling and evidence limits.
+- M4 remains at zero adherence passes. Additional proc information masking,
+  private devices/devpts/shm, runtime scaffolding, namespace initialization,
+  active labeling policy and complete cleanup ownership remain unimplemented or
+  unqualified. This change is not claimed to complete the sandbox.
