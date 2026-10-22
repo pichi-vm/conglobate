@@ -14,6 +14,7 @@ serde-saphyr = { version = "2", default-features = false, features = ["deseriali
 hex = "0.4"
 serde_json = "1"
 regex = "1"
+gix = { version = "0.84", default-features = false, features = ["sha1", "sha256"] }
 clap = { version = "4", features = ["derive"] }
 
 [lints.rust]
@@ -23,3 +24,6 @@ unreachable_pub = "warn"
 
 [lints.clippy]
 all = "warn"
+
+[dev-dependencies]
+tempfile = "3"

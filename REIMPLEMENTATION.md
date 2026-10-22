@@ -138,3 +138,17 @@ rules rather than silently shrinking acceptance criteria.
   This is a foundation slice, not completion of M3: committed private context,
   local verified cache resolution, complete COPY validation and integration
   remain. No M3 adherence pass or executor/security qualification claimed.
+- Added isolated local Git object access with explicit hash recomputation for
+  commits, trees and blobs; immutable captured entries retain no repository
+  handle. Context selections record commit/subtree identities and object format.
+  Confined file reads resolve committed symlinks against captured objects only.
+- Five Git integration tests cover SHA-1/SHA-256, caller working-tree changes,
+  loss of the source repository after capture, packed objects, filter avoidance,
+  corrupted blob rejection, submodule/LFS rejection and confined symlink reads.
+  The corruption fixture initially failed to overwrite Git's read-only loose
+  object; replacing that test-owned file fixed the fixture, after which the
+  intended identity-verification error was observed.
+- All 25 tests and Clippy with warnings denied pass. Capture is currently an
+  immutable in-memory object collection, not yet a private read-only filesystem
+  checkout. Materialization, cache verification and remaining integration are
+  still required for M3. No additional adherence pass claimed.
