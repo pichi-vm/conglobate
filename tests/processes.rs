@@ -44,3 +44,35 @@ fn expired_wait_retains_child_for_termination_and_reaping() {
     let reaped = child.terminate_until(Fixture::deadline()).unwrap();
     assert!(!reaped.status().success());
 }
+
+#[test]
+fn observation_retains_identity_after_termination_and_reaping() {
+    let mut child = Fixture::child("/bin/sleep", &["30"]);
+    let observation = child.observe().unwrap();
+    assert!(!observation.has_exited().unwrap());
+    let reaped = child.terminate_until(Fixture::deadline()).unwrap();
+    assert!(!reaped.status().success());
+    assert!(observation.has_exited().unwrap());
+    // A later child cannot turn the retained identity back into a live one.
+    let next = Fixture::child("/bin/sleep", &["30"]);
+    assert!(observation.has_exited().unwrap());
+    next.terminate_until(Fixture::deadline()).unwrap();
+}
+
+#[test]
+fn previously_collected_child_cannot_reopen_a_numeric_pid() {
+    let mut raw = Command::new("/bin/sh")
+        .args(["-c", "exit 0"])
+        .spawn()
+        .unwrap();
+    raw.wait().unwrap();
+    let mut child: Process<Running> = raw.into();
+    assert!(child.observe().is_err());
+    assert!(
+        child
+            .wait_until(Fixture::deadline())
+            .unwrap()
+            .status()
+            .success()
+    );
+}

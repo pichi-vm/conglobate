@@ -387,3 +387,16 @@ rules rather than silently shrinking acceptance criteria.
   doctests, formatting and Clippy pass. These tests spawn only benign owned
   children without privileged host operations. M4 remains at zero adherence
   passes; helper launching, containment, anchors and LSM are still outstanding.
+- Added independent pidfd-backed ProcessObservation acquired through the child
+  owner before reaping. It exposes exit readiness only, has no public raw FD or
+  signaling API, and rejects an already collected child. Unsupported syscalls or
+  poll errors fail rather than falling back to numeric-PID liveness checks.
+- Reviewed pidfd_open documentation and recorded its required normal SIGCHLD
+  zombie semantics/exclusive reaping in ARCHITECTURE.md and API docs. The future
+  trusted launcher must establish these process-wide invariants; the library
+  owner alone cannot enforce them. No guardian or command admission claim made.
+- New tests verify live/terminated/reaped observation, retained exit identity
+  while another child runs, and rejection of a previously reaped Child. All 56
+  tests, five compile-fail doctests, Clippy, formatting and diff checks pass.
+  This is native Linux process evidence, not PID-reuse stress, supervisor-death,
+  confidential-computing or full containment qualification. M4 remains open.

@@ -213,6 +213,18 @@ anchors can persist after a failed build until a trusted recovery pass succeeds.
 Exact lease serialization and readiness/acknowledgement messages are implementation
 choices subject to this protocol and fault-injection tests.
 
+The current child-owner primitive can acquire an independent pidfd observation
+before collecting exit status. The launcher must retain normal SIGCHLD zombie
+semantics (no explicit SIG_IGN or SA_NOCLDWAIT) and exclusive child reaping;
+those process-wide conditions keep a terminated child's PID from being reused
+between inspection and pidfd acquisition. An already collected child is rejected.
+The observer exposes only exit readiness, never signaling or namespace-entry
+authority. Reaping and observing exit are distinct from proving descendant
+quiescence. A future launch path must establish these signal/reaping prerequisites
+before using this primitive; the existing API does not establish them itself.
+See the conditions documented in
+[pidfd_open(2)](https://man7.org/linux/man-pages/man2/pidfd_open.2.html).
+
 ## Safe integration and dependency evidence
 
 - carapace 99caf79: Chain::assemble uses a fixed 64 GiB zero target and returns
