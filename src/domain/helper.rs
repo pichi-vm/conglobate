@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{DomainCancellation, DomainRecordCleanup, RecordedDomain};
-use crate::process::{Identified, LaunchFailure, Process, Registered, Supervision, WaitError};
+use super::{DomainCancellation, DomainRecordCleanup, DomainRegistration, RecordedDomain};
+use crate::process::{
+    Identified, LaunchFailure, Paired, Process, Registered, Supervision, WaitError,
+};
 use std::{
     io,
     path::Path,
@@ -100,7 +102,34 @@ impl<'lease> RecordedDomain<'lease> {
         command: Command,
         deadline: Instant,
     ) -> Result<ContainedHelper<'lease>, Box<HelperLaunchFailure<'lease>>> {
-        let (process, channel) = match Process::launch_supervised(command, deadline) {
+        self.finish_launch(
+            Process::launch_supervised(command, deadline),
+            |channel, permit| channel.register_helper_until(permit, deadline),
+        )
+    }
+    /// Guardian startup: observe upstream loss during both identity exchange and
+    /// registration. Failures retain any started child and a cleanup-only domain.
+    /// This does not make kernel spawn interruptible or authorize recipe code.
+    pub fn launch_watched(
+        self,
+        command: Command,
+        supervisor: &Supervision<Paired>,
+        deadline: Instant,
+    ) -> Result<ContainedHelper<'lease>, Box<HelperLaunchFailure<'lease>>> {
+        self.finish_launch(
+            Process::launch_watched(command, supervisor, deadline),
+            |channel, permit| channel.register_helper_watched(permit, supervisor, deadline),
+        )
+    }
+    fn finish_launch(
+        self,
+        launched: Result<(Process<Identified>, Supervision<Paired>), LaunchFailure>,
+        register: impl FnOnce(
+            Supervision<Paired>,
+            DomainRegistration<'_>,
+        ) -> io::Result<Supervision<Registered>>,
+    ) -> Result<ContainedHelper<'lease>, Box<HelperLaunchFailure<'lease>>> {
+        let (process, channel) = match launched {
             Ok(pair) => pair,
             Err(source) => {
                 return Err(Box::new(HelperLaunchFailure::Launch {
@@ -111,7 +140,7 @@ impl<'lease> RecordedDomain<'lease> {
         };
         let registered = self
             .registration()
-            .and_then(|permit| channel.register_helper_until(permit, deadline));
+            .and_then(|permit| register(channel, permit));
         match registered {
             Ok(channel) => Ok(ContainedHelper {
                 domain: self,

@@ -200,6 +200,7 @@ impl Probe {
         Self::contained_helper()?;
         Self::registered_guardian()?;
         Self::watched_startup()?;
+        Self::owned_watched_startup()?;
         assert!(
             std::process::Command::new(std::env::current_exe()?)
                 .arg("--independent-guardian-test")
@@ -465,6 +466,76 @@ impl Probe {
         println!("PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS");
         Ok(())
     }
+    fn owned_watched_startup() -> Result<(), Box<dyn std::error::Error>> {
+        use std::{
+            process::Command,
+            time::{Duration, Instant},
+        };
+        let root = std::path::Path::new("/work/owned-watched-startup");
+        fs::create_dir(root)?;
+        fs::set_permissions(root, fs::Permissions::from_mode(0o700))?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(root)?;
+        let parent = std::path::Path::new("/work/cgroups");
+        for registration in [false, true] {
+            let deadline = Instant::now() + Duration::from_secs(5);
+            let mut command = Command::new(std::env::current_exe()?);
+            command.arg("--guardian-peer");
+            let (upstream, supervisor) =
+                conglobate::process::Process::launch_supervised(command, deadline)?;
+            let domain = conglobate::domain::RecordedDomain::create(&lease, parent)?;
+            let record = domain.record().clone();
+            let mut command = if registration {
+                let mut command = Command::new(std::env::current_exe()?);
+                command.arg("--stall-registration");
+                command
+            } else {
+                let mut command = Command::new("/usr/bin/sleep");
+                command.arg("30");
+                command
+            };
+            command.env_clear();
+            let terminator = std::thread::spawn(move || {
+                std::thread::sleep(Duration::from_millis(100));
+                upstream.terminate_until(deadline).unwrap()
+            });
+            let started = Instant::now();
+            let failure = domain
+                .launch_watched(command, &supervisor, deadline)
+                .unwrap_err();
+            let cancellation = match *failure {
+                conglobate::domain::HelperLaunchFailure::Launch {
+                    source: conglobate::process::LaunchFailure::Started { source, process },
+                    domain,
+                } if !registration => {
+                    assert_eq!(source.kind(), std::io::ErrorKind::ConnectionAborted);
+                    process.terminate_until(deadline)?;
+                    domain
+                }
+                conglobate::domain::HelperLaunchFailure::Registration {
+                    source,
+                    process,
+                    domain,
+                } if registration => {
+                    assert_eq!(source.kind(), std::io::ErrorKind::ConnectionAborted);
+                    process.terminate_until(deadline)?;
+                    domain
+                }
+                other => return Err(format!("unexpected owned startup phase: {other}").into()),
+            };
+            terminator.join().unwrap();
+            assert!(started.elapsed() < Duration::from_secs(2));
+            assert_eq!(lease.load_domain(record.name())?, record);
+            cancellation
+                .retry_until(deadline)
+                .map_err(|e| e.to_string())?
+                .finish(parent)
+                .map_err(|e| e.to_string())?;
+        }
+        drop(lease);
+        fs::remove_dir(root)?;
+        println!("PRODUCTION_OWNED_WATCHED_STARTUP_PASS");
+        Ok(())
+    }
     fn watched_startup() -> Result<(), Box<dyn std::error::Error>> {
         use std::{
             process::Command,
@@ -554,7 +625,7 @@ impl Probe {
         let mut command = Command::new(std::env::current_exe()?);
         command.arg("--domain-helper").env_clear();
         let helper = domain
-            .launch(command, deadline)
+            .launch_watched(command, &upstream, deadline)
             .map_err(|e| e.to_string())?;
         while fs::read_to_string(parent.join(&name).join("cgroup.procs"))?
             .lines()

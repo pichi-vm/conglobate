@@ -836,3 +836,22 @@ rules rather than silently shrinking acceptance criteria.
   other setup operations and final admission remain unimplemented. M4 remains
   open at zero adherence passes. Previous goal turn made progress through
   independent-process domain lifecycle and guardian-death recovery evidence.
+
+- Connected watched identity and registration to RecordedDomain::launch_watched.
+  Both standalone and watched paths share one consuming finish_launch handler:
+  launch errors retain any started child and cleanup-only domain; registration
+  errors retain the identified child and cleanup-only domain. No mutable phase
+  flags or duplicate failure cleanup logic were introduced.
+- VM v37 interrupts both owned startup phases through upstream process death,
+  checks the expected retained child type and protected record, and explicitly
+  terminates/reaps and cancels/removes the domain. A two-second response bound
+  remains against a five-second setup deadline. The independent guardian fixture
+  now uses launch_watched, exercising successful registration and subsequent
+  supervisor/guardian loss recovery through this owned path.
+- Full suite passes 94 tests and thirteen compile-fail doctests; root/probe Clippy
+  and formatting pass. Review checked shared failure ownership, callback borrows
+  and phase evidence. The fixture's scheduled termination is not race-completeness
+  proof. Non-exchange setup monitoring, full guardian startup/admission and
+  policy/mount integration remain unfinished. M4 stays at zero adherence passes.
+  Previous goal turn was progress through watched-exchange implementation and
+  measured disposable-guest interruption evidence.

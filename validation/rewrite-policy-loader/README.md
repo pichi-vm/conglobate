@@ -257,3 +257,13 @@ domain cleanup follow. v36 additionally requires completion within two seconds
 of the test start against a five-second setup deadline. This measures prompt
 observation without claiming a real-time scheduling guarantee. The owning startup
 aggregate and non-exchange setup monitoring remain separate implementation work.
+
+
+v37 exercises RecordedDomain::launch_watched as the owner of both startup phases.
+Upstream process termination during identity and registration stalls returns the
+expected started/identified child owner plus cleanup-only domain. The test checks
+record retention, explicitly cleans each child and domain, and retains the response
+bound. The independent guardian fixture also switches to this watched owner path,
+covering successful registration and the existing process-death cleanup cases.
+The scheduled 100ms termination is a phase-specific fixture, not exhaustive race
+qualification. Complete startup/admission and policy/mount ownership are pending.

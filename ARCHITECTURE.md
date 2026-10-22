@@ -388,8 +388,12 @@ deadline-only behavior and adds StartupWatch polling the helper socket plus the
 supervisor socket/pidfd. Upstream loss or malformed traffic aborts setup, with
 loss checked before and after polling; launch retains a started child on error.
 This does not interrupt kernel spawn, prove continuing liveness after return or
-monitor unrelated setup operations. The owning domain/guardian startup path must
-still select these watched operations and retain cleanup ownership throughout.
+monitor unrelated setup operations. RecordedDomain::launch_watched now selects
+both watched exchanges through the same consuming failure handler as standalone
+launch. Errors retain any started child and a cleanup-only domain. The independent
+guardian fixture uses this owned path for successful registration; interrupted
+identity and registration tests verify preserved records and explicit cleanup.
+The complete guardian startup/anchor/admission orchestration remains unfinished.
 RegisteredGuardian now owns the upstream paired channel and ContainedHelper.
 Its consuming supervise_until waits for either peer, then attempts domain
 cancellation on every outcome, including timeout and protocol/I/O error. The
