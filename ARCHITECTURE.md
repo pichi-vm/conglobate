@@ -107,8 +107,13 @@ under a protected root-owned parent. It does not provision controllers or resour
 limits. Its ownership survives userspace Drop in the kernel hierarchy, while
 explicit cancellation writes cgroup.kill, waits for cgroup.events populated=0,
 and removes only that directory. Failed cancellation/removal retains the domain;
-failed construction after creation retains a removable target. No recursive
-cleanup or arbitrary-existing-cgroup kill API is exposed.
+failed construction after creation retains a removable target. Domain creation
+requires a RecoveryDirectory. The domain/target internally shares its directory
+lease, keeping the cooperative recovery lock held after the facade is dropped.
+Registration, cancellation and target removal verify the deployment namespace
+through that shared lease. No public lease clone, raw descriptor or early unlock
+is exposed. No recursive cleanup or arbitrary-existing-cgroup kill API is exposed.
+Persistent domain records and identity-checked reopening remain to be implemented.
 
 The registration exchange now places a trusted helper in this domain before its
 first fork: the parent transfers a freshly opened cgroup.procs descriptor, the

@@ -120,3 +120,14 @@ identity exchange without registration acknowledgement: no Registered state is
 returned, the child is reaped and the still-owned empty domain is cancelled.
 These validate registration mechanics; persisted domain ownership, final sandbox
 admission, guardian failover and concurrent-death recovery remain unimplemented.
+
+
+v19 requires the production recovery lease for command domains. The probe drops
+the facade while an empty domain remains live; both a local competing open and a
+separate probe process are excluded. Successful cancellation releases the lock.
+After a forced removal failure, the returned domain also retains exclusion; it
+still supports registration and cancellation without the facade. Final cleanup
+allows an independent process to acquire the lease. v20 additionally attempts
+cancellation of an otherwise removable empty domain from a private mount
+namespace: it is rejected and returns the owner, which works after restoration.
+These qualify lock lifetime and namespace checks, not persisted domain recovery.

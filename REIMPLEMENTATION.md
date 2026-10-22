@@ -649,3 +649,18 @@ rules rather than silently shrinking acceptance criteria.
   and formatting pass. M4 remains at zero adherence passes. Persisted domain
   records, aggregate recovery ownership, guardian orchestration and final
   sandbox admission still need implementation and combined fault validation.
+
+- Domain persistence preparation found live command domains did not retain the
+  recovery lock. Creation now requires RecoveryDirectory and internally retains
+  its Arc-backed lease in DomainTarget, covering both complete domains and setup
+  failures. Registration, cancellation and target removal verify the retained
+  deployment namespace. No public clone/raw-FD/unlock interface was introduced.
+- VM v19 passes facade-drop exclusion for a live domain, independent-process
+  exclusion, retained ownership after failed removal and successful lock release
+  after final cleanup. v20 adds wrong-mount-namespace cancellation rejection on
+  an otherwise removable domain, followed by restoration and successful use.
+  Evidence and exact probe/source snapshots are preserved.
+- Affected domain tests, root/probe Clippy and formatting pass. This prerequisite
+  is complete; domain record serialization, identity-checked reopening and the
+  aggregate guardian protocol are still pending. M4 remains at zero adherence
+  passes; this is not a persistence or crash-recovery qualification claim.

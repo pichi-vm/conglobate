@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Fresh private cgroup-v2 domains. Registration and reaping are separate gates.
+use crate::anchor::{RecoveryDirectory, RecoveryLease};
 use std::{
     fs::{self, File},
     io::{self, Read, Write},
@@ -26,6 +27,7 @@ pub struct CommandDomain {
 pub struct DomainTarget {
     parent: File,
     name: std::ffi::OsString,
+    lease: RecoveryLease,
 }
 #[derive(Debug, thiserror::Error)]
 pub enum DomainCreateFailure {
@@ -49,13 +51,38 @@ impl DomainFailure {
     }
 }
 impl DomainTarget {
+    fn open_parent(parent: &Path) -> io::Result<File> {
+        let parent = File::from(rustix::fs::open(
+            parent,
+            rustix::fs::OFlags::RDONLY
+                | rustix::fs::OFlags::DIRECTORY
+                | rustix::fs::OFlags::NOFOLLOW
+                | rustix::fs::OFlags::CLOEXEC,
+            rustix::fs::Mode::empty(),
+        )?);
+        let metadata = parent.metadata()?;
+        if metadata.uid() != 0
+            || metadata.mode() & 0o022 != 0
+            || rustix::fs::fstatfs(&parent)?.f_type as u64 != 0x6367_7270
+        {
+            return Err(io::Error::other(
+                "domain parent must be protected root-owned cgroup2",
+            ));
+        }
+        Ok(parent)
+    }
+
     fn path(&self) -> PathBuf {
         PathBuf::from(format!("/proc/self/fd/{}", self.parent.as_raw_fd())).join(&self.name)
     }
     /// Only for a fresh setup failure before registration. Errors retain the
     /// target. Never recursively delete cgroup control files or child domains.
     pub fn remove(self) -> Result<(), DomainCreateFailure> {
-        fs::remove_dir(self.path()).map_err(|source| DomainCreateFailure::Created {
+        let result = self
+            .lease
+            .verify_current()
+            .and_then(|()| fs::remove_dir(self.path()));
+        result.map_err(|source| DomainCreateFailure::Created {
             source,
             target: self,
         })
@@ -63,6 +90,7 @@ impl DomainTarget {
 }
 impl CommandDomain {
     pub(crate) fn registration_file(&self) -> io::Result<File> {
+        self.target.lease.verify_current()?;
         Ok(File::from(rustix::fs::openat(
             &self.root,
             "cgroup.procs",
@@ -74,30 +102,12 @@ impl CommandDomain {
     /// Create only; no API accepts an arbitrary existing cgroup to kill.
     /// Caller must serialize this protected parent and persist ownership before
     /// registration. This primitive neither mounts cgroupfs nor sets limits.
-    pub fn create(parent: &Path) -> Result<Self, DomainCreateFailure> {
-        let parent = File::from(
-            rustix::fs::open(
-                parent,
-                rustix::fs::OFlags::RDONLY
-                    | rustix::fs::OFlags::DIRECTORY
-                    | rustix::fs::OFlags::NOFOLLOW
-                    | rustix::fs::OFlags::CLOEXEC,
-                rustix::fs::Mode::empty(),
-            )
-            .map_err(|e| DomainCreateFailure::Before(e.into()))?,
-        );
-        let metadata = parent.metadata().map_err(DomainCreateFailure::Before)?;
-        if metadata.uid() != 0
-            || metadata.mode() & 0o022 != 0
-            || rustix::fs::fstatfs(&parent)
-                .map_err(|e| DomainCreateFailure::Before(e.into()))?
-                .f_type as u64
-                != 0x6367_7270
-        {
-            return Err(DomainCreateFailure::Before(io::Error::other(
-                "domain parent must be protected root-owned cgroup2",
-            )));
-        }
+    pub fn create(
+        recovery: &RecoveryDirectory,
+        parent: &Path,
+    ) -> Result<Self, DomainCreateFailure> {
+        let lease = recovery.retain().map_err(DomainCreateFailure::Before)?;
+        let parent = DomainTarget::open_parent(parent).map_err(DomainCreateFailure::Before)?;
         let directory = tempfile::Builder::new()
             .prefix("conglobate-command-")
             .permissions(fs::Permissions::from_mode(0o700))
@@ -108,6 +118,7 @@ impl CommandDomain {
         let target = DomainTarget {
             parent,
             name: path.file_name().expect("generated name").to_owned(),
+            lease,
         };
         let root = match File::open(target.path()) {
             Ok(root) => root,
@@ -162,6 +173,7 @@ impl CommandDomain {
         }
     }
     fn cancel(&self, deadline: Instant) -> io::Result<()> {
+        self.target.lease.verify_current()?;
         // Cancellation is requested even if the teardown deadline has expired.
         let mut kill = File::from(rustix::fs::openat(
             &self.root,
@@ -239,7 +251,7 @@ mod tests {
     #[test]
     fn ordinary_directory_is_rejected_before_creation() {
         let root = tempfile::tempdir().unwrap();
-        assert!(CommandDomain::create(root.path()).is_err());
+        assert!(DomainTarget::open_parent(root.path()).is_err());
         assert_eq!(fs::read_dir(root.path()).unwrap().count(), 0);
     }
 }

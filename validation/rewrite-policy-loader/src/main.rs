@@ -330,9 +330,23 @@ impl Probe {
             time::{Duration, Instant},
         };
         let parent = std::path::Path::new("/work/cgroups");
-        let empty = conglobate::domain::CommandDomain::create(parent)?;
+        let recovery_path = std::path::Path::new("/work/domain-recovery");
+        fs::create_dir(recovery_path)?;
+        fs::set_permissions(recovery_path, fs::Permissions::from_mode(0o700))?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(recovery_path)?;
+
+        let empty = conglobate::domain::CommandDomain::create(&lease, parent)?;
+        drop(lease);
+        assert_eq!(
+            conglobate::anchor::RecoveryDirectory::open(recovery_path)
+                .unwrap_err()
+                .kind(),
+            std::io::ErrorKind::WouldBlock
+        );
+        assert!(!Self::check_lease_in_child(recovery_path)?);
         empty.cancel_until(Instant::now() + Duration::from_secs(5))?;
-        let domain = conglobate::domain::CommandDomain::create(parent)?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(recovery_path)?;
+        let domain = conglobate::domain::CommandDomain::create(&lease, parent)?;
         let path = fs::read_dir(parent)?
             .filter_map(Result::ok)
             .find(|entry| {
@@ -348,8 +362,22 @@ impl Probe {
             .cancel_until(Instant::now() + Duration::from_secs(5))
             .unwrap_err();
         let (_, domain) = failure.into_parts();
+        drop(lease);
+        assert_eq!(
+            conglobate::anchor::RecoveryDirectory::open(recovery_path)
+                .unwrap_err()
+                .kind(),
+            std::io::ErrorKind::WouldBlock
+        );
         assert!(path.exists());
         fs::remove_dir(path.join("retained-child"))?;
+        let private = conglobate::isolation::PrivateMountNamespace::enter()?;
+        let (_, domain) = domain
+            .cancel_until(Instant::now() + Duration::from_secs(5))
+            .unwrap_err()
+            .into_parts();
+        private.restore()?;
+        assert!(path.exists());
         let mut command = Command::new(std::env::current_exe()?);
         command
             .arg("--domain-helper")
@@ -373,7 +401,8 @@ impl Probe {
         assert!(!child.wait_until(deadline)?.status().success());
         assert!(!path.exists());
         assert!(watch.peer_lost()?);
-        let abandoned = conglobate::domain::CommandDomain::create(parent)?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(recovery_path)?;
+        let abandoned = conglobate::domain::CommandDomain::create(&lease, parent)?;
         let mut command = Command::new(std::env::current_exe()?);
         command
             .arg("--registration-close")
@@ -386,6 +415,11 @@ impl Probe {
         abandoned.cancel_until(deadline)?;
         println!("PRODUCTION_COMMAND_DOMAIN_MISSING_ACK_PASS");
         println!("PRODUCTION_COMMAND_DOMAIN_REGISTER_PASS");
+        drop(lease);
+        drop(conglobate::anchor::RecoveryDirectory::open(recovery_path)?);
+        assert!(Self::check_lease_in_child(recovery_path)?);
+        fs::remove_dir(recovery_path)?;
+        println!("PRODUCTION_COMMAND_DOMAIN_LEASE_PASS");
         println!("PRODUCTION_COMMAND_DOMAIN_CANCEL_PASS");
         Ok(())
     }

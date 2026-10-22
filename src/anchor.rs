@@ -29,7 +29,20 @@ use namespace::InitMountNamespace;
 pub struct RecoveryDirectory {
     lease: Arc<DirectoryLease>,
 }
+/// Internal shared lock ownership; no descriptor or early unlock escapes.
+#[derive(Debug, Clone)]
+pub(crate) struct RecoveryLease(Arc<DirectoryLease>);
+impl RecoveryLease {
+    pub(crate) fn verify_current(&self) -> io::Result<()> {
+        self.0.namespace.verify_current()
+    }
+}
 impl RecoveryDirectory {
+    pub(crate) fn retain(&self) -> io::Result<RecoveryLease> {
+        self.lease.namespace.verify_current()?;
+        Ok(RecoveryLease(Arc::clone(&self.lease)))
+    }
+
     pub fn open(path: &Path) -> io::Result<Self> {
         let namespace = InitMountNamespace::capture()?;
         let file = Backing::parent(path)?;
