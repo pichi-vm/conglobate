@@ -57,6 +57,7 @@ impl Probe {
         let pid = fs::read_to_string("/work/userns-pid")?;
         let namespace = fs::File::open(format!("/proc/{}/ns/user", pid.trim()))?;
         fs::write("/work/origin/file", b"fixture")?;
+        self.production(&namespace)?;
         let detached = Detached::clone_origin()?;
         IdmapRequest::new(namespace.as_fd()).apply(&detached.0)?;
         let (error, detached) = detached.attach("/work/missing/target").unwrap_err();
@@ -95,6 +96,34 @@ impl Probe {
         );
         assert_eq!(fs::read_dir("/work/mapped")?.count(), 0);
         println!("IDMAP_TRANSLATION_AND_CLEANUP_PASS");
+        Ok(())
+    }
+
+    fn production(&self, namespace: &fs::File) -> io::Result<()> {
+        use conglobate::filesystem::{Detached, Mount};
+        let origin = fs::File::open("/work/origin")?;
+        let mount = Mount::<Detached>::clone_from(&origin)?;
+        drop(origin);
+        let invalid = fs::File::open("/work/origin/file")?;
+        let failure = mount.idmap(invalid).unwrap_err();
+        assert_eq!(failure.source_error().raw_os_error(), Some(22));
+        let (_, mount, invalid) = failure.into_parts();
+        drop(invalid);
+        let mapped = mount
+            .idmap(namespace.try_clone()?)
+            .map_err(|failure| io::Error::other(failure.to_string()))?;
+        let metadata = mapped.root_metadata()?;
+        assert_eq!((metadata.uid(), metadata.gid()), (100000, 100000));
+        drop(mapped);
+        // Detached owners must not leave an extra busy mount after dropping.
+        rustix::mount::unmount("/work/origin", UnmountFlags::empty())?;
+        // Reattach the fixture through its existing loop device, found by the
+        // fixture mount command. No raw image conversion is involved here.
+        let status = std::process::Command::new("mount")
+            .args(["-o", "loop", "/work/volume.ext4", "/work/origin"])
+            .status()?;
+        assert!(status.success());
+        println!("PRODUCTION_DETACHED_MOUNT_PASS");
         Ok(())
     }
 }

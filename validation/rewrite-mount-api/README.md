@@ -74,3 +74,26 @@ Initial API success permits pinning this upstream revision in production, but
 the production mount/resource ownership API still needs implementation and tests.
 No SELinux/LSM, command isolation, crash recovery, arm64 or confidential hardware
 qualification is supplied by these fixture results.
+
+## Production detached owner
+
+Run v4 calls conglobate's Mount<Detached>::clone_from and consuming idmap
+transition. The initial root descriptor is closed before mapping. A regular-file
+namespace argument returns EINVAL and retains both inputs in IdmapFailure;
+extracting them and retrying with the valid namespace succeeds. Mapped root
+metadata reports 100000:100000. Dropping the mapped owner permits clean unmount
+of the original filesystem. Existing raw syscall/attachment/persistence checks
+also pass. Production attachment and recovery anchors remain unimplemented.
+
+The failed-transition invariant is also grounded in Linux fs/namespace.c:
+do_mount_setattr calls mount_setattr_prepare before mount_setattr_commit;
+the latter runs only after successful preparation. See the
+[kernel source](https://github.com/torvalds/linux/blob/master/fs/namespace.c).
+The VM test checks the specific rejected-namespace/retry path on its kernel;
+it does not claim exhaustive kernel failure injection.
+
+The first fixture compile tried to wrap IdmapFailure in std::io::Error::other.
+That correctly failed because the mount recovery owner is thread-affine whereas
+io::Error requires Send + Sync. The fixture now renders the diagnostic and drops
+the retained resources on its terminal error path; production keeps the typed
+owning error. No Send/Sync exception was added to make the fixture compile.

@@ -9,6 +9,7 @@ pub mod chain;
 pub mod context;
 pub mod copy;
 pub mod document;
+pub mod filesystem;
 pub mod image;
 pub mod input;
 pub mod lock;

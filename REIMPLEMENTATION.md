@@ -329,3 +329,14 @@ rules rather than silently shrinking acceptance criteria.
   setup cases. No host mounts/modules were changed. This closes the syscall API
   feasibility gap, not the M4 ownership/containment/recovery gate. Next implement
   production mount owners and namespace/identity leases using the qualified API.
+- Added production Mount<Detached> -> Mount<Idmapped> with sealed state traits,
+  private resource payloads, thread affinity and explicit namespace ownership.
+  Failed mapping returns an owning IdmapFailure; no raw mount FD escapes.
+  The detached kernel tree is released by its descriptor owner rather than a
+  pathname-based destructor. Attachment and durable anchors are still pending.
+- VM v4 exercises production acquisition, invalid-namespace EINVAL, ownership
+  extraction/retry, mapped metadata and cleanup. It passes alongside existing
+  syscall/attachment/persistence fixture checks. All 52 foundation tests and four
+  compile-fail doctests pass; production and probe Clippy/formatting pass. No M4
+  adherence pass claimed: command containment, LSM, attachment ownership and
+  supervision/recovery remain required implementation work.

@@ -1,0 +1,36 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ mkdir -p /work/origin /work/mapped
++ modprobe loop
++ modprobe ext4
++ truncate -s 64M /work/volume.ext4
++ mke2fs -q -t ext4 -F /work/volume.ext4
++ mount -o loop /work/volume.ext4 /work/origin
++ holder=162
++ echo 162
++ for attempt in {1..50}
++ grep -q 100000 /proc/162/uid_map
++ sleep 0.1
++ unshare --user --map-users=0:100000:65536 --map-groups=0:100000:65536 sleep 60
++ for attempt in {1..50}
++ grep -q 100000 /proc/162/uid_map
++ break
++ cat /proc/162/uid_map
+         0     100000      65536
++ cat /proc/162/gid_map
+         0     100000      65536
++ /idmap-probe
+PRODUCTION_DETACHED_MOUNT_PASS
+IDMAP_TRANSLATION_AND_CLEANUP_PASS
++ kill 162
++ wait 162
++ true
++ umount /work/origin
++ mount -o loop /work/volume.ext4 /work/origin
+++ stat -c %u:%g /work/origin/file
++ test 123:456 = 123:456
++ umount /work/origin
++ echo IDMAP_PERSISTED_OWNERSHIP_PASS
+IDMAP_PERSISTED_OWNERSHIP_PASS
+IDMAP_PROBE_EXIT 0
+[    3.382197] sysrq: Resetting
