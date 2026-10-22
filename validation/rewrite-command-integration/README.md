@@ -229,3 +229,38 @@ execution, capability profile, timeout, reaping and filesystem persistence.
 Repository tests, root/fixture Clippy and formatting pass. Logs and source hashes
 are retained. Other sensitive proc information masking and private device/runtime
 construction still require work; this is not a complete sandbox qualification.
+
+
+## Private runtime device inodes
+
+v23-v28 add CommandDevices: the trusted initial-user-namespace helper creates a
+fresh detached tmpfs per command, with mapped root ownership and private null,
+zero, full, random and urandom character devices. Permissions are set explicitly
+independent of umask. fd/stdin/stdout/stderr are symlinks to command procfs. The
+mount is nosuid/noexec, deliberately not nodev; image mounts remain nodev. No
+supervisor device inode, block device, fuse or control device is bound into it.
+The device mount target participates in root/alias/overlap confinement checks.
+
+v23-v25 failed closed at the descriptor audit. Diagnostics found an extra null
+FD: Rust's startup sanitize_standard_fds polls standard streams and treats the
+O_PATH fsmount descriptor as invalid, opening an inheritable null descriptor.
+The local std sys/pal/unix/mod.rs source explains that behavior. v26's readable
+reopen avoided that issue but lost the original detached-mount ownership and
+failed attachment. All failures and diagnostics are preserved.
+
+The final handoff queues the original mount FD over a private Unix datagram
+socket using SCM_RIGHTS. This keeps its file ownership alive until receipt and
+passes a pollable stdin through the trusted namespace adapter. The receiver uses
+CMSG_CLOEXEC/DONTWAIT and requires the exact three-byte CBOR packet [1,0], exactly
+one descriptor and no truncation. A tmpfs check is not sender authentication: the
+channel is restricted to trusted setup, and the final shell receives null stdin.
+No descriptor-audit exemption was added. Packet failure cases still need dedicated
+coverage before full launcher acceptance.
+
+v27 passes the corrected handoff. v28 additionally verifies exactly nine /dev
+entries, mapped-root device ownership, working null output, expected full-device
+write failure, and absence of runtime null/fd entries after image unmount/remount.
+Command, timeout, proc restrictions, filesystem checks and reaping regressions
+pass. Root tests, root/fixture Clippy and formatting pass. Root tests are preserved
+with v28. Terminal/session isolation, tty/devpts/shm, remaining proc information
+masking, active LSM and complete cleanup/qualification remain outstanding.

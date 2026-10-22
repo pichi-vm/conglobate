@@ -98,6 +98,9 @@ wait "$holder" || true
 umount /work/origin
 e2fsck -fn /work/volume.ext4
 mount -o loop,ro /work/volume.ext4 /work/origin
+test ! -e /work/origin/dev/null
+test ! -e /work/origin/dev/fd
+test ! -e /work/origin/sys/must-be-read-only
 test "$(cat /work/origin/command-completed)" = completed
 test "$(cat /work/origin/command-privileges)" = privileges-checked
 test "$(stat -c %u /work/origin/command-started)" = 0

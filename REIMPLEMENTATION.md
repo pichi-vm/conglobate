@@ -1039,3 +1039,25 @@ rules rather than silently shrinking acceptance criteria.
   private devices/devpts/shm, runtime scaffolding, namespace initialization,
   active labeling policy and complete cleanup ownership remain unimplemented or
   unqualified. This change is not claimed to complete the sandbox.
+
+
+- Previous goal turn made production progress on proc restrictions. Added
+  CommandDevices: fresh detached tmpfs and private approved character-device
+  inodes constructed by trusted initial-namespace setup, explicit mapped-root
+  ownership/modes, and confined /dev attachment. No supervisor /dev inode is
+  reused. Typed owners encapsulate mount and transfer descriptors.
+- v23-v25 failed closed because O_PATH stdin prompted Rust startup to open an
+  inheritable null FD. v26's readable reopen lost original detached-mount
+  ownership. Preserved all runs. Final transfer queues the original mount FD
+  over a private Unix socket, with exact canonical CBOR packet/count checks,
+  no truncation, nonblocking receipt and CLOEXEC. Sender trust is an explicit
+  setup-channel prerequisite; no descriptor audit exemption was introduced.
+- v27 passed; v28 adds exact device-entry count, mapped-root ownership, null/full
+  behavior and absence of runtime devices after image unmount/remount. Existing
+  image commands, timeout, proc restrictions, reaping and filesystem checks pass.
+  Root tests, root/fixture Clippy and formatting pass. Reviewed descriptor/mount
+  lifetime, immutable ownership transfer, safe APIs and expected failure scope.
+- M4 remains zero adherence passes. This does not complete private /dev: tty,
+  sessions, devpts and shm remain. Packet-negative coverage, remaining proc masks,
+  namespace init, active policy, partial setup and full cleanup ownership also
+  remain. The fixture still uses external namespace setup adapters.

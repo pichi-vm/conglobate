@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Trusted helper namespace setup; this alone is not a command sandbox.
+mod devices;
 mod root;
 mod runtime;
+pub use devices::CommandDevices;
 use nix::sched::{CloneFlags, setns, unshare};
 pub use root::{CommandRoot, EnteredRoot};
 use rustix::mount::MountPropagationFlags;

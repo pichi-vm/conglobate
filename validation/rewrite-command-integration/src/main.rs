@@ -5,7 +5,7 @@ use conglobate::{
     anchor::RecoveryDirectory,
     domain::RecordedDomain,
     filesystem::{Detached, Mount, MountPoint},
-    isolation::{CommandRoot, PrivateMountNamespace},
+    isolation::{CommandDevices, CommandRoot, PrivateMountNamespace},
     process::{ChildReaper, CommandPrivileges, CommandSyscalls, Supervision},
 };
 use std::{
@@ -31,11 +31,14 @@ impl Integration {
             let root = Path::new(args.get(2).ok_or("root required")?);
             let script = args.get(3).ok_or("script required")?;
             let scope = PrivateMountNamespace::enter()?;
-            let selected = CommandRoot::from_directory(fs::File::open(root)?, &scope)?;
+            let selected = CommandRoot::from_directory(
+                fs::File::open(root)?,
+                &scope,
+                CommandDevices::from_input()?,
+            )?;
             let filter = CommandSyscalls::compile()?;
-            selected
-                .enter()?
-                .execute(script, CommandPrivileges::filesystem(), filter)?;
+            let entered = selected.enter()?;
+            entered.execute(script, CommandPrivileges::filesystem(), filter)?;
             unreachable!();
         }
         if args
@@ -192,6 +195,15 @@ impl Integration {
             test ! -e /idmap-probe
             test ! -e /image-root
             test ! -e /bin/setpriv
+            for node in null zero full random urandom; do
+                test -c "/dev/$node"
+                test -O "/dev/$node"
+            done
+            printf 'discarded' > /dev/null
+            if (printf 'full' > /dev/full) 2>/dev/null; then exit 1; fi
+            test ! -e /dev/fuse
+            set -- /dev/*
+            test "$#" = 9
             if (printf no > /sys/must-be-read-only) 2>/dev/null; then exit 1; fi
             restricted=0
             while read -r id parent device root point options rest; do
@@ -255,7 +267,7 @@ impl Integration {
             ])
             .arg(root)
             .arg(&script)
-            .stdin(Stdio::null())
+            .stdin(CommandDevices::create(100000, 100000)?.into_input()?)
             .status()?;
         if !status.success() {
             return Err(format!("command failed: {status}").into());

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::PrivateMountNamespace;
+use super::{CommandDevices, PrivateMountNamespace};
 use crate::process::{CommandPrivileges, CommandSyscalls};
 use rustix::mount::{MoveMountFlags, OpenTreeFlags, UnmountFlags};
 use std::{
@@ -15,16 +15,16 @@ use std::{
 
 /// A pinned command root and trusted null input, prepared before switching roots.
 /// The caller must supply its assigned mounted image in an isolated setup
-/// process. Procfs and empty read-only sys are prepared here; the other runtime
-/// views (including private devices) are not implemented yet. This is not admission authority:
+/// process. Procfs, empty read-only sys and supplied private devices are prepared
+/// here; devpts/shm and other runtime views are not implemented yet. This is not admission authority:
 /// PID/user/network isolation, containment and policy must be established by
 /// the enclosing step. No raw root handle is returned to callers.
 ///
 /// ```compile_fail
-/// use conglobate::isolation::{CommandRoot, PrivateMountNamespace};
+/// use conglobate::isolation::{CommandRoot, CommandDevices, PrivateMountNamespace};
 /// use std::fs::File;
-/// fn cannot_restore_with_selected_root(scope: PrivateMountNamespace, root: File) {
-///     let root = CommandRoot::from_directory(root, &scope).unwrap();
+/// fn cannot_restore_with_selected_root(scope: PrivateMountNamespace, root: File, devices: CommandDevices) {
+///     let root = CommandRoot::from_directory(root, &scope, devices).unwrap();
 ///     scope.restore();
 ///     drop(root);
 /// }
@@ -33,6 +33,7 @@ use std::{
 pub struct CommandRoot<'ns> {
     scope: &'ns PrivateMountNamespace,
     root: File,
+    devices: CommandDevices,
     input: File,
     _thread: PhantomData<Rc<()>>,
 }
@@ -50,13 +51,18 @@ pub struct EnteredRoot<'ns> {
 impl<'ns> CommandRoot<'ns> {
     /// Open the supplied directory after entering scope; inherited descriptors
     /// from a previous mount namespace cannot identify its cloned mount tree.
-    pub fn from_directory(root: File, scope: &'ns PrivateMountNamespace) -> io::Result<Self> {
+    pub fn from_directory(
+        root: File,
+        scope: &'ns PrivateMountNamespace,
+        devices: CommandDevices,
+    ) -> io::Result<Self> {
         if !root.metadata()?.is_dir() {
             return Err(io::Error::other("command root must be a directory"));
         }
         Ok(Self {
             scope,
             root,
+            devices,
             input: File::open("/dev/null")?,
             _thread: PhantomData,
         })
@@ -74,7 +80,7 @@ impl<'ns> CommandRoot<'ns> {
         {
             return Err(io::Error::other("root setup requires one thread"));
         }
-        super::runtime::RuntimeTargets::resolve(&self.root)?.install()?;
+        super::runtime::RuntimeTargets::resolve(&self.root)?.install(self.devices)?;
         // The scope was entered before this directory was opened. Unsharing
         // here would leave the pinned descriptor referring to the old mount
         // namespace rather than its cloned tree.
@@ -165,9 +171,9 @@ impl EnteredRoot<'_> {
                 .and_then(|v| u32::from_str_radix(v, 8).ok())
                 .ok_or_else(|| io::Error::other("missing descriptor flags"))?;
             if flags & rustix::fs::OFlags::CLOEXEC.bits() == 0 {
-                return Err(io::Error::other(
-                    "outside descriptor would survive command exec",
-                ));
+                return Err(io::Error::other(format!(
+                    "outside descriptor {fd} would survive command exec"
+                )));
             }
         }
         Ok(())

@@ -16,9 +16,11 @@ use std::{fs::File, io, os::unix::fs::MetadataExt};
 pub(super) struct RuntimeTargets {
     proc: File,
     sys: File,
+    dev: File,
 }
 impl RuntimeTargets {
     pub(super) fn resolve(root: &File) -> io::Result<Self> {
+        let dev = Self::directory(root, "dev")?;
         let proc = Self::directory(root, "proc")?;
         let sys = Self::directory(root, "sys")?;
         let root_id = root.metadata()?;
@@ -34,7 +36,18 @@ impl RuntimeTargets {
         }
         Self::reject_nested(&proc, sys_key, root_key)?;
         Self::reject_nested(&sys, proc_key, root_key)?;
-        Ok(Self { proc, sys })
+        let dev_id = dev.metadata()?;
+        let dev_key = (dev_id.dev(), dev_id.ino());
+        if [root_key, proc_key, sys_key].contains(&dev_key) {
+            return Err(io::Error::other(
+                "device target aliases another runtime target",
+            ));
+        }
+        for (other, key) in [(&proc, proc_key), (&sys, sys_key)] {
+            Self::reject_nested(&dev, key, root_key)?;
+            Self::reject_nested(other, dev_key, root_key)?;
+        }
+        Ok(Self { proc, sys, dev })
     }
 
     fn reject_nested(directory: &File, other: (u64, u64), root: (u64, u64)) -> io::Result<()> {
@@ -82,9 +95,10 @@ impl RuntimeTargets {
     /// Call only in the private command setup mount/PID namespaces. A partial
     /// failure is exit-only; the enclosing namespace retains attached mounts
     /// until its tasks stop. Detached resources close automatically on failure.
-    pub(super) fn install(self) -> io::Result<()> {
+    pub(super) fn install(self, devices: super::CommandDevices) -> io::Result<()> {
         RuntimeFilesystem::Proc.attach(&self.proc)?;
-        RuntimeFilesystem::EmptySys.attach(&self.sys)
+        RuntimeFilesystem::EmptySys.attach(&self.sys)?;
+        devices.attach(&self.dev)
     }
 }
 
@@ -189,6 +203,7 @@ mod tests {
     #[test]
     fn absolute_symlinks_resolve_inside_the_image() {
         let image = tempfile::tempdir().unwrap();
+        fs::create_dir(image.path().join("dev")).unwrap();
         fs::create_dir(image.path().join("inside")).unwrap();
         fs::create_dir(image.path().join("sys")).unwrap();
         symlink("/inside", image.path().join("proc")).unwrap();
@@ -203,6 +218,7 @@ mod tests {
     fn outside_sibling_is_not_a_runtime_target() {
         let parent = tempfile::tempdir().unwrap();
         fs::create_dir(parent.path().join("image")).unwrap();
+        fs::create_dir(parent.path().join("image/dev")).unwrap();
         fs::create_dir(parent.path().join("outside")).unwrap();
         fs::create_dir(parent.path().join("image/sys")).unwrap();
         symlink("../outside", parent.path().join("image/proc")).unwrap();
@@ -214,6 +230,7 @@ mod tests {
     #[test]
     fn root_and_duplicate_target_aliases_are_rejected() {
         let image = tempfile::tempdir().unwrap();
+        fs::create_dir(image.path().join("dev")).unwrap();
         fs::create_dir(image.path().join("sys")).unwrap();
         symlink("/", image.path().join("proc")).unwrap();
         let root = File::open(image.path()).unwrap();
@@ -226,6 +243,7 @@ mod tests {
     #[test]
     fn nested_targets_cannot_hide_each_others_mounts() {
         let image = tempfile::tempdir().unwrap();
+        fs::create_dir(image.path().join("dev")).unwrap();
         fs::create_dir_all(image.path().join("proc/inside")).unwrap();
         symlink("/proc/inside", image.path().join("sys")).unwrap();
         assert!(RuntimeTargets::resolve(&File::open(image.path()).unwrap()).is_err());
