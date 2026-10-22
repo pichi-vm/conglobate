@@ -1,0 +1,24 @@
+1297: static void cleanup_mnt(struct mount *mnt)
+1298: {
+1299: 	struct hlist_node *p;
+1300: 	struct mount *m;
+1301: 	/*
+1302: 	 * The warning here probably indicates that somebody messed
+1303: 	 * up a mnt_want/drop_write() pair.  If this happens, the
+1304: 	 * filesystem was probably unable to make r/w->r/o transitions.
+1305: 	 * The locking used to deal with mnt_count decrement provides barriers,
+1306: 	 * so mnt_get_writers() below is safe.
+1307: 	 */
+1308: 	WARN_ON(mnt_get_writers(mnt));
+1309: 	if (unlikely(mnt->mnt_pins.first))
+1310: 		mnt_pin_kill(mnt);
+1311: 	hlist_for_each_entry_safe(m, p, &mnt->mnt_stuck_children, mnt_umount) {
+1312: 		hlist_del(&m->mnt_umount);
+1313: 		mntput(&m->mnt);
+1314: 	}
+1315: 	fsnotify_vfsmount_delete(&mnt->mnt);
+1316: 	dput(mnt->mnt.mnt_root);
+1317: 	deactivate_super(mnt->mnt.mnt_sb);
+1318: 	mnt_free_id(mnt);
+1319: 	call_rcu(&mnt->mnt_rcu, delayed_free_vfsmnt);
+1320: }

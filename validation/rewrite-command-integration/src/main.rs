@@ -172,6 +172,49 @@ impl Integration {
             );
             scope.restore().map_err(|error| error.to_string())?;
             println!("POLICY_PRIVATE_NAMESPACE_REJECTED_PASS");
+            let scope = PrivateMountNamespace::enter()?;
+            let foreign_policy = Path::new("/work/foreign-policy-pin-test");
+            let foreign_recovery = Path::new("/work/foreign-recovery-pin-test");
+            fs::create_dir(foreign_policy)?;
+            fs::create_dir(foreign_recovery)?;
+            assert!(
+                Command::new("mount")
+                    .args(["-t", "bpf", "bpf"])
+                    .arg(foreign_policy)
+                    .status()?
+                    .success()
+            );
+            assert!(
+                Command::new("mount")
+                    .args(["-t", "tmpfs", "-o", "mode=0700", "tmpfs"])
+                    .arg(foreign_recovery)
+                    .status()?
+                    .success()
+            );
+            let policy_directory = fs::File::open(foreign_policy)?;
+            let recovery_directory = fs::File::open(foreign_recovery)?;
+            scope.restore().map_err(|error| error.to_string())?;
+            use std::os::fd::AsRawFd;
+            let policy_path = format!("/proc/self/fd/{}/.", policy_directory.as_raw_fd());
+            let error = PinDirectory::create(Path::new(&policy_path)).unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains("not attached in the deployment init namespace")
+            );
+            let recovery_path = format!("/proc/self/fd/{}/.", recovery_directory.as_raw_fd());
+            let error = RecoveryDirectory::open(Path::new(&recovery_path)).unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains("not attached in the deployment init namespace")
+            );
+            drop(policy_directory);
+            drop(recovery_directory);
+            fs::remove_dir(foreign_policy)?;
+            fs::remove_dir(foreign_recovery)?;
+            println!("FOREIGN_CONTROL_MOUNT_DESCRIPTORS_REJECTED_PASS");
+
             println!("NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS");
             return Ok(());
         }

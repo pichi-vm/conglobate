@@ -15,8 +15,8 @@ use std::{
 
 /// Private bpffs directory created in the deployment init's mount namespace.
 /// The trusted caller supplies a bpffs mounted there, keeps it attached until VM
-/// disposal, and excludes out-of-protocol mutation. An inherited descriptor path
-/// to another namespace's private bpffs does not satisfy that contract.
+/// disposal, and excludes out-of-protocol mutation. Descriptor paths to detached
+/// or foreign mounts are rejected using the kernel mount ID and mount table.
 #[derive(Debug)]
 pub struct PinDirectory {
     root: File,
@@ -28,6 +28,7 @@ impl PinDirectory {
     pub fn create(parent: &Path) -> io::Result<Self> {
         let namespace = crate::anchor::InitMountNamespace::capture()?;
         let parent = File::open(parent)?;
+        namespace.verify_attached(&parent)?;
         let metadata = parent.metadata()?;
         if !metadata.is_dir()
             || metadata.uid() != 0
@@ -136,7 +137,9 @@ impl LabelPolicy<PinnedDisabled> {
 }
 impl DisabledPinRecovery {
     pub(super) fn config_handle(&self) -> Result<libbpf_rs::MapHandle, PolicyError> {
-        self.directory.namespace.verify_current()?;
+        self.directory
+            .namespace
+            .verify_attached(&self.directory.root)?;
         let map = self
             .object
             .maps()

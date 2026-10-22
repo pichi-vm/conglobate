@@ -1476,3 +1476,31 @@ rules rather than silently shrinking acceptance criteria.
   The existing recorded-domain adapter remains transitional; this does not add
   a cross-invocation recovery service or require a guardian. The full CLI/pipeline,
   distro/platform qualification and retirement milestones remain outstanding.
+
+- Previous goal turn made progress in 379d299 (production policy/command Step).
+  Source review identified a remaining placement assumption: checking the caller's
+  mount namespace did not establish that an opened control directory belonged
+  to a mount attached there. A retained descriptor can reference foreign bpffs
+  after restoration to init's namespace, undermining the intended pin lifetime.
+- Added InitMountNamespace::verify_attached: verify current init namespace, read
+  STATX_MNT_ID from the pinned descriptor, require the kernel-reported mask, and
+  find the same ID in real procfs thread-self/mountinfo. Namespace/RecoveryDirectory
+  and policy-pin construction require it; Step's config-handle acquisition also
+  rechecks policy placement before activation. No fallback or inferred placement.
+- Kernel source confirms statx and mountinfo use the same mount ID, allocated from
+  the global mount ID registry and freed during mount destruction. The descriptor
+  retains the selected mount during verification. This is present attachment
+  evidence, not a promise against later privileged unmount: the independent VM
+  environment still must retain its control mounts until shutdown.
+- v68 creates private bpffs/tmpfs mounts in a disposable guest, retains descriptors,
+  restores init's namespace, and verifies both constructors reject the foreign
+  mounts through descriptor paths. It then passes the normal production-step,
+  admission-failure, cancellation, timeout, shell-failure and cleanup retry suite.
+  Root tests (24 compile-fail), root/fixture Clippy and formatting pass. Retained
+  source excerpts, snapshots, raw logs, hashes and full artifacts. No privileged
+  host operation occurred; no supervisor-death rerun was needed for this placement
+  check, and no new lifetime claim beyond the existing death evidence is made.
+- Review checked mount-ID view, descriptor retention, fail-closed missing-ID/error
+  behavior and trusted mutation assumptions. M4 remains at zero adherence passes;
+  scope handoff, workspace/storage construction and remaining lifecycle/runtime
+  qualification are still outstanding. No goal or milestone completion claimed.

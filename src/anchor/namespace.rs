@@ -8,7 +8,7 @@ use rustix::{
 };
 use std::{
     fs::{self, File},
-    io,
+    io::{self, BufRead, BufReader},
     os::unix::fs::MetadataExt,
 };
 
@@ -21,6 +21,43 @@ pub(crate) struct InitMountNamespace {
     mount: File,
 }
 impl InitMountNamespace {
+    /// A descriptor may refer to a detached or foreign-namespace mount even
+    /// while this thread is in init's namespace. Require its pinned mount ID
+    /// to be present in this namespace's actual kernel mount table.
+    pub(crate) fn verify_attached(&self, file: &File) -> io::Result<()> {
+        self.verify_current()?;
+        let mount = rustix::fs::statx(
+            file,
+            "",
+            rustix::fs::AtFlags::EMPTY_PATH,
+            rustix::fs::StatxFlags::MNT_ID,
+        )?;
+        if mount.stx_mask & rustix::fs::StatxFlags::MNT_ID.bits() == 0 || mount.stx_mnt_id == 0 {
+            return Err(io::Error::other(
+                "kernel did not report the control mount ID",
+            ));
+        }
+        let table = File::open("/proc/thread-self/mountinfo")?;
+        if rustix::fs::fstatfs(&table)?.f_type != 0x9fa0 {
+            return Err(io::Error::other(
+                "control mount verification requires procfs",
+            ));
+        }
+        for line in BufReader::new(table).lines() {
+            let line = line?;
+            let id = line
+                .split_whitespace()
+                .next()
+                .and_then(|value| value.parse::<u64>().ok())
+                .ok_or_else(|| io::Error::other("invalid kernel mount ID"))?;
+            if id == mount.stx_mnt_id {
+                return Ok(());
+            }
+        }
+        Err(io::Error::other(
+            "control mount is not attached in the deployment init namespace",
+        ))
+    }
     pub(crate) fn capture() -> io::Result<Self> {
         if getpid() == Pid::INIT
             || fs::read_link("/proc/self")?.to_str() != Some(&getpid().as_raw_nonzero().to_string())

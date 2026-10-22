@@ -1,0 +1,15 @@
+296: static int vfs_statx_path(const struct path *path, int flags, struct kstat *stat,
+297: 			  u32 request_mask)
+298: {
+299: 	int error = vfs_getattr(path, stat, request_mask, flags);
+300: 	if (error)
+301: 		return error;
+302: 
+303: 	if (request_mask & STATX_MNT_ID_UNIQUE) {
+304: 		stat->mnt_id = real_mount(path->mnt)->mnt_id_unique;
+305: 		stat->result_mask |= STATX_MNT_ID_UNIQUE;
+306: 	} else {
+307: 		stat->mnt_id = real_mount(path->mnt)->mnt_id;
+308: 		stat->result_mask |= STATX_MNT_ID;
+309: 	}
+310: 

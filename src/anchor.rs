@@ -61,6 +61,7 @@ impl RecoveryDirectory {
     pub fn open(path: &Path) -> io::Result<Self> {
         let namespace = InitMountNamespace::capture()?;
         let file = Backing::parent(path)?;
+        namespace.verify_attached(&file)?;
         rustix::fs::flock(&file, rustix::fs::FlockOperation::NonBlockingLockExclusive)?;
         Ok(Self {
             lease: Arc::new(DirectoryLease {

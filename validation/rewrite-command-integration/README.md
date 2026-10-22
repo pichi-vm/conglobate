@@ -626,3 +626,20 @@ bound scope. It is not a complete recipe runner: scoped namespace transfer,
 filesystem-owner provenance, storage/workspace assembly, complete setup/teardown
 fault coverage and broader deployment qualification remain unfinished. The
 recorded-domain adapter is transitional, not a new cross-invocation service.
+
+## Attached control-mount verification
+
+v68 rejects a control directory whose descriptor points into a foreign/detached
+mount even though the caller has returned to init's mount namespace. It creates
+private bpffs and tmpfs mounts, retains their descriptors, restores init's scope,
+and checks that policy-pin and recovery-directory construction both fail for
+those descriptor paths. Valid control mounts still pass the full normal step
+suite, including admission failure, pre-admission cancellation and cleanup retry.
+
+Production verification compares descriptor STATX_MNT_ID with the kernel's current
+thread mount table, after checking init-namespace identity. Step config acquisition
+rechecks policy placement. Retained kernel excerpts ground ID correspondence and
+lifetime. Missing IDs and inconsistent views fail closed. This proves attachment
+at the check; the environment must still retain mounts until VM disposal and
+exclude privileged out-of-protocol mutation. Root tests, Clippy and formatting
+pass; this does not complete M4 or add new supervisor-death qualification.
