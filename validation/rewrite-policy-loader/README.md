@@ -166,3 +166,20 @@ the terminator's child owner, reopens/cancels the populated domain, reaps the
 registered helper and observes BothLost. Prior checks remain. This tests the
 registered-phase observation/cleanup sequence, not a complete guardian process,
 setup-phase monitoring or concurrent supervisor/guardian death recovery.
+
+
+v25 introduces the recorded-domain aggregate fixture: publication, failed domain
+removal with ownership recovery, registration, owner-drop/reopening of a populated
+domain, cancellation, then record-cleanup failure and retry after restoring the
+fixture-corrupted record. It passes, but review found its returned cancellation
+owner still allowed registration. v26 tightens that boundary: cancellation failure
+and recovery return a cleanup-only DomainCancellation. The fixture completes its
+first failed cancellation, creates a fresh domain for registration, then recovers
+that domain solely for cancellation. It passes the final ownership contract.
+
+The initial aggregate probe compile caught borrowed cleanup errors escaping into
+a static boxed-error return. Expected failure paths retain/retry their owners;
+unexpected terminal fixture errors are rendered as diagnostics before the disposable
+guest exits. This is not a production error-erasure policy. v25 preserves its
+owner/probe source snapshots; v26 additionally captures the final module exports.
+Neither run establishes complete guardian or policy/filesystem teardown.

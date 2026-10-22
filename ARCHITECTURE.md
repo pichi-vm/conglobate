@@ -134,6 +134,16 @@ uses an internal shared lease view, so dropping the public directory facade does
 not bypass or prevent the check. This enforces domain-record publication, not
 persistence of the complete build or readiness of the command sandbox.
 
+RecordedDomain now owns the cgroup and its published description while borrowing
+the recovery directory. Creation retains the raw domain on publication failure.
+Cancellation consumes the owner; failure returns DomainCancellation, which exposes
+only retry, and success returns DomainRecordCleanup. Recovery likewise returns a
+cleanup-only DomainCancellation. Record cleanup consumes its owner and retains it
+on failure. A relocated parent can be supplied for retry, with identity checked
+against the record. Post-unlink failures remain errors even if the record is now
+absent. These consuming ownership transitions enforce domain-before-record cleanup;
+they do not certify reaping, policy removal, image validity or complete build recovery.
+
 The registration exchange places a trusted helper in this domain before its
 first fork: the parent transfers a freshly opened cgroup.procs descriptor, the
 helper writes its own membership (0), closes the descriptor and acknowledges.

@@ -104,6 +104,7 @@ impl Probe {
             std::process::exit(0);
         }
         Self::command_domain()?;
+        Self::recorded_domain()?;
         let holder = fs::read_to_string("/work/userns-pid")?;
         let namespace = fs::metadata(format!("/proc/{}/ns/user", holder.trim()))?.ino();
         let owner = fs::metadata("/proc/self/ns/user")?.ino();
@@ -349,6 +350,78 @@ impl Probe {
         fs::remove_dir(parent)?;
         assert_eq!(fs::read_dir("/proc/self/fd")?.count(), before);
         println!("PRODUCTION_NAMESPACE_PIN_PERSISTENCE_RECOVERY_PASS");
+        Ok(())
+    }
+    fn recorded_domain() -> Result<(), Box<dyn std::error::Error>> {
+        use std::{
+            process::{Command, Stdio},
+            time::{Duration, Instant},
+        };
+        let parent = std::path::Path::new("/work/cgroups");
+        let recovery_path = std::path::Path::new("/work/recorded-domain-recovery");
+        fs::create_dir(recovery_path)?;
+        fs::set_permissions(recovery_path, fs::Permissions::from_mode(0o700))?;
+        let lease = conglobate::anchor::RecoveryDirectory::open(recovery_path)?;
+        let domain = conglobate::domain::RecordedDomain::create(&lease, parent)?;
+        let record = domain.record().clone();
+        let path = parent.join(record.name());
+        fs::create_dir(path.join("retained-child"))?;
+        let (_, domain) = domain
+            .cancel_until(Instant::now() + Duration::from_secs(5))
+            .unwrap_err()
+            .into_parts();
+        assert_eq!(lease.load_domain(record.name())?, record);
+        fs::remove_dir(path.join("retained-child"))?;
+        domain
+            .retry_until(Instant::now() + Duration::from_secs(5))
+            .map_err(|failure| failure.to_string())?
+            .finish(parent)
+            .map_err(|failure| failure.to_string())?;
+        let domain = conglobate::domain::RecordedDomain::create(&lease, parent)?;
+        let record = domain.record().clone();
+        let path = parent.join(record.name());
+        let mut command = Command::new(std::env::current_exe()?);
+        command
+            .arg("--domain-helper")
+            .env_clear()
+            .stdout(Stdio::null());
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let (child, watch) = conglobate::process::Process::launch_supervised(command, deadline)?;
+        let watch = watch.register_helper_until(domain.registration()?, deadline)?;
+        while fs::read_to_string(path.join("cgroup.procs"))?
+            .lines()
+            .count()
+            < 2
+        {
+            if Instant::now() >= deadline {
+                return Err("aggregate fixture child missing".into());
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        drop(domain);
+        let domain =
+            conglobate::domain::DomainCancellation::recover(&lease, parent, record.name())?;
+        // Unexpected fixture errors terminate this disposable guest; borrowed
+        // recovery owners cannot escape into the probe's static boxed error.
+        let cleanup = domain
+            .retry_until(deadline)
+            .map_err(|failure| failure.to_string())?;
+        assert!(!child.wait_until(deadline)?.status().success());
+        assert!(watch.peer_lost()?);
+        assert!(!path.exists());
+        let record_path = recovery_path.join(format!("{}.cbor", record.name()));
+        assert!(record_path.exists());
+        fs::write(&record_path, [0x86])?;
+        let (_, cleanup) = cleanup.finish(parent).unwrap_err().into_parts();
+        fs::write(&record_path, record.to_cbor())?;
+        cleanup
+            .finish(parent)
+            .map_err(|failure| failure.to_string())?;
+        assert!(!record_path.exists());
+        drop(lease);
+        assert!(Self::check_lease_in_child(recovery_path)?);
+        fs::remove_dir(recovery_path)?;
+        println!("PRODUCTION_RECORDED_DOMAIN_LIFECYCLE_PASS");
         Ok(())
     }
     fn command_domain() -> Result<(), Box<dyn std::error::Error>> {

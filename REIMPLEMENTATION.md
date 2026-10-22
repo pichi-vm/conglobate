@@ -712,3 +712,22 @@ rules rather than silently shrinking acceptance criteria.
   and formatting pass. M4 remains at zero adherence passes. The borrowing watch
   is not the owning guardian aggregate; startup monitoring, resource teardown
   orchestration and combined crash qualification remain unfinished.
+
+- Added RecordedDomain owning a cgroup and its protected record under a borrowed
+  recovery lease. Cancellation consumes it; success yields DomainRecordCleanup,
+  and record removal consumes that owner. Failures retain resource authority.
+  A publication failure retains the raw domain because record publication may
+  already have occurred. Post-unlink errors are never inferred to be success.
+- Review of the initial v25 aggregate found cancellation errors returned an owner
+  capable of registration. Tightened the state boundary: failures and recovery
+  yield DomainCancellation with cleanup retry only. v26 first completes failed
+  cancellation and creates a new domain for registration, then exercises recovery,
+  populated cancellation and failed record cleanup/retry. Both runs are preserved;
+  v26 qualifies the final contract. Compile-fail tests enforce both phase barriers.
+- An initial fixture compile rejected borrowed cleanup errors escaping as static
+  boxed errors. Expected error owners are retained/retried; terminal unexpected
+  fixture errors become diagnostics before disposable-guest exit, not production
+  completion. Full suite passes 93 tests and eleven compile-fail doctests; root/
+  probe Clippy and formatting pass. M4 remains at zero adherence passes. The
+  owning helper/guardian, complete resource ordering and combined death tests
+  remain unfinished; this aggregate covers domain/record ownership only.

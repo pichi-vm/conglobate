@@ -2,6 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Fresh private cgroup-v2 domains. Registration and reaping are separate gates.
+mod recorded;
+pub use recorded::{
+    DomainCancellation, DomainRecordCleanup, RecordCleanupFailure, RecordDomainFailure,
+    RecordedCancelFailure, RecordedDomain,
+};
 mod registration;
 pub use registration::DomainRegistration;
 mod record;
