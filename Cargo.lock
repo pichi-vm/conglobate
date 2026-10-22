@@ -220,13 +220,22 @@ dependencies = [
  "clap",
  "gix",
  "hex",
+ "pichi-artifact",
  "regex",
+ "rustix",
  "serde",
  "serde-saphyr",
  "serde_json",
+ "sha2 0.11.1",
  "tempfile",
  "thiserror",
 ]
+
+[[package]]
+name = "const-oid"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 
 [[package]]
 name = "core_detect"
@@ -337,6 +346,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1dd6dbb5841937940781866fa1281a1ff7bd3bf827091440879f9994983d5c2"
 dependencies = [
  "block-buffer 0.12.1",
+ "const-oid",
  "crypto-common 0.2.2",
 ]
 
@@ -690,7 +700,7 @@ dependencies = [
  "faster-hex",
  "gix-features",
  "sha1-checked",
- "sha2",
+ "sha2 0.11.1",
  "thiserror",
 ]
 
@@ -1281,6 +1291,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
+name = "pichi-artifact"
+version = "0.1.0"
+source = "git+https://github.com/pichi-vm/pichi-artifact?rev=64feac956d4539fb79b9490a90480a81ef098ebb#64feac956d4539fb79b9490a90480a81ef098ebb"
+dependencies = [
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror",
+]
+
+[[package]]
 name = "portable-atomic"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1476,6 +1498,17 @@ checksum = "89f599ac0c323ebb1c6082821a54962b839832b03984598375bff3975b804423"
 dependencies = [
  "digest 0.10.7",
  "sha1",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"
+dependencies = [
+ "cfg-if",
+ "cpufeatures 0.2.17",
+ "digest 0.10.7",
 ]
 
 [[package]]

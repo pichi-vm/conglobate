@@ -4,9 +4,11 @@
 //! Validated inputs for the replacement builder. Execution is not implemented yet.
 #![forbid(unsafe_code)]
 
+pub mod cache;
 pub mod context;
 pub mod document;
 pub mod image;
+pub mod input;
 pub mod lock;
 pub mod path;
 pub mod plan;

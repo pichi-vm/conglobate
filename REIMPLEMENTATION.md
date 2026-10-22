@@ -152,3 +152,18 @@ rules rather than silently shrinking acceptance criteria.
   immutable in-memory object collection, not yet a private read-only filesystem
   checkout. Materialization, cache verification and remaining integration are
   still required for M3. No additional adherence pass claimed.
+- Connected BuildRequest to CapturedBuild: recipe and lock are parsed through
+  confined captured-file reads; selected names and SHA-256 of their exact bytes
+  are retained for inventory. Networked plans reject an absent resolver argument;
+  actual resolver capture remains setup work. Integration tests prove committed
+  document selection is unaffected by caller working-tree edits.
+- Added read-only cache access pinned to a directory descriptor. openat2 confines
+  blob reads beneath it, rejects magic-link traversal, and nonblocking opens
+  permit rejection of FIFOs before reads. Metadata is captured and hash checked;
+  large blob verification streams without copying layers into scratch. Receipts
+  explicitly attest only that read, not future cache contents.
+- Cache tests cover modification after a successful read, wrong sizes, missing
+  content, directories/FIFOs, directory rename and symlink escape rejection.
+  All 30 tests and Clippy with warnings denied pass. OCI index/platform selection,
+  manifest/chain validation, private materialization and remaining COPY validation
+  are still M3 work; the adherence streak remains zero.

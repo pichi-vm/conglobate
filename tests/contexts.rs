@@ -169,3 +169,113 @@ fn packed_objects_are_supported_and_capture_does_not_execute_filters() {
     let path = conglobate::path::ContextPath::try_from(Path::new("recipe")).unwrap();
     assert_eq!(capture.read(&path).unwrap().bytes(), b"original\n");
 }
+
+#[test]
+fn request_planning_and_document_receipts_use_only_selected_committed_bytes() {
+    use conglobate::{input::CapturedBuild, request::BuildRequest};
+    use sha2::{Digest, Sha256};
+    let repo = Repository::new("sha1");
+    let recipe = b"carapace:\n  from: base\n";
+    let lock = format!(
+        "version: 1\nimages:\n  base:\n    index: sha256:{}\n",
+        "11".repeat(32)
+    );
+    repo.write("context/config/build.yml", recipe);
+    repo.write("context/pins.yml", lock.as_bytes());
+    std::os::unix::fs::symlink(
+        "config/build.yml",
+        repo.0.path().join("context/selected.yml"),
+    )
+    .unwrap();
+    let commit = repo.commit();
+    repo.write("context/config/build.yml", b"not the recipe");
+    repo.write("context/pins.yml", b"not the lock");
+    let request = BuildRequest::parse_from([
+        "conglobate",
+        "build",
+        "--repository",
+        repo.0.path().to_str().unwrap(),
+        "--commit",
+        &hex::encode(commit.bytes()),
+        "--context",
+        "context",
+        "--recipe",
+        "selected.yml",
+        "--lock",
+        "pins.yml",
+        "--cache",
+        "/unused-cache",
+        "--output",
+        "/unused-output",
+    ])
+    .unwrap();
+    let build = CapturedBuild::try_from(&request).unwrap();
+    assert_eq!(
+        build.recipe_document().path().as_ref(),
+        Path::new("selected.yml")
+    );
+    assert_eq!(
+        build.recipe_document().sha256().as_slice(),
+        Sha256::digest(recipe).as_slice()
+    );
+    assert_eq!(
+        build.lock_document().sha256().as_slice(),
+        Sha256::digest(lock.as_bytes()).as_slice()
+    );
+    assert_eq!(build.plan().inputs()[0].reference().as_ref(), "base");
+}
+
+#[test]
+fn network_recipe_requires_an_explicit_resolver_argument() {
+    use conglobate::{
+        input::{CapturedBuild, InputError},
+        request::BuildRequest,
+    };
+    let repo = Repository::new("sha1");
+    repo.write(
+        "recipe",
+        b"carapace:\n  from: base\n  derive:\n    - run: echo ok\n      network: true\n",
+    );
+    repo.write(
+        "lock",
+        format!(
+            "version: 1\nimages:\n  base:\n    index: sha256:{}\n",
+            "11".repeat(32)
+        )
+        .as_bytes(),
+    );
+    let commit = repo.commit();
+    let id = hex::encode(commit.bytes());
+    let mut args = vec![
+        "conglobate",
+        "build",
+        "--repository",
+        repo.0.path().to_str().unwrap(),
+        "--commit",
+        &id,
+        "--recipe",
+        "recipe",
+        "--lock",
+        "lock",
+        "--cache",
+        "/unused-cache",
+        "--output",
+        "/unused-output",
+    ];
+    let request = BuildRequest::parse_from(&args).unwrap();
+    assert!(matches!(
+        CapturedBuild::try_from(&request),
+        Err(InputError::ResolverRequired)
+    ));
+    args.extend(["--resolv-conf", "/caller-supplied-resolver"]);
+    let request = BuildRequest::parse_from(&args).unwrap();
+    // This phase checks selection only; resolver capture belongs to setup.
+    assert_eq!(
+        CapturedBuild::try_from(&request)
+            .unwrap()
+            .plan()
+            .network_steps()
+            .len(),
+        1
+    );
+}
