@@ -643,3 +643,22 @@ lifetime. Missing IDs and inconsistent views fail closed. This proves attachment
 at the check; the environment must still retain mounts until VM disposal and
 exclude privileged out-of-protocol mutation. Root tests, Clippy and formatting
 pass; this does not complete M4 or add new supervisor-death qualification.
+
+## Namespace/device descriptor handoff
+
+v69 (normal suite) and v70 (supervisor death) exercise CommandSetup: the trusted
+helper opens its selected namespace once, clones that handle for idmapping, then
+transfers it with the original private device mount over a one-shot descriptor
+channel. The namespace-entry helper no longer accepts a namespace pathname. After
+entry it passes only the device mount to root setup. Namespace identity, runtime
+mounts, labels, command restrictions, cancellation, cleanup retry and retained
+policy/filesystem identity after supervisor death pass in the disposable VM.
+
+Host protocol tests reject malformed/version-mismatched/truncated packets, extra
+or missing rights, and invalid object types; socket EOF checks descriptor cleanup.
+Valid received rights are CLOEXEC. This is trusted internal setup, not an
+untrusted-input authentication protocol: nsfs validation does not establish user
+namespace kind (setns NEWUSER checks that on entry), and a tmpfs directory alone
+does not establish device-tree provenance. The supervisor-to-first-helper fixture
+path remains; full scope-bound construction is still pending. Source snapshot
+notes distinguish VM production sources from subsequently added unit tests.

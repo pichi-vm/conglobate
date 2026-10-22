@@ -5,8 +5,10 @@
 mod devices;
 mod init;
 mod namespaces;
+mod setup;
 mod user;
 pub use namespaces::CommandNamespaces;
+pub use setup::CommandSetup;
 pub use user::{
     IdRange, Mapped, PinnedNamespace, UserNamespace, UserNamespaceFailure,
     UserNamespaceReleaseFailure, UserNamespaceState,

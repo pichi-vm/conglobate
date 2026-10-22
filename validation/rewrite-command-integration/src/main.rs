@@ -6,8 +6,8 @@ use conglobate::{
     domain::RecordedDomain,
     filesystem::{Detached, Mount, MountPoint},
     isolation::{
-        CommandDevices, CommandNamespaces, CommandRoot, IdRange, Mapped, PinnedNamespace,
-        PrivateMountNamespace, UserNamespace,
+        CommandDevices, CommandNamespaces, CommandRoot, CommandSetup, IdRange, Mapped,
+        PinnedNamespace, PrivateMountNamespace, UserNamespace,
     },
     policy::{BoundDisabled, FilesystemTarget, LabelPolicy, PinDirectory},
     process::{ChildReaper, CommandPrivileges, CommandSyscalls, Supervision},
@@ -219,14 +219,13 @@ impl Integration {
             return Ok(());
         }
         if args.get(1).is_some_and(|a| a == "native-namespaces") {
-            let userns = args.get(2).ok_or("user namespace required")?;
-            let script = args.get(3).ok_or("script required")?;
-            let userns = fs::File::open(userns)?;
-            let expected_user = userns.metadata()?.ino();
+            let script = args.get(2).ok_or("script required")?;
+            let input = CommandSetup::from_input()?;
+            let expected_user = input.namespace_metadata()?.ino();
             let names = ["mnt", "net", "ipc", "uts", "pid", "pid_for_children"];
             let before =
                 names.map(|name| fs::metadata(format!("/proc/self/ns/{name}")).unwrap().ino());
-            let scope = CommandNamespaces::enter(userns)?;
+            let (scope, devices) = input.enter()?;
             for (name, old) in names.into_iter().zip(before) {
                 let new = fs::metadata(format!("/proc/self/ns/{name}"))?.ino();
                 if name == "pid" {
@@ -258,8 +257,10 @@ impl Integration {
             }
             println!("NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS");
             let mut setup = Command::new(std::env::current_exe()?);
-            setup.args(["native-root", script]).env_clear();
-            // Keep the private device-transfer socket on stdin for root entry.
+            setup
+                .args(["native-root", script])
+                .env_clear()
+                .stdin(devices.into_input()?);
             let child = scope.spawn(setup)?;
             let status = child
                 .wait_until(Instant::now() + Duration::from_secs(30))?
@@ -693,9 +694,9 @@ impl Integration {
             .join_domain_until(Instant::now() + Duration::from_secs(5))?
             .await_admission_until(Instant::now() + Duration::from_secs(5))?;
         let namespace = PrivateMountNamespace::enter()?;
-        let userns = fs::read_to_string("/work/userns-path")?;
+        let userns = fs::File::open(fs::read_to_string("/work/userns-path")?)?;
         let mount = Mount::<Detached>::clone_from(&fs::File::open("/work/origin")?, &namespace)?
-            .idmap(fs::File::open(&userns)?)
+            .idmap(userns.try_clone()?)
             .map_err(|e| e.to_string())?
             .attach(MountPoint::create(Path::new("/work"))?)
             .map_err(|e| e.to_string())?;
@@ -829,11 +830,9 @@ impl Integration {
             }
         );
         let mut setup = Command::new(std::env::current_exe()?);
-        setup
-            .arg("native-namespaces")
-            .arg(&userns)
-            .arg(&script)
-            .stdin(CommandDevices::create(100000, 100000)?.into_input()?);
+        setup.arg("native-namespaces").arg(&script).stdin(
+            CommandSetup::new(userns, CommandDevices::create(100000, 100000)?)?.into_input()?,
+        );
         let running = mount.launch(setup).map_err(|e| e.to_string())?;
         let (mount, status) = running
             .wait_until(Instant::now() + Duration::from_secs(30))

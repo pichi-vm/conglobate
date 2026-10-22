@@ -27,6 +27,17 @@ pub struct CommandDevices {
     root: File,
 }
 impl CommandDevices {
+    pub(super) fn into_handle(self) -> File {
+        self.root
+    }
+    pub(super) fn from_handle(root: File) -> io::Result<Self> {
+        if !root.metadata()?.is_dir() || fs::fstatfs(&root)?.f_type != 0x0102_1994 {
+            return Err(io::Error::other(
+                "private device input must be a tmpfs directory",
+            ));
+        }
+        Ok(Self { root })
+    }
     pub fn create(uid: u32, gid: u32) -> io::Result<Self> {
         if uid == u32::MAX || gid == u32::MAX {
             return Err(io::Error::other("invalid runtime device owner"));
@@ -164,12 +175,7 @@ impl CommandDevices {
             .pop()
             .expect("checked single device descriptor")
             .into();
-        if !root.metadata()?.is_dir() || fs::fstatfs(&root)?.f_type != 0x0102_1994 {
-            return Err(io::Error::other(
-                "private device input must be a tmpfs directory",
-            ));
-        }
-        Ok(Self { root })
+        Self::from_handle(root)
     }
 
     pub(super) fn attach(self, target: &File) -> io::Result<()> {

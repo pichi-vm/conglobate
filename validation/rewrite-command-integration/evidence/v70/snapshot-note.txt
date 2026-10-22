@@ -1,0 +1,1 @@
+setup-production.rs contains the production portion compiled in this VM run. Unit tests were added/edited after the VM build; their final source and failed compile log are retained with v70. No production setup code changed after either VM build. Full runtime snapshots and artifacts are retained; this is not full sandbox qualification.

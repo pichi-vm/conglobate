@@ -1518,3 +1518,26 @@ rules rather than silently shrinking acceptance criteria.
   operations. VM readiness polling remains outstanding, as does integration and
   validation of the uncommitted CommandSetup descriptor transport. This is a
   focused fixture correction, not a milestone adherence pass; M4 remains zero.
+
+- Previous goal turn progressed in 340be44. Added CommandSetup, a consuming trusted
+  namespace/device descriptor bundle, and integrated it in the inner setup hop.
+  Idmapping and namespace entry use the same opened namespace identity; no inner
+  namespace pathname argument/reopen. Received rights are CLOEXEC, exact framed
+  packets require two descriptors, and malformed/truncated inputs drop all rights.
+  Device handles remain internal to isolation. Failed/partial namespace entry is
+  exit-only; this bundle is neither admission nor a full isolation receipt.
+- v69 normal and v70 supervisor-death disposable-VM suites pass. Host protocol
+  tests verify malformed framing/cardinality/object rejection, descriptor closure,
+  nonblocking missing-offer failure, identity preservation and CLOEXEC. First test
+  compilation attempted unsupported Stdio-to-OwnedFd conversion; preserved the
+  failure and tested reception through a direct socket instead. Production sender
+  is covered by both VM runs. Full root tests (24 compile-fail), root and fixture
+  Clippy and formatting pass. Evidence includes raw serial, sources, hashes and
+  snapshot limitations; no privileged host operations or new qualification claim.
+- Focused review checked transfer ordering, error ownership, lack of descriptor
+  escape to commands and namespace/device lifetime. nsfs/tmpfs validation is not
+  provenance authentication: trusted constructors must select the scope; setns
+  validates namespace kind. First helper still opens the fixture namespace path.
+  Scope-bound production construction, readiness-loop replacement, RAM/storage
+  assembly and full lifecycle/fault coverage remain unfinished. M4 stays at zero
+  adherence passes; subsequent milestones and the overall goal remain active.
