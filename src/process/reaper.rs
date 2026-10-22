@@ -8,14 +8,9 @@ use nix::{
     },
     unistd::{Pid, getpid},
 };
-use std::{
-    fs, io,
-    marker::PhantomData,
-    rc::Rc,
-    time::{Duration, Instant},
-};
+use std::{fs, io, marker::PhantomData, rc::Rc, time::Instant};
 
-/// Process-lifetime adoption in a dedicated, single-threaded guardian. Install
+/// Process-lifetime adoption in a dedicated, single-threaded supervisor. Install
 /// before spawning children, with normal SIGCHLD zombie semantics and exclusive
 /// wait ownership. Trusted code must not change these settings or fork this owner.
 /// Drop deliberately leaves subreaping enabled: disabling it cannot clean children.
@@ -37,7 +32,7 @@ impl ReapedChildren {
     }
 }
 #[derive(Debug, thiserror::Error)]
-#[error("guardian child drain: {source}")]
+#[error("supervisor child drain: {source}")]
 pub struct DrainFailure {
     source: io::Error,
     reaper: ChildReaper,
@@ -94,30 +89,63 @@ impl ChildReaper {
     fn drain(&mut self, deadline: Instant) -> io::Result<()> {
         if getpid() != self.process || !prctl::get_child_subreaper()? {
             return Err(io::Error::other(
-                "guardian subreaper identity or setting changed",
+                "supervisor subreaper identity or setting changed",
             ));
         }
         loop {
             match waitpid(None, Some(WaitPidFlag::WNOHANG | WaitPidFlag::__WALL)) {
                 Err(Errno::ECHILD) => return Ok(()),
-                Err(Errno::EINTR) | Ok(WaitStatus::StillAlive) => {}
+                Err(Errno::EINTR) => continue,
+                Ok(WaitStatus::StillAlive) => {}
                 Err(error) => return Err(error.into()),
                 Ok(WaitStatus::Exited(..) | WaitStatus::Signaled(..)) => {
                     self.collected = self
                         .collected
                         .checked_add(1)
                         .ok_or_else(|| io::Error::other("child drain count overflow"))?;
+                    if Instant::now() >= deadline {
+                        return Err(io::Error::new(
+                            io::ErrorKind::TimedOut,
+                            "child drain deadline expired",
+                        ));
+                    }
+                    continue;
                 }
                 Ok(_) => {}
             }
-            let remaining = deadline.saturating_duration_since(Instant::now());
-            if remaining.is_zero() {
-                return Err(io::Error::new(
-                    io::ErrorKind::TimedOut,
-                    "guardian children remain undrained",
-                ));
-            }
-            std::thread::sleep(remaining.min(Duration::from_millis(5)));
+            self.wait_for_child(deadline)?;
         }
+    }
+
+    fn wait_for_child(&self, deadline: Instant) -> io::Result<()> {
+        use std::os::fd::AsRawFd;
+        // This single-threaded owner is the sole reaper. An exited child stays
+        // waitable, retaining its PID until the next waitpid collects it.
+        let children = fs::read_to_string("/proc/thread-self/children")?;
+        let raw = children
+            .split_whitespace()
+            .next()
+            .and_then(|value| value.parse::<i32>().ok())
+            .and_then(rustix::process::Pid::from_raw)
+            .ok_or_else(|| io::Error::other("waitable children missing from procfs"))?;
+        let observation = super::ProcessObservation {
+            identity: rustix::process::pidfd_open(raw, rustix::process::PidfdFlags::empty())?,
+        };
+        // Like individually owned helpers, reject a different procfs PID view
+        // before using a numeric proc identifier as a stable wait target.
+        let info = fs::read_to_string(format!(
+            "/proc/thread-self/fdinfo/{}",
+            observation.identity.as_raw_fd()
+        ))?;
+        let visible = info
+            .lines()
+            .find_map(|line| line.strip_prefix("Pid:\t"))
+            .and_then(|value| value.trim().parse::<i32>().ok());
+        if visible != Some(raw.as_raw_nonzero().get()) {
+            return Err(io::Error::other(
+                "child pidfd does not match procfs PID view",
+            ));
+        }
+        observation.wait_until(deadline)
     }
 }

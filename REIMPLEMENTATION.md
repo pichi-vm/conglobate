@@ -1300,3 +1300,26 @@ rules rather than silently shrinking acceptance criteria.
 - M4 remains zero adherence passes. Adopted-child drain and fixture readiness
   polling remain; production policy/admission ownership and complete failure
   cleanup still need implementation. No milestone-completion claim is made.
+
+- Previous goal turn made progress in d874300 (cgroup event waits). Removed
+  adopted-child drain sleep polling too: after nonblocking waitpid reports live
+  children, open a pidfd for a child selected from procfs, check the pidfd's
+  procfs-visible PID, await exit, then resume status collection. No signal mask
+  changes are introduced. Exclusive single-threaded reaping and normal SIGCHLD
+  zombie semantics remain mandatory. Successful collection is bounded by the
+  same deadline and cumulative count is retained on failure.
+- The procfs list selects a wait target only. It is not an emptiness/completion
+  oracle: only waitpid ECHILD completes drain. Kernel source documents that the
+  general children iterator is not an atomic snapshot; the code does not infer
+  completion from an empty/inconsistent list, and does not concurrently reap.
+  Procfs/PID inconsistencies and pidfd errors fail with ownership retained.
+- Added a disposable-VM reaper probe: explicit pipe blocks a relinquished child,
+  an immediate drain deadline fails retaining the owner, EOF releases the child,
+  retry collects exactly one status and reaches ECHILD. v53 passes this and the
+  normal/timeout/failure integration sequence. Root tests (16 compile-fail),
+  root/fixture Clippy and formatting pass; evidence and source excerpts preserved.
+- Review checked status versus readiness, lifetime assumptions, retry counts,
+  deadline ownership and procfs limitations. M4 remains zero adherence passes;
+  production admission/policy ownership, late-error cleanup and remaining runtime
+  qualification are unfinished. Fixture readiness still uses bounded state
+  polling; no production process/domain cleanup sleeps remain.

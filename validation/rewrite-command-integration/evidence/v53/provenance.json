@@ -1,0 +1,23 @@
+{
+  "base_commit": "d874300e2db469a42159ab6eae73641d1eb28ed4",
+  "full_artifacts": "/var/tmp/conglobate-command-integration-v53",
+  "sha256": {
+    "validation/rewrite-command-integration/evidence/v53/serial.txt": "e774736cca23859a8c83062289f6784390a3c8fe9f002c04a6fa2f0371a13912",
+    "validation/rewrite-command-integration/evidence/v53/verdict.json": "a6cfb41c262350f51f936e7750b36f1824c3334d22664d5b9c9af4bfdf9a5528",
+    "validation/rewrite-command-integration/evidence/v53/command.json": "30c61c4b9c7d3aefb9d16a635db64ba918e297fd02224cfec3addb667f0f1a8c",
+    "validation/rewrite-command-integration/evidence/v53/inputs.json": "e9f63b5fec2e1eb8422da76607414670180fa37beb679dbf68538c3bba77cf92",
+    "validation/rewrite-command-integration/evidence/v53/probe.rs": "a32543456e21930c5a8ce1e5a3d6c69bc60d423a238b98ffb0545e18b2002de2",
+    "validation/rewrite-command-integration/evidence/v53/run.py": "2d8b4058c3219cca1cd64fd886bbc168658fc83e8c245023ddf0ae4153e9cd82",
+    "validation/rewrite-command-integration/evidence/v53/Cargo.lock": "a8fde0e13198d43013b0d9d8f20503b08c31fc8ab1eae696c0884d97ce38bb18",
+    "validation/rewrite-command-integration/evidence/v53/reaper.rs": "769886820d9dc206e299d9a6dd37286506841c871b9d5206d2d043cc67c3f3c9",
+    "validation/rewrite-command-integration/evidence/v53/fixture.sh.txt": "cfca48ca86d59826aad8939c6031320ada1f3228c02daa7f64bd078e7ba2ee66",
+    "validation/rewrite-command-integration/evidence/v53/init.txt": "8a950cc37b23130548b3e20436dd4daae35e6b10750124e3b87c85c942f20707",
+    "validation/rewrite-command-integration/evidence/v53/tests.txt": "fdcb590d00c93974da8fcee0a61fcc243f6cc7c674ed3a44993c32fe0b0ebbf6",
+    "validation/rewrite-command-integration/evidence/v53/proc-children-source.txt": "6cb2e7072e6cc762a33a35649fb50602a6f936ad693fa5166fc2def04a3ecce3",
+    "validation/rewrite-command-integration/evidence/v53/proc-children-source-sha256.txt": "ff36a3421efa82118bea0b645030336983629eed06321633a9e92a6418a68580",
+    "/var/tmp/conglobate-command-integration-v53/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-command-integration-v53/initramfs.gz": "f97b89c0983f09b1e5604e15bd088e3ec86cbb64ab245e1768e5499b83db83bf",
+    "/var/tmp/conglobate-command-integration-v53/root/idmap-probe": "564a9a34ee83543e339fc9e8d86d6a45a68bf085597e9de7bbb158b50481e79a"
+  },
+  "full_sandbox_qualified": false
+}

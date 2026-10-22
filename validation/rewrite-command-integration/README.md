@@ -506,3 +506,18 @@ The existing normal/timeout/failure integration cases and root tests pass, as do
 Clippy and formatting. This run does not instrument every notification interleaving
 or deterministically force a change inside the read/poll interval. Adopted-child
 drain still polls and production policy/lifecycle integration remains unfinished.
+
+## Adopted-child drain without sleeps
+
+v53 adds a dedicated single-threaded reaper probe. A child is blocked on pipe
+input, its individual Child owner is relinquished, and drain with an immediate
+deadline must return the reaper owner. EOF releases the child; retry collects one
+status and observes ECHILD. This and the normal/timeout/failure pipeline pass.
+Root tests, root/fixture Clippy and formatting pass.
+
+Production drain now selects a child from procfs, opens/checks its pidfd and
+waits for exit before resuming waitpid. Normal SIGCHLD and exclusive reaping
+retain the selected PID until collection. The procfs list is not an atomic
+snapshot or a completion receipt: inconsistencies fail, and only ECHILD ends
+drain. No process-wide signal masks change. The retained kernel excerpt includes
+the iterator's limitations. This does not complete production step ownership.

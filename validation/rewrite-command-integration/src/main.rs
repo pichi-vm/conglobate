@@ -31,6 +31,30 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "reaper-probe") {
+            let reaper = ChildReaper::install()?;
+            let mut child = Command::new("/bin/sh")
+                .args(["-c", "read line; exit 0"])
+                .stdin(Stdio::piped())
+                .spawn()?;
+            let release = child.stdin.take().ok_or("missing child release pipe")?;
+            // Relinquish individual reaping ownership to the process-wide drain.
+            // Child's destructor does not kill or reap it.
+            drop(child);
+            let failure = reaper.drain_until(Instant::now()).unwrap_err();
+            let (error, reaper) = failure.into_parts();
+            assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+            drop(release);
+            let children = reaper.drain_until(Instant::now() + Duration::from_secs(5))?;
+            assert_eq!(children.collected(), 1);
+            assert!(
+                fs::read_to_string("/proc/thread-self/children")?
+                    .trim()
+                    .is_empty()
+            );
+            println!("NATIVE_REAPER_TIMEOUT_AND_RELEASE_PASS");
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "root-launch-probe") {
             use std::os::{fd::AsFd, unix::net::UnixDatagram};
             let selected = fs::metadata(".")?;
