@@ -213,3 +213,20 @@ rules rather than silently shrinking acceptance criteria.
 - This computes scute roots only: cache stream digest checks, compressed extent
   measurement, ancestry ordering and manifest-root comparison still need to be
   connected before claiming image-chain verification. M3 remains in progress.
+- Connected cache reads to scute roots and manifest ancestry verification. Every
+  scute hashing pass checks the digest/length of bytes actually read; compressed
+  streams are measured before verity construction and verified again while
+  hashing. Layers are not copied into scratch. Canonical parameters, duplicate
+  roots, missing ancestors and disconnected layers are checked; retained scutes
+  are ordered base-to-top. Mount-time verification remains a separate requirement.
+- Added consuming CapturedBuild::resolve, retaining cache authority and verified
+  image descriptions. Execution inputs without carapaces fail. All referenced
+  content is checked before privileged setup. Current preflight also performs a
+  separate descriptor-verification read; eliminating that redundant scute read
+  without weakening receipts is a later optimization.
+- Mixed compressed/plain chain, wrong root, duplicate/disconnected layers,
+  incorrect decoded extent and changed cache content tests pass. Input integration
+  also checks scuteless passthrough versus command execution. The 46 tests pass
+  (full suite plus new integration test), as do formatting and Clippy.
+- This verifies content/ancestry, not snapshot exception structural interpretation
+  or mounted behavior. Context materialization and final M3 review remain pending.

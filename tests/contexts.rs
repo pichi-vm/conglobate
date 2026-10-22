@@ -279,3 +279,75 @@ fn network_recipe_requires_an_explicit_resolver_argument() {
         1
     );
 }
+
+#[test]
+fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_commands() {
+    use conglobate::{
+        cache::{Cache, HostArchitecture},
+        input::{CapturedBuild, InputError},
+        request::BuildRequest,
+    };
+    use pichi_artifact::Digest;
+    let manifest = pichi_artifact::Manifest {
+        schema_version: 2,
+        media_type: "application/vnd.oci.image.manifest.v1+json".into(),
+        artifact_type: pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
+        config: pichi_artifact::ConfigDescriptor::canonical(),
+        layers: Vec::new(),
+        annotations: Default::default(),
+    }
+    .to_bytes()
+    .unwrap();
+    let manifest_digest = Digest::from_bytes_sha256(&manifest);
+    let index = serde_json::to_vec(&serde_json::json!({"schemaVersion":2,
+        "mediaType":"application/vnd.oci.image.index.v1+json", "manifests":[{
+            "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+            "digest":manifest_digest.to_string(),"size":manifest.len(),
+            "platform":{"os":"pichi","architecture":HostArchitecture::current().unwrap().oci_name()}}]})).unwrap();
+    let index_digest = Digest::from_bytes_sha256(&index);
+    let cache = tempfile::tempdir().unwrap();
+    let blobs = cache.path().join("blobs/sha256");
+    std::fs::create_dir_all(&blobs).unwrap();
+    std::fs::write(blobs.join(manifest_digest.hex()), manifest).unwrap();
+    std::fs::write(blobs.join(index_digest.hex()), index).unwrap();
+    let repo = Repository::new("sha1");
+    repo.write(
+        "lock",
+        format!("version: 1\nimages:\n  base:\n    index: {index_digest}\n").as_bytes(),
+    );
+    for (recipe, execution) in [
+        ("carapace: {from: base}", false),
+        ("carapace: {from: base, derive: [{run: echo ok}]}", true),
+    ] {
+        repo.write("recipe", recipe.as_bytes());
+        let commit = repo.commit();
+        let request = BuildRequest::parse_from([
+            "conglobate",
+            "build",
+            "--repository",
+            repo.0.path().to_str().unwrap(),
+            "--commit",
+            &hex::encode(commit.bytes()),
+            "--recipe",
+            "recipe",
+            "--lock",
+            "lock",
+            "--cache",
+            cache.path().to_str().unwrap(),
+            "--output",
+            "/unused-output",
+        ])
+        .unwrap();
+        let result = CapturedBuild::try_from(&request)
+            .unwrap()
+            .resolve(Cache::open(cache.path()).unwrap());
+        if execution {
+            assert!(matches!(
+                result,
+                Err(InputError::MissingExecutionCarapace(_))
+            ));
+        } else {
+            assert_eq!(result.unwrap().images().len(), 1);
+        }
+    }
+}

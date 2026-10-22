@@ -16,6 +16,10 @@ use sha2::{Digest, Sha256};
 #[derive(Debug, thiserror::Error)]
 pub enum InputError {
     #[error(transparent)]
+    Cache(#[from] crate::cache::CacheError),
+    #[error("execution input {0} has no carapace")]
+    MissingExecutionCarapace(String),
+    #[error(transparent)]
     Context(#[from] ContextError),
     #[error(transparent)]
     Recipe(#[from] RecipeError),
@@ -90,5 +94,74 @@ impl CapturedBuild {
     }
     pub fn plan(&self) -> &BuildPlan {
         &self.plan
+    }
+}
+
+/// One locked image and its verified chain (if present). Receipts describe reads,
+/// not a promise that a subsequent cache read will return unchanged bytes.
+#[derive(Debug)]
+pub struct CheckedImage {
+    image: crate::cache::ResolvedImage,
+    chain: Option<crate::cache::VerifiedChain>,
+    receipts: Vec<crate::cache::BlobReceipt>,
+}
+impl CheckedImage {
+    pub fn image(&self) -> &crate::cache::ResolvedImage {
+        &self.image
+    }
+    pub fn chain(&self) -> Option<&crate::cache::VerifiedChain> {
+        self.chain.as_ref()
+    }
+    pub fn receipts(&self) -> &[crate::cache::BlobReceipt] {
+        &self.receipts
+    }
+}
+#[derive(Debug)]
+pub struct ResolvedBuild {
+    captured: CapturedBuild,
+    cache: crate::cache::Cache,
+    images: std::collections::BTreeMap<crate::image::ImageReference, CheckedImage>,
+}
+impl ResolvedBuild {
+    pub fn captured(&self) -> &CapturedBuild {
+        &self.captured
+    }
+    pub fn cache(&self) -> &crate::cache::Cache {
+        &self.cache
+    }
+    pub fn images(
+        &self,
+    ) -> &std::collections::BTreeMap<crate::image::ImageReference, CheckedImage> {
+        &self.images
+    }
+}
+impl CapturedBuild {
+    /// Consume the captured planning phase after resolving all locked inputs.
+    /// No privileged setup or output publication occurs here.
+    pub fn resolve(self, cache: crate::cache::Cache) -> Result<ResolvedBuild, InputError> {
+        let mut images = std::collections::BTreeMap::new();
+        for input in self.plan.inputs() {
+            let image = cache.resolve(input.index())?;
+            let receipts = cache.verify_references(&image)?;
+            let chain = cache.verify_chain(&image)?;
+            if input.execution_required() && chain.is_none() {
+                return Err(InputError::MissingExecutionCarapace(
+                    input.reference().as_ref().to_owned(),
+                ));
+            }
+            images.insert(
+                input.reference().clone(),
+                CheckedImage {
+                    image,
+                    chain,
+                    receipts,
+                },
+            );
+        }
+        Ok(ResolvedBuild {
+            captured: self,
+            cache,
+            images,
+        })
     }
 }

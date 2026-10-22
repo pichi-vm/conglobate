@@ -190,3 +190,119 @@ fn manifest_resolution_does_not_silently_stand_in_for_content_verification() {
     assert_eq!(receipts.len(), 1);
     assert_eq!(receipts[0].digest(), &config_digest);
 }
+
+impl Store {
+    fn scute(
+        &self,
+        data: &[u8],
+        parent: [u8; 32],
+        compressed: bool,
+    ) -> (pichi_artifact::Layer, [u8; 32]) {
+        let extent = conglobate::chain::ScuteExtent::new(data.len() as u64, &parent, None).unwrap();
+        let root = extent.root(data).unwrap();
+        let bytes = if compressed {
+            zstd::stream::encode_all(data, 1).unwrap()
+        } else {
+            data.to_vec()
+        };
+        let digest = self.put(&bytes);
+        let descriptor = pichi_artifact::ScuteDescriptor {
+            digest: digest.to_string(),
+            size: bytes.len() as u64,
+            annotations: pichi_artifact::ScuteAnnotations {
+                data_blocks: None,
+                salt: hex::encode(parent),
+            },
+        };
+        (
+            if compressed {
+                pichi_artifact::Layer::ScuteZstd(descriptor)
+            } else {
+                pichi_artifact::Layer::Scute(descriptor)
+            },
+            root,
+        )
+    }
+    fn chain_image(
+        &self,
+        layers: Vec<pichi_artifact::Layer>,
+        root: [u8; 32],
+    ) -> conglobate::cache::ResolvedImage {
+        let manifest = pichi_artifact::Manifest {
+            schema_version: 2,
+            media_type: "application/vnd.oci.image.manifest.v1+json".into(),
+            artifact_type: pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
+            config: pichi_artifact::ConfigDescriptor::canonical(),
+            layers,
+            annotations: [
+                ("algo", "sha256"),
+                ("data-block-size", "4096"),
+                ("hash-block-size", "4096"),
+                ("version", "1"),
+                ("hash-type", "1"),
+            ]
+            .into_iter()
+            .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.to_owned()))
+            .chain([(
+                String::from("dev.pichi.carapace.verity.hash"),
+                hex::encode(root),
+            )])
+            .collect(),
+        };
+        let bytes = manifest.to_bytes().unwrap();
+        let digest = self.put(&bytes);
+        self.open()
+            .resolve(self.index(vec![self.descriptor(&digest, bytes.len())]))
+            .unwrap()
+    }
+}
+#[test]
+fn chain_verification_orders_mixed_compressed_layers_from_authenticated_root() {
+    let store = Store::new();
+    let (base, base_root) = store.scute(&[7; 8192], [0; 32], false);
+    let (top, top_root) = store.scute(&[9; 4097], base_root, true);
+    let image = store.chain_image(vec![top, base], top_root);
+    let chain = store.open().verify_chain(&image).unwrap().unwrap();
+    assert_eq!(chain.root(), &top_root);
+    assert_eq!(chain.scutes().len(), 2);
+    assert_eq!(chain.scutes()[0].root(), &base_root);
+    assert_eq!(chain.scutes()[1].extent().size(), 4097);
+    assert!(chain.scutes()[1].compressed());
+}
+#[test]
+fn duplicate_disconnected_and_wrong_root_chains_fail() {
+    let store = Store::new();
+    let (base, root) = store.scute(&[7; 4096], [0; 32], false);
+    let (other, _) = store.scute(&[9; 4096], [0; 32], true);
+    for (layers, claimed) in [
+        (vec![base.clone(), base.clone()], root),
+        (vec![base.clone(), other], root),
+        (vec![base], [5; 32]),
+    ] {
+        let image = store.chain_image(layers, claimed);
+        assert!(store.open().verify_chain(&image).is_err());
+    }
+}
+#[test]
+fn scute_digest_and_decoded_block_count_are_both_enforced() {
+    let store = Store::new();
+    let (mut layer, root) = store.scute(&[7; 8192], [0; 32], true);
+    let pichi_artifact::Layer::ScuteZstd(descriptor) = &mut layer else {
+        unreachable!()
+    };
+    descriptor.annotations.data_blocks = Some(1);
+    let image = store.chain_image(vec![layer], root);
+    assert!(store.open().verify_chain(&image).is_err());
+    let (layer, root) = store.scute(&[7; 4096], [0; 32], false);
+    let digest: Digest = layer.digest_str().parse().unwrap();
+    let image = store.chain_image(vec![layer], root);
+    std::fs::write(store.path(&digest), [8; 4096]).unwrap();
+    assert!(
+        store
+            .open()
+            .verify_chain(&image)
+            .unwrap_err()
+            .to_string()
+            .contains("content mismatch")
+    );
+}

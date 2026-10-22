@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Read-only content access. A receipt verifies a read, never future cache bytes.
+mod chain;
+pub use chain::{VerifiedChain, VerifiedScute};
 mod resolve;
 pub use resolve::{HostArchitecture, ResolvedImage};
 
@@ -16,6 +18,8 @@ use std::{
 
 #[derive(Debug, thiserror::Error)]
 pub enum CacheError {
+    #[error(transparent)]
+    Chain(#[from] crate::chain::ChainError),
     #[error("invalid OCI JSON: {0}")]
     Json(#[from] serde_json::Error),
     #[error("invalid artifact manifest: {0}")]
