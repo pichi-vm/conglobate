@@ -15,6 +15,8 @@ pub use transform::{PropertyValue, TransformAction, TransformOperation, Transfor
 #[derive(Debug, thiserror::Error)]
 pub enum RecipeError {
     #[error(transparent)]
+    Pattern(#[from] crate::copy::PatternError),
+    #[error(transparent)]
     Mode(#[from] crate::copy::ModeError),
     #[error(transparent)]
     Template(#[from] crate::template::TemplateError),
@@ -201,14 +203,14 @@ impl Run {
 }
 #[derive(Debug)]
 pub struct Copy {
-    sources: Vec<String>,
+    sources: Vec<crate::copy::SourcePattern>,
     destination: ImagePath,
     owner: Option<String>,
     group: Option<String>,
     mode: Option<crate::copy::CopyMode>,
 }
 impl Copy {
-    pub fn sources(&self) -> &[String] {
+    pub fn sources(&self) -> &[crate::copy::SourcePattern] {
         &self.sources
     }
     pub fn destination(&self) -> &str {
@@ -258,15 +260,13 @@ impl TryFrom<DirectiveDocument> for Directive {
                     SourcesDocument::One(path) => vec![path],
                     SourcesDocument::Many(paths) => paths,
                 };
-                if sources.is_empty()
-                    || sources.iter().any(|p| {
-                        p.is_empty() || p.contains('\0') || p.split('/').any(|c| c == "..")
-                    })
-                {
-                    return Err(RecipeError::Invalid(
-                        "copy needs nonempty context sources without traversal",
-                    ));
+                if sources.is_empty() {
+                    return Err(RecipeError::Invalid("COPY requires at least one source"));
                 }
+                let sources = sources
+                    .into_iter()
+                    .map(|source| source.parse())
+                    .collect::<Result<Vec<_>, crate::copy::PatternError>>()?;
                 let destination = ImagePath::try_from(copy.into)?;
                 if sources.len() > 1 && !destination.as_ref().ends_with('/') {
                     return Err(RecipeError::Invalid(

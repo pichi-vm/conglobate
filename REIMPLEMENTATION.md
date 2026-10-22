@@ -191,3 +191,14 @@ rules rather than silently shrinking acceptance criteria.
   evaluation, including mixed permission/copy expressions and X after earlier edits.
   M3 still needs filename-pattern validation, context materialization and image-chain
   verification/integration. No adherence pass claimed.
+- COPY sources now contain immutable parsed SourcePattern values. Syntax and
+  parent traversal are checked during recipe parsing; matching supports Unicode
+  wildcard/class semantics, escaped literals and non-UTF-8 Unix candidate names.
+  The grammar reference is https://go.dev/src/path/filepath/match.go. Leading and
+  trailing separators retain context-relative Docker-style interpretation.
+- Added source-selection tests for Unicode, classes, negation, literal braces,
+  escaped metacharacters, separator boundaries, invalid UTF-8 and malformed
+  patterns rejected through recipe parsing. All 38 tests and Clippy pass.
+  These are syntax/name-selection tests, not COPY filesystem compatibility proof;
+  wildcard walks, symlinks, ownership and mode evaluation remain execution work.
+  M3 private materialization and image-chain verification/integration remain open.

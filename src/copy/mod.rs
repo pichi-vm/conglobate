@@ -4,3 +4,6 @@
 //! Validated COPY descriptions; filesystem execution is a separate authority.
 mod mode;
 pub use mode::{Change, Clause, CopyMode, ModeError, Operator, Permission, Permissions};
+
+mod pattern;
+pub use pattern::{PatternError, SourcePattern};
