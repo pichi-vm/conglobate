@@ -33,6 +33,44 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "mapping-probe") {
+            use conglobate::storage::{Created, Mapping};
+            use std::{io::Read, num::NonZeroU64};
+            let first = Mapping::<Created>::create()?;
+            let second = Mapping::<Created>::create()?;
+            assert_ne!(first.id(), second.id());
+            second.close()?;
+            let active = first.zero(NonZeroU64::new(8192).unwrap())?;
+            assert_eq!(active.status()?.target_count, 1);
+            let id = active.id();
+            let path = Path::new("/dev/conglobate-zero-probe");
+            rustix::fs::mknodat(
+                rustix::fs::CWD,
+                path,
+                rustix::fs::FileType::BlockDevice,
+                rustix::fs::Mode::RUSR,
+                rustix::fs::makedev(id.major(), id.minor()),
+            )?;
+            let mut holder = fs::File::open(path)?;
+            let mut bytes = [1u8; 4096];
+            holder.read_exact(&mut bytes)?;
+            assert_eq!(bytes, [0; 4096]);
+            let failure = active.close().unwrap_err();
+            assert_eq!(failure.source_error().raw_os_error(), Some(16));
+            drop(holder);
+            failure.cleanup()?;
+            assert!(fs::File::open(path).is_err());
+            fs::remove_file(path)?;
+            let empty = Mapping::<Created>::create()?;
+            let failure = empty.zero(NonZeroU64::new(u64::MAX).unwrap()).unwrap_err();
+            assert_eq!(
+                failure.source_error().kind(),
+                std::io::ErrorKind::InvalidInput
+            );
+            failure.cleanup()?;
+            println!("OWNED_DM_ZERO_BUSY_AND_SETUP_CLEANUP_PASS");
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "workspace-probe") {
             use std::io::{Read, Seek, SeekFrom, Write};
             let before = fs::read_to_string("/proc/self/mountinfo")?;

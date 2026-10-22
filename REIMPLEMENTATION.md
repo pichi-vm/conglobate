@@ -1687,3 +1687,24 @@ rules rather than silently shrinking acceptance criteria.
   baseline; original archive remains present. No new finding. Revised M3 accepted
   at 3/3; M4 can resume but retains zero clean passes. Storage/device assembly,
   full lifecycle coverage and later milestones remain unfinished. Goal active.
+
+- Previous turn progressed in db69a8e and restored the M3 gate. Resumed M4 by
+  inspecting pinned devmap-linux and carapace assembly: Control does not own kernel
+  mapping lifetime, and create/load/activate are separate fallible operations.
+  Added sealed Mapping<Created>/Mapping<Active> owners for the initial dm-zero.
+  Unique random names are created without adopting existing devices. Invalid
+  extents, load and activation failures return cleanup-only ownership. Explicit
+  removal is immediate and retains ownership on failure; Drop requests deferred
+  removal as best-effort only. Diagnostic device numbers are not lifetime leases.
+- Added devmap-linux at the same already-pinned devmap revision, without changing
+  dependency revisions. v78 guest-only probe verifies simultaneous unique IDs,
+  zero reads, EBUSY cleanup retention/retry and cleanup of a rejected extent's
+  created device. The existing normal suite passes. Full root tests (26 compile-
+  fail), root/fixture Clippy, fmt and Python syntax checks pass. Source/raw logs,
+  exact inputs and artifact hashes preserved. No privileged host operations.
+- Focused review checked resource ownership, collision behavior, state transitions,
+  no arbitrary public table/control authority and cleanup failure retention. This
+  is not a milestone adherence pass. Blocking ioctls still require fixed-deadline
+  orchestration; late setup faults, deferred Drop timing and device lifecycle under
+  supervisor death need further coverage. Loop/cache-backed verity layers and
+  writable snapshots are not assembled yet. M4 remains zero; overall goal active.

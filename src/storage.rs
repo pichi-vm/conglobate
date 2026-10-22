@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Supervisor-owned mutable RAM storage. Immutable layers remain cache-backed.
+mod mapping;
+pub use mapping::{Active, Created, Mapping, MappingFailure, MappingState};
+
 use rustix::{fs, mount};
 use std::{
     fs::{File, Metadata},

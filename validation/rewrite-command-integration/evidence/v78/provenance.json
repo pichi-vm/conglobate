@@ -1,0 +1,29 @@
+{
+  "base_commit": "db69a8e38b5975fc9eb04f1ece04f9fcc343d18b",
+  "full_artifacts": "/var/tmp/conglobate-command-integration-v78",
+  "sha256": {
+    "validation/rewrite-command-integration/evidence/v78/serial.txt": "c457e774abd25dd993f007d910de3bb791d25a21532c2a0206ee5295d54f4e41",
+    "validation/rewrite-command-integration/evidence/v78/verdict.json": "a6cfb41c262350f51f936e7750b36f1824c3334d22664d5b9c9af4bfdf9a5528",
+    "validation/rewrite-command-integration/evidence/v78/command.json": "bf0a57c5bccab534f386375dc00ac681b1e5bb151100eea4552383ed7b31ae47",
+    "validation/rewrite-command-integration/evidence/v78/inputs.json": "c9efd6419873caeae3615357f0d52145d4b7ede5f8905600ec38c9439ba18b19",
+    "validation/rewrite-command-integration/evidence/v78/build.txt": "0ef71004b1222ab9bbae32dd55c412fd5b52fcaa587b076d9ff5d9b9a8a9b478",
+    "validation/rewrite-command-integration/evidence/v78/probe.rs": "131e940d7308f69b288088aad05ffa97707c1a78b3cddba25b2396ed1f67fc4d",
+    "validation/rewrite-command-integration/evidence/v78/readiness.rs": "3d9bfc4d94ff90d83492674e5495838784d468001f66e5d807869de5f483b8e3",
+    "validation/rewrite-command-integration/evidence/v78/mapping.rs": "246e22811cf82dbdea1cacad83ee48fdef131aefb18150ba0de3071f8e97cb4b",
+    "validation/rewrite-command-integration/evidence/v78/storage.rs": "d2e27527ae74e2349a7ca1b76db9df734cb1e05270763a174d46c2198a5f7ac0",
+    "validation/rewrite-command-integration/evidence/v78/root-Cargo.toml": "f0cc0ef2226d5fc7914b85c56068a44ba41c812b2e1f64f9309ae70307eb71bc",
+    "validation/rewrite-command-integration/evidence/v78/root-Cargo.lock": "f49009aaefae4d75f734e07b7e631a84c88adcb707de068b3ac4416bf244b8f0",
+    "validation/rewrite-command-integration/evidence/v78/tests.txt": "f8eae94a336e20a012b34d6430bdb8e90fa41cbe0038b28159c72f2ca0841a89",
+    "validation/rewrite-command-integration/evidence/v78/run.py": "7f6212039acb6e0d028835581f8c83973233e6ed5e4a551bbea85cffda962efb",
+    "validation/rewrite-command-integration/evidence/v78/Cargo.lock": "e8d6628ce8aa52510aef7e51eca2dec43bf21a79671d50f947474bad248e22c6",
+    "validation/rewrite-command-integration/evidence/v78/Cargo.toml": "76b92115cab984959f4b3b4a7f3b52181f2e9e7e7e1aaa2db2b443f94edc9761",
+    "validation/rewrite-command-integration/evidence/v78/fixture.sh.txt": "528df214d100587e05e86d2460a235d6d3f3ee39aa309bd3f6101283546bfb10",
+    "validation/rewrite-command-integration/evidence/v78/init.txt": "8a950cc37b23130548b3e20436dd4daae35e6b10750124e3b87c85c942f20707",
+    "validation/rewrite-command-integration/evidence/v78/workspace-context-commit.txt": "3e0d305f1321acc47a421947abfa0ccf835361d40fd06e9aa9cb84e07967775d",
+    "validation/rewrite-command-integration/evidence/v78/context.bundle": "5f903d48c0c945b09161d4f7cc05f88d47ec819299088464f936640109597a89",
+    "/var/tmp/conglobate-command-integration-v78/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-command-integration-v78/initramfs.gz": "8a8ca52d095b613e3af4c92fd06d4fcc4329fc9ccce1c033d13964e9accc81fd",
+    "/var/tmp/conglobate-command-integration-v78/root/idmap-probe": "2d82846617a7e13abb360513078020af112822bd057d3925f5b88c5c0aa108ec"
+  },
+  "full_sandbox_qualified": false
+}

@@ -730,3 +730,21 @@ this owner, and a failed freeze's cleanup uses it too. A cleanup error exposes
 only retry, never a partially deleted checkout. The normal VM suite, root tests,
 Clippy and formatting pass. This covers EMFILE at removal, not every possible
 partial deletion/storage failure or full lifecycle qualification.
+
+## Owned dm-zero mapping
+
+v78 uses production Mapping<Created> -> Mapping<Active> with pinned devmap-linux.
+Two simultaneously owned devices have distinct identities. The active dm-zero
+returns zeroes through a guest-only block node. Explicit close fails EBUSY with a
+live holder and retains cleanup ownership; after closing the holder, retry removes
+the device and the node cannot be reopened. An overflowing extent fails before
+loading its created mapping, whose returned failure cleans up explicitly. The
+normal command suite and root tests (26 compile-fail cases) pass, as do Clippy,
+formatting and Python syntax checks.
+
+No mapping is adopted by name; random names and kernel create collision rejection
+avoid removal of an existing device. Drop requests deferred removal, but that is
+best-effort and is not a successful explicit teardown or quiescence proof. This
+run does not separately qualify deferred-removal timing, late table-load faults,
+setup deadlines or supervisor-death device cleanup. Full loop/verity/snapshot
+assembly and bounded orchestration remain outstanding.

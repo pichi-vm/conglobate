@@ -24,12 +24,13 @@ with (out / 'build.txt').open('wb') as build_log:
                    env=build_env, stdout=build_log, stderr=subprocess.STDOUT, check=True)
 root = out / 'root'
 shutil.copytree(seed / 'root', root, symlinks=True)
-for line in subprocess.check_output(['modprobe', '--show-depends', '--set-version', '7.2.10-200.fc44.x86_64', 'ext4'], text=True).splitlines():
-    if line.startswith('insmod '):
-        source = pathlib.Path(line.split()[1])
-        target = root / source.relative_to('/')
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, target)
+for module in ['ext4', 'dm-zero']:
+    for line in subprocess.check_output(['modprobe', '--show-depends', '--set-version', '7.2.10-200.fc44.x86_64', module], text=True).splitlines():
+        if line.startswith('insmod '):
+            source = pathlib.Path(line.split()[1])
+            target = root / source.relative_to('/')
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
 subprocess.run(['depmod', '-b', str(root), '7.2.10-200.fc44.x86_64'], check=True)
 binary = here / 'target/debug/conglobate-command-integration'
 shutil.copy2(binary, root / 'idmap-probe')
@@ -97,6 +98,8 @@ mke2fs -q -t ext4 -F /work/volume.ext4
 mount -o loop /work/volume.ext4 /work/origin
 cp -a /image-root/. /work/origin/
 /idmap-probe namespace-rejections
+modprobe dm-zero
+/idmap-probe mapping-probe
 /idmap-probe workspace-probe
 /idmap-probe reaper-probe
 /idmap-probe filesystem-pin-probe
