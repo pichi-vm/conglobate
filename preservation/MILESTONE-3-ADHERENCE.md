@@ -1,7 +1,8 @@
 # Milestone 3 adherence evidence
 
-Status: incomplete; clean streak two. These are source-grounded self-reviews,
-not independent reviews. No milestone-4 advancement is authorized by this record.
+Status: complete; clean streak three. These are source-grounded self-reviews,
+not independent reviews. Milestone 4 may begin; its runtime/security requirements
+remain unimplemented and unqualified.
 
 ## Initial requirements review (baseline 6326d48)
 
@@ -204,3 +205,58 @@ exist since the implementation scope; no source or test edits during this pass.
 
 Result: clean, streak 2/3. One further complete pass is required. No milestone-4
 advancement follows from this record.
+
+## Clean pass 3 — public authority and acceptance audit, scope 621b34d
+
+Started from exported constructors/getters and the M3 acceptance criteria, then
+checked their implementation, error ownership and supporting evidence. Source,
+tests, dependencies and VM harness are unchanged across all three clean passes.
+
+1. Rust style/API invariants: audited the exported type/method surface. Parsing
+   identities cannot manufacture verified metadata, chain receipts, captured
+   contexts or mounted checkouts. Those types have private fields and no public
+   Deserialize/Clone authority escape. Public recipe enums are read-only views of
+   a privately constructed Recipe; callers cannot mutate the plan through them.
+   RelativePath distinguishes file/directory syntax without claiming resolution
+   authority. Checkout state traits are sealed and their opaque payloads own
+   resources. ReadOnly returns an actually read-only file; StagedFile exposes
+   neither raw descriptors nor mutation methods. Methods, consuming conversions
+   and local parser/stream state follow the agreed Rust preferences.
+2. Requirements/acceptance: checked the complete M3 boundary:
+   - new safe crate and explicit recipe/lock CLI parsing: present;
+   - selected committed bytes and their path/content identities: captured;
+   - confined private tmpfs materialization and read-only transition: implemented
+     and exercised in the disposable VM;
+   - local index pins, host selection, all referenced blobs and scute ancestry:
+     verified with error propagation, no image fetching/cache mutation;
+   - single recipe, fixed stage order, input roles/from restrictions, retained
+     base metadata and omitted/empty transform selection: represented without
+     treating tool inputs as inherited output;
+   - meaningful positive, negative and ownership tests: present and passing.
+   Retained components are inputs for later composition, not an emitted artifact.
+   No empty-manifest fixture is claimed to prove valid output publication.
+3. Safety/recovery: checked authority across transitions against ARCHITECTURE.md.
+   Git access ends after capture. Cache handles are read-only/confined; captured
+   metadata is distinct from stream receipts and later mount verification.
+   Partial mounting retains an owning error; successful explicit cleanup and
+   best-effort Drop are distinct. The existing public mount transition has a
+   trusted private-namespace precondition; M4 must establish that namespace and
+   the recovery protocol before integration permits commands. No claimed safety
+   depends on a destructor surviving process death.
+4. Evidence/claims: reviewed the test-to-requirement mapping and the three
+   compile-fail diagnostics from pass 2. The unchanged scope retains the passing
+   52-test/fmt/Clippy baseline. VM v6 serial output includes all three probe
+   markers and exit 0; the preserved probe binary SHA256 matches its input
+   manifest. This verifies recorded fixture provenance, not confidential hardware
+   support. The library explicitly documents execution as not implemented.
+   CI restoration, command isolation, output artifacts and distro qualification
+   remain later milestones and are not counted as M3 results.
+5. Preservation/scope: independently compared 40 retained legacy files having
+   baseline SHA256 entries with their current bytes: all match. Original tracked
+   validation is unchanged outside the two additive rewrite validation folders.
+   The implementation/VM-harness diff from 621b34d is empty. Archive/source
+   retention and final removal gates remain intact; no references were deleted.
+
+Result: clean, streak 3/3. Milestone 3 is accepted at its foundation scope.
+Milestone 4 may now start. A later discovered foundation defect reopens this
+gate as required by the goal; acceptance is not final sandbox qualification.
