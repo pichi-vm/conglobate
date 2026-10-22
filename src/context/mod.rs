@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Immutable committed objects, captured without checkout filters or hooks.
+mod cleanup;
+pub use cleanup::ContextCleanupFailure;
 mod readonly;
 pub use readonly::{ContextMountFailure, ReadOnlyResources};
 mod materialize;

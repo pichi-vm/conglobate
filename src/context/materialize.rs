@@ -110,16 +110,14 @@ impl StagedContext {
         })
     }
     /// Explicit cleanup reports failure; Drop remains best-effort fallback.
-    pub fn close(self) -> Result<(), ContextError> {
+    pub fn close(self) -> Result<(), super::ContextCleanupFailure> {
         let StagedResources {
             directory,
             root,
             _parent,
         } = self.resources;
         drop(root);
-        let result = directory.close();
-        drop(_parent);
-        result.map_err(ContextError::from)
+        super::cleanup::BackingDirectory::new(directory, _parent).close()
     }
 }
 

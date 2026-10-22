@@ -1625,3 +1625,21 @@ rules rather than silently shrinking acceptance criteria.
   its prior clean passes are historical, not qualification of this implementation;
   the changed scope needs three new clean adherence passes before advancement.
   M4 remains zero and the overall goal remains active.
+
+- Previous turn progressed in 522688f. Context lifecycle review found that
+  TempDir::close consumed cleanup authority on removal failure. This violated the
+  explicit recovery requirement. Replaced it in staged/read-only cleanup with
+  BackingDirectory: borrow the private pathname during removal, retain TempDir
+  and parent FD on error, disarm redundant traversal only after success. Public
+  ContextCleanupFailure is cleanup-only and supports retry; it cannot recreate
+  a staged/read-only state after potentially partial deletion. Discarding it still
+  runs ordinary best-effort TempDir cleanup before releasing the parent.
+- v77 injects EMFILE during read-only cleanup after dropping Workspace, verifies
+  the specific failure, restores the limit and successfully retries. The live
+  read-only reader still rejects mutation. Normal suite, root tests (25 compile-
+  fail), both Clippy checks and formatting pass. Evidence/source/Git bundle/hashes
+  retained. No privileged host work. No claim of all partial deletion failures.
+- The finding resets the changed context scope's adherence streak to zero. This
+  fix and test are not clean adherence passes. Remaining build-wide integration,
+  storage/device assembly and lifecycle qualification still prevent M4 completion;
+  the full goal remains active.

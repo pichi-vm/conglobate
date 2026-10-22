@@ -36,7 +36,7 @@ impl ContextMountFailure {
     pub fn into_parts(self) -> (io::Error, StagedContext) {
         (self.source, self.staged)
     }
-    pub fn cleanup(self) -> Result<(), ContextError> {
+    pub fn cleanup(self) -> Result<(), super::ContextCleanupFailure> {
         self.staged.close()
     }
 }
@@ -112,7 +112,7 @@ impl ReadOnlyContext {
     /// Release the detached view and remove backing names. Read-only file
     /// descriptors already returned may retain their inodes until last close;
     /// they do not make cleanup busy or regain writable mount authority.
-    pub fn close(self) -> Result<(), ContextError> {
+    pub fn close(self) -> Result<(), super::ContextCleanupFailure> {
         let ReadOnlyResources {
             root,
             directory,
@@ -120,8 +120,6 @@ impl ReadOnlyContext {
             ..
         } = self.resources;
         drop(root);
-        let result = directory.close();
-        drop(_parent);
-        result.map_err(ContextError::from)
+        super::cleanup::BackingDirectory::new(directory, _parent).close()
     }
 }

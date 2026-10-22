@@ -106,7 +106,20 @@ impl Integration {
                     .raw_os_error(),
                 Some(30)
             );
-            readonly.close()?;
+            let limit = rustix::process::getrlimit(rustix::process::Resource::Nofile);
+            rustix::process::setrlimit(
+                rustix::process::Resource::Nofile,
+                rustix::process::Rlimit {
+                    current: Some(0),
+                    maximum: limit.maximum,
+                },
+            )?;
+            let cleanup = readonly.close();
+            rustix::process::setrlimit(rustix::process::Resource::Nofile, limit)?;
+            let cleanup = cleanup.unwrap_err();
+            assert_eq!(cleanup.source_error().raw_os_error(), Some(24));
+            cleanup.retry()?;
+            println!("CONTEXT_CLEANUP_FAILURE_RETAINS_PARENT_PASS");
             input.clear();
             file.read_to_string(&mut input)?;
             assert_eq!(input, "committed context\n");

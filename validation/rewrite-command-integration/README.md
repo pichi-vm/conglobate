@@ -719,3 +719,14 @@ The older context-mount harness now reflects these lifecycle semantics; its
 historical attached-mount evidence remains preserved. Its stale lockfile initially
 prevented a locked check; offline refresh and compilation succeeded. It was not
 rerun as a separate VM qualification here. Root tests, Clippy and formatting pass.
+
+## Context cleanup recovery
+
+v77 injects descriptor exhaustion during detached context cleanup after the initial
+Workspace owner has been dropped. ContextCleanupFailure preserves the private
+backing directory and its parent descriptor; after restoring the limit, retry
+succeeds. Retained readers remain read-only. Staged and read-only cleanup share
+this owner, and a failed freeze's cleanup uses it too. A cleanup error exposes
+only retry, never a partially deleted checkout. The normal VM suite, root tests,
+Clippy and formatting pass. This covers EMFILE at removal, not every possible
+partial deletion/storage failure or full lifecycle qualification.
