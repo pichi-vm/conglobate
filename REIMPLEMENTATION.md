@@ -438,3 +438,26 @@ rules rather than silently shrinking acceptance criteria.
   Full suite passes 64 tests (including fixture entry) and six compile-fail
   doctests; Clippy, formatting and diff checks pass. M4 remains at zero adherence
   passes; guardian, admission gates, anchors, LSM and containment are incomplete.
+- Added the rewrite's scoped label policy asset, adapted from the preserved
+  kernel-mount prototype. It separates the command namespace/mapped root subject
+  from an explicit set of superblock owner/device targets. Two entries support
+  bootstrap's tool and output roots; no owner-only wildcard is accepted. Hooks
+  retain exact attribute-name checks and prior LSM results. Program-side map
+  writes are prohibited. Runtime map/link lifecycle is not yet integrated.
+- Disposable no-NIC/no-disk/no-share x86-64 VM runs pass with one target and two
+  targets. The former denies labels on a second same-owner ext4 mount; the latter
+  permits label set/readback/remove there. Existing exact-name, mapped-nonroot,
+  foreign-namespace, unassigned tmpfs, offline Fedora installation, fsck and
+  independent remount metadata checks also pass. Loader-death pin retention is
+  fixture evidence only. Both runs and source/input/provenance hashes are retained
+  under validation/rewrite-label-policy; all prior validation remains untouched.
+- Added immutable Rust LabelScope/FilesystemTarget descriptions and safe native
+  map encodings. Reject invalid/truncated namespace or device identities,
+  zero/sentinel root UID, duplicate/empty/oversized target sets and command-owned
+  superblocks. These numeric descriptions confer no authority and do not pin
+  identities. Activation will require the still-missing anchored lifecycle owner.
+- Full Rust suite passes 67 tests (including fixture entry) and six compile-fail
+  doctests; Clippy and formatting pass. Policy C compiles with warnings as errors.
+  No host policy or mount was changed. Safe Rust loader integration, partial
+  installation/crash recovery, concurrency, Arm and confidential qualification
+  remain required; M4 still has zero adherence passes.
