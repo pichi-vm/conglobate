@@ -1708,3 +1708,27 @@ rules rather than silently shrinking acceptance criteria.
   orchestration; late setup faults, deferred Drop timing and device lifecycle under
   supervisor death need further coverage. Loop/cache-backed verity layers and
   writable snapshots are not assembled yet. M4 remains zero; overall goal active.
+
+- Previous turn progressed in b127f47. Inspected pinned lodown 31f8951: clear may
+  merely schedule detachment, cloned file descriptions do not add independent
+  loop users, and attach's convenience helper retries indefinitely. Added an
+  owned LoopAttachment for Scratch with a single get_free/open/configure attempt,
+  atomic autoclear, no public backing/raw handle, and backing-return only after
+  flush, clear and explicit unbound status. Deferred detach returns retry-only
+  ownership. Attach failure returns the untouched scratch owner. Added lodown at
+  the existing carapace-compatible pinned revision; no unsafe application code.
+- v79 preserves fixture E0515 compilation failure (no boot); reporting now converts
+  borrowed fixture errors to strings before the local workspace is destroyed.
+  v80 disproved the assumption that zero-length loop configuration fails. Added
+  explicit positive 4096-byte-multiple validation. v81 passes invalid extent
+  retention, loop/file byte visibility, deferred detachment with a second holder,
+  retry after holder release, and reattachment, plus the normal command suite.
+  Root tests, root/fixture Clippy, formatting and Python checks pass. Both failures,
+  source snapshots, input bundles, raw serial and hashes retained. No privileged
+  host operations occurred.
+- Focused review checked single-writer authority, descriptor-vs-open-file lifetime,
+  partial error ownership and no false detach success. Kernel backing references
+  survive Drop until autoclear, but that is not successful sealing/quiescence.
+  No competing trusted actor may reconfigure the owned loop. Bounded ioctl setup,
+  late-error recovery, cache/verity/snapshot composition and crash qualification
+  remain required. M4 remains zero; no adherence or overall completion claim.

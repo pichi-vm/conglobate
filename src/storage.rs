@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Supervisor-owned mutable RAM storage. Immutable layers remain cache-backed.
+mod loopback;
+pub use loopback::{LoopAttachFailure, LoopAttachment, LoopDetachFailure};
 mod mapping;
 pub use mapping::{Active, Created, Mapping, MappingFailure, MappingState};
 

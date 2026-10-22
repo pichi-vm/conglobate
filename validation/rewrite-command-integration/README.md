@@ -748,3 +748,25 @@ best-effort and is not a successful explicit teardown or quiescence proof. This
 run does not separately qualify deferred-removal timing, late table-load faults,
 setup deadlines or supervisor-death device cleanup. Full loop/verity/snapshot
 assembly and bounded orchestration remain outstanding.
+
+## RAM loop backing ownership
+
+v79 is a preserved compile failure: the fixture attempted to return a workspace-
+borrowing error as a static boxed error. No VM boot occurred. v80 booted and
+invalidated the test's assumption that the kernel rejects an empty loop backing;
+it does not. Production now rejects empty/non-4096-aligned backing explicitly.
+v81 passes that check, attachment, actual loop writes, deferred detach with a
+second holder, cleanup retry after releasing that holder, returned backing bytes,
+file writes and reattachment. The normal suite also passes. Root tests, Clippy,
+formatting and Python syntax checks pass.
+
+LoopAttachment consumes Scratch and exposes no backing/raw handle while bound.
+LOOP_CONFIGURE sets autoclear atomically. Initial selection/binding makes one
+attempt: races fail with backing ownership retained, without a retry/sleep loop.
+Explicit detach flushes, clears through a cloned descriptor (same open file
+description), and requires ENXIO from status before returning scratch. A clear
+request alone is not a detach receipt. Deferred cleanup keeps its original owner
+for retry. This assumes no competing trusted supervisor reconfigures that owned
+loop device; image commands must never receive loop/control access. Fixed setup
+bounds, cache-backed read-only loop inputs, full snapshot assembly and crash/fault
+qualification remain outstanding. Drop/autoclear is not a sealing receipt.

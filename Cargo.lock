@@ -308,6 +308,7 @@ dependencies = [
  "libbpf-cargo",
  "libbpf-rs",
  "linux-raw-sys",
+ "lodown",
  "minicbor",
  "nix",
  "pichi-artifact",
@@ -432,7 +433,7 @@ name = "devmap-core"
 version = "0.1.0"
 source = "git+https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426fa1d4508fc5c3bbdf643efbdbe64a3edd"
 dependencies = [
- "iocuddle",
+ "iocuddle 0.4.0",
 ]
 
 [[package]]
@@ -441,7 +442,7 @@ version = "0.1.0"
 source = "git+https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426fa1d4508fc5c3bbdf643efbdbe64a3edd"
 dependencies = [
  "devmap-core",
- "iocuddle",
+ "iocuddle 0.4.0",
  "zerocopy",
 ]
 
@@ -1283,6 +1284,15 @@ dependencies = [
 
 [[package]]
 name = "iocuddle"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5fab23069aa80df2de983e9d2e989f838af07041e99d85245ea4b1dac7a5933"
+dependencies = [
+ "zerocopy",
+]
+
+[[package]]
+name = "iocuddle"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9faa2eb1051fb714783e08c74354aebf4ebf5c0cd3a11ed1059a4b474b4a5db"
@@ -1452,6 +1462,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "224399e74b87b5f3557511d98dff8b14089b3dadafcab6bb93eab67d3aace965"
 dependencies = [
  "scopeguard",
+]
+
+[[package]]
+name = "lodown"
+version = "0.1.0"
+source = "git+https://github.com/pichi-vm/lodown.git?rev=31f8951293af180150e5e4c654c47a5b190097b9#31f8951293af180150e5e4c654c47a5b190097b9"
+dependencies = [
+ "iocuddle 0.3.0",
+ "zerocopy",
 ]
 
 [[package]]

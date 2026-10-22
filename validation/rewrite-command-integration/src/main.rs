@@ -33,6 +33,38 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "loop-probe") {
+            use std::io::{Read, Seek, Write};
+            let workspace = conglobate::storage::Workspace::create()?;
+            let empty = workspace.scratch()?;
+            let failure = empty.attach().unwrap_err();
+            let (_, mut scratch) = failure.into_parts();
+            assert_eq!(scratch.metadata()?.len(), 0);
+            scratch.set_len(1024 * 1024)?;
+            let mut attachment = scratch.attach().map_err(|error| error.to_string())?;
+            attachment.write_all(b"loop data")?;
+            let holder = fs::File::open(format!("/dev/loop{}", attachment.number()?))?;
+            let failure = attachment.detach().unwrap_err();
+            assert_eq!(
+                failure.source_error().kind(),
+                std::io::ErrorKind::ResourceBusy
+            );
+            drop(holder);
+            let mut scratch = failure.retry().map_err(|error| error.to_string())?;
+            scratch.rewind()?;
+            let mut bytes = [0; 9];
+            scratch.read_exact(&mut bytes)?;
+            assert_eq!(&bytes, b"loop data");
+            // Returned backing authority is writable only after confirmed detach.
+            scratch.rewind()?;
+            scratch.write_all(b"file data")?;
+            let mut attachment = scratch.attach().map_err(|error| error.to_string())?;
+            attachment.read_exact(&mut bytes)?;
+            assert_eq!(&bytes, b"file data");
+            attachment.detach().map_err(|error| error.to_string())?;
+            println!("RAM_LOOP_DEFERRED_DETACH_AND_BACKING_RETURN_PASS");
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "mapping-probe") {
             use conglobate::storage::{Created, Mapping};
             use std::{io::Read, num::NonZeroU64};

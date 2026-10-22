@@ -99,6 +99,7 @@ mount -o loop /work/volume.ext4 /work/origin
 cp -a /image-root/. /work/origin/
 /idmap-probe namespace-rejections
 modprobe dm-zero
+/idmap-probe loop-probe
 /idmap-probe mapping-probe
 /idmap-probe workspace-probe
 /idmap-probe reaper-probe
