@@ -4,6 +4,8 @@
 //! Trusted helper namespace setup; this alone is not a command sandbox.
 mod devices;
 mod init;
+mod namespaces;
+pub use namespaces::CommandNamespaces;
 mod root;
 mod runtime;
 pub use devices::CommandDevices;

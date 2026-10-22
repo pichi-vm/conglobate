@@ -26,7 +26,7 @@ subprocess.run(['depmod', '-b', str(root), '7.2.10-200.fc44.x86_64'], check=True
 binary = here / 'target/debug/conglobate-command-integration'
 shutil.copy2(binary, root / 'idmap-probe')
 executables = [binary]
-for name in ['mke2fs', 'unshare', 'newuidmap', 'newgidmap', 'stat', 'bwrap', 'nsenter', 'e2fsck', 'rmdir', 'setpriv', 'getfattr']:
+for name in ['mke2fs', 'unshare', 'newuidmap', 'newgidmap', 'stat', 'e2fsck', 'rmdir', 'setpriv', 'getfattr']:
     source = pathlib.Path(shutil.which(name))
     target = root / 'usr/bin' / name
     target.unlink(missing_ok=True)
@@ -40,6 +40,8 @@ for executable in executables:
             target = root / source.relative_to('/')
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
+for name in ['nsenter', 'bwrap']:
+    (root / 'usr/bin' / name).unlink(missing_ok=True)
 (root / 'conglobate-disposable-validation-vm').touch()
 image_root = root / 'image-root'
 (image_root / 'bin').mkdir(parents=True)
@@ -84,6 +86,11 @@ for attempt in {1..50}; do
 done
 cat /proc/$holder/uid_map
 cat /proc/$holder/gid_map
+/idmap-probe namespace-rejections
+# The holder and preflight probes are ready. Command setup below must be native.
+rm /usr/bin/unshare
+test ! -e /usr/bin/nsenter
+test ! -e /usr/bin/bwrap
 mkdir /work/pins
 mount -t bpf bpf /work/pins
 chmod 700 /work/pins
@@ -198,7 +205,7 @@ if supervisor_death:
         'VM_CONTROLLER_POWER_OFF', 'ACTIVE_POLICY_AFTER_SUPERVISOR_DEATH_PASS',
     ]) and 'Power down' in serial and 'INTEGRATED_COMMAND_' not in serial
 else:
-    passed = all(marker in serial for marker in ['INTEGRATED_COMMAND_SHELL-FAILURE_PASS', 'NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS', 'NATIVE_NAMESPACE_INIT_ADOPTION_PASS', 'INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS', 'INTEGRATED_COMMAND_POLICY-OFF_PASS', 'NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
+    passed = all(marker in serial for marker in ['NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS', 'NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS', 'INTEGRATED_COMMAND_SHELL-FAILURE_PASS', 'NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS', 'NATIVE_NAMESPACE_INIT_ADOPTION_PASS', 'INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS', 'INTEGRATED_COMMAND_POLICY-OFF_PASS', 'NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
 (out / 'verdict.json').write_text(json.dumps({'passed': passed, 'full_sandbox_qualified': False}, indent=2))
 assert passed, serial[-5000:]
 print('PASS', out)

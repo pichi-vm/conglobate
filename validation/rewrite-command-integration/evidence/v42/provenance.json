@@ -1,0 +1,21 @@
+{
+  "base_commit": "568059b9224e4671bc2ac2ee3b3a846dca4e1a6c",
+  "full_artifacts": "/var/tmp/conglobate-command-integration-v42",
+  "sha256": {
+    "validation/rewrite-command-integration/evidence/v42/serial.txt": "586f05ecdccf60a012a90f68a8523f2febb6ade7b4e68c6d1d66f6b92b252b40",
+    "validation/rewrite-command-integration/evidence/v42/verdict.json": "a6cfb41c262350f51f936e7750b36f1824c3334d22664d5b9c9af4bfdf9a5528",
+    "validation/rewrite-command-integration/evidence/v42/command.json": "3ca18e813976f05b7535f95ba14ba3eb19d79ea2de0986bb1849d66e974ddb1e",
+    "validation/rewrite-command-integration/evidence/v42/inputs.json": "bdb2200abcffa98cdfd811fbf95870d812170abf6a916ecc5d10b79b7cc28239",
+    "validation/rewrite-command-integration/evidence/v42/probe.rs": "859ff379ea382bdb34cfda441b41c8e0c1b915cda0ee7ef5da40abd74782f4b3",
+    "validation/rewrite-command-integration/evidence/v42/run.py": "9f5e6c5f338d74db4d1adb2b6275a036fad07459a57c222ca7a6bc7c255620b3",
+    "validation/rewrite-command-integration/evidence/v42/Cargo.lock": "a8fde0e13198d43013b0d9d8f20503b08c31fc8ab1eae696c0884d97ce38bb18",
+    "validation/rewrite-command-integration/evidence/v42/namespaces.rs": "849ae9d485ba7178eb7cea56f41a8cf9a2f35f8b3f744ed37922694f2d15c8ec",
+    "validation/rewrite-command-integration/evidence/v42/fixture.sh.txt": "3f506a425957f2f28f8f46858b4bd49c607640fc6052867167d277b71f75fbd1",
+    "validation/rewrite-command-integration/evidence/v42/init.txt": "8a950cc37b23130548b3e20436dd4daae35e6b10750124e3b87c85c942f20707",
+    "validation/rewrite-command-integration/evidence/v42/cargo-test.log": "88ffd0bdf1a4c96738fec8ed832d348d426dd02e90a1f3a27ae81f1aaa60a097",
+    "/var/tmp/conglobate-command-integration-v42/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-command-integration-v42/initramfs.gz": "edae6c058ce193e78391158ae4b8dad8a2dc32525191991f8089a5d13473db8c",
+    "/var/tmp/conglobate-command-integration-v42/root/idmap-probe": "e16b39fe5c56eda7066c6a42c2ccdfcd9a35884b8c165ba8f8f7037bde141266"
+  },
+  "full_sandbox_qualified": false
+}

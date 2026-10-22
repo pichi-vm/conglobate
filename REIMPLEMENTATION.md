@@ -1181,3 +1181,28 @@ rules rather than silently shrinking acceptance criteria.
   boundaries. M4 remains zero adherence passes: native namespace creation, scoped
   root transfer, production active-policy step ownership/admission, complete
   partial-setup cleanup and remaining sandbox qualification are still outstanding.
+
+
+- Previous goal turn made production progress in 568059b (resident namespace init).
+  Added thread-affine CommandNamespaces with safe setns/unshare/credential APIs;
+  it clears supplementary groups before joining the selected user namespace,
+  becomes mapped root, creates fresh mount/PID/net/IPC/UTS namespaces and makes
+  propagation private. Consuming spawn returns the existing process owner. Any
+  partial transition remains exit-only in a dedicated trusted helper.
+- v40 passes the command pipeline with native namespace construction. v41 checks
+  exact namespace identities, mapped credentials, empty supplementary groups and
+  private propagation, plus regular-file and synchronized multithreaded-entry
+  rejection. v42 passes all command/policy/timeout/failure checks after runtime
+  tools are removed from the guest command path. v43 confirms supervisor death,
+  continued scoped labeling and independent VM poweroff through this native path.
+- Root tests, root/fixture Clippy and formatting pass. Source snapshots, logs and
+  hashes are retained. Added a compile-fail contract for cross-thread spawning;
+  the entry/spawn interval forbids other child/thread creation, and root entry
+  independently requires PID 1 before running image code. Review checked namespace
+  ownership, credential ordering, descriptor closure, partial errors and claims.
+- M4 remains at zero adherence passes. Initial mapped-user-namespace allocation
+  still uses an external fixture holder; production mapping/pinning, scoped root
+  transfer and the full active-policy/admission/cleanup aggregate remain pending.
+  No guardian or separate cross-invocation recovery requirement was introduced.
+- Final documentation gate passes all fifteen compile-fail doctests, including
+  the new namespace thread-affinity contract; its log is retained with v43.

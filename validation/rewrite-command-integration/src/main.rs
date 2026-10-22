@@ -5,7 +5,7 @@ use conglobate::{
     anchor::RecoveryDirectory,
     domain::RecordedDomain,
     filesystem::{Detached, Mount, MountPoint},
-    isolation::{CommandDevices, CommandRoot, PrivateMountNamespace},
+    isolation::{CommandDevices, CommandNamespaces, CommandRoot, PrivateMountNamespace},
     policy::{FilesystemTarget, LabelPolicy, LabelScope, PinDirectory, PinnedDisabled},
     process::{ChildReaper, CommandPrivileges, CommandSyscalls, Supervision},
 };
@@ -28,6 +28,76 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "namespace-rejections") {
+            let error =
+                CommandNamespaces::enter(fs::File::open("/supervisor-secret")?).unwrap_err();
+            assert!(error.to_string().contains("requires nsfs"));
+            let holder = fs::read_to_string("/work/userns-pid")?;
+            let userns = fs::File::open(format!("/proc/{}/ns/user", holder.trim()))?;
+            let (release, gate) = std::sync::mpsc::channel::<()>();
+            let (ready, entered) = std::sync::mpsc::channel::<()>();
+            let thread = std::thread::spawn(move || {
+                ready.send(()).unwrap();
+                gate.recv_timeout(Duration::from_secs(5)).unwrap();
+            });
+            entered.recv_timeout(Duration::from_secs(5))?;
+            let error = CommandNamespaces::enter(userns).unwrap_err();
+            release.send(())?;
+            thread.join().unwrap();
+            assert!(error.to_string().contains("requires one thread"));
+            println!("NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS");
+            return Ok(());
+        }
+        if args.get(1).is_some_and(|a| a == "native-namespaces") {
+            let userns = args.get(2).ok_or("user namespace required")?;
+            let root = args.get(3).ok_or("root required")?;
+            let script = args.get(4).ok_or("script required")?;
+            let userns = fs::File::open(userns)?;
+            let expected_user = userns.metadata()?.ino();
+            let names = ["mnt", "net", "ipc", "uts", "pid", "pid_for_children"];
+            let before =
+                names.map(|name| fs::metadata(format!("/proc/self/ns/{name}")).unwrap().ino());
+            let scope = CommandNamespaces::enter(userns)?;
+            for (name, old) in names.into_iter().zip(before) {
+                let new = fs::metadata(format!("/proc/self/ns/{name}"))?.ino();
+                if name == "pid" {
+                    assert_eq!(new, old);
+                } else {
+                    assert_ne!(new, old);
+                }
+            }
+            assert_eq!(fs::metadata("/proc/self/ns/user")?.ino(), expected_user);
+            let status = fs::read_to_string("/proc/self/status")?;
+            for line in status.lines() {
+                let mut values = line.split_whitespace();
+                match values.next() {
+                    Some("Uid:" | "Gid:") => assert_eq!(values.collect::<Vec<_>>(), ["0"; 4]),
+                    Some("Groups:") => assert_eq!(values.count(), 0),
+                    _ => {}
+                }
+            }
+            for line in fs::read_to_string("/proc/self/mountinfo")?.lines() {
+                let optional = line
+                    .split_whitespace()
+                    .skip(6)
+                    .take_while(|field| *field != "-");
+                assert!(
+                    !optional
+                        .into_iter()
+                        .any(|field| field.starts_with("shared:") || field.starts_with("master:"))
+                );
+            }
+            println!("NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS");
+            let mut setup = Command::new(std::env::current_exe()?);
+            setup.args(["native-root", root, script]).env_clear();
+            // Keep the private device-transfer socket on stdin for root entry.
+            let child = scope.spawn(setup)?;
+            let status = child
+                .wait_until(Instant::now() + Duration::from_secs(30))?
+                .status();
+            use std::os::unix::process::ExitStatusExt;
+            std::process::exit(status.code().unwrap_or(128 + status.signal().unwrap_or(1)));
+        }
         if args.get(1).is_some_and(|a| a == "native-root") {
             let root = Path::new(args.get(2).ok_or("root required")?);
             let script = args.get(3).ok_or("script required")?;
@@ -347,19 +417,9 @@ impl Integration {
                 "#
             }
         );
-        let status = Command::new("/usr/bin/nsenter")
-            .arg(format!("--user={userns}"))
-            .args([
-                "/usr/bin/unshare",
-                "--mount",
-                "--pid",
-                "--fork",
-                "--net",
-                "--ipc",
-                "--uts",
-                "/idmap-probe",
-                "native-root",
-            ])
+        let status = Command::new(std::env::current_exe()?)
+            .arg("native-namespaces")
+            .arg(&userns)
             .arg(root)
             .arg(&script)
             .stdin(CommandDevices::create(100000, 100000)?.into_input()?)

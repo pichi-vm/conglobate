@@ -383,3 +383,35 @@ construct them), production policy admission/ownership and complete failure
 cleanup, runtime scaffolding, further proc masking, PTY compatibility, explicit
 diagnostic plumbing, distro and architecture coverage. These fixtures do not
 claim to qualify the complete sandbox or all signal/clone combinations.
+
+
+## Native command namespace construction
+
+v40 replaces command-path nsenter/unshare with production CommandNamespaces in
+an isolated trusted setup process. Safe crate APIs clear supplementary groups,
+join the selected user namespace, set UID/GID 0, unshare mount/PID/network/IPC/UTS,
+and make mount propagation recursively private. The thread-affine owner consumes
+itself when spawning the trusted root-entry child (PID 1). The helper retains no
+namespace FD and cannot restore supervisor authority. Returned process ownership
+uses the existing termination/reaping type. Errors require the helper to exit.
+
+v41 verifies changed mount/net/IPC/UTS and pid-for-children namespace identities,
+unchanged current PID namespace in the intermediate helper, the exact selected
+user namespace, all four UID/GID fields equal zero, no supplementary groups, and
+no shared/slave mount propagation. A separate fixture process rejects a regular
+file and a synchronized multithreaded setup attempt before transitions. No delay
+is used to establish the extra thread's existence. Existing image commands still
+prove PID 1 init behavior, restricted capabilities, labels and cleanup.
+
+v42 removes nsenter/bwrap from the guest and deletes unshare after the initial
+user-namespace holder and preflight probes are established. Every command then
+passes using native construction, including shell failure and timeout. v43 checks
+supervisor death and actual VM poweroff through that same path, with live positive
+and negative label checks after supervisor loss. Both pass. The fixture's 30-second
+intermediate wait is a test bound, not a recipe timeout default.
+
+The initial mapped user namespace is still created by an external fixture holder;
+production allocation/mapping/pinning must replace it. Scoped root transfer,
+full step admission and policy ownership, network provisioning, failure cleanup
+and broader distro/architecture qualification remain unfinished. This change
+removes command-path runtime-tool dependence; it does not complete M4.

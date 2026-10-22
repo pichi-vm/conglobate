@@ -1,0 +1,20 @@
+{
+  "base_commit": "568059b9224e4671bc2ac2ee3b3a846dca4e1a6c",
+  "full_artifacts": "/var/tmp/conglobate-command-integration-v41",
+  "sha256": {
+    "validation/rewrite-command-integration/evidence/v41/serial.txt": "d197cd66f6c6964bd80267f669a7fbb0671aafc989c29cc86a05bfb223cd1fe7",
+    "validation/rewrite-command-integration/evidence/v41/verdict.json": "a6cfb41c262350f51f936e7750b36f1824c3334d22664d5b9c9af4bfdf9a5528",
+    "validation/rewrite-command-integration/evidence/v41/command.json": "9832c3a2608b8aebb4a0842716ac26b24b692b61f0ec35684116a330bdd271be",
+    "validation/rewrite-command-integration/evidence/v41/inputs.json": "3818e6a6517e223b4f6b8ccdeab476c6c9f95ca403062a06ed96eef9aae411d4",
+    "validation/rewrite-command-integration/evidence/v41/probe.rs": "859ff379ea382bdb34cfda441b41c8e0c1b915cda0ee7ef5da40abd74782f4b3",
+    "validation/rewrite-command-integration/evidence/v41/run.py": "096c32bcb99b3fd3934fb1fc9d7ea6663e77a81a120b725c961cebe00ba2caa8",
+    "validation/rewrite-command-integration/evidence/v41/Cargo.lock": "a8fde0e13198d43013b0d9d8f20503b08c31fc8ab1eae696c0884d97ce38bb18",
+    "validation/rewrite-command-integration/evidence/v41/namespaces.rs": "849ae9d485ba7178eb7cea56f41a8cf9a2f35f8b3f744ed37922694f2d15c8ec",
+    "validation/rewrite-command-integration/evidence/v41/fixture.sh.txt": "9587718fddb26066d75ddf3710ead632baf29346272bd044eeac91dbf0bff684",
+    "validation/rewrite-command-integration/evidence/v41/init.txt": "8a950cc37b23130548b3e20436dd4daae35e6b10750124e3b87c85c942f20707",
+    "/var/tmp/conglobate-command-integration-v41/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-command-integration-v41/initramfs.gz": "37b63d0819c990e71ed78f44e1d7b8f279a594924bab237e8ec38bd412b94ce3",
+    "/var/tmp/conglobate-command-integration-v41/root/idmap-probe": "e16b39fe5c56eda7066c6a42c2ccdfcd9a35884b8c165ba8f8f7037bde141266"
+  },
+  "full_sandbox_qualified": false
+}
