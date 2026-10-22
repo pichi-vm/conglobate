@@ -37,17 +37,17 @@ impl Probe {
             .set_permissions(fs::Permissions::from_mode(0o600))
             .unwrap_err();
         assert_eq!(error.raw_os_error(), Some(30));
-        // An open file keeps a normal unmount busy. The error must retain cleanup
-        // authority until that file is closed, without deleting the mounted tree.
-        let failure = readonly.close().unwrap_err();
-        assert!(matches!(
-            failure,
-            conglobate::context::ContextMountFailure::Mounted { .. }
-        ));
-        assert_eq!(fs::read_dir(parent)?.count(), 1);
-        drop(file);
-        failure.cleanup()?;
+        // Detached views have no attached unmount to make busy. Open readers
+        // retain their read-only view after backing names are removed.
+        readonly.close()?;
         assert_eq!(fs::read_dir(parent)?.count(), 0);
+        assert_eq!(
+            file.set_permissions(fs::Permissions::from_mode(0o600))
+                .unwrap_err()
+                .raw_os_error(),
+            Some(30)
+        );
+        drop(file);
         let readonly = context.materialize(parent)?.read_only()?;
         drop(readonly);
         assert_eq!(fs::read_dir(parent)?.count(), 0);
@@ -56,10 +56,7 @@ impl Probe {
         let failure = staged.read_only();
         drop(limit);
         let failure = failure.unwrap_err();
-        assert!(
-            matches!(&failure, conglobate::context::ContextMountFailure::Mounted { source, .. }
-            if source.raw_os_error() == Some(24))
-        );
+        assert_eq!(failure.source_error().raw_os_error(), Some(24));
         assert_eq!(fs::read_dir(parent)?.count(), 1);
         failure.cleanup()?;
         assert_eq!(fs::read_dir(parent)?.count(), 0);

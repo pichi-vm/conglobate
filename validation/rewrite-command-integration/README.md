@@ -703,3 +703,19 @@ reference. The exact Git input is preserved as context.bundle and its commit ID.
 Root tests, Clippy and the normal VM suite pass. This is staging only: the existing
 attached-bind read-only transition has not been qualified on a detached workspace.
 It must be integrated before this becomes the production build context flow.
+
+## Detached read-only context
+
+v76 replaces the context's attached bind/remount with a cloned detached mount and
+mount_setattr read-only enforcement. The workspace probe freezes the staged
+context after the initial workspace owner has been dropped, checks EROFS for
+metadata mutation, removes backing names while retaining a reader, reads the
+committed bytes again and checks that the surviving reader still rejects mutation.
+The mount table remains unchanged. An EMFILE setup failure returns the original
+staged owner; restoring the descriptor limit permits retry and cleanup. The normal
+command suite passes. No attached mount needs busy-unmount recovery in this flow.
+
+The older context-mount harness now reflects these lifecycle semantics; its
+historical attached-mount evidence remains preserved. Its stale lockfile initially
+prevented a locked check; offline refresh and compilation succeeded. It was not
+rerun as a separate VM qualification here. Root tests, Clippy and formatting pass.

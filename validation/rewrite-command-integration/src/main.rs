@@ -63,6 +63,23 @@ impl Integration {
                 &conglobate::request::CommitIdentity::try_from(commit.trim())?,
                 &conglobate::path::ContextDirectory::try_from(Path::new("."))?,
             )?;
+            let failed_staging = workspace.materialize(&context)?;
+            let limit = rustix::process::getrlimit(rustix::process::Resource::Nofile);
+            rustix::process::setrlimit(
+                rustix::process::Resource::Nofile,
+                rustix::process::Rlimit {
+                    current: Some(0),
+                    maximum: limit.maximum,
+                },
+            )?;
+            let failed = failed_staging.read_only();
+            // Restore before checking the failure, including an unexpected success.
+            rustix::process::setrlimit(rustix::process::Resource::Nofile, limit)?;
+            let failure = failed.unwrap_err();
+            assert_eq!(failure.source_error().raw_os_error(), Some(24));
+            let (_, staged_retry) = failure.into_parts();
+            staged_retry.read_only()?.close()?;
+            println!("DETACHED_CONTEXT_FAILED_SETUP_RETRY_PASS");
             let staged = workspace.materialize(&context)?;
             let path = conglobate::path::ContextPath::try_from(Path::new("input"))?;
             let mut reader = staged.open(&path)?;
@@ -81,7 +98,26 @@ impl Integration {
             reader.read_to_string(&mut input)?;
             assert_eq!(input, "committed context\n");
             drop(reader);
-            staged.close()?;
+            let readonly = staged.read_only()?;
+            let mut file = readonly.open(&path)?;
+            assert_eq!(
+                file.set_permissions(fs::Permissions::from_mode(0o600))
+                    .unwrap_err()
+                    .raw_os_error(),
+                Some(30)
+            );
+            readonly.close()?;
+            input.clear();
+            file.read_to_string(&mut input)?;
+            assert_eq!(input, "committed context\n");
+            assert_eq!(
+                file.set_permissions(fs::Permissions::from_mode(0o600))
+                    .unwrap_err()
+                    .raw_os_error(),
+                Some(30)
+            );
+            drop(file);
+            println!("DETACHED_READONLY_CONTEXT_AND_READER_LIFETIME_PASS");
             println!("WORKSPACE_CONTEXT_PARENT_LIFETIME_PASS");
             assert_eq!(fs::read_to_string("/proc/self/mountinfo")?, before);
             println!("DETACHED_RAM_WORKSPACE_SCRATCH_PASS");

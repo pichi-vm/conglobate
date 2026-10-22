@@ -3,7 +3,7 @@
 
 //! Immutable committed objects, captured without checkout filters or hooks.
 mod readonly;
-pub use readonly::{ContextMountFailure, MountRecovery, ReadOnlyResources};
+pub use readonly::{ContextMountFailure, ReadOnlyResources};
 mod materialize;
 pub use materialize::{StagedFile, StagedResources};
 mod state;

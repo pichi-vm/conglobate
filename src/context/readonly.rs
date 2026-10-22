@@ -5,150 +5,89 @@ use super::{ContextError, ReadOnlyContext, StagedContext, StagedResources};
 use crate::path::ContextPath;
 use rustix::{
     fs::{Mode, OFlags, ResolveFlags},
-    mount::{MountFlags, UnmountFlags},
+    mount::{MountAttr, MountAttrFlags, MountPropagationFlags, MountSetAttrFlags, OpenTreeFlags},
 };
-use std::{fs::File, io};
+use std::{fs::File, io, marker::PhantomData, rc::Rc};
 
-/// Owns a mount-enforced read-only checkout. It must be created in the builder's
-/// private mount namespace, never a command namespace. No path is exposed.
+/// A detached mount-enforced read-only checkout. The original writable directory
+/// descriptor is closed before publication. Its private backing remains solely
+/// for cleanup; it is never passed to commands or exposed through this API.
 #[derive(Debug)]
 pub struct ReadOnlyResources {
+    // Field order closes the read-only mount before backing cleanup.
     root: File,
-    lease: MountLease,
+    directory: tempfile::TempDir,
+    _parent: File,
+    _thread: PhantomData<Rc<()>>,
 }
 
-/// Failed transitions retain a mounted checkout for explicit cleanup retry.
+/// Failed detached setup retains the original staged owner. No attached mount
+/// needs recovery and no read-only state is asserted. Cleanup or retry is explicit.
 #[derive(Debug, thiserror::Error)]
-pub enum ContextMountFailure {
-    #[error("context setup failed before mount: {0}")]
-    BeforeMount(ContextError),
-    #[error("context mount operation failed: {source}")]
-    Mounted {
-        source: io::Error,
-        recovery: MountRecovery,
-    },
-    #[error("context directory cleanup failed after unmount: {0}")]
-    Cleanup(ContextError),
-}
-#[derive(Debug)]
-pub struct MountRecovery {
-    lease: MountLease,
+#[error("context read-only mount setup: {source}")]
+pub struct ContextMountFailure {
+    source: io::Error,
+    staged: StagedContext,
 }
 impl ContextMountFailure {
-    pub fn cleanup(self) -> Result<(), Self> {
-        match self {
-            Self::Mounted { recovery, .. } => recovery.lease.close(),
-            error => Err(error),
-        }
+    pub fn source_error(&self) -> &io::Error {
+        &self.source
     }
-}
-
-#[derive(Debug)]
-struct BackingDirectory {
-    directory: tempfile::TempDir,
-    // The proc-fd based directory pathname requires the pinned parent to live.
-    _parent: File,
-}
-impl BackingDirectory {
-    fn close(self) -> Result<(), ContextError> {
-        let Self { directory, _parent } = self;
-        let result = directory.close();
-        drop(_parent);
-        result.map_err(ContextError::from)
+    pub fn into_parts(self) -> (io::Error, StagedContext) {
+        (self.source, self.staged)
     }
-    fn retain(self) {
-        // Never recursively remove a directory while its mount is still live.
-        let _ = self.directory.keep();
-    }
-}
-
-#[derive(Debug)]
-struct MountLease {
-    // Option is solely a Drop ownership slot: successful close takes it once.
-    backing: Option<BackingDirectory>,
-    _thread: std::marker::PhantomData<std::rc::Rc<()>>,
-}
-impl MountLease {
-    fn backing(&self) -> &BackingDirectory {
-        self.backing.as_ref().expect("live mount lease")
-    }
-    fn close(mut self) -> Result<(), ContextMountFailure> {
-        if let Err(error) =
-            rustix::mount::unmount(self.backing().directory.path(), UnmountFlags::empty())
-        {
-            return Err(ContextMountFailure::Mounted {
-                source: error.into(),
-                recovery: MountRecovery { lease: self },
-            });
-        }
-        self.backing
-            .take()
-            .expect("live mount lease")
-            .close()
-            .map_err(ContextMountFailure::Cleanup)
-    }
-}
-impl Drop for MountLease {
-    fn drop(&mut self) {
-        if let Some(backing) = self.backing.take() {
-            // Read-only fallback detaches the namespace entry; borrowed/open file
-            // descriptors may keep the mount alive until their owners drop them.
-            match rustix::mount::unmount(backing.directory.path(), UnmountFlags::DETACH) {
-                Ok(()) => {
-                    if let Err(error) = backing.close() {
-                        eprintln!("context cleanup: {error}");
-                    }
-                }
-                Err(error) => {
-                    eprintln!("context mount retained after cleanup failure: {error}");
-                    backing.retain();
-                }
-            }
-        }
+    pub fn cleanup(self) -> Result<(), ContextError> {
+        self.staged.close()
     }
 }
 impl StagedContext {
     pub fn read_only(self) -> Result<ReadOnlyContext, ContextMountFailure> {
+        let result = (|| -> io::Result<File> {
+            let tree = rustix::mount::open_tree(
+                &self.resources.root,
+                "",
+                OpenTreeFlags::AT_EMPTY_PATH
+                    | OpenTreeFlags::OPEN_TREE_CLONE
+                    | OpenTreeFlags::OPEN_TREE_CLOEXEC,
+            )?;
+            rustix::mount::mount_setattr(
+                &tree,
+                "",
+                MountSetAttrFlags::AT_EMPTY_PATH,
+                MountAttr::new(
+                    MountAttrFlags::MOUNT_ATTR_RDONLY
+                        | MountAttrFlags::MOUNT_ATTR_NOSUID
+                        | MountAttrFlags::MOUNT_ATTR_NODEV
+                        | MountAttrFlags::MOUNT_ATTR_NOEXEC,
+                    MountAttrFlags::empty(),
+                    MountPropagationFlags::PRIVATE,
+                ),
+            )?;
+            Ok(tree.into())
+        })();
+        let root = match result {
+            Ok(root) => root,
+            Err(source) => {
+                return Err(ContextMountFailure {
+                    source,
+                    staged: self,
+                });
+            }
+        };
         let StagedResources {
             directory,
-            root,
+            root: writable,
             _parent,
         } = self.resources;
-        // An old directory FD bypasses the new mount view, as the VM probe shows.
-        drop(root);
-        let backing = BackingDirectory { directory, _parent };
-        if let Err(error) =
-            rustix::mount::mount_bind(backing.directory.path(), backing.directory.path())
-        {
-            return Err(ContextMountFailure::BeforeMount(ContextError::Io(
-                error.into(),
-            )));
-        }
-        let lease = MountLease {
-            backing: Some(backing),
-            _thread: std::marker::PhantomData,
-        };
-        let result = (|| -> io::Result<File> {
-            rustix::mount::mount_remount(
-                lease.backing().directory.path(),
-                MountFlags::BIND
-                    | MountFlags::RDONLY
-                    | MountFlags::NOSUID
-                    | MountFlags::NODEV
-                    | MountFlags::NOEXEC,
-                "",
-            )?;
-            File::open(lease.backing().directory.path())
-        })();
-        match result {
-            Ok(root) => Ok(ReadOnlyContext {
-                resources: ReadOnlyResources { root, lease },
-            }),
-            Err(source) => Err(ContextMountFailure::Mounted {
-                source,
-                recovery: MountRecovery { lease },
-            }),
-        }
+        drop(writable);
+        Ok(ReadOnlyContext {
+            resources: ReadOnlyResources {
+                root,
+                directory,
+                _parent,
+                _thread: PhantomData,
+            },
+        })
     }
 }
 impl ReadOnlyContext {
@@ -170,9 +109,19 @@ impl ReadOnlyContext {
         }
         Ok(file)
     }
-    pub fn close(self) -> Result<(), ContextMountFailure> {
-        let ReadOnlyResources { root, lease } = self.resources;
+    /// Release the detached view and remove backing names. Read-only file
+    /// descriptors already returned may retain their inodes until last close;
+    /// they do not make cleanup busy or regain writable mount authority.
+    pub fn close(self) -> Result<(), ContextError> {
+        let ReadOnlyResources {
+            root,
+            directory,
+            _parent,
+            ..
+        } = self.resources;
         drop(root);
-        lease.close()
+        let result = directory.close();
+        drop(_parent);
+        result.map_err(ContextError::from)
     }
 }

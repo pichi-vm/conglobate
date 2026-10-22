@@ -1600,3 +1600,28 @@ rules rather than silently shrinking acceptance criteria.
   kernel/device lifetimes remain required. This focused ownership change is not
   a milestone adherence pass; M4 remains zero. Context integration changes must
   be included in subsequent adherence review, not inherit M3's earlier evidence.
+
+- Previous turn progressed in ac69bba. Integrated detached read-only checkout:
+  StagedContext::read_only clones only its selected tree, sets read-only/nosuid/
+  nodev/noexec/private attributes, closes the old writable root descriptor and
+  publishes the owned view. Private backing and parent remain for cleanup. Setup
+  failures drop the incomplete detached view and return the untouched staged
+  owner for retry/cleanup; no attached-mount recovery is needed. Successful close
+  releases the view and removes backing names. Existing read-only file handles
+  can retain their inodes without regaining writable authority or blocking cleanup.
+- v76 proves workspace-backed freeze, EROFS mutation rejection before and after
+  cleanup with a retained reader, exact committed bytes and unchanged mountinfo.
+  Benign descriptor exhaustion produces EMFILE, retains staged ownership, and
+  succeeds on retry after restoring the limit. The normal command suite passes.
+  Root tests (25 compile-fail), root/fixture Clippy and formatting pass. Updated
+  the old context harness's API expectations; preserved stale-lock check failure,
+  refreshed its lock offline and compiled it. No separate old-harness VM rerun
+  or new supervisor-death claim. Evidence, Git bundle and exact sources retained.
+- Focused review checked nonrecursive cloning, attribute success before publication,
+  old writable descriptor closure, backing cleanup order, thread-affine ownership
+  and failed-transition retry. The supervisor still owns private writable backing
+  solely for cleanup, never supplied to commands. Whole-build assembly and further
+  cleanup fault coverage remain outstanding. This changes M3 context lifecycle:
+  its prior clean passes are historical, not qualification of this implementation;
+  the changed scope needs three new clean adherence passes before advancement.
+  M4 remains zero and the overall goal remains active.
