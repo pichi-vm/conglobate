@@ -1,0 +1,13 @@
+{
+  "base_commit": "7e2d68957d2798890b32fe46fad255a4922fd24c",
+  "full_artifacts": "/var/tmp/conglobate-command-integration-v1",
+  "sha256": {
+    "/var/tmp/conglobate-command-integration-v1/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-command-integration-v1/initramfs.gz": "7c3c283217d3f483bde65145f00743d3965c1e5aa203da34fce09b56716d36ba",
+    "/var/tmp/conglobate-command-integration-v1/root/idmap-probe": "d0506b5dfba009119f1bbc669430c72df422dfc507b62ca5333c52ec7a6360e0",
+    "validation/rewrite-command-integration/evidence/v1/probe.rs": "a893253afe3c1c2b50e064594f49875d712f5ee5f726fd0d2738b5ce095d1243",
+    "validation/rewrite-command-integration/evidence/v1/run.py": "5852fda9e96df81c81927235caa3a15476561094aaae7657fa0a8afe47618e47",
+    "validation/rewrite-command-integration/Cargo.lock": "4869c16f451d0bb8a1835f8349dabb734817d35513dc6900ec90e23108d41fd4"
+  },
+  "full_sandbox_qualified": false
+}

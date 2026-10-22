@@ -1,0 +1,39 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ mkdir -p /work/origin /work/mapped
++ modprobe loop
++ modprobe ext4
++ truncate -s 64M /work/volume.ext4
++ mke2fs -q -t ext4 -F /work/volume.ext4
++ mount -o loop /work/volume.ext4 /work/origin
++ cp -a /image-root/. /work/origin/
++ holder=163
++ unshare --user --map-users=0:100000:65536 --map-groups=0:100000:65536 sleep 60
++ echo 163
++ for attempt in {1..50}
++ grep -q 100000 /proc/163/uid_map
++ break
++ cat /proc/163/uid_map
+         0     100000      65536
++ cat /proc/163/gid_map
+         0     100000      65536
++ mkdir /work/pins
++ mount -t bpf bpf /work/pins
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ /idmap-probe supervisor success
+INTEGRATED_COMMAND_SUCCESS_PASS
++ rm /work/origin/command-started
++ /idmap-probe supervisor timeout
+INTEGRATED_COMMAND_TIMEOUT_PASS
++ umount /work/cgroups
++ umount /work/pins
++ kill -0 163
++ kill 163
++ wait 163
++ true
++ umount /work/origin
++ echo POLICY_FIXTURE_CLEANUP_PASS
+POLICY_FIXTURE_CLEANUP_PASS
+IDMAP_PROBE_EXIT 0
+[    3.447899] sysrq: Resetting

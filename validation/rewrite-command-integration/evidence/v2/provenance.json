@@ -1,0 +1,12 @@
+{
+  "full_artifacts": "/var/tmp/conglobate-command-integration-v2",
+  "passed": false,
+  "sha256": {
+    "/var/tmp/conglobate-command-integration-v2/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-command-integration-v2/initramfs.gz": "a09d2122a5de753ca9390e8b90b53c2f50eb6adba568a88bc84421a4ff5335e4",
+    "/var/tmp/conglobate-command-integration-v2/root/idmap-probe": "87ae268bf3ab006d1f4e833646ce40da7fa7bf227b7ff668261a8229e38920f2",
+    "validation/rewrite-command-integration/evidence/v2/probe.rs": "09d5037be3e12c9ae5e263ce9de32cd8043f7ad3a959e8ac4a24ba9313148096",
+    "validation/rewrite-command-integration/evidence/v2/run.py": "f991d16afe1836f11d6d0a92c7df1fb20d4b6038e4c840b38dce29d305f9aea5"
+  },
+  "full_sandbox_qualified": false
+}

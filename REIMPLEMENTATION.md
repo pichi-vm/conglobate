@@ -890,3 +890,23 @@ rules rather than silently shrinking acceptance criteria.
   preservation/MILESTONE-2-VM-REVISION-ADHERENCE.md. M4 resumes at zero passes.
   No production qualification is implied. Prior explanation-only turn was no
   progress; this turn verified preservation and completed the architecture gate.
+
+
+## Integrated command fixture
+
+- Combined existing mount, idmap, domain, helper and reaping owners with a shell
+  in an ext4 root inside disposable QEMU. Sources and v1-v5 evidence are preserved
+  in validation/rewrite-command-integration; no production source changed.
+- v3 diagnosed the prior startup failure: Bubblewrap left a nonzero capability
+  bounding set. A trusted fixture setpriv finalizer removes it before shell exec.
+  v4 passed command/timeout/remount checks but failed due to missing fixture rmdir;
+  v5 includes it and passes. Failed runs remain preserved. Clippy and fmt pass.
+- This evidence covers actual image writes, all five empty capability sets,
+  no_new_privs, UID mapping, timeout cancellation, descendant reaping, clean
+  unmount/e2fsck/remount. It does not qualify the final sandbox. No active labeling
+  policy or seccomp, final build capability profile, trusted launch root handling,
+  bootstrap, or supervisor-death VM disposal is covered. Empty timeout mount-point
+  cleanup is still fixture-owned. M4 remains in progress, zero adherence passes.
+- Next integration work must replace fixture launch/path discovery with trusted
+  executable and scoped filesystem authority, retaining normal-error ownership;
+  then integrate policy admission and actual environment shutdown qualification.
