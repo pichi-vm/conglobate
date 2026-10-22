@@ -183,7 +183,7 @@ impl IdentitySocket {
     // SCM_RIGHTS contains exactly one self-pidfd. No extensible payload yet.
     const OFFER: [u8; 3] = [0x82, 0x01, 0x00];
 
-    fn ready(&self, interest: PollFlags, deadline: Instant) -> io::Result<()> {
+    pub(super) fn ready(&self, interest: PollFlags, deadline: Instant) -> io::Result<()> {
         loop {
             let remaining = deadline.saturating_duration_since(Instant::now());
             if remaining.is_zero() {

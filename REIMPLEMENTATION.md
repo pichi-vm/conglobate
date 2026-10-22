@@ -630,3 +630,22 @@ rules rather than silently shrinking acceptance criteria.
   and formatting pass. All cgroup mutation occurred in disposable QEMU guests.
   M4 remains at zero adherence passes, with production registration, persisted
   domain recovery and complete guardian integration still pending.
+
+- Added Supervision<Registered> and explicit parent/helper registration exchange.
+  Parent passes an owned cgroup.procs descriptor; trusted single-threaded helper
+  writes its own membership, closes the descriptor, then acknowledges. Parent
+  performs no numeric-PID lookup. Failures cancel the channel and leave domain
+  and child owners with callers. Registered is an acknowledgement, not admission.
+- Canonical bounded registration packets require the exact version/opcode and
+  descriptor count. Received descriptors are CLOEXEC. Tests reject malformed
+  framing, wrong opcodes/versions, missing/extra descriptors, peer loss and timeout;
+  successful offer/ack transfers preserve ownership. An initial test compile
+  corrected fcntl_getfd/FdFlags from rustix::fs to rustix::io.
+- VM v17 passes production self-registration, descriptor closure and inherited
+  child membership followed by subtree cancellation. v18 adds missing-ACK
+  rejection with retained domain cleanup and explicit child reaping. Prior
+  namespace/policy/domain-removal checks remain. Sources and evidence preserved.
+- Full suite passes 89 tests plus seven compile-fail doctests; root/probe Clippy
+  and formatting pass. M4 remains at zero adherence passes. Persisted domain
+  records, aggregate recovery ownership, guardian orchestration and final
+  sandbox admission still need implementation and combined fault validation.

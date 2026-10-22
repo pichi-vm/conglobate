@@ -9,6 +9,9 @@ use rustix::{
 };
 use std::{io, process::Stdio, time::Instant};
 
+mod registration;
+pub use registration::Registered;
+
 mod private {
     pub trait Sealed {}
 }
@@ -95,7 +98,10 @@ impl Supervision<Unpaired> {
         })
     }
 }
-impl Supervision<Paired> {
+pub trait ObservedState: SupervisionState<Resources = ProcessObservation> {}
+impl ObservedState for Paired {}
+impl ObservedState for Registered {}
+impl<S: ObservedState> Supervision<S> {
     pub(super) fn duplicate_observation(&self) -> io::Result<ProcessObservation> {
         Ok(ProcessObservation {
             identity: self.peer.identity.try_clone()?,
@@ -136,7 +142,7 @@ impl Supervision<Paired> {
 
     /// Nonblocking observation. True means cancel and begin ordered teardown,
     /// never that descendants are quiescent. Errors must also fail the build.
-    /// This initial protocol admits no messages after identity exchange. Invalid
+    /// Outside an explicit registration exchange, no messages are accepted. Invalid
     /// traffic remains queued so subsequent observations cannot report healthy.
     pub fn peer_lost(&self) -> io::Result<bool> {
         if self.peer.has_exited()? {

@@ -17,6 +17,40 @@ impl Probe {
         let arguments = std::env::args_os().collect::<Vec<_>>();
         if arguments
             .get(1)
+            .is_some_and(|argument| argument == "--registration-close")
+        {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            let _watch =
+                conglobate::process::Supervision::from_stdin()?.exchange_until(deadline)?;
+            return Ok(());
+        }
+        if arguments
+            .get(1)
+            .is_some_and(|argument| argument == "--domain-helper")
+        {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
+            let watch = conglobate::process::Supervision::from_stdin()?
+                .exchange_until(deadline)?
+                .join_domain_until(deadline)?;
+            for entry in fs::read_dir("/proc/self/fd")? {
+                if let Ok(path) = fs::read_link(entry?.path()) {
+                    assert!(path.file_name().is_none_or(|name| name != "cgroup.procs"));
+                }
+            }
+            let child: conglobate::process::Process<conglobate::process::Running> =
+                std::process::Command::new("/usr/bin/sleep")
+                    .arg("30")
+                    .env_clear()
+                    .stdin(std::process::Stdio::null())
+                    .spawn()?
+                    .into();
+            watch.wait_for_loss_until(deadline)?;
+            child.terminate_until(deadline)?;
+            return Ok(());
+        }
+
+        if arguments
+            .get(1)
             .is_some_and(|argument| argument == "--check-lease")
         {
             let path = arguments.get(2).ok_or("missing lease path")?;
@@ -292,7 +326,6 @@ impl Probe {
     }
     fn command_domain() -> Result<(), Box<dyn std::error::Error>> {
         use std::{
-            io::Write,
             process::{Command, Stdio},
             time::{Duration, Instant},
         };
@@ -317,22 +350,15 @@ impl Probe {
         let (_, domain) = failure.into_parts();
         assert!(path.exists());
         fs::remove_dir(path.join("retained-child"))?;
-        let mut command = Command::new("/bin/bash");
+        let mut command = Command::new(std::env::current_exe()?);
         command
-            .args(["-c", "read -r token; sleep 30 & wait"])
+            .arg("--domain-helper")
             .env_clear()
-            .env("PATH", "/usr/bin:/usr/sbin")
-            .stdin(Stdio::piped())
             .stdout(Stdio::null());
-        let mut child = command.spawn()?;
-        drop(command);
-        let mut gate = child.stdin.take().ok_or("missing fixture gate")?;
-        let pid = child.id();
-        let child: conglobate::process::Process<conglobate::process::Running> = child.into();
-        fs::write(path.join("cgroup.procs"), pid.to_string())?;
-        gate.write_all(b"go\n")?;
-        drop(gate);
         let deadline = Instant::now() + Duration::from_secs(5);
+        let (child, watch) = conglobate::process::Process::launch_supervised(command, deadline)?;
+        let watch = watch.register_helper_until(&domain, deadline)?;
+        assert!(!watch.peer_lost()?);
         while fs::read_to_string(path.join("cgroup.procs"))?
             .lines()
             .count()
@@ -346,6 +372,20 @@ impl Probe {
         domain.cancel_until(deadline)?;
         assert!(!child.wait_until(deadline)?.status().success());
         assert!(!path.exists());
+        assert!(watch.peer_lost()?);
+        let abandoned = conglobate::domain::CommandDomain::create(parent)?;
+        let mut command = Command::new(std::env::current_exe()?);
+        command
+            .arg("--registration-close")
+            .env_clear()
+            .stdout(Stdio::null());
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let (child, watch) = conglobate::process::Process::launch_supervised(command, deadline)?;
+        assert!(watch.register_helper_until(&abandoned, deadline).is_err());
+        assert!(child.wait_until(deadline)?.status().success());
+        abandoned.cancel_until(deadline)?;
+        println!("PRODUCTION_COMMAND_DOMAIN_MISSING_ACK_PASS");
+        println!("PRODUCTION_COMMAND_DOMAIN_REGISTER_PASS");
         println!("PRODUCTION_COMMAND_DOMAIN_CANCEL_PASS");
         Ok(())
     }

@@ -1,0 +1,279 @@
+// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+use super::{Paired, ProcessObservation, Supervision, SupervisionState, private};
+use crate::{domain::CommandDomain, process::identity::IdentitySocket};
+use rustix::{
+    event::PollFlags,
+    fd::{AsFd, OwnedFd},
+    net::{
+        RecvAncillaryBuffer, RecvAncillaryMessage, RecvFlags, ReturnFlags, SendAncillaryBuffer,
+        SendAncillaryMessage, SendFlags, recvmsg, sendmsg,
+    },
+};
+use std::{
+    fs::{self, File},
+    io::{self, IoSlice, IoSliceMut, Write},
+    mem::MaybeUninit,
+    time::Instant,
+};
+
+/// Trusted helper acknowledged self-placement in a command domain. This is not
+/// sandbox readiness, persisted recovery ownership or permission to run a recipe.
+#[derive(Debug)]
+pub struct Registered;
+impl private::Sealed for Registered {}
+impl SupervisionState for Registered {
+    type Resources = ProcessObservation;
+}
+
+impl Supervision<Paired> {
+    /// Supervisor side. Domain ownership stays with the caller on every outcome.
+    /// Persist that ownership before calling, and retain the separate child wait
+    /// owner. Errors cancel the channel; they do not remove the domain or reap.
+    pub fn register_helper_until(
+        self,
+        domain: &CommandDomain,
+        deadline: Instant,
+    ) -> io::Result<Supervision<Registered>> {
+        Packet::Offer(domain.registration_file()?.into()).send(&self.socket.0, deadline)?;
+        match Packet::receive(&self.socket.0, deadline)? {
+            Packet::Joined => Ok(Supervision {
+                socket: self.socket,
+                peer: self.peer,
+            }),
+            Packet::Offer(_) => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "expected domain registration acknowledgment",
+            )),
+        }
+    }
+    /// Helper side, before creating any threads or descendants. The helper writes
+    /// its own membership, closes the transferred control FD, then acknowledges.
+    /// The task-count check diagnoses misuse; trusted startup must prevent races.
+    pub fn join_domain_until(self, deadline: Instant) -> io::Result<Supervision<Registered>> {
+        if fs::read_dir("/proc/self/task")?
+            .collect::<Result<Vec<_>, _>>()?
+            .len()
+            != 1
+            || rustix::process::getpid() == rustix::process::Pid::INIT
+        {
+            return Err(io::Error::other(
+                "domain registration requires a dedicated single-threaded helper",
+            ));
+        }
+        let Packet::Offer(descriptor) = Packet::receive(&self.socket.0, deadline)? else {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "expected domain registration descriptor",
+            ));
+        };
+        if rustix::fs::fstatfs(&descriptor)?.f_type as u64 != 0x6367_7270 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "registration descriptor is not cgroup2",
+            ));
+        }
+        let mut file = File::from(descriptor);
+        file.write_all(b"0")?;
+        drop(file);
+        Packet::Joined.send(&self.socket.0, deadline)?;
+        Ok(Supervision {
+            socket: self.socket,
+            peer: self.peer,
+        })
+    }
+}
+
+#[derive(Debug)]
+enum Packet {
+    Offer(OwnedFd),
+    Joined,
+}
+impl Packet {
+    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2.
+    fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
+        let (opcode, descriptor) = match &self {
+            Self::Offer(fd) => (1, Some(fd.as_fd())),
+            Self::Joined => (2, None),
+        };
+        let descriptors: Vec<_> = descriptor.into_iter().collect();
+        loop {
+            socket.ready(PollFlags::OUT, deadline)?;
+            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
+            let mut ancillary = SendAncillaryBuffer::new(&mut space);
+            if !descriptors.is_empty()
+                && !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors))
+            {
+                return Err(io::Error::other("registration ancillary buffer too small"));
+            }
+            match sendmsg(
+                &socket.0,
+                &[IoSlice::new(&[0x82, 1, opcode])],
+                &mut ancillary,
+                SendFlags::DONTWAIT | SendFlags::NOSIGNAL,
+            ) {
+                Ok(3) => return Ok(()),
+                Ok(_) => return Err(io::Error::other("incomplete registration packet")),
+                Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
+                Err(error) => return Err(error.into()),
+            }
+        }
+    }
+    fn receive(socket: &IdentitySocket, deadline: Instant) -> io::Result<Self> {
+        loop {
+            socket.ready(PollFlags::IN, deadline)?;
+            let mut bytes = [0; 3];
+            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
+            let mut ancillary = RecvAncillaryBuffer::new(&mut space);
+            let result = match recvmsg(
+                &socket.0,
+                &mut [IoSliceMut::new(&mut bytes)],
+                &mut ancillary,
+                RecvFlags::DONTWAIT | RecvFlags::CMSG_CLOEXEC,
+            ) {
+                Ok(result) => result,
+                Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
+                Err(error) => return Err(error.into()),
+            };
+            if result.bytes == 0 {
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "registration peer closed",
+                ));
+            }
+            if result.bytes != 3
+                || result
+                    .flags
+                    .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
+                || bytes[..2] != [0x82, 1]
+            {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "invalid registration packet",
+                ));
+            }
+            let mut fd = None;
+            for message in ancillary.drain() {
+                let RecvAncillaryMessage::ScmRights(descriptors) = message else {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "unexpected registration control",
+                    ));
+                };
+                for descriptor in descriptors {
+                    if fd.replace(descriptor).is_some() {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "extra registration descriptor",
+                        ));
+                    }
+                }
+            }
+            return match (bytes[2], fd) {
+                (1, Some(fd)) => Ok(Self::Offer(fd)),
+                (2, None) => Ok(Self::Joined),
+                _ => Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "registration opcode/descriptor mismatch",
+                )),
+            };
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rustix::{
+        fd::BorrowedFd,
+        net::{AddressFamily, SocketFlags, SocketType, socketpair},
+    };
+    use std::time::Duration;
+    #[derive(Debug)]
+    struct Fixture;
+    impl Fixture {
+        fn pair() -> (IdentitySocket, IdentitySocket) {
+            let (a, b) = socketpair(
+                AddressFamily::UNIX,
+                SocketType::SEQPACKET,
+                SocketFlags::CLOEXEC | SocketFlags::NONBLOCK,
+                None,
+            )
+            .unwrap();
+            (IdentitySocket(a), IdentitySocket(b))
+        }
+        fn deadline() -> Instant {
+            Instant::now() + Duration::from_secs(2)
+        }
+        fn raw(socket: &IdentitySocket, bytes: &[u8], fds: &[BorrowedFd<'_>]) {
+            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(2))];
+            let mut ancillary = SendAncillaryBuffer::new(&mut space);
+            if !fds.is_empty() {
+                assert!(ancillary.push(SendAncillaryMessage::ScmRights(fds)));
+            }
+            sendmsg(
+                &socket.0,
+                &[IoSlice::new(bytes)],
+                &mut ancillary,
+                SendFlags::NOSIGNAL,
+            )
+            .unwrap();
+        }
+    }
+    #[test]
+    fn registration_packets_require_exact_opcode_descriptor_pairs() {
+        let file = File::open("/dev/null").unwrap();
+        for (bytes, count) in [
+            (&[0x82, 1, 1][..], 0),
+            (&[0x82, 1, 2][..], 1),
+            (&[0x82, 1, 1][..], 2),
+            (&[0x82, 2, 2][..], 0),
+            (&[0x82, 1, 3][..], 0),
+            (&[0x82, 1, 2, 0][..], 0),
+        ] {
+            let (a, b) = Fixture::pair();
+            let fds = [file.as_fd(), file.as_fd()];
+            Fixture::raw(&a, bytes, &fds[..count]);
+            assert_eq!(
+                Packet::receive(&b, Fixture::deadline()).unwrap_err().kind(),
+                io::ErrorKind::InvalidData
+            );
+        }
+    }
+    #[test]
+    fn registration_packets_transfer_cloexec_ownership_and_acknowledge() {
+        let (a, b) = Fixture::pair();
+        Packet::Offer(File::open("/dev/null").unwrap().into())
+            .send(&a, Fixture::deadline())
+            .unwrap();
+        let Packet::Offer(fd) = Packet::receive(&b, Fixture::deadline()).unwrap() else {
+            panic!("expected offer");
+        };
+        assert!(
+            rustix::io::fcntl_getfd(&fd)
+                .unwrap()
+                .contains(rustix::io::FdFlags::CLOEXEC)
+        );
+        Packet::Joined.send(&b, Fixture::deadline()).unwrap();
+        assert!(matches!(
+            Packet::receive(&a, Fixture::deadline()).unwrap(),
+            Packet::Joined
+        ));
+    }
+    #[test]
+    fn registration_receive_is_bounded_and_rejects_peer_loss() {
+        let (a, b) = Fixture::pair();
+        assert_eq!(
+            Packet::receive(&b, Instant::now() + Duration::from_millis(10))
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::TimedOut
+        );
+        drop(a);
+        assert_eq!(
+            Packet::receive(&b, Fixture::deadline()).unwrap_err().kind(),
+            io::ErrorKind::UnexpectedEof
+        );
+    }
+}

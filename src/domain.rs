@@ -62,6 +62,15 @@ impl DomainTarget {
     }
 }
 impl CommandDomain {
+    pub(crate) fn registration_file(&self) -> io::Result<File> {
+        Ok(File::from(rustix::fs::openat(
+            &self.root,
+            "cgroup.procs",
+            rustix::fs::OFlags::WRONLY | rustix::fs::OFlags::CLOEXEC | rustix::fs::OFlags::NOFOLLOW,
+            rustix::fs::Mode::empty(),
+        )?))
+    }
+
     /// Create only; no API accepts an arbitrary existing cgroup to kill.
     /// Caller must serialize this protected parent and persist ownership before
     /// registration. This primitive neither mounts cgroupfs nor sets limits.

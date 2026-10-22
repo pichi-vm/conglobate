@@ -109,3 +109,14 @@ returns its domain owner, removal of the fixture child permits subsequent reuse
 and successful cancellation. Both runs retain the namespace/policy checks.
 This uses fixture registration, not a production registration/admission protocol.
 No controller/resource limits or host cgroup operations are performed.
+
+
+v17 replaces fixture numeric-PID placement with production mutual supervision
+and registration. A dedicated helper receives cgroup.procs over the private
+channel, writes its own membership, closes the control FD and acknowledges before
+creating its sleep child. The probe checks the descriptor is gone, observes two
+domain members and cancels/reaps as before. v18 adds a helper that exits after
+identity exchange without registration acknowledgement: no Registered state is
+returned, the child is reaped and the still-owned empty domain is cancelled.
+These validate registration mechanics; persisted domain ownership, final sandbox
+admission, guardian failover and concurrent-death recovery remain unimplemented.

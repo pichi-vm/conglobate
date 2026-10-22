@@ -110,9 +110,17 @@ and removes only that directory. Failed cancellation/removal retains the domain;
 failed construction after creation retains a removable target. No recursive
 cleanup or arbitrary-existing-cgroup kill API is exposed.
 
-This primitive is not yet connected to registration: the trusted launcher must
-hold execution before first fork, persist domain identity and register the helper
-before release. The supervisor/guardian must remain outside the domain, commands
+The registration exchange now places a trusted helper in this domain before its
+first fork: the parent transfers a freshly opened cgroup.procs descriptor, the
+helper writes its own membership (0), closes the descriptor and acknowledges.
+Only the explicit exchange consumes these control messages. Sealed Registered
+state records that acknowledgement; it is not sandbox readiness or admission.
+The helper must execute this at dedicated single-threaded startup, with no prior
+descendants; a task-count check diagnoses misuse but cannot prevent trusted-code
+races. The parent never reopens or writes a numeric child PID. Domain and child
+ownership remain with their respective callers on exchange failure.
+The aggregate must still persist domain identity before registration and hold
+recipe execution until all isolation and supervision gates are complete. The supervisor/guardian must remain outside the domain, commands
 must have no cgroup control access, and admission must be stopped before teardown.
 Empty membership is not a reaping, policy-removal or successful-step receipt.
 Existing preserved guardian experiments and the new disposable-VM primitive test
@@ -305,8 +313,8 @@ receiving the peer's identity under a single deadline. Paired state owns the pee
 observation and the retained CLOEXEC control socket. Normal Drop shuts down the
 endpoint even if a transient inherited descriptor remains; pidfd observation
 independently detects process exit without destructors. A bounded poll observes
-both mechanisms. Unexpected post-exchange payloads are errors, not accepted
-control commands. Observation peeks rather than consumes those payloads, so a
+both mechanisms. Unexpected payloads outside the explicit registration exchange are errors, not
+accepted control commands. Observation peeks rather than consumes those payloads, so a
 second check cannot turn a protocol violation into a healthy observation. This initial protocol has no readiness or admission message.
 
 Process<Identified>::launch_supervised returns both the identified child owner
