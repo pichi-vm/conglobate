@@ -60,6 +60,25 @@ The timeout kills the helper and leaves an empty mount-point directory, which
 fixture cleanup removes only after unmount. Production ordinary-error ownership
 must handle this without a serialized next-invocation recovery requirement.
 RecordedDomain is reused as an existing containment adapter, not an endorsement
-of the superseded guardian architecture. No supervisor-death/environment-driven
-VM disposal case has been demonstrated by this fixture yet. Failed startup aborts
+of the superseded guardian architecture. The v6 supervisor-death case below demonstrates VM disposal with live commands.
+Failed startup aborts
 the guest fixture, so partial-startup cleanup still needs integrated coverage.
+
+
+## Dedicated-VM supervisor death
+
+Run with a new output directory and `--supervisor-death` as the final argument.
+v6 starts a continuously running contained command, then its independent guest
+controller terminates the supervisor with SIGKILL. It verifies wait status 137
+and a still-populated command cgroup, then returns to guest PID 1, which powers
+off the VM through sysrq. QEMU exits; the serial log includes kernel Power down.
+There is no guardian or next invocation, and no command-success marker appears.
+The controller and PID 1 are outside the supervisor's process/cgroup lifetime.
+
+This demonstrates the fixture environment contract, not the eventual appliance's
+integration. No inventory/publication implementation is exercised; absence of a
+success marker is not artifact rejection coverage. Active-policy lifetime during
+the shutdown interval remains outstanding. The helper may survive until VM
+shutdown by design. v7 reruns normal completion, timeout and filesystem checks
+with the same updated sources and passes. Both runs and their init scripts are
+preserved; Clippy and formatting pass.

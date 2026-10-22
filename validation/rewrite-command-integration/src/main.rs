@@ -52,6 +52,15 @@ impl Integration {
             }
             std::thread::sleep(Duration::from_millis(5));
         }
+        if mode == "vm-death" {
+            fs::write("/work/supervisor-ready", "running\n")?;
+            // The independent guest controller terminates this process. There
+            // must be no successful step receipt or in-process cleanup path.
+            helper
+                .supervision()
+                .wait_for_loss_until(Instant::now() + Duration::from_secs(30))?;
+            return Err("command ended before supervisor-death exercise".into());
+        }
         let execution =
             Instant::now() + Duration::from_millis(if mode == "timeout" { 200 } else { 5000 });
         let observation = helper.supervision().wait_for_loss_until(execution);
@@ -140,7 +149,7 @@ impl Integration {
         "#;
         let script = format!(
             "{checks}\n{}",
-            if mode == "timeout" {
+            if mode == "timeout" || mode == "vm-death" {
                 "while :; do :; done"
             } else {
                 "printf 'completed\\n' > /command-completed"

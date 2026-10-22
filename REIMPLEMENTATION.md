@@ -910,3 +910,21 @@ rules rather than silently shrinking acceptance criteria.
 - Next integration work must replace fixture launch/path discovery with trusted
   executable and scoped filesystem authority, retaining normal-error ownership;
   then integrate policy admission and actual environment shutdown qualification.
+
+
+- Previous goal turn made progress through the lifecycle design commit and
+  integrated command evidence. This turn reviewed trusted launch authority:
+  fixture setpriv is image-resident and must not become the production trusted
+  finalizer. Production must retain trusted code/dependency authority until
+  privileges are finalized, then execute the image command. No public raw-root
+  descriptor escape or generated-path discovery API was added to bypass this.
+- Command fixture v6 proves its independent controller can observe supervisor
+  SIGKILL while the command cgroup is still populated, then power off QEMU with
+  no command-success marker. No guardian or resumed build participates. v7 passes
+  normal completion/timeout/remount regressions with the updated source. Both
+  runs, init scripts, logs and hashes are preserved; Clippy and formatting pass.
+- This is evidence for the dedicated-VM lifetime arrangement, not production
+  appliance qualification or publication rejection. Active-policy lifetime
+  across the shutdown interval remains untested. M4 remains at zero passes;
+  production trusted launch and policy admission are still the next integration
+  work, rather than further guardian/recovery protocol development.

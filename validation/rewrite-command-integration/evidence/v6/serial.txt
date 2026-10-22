@@ -1,0 +1,50 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ mkdir -p /work/origin /work/mapped
++ modprobe loop
++ modprobe ext4
++ truncate -s 64M /work/volume.ext4
++ mke2fs -q -t ext4 -F /work/volume.ext4
++ mount -o loop /work/volume.ext4 /work/origin
++ cp -a /image-root/. /work/origin/
++ holder=162
++ unshare --user --map-users=0:100000:65536 --map-groups=0:100000:65536 sleep 60
++ echo 162
++ for attempt in {1..50}
++ grep -q 100000 /proc/162/uid_map
++ break
++ cat /proc/162/uid_map
+         0     100000      65536
++ cat /proc/162/gid_map
+         0     100000      65536
++ mkdir /work/pins
++ mount -t bpf bpf /work/pins
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ supervisor=172
++ /idmap-probe supervisor vm-death
++ for attempt in {1..100}
++ test '!' -e /work/supervisor-ready
++ sleep 0.05
++ for attempt in {1..100}
++ test '!' -e /work/supervisor-ready
++ break
++ test -e /work/supervisor-ready
++ kill -KILL 172
+/fixture.sh: line 33:   172 Killed                     /idmap-probe supervisor vm-death
++ set +e
++ wait 172
++ status=137
++ set -e
++ test 137 = 137
++ populated=0
++ for domain in /work/cgroups/conglobate-*
++ grep -q 'populated 1' /work/cgroups/conglobate-command-DFyRM4/cgroup.events
++ populated=1
++ test 1 = 1
++ echo SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN
+SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN
+IDMAP_PROBE_EXIT 0
+VM_CONTROLLER_POWER_OFF
+[    2.685561] sysrq: Power Off
+[    2.688753] reboot: Power down

@@ -11,6 +11,7 @@ import sys
 
 here = pathlib.Path(__file__).resolve().parent
 seed = pathlib.Path('/var/tmp/conglobate-cap-review-fix-normal-v1')
+supervisor_death = len(sys.argv) == 3 and sys.argv[2] == '--supervisor-death'
 out = pathlib.Path(sys.argv[1]).resolve()
 out.mkdir()
 root = out / 'root'
@@ -119,6 +120,36 @@ sleep 1
 echo b > /proc/sysrq-trigger
 exec sleep infinity
 ''')
+if supervisor_death:
+    fixture = root / 'fixture.sh'
+    setup = fixture.read_text().split('/idmap-probe supervisor success')[0]
+    fixture.write_text(setup + r"""
+/idmap-probe supervisor vm-death &
+supervisor=$!
+for attempt in {1..100}; do
+    test ! -e /work/supervisor-ready || break
+    sleep 0.05
+done
+test -e /work/supervisor-ready
+kill -KILL "$supervisor"
+set +e
+wait "$supervisor"
+status=$?
+set -e
+test "$status" = 137
+# The independent controller has observed supervisor loss. Confirm there are
+# still contained processes: shutdown must not depend on supervisor cleanup.
+populated=0
+for domain in /work/cgroups/conglobate-*; do
+    if grep -q 'populated 1' "$domain/cgroup.events"; then populated=1; fi
+done
+test "$populated" = 1
+echo SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN
+# Return to PID 1, which powers off this VM. Never start another build here.
+""")
+    init = root / 'init'
+    init.write_text(init.read_text().replace('sleep 1\necho b >',
+        'echo VM_CONTROLLER_POWER_OFF\necho o >'))
 paths = sorted(root.rglob('*'))
 (out / 'inputs.json').write_text(json.dumps({str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths if p.is_file() and not p.is_symlink()}, indent=2))
 archive = subprocess.run(['cpio', '--null', '-o', '--format=newc', '--owner=0:0'], input=b'\0'.join(str(p.relative_to(root)).encode() for p in paths) + b'\0', cwd=root, capture_output=True, check=True).stdout
@@ -129,7 +160,13 @@ command = [v.replace(str(seed), str(out)) for v in json.loads((seed / 'command.j
 with (out / 'serial.txt').open('wb') as log:
     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
 serial = (out / 'serial.txt').read_text()
-passed = all(marker in serial for marker in ['INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
+if supervisor_death:
+    passed = all(marker in serial for marker in [
+        'SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN', 'IDMAP_PROBE_EXIT 0',
+        'VM_CONTROLLER_POWER_OFF', 'Power down',
+    ]) and 'INTEGRATED_COMMAND_' not in serial
+else:
+    passed = all(marker in serial for marker in ['INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
 (out / 'verdict.json').write_text(json.dumps({'passed': passed, 'full_sandbox_qualified': False}, indent=2))
 assert passed, serial[-5000:]
 print('PASS', out)
