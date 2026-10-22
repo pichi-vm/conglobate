@@ -1541,3 +1541,24 @@ rules rather than silently shrinking acceptance criteria.
   Scope-bound production construction, readiness-loop replacement, RAM/storage
   assembly and full lifecycle/fault coverage remain unfinished. M4 stays at zero
   adherence passes; subsequent milestones and the overall goal remain active.
+
+- Previous goal turn progressed in fa8ffbc. Replaced both disposable-VM Rust
+  readiness sleeps with a fixture-owned inotify watcher: register before checking
+  marker presence, then poll events under an absolute deadline and recheck state.
+  Unrelated events never imply readiness; each bounded drain returns to deadline
+  and state checks. Peer loss without filesystem events is observed by the setup
+  deadline. Added host tests for existing/queued markers, concurrent creation and
+  unrelated events. This observes marker existence only; final content/ownership
+  assertions still occur after execution cleanup.
+- v71 preserves the initial compile failure and source (a removed binding was
+  still needed for final assertions); runner aborted before boot. Corrected v72
+  normal and v73 supervisor-death suites pass. Root tests (24 compile-fail), fixture
+  tests, both Clippy checks and formatting pass. Also replaced the remaining
+  /bin/sleep unit-test hold in process supervision with a stdin-blocked child.
+  No privileged host operations; source/evidence/hashes retained. No sleeps remain
+  in active production Rust, host tests or this Rust VM fixture; historical files
+  were not rewritten. Shell coordination is not claimed migrated here.
+- Focused review checked watch-before-check ordering, deadline bounds, nonblocking
+  drainage, spurious-event handling and claims versus VM coverage. No milestone
+  adherence pass: M4 remains zero, with full scope construction, RAM/storage and
+  remaining lifecycle/fault coverage outstanding. The overall goal remains active.

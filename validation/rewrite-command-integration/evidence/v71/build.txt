@@ -1,0 +1,47 @@
+   Compiling conglobate-command-integration v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration)
+error[E0425]: cannot find value `ready` in this scope
+   --> src/main.rs:472:33
+    |
+472 |         assert_eq!(fs::metadata(ready)?.uid(), 0);
+    |                                 ^^^^^ not found in this scope
+    |
+help: consider importing this function
+    |
+  5 + use std::future::ready;
+    |
+
+error[E0425]: cannot find value `ready` in this scope
+   --> src/main.rs:473:39
+    |
+473 |         assert_eq!(fs::read_to_string(ready)?, "image-write\n");
+    |                                       ^^^^^ not found in this scope
+    |
+help: consider importing this function
+    |
+  5 + use std::future::ready;
+    |
+
+error[E0425]: cannot find value `ready` in this scope
+   --> src/main.rs:618:33
+    |
+618 |         assert_eq!(fs::metadata(ready)?.uid(), 0);
+    |                                 ^^^^^ not found in this scope
+    |
+help: consider importing this function
+    |
+  5 + use std::future::ready;
+    |
+
+error[E0425]: cannot find value `ready` in this scope
+   --> src/main.rs:619:39
+    |
+619 |         assert_eq!(fs::read_to_string(ready)?, "image-write\n");
+    |                                       ^^^^^ not found in this scope
+    |
+help: consider importing this function
+    |
+  5 + use std::future::ready;
+    |
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `conglobate-command-integration` (bin "conglobate-command-integration") due to 4 previous errors

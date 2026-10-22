@@ -662,3 +662,19 @@ namespace kind (setns NEWUSER checks that on entry), and a tmpfs directory alone
 does not establish device-tree provenance. The supervisor-to-first-helper fixture
 path remains; full scope-bound construction is still pending. Source snapshot
 notes distinguish VM production sources from subsequently added unit tests.
+
+## Event-driven fixture readiness
+
+v71 is a preserved compile failure (no guest boot): replacing the marker polling
+loop initially removed a binding still used by final content assertions. v72
+normal and v73 supervisor-death runs pass after correction. Fixture readiness now
+registers an inotify directory watch before testing marker existence and waits on
+kernel events under the setup deadline. Events only prompt another state check;
+unrelated events, queue overflow or elapsed time cannot establish success. Peer
+loss is checked on each state check; without filesystem events it can be reported
+at the bounded deadline. This fixture utility is not a production readiness API.
+Host tests cover existing/queued markers, a concurrent writer and unrelated events.
+Root tests also replace the last /bin/sleep unit-test hold with a child blocked on
+stdin until termination. No sleeps remain in production Rust, current host tests
+or this Rust fixture. Historical evidence is preserved unchanged. Shell fixture
+coordination and wider lifecycle qualification remain separate work.

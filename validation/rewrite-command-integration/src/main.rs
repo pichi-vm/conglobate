@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
+mod readiness;
 use conglobate::{
     anchor::{FilesystemPin, RecoveryDirectory},
     domain::RecordedDomain,
@@ -12,6 +13,7 @@ use conglobate::{
     policy::{BoundDisabled, FilesystemTarget, LabelPolicy, PinDirectory},
     process::{ChildReaper, CommandPrivileges, CommandSyscalls, Supervision},
 };
+use readiness::Readiness;
 use std::{
     fs,
     os::unix::{
@@ -414,16 +416,9 @@ impl Integration {
             .admit_until(Instant::now() + Duration::from_secs(5))
             .map_err(|error| error.to_string())?;
         let ready = Path::new("/work/origin/command-started");
-        let setup = Instant::now() + Duration::from_secs(5);
-        while !ready.exists() {
-            if helper.supervision().peer_lost()? {
-                return Err("helper exited before command write".into());
-            }
-            if Instant::now() >= setup {
-                return Err("command start deadline".into());
-            }
-            std::thread::sleep(Duration::from_millis(5));
-        }
+        Readiness::new(ready)?.wait_until(Instant::now() + Duration::from_secs(5), || {
+            helper.supervision().peer_lost()
+        })?;
         if mode == "vm-death" {
             fs::write("/work/supervisor-ready", "running\n")?;
             // The independent guest controller terminates this process. There
@@ -566,16 +561,9 @@ impl Integration {
             .admit_until(Instant::now() + Duration::from_secs(5))
             .map_err(|error| error.to_string())?;
         let ready = Path::new("/work/origin/command-started");
-        let setup = Instant::now() + Duration::from_secs(5);
-        while !ready.exists() {
-            if helper.supervision().peer_lost()? {
-                return Err("helper exited before command write".into());
-            }
-            if Instant::now() >= setup {
-                return Err("command start deadline".into());
-            }
-            std::thread::sleep(Duration::from_millis(5));
-        }
+        Readiness::new(ready)?.wait_until(Instant::now() + Duration::from_secs(5), || {
+            helper.supervision().peer_lost()
+        })?;
         if mode == "vm-death" {
             fs::write("/work/supervisor-ready", "running\n")?;
             // The independent guest controller terminates this process. There

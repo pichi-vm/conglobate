@@ -1,0 +1,14 @@
+{
+  "base_commit": "fa8ffbcf4c73349a30f0e173f0458231e7424992",
+  "full_artifacts": "/var/tmp/conglobate-command-integration-v71",
+  "sha256": {
+    "validation/rewrite-command-integration/evidence/v71/build.txt": "ad4968487447f61bb9016eb60750d1f82af18c80e6e6ad717238d0da24aa0a82",
+    "validation/rewrite-command-integration/evidence/v71/probe.rs": "97abeaf8170034bb1bd65d603617752d90f35c4a0b8958865e5c50d82f1ed0b9",
+    "validation/rewrite-command-integration/evidence/v71/readiness.rs": "3d9bfc4d94ff90d83492674e5495838784d468001f66e5d807869de5f483b8e3",
+    "validation/rewrite-command-integration/evidence/v71/verdict.json": "c865115b143903c2fb5e3b0f3aa88f6f02619243375a55b85bc3f0c50c4abb0b",
+    "validation/rewrite-command-integration/evidence/v71/Cargo.toml": "76b92115cab984959f4b3b4a7f3b52181f2e9e7e7e1aaa2db2b443f94edc9761",
+    "validation/rewrite-command-integration/evidence/v71/Cargo.lock": "6b3ef55ac16f3bb59de129704a3423c1a7b397b964431d460c6dbfdbd2c4e84a",
+    "validation/rewrite-command-integration/evidence/v71/run.py": "89ce3f4fd9471cf23feb8ffbff638fecb019540be9ae92da6d7b59cd3df1e3ba"
+  },
+  "full_sandbox_qualified": false
+}

@@ -337,7 +337,13 @@ mod tests {
         // Deliberately keep the peer endpoint in this process to isolate pidfd
         // observation from EOF. This is a mechanism test, not a startup receipt.
         let (socket, _peer_endpoint) = Supervision::pair().unwrap();
-        let child = Command::new("/bin/sleep").arg("30").spawn().unwrap();
+        let mut child = Command::new("/bin/cat")
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        // Hold stdin open without data until explicit process termination.
+        let _input = child.stdin.take().unwrap();
         let pid = Pid::from_raw(child.id() as i32).unwrap();
         let child: super::super::Process<super::super::Running> = child.into();
         // Exclusive wait ownership keeps this child's PID from reuse while
