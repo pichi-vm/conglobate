@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    anchor::{CreateFailure as PinFailure, NamespacePin, RecoveryDirectory},
+    anchor::{
+        CreateFailure as PinFailure, NamespacePin, NamespaceRecord, PinTarget, RecoveryDirectory,
+        ReleaseFailure,
+    },
+    policy::{FilesystemTarget, LabelScope, ScopeError},
     process::{Identified, LaunchFailure, Process, Supervision, WaitFailure},
 };
 use nix::sched::{CloneFlags, unshare};
@@ -36,9 +40,41 @@ impl IdRange {
 /// A mapped namespace retained after its short-lived creator has been reaped.
 /// No raw namespace handle escapes. Pin it before any labeling authorization
 /// needs to survive supervisor death; a descriptor alone does not provide that.
+///
+/// ```compile_fail
+/// use conglobate::isolation::{Mapped, UserNamespace};
+/// fn cannot_describe_pinned_policy(namespace: UserNamespace<Mapped>) {
+///     namespace.label_scope([]);
+/// }
+/// ```
+/// ```compile_fail
+/// use conglobate::{anchor::RecoveryDirectory, isolation::{PinnedNamespace, UserNamespace}};
+/// fn cannot_pin_twice(namespace: UserNamespace<PinnedNamespace>, directory: &RecoveryDirectory) {
+///     namespace.pin(directory);
+/// }
+/// ```
 #[derive(Debug)]
-pub struct MappedUserNamespace {
-    namespace: File,
+pub struct UserNamespace<S: UserNamespaceState> {
+    resources: S::Resources,
+    uid: IdRange,
+}
+mod private {
+    pub trait Sealed {}
+}
+pub trait UserNamespaceState: private::Sealed + std::fmt::Debug {
+    type Resources: std::fmt::Debug;
+}
+#[derive(Debug)]
+pub struct Mapped;
+#[derive(Debug)]
+pub struct PinnedNamespace;
+impl private::Sealed for Mapped {}
+impl private::Sealed for PinnedNamespace {}
+impl UserNamespaceState for Mapped {
+    type Resources = File;
+}
+impl UserNamespaceState for PinnedNamespace {
+    type Resources = NamespacePin;
 }
 #[derive(Debug, thiserror::Error)]
 pub enum UserNamespaceFailure {
@@ -54,7 +90,7 @@ pub enum UserNamespaceFailure {
     #[error("namespace creator failed: {0}")]
     Exited(ExitStatus),
 }
-impl MappedUserNamespace {
+impl UserNamespace<Mapped> {
     /// Launch only the trusted helper below, in the supervisor's matching procfs
     /// PID view with exclusive child wait ownership and normal SIGCHLD semantics.
     /// Mapping errors retain the child for cancellation/reaping. No image code
@@ -123,11 +159,21 @@ impl MappedUserNamespace {
                 return Err(io::Error::other("short namespace mapping write"));
             }
         }
-        Ok(Self { namespace })
+        Ok(Self {
+            resources: namespace,
+            uid,
+        })
     }
 
-    pub fn pin(self, directory: &RecoveryDirectory) -> Result<NamespacePin, PinFailure> {
-        NamespacePin::create(directory, self.namespace)
+    pub fn pin(
+        self,
+        directory: &RecoveryDirectory,
+    ) -> Result<UserNamespace<PinnedNamespace>, PinFailure> {
+        let pin = NamespacePin::create(directory, self.resources)?;
+        Ok(UserNamespace {
+            resources: pin,
+            uid: self.uid,
+        })
     }
 
     /// Dedicated trusted creator entrypoint, before spawning threads. It only
@@ -146,6 +192,53 @@ impl MappedUserNamespace {
         channel
             .exchange_until(deadline)?
             .wait_for_loss_until(deadline)
+    }
+}
+
+/// Cleanup-only failure. A still-mounted pin retains its mapped identity; a
+/// successfully unmounted target exposes only the remaining unlink operation.
+#[derive(Debug, thiserror::Error)]
+pub enum UserNamespaceReleaseFailure {
+    #[error("mapped namespace pin remains mounted: {source}")]
+    Mounted {
+        source: io::Error,
+        namespace: UserNamespace<PinnedNamespace>,
+    },
+    #[error("mapped namespace pin target cleanup: {source}")]
+    Target {
+        source: io::Error,
+        target: PinTarget,
+    },
+}
+impl UserNamespace<PinnedNamespace> {
+    /// Policy description derived from the owned mapping and namespace pin.
+    /// This is not activation authority: the enclosing step must retain this
+    /// owner and assigned filesystem lifetimes until policy is disabled.
+    pub fn label_scope(
+        &self,
+        filesystems: impl IntoIterator<Item = FilesystemTarget>,
+    ) -> Result<LabelScope, ScopeError> {
+        LabelScope::new(self.resources.record().inode(), self.uid.first, filesystems)
+    }
+    pub fn record(&self) -> &NamespaceRecord {
+        self.resources.record()
+    }
+    pub fn release(self) -> Result<(), UserNamespaceReleaseFailure> {
+        match self.resources.release() {
+            Ok(()) => Ok(()),
+            Err(ReleaseFailure::Mounted { source, pin }) => {
+                Err(UserNamespaceReleaseFailure::Mounted {
+                    source,
+                    namespace: Self {
+                        resources: pin,
+                        uid: self.uid,
+                    },
+                })
+            }
+            Err(ReleaseFailure::Target { source, target }) => {
+                Err(UserNamespaceReleaseFailure::Target { source, target })
+            }
+        }
     }
 }
 

@@ -1323,3 +1323,27 @@ rules rather than silently shrinking acceptance criteria.
   production admission/policy ownership, late-error cleanup and remaining runtime
   qualification are unfinished. Fixture readiness still uses bounded state
   polling; no production process/domain cleanup sleeps remain.
+
+- Previous goal turn made progress in 022f6ba (event-driven adopted-child drain).
+  Returned to production activation prerequisites: pinning previously discarded
+  the mapping description, forcing the fixture to rediscover the namespace from
+  a path and restate mapped root UID 100000 when creating policy scope.
+- Replaced MappedUserNamespace with sealed UserNamespace<Mapped> and
+  UserNamespace<PinnedNamespace>. Consuming pin preserves the immutable UID
+  mapping together with the kernel-held namespace owner. Only the pinned state
+  derives label scope from that owner and mapping. Release failures retain either
+  the typed mapped pin for retry or only the unmounted target for unlink.
+- Updated the fixture to derive policy scope from the typed namespace owner.
+  Raw LabelScope remains a description, not activation authority; this change does
+  not permit commands or claim to couple live policy to all resource lifetimes.
+  Added compile-fail checks for pre-pin policy description and repeated pinning.
+- v54 passes normal/timeout/failure execution; v55 passes supervisor death with
+  scoped labels still enforced through independent VM poweroff. Root tests (18
+  compile-fail), root/fixture Clippy and formatting pass. Preserved snapshots,
+  raw logs, hashes and full artifact locations. No privileged host operations.
+- Review checked consuming transitions, mapping provenance, descriptor exposure,
+  release-error ownership, and description-versus-authorization boundaries.
+  M4 remains zero adherence passes. Assigned filesystem lifetime ownership,
+  production policy/admission aggregation, scoped namespace handoff and full
+  late-error cleanup still need integration. Original mount lifetime and enabled
+  policy are still fixture adapters; no complete sandbox claim is made.

@@ -6,10 +6,10 @@ use conglobate::{
     domain::RecordedDomain,
     filesystem::{Detached, Mount, MountPoint},
     isolation::{
-        CommandDevices, CommandNamespaces, CommandRoot, IdRange, MappedUserNamespace,
-        PrivateMountNamespace,
+        CommandDevices, CommandNamespaces, CommandRoot, IdRange, Mapped, PinnedNamespace,
+        PrivateMountNamespace, UserNamespace,
     },
-    policy::{FilesystemTarget, LabelPolicy, LabelScope, PinDirectory, PinnedDisabled},
+    policy::{FilesystemTarget, LabelPolicy, PinDirectory, PinnedDisabled},
     process::{ChildReaper, CommandPrivileges, CommandSyscalls, Supervision},
 };
 use std::{
@@ -72,7 +72,7 @@ impl Integration {
             return Ok(());
         }
         if args.get(1).is_some_and(|a| a == "namespace-seed") {
-            MappedUserNamespace::serve(Instant::now() + Duration::from_secs(5))?;
+            UserNamespace::<Mapped>::serve(Instant::now() + Duration::from_secs(5))?;
             return Ok(());
         }
         if args.get(1).is_some_and(|a| a == "namespace-seed-unchanged") {
@@ -102,7 +102,7 @@ impl Integration {
             let mut creator = Command::new(std::env::current_exe()?);
             creator.arg("namespace-seed-unchanged").env_clear();
             let deadline = Instant::now() + Duration::from_secs(5);
-            let failure = MappedUserNamespace::create(
+            let failure = UserNamespace::<Mapped>::create(
                 creator,
                 IdRange::new(100000, 65536)?,
                 IdRange::new(100000, 65536)?,
@@ -257,7 +257,7 @@ impl Integration {
         let lease = RecoveryDirectory::open(recovery)?;
         let mut creator = Command::new(std::env::current_exe()?);
         creator.arg("namespace-seed").env_clear();
-        let namespace = MappedUserNamespace::create(
+        let namespace = UserNamespace::<Mapped>::create(
             creator,
             IdRange::new(100000, 65536)?,
             IdRange::new(100000, 65536)?,
@@ -276,7 +276,7 @@ impl Integration {
                 .as_os_str()
                 .as_encoded_bytes(),
         )?;
-        let policy = EnabledPolicy::install(mode != "policy-off")?;
+        let policy = EnabledPolicy::install(&namespace, mode != "policy-off")?;
         println!("NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS");
 
         let parent = Path::new("/work/cgroups");
@@ -611,14 +611,16 @@ struct EnabledPolicy {
     config: libbpf_rs::MapHandle,
 }
 impl EnabledPolicy {
-    fn install(enable: bool) -> Result<Self, Box<dyn std::error::Error>> {
+    fn install(
+        namespace: &UserNamespace<PinnedNamespace>,
+        enable: bool,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         use libbpf_rs::{MapCore, MapFlags, MapHandle};
-        let namespace = fs::metadata(fs::read_to_string("/work/userns-path")?)?.ino();
         let target = FilesystemTarget::new(
             fs::metadata("/proc/self/ns/user")?.ino(),
             fs::metadata("/work/origin")?.dev(),
         )?;
-        let scope = LabelScope::new(namespace, 100000, [target])?;
+        let scope = namespace.label_scope([target])?;
         let subject = scope.subject_value();
         let pinned = LabelPolicy::new(scope)?
             .load()?

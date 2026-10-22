@@ -1,0 +1,60 @@
+#!/bin/bash
+set -eux
+export PATH=/usr/bin:/usr/sbin
+mkdir -p /work/origin /work/mapped /work/conglobate-mount-decoy
+unshare --user --map-root-user /idmap-probe privileges
+unshare --user --map-root-user /idmap-probe syscalls
+if unshare --user --map-root-user setpriv --bounding-set=-chown /idmap-probe privileges > /work/privileges-negative 2>&1; then
+    echo UNEXPECTED_PRIVILEGE_FINALIZATION_SUCCESS
+    exit 1
+fi
+grep -q 'required capability is not available' /work/privileges-negative
+if grep -q NATIVE_PRIVILEGES_EXEC_PASS /work/privileges-negative; then exit 1; fi
+echo NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
+modprobe loop
+modprobe ext4
+truncate -s 64M /work/volume.ext4
+mke2fs -q -t ext4 -F /work/volume.ext4
+mount -o loop /work/volume.ext4 /work/origin
+cp -a /image-root/. /work/origin/
+/idmap-probe namespace-rejections
+/idmap-probe reaper-probe
+# Preflight probes are ready. User namespace and command setup must be native.
+rm /usr/bin/unshare
+test ! -e /usr/bin/nsenter
+test ! -e /usr/bin/bwrap
+mkdir /work/pins
+mount -t bpf bpf /work/pins
+chmod 700 /work/pins
+mkdir /work/cgroups
+mount -t cgroup2 cgroup2 /work/cgroups
+
+/idmap-probe supervisor vm-death &
+supervisor=$!
+for attempt in {1..100}; do
+    test ! -e /work/supervisor-ready || break
+    sleep 0.05
+done
+test -e /work/supervisor-ready
+kill -KILL "$supervisor"
+set +e
+wait "$supervisor"
+status=$?
+set -e
+test "$status" = 137
+# The independent controller has observed supervisor loss. Confirm there are
+# still contained processes: shutdown must not depend on supervisor cleanup.
+populated=0
+for domain in /work/cgroups/conglobate-*; do
+    if grep -q 'populated 1' "$domain/cgroup.events"; then populated=1; fi
+done
+test "$populated" = 1
+touch /work/origin/supervisor-gone
+for attempt in {1..100}; do
+    test ! -e /work/origin/death-policy-checked || break
+    sleep 0.05
+done
+test "$(cat /work/origin/death-policy-checked)" = checked
+echo ACTIVE_POLICY_AFTER_SUPERVISOR_DEATH_PASS
+echo SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN
+# Return to PID 1, which powers off this VM. Never start another build here.

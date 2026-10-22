@@ -7,7 +7,10 @@ mod init;
 mod namespaces;
 mod user;
 pub use namespaces::CommandNamespaces;
-pub use user::{IdRange, MappedUserNamespace, UserNamespaceFailure};
+pub use user::{
+    IdRange, Mapped, PinnedNamespace, UserNamespace, UserNamespaceFailure,
+    UserNamespaceReleaseFailure, UserNamespaceState,
+};
 mod root;
 mod runtime;
 pub use devices::CommandDevices;

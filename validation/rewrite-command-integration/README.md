@@ -521,3 +521,18 @@ retain the selected PID until collection. The procfs list is not an atomic
 snapshot or a completion receipt: inconsistencies fail, and only ECHILD ends
 drain. No process-wide signal masks change. The retained kernel excerpt includes
 the iterator's limitations. This does not complete production step ownership.
+
+## Typed pinned namespace identity
+
+v54/v55 use UserNamespace<Mapped> -> UserNamespace<PinnedNamespace>. Pinning now
+retains the mapping description along with namespace lifetime ownership. Policy
+scope is derived from that owner, replacing the fixture's pathname-based inode
+lookup and repeated hard-coded root UID. Failed release returns either the mapped
+pin owner or an unmounted target needing unlink. Compile-fail tests reject scope
+construction before pinning and pinning an already pinned owner.
+
+v54 passes normal/timeout/failure execution; v55 passes supervisor death and
+scoped labeling until VM poweroff. Root tests (18 compile-fail), root/fixture
+Clippy and formatting pass. This removes policy identity reconstruction only:
+namespace paths still adapt trusted helper startup, assigned-filesystem lifetime
+is fixture-owned, and production policy activation/admission remains unfinished.
