@@ -1375,3 +1375,34 @@ rules rather than silently shrinking acceptance criteria.
   non-recursive cleanup, success/failure ownership and descriptor boundaries.
   M4 remains zero adherence passes: production policy/admission aggregation,
   scoped namespace handoff, late-error cleanup and runtime qualification remain.
+
+- Previous goal turn made progress in 95cde7c (kernel-held filesystem pins).
+  Added LabelPolicy<BoundDisabled>: consuming bind verifies namespace/root-UID
+  correspondence and exact distinct device membership, then owns namespace and
+  filesystem pins alongside the disabled policy. Binding failures return all
+  inputs. Only successful close returns PolicyIdentities for subsequent release.
+  This does not infer superblock owner namespace from stat: trusted filesystem
+  construction must supply that provenance before production activation.
+- Fixture activation now holds this aggregate rather than separately owned pins.
+  Added missing-pin and wrong-filesystem rejection/retry checks. After commands
+  are drained and config disabled, a benign extra bpffs directory deliberately
+  makes close fail after partial pin removal. The fixture verifies identity pins
+  remain, removes the blocker and retries cleanup before releasing identities.
+- v58 passes the new normal/timeout/failure checks. Clippy found a large error;
+  boxed BoundCloseFailure without dropping ownership. v59 passes that revision;
+  v60 confirms supervisor-death pin/label persistence through VM shutdown.
+- Source review then found a typestate defect: partial close returned a bound
+  ready-policy type, which could become reactivatable once activation is added.
+  Corrected it to BoundCleanup, a cleanup-only owner with retry and no return to
+  ready policy. Preserved pre-correction evidence with explicit review notes.
+  v61 passes the corrected retry path and integration sequence. Death-path
+  behavior from v60 is unchanged by this cleanup-only API correction; v60 is
+  explicitly retained as evidence for its own source snapshot, not relabeled.
+- Root tests (20 compile-fail), root/fixture Clippy and formatting pass. Source
+  snapshots, raw logs, hashes, diagnostic/review notes and full artifacts remain
+  preserved. No privileged host operations occurred. Review covered partial
+  teardown, identity ownership, mismatch handling and authorization boundaries.
+- M4 remains zero adherence passes. Production activation/admission and command
+  quiescence must be integrated with this bound owner; active configuration is
+  still fixture-only. Filesystem owner provenance, scoped namespace transfer,
+  complete late-error cleanup and runtime qualification remain outstanding.

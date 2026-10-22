@@ -9,7 +9,7 @@ use conglobate::{
         CommandDevices, CommandNamespaces, CommandRoot, IdRange, Mapped, PinnedNamespace,
         PrivateMountNamespace, UserNamespace,
     },
-    policy::{FilesystemTarget, LabelPolicy, PinDirectory, PinnedDisabled},
+    policy::{BoundDisabled, FilesystemTarget, LabelPolicy, PinDirectory},
     process::{ChildReaper, CommandPrivileges, CommandSyscalls, Supervision},
 };
 use std::{
@@ -314,7 +314,7 @@ impl Integration {
                 .as_os_str()
                 .as_encoded_bytes(),
         )?;
-        let policy = EnabledPolicy::install(&namespace, &filesystem, mode != "policy-off")?;
+        let policy = EnabledPolicy::install(&lease, namespace, filesystem, mode != "policy-off")?;
         println!("NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS");
 
         let parent = Path::new("/work/cgroups");
@@ -384,8 +384,6 @@ impl Integration {
         // This is the only policy teardown site: cancellation, helper reaping
         // and descendant draining have all completed above.
         policy.disable()?;
-        filesystem.release()?;
-        namespace.release()?;
         assert_eq!(status.success(), mode == "success" || mode == "policy-off");
         assert!(!parent.join(name).exists());
         assert_eq!(fs::metadata(ready)?.uid(), 0);
@@ -646,13 +644,14 @@ impl ExitGate {
 /// VM disposal. Never reuse this adapter as a production admission capability.
 #[derive(Debug)]
 struct EnabledPolicy {
-    policy: std::mem::ManuallyDrop<LabelPolicy<PinnedDisabled>>,
+    policy: std::mem::ManuallyDrop<LabelPolicy<BoundDisabled>>,
     config: libbpf_rs::MapHandle,
 }
 impl EnabledPolicy {
     fn install(
-        namespace: &UserNamespace<PinnedNamespace>,
-        filesystem: &FilesystemPin,
+        lease: &RecoveryDirectory,
+        namespace: UserNamespace<PinnedNamespace>,
+        filesystem: FilesystemPin,
         enable: bool,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         use libbpf_rs::{MapCore, MapFlags, MapHandle};
@@ -665,6 +664,25 @@ impl EnabledPolicy {
         let pinned = LabelPolicy::new(scope)?
             .load()?
             .pin_disabled(PinDirectory::create(Path::new("/work/pins"))?)?;
+        let failure = pinned.bind(namespace, vec![]).unwrap_err();
+        let (source, pinned, identities) = failure.into_parts();
+        assert!(
+            source
+                .to_string()
+                .contains("one pin per distinct assigned filesystem")
+        );
+        let (namespace, empty) = identities.into_parts();
+        assert!(empty.is_empty());
+        let wrong = FilesystemPin::create(lease, fs::File::open("/work")?)?;
+        let failure = pinned.bind(namespace, vec![wrong]).unwrap_err();
+        let (source, pinned, identities) = failure.into_parts();
+        assert!(source.to_string().contains("targets differ"));
+        let (namespace, wrong) = identities.into_parts();
+        for pin in wrong {
+            pin.release()?;
+        }
+        let pinned = pinned.bind(namespace, vec![filesystem])?;
+        println!("BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS");
         let paths = fs::read_dir("/work/pins")?
             .map(|entry| entry.map(|entry| entry.path()))
             .collect::<Result<Vec<_>, _>>()?;
@@ -687,7 +705,24 @@ impl EnabledPolicy {
         // Failure retains pinned policy through VM disposal, never drops guards.
         self.config
             .update(&0u32.to_ne_bytes(), &[0; 8], MapFlags::ANY)?;
-        std::mem::ManuallyDrop::into_inner(self.policy).close()?;
+        let paths = fs::read_dir("/work/pins")?.collect::<Result<Vec<_>, _>>()?;
+        assert_eq!(paths.len(), 1);
+        let blocker = paths[0].path().join("cleanup-test");
+        fs::create_dir(&blocker)?;
+        let failure = std::mem::ManuallyDrop::into_inner(self.policy)
+            .close()
+            .unwrap_err();
+        let (source, cleanup) = failure.into_parts();
+        assert_eq!(source.kind(), std::io::ErrorKind::DirectoryNotEmpty);
+        assert_eq!(fs::read_dir("/work/integration-records")?.count(), 2);
+        fs::remove_dir(blocker)?;
+        let identities = cleanup.retry()?;
+        println!("BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS");
+        let (namespace, filesystems) = identities.into_parts();
+        for filesystem in filesystems {
+            filesystem.release()?;
+        }
+        namespace.release()?;
         assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
         Ok(())
     }

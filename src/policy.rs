@@ -11,6 +11,10 @@ mod object;
 pub use object::{LabelPolicy, LoadedDisabled, PolicyError, PolicyState, Prepared};
 mod pins;
 pub use pins::{DisabledPinRecovery, PinCleanupFailure, PinDirectory, PinFailure, PinnedDisabled};
+mod bound;
+pub use bound::{
+    BindFailure, BoundCleanup, BoundCloseFailure, BoundDisabled, BoundResources, PolicyIdentities,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct NamespaceId(NonZeroU32);

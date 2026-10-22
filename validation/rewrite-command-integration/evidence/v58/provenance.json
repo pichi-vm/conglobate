@@ -1,0 +1,22 @@
+{
+  "base_commit": "95cde7ccd49f08bb68d1942c3498e65d3e0d5cca",
+  "full_artifacts": "/var/tmp/conglobate-command-integration-v58",
+  "sha256": {
+    "validation/rewrite-command-integration/evidence/v58/serial.txt": "d144cbc1dd0ffbb336c7570d0d3cdb198b7219eec6c31ba73480e9f36e446b21",
+    "validation/rewrite-command-integration/evidence/v58/verdict.json": "a6cfb41c262350f51f936e7750b36f1824c3334d22664d5b9c9af4bfdf9a5528",
+    "validation/rewrite-command-integration/evidence/v58/command.json": "ba7e395b1593689714949e0564884122325247af602fa5e7751a6e28ef33518a",
+    "validation/rewrite-command-integration/evidence/v58/inputs.json": "364b21f3369b558750046f04644e0a9c07d1ba84c3ae70de690c00128126baea",
+    "validation/rewrite-command-integration/evidence/v58/probe.rs": "594cd341b4d9c7d12b87ccb59f9b9b1d800bf07a6792f32aedb9b2f088bb03f2",
+    "validation/rewrite-command-integration/evidence/v58/run.py": "aba166d157ec46c08ee65875611830a011851e3800aa49b5872588a78e099020",
+    "validation/rewrite-command-integration/evidence/v58/Cargo.lock": "a8fde0e13198d43013b0d9d8f20503b08c31fc8ab1eae696c0884d97ce38bb18",
+    "validation/rewrite-command-integration/evidence/v58/bound.rs": "b0e438b438f38c5fdb4d696fca181e0fb301ad275cb35a1144e0402f4c5694ff",
+    "validation/rewrite-command-integration/evidence/v58/fixture.sh.txt": "7fca2ae6b4ebf9eb26390dd60d003b449055e6bb5c6192c1a2d3bb44c6048a21",
+    "validation/rewrite-command-integration/evidence/v58/init.txt": "8a950cc37b23130548b3e20436dd4daae35e6b10750124e3b87c85c942f20707",
+    "validation/rewrite-command-integration/evidence/v58/tests.txt": "263012601b923318022ee678b73ca6f4fa6a4aefd1f28f94856f23a64c9e61b2",
+    "validation/rewrite-command-integration/evidence/v58/BUILD-NOTES.txt": "a191f80dfc2b41468218a92b148ee6dd9ca851fe19a8044714c19313a52300ff",
+    "/var/tmp/conglobate-command-integration-v58/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-command-integration-v58/initramfs.gz": "c242413baef339891058446ef920a40f3d0579b6a018ef0f4d0e5ce4a92fcfb5",
+    "/var/tmp/conglobate-command-integration-v58/root/idmap-probe": "fb1f4c1b258038dba87970f93a49aad7daae72567dbc79f00078ab0cbeb4deef"
+  },
+  "full_sandbox_qualified": false
+}

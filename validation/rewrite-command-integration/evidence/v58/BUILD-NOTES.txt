@@ -1,0 +1,1 @@
+Initial Clippy rejected Result<PolicyIdentities, BoundCloseFailure>: result_large_err, at least 184 bytes. Changed only the cleanup error return to Box<BoundCloseFailure>, retaining all owned resources. This retrospective note records the diagnostic; it is not a raw compiler log.

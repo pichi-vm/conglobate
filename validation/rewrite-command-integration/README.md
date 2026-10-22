@@ -558,3 +558,24 @@ and observe surviving-command label checks before VM poweroff. It passes.
 Root tests, root/fixture Clippy and formatting pass. This proves the pin primitive's
 lifetime behavior, not complete production admission/policy ownership, filesystem
 owner-namespace derivation, storage construction, or image finalization.
+
+## Bound disabled policy ownership
+
+v58–v61 bind the disabled policy to its namespace and filesystem pin owners.
+Binding checks the actual namespace/root mapping and exact filesystem-device
+membership. Missing or mismatched pins fail while returning all inputs; the
+fixture retries with the correct pin. Owner-namespace provenance remains a
+trusted filesystem-construction prerequisite, not something stat can prove.
+
+The cleanup test creates a benign directory under the private bpffs pin directory
+only after command drain and config disable. Policy close removes its known pins
+but cannot remove the nonempty directory. Identity pins remain held. Removing
+the blocker permits cleanup retry, after which the identity owners are returned
+for explicit release. v58 and v59 pass; v60 verifies supervisor-death persistence.
+
+Review rejected the original cleanup error's ready-policy type. The final API
+returns a cleanup-only BoundCleanup owner, preventing future reactivation after
+partial teardown. v61 passes this corrected path. Pre-correction snapshots and
+review notes are retained. Root tests (20 compile-fail), root/fixture Clippy and
+formatting pass. Production activation and command admission are still unavailable;
+this is ownership integration, not completed M4 qualification.
