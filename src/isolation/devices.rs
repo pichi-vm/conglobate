@@ -93,6 +93,12 @@ impl CommandDevices {
     /// Transfer to the trusted setup helper through its reserved stdin slot.
     /// The final image shell replaces this slot with trusted null input.
     pub fn into_input(self) -> io::Result<Stdio> {
+        Ok(Stdio::from(std::os::fd::OwnedFd::from(
+            self.into_channel()?,
+        )))
+    }
+
+    fn into_channel(self) -> io::Result<UnixDatagram> {
         // Queue the original mount FD, not a reopened directory: fsmount's
         // ownership must survive until attachment. A socket is also valid stdin
         // for language-runtime standard-stream sanitization (unlike O_PATH).
@@ -112,7 +118,7 @@ impl CommandDevices {
         if sent != 3 {
             return Err(io::Error::other("incomplete device transfer"));
         }
-        Ok(Stdio::from(std::os::fd::OwnedFd::from(receiver)))
+        Ok(receiver)
     }
 
     /// Receive only on the trusted helper launch channel, never a recipe stream.
@@ -121,11 +127,15 @@ impl CommandDevices {
     /// authentication for an untrusted sender.
     pub fn from_input() -> io::Result<Self> {
         let socket = io::stdin().as_fd().try_clone_to_owned()?;
+        Self::receive(&socket)
+    }
+
+    fn receive(socket: &impl AsFd) -> io::Result<Self> {
         let mut bytes = [0u8; 4];
         let mut storage = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(2))];
         let mut ancillary = RecvAncillaryBuffer::new(&mut storage);
         let received = recvmsg(
-            &socket,
+            socket,
             &mut [IoSliceMut::new(&mut bytes)],
             &mut ancillary,
             RecvFlags::CMSG_CLOEXEC | RecvFlags::DONTWAIT,
@@ -221,5 +231,112 @@ impl DeviceRuntime {
             MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH | MoveMountFlags::MOVE_MOUNT_T_EMPTY_PATH,
         )?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{
+        io::Read,
+        os::{fd::BorrowedFd, unix::net::UnixStream},
+    };
+
+    #[derive(Debug)]
+    struct Transfer {
+        sender: UnixDatagram,
+        receiver: UnixDatagram,
+    }
+    impl Transfer {
+        fn new() -> Self {
+            let (sender, receiver) = UnixDatagram::pair().unwrap();
+            Self { sender, receiver }
+        }
+
+        fn send(&self, bytes: &[u8], descriptors: &[BorrowedFd<'_>]) {
+            let mut storage = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(4))];
+            let mut ancillary = SendAncillaryBuffer::new(&mut storage);
+            if !descriptors.is_empty() {
+                assert!(ancillary.push(SendAncillaryMessage::ScmRights(descriptors)));
+            }
+            assert_eq!(
+                sendmsg(
+                    &self.sender,
+                    &[IoSlice::new(bytes)],
+                    &mut ancillary,
+                    SendFlags::DONTWAIT | SendFlags::NOSIGNAL
+                )
+                .unwrap(),
+                bytes.len()
+            );
+        }
+
+        fn reject_and_check_closure(bytes: &[u8], count: usize) {
+            let transfer = Self::new();
+            let (owners, peers): (Vec<_>, Vec<_>) =
+                (0..count).map(|_| UnixStream::pair().unwrap()).unzip();
+            transfer.send(bytes, &owners.iter().map(AsFd::as_fd).collect::<Vec<_>>());
+            drop(owners);
+            assert!(CommandDevices::receive(&transfer.receiver).is_err());
+            // EOF proves received/truncated rights were closed. This avoids
+            // racing other tests by counting process-wide numeric descriptors.
+            for mut peer in peers {
+                peer.set_nonblocking(true).unwrap();
+                assert_eq!(peer.read(&mut [0u8; 1]).unwrap(), 0);
+            }
+        }
+    }
+
+    #[test]
+    fn malformed_or_truncated_device_packets_release_rights() {
+        for bytes in [
+            &[][..],
+            &[0x82, 1],
+            &[0x82, 2, 0],
+            &[0x82, 1, 1],
+            &[0x82, 1, 0, 0],
+            &[0x82, 1, 0, 0, 0],
+        ] {
+            Transfer::reject_and_check_closure(bytes, 1);
+        }
+        for count in [0, 2, 3, 4] {
+            Transfer::reject_and_check_closure(&[0x82, 1, 0], count);
+        }
+        // Valid framing with a non-directory FD must reject and release it too.
+        Transfer::reject_and_check_closure(&[0x82, 1, 0], 1);
+        let transfer = Transfer::new();
+        let proc = File::open("/proc").unwrap();
+        transfer.send(&[0x82, 1, 0], &[proc.as_fd()]);
+        assert!(CommandDevices::receive(&transfer.receiver).is_err());
+    }
+
+    #[test]
+    fn device_receiver_does_not_wait_for_an_unqueued_offer() {
+        let transfer = Transfer::new();
+        assert_eq!(
+            CommandDevices::receive(&transfer.receiver)
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::WouldBlock
+        );
+    }
+
+    #[test]
+    fn device_handoff_keeps_cloexec_and_independent_ownership() {
+        // Ordinary unprivileged tmpfs directory, not device construction or a
+        // mount test. The production sender/receiver transport is exercised.
+        let directory = tempfile::tempdir_in("/dev/shm").unwrap();
+        let source = CommandDevices {
+            root: File::open(directory.path()).unwrap(),
+        };
+        let socket = source.into_channel().unwrap();
+        let received = CommandDevices::receive(&socket).unwrap();
+        drop(socket);
+        assert!(received.root.metadata().unwrap().is_dir());
+        assert!(
+            rustix::io::fcntl_getfd(&received.root)
+                .unwrap()
+                .contains(rustix::io::FdFlags::CLOEXEC)
+        );
     }
 }

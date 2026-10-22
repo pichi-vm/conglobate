@@ -1,0 +1,11 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.98s
+     Running unittests src/lib.rs (target/debug/deps/conglobate-f1bdb93170c0b4b1)
+
+running 3 tests
+test isolation::devices::tests::device_receiver_does_not_wait_for_an_unqueued_offer ... ok
+test isolation::devices::tests::device_handoff_keeps_cloexec_and_independent_ownership ... ok
+test isolation::devices::tests::malformed_or_truncated_device_packets_release_rights ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.00s
+

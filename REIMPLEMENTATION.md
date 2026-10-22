@@ -1079,3 +1079,22 @@ rules rather than silently shrinking acceptance criteria.
   master allocation. M4 remains at zero adherence passes; namespace init/adapters,
   active LSM admission, partial-setup ownership, transfer negatives and complete
   integration/qualification remain outstanding.
+
+
+- Previous goal turn made progress on private devpts/shm/session setup. Added
+  maintained negative tests for the actual device descriptor handoff: malformed
+  and truncated payloads, descriptor counts/truncation, wrong descriptor kinds
+  and filesystem types, and an unqueued nonblocking receive. Socket-peer EOF
+  proves rejected rights are released without racing global FD counts. Positive
+  transfer retains independent ownership and CLOEXEC after channel closure.
+- Private into_channel/receive methods support these tests while public entry
+  points and wire semantics remain unchanged. An initial Stdio conversion test
+  did not compile; the correction and scope are documented in
+  validation/rewrite-command-integration/evidence/device-transfer-tests. No
+  privileged operation occurred on the host. Full tests, final focused cases,
+  Clippy and formatting pass; logs and source hashes are preserved.
+- Review checked the shared production paths, truncation/RAII closure, borrowed
+  descriptors and claim limits. This closes the listed packet-negative gap, not
+  M4. Native namespace initialization, LSM admission, terminal compatibility,
+  remaining proc information masks, scaffolding and full failure ownership are
+  still outstanding; the M4 adherence streak remains zero.
