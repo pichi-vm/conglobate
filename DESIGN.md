@@ -202,6 +202,29 @@ Defaults and failure behavior:
   its contents once and inject them temporarily, read-only, following symlinks
   confined to the command root. No implicit resolver or DNS relay. Resolver
   contents and their digest are omitted from inventory.
+- `--formatter-runtime PATH` is required for bootstrap. This trusted-environment
+  YAML input selects a captured formatter runtime; it is not a recipe property.
+  It has exactly `root` (directory), `executable` (relative file path), and `files`
+  (unique relative runtime file paths including the executable). A relative root
+  is resolved against the manifest's parent. For example:
+
+  ```yaml
+  root: /
+  executable: usr/bin/mke2fs
+  files:
+    - usr/bin/mke2fs
+    # The environment also lists its loader and all required runtime libraries.
+  ```
+
+  The example's single-file list works only for a self-contained executable;
+  dynamically linked formatters require their loader and libraries. Capture
+  resolves file symlinks within `root`, rejects missing/nonregular files, and
+  installs the builder-owned mke2fs configuration. The executable receives only
+  the typed filesystem profile's arguments. No ambient runtime fallback or
+  dependency downloads occur. Inventory records executed file identities and
+  effective configuration/arguments, rather than trusting manifest locators as
+  identities. The environment is responsible for supplying a trusted executable
+  and complete runtime; untrusted recipe authors cannot override this selection.
 - Successful output is published only when all components and the inventory
   are complete. Refuse an existing output destination rather than overwrite it.
 - Logs go to stderr; the process exit status distinguishes success from

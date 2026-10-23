@@ -46,6 +46,8 @@ struct BuildArguments {
     output: PathBuf,
     #[arg(long)]
     resolv_conf: Option<PathBuf>,
+    #[arg(long)]
+    formatter_runtime: Option<PathBuf>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommitIdentity(Vec<u8>);
@@ -73,6 +75,7 @@ pub struct BuildRequest {
     cache: PathBuf,
     output: PathBuf,
     resolv_conf: Option<PathBuf>,
+    formatter_runtime: Option<PathBuf>,
 }
 impl BuildRequest {
     pub fn parse_from<I, T>(arguments: I) -> Result<Self, RequestError>
@@ -90,6 +93,7 @@ impl BuildRequest {
             cache: raw.cache,
             output: raw.output,
             resolv_conf: raw.resolv_conf,
+            formatter_runtime: raw.formatter_runtime,
         })
     }
     pub fn repository(&self) -> &Path {
@@ -112,6 +116,9 @@ impl BuildRequest {
     }
     pub fn output(&self) -> &Path {
         &self.output
+    }
+    pub fn formatter_runtime(&self) -> Option<&Path> {
+        self.formatter_runtime.as_deref()
     }
     pub fn resolv_conf(&self) -> Option<&Path> {
         self.resolv_conf.as_deref()

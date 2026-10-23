@@ -35,6 +35,40 @@ impl PipelineProbe {
                 hex::encode(pin.bytes())
             ),
         )?;
+        let formatter_files: Vec<_> = fs::read_to_string("/formatter-runtime-files")?
+            .lines()
+            .map(str::to_owned)
+            .collect();
+        fs::write(
+            "/work/trusted-formatter.yml",
+            serde_json::to_vec(&serde_json::json!({
+                "root":"/", "executable":"usr/bin/mke2fs", "files":formatter_files,
+            }))?,
+        )?;
+        fs::write(
+            "/work/incomplete-formatter.yml",
+            serde_json::to_vec(&serde_json::json!({
+                "root":"/", "executable":"usr/bin/mke2fs", "files":["usr/bin/mke2fs"],
+            }))?,
+        )?;
+        for (name, command) in [
+            (
+                "bootstrap",
+                "test ! -e /mnt/bin; echo disposable > /tool-only; echo fresh > /mnt/fresh",
+            ),
+            ("bootstrap-fail", "echo rejected > /mnt/rejected; exit 37"),
+        ] {
+            fs::write(
+                repo.join(format!("{name}.yml")),
+                serde_json::to_vec(&serde_json::json!({
+                    "bootstrap": {
+                        "from":"example.test/tools:1",
+                        "filesystem":{"type":"ext4", "size":"16MiB", "properties":{"label":"cli-root"}},
+                        "derive":[{"run":command}, {"copy":{"from":"input", "into":"/mnt/copied"}}],
+                    },
+                }))?,
+            )?;
+        }
         let dtb = Self::empty_dtb();
         fs::write(repo.join("firmware.pmi"), b"custom firmware output")?;
         fs::write(repo.join("firmware.dtb"), &dtb)?;
@@ -132,6 +166,14 @@ impl PipelineProbe {
         fs::write(repo.join("input"), b"uncommitted wrong bytes\n")?;
         for (recipe, output, success) in [
             ("build.yml", "/work/derived-output", true),
+            ("bootstrap.yml", "/work/bootstrap-output", true),
+            ("bootstrap.yml", "/work/bootstrap-no-runtime-output", false),
+            (
+                "bootstrap.yml",
+                "/work/bootstrap-incomplete-runtime-output",
+                false,
+            ),
+            ("bootstrap-fail.yml", "/work/bootstrap-fail-output", false),
             ("fail.yml", "/work/rejected-output", false),
             ("firmware-only.yml", "/work/firmware-only-output", true),
             ("firmware-base.yml", "/work/firmware-base-output", true),
@@ -156,23 +198,33 @@ impl PipelineProbe {
                 false,
             ),
         ] {
-            let result = Command::new("/usr/bin/conglobate")
-                .args([
-                    "build",
-                    "--repository",
-                    repo.to_str().unwrap(),
-                    "--commit",
-                    commit.trim(),
-                    "--recipe",
-                    recipe,
-                    "--lock",
-                    "images.lock",
-                    "--cache",
-                    "/work/tool-cache-success",
-                    "--output",
-                    output,
-                ])
-                .output()?;
+            let mut command = Command::new("/usr/bin/conglobate");
+            command.args([
+                "build",
+                "--repository",
+                repo.to_str().unwrap(),
+                "--commit",
+                commit.trim(),
+                "--recipe",
+                recipe,
+                "--lock",
+                "images.lock",
+                "--cache",
+                "/work/tool-cache-success",
+                "--output",
+                output,
+            ]);
+            if output != "/work/bootstrap-no-runtime-output" {
+                command.args([
+                    "--formatter-runtime",
+                    if output == "/work/bootstrap-incomplete-runtime-output" {
+                        "/work/incomplete-formatter.yml"
+                    } else {
+                        "/work/trusted-formatter.yml"
+                    },
+                ]);
+            }
+            let result = command.output()?;
             assert_eq!(
                 result.status.success(),
                 success,
@@ -265,6 +317,7 @@ impl PipelineProbe {
         }
         for (name, count) in [
             ("derived", 4),
+            ("bootstrap", 1),
             ("composed-implicit", 2),
             ("composed-explicit", 2),
         ] {
@@ -348,7 +401,30 @@ impl PipelineProbe {
                 })
                 .ok_or("missing output mount")?
                 .path();
-            if count == 4 {
+            if count == 1 {
+                assert_eq!(fs::read(directory.join("fresh"))?, b"fresh\n");
+                assert_eq!(fs::read(directory.join("copied"))?, b"committed copy\n");
+                assert!(!directory.join("bin").exists());
+                assert!(!directory.join("tool-only").exists());
+                assert_eq!(image.manifest().layers.len(), 1);
+                let bytes = fs::read(output.join("inventory.cbor"))?;
+                conglobate::inventory::Inventory::decode(&bytes)?;
+                let value: ciborium::Value = ciborium::from_reader(bytes.as_slice())?;
+                let value = serde_json::to_value(value)?;
+                assert_eq!(value["outputs"]["scutes"][0]["origin"], "produced");
+                assert_eq!(
+                    value["execution"]["formatters"].as_array().unwrap().len(),
+                    1
+                );
+                assert_eq!(
+                    value["execution"]["formatters"][0]["filesystem"]["label"],
+                    "cli-root"
+                );
+                assert_eq!(
+                    value["execution"]["formatters"][0]["filesystem"]["size_bytes"],
+                    16 * 1024 * 1024
+                );
+            } else if count == 4 {
                 assert_eq!(fs::read(directory.join("derived"))?, b"final\n");
                 assert_eq!(fs::read(directory.join("copied"))?, b"committed copy\n");
             } else {
@@ -368,6 +444,7 @@ impl PipelineProbe {
             scope.restore().map_err(|e| e.to_string())?;
             active.close().map_err(|e| e.to_string())?;
         }
+        println!("PIPELINE_CLI_BOOTSTRAP_PASS");
         println!("PIPELINE_CLI_COMPOSED_FIRMWARE_PASS");
         println!("PIPELINE_CLI_DERIVE_PASS");
         Ok(())

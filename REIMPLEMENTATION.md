@@ -3366,3 +3366,40 @@ rules rather than silently shrinking acceptance criteria.
   by the validation fixture), composition with later stages, and receipt attachment
   after successful cleanup. Networking, remaining matrix/fault tests, ORAS and
   three full M6 adherence passes remain outstanding. M6 streak remains zero.
+
+### M6 standalone bootstrap CLI
+
+- Previous goal turn progressed in 50ec86b (formatter execution receipts).
+  Connected standalone bootstrap to the actual CLI. The trusted environment now
+  supplies --formatter-runtime PATH: strict YAML root/executable/files selection,
+  separate from authored recipe properties. Relative roots resolve against that
+  manifest; captured executable/runtime bytes and builder-owned configuration are
+  retained/measured. Missing runtime files fail; no ambient fallback or downloads.
+  DESIGN.md documents this interface. Unit coverage rejects duplicate/unknown
+  fields, duplicate runtime paths, escaping paths and missing files.
+- BootstrapBuild creates a zero-backed writable snapshot, executes the captured
+  typed formatter, closes its runtime, activates the verified cache-backed tools
+  with a disposable writable overlay, and executes bootstrap RUN/COPY through the
+  existing two-volume directive runner. Tool changes are discarded; output is
+  sealed directly as a zero-parent scute. No intermediate filesystem image/import.
+- Command failures use retained pair cleanup, formatter failures reclaim reaped
+  resources (or retain unfinished ownership), and runtime cleanup is required
+  before returning publishable state. Default DTB handling and the actual
+  formatter receipt enter the inventory; private context cleanup still precedes
+  atomic output publication. Tool-carapace components never become ancestry.
+- v206 full normal disposable-VM suite passes (148.56 guest seconds). New CLI
+  cases cover fresh output, committed-context COPY despite dirty worktree,
+  command failure, missing --formatter-runtime, and an incomplete loader runtime.
+  The output is reopened through the verified storage chain: one produced scute,
+  requested files present, tool /bin and disposable tool writes absent, no inherited
+  firmware, formatter label/capacity recorded. Failures publish no directory and
+  leave no runtime attachment. Source/evidence/executable hashes archived under
+  validation/rewrite-command-integration/evidence/v206. Host tests (87 library,
+  integration suites, 52 doctests), strict root/fixture Clippy and formatting pass.
+  Host observation timeout increased to 180 seconds for the additional CLI cases;
+  production setup/command/teardown deadlines are unchanged.
+- This enables standalone bootstrap only (including an empty carapace stage).
+  Bootstrap followed by retained derivation or firmware remains explicitly
+  rejected and required next. Enabled NAT/DNS, remaining matrix/variable/fault
+  coverage, ORAS and three full adherence passes remain outstanding. M6 stays
+  active at zero clean passes; no full distro/platform qualification is claimed.

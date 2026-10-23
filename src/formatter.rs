@@ -16,3 +16,6 @@ pub use execution::{
     FormatCompletionFailure, FormatFailure, FormatLaunchFailure, FormatReceipt, FormatWaitFailure,
     FormattedSnapshot, Formatting,
 };
+
+mod manifest;
+pub(crate) use manifest::FormatterManifest;

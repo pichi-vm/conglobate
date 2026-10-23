@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 //! Recipe orchestration. Unsupported execution paths fail before publication.
+mod bootstrap;
 mod carapace;
 mod firmware;
 use crate::{
@@ -59,7 +60,9 @@ impl Pipeline {
         let context = workspace
             .materialize(build.captured().context())?
             .read_only()?;
-        let output = if build.captured().plan().recipe().firmware().is_some() {
+        let output = if build.captured().plan().recipe().bootstrap().is_some() {
+            bootstrap::BootstrapBuild::new(&build)?.execute(&self.request, &workspace)?
+        } else if build.captured().plan().recipe().firmware().is_some() {
             firmware::FirmwareBuild::new(&build)?.execute(&self.request, &workspace)?
         } else if build
             .captured()
