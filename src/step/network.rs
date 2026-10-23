@@ -5,8 +5,8 @@ use super::{
     private, teardown::Released,
 };
 use crate::{
+    isolation::{PinnedNamespace, UserNamespace},
     network::{CommandNetwork, NetworkCleanupFailure},
-    policy::{BoundDisabled, LabelPolicy},
     process::{Joined, ReapedChildren, Supervision},
     storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Volume},
 };
@@ -52,7 +52,7 @@ impl<'l, R: NetworkEligibleStorage> Step<'l, Ready, R> {
                 storage: self.storage.release(),
                 network,
             }),
-            policy: self.policy,
+            namespace: self.namespace,
             resources: self.resources,
             _lease: PhantomData,
         }
@@ -94,7 +94,7 @@ impl<R: NetworkEligibleStorage> ExecutionStorage for NetworkedStorage<R> {
     type FinalizationFailure = Box<NetworkFinalizationFailure<R>>;
     fn send(
         &self,
-        policy: &LabelPolicy<BoundDisabled>,
+        namespace: &UserNamespace<PinnedNamespace>,
         channel: &Supervision<Joined>,
         network: Option<&CommandNetwork>,
         deadline: Instant,
@@ -103,7 +103,7 @@ impl<R: NetworkEligibleStorage> ExecutionStorage for NetworkedStorage<R> {
             return Err(io::Error::other("nested command networking is invalid"));
         }
         self.storage
-            .send(policy, channel, Some(&self.network), deadline)
+            .send(namespace, channel, Some(&self.network), deadline)
     }
     fn finalize(
         completion: TeardownCompletion<Self>,

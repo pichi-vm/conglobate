@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+from label_environment import LabelEnvironment
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 # This shared runtime constructor must migrate to maintained tests before M8.
@@ -38,8 +39,9 @@ class DistroRun:
             raise RuntimeError('firmware PMI and DTB must be supplied together')
         self.output.mkdir()
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as snapshot:
-            for name in ('src', 'policy', 'Cargo.toml', 'Cargo.lock', 'build.rs',
-                         'tests/distro', 'validation/rewrite-command-integration/runtime.py'):
+            for name in ('src', 'Cargo.toml', 'Cargo.lock',
+                         'tests/distro', 'validation/global-label-policy',
+                         'validation/rewrite-command-integration/runtime.py'):
                 snapshot.add(REPOSITORY / name, arcname=name)
         env = os.environ.copy()
         env.update(CARGO_BUILD_JOBS='2', CARGO_TARGET_DIR=str(REPOSITORY / 'target/m7-stable'),
@@ -49,6 +51,9 @@ class DistroRun:
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
         runtime = DistroRuntime(self.root, self.arguments.module_root.resolve(), self.arguments.kernel_release)
         runtime.create()
+        label_environment = LabelEnvironment(REPOSITORY, self.output, runtime)
+        label_environment.stage()
+        policy_startup = '' if self.arguments.without_label_policy else label_environment.startup()
         runtime.executable(REPOSITORY / 'target/m7-stable/debug/conglobate', Path('usr/bin/conglobate'))
         # Enumerate only the trusted host formatter, never an image executable.
         formatter = Path(shutil.which('mke2fs'))
@@ -86,6 +91,7 @@ class DistroRun:
         (self.root / 'conglobate-disposable-validation-vm').touch()
         (self.root / 'build.sh').write_text(f'''#!/bin/bash
 set -eux
+{policy_startup}
 modprobe virtio_pci
 modprobe virtio_net
 modprobe virtio_blk
@@ -121,10 +127,14 @@ mount --make-rprivate /
 mkdir -p /work /run
 chmod 755 /run
 mount -t tmpfs tmpfs /work
+modprobe virtio_pci
+modprobe virtio_blk
 set +e
 bash /build.sh
 status=$?
 echo "DISTRO_BUILD_EXIT $status"
+printf 'DISTRO_BUILD_EXIT %s\\n' "$status" > /dev/vdb
+sync
 echo b > /proc/sysrq-trigger
 exec sleep infinity
 ''')
@@ -141,18 +151,24 @@ exec sleep infinity
         export = self.output / 'export.raw'
         with export.open('wb') as stream:
             stream.truncate(2 * 1024**3)
+        result = self.output / 'status.raw'
+        with result.open('wb') as stream:
+            stream.truncate(4096)
         command = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-m', '8192',
             '-smp', '2', '-nodefaults', '-no-reboot', '-display', 'none', '-serial', 'stdio',
             '-monitor', 'none', '-kernel', str(self.output / 'vmlinuz'),
             '-initrd', str(self.output / 'initramfs.gz'),
             '-append', 'console=ttyS0 rdinit=/init selinux=0 panic=-1 quiet',
             '-netdev', 'user,id=outbound', '-device', 'virtio-net-pci,netdev=outbound',
-            '-drive', f'file={export},format=raw,if=virtio']
+            '-drive', f'file={export},format=raw,if=virtio',
+            '-drive', f'file={result},format=raw,if=virtio']
         (self.output / 'command.json').write_text(json.dumps(command, indent=2) + '\n')
         with (self.output / 'serial.txt').open('wb') as log:
             subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=2400, check=True)
         serial = (self.output / 'serial.txt').read_text(errors='replace')
-        passed = 'DISTRO_BUILD_AND_EXPORT_PASS' in serial and 'DISTRO_BUILD_EXIT 0' in serial
+        exit_record = result.read_bytes().split(b'\0', 1)[0]
+        passed = ('\nDISTRO_BUILD_AND_EXPORT_PASS\n' in serial
+                  and exit_record == b'DISTRO_BUILD_EXIT 0\n')
         (self.output / 'verdict.json').write_text(json.dumps({
             'build_passed': passed, 'boot_passed': False, 'full_distro_qualified': False,
         }, indent=2) + '\n')
@@ -183,4 +199,6 @@ if __name__ == '__main__':
     parser.add_argument('--reference', default='qualification.local/fedora:43')
     parser.add_argument('--firmware-pmi', type=Path)
     parser.add_argument('--firmware-dtb', type=Path)
+    parser.add_argument('--without-label-policy', action='store_true',
+                        help='Negative validation only: omit environment policy loading')
     DistroRun(parser.parse_args()).run()

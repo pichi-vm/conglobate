@@ -3,8 +3,8 @@
 //! One command lifecycle, with acceptance tied to its own finalized storage.
 mod storage;
 use super::{
-    CommandOutcome, CommandStartFailure, Ready, SetupBudget, StartFailure, Step,
-    TeardownCompletion, TeardownFailure,
+    CommandOutcome, CommandStartFailure, Ready, SetupBudget, Step, TeardownCompletion,
+    TeardownFailure,
 };
 use crate::{
     storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Unmounted, Volume},
@@ -26,7 +26,7 @@ impl ExecutionOutcome {
     }
 }
 
-/// This command exited successfully, all descendants were drained, policy and
+/// This command exited successfully, all descendants were drained, namespace and
 /// pins were removed, and all assigned volumes were flushed and unmounted within
 /// the original teardown deadline. No public constructor accepts an unrelated
 /// command outcome or arbitrary cleanup result. This is not an image seal.
@@ -166,7 +166,7 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
     ) -> ExecutionResult<'l, R> {
         if let Err(error) = budget.check().and_then(|()| {
             self.storage.0.send(
-                &self.policy.policy,
+                &self.namespace,
                 self.resources.0.supervision(),
                 None,
                 budget.deadline(),
@@ -191,12 +191,11 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
             Ok(command) => command,
             Err(failure) => {
                 let (error, cleanup) = match *failure {
-                    CommandStartFailure::Ready(failure)
-                    | CommandStartFailure::Admission(StartFailure::Activation(failure)) => {
+                    CommandStartFailure::Ready(failure) => {
                         let (error, step) = failure.into_parts();
                         (error, step.teardown(domain_parent))
                     }
-                    CommandStartFailure::Admission(StartFailure::Admission(failure)) => {
+                    CommandStartFailure::Admission(failure) => {
                         let (error, step) = failure.into_parts();
                         (error, step.teardown(domain_parent))
                     }

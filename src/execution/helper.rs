@@ -3,7 +3,7 @@
 use crate::{
     filesystem::MountPoint,
     isolation::{
-        CommandDevices, CommandReceiver, GatedCommandSetup, GatedRootSetup, Mapped,
+        AssignedRoots, CommandDevices, CommandReceiver, GatedCommandSetup, GatedRootSetup, Mapped,
         PrivateMountNamespace, UserNamespace,
     },
     process::Supervision,
@@ -109,8 +109,8 @@ enum Role {
         gid: u32,
         parent: PathBuf,
     },
-    Namespaces(String),
-    Root(String),
+    Namespaces(String, AssignedRoots),
+    Root(String, AssignedRoots),
     Formatter {
         executable: PathBuf,
         arguments: Vec<OsString>,
@@ -177,8 +177,8 @@ impl HelperInvocation {
             Role::NetworkSeed => (3, 5),
             Role::NetworkConfigure(_) => (4, 6),
             Role::Receiver { .. } => (7, 1),
-            Role::Namespaces(_) => (4, 2),
-            Role::Root(_) => (4, 3),
+            Role::Namespaces(_, _) => (5, 2),
+            Role::Root(_, _) => (5, 3),
             Role::Formatter { .. } => (5, 4),
         };
         e.array(length)
@@ -220,8 +220,11 @@ impl HelperInvocation {
                     e.bytes(arg.as_bytes()).expect("Vec writer");
                 }
             }
-            Role::Namespaces(script) | Role::Root(script) => {
-                e.str(script).expect("Vec writer");
+            Role::Namespaces(script, roots) | Role::Root(script, roots) => {
+                e.str(script)
+                    .expect("Vec writer")
+                    .u8(roots.tag())
+                    .expect("Vec writer");
             }
         }
         hex::encode(e.into_writer())
@@ -254,8 +257,8 @@ impl HelperInvocation {
                     d.u32()?,
                     PathBuf::from(OsString::from_vec(d.bytes()?.to_vec())),
                 )?,
-                (Some(4), 2) => Role::Namespaces(d.str()?.to_owned()),
-                (Some(4), 3) => Role::Root(d.str()?.to_owned()),
+                (Some(5), 2) => Role::Namespaces(d.str()?.to_owned(), d.u8()?.try_into()?),
+                (Some(5), 3) => Role::Root(d.str()?.to_owned(), d.u8()?.try_into()?),
                 (Some(5), 4) => {
                     let executable = PathBuf::from(OsString::from_vec(d.bytes()?.to_vec()));
                     let count = d.array()?.ok_or("indefinite formatter arguments")?;
@@ -343,16 +346,22 @@ impl HelperInvocation {
                 UserNamespace::<Mapped>::serve(deadline)?;
                 Ok(ExitStatus::from_raw(0))
             }
-            Role::Namespaces(script) => {
+            Role::Namespaces(script, roots) => {
                 let setup = GatedCommandSetup::from_input()?;
                 let root = program.command(Self {
                     cutoff: self.cutoff,
-                    role: Role::Root(script),
+                    role: Role::Root(script, roots),
                 })?;
                 Ok(setup.execute(root, self.cutoff)?)
             }
-            Role::Root(script) => {
+            Role::Root(script, roots) => {
                 let command = GatedRootSetup::from_input()?.restrict(&script, self.cutoff)?;
+                // Write while the readiness endpoint is still owned: the
+                // receiver must be able to drain this diagnostic before loss.
+                roots.verify_labels().inspect_err(|error| {
+                    eprintln!("restricted labeling validation: {error}");
+                })?;
+                self.cutoff.deadline()?;
                 match command.start()? {}
             }
             Role::Receiver {
@@ -367,6 +376,7 @@ impl HelperInvocation {
                 let input = channel
                     .receive_volume_until(deadline)
                     .map_err(|error| format!("receive command volume: {error}"))?;
+                let roots = input.assigned_roots();
                 let scope = PrivateMountNamespace::enter()?;
                 let (view, setup, resolver) = input
                     .prepare(&scope, CommandDevices::create(uid, gid)?)
@@ -377,7 +387,7 @@ impl HelperInvocation {
                     .map_err(|e| e.to_string())?;
                 let entry = program.command(Self {
                     cutoff: self.cutoff,
-                    role: Role::Namespaces(script),
+                    role: Role::Namespaces(script, roots),
                 })?;
                 // Borrowed mount errors become helper diagnostics immediately
                 // before guaranteed process exit. Parent ownership is separate.
@@ -422,8 +432,10 @@ mod tests {
                 PathBuf::from(OsString::from_vec(b"/work/\xff".to_vec())),
             )
             .unwrap(),
-            Role::Namespaces("exit 37".into()),
-            Role::Root("exit 37".into()),
+            Role::Namespaces("exit 37".into(), AssignedRoots::Root),
+            Role::Namespaces("exit 37".into(), AssignedRoots::Bootstrap),
+            Role::Root("exit 37".into(), AssignedRoots::Root),
+            Role::Root("exit 37".into(), AssignedRoots::Bootstrap),
             Role::Formatter {
                 executable: "/usr/bin/mke2fs".into(),
                 arguments: vec!["-L".into(), "literal ; $name".into()],

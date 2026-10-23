@@ -3,6 +3,8 @@
 
 //! Trusted helper namespace setup; this alone is not a command sandbox.
 mod devices;
+mod labels;
+pub(crate) use labels::AssignedRoots;
 mod receiver;
 pub use receiver::{CommandReceiver, ReceiverCompletion, ReceiverFailure};
 mod gate;

@@ -19,11 +19,7 @@ use std::{
 
 mod control_record;
 mod domain;
-mod filesystem;
 mod namespace;
-pub use filesystem::{
-    FilesystemPin, FilesystemPinFailure, FilesystemPinReleaseFailure, FilesystemPinTarget,
-};
 mod record;
 pub(crate) use namespace::InitMountNamespace;
 

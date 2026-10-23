@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::pins::{PinCleanup, PinFailure};
 use super::{
-    Cancelling, Draining, Finishing, Quiescent, Ready, Reaping, Running, Step, StepCompletion,
-    StepFailure, StepState, StepStorage,
+    Cancelling, Draining, Finishing, Quiescent, Ready, Reaping, Running, Step, StepFailure,
+    StepState, StepStorage,
 };
-use crate::{policy::BoundCleanup, storage::FailureDiagnostics};
+use crate::storage::FailureDiagnostics;
 use std::{
     io,
     path::{Path, PathBuf},
@@ -26,8 +26,6 @@ enum Phase<'a, R: StepStorage> {
     Draining(Step<'a, Draining, R>),
     Quiescent(Step<'a, Quiescent, R>),
     Finishing(Step<'a, Finishing, R>),
-    Policy(StepCompletion<R>),
-    PolicyRetry(Released<R>, BoundCleanup),
     Pins(Released<R>, PinCleanup),
     Complete(Released<R>),
 }
@@ -48,7 +46,7 @@ pub(super) struct Released<R: StepStorage> {
     pub reaped: crate::process::ReapedChildren,
     pub storage: R,
 }
-/// Policy and identity pins are gone. The original deadline still governs
+/// Command descendants are drained and namespace attachments are released. The original deadline still governs
 /// storage finalization; no mounted storage accessor escapes this owner.
 /// ```compile_fail
 /// use conglobate::{step::TeardownCompletion, storage::{Volume, Mounted}};
@@ -168,36 +166,16 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
                 Phase::Quiescent,
             ),
             Phase::Finishing(step) => {
-                Self::transition(step.disable().map(Phase::Policy), Phase::Finishing)
+                let (status, reaped, namespace, storage) = step.finish().into_parts();
+                Ok(Phase::Pins(
+                    Released {
+                        status,
+                        reaped,
+                        storage,
+                    },
+                    PinCleanup::namespace(namespace),
+                ))
             }
-            Phase::Policy(completion) => {
-                let (status, reaped, policy, storage) = completion.into_parts();
-                let released = Released {
-                    status,
-                    reaped,
-                    storage,
-                };
-                match policy.close() {
-                    Ok(identities) => Ok(Phase::Pins(released, identities.into())),
-                    Err(failure) => {
-                        let (source, cleanup) = failure.into_parts();
-                        Err(Box::new(TransitionFailure {
-                            source,
-                            phase: Phase::PolicyRetry(released, cleanup),
-                        }))
-                    }
-                }
-            }
-            Phase::PolicyRetry(released, cleanup) => match cleanup.retry() {
-                Ok(identities) => Ok(Phase::Pins(released, identities.into())),
-                Err(failure) => {
-                    let (source, cleanup) = failure.into_parts();
-                    Err(Box::new(TransitionFailure {
-                        source,
-                        phase: Phase::PolicyRetry(released, cleanup),
-                    }))
-                }
-            },
             Phase::Pins(released, cleanup) => match cleanup.run(deadline) {
                 Ok(()) => Ok(Phase::Complete(released)),
                 Err(failure) => {

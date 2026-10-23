@@ -41,6 +41,13 @@ pub enum ReceiverFailure<'ns> {
         source: io::Error,
         mount: Mount<'ns, Attached>,
     },
+    #[error("receiver setup failed after clean view teardown: {0}")]
+    Cleaned(io::Error),
+    #[error("receiver setup failed: {source}; view cleanup: {cleanup}")]
+    Cleanup {
+        source: io::Error,
+        cleanup: crate::filesystem::UnmountFailure<'ns>,
+    },
 }
 /// Direct command helper reaped. The caller must close this view and finish
 /// local namespace cleanup before reporting completion. Descendant quiescence
@@ -118,8 +125,32 @@ impl<'ns> CommandReceiver<'ns> {
                 }));
             }
         };
+        // Keep the supervisor channel alive while collecting an early leaf
+        // failure. Otherwise channel loss can cancel us before diagnostics or
+        // removal of our shared attachment directory have completed.
+        let gate = match gate.wait_ready_until(setup_deadline) {
+            Ok(gate) => gate,
+            Err(source) => {
+                let (mount, _) = match running.wait_until(setup_deadline) {
+                    Ok(completion) => completion,
+                    Err(failure) => {
+                        return Err(Box::new(ReceiverFailure::Startup {
+                            source,
+                            mount: failure.into_parts().1,
+                        }));
+                    }
+                };
+                if let Err(error) = diagnostics.finish() {
+                    eprintln!("startup diagnostic relay: {error}");
+                }
+                eprintln!("restricted leaf readiness failed: {source}");
+                return Err(Box::new(match mount.close() {
+                    Ok(()) => ReceiverFailure::Cleaned(source),
+                    Err(cleanup) => ReceiverFailure::Cleanup { source, cleanup },
+                }));
+            }
+        };
         let admitted = (|| -> io::Result<Supervision<Admitted>> {
-            let gate = gate.wait_ready_until(setup_deadline)?;
             self.channel.report_prepared_until(setup_deadline)?;
             let channel = self.channel.await_admission_until(setup_deadline)?;
             gate.start_until(setup_deadline)?;

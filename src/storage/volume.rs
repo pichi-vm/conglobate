@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::SnapshotMapping;
 use crate::{
-    anchor::{FilesystemPin, FilesystemPinFailure, RecoveryDirectory},
+    anchor::RecoveryDirectory,
     filesystem::{Detached, Mount},
     isolation::PrivateMountNamespace,
 };
@@ -333,12 +333,6 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
             _volume: PhantomData,
             _thread: PhantomData,
         })
-    }
-    /// Independent kernel identity pin, consumed by bound policy. Release it
-    /// explicitly after policy teardown and before storage finalization.
-    pub fn pin(&self, parent: &RecoveryDirectory) -> Result<FilesystemPin, FilesystemPinFailure> {
-        self.scope.verify_current()?;
-        FilesystemPin::create(parent, self.resources.root.try_clone()?)
     }
     pub fn unmount(
         self,

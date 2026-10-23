@@ -27,7 +27,6 @@ pub mod output;
 pub mod path;
 pub mod pipeline;
 pub mod plan;
-pub mod policy;
 pub mod process;
 pub mod recipe;
 pub mod request;

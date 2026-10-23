@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use crate::{
-    anchor::{FilesystemPin, FilesystemPinFailure, FilesystemPinTarget, RecoveryDirectory},
     step::StepStorage,
     storage::{
         BootstrapMountFailure, BootstrapUnmountFailure, BootstrapVolumes, FailureDiagnostics,
@@ -33,8 +32,6 @@ pub trait PreparationStorage: StorageLayout {
         failure: Self::MountFailure,
         deadline: Instant,
     ) -> Result<Self::Unmounted, Self::UnmountFailure>;
-    #[doc(hidden)]
-    fn pin(&self, recovery: &RecoveryDirectory) -> Result<Vec<FilesystemPin>, StoragePinFailure>;
     #[doc(hidden)]
     fn validate_command_root(&self) -> io::Result<()>;
     type UnmountFailure: Debug;
@@ -71,11 +68,6 @@ impl<'n, 'o, 'w> PreparationStorage for Volume<'n, 'o, 'w, Mounted> {
         _deadline: Instant,
     ) -> Result<Self::Unmounted, Self::UnmountFailure> {
         Ok(failure)
-    }
-    fn pin(&self, recovery: &RecoveryDirectory) -> Result<Vec<FilesystemPin>, StoragePinFailure> {
-        self.pin(recovery)
-            .map(|pin| vec![pin])
-            .map_err(StoragePinFailure::from)
     }
     fn validate_command_root(&self) -> io::Result<()> {
         self.validate_command_root()
@@ -119,17 +111,6 @@ impl<'n, 'o, 'w> PreparationStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
     ) -> Result<Self::Unmounted, Self::UnmountFailure> {
         failure.rollback_until(deadline)
     }
-    fn pin(&self, recovery: &RecoveryDirectory) -> Result<Vec<FilesystemPin>, StoragePinFailure> {
-        let tool = self.tool().pin(recovery).map_err(StoragePinFailure::from)?;
-        match self.output().pin(recovery) {
-            Ok(output) => Ok(vec![tool, output]),
-            Err(failure) => {
-                let mut failure = StoragePinFailure::from(failure);
-                failure.pins.push(tool);
-                Err(failure)
-            }
-        }
-    }
     fn validate_command_root(&self) -> io::Result<()> {
         self.tool().validate_command_root()
     }
@@ -144,43 +125,5 @@ impl<'n, 'o, 'w> PreparationStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
     }
     fn unmount_diagnostics(failure: &Self::UnmountFailure) -> &FailureDiagnostics {
         failure.diagnostics()
-    }
-}
-
-/// Pin acquisition failure owns every already-published identity and any empty
-/// target. Preparation releases these before unmounting either filesystem.
-#[derive(Debug, thiserror::Error)]
-#[error("storage identity pin: {source}")]
-pub struct StoragePinFailure {
-    pub(super) source: io::Error,
-    pins: Vec<FilesystemPin>,
-    target: Option<FilesystemPinTarget>,
-}
-impl From<FilesystemPinFailure> for StoragePinFailure {
-    fn from(failure: FilesystemPinFailure) -> Self {
-        let (source, target) = match failure {
-            FilesystemPinFailure::Before(source) => (source, None),
-            FilesystemPinFailure::Mount { source, target } => (source, Some(target)),
-        };
-        Self {
-            source,
-            pins: Vec::new(),
-            target,
-        }
-    }
-}
-impl StoragePinFailure {
-    pub(super) fn into_cleanup(
-        self,
-        namespace: crate::isolation::UserNamespace<crate::isolation::PinnedNamespace>,
-    ) -> (io::Error, crate::step::pins::PinCleanup) {
-        let mut cleanup = crate::step::pins::PinCleanup::namespace(namespace);
-        for pin in self.pins {
-            cleanup = cleanup.with_filesystem(pin);
-        }
-        if let Some(target) = self.target {
-            cleanup = cleanup.with_target(target);
-        }
-        (self.source, cleanup)
     }
 }

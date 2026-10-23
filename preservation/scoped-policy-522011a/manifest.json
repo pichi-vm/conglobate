@@ -1,0 +1,15 @@
+{
+  "commit": "522011a",
+  "archive_sha256": "eb12f0682d1d6215b2e2f5668d16664ddc90454c7799d7bbbc8a4433fe744f08",
+  "files": {
+    "build.rs": "f201829ed70992ebc11301bd6db071c2e53f5a4a6b4b63a6ce59ceaebdfebcf5",
+    "policy/README.md": "66d2cad0fd6c036cf3d42366b22626b8853f8c2bd225d7172a6b7aacbf2a2499",
+    "policy/labels.bpf.c": "cd07e59cf929e4a28991520fce00432409fe2b6be6970b89906b09f16fc8e7d1",
+    "src/policy.rs": "1043f6b0d156bad9dbb13d4cf3d0ddd69301cd9ac79d3abb7ff754874b608442",
+    "src/policy/bound.rs": "e6d24f225dfeeae69cfbfe025597deedd94fdab4e921e6aa50493c6649977f29",
+    "src/policy/installation.rs": "5d9c8e08ad08a56eab45a3c8f6402f3161780f0e1339dfde87b53d7b92ffb497",
+    "src/policy/object.rs": "cbfb9891d417b6009928a7c722a95830d96a5ce5c4d784c42899b576fa9064eb",
+    "src/policy/pins.rs": "67fb1cf0c55fca44664e4d722188ecd18736016821ab3e668a18662b8c39fcdc",
+    "tests/policies.rs": "07fa2bcebc15131d0d622e9be6e7d76d9587453664c106af9785c863cdfc9330"
+  }
+}

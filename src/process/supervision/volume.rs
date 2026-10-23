@@ -139,6 +139,13 @@ impl Supervision<Joined> {
     }
 }
 impl VolumeInput {
+    pub(crate) fn assigned_roots(&self) -> crate::isolation::AssignedRoots {
+        if self.output.is_some() {
+            crate::isolation::AssignedRoots::Bootstrap
+        } else {
+            crate::isolation::AssignedRoots::Root
+        }
+    }
     /// Construct the helper's idmapped root and next namespace-entry input.
     /// On failure all still-detached mount descriptors close; no attached mount
     /// or started command exists. The supervisor retains independent backing.

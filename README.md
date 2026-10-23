@@ -13,18 +13,16 @@ sandbox qualification.
 
 ## Build and rootless checks
 
-Build on Linux with Rust/Cargo, a C compiler and make, pkg-config, libelf and
-zlib development headers/libraries, and Clang with its BPF target. The locked
-libbpf-sys dependency builds its bundled libbpf; libbpf-cargo supplies the BPF
-helper headers used by build.rs. A separate system libbpf development package is
-not required by this configuration. Debian/Ubuntu place native Linux UAPI
-headers under a multiarch directory that Clang's BPF target does not discover
-by default. For a native build there, set
-`export C_INCLUDE_PATH="/usr/include/$(gcc -dumpmachine)"` before running Cargo;
-the build script tracks changes to this include-path setting.
+Build on Linux with Rust/Cargo and a C build toolchain for native dependencies
+such as zstd. The binary does not compile or load BPF, depend on libbpf/libelf,
+or require Clang's BPF target or special Linux-header include paths. The trusted
+execution environment supplies the fixed labeling exception described in
+[SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt). Disposable-VM fixture tools build their
+own environment policy separately and have additional compiler prerequisites.
 
-The current review evidence includes 200 rootless tests and 54 doctests passing
-with rustc/Cargo 1.94.0 and Clang 22.1.8. Earlier checks used rustc
+The registration-free migration has 195 rootless tests and 51 doctests passing
+with rustc/Cargo 1.94.0; retired policy-API tests remain preserved as historical
+evidence. This does not qualify the composed sandbox. Earlier checks used rustc
 1.99.0-nightly (1a98b1e13, 2026-08-07) and Cargo 1.98.0. These are tested
 environments, not a minimum supported Rust version; that floor has not yet been
 established.

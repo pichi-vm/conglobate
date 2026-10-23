@@ -137,16 +137,16 @@ impl<'w> Runtime<'w> {
                 mount::OpenTreeFlags::OPEN_TREE_CLONE | mount::OpenTreeFlags::OPEN_TREE_CLOEXEC,
             )?;
             mounts.attach(tree.into(), mounts.path())?;
-            for name in ["recovery", "volumes", "policies", "cgroups"] {
+            for name in ["recovery", "volumes", "cgroups"] {
                 std::fs::create_dir(mounts.path().join(name))?;
                 std::fs::set_permissions(
                     mounts.path().join(name),
                     std::fs::Permissions::from_mode(0o700),
                 )?;
             }
-            for (name, kind) in [("policies", "bpf"), ("cgroups", "cgroup2")] {
+            {
                 budget.check()?;
-                let context = mount::fsopen(kind, mount::FsOpenFlags::FSOPEN_CLOEXEC)?;
+                let context = mount::fsopen("cgroup2", mount::FsOpenFlags::FSOPEN_CLOEXEC)?;
                 mount::fsconfig_create(&context)?;
                 let tree = mount::fsmount(
                     &context,
@@ -155,13 +155,7 @@ impl<'w> Runtime<'w> {
                         | mount::MountAttrFlags::MOUNT_ATTR_NOSUID
                         | mount::MountAttrFlags::MOUNT_ATTR_NOEXEC,
                 )?;
-                mounts.attach(tree.into(), mounts.path().join(name))?;
-                if name == "policies" {
-                    std::fs::set_permissions(
-                        mounts.path().join(name),
-                        std::fs::Permissions::from_mode(0o700),
-                    )?;
-                }
+                mounts.attach(tree.into(), mounts.path().join("cgroups"))?;
                 budget.check()?;
             }
             std::fs::create_dir(mounts.path().join("cgroups").join(&mounts.name))?;
@@ -190,7 +184,6 @@ impl<'w> Runtime<'w> {
         Ok(RuntimePaths {
             runtime: self,
             volumes: root.join("volumes"),
-            policies: root.join("policies"),
             domains: root.join("cgroups").join(&self.mounts.name),
             recovery: root.join("recovery"),
         })
@@ -215,17 +208,11 @@ pub struct RuntimePaths<'r, 'w> {
     runtime: &'r Runtime<'w>,
     recovery: PathBuf,
     volumes: PathBuf,
-    policies: PathBuf,
     domains: PathBuf,
 }
 impl RuntimePaths<'_, '_> {
     pub fn sandbox(&self) -> SandboxDirectories<'_> {
-        SandboxDirectories::new(
-            self.runtime.recovery(),
-            &self.volumes,
-            &self.policies,
-            &self.domains,
-        )
+        SandboxDirectories::new(self.runtime.recovery(), &self.volumes, &self.domains)
     }
     pub fn domains(&self) -> &Path {
         &self.domains
@@ -281,14 +268,9 @@ impl RuntimeMounts<'_> {
             Self::check(deadline)?;
             if target.file_name().is_some_and(|n| n == "cgroups") {
                 Self::remove_empty(&target.join(&self.name))?;
-            } else if target.file_name().is_some_and(|n| n == "policies")
-                && std::fs::read_dir(target)?.next().is_some()
-            {
-                return Err(io::Error::other("runtime still contains policy pins"));
             }
             // Remove empty backing mountpoints before unmounting the workspace.
             if target == &self.path() {
-                Self::remove_empty(&target.join("policies"))?;
                 Self::remove_empty(&target.join("cgroups"))?;
             }
             mount::unmount(target, mount::UnmountFlags::NOFOLLOW)?;

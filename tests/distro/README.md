@@ -79,3 +79,18 @@ The Debian recipe currently uses the known Fedora-built kernel/corium platform
 pair with Debian userspace, then the default DTB transformation binds its new root.
 That tests Debian APT/systemd and firmware-stage extraction, not Debian kernel
 packaging or new arma firmware generation.
+
+
+The disposable VM environment now loads a fixed exact-name SELinux-label
+exception before invoking conglobate. `label_environment.py` builds the trusted
+fixture loader outside the binary and retains its source in each run. Loading
+happens only inside the VM. `--without-label-policy` is a harness negative-test
+switch; conglobate has no policy-loading option or dependency.
+
+The trusted guest init records the build script exit status on a separate 4-KiB
+virtio result device and syncs it before reboot. Recipe commands cannot access
+that device. The runner requires both the exact build/export console marker and
+a successful result record, then verifies all exported blob hashes. This avoids
+relying on an exit line that the kernel's reboot printk can interrupt; no sleep
+is used. Expected failed builds still produce a failing runner verdict, with
+negative-test assessments recorded separately.

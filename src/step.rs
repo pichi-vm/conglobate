@@ -2,13 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Protected command lifetime. Trusted helper construction and sandbox readiness
-//! remain prerequisites; this owner couples policy admission to its own drain.
+//! remain prerequisites; this owner couples command admission to its own drain.
 use crate::{
     domain::{ContainedHelper, DescendantDrain, DrainedHelper, HelperCancellation, HelperReaping},
-    policy::{BoundDisabled, LabelPolicy, PolicyError},
+    isolation::{PinnedNamespace, UserNamespace},
     process::{Admitted, ChildReaper, ReapedChildren, Supervision},
 };
-use libbpf_rs::{MapCore, MapFlags};
 use std::{
     io, marker::PhantomData, mem::ManuallyDrop, path::Path, process::ExitStatus, time::Instant,
 };
@@ -21,8 +20,8 @@ pub use execution::{
 mod preparation;
 pub use preparation::{
     BootstrapPreparation, BootstrapPreparationFailure, CommandPreparation, CommandSandbox,
-    PreparationFailure, PreparationStorage, SandboxDirectories, StorageLayout, StoragePinFailure,
-    StoragePreparation, StoragePreparationFailure, StorageRollback,
+    PreparationFailure, PreparationStorage, SandboxDirectories, StorageLayout, StoragePreparation,
+    StoragePreparationFailure, StorageRollback,
 };
 mod finalize;
 mod outcome;
@@ -43,7 +42,7 @@ mod private {
     pub trait Sealed {}
     pub trait Storage {}
 }
-/// Storage held through command cancellation, reaping and policy disablement.
+/// Storage held through command cancellation, reaping and namespace release.
 /// Implementations are sealed so command lifetimes cannot be replaced with an
 /// arbitrary borrowed value. More stage-specific volume sets can be added here.
 pub trait StepStorage: private::Storage + std::fmt::Debug {}
@@ -111,32 +110,31 @@ impl<'a> StepState<'a> for Finishing {
     type Resources = (ExitStatus, ReapedChildren);
 }
 
-/// No policy or identity handle escapes before this command's quiescence.
-/// Dropping an unfinished step retains pinned authorization through VM disposal;
+/// No namespace or storage handle escapes before this command's quiescence.
+/// Dropping an unfinished step retains namespace and storage through VM disposal;
 /// best-effort child destruction is never used as a quiescence receipt.
 ///
 /// Admission consumes Ready through `admit_until`, producing Running on success.
-/// Activation failure retains Ready; failed admission retains Cancelling.
+/// Failed admission retains Cancelling.
 /// Cleanup follows these consuming transitions:
 ///
 /// ```text
 /// Ready | Running | Cancelling
 ///     --cancel_until--> Reaping --reap_until--> Draining
 ///     --drain_until--> Quiescent --finish_record--> Finishing
-///     --disable--> StepCompletion
+///     --finish--> StepCompletion
 /// ```
 ///
 /// Failed cancellation retains Cancelling; subsequent transition failures
-/// retain their input state. `teardown` drives this sequence, closes the disabled
-/// policy and releases identity pins under one fixed deadline, including retries.
+/// retain their input state. `teardown` drives this sequence and releases the namespace attachment under one fixed deadline, including retries.
 /// Its TeardownCompletion still owns storage: explicit unmount/flush and sealing
 /// remain necessary before publication. Normal command exit uses this same
 /// cleanup sequence; it does not skip descendant cancellation or drain.
 ///
 /// ```compile_fail
 /// use conglobate::step::{Step, Running};
-/// fn cannot_disable_while_running(step: Step<'_, Running>) {
-///     step.disable();
+/// fn cannot_finish_while_running(step: Step<'_, Running>) {
+///     step.finish();
 /// }
 /// ```
 /// ```compile_fail
@@ -154,33 +152,9 @@ impl<'a> StepState<'a> for Finishing {
 #[derive(Debug)]
 pub struct Step<'lease, S: StepState<'lease>, R: StepStorage = ()> {
     storage: Retained<R>,
-    policy: PolicyGuard,
+    namespace: ManuallyDrop<UserNamespace<PinnedNamespace>>,
     resources: S::Resources,
     _lease: PhantomData<&'lease ()>,
-}
-#[derive(Debug)]
-struct PolicyGuard {
-    policy: ManuallyDrop<LabelPolicy<BoundDisabled>>,
-}
-impl PolicyGuard {
-    fn activate(&self) -> Result<(), PolicyError> {
-        self.policy.config_handle().update(
-            &0u32.to_ne_bytes(),
-            &self.policy.scope().subject_value(),
-            MapFlags::ANY,
-        )?;
-        Ok(())
-    }
-    fn disable(self) -> Result<LabelPolicy<BoundDisabled>, Box<(PolicyError, Self)>> {
-        if let Err(source) =
-            self.policy
-                .config_handle()
-                .update(&0u32.to_ne_bytes(), &[0; 8], MapFlags::ANY)
-        {
-            return Err(Box::new((source.into(), self)));
-        }
-        Ok(ManuallyDrop::into_inner(self.policy))
-    }
 }
 #[derive(Debug, thiserror::Error)]
 #[error("protected step transition: {source}")]
@@ -193,36 +167,28 @@ impl<'lease, S: StepState<'lease>, R: StepStorage> StepFailure<'lease, S, R> {
         (self.source, self.step)
     }
 }
-#[derive(Debug, thiserror::Error)]
-pub enum StartFailure<'lease, R: StepStorage = ()> {
-    #[error("policy activation: {0}")]
-    Activation(Box<StepFailure<'lease, Ready, R>>),
-    #[error("command admission: {0}")]
-    Admission(Box<StepFailure<'lease, Cancelling, R>>),
-}
+pub type StartFailure<'lease, R = ()> = Box<StepFailure<'lease, Cancelling, R>>;
 impl<'lease> Step<'lease, Ready> {
     fn with_storage<R: StepStorage>(self, storage: R) -> Step<'lease, Ready, R> {
         Step {
             storage: Retained::new(storage),
-            policy: self.policy,
+            namespace: self.namespace,
             resources: self.resources,
             _lease: PhantomData,
         }
     }
 
-    /// The helper must be trusted, registered and blocked on admission; its
-    /// namespace/filesystems must match the bound policy. Install the reaper
+    /// The helper must be trusted, contained and blocked on admission. The step
+    /// owns its mapped namespace and assigned storage. Install the reaper
     /// before spawning it. No other process may admit commands to this scope.
     pub fn new(
-        policy: LabelPolicy<BoundDisabled>,
+        namespace: UserNamespace<PinnedNamespace>,
         helper: ContainedHelper<'lease>,
         reaper: ChildReaper,
     ) -> Self {
         Self {
             storage: Retained::new(()),
-            policy: PolicyGuard {
-                policy: ManuallyDrop::new(policy),
-            },
+            namespace: ManuallyDrop::new(namespace),
             resources: (helper, reaper),
             _lease: PhantomData,
         }
@@ -238,11 +204,11 @@ impl<'lease> Step<'lease, Ready> {
     /// ```compile_fail
     /// use conglobate::{step::{Step, Running}, storage::{Volume, Mounted}};
     /// fn cannot_release_running_volume(step: Step<'_, Running, Volume<'_, '_, '_, Mounted>>) {
-    ///     step.disable();
+    ///     step.finish();
     /// }
     /// ```
     /// Consume the mounted owner before admission. No storage accessor exists
-    /// on active or cleanup states; only successful disable returns it.
+    /// on active or cleanup states; only successful finish returns it.
     pub fn with_volume<'ns, 'origin, 'workspace>(
         self,
         volume: crate::storage::Volume<'ns, 'origin, 'workspace, crate::storage::Mounted>,
@@ -253,7 +219,7 @@ impl<'lease> Step<'lease, Ready> {
     > {
         Step {
             storage: Retained::new(volume),
-            policy: self.policy,
+            namespace: self.namespace,
             resources: self.resources,
             _lease: PhantomData,
         }
@@ -264,31 +230,25 @@ impl<'lease, R: StepStorage> Step<'lease, Ready, R> {
         self,
         deadline: Instant,
     ) -> Result<Step<'lease, Running, R>, StartFailure<'lease, R>> {
-        if let Err(source) = self.policy.activate() {
-            return Err(StartFailure::Activation(Box::new(StepFailure {
-                source: io::Error::other(source),
-                step: self,
-            })));
-        }
         let (helper, reaper) = self.resources;
         match helper.admit_until(deadline) {
             Ok(helper) => Ok(Step {
                 storage: self.storage,
-                policy: self.policy,
+                namespace: self.namespace,
                 resources: (helper, reaper),
                 _lease: PhantomData,
             }),
             Err(failure) => {
                 let (source, helper) = failure.into_parts();
-                Err(StartFailure::Admission(Box::new(StepFailure {
+                Err(Box::new(StepFailure {
                     source,
                     step: Step {
                         storage: self.storage,
-                        policy: self.policy,
+                        namespace: self.namespace,
                         resources: (helper, reaper),
                         _lease: PhantomData,
                     },
-                })))
+                }))
             }
         }
     }
@@ -303,7 +263,7 @@ impl<'lease, R: StepStorage> Step<'lease, Ready, R> {
         match helper.cancel_until(deadline) {
             Ok(helper) => Ok(Step {
                 storage: self.storage,
-                policy: self.policy,
+                namespace: self.namespace,
                 resources: (helper, reaper),
                 _lease: PhantomData,
             }),
@@ -313,7 +273,7 @@ impl<'lease, R: StepStorage> Step<'lease, Ready, R> {
                     source,
                     step: Step {
                         storage: self.storage,
-                        policy: self.policy,
+                        namespace: self.namespace,
                         resources: (helper, reaper),
                         _lease: PhantomData,
                     },
@@ -332,7 +292,7 @@ impl<'lease, R: StepStorage> Step<'lease, Running, R> {
         match helper.cancel_until(deadline) {
             Ok(helper) => Ok(Step {
                 storage: self.storage,
-                policy: self.policy,
+                namespace: self.namespace,
                 resources: (helper, reaper),
                 _lease: PhantomData,
             }),
@@ -342,7 +302,7 @@ impl<'lease, R: StepStorage> Step<'lease, Running, R> {
                     source,
                     step: Step {
                         storage: self.storage,
-                        policy: self.policy,
+                        namespace: self.namespace,
                         resources: (helper, reaper),
                         _lease: PhantomData,
                     },
@@ -361,7 +321,7 @@ impl<'lease, R: StepStorage> Step<'lease, Cancelling, R> {
         match helper.retry_until(deadline) {
             Ok(helper) => Ok(Step {
                 storage: self.storage,
-                policy: self.policy,
+                namespace: self.namespace,
                 resources: (helper, reaper),
                 _lease: PhantomData,
             }),
@@ -371,7 +331,7 @@ impl<'lease, R: StepStorage> Step<'lease, Cancelling, R> {
                     source,
                     step: Step {
                         storage: self.storage,
-                        policy: self.policy,
+                        namespace: self.namespace,
                         resources: (helper, reaper),
                         _lease: PhantomData,
                     },
@@ -394,7 +354,7 @@ impl<'lease, R: StepStorage> Step<'lease, Reaping, R> {
         match helper.reap_until(deadline) {
             Ok(helper) => Ok(Step {
                 storage: self.storage,
-                policy: self.policy,
+                namespace: self.namespace,
                 resources: helper.with_reaper(reaper),
                 _lease: PhantomData,
             }),
@@ -404,7 +364,7 @@ impl<'lease, R: StepStorage> Step<'lease, Reaping, R> {
                     source: io::Error::other(source),
                     step: Step {
                         storage: self.storage,
-                        policy: self.policy,
+                        namespace: self.namespace,
                         resources: (helper, reaper),
                         _lease: PhantomData,
                     },
@@ -421,7 +381,7 @@ impl<'lease, R: StepStorage> Step<'lease, Draining, R> {
         match self.resources.drain_until(deadline) {
             Ok(resources) => Ok(Step {
                 storage: self.storage,
-                policy: self.policy,
+                namespace: self.namespace,
                 resources,
                 _lease: PhantomData,
             }),
@@ -431,7 +391,7 @@ impl<'lease, R: StepStorage> Step<'lease, Draining, R> {
                     source,
                     step: Step {
                         storage: self.storage,
-                        policy: self.policy,
+                        namespace: self.namespace,
                         resources,
                         _lease: PhantomData,
                     },
@@ -448,7 +408,7 @@ impl<'lease, R: StepStorage> Step<'lease, Quiescent, R> {
         match self.resources.finish(parent) {
             Ok(resources) => Ok(Step {
                 storage: self.storage,
-                policy: self.policy,
+                namespace: self.namespace,
                 resources,
                 _lease: PhantomData,
             }),
@@ -458,7 +418,7 @@ impl<'lease, R: StepStorage> Step<'lease, Quiescent, R> {
                     source,
                     step: Step {
                         storage: self.storage,
-                        policy: self.policy,
+                        namespace: self.namespace,
                         resources,
                         _lease: PhantomData,
                     },
@@ -467,55 +427,43 @@ impl<'lease, R: StepStorage> Step<'lease, Quiescent, R> {
         }
     }
 }
-/// Command descendants are quiescent and labeling authorization is disabled.
-/// Returned storage still needs explicit unmount/flush/sealing; exit status is
-/// diagnostic and this receipt alone does not certify a successful image.
+/// Command descendants are quiescent. Storage still requires clean finalization.
 #[derive(Debug)]
 pub struct StepCompletion<R: StepStorage> {
     status: ExitStatus,
     reaped: ReapedChildren,
-    policy: LabelPolicy<BoundDisabled>,
+    namespace: UserNamespace<PinnedNamespace>,
     storage: R,
 }
 impl<R: StepStorage> StepCompletion<R> {
-    pub fn into_parts(self) -> (ExitStatus, ReapedChildren, LabelPolicy<BoundDisabled>, R) {
-        (self.status, self.reaped, self.policy, self.storage)
+    pub fn into_parts(
+        self,
+    ) -> (
+        ExitStatus,
+        ReapedChildren,
+        UserNamespace<PinnedNamespace>,
+        R,
+    ) {
+        (self.status, self.reaped, self.namespace, self.storage)
     }
 }
-impl<'lease, R: StepStorage> Step<'lease, Finishing, R> {
-    pub fn disable(self) -> Result<StepCompletion<R>, Box<StepFailure<'lease, Finishing, R>>> {
-        match self.policy.disable() {
-            Ok(policy) => Ok(StepCompletion {
-                status: self.resources.0,
-                reaped: self.resources.1,
-                policy,
-                storage: self.storage.release(),
-            }),
-            Err(failure) => {
-                let (source, policy) = *failure;
-                Err(Box::new(StepFailure {
-                    source: io::Error::other(source),
-                    step: Step {
-                        storage: self.storage,
-                        policy,
-                        resources: self.resources,
-                        _lease: PhantomData,
-                    },
-                }))
-            }
+impl<R: StepStorage> Step<'_, Finishing, R> {
+    pub fn finish(self) -> StepCompletion<R> {
+        StepCompletion {
+            status: self.resources.0,
+            reaped: self.resources.1,
+            namespace: ManuallyDrop::into_inner(self.namespace),
+            storage: self.storage.release(),
         }
     }
 }
 
 impl Step<'_, Ready, crate::storage::Volume<'_, '_, '_, crate::storage::Mounted>> {
-    /// Send only the owned volume, using the namespace bound to this policy.
+    /// Send only the owned volume, using this step’s owned mapped namespace.
     /// Failure leaves the entire step owned and available for cancellation.
     pub fn send_volume_until(&self, deadline: Instant) -> io::Result<()> {
         let volume = &self.storage.0;
-        let namespace = self
-            .policy
-            .policy
-            .namespace_for_root(&volume.root_metadata()?)?;
+        let namespace = &self.namespace;
         self.resources
             .0
             .supervision()

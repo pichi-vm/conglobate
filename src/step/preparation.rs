@@ -9,7 +9,7 @@ use crate::{
         DomainCancellation, DomainCreateFailure, DomainCreationRollback, DomainRecordCleanup,
         HelperLaunchFailure, RecordDomainFailure, RecordedDomain,
     },
-    policy::{BoundCleanup, BoundDisabled, InstallationFailure, LabelPolicy, PolicyInstallation},
+    isolation::{PinnedNamespace, UserNamespace},
     process::{ChildReaper, Identified, LaunchFailure, Process, Running},
     storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Volume},
 };
@@ -21,33 +21,27 @@ use std::{
     process::Command,
     time::{Duration, Instant},
 };
-pub use storage::{PreparationStorage, StorageLayout, StoragePinFailure};
+pub use storage::{PreparationStorage, StorageLayout};
 
 #[derive(Debug)]
-enum PolicyAssignment {
-    Uninstalled(ManuallyDrop<Box<PolicyInstallation>>),
-    Bound(Box<ManuallyDrop<LabelPolicy<BoundDisabled>>>),
-    Failed(ManuallyDrop<Box<InstallationFailure>>),
-}
-#[derive(Debug)]
 struct Assigned<R: PreparationStorage> {
-    policy: PolicyAssignment,
+    namespace: ManuallyDrop<UserNamespace<PinnedNamespace>>,
     volume: Retained<R>,
 }
-/// Bound policy, pinned identities and mounted storage stay together even if
+/// Namespace ownership and mounted storage stay together even if
 /// helper startup fails before cgroup joining. The reaper must already be installed.
 #[derive(Debug)]
 pub struct StoragePreparation<'l, R: PreparationStorage> {
-    policy: ManuallyDrop<LabelPolicy<BoundDisabled>>,
+    namespace: ManuallyDrop<UserNamespace<PinnedNamespace>>,
     volume: Retained<R>,
     domain: RecordedDomain<'l>,
     reaper: ChildReaper,
 }
 impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
-    /// Acquire and publish containment before installing policy. Every failure
-    /// retains the supplied identity pins, mounted storage and child reaper.
+    /// Acquire and publish containment before launching a helper. Every failure
+    /// retains the supplied namespace, mounted storage and child reaper.
     pub fn create(
-        installation: PolicyInstallation,
+        namespace: UserNamespace<PinnedNamespace>,
         volume: R,
         reaper: ChildReaper,
         recovery: &'l crate::anchor::RecoveryDirectory,
@@ -59,9 +53,7 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
             .map_err(|error| RecordDomainFailure::Create(DomainCreateFailure::Before(error)))
             .and_then(|()| RecordedDomain::create(recovery, domain_parent));
         match domain {
-            Ok(domain) => {
-                Self::install(installation, volume, domain, reaper, budget, domain_parent)
-            }
+            Ok(domain) => Ok(Self::new(namespace, volume, domain, reaper)),
             Err(failure) => {
                 let (source, rollback) = failure.into_rollback(recovery);
                 Err(Box::new(StoragePreparationFailure {
@@ -70,38 +62,7 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
                         rollback,
                         reaper,
                         Assigned {
-                            policy: PolicyAssignment::Uninstalled(ManuallyDrop::new(Box::new(
-                                installation,
-                            ))),
-                            volume: Retained::new(volume),
-                        },
-                    ),
-                    parent: domain_parent.to_owned(),
-                    deadline: Instant::now() + Duration::from_secs(30),
-                }))
-            }
-        }
-    }
-
-    pub fn install(
-        installation: PolicyInstallation,
-        volume: R,
-        domain: RecordedDomain<'l>,
-        reaper: ChildReaper,
-        budget: &super::SetupBudget,
-        domain_parent: &Path,
-    ) -> Result<Self, Box<StoragePreparationFailure<'l, R>>> {
-        match installation.install(budget.deadline()) {
-            Ok(policy) => Ok(Self::new(policy, volume, domain, reaper)),
-            Err(failure) => {
-                let diagnostics = failure.diagnostics().latest_only();
-                Err(Box::new(StoragePreparationFailure {
-                    diagnostics,
-                    phase: Phase::Domain(
-                        domain.cancellation(),
-                        reaper,
-                        Assigned {
-                            policy: PolicyAssignment::Failed(ManuallyDrop::new(failure)),
+                            namespace: ManuallyDrop::new(namespace),
                             volume: Retained::new(volume),
                         },
                     ),
@@ -113,13 +74,13 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
     }
 
     pub fn new(
-        policy: LabelPolicy<BoundDisabled>,
+        namespace: UserNamespace<PinnedNamespace>,
         volume: R,
         domain: RecordedDomain<'l>,
         reaper: ChildReaper,
     ) -> Self {
         Self {
-            policy: ManuallyDrop::new(policy),
+            namespace: ManuallyDrop::new(namespace),
             volume: Retained::new(volume),
             domain,
             reaper,
@@ -132,19 +93,18 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
         domain_parent: &Path,
     ) -> Result<Step<'l, Ready, R>, Box<StoragePreparationFailure<'l, R>>> {
         let Self {
-            policy,
+            namespace,
             volume,
             domain,
             reaper,
         } = self;
         match domain.launch(command, setup_deadline) {
-            Ok(helper) => Ok(Step::new(ManuallyDrop::into_inner(policy), helper, reaper)
-                .with_storage(volume.release())),
+            Ok(helper) => Ok(
+                Step::new(ManuallyDrop::into_inner(namespace), helper, reaper)
+                    .with_storage(volume.release()),
+            ),
             Err(failure) => {
-                let assigned = Assigned {
-                    policy: PolicyAssignment::Bound(Box::new(policy)),
-                    volume,
-                };
+                let assigned = Assigned { namespace, volume };
                 let (source, phase) = match *failure {
                     HelperLaunchFailure::Launch {
                         source: LaunchFailure::Before(source),
@@ -179,8 +139,6 @@ enum Phase<'l, R: PreparationStorage> {
     EarlyIdentified(Process<Identified>, ChildReaper, R::Unmounted),
     EarlyDrain(ChildReaper, R::Unmounted),
     EarlyPins(PinCleanup, ChildReaper, R::Unmounted),
-    MountedPins(PinCleanup, ChildReaper, Retained<R>),
-    MountedDrain(ChildReaper, Retained<R>),
 
     DomainSetup(DomainCreationRollback<'l>, ChildReaper, Assigned<R>),
     EmptyDrain(ChildReaper, Assigned<R>),
@@ -199,16 +157,13 @@ enum Phase<'l, R: PreparationStorage> {
     Domain(DomainCancellation<'l>, ChildReaper, Assigned<R>),
     Drain(DomainRecordCleanup<'l>, ChildReaper, Assigned<R>),
     Record(DomainRecordCleanup<'l>, Assigned<R>),
-    Policy(Assigned<R>),
-    PolicyRetry(BoundCleanup, Retained<R>),
-    InstallationRetry(Box<InstallationFailure>, Retained<R>),
     Pins(PinCleanup, Retained<R>),
     Unmount(Retained<R>),
     UnmountRetry(R::UnmountFailure),
     Complete(R::Unmounted),
 }
 /// Cleanup-only owner. No retry can restart launch or renew its fixed budget.
-/// Dropping before quiescence retains policy and storage for VM disposal.
+/// Dropping before quiescence retains namespace and storage for VM disposal.
 /// ```compile_fail
 /// use conglobate::step::PreparationFailure;
 /// fn cannot_extract_live_storage(failure: PreparationFailure<'_, '_, '_, '_>) {
@@ -330,20 +285,6 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
                     Phase::EarlyPins(failure.cleanup, reaper, volume),
                 )),
             },
-            Phase::MountedPins(pins, reaper, volume) => match pins.run(deadline) {
-                Ok(()) => Ok(Phase::MountedDrain(reaper, volume)),
-                Err(failure) => Err((
-                    failure.source.into(),
-                    Phase::MountedPins(failure.cleanup, reaper, volume),
-                )),
-            },
-            Phase::MountedDrain(reaper, volume) => match reaper.drain_until(deadline) {
-                Ok(_) => Ok(Phase::Unmount(volume)),
-                Err(failure) => {
-                    let (source, reaper) = failure.into_parts();
-                    Err((source.into(), Phase::MountedDrain(reaper, volume)))
-                }
-            },
             Phase::DomainSetup(rollback, reaper, assigned) => {
                 match rollback.retry_until(&parent, deadline) {
                     Ok(()) => Ok(Phase::EmptyDrain(reaper, assigned)),
@@ -354,7 +295,10 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
                 }
             }
             Phase::EmptyDrain(reaper, assigned) => match reaper.drain_until(deadline) {
-                Ok(_) => Ok(Phase::Policy(assigned)),
+                Ok(_) => Ok(Phase::Pins(
+                    PinCleanup::namespace(ManuallyDrop::into_inner(assigned.namespace)),
+                    assigned.volume,
+                )),
                 Err(failure) => {
                     let (error, reaper) = failure.into_parts();
                     Err((error.into(), Phase::EmptyDrain(reaper, assigned)))
@@ -399,50 +343,13 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
                 }
             },
             Phase::Record(record, assigned) => match record.finish(&parent) {
-                Ok(()) => Ok(Phase::Policy(assigned)),
+                Ok(()) => Ok(Phase::Pins(
+                    PinCleanup::namespace(ManuallyDrop::into_inner(assigned.namespace)),
+                    assigned.volume,
+                )),
                 Err(failure) => {
                     let (error, record) = failure.into_parts();
                     Err((error.into(), Phase::Record(record, assigned)))
-                }
-            },
-            Phase::Policy(assigned) => match assigned.policy {
-                PolicyAssignment::Uninstalled(installation) => Ok(Phase::Pins(
-                    ManuallyDrop::into_inner(installation)
-                        .into_identities()
-                        .into(),
-                    assigned.volume,
-                )),
-                PolicyAssignment::Bound(policy) => {
-                    match ManuallyDrop::into_inner(*policy).close() {
-                        Ok(identities) => Ok(Phase::Pins(identities.into(), assigned.volume)),
-                        Err(failure) => {
-                            let (error, policy) = failure.into_parts();
-                            Err((error.into(), Phase::PolicyRetry(policy, assigned.volume)))
-                        }
-                    }
-                }
-                PolicyAssignment::Failed(failure) => {
-                    match ManuallyDrop::into_inner(failure).cleanup() {
-                        Ok(identities) => Ok(Phase::Pins(identities.into(), assigned.volume)),
-                        Err(failure) => Err((
-                            failure.diagnostics().latest_only(),
-                            Phase::InstallationRetry(failure, assigned.volume),
-                        )),
-                    }
-                }
-            },
-            Phase::InstallationRetry(failure, volume) => match failure.cleanup() {
-                Ok(identities) => Ok(Phase::Pins(identities.into(), volume)),
-                Err(failure) => Err((
-                    failure.diagnostics().latest_only(),
-                    Phase::InstallationRetry(failure, volume),
-                )),
-            },
-            Phase::PolicyRetry(policy, volume) => match policy.retry() {
-                Ok(identities) => Ok(Phase::Pins(identities.into(), volume)),
-                Err(failure) => {
-                    let (error, policy) = failure.into_parts();
-                    Err((error.into(), Phase::PolicyRetry(policy, volume)))
                 }
             },
             Phase::Pins(pins, volume) => match pins.run(deadline) {
@@ -492,7 +399,7 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
 pub type CommandPreparation<'l, 'n, 'o, 'w> = StoragePreparation<'l, Volume<'n, 'o, 'w, Mounted>>;
 pub type PreparationFailure<'l, 'n, 'o, 'w> =
     StoragePreparationFailure<'l, Volume<'n, 'o, 'w, Mounted>>;
-/// Bootstrap preparation retains both roots through the same policy/process rollback.
+/// Bootstrap preparation retains both roots through the same namespace/process rollback.
 pub type BootstrapPreparation<'l, 'n, 'o, 'w> =
     StoragePreparation<'l, BootstrapVolumes<'n, 'o, 'w, Mounted>>;
 pub type BootstrapPreparationFailure<'l, 'n, 'o, 'w> =

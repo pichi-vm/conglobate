@@ -1,0 +1,7 @@
+{
+  "rootless_passed": 195,
+  "doctests_passed": 51,
+  "strict_clippy_passed": true,
+  "production_vm_validated": false,
+  "scope": "Uncommitted registration-free lifecycle; namespace pins and VM fixture migration outstanding"
+}

@@ -6,7 +6,6 @@ use crate::{
         CreateFailure as PinFailure, NamespacePin, NamespaceRecord, PinTarget, RecoveryDirectory,
         ReleaseFailure,
     },
-    policy::{FilesystemTarget, LabelScope, ScopeError},
     process::{Identified, LaunchFailure, Process, Supervision, WaitFailure},
 };
 use nix::sched::{CloneFlags, unshare};
@@ -44,12 +43,6 @@ impl IdRange {
 /// No raw namespace handle escapes. Pin it before any labeling authorization
 /// needs to survive supervisor death; a descriptor alone does not provide that.
 ///
-/// ```compile_fail
-/// use conglobate::isolation::{Mapped, UserNamespace};
-/// fn cannot_describe_pinned_policy(namespace: UserNamespace<Mapped>) {
-///     namespace.label_scope([]);
-/// }
-/// ```
 /// ```compile_fail
 /// use conglobate::{anchor::RecoveryDirectory, isolation::{PinnedNamespace, UserNamespace}};
 /// fn cannot_pin_twice(namespace: UserNamespace<PinnedNamespace>, directory: &RecoveryDirectory) {
@@ -231,15 +224,6 @@ impl UserNamespace<PinnedNamespace> {
                 .map_err(NamespaceViewFailure::Mapping),
             Err(source) => Err(NamespaceViewFailure::Descriptor { source, mount }),
         }
-    }
-    /// Policy description derived from the owned mapping and namespace pin.
-    /// This is not activation authority: the enclosing step must retain this
-    /// owner and assigned filesystem lifetimes until policy is disabled.
-    pub fn label_scope(
-        &self,
-        filesystems: impl IntoIterator<Item = FilesystemTarget>,
-    ) -> Result<LabelScope, ScopeError> {
-        LabelScope::new(self.resources.record().inode(), self.uid.first, filesystems)
     }
     pub fn record(&self) -> &NamespaceRecord {
         self.resources.record()

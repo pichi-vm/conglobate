@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use crate::{
+    isolation::{PinnedNamespace, UserNamespace},
     network::CommandNetwork,
-    policy::{BoundDisabled, LabelPolicy},
     process::{Joined, ReapedChildren, Supervision},
     step::{
         BootstrapFinalizationFailure, FinalizationFailure, FinalizedBootstrap, FinalizedVolume,
@@ -20,7 +20,7 @@ pub trait ExecutionStorage: StorageLayout {
     #[doc(hidden)]
     fn send(
         &self,
-        policy: &LabelPolicy<BoundDisabled>,
+        namespace: &UserNamespace<PinnedNamespace>,
         channel: &Supervision<Joined>,
         network: Option<&CommandNetwork>,
         deadline: Instant,
@@ -43,12 +43,11 @@ impl<'n, 'o, 'w> ExecutionStorage for Volume<'n, 'o, 'w, Mounted> {
     type FinalizationFailure = Box<FinalizationFailure<'n, 'o, 'w>>;
     fn send(
         &self,
-        policy: &LabelPolicy<BoundDisabled>,
+        namespace: &UserNamespace<PinnedNamespace>,
         channel: &Supervision<Joined>,
         network: Option<&CommandNetwork>,
         deadline: Instant,
     ) -> io::Result<()> {
-        let namespace = policy.namespace_for_root(&self.root_metadata()?)?;
         let view = self.view()?;
         match network {
             Some(network) => channel.send_network_volume_until(
@@ -85,14 +84,12 @@ impl<'n, 'o, 'w> ExecutionStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
     type FinalizationFailure = Box<BootstrapFinalizationFailure<'n, 'o, 'w>>;
     fn send(
         &self,
-        policy: &LabelPolicy<BoundDisabled>,
+        namespace: &UserNamespace<PinnedNamespace>,
         channel: &Supervision<Joined>,
         network: Option<&CommandNetwork>,
         deadline: Instant,
     ) -> io::Result<()> {
         self.tool().prepare_output_mountpoint()?;
-        let namespace = policy.namespace_for_root(&self.tool().root_metadata()?)?;
-        policy.namespace_for_root(&self.output().root_metadata()?)?;
         let root = self.tool().view()?;
         let output = self.output().view()?;
         match network {

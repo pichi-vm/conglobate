@@ -1,0 +1,15 @@
+{
+  "original_runner_passed": false,
+  "reason": "sysrq printk interleaved final exit marker",
+  "command_marker_observed": true,
+  "build_and_export_marker_observed": true,
+  "all_exported_blob_hashes_verified": {
+    "cfea8b4a0e66ae0d78e2cc0c7eb5802aa66b549251992677c5ef18cf1e49f39c": "cfea8b4a0e66ae0d78e2cc0c7eb5802aa66b549251992677c5ef18cf1e49f39c",
+    "f97052f3b0f864a8f284d6cc969a0516acfebbab3d9300bff5f3cf3fc2bc93c2": "f97052f3b0f864a8f284d6cc969a0516acfebbab3d9300bff5f3cf3fc2bc93c2",
+    "ec76e9e0444c7f337bf6d2b5621eb77cf5d4981396af44dd56d2f0260e8f41e7": "ec76e9e0444c7f337bf6d2b5621eb77cf5d4981396af44dd56d2f0260e8f41e7",
+    "5c16ca75aa25d0284d6a8194e66a4f9325549cebea848e4a61b8b5d376c263fb": "5c16ca75aa25d0284d6a8194e66a4f9325549cebea848e4a61b8b5d376c263fb",
+    "fab8fdcfb83d3e22e8a960f137379cb6d8d482d1338e087d241ced8e254b0c47": "fab8fdcfb83d3e22e8a960f137379cb6d8d482d1338e087d241ced8e254b0c47",
+    "20759e984177e7d35056cbbac4111b6fb53710048119f744d55182efdb63a515": "20759e984177e7d35056cbbac4111b6fb53710048119f744d55182efdb63a515"
+  },
+  "full_sandbox_qualified": false
+}

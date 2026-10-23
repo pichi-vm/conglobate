@@ -2,14 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::{
     Assigned, BootstrapPreparation, BootstrapPreparationFailure, CommandPreparation, Phase,
-    PolicyAssignment, PreparationFailure, PreparationStorage, StoragePreparation,
-    StoragePreparationFailure,
+    PreparationFailure, PreparationStorage, StoragePreparation, StoragePreparationFailure,
 };
 use crate::{
     anchor::{CreateFailure, RecoveryDirectory},
     execution::HelperProgram,
     isolation::{IdRange, Mapped, UserNamespace, UserNamespaceFailure},
-    policy::PolicyInstallation,
     process::{ChildReaper, LaunchFailure},
     step::{Retained, SetupBudget, pins::PinCleanup},
     storage::{BootstrapVolumes, Mounted, Unmounted, Volume},
@@ -22,20 +20,13 @@ use std::{io, mem::ManuallyDrop, path::Path, process::Command};
 pub struct SandboxDirectories<'l> {
     recovery: &'l RecoveryDirectory,
     mounts: &'l Path,
-    policies: &'l Path,
     domains: &'l Path,
 }
 impl<'l> SandboxDirectories<'l> {
-    pub fn new(
-        recovery: &'l RecoveryDirectory,
-        mounts: &'l Path,
-        policies: &'l Path,
-        domains: &'l Path,
-    ) -> Self {
+    pub fn new(recovery: &'l RecoveryDirectory, mounts: &'l Path, domains: &'l Path) -> Self {
         Self {
             recovery,
             mounts,
-            policies,
             domains,
         }
     }
@@ -202,9 +193,7 @@ impl<'l> CommandSandbox<'l> {
         };
         if let Err(source) = budget.check().and_then(|_| volume.validate_command_root()) {
             let assigned = Assigned {
-                policy: PolicyAssignment::Uninstalled(ManuallyDrop::new(Box::new(
-                    PolicyInstallation::new(namespace, vec![], directories.policies),
-                ))),
+                namespace: ManuallyDrop::new(namespace),
                 volume: Retained::new(volume),
             };
             return Err(StoragePreparationFailure::early(
@@ -213,19 +202,8 @@ impl<'l> CommandSandbox<'l> {
                 directories.domains,
             ));
         }
-        let pins = match volume.pin(directories.recovery) {
-            Ok(pins) => pins,
-            Err(failure) => {
-                let (source, pins) = failure.into_cleanup(namespace);
-                return Err(StoragePreparationFailure::early(
-                    source,
-                    Phase::MountedPins(pins, reaper, Retained::new(volume)),
-                    directories.domains,
-                ));
-            }
-        };
         StoragePreparation::create(
-            PolicyInstallation::new(namespace, pins, directories.policies),
+            namespace,
             volume,
             reaper,
             directories.recovery,
