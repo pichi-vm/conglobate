@@ -63,7 +63,7 @@
       "remaining_action": "Owned diagnostic representation preserving failure ownership and both messages",
       "historical_status": "open",
       "current_status": "open",
-      "current_evidence": "Partial progress: typed runtime and formatter errors; coordinator storage errors now retain concrete causes/histories through From conversions; firmware extraction/finalization and combined cleanup remain separate. Lower-level retry ownership and terminal VM-disposal contract retained. Generic stage rejection and full diagnostic taxonomy remain open. Evidence in terminal-runtime-errors/, formatter-error-structure/, formatter-staging-wait-errors/, storage-pipeline-errors/ and current-source bootstrap storage-pipeline-bootstrap-v1/ under preservation/m7-review/. Further progress: directive index and typed pre-step/preparation/COPY initial and failed-cleanup causes retained; command/network flattening and successful-recovery history disposition remain open. See stage-preparation-copy-errors/REVIEW.md."
+      "current_evidence": "Partial progress: typed runtime, formatter, coordinator storage/firmware, indexed directive preparation/COPY and command outcomes. Command and recovered preparation/COPY cleanup histories retained. Current-source missing-policy VM denial and cleanup diagnostics pass. Network setup rejection and underlying string-only network errors remain open, as does final taxonomy audit. See command-outcome-errors/REVIEW.md and command-error-missing-label-v2/ under preservation/m7-review/, plus preceding error-conversion records."
     },
     {
       "id": "errors-api-003",
@@ -72,7 +72,7 @@
       "remaining_action": "Same as errors-api-002",
       "historical_status": "open",
       "current_status": "open",
-      "current_evidence": "Partial progress: typed runtime and formatter errors; coordinator storage errors now retain concrete causes/histories through From conversions; firmware extraction/finalization and combined cleanup remain separate. Lower-level retry ownership and terminal VM-disposal contract retained. Generic stage rejection and full diagnostic taxonomy remain open. Evidence in terminal-runtime-errors/, formatter-error-structure/, formatter-staging-wait-errors/, storage-pipeline-errors/ and current-source bootstrap storage-pipeline-bootstrap-v1/ under preservation/m7-review/. Further progress: directive index and typed pre-step/preparation/COPY initial and failed-cleanup causes retained; command/network flattening and successful-recovery history disposition remain open. See stage-preparation-copy-errors/REVIEW.md."
+      "current_evidence": "Partial progress: typed runtime, formatter, coordinator storage/firmware, indexed directive preparation/COPY and command outcomes. Command and recovered preparation/COPY cleanup histories retained. Current-source missing-policy VM denial and cleanup diagnostics pass. Network setup rejection and underlying string-only network errors remain open, as does final taxonomy audit. See command-outcome-errors/REVIEW.md and command-error-missing-label-v2/ under preservation/m7-review/, plus preceding error-conversion records."
     },
     {
       "id": "errors-api-005",

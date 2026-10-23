@@ -3,7 +3,7 @@
 //! Terminal stage rejection: cleanup can recover storage only for discard.
 use super::BuildError;
 use crate::{
-    step::{DirectiveStorage, StageFailure},
+    step::{DirectiveStorage, ExecutionStorage, StageFailure, StorageExecutionFailure},
     storage::{BootstrapVolumes, Unmounted, Volume},
 };
 
@@ -52,38 +52,27 @@ impl<R: DirectiveStorage> StageFailure<'_, R> {
                 source: Box::new(BuildError::Io(source)),
             }
             .with_cleanup(storage.discard()),
-            StageFailure::Preparation { index, failure } => {
-                let primary = BuildError::Directive {
-                    index,
-                    source: Box::new(BuildError::Preparation(failure.diagnostics().clone())),
-                };
-                let cleanup = failure
-                    .rollback()
-                    .map_err(|failure| BuildError::Preparation(failure.diagnostics().clone()))
-                    .and_then(|done| done.into_parts().1.discard());
-                primary.with_cleanup(cleanup)
-            }
-            StageFailure::Copy { index, failure } => {
-                let primary = BuildError::Directive {
-                    index,
-                    source: Box::new(BuildError::Copy(failure.diagnostics().clone())),
-                };
-                let cleanup = failure
-                    .retry_cleanup()
-                    .into_rejected_storage()
-                    .map_err(|failure| BuildError::Copy(failure.diagnostics().clone()))
-                    .and_then(|(_, storage, _)| storage.discard());
-                primary.with_cleanup(cleanup)
-            }
-            StageFailure::Execution { index, failure } => {
-                let primary = BuildError::execution(format!("directive {index}: {failure}"));
-                let cleanup = failure
-                    .retry_cleanup()
-                    .into_rejected_storage()
-                    .map_err(BuildError::execution)
-                    .and_then(|(_, storage)| storage.discard());
-                primary.with_cleanup(cleanup)
-            }
+            StageFailure::Preparation { index, failure } => match failure.rollback() {
+                Ok(done) => {
+                    let (history, storage) = done.into_parts();
+                    BuildError::Preparation(history)
+                        .at_directive(index)
+                        .with_cleanup(storage.discard())
+                }
+                Err(failure) => {
+                    BuildError::Preparation(failure.diagnostics().clone()).at_directive(index)
+                }
+            },
+            StageFailure::Copy { index, failure } => match failure
+                .retry_cleanup()
+                .into_rejected_storage()
+            {
+                Ok((history, storage, _)) => BuildError::Copy(history)
+                    .at_directive(index)
+                    .with_cleanup(storage.discard()),
+                Err(failure) => BuildError::Copy(failure.diagnostics().clone()).at_directive(index),
+            },
+            StageFailure::Execution { index, failure } => failure.reject_command(index),
             StageFailure::NetworkSetup { index, failure } => {
                 let primary = BuildError::execution(format!("directive {index}: {failure}"));
                 let cleanup = failure
@@ -98,14 +87,27 @@ impl<R: DirectiveStorage> StageFailure<'_, R> {
                     });
                 primary.with_cleanup(cleanup)
             }
-            StageFailure::NetworkExecution { index, failure } => {
-                let primary = BuildError::execution(format!("directive {index}: {failure}"));
-                let cleanup = failure
-                    .retry_cleanup()
-                    .into_rejected_storage()
-                    .map_err(BuildError::execution)
-                    .and_then(|(_, storage)| storage.discard());
-                primary.with_cleanup(cleanup)
+            StageFailure::NetworkExecution { index, failure } => failure.reject_command(index),
+        }
+    }
+}
+
+impl<R: ExecutionStorage> StorageExecutionFailure<'_, R> {
+    fn reject_command(self, index: usize) -> BuildError
+    where
+        R::Unmounted: DiscardStorage,
+    {
+        let failure = self.retry_cleanup();
+        // Successful storage recovery otherwise consumes and discards this
+        // history. Preserve it even when the final retry succeeds.
+        let history = failure.cleanup_error().cloned();
+        match failure.into_rejected_storage() {
+            Ok((outcome, storage)) => BuildError::command(outcome, history)
+                .at_directive(index)
+                .with_cleanup(storage.discard()),
+            Err(failure) => {
+                let (outcome, history) = failure.into_terminal_parts();
+                BuildError::command(outcome, history).at_directive(index)
             }
         }
     }

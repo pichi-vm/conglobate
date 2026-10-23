@@ -5716,3 +5716,22 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Command/network error flattening and complete successful-recovery history
   retention remain open. No new VM failure injection or full adherence pass;
   errors-api-002/003 remain open and M4 stays 0/3.
+
+### Typed command outcomes and final recovery histories
+
+- Previous turn committed typed pre-step/preparation/COPY diagnostics. Command
+  and network-enabled execution now retain concrete ExecutionOutcome (including
+  exit/signal status or setup/observation error), directive index and cleanup
+  history through a shared consuming rejection method.
+- Successful rejected-storage recovery preserves its cleanup history. Preparation
+  and COPY now retain returned final histories too. Incomplete cleanup still
+  relinquishes retry authority only at the terminal VM-disposal boundary; no
+  success receipt or extra cleanup attempt was introduced.
+- Final-source 143 library tests, strict Clippy and lifecycle compilation passed.
+  A native amd64 missing-policy VM test verified denial before admission, cleanup
+  diagnostics and absent output. An earlier invocation had a malformed digest;
+  preserved it separately without claiming sandbox coverage. Both source archives
+  match all 169 compared files.
+- Evidence: command-outcome-errors/ and command-error-missing-label-v1/v2 under
+  preservation/m7-review/. Network setup and underlying string-only network errors
+  remain open. No full adherence pass; M4 remains 0/3 and goal active.

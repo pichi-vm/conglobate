@@ -80,6 +80,19 @@ type ExecutionResult<'l, R> = Result<ExecutedStorage<R>, Box<StorageExecutionFai
 type TeardownResult<'l, R> = Result<TeardownCompletion<R>, Box<TeardownFailure<'l, R>>>;
 
 impl<'l, R: ExecutionStorage> StorageExecutionFailure<'l, R> {
+    /// Terminal pipeline boundary only. Relinquish cleanup retry authority with
+    /// existing Drop behavior, preserving the outcome and all observed errors.
+    /// This is not a cleanup receipt; the dedicated VM must be disposed.
+    pub(crate) fn into_terminal_parts(self) -> (ExecutionOutcome, Option<FailureDiagnostics>) {
+        let Self {
+            outcome,
+            cleanup,
+            diagnostics,
+        } = self;
+        drop(cleanup);
+        (outcome, diagnostics)
+    }
+
     pub fn outcome(&self) -> &ExecutionOutcome {
         &self.outcome
     }

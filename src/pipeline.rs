@@ -44,6 +44,15 @@ pub enum BuildError {
     Unsupported(&'static str),
     #[error("build execution: {0}")]
     Execution(String),
+    #[error("{0}; cleanup: complete")]
+    Command(#[source] crate::step::ExecutionOutcome),
+    /// Cleanup error history remains diagnostic even if a later retry succeeds.
+    #[error("{outcome}; cleanup: {cleanup}")]
+    CommandCleanup {
+        #[source]
+        outcome: crate::step::ExecutionOutcome,
+        cleanup: crate::storage::FailureDiagnostics,
+    },
     #[error("directive {index}: {source}")]
     Directive {
         index: usize,
@@ -102,6 +111,21 @@ pub enum BuildError {
     RootRequired,
 }
 impl BuildError {
+    fn command(
+        outcome: crate::step::ExecutionOutcome,
+        cleanup: Option<crate::storage::FailureDiagnostics>,
+    ) -> Self {
+        match cleanup {
+            Some(cleanup) => Self::CommandCleanup { outcome, cleanup },
+            None => Self::Command(outcome),
+        }
+    }
+    fn at_directive(self, index: usize) -> Self {
+        Self::Directive {
+            index,
+            source: Box::new(self),
+        }
+    }
     fn with_cleanup(self, cleanup: Result<(), Self>) -> Self {
         match cleanup {
             Ok(()) => self,
@@ -256,6 +280,45 @@ mod tests {
     use super::BuildError;
     use crate::storage::FailureDiagnostics;
     use std::io;
+
+    #[test]
+    fn command_rejection_retains_exit_status_and_recovered_cleanup_history() {
+        use crate::step::{CommandOutcome, ExecutionOutcome};
+        use std::os::unix::process::ExitStatusExt;
+        for status in [0, 7 << 8, 9] {
+            let outcome = ExecutionOutcome::Command(CommandOutcome::Exited(
+                std::process::ExitStatus::from_raw(status),
+            ));
+            let history = FailureDiagnostics::from(io::Error::from_raw_os_error(16));
+            let error = BuildError::command(outcome, Some(history)).at_directive(3);
+            let BuildError::Directive { index, source } = error else {
+                panic!("index lost")
+            };
+            assert_eq!(index, 3);
+            let BuildError::CommandCleanup { outcome, cleanup } = *source else {
+                panic!("cleanup history lost");
+            };
+            let ExecutionOutcome::Command(CommandOutcome::Exited(exit)) = outcome else {
+                panic!("exit status lost");
+            };
+            assert_eq!(exit.into_raw(), status);
+            assert_eq!(cleanup.operation().raw_os_error(), Some(16));
+        }
+    }
+
+    #[test]
+    fn command_setup_error_retains_errno_after_clean_teardown() {
+        use crate::step::ExecutionOutcome;
+        let error = BuildError::command(
+            ExecutionOutcome::SetupFailed(io::Error::from_raw_os_error(13)),
+            None,
+        );
+        assert!(error.to_string().ends_with("cleanup: complete"));
+        let BuildError::Command(ExecutionOutcome::SetupFailed(source)) = error else {
+            panic!("setup error lost");
+        };
+        assert_eq!(source.raw_os_error(), Some(13));
+    }
 
     #[test]
     fn formatter_rejection_retains_history_and_independent_cleanup_errors() {

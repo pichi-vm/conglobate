@@ -1,0 +1,11 @@
+{
+  "checks": {
+    "build_rejected": true,
+    "command_not_admitted": true,
+    "label_denial_diagnostic": true,
+    "command_cleanup_complete": true,
+    "runtime_cleanup_complete": true
+  },
+  "passed": true,
+  "full_sandbox_qualified": false
+}

@@ -1,0 +1,11 @@
+{
+  "baseline": "870ac1e plus command outcome/recovery history changes",
+  "source_files_compared": 169,
+  "coverage": "Missing external labeling policy: setup denied, command not admitted, cleanup-complete diagnostic, no output",
+  "limitations": [
+    "Native amd64 ordinary KVM only",
+    "Cleanup based on trusted CLI diagnostics, not independent kernel-resource enumeration",
+    "No full sandbox or target distro boot qualification",
+    "Large VM artifacts local only"
+  ]
+}
