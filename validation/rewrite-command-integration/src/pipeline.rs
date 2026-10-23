@@ -9,6 +9,50 @@ use std::{
 #[derive(Debug)]
 pub(super) struct PipelineProbe;
 impl PipelineProbe {
+    fn network_listener(
+        count: usize,
+    ) -> std::io::Result<std::thread::JoinHandle<std::io::Result<()>>> {
+        use std::io::{BufRead, Write};
+        let listener = std::net::TcpListener::bind("0.0.0.0:45459")?;
+        listener.set_nonblocking(true)?;
+        Ok(std::thread::spawn(move || {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(90);
+            for _ in 0..count {
+                loop {
+                    let remaining = deadline
+                        .checked_duration_since(std::time::Instant::now())
+                        .ok_or_else(|| {
+                            std::io::Error::new(
+                                std::io::ErrorKind::TimedOut,
+                                "CLI network listener",
+                            )
+                        })?;
+                    let mut fds = [rustix::event::PollFd::new(
+                        &listener,
+                        rustix::event::PollFlags::IN,
+                    )];
+                    rustix::event::poll(
+                        &mut fds,
+                        Some(&rustix::event::Timespec::try_from(remaining).unwrap()),
+                    )?;
+                    match listener.accept() {
+                        Ok((mut stream, _)) => {
+                            stream.set_read_timeout(Some(std::time::Duration::from_secs(5)))?;
+                            stream.set_write_timeout(Some(std::time::Duration::from_secs(5)))?;
+                            let mut request = String::new();
+                            std::io::BufReader::new(&stream).read_line(&mut request)?;
+                            assert_eq!(request, "request\n");
+                            stream.write_all(b"reply\n")?;
+                            break;
+                        }
+                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => continue,
+                        Err(error) => return Err(error),
+                    }
+                }
+            }
+            Ok(())
+        }))
+    }
     pub(super) fn derived(
         pin: conglobate::image::IndexDigest,
         workspace: &conglobate::storage::Workspace,
@@ -220,6 +264,35 @@ impl PipelineProbe {
                 serde_json::to_vec(&document)?,
             )?;
         }
+        let mut network_recipe: serde_json::Value =
+            serde_json::from_slice(&fs::read(repo.join("bootstrap-fw-layered-explicit.yml"))?)?;
+        let mut network_count = 0;
+        for stage in ["bootstrap", "carapace", "firmware"] {
+            for directive in network_recipe[stage]["derive"].as_array_mut().unwrap() {
+                if let Some(run) = directive
+                    .get("run")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_owned)
+                {
+                    directive["network"] = true.into();
+                    directive["run"] = format!("test \"$(cat /etc/resolv.conf)\" = 'nameserver 10.0.0.1'; exec 3<>/dev/tcp/10.0.0.1/45459; echo request >&3; IFS= read -r reply <&3; test \"$reply\" = reply; exec 3>&-; {run}").into();
+                    network_count += 1;
+                }
+            }
+        }
+        fs::write(
+            repo.join("network-pipeline.yml"),
+            serde_json::to_vec(&network_recipe)?,
+        )?;
+        fs::write("/work/network-resolver", b"nameserver 10.0.0.1\n")?;
+        for module in ["veth", "nf_tables", "nft_chain_nat", "nft_masq", "nft_ct"] {
+            assert!(Command::new("modprobe").arg(module).status()?.success());
+        }
+        let forwarding4 = fs::read_to_string("/proc/sys/net/ipv4/ip_forward")?;
+        let forwarding6 = fs::read_to_string("/proc/sys/net/ipv6/conf/all/forwarding")?;
+        // Disposable fixture VM with no external NIC. Production only reads these.
+        fs::write("/proc/sys/net/ipv4/ip_forward", "1")?;
+        fs::write("/proc/sys/net/ipv6/conf/all/forwarding", "1")?;
         for args in [
             vec!["init", "--quiet"],
             vec!["add", "."],
@@ -254,6 +327,16 @@ impl PipelineProbe {
         let commit = String::from_utf8(commit.stdout)?;
         fs::write(repo.join("input"), b"uncommitted wrong bytes\n")?;
         for (recipe, output, success) in [
+            (
+                "network-pipeline.yml",
+                "/work/network-pipeline-output",
+                true,
+            ),
+            (
+                "network-pipeline.yml",
+                "/work/network-missing-resolver-output",
+                false,
+            ),
             ("build.yml", "/work/derived-output", true),
             ("bootstrap.yml", "/work/bootstrap-output", true),
             (
@@ -353,6 +436,12 @@ impl PipelineProbe {
                     },
                 ]);
             }
+            let listener = if output == "/work/network-pipeline-output" {
+                command.args(["--resolv-conf", "/work/network-resolver"]);
+                Some(Self::network_listener(network_count)?)
+            } else {
+                None
+            };
             println!("PIPELINE_CLI_CASE {recipe} -> {output}");
             let result = command.output()?;
             assert_eq!(
@@ -361,6 +450,39 @@ impl PipelineProbe {
                 "{recipe} -> {output}: {}",
                 String::from_utf8_lossy(&result.stderr)
             );
+            if let Some(listener) = listener {
+                listener
+                    .join()
+                    .expect("network fixture listener panicked")?;
+                let inventory = fs::read(Path::new(output).join("inventory.cbor"))?;
+                conglobate::inventory::Inventory::decode(&inventory)?;
+                let entries = Field(&inventory).get(&["execution", "network_steps"])?;
+                let mut decoder = minicbor::Decoder::new(entries.0);
+                assert_eq!(decoder.array()?, Some(network_count as u64));
+                let mut stages = Vec::new();
+                for _ in 0..network_count {
+                    let start = decoder.position();
+                    decoder.skip()?;
+                    let entry = Field(&entries.0[start..decoder.position()]);
+                    stages.push(entry.get(&["stage"])?.text()?.to_owned());
+                }
+                assert!(stages.iter().any(|s| s == "bootstrap"));
+                assert!(stages.iter().any(|s| s == "carapace"));
+                assert!(stages.iter().any(|s| s == "firmware"));
+                assert!(!Path::new("/sys/class/net/cgb0h").exists());
+                assert!(
+                    !Command::new("nft")
+                        .args(["list", "table", "inet", "conglobate_cgb0h"])
+                        .output()?
+                        .status
+                        .success()
+                );
+                println!("PIPELINE_CLI_NETWORK_ALL_STAGES_AND_INVENTORY_PASS");
+            }
+            if output == "/work/network-missing-resolver-output" {
+                assert!(String::from_utf8_lossy(&result.stderr).contains("--resolv-conf"));
+                println!("PIPELINE_CLI_NETWORK_MISSING_RESOLVER_REJECTED_PASS");
+            }
             if recipe == "bootstrap-missing-targets.yml" {
                 assert!(
                     String::from_utf8_lossy(&result.stderr).contains("command runtime target /dev")
@@ -378,6 +500,8 @@ impl PipelineProbe {
                 0
             );
         }
+        fs::write("/proc/sys/net/ipv4/ip_forward", forwarding4)?;
+        fs::write("/proc/sys/net/ipv6/conf/all/forwarding", forwarding6)?;
         for (name, count) in [("firmware-only", 0), ("firmware-base", 1)] {
             let path = Path::new("/work").join(format!("{name}-output"));
             let index: serde_json::Value =

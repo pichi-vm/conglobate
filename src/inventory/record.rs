@@ -190,7 +190,31 @@ impl Inventory {
                     default_skipped: transformed.default_skipped(),
                 },
                 formatters: vec![],
-                network_steps: vec![],
+                // This document is constructed only after every authored stage
+                // succeeds. Its enabled directives therefore all ran under NAT.
+                // Resolver bytes and environment paths remain excluded.
+                network_steps: captured
+                    .plan()
+                    .network_steps()
+                    .iter()
+                    .map(|step| {
+                        Ok(NetworkStep {
+                            stage: match step.stage() {
+                                crate::plan::Stage::Bootstrap => Stage::Bootstrap,
+                                crate::plan::Stage::Carapace => Stage::Carapace,
+                                crate::plan::Stage::Firmware => Stage::Firmware,
+                                crate::plan::Stage::Transform => {
+                                    return Err(InventoryError::invalid(
+                                        "transform cannot execute network commands",
+                                    ));
+                                }
+                            },
+                            step: u64::try_from(step.index()).map_err(|_| {
+                                InventoryError::invalid("network step index overflow")
+                            })?,
+                        })
+                    })
+                    .collect::<Result<Vec<_>, InventoryError>>()?,
             },
             outputs,
         })

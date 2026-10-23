@@ -63,6 +63,13 @@ impl<'l> CommandSandbox<'l> {
             gid,
         }
     }
+    pub(crate) fn prepare_network(
+        &self,
+        network: &crate::network::CommandNetworking<'_>,
+        budget: &SetupBudget,
+    ) -> Result<crate::network::CommandNetwork, Box<crate::network::NetworkSetupFailure>> {
+        network.prepare(self.mount_parent(), &self.program, budget)
+    }
     pub(crate) fn mount_parent(&self) -> &Path {
         self.directories.mounts
     }

@@ -426,7 +426,7 @@ impl ConfigurationFailure {
             })));
         }
         connection
-            .close()
+            .close_until(deadline)
             .map_err(ConfigurationCleanupFailure::Network)
     }
 }

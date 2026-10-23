@@ -40,3 +40,6 @@ pub use command::{CommandNetwork, NetworkCleanupFailure};
 
 mod topology;
 pub use topology::{LinkAllocation, NetworkTopology};
+
+mod setup;
+pub use setup::{CommandNetworking, NetworkSetupFailure};

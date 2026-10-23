@@ -9,7 +9,7 @@ use crate::{
     isolation::IdRange,
     output::AssembledImage,
     process::ChildReaper,
-    recipe::{Bootstrap, Directive},
+    recipe::Bootstrap,
     request::BuildRequest,
     step::{CommandSandbox, SetupBudget, StageFailure},
     storage::{BootstrapVolumes, Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
@@ -28,25 +28,6 @@ impl<'a> BootstrapBuild<'a> {
         let stage = recipe
             .bootstrap()
             .ok_or(BuildError::Unsupported("missing bootstrap stage"))?;
-        if stage
-            .directives()
-            .iter()
-            .chain(
-                recipe
-                    .carapace()
-                    .into_iter()
-                    .flat_map(|stage| stage.directives()),
-            )
-            .chain(
-                recipe
-                    .firmware()
-                    .into_iter()
-                    .flat_map(|stage| stage.directives()),
-            )
-            .any(|d| matches!(d, Directive::Run(run) if run.network()))
-        {
-            return Err(BuildError::Unsupported("enabled networking"));
-        }
         let tools = build
             .images()
             .get(stage.from())
@@ -139,13 +120,19 @@ impl<'a> BootstrapBuild<'a> {
             IdRange::new(100000, 65536)?,
             IdRange::new(100000, 65536)?,
         );
+        let networking = self
+            .build
+            .captured()
+            .resolver()
+            .map(|resolver| crate::network::CommandNetworking::new(resolver, workspace));
         let completed = sandbox
-            .directives::<BootstrapVolumes<'_, '_, '_, Mounted>>(
+            .directives_with_network::<BootstrapVolumes<'_, '_, '_, Mounted>>(
                 BootstrapVolumes::new(tool, output),
                 ChildReaper::install()?,
                 self.build.captured().context(),
                 self.stage.directives(),
                 None,
+                networking.as_ref(),
             )
             .map_err(|failure| Self::reject(*failure))?;
         let (volumes, reaper) = completed.into_parts();
@@ -320,6 +307,23 @@ impl<'a> BootstrapBuild<'a> {
                 .map_err(Self::error)
                 .and_then(|done| Self::discard_pair(done.into_parts().1)),
             StageFailure::Execution { failure, .. } => match failure.retry_cleanup() {
+                Ok(done) => Self::discard_pair(done.into_storage()),
+                Err(failure) => failure
+                    .into_rejected_storage()
+                    .map_err(Self::error)
+                    .and_then(|(_, storage)| Self::discard_pair(storage)),
+            },
+            StageFailure::NetworkSetup { failure, .. } => failure
+                .retry_cleanup()
+                .map_err(Self::error)
+                .and_then(|failure| match failure.retry_cleanup() {
+                    Ok(done) => Self::discard_pair(done.into_storage()),
+                    Err(failure) => failure
+                        .into_rejected_storage()
+                        .map_err(Self::error)
+                        .and_then(|(_, storage)| Self::discard_pair(storage)),
+                }),
+            StageFailure::NetworkExecution { failure, .. } => match failure.retry_cleanup() {
                 Ok(done) => Self::discard_pair(done.into_storage()),
                 Err(failure) => failure
                     .into_rejected_storage()

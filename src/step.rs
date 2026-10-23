@@ -534,7 +534,9 @@ mod bootstrap;
 pub use bootstrap::{BootstrapFinalizationFailure, FinalizedBootstrap};
 
 mod directives;
-pub use directives::{CompletedDirectives, CopyStageFailure, DirectiveStorage, StageFailure};
+pub use directives::{
+    CompletedDirectives, CopyStageFailure, DirectiveStorage, NetworkStageFailure, StageFailure,
+};
 
 mod network;
 pub use network::{NetworkEligibleStorage, NetworkFinalizationFailure, NetworkedStorage};

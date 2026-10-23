@@ -135,6 +135,17 @@ impl<'l, R: ExecutionStorage> StorageExecutionFailure<'l, R> {
     }
 }
 impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
+    pub(crate) fn reject_setup(
+        self,
+        error: io::Error,
+        domain_parent: &Path,
+    ) -> Box<StorageExecutionFailure<'l, R>> {
+        StorageExecutionFailure::after_teardown(
+            ExecutionOutcome::SetupFailed(error),
+            self.teardown(domain_parent),
+        )
+        .expect_err("failed setup cannot yield an accepted command")
+    }
     /// Transfer this step's assigned volume, require restricted-leaf readiness,
     /// start under the recipe timeout, observe completion and finalize storage.
     /// Every failure after launch performs bounded cleanup before returning.

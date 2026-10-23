@@ -40,13 +40,6 @@ impl<'a> CarapaceBuild<'a> {
         let stage = recipe
             .carapace()
             .ok_or(BuildError::Unsupported("missing carapace stage"))?;
-        if stage
-            .directives()
-            .iter()
-            .any(|d| matches!(d, Directive::Run(run) if run.network()))
-        {
-            return Err(BuildError::Unsupported("enabled networking"));
-        }
         let base = stage
             .from()
             .and_then(|name| build.images().get(name))
@@ -172,6 +165,23 @@ impl<'a> CarapaceBuild<'a> {
                     .map_err(Self::error)
                     .and_then(|(_, storage)| Self::discard(storage)),
             },
+            StageFailure::NetworkSetup { failure, .. } => failure
+                .retry_cleanup()
+                .map_err(Self::error)
+                .and_then(|failure| match failure.retry_cleanup() {
+                    Ok(done) => Self::discard(done.into_storage()),
+                    Err(failure) => failure
+                        .into_rejected_storage()
+                        .map_err(Self::error)
+                        .and_then(|(_, storage)| Self::discard(storage)),
+                }),
+            StageFailure::NetworkExecution { failure, .. } => match failure.retry_cleanup() {
+                Ok(done) => Self::discard(done.into_storage()),
+                Err(failure) => failure
+                    .into_rejected_storage()
+                    .map_err(Self::error)
+                    .and_then(|(_, storage)| Self::discard(storage)),
+            },
             StageFailure::Copy { failure, .. } => failure
                 .retry_cleanup()
                 .into_rejected_storage()
@@ -217,13 +227,18 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
                 .map_err(CarapaceBuild::error)?;
             let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())
                 .map_err(CarapaceBuild::error)?;
+            let networking = build
+                .captured()
+                .resolver()
+                .map(|resolver| crate::network::CommandNetworking::new(resolver, workspace));
             let completed = sandbox
-                .directives::<Volume<'_, '_, '_, Mounted>>(
+                .directives_with_network::<Volume<'_, '_, '_, Mounted>>(
                     volume,
                     reaper,
                     build.captured().context(),
                     std::slice::from_ref(directive),
                     None,
+                    networking.as_ref(),
                 )
                 .map_err(|failure| CarapaceBuild::reject(*failure))?;
             let (volume, returned_reaper) = completed.into_parts();

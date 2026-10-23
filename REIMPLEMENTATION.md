@@ -3901,3 +3901,33 @@ rules rather than silently shrinking acceptance criteria.
   overlap/exhaustion/boundary cases and dump completion/interruption. Strict
   Clippy passes. Logs and source hashes are in evidence/network-topology-1.
   M6 remains at zero full adherence passes; this is not platform qualification.
+
+### M6 enabled-network CLI integration (validation in progress)
+
+- Added `CommandNetwork::prepare` to compose topology selection, namespace,
+  private links, dual-stack configuration, NAT and resolver source under one
+  setup cutoff. `NetworkSetupFailure` retains partial resources and creator
+  processes for explicit bounded cleanup. Configuration rollback now preserves
+  its original deadline through link removal instead of starting another one.
+- The directive runner now supports captured `CommandNetworking`. It attaches
+  successful setup to the ready step; its opaque network-setup rejection keeps
+  the ready command blocked until any separately owned network creator is reaped.
+  Only then may command teardown perform its process-wide child drain. Failed
+  cleanup cannot expose a ready step or an accepted command receipt.
+- Bootstrap, carapace and firmware CLI paths use the new runner. Successful
+  inventory construction records their authored enabled-step IDs after all
+  stages complete; resolver bytes and source paths remain excluded.
+- Current setup requires environment IPv4 and IPv6 forwarding enabled and does
+  not write sysctls or change the primary NIC. This implementation prerequisite
+  still needs deployment/qualification review; it is not a new portability claim.
+- Full VM regression v248 passed. Its new case exercises TCP and resolver
+  injection in all three CLI stages, checks network inventory and teardown, and
+  rejects a missing resolver argument. Existing offline pipelines and lifecycle
+  cases also passed. Host tests, all 54 doctests, and strict root/fixture Clippy
+  pass. Source, compiler logs (including the initial ownership compile failure),
+  serial output and provenance are preserved in evidence/v248.
+- Enabled CLI networking is now implemented and demonstrated in this disposable
+  x86-64 VM. Forwarded dual-stack traffic was qualified separately by the earlier
+  network fixture; this CLI case uses a guest-local TCP service. Further setup
+  fault/cleanup-expiry tests, network command failure publication checks, ORAS,
+  and three complete M6 adherence passes remain. M6 stays at zero passes.

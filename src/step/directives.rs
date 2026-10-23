@@ -16,7 +16,9 @@ use crate::{
 use std::{io, time::Instant};
 
 /// Sealed layouts supporting trusted COPY between finalized commands.
-pub trait DirectiveStorage: ExecutionStorage + super::PreparationStorage {
+pub trait DirectiveStorage:
+    ExecutionStorage + super::PreparationStorage + super::NetworkEligibleStorage
+{
     #[doc(hidden)]
     fn copy(&mut self, context: &CapturedContext, directive: &Copy) -> Result<(), CopyError>;
     #[doc(hidden)]
@@ -68,10 +70,42 @@ pub enum StageFailure<'l, R: DirectiveStorage> {
         failure: Box<StorageExecutionFailure<'l, R>>,
     },
     #[error("directive {index}: {failure}")]
+    NetworkSetup {
+        index: usize,
+        failure: Box<NetworkStageFailure<'l, R>>,
+    },
+    #[error("directive {index}: {failure}")]
+    NetworkExecution {
+        index: usize,
+        failure: Box<StorageExecutionFailure<'l, super::NetworkedStorage<R>>>,
+    },
+    #[error("directive {index}: {failure}")]
     Copy {
         index: usize,
         failure: Box<CopyStageFailure<R>>,
     },
+}
+/// A network creator may still own a child. Keep command teardown blocked until
+/// that individually owned child is reaped, before the global subreaper drain.
+#[derive(Debug, thiserror::Error)]
+#[error("network setup: {network}")]
+pub struct NetworkStageFailure<'l, R: DirectiveStorage> {
+    network: Box<crate::network::NetworkSetupFailure>,
+    ready: super::Step<'l, super::Ready, R>,
+    domain_parent: std::path::PathBuf,
+}
+impl<'l, R: DirectiveStorage> NetworkStageFailure<'l, R> {
+    pub fn retry_cleanup(self) -> Result<Box<StorageExecutionFailure<'l, R>>, Box<Self>> {
+        let primary = io::Error::other(self.network.to_string());
+        match self.network.cleanup() {
+            Ok(()) => Ok(self.ready.reject_setup(primary, &self.domain_parent)),
+            Err(network) => Err(Box::new(Self {
+                network,
+                ready: self.ready,
+                domain_parent: self.domain_parent,
+            })),
+        }
+    }
 }
 #[derive(Debug)]
 enum CopyCleanup<R: DirectiveStorage> {
@@ -129,25 +163,37 @@ impl<R: DirectiveStorage> CopyStageFailure<R> {
     }
 }
 impl<'l> CommandSandbox<'l> {
+    /// Offline execution entrypoint; enabled steps require captured networking.
+    pub fn directives<R: DirectiveStorage>(
+        &self,
+        storage: R::Unmounted,
+        reaper: ChildReaper,
+        context: &CapturedContext,
+        directives: &[Directive],
+        carapace: Option<&[u8; 32]>,
+    ) -> Result<CompletedDirectives<R>, Box<StageFailure<'l, R>>> {
+        self.directives_with_network::<R>(storage, reaper, context, directives, carapace, None)
+    }
     /// Execute in authored order. Each RUN gets fresh mounts and its recipe
     /// timeout; each COPY runs exclusively between quiescent commands.
-    /// Network-enabled steps are rejected before any directive executes until
-    /// the owned NAT/resolver integration is implemented.
-    pub fn directives<R: DirectiveStorage>(
+    /// Network-enabled steps require the captured build environment.
+    pub fn directives_with_network<R: DirectiveStorage>(
         &self,
         mut storage: R::Unmounted,
         mut reaper: ChildReaper,
         context: &CapturedContext,
         directives: &[Directive],
         carapace: Option<&[u8; 32]>,
+        network: Option<&crate::network::CommandNetworking<'_>>,
     ) -> Result<CompletedDirectives<R>, Box<StageFailure<'l, R>>> {
-        if let Some(index) = directives
-            .iter()
-            .position(|d| matches!(d, Directive::Run(run) if run.network()))
+        if network.is_none()
+            && let Some(index) = directives
+                .iter()
+                .position(|d| matches!(d, Directive::Run(run) if run.network()))
         {
             return Err(Box::new(StageFailure::Before {
                 index,
-                source: io::Error::other("network-enabled directives are not implemented"),
+                source: io::Error::other("network-enabled directives require captured networking"),
                 storage,
                 reaper,
             }));
@@ -183,10 +229,41 @@ impl<'l> CommandSandbox<'l> {
                         .map_err(|failure| {
                             Box::new(StageFailure::Preparation { index, failure })
                         })?;
-                    let executed = ready
-                        .execute(budget, run.timeout(), self.domain_parent())
-                        .map_err(|failure| Box::new(StageFailure::Execution { index, failure }))?;
-                    (storage, reaper) = executed.into_parts();
+                    (storage, reaper) = if run.network() {
+                        let networking = network.expect("preflight checked captured networking");
+                        let network = match self.prepare_network(networking, &budget) {
+                            Ok(network) => network,
+                            Err(failure) => {
+                                let failure = NetworkStageFailure {
+                                    network: failure,
+                                    ready,
+                                    domain_parent: self.domain_parent().to_owned(),
+                                };
+                                return Err(match failure.retry_cleanup() {
+                                    Ok(failure) => {
+                                        Box::new(StageFailure::Execution { index, failure })
+                                    }
+                                    Err(failure) => {
+                                        Box::new(StageFailure::NetworkSetup { index, failure })
+                                    }
+                                });
+                            }
+                        };
+                        ready
+                            .with_network(network)
+                            .execute(budget, run.timeout(), self.domain_parent())
+                            .map_err(|failure| {
+                                Box::new(StageFailure::NetworkExecution { index, failure })
+                            })?
+                            .into_parts()
+                    } else {
+                        ready
+                            .execute(budget, run.timeout(), self.domain_parent())
+                            .map_err(|failure| {
+                                Box::new(StageFailure::Execution { index, failure })
+                            })?
+                            .into_parts()
+                    };
                 }
                 Directive::Copy(copy) => {
                     (storage, reaper) = self

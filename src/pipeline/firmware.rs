@@ -8,7 +8,7 @@ use crate::{
     isolation::IdRange,
     output::AssembledImage,
     process::ChildReaper,
-    recipe::{Directive, Firmware},
+    recipe::Firmware,
     request::BuildRequest,
     step::{CommandSandbox, SetupBudget},
     storage::{Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
@@ -31,13 +31,6 @@ impl<'a> FirmwareBuild<'a> {
         let stage = recipe
             .firmware()
             .ok_or(BuildError::Unsupported("missing firmware stage"))?;
-        if stage
-            .directives()
-            .iter()
-            .any(|d| matches!(d, Directive::Run(run) if run.network()))
-        {
-            return Err(BuildError::Unsupported("enabled networking"));
-        }
         let base = recipe
             .carapace()
             .and_then(|s| s.from())
@@ -176,13 +169,18 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
             IdRange::new(100000, 65536)?,
             IdRange::new(100000, 65536)?,
         );
+        let networking = build
+            .captured()
+            .resolver()
+            .map(|resolver| crate::network::CommandNetworking::new(resolver, workspace));
         let completed = sandbox
-            .directives::<Volume<'_, '_, '_, Mounted>>(
+            .directives_with_network::<Volume<'_, '_, '_, Mounted>>(
                 volume,
                 reaper,
                 build.captured().context(),
                 stage.directives(),
                 root.as_ref(),
+                networking.as_ref(),
             )
             .map_err(|failure| CarapaceBuild::reject(*failure))?;
         let (volume, _reaper) = completed.into_parts();
