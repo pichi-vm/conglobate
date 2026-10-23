@@ -1,0 +1,297 @@
+[
+  {
+    "run": "maintained-domain-publication-v1",
+    "assessment": "preservation/m7-review/maintained-domain-publication-v1/assessment.json",
+    "assessment_data": {
+      "checks": {
+        "DOMAIN_PUBLICATION_ABSENT_ROLLBACK_PASS": true,
+        "DOMAIN_PUBLICATION_PRESENT_ROLLBACK_PASS": true,
+        "DOMAIN_PUBLICATION_MALFORMED_ROLLBACK_PASS": true,
+        "DOMAIN_PUBLICATION_MISMATCH_ROLLBACK_PASS": true,
+        "exit_zero": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [
+      "src/isolation/receiver.rs",
+      "src/pipeline/bootstrap.rs",
+      "src/pipeline/carapace.rs",
+      "src/step/execution.rs",
+      "src/storage/diagnostics.rs"
+    ],
+    "current_files_absent_from_snapshot": []
+  },
+  {
+    "run": "maintained-contained-v2",
+    "assessment": "preservation/m7-review/maintained-contained-v2/assessment.json",
+    "assessment_data": {
+      "checks": {
+        "CONTAINED_LAUNCH_FAILURE_CLEANUP_PASS": true,
+        "CONTAINED_JOIN_FAILURE_CLEANUP_PASS": true,
+        "CONTAINED_PRE_ADMISSION_DESCENDANT_DRAIN_PASS": true,
+        "CONTAINED_ABRUPT_HELPER_DEATH_DRAIN_PASS": true,
+        "exit_zero": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [
+      "src/isolation/receiver.rs",
+      "src/pipeline/bootstrap.rs",
+      "src/pipeline/carapace.rs",
+      "src/step/execution.rs",
+      "src/storage/diagnostics.rs"
+    ],
+    "current_files_absent_from_snapshot": []
+  },
+  {
+    "run": "maintained-sandbox-namespace-v1",
+    "assessment": "preservation/m7-review/maintained-sandbox-namespace-v1/assessment.json",
+    "assessment_data": {
+      "checks": {
+        "SANDBOX_NAMESPACE_FAILURE_ROLLBACK_PASS": true,
+        "exit_zero": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [
+      "src/isolation/receiver.rs",
+      "src/pipeline/bootstrap.rs",
+      "src/pipeline/carapace.rs",
+      "src/step/execution.rs",
+      "src/storage/diagnostics.rs"
+    ],
+    "current_files_absent_from_snapshot": []
+  },
+  {
+    "run": "maintained-sandbox-mount-v2",
+    "assessment": "preservation/m7-review/maintained-sandbox-mount-v2/assessment.json",
+    "assessment_data": {
+      "checks": {
+        "SANDBOX_MOUNT_FAILURE_ROLLBACK_PASS": true,
+        "exit_zero": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [
+      "src/isolation/receiver.rs",
+      "src/pipeline/bootstrap.rs",
+      "src/pipeline/carapace.rs",
+      "src/step/execution.rs",
+      "src/storage/diagnostics.rs"
+    ],
+    "current_files_absent_from_snapshot": []
+  },
+  {
+    "run": "maintained-mounted-launch-v1",
+    "assessment": "preservation/m7-review/maintained-mounted-launch-v1/assessment.json",
+    "assessment_data": {
+      "checks": {
+        "SANDBOX_LAUNCH_FAILURE_ROLLBACK_PASS": true,
+        "exit_zero": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [
+      "src/isolation/receiver.rs",
+      "src/pipeline/bootstrap.rs",
+      "src/pipeline/carapace.rs",
+      "src/step/execution.rs",
+      "src/storage/diagnostics.rs"
+    ],
+    "current_files_absent_from_snapshot": []
+  },
+  {
+    "run": "maintained-mounted-join-v1",
+    "assessment": "preservation/m7-review/maintained-mounted-join-v1/assessment.json",
+    "assessment_data": {
+      "checks": {
+        "SANDBOX_JOIN_FAILURE_ROLLBACK_PASS": true,
+        "exit_zero": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [
+      "src/isolation/receiver.rs",
+      "src/pipeline/bootstrap.rs",
+      "src/pipeline/carapace.rs",
+      "src/step/execution.rs",
+      "src/storage/diagnostics.rs"
+    ],
+    "current_files_absent_from_snapshot": []
+  },
+  {
+    "run": "maintained-mounted-exit-v3",
+    "assessment": "preservation/m7-review/maintained-mounted-exit-v3/assessment.json",
+    "assessment_data": {
+      "checks": {
+        "SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS": true,
+        "exit_zero": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [
+      "src/isolation/receiver.rs",
+      "src/pipeline/bootstrap.rs",
+      "src/pipeline/carapace.rs",
+      "src/step/execution.rs",
+      "src/storage/diagnostics.rs"
+    ],
+    "current_files_absent_from_snapshot": []
+  },
+  {
+    "run": "busy-finalization-v2",
+    "assessment": "preservation/m7-review/busy-finalization-v2/assessment.json",
+    "assessment_data": {
+      "checks": {
+        "RECEIVER_CONTROL_HELD_DURING_GATE_FAILURE_CLEANUP_PASS": true,
+        "PRIMARY_OUTCOME_THROUGH_BUSY_FINALIZATION_RETRY_PASS": true,
+        "SANDBOX_GATE_FAILURE_ROLLBACK_PASS": true,
+        "exit_zero": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [
+      "src/pipeline/bootstrap.rs",
+      "src/pipeline/carapace.rs",
+      "src/step/execution.rs",
+      "src/storage/diagnostics.rs"
+    ],
+    "current_files_absent_from_snapshot": []
+  },
+  {
+    "run": "writeback-v3",
+    "assessment": "preservation/m7-review/writeback-v3/assessment.json",
+    "assessment_data": {
+      "checks": {
+        "FILESYSTEM_WRITEBACK_ERROR_OBSERVED_PASS": true,
+        "INVALID_SNAPSHOT_FINALIZATION_RETRY_REJECTED_PASS": true,
+        "exit_zero": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [
+      "src/pipeline/bootstrap.rs",
+      "src/pipeline/carapace.rs",
+      "src/step/execution.rs",
+      "src/storage/diagnostics.rs"
+    ],
+    "current_files_absent_from_snapshot": []
+  },
+  {
+    "run": "blocked-io-v2",
+    "assessment": "preservation/m7-review/blocked-io-v2/assessment.json",
+    "assessment_data": {
+      "checks": {
+        "FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS": true,
+        "BLOCKED_IO_FIXED_DEADLINE_RETAINS_STORAGE_PASS": true,
+        "exit_zero": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [
+      "src/pipeline/bootstrap.rs",
+      "src/pipeline/carapace.rs",
+      "src/step/execution.rs",
+      "src/storage/diagnostics.rs"
+    ],
+    "current_files_absent_from_snapshot": []
+  },
+  {
+    "run": "blocked-supervisor-death-v1",
+    "assessment": "preservation/m7-review/blocked-supervisor-death-v1/assessment.json",
+    "assessment_data": {
+      "checks": {
+        "FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS": true,
+        "SUPERVISOR_ABRUPT_DEATH_INJECTED": true,
+        "supervisor_abort_status": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [
+      "src/pipeline/bootstrap.rs",
+      "src/pipeline/carapace.rs",
+      "src/step/execution.rs",
+      "src/storage/diagnostics.rs"
+    ],
+    "current_files_absent_from_snapshot": []
+  },
+  {
+    "run": "confinement-v6",
+    "assessment": "preservation/m7-review/confinement-v6/confinement-assessment.json",
+    "assessment_data": {
+      "checks": {
+        "COMMAND_DESCRIPTOR_BOUNDARY_PASS": true,
+        "COMMAND_CREDENTIAL_BOUNDARY_PASS": true,
+        "COMMAND_RUNTIME_BOUNDARY_PASS": true,
+        "COMMAND_RUNTIME_RECREATED_PASS": true,
+        "COMMAND_SYSCALL_CONTROL_PASS": true,
+        "COMMAND_SYSCALL_DENIAL_PASS": true,
+        "COMMAND_ALLOWED_PROCESS_AND_SOCKET_PASS": true,
+        "DISTRO_BUILD_AND_EXPORT_PASS": true,
+        "exit_zero": true,
+        "no_live_extra_descriptor": true,
+        "network_disabled": true
+      },
+      "passed": true,
+      "full_sandbox_qualified": false,
+      "platforms": [
+        "native amd64 ordinary VM"
+      ]
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [],
+    "current_files_absent_from_snapshot": []
+  },
+  {
+    "run": "cache-storage-v2",
+    "assessment": "preservation/m7-review/cache-storage-v2/assessment.json",
+    "assessment_data": {
+      "checks": {
+        "VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS": true,
+        "VERITY_CACHE_CORRUPTION_READ_REJECTED_PASS": true,
+        "CACHE_BACKED_SCUTE_PREPARATION_PASS": true,
+        "OWNED_VERITY_READ_AND_CLEANUP_PASS": true,
+        "exit_zero": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "compared_production_files": 130,
+    "changed_since_run": [],
+    "current_files_absent_from_snapshot": []
+  }
+]

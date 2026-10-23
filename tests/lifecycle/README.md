@@ -150,3 +150,10 @@ retention/diagnostics, rejection of a modified cache block after activation
 before first read, failed re-preparation, and inode retention across path
 replacement. Only the guest's private synthetic cache is modified. This is
 storage-component evidence, not a filesystem, full-chain or boot qualification.
+
+`--case sandbox-busy-execution` tests the high-level execution acceptance API.
+A trusted fixture helper reports successful completion; a held directory makes
+finalization fail with EBUSY. After releasing the holder, retry must return a
+failure owner with the original cleanup error and only rejected storage for
+disposal. Final resource checks require complete release. No image code or
+labeling executes in this focused test.

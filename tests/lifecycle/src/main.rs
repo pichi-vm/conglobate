@@ -28,6 +28,12 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "sandbox-busy-execution" => sandbox_failures::SandboxFailures::run(
+                sandbox_failures::FailurePoint::BusyExecution,
+            ),
+            [mode, cutoff] if mode == "sandbox-success-helper" => {
+                sandbox_failures::SandboxFailures::attached_helper(cutoff, true)
+            }
             [mode] if mode == "cache-storage" => cache_storage::CacheStorage::run(),
             [mode] if mode == "sandbox-writeback" => {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Writeback)
@@ -61,7 +67,7 @@ impl Lifecycle {
                 }
             }
             [mode, cutoff] if mode == "sandbox-attached-helper" => {
-                sandbox_failures::SandboxFailures::attached_helper(cutoff)
+                sandbox_failures::SandboxFailures::attached_helper(cutoff, false)
             }
             [mode] if mode == "sandbox-launch-failure" => {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Launch)

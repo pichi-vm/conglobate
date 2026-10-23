@@ -1,0 +1,11 @@
+{
+  "baseline": "7f0ec9d",
+  "production_changed": false,
+  "passed": true,
+  "coverage": "production Step::execute with trusted success report, EBUSY finalization, consuming rejection-only retry, original error retained, rejected storage disposal and resource cleanup",
+  "limitations": [
+    "trusted helper success report, no actual image command executes",
+    "no labeling or full sandbox qualification",
+    "large artifacts await durable archival"
+  ]
+}

@@ -148,6 +148,9 @@ exec sleep infinity
                        'NETWORK_COMPOSITE_NAT_FAILURE_PRESERVES_FOREIGN_TABLE_PASS',
                        'NETWORK_PRODUCTION_ALLOCATION_RELEASE_AND_DISTINCT_LIVE_PREFIX_PASS',
                        'NETWORK_COMPOSITE_EXPIRED_TEARDOWN_RETRY_RETAINS_OWNER_PASS']
+        elif self.args.case == 'sandbox-busy-execution':
+            markers = ['SUCCESSFUL_COMMAND_CLEANUP_FAILURE_STAYS_REJECTED_PASS',
+                       'SANDBOX_BUSY_EXECUTION_ROLLBACK_PASS']
         elif self.args.case == 'cache-storage':
             markers = ['VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS',
                        'VERITY_CACHE_CORRUPTION_READ_REJECTED_PASS',
@@ -190,7 +193,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':

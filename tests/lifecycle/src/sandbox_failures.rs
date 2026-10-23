@@ -17,6 +17,7 @@ pub(super) enum FailurePoint {
     Launch,
     Join,
     AttachedExit,
+    BusyExecution,
     Gate,
     Writeback,
     BlockedIo,
@@ -27,6 +28,7 @@ pub(super) struct SandboxFailures;
 impl SandboxFailures {
     pub(super) fn attached_helper(
         cutoff: &std::ffi::OsStr,
+        successful: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use conglobate::{
             filesystem::MountPoint,
@@ -55,6 +57,16 @@ impl SandboxFailures {
             ))?)
             .map_err(|e| e.to_string())?;
         assert_eq!(view.root_metadata()?.uid(), 100000);
+        if successful {
+            use std::os::unix::process::ExitStatusExt;
+            channel.report_prepared_until(deadline)?;
+            let channel = channel.await_admission_until(deadline)?;
+            view.close().map_err(|e| e.to_string())?;
+            drop(_setup);
+            scope.restore().map_err(|e| e.to_string())?;
+            channel.report_completion_until(std::process::ExitStatus::from_raw(0), deadline)?;
+            return Ok(());
+        }
         fs::write("/work/receiver-stage", "attached")?;
         eprintln!("attached fixture: attached and recorded");
         // Trusted fixture process exits with live view owners and no destructors.
@@ -83,6 +95,7 @@ impl SandboxFailures {
             FailurePoint::Launch
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
+                | FailurePoint::BusyExecution
                 | FailurePoint::Gate
                 | FailurePoint::Writeback
                 | FailurePoint::BlockedIo
@@ -128,6 +141,7 @@ impl SandboxFailures {
             FailurePoint::Launch
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
+                | FailurePoint::BusyExecution
                 | FailurePoint::Gate
                 | FailurePoint::Writeback
                 | FailurePoint::BlockedIo
@@ -182,6 +196,7 @@ impl SandboxFailures {
             FailurePoint::Launch
             | FailurePoint::Join
             | FailurePoint::AttachedExit
+            | FailurePoint::BusyExecution
             | FailurePoint::Gate
             | FailurePoint::Writeback
             | FailurePoint::BlockedIo
@@ -203,6 +218,8 @@ impl SandboxFailures {
                         "sandbox-blocked-helper"
                     } else if matches!(point, FailurePoint::Gate | FailurePoint::Writeback) {
                         "sandbox-gate-receiver"
+                    } else if matches!(point, FailurePoint::BusyExecution) {
+                        "sandbox-success-helper"
                     } else {
                         "sandbox-attached-helper"
                     });
@@ -390,6 +407,37 @@ impl SandboxFailures {
                     fs::remove_file("/work/receiver-gate-cleaned")?;
                     fs::remove_dir("/work/runtime-parent/receiver-view")?;
                     returned
+                } else if matches!(point, FailurePoint::BusyExecution) {
+                    fs::create_dir("/work/runtime-parent/receiver-view")?;
+                    command.arg(budget.cutoff()?.to_argument());
+                    let entry = fs::read_dir(paths.volumes())?
+                        .next()
+                        .ok_or("missing volume")??;
+                    let holder = fs::File::open(entry.path())?;
+                    let step = prepared
+                        .launch(command, budget.deadline(), paths.domains())
+                        .map_err(|e| e.to_string())?;
+                    let failure = step
+                        .execute(budget, "5s".parse()?, paths.domains())
+                        .unwrap_err();
+                    assert!(matches!(failure.outcome(),
+                        conglobate::step::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status)) if status.success()));
+                    assert_eq!(
+                        failure.cleanup_error().unwrap().operation().kind(),
+                        std::io::ErrorKind::ResourceBusy
+                    );
+                    drop(holder);
+                    let rejected = failure.retry_cleanup();
+                    assert_eq!(
+                        rejected.cleanup_error().unwrap().operation().kind(),
+                        std::io::ErrorKind::ResourceBusy
+                    );
+                    let (_, returned) = rejected
+                        .into_rejected_storage()
+                        .map_err(|e| e.to_string())?;
+                    fs::remove_dir("/work/runtime-parent/receiver-view")?;
+                    println!("SUCCESSFUL_COMMAND_CLEANUP_FAILURE_STAYS_REJECTED_PASS");
+                    returned
                 } else if matches!(point, FailurePoint::AttachedExit) {
                     fs::create_dir("/work/runtime-parent/receiver-view")?;
                     command.arg(budget.cutoff()?.to_argument());
@@ -471,6 +519,7 @@ impl SandboxFailures {
                 FailurePoint::Launch => "SANDBOX_LAUNCH_FAILURE_ROLLBACK_PASS",
                 FailurePoint::Join => "SANDBOX_JOIN_FAILURE_ROLLBACK_PASS",
                 FailurePoint::AttachedExit => "SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS",
+                FailurePoint::BusyExecution => "SANDBOX_BUSY_EXECUTION_ROLLBACK_PASS",
                 FailurePoint::Gate => "SANDBOX_GATE_FAILURE_ROLLBACK_PASS",
                 FailurePoint::BlockedIo
                 | FailurePoint::SupervisorDeath

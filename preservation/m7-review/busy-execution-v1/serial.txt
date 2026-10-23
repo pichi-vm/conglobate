@@ -1,0 +1,14 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe dm-verity
++ modprobe ext4
++ /lifecycle-tests sandbox-busy-execution
+attached fixture: joined
+attached fixture: received volume
+attached fixture: prepared view
+SUCCESSFUL_COMMAND_CLEANUP_FAILURE_STAYS_REJECTED_PASS
+SANDBOX_BUSY_EXECUTION_ROLLBACK_PASS
+LIFECYCLE_EXIT 0
+[    1.997620] sysrq: Power Off
+[    2.001130] reboot: Power down

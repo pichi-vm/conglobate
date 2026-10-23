@@ -4872,3 +4872,23 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   Shared GuestRuntime still needs migration before M8. Large artifacts remain
   external and unarchived. No full chain, filesystem or boot claim is made.
   M4 remains 0/3; these are evidence and partial review, not adherence passes.
+
+### M4 partial-setup/deadline review and rejection-only retry VM evidence
+
+- Previous turn progressed with 7f0ec9d's maintained verified-cache checks.
+  Reviewed preparation rollback, domain publication/cancellation, helper/reaper
+  ownership and fixed setup/command/teardown cutoff transitions. Observations
+  and source hashes: preservation/m7-review/m4-lifecycle-review-7f0ec9d/.
+- Compared 130 production source files in thirteen preserved VM snapshots
+  against current sources. Latest confinement/cache match; older failure runs
+  differ in receiver diagnostics and the corrected execution retry path.
+  Their unchanged component coverage is retained without claiming fresh runs.
+- Added sandbox-busy-execution to exercise production Step::execute and
+  rejection-only retry under EBUSY after a trusted successful completion report.
+  VM run passes: cleanup succeeds after holder release, original diagnostic
+  remains, only rejected storage can be recovered, all resources release.
+  Strict fixture Clippy and whitespace checks pass; no production changes.
+- Trusted report fixture is not actual image-command/label admission coverage.
+  Evidence and sources preserved; large artifacts remain unarchived externally.
+  M4 stays 0/3 pending remaining protocol/process/anchor review and complete
+  frozen-scope passes. Other milestone/qualification requirements are unchanged.
