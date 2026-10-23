@@ -1,0 +1,18 @@
+{
+  "baseline": "b8fd3df",
+  "production_changed": false,
+  "passed": true,
+  "coverage": [
+    "two authenticated scutes over dm-zero; newer block override, parent fallback and zero fallback",
+    "read-only inherited mapping",
+    "writable snapshot persistence across close and reopen, unchanged parent chain",
+    "busy close and retry retain chain diagnostics and ownership",
+    "invalid second-scute header rejected with mapping rollback"
+  ],
+  "limitations": [
+    "synthetic block data, no filesystem or boot qualification",
+    "native amd64 ordinary VM only",
+    "shared historical GuestRuntime still needs migration",
+    "large external artifacts not durably archived"
+  ]
+}

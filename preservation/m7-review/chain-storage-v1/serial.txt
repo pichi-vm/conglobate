@@ -1,0 +1,13 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe dm-verity
++ modprobe ext4
++ /lifecycle-tests chain-storage
+WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS
+CHAIN_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+INVALID_SECOND_SCUTE_CLEANUP_PASS
+OWNED_TWO_SCUTE_CHAIN_PASS
+LIFECYCLE_EXIT 0
+[    2.511864] sysrq: Power Off
+[    2.514860] reboot: Power down

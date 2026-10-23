@@ -66,7 +66,7 @@ class LifecycleRun:
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
         runtime = LifecycleRuntime(self.root, self.args.module_root.resolve(), self.args.kernel_release)
         runtime.create()
-        if self.args.case == "cache-storage":
+        if self.args.case in ("cache-storage", "chain-storage"):
             CacheFixture(self.root / "cache-fixture").create()
         binary = target / 'debug/conglobate-lifecycle-tests'
         runtime.executable(binary, Path('lifecycle-tests'))
@@ -79,7 +79,7 @@ class LifecycleRun:
             (self.root / name).write_text('\n'.join(sorted(files)) + '\n')
         mode = '' if self.args.drop is None else f'FORMATTER_DROP={self.args.drop} '
         setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\nmodprobe dm-verity\nmodprobe ext4\n'
-                 if self.args.case in ('formatter-failures', 'cache-storage') or self.args.case.startswith('sandbox-') else
+                 if self.args.case in ('formatter-failures', 'cache-storage', 'chain-storage') or self.args.case.startswith('sandbox-') else
                  'mkdir /work/cgroups\nmount -t cgroup2 cgroup2 /work/cgroups\n')
         if self.args.case == 'network-composite':
             setup = ''.join(f'modprobe {name}\n' for name in
@@ -151,6 +151,10 @@ exec sleep infinity
         elif self.args.case == 'sandbox-busy-execution':
             markers = ['SUCCESSFUL_COMMAND_CLEANUP_FAILURE_STAYS_REJECTED_PASS',
                        'SANDBOX_BUSY_EXECUTION_ROLLBACK_PASS']
+        elif self.args.case == 'chain-storage':
+            markers = ['INVALID_SECOND_SCUTE_CLEANUP_PASS',
+                       'WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS',
+                       'CHAIN_CLEANUP_DIAGNOSTICS_RETAINED_PASS', 'OWNED_TWO_SCUTE_CHAIN_PASS']
         elif self.args.case == 'cache-storage':
             markers = ['VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS',
                        'VERITY_CACHE_CORRUPTION_READ_REJECTED_PASS',
@@ -193,7 +197,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':

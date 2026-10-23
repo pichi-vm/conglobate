@@ -4912,3 +4912,21 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   header coverage; prepared-scute mutation tests alone do not prove composition.
   M4 remains 0/3. M5–M8 and all outstanding qualification/preservation gates
   remain open. No code, test result or production qualification changed here.
+
+### Maintained two-scute chain and invalid-header regression
+
+- Previous turn progressed by committing the M4 acceptance checklist b8fd3df.
+  Migrated the historical assemble-chain fixture into maintained ChainStorage
+  owner methods without changing production code or deleting historical input.
+- chain-storage-v1 passes in a disconnected disposable native amd64 VM:
+  newest-layer override, parent fallback, dm-zero fallback, read-only inherited
+  mapping, writable snapshot close/reopen persistence, unchanged parents,
+  busy-close diagnostic retention and invalid-second-header mapping rollback.
+- Maintained runner requires each marker plus independent zero exit status and
+  VM poweroff. Exact executed fixture and all production Rust bytes match the
+  current tree. Strict fixture Clippy passes. Evidence, source snapshot and
+  migration provenance are in preservation/m7-review/chain-storage-v1/.
+- This closes the synthetic full-chain migration gap in the M4 checklist, not
+  filesystem/boot qualification or a clean adherence pass. M4 remains 0/3.
+  Shared historical GuestRuntime migration, historical finding reconciliation,
+  all other milestone gates and durable external-artifact archival remain open.

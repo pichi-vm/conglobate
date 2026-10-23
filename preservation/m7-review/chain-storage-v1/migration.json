@@ -1,0 +1,12 @@
+{
+  "source": "validation/rewrite-command-integration/src/main.rs",
+  "sha256": "06267b20a9f36a681c7f1bdf2d4a89c47a2ba6c53922a69e430eb2b19e96ddb1",
+  "source_mode": "assemble-chain",
+  "destination": "tests/lifecycle/src/chain_storage.rs",
+  "changes": [
+    "method on ChainStorage fixture owner",
+    "mapping enumeration moved from closure to private method",
+    "maintained runner case and assertions"
+  ],
+  "historical_source_retained": true
+}

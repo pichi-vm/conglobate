@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 mod blocked_io;
 mod cache_storage;
+mod chain_storage;
 mod contained;
 mod domain_publication;
 mod formatter_failures;
@@ -34,6 +35,7 @@ impl Lifecycle {
             [mode, cutoff] if mode == "sandbox-success-helper" => {
                 sandbox_failures::SandboxFailures::attached_helper(cutoff, true)
             }
+            [mode] if mode == "chain-storage" => chain_storage::ChainStorage::run(),
             [mode] if mode == "cache-storage" => cache_storage::CacheStorage::run(),
             [mode] if mode == "sandbox-writeback" => {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Writeback)
