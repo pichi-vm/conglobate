@@ -308,6 +308,11 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
             .copy(context, directive)
     }
 
+    pub(crate) fn validate_command_root(&self) -> io::Result<()> {
+        self.scope.verify_current()?;
+        crate::isolation::RuntimeTargets::resolve(&self.resources.root).map(|_| ())
+    }
+
     pub fn root_metadata(&self) -> io::Result<Metadata> {
         self.resources.root.metadata()
     }

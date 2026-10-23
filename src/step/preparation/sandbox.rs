@@ -193,7 +193,7 @@ impl<'l> CommandSandbox<'l> {
                 ));
             }
         };
-        if let Err(source) = budget.check() {
+        if let Err(source) = budget.check().and_then(|_| volume.validate_command_root()) {
             let assigned = Assigned {
                 policy: PolicyAssignment::Uninstalled(ManuallyDrop::new(Box::new(
                     PolicyInstallation::new(namespace, vec![], directories.policies),

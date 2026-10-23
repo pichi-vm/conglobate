@@ -254,7 +254,11 @@ impl HelperInvocation {
                 std::process::exit(status.code().unwrap_or(128 + status.signal().unwrap_or(1)))
             }
             Err(error) => {
-                eprintln!("trusted command helper: {error}");
+                // Render before writing: cancellation can follow channel loss,
+                // so avoid several separate writes for one failure diagnostic.
+                use std::io::Write;
+                let message = format!("trusted command helper: {error}\n");
+                let _ = io::stderr().lock().write_all(message.as_bytes());
                 std::process::exit(1);
             }
         }

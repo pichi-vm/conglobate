@@ -28,6 +28,8 @@ pub trait PreparationStorage: StepStorage + Sized {
     ) -> Result<Self::Unmounted, Self::UnmountFailure>;
     #[doc(hidden)]
     fn pin(&self, recovery: &RecoveryDirectory) -> Result<Vec<FilesystemPin>, StoragePinFailure>;
+    #[doc(hidden)]
+    fn validate_command_root(&self) -> io::Result<()>;
     type UnmountFailure: Debug;
     #[doc(hidden)]
     fn unmount_until(self, deadline: Instant) -> Result<Self::Unmounted, Self::UnmountFailure>;
@@ -61,6 +63,9 @@ impl<'n, 'o, 'w> PreparationStorage for Volume<'n, 'o, 'w, Mounted> {
         self.pin(recovery)
             .map(|pin| vec![pin])
             .map_err(StoragePinFailure::from)
+    }
+    fn validate_command_root(&self) -> io::Result<()> {
+        self.validate_command_root()
     }
     type UnmountFailure = VolumeUnmountFailure<'n, 'o, 'w>;
     fn unmount_until(self, _deadline: Instant) -> Result<Self::Unmounted, Self::UnmountFailure> {
@@ -105,6 +110,9 @@ impl<'n, 'o, 'w> PreparationStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
                 Err(failure)
             }
         }
+    }
+    fn validate_command_root(&self) -> io::Result<()> {
+        self.tool().validate_command_root()
     }
     type UnmountFailure = Box<BootstrapUnmountFailure<'n, 'o, 'w>>;
     fn unmount_until(self, deadline: Instant) -> Result<Self::Unmounted, Self::UnmountFailure> {

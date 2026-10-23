@@ -166,3 +166,5 @@ impl Drop for NamespaceLease {
         }
     }
 }
+
+pub(crate) use runtime::RuntimeTargets;

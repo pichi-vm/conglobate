@@ -85,59 +85,15 @@ impl<'a> CarapaceBuild<'a> {
         runtime: &Runtime<'_>,
     ) -> Result<DerivedCarapace<'a, 'w>, BuildError> {
         let chain = self.base.chain().expect("validated root volume");
-        let mut active = chain
+        let active = chain
             .assemble(self.build.cache(), workspace)
             .map_err(Self::error)?;
-        let paths = runtime.paths()?;
-        let sandbox = CommandSandbox::new(
-            HelperProgram::current()?,
-            paths.sandbox(),
-            IdRange::new(100000, 65536)?,
-            IdRange::new(100000, 65536)?,
-        );
-        let mut reaper = ChildReaper::install()?;
-        let mut produced = Vec::<Arc<SealedScute<'_>>>::new();
-        for directive in self.directives {
-            let scratch = workspace.snapshot_store()?;
-            let snapshot = Mapping::<Created>::create()?
-                .snapshot(
-                    &active,
-                    scratch.attach().map_err(Self::error)?,
-                    NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512)
-                        .unwrap(),
-                )
-                .map_err(Self::error)?;
-            let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())
-                .map_err(Self::error)?;
-            let completed = sandbox
-                .directives::<Volume<'_, '_, '_, Mounted>>(
-                    volume,
-                    reaper,
-                    self.build.captured().context(),
-                    std::slice::from_ref(directive),
-                    None,
-                )
-                .map_err(|failure| Self::reject(*failure))?;
-            let (volume, returned_reaper) = completed.into_parts();
-            reaper = returned_reaper;
-            let scute = Arc::new(
-                volume
-                    .into_snapshot()
-                    .close()
-                    .map_err(Self::error)?
-                    .detach()
-                    .map_err(Self::error)?
-                    .seal_snapshot(*active.root())
-                    .map_err(Self::error)?,
-            );
-            active = active.extend(Arc::clone(&scute)).map_err(Self::error)?;
-            produced.push(scute);
-        }
-        Ok(DerivedCarapace {
+        DerivedCarapace {
             active,
-            scutes: produced,
-            reaper,
-        })
+            scutes: Vec::new(),
+            reaper: ChildReaper::install()?,
+        }
+        .derive(self.build, workspace, runtime, self.directives)
     }
     fn derive(
         &self,
@@ -226,5 +182,71 @@ impl<'a> CarapaceBuild<'a> {
             Ok(()) => Self::error(primary),
             Err(error) => Self::error(format!("{primary}; cleanup: {error}")),
         }
+    }
+}
+
+impl<'s, 'w> DerivedCarapace<'s, 'w> {
+    pub(super) fn derive(
+        self,
+        build: &ResolvedBuild,
+        workspace: &'w Workspace,
+        runtime: &Runtime<'_>,
+        directives: &[Directive],
+    ) -> Result<Self, BuildError> {
+        let Self {
+            mut active,
+            scutes: mut produced,
+            mut reaper,
+        } = self;
+        let paths = runtime.paths()?;
+        let sandbox = CommandSandbox::new(
+            HelperProgram::current()?,
+            paths.sandbox(),
+            IdRange::new(100000, 65536)?,
+            IdRange::new(100000, 65536)?,
+        );
+        for directive in directives {
+            let scratch = workspace.snapshot_store()?;
+            let snapshot = Mapping::<Created>::create()?
+                .snapshot(
+                    &active,
+                    scratch.attach().map_err(CarapaceBuild::error)?,
+                    NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512)
+                        .unwrap(),
+                )
+                .map_err(CarapaceBuild::error)?;
+            let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())
+                .map_err(CarapaceBuild::error)?;
+            let completed = sandbox
+                .directives::<Volume<'_, '_, '_, Mounted>>(
+                    volume,
+                    reaper,
+                    build.captured().context(),
+                    std::slice::from_ref(directive),
+                    None,
+                )
+                .map_err(|failure| CarapaceBuild::reject(*failure))?;
+            let (volume, returned_reaper) = completed.into_parts();
+            reaper = returned_reaper;
+            let scute = Arc::new(
+                volume
+                    .into_snapshot()
+                    .close()
+                    .map_err(CarapaceBuild::error)?
+                    .detach()
+                    .map_err(CarapaceBuild::error)?
+                    .seal_snapshot(*active.root())
+                    .map_err(CarapaceBuild::error)?,
+            );
+            active = active
+                .extend(Arc::clone(&scute))
+                .map_err(CarapaceBuild::error)?;
+            produced.push(scute);
+        }
+        Ok(DerivedCarapace {
+            active,
+            scutes: produced,
+            reaper,
+        })
     }
 }

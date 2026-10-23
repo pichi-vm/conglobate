@@ -69,6 +69,53 @@ impl PipelineProbe {
                 }))?,
             )?;
         }
+        // Measured context files install a shell in the fresh output for a later
+        // retained RUN. They enter only through COPY, never tool inheritance.
+        for directory in ["bin", "lib64"] {
+            fs::create_dir_all(repo.join("runtime").join(directory))?;
+            for entry in fs::read_dir(Path::new("/image-root").join(directory))? {
+                let entry = entry?;
+                fs::copy(
+                    entry.path(),
+                    repo.join("runtime").join(directory).join(entry.file_name()),
+                )?;
+            }
+        }
+        for directory in ["dev", "proc", "sys"] {
+            fs::create_dir_all(repo.join("runtime").join(directory))?;
+            // Git does not retain empty directories. The image explicitly
+            // supplies its Linux runtime mountpoints through measured COPY.
+            fs::write(repo.join("runtime").join(directory).join(".keep"), b"")?;
+        }
+        for (name, run) in [
+            (
+                "bootstrap-layers",
+                "test $(cat /fresh) = fresh; test ! -e /tool-only; echo retained > /layered",
+            ),
+            (
+                "bootstrap-layers-fail",
+                "echo rejected > /rejected; exit 37",
+            ),
+        ] {
+            let mut recipe: serde_json::Value =
+                serde_json::from_slice(&fs::read(repo.join("bootstrap.yml"))?)?;
+            recipe["carapace"] = serde_json::json!({"derive":[
+                {"copy":{"from":"runtime/", "into":"/"}},
+                {"run":run},
+                {"copy":{"from":"input", "into":"/layer-copy"}},
+            ]});
+            fs::write(
+                repo.join(format!("{name}.yml")),
+                serde_json::to_vec(&recipe)?,
+            )?;
+        }
+        let mut missing: serde_json::Value =
+            serde_json::from_slice(&fs::read(repo.join("bootstrap.yml"))?)?;
+        missing["carapace"] = serde_json::json!({"derive":[{"run":"exit 0"}]});
+        fs::write(
+            repo.join("bootstrap-missing-targets.yml"),
+            serde_json::to_vec(&missing)?,
+        )?;
         let dtb = Self::empty_dtb();
         fs::write(repo.join("firmware.pmi"), b"custom firmware output")?;
         fs::write(repo.join("firmware.dtb"), &dtb)?;
@@ -167,6 +214,21 @@ impl PipelineProbe {
         for (recipe, output, success) in [
             ("build.yml", "/work/derived-output", true),
             ("bootstrap.yml", "/work/bootstrap-output", true),
+            (
+                "bootstrap-missing-targets.yml",
+                "/work/bootstrap-missing-targets-output",
+                false,
+            ),
+            (
+                "bootstrap-layers.yml",
+                "/work/bootstrap-layers-output",
+                true,
+            ),
+            (
+                "bootstrap-layers-fail.yml",
+                "/work/bootstrap-layers-fail-output",
+                false,
+            ),
             ("bootstrap.yml", "/work/bootstrap-no-runtime-output", false),
             (
                 "bootstrap.yml",
@@ -224,13 +286,19 @@ impl PipelineProbe {
                     },
                 ]);
             }
+            println!("PIPELINE_CLI_CASE {recipe} -> {output}");
             let result = command.output()?;
             assert_eq!(
                 result.status.success(),
                 success,
-                "{}",
+                "{recipe} -> {output}: {}",
                 String::from_utf8_lossy(&result.stderr)
             );
+            if recipe == "bootstrap-missing-targets.yml" {
+                assert!(
+                    String::from_utf8_lossy(&result.stderr).contains("command runtime target /dev")
+                );
+            }
             assert_eq!(Path::new(output).exists(), success);
             assert_eq!(
                 fs::read_dir("/run")?
@@ -318,6 +386,7 @@ impl PipelineProbe {
         for (name, count) in [
             ("derived", 4),
             ("bootstrap", 1),
+            ("bootstrap-layers", 4),
             ("composed-implicit", 2),
             ("composed-explicit", 2),
         ] {
@@ -401,17 +470,24 @@ impl PipelineProbe {
                 })
                 .ok_or("missing output mount")?
                 .path();
-            if count == 1 {
+            if name.starts_with("bootstrap") {
                 assert_eq!(fs::read(directory.join("fresh"))?, b"fresh\n");
                 assert_eq!(fs::read(directory.join("copied"))?, b"committed copy\n");
-                assert!(!directory.join("bin").exists());
+                assert_eq!(directory.join("bin").exists(), name == "bootstrap-layers");
+                if name == "bootstrap-layers" {
+                    assert_eq!(fs::read(directory.join("layered"))?, b"retained\n");
+                    assert_eq!(fs::read(directory.join("layer-copy"))?, b"committed copy\n");
+                }
                 assert!(!directory.join("tool-only").exists());
-                assert_eq!(image.manifest().layers.len(), 1);
+                assert_eq!(image.manifest().layers.len(), count);
                 let bytes = fs::read(output.join("inventory.cbor"))?;
                 conglobate::inventory::Inventory::decode(&bytes)?;
                 let value: ciborium::Value = ciborium::from_reader(bytes.as_slice())?;
                 let value = serde_json::to_value(value)?;
-                assert_eq!(value["outputs"]["scutes"][0]["origin"], "produced");
+                assert_eq!(value["outputs"]["scutes"].as_array().unwrap().len(), count);
+                for scute in value["outputs"]["scutes"].as_array().unwrap() {
+                    assert_eq!(scute["origin"], "produced");
+                }
                 assert_eq!(
                     value["execution"]["formatters"].as_array().unwrap().len(),
                     1
@@ -445,6 +521,7 @@ impl PipelineProbe {
             active.close().map_err(|e| e.to_string())?;
         }
         println!("PIPELINE_CLI_BOOTSTRAP_PASS");
+        println!("PIPELINE_CLI_BOOTSTRAP_LAYERS_PASS");
         println!("PIPELINE_CLI_COMPOSED_FIRMWARE_PASS");
         println!("PIPELINE_CLI_DERIVE_PASS");
         Ok(())

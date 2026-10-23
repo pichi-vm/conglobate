@@ -13,13 +13,13 @@ use std::{fs::File, io, os::unix::fs::MetadataExt};
 /// Targets pinned before mounting either runtime filesystem. Resolution treats
 /// absolute symlinks as image-relative and rejects proc-style magic links.
 #[derive(Debug)]
-pub(super) struct RuntimeTargets {
+pub(crate) struct RuntimeTargets {
     proc: File,
     sys: File,
     dev: File,
 }
 impl RuntimeTargets {
-    pub(super) fn resolve(root: &File) -> io::Result<Self> {
+    pub(crate) fn resolve(root: &File) -> io::Result<Self> {
         let dev = Self::directory(root, "dev")?;
         let proc = Self::directory(root, "proc")?;
         let sys = Self::directory(root, "sys")?;
@@ -88,7 +88,13 @@ impl RuntimeTargets {
             OFlags::PATH | OFlags::DIRECTORY | OFlags::CLOEXEC,
             Mode::empty(),
             ResolveFlags::IN_ROOT | ResolveFlags::NO_MAGICLINKS | ResolveFlags::NO_XDEV,
-        )?
+        )
+        .map_err(|error| {
+            io::Error::new(
+                io::Error::from(error).kind(),
+                format!("command runtime target /{path}: {error}"),
+            )
+        })?
         .into())
     }
 

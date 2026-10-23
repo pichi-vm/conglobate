@@ -113,6 +113,31 @@ impl VerifiedChain {
     }
 }
 impl<'s, 'w> ReadOnlyChain<'s, 'w> {
+    /// Activate a newly produced zero-parent root directly, retaining its RAM
+    /// backing. No temporary cache artifact or filesystem-image import is needed.
+    pub fn from_root(
+        scute: std::sync::Arc<super::SealedScute<'w>>,
+    ) -> Result<Self, ReadOnlyChainFailure<'s, 'w>> {
+        if scute.parent() != &[0; 32] {
+            return Err(Cleanup::Empty.failure(io::Error::other("root scute has a nonzero parent")));
+        }
+        let base = Mapping::<Created>::create().map_err(|error| Cleanup::Empty.failure(error))?;
+        let base = base
+            .zero(NonZeroU64::new(ORIGIN_SECTORS).expect("nonzero extent"))
+            .map_err(|failure| {
+                let source = failure.diagnostics().latest_only();
+                Cleanup::Base(failure).failure(source)
+            })?;
+        Self {
+            stack: Stack {
+                layers: Layers::default(),
+                base,
+            },
+            root: [0; 32],
+        }
+        .extend(scute)
+    }
+
     /// Consume the previous read-only chain and retain the immutable produced
     /// layer directly in RAM. Inherited layers keep their original cache backing.
     pub fn extend(

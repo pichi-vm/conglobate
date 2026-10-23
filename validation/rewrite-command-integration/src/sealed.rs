@@ -114,6 +114,12 @@ impl SealProbe {
             .map_err(|e| e.to_string())?
             .seal_snapshot(*sealed.root())
             .map_err(|e| e.to_string())?;
+        let child = std::sync::Arc::new(child);
+        let rejected = conglobate::storage::ReadOnlyChain::from_root(std::sync::Arc::clone(&child))
+            .unwrap_err();
+        assert!(rejected.to_string().contains("nonzero parent"));
+        rejected.cleanup().map_err(|e| e.to_string())?;
+        println!("PRODUCED_ROOT_PARENT_REJECTED_PASS");
         let failure = conglobate::output::AssembledImage::bootstrap(
             &child,
             Path::new("/work/nonzero-bootstrap-output"),

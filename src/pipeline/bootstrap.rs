@@ -28,16 +28,18 @@ impl<'a> BootstrapBuild<'a> {
         let stage = recipe
             .bootstrap()
             .ok_or(BuildError::Unsupported("missing bootstrap stage"))?;
-        if recipe.firmware().is_some()
-            || recipe
-                .carapace()
-                .is_some_and(|s| !s.directives().is_empty())
-        {
-            return Err(BuildError::Unsupported("bootstrap composition"));
+        if recipe.firmware().is_some() {
+            return Err(BuildError::Unsupported("bootstrap firmware composition"));
         }
         if stage
             .directives()
             .iter()
+            .chain(
+                recipe
+                    .carapace()
+                    .into_iter()
+                    .flat_map(|stage| stage.directives()),
+            )
             .any(|d| matches!(d, Directive::Run(run) if run.network()))
         {
             return Err(BuildError::Unsupported("enabled networking"));
@@ -143,7 +145,7 @@ impl<'a> BootstrapBuild<'a> {
                 None,
             )
             .map_err(|failure| Self::reject(*failure))?;
-        let (volumes, _reaper) = completed.into_parts();
+        let (volumes, reaper) = completed.into_parts();
         let (tool, output) = volumes.into_parts();
         Self::discard(tool)?;
         let scute = Arc::new(
@@ -158,7 +160,31 @@ impl<'a> BootstrapBuild<'a> {
         );
         active.close().map_err(Self::error)?;
         origin.close().map_err(Self::error)?;
-        let root = hex::encode(scute.root());
+        let mut produced = vec![scute];
+        let directives = self
+            .build
+            .captured()
+            .plan()
+            .recipe()
+            .carapace()
+            .map(|stage| stage.directives())
+            .unwrap_or(&[]);
+        let root = if directives.is_empty() {
+            *produced[0].root()
+        } else {
+            let derived = super::carapace::DerivedCarapace {
+                active: crate::storage::ReadOnlyChain::from_root(Arc::clone(&produced[0]))
+                    .map_err(Self::error)?,
+                scutes: produced,
+                reaper,
+            }
+            .derive(self.build, workspace, runtime, directives)?;
+            let root = *derived.active.root();
+            derived.active.close().map_err(Self::error)?;
+            produced = derived.scutes;
+            root
+        };
+        let root = hex::encode(root);
         let transformed = self
             .build
             .captured()
@@ -166,9 +192,10 @@ impl<'a> BootstrapBuild<'a> {
             .recipe()
             .transform()
             .apply(None, Some(&root))?;
-        let image = AssembledImage::bootstrap(&scute, request.output())?;
-        let inventory = Inventory::from_build(request, self.build, &image, &transformed, &[scute])?
-            .with_formatter(receipt)?;
+        let image = AssembledImage::bootstrap_layers(&produced, request.output())?;
+        let inventory =
+            Inventory::from_build(request, self.build, &image, &transformed, &produced)?
+                .with_formatter(receipt)?;
         inventory.check_output(&image)?;
         Ok(CompletedImage { image, inventory })
     }

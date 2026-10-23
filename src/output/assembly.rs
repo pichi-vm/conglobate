@@ -205,26 +205,53 @@ impl AssembledImage {
         scute: &crate::storage::SealedScute<'_>,
         destination: &std::path::Path,
     ) -> Result<Self, AssemblyFailure> {
+        Self::assemble_bootstrap(&[scute], destination)
+    }
+    pub(crate) fn bootstrap_layers(
+        scutes: &[std::sync::Arc<crate::storage::SealedScute<'_>>],
+        destination: &std::path::Path,
+    ) -> Result<Self, AssemblyFailure> {
+        Self::assemble_bootstrap(
+            &scutes.iter().map(AsRef::as_ref).collect::<Vec<_>>(),
+            destination,
+        )
+    }
+    fn assemble_bootstrap(
+        scutes: &[&crate::storage::SealedScute<'_>],
+        destination: &std::path::Path,
+    ) -> Result<Self, AssemblyFailure> {
         let staged = StagedDirectory::create(destination).map_err(AssemblyFailure::Before)?;
         let result = (|| -> Result<_, CacheError> {
-            if scute.parent() != &[0; 32] {
+            if scutes.is_empty() {
+                return Err(CacheError::Invalid("missing bootstrap root scute"));
+            }
+            if scutes[0].parent() != &[0; 32] {
                 return Err(CacheError::Invalid("bootstrap scute has a nonzero parent"));
             }
             staged.store_blob(b"{}")?;
-            staged.store_scute(scute)?;
+            let mut parent = [0; 32];
+            let mut layers = Vec::with_capacity(scutes.len());
+            for scute in scutes {
+                if scute.parent() != &parent {
+                    return Err(CacheError::Invalid("bootstrap scute parent mismatch"));
+                }
+                staged.store_scute(scute)?;
+                layers.push(pichi_artifact::Layer::Scute(scute.descriptor().clone()));
+                parent = *scute.root();
+            }
             let manifest = serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
                 "artifactType": pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                 "config": pichi_artifact::ConfigDescriptor::canonical(),
-                "layers": [pichi_artifact::Layer::Scute(scute.descriptor().clone())],
+                "layers": layers,
                 "annotations": {
                     "dev.pichi.carapace.verity.algo": "sha256",
                     "dev.pichi.carapace.verity.data-block-size": "4096",
                     "dev.pichi.carapace.verity.hash-block-size": "4096",
                     "dev.pichi.carapace.verity.version": "1",
                     "dev.pichi.carapace.verity.hash-type": "1",
-                    "dev.pichi.carapace.verity.hash": hex::encode(scute.root())
+                    "dev.pichi.carapace.verity.hash": hex::encode(parent)
                 }
             }))?;
             Self::resolve_staging(

@@ -398,3 +398,47 @@ disposable firmware changes and failure after successful carapace derivation.
   rejected and required next. Enabled NAT/DNS, remaining matrix/variable/fault
   coverage, ORAS and three full adherence passes remain outstanding. M6 stays
   active at zero clean passes; no full distro/platform qualification is claimed.
+
+### M6 bootstrap followed by retained carapace layers
+
+- Previous goal turn progressed in 83486fe. Bootstrap output can now feed retained
+  carapace directives directly. ReadOnlyChain::from_root accepts only a sealed
+  zero-parent root and activates its RAM-backed scute without an intermediate
+  cache image/import. Existing cached-base execution and this fresh-root path share
+  DerivedCarapace::derive, consuming active-chain/scute/reaper ownership and sealing
+  one layer per directive. Bootstrap's original tool components remain excluded.
+- Fresh output assembly accepts the complete ordered produced chain, checks every
+  parent starting at zero, streams every scute, sets the final root annotation,
+  and verifies the self-contained staged layout. Inventory binds all layers as
+  produced and retains the single actual formatter execution receipt. No output
+  publication occurs until all commands and cleanup succeed.
+- v207/v208 exposed a synthetic-root limitation: the fixture installed a shell
+  and libraries but omitted /dev, /proc and /sys mountpoint directories required
+  by the existing command runtime. Failure surfaced as registration peer loss,
+  truncated helper diagnostics and retained runtime cleanup. Preserved both
+  failures before changes. Supervisor preflight now validates the same confined
+  runtime targets before policy/command launch, giving an explicit missing-target
+  error and normal rollback. Helper diagnostics render before writing; this does
+  not promise delivery after cancellation and adds no synchronization sleep.
+- The valid fixture explicitly supplies its root skeleton through measured COPY.
+  A separate missing-target recipe verifies failure names /dev, publishes nothing,
+  and leaves no runtime attachment. Automatic creation/restoration of absent
+  runtime mountpoints is not implemented: current command roots must supply /dev,
+  /proc and /sys (or valid confined symlink targets). This limitation remains visible
+  for subsequent distro qualification; no arbitrary-root compatibility is claimed.
+- v209 reached all expected CLI outcomes but failed an existing firmware inventory
+  assertion because a broad fixture edit accidentally changed its conditional.
+  Preserved the run and restored the original firmware assertion without changing
+  production behavior. v210 full normal VM suite passes (176.62 guest seconds),
+  including bootstrap -> COPY/RUN/COPY, four produced scutes, committed copy bytes,
+  retained data, no disposable tool changes, real output-chain reopening, failed
+  later RUN with no output, and rejection of a nonzero-parent root constructor.
+- Evidence/source/executable identities for v207-v210 are preserved under
+  validation/rewrite-command-integration/evidence. Host tests (87 library tests,
+  integration suites, 52 doctests), strict root/fixture Clippy and formatting pass.
+  Host suite observation timeout is now 210 seconds for the expanded cases;
+  production execution/setup/teardown deadlines are unchanged.
+- Firmware after bootstrap remains explicitly unsupported and is the next
+  composition path. Enabled networking, remaining variable/matrix/fault coverage,
+  ORAS, three full M6 adherence passes and all later milestones remain required.
+  M6 stays active at zero clean passes; these checks are not a milestone review.
