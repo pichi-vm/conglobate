@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
 mod blocked_io;
+mod cache_storage;
 mod contained;
 mod domain_publication;
 mod formatter_failures;
@@ -27,6 +28,7 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "cache-storage" => cache_storage::CacheStorage::run(),
             [mode] if mode == "sandbox-writeback" => {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Writeback)
             }

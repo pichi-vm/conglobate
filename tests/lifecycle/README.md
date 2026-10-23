@@ -142,3 +142,11 @@ and retry must fail with storage diagnostics and preserve the original command
 failure; no finalized storage is returned. Independent init disposes of the VM.
 Observed runs reject at syncfs after ext4 journal abort; they do not exercise
 the later post-unmount snapshot-validation branch or an image-authored writer.
+
+`--case cache-storage` migrates the historical synthetic scute preparation
+checks. Aligned uncompressed blobs remain cache-backed; compressed and partial
+blocks materialize in RAM. It checks verified read-only access, busy cleanup
+retention/diagnostics, rejection of a modified cache block after activation
+before first read, failed re-preparation, and inode retention across path
+replacement. Only the guest's private synthetic cache is modified. This is
+storage-component evidence, not a filesystem, full-chain or boot qualification.

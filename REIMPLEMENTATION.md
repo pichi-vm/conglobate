@@ -4850,3 +4850,25 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   or absence of vulnerabilities, and no boot was performed. M4 remains 0/3
   while complete ownership/storage/lifecycle review and three clean passes
   remain. The full remaining milestone scope is unchanged.
+
+### M4 storage review and maintained cache mutation regression
+
+- Previous turn was progress: 1a6b226 added actual command syscall checks.
+  Reviewed workspace, prepared scutes, verified loops/mappings, chain ordering,
+  writable snapshot ownership, volume unmount and runtime attachment cleanup.
+  Source observations/hashes are preserved in
+  preservation/m7-review/m4-storage-review-1a6b226/. No new production defect
+  established; remaining lifecycle review prevents a whole-M4 clean pass.
+- Migrated historical prepare-scutes assertions and generator into maintained
+  lifecycle tests. cache-storage-v2 passes in a disconnected native amd64 VM:
+  aligned cache backing, compressed/partial RAM data, read-only verification,
+  busy cleanup diagnostics/retention, post-activation mutation EIO, invalid
+  re-preparation and retained inode after path replacement. No host cache
+  mutation, unsafe code, production changes or synchronization sleeps.
+- v1 passed but imported the historical generator because of path precedence.
+  Corrected import order and reran v2. Both exact source/input/serial/status
+  evidence sets preserved. Strict fixture Clippy and whitespace checks pass.
+- This replaces one historical test dependency; original sources remain intact.
+  Shared GuestRuntime still needs migration before M8. Large artifacts remain
+  external and unarchived. No full chain, filesystem or boot claim is made.
+  M4 remains 0/3; these are evidence and partial review, not adherence passes.

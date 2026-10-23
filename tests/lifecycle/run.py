@@ -14,6 +14,8 @@ import subprocess
 import sys
 import tarfile
 
+from cache_fixture import CacheFixture
+
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / 'validation/rewrite-command-integration'))
 from runtime import GuestRuntime
@@ -21,7 +23,7 @@ from runtime import GuestRuntime
 
 class LifecycleRuntime(GuestRuntime):
     TOOLS = GuestRuntime.TOOLS + ('dmsetup',)
-    MODULES = ('loop', 'ext4', 'dm-zero', 'dm-snapshot', 'virtio_pci', 'virtio_blk',
+    MODULES = ('loop', 'ext4', 'dm-zero', 'dm-snapshot', 'dm-verity', 'virtio_pci', 'virtio_blk',
                'veth', 'nf_tables', 'nft_chain_nat', 'nft_masq', 'nft_ct')
 
 
@@ -52,7 +54,7 @@ class LifecycleRun:
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as archive:
             for name in ('src', 'Cargo.toml', 'Cargo.lock', 'tests/lifecycle/src',
                          'tests/lifecycle/Cargo.toml', 'tests/lifecycle/Cargo.lock',
-                         'tests/lifecycle/run.py', 'validation/rewrite-command-integration/runtime.py'):
+                         'tests/lifecycle/run.py', 'tests/lifecycle/cache_fixture.py', 'validation/rewrite-command-integration/runtime.py'):
                 archive.add(REPO / name, arcname=name)
         env = os.environ.copy()
         env.update(CARGO_BUILD_JOBS='2', TMPDIR='/var/tmp/conglobate-rewrite-tmp')
@@ -64,6 +66,8 @@ class LifecycleRun:
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
         runtime = LifecycleRuntime(self.root, self.args.module_root.resolve(), self.args.kernel_release)
         runtime.create()
+        if self.args.case == "cache-storage":
+            CacheFixture(self.root / "cache-fixture").create()
         binary = target / 'debug/conglobate-lifecycle-tests'
         runtime.executable(binary, Path('lifecycle-tests'))
         runtime.executable(binary, Path('usr/bin/formatter-stall'))
@@ -74,8 +78,8 @@ class LifecycleRun:
         for name, files in [('formatter-runtime-files', formatter), ('formatter-stall-files', stalled)]:
             (self.root / name).write_text('\n'.join(sorted(files)) + '\n')
         mode = '' if self.args.drop is None else f'FORMATTER_DROP={self.args.drop} '
-        setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\nmodprobe ext4\n'
-                 if self.args.case == 'formatter-failures' or self.args.case.startswith('sandbox-') else
+        setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\nmodprobe dm-verity\nmodprobe ext4\n'
+                 if self.args.case in ('formatter-failures', 'cache-storage') or self.args.case.startswith('sandbox-') else
                  'mkdir /work/cgroups\nmount -t cgroup2 cgroup2 /work/cgroups\n')
         if self.args.case == 'network-composite':
             setup = ''.join(f'modprobe {name}\n' for name in
@@ -144,6 +148,10 @@ exec sleep infinity
                        'NETWORK_COMPOSITE_NAT_FAILURE_PRESERVES_FOREIGN_TABLE_PASS',
                        'NETWORK_PRODUCTION_ALLOCATION_RELEASE_AND_DISTINCT_LIVE_PREFIX_PASS',
                        'NETWORK_COMPOSITE_EXPIRED_TEARDOWN_RETRY_RETAINS_OWNER_PASS']
+        elif self.args.case == 'cache-storage':
+            markers = ['VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS',
+                       'VERITY_CACHE_CORRUPTION_READ_REJECTED_PASS',
+                       'CACHE_BACKED_SCUTE_PREPARATION_PASS', 'OWNED_VERITY_READ_AND_CLEANUP_PASS']
         elif self.args.case == 'sandbox-supervisor-death':
             markers = ['FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS', 'SUPERVISOR_ABRUPT_DEATH_INJECTED']
         elif self.args.case == 'sandbox-blocked-io':
@@ -182,7 +190,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':
