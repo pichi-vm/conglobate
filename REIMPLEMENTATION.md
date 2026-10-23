@@ -5343,3 +5343,17 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Updated the historical action disposition. No VM evidence reclassified and no
   artifacts removed. M4 full clean streak remains 0/3; larger mapping/network/
   qualification and preservation requirements remain outstanding.
+
+
+### Accepted API simplifications: firmware fill and unused accessors
+
+- Previous turn implemented and tested clock-independent timeout parsing.
+  Addressed ownership-008, simplification-017 and simplification-027: lazy exact-one
+  DTB fill selection, removal of unused sealed hash reader/size bookkeeping, and
+  removal of unused FormattedSnapshot accessor. FormatReceipt accessor retained.
+- Audited current and historical source callers before removal; preserved archives
+  untouched. All 126 library tests passed and maintained lifecycle crate checks.
+  Formatting/whitespace checks passed; logs and focused review preserved under
+  preservation/m7-review/api-simplification/.
+- Updated historical action dispositions. No new VM/platform evidence, no full
+  adherence pass. M4 stays 0/3 and all larger outstanding goal requirements remain.

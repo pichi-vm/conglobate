@@ -79,20 +79,16 @@ impl DtbContract {
                 .field("actions")
                 .and_then(Value::as_array)
                 .ok_or_else(|| FirmwareError::invalid("PMI has no actions"))?;
-            let fills: Vec<_> = actions
-                .iter()
-                .map(ManifestValue)
-                .filter(|action| {
-                    action.field("type").and_then(Value::as_text) == Some("fill")
-                        && action.field("kind").and_then(Value::as_text) == Some("dt:dtb")
-                })
-                .collect();
-            if fills.len() != 1 {
+            let mut fills = actions.iter().map(ManifestValue).filter(|action| {
+                action.field("type").and_then(Value::as_text) == Some("fill")
+                    && action.field("kind").and_then(Value::as_text) == Some("dt:dtb")
+            });
+            let (Some(fill), None) = (fills.next(), fills.next()) else {
                 return Err(FirmwareError::invalid(
                     "target must accept exactly one external measured DTB",
                 ));
-            }
-            let reserved = fills[0]
+            };
+            let reserved = fill
                 .field("section")
                 .and_then(Value::as_text)
                 .ok_or_else(|| FirmwareError::invalid("DTB fill lacks section"))?;

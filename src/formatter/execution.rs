@@ -235,9 +235,6 @@ impl FormatReceipt {
     }
 }
 impl<'a, 'w> FormattedSnapshot<'a, 'w> {
-    pub fn format(&self) -> &Ext4Format {
-        &self.inputs.format
-    }
     /// Consume successful execution while retaining its exact input identities.
     /// Resource owners remain separate so the coordinator must still close them.
     pub fn into_recorded_parts(self) -> (FormatterRuntime, SnapshotMapping<'a, 'w>, FormatReceipt) {

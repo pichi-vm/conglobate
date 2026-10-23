@@ -152,8 +152,8 @@
       "evidence": "fills collected only for len()!=1 and [0]; sibling sections at :99 already uses the lazy idiom",
       "remaining_action": "Make fills lazy, mirroring sections",
       "historical_status": "accept",
-      "current_status": "open",
-      "current_evidence": "DtbContract collects matching fills to Vec in src/firmware.rs."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "DtbContract now checks exactly one matching fill with a lazy iterator; existing malformed/missing/duplicate tests pass. See preservation/m7-review/api-simplification/REVIEW.md."
     },
     {
       "id": "ownership-010",
@@ -323,8 +323,8 @@
       "evidence": "hash_reader has exactly one tree-wide hit (its definition); data_reader has 3 live consumers",
       "remaining_action": "Delete hash_reader and the hash_size field",
       "historical_status": "accept",
-      "current_status": "open",
-      "current_evidence": "SealedScute still exposes hash_reader and stores hash_size; consumer audit required before accepted deletion."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "Removed unused SealedScute::hash_reader and hash_size after source/harness caller search; internal hash ownership retained. See preservation/m7-review/api-simplification/REVIEW.md."
     },
     {
       "id": "simplification-018",
@@ -359,8 +359,8 @@
       "evidence": "Only .format() callers resolve to FormatReceipt::format",
       "remaining_action": "Delete FormattedSnapshot::format",
       "historical_status": "accept",
-      "current_status": "open",
-      "current_evidence": "FormattedSnapshot::format remains in src/formatter/execution.rs."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "Removed unused FormattedSnapshot::format; used FormatReceipt::format retained and lifecycle crate checked. See preservation/m7-review/api-simplification/REVIEW.md."
     },
     {
       "id": "simplification-028",

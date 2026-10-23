@@ -28,7 +28,6 @@ pub struct SealedScute<'workspace> {
     descriptor: ScuteDescriptor,
     root: [u8; 32],
     parent: [u8; 32],
-    hash_size: u64,
 }
 impl SealedScute<'_> {
     pub(crate) fn files(&self) -> (&File, &File) {
@@ -48,13 +47,6 @@ impl SealedScute<'_> {
             file: self.data.file(),
             position: 0,
             length: self.descriptor.size,
-        }
-    }
-    pub fn hash_reader(&self) -> ScuteReader<'_> {
-        ScuteReader {
-            file: self.hash.file(),
-            position: 0,
-            length: self.hash_size,
         }
     }
 }
@@ -131,10 +123,8 @@ impl<'w> Scratch<'w> {
                 .format(&mut input, &mut hash)?;
             let digest = format!("sha256:{}", hex::encode(input.digest.finalize()));
             hash.sync_all()?;
-            let hash_size = hash.metadata()?.len();
             Ok((
                 hash,
-                hash_size,
                 root,
                 ScuteDescriptor {
                     digest,
@@ -147,10 +137,9 @@ impl<'w> Scratch<'w> {
             ))
         })();
         match result {
-            Ok((hash, hash_size, root, descriptor)) => Ok(SealedScute {
+            Ok((hash, root, descriptor)) => Ok(SealedScute {
                 data: self,
                 hash,
-                hash_size,
                 root,
                 descriptor,
                 parent,
