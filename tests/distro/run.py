@@ -37,6 +37,8 @@ class DistroRun:
             raise RuntimeError('this runner currently qualifies only native amd64/KVM')
         if bool(self.arguments.firmware_pmi) != bool(self.arguments.firmware_dtb):
             raise RuntimeError('firmware PMI and DTB must be supplied together')
+        if self.arguments.without_label_policy and self.arguments.label_fault_second_filesystem:
+            raise RuntimeError('label fault requires the normal labeling exception')
         self.output.mkdir()
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as snapshot:
             for name in ('src', 'Cargo.toml', 'Cargo.lock',
@@ -54,6 +56,11 @@ class DistroRun:
         label_environment = LabelEnvironment(REPOSITORY, self.output, runtime)
         label_environment.stage()
         policy_startup = '' if self.arguments.without_label_policy else label_environment.startup()
+        fault_observation = ''
+        if self.arguments.label_fault_second_filesystem:
+            label_environment.stage_second_filesystem_fault()
+            policy_startup += '/label-fault\n'
+            fault_observation = '/label-fault observe'
         runtime.executable(REPOSITORY / 'target/m7-stable/debug/conglobate', Path('usr/bin/conglobate'))
         # Enumerate only the trusted host formatter, never an image executable.
         formatter = Path(shutil.which('mke2fs'))
@@ -111,9 +118,10 @@ ip route add default via 10.0.2.2
 echo 1 > /proc/sys/net/ipv4/ip_forward
 echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
 if conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --resolv-conf /etc/resolv.conf --formatter-runtime /formatter.json; then
-    :
+    {fault_observation or ':'}
 else
     status=$?
+    {fault_observation or ':'}
     test ! -e /work/output
     echo FAILED_BUILD_OUTPUT_ABSENT
     exit "$status"
@@ -208,4 +216,6 @@ if __name__ == '__main__':
     parser.add_argument('--firmware-dtb', type=Path)
     parser.add_argument('--without-label-policy', action='store_true',
                         help='Negative validation only: omit environment policy loading')
+    parser.add_argument('--label-fault-second-filesystem', action='store_true',
+                        help='VM-only differential test: reject the second filesystem label probe')
     DistroRun(parser.parse_args()).run()

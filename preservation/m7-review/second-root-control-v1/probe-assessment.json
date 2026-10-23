@@ -1,0 +1,19 @@
+{
+  "negative": false,
+  "observed": {
+    "first_device": 264241155,
+    "allowed": 1,
+    "denied": 0
+  },
+  "checks": {
+    "first_filesystem_observed": true,
+    "first_probe_allowed": true,
+    "denial_count": true,
+    "runtime_cleanup_complete": true,
+    "build_succeeded": true,
+    "command_admitted": true,
+    "exported": true
+  },
+  "passed": true,
+  "full_sandbox_qualified": false
+}

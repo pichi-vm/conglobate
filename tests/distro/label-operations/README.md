@@ -13,5 +13,5 @@ These checks exercise image binaries after command admission and restrictions.
 
 This is not a differential test of the two pre-admission probes: deleting one
 probe could still leave command-level label operations working. That separate
-coverage obligation remains open. This minimal output is not a bootable distro,
+behavior is exercised by `tests/distro/labeling-fault`. This minimal output is not a bootable distro,
 and no complete sandbox or confidential-platform qualification is claimed.

@@ -30,6 +30,22 @@ class LabelEnvironment:
             env=env, check=True)
         self.runtime.executable(loader, Path('label-loader'))
 
+    def stage_second_filesystem_fault(self):
+        source = self.repository / 'tests/distro/labeling-fault'
+        retained = self.output / 'label-environment/fault'
+        shutil.copytree(source, retained)
+        env = os.environ.copy()
+        env['TMPDIR'] = '/var/tmp/conglobate-rewrite-tmp'
+        headers = '-I/var/tmp/conglobate-cap-review-bpf/sysroot/usr/include'
+        subprocess.run(['clang', '-O2', '-g', '-Wall', '-Werror', '-target', 'bpf',
+            headers, '-c', str(retained / 'fault.bpf.c'), '-o',
+            str(self.runtime.root / 'label-fault.bpf.o')], env=env, check=True)
+        loader = retained / 'loader'
+        subprocess.run(['cc', '-O2', '-Wall', '-Wextra', '-Werror', headers,
+            str(retained / 'loader.c'), '/usr/lib64/libbpf.so.1', '-o', str(loader)],
+            env=env, check=True)
+        self.runtime.executable(loader, Path('label-fault'))
+
     @staticmethod
     def startup():
         return '''touch /run/global-label-fixture

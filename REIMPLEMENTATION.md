@@ -4302,3 +4302,27 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Claude review invocation remains live in session 78027; follow-up prompt updated
   with source-grounded remediation and disagreements for terminal reconciliation.
   No new adherence pass or milestone acceptance is claimed.
+
+
+### Differential output-filesystem admission validation
+
+- Added VM-only test environment fault, separate from unchanged production
+  conglobate and normal exact-name labeling exception. Additional inode_setxattr
+  hook matches the anonymous probe value, atomically records the first device,
+  allows that device and denies a different device. No userspace registration,
+  binary test hook, map update API, extra application dependency or capability.
+  Trusted post-build observer reports counts; sources/objects are measured by
+  fixture input hashing. Loader never executes on the host.
+- Single-root control succeeds with allowed=1/denied=0. Bootstrap negative records
+  allowed=1/denied=1, fails before recipe execution with label EPERM, completes
+  cleanup and publishes nothing. Normal two-root positive is already preserved.
+  This test would reject a root-only probe implementation: no denied output write
+  and successful build/admission violate negative assertions. This is targeted
+  native amd64 coverage, not all sandbox/platform qualification.
+- Maintained fixture/assessor: tests/distro/labeling-fault. Evidence:
+  preservation/m7-review/second-root-{control,negative}-v1. Negative build runner
+  exits 1 as expected; separate assessment passes. Python parsing and C/BPF
+  compilation with warnings denied pass; no application Rust changed this turn.
+- Updated follow-up review prompt with proposed closure of differential coverage
+  finding. Existing review session 78027 is still live; no replacement launched,
+  consensus or adherence pass inferred. M2/M4–M6 remain 0/3; full goal incomplete.
