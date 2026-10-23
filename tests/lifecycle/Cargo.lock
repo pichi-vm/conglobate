@@ -300,6 +300,7 @@ version = "0.0.0"
 dependencies = [
  "conglobate",
  "minicbor",
+ "rustix 1.1.5 (git+https://github.com/bytecodealliance/rustix?rev=8bda151df87574f56f1e4c0b59f2d1df5d61609e)",
 ]
 
 [[package]]

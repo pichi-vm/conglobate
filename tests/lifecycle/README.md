@@ -90,3 +90,11 @@ without destructors. The supervisor must reject setup and fully finalize rejecte
 storage. The fixture requires no children, attachment directories or cgroups,
 then explicitly detaches the snapshot and closes the runtime. No recipe executes,
 so this does not exercise labeling admission or post-admission receiver failure.
+
+`--case network-composite` migrates the historical allocation-lock and composite
+network cleanup probes without changing assertions. It checks namespace lock
+exclusion, contention before mutation, partial setup rollback, nftables table-name
+collision preserving the pre-existing table, distinct simultaneous allocations,
+and fixed expired cleanup deadlines retaining ownership. The final case leaves
+resources for VM disposal intentionally. All networking is inside the disconnected
+guest; this does not validate actual recipe DNS/TCP or external outbound traffic.

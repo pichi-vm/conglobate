@@ -20,7 +20,8 @@ from runtime import GuestRuntime
 
 
 class LifecycleRuntime(GuestRuntime):
-    MODULES = ('loop', 'ext4', 'dm-zero', 'dm-snapshot', 'virtio_pci', 'virtio_blk')
+    MODULES = ('loop', 'ext4', 'dm-zero', 'dm-snapshot', 'virtio_pci', 'virtio_blk',
+               'veth', 'nf_tables', 'nft_chain_nat', 'nft_masq', 'nft_ct')
 
 
 class LifecycleRun:
@@ -75,6 +76,9 @@ class LifecycleRun:
         setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\nmodprobe ext4\n'
                  if self.args.case == 'formatter-failures' or self.args.case.startswith('sandbox-') else
                  'mkdir /work/cgroups\nmount -t cgroup2 cgroup2 /work/cgroups\n')
+        if self.args.case == 'network-composite':
+            setup = ''.join(f'modprobe {name}\n' for name in
+                            ('veth', 'nf_tables', 'nft_chain_nat', 'nft_masq', 'nft_ct'))
         (self.root / 'fixture.sh').write_text(
             '#!/bin/bash\nset -eux\n' + setup + mode + '/lifecycle-tests ' + self.args.case + '\n')
         (self.root / 'init').write_text('''#!/bin/bash
@@ -132,6 +136,13 @@ exec sleep infinity
             markers = ['CONTAINED_LAUNCH_FAILURE_CLEANUP_PASS', 'CONTAINED_JOIN_FAILURE_CLEANUP_PASS',
                        'CONTAINED_PRE_ADMISSION_DESCENDANT_DRAIN_PASS',
                        'CONTAINED_ABRUPT_HELPER_DEATH_DRAIN_PASS']
+        elif self.args.case == 'network-composite':
+            markers = ['NETWORK_NAMESPACE_FLOCK_EXCLUSION_AND_RELEASE_PASS',
+                       'NETWORK_PRODUCTION_ALLOCATION_CONTENTION_BEFORE_MUTATION_PASS',
+                       'NETWORK_COMPOSITE_AFTER_NAMESPACE_FAILURE_CLEANUP_PASS',
+                       'NETWORK_COMPOSITE_NAT_FAILURE_PRESERVES_FOREIGN_TABLE_PASS',
+                       'NETWORK_PRODUCTION_ALLOCATION_RELEASE_AND_DISTINCT_LIVE_PREFIX_PASS',
+                       'NETWORK_COMPOSITE_EXPIRED_TEARDOWN_RETRY_RETAINS_OWNER_PASS']
         elif self.args.case.startswith('sandbox-'):
             markers = [self.args.case.upper().replace('-', '_') + '_ROLLBACK_PASS']
         elif self.args.drop:
@@ -155,7 +166,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit'], default='formatter-failures')
+    parser.add_argument('--case', choices=['formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':

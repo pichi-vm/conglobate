@@ -4616,3 +4616,20 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   mounted-storage failure evidence, not an adherence pass. M4 remains 0/3; recipe
   admission/start-gate failure, supervisor death, network and writeback coverage
   still need completion, alongside the unchanged M5-M8 qualification gates.
+
+### Maintained network composite ownership regression
+
+- Migrated allocation_lock_child, allocation_lock_probe and composite_failures
+  from historical network.rs without assertion changes. Added only the fixture's
+  direct pinned rustix dependency, already present transitively; no production
+  dependency, policy registration or raw namespace interface was introduced.
+- Fresh disconnected native amd64 network-composite-v1 passes six ownership
+  assertions plus independent exit-zero status and VM poweroff. Strict fixture
+  Clippy passes. Evidence/source preserved; large assets await durable archival.
+  The expired teardown case intentionally retains ownership for VM disposal and
+  does not claim clean resource release. Actual recipe DNS/TCP remains unvalidated
+  by this component test. M4 remains 0/3; no adherence pass inferred.
+- Clarified the user's NAT-collision question: this fault is an nftables table-name
+  collision, not an address collision. Link-local NAT is a separate design question;
+  no address-policy change or link-local qualification is claimed by these tests.
+  The previous goal turn's mounted rollback tests were concrete progress.

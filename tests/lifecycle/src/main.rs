@@ -3,6 +3,7 @@
 mod contained;
 mod domain_publication;
 mod formatter_failures;
+mod network;
 mod sandbox_failures;
 use conglobate::execution::{HelperInvocation, HelperProgram};
 use std::{ffi::OsStr, path::Path};
@@ -23,6 +24,14 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "network-composite" => network::NetworkProbe::composite_failures(),
+            [mode, contended] if mode == "network-allocation-lock-child" => {
+                match contended.to_str() {
+                    Some("true") => network::NetworkProbe::allocation_lock_child(true),
+                    Some("false") => network::NetworkProbe::allocation_lock_child(false),
+                    _ => Err("expected lock contention boolean".into()),
+                }
+            }
             [mode, cutoff] if mode == "sandbox-attached-helper" => {
                 sandbox_failures::SandboxFailures::attached_helper(cutoff)
             }
