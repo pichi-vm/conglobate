@@ -323,11 +323,36 @@ impl BootstrapProbe {
             assert_eq!(fs::read_dir(records)?.count(), 0);
             assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
         }
-        let output_mounted = output
+        let mut output_mounted = output
             .mount_ext4(Path::new("/work"))
             .map_err(|e| e.to_string())?;
         let path = Self::volume_path(output_mounted.root_metadata()?.dev())?;
         assert_eq!(fs::read(path.join("state"))?, b"output\nsecond\n");
+        let commit = fs::read_to_string("/workspace-context-commit")?;
+        let context = conglobate::context::CapturedContext::capture(
+            Path::new("/workspace-context"),
+            &conglobate::request::CommitIdentity::try_from(commit.trim())?,
+            &conglobate::path::ContextDirectory::try_from(Path::new("."))?,
+        )?;
+        let recipe = conglobate::recipe::Recipe::try_from(
+            conglobate::document::YamlDocument::from(
+                "carapace:\n  from: example.test/base:1\n  derive:\n    - copy:\n        from: input\n        into: /copied/input\n        owner: '123'\n        group: '456'\n        mode: '0640'\n",
+            ),
+        )?;
+        let conglobate::recipe::Directive::Copy(directive) =
+            &recipe.carapace().unwrap().directives()[0]
+        else {
+            unreachable!()
+        };
+        output_mounted.copy(&context, directive)?;
+        assert_eq!(fs::read(path.join("copied/input"))?, b"committed context\n");
+        let metadata = fs::metadata(path.join("copied/input"))?;
+        assert_eq!(
+            (metadata.uid(), metadata.gid(), metadata.mode() & 0o7777),
+            (123, 456, 0o640)
+        );
+        println!("COPY_MOUNTED_VOLUME_METADATA_PASS");
+
         let output = output_mounted
             .unmount()
             .map_err(|e| e.to_string())?

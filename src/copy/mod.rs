@@ -10,3 +10,7 @@ pub use pattern::{PatternError, SourcePattern};
 
 mod source;
 pub use source::{CopySource, CopySources, SelectionError};
+
+mod destination;
+pub(crate) use destination::CopyDestination;
+pub use destination::CopyError;

@@ -3066,3 +3066,28 @@ rules rather than silently shrinking acceptance criteria.
   Confined destination access, account lookup, metadata syscalls and pipeline
   integration remain required. No privileged filesystem behavior or complete
   COPY compatibility is claimed. M6 remains zero adherence passes.
+
+### M6 confined COPY destination writer
+
+- Previous turn progressed on reference-validated permissions. Added descriptor-
+  relative destination writing and Volume<Mounted>::copy with an exclusive borrow.
+  A compile-fail test rejects copying while a command root view is outstanding.
+  All image path resolution begins at the pinned volume root; absolute symlinks
+  have image-root semantics. O_PATH inspection does not open devices/FIFOs.
+- Regular destinations are unlinked and exclusively recreated, avoiding writes
+  through existing hardlinks. Nested destination links are replaced for file
+  copies. Directory conflicts fail; selected directory contents merge, nested
+  source symlinks remain links. Owner/group lookup uses bounded regular image
+  account files; numeric sentinel IDs fail; ownership precedes final mode.
+- Host regressions cover committed versus dirty bytes, symlinks, hardlinks,
+  conflicts, modes, account reads and FIFO rejection. 80 library tests, 50
+  doctests, and root/fixture strict Clippy pass.
+- v191 full normal disposable-VM suite passes. New mounted-volume check copies
+  committed input to ext4 output and verifies UID 123/GID 456/mode 0640 before
+  unmount/seal. Existing lifecycle/sealing checks remain green. Added the marker
+  to future runner acceptance after inspecting this run's success. Raw evidence,
+  context bundle, cache fixtures, compressed source snapshot and artifact hashes
+  preserved under validation/rewrite-command-integration/evidence/v191.
+- This is a mounted-volume API, not yet complete CLI directive orchestration.
+  Bootstrap /mnt routing, deadline integration, comprehensive COPY compatibility
+  and emitted-image metadata qualification remain required. M6 zero passes.

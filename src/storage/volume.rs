@@ -276,6 +276,25 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
     }
 }
 impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
+    /// Copy while exclusively borrowing this volume. Outstanding root views
+    /// prevent this borrow, so no command may concurrently use the filesystem.
+    /// ```compile_fail
+    /// use conglobate::{storage::{Volume, Mounted}, context::CapturedContext, recipe::Copy};
+    /// fn no_copy_with_command_view(mut volume: Volume<'_, '_, '_, Mounted>, context: &CapturedContext, directive: &Copy) {
+    ///     let view = volume.view().unwrap();
+    ///     volume.copy(context, directive).unwrap();
+    ///     drop(view);
+    /// }
+    /// ```
+    pub fn copy(
+        &mut self,
+        context: &crate::context::CapturedContext,
+        directive: &crate::recipe::Copy,
+    ) -> Result<(), crate::copy::CopyError> {
+        self.scope.verify_current()?;
+        crate::copy::CopyDestination::new(&self.resources.root).copy(context, directive)
+    }
+
     pub fn root_metadata(&self) -> io::Result<Metadata> {
         self.resources.root.metadata()
     }

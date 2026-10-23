@@ -216,3 +216,14 @@ evaluator missed (original-mode X and ordered permission copies). Digest vectors
 are maintained Rust tests; generator/reference provenance remains preserved.
 Destination writing and owner/group lookup still need implementation and VM
 validation before COPY is connected to the coordinator.
+
+## Mounted-volume COPY writer
+
+Volume<Mounted>::copy exclusively borrows storage and writes captured entries
+through pinned descriptor-relative paths. Image symlinks are confined; account
+reads reject special files; replacements avoid following nested links/hardlinks.
+Ownership precedes reference-validated permissions. v191 demonstrates committed
+bytes and UID/GID/mode on ext4 within the disposable VM; normal lifecycle tests
+still pass. The coordinator must now arrange these calls between command steps,
+route bootstrap tool/output destinations, and bound trusted work. COPY is not yet
+available as an end-to-end CLI build directive.
