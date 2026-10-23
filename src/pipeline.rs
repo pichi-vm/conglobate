@@ -43,6 +43,10 @@ pub enum BuildError {
     Unsupported(&'static str),
     #[error("build execution: {0}")]
     Execution(String),
+    #[error("formatter staging: {0}")]
+    FormatterStaging(#[source] std::io::Error),
+    #[error("formatter wait: {0}")]
+    FormatterWait(#[source] crate::storage::FailureDiagnostics),
     #[error("formatter execution: {0}")]
     Formatter(#[source] crate::storage::FailureDiagnostics),
     #[error(transparent)]
@@ -262,6 +266,19 @@ mod tests {
         for code in [5, 110, 16, 13, 28] {
             assert!(message.contains(&io::Error::from_raw_os_error(code).to_string()));
         }
+    }
+
+    #[test]
+    fn unreaped_formatter_wait_diagnostic_retains_cancellation_history() {
+        let history = FailureDiagnostics::from(io::Error::from_raw_os_error(110))
+            .followed_by(io::Error::from_raw_os_error(16).into());
+        let failure = BuildError::FormatterWait(history.clone());
+        let BuildError::FormatterWait(retained) = failure else {
+            panic!("formatter wait classification lost");
+        };
+        assert!(std::ptr::eq(history.operation(), retained.operation()));
+        assert_eq!(retained.operation().raw_os_error(), Some(110));
+        assert_eq!(retained.cleanup()[0].raw_os_error(), Some(16));
     }
 
     #[test]

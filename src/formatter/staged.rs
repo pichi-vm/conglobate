@@ -64,10 +64,17 @@ impl FormatterStageFailure {
         &self.source
     }
     pub fn cleanup(self) -> Result<(), FormatterCleanupFailure> {
-        match self.backing {
+        self.cleanup_with_source().1
+    }
+    /// Preserve the operation cause while consuming the staging owner for one
+    /// cleanup attempt. A failed attempt still owns its retryable backing.
+    pub(crate) fn cleanup_with_source(self) -> (io::Error, Result<(), FormatterCleanupFailure>) {
+        let Self { source, backing } = self;
+        let cleanup = match backing {
             Some(backing) => backing.close(),
             None => Ok(()),
-        }
+        };
+        (source, cleanup)
     }
 }
 
@@ -185,5 +192,51 @@ impl FormatterRuntime {
         } = self;
         drop(root);
         backing.close()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Backing, FormatterStageFailure};
+    use std::{fs, io};
+
+    #[test]
+    fn staging_rejection_before_backing_preserves_original_error() {
+        let failure = FormatterStageFailure {
+            source: io::Error::from_raw_os_error(13),
+            backing: None,
+        };
+        let (source, cleanup) = failure.cleanup_with_source();
+        assert_eq!(source.raw_os_error(), Some(13));
+        cleanup.unwrap();
+    }
+
+    #[test]
+    fn staging_rejection_preserves_source_and_retryable_cleanup() {
+        let parent = tempfile::tempdir().unwrap();
+        let directory = tempfile::tempdir_in(parent.path()).unwrap();
+        let original = directory.path().to_owned();
+        let saved = parent.path().join("saved");
+        fs::write(original.join("content"), b"formatter test").unwrap();
+        // Ordinary local fixture: make directory removal fail, then restore the
+        // directory to verify that the returned failure still owns its retry.
+        fs::rename(&original, &saved).unwrap();
+        fs::write(&original, b"not a directory").unwrap();
+        let failure = FormatterStageFailure {
+            source: io::Error::from_raw_os_error(5),
+            backing: Some(Backing {
+                directory,
+                _parent: fs::File::open(parent.path()).unwrap(),
+            }),
+        };
+        let (source, cleanup) = failure.cleanup_with_source();
+        assert_eq!(source.raw_os_error(), Some(5));
+        let cleanup = cleanup.unwrap_err();
+        assert_eq!(cleanup.source_error().kind(), io::ErrorKind::NotADirectory);
+        assert_eq!(fs::read(saved.join("content")).unwrap(), b"formatter test");
+        fs::remove_file(&original).unwrap();
+        fs::rename(&saved, &original).unwrap();
+        cleanup.retry().unwrap();
+        assert!(!original.exists());
     }
 }

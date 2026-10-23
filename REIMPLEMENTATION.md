@@ -5669,3 +5669,18 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   unwrapped primary error. No new privileged validation or full adherence pass.
 - Evidence: preservation/m7-review/formatter-error-structure/. errors-api-002/003
   remain open for staging, wait, stage and storage conversion. M4 remains 0/3.
+
+### Preserve formatter staging and unreaped-wait diagnostics
+
+- Previous turn committed formatter execution and paired cleanup preservation.
+  Continued errors-api-002/003: staging now returns its original io::Error with
+  cleanup outcome; failed cancellation retains the immutable typed wait history.
+- Staging cleanup failures still own retryable backing. Unreaped formatter input
+  retention and terminal VM-disposal requirements are unchanged; no new retry or
+  teardown success is claimed at the pipeline boundary.
+- 139 library tests, strict Clippy and lifecycle compilation passed. New local
+  filesystem coverage forces a cleanup failure and proves the returned owner can
+  retry after fixture restoration. Diagnostic coverage checks retained wait
+  errno history. Evidence: preservation/m7-review/formatter-staging-wait-errors/.
+- Generic stage/storage error conversion and full taxonomy remain open. No new
+  VM validation or complete adherence pass; M4 remains 0/3 and goal active.

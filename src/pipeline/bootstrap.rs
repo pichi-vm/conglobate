@@ -56,13 +56,9 @@ impl<'a> BootstrapBuild<'a> {
             match captured.stage(workspace) {
                 Ok(formatter) => self.produce(request, workspace, runtime, formatter),
                 Err(failure) => {
-                    let primary = failure.to_string();
-                    Err(match failure.cleanup() {
-                        Ok(()) => Self::error(primary),
-                        Err(cleanup) => {
-                            Self::error(format!("{primary}; formatter staging cleanup: {cleanup}"))
-                        }
-                    })
+                    let (primary, cleanup) = failure.cleanup_with_source();
+                    Err(BuildError::FormatterStaging(primary)
+                        .with_cleanup(cleanup.map_err(BuildError::from)))
                 }
             }
         })
@@ -245,7 +241,7 @@ impl<'a> BootstrapBuild<'a> {
                 Ok((error, formatter, snapshot)) => {
                     Err(Self::reject_format(error, formatter, snapshot))
                 }
-                Err(failure) => Err(Self::error(failure)),
+                Err(failure) => Err(BuildError::FormatterWait(failure.diagnostics().clone())),
             },
         }
     }
