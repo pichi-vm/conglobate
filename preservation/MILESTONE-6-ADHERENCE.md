@@ -1,7 +1,7 @@
 # Milestone 6 adherence review
 
-Status: **2/3** clean passes. Requirements-first and reverse-lifecycle/evidence
-self-reviews recorded below; M6 remains gated until one more clean pass. The complete scope is DESIGN.md, SANDBOX-DESIGN.txt,
+Status: **3/3** clean passes. M6 accepted on scope-v1.json. Three complete
+self-reviews are recorded below; independent and platform qualification remain M7. The complete scope is DESIGN.md, SANDBOX-DESIGN.txt,
 ARCHITECTURE.md, latest user decisions and the M6 row in REIMPLEMENTATION.md.
 Tests are evidence, not adherence passes. These are self-reviews unless stated.
 
@@ -295,3 +295,57 @@ from final acceptance rather than repeating pass 1's forward pipeline traversal.
 
 Result: clean, streak **2/3**. No new finding, implementation change or redundant
 runtime run. One complete clean adherence review remains before M6 acceptance.
+
+## Clean pass 3 — public authority and acceptance boundary
+
+All 180 files still match scope-v1.json. Reviewed the frozen implementation from
+public constructors, exported state transitions and the recipe/output matrix,
+then reconciled the acceptance claims with the two preceding evidence traversals.
+No implementation or design change; no new finding.
+
+- BuildRequest validates explicit recipe/lock paths and exact commit identities;
+  CapturedBuild owns the committed source bytes and selected-document digests.
+  ResolvedBuild consumes that phase only after local reference/chain verification.
+  Execution inputs require roots; a firmware-only pass-through base does not.
+  Planning preserves separate input roles and fixed pipeline order. Missing pins,
+  unsupported sections and invalid stage combinations fail before execution.
+- Recipe state is immutable after validated conversion. Checked all eight
+  bootstrap/carapace/firmware presence combinations against DESIGN 5.2 and the
+  coordinator dispatch. Explicit carapace.from after bootstrap is forbidden;
+  alternate firmware.from remains valid. Authored empty transform and omitted
+  transform are distinct. Input role consolidation cannot make tool components
+  output ancestry, and default-off networking requires captured resolver input.
+- Public low-level storage and assembly constructors are not command-success
+  receipts. SealedScute exposes read/seek views without writable descriptors;
+  AssembledImage has no public inventory publication method. CompletedImage is
+  private to the coordinator; decoding Inventory cannot construct it. Raw
+  StagedDirectory is explicitly a filesystem transaction, not a build receipt.
+  The CLI reaches publication only through completed stages and cleanup.
+- Reviewed the exported state traits and transition signatures: private sealing
+  prevents foreign storage/state implementations; active steps retain ownership;
+  cancellation cannot reopen admission; network attachment cannot nest; a failed
+  command cannot become successful through cleanup. Borrowed runtime paths cannot
+  outlive or independently close their owner. Errors retain unfinished resources,
+  and dedicated-VM disposal remains distinct from successful cleanup.
+- Reconciled execution behavior with all M6 feature families: per-directive
+  retained layering, confined committed COPY, disposable firmware pair extraction,
+  output-root CARAPACE, typed/property-only DTB edits, default corium regex,
+  private offline/attached NAT namespaces, explicit DNS, inventory and self-contained
+  OCI. Finalization and staged-output verification keep the final DTB/chain/manifest
+  identities consistent. Helper dispatch retains trusted setup control outside
+  image commands and does not copy the builder into their filesystems.
+- Rust style follows owning methods, immutable validated inputs, consuming
+  transitions and sealed marker states. Local serialization/tree mutation and
+  retained cleanup enums do not expose a mutable global build-state object.
+  Existing compile-fail tests cover forbidden authority transfers. Application
+  unsafe code remains forbidden, and readiness uses protocols rather than sleeps.
+- Reconciled checks and limits: current all-target tests and strict Clippy, 54
+  doctests, full CLI/ORAS v255 and focused network v251–v254 support M6 claims.
+  Earlier failures remain preserved. No rerun was needed for unchanged code.
+  These self-reviews are not the independent critical review, distro boots, CI,
+  Arm or confidential-platform qualification required by M7. External evidence
+  durability and historical-code retirement remain M8; no references were removed.
+
+Result: clean, streak **3/3**. M6 accepted for the full pipeline/publication scope.
+M7 may begin. Any later change affecting this scope must receive corresponding
+review and validation; acceptance is not a waiver for later discovered defects.
