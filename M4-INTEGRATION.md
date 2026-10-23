@@ -97,3 +97,20 @@ the recipe execution deadline. I3's independent child execution cutoffs are now
 removed from this path; I2's cross-process setup cutoff propagation remains open.
 Initial receiver input decoding, mount/device preparation, helper dispatch and
 parent acquisition orchestration are still fixture code, so I1/I4 remain open.
+
+
+Setup cutoff propagation now uses `SetupCutoff`, an absolute CLOCK_MONOTONIC
+nanosecond value serialized as deterministic CBOR [1, value] (hex for helper
+argv). Export samples monotonic time before measuring the remaining Instant
+budget; import samples Instant before measuring monotonic remaining time. Both
+orders are conservative and never renew the budget. The helper chain forwards
+the same encoded cutoff; namespace and restricted-root preparation check it,
+and restricted start derives its deadline from that retained value. This relies
+on the helpers sharing the VM's time namespace; CommandNamespaces does not
+create a time namespace. It is not a timestamp transferable to another VM.
+
+I2's fresh helper deadlines are removed from the owned-volume execution path,
+including initial user-namespace creation. Comprehensive pre/post acquisition
+checks and failure ownership before the ready step remain part of I4, rather
+than being claimed complete by the clock transport. The public binary dispatcher
+and immutable launch-input transport still need integration.

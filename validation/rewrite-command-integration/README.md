@@ -1135,3 +1135,30 @@ outcome/timeout orchestration remain outstanding.
   cross-process setup cutoff (I2), initial input/mount/device preparation, binary
   dispatch, parent acquisition ownership and successful receipt gating remain
   open. M4-INTEGRATION.md records the partial resolution; M5–M8 remain pending.
+
+### M4 shared setup cutoff transport (v126)
+
+- Previous turn progressed in 88a486c. SetupBudget exports a SetupCutoff using
+  CLOCK_MONOTONIC through rustix's safe time feature. Deterministic versioned CBOR
+  [1, nanoseconds], hex-encoded for trusted argv, is forwarded unchanged through
+  receiver, namespace helper and restricted root entry. No Rust Instant internals
+  are serialized and no remaining duration is restarted on receipt. Clock sample
+  order conservatively shortens rather than extends the original cutoff.
+- Namespace entry checks the cutoff before setup and child launch. Root setup
+  checks before preparation and after restriction; the restricted command retains
+  the cutoff and checks it at start. Receiver uses it for readiness/admission;
+  parent namespace creation also uses the original SetupBudget deadline. These
+  helpers share the VM time namespace; cross-VM/time-namespace transfer is outside
+  this private launch contract. Completion keeps its distinct communication bound.
+- Host tests prove repeated forwarding preserves the exact value and does not
+  extend the original Instant, and reject expiry, malformed/trailing/noncanonical
+  encodings. v126 normal VM passes through all helper stages, including the
+  31-second FIFO-held command under a 45-second execution budget, cancellation,
+  setup failure, label/descriptor and finalization cases. Host suite with 44
+  compile-fail cases, both Clippy checks and formatting pass. Evidence hashes
+  and exact booted source are preserved and verified.
+- I2's resetting helper timers are resolved for the exercised path. This does
+  not prove every potentially blocking acquisition is bounded or has a retained
+  aggregate failure owner. Those I4 requirements, binary dispatch, launch-input
+  integration and success-receipt gating remain open. M4 streak remains zero;
+  no full adherence pass or later milestone advancement is claimed.

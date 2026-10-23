@@ -37,33 +37,44 @@ impl Integration {
         let args: Vec<_> = std::env::args().collect();
         if args.get(1).is_some_and(|a| a == "gated-namespaces") {
             let script = args.get(2).ok_or("script required")?;
+            let cutoff = conglobate::step::SetupCutoff::from_argument(
+                args.get(3).ok_or("setup cutoff required")?,
+            )?;
             let setup = conglobate::isolation::GatedCommandSetup::from_input()?;
             let mut command = Command::new(std::env::current_exe()?);
-            command.args(["gated-root", script]);
-            if args.get(3).is_some_and(|arg| arg == "--probe-extra-fd") {
+            command
+                .args(["gated-root", script])
+                .arg(cutoff.to_argument());
+            if args.get(4).is_some_and(|arg| arg == "--probe-extra-fd") {
                 command.arg("--probe-extra-fd");
             }
-            let status = setup.execute(command)?;
+            let status = setup.execute(command, cutoff)?;
             use std::os::unix::process::ExitStatusExt;
             std::process::exit(status.code().unwrap_or(128 + status.signal().unwrap_or(1)));
         }
         if args.get(1).is_some_and(|a| a == "gated-root") {
             let script = args.get(2).ok_or("script required")?;
-            let command = conglobate::isolation::GatedRootSetup::from_input()?.restrict(script)?;
-            let deadline = Instant::now() + Duration::from_secs(30);
-            if args.get(3).is_some_and(|arg| arg == "--probe-extra-fd") {
+            let cutoff = conglobate::step::SetupCutoff::from_argument(
+                args.get(3).ok_or("setup cutoff required")?,
+            )?;
+            let command =
+                conglobate::isolation::GatedRootSetup::from_input()?.restrict(script, cutoff)?;
+            if args.get(4).is_some_and(|arg| arg == "--probe-extra-fd") {
                 let extra = fs::File::open("/dev/null")?;
-                let error = command.start(deadline).unwrap_err();
+                let error = command.start().unwrap_err();
                 assert!(error.to_string().contains("would remain in command init"));
                 drop(extra);
                 println!("RESTRICTED_COMMAND_EXTRA_DESCRIPTOR_REJECTED_PASS");
                 return Ok(());
             }
-            command.start(deadline)?;
+            command.start()?;
             unreachable!();
         }
         if args.get(1).is_some_and(|a| a == "volume-receiver") {
-            let deadline = Instant::now() + Duration::from_secs(5);
+            let cutoff = conglobate::step::SetupCutoff::from_argument(
+                args.get(3).ok_or("setup cutoff required")?,
+            )?;
+            let deadline = cutoff.deadline()?;
             let channel = Supervision::from_stdin()?
                 .exchange_until(deadline)?
                 .join_domain_until(deadline)?;
@@ -92,11 +103,12 @@ impl Integration {
                     mode
                 },
             ));
+            command.arg(cutoff.to_argument());
             if mode == "descriptor-rejection" {
                 command.arg("--probe-extra-fd");
             }
             let completion = conglobate::isolation::CommandReceiver::new(channel, view, setup)
-                .execute(command, deadline)
+                .execute(command, cutoff)
                 .map_err(|e| e.to_string())?;
             let (channel, view, status) = completion.into_parts();
             println!("RESTRICTED_LEAF_READY_BEFORE_ADMISSION_PASS");
@@ -170,7 +182,7 @@ impl Integration {
                 creator,
                 IdRange::new(100000, 65536)?,
                 IdRange::new(100000, 65536)?,
-                Instant::now() + Duration::from_secs(5),
+                setup_budget.deadline(),
             )?
             .pin(&lease)?;
             let scope = if args[1] == "volume-probe" {
@@ -263,7 +275,11 @@ impl Integration {
                 let parent = Path::new("/work/cgroups");
                 let domain = RecordedDomain::create(&lease, parent)?;
                 let mut command = Command::new(std::env::current_exe()?);
-                command.arg("volume-receiver").arg(mode).env_clear();
+                command
+                    .arg("volume-receiver")
+                    .arg(mode)
+                    .arg(setup_budget.cutoff()?.to_argument())
+                    .env_clear();
                 let deadline = setup_budget.deadline();
                 let helper = domain
                     .launch(command, deadline)
@@ -1301,7 +1317,7 @@ impl Integration {
                 .args(["native-root", script])
                 .env_clear()
                 .stdin(devices.into_input()?);
-            if args.get(3).is_some_and(|arg| arg == "--probe-extra-fd") {
+            if args.get(4).is_some_and(|arg| arg == "--probe-extra-fd") {
                 setup.arg("--probe-extra-fd");
             }
             let child = scope.spawn(setup)?;
@@ -1319,7 +1335,7 @@ impl Integration {
             let filter = CommandSyscalls::compile()?;
             let entered = selected.enter()?;
             let command = entered.restrict(script, CommandPrivileges::filesystem(), filter)?;
-            if args.get(3).is_some_and(|arg| arg == "--probe-extra-fd") {
+            if args.get(4).is_some_and(|arg| arg == "--probe-extra-fd") {
                 let extra = fs::File::open("/dev/null")?;
                 let error = command.execute().unwrap_err();
                 assert!(error.to_string().contains("would remain in command init"));

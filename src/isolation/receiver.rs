@@ -4,6 +4,7 @@ use super::{CommandSetup, ExecutionGate};
 use crate::{
     filesystem::{Attached, InUse, Mount, RootLaunchFailure, RootWaitFailure},
     process::{Admitted, Registered, Supervision},
+    step::SetupCutoff,
 };
 use std::{
     io,
@@ -74,8 +75,17 @@ impl<'ns> CommandReceiver<'ns> {
     pub fn execute(
         self,
         mut namespace_entry: Command,
-        setup_deadline: Instant,
+        cutoff: SetupCutoff,
     ) -> Result<ReceiverCompletion<'ns>, Box<ReceiverFailure<'ns>>> {
+        let setup_deadline = match cutoff.deadline() {
+            Ok(deadline) => deadline,
+            Err(source) => {
+                return Err(Box::new(ReceiverFailure::Before {
+                    source,
+                    mount: self.mount,
+                }));
+            }
+        };
         let (gate, endpoint) = match ExecutionGate::pair() {
             Ok(pair) => pair,
             Err(source) => {

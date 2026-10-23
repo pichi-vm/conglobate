@@ -6,12 +6,12 @@ use crate::{
         CommandRoot, ExecutionEndpoint, NamespaceFailure, PrivateMountNamespace, RestrictedCommand,
     },
     process::{CommandPrivileges, CommandSyscalls, WaitFailure},
+    step::SetupCutoff,
 };
 use std::{
     convert::Infallible,
     io,
     process::{Command, ExitStatus},
-    time::Instant,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -27,9 +27,15 @@ impl GatedCommandSetup {
     /// entry as PID 1, then wait. The supervisor enforces command timeout by
     /// cancelling the domain; this helper imposes no shorter execution limit.
     /// The caller must exit on return, including on setup failure.
-    pub fn execute(self, mut root_entry: Command) -> Result<ExitStatus, HelperExecutionError> {
+    pub fn execute(
+        self,
+        mut root_entry: Command,
+        cutoff: SetupCutoff,
+    ) -> Result<ExitStatus, HelperExecutionError> {
+        cutoff.deadline()?;
         let (scope, root) = self.enter()?;
         root_entry.env_clear().stdin(root.into_input()?);
+        cutoff.deadline()?;
         let child = scope.spawn(root_entry)?;
         Ok(child.wait_under_supervisor()?.status())
     }
@@ -47,12 +53,18 @@ pub enum RootPreparationError {
 pub struct GatedRestrictedCommand {
     command: RestrictedCommand,
     gate: ExecutionEndpoint,
+    cutoff: SetupCutoff,
 }
 impl GatedRootSetup {
     /// Select the assigned cwd, install private runtime mounts, pivot root,
     /// restrict privileges/syscalls, and retain the explicit start handshake.
     /// No image command executes during this transition.
-    pub fn restrict(self, script: &str) -> Result<GatedRestrictedCommand, RootPreparationError> {
+    pub fn restrict(
+        self,
+        script: &str,
+        cutoff: SetupCutoff,
+    ) -> Result<GatedRestrictedCommand, RootPreparationError> {
+        cutoff.deadline()?;
         let (devices, gate) = self.into_parts();
         let scope = PrivateMountNamespace::enter()?;
         let root = CommandRoot::from_current_directory(scope, devices)?;
@@ -60,11 +72,16 @@ impl GatedRootSetup {
         let command = root
             .enter()?
             .restrict(script, CommandPrivileges::filesystem(), filter)?;
-        Ok(GatedRestrictedCommand { command, gate })
+        cutoff.deadline()?;
+        Ok(GatedRestrictedCommand {
+            command,
+            gate,
+            cutoff,
+        })
     }
 }
 impl GatedRestrictedCommand {
-    pub fn start(self, setup_deadline: Instant) -> io::Result<Infallible> {
-        self.command.start(self.gate, setup_deadline)
+    pub fn start(self) -> io::Result<Infallible> {
+        self.command.start(self.gate, self.cutoff.deadline()?)
     }
 }

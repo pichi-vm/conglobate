@@ -27,6 +27,11 @@ impl SetupBudget {
             deadline: Instant::now() + SETUP_TIMEOUT,
         }
     }
+    /// Export a conservative absolute cutoff for trusted helpers in this VM.
+    pub fn cutoff(&self) -> io::Result<super::SetupCutoff> {
+        self.check()?;
+        super::SetupCutoff::from_deadline(self.deadline)
+    }
     pub fn deadline(&self) -> Instant {
         self.deadline
     }

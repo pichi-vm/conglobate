@@ -16,7 +16,9 @@ use std::{
 mod finalize;
 mod outcome;
 pub use outcome::{CommandOutcome, CommandResult};
+mod cutoff;
 mod setup;
+pub use cutoff::SetupCutoff;
 pub use setup::{CommandStartFailure, PreparedStep, RunningCommand, SetupBudget};
 mod pins;
 mod teardown;
