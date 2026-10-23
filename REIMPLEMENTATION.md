@@ -6044,3 +6044,15 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Corrected stale README scoped-policy wording. Closed dependencies-002's accepted
   documentation action by inspecting the existing advisory-source caveat.
   M4 remains 0/3; UID/GID decision and remaining gate work still outstanding.
+
+### Current cancellation/ownership finding reconciliation
+
+- Revalidated six historical entries against current source: concurrency-001/002,
+  simplification-001/007/019 and tests-009. Retained justified rejections, confirmed
+  generic finalization and distinct bootstrap diagnostics, and corrected the stale
+  no-reaper-coverage claim with maintained fixture evidence. Original fields kept.
+- Fresh native amd64 contained VM passes launch/join rollback, pre-admission
+  descendants and abrupt helper death, including adoption count and empty owned
+  child/record/domain state. Evidence: lifecycle-reconciliation-current/.
+- No production edits or repeated rootless suite; prior source-matching checkpoint
+  remains applicable. This is focused review, not full M4 adherence; M4 stays 0/3.

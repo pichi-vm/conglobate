@@ -1,0 +1,14 @@
+[
+  {
+    "path": "/storage/conglobate-validation/m4-contained-current-v1/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/m4-contained-current-v1/initramfs.gz",
+    "size": 84386045,
+    "sha256": "ef728ecc6bad880024def96830324208c0a11a7464eb78aac89c4f4420a4e8d5",
+    "durably_archived": false
+  }
+]
