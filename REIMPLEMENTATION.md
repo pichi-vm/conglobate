@@ -6124,3 +6124,7 @@ Corrected two overbroad historical rejections: private LoopDevice invalid-size v
 ### Remaining historical dispositions after 2bf7372
 
 Reconciled the final nine historical-only entries; all 111 IDs now have explicit current dispositions, not all resolved. Added 115940 bounded independent glob comparisons including Unicode and invalid UTF-8, preserving existing tests. Three pattern tests and strict Clippy pass. Evidence in `preservation/m7-review/final-historical-reconciliation/`. No production changes or full M4 pass. UID/GID question re-presented asynchronously; no answer inferred. Previous turn strengthened lifecycle tests; this turn completes current-source reconciliation and updates the M4 queue.
+
+### Current bootstrap runtime integration after 7730732
+
+Maintained two-root bootstrap passed on native amd64 disposable KVM: data and numeric ownership/mode survive remount, formatting measured, output sealed and published. Independent graph/inventory verifier passes; all 187 source comparisons match. Evidence in `preservation/m7-review/m4-bootstrap-runtime-current/`. This updates simplification-011 with actual successful CLI coverage; does not qualify distro boot, every coordinator or whole sandbox. Large assets local-only; no milestone pass. Previous turn completed historical source dispositions; this turn adds integrated lifecycle evidence.

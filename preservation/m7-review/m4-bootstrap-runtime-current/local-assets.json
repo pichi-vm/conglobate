@@ -1,0 +1,20 @@
+[
+  {
+    "path": "/storage/conglobate-validation/m4-bootstrap-runtime-current-v1/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/m4-bootstrap-runtime-current-v1/initramfs.gz",
+    "size": 200754999,
+    "sha256": "536a08c84163136a2bb4efc7f24fca77e7aaf077bd1737aca09c23abd19102b2",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/m4-bootstrap-runtime-current-v1/artifact/blobs/sha256/a631971521569744075f90cc30be3e7153a6cb5b3ab153a66139a3d7abb762da",
+    "size": 5378048,
+    "sha256": "a631971521569744075f90cc30be3e7153a6cb5b3ab153a66139a3d7abb762da",
+    "durably_archived": false
+  }
+]
