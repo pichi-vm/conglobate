@@ -5702,3 +5702,17 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Generic stage rejection still erases error details; errors-api-002/003 remain
   open. Target distro boots, full sandbox qualification and durable remote
   archival are not claimed. No complete adherence pass; M4 remains 0/3.
+
+### Typed pre-step, preparation and COPY rejection
+
+- Previous turn committed storage/firmware error conversions with current VM
+  bootstrap evidence. Continued the remaining generic stage rejection work.
+- Pre-step rejection now retains its io::Error and directive index; preparation
+  and COPY retain typed initial and failed-cleanup histories. The six cleanup
+  sequences and consuming recovery owners remain unchanged.
+- 141 library tests, strict Clippy and lifecycle compilation passed. Preserved
+  the initial Clippy rejection for needless returns and corrected the draft to
+  one exhaustive match. Evidence: preservation/m7-review/stage-preparation-copy-errors/.
+- Command/network error flattening and complete successful-recovery history
+  retention remain open. No new VM failure injection or full adherence pass;
+  errors-api-002/003 remain open and M4 stays 0/3.

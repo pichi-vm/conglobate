@@ -41,39 +41,72 @@ impl<R: DirectiveStorage> StageFailure<'_, R> {
     where
         R::Unmounted: DiscardStorage,
     {
-        let primary = self.to_string();
-        let cleanup = match self {
-            StageFailure::Before { storage, .. } => storage.discard(),
-            StageFailure::Preparation { failure, .. } => failure
-                .rollback()
-                .map_err(BuildError::execution)
-                .and_then(|done| done.into_parts().1.discard()),
-            StageFailure::Execution { failure, .. } => failure
-                .retry_cleanup()
-                .into_rejected_storage()
-                .map_err(BuildError::execution)
-                .and_then(|(_, storage)| storage.discard()),
-            StageFailure::NetworkSetup { failure, .. } => failure
-                .retry_cleanup()
-                .map_err(BuildError::execution)
-                .and_then(|failure| {
-                    failure
-                        .retry_cleanup()
-                        .into_rejected_storage()
-                        .map_err(BuildError::execution)
-                        .and_then(|(_, storage)| storage.discard())
-                }),
-            StageFailure::NetworkExecution { failure, .. } => failure
-                .retry_cleanup()
-                .into_rejected_storage()
-                .map_err(BuildError::execution)
-                .and_then(|(_, storage)| storage.discard()),
-            StageFailure::Copy { failure, .. } => failure
-                .retry_cleanup()
-                .into_rejected_storage()
-                .map_err(BuildError::execution)
-                .and_then(|(_, storage, _)| storage.discard()),
-        };
-        BuildError::execution(primary).with_cleanup(cleanup)
+        match self {
+            StageFailure::Before {
+                index,
+                source,
+                storage,
+                ..
+            } => BuildError::Directive {
+                index,
+                source: Box::new(BuildError::Io(source)),
+            }
+            .with_cleanup(storage.discard()),
+            StageFailure::Preparation { index, failure } => {
+                let primary = BuildError::Directive {
+                    index,
+                    source: Box::new(BuildError::Preparation(failure.diagnostics().clone())),
+                };
+                let cleanup = failure
+                    .rollback()
+                    .map_err(|failure| BuildError::Preparation(failure.diagnostics().clone()))
+                    .and_then(|done| done.into_parts().1.discard());
+                primary.with_cleanup(cleanup)
+            }
+            StageFailure::Copy { index, failure } => {
+                let primary = BuildError::Directive {
+                    index,
+                    source: Box::new(BuildError::Copy(failure.diagnostics().clone())),
+                };
+                let cleanup = failure
+                    .retry_cleanup()
+                    .into_rejected_storage()
+                    .map_err(|failure| BuildError::Copy(failure.diagnostics().clone()))
+                    .and_then(|(_, storage, _)| storage.discard());
+                primary.with_cleanup(cleanup)
+            }
+            StageFailure::Execution { index, failure } => {
+                let primary = BuildError::execution(format!("directive {index}: {failure}"));
+                let cleanup = failure
+                    .retry_cleanup()
+                    .into_rejected_storage()
+                    .map_err(BuildError::execution)
+                    .and_then(|(_, storage)| storage.discard());
+                primary.with_cleanup(cleanup)
+            }
+            StageFailure::NetworkSetup { index, failure } => {
+                let primary = BuildError::execution(format!("directive {index}: {failure}"));
+                let cleanup = failure
+                    .retry_cleanup()
+                    .map_err(BuildError::execution)
+                    .and_then(|failure| {
+                        failure
+                            .retry_cleanup()
+                            .into_rejected_storage()
+                            .map_err(BuildError::execution)
+                            .and_then(|(_, storage)| storage.discard())
+                    });
+                primary.with_cleanup(cleanup)
+            }
+            StageFailure::NetworkExecution { index, failure } => {
+                let primary = BuildError::execution(format!("directive {index}: {failure}"));
+                let cleanup = failure
+                    .retry_cleanup()
+                    .into_rejected_storage()
+                    .map_err(BuildError::execution)
+                    .and_then(|(_, storage)| storage.discard());
+                primary.with_cleanup(cleanup)
+            }
+        }
     }
 }

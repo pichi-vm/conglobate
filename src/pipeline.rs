@@ -44,6 +44,16 @@ pub enum BuildError {
     Unsupported(&'static str),
     #[error("build execution: {0}")]
     Execution(String),
+    #[error("directive {index}: {source}")]
+    Directive {
+        index: usize,
+        #[source]
+        source: Box<BuildError>,
+    },
+    #[error("command preparation: {0}")]
+    Preparation(#[source] crate::storage::FailureDiagnostics),
+    #[error("COPY: {0}")]
+    Copy(#[source] crate::storage::FailureDiagnostics),
     #[error("device mapping: {0}")]
     Mapping(#[source] crate::storage::FailureDiagnostics),
     #[error("snapshot mapping: {0}")]
