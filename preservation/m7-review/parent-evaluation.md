@@ -668,3 +668,24 @@ and compressed scute bytes, requiring each verification to reject the change.
 preserved as combined-verification-*. A new full VM run and focused source review
 are next; v262 predates this change and is not cited as its validation. No measured
 speedup is claimed. M7 remains at zero.
+
+Round five accepts performance-001 after checking receipt strength, manifest order,
+all non-scute descriptors, ancestry completeness, standalone APIs and untouched
+preparation. Its prose says six blobs, but the fixture has five (two scutes plus
+PMI, DTB and config); the code/test evidence is authoritative. v263 subsequently
+passed the full disposable amd64 VM suite; its archive and provenance are preserved
+in evidence/v263. This closes the pending optimization regression, not M7.
+
+Real Fedora qualification has begun using the prepared local image and a fresh
+disposable VM with outbound user networking. The runner/recipe are under tests/distro
+and /var/tmp/conglobate-fedora-build-v1 retains live evidence. The recipe exercises
+RPM/DNF, package installation and SELinux file labeling; no build or boot pass
+is claimed until its results are inspected. The runtime constructor still depends
+on validation/rewrite-command-integration/runtime.py and must migrate before M8.
+
+Fedora v1 failed after successful DNF package installation because the authored
+recipe used setfiles -r /, which rejects that alternate-root value. This is a
+recipe error, not evidence of a labeling or sandbox failure. The second recipe
+omits -r: execution is already rooted at the intended filesystem. The entire
+failed source/input/context/console record is preserved in fedora-build-v1.
+Fresh v2 is running; no successful build, export or boot is claimed yet.

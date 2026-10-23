@@ -1,0 +1,18 @@
+Focused source reconciliation for performance-001, commit b17e4a6. No full reviewer
+rerun, no edits and no Cargo commands (VM runner currently building). Read Cache
+verify_content, verify_references_with_chain, VerifiedChain::receipt, callers in
+input and output assembly, and the new combined-verification regression. Confirm
+only the duplicated initial scute identity scan is removed, receipts remain in
+manifest order, non-scute/config descriptors still verified, standalone APIs stay
+complete, compressed decoded-length pass stays, later exact-inode preparation is
+untouched. Challenge any concrete gap. 200 rootless tests, 54 docs, strict Clippy
+and fmt passed; logs preserved. New VM v263 is running; do not claim pass until
+verdict. v262 predates this optimization.
+
+Round four's mechanism consensus is recorded. v262 subsequently passed full suite
+and its source/provenance is preserved in evidence/v262. Your count totals in rounds
+three/four are inconsistent (28+30+40+9+5=112). Do not repeat aggregate counts unless
+derived from an updated array of exactly the original 111 unique IDs; per-ID updates
+are sufficient here. The 0x80 legacy clone exit-signal mask bit remains uncovered.
+No host privileged operations or probe execution. Do not mistake historical raw
+logs or archived code for active source.

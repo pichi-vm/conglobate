@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+carapace:
+  from: qualification.local/fedora:43
+  derive:
+    - run: |
+        rpm -q filesystem systemd
+        rpm -qf /usr/bin/dnf
+        dnf --version
+        test ! -e /build-context
+    - network: true
+      timeout: 20m
+      run: |
+        dnf -y install attr policycoreutils selinux-policy-targeted
+        rpm -q attr policycoreutils selinux-policy-targeted
+        printf 'conglobate Fedora qualification\n' > /etc/conglobate-qualified
+    - timeout: 10m
+      run: |
+        test -f /etc/selinux/targeted/contexts/files/file_contexts
+        setfiles -F -e /proc -e /sys -e /dev /etc/selinux/targeted/contexts/files/file_contexts /
+        getfattr -n security.selinux /etc/conglobate-qualified
+        test -s /etc/conglobate-qualified

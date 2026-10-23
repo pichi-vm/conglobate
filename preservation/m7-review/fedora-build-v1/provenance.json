@@ -1,0 +1,15 @@
+{
+  "passed": false,
+  "finding": "DNF transaction succeeded; setfiles rejected recipe option -r /. Target root is already / in command chroot.",
+  "run_directory": "/var/tmp/conglobate-fedora-build-v1",
+  "files": {
+    "build.log": "d7dae192715495fa89ccbe279af3efb9792c1dae1768228e369035e68a1df673",
+    "command.json": "fc316340feb6e548b6ee4096e9f80b9d19526e9155218896db273c070c1d28e2",
+    "context.bundle": "839e652b35da653a3a8c969c05b6e6f8e1f5e15007a22881e4875600ee2583f6",
+    "inputs.json": "0978506be83010d7e636ff88b970d2bf3ff30f564c3801af68aa14db5752776f",
+    "serial.txt": "1e9f821fd4212401aa4fd1404bc2b50090d596c00dd70e79673e3f9c28f94b69",
+    "source.tar.gz": "369a0af3a3f9a7e8271267050b0ff442f4b95c9c561dd6fbdf2a4d4c7890df12",
+    "verdict.json": "9abdeb4ac9a0968ccac13ef3bdcdbaf99eccc66ebf7fad5c3bddb0b979397e9a",
+    "provenance.json": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}
