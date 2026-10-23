@@ -5594,3 +5594,21 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - These are structural parser tests on the current host, not ARM execution,
   distro boot or confidential-platform qualification. No complete adherence
   pass; M4 remains 0/3 and the full original milestone scope remains active.
+
+### Unused API and encoder review actions
+
+- Previous turn added parser coverage. Resolved simplification-018 by removing
+  two unused snapshot counter accessors while retaining all status validation.
+  Resolved simplification-022 by deleting test-only AssembledImage::inherit and
+  running its tests through the production transformed assembly path.
+- The first missing-reference migration incorrectly expected failure after
+  deleting a DTB whose bytes were already captured. Preserved that failed run;
+  changed the missing-reference case to remove required PMI bytes and added
+  separate coverage for captured-DTB survival. Exact manifest, self-contained
+  references and staging cleanup remain verified. Assembly semantics unchanged.
+- Resolved errors-api-010 with explicit infallible-Vec-writer expectations in
+  network configuration CBOR encoding; no wire change. All 131 library tests,
+  strict all-target Clippy and maintained lifecycle check passed.
+- Updated historical dispositions; review/logs/source hashes are preserved in
+  preservation/m7-review/unused-api-cleanup/. No new VM qualification or complete
+  adherence pass; M4 remains 0/3. The full goal remains active.

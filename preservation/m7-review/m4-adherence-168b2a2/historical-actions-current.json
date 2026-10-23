@@ -125,8 +125,8 @@
       "evidence": "minicbor Vec writer Error = Infallible; helper.rs uses .expect(\"Vec writer\") at 13 equivalent sites",
       "remaining_action": "Use .expect(\"Vec writer\") for consistency",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "LinkConfiguration::encode now uses expect(\"Vec writer\") for its infallible minicbor Vec encoder, consistent with helper encoding. No wire-format or runtime error-path change; encoding/decoding tests pass. See preservation/m7-review/unused-api-cleanup/REVIEW.md."
     },
     {
       "id": "ownership-001",
@@ -332,8 +332,8 @@
       "evidence": "total_sectors/metadata_sectors have 0 callsites; allocated_sectors has 3",
       "remaining_action": "Drop the two accessors; TryFrom still validates the fields",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "Removed unused SnapshotUsage::total_sectors and metadata_sectors accessors; TryFrom still validates nonzero total and metadata <= allocated <= total, retaining all counters internally. Active/maintained/reference harness callers audited; library and lifecycle checks pass. See preservation/m7-review/unused-api-cleanup/REVIEW.md."
     },
     {
       "id": "simplification-022",
@@ -341,8 +341,8 @@
       "evidence": "inherit() called only by its own two unit tests; production uses transformed()",
       "remaining_action": "Delete; drive the two tests through transformed()",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "Removed test-only AssembledImage::inherit wrapper; inheritance and missing-reference tests now use transformed with an unchanged captured DTB. Missing-reference fixture removes PMI because DTB is captured, and a new test verifies captured DTB survival after cache-copy loss. Exact manifest/self-contained output and cleanup assertions retained. See preservation/m7-review/unused-api-cleanup/REVIEW.md."
     },
     {
       "id": "simplification-023",

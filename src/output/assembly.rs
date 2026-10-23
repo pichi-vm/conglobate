@@ -56,16 +56,6 @@ impl AssembledImage {
     }
 }
 impl AssembledImage {
-    /// Preserve this selected base's exact manifest and every referenced blob.
-    /// The pipeline must select its output base separately from its tool inputs.
-    /// Inline canonical config still gets a blob in the layout.
-    pub fn inherit(
-        cache: &Cache,
-        image: &ResolvedImage,
-        destination: &std::path::Path,
-    ) -> Result<AssembledImage, AssemblyFailure> {
-        Self::assemble(cache, image, destination, None, &[])
-    }
     pub(crate) fn transformed(
         cache: &Cache,
         image: &ResolvedImage,
@@ -597,7 +587,14 @@ mod tests {
             let (cache, image) = input.open();
             let parent = tempfile::tempdir().unwrap();
             let destination = parent.path().join("output");
-            let assembled = AssembledImage::inherit(&cache, &image, &destination).unwrap();
+            let unchanged = crate::recipe::TransformSelection::Authored(vec![])
+                .apply(
+                    Some(&input.blobs[image.manifest().layers[1].digest_str()]),
+                    None,
+                )
+                .unwrap();
+            let assembled =
+                AssembledImage::transformed(&cache, &image, &destination, &unchanged).unwrap();
             assert!(!destination.exists());
             assert!(assembled.chain().is_none());
             assert_eq!(assembled.image().manifest_bytes().bytes(), input.manifest);
@@ -627,10 +624,38 @@ mod tests {
         }
     }
     #[test]
+    fn captured_unchanged_dtb_survives_loss_of_cache_copy() {
+        let input = Input::new(false);
+        let (cache, image) = input.open();
+        let digest = image.manifest().layers[1].digest_str();
+        let unchanged = crate::recipe::TransformSelection::Authored(vec![])
+            .apply(Some(&input.blobs[digest]), None)
+            .unwrap();
+        fs::remove_file(
+            input
+                .directory
+                .path()
+                .join("blobs/sha256")
+                .join(digest.strip_prefix("sha256:").unwrap()),
+        )
+        .unwrap();
+        let parent = tempfile::tempdir().unwrap();
+        let assembled =
+            AssembledImage::transformed(&cache, &image, &parent.path().join("output"), &unchanged)
+                .unwrap();
+        assert_eq!(assembled.image().manifest_bytes().bytes(), input.manifest);
+        Cache::open(assembled.staged.temporary.path())
+            .unwrap()
+            .verify_references(assembled.image())
+            .unwrap();
+        assembled.discard().unwrap();
+        assert_eq!(fs::read_dir(parent.path()).unwrap().count(), 0);
+    }
+    #[test]
     fn missing_reference_retains_only_private_staging_for_cleanup() {
         let input = Input::new(false);
         let (cache, image) = input.open();
-        let layer = &image.manifest().layers[1];
+        let layer = &image.manifest().layers[0];
         fs::remove_file(
             input
                 .directory
@@ -641,7 +666,13 @@ mod tests {
         .unwrap();
         let parent = tempfile::tempdir().unwrap();
         let destination = parent.path().join("output");
-        let (_, staged) = AssembledImage::inherit(&cache, &image, &destination)
+        let unchanged = crate::recipe::TransformSelection::Authored(vec![])
+            .apply(
+                Some(&input.blobs[image.manifest().layers[1].digest_str()]),
+                None,
+            )
+            .unwrap();
+        let (_, staged) = AssembledImage::transformed(&cache, &image, &destination, &unchanged)
             .unwrap_err()
             .into_parts();
         assert!(!destination.exists());

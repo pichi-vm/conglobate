@@ -175,12 +175,6 @@ impl SnapshotUsage {
     pub fn allocated_sectors(self) -> u64 {
         self.allocated
     }
-    pub fn total_sectors(self) -> u64 {
-        self.total
-    }
-    pub fn metadata_sectors(self) -> u64 {
-        self.metadata
-    }
 }
 impl TryFrom<devmap_snapshot::Info> for SnapshotUsage {
     type Error = io::Error;

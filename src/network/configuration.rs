@@ -127,28 +127,28 @@ impl LinkConfiguration {
     pub(crate) fn encode(&self) -> Vec<u8> {
         let mut e = minicbor::Encoder::new(Vec::new());
         e.array(4)
-            .unwrap()
+            .expect("Vec writer")
             .u8(1)
-            .unwrap()
+            .expect("Vec writer")
             .str(self.name.as_ref())
-            .unwrap()
+            .expect("Vec writer")
             .bytes(&self.mac)
-            .unwrap()
+            .expect("Vec writer")
             .array(self.addresses.len() as u64)
-            .unwrap();
+            .expect("Vec writer");
         for address in &self.addresses {
             e.array(3)
-                .unwrap()
+                .expect("Vec writer")
                 .str(&address.address.to_string())
-                .unwrap()
+                .expect("Vec writer")
                 .u8(address.prefix)
-                .unwrap();
+                .expect("Vec writer");
             match address.gateway {
                 Some(gateway) => {
-                    e.str(&gateway.to_string()).unwrap();
+                    e.str(&gateway.to_string()).expect("Vec writer");
                 }
                 None => {
-                    e.null().unwrap();
+                    e.null().expect("Vec writer");
                 }
             }
         }
