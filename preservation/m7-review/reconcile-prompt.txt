@@ -1,0 +1,126 @@
+Continue this same review session. The user specifically requires the parent
+agent to critically evaluate your findings and negotiate source/test-grounded
+consensus with you. Do not restart the thirteen-reviewer discovery stage.
+
+Your original shell failures were launcher permission denials, not a broken
+shell. This invocation allows Bash, including environment-prefixed/compound
+commands. Retain the original constraints: findings only, no source/docs/Git
+edits, no sudo/mount/BPF loading or privileged host tests, no installs/downloads,
+no publishing. Ordinary rootless checks and read-only source inspection are
+allowed. Serialize Cargo, CARGO_BUILD_JOBS=2 and
+TMPDIR=/var/tmp/conglobate-rewrite-tmp. Do not start long sleep commands to wait
+for agents; use their completion notifications, or bounded waits <=60 seconds.
+
+The current tree is authoritative. Several independently verified corrections
+landed while you reviewed; this is deliberate parent work, not proof the
+original findings were false. Your complete original stream is preserved
+losslessly in preservation/m7-review/initial-review-stream.jsonl.gz, with an
+archive digest record, initial-synthesis.md, and initial-critics.json.
+
+Read preservation/m7-review/parent-evaluation.md first. It records specific
+source counterexamples, checks, provisional dispositions and completed fixes.
+Read the relevant supporting evidence rather than repeating every expensive
+check or assuming parent conclusions. Disagree when source/test evidence
+warrants it. We have not reached consensus yet.
+
+Work to complete now:
+
+1. Finish the critic stage for ALL 41 entries in remaining-findings.json.
+   partial-agent-findings.json contains all 111 original findings from all 13
+   reviewers. Your first synthesis omitted these low findings from critique;
+   they still need grounded dispositions. Use batches of <=5 and at most 20
+   concurrent critics per the custom /review workflow. Their low severity is
+   not a reason to silently omit them. Do not run full discovery again.
+2. Reconcile the initial 70 critic dispositions against the parent's evidence
+   and current source. Preserve real disagreements; do not simply agree with
+   the parent. Quote the concrete source/caller/test that decides each dispute.
+3. Return a COMPLETE per-ID ledger for all 111 findings, using fixed, reject,
+   accept (concrete change still warranted), or open (specific evidence missing).
+   Deduplicated findings must identify the canonical finding. Include a concise
+   reason and source/test reference per finding. Do not report mechanically
+   rejected-after-fix findings as original false positives.
+4. Give a concrete implementation shortlist for accepted findings. Explain any
+   remaining disagreement with the parent's proposed disposition. No source
+   modifications by you. The parent will implement agreed changes and return
+   them for verification.
+
+Important evidence and disputes (read the ledger for details):
+
+- Rootless mechanical results exist and must be scoped accurately, not reported
+  as absent project-wide: parent-checks.json, stable-checks.json,
+  ordering-checks.json and lifecycle-docs-checks.json. Current source passes
+  198 rootless tests, 54 doctests, strict Clippy, formatting and strict rustdoc.
+  These are parent results, not executions you performed. You may independently
+  run a needed rootless check now that Bash is allowed.
+- Coverage exists: rootless-coverage-summary.json and compressed full reports.
+  It includes test code, no branch instrumentation and no privileged VM coverage.
+- Existing current VM harness sources ARE supporting review scope. Do not
+  exclude validation/rewrite-command-integration as legacy or infer public APIs
+  unused merely because this separate consumer crate lives under validation/.
+  v258 passes the full suite with fresh guest construction. v259 reproduces
+  correctness-001 through real formatter execution and failed inventory output;
+  v260 passes the same regression/full suite after the String-order fix in
+  27091e6. Source archives, serial logs and provenance are retained under
+  validation/rewrite-command-integration/evidence/. No confidential/Arm/distro
+  qualification is inferred from these tests.
+- Documentation findings were corrected in 5ce229a. Correctness-001 was a real
+  bug now fixed, not a false finding. ChildReaper's original wording was already
+  behaviorally accurate without a custom destructor; it is now clarified too.
+- tests-002 now has an independent SYS_ADMIN-exclusion requirement test, rather
+  than duplicating the whole allowlist. VM fixture main.rs applies the actual
+  policy, validates all five capability sets and no_new_privs, and checks normal
+  thread/I/O behavior plus rejected namespace creation. The user explicitly
+  dislikes tests mirroring implementation. A golden compiled-filter hash does
+  not prove seccomp behavior. If tests-001 still needs work, identify the actual
+  uncovered requirement and a meaningful check rather than equating no in-file
+  cfg(test) with no tests.
+- The live deny.toml correction is applied in 4c1546b. Both architecture graph
+  license/source/bans checks pass (deny-after-checks.json), including the omitted
+  BlueOak license for minicbor. The Cargo rustix comment now points to the safe
+  mount_setattr API rationale. Dependencies stayed pinned; no global rustix
+  patch or version relaxation was applied. The new dependency CI job has not
+  run on GitHub. audit-before.json records zero matching advisories, not proof
+  of vulnerability-free Git revisions. RustSec matching compares source kind
+  and URL; Git sources are not categorically impossible to match.
+- api-surface-002: public associated payloads cannot become pub(crate): the
+  compiler reproduction associated-visibility-rejected.rs/log gives E0446.
+  associated-visibility-valid.rs/log also demonstrates that a public type in
+  a private module is nameable via an associated-type projection. Do not call
+  MountedResources unnameable just because it lacks a direct re-export.
+- api-surface-006 proposes narrowing firmware::tests, but output/assembly.rs
+  consumes that fixture. Removing it breaks a real test caller.
+- argv[1..] at argc==0: modern Linux exec inserts an empty argv[0]; see the
+  primary kernel source linked in parent-evaluation.md. Do not retain a claimed
+  supported-kernel panic trigger without accounting for that behavior.
+- Retaining an unchanged DTB byte-for-byte after edits cancel each other out
+  requires final-tree equality, not a flag that any operation made a change.
+- Known-length verity is an explicit user requirement. data_blocks gives rounded
+  geometry, not exact decoded length. A proposed single-pass optimization must
+  preserve exact length, canonical padding, late decoder errors and authenticated
+  reads. Do not assume unknown-length verity support or silently change the
+  accepted wire format. Measuring the cost is useful; an asserted equivalent
+  optimization needs proof, not just knowing the rounded number of blocks.
+- Preparation authenticates the exact backing inode; this is not removable
+  just because reference verification read the cache earlier. Cache mutation
+  must fail verification rather than silently alter accepted inputs.
+- A SingleThreadedHelper 'proof' from /proc/self/task cannot prevent later thread
+  creation and must not replace trusted startup/lifetime obligations. An honest
+  shared diagnostic is different from an owning proof of lasting exclusivity.
+- A retained drain cutoff must not become success after expiry merely because
+  the last child may have exited. Do not weaken the original deadline contract.
+- Unconditional diagnostic relay join after failed wait can block while a pipe
+  writer remains alive. The existing helper exits and the supervisor cancels its
+  domain; the failure path is not a safe place to join without quiescence.
+- Formatter trust, environment-owned resource limits, scoped command capabilities
+  and explicit remaining hardware coverage are agreed requirements. Evaluate
+  defense-in-depth proposals honestly without presenting them as demonstrated
+  breaches of a different trust model.
+
+Parent preliminary implementation assessment: consolidating the duplicate
+single-volume/bootstrap finalization machine appears justified if all ownership,
+failure diagnostics, exact original deadlines and concrete layouts remain
+preserved; existing PreparationStorage hooks cover unmount/retry and
+DirectiveStorage::validate covers snapshot validation. Also consider the actual
+unused send_bootstrap_until entrypoint and measured/obvious context range-scan
+improvements. Other proposed cleanups need precise caller and semantic checks.
+No current milestone adherence pass is claimed; M7 remains at zero.

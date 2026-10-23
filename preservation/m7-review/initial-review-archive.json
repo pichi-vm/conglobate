@@ -1,0 +1,9 @@
+{
+  "raw_sha256": "02465da44d55bdf644c84d0a068e4d0611d480f4b78da2b47d5a8181dc318e2c",
+  "gzip_sha256": "e555b0de41b23fa08c8d75bb48db1b33b1af6630b81ce78797db93792b1fdfad",
+  "event_count": 5991,
+  "critic_dispositions": 70,
+  "exit_code": 0,
+  "complete_requested_review": false,
+  "reason": "Remaining low findings and parent negotiation are outstanding."
+}
