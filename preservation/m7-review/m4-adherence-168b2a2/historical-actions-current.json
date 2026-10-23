@@ -215,8 +215,8 @@
       "evidence": "5ce229a; strict rustdoc + 54 doctests pass (verified by me)",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "EnteredRoot::restrict no longer claims CARAPACE is unsupported. It executes the supplied script; src/step/directives.rs prefixes the command with export CARAPACE when a root is available. See documentation-current/REVIEW.md, source hashes and strict rustdoc/53-doctest logs."
     },
     {
       "id": "documentation-002",
@@ -224,8 +224,8 @@
       "evidence": "5ce229a; strict rustdoc + 54 doctests pass (verified by me)",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "src/lib.rs describes the implemented pipeline and separates runtime qualification from implementation. See documentation-current/REVIEW.md, source hashes and strict rustdoc/53-doctest logs."
     },
     {
       "id": "documentation-003",
@@ -233,8 +233,8 @@
       "evidence": "5ce229a; strict rustdoc + 54 doctests pass (verified by me)",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "Step documentation and ARCHITECTURE.md describe Ready/Running/Cancelling through Reaping, Draining, Quiescent and Finishing with retained failure ownership. Supervision documents identity exchange through admission. These match current consuming method signatures; obsolete LabelPolicy is explicitly identified as removed. See documentation-current/REVIEW.md, source hashes and strict rustdoc/53-doctest logs."
     },
     {
       "id": "documentation-004",
@@ -242,8 +242,8 @@
       "evidence": "5ce229a; strict rustdoc + 54 doctests pass (verified by me)",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "Volume documents best-effort lazy detach on abandonment and explicitly denies that it proves flush completion or yields an Unmounted receipt. See documentation-current/REVIEW.md, source hashes and strict rustdoc/53-doctest logs."
     },
     {
       "id": "documentation-005",
@@ -251,8 +251,8 @@
       "evidence": "5ce229a; strict rustdoc + 54 doctests pass (verified by me)",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "Pipeline::new/run, BuildRequest::parse_from, Inventory::decode, TransformSelection::apply, HelperInvocation::parse, StagedDirectory::create and Cache::open have summaries and applicable error contracts. Infallible Pipeline::new needs no error section. See documentation-current/REVIEW.md, source hashes and strict rustdoc/53-doctest logs."
     },
     {
       "id": "documentation-006",
@@ -260,8 +260,8 @@
       "evidence": "Wording was already behaviourally accurate (no Drop impl); clarified in 5ce229a",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "ChildReaper documents process-lifetime subreaping and absence of a destructor that disables it. Current implementation has no such Drop. See documentation-current/REVIEW.md, source hashes and strict rustdoc/53-doctest logs."
     },
     {
       "id": "documentation-007",
@@ -269,8 +269,8 @@
       "evidence": "src/isolation.rs:45 already documents Drop setns restoration; commit() comment correctly scoped",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "PrivateMountNamespace documents destructor restoration and explicit error handling. NamespaceLease::drop attempts setns; commit consumes the restoration descriptor so subsequent Drop cannot restore. See documentation-current/REVIEW.md, source hashes and strict rustdoc/53-doctest logs."
     },
     {
       "id": "errors-api-001",

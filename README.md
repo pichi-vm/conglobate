@@ -75,8 +75,15 @@ provisioning those inputs in CI remains an outstanding M7 task.
 
 Conglobate does not download missing Git objects or image artifacts. Recipe
 commands have networking disabled by default; enabled commands require an
-explicit resolver file and use outbound NAT. Artifact preparation, appliance
-construction and attestation belong to the surrounding environment.
+externally prepared, build-dedicated network namespace (`--network-namespace PATH`)
+and an explicit resolver file (`--resolv-conf PATH`). The environment owns network
+interfaces, routes, outbound NAT, firewall rules, DNS services and namespace
+lifetime. Conglobate pins the namespace once, joins it for enabled commands and
+temporarily mounts the captured resolver configuration read-only. Disabled
+commands receive a fresh disconnected namespace. Conglobate does not run a DNS
+relay or configure the external network, and requires no particular service manager.
+Artifact preparation, appliance construction and attestation also belong to the
+surrounding environment.
 
 ## Implementation and evidence
 

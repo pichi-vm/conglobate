@@ -6080,3 +6080,7 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   Evidence: security-boundaries-current/. No production behavior change.
 - This is scoped finding reconciliation, not full M4 adherence. M4 stays 0/3;
   UID/GID decision and remaining original scope remain outstanding.
+
+### Current documentation reconciliation at ca728ef
+
+Revalidated documentation-001 through documentation-007 against current source and architecture; retained historical evidence unchanged. Strict rustdoc passed and all 53 doctests passed. Evidence: `preservation/m7-review/documentation-current/`. README clarifies that the environment owns networking and supplies both namespace and resolver inputs. No application behavior changed, no new VM result claimed, and no full M4 adherence pass awarded. The previous turn made documentation and targeted-check progress; this turn closes seven current-source reconciliation gaps. All remaining milestone gates remain open.
