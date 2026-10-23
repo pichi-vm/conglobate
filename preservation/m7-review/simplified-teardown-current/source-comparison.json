@@ -1,0 +1,22 @@
+[
+  {
+    "case": "sandbox-held-cleanup",
+    "checked": 152,
+    "mismatches": []
+  },
+  {
+    "case": "sandbox-missing-cleanup",
+    "checked": 152,
+    "mismatches": []
+  },
+  {
+    "case": "sandbox-cleanup-timeout",
+    "checked": 152,
+    "mismatches": []
+  },
+  {
+    "case": "sandbox-delayed-teardown",
+    "checked": 152,
+    "mismatches": []
+  }
+]

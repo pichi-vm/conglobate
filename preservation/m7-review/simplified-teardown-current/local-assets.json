@@ -1,0 +1,50 @@
+[
+  {
+    "path": "/storage/conglobate-validation/simplified-teardown-a4af392/sandbox-held-cleanup/initramfs.gz",
+    "sha256": "48f6fde7449df0e8f6d4ef763f518857cca2cce8bb1855ef3d8b2bb966ef47b3",
+    "size": 83978993,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-teardown-a4af392/sandbox-held-cleanup/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-teardown-a4af392/sandbox-missing-cleanup/initramfs.gz",
+    "sha256": "85440567653609582884f831ddc9164ce2082a04544b9c78c8259d385cff1ced",
+    "size": 83979042,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-teardown-a4af392/sandbox-missing-cleanup/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-teardown-a4af392/sandbox-cleanup-timeout/initramfs.gz",
+    "sha256": "1a3593cfcacbe85a926ed3ede712bc10dec09ec819249799c1540ebba7de882f",
+    "size": 83979111,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-teardown-a4af392/sandbox-cleanup-timeout/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-teardown-a4af392/sandbox-delayed-teardown/initramfs.gz",
+    "sha256": "f7c365dfd047ddba98be60acaaa919331751653755c6e5167a90b1de014ac3fb",
+    "size": 83979018,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-teardown-a4af392/sandbox-delayed-teardown/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  }
+]
