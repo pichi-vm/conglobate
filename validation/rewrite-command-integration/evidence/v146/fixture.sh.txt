@@ -1,0 +1,99 @@
+#!/bin/bash
+set -eux
+export PATH=/usr/bin:/usr/sbin
+mkdir -p /work/origin /work/mapped /work/conglobate-mount-decoy
+unshare --user --map-root-user /idmap-probe privileges
+unshare --user --map-root-user /idmap-probe syscalls
+if unshare --user --map-root-user setpriv --bounding-set=-chown /idmap-probe privileges > /work/privileges-negative 2>&1; then
+    echo UNEXPECTED_PRIVILEGE_FINALIZATION_SUCCESS
+    exit 1
+fi
+grep -q 'required capability is not available' /work/privileges-negative
+if grep -q NATIVE_PRIVILEGES_EXEC_PASS /work/privileges-negative; then exit 1; fi
+echo NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
+modprobe loop
+modprobe ext4
+truncate -s 64M /work/volume.ext4
+mke2fs -q -t ext4 -F /work/volume.ext4
+mount -o loop /work/volume.ext4 /work/origin
+cp -a /image-root/. /work/origin/
+/idmap-probe namespace-rejections
+modprobe dm-zero
+modprobe dm-snapshot
+/idmap-probe snapshot-probe
+modprobe dm-verity
+/idmap-probe prepare-scutes
+/idmap-probe assemble-chain
+mkdir /work/cgroups
+mount -t cgroup2 cgroup2 /work/cgroups
+mkdir /work/pins
+mount -t bpf bpf /work/pins
+chmod 700 /work/pins
+/idmap-probe domain-publication-probe
+/idmap-probe volume-supervisor-sandbox > /work/command-diagnostics 2>&1
+cat /work/command-diagnostics
+/idmap-probe volume-supervisor-sandbox-namespace-failure
+/idmap-probe volume-supervisor-sandbox-mount-failure
+/idmap-probe volume-probe
+/idmap-probe volume-supervisor
+/idmap-probe volume-supervisor-launch-failure
+/idmap-probe volume-supervisor-exchange-failure
+/idmap-probe volume-supervisor-registration-failure
+/idmap-probe volume-supervisor-execute-success
+/idmap-probe volume-supervisor-execute-failure
+/idmap-probe volume-supervisor-execute-timeout
+/idmap-probe volume-supervisor-execute-setup
+/idmap-probe volume-supervisor-domain-failure
+/idmap-probe volume-supervisor-install-failure
+/idmap-probe volume-supervisor-timeout
+/idmap-probe volume-supervisor-failure
+/idmap-probe volume-supervisor-pre-admission
+/idmap-probe volume-supervisor-admission-timeout
+/idmap-probe volume-supervisor-setup-detached
+/idmap-probe volume-supervisor-setup-attached
+/idmap-probe volume-supervisor-policy-cleanup
+/idmap-probe volume-supervisor-long-command
+/idmap-probe volume-supervisor-descriptor-rejection
+/idmap-probe loop-probe
+/idmap-probe mapping-probe
+/idmap-probe workspace-probe
+/idmap-probe reaper-probe
+/idmap-probe filesystem-pin-probe
+# Preflight probes are ready. User namespace and command setup must be native.
+rm /usr/bin/unshare
+test ! -e /usr/bin/nsenter
+test ! -e /usr/bin/bwrap
+/idmap-probe supervisor pre-admission-cancel
+/idmap-probe supervisor admission-timeout
+/idmap-probe supervisor policy-off
+rm /work/origin/command-started
+/idmap-probe supervisor success
+rm /work/origin/command-started
+/idmap-probe supervisor timeout
+rm /work/origin/command-started
+/idmap-probe supervisor shell-failure
+umount /work/cgroups
+umount /work/pins
+umount /work/origin
+e2fsck -fn /work/volume.ext4
+mount -o loop,ro /work/volume.ext4 /work/origin
+test "$(getfattr --only-values -n security.selinux /work/origin/labelled)" = 'system_u:object_r:etc_t:s0'
+echo INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS
+test ! -e /work/origin/dev/null
+test ! -e /work/origin/dev/fd
+test ! -e /work/origin/dev/pts
+test ! -e /work/origin/dev/shm
+test ! -e /work/origin/sys/must-be-read-only
+test "$(cat /work/origin/command-completed)" = completed
+test "$(cat /work/origin/command-privileges)" = privileges-checked
+test "$(stat -c %u /work/origin/command-started)" = 0
+umount /work/origin
+echo INTEGRATED_REMOUNT_PERSISTENCE_PASS
+# Diagnose and remove only empty fixture mount-point directories. This is not
+# production crash recovery; persistent target bookkeeping remains required.
+for point in /work/conglobate-mount-*; do
+    test -d "$point" || continue
+    echo INTEGRATION_EMPTY_TARGET_REMAINS
+    rmdir "$point"
+done
+echo POLICY_FIXTURE_CLEANUP_PASS

@@ -265,6 +265,10 @@ impl<'ns> Mount<'ns, Attached> {
     }
 }
 impl<'ns> Mount<'ns, InUse> {
+    pub(crate) fn relay_diagnostics(&mut self) -> io::Result<crate::process::DiagnosticRelay> {
+        self.resources.process.relay_diagnostics()
+    }
+
     /// Trusted contained helper only; the external supervisor owns the command
     /// deadline and cancels this helper and all descendants together.
     pub(crate) fn wait_under_supervisor(

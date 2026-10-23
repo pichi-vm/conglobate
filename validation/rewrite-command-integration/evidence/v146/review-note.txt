@@ -1,0 +1,1 @@
+First diagnostic-relay placement failed before full sandbox completion. Fixture redirected output but only printed it on success, so exact runtime diagnostic was not retained. No success claim. Preserve this attempt and correct failure-log forwarding before diagnosing.

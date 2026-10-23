@@ -8,13 +8,8 @@ use crate::{
 };
 use std::{
     io,
-    process::{Command, ExitStatus},
-    time::{Duration, Instant},
+    process::{Command, ExitStatus, Stdio},
 };
-
-// This bounds status delivery, not command execution. The supervisor separately
-// applies the original recipe cutoff when accepting the completion message.
-const REPORT_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Outer trusted helper, already contained and in its private mount namespace.
 /// The supervisor retains the volume, policy and cancellation authority. Errors
@@ -41,13 +36,14 @@ pub enum ReceiverFailure<'ns> {
     },
     #[error("receiver command wait: {0}")]
     Wait(RootWaitFailure<'ns>),
-    #[error("receiver completion reporting: {source}")]
-    Report {
+    #[error("receiver diagnostic relay: {source}")]
+    Diagnostics {
         source: io::Error,
         mount: Mount<'ns, Attached>,
     },
 }
-/// Direct command helper reaped and its status reported. Descendant quiescence
+/// Direct command helper reaped. The caller must close this view and finish
+/// local namespace cleanup before reporting completion. Descendant quiescence
 /// is still the supervisor's responsibility; this is not build success.
 #[derive(Debug)]
 pub struct ReceiverCompletion<'ns> {
@@ -104,11 +100,24 @@ impl<'ns> CommandReceiver<'ns> {
                 }));
             }
         };
-        namespace_entry.env_clear().stdin(input);
-        let running = self
+        namespace_entry
+            .env_clear()
+            .stdin(input)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        let mut running = self
             .mount
             .launch(namespace_entry)
             .map_err(|error| Box::new(ReceiverFailure::Launch(error)))?;
+        let diagnostics = match running.relay_diagnostics() {
+            Ok(diagnostics) => diagnostics,
+            Err(source) => {
+                return Err(Box::new(ReceiverFailure::Startup {
+                    source,
+                    mount: running,
+                }));
+            }
+        };
         let admitted = (|| -> io::Result<Supervision<Admitted>> {
             let gate = gate.wait_ready_until(setup_deadline)?;
             self.channel.report_prepared_until(setup_deadline)?;
@@ -128,10 +137,8 @@ impl<'ns> CommandReceiver<'ns> {
         let (mount, status) = running
             .wait_under_supervisor()
             .map_err(|error| Box::new(ReceiverFailure::Wait(error)))?;
-        if let Err(source) =
-            channel.report_completion_until(status, Instant::now() + REPORT_TIMEOUT)
-        {
-            return Err(Box::new(ReceiverFailure::Report { source, mount }));
+        if let Err(source) = diagnostics.finish() {
+            return Err(Box::new(ReceiverFailure::Diagnostics { source, mount }));
         }
         Ok(ReceiverCompletion {
             channel,

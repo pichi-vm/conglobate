@@ -1,0 +1,1 @@
+Outer receiver diagnostic relay passes normal VM suite. Commands see FIFO stdout/stderr even with supervisor output redirected to a regular file. Completion reporting moved after view close and namespace restoration. Full review remains open, including snapshot status acceptance.

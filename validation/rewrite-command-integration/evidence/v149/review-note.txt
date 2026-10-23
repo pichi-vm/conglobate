@@ -1,0 +1,1 @@
+Normal suite passes with command stdout/stderr isolated by diagnostic pipes and completion delayed until local cleanup. Injected helper failure after successful shell but before report produces no success receipt, including after EBUSY finalization retry. R2 snapshot-status review finding remains open.

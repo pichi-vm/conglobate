@@ -9,6 +9,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod diagnostics;
+pub(crate) use diagnostics::DiagnosticRelay;
 mod syscalls;
 pub use syscalls::CommandSyscalls;
 mod privileges;

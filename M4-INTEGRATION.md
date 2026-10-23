@@ -302,3 +302,27 @@ build/pipeline orchestration and later milestones remain outstanding.
   after preparation returns; rollback reaps the failed creator and leaves no
   pins or child processes. Host tests, root/fixture Clippy, formatting and archived
   hashes pass. No full adherence pass is claimed.
+
+### M4 review findings and diagnostic/completion corrections (v146 onward)
+
+The initial source review is recorded in
+preservation/MILESTONE-4-REVIEW.md. It found inherited raw stdout/stderr authority,
+premature completion reporting before helper-local cleanup, and absent snapshot
+status validation in finalization. This is a review with findings, not a clean
+adherence pass.
+
+The outer receiver now supplies diagnostic pipes and streams their bytes to the
+trusted destinations. Commands do not inherit the supervisor's regular-file or
+other diagnostic descriptors. The receiver finishes local view/namespace cleanup
+before reporting completion. v146/v147 preserve the failed initial relay
+placement and the fixture logging correction; the exact inner runtime errno was
+not observed. v148 passes with receiver-local relay threads. v149 verifies pipe
+identity under regular-file supervisor redirection and rejects a successful shell
+whose helper fails before reporting completion, including after unmount retry.
+
+Snapshot status acceptance (R2), the remaining review matrix and all clean-pass
+gates remain outstanding. No milestone advancement is claimed.
+
+- v150 supervisor-death regression passes with the corrected relay. Host tests,
+  root/fixture Clippy, formatting and evidence hashes pass. R2 and the remainder
+  of the review remain open; clean adherence streak is still zero.

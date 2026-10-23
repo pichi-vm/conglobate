@@ -213,8 +213,12 @@ impl Integration {
                 )
             );
             view.close().map_err(|e| e.to_string())?;
-            channel.wait_for_loss_until(Instant::now() + Duration::from_secs(5))?;
             scope.restore().map_err(|e| e.to_string())?;
+            if mode == "finish-error" {
+                return Err("injected local completion failure after successful shell".into());
+            }
+            channel.report_completion_until(status, Instant::now() + Duration::from_secs(30))?;
+            channel.wait_for_loss_until(Instant::now() + Duration::from_secs(5))?;
             return Ok(());
         }
         if args
@@ -358,7 +362,10 @@ impl Integration {
                 for index in 0..2 {
                     let budget = conglobate::step::SetupBudget::begin();
                     let script = if index == 0 {
-                        Self::command_script("success")
+                        format!(
+                            "test -p /proc/self/fd/1; test -p /proc/self/fd/2; {}",
+                            Self::command_script("success")
+                        )
                     } else {
                         r#"read -r value < /command-started; test "$value" = image-write; test ! -e /work; test ! -e /dev/shm/step-data; printf second > /second-step"#.into()
                     };
@@ -473,6 +480,7 @@ impl Integration {
                     "volume-supervisor-execute-failure" => "execute-shell-failure",
                     "volume-supervisor-execute-timeout" => "execute-timeout",
                     "volume-supervisor-execute-setup" => "execute-setup",
+                    "volume-supervisor-execute-finish" => "execute-finish",
                     "volume-supervisor-domain-failure" => "domain-failure",
                     "volume-supervisor-install-failure" => "install-failure",
                     "volume-supervisor-timeout" => "timeout",
@@ -653,12 +661,15 @@ impl Integration {
                         | "setup-attached-exit"
                         | "descriptor-rejection"
                         | "execute-setup"
+                        | "execute-finish"
                 ) {
                     let mut command = Command::new(std::env::current_exe()?);
                     command
                         .arg("volume-receiver")
                         .arg(if mode == "execute-setup" {
                             "setup-attached-exit"
+                        } else if mode == "execute-finish" {
+                            "finish-error"
                         } else {
                             mode
                         })
@@ -728,6 +739,12 @@ impl Integration {
                                     )),
                                 ) => assert_eq!(error.kind(), std::io::ErrorKind::TimedOut),
                                 ("execute-setup", ExecutionOutcome::SetupFailed(_)) => {}
+                                (
+                                    "execute-finish",
+                                    ExecutionOutcome::Command(CommandOutcome::ObservationFailed(
+                                        error,
+                                    )),
+                                ) => assert_ne!(error.kind(), std::io::ErrorKind::TimedOut),
                                 _ => return Err("unexpected integrated execution outcome".into()),
                             }
                             let (outcome, volume) =

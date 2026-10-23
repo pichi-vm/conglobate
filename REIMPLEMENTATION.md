@@ -2566,3 +2566,27 @@ rules rather than silently shrinking acceptance criteria.
   after preparation returns; rollback reaps the failed creator and leaves no
   pins or child processes. Host tests, root/fixture Clippy, formatting and archived
   hashes pass. No full adherence pass is claimed.
+
+### M4 adherence review: command boundary findings (v146 onward)
+
+- Started the source/design/style/evidence review against c808577; findings and
+  remaining scope are in preservation/MILESTONE-4-REVIEW.md. Clean streak is zero.
+- Found raw inherited stdout/stderr escaping the descriptor audit's 0–2 exemption.
+  The contained outer receiver now supplies pipes and bounded diagnostic relays;
+  commands never receive the supervisor diagnostic file descriptors. Relay errors
+  reject completion. Relay threads are outside the command PID namespace, with
+  no namespace transitions while they run, and diagnostic locks are per write.
+- Found command completion reported before local mapped-view/namespace cleanup.
+  Reporting now follows those operations. v149 injects a helper failure after
+  a successful shell but before reporting; no success receipt is produced, even
+  after subsequent storage cleanup retry.
+- v146/v147 failed first placement attempts are preserved; v146 also exposed
+  fixture logs printed only on success, now corrected. v148/v149 normal suites
+  pass with the corrected placement and command FIFO checks under supervisor
+  regular-file redirection.
+- R2 remains open: snapshot invalid/exhausted status must be connected to
+  finalization/acceptance. Review scope and three clean passes remain incomplete.
+
+- v150 supervisor-death regression passes with the corrected relay. Host tests,
+  root/fixture Clippy, formatting and evidence hashes pass. R2 and the remainder
+  of the review remain open; clean adherence streak is still zero.
