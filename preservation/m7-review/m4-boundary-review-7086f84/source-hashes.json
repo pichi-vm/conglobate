@@ -1,0 +1,16 @@
+{
+  "src/process/privileges.rs": "70334274ce91f985e17cc45159e775e25945b71e695523444cacab119fb6b65a",
+  "src/process/syscalls.rs": "a24cf8d7245367d2e8cb263ca29d4e7323c94a0ce6920cbd587d997e43e5862e",
+  "src/isolation/root.rs": "ce150ca7f9005d1e1097b05c442cce24ecfd9730de4c307ffe6511d260a0d9c2",
+  "src/isolation/init.rs": "2b378396fda9585d6a006a47b2532385f4fbd0dcae072a9271ebcbac4f0211ab",
+  "src/isolation/namespaces.rs": "8f2a952f793ff322beb5989767bf3a7039b5bb189025ef8ee1816782ab15ee1d",
+  "src/isolation/user.rs": "ac17aa87d56447c746e31e8ccd09d47c055112fcaec0585d6c8347e168f462b6",
+  "src/isolation/setup/gated/helper.rs": "d16a2b766e6fc512a36bf93eeb6769484677a80e745e22c0861b287f2eeddc3d",
+  "src/isolation/labels.rs": "1f69590ba86f42f4d3eb4c21218476b8c56ce8fa11fc2a0d9552b0d5e52e214e",
+  "src/isolation/receiver.rs": "89067158071d34592746d16b3f2e7356973017a1162eeb2862bf5e6c1a252bd7",
+  "src/isolation/runtime.rs": "32f9cb810049b4f2ccb6a48742614f534f8fa994d5264536e38d246bab7f0f0f",
+  "src/isolation/devices.rs": "9c1293a7bc9559df60f952a2089d22166c7200112fa23c49a1228dc6affeda64",
+  "src/domain/drain.rs": "a05e6c00c5dcecd0d81aac896007f665baae1ed6ad3c74cb7085834a15a3515b",
+  "src/execution/helper.rs": "65644ee6577e48d0259057a3c95218da9db179e173277fbeecf7dd28457f18b7",
+  "tests/distro/confinement/recipe.yaml": "1b39d3dfa756ffe2f6cf57bc4c84b35b1260cc8c2a9b1e7fb5301d29897a2b82"
+}

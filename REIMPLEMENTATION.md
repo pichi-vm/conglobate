@@ -4804,3 +4804,22 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   these tests as passes. Restart complete review on the corrected source.
   No current VM qualification of the changed high-level retry API is claimed.
   Remaining milestones and external platform/distro requirements stay intact.
+
+### M4 partial boundary review and syscall-denial evidence gap
+
+- Previous turn was progress: 7086f84 prevents cleanup retry from promoting a
+  failed lifecycle. Continued review from capabilities, namespace/root entry,
+  label admission, runtime mounts, receiver cleanup and descendant handling.
+- Recorded source-grounded observations and hashes in
+  preservation/m7-review/m4-boundary-review-7086f84/REVIEW.md. No new production
+  defect established in that subset; this is not a complete adherence pass.
+- M4-E1: maintained confinement recipe checks Seccomp=2 but does not exercise
+  denied namespace/keyring/process-inspection syscall families. Source policy
+  exclusions and historical experiments cannot substitute for current composed
+  command execution evidence. Add benign safe-library fixture operations via
+  an actual recipe in disposable VMs; keep Arm qualification outstanding.
+- No source changes or redundant test runs. Existing current rootless checks
+  remain recorded at 7086f84. Preserved ordinary amd64 VM assessments were read
+  at their recorded scope; no new VM qualification is claimed.
+- M4 stays 0/3. Finish the identified evidence gap and remaining ownership/
+  storage/lifecycle review before beginning the three clean-pass sequence.
