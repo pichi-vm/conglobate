@@ -5157,3 +5157,25 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   remain unresolved; no production topology change is justified by this review.
 - References: preservation/m7-review/command-timeout-boundary/RECONCILIATION.md
   and preservation/m7-review/link-local-nat.md. Full goal remains active.
+
+### M4-T1 actual blocked-descendant regression
+
+- Previous turn progressed by reconciling coverage and recording the NAT option.
+  Added maintained sandbox-blocked-descendant using production receiver and
+  namespace init. Only trusted VM fixture suspends its owned snapshot; command
+  child performs ordinary file I/O. Explicit stopped/D-state observations and
+  signals coordinate the test without synchronization sleeps.
+- v1 admission failed with diagnostics not captured; v2 captured the protected
+  mount-parent rejection. Added external environment policy and corrected the
+  fixture attachment path, preserving both failed source/log/status sets.
+- v3 passed; v4 additionally proves shell and child share a separate PID
+  namespace, cleanup error is TimedOut, child remains D-state after expiration,
+  and storage/records remain owned after immediate failed retry. Both preserve
+  shell success while cleanup fails after the fixed 30-second budget. Independent
+  VM init powers off; no successful cleanup, reuse or publication is claimed.
+- Strict fixture Clippy passes. v4 source comparison matches executed production
+  and test sources. Evidence and hashes for all runs are in
+  preservation/m7-review/blocked-descendant-v1 through v4. Large VM assets remain
+  in /var/tmp and are not durably archived. No production changes.
+- This closes the missing blocked-descendant regression, not the full integrated
+  review or a milestone pass. M4 remains 0/3; all full-goal obligations remain.

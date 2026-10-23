@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
+mod blocked_descendant;
 mod blocked_io;
 mod cache_storage;
 mod chain_storage;
@@ -30,6 +31,11 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "sandbox-blocked-descendant" => {
+                sandbox_failures::SandboxFailures::run(
+                    sandbox_failures::FailurePoint::BlockedDescendant,
+                )
+            }
             [mode] if mode == "sandbox-cleanup-timeout" => sandbox_failures::SandboxFailures::run(
                 sandbox_failures::FailurePoint::CleanupTimeout,
             ),

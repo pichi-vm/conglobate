@@ -19,6 +19,8 @@ from cache_fixture import CacheFixture
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / 'tests'))
 from vm_runtime import GuestRuntime
+sys.path.insert(0, str(REPO / 'tests/distro'))
+from label_environment import LabelEnvironment
 
 
 class LifecycleRuntime(GuestRuntime):
@@ -54,6 +56,7 @@ class LifecycleRun:
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as archive:
             for name in ('src', 'Cargo.toml', 'Cargo.lock', 'tests/lifecycle/src',
                          'tests/lifecycle/Cargo.toml', 'tests/lifecycle/Cargo.lock',
+                         'tests/distro/label_environment.py', 'validation/global-label-policy',
                          'tests/lifecycle/run.py', 'tests/lifecycle/cache_fixture.py', 'tests/lifecycle/clone-probe.c', 'tests/vm_runtime.py'):
                 archive.add(REPO / name, arcname=name)
         env = os.environ.copy()
@@ -66,6 +69,11 @@ class LifecycleRun:
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
         runtime = LifecycleRuntime(self.root, self.args.module_root.resolve(), self.args.kernel_release)
         runtime.create()
+        policy_startup = ''
+        if self.args.case == 'sandbox-blocked-descendant':
+            labels = LabelEnvironment(REPO, self.output, runtime)
+            labels.stage()
+            policy_startup = labels.startup()
         if self.args.case == 'clone-filter':
             probe = self.output / 'clone-probe'
             with (self.output / 'clone-probe-build.log').open('wb') as log:
@@ -84,6 +92,9 @@ class LifecycleRun:
         stalled = {'usr/bin/formatter-stall', 'conglobate-disposable-validation-vm'} | self.dependencies(binary)
         for name, files in [('formatter-runtime-files', formatter), ('formatter-stall-files', stalled)]:
             (self.root / name).write_text('\n'.join(sorted(files)) + '\n')
+        if self.args.case == 'sandbox-blocked-descendant':
+            files = {'usr/bin/bash', 'usr/bin/sync'} | self.dependencies(shutil.which('bash')) | self.dependencies(shutil.which('sync'))
+            (self.root / 'recipe-runtime-files').write_text('\n'.join(sorted(files)) + '\n')
         mode = '' if self.args.drop is None else f'FORMATTER_DROP={self.args.drop} '
         setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\nmodprobe dm-verity\nmodprobe ext4\n'
                  if self.args.case in ('formatter-failures', 'cache-storage', 'chain-storage') or self.args.case.startswith('sandbox-') else
@@ -94,7 +105,7 @@ class LifecycleRun:
             setup = ''.join(f'modprobe {name}\n' for name in
                             ('veth', 'nf_tables', 'nft_chain_nat', 'nft_masq', 'nft_ct'))
         (self.root / 'fixture.sh').write_text(
-            '#!/bin/bash\nset -eux\n' + setup + mode + '/lifecycle-tests ' + self.args.case + '\n')
+            '#!/bin/bash\nset -eux\n' + setup + policy_startup + mode + '/lifecycle-tests ' + self.args.case + '\n')
         (self.root / 'init').write_text('''#!/bin/bash
 set -eu
 export PATH=/usr/bin:/usr/sbin
@@ -132,7 +143,8 @@ exec sleep infinity
             '-smp', '2', '-nodefaults', '-no-reboot', '-display', 'none', '-serial', 'stdio',
             '-monitor', 'none', '-kernel', str(self.output / 'vmlinuz'),
             '-initrd', str(self.output / 'initramfs.gz'),
-            '-append', 'console=ttyS0 rdinit=/init selinux=0 panic=-1 quiet',
+            '-append', 'console=ttyS0 rdinit=/init selinux=0 panic=-1 quiet' +
+                       (' lsm=capability,bpf' if self.args.case == 'sandbox-blocked-descendant' else ''),
             '-drive', f'file={status},format=raw,if=virtio']
         (self.output / 'command.json').write_text(json.dumps(command, indent=2) + '\n')
         (self.output / 'runtime.json').write_text(json.dumps({'kernel_sha256':self.digest(self.output/'vmlinuz'),
@@ -181,6 +193,10 @@ exec sleep infinity
                        'CACHE_BACKED_SCUTE_PREPARATION_PASS', 'OWNED_VERITY_READ_AND_CLEANUP_PASS']
         elif self.args.case == 'sandbox-supervisor-death':
             markers = ['FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS', 'SUPERVISOR_ABRUPT_DEATH_INJECTED']
+        elif self.args.case == 'sandbox-blocked-descendant':
+            markers = ['RECIPE_DESCENDANT_UNINTERRUPTIBLE_PASS',
+                       'SHELL_SUCCESS_BEFORE_BLOCKED_DESCENDANT_CLEANUP_PASS',
+                       'BLOCKED_DESCENDANT_TEARDOWN_RETAINS_SUCCESS_AND_STORAGE_PASS']
         elif self.args.case == 'sandbox-blocked-io':
             markers = ['FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS',
                        'BLOCKED_IO_FIXED_DEADLINE_RETAINS_STORAGE_PASS']
@@ -217,7 +233,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':

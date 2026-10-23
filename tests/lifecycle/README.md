@@ -187,3 +187,17 @@ retain the successful primary outcome and resource owners, and refuse storage
 recovery after an immediate retry. The fixture retains its failure owner and
 requires independent VM poweroff; it does not claim clean teardown or resource
 reuse. A parked helper is not a kernel uninterruptible-I/O test.
+
+`--case sandbox-blocked-descendant` runs the production receiver and namespace
+init with a minimal Bash/sync command root. The disposable VM loads the existing
+external exact-label policy fixture. A child stops itself before a benign file
+write; the trusted parent confirms its stopped state, suspends only the owned
+snapshot, resumes the child, and confirms D state. The parent then signals the
+shell's exit trap. Shell success must arrive within the execution budget while
+the child remains blocked. Cleanup must fail at the fixed 30-second cutoff,
+retain storage and recovery records, and reject an immediate retry without
+extending the deadline. The independent guest init powers off the VM. No device
+or control authority is passed to the command, no synchronization sleeps are
+used, and no successful cleanup, artifact publication or full sandbox
+qualification is claimed. This test supplements the pre-completion
+`sandbox-blocked-io` case; it does not replace it.

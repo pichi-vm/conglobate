@@ -1,0 +1,11 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe dm-verity
++ modprobe ext4
++ /lifecycle-tests sandbox-blocked-descendant
+runtime retained until VM disposal: /proc/self/fd/10/conglobate-runtime-Y6ah2T
+lifecycle fixture: protected step transition: joining peer closed
+LIFECYCLE_EXIT 1
+[    1.798392] sysrq: Power Off
+[    1.801082] reboot: Power down

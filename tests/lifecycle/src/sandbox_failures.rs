@@ -24,6 +24,7 @@ pub(super) enum FailurePoint {
     Gate,
     Writeback,
     BlockedIo,
+    BlockedDescendant,
     SupervisorDeath,
 }
 #[derive(Debug, Clone, Copy)]
@@ -134,6 +135,7 @@ impl SandboxFailures {
                 | FailurePoint::CleanupTimeout
                 | FailurePoint::Gate
                 | FailurePoint::Writeback
+                | FailurePoint::BlockedDescendant
                 | FailurePoint::BlockedIo
                 | FailurePoint::SupervisorDeath
         ) {
@@ -183,6 +185,7 @@ impl SandboxFailures {
                 | FailurePoint::CleanupTimeout
                 | FailurePoint::Gate
                 | FailurePoint::Writeback
+                | FailurePoint::BlockedDescendant
                 | FailurePoint::BlockedIo
                 | FailurePoint::SupervisorDeath
         ) {
@@ -195,6 +198,9 @@ impl SandboxFailures {
                 fs::create_dir(entries[0].path().join(name))?;
             }
             fs::write(entries[0].path().join("blocked-writer"), [])?;
+            if matches!(point, FailurePoint::BlockedDescendant) {
+                crate::blocked_descendant::BlockedDescendant::stage(&entries[0].path())?;
+            }
             volume = mounted.unmount().map_err(|e| e.to_string())?;
         }
         let sandbox = CommandSandbox::new(
@@ -241,12 +247,115 @@ impl SandboxFailures {
             | FailurePoint::CleanupTimeout
             | FailurePoint::Gate
             | FailurePoint::Writeback
+            | FailurePoint::BlockedDescendant
             | FailurePoint::BlockedIo
             | FailurePoint::SupervisorDeath => {
                 let prepared = result.map_err(|e| e.to_string())?;
                 // Preparation has acquired the volume mount, namespace and domain.
                 assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
                 assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                if matches!(point, FailurePoint::BlockedDescendant) {
+                    use crate::blocked_descendant::BlockedDescendant;
+                    use std::{
+                        io::{BufRead, BufReader},
+                        os::fd::OwnedFd,
+                        os::unix::net::UnixStream,
+                        process::Stdio,
+                        time::{Duration, Instant},
+                    };
+                    let receiver_parent = runtime_parent.join("receiver-view");
+                    fs::create_dir(&receiver_parent)?;
+                    let mut receiver = HelperProgram::current()?.receiver(
+                        BlockedDescendant::SCRIPT.to_owned(),
+                        budget.cutoff()?,
+                        100000,
+                        100000,
+                        &receiver_parent,
+                    )?;
+                    let (reader, writer) = UnixStream::pair()?;
+                    reader.set_read_timeout(Some(Duration::from_secs(10)))?;
+                    receiver.stderr(Stdio::from(OwnedFd::from(writer)));
+                    let step = prepared
+                        .launch(receiver, budget.deadline(), paths.domains())
+                        .map_err(|e| e.to_string())?;
+                    step.send_volume_until(budget.deadline())?;
+                    let admitted = match budget.await_prepared(step) {
+                        Ok(admitted) => admitted,
+                        Err(error) => {
+                            use std::io::Read;
+                            let mut diagnostics = String::new();
+                            let _ = (&reader).read_to_string(&mut diagnostics);
+                            eprint!("{diagnostics}");
+                            return Err(error.to_string().into());
+                        }
+                    };
+                    let running = admitted.start("10s".parse()?).map_err(|e| e.to_string())?;
+                    let mut reader = BufReader::new(reader);
+                    let mut line = String::new();
+                    loop {
+                        line.clear();
+                        assert_ne!(reader.read_line(&mut line)?, 0);
+                        eprint!("{line}");
+                        if line.starts_with("BLOCKED_RECIPE_READY ") {
+                            break;
+                        }
+                    }
+                    let ids = line
+                        .split_whitespace()
+                        .skip(1)
+                        .map(str::parse::<u32>)
+                        .collect::<Result<Vec<_>, _>>()?;
+                    assert_eq!(ids.len(), 2);
+                    let shell = BlockedDescendant::host_pid(ids[0])?;
+                    let child = BlockedDescendant::host_pid(ids[1])?;
+                    assert_eq!(
+                        fs::read_link(format!("/proc/{shell}/ns/pid"))?,
+                        fs::read_link(format!("/proc/{child}/ns/pid"))?
+                    );
+                    assert_ne!(
+                        fs::read_link(format!("/proc/{shell}/ns/pid"))?,
+                        fs::read_link("/proc/self/ns/pid")?
+                    );
+                    BlockedDescendant::await_state(child, 'T')?;
+                    let sysfs = format!("/sys/dev/block/{}:{}", device.major(), device.minor());
+                    let name = fs::read_to_string(Path::new(&sysfs).join("dm/name"))?;
+                    assert!(
+                        std::process::Command::new("/usr/bin/dmsetup")
+                            .args(["suspend", "--noflush", "--nolockfs", name.trim()])
+                            .status()?
+                            .success()
+                    );
+                    BlockedDescendant::signal(child, "CONT")?;
+                    BlockedDescendant::await_state(child, 'D')?;
+                    println!("RECIPE_DESCENDANT_UNINTERRUPTIBLE_PASS");
+                    BlockedDescendant::signal(shell, "USR1")?;
+                    let observed = running.observe();
+                    assert!(observed.outcome().success(), "{}", observed.outcome());
+                    println!("SHELL_SUCCESS_BEFORE_BLOCKED_DESCENDANT_CLEANUP_PASS");
+                    let started = Instant::now();
+                    let (outcome, cleanup) = observed.teardown(paths.domains()).into_parts();
+                    assert!(outcome.success());
+                    let failure = cleanup.unwrap_err();
+                    assert_eq!(
+                        failure.diagnostics().operation().kind(),
+                        std::io::ErrorKind::TimedOut
+                    );
+                    BlockedDescendant::await_state(child, 'D')?;
+                    assert!(started.elapsed() >= Duration::from_secs(30));
+                    assert!(started.elapsed() < Duration::from_secs(40));
+                    assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
+                    assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                    assert!(Path::new(&sysfs).exists());
+                    let retry_started = Instant::now();
+                    let _retained = failure.retry().unwrap_err();
+                    assert!(retry_started.elapsed() < Duration::from_secs(1));
+                    assert!(outcome.success());
+                    assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
+                    assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                    println!("BLOCKED_DESCENDANT_TEARDOWN_RETAINS_SUCCESS_AND_STORAGE_PASS");
+                    // Retain failed owners until independent guest init disposes of the VM.
+                    std::process::exit(0);
+                }
                 let mut command = if matches!(point, FailurePoint::Launch) {
                     std::process::Command::new("/nonexistent-fixture-helper")
                 } else {
@@ -681,6 +790,7 @@ impl SandboxFailures {
                 FailurePoint::MissingCleanup => "SANDBOX_MISSING_CLEANUP_ROLLBACK_PASS",
                 FailurePoint::Gate => "SANDBOX_GATE_FAILURE_ROLLBACK_PASS",
                 FailurePoint::CleanupTimeout
+                | FailurePoint::BlockedDescendant
                 | FailurePoint::BlockedIo
                 | FailurePoint::SupervisorDeath
                 | FailurePoint::Writeback => unreachable!("terminal VM-disposal case"),

@@ -59,3 +59,17 @@ must not acquire device-mapper or supervisor-control access for the test.
 
 M4-T1 remains open for this integration regression and final source/evidence
 review. M4 remains 0/3. No new VM execution occurred in this reconciliation.
+
+## Follow-up: blocked-descendant regression executed
+
+`tests/lifecycle` now has `sandbox-blocked-descendant`. Evidence in
+`preservation/m7-review/blocked-descendant-v4` closes the missing integration
+regression above: production receiver/init, actual D-state child before shell
+exit and after teardown timeout, early successful shell status, fixed 30-second
+cleanup failure, retained storage/records, and immediate same-deadline retry
+failure. Source comparison matches executed production and fixture bytes.
+
+v1/v2 admission failures are retained; v3 passed and v4 strengthened namespace,
+error-kind and post-timeout assertions. This supplements the existing
+pre-completion blocked-I/O case. M4-T1 still needs final integrated source and
+coverage review; this execution alone is not a full adherence pass.
