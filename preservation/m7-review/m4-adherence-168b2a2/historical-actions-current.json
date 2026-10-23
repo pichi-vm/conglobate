@@ -89,8 +89,8 @@
       "evidence": "v259 reproduced in-VM; 27091e6 sorts RuntimeFile by String path; v260 passed",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "Current FormatReceipt conversion sorts RuntimeFile by String path, matching Formatter::validate. New lexical-versus-component validator regression passes; historical producer VM evidence retained, not rerun. See yaml-formatter-current/REVIEW.md."
     },
     {
       "id": "dependencies-001",
@@ -944,8 +944,8 @@
       "evidence": "serde-saphyr Options::default() budget preserved: depth 64, alias ratio, scalar caps",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "partially addressed; additional budget coverage outstanding",
-      "current_evidence": "Reconsidered the historical blanket rejection: default budgets do not by themselves supply wrapper regression coverage. A small 8-level successful control and 80-level nested sequence verify depth rejection through YamlDocument::decode. Alias-expansion and scalar-budget coverage remain outstanding; no general resource-exhaustion proof claimed. See parser-capability-current/REVIEW.md and logs."
+      "current_status": "partially addressed; scalar budget coverage outstanding",
+      "current_evidence": "Depth and flat alias-ratio controls/rejections now run through YamlDocument; no recursive expansion or scalar-boundary execution claim. Exact parser defaults inspected. See yaml-formatter-current/REVIEW.md and parser-capability-current/."
     },
     {
       "id": "tests-009",

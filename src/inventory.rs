@@ -518,4 +518,24 @@ mod tests {
         fixture.0.execution.formatters.push(formatter);
         assert!(Inventory::from_document(fixture.0).is_err());
     }
+
+    #[test]
+    fn formatter_wire_order_is_lexical_not_path_component_order() {
+        let mut formatter = Fixture::formatter();
+        formatter.runtime.extend([
+            RuntimeFile {
+                path: "usr/lib-x".into(),
+                digest: Fixture::digest(),
+            },
+            RuntimeFile {
+                path: "usr/lib/a".into(),
+                digest: Fixture::digest(),
+            },
+        ]);
+        assert!(formatter.validate().is_ok());
+        formatter
+            .runtime
+            .sort_by(|a, b| std::path::Path::new(&a.path).cmp(std::path::Path::new(&b.path)));
+        assert!(formatter.validate().is_err());
+    }
 }

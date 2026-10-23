@@ -31,6 +31,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn decoding_retains_the_alias_ratio_budget() {
+        // Flat scalar references keep both input and possible output tiny.
+        // This exercises ratio enforcement without recursive expansion.
+        let control = "[&item 0, *item]";
+        assert_eq!(
+            YamlDocument::from(control).decode::<Vec<u8>>().unwrap(),
+            vec![0, 0]
+        );
+        let repeated = format!("[&item 0{}]", ", *item".repeat(101));
+        let error = YamlDocument::from(repeated.as_str())
+            .decode::<Vec<u8>>()
+            .unwrap_err();
+        let message = error.to_string().to_lowercase();
+        assert!(
+            message.contains("alias") && message.contains("ratio"),
+            "{error}"
+        );
+    }
+
+    #[test]
     fn decoding_retains_the_parser_depth_budget() {
         // Small input exercises depth enforcement without resource exhaustion.
         let shallow = format!("{}0{}", "[".repeat(8), "]".repeat(8));

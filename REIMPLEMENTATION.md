@@ -6092,3 +6092,7 @@ Reconsidered tests-008: retained parser defaults alone did not justify rejecting
 ### Dependency source and policy reconciliation after 503fbe3
 
 Revalidated nine dependency findings against locked metadata, exact source feature gates, qualified reverse trees and CI configuration. Restored the missing ARCHITECTURE rationale referenced by Cargo.toml for the safe rustix mount_setattr pin. amd64/arm64 dependency-policy checks and current cargo-audit passed; warnings and initial ambiguous tree-query failure retained in `preservation/m7-review/dependencies-current/`. No current hosted CI or arm64 execution claim. Dependency versions unchanged. Previous turn added maintained tests; this turn repairs documentation and establishes current dependency evidence. No full milestone pass awarded.
+
+### YAML alias and formatter ordering regressions after 1bda74f
+
+Added small flat alias-ratio control/rejection coverage and a formatter wire lexical-order regression. Current producer and validator use the same String key; correctness-001 revalidated. tests-008 remains partial for scalar-boundary execution. All 150 library tests and strict all-target Clippy pass; evidence in `preservation/m7-review/yaml-formatter-current/`. No production behavior change or full milestone pass. Previous turn repaired dependency rationale and refreshed checks; this turn adds maintained regression evidence.
