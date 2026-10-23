@@ -8,6 +8,7 @@ use crate::{
 };
 use std::{
     io,
+    os::unix::process::ExitStatusExt,
     process::{Command, ExitStatus, Stdio},
     time::Instant,
 };
@@ -37,6 +38,11 @@ pub enum ReceiverFailure<'ns> {
     },
     #[error("receiver command wait: {0}")]
     Wait(RootWaitFailure<'ns>),
+    #[error("receiver namespace completion: {source}")]
+    Completion {
+        source: io::Error,
+        mount: Mount<'ns, Attached>,
+    },
     #[error("receiver diagnostic relay: {source}")]
     Diagnostics {
         source: io::Error,
@@ -51,7 +57,8 @@ pub enum ReceiverFailure<'ns> {
     },
 }
 /// Direct command helper reaped. The caller must close this view and finish
-/// local namespace cleanup before reporting completion. Descendant quiescence
+/// local namespace cleanup before reporting cleanup completion. Shell status
+/// has already been reported. Descendant quiescence
 /// is still the supervisor's responsibility; this is not build success.
 #[derive(Debug)]
 pub struct ReceiverCompletion<'ns> {
@@ -149,11 +156,11 @@ impl<'ns> CommandReceiver<'ns> {
                 return Err(startup.failure(source));
             }
         };
-        if let Err(source) = gate.start_until(setup_deadline) {
-            // `channel` stays alive while failure() reaps/drains/closes the view.
-            return Err(startup.failure(source));
-        }
-        startup.finish(channel)
+        let gate = match gate.start_reporting_until(setup_deadline) {
+            Ok(gate) => gate,
+            Err(source) => return Err(startup.failure(source)),
+        };
+        startup.finish(channel, gate)
     }
 }
 
@@ -191,13 +198,42 @@ impl<'ns> ReceiverStartup<'ns> {
     fn finish(
         self,
         channel: Supervision<Admitted>,
+        gate: ExecutionGate<super::Started>,
     ) -> Result<ReceiverCompletion<'ns>, Box<ReceiverFailure<'ns>>> {
-        let (mount, status) = self
+        let status = match gate.completion_under_supervisor() {
+            Ok(status) => status,
+            Err(source) => {
+                return Err(Box::new(ReceiverFailure::Startup {
+                    source,
+                    mount: self.mount,
+                }));
+            }
+        };
+        if let Err(source) = channel
+            .report_completion_until(status, Instant::now() + std::time::Duration::from_secs(30))
+        {
+            return Err(Box::new(ReceiverFailure::Startup {
+                source,
+                mount: self.mount,
+            }));
+        }
+        let (mount, helper_status) = self
             .mount
             .wait_under_supervisor()
             .map_err(|error| Box::new(ReceiverFailure::Wait(error)))?;
         if let Err(source) = self.diagnostics.finish() {
             return Err(Box::new(ReceiverFailure::Diagnostics { source, mount }));
+        }
+        let expected = status
+            .code()
+            .unwrap_or_else(|| 128 + status.signal().unwrap_or(1));
+        if helper_status.code() != Some(expected) {
+            return Err(Box::new(ReceiverFailure::Completion {
+                source: io::Error::other(
+                    "namespace helper did not finish with the reported shell outcome",
+                ),
+                mount,
+            }));
         }
         Ok(ReceiverCompletion {
             channel,

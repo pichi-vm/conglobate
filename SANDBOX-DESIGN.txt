@@ -305,6 +305,10 @@ Historical experiments are evidence, not competing specifications.
         LANG, and applicable CARAPACE. No automatic credential/proxy forwarding.
         Namespace init must reap descendants. No process may outlive the step,
         including a daemon whose shell already exited successfully.
+        Resident init reports shell status before namespace-exit cleanup through
+        an owned status-only channel. Keep init non-dumpable and this endpoint
+        close-on-exec; no image command may inherit or obtain it through procfs.
+        It grants no storage/control authority and is not a cleanup receipt.
 
    7.6. Every run has a finite positive timeout. Default: 5 minutes. Recipes
         may override it with duration strings, for example timeout: 30m.

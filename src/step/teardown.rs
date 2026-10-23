@@ -20,6 +20,7 @@ pub(super) const TEARDOWN_TIMEOUT: Duration = Duration::from_secs(30);
 enum Phase<'a, R: StepStorage> {
     Ready(Step<'a, Ready, R>),
     Running(Step<'a, Running, R>),
+    AwaitingCleanup(Step<'a, Running, R>),
     Cancelling(Step<'a, Cancelling, R>),
     Reaping(Step<'a, Reaping, R>),
     Draining(Step<'a, Draining, R>),
@@ -139,6 +140,13 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
             deadline,
         } = self;
         let next = match phase {
+            Phase::AwaitingCleanup(step) => match step.supervision().cleanup_until(deadline) {
+                Ok(()) => Ok(Phase::Running(step)),
+                Err(source) => Err(Box::new(TransitionFailure {
+                    source,
+                    phase: Phase::Running(step),
+                })),
+            },
             Phase::Ready(step) => Self::transition(
                 step.cancel_until(deadline).map(Phase::Reaping),
                 Phase::Cancelling,
@@ -203,6 +211,13 @@ impl<'a, R: StepStorage> Step<'a, Ready, R> {
     }
 }
 impl<'a, R: StepStorage> Step<'a, Running, R> {
+    pub(super) fn teardown_after_command(
+        self,
+        parent: &Path,
+    ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+        Teardown::new(Phase::AwaitingCleanup(self), parent).run()
+    }
+
     pub fn teardown(
         self,
         parent: &Path,

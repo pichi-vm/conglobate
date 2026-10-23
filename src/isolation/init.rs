@@ -9,17 +9,23 @@ use nix::{
 use std::{
     convert::Infallible,
     fs, io,
-    process::{Child, Command},
+    os::unix::process::ExitStatusExt,
+    process::{Child, Command, ExitStatus},
 };
 
 /// Resident init inside the command's restricted namespaces and image root.
-/// It has no supervisor authority or outside-root handles. Errors are exit-only.
+/// It retains only status-reporting authority beyond its standard descriptors.
+/// No backing/control handles reach image exec. Errors are exit-only.
 #[derive(Debug)]
 pub(super) struct NamespaceInit {
     shell: Child,
+    reporter: Option<super::CompletionEndpoint>,
 }
 impl NamespaceInit {
-    pub(super) fn spawn(mut command: Command) -> io::Result<Self> {
+    pub(super) fn spawn(
+        mut command: Command,
+        reporter: Option<super::CompletionEndpoint>,
+    ) -> io::Result<Self> {
         if getpid() != Pid::from_raw(1) {
             return Err(io::Error::other("command init requires PID 1"));
         }
@@ -42,6 +48,7 @@ impl NamespaceInit {
         }
         Ok(Self {
             shell: command.spawn()?,
+            reporter,
         })
     }
 
@@ -51,15 +58,23 @@ impl NamespaceInit {
             // This owner is the sole waiter. __WALL includes adopted clone
             // children regardless of their exit-signal selection. No polling
             // delay or signal handler is needed: waitpid blocks for an event.
-            let code = match waitpid(None, Some(WaitPidFlag::__WALL)) {
-                Ok(WaitStatus::Exited(pid, code)) if pid == shell => Some(code),
-                Ok(WaitStatus::Signaled(pid, signal, _)) if pid == shell => {
-                    Some(128 + signal as i32)
+            let status = match waitpid(None, Some(WaitPidFlag::__WALL)) {
+                Ok(WaitStatus::Exited(pid, code)) if pid == shell => {
+                    Some(ExitStatus::from_raw(code << 8))
                 }
+                Ok(WaitStatus::Signaled(pid, signal, core_dumped)) if pid == shell => Some(
+                    ExitStatus::from_raw(signal as i32 | if core_dumped { 0x80 } else { 0 }),
+                ),
                 Ok(_) | Err(Errno::EINTR) => None,
                 Err(error) => return Err(error.into()),
             };
-            if let Some(code) = code {
+            if let Some(status) = status {
+                if let Some(reporter) = self.reporter {
+                    reporter.report(status)?;
+                }
+                let code = status
+                    .code()
+                    .unwrap_or_else(|| 128 + status.signal().unwrap_or(1));
                 // Exiting PID 1 kills remaining namespace members in the
                 // kernel. The outer step must still cancel its cgroup, reap
                 // helpers and establish quiescence before releasing storage.

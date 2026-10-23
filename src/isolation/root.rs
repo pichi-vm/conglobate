@@ -169,33 +169,37 @@ impl EnteredRoot {
 }
 
 impl RestrictedCommand {
-    /// Report completed isolation, wait for explicit start, close the gate and
-    /// audit descriptors before image execution. Error is exit-only.
+    /// Report completed isolation, await start, and retain a status-only endpoint
+    /// in non-dumpable init. Audit descriptors before image exec; error is exit-only.
     pub fn start(
         self,
         gate: super::ExecutionEndpoint,
         deadline: std::time::Instant,
     ) -> io::Result<std::convert::Infallible> {
-        gate.ready_and_wait(deadline)?;
-        self.execute()
+        let reporter = gate.ready_for_reporting(deadline)?;
+        self.check_descriptors(Some(&reporter))?;
+        super::init::NamespaceInit::spawn(self.command, Some(reporter))?.execute()
     }
 
     /// The enclosing helper must have received start authorization and closed
     /// its startup handles. Reaudit immediately before spawning image code.
     pub fn execute(self) -> io::Result<std::convert::Infallible> {
-        self.check_descriptors()?;
-        super::init::NamespaceInit::spawn(self.command)?.execute()
+        self.check_descriptors(None)?;
+        super::init::NamespaceInit::spawn(self.command, None)?.execute()
     }
 
-    fn check_descriptors(&self) -> io::Result<()> {
+    fn check_descriptors(&self, reporter: Option<&super::CompletionEndpoint>) -> io::Result<()> {
+        if let Some(reporter) = reporter {
+            reporter.verify_close_on_exec()?;
+        }
         let proc = File::open("/proc/self/fdinfo")?;
         if rustix::fs::fstatfs(&proc)?.f_type != 0x9fa0 {
             return Err(io::Error::other("descriptor audit requires real procfs"));
         }
         drop(proc);
-        // Init remains resident instead of execing: CLOEXEC alone would leave
-        // outside handles visible through its /proc/1/fd. Reject every extra
-        // descriptor. The owned null input was installed and closed by restrict.
+        // Init remains resident and non-dumpable. Reject every extra handle
+        // except the exact owned status-only endpoint, verified CLOEXEC so the
+        // image shell cannot inherit it. The owned null input was installed and closed by restrict.
         // Collect names first so the audit's own directory descriptors close.
         let names = fs::read_dir("/proc/self/fdinfo")?
             .map(|entry| entry.map(|entry| entry.file_name()))
@@ -205,7 +209,7 @@ impl RestrictedCommand {
                 .to_str()
                 .and_then(|n| n.parse().ok())
                 .ok_or_else(|| io::Error::other("invalid proc descriptor entry"))?;
-            if fd <= 2 {
+            if fd <= 2 || reporter.is_some_and(|reporter| reporter.owns_descriptor(fd)) {
                 continue;
             }
             match fs::metadata(std::path::Path::new("/proc/self/fdinfo").join(name)) {

@@ -109,11 +109,12 @@ pub(super) enum Packet {
     BootstrapNetwork(OwnedFd, OwnedFd, OwnedFd, OwnedFd, OwnedFd, OwnedFd),
     Prepared,
     Completed(ExitStatus),
+    Cleaned,
 }
 impl Packet {
     // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4, Volume=5, Prepared=6; Completed=[1,7,bstr(wait status)]; Bootstrap=8 (tool, output, namespace).
     // VolumeNetwork=9 (root, user, network, resolver, raw cleanup root);
-    // BootstrapNetwork=10 adds output immediately after root.
+    // BootstrapNetwork=10 adds output immediately after root; Cleaned=11.
     pub(super) fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
         self.send_with(socket, &deadline)
     }
@@ -149,6 +150,7 @@ impl Packet {
                 ],
             ),
             Self::Prepared => (6, vec![]),
+            Self::Cleaned => (11, vec![]),
             Self::Completed(_) => (7, vec![]),
         };
         // The status payload is a fixed four-byte Linux wait status, carried
@@ -235,6 +237,7 @@ impl Packet {
                 (3, 0) => Ok(Self::Admit),
                 (4, 0) => Ok(Self::Admitted),
                 (6, 0) => Ok(Self::Prepared),
+                (11, 0) => Ok(Self::Cleaned),
                 (7, 0) => {
                     let raw = i32::from_be_bytes(bytes[4..8].try_into().expect("four bytes"));
                     let status = ExitStatus::from_raw(raw);

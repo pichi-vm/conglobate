@@ -1,0 +1,118 @@
+--- captured/src/isolation/gate.rs
++++ current/src/isolation/gate.rs
+@@ -54,7 +54,7 @@
+     socket: Control,
+     state: PhantomData<S>,
+ }
+-/// Passed only between trusted setup helpers, then closed before image spawn.
++/// Passed only between trusted setup helpers; converts to an init-only reporter.
+ #[derive(Debug)]
+ pub struct ExecutionEndpoint(Socket);
+ #[derive(Debug)]
+--- captured/src/isolation/init.rs
++++ current/src/isolation/init.rs
+@@ -14,7 +14,8 @@
+ };
+ 
+ /// Resident init inside the command's restricted namespaces and image root.
+-/// It has no supervisor authority or outside-root handles. Errors are exit-only.
++/// It retains only status-reporting authority beyond its standard descriptors.
++/// No backing/control handles reach image exec. Errors are exit-only.
+ #[derive(Debug)]
+ pub(super) struct NamespaceInit {
+     shell: Child,
+--- captured/src/isolation/receiver.rs
++++ current/src/isolation/receiver.rs
+@@ -57,7 +57,8 @@
+     },
+ }
+ /// Direct command helper reaped. The caller must close this view and finish
+-/// local namespace cleanup before reporting completion. Descendant quiescence
++/// local namespace cleanup before reporting cleanup completion. Shell status
++/// has already been reported. Descendant quiescence
+ /// is still the supervisor's responsibility; this is not build success.
+ #[derive(Debug)]
+ pub struct ReceiverCompletion<'ns> {
+--- captured/src/isolation/root.rs
++++ current/src/isolation/root.rs
+@@ -169,8 +169,8 @@
+ }
+ 
+ impl RestrictedCommand {
+-    /// Report completed isolation, wait for explicit start, close the gate and
+-    /// audit descriptors before image execution. Error is exit-only.
++    /// Report completed isolation, await start, and retain a status-only endpoint
++    /// in non-dumpable init. Audit descriptors before image exec; error is exit-only.
+     pub fn start(
+         self,
+         gate: super::ExecutionEndpoint,
+--- captured/src/process/supervision/admission.rs
++++ current/src/process/supervision/admission.rs
+@@ -202,4 +202,55 @@
+         );
+         assert!(parent.peer_lost().unwrap());
+     }
+-}
++    #[test]
++    fn shell_completion_and_receiver_cleanup_are_separate_messages() {
++        use std::os::unix::process::ExitStatusExt;
++        let (parent, helper) = Fixture::pair();
++        let (release, held) = std::sync::mpsc::channel();
++        let worker = std::thread::spawn(move || {
++            let helper = helper.await_admission_until(Fixture::deadline()).unwrap();
++            helper
++                .report_completion_until(std::process::ExitStatus::from_raw(0), Fixture::deadline())
++                .unwrap();
++            held.recv().unwrap();
++            helper.report_cleanup_until(Fixture::deadline()).unwrap();
++            helper
++        });
++        let parent = parent.admit_until(Fixture::deadline()).unwrap();
++        assert!(
++            parent
++                .completion_until(Fixture::deadline())
++                .unwrap()
++                .success()
++        );
++        assert_eq!(
++            parent.cleanup_until(Instant::now()).unwrap_err().kind(),
++            io::ErrorKind::TimedOut
++        );
++        release.send(()).unwrap();
++        let helper = worker.join().unwrap();
++        parent.cleanup_until(Fixture::deadline()).unwrap();
++        drop(helper);
++    }
++    #[test]
++    fn shell_status_cannot_substitute_for_cleanup_receipt() {
++        use std::os::unix::process::ExitStatusExt;
++        let (parent, helper) = Fixture::pair();
++        let worker =
++            std::thread::spawn(move || helper.await_admission_until(Fixture::deadline()).unwrap());
++        let parent = parent.admit_until(Fixture::deadline()).unwrap();
++        let helper = worker.join().unwrap();
++        helper
++            .report_completion_until(std::process::ExitStatus::from_raw(0), Fixture::deadline())
++            .unwrap();
++        assert_eq!(
++            parent
++                .cleanup_until(Fixture::deadline())
++                .unwrap_err()
++                .kind(),
++            io::ErrorKind::InvalidData
++        );
++        drop(helper);
++        assert!(parent.cleanup_until(Fixture::deadline()).is_err());
++    }
++}
+--- captured/src/process/supervision/joining.rs
++++ current/src/process/supervision/joining.rs
+@@ -114,7 +114,7 @@
+ impl Packet {
+     // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4, Volume=5, Prepared=6; Completed=[1,7,bstr(wait status)]; Bootstrap=8 (tool, output, namespace).
+     // VolumeNetwork=9 (root, user, network, resolver, raw cleanup root);
+-    // BootstrapNetwork=10 adds output immediately after root.
++    // BootstrapNetwork=10 adds output immediately after root; Cleaned=11.
+     pub(super) fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
+         self.send_with(socket, &deadline)
+     }

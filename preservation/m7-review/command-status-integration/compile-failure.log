@@ -1,0 +1,53 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+error[E0425]: cannot find function `fcntl_getfd` in module `rustix::fs`
+  --> src/isolation/gate.rs:96:24
+   |
+96 |         if rustix::fs::fcntl_getfd(&self.0.0)?.contains(rustix::fs::FdFlags::CLOEXEC) {
+   |                        ^^^^^^^^^^^
+   |
+  ::: /home/nathaniel/.cargo/git/checkouts/rustix-0bf6cd19fabd649e/8bda151/src/fs/fcntl.rs:30:1
+   |
+30 | pub fn fcntl_getfl<Fd: AsFd>(fd: Fd) -> io::Result<OFlags> {
+   | ---------------------------------------------------------- similarly named function `fcntl_getfl` defined here
+   |
+help: a function with a similar name exists
+   |
+96 -         if rustix::fs::fcntl_getfd(&self.0.0)?.contains(rustix::fs::FdFlags::CLOEXEC) {
+96 +         if rustix::fs::fcntl_getfl(&self.0.0)?.contains(rustix::fs::FdFlags::CLOEXEC) {
+   |
+help: consider importing this function
+   |
+ 3 + use rustix::io::fcntl_getfd;
+   |
+help: if you import `fcntl_getfd`, refer to it directly
+   |
+96 -         if rustix::fs::fcntl_getfd(&self.0.0)?.contains(rustix::fs::FdFlags::CLOEXEC) {
+96 +         if fcntl_getfd(&self.0.0)?.contains(rustix::fs::FdFlags::CLOEXEC) {
+   |
+
+error[E0433]: failed to resolve: could not find `FdFlags` in `fs`
+  --> src/isolation/gate.rs:96:69
+   |
+96 |         if rustix::fs::fcntl_getfd(&self.0.0)?.contains(rustix::fs::FdFlags::CLOEXEC) {
+   |                                                                     ^^^^^^^ could not find `FdFlags` in `fs`
+   |
+help: a struct with a similar name exists
+   |
+96 -         if rustix::fs::fcntl_getfd(&self.0.0)?.contains(rustix::fs::FdFlags::CLOEXEC) {
+96 +         if rustix::fs::fcntl_getfd(&self.0.0)?.contains(rustix::fs::AtFlags::CLOEXEC) {
+   |
+help: consider importing this struct
+   |
+ 3 + use rustix::io::FdFlags;
+   |
+help: if you import `FdFlags`, refer to it directly
+   |
+96 -         if rustix::fs::fcntl_getfd(&self.0.0)?.contains(rustix::fs::FdFlags::CLOEXEC) {
+96 +         if rustix::fs::fcntl_getfd(&self.0.0)?.contains(FdFlags::CLOEXEC) {
+   |
+
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.
+error: could not compile `conglobate` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `conglobate` (lib test) due to 2 previous errors

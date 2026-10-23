@@ -65,6 +65,7 @@ impl SandboxFailures {
             drop(_setup);
             scope.restore().map_err(|e| e.to_string())?;
             channel.report_completion_until(std::process::ExitStatus::from_raw(0), deadline)?;
+            channel.report_cleanup_until(deadline)?;
             return Ok(());
         }
         fs::write("/work/receiver-stage", "attached")?;

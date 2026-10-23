@@ -5058,3 +5058,25 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   next, including child FD isolation and mandatory separate cleanup acknowledgment
   under the fixed teardown deadline. Existing acceptance behavior is unchanged.
   No new VM qualification or clean adherence pass claimed; M4 stays 0/3.
+
+### M4-T1 integrated shell/cleanup timing correction
+
+- Previous turn progressed with typed status gate b6a7f2e. Connected resident
+  init shell reporting before namespace exit, with exact owned CLOEXEC endpoint
+  allowance and non-dumpable init. Image command descriptor/proc checks pass.
+- Receiver forwards primary status, then drains/reaps and checks helper outcome,
+  restores resolver/view/namespace, and sends distinct cleanup acknowledgment.
+  Supervisor waits for that acknowledgment under its fixed teardown deadline
+  before normal cancellation/drain/finalization. Failure retains cancellation
+  ownership and cannot be promoted to accepted storage after retry.
+- Added protocol regressions for separated completion, wrong-phase receipt and
+  loss. Full rootless suite, 51 doctests and strict root/fixture Clippy pass.
+  Initial wrong-rustix-module compile failure preserved. Actual command-status-v1
+  confinement build/export and status-busy-execution-v1 rejection VM tests pass.
+- Evidence and patch under preservation/m7-review/command-status-integration/ and
+  named VM directories. First VM snapshot differs only by later comments/unit
+  tests (exact patch preserved); second matches production source. Large assets
+  remain external and unarchived. Sandbox design records status-only init channel.
+- M4-T1 implemented but remains open pending composed delayed-descendant/cleanup,
+  helper-death/missing-ack, timeout and resolver failure regressions. M4 stays
+  0/3; all later milestone and qualification gates remain outstanding.

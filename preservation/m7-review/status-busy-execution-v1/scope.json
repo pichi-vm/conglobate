@@ -1,0 +1,13 @@
+{
+  "baseline": "b6a7f2e",
+  "passed": true,
+  "production_changed": true,
+  "source_differences": [],
+  "difference_scope": "all production Rust source bytes match",
+  "coverage": "trusted success report and busy finalization, rejected recovery",
+  "limitations": [
+    "remaining M4-T1 failure/delayed-descendant scenarios outstanding",
+    "native amd64 ordinary VM only",
+    "large artifacts not durably archived"
+  ]
+}

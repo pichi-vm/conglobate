@@ -84,7 +84,14 @@ impl<'a, R: StepStorage> CommandResult<RunningCommand<'a, R>> {
         self,
         parent: &Path,
     ) -> CommandResult<Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>>> {
-        self.map_cleanup(|command| command.teardown(parent))
+        match self.outcome {
+            CommandOutcome::Exited(_) => {
+                self.map_cleanup(|command| command.teardown_after_command(parent))
+            }
+            CommandOutcome::ObservationFailed(_) => {
+                self.map_cleanup(|command| command.teardown(parent))
+            }
+        }
     }
 }
 #[cfg(test)]

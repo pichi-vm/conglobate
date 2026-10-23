@@ -54,7 +54,7 @@ pub struct ExecutionGate<S: GateState> {
     socket: Control,
     state: PhantomData<S>,
 }
-/// Passed only between trusted setup helpers, then closed before image spawn.
+/// Passed only between trusted setup helpers; converts to an init-only reporter.
 #[derive(Debug)]
 pub struct ExecutionEndpoint(Socket);
 #[derive(Debug)]
@@ -88,6 +88,20 @@ impl ExecutionGate<Waiting> {
 #[derive(Debug)]
 pub struct CompletionEndpoint(Socket);
 impl CompletionEndpoint {
+    pub(super) fn owns_descriptor(&self, fd: i32) -> bool {
+        use std::os::fd::AsRawFd;
+        self.0.0.as_raw_fd() == fd
+    }
+    pub(super) fn verify_close_on_exec(&self) -> io::Result<()> {
+        if rustix::io::fcntl_getfd(&self.0.0)?.contains(rustix::io::FdFlags::CLOEXEC) {
+            Ok(())
+        } else {
+            Err(io::Error::other(
+                "command status endpoint must be close-on-exec",
+            ))
+        }
+    }
+
     /// Send once without waiting for peer cleanup. A full/broken channel fails;
     /// it never extends command time with a new relative timeout.
     pub fn report(self, status: ExitStatus) -> io::Result<()> {
@@ -143,8 +157,19 @@ impl ExecutionGate<Started> {
     /// Observe shell status only. This is not helper exit, descendant quiescence,
     /// resolver cleanup, or permission to finalize/publish storage.
     pub fn completion_until(self, deadline: Instant) -> io::Result<ExitStatus> {
+        self.completion(Some(deadline))
+    }
+    /// Trusted contained receiver only. Its supervisor owns the execution timer
+    /// and cancels the entire domain if this wait cannot finish.
+    pub(super) fn completion_under_supervisor(self) -> io::Result<ExitStatus> {
+        self.completion(None)
+    }
+    fn completion(self, deadline: Option<Instant>) -> io::Result<ExitStatus> {
         loop {
-            self.socket.0.wait(PollFlags::IN, deadline)?;
+            match deadline {
+                Some(deadline) => self.socket.0.wait(PollFlags::IN, deadline)?,
+                None => self.socket.0.wait_under_supervisor()?,
+            }
             let mut bytes = [0; 9];
             let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
             let mut ancillary = RecvAncillaryBuffer::new(&mut space);
@@ -214,12 +239,30 @@ impl ExecutionEndpoint {
         }
         Ok(Self(Socket(fd)))
     }
+    #[cfg(test)]
     pub(super) fn ready_and_wait(self, deadline: Instant) -> io::Result<()> {
         self.0.send(1, deadline)?;
         self.0.receive(2, deadline)
     }
 }
 impl Socket {
+    fn wait_under_supervisor(&self) -> io::Result<()> {
+        loop {
+            let mut fds = [PollFd::new(&self.0, PollFlags::IN)];
+            match poll(&mut fds, None) {
+                Ok(_) if fds[0].revents().contains(PollFlags::IN) => return Ok(()),
+                Ok(_) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::BrokenPipe,
+                        "command status peer lost",
+                    ));
+                }
+                Err(rustix::io::Errno::INTR) => continue,
+                Err(error) => return Err(error.into()),
+            }
+        }
+    }
+
     fn wait(&self, interest: PollFlags, deadline: Instant) -> io::Result<()> {
         loop {
             let remaining = deadline

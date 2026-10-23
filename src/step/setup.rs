@@ -130,6 +130,13 @@ impl<'a, R: StepStorage> PreparedStep<'a, R> {
     }
 }
 impl<'a, R: StepStorage> RunningCommand<'a, R> {
+    pub(super) fn teardown_after_command(
+        self,
+        parent: &Path,
+    ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+        self.step.teardown_after_command(parent)
+    }
+
     pub fn deadline(&self) -> Instant {
         self.deadline
     }

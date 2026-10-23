@@ -405,8 +405,7 @@ impl HelperInvocation {
                 }
                 view.close().map_err(|e| e.to_string())?;
                 scope.restore().map_err(|e| e.to_string())?;
-                channel
-                    .report_completion_until(status, Instant::now() + Duration::from_secs(30))?;
+                channel.report_cleanup_until(Instant::now() + Duration::from_secs(30))?;
                 channel.wait_for_loss_until(Instant::now() + Duration::from_secs(30))?;
                 Ok(status)
             }

@@ -59,6 +59,20 @@ impl Supervision<Joined> {
 }
 
 impl Supervision<Admitted> {
+    /// Trusted receiver only, after local mounts/resolver/diagnostics are closed.
+    pub fn report_cleanup_until(&self, deadline: Instant) -> io::Result<()> {
+        Packet::Cleaned.send(&self.socket.0, deadline)
+    }
+    pub(crate) fn cleanup_until(&self, deadline: Instant) -> io::Result<()> {
+        match Packet::receive(&self.socket.0, deadline)? {
+            Packet::Cleaned => Ok(()),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "expected receiver cleanup",
+            )),
+        }
+    }
+
     /// Trusted helper reports its reaped command status, before helper cleanup.
     /// This does not certify descendant quiescence or successful finalization.
     pub fn report_completion_until(
@@ -187,5 +201,56 @@ mod tests {
             io::ErrorKind::InvalidData
         );
         assert!(parent.peer_lost().unwrap());
+    }
+    #[test]
+    fn shell_completion_and_receiver_cleanup_are_separate_messages() {
+        use std::os::unix::process::ExitStatusExt;
+        let (parent, helper) = Fixture::pair();
+        let (release, held) = std::sync::mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            let helper = helper.await_admission_until(Fixture::deadline()).unwrap();
+            helper
+                .report_completion_until(std::process::ExitStatus::from_raw(0), Fixture::deadline())
+                .unwrap();
+            held.recv().unwrap();
+            helper.report_cleanup_until(Fixture::deadline()).unwrap();
+            helper
+        });
+        let parent = parent.admit_until(Fixture::deadline()).unwrap();
+        assert!(
+            parent
+                .completion_until(Fixture::deadline())
+                .unwrap()
+                .success()
+        );
+        assert_eq!(
+            parent.cleanup_until(Instant::now()).unwrap_err().kind(),
+            io::ErrorKind::TimedOut
+        );
+        release.send(()).unwrap();
+        let helper = worker.join().unwrap();
+        parent.cleanup_until(Fixture::deadline()).unwrap();
+        drop(helper);
+    }
+    #[test]
+    fn shell_status_cannot_substitute_for_cleanup_receipt() {
+        use std::os::unix::process::ExitStatusExt;
+        let (parent, helper) = Fixture::pair();
+        let worker =
+            std::thread::spawn(move || helper.await_admission_until(Fixture::deadline()).unwrap());
+        let parent = parent.admit_until(Fixture::deadline()).unwrap();
+        let helper = worker.join().unwrap();
+        helper
+            .report_completion_until(std::process::ExitStatus::from_raw(0), Fixture::deadline())
+            .unwrap();
+        assert_eq!(
+            parent
+                .cleanup_until(Fixture::deadline())
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::InvalidData
+        );
+        drop(helper);
+        assert!(parent.cleanup_until(Fixture::deadline()).is_err());
     }
 }
