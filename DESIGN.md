@@ -6,6 +6,10 @@ implementation outline are in [SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt).
 Deferred ecosystem work is collected in [Remaining decisions](#13-remaining-decisions).
 This document specifies the target design, not the current implementation.
 
+[BUILD-FLOW.sh](BUILD-FLOW.sh) sketches the proposed simplified control flow and
+resource ownership. It is explanatory shell notation, not executable sandbox code
+or evidence that the implementation already follows that structure.
+
 Conglobate builds images from committed source and immutable image inputs. It
 can create a new carapace using a tool carapace, extend an existing image, build
 replacement firmware, and transform the final device tree. It emits an
