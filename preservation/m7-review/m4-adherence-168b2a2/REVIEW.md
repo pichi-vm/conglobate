@@ -522,3 +522,79 @@ commands. These are not waived by exact source comparisons or successful IPv4.
 Remaining cumulative review: external label-policy controls/dual-root failures,
 pipeline and sealing consumers, historical findings and preservation reconciliation.
 M4 remains 0/3 full clean passes.
+
+
+## Segment F: external label environment and admission evidence
+
+Reviewed current label probe, its placement in the already-reviewed restricted
+helper, maintained environment staging, fixed exception, differential fault
+fixture/loader/verifier, missing-policy verifier and label-operation recipe.
+Hashes and selected historical comparisons are in label-source-sha256.json and
+label-evidence-comparison.json. No new functional defect established here; no
+full clean pass or current complete-system negative-control qualification claimed.
+
+1. The application contains the behavioral probe, not policy loading or subject/
+   filesystem registration. Fixed policy is an environment obligation, matching
+   the latest user decision. The exception compares the complete terminated
+   security.selinux attribute name and preserves an earlier nonzero hook result.
+   It does not authorize security.selinux.extra or grant command SYS_ADMIN.
+2. Environment loader attaches and pins once, then exits. There are no subject
+   maps in the normal policy and no runtime updates by conglobate. Fixture marker
+   files guard against accidental execution outside the VM; they are not a
+   security boundary. Host staging compiles/packages; guest init loads. Tests use
+   selinux=0. This does not establish behavior with an enforcing VM policy or a
+   kernel lacking the hook/BTF/BPF LSM support.
+3. AssignedRoots derives from trusted volume handoff, not whether an image happens
+   to contain /mnt. Restricted root setup applies credentials/capability/seccomp
+   constraints before probing, and probes before readiness/admission. Bootstrap
+   probes both / and the separately assigned /mnt. Open output rejects symlink
+   substitution. Anonymous TMPFILE|EXCL inodes cannot become named probe artifacts;
+   owned FDs close on success/error before the final image-command FD audit.
+4. Each probe requires label set, exact readback and removal. Failure is admission
+   rejection with contextual root diagnostics, not a fallback grant. A positive
+   probe shows these operations under tested credentials, not a comprehensive
+   audit of the supplied policy or an independent test that SELinux is disabled.
+   The environment remains trusted and must meet that deployment precondition.
+5. Differential fault policy is test-only: preserves prior errors, recognizes the
+   exact production probe name/value, allows the first superblock and denies a
+   different one. Its counter map is observed after the build, with no conglobate
+   test hook. This map must not be confused with forbidden production per-command
+   registration. Verifier requires observed device, exactly one allowed/denied
+   write, independent failure status, absence of recipe sentinel/output and
+   complete cleanup. Root-only control requires success and no denial.
+6. Label-operation recipe writes foreign labels in both roots, checks rejection
+   of adjacent/security.other/trusted attributes and a read-only /sys label write,
+   then checks labels across a fresh command mount and removes/recreates them.
+   The read-only /sys case is not proof for every cache-backed view or every xattr
+   namespace. Remount persistence is not exported target-OS enforcing boot proof.
+7. Safe Rust probe ownership and immutable AssignedRoots selection conform to the
+   style preferences. The C policy/loader remains external validation input,
+   outside application Rust. Maintained harness still sources the normal fixture
+   from validation/global-label-policy and headers under /var/tmp: migration and
+   durable dependency preservation are outstanding M8 obligations, not portable
+   production packaging already delivered.
+
+### Historical versus current label coverage
+
+- label-unpinned-off-v1 shows missing-policy rejection and cleanup without policy
+  pin inspection. Its probe differs by later diagnostic wrapping/tests; its
+  receiver attachment and status-gate code also predate current production.
+- label-operations-v1 establishes the two-root write/remount/removal behavior for
+  its archived code. It likewise predates later receiver/gate changes.
+- second-root-control-v1 and second-root-negative-v1 preserve the differential
+  allowed=1/denied=0 and allowed=1/denied=1 results. Probe changes since those runs
+  add contextual diagnostics, but integrated completion handling also changed.
+- receiver-root-negative-v1 matches the current labels.rs and fault sources;
+  helper/receiver/gate still predate the M4-T1 status/cleanup separation. This is
+  strong admission-path precedent, not an exact-current whole-binary run.
+- Current blocked-descendant/confinement runs exercise the fixed exception's
+  positive path with newer completion code, as recorded in earlier segments.
+  They do not replace a current missing-policy/differential failure run.
+
+The comparison explicitly lists missing historical files rather than claiming
+byte identity. A refreshed current negative-control run remains outstanding,
+as do target enforcing boots and non-amd64/confidential-platform qualification.
+No new VM run, policy load, source modification or asset deletion in this segment.
+Remaining cumulative review: pipeline/sealing consumers and historical findings/
+preservation reconciliation. Existing network qualification gaps remain open.
+M4 remains 0/3.

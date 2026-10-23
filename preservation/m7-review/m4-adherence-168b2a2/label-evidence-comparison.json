@@ -1,0 +1,168 @@
+{
+  "label-unpinned-off-v1": {
+    "assessment": {
+      "missing_policy_rejected": true,
+      "command_sentinel_absent": true,
+      "label_denial_diagnostic_observed": true,
+      "cleanup_reported_complete": true,
+      "full_sandbox_qualified": false
+    },
+    "files_equal": {
+      "src/isolation/labels.rs": false,
+      "src/execution/helper.rs": false,
+      "src/isolation/receiver.rs": false,
+      "src/isolation/gate.rs": false,
+      "src/isolation/setup/gated/helper.rs": true,
+      "tests/distro/label_environment.py": false,
+      "validation/global-label-policy/labels.bpf.c": true,
+      "validation/global-label-policy/loader.c": true
+    },
+    "missing": [
+      "tests/distro/labeling-fault/fault.bpf.c",
+      "tests/distro/labeling-fault/loader.c",
+      "tests/distro/labeling-fault/verify.py"
+    ]
+  },
+  "label-operations-v1": {
+    "assessment": {
+      "checks": {
+        "COMMAND_TWO_ROOT_LABEL_WRITE_PASS": true,
+        "COMMAND_TWO_ROOT_LABEL_REMOUNT_PASS": true,
+        "DISTRO_BUILD_AND_EXPORT_PASS": true,
+        "exit_zero": true,
+        "network_disabled": true,
+        "bootstrap_tool_role": true,
+        "new_output_only": true
+      },
+      "passed": true,
+      "differential_admission_probe_qualified": false,
+      "full_sandbox_qualified": false
+    },
+    "files_equal": {
+      "src/isolation/labels.rs": false,
+      "src/execution/helper.rs": false,
+      "src/isolation/receiver.rs": false,
+      "src/isolation/gate.rs": false,
+      "src/isolation/setup/gated/helper.rs": true,
+      "tests/distro/label_environment.py": false,
+      "validation/global-label-policy/labels.bpf.c": true,
+      "validation/global-label-policy/loader.c": true
+    },
+    "missing": [
+      "tests/distro/labeling-fault/fault.bpf.c",
+      "tests/distro/labeling-fault/loader.c",
+      "tests/distro/labeling-fault/verify.py"
+    ]
+  },
+  "second-root-control-v1": {
+    "assessment": {
+      "negative": false,
+      "observed": {
+        "first_device": 264241155,
+        "allowed": 1,
+        "denied": 0
+      },
+      "checks": {
+        "first_filesystem_observed": true,
+        "first_probe_allowed": true,
+        "denial_count": true,
+        "runtime_cleanup_complete": true,
+        "build_succeeded": true,
+        "command_admitted": true,
+        "exported": true
+      },
+      "passed": true,
+      "full_sandbox_qualified": false
+    },
+    "files_equal": {
+      "src/isolation/labels.rs": false,
+      "src/execution/helper.rs": false,
+      "src/isolation/receiver.rs": false,
+      "src/isolation/gate.rs": false,
+      "src/isolation/setup/gated/helper.rs": true,
+      "tests/distro/label_environment.py": true,
+      "validation/global-label-policy/labels.bpf.c": true,
+      "validation/global-label-policy/loader.c": true,
+      "tests/distro/labeling-fault/fault.bpf.c": true,
+      "tests/distro/labeling-fault/loader.c": true
+    },
+    "missing": [
+      "tests/distro/labeling-fault/verify.py"
+    ]
+  },
+  "second-root-negative-v1": {
+    "assessment": {
+      "negative": true,
+      "observed": {
+        "first_device": 264241157,
+        "allowed": 1,
+        "denied": 1
+      },
+      "checks": {
+        "first_filesystem_observed": true,
+        "first_probe_allowed": true,
+        "denial_count": true,
+        "runtime_cleanup_complete": true,
+        "build_rejected": true,
+        "command_not_admitted": true,
+        "label_denial": true,
+        "cleanup_complete": true,
+        "output_absent": true
+      },
+      "passed": true,
+      "full_sandbox_qualified": false
+    },
+    "files_equal": {
+      "src/isolation/labels.rs": false,
+      "src/execution/helper.rs": false,
+      "src/isolation/receiver.rs": false,
+      "src/isolation/gate.rs": false,
+      "src/isolation/setup/gated/helper.rs": true,
+      "tests/distro/label_environment.py": true,
+      "validation/global-label-policy/labels.bpf.c": true,
+      "validation/global-label-policy/loader.c": true,
+      "tests/distro/labeling-fault/fault.bpf.c": true,
+      "tests/distro/labeling-fault/loader.c": true
+    },
+    "missing": [
+      "tests/distro/labeling-fault/verify.py"
+    ]
+  },
+  "receiver-root-negative-v1": {
+    "assessment": {
+      "negative": true,
+      "observed": {
+        "first_device": 264241157,
+        "allowed": 1,
+        "denied": 1
+      },
+      "checks": {
+        "first_filesystem_observed": true,
+        "first_probe_allowed": true,
+        "denial_count": true,
+        "runtime_cleanup_complete": true,
+        "build_rejected": true,
+        "command_not_admitted": true,
+        "label_denial": true,
+        "cleanup_complete": true,
+        "output_absent": true
+      },
+      "passed": true,
+      "full_sandbox_qualified": false
+    },
+    "files_equal": {
+      "src/isolation/labels.rs": true,
+      "src/execution/helper.rs": false,
+      "src/isolation/receiver.rs": false,
+      "src/isolation/gate.rs": false,
+      "src/isolation/setup/gated/helper.rs": true,
+      "tests/distro/label_environment.py": true,
+      "validation/global-label-policy/labels.bpf.c": true,
+      "validation/global-label-policy/loader.c": true,
+      "tests/distro/labeling-fault/fault.bpf.c": true,
+      "tests/distro/labeling-fault/loader.c": true,
+      "tests/distro/labeling-fault/verify.py": true
+    },
+    "missing": []
+  }
+}

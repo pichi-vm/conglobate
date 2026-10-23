@@ -5280,3 +5280,17 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   remain qualification obligations. Exact-source parity does not close them.
 - No production changes, builds, VM runs or evidence deletion. M4 remains 0/3;
   environment-policy, pipeline/sealing and historical reconciliation remain.
+
+
+### M4 cumulative adherence attempt: label environment segment
+
+- Previous turn progressed with network ownership/evidence review. Continued with
+  the external fixed exception, restricted admission probe and differential
+  two-root fault controls; reviewed the maintained recipe/verifier assertions.
+- Added 11 source hashes and five historical comparisons. Distinguished unchanged
+  probe behavior from changed integrated receiver/gate code. Current negative
+  controls still need refresh; historical passes are not current whole-binary
+  qualification. Enforcing target boots remain a separate required result.
+- Recorded the remaining validation-directory/header dependency for M8 migration.
+  No production changes or VM runs; no evidence deleted. M4 remains 0/3; pipeline,
+  sealing and historical/preservation reconciliation remain in this review.
