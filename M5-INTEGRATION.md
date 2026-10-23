@@ -1,7 +1,7 @@
 # M5 direct-layer bootstrap implementation
 
-M4 is accepted with three clean self-review passes. M5 is active with zero clean
-passes after the second review found R2 documentation divergence. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
+M4 is accepted with three clean self-review passes. M5 is active with one clean
+pass on the corrected review scope after R2. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
 The integrated VM fixture now demonstrates a verified tool chain, dual-root
 commands through production aggregate preparation and execution acceptance,
 direct output sealing and verified reopening. Initial metadata and formatter
@@ -33,7 +33,7 @@ to verify filesystem content/metadata. No intermediate filesystem-image import.
    deadline. Remount both for every step; tool modifications persist only within
    bootstrap and never contribute layers to the output carapace.
 3. Direct sealing. After clean finalization, detach the output COW backing and use
-   snapshot/carapace wire/hash APIs (the carapace crate, without image conversion)
+   devmap-snapshot wire codecs and the existing verity/hash APIs (without image conversion)
    to seal the actual persistent snapshot. Publishable stage output requires both
    accepted command execution and successful seal. Disposal of tool backing is
    separate from retention of output backing. Keep wire parsing out of this crate.
@@ -373,3 +373,12 @@ required fallible cleanup contract. ARCHITECTURE.md now reflects that decision
 while preserving carapace format authority and devmap wire codecs. No production
 code changed. The design document is in the frozen scope, so M5 resets to 0/3;
 prior scope/pass evidence remains historical. M6 remains gated.
+
+
+## Restarted adherence pass 1
+
+The R2 ownership correction also applies to the implementation-order paragraph
+above: sealing uses devmap-snapshot and verity/hash APIs, not a carapace crate
+dependency. This reconciles the ledger with the already accepted architecture.
+The restarted requirements/lifecycle/API/evidence review is clean on scope-v2.
+M5 is at 1/3; M6 remains gated. See the adherence record for checked boundaries.

@@ -2878,3 +2878,14 @@ rules rather than silently shrinking acceptance criteria.
 - Architecture is part of the frozen scope, so clean streak resets to 0/3.
   Prior pass/scope remain historical. R2 and inspected coverage are recorded in
   preservation/MILESTONE-5-ADHERENCE.md. No redundant runtime tests; M6 stays gated.
+
+
+### M5 restarted adherence pass 1 after R2
+
+- Verified the new scope-v2 manifest and reviewed requirements, formatter and
+  paired lifecycle, public acceptance authority, Rust style and evidence.
+- Rehashed all stored evidence/artifacts for v176, v178, v180, v181 and v183–v186;
+  all match. No runtime rerun or independent qualification claim.
+- Reconciled the integration ledger's sealing API wording with R2 as well.
+  Production source is unchanged. Detailed review is in the M5 adherence record.
+- Restarted clean streak 1/3. M5 is not accepted; M6–M8 remain pending.

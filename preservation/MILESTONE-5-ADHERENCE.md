@@ -1,6 +1,6 @@
 # Milestone 5 adherence review
 
-Status: second review found R2 documentation divergence; clean streak **0/3**.
+Status: restarted review after R2; clean streak **1/3** on scope-v2.
 M5 is not accepted. The earlier 1/3 pass and scope remain historical.
 Starting implementation: `1cd3b69`. This review covers changes since the M4
 accepted implementation scope `ed0fecd408562aed8bc083e8fbe412c4b80ec514`.
@@ -164,3 +164,55 @@ backing recovery, filesystem flush/unmount, both-volume finalization, command
 outcome acceptance, policy-pin release, shared rollback and formatter capture.
 The final-state metadata assertions and failure receipts still match the stored
 VM evidence. That partial review does not count as a clean pass after R2.
+
+
+## Restarted full pass 1 — requirements, lifecycle and public authority
+
+Frozen scope: `preservation/m5-review/scope-v2.json`, implementation b12bfdd.
+All 120 hashes match. Only ARCHITECTURE.md differs from the historical frozen
+scope; production code and validation fixtures are unchanged. R2's correction
+is also reflected in the implementation-order ledger's sealing API wording.
+This is a self-review, not independent security qualification.
+
+1. Rechecked DESIGN bootstrap geometry, typed properties, tool/output separation,
+   reserved mountpoint, metadata, and direct sealing against the formatter,
+   paired storage and fixture. Formatter arguments use validated capacity/label
+   as data; captured executable/configuration bytes are the executed inputs.
+   Runtime staging is read-only; its private device mount is separate. No image
+   command selects a privileged formatter. Network, COPY, inventory and artifact
+   publication remain explicitly M6 obligations.
+2. Traced acquisition through namespace creation/pinning, pair mount, filesystem
+   pinning, domain/policy acquisition, helper launch and transfer. Both roots
+   are checked against policy before admission; pair views use the same mapped
+   namespace. Partial mount/pin/launch failures retain their remaining owners.
+   Reviewed the M5 changes to receiver diagnostics and mountpoint preparation;
+   they preserve bounded startup and reject symlink/submount attachment.
+3. Traced success and failure through shared execution, teardown, paired unmount,
+   snapshot validation and sealing. Private acceptance checks this execution's
+   outcome; cleanup cannot turn exit failure into success. Retry preserves the
+   cutoff and original diagnostics. Formatter wait/cancel only releases the
+   retained input box after successful reaping. Dropped unresolved owners retain
+   backing for VM disposal. Direct sealing uses shared wire decoders, retains
+   recorded zero exceptions and terminator metadata, and exposes read-only
+   readers. Sealing itself does not assert command or publication success.
+4. Rechecked sealed storage traits, associated concrete cleanup types, private
+   receipt fields and consuming transitions. Partial-state enums carry actual
+   resources rather than permission flags. Formatter profiles/capture are
+   immutable. Safe ManuallyDrop implements deliberate unresolved-owner retention;
+   no unsafe application Rust or synchronization sleeps were added. The shared
+   single/pair implementation avoids a second execution state machine. Accepted
+   unchanged M4 containment and teardown guarantees remain prerequisites.
+5. Compared fixture assertions to claims: two commands remount both roots,
+   separate tool/output state, deny labeling on unrelated tmpfs, and reopen the
+   sealed chain to check numeric ownership, modes, ACL, capability and foreign
+   SELinux labels. Reviewed formatter timeout/cancel/exhaustion/drop assertions
+   and failed/successful busy-output finalization. Rehashed every recorded file
+   (including external boot artifacts) for v176, v178, v180, v181 and v183–v186;
+   all hashes match and verdicts pass. These runs explicitly do not claim full
+   sandbox qualification. No new runtime run was needed for unchanged code.
+
+Result: clean, restarted streak **1/3**. Prior R1/R2 findings and historical pass
+remain intact. Full recipe orchestration and publication still belong to M6;
+representative distro boots, other architectures and confidential hardware are
+not proved by this VM fixture. No preservation material was retired. Two further
+complete clean passes are required before advancing.
