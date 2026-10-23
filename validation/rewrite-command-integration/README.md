@@ -1063,3 +1063,25 @@ outcome/timeout orchestration remain outstanding.
   separates them before its independent busy-unmount tests. Intermediate setup
   acquisition checks and full orchestrator integration remain outstanding.
   M4 adherence streak remains zero; no later milestone is advanced.
+
+### M4 outcome-preserving storage finalization (v121)
+
+- Previous turn progressed in fa0fac1. CommandResult::transpose now branches on
+  cleanup success/failure while retaining the primary outcome in both branches.
+  The mounted-volume completion has a consuming unmount method returning either
+  an outcome-associated FinalizedVolume or an outcome-associated failure owner.
+  Its retry retains the existing finalization deadline and original outcome.
+  FinalizedVolume documentation now explicitly identifies its separate status as
+  the outer helper's status rather than the recipe command outcome.
+- The fixture no longer separates command outcome from storage before unmount.
+  A fixture-only enum distinguishes aborted setup (no command observation) from
+  observed commands. A benign open directory forces unmount EBUSY. Both before
+  retry and after finalization it checks the exact primary outcome: zero, exit
+  37, or timeout. The policy-cleanup mode exercises exit 37 through policy cleanup
+  failure/retry followed by busy-unmount failure/retry in the same build step.
+- v121 normal disposable-VM suite passes and requires the new finalization marker.
+  Host suite including 44 compile-fail tests, both Clippy checks and formatting
+  pass. Exact source/logs and hashes are preserved and verified. No synchronization
+  sleeps added. M4 adherence streak remains zero: these are tests, not review
+  passes. Full production acquisition/orchestration and remaining M4 design/error
+  path review are still outstanding; later milestones remain unadvanced.

@@ -41,6 +41,22 @@ impl<T> CommandResult<T> {
         }
     }
 }
+impl<T, E> CommandResult<Result<T, E>> {
+    /// Branch on cleanup success without separating either branch from the
+    /// original command outcome. `?` can propagate the complete failure owner.
+    pub fn transpose(self) -> Result<CommandResult<T>, CommandResult<E>> {
+        match self.cleanup {
+            Ok(cleanup) => Ok(CommandResult {
+                outcome: self.outcome,
+                cleanup,
+            }),
+            Err(cleanup) => Err(CommandResult {
+                outcome: self.outcome,
+                cleanup,
+            }),
+        }
+    }
+}
 impl<'a, R: StepStorage> RunningCommand<'a, R> {
     /// Wait for the trusted helper's report under the original execution cutoff.
     /// Even on timeout or protocol failure, retain the command for full teardown.

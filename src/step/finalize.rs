@@ -21,7 +21,8 @@ struct Finalization<'ns, 'origin, 'workspace> {
     reaped: ReapedChildren,
 }
 /// Storage was flushed and cleanly unmounted within the original teardown
-/// budget. Command status is diagnostic; this is not a sealed-image receipt.
+/// budget. The status is the outer trusted helper's exit status, not the
+/// command outcome. This is not a sealed-image receipt.
 #[derive(Debug)]
 pub struct FinalizedVolume<'ns, 'origin, 'workspace> {
     volume: Volume<'ns, 'origin, 'workspace, Unmounted>,
@@ -142,5 +143,28 @@ impl<'ns, 'origin, 'workspace> TeardownCompletion<Volume<'ns, 'origin, 'workspac
 impl TeardownCompletion<()> {
     pub fn into_parts(self) -> (ExitStatus, ReapedChildren) {
         (self.released.status, self.released.reaped)
+    }
+}
+
+impl<'ns, 'origin, 'workspace>
+    super::CommandResult<TeardownCompletion<Volume<'ns, 'origin, 'workspace, Mounted>>>
+{
+    pub fn unmount(
+        self,
+    ) -> Result<
+        super::CommandResult<FinalizedVolume<'ns, 'origin, 'workspace>>,
+        super::CommandResult<Box<FinalizationFailure<'ns, 'origin, 'workspace>>>,
+    > {
+        self.map_cleanup(TeardownCompletion::unmount).transpose()
+    }
+}
+impl<'ns, 'origin, 'workspace>
+    super::CommandResult<Box<FinalizationFailure<'ns, 'origin, 'workspace>>>
+{
+    /// Preserve both primary outcome and the existing finalization deadline.
+    pub fn retry(
+        self,
+    ) -> Result<super::CommandResult<FinalizedVolume<'ns, 'origin, 'workspace>>, Self> {
+        self.map_cleanup(|failure| failure.retry()).transpose()
     }
 }

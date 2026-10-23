@@ -1,0 +1,1 @@
+Primary outcomes remain associated through busy-unmount failure and retry. Normal disposable VM suite passes; no full sandbox qualification or adherence pass.

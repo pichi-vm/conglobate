@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
+mod finalization;
 mod readiness;
 use conglobate::{
     anchor::{FilesystemPin, RecoveryDirectory},
@@ -13,6 +14,7 @@ use conglobate::{
     policy::{BoundDisabled, FilesystemTarget, LabelPolicy, PinDirectory},
     process::{ChildReaper, CommandPrivileges, CommandSyscalls, Supervision},
 };
+use finalization::FinalizationProbe;
 use readiness::Readiness;
 use std::{
     fs,
@@ -269,7 +271,9 @@ impl Integration {
                     .with_volume(volume);
                 step.send_volume_until(deadline)?;
                 let step = match mode {
-                    "pre-admission" => step.teardown(parent).map_err(|e| e.to_string())?,
+                    "pre-admission" => {
+                        FinalizationProbe::Setup(step.teardown(parent).map_err(|e| e.to_string())?)
+                    }
                     "setup-detached-failure" | "setup-attached-exit" => {
                         let failure = step.admit_until(deadline).unwrap_err();
                         let conglobate::step::StartFailure::Admission(failure) = failure else {
@@ -286,7 +290,7 @@ impl Integration {
                             }
                         );
                         fs::remove_file("/work/setup-failure-stage")?;
-                        step.teardown(parent).map_err(|e| e.to_string())?
+                        FinalizationProbe::Setup(step.teardown(parent).map_err(|e| e.to_string())?)
                     }
                     "admission-timeout" => {
                         let failure = step.admit_until(Instant::now()).unwrap_err();
@@ -295,7 +299,7 @@ impl Integration {
                         };
                         let (error, step) = failure.into_parts();
                         assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
-                        step.teardown(parent).map_err(|e| e.to_string())?
+                        FinalizationProbe::Setup(step.teardown(parent).map_err(|e| e.to_string())?)
                     }
                     _ => {
                         let prepared = setup_budget
@@ -363,13 +367,15 @@ impl Integration {
                         } else {
                             observed.teardown(parent)
                         };
-                        let (outcome, cleanup) = cleaned.into_parts();
+                        let cleaned = cleaned.transpose().map_err(|failure| {
+                            format!("{:?}: {}", failure.outcome(), failure.cleanup())
+                        })?;
                         assert_eq!(
-                            outcome.success(),
+                            cleaned.outcome().success(),
                             !matches!(mode, "timeout" | "shell-failure" | "policy-cleanup")
                         );
                         println!("PRIMARY_OUTCOME_AFTER_CLEANUP_PASS");
-                        cleanup.map_err(|e| e.to_string())?
+                        FinalizationProbe::Command(cleaned)
                     }
                 };
                 assert_eq!(fs::read_dir(recovery)?.count(), 0);
@@ -406,14 +412,7 @@ impl Integration {
                 println!("OWNED_VOLUME_COMMAND_{}_PASS", mode.to_uppercase());
                 println!("OWNED_VOLUME_SUPERVISED_TRANSFER_PASS");
                 println!("STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS");
-                let holder = fs::File::open(point)?;
-                let failure = step.unmount().unwrap_err();
-                assert_eq!(
-                    failure.diagnostics().operation().kind(),
-                    std::io::ErrorKind::ResourceBusy
-                );
-                drop(holder);
-                let (_, _, volume) = failure.retry().map_err(|e| e.to_string())?.into_parts();
+                let volume = step.unmount(point, mode)?;
                 let volume = volume
                     .mount_ext4(Path::new("/work"))
                     .map_err(|e| e.to_string())?;
