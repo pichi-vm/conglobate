@@ -899,8 +899,8 @@
       "evidence": "Pipeline::run is root-gated; CI Rust job now passes hosted",
       "remaining_action": "Portable VM execution in CI remains an M7 criterion",
       "historical_status": "open",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "maintained VM workflow implemented; hosted run pending",
+      "current_evidence": ".github/workflows/lifecycle.yml adds native amd64 KVM cache-storage, contained, runtime-scope and clone-filter; locked fixture build and failure artifacts. No hosted success yet. Full pipeline, distro boots and arm64 remain separate qualification obligations."
     },
     {
       "id": "tests-004",

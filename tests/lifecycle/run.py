@@ -60,11 +60,14 @@ class LifecycleRun:
                          'tests/lifecycle/run.py', 'tests/lifecycle/cache_fixture.py', 'tests/lifecycle/clone-probe.c', 'tests/vm_runtime.py'):
                 archive.add(REPO / name, arcname=name)
         env = os.environ.copy()
-        env.update(CARGO_BUILD_JOBS='2', TMPDIR='/var/tmp/conglobate-rewrite-tmp')
+        env.setdefault('CARGO_BUILD_JOBS', '2')
+        env.setdefault('TMPDIR', '/var/tmp/conglobate-rewrite-tmp')
+        Path(env['TMPDIR']).mkdir(parents=True, exist_ok=True)
+        toolchain = env.get('RUSTUP_TOOLCHAIN', 'stable')
         target = REPO / 'target/m7-stable'
         env['CARGO_TARGET_DIR'] = str(target)
         with (self.output / 'build.log').open('wb') as log:
-            subprocess.run(['cargo', '+stable', 'build', '--locked', '--offline',
+            subprocess.run(['cargo', f'+{toolchain}', 'build', '--locked', '--offline',
                             '--manifest-path', str(REPO / 'tests/lifecycle/Cargo.toml')],
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
         runtime = LifecycleRuntime(self.root, self.args.module_root.resolve(), self.args.kernel_release)

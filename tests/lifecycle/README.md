@@ -228,3 +228,20 @@ receiver launch followed by complete rollback.
 These cases execute no image command and do not qualify the final supported ID range.
 The earlier overflow-ID characterization remains recoverable in
 preservation/m7-review/unmapped-owner-v1/, including its source snapshot.
+
+## Hosted lifecycle CI
+
+The Disposable VM lifecycle workflow builds the maintained fixture with pinned
+Rust 1.94.0 and an installed Ubuntu generic kernel. It runs cache-storage,
+contained, runtime-scope and clone-filter in separate native amd64 KVM guests.
+The job requires accessible KVM; missing virtualization is a failure, not a skip.
+Package installation and KVM permissions are CI host preparation; privileged
+filesystem, namespace and policy assertions execute only in the guest. No
+recipe-supplied programs are run directly on the runner host.
+
+The runner honors RUSTUP_TOOLCHAIN (default stable), CARGO_BUILD_JOBS and TMPDIR.
+It builds offline from the locked fixture dependencies after the workflow fetch.
+CI uploads raw logs/status, assessments, input records, source archive and guest
+kernel/initramfs even after failure. Artifact retention is 14 days, not a durable
+M8 archive. This job covers lifecycle components, not full distro builds/boots,
+arm64, confidential VMs, or the environment-loaded labeling policy.

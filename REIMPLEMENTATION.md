@@ -6182,3 +6182,11 @@ Three wrapper tests, strict all-target Clippy and final formatting pass; initial
 fixture compile/assertion/format failures remain in yaml-scalar-boundary/.
 Only cfg(test) code changed; no production policy/ownership behavior changed or
 defect was found. No new adherence pass or broader resource-security claim.
+
+## Maintained lifecycle CI introduction
+
+Added native amd64 disposable-VM workflow for cache-storage, contained,
+runtime-scope and clone-filter. It requires KVM, uses a pinned Rust toolchain
+and local installed Ubuntu generic kernel, and retains raw failure/success
+artifacts. Runner now honors selected toolchain/TMPDIR/jobs. Hosted execution
+is pending; this is not yet passing qualification or a milestone gate.
