@@ -62,6 +62,12 @@ impl PinDirectory {
             Err(error) => Err(error),
         }
     }
+    pub(super) fn close(self) -> Result<(), (io::Error, Self)> {
+        match self.remove() {
+            Ok(()) => Ok(()),
+            Err(error) => Err((error, self)),
+        }
+    }
 }
 impl Drop for PinDirectory {
     fn drop(&mut self) {

@@ -26,6 +26,7 @@ pub struct PolicyInstallation {
 #[derive(Debug)]
 enum Pending {
     None,
+    Directory(PinDirectory),
     Pinned(LabelPolicy<PinnedDisabled>),
     Partial(DisabledPinRecovery),
 }
@@ -92,7 +93,6 @@ impl PolicyInstallation {
             let loaded = prepared.load().map_err(io::Error::other)?;
             Self::check(deadline)?;
             let directory = PinDirectory::create(&self.parent)?;
-            Self::check(deadline)?;
             Ok((loaded, directory))
         })();
         let (loaded, directory) = match loaded {
@@ -105,6 +105,13 @@ impl PolicyInstallation {
                 ));
             }
         };
+        if let Err(error) = Self::check(deadline) {
+            return Err(InstallationFailure::unbound(
+                error,
+                Pending::Directory(directory),
+                self.identities,
+            ));
+        }
         let pinned = match loaded.pin_disabled(directory) {
             Ok(pinned) => pinned,
             Err(failure) => {
@@ -167,6 +174,18 @@ impl InstallationFailure {
             } => {
                 let result = match pending {
                     Pending::None => return Ok(identities),
+                    Pending::Directory(directory) => {
+                        return match directory.close() {
+                            Ok(()) => Ok(identities),
+                            Err((error, directory)) => Err(Box::new(Self {
+                                diagnostics: self.diagnostics.followed_by(error.into()),
+                                failed: Failed::Unbound {
+                                    pending: Pending::Directory(directory),
+                                    identities,
+                                },
+                            })),
+                        };
+                    }
                     Pending::Pinned(policy) => policy.close(),
                     Pending::Partial(policy) => policy.cleanup(),
                 };

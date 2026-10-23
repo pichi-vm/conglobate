@@ -192,3 +192,17 @@ inspection in m4-review/command-boundary.md with source hashes. No contradiction
 found in that component. Runtime claims are tied to existing amd64 fixtures;
 full syscall-profile compatibility, dual-mount metadata and arm64/CC coverage
 are not inferred. This component review is not a full clean adherence pass.
+
+### R4: retain policy directory after setup expiry
+
+Acquisition/rollback inspection found a post-directory deadline failure that
+returned Pending::None after best-effort directory Drop. Corrected it to retain
+Pending::Directory and explicitly close it during cleanup, preserving the owner
+and diagnostics on removal failure. No links were attached at this point; the
+unpinned object can close normally. Detailed ownership trace and coverage limits
+are in m4-review/acquisition-rollback.md. This finding resets the full clean
+streak to zero. No exhaustive fault-injection claim is made.
+
+v155 normal VM suite, root tests and strict Clippy pass after R4 correction.
+Evidence/source/check logs are preserved with verified hashes. R4 is corrected;
+its specific post-creation expiry boundary remains source-reviewed coverage.

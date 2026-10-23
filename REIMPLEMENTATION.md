@@ -2645,3 +2645,15 @@ rules rather than silently shrinking acceptance criteria.
   evidence matrix and source hashes under preservation/m4-review.
 - No contradiction found in that component; full M4 review remains incomplete.
   No redundant runtime rerun or clean-pass claim. M4 streak remains zero.
+
+### M4 acquisition/rollback review and R4 correction (v155)
+
+- Traced namespace creation/pinning, mount/pin acquisition, domain publication,
+  policy installation, helper launch and each rollback phase. Recorded the
+  source/evidence trace in preservation/m4-review/acquisition-rollback.md.
+- Fixed post-policy-directory setup expiry: retain the directory for explicit
+  cleanup instead of relying on Drop and reporting no remaining resource.
+  Removal failure keeps ownership and diagnostics. No policy was active there.
+- Host tests/Clippy and normal VM suite pass; exact timeout boundary is reviewed
+  in source, not individually injected. v155 evidence hashes verified.
+- M4 full clean streak remains zero after the correction. M5–M8 remain pending.
