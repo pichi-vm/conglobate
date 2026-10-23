@@ -76,7 +76,7 @@ impl FormatterStageFailure {
 /// escapes; successful staging is not a formatter execution receipt.
 #[derive(Debug)]
 pub struct FormatterRuntime {
-    root: File,
+    pub(super) root: File,
     backing: Backing,
     captured: CapturedFormatter,
 }
@@ -98,6 +98,16 @@ impl CapturedFormatter {
             backing: None,
         })?;
         let staged = (|| -> io::Result<File> {
+            if self
+                .files()
+                .any(|(path, _)| path.as_ref().starts_with("dev"))
+            {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "formatter runtime reserves /dev for its assigned device",
+                ));
+            }
+            fs::create_dir(backing.directory.path().join("dev"))?;
             for (path, input) in self.files() {
                 let target = backing.directory.path().join(path.as_ref());
                 if let Some(parent) = target.parent() {

@@ -1,0 +1,454 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ mkdir -p /work/origin /work/mapped /work/conglobate-mount-decoy
++ unshare --user --map-root-user /idmap-probe privileges
+NATIVE_PRIVILEGES_EXEC_PASS
++ unshare --user --map-root-user /idmap-probe syscalls
+NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS
+NATIVE_PRIVILEGES_EXEC_PASS
++ unshare --user --map-root-user setpriv --bounding-set=-chown /idmap-probe privileges
++ grep -q 'required capability is not available' /work/privileges-negative
++ grep -q NATIVE_PRIVILEGES_EXEC_PASS /work/privileges-negative
++ echo NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
+NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
++ modprobe loop
++ modprobe ext4
++ truncate -s 64M /work/volume.ext4
++ mke2fs -q -t ext4 -F /work/volume.ext4
++ mount -o loop /work/volume.ext4 /work/origin
++ cp -a /image-root/. /work/origin/
++ /idmap-probe namespace-rejections
+POLICY_PRIVATE_NAMESPACE_REJECTED_PASS
+FOREIGN_CONTROL_MOUNT_DESCRIPTORS_REJECTED_PASS
+NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS
++ modprobe dm-zero
++ modprobe dm-snapshot
++ /idmap-probe snapshot-probe
+SNAPSHOT_EXHAUSTION_REJECTS_VALID_USAGE_PASS
+OWNED_PERSISTENT_SNAPSHOT_REACTIVATION_PASS
++ modprobe dm-verity
++ /idmap-probe prepare-scutes
+VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+VERITY_CACHE_CORRUPTION_READ_REJECTED_PASS
+VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+CACHE_BACKED_SCUTE_PREPARATION_PASS
+OWNED_VERITY_READ_AND_CLEANUP_PASS
++ /idmap-probe assemble-chain
+WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS
+CHAIN_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+INVALID_SECOND_SCUTE_CLEANUP_PASS
+OWNED_TWO_SCUTE_CHAIN_PASS
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ mkdir /work/pins
++ mount -t bpf bpf /work/pins
++ chmod 700 /work/pins
++ /idmap-probe domain-publication-probe
+DOMAIN_PUBLICATION_ABSENT_ROLLBACK_PASS
+DOMAIN_PUBLICATION_PRESENT_ROLLBACK_PASS
+DOMAIN_PUBLICATION_MALFORMED_ROLLBACK_PASS
+DOMAIN_PUBLICATION_MISMATCH_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-sandbox
++ cat /work/command-diagnostics
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+SANDBOX_TWO_STEP_PIPELINE_PASS
++ /idmap-probe volume-supervisor-sandbox-namespace-failure
+trusted command helper: No space left on device (os error 28)
+SANDBOX_NAMESPACE_FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-sandbox-mount-failure
+SANDBOX_MOUNT_FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-probe
+EXT4_TYPED_PROFILE_FORMAT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe formatter-probe
+CAPTURED_FORMATTER_EXECUTION_PASS
++ /idmap-probe volume-supervisor
+EXT4_TYPED_PROFILE_FORMAT_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+PRIMARY_OUTCOME_AFTER_CLEANUP_PASS
+OWNED_VOLUME_COMMAND_SUCCESS_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-launch-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+PREPARATION_LAUNCH-FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-exchange-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+PREPARATION_EXCHANGE-FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-registration-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+PREPARATION_REGISTRATION-FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-execute-success
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+INTEGRATED_EXECUTION_EXECUTE-SUCCESS_PASS
++ /idmap-probe volume-supervisor-execute-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+INTEGRATED_EXECUTION_EXECUTE-SHELL-FAILURE_PASS
++ /idmap-probe volume-supervisor-execute-timeout
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+INTEGRATED_EXECUTION_EXECUTE-TIMEOUT_PASS
++ /idmap-probe volume-supervisor-execute-output-timeout
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+INTEGRATED_EXECUTION_EXECUTE-OUTPUT-TIMEOUT_PASS
++ /idmap-probe volume-supervisor-execute-setup
+EXT4_TYPED_PROFILE_FORMAT_PASS
+INTEGRATED_EXECUTION_EXECUTE-SETUP_PASS
++ /idmap-probe volume-supervisor-execute-finish
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+RESTRICTED_LEAF_READY_BEFORE_ADMISSION_PASS
+injected local completion failure after successful shellINTEGRATED_EXECUTION_EXECUTE-FINISH_PASS
++ /idmap-probe volume-supervisor-execute-exhaustion
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+[    7.508674] EXT4-fs error (device dm-1): ext4_put_super:1315: comm idmap-probe: Couldn't clean up the journal
+[    7.511545] EXT4-fs (dm-1): Remounting filesystem read-only
+INTEGRATED_EXECUTION_SNAPSHOT_EXHAUSTION_REJECTED_PASS
++ /idmap-probe volume-supervisor-domain-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+DOMAIN_CREATION_FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-install-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+POLICY_INSTALLATION_FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-timeout
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+PRIMARY_OUTCOME_AFTER_CLEANUP_PASS
+OWNED_VOLUME_COMMAND_TIMEOUT_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+PRIMARY_OUTCOME_AFTER_CLEANUP_PASS
+OWNED_VOLUME_COMMAND_SHELL-FAILURE_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-pre-admission
+EXT4_TYPED_PROFILE_FORMAT_PASS
+OWNED_VOLUME_COMMAND_PRE-ADMISSION_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-admission-timeout
+EXT4_TYPED_PROFILE_FORMAT_PASS
+OWNED_VOLUME_COMMAND_ADMISSION-TIMEOUT_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-setup-detached
+EXT4_TYPED_PROFILE_FORMAT_PASS
+injected failure after detached root preparation
+OWNED_VOLUME_COMMAND_SETUP-DETACHED-FAILURE_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-setup-attached
+EXT4_TYPED_PROFILE_FORMAT_PASS
+OWNED_VOLUME_COMMAND_SETUP-ATTACHED-EXIT_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-policy-cleanup
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+BOUNDED_POLICY_CLEANUP_RETRY_PASS
+NONZERO_OUTCOME_THROUGH_CLEANUP_RETRY_PASS
+PRIMARY_OUTCOME_AFTER_CLEANUP_PASS
+OWNED_VOLUME_COMMAND_POLICY-CLEANUP_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-long-command
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+COMMAND_EXCEEDS_OLD_HELPER_LIMIT_PASS
+PRIMARY_OUTCOME_AFTER_CLEANUP_PASS
+OWNED_VOLUME_COMMAND_LONG-COMMAND_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-descriptor-rejection
+EXT4_TYPED_PROFILE_FORMAT_PASS
+RESTRICTED_COMMAND_EXTRA_DESCRIPTOR_REJECTED_PASS
+RESTRICTED_LEAF_READY_BEFORE_ADMISSION_PASS
+PRIMARY_OUTCOME_AFTER_CLEANUP_PASS
+OWNED_VOLUME_COMMAND_DESCRIPTOR-REJECTION_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe loop-probe
+RAM_LOOP_DEFERRED_DETACH_AND_BACKING_RETURN_PASS
++ /idmap-probe mapping-probe
+MAPPING_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_DM_ZERO_BUSY_AND_SETUP_CLEANUP_PASS
++ /idmap-probe workspace-probe
+FORMATTER_CAPTURED_READONLY_RUNTIME_PASS
+DETACHED_CONTEXT_FAILED_SETUP_RETRY_PASS
+CONTEXT_CLEANUP_FAILURE_RETAINS_PARENT_PASS
+DETACHED_READONLY_CONTEXT_AND_READER_LIFETIME_PASS
+WORKSPACE_CONTEXT_PARENT_LIFETIME_PASS
+DETACHED_RAM_WORKSPACE_SCRATCH_PASS
++ /idmap-probe reaper-probe
+NATIVE_REAPER_TIMEOUT_AND_RELEASE_PASS
++ /idmap-probe filesystem-pin-probe
+NATIVE_FILESYSTEM_PIN_RETAINS_UNMOUNTED_SOURCE_PASS
++ rm /usr/bin/unshare
++ test '!' -e /usr/bin/nsenter
++ test '!' -e /usr/bin/bwrap
++ /idmap-probe supervisor pre-admission-cancel
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+registration peer closed
+BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+PRODUCTION_STEP_CANCEL_BEFORE_ADMISSION_PASS
++ /idmap-probe supervisor admission-timeout
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+ADMISSION_TIMEOUT_CANCELS_WITHOUT_COMMAND_PASS
++ /idmap-probe supervisor policy-off
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+SCOPED_ROOT_TERMINATION_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS
+setfattr: /label-policy-off: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+INTEGRATED_COMMAND_POLICY-OFF_PASS
++ rm /work/origin/command-started
++ /idmap-probe supervisor success
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+SCOPED_ROOT_TERMINATION_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+INTEGRATED_COMMAND_SUCCESS_PASS
++ rm /work/origin/command-started
++ /idmap-probe supervisor timeout
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+SCOPED_ROOT_TERMINATION_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+INTEGRATED_COMMAND_TIMEOUT_PASS
++ rm /work/origin/command-started
++ /idmap-probe supervisor shell-failure
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+SCOPED_ROOT_TERMINATION_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS
+command failed: exit status: 37
+BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+INTEGRATED_COMMAND_SHELL-FAILURE_PASS
++ umount /work/cgroups
++ umount /work/pins
++ umount /work/origin
++ e2fsck -fn /work/volume.ext4
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/volume.ext4: 36/16384 files (2.8% non-contiguous), 16001/65536 blocks
++ mount -o loop,ro /work/volume.ext4 /work/origin
+++ getfattr --only-values -n security.selinux /work/origin/labelled
+getfattr: Removing leading '/' from absolute path names
++ test system_u:object_r:etc_t:s0 = system_u:object_r:etc_t:s0
++ echo INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS
+INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS
++ test '!' -e /work/origin/dev/null
++ test '!' -e /work/origin/dev/fd
++ test '!' -e /work/origin/dev/pts
++ test '!' -e /work/origin/dev/shm
++ test '!' -e /work/origin/sys/must-be-read-only
+++ cat /work/origin/command-completed
++ test completed = completed
+++ cat /work/origin/command-privileges
++ test privileges-checked = privileges-checked
+++ stat -c %u /work/origin/command-started
++ test 0 = 0
++ umount /work/origin
++ echo INTEGRATED_REMOUNT_PERSISTENCE_PASS
+INTEGRATED_REMOUNT_PERSISTENCE_PASS
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-69D21h
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-69D21h
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-CujSS0
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-CujSS0
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-SV2I4c
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-SV2I4c
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-ctP2eX
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-ctP2eX
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-decoy
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-decoy
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-gKfMea
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-gKfMea
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-yDhgGB
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-yDhgGB
++ echo POLICY_FIXTURE_CLEANUP_PASS
+POLICY_FIXTURE_CLEANUP_PASS
+IDMAP_PROBE_EXIT 0
+[   43.977133] sysrq: Resetting

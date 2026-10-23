@@ -1,0 +1,1 @@
+Failed: fixture formatter-probe dispatch was nested in unrelated volume mode, so formatter never ran. Preserved before correcting dispatch.

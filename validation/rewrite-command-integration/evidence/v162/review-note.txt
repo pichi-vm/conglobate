@@ -1,0 +1,1 @@
+Normal VM suite passed. Captured formatter executes with original binary absent, creates mountable ext4 on snapshot; helper device mount absent from retained runtime. Missing-dependency/failure tests not yet included.

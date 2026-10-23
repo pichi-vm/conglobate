@@ -2728,3 +2728,20 @@ rules rather than silently shrinking acceptance criteria.
   post-v160 host-only collision test is distinguished from booted sources.
 - M5 remains at zero adherence passes. Captured-runtime execution, dual-volume
   commands, direct sealing and reopened-chain verification are still required.
+
+### M5 captured formatter execution (v161–v163)
+
+- Formatting now owns captured runtime, writable snapshot and direct trusted child
+  together. Private mount/device transfer and helper chroot execute captured
+  bytes; no ambient executable/library path is used after root entry. The helper
+  receives only its output block device and essential private character devices.
+- v161 exposed a fixture dispatch mistake, preserved before correction. v162
+  passed with the original executable absent; v163 also rejects a missing loader
+  and recovers both owners. Normal VM suite, 52 library tests and root/fixture
+  Clippy pass. Sources, failures and artifact hashes are preserved.
+- Post-v163 source review fixed cleanup cutoff origin and retry diagnostics. Host
+  checks pass; timeout fault injection remains outstanding and is not inferred
+  from success/nonzero tests. See M5-INTEGRATION.md for exact boundaries.
+- Next connect this execution path to two-volume bootstrap and direct sealing,
+  with formatter/cancellation/backing and dual-volume failure coverage. M5 remains
+  at zero adherence passes; no later milestone advances.

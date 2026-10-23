@@ -106,3 +106,33 @@ The next implementation should connect the captured runtime and assigned device
 to a trusted helper with bounded execution and retained cleanup ownership, then
 immediately use that path in the dual-volume bootstrap fixture. It must not
 introduce another guardian or use synchronization sleeps.
+
+## Captured formatter execution (v161–v163)
+
+FormatterRuntime now consumes itself and the writable SnapshotMapping to launch
+the trusted formatter helper. Formatting retains both resources and the child
+wait owner. The helper receives detached runtime/device mounts over a private
+descriptor packet, enters private mount/network/IPC/UTS namespaces, chroots into
+the captured runtime and directly execs the captured executable. Its private dev
+mount contains only the assigned output block device and null/random/urandom.
+The runtime reserves dev; the parent view never gains the helper's submount.
+The environment is cleared and the exact builder-owned configuration is required.
+
+This is trusted setup, not image command execution: it retains initial-namespace
+root and runs only the trusted formatter. The formatter must directly perform
+its work; this path does not yet establish a descendant containment domain for
+arbitrary trusted tools that fork. No recipe executable or shell is accepted.
+Formatting uses the fixed setup cutoff. Wait failures retain process/storage/
+runtime and a separate fixed cleanup cutoff; retry history preserves the original
+failure. Reaped nonzero execution returns both resources for cleanup. Success
+checks snapshot health, but is not a sealed-layer or inventory receipt.
+
+v161 failed because the new fixture mode was dispatched inside an unrelated mode;
+its source/logs are preserved. v162 executes the captured formatter with the
+original executable absent, mounts the resulting ext4 and verifies the parent
+runtime has no output device. v163 additionally omits all captured dependencies
+and verifies execution fails without an ambient loader fallback, while recovering
+both owners. The complete normal VM suite passes. Post-v163 review tightened the
+cleanup cutoff and error-history handling; these edits have host checks, not a
+new timeout-injection claim. Formatter timeout/cancellation, backing-exhaustion
+and dual-volume failure qualification remain M5 work. No adherence pass claimed.

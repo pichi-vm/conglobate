@@ -1,0 +1,1 @@
+Normal VM suite passed: captured formatter succeeds with original binary absent; missing loader fails without ambient fallback, retains runtime/snapshot for cleanup; resulting output mounts. Timeout/cancellation fault injection and integrated bootstrap remain pending.

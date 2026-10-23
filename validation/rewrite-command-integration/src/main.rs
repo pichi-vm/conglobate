@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
 mod finalization;
+mod formatter;
 mod readiness;
 use conglobate::{
     anchor::{FilesystemPin, RecoveryDirectory},
@@ -40,6 +41,9 @@ impl Integration {
             invocation.execute(&HelperProgram::current()?);
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|arg| arg == "formatter-probe") {
+            return formatter::FormatterProbe::run();
+        }
         if args.get(1).is_some_and(|a| a == "domain-publication-probe") {
             use conglobate::domain::{CommandDomain, RecordDomainFailure};
             let directory = Path::new("/work/domain-publication-records");
