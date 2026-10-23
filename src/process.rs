@@ -202,6 +202,22 @@ impl<S: LiveState> Process<S> {
         self.resources.child.as_ref().expect("live child").id()
     }
 
+    /// Trusted namespace-helper use only. The enclosing supervisor owns the
+    /// execution deadline and cancels the entire containment domain. This wait
+    /// must never be used by that supervisor in place of its bounded wait.
+    pub(crate) fn wait_under_supervisor(mut self) -> Result<Process<Reaped>, WaitFailure<S>> {
+        match self.resources.child.as_mut().expect("live child").wait() {
+            Ok(status) => {
+                self.resources.child.take();
+                Ok(Process { resources: status })
+            }
+            Err(error) => Err(WaitFailure {
+                error: error.into(),
+                process: self,
+            }),
+        }
+    }
+
     pub fn wait_until(mut self, deadline: Instant) -> Result<Process<Reaped>, WaitFailure<S>> {
         loop {
             match self

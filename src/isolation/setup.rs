@@ -3,7 +3,10 @@
 
 mod gated;
 use super::{CommandDevices, CommandNamespaces};
-pub use gated::{GatedCommandSetup, GatedRootSetup};
+pub use gated::{
+    GatedCommandSetup, GatedRestrictedCommand, GatedRootSetup, HelperExecutionError,
+    RootPreparationError,
+};
 use rustix::{
     fd::{AsFd, OwnedFd},
     net::{

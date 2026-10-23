@@ -37,41 +37,29 @@ impl Integration {
         let args: Vec<_> = std::env::args().collect();
         if args.get(1).is_some_and(|a| a == "gated-namespaces") {
             let script = args.get(2).ok_or("script required")?;
-            let (scope, root) = conglobate::isolation::GatedCommandSetup::from_input()?.enter()?;
+            let setup = conglobate::isolation::GatedCommandSetup::from_input()?;
             let mut command = Command::new(std::env::current_exe()?);
-            command
-                .args(["gated-root", script])
-                .env_clear()
-                .stdin(root.into_input()?);
+            command.args(["gated-root", script]);
             if args.get(3).is_some_and(|arg| arg == "--probe-extra-fd") {
                 command.arg("--probe-extra-fd");
             }
-            let child = scope.spawn(command)?;
-            let status = child
-                .wait_until(Instant::now() + Duration::from_secs(30))?
-                .status();
+            let status = setup.execute(command)?;
             use std::os::unix::process::ExitStatusExt;
             std::process::exit(status.code().unwrap_or(128 + status.signal().unwrap_or(1)));
         }
         if args.get(1).is_some_and(|a| a == "gated-root") {
             let script = args.get(2).ok_or("script required")?;
-            let (devices, gate) = conglobate::isolation::GatedRootSetup::from_input()?.into_parts();
-            let scope = PrivateMountNamespace::enter()?;
-            let root = CommandRoot::from_current_directory(scope, devices)?;
-            let filter = CommandSyscalls::compile()?;
-            let command =
-                root.enter()?
-                    .restrict(script, CommandPrivileges::filesystem(), filter)?;
+            let command = conglobate::isolation::GatedRootSetup::from_input()?.restrict(script)?;
             let deadline = Instant::now() + Duration::from_secs(30);
             if args.get(3).is_some_and(|arg| arg == "--probe-extra-fd") {
                 let extra = fs::File::open("/dev/null")?;
-                let error = command.start(gate, deadline).unwrap_err();
+                let error = command.start(deadline).unwrap_err();
                 assert!(error.to_string().contains("would remain in command init"));
                 drop(extra);
                 println!("RESTRICTED_COMMAND_EXTRA_DESCRIPTOR_REJECTED_PASS");
                 return Ok(());
             }
-            command.start(gate, deadline)?;
+            command.start(deadline)?;
             unreachable!();
         }
         if args.get(1).is_some_and(|a| a == "volume-receiver") {

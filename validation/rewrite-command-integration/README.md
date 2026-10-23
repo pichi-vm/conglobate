@@ -1085,3 +1085,26 @@ outcome/timeout orchestration remain outstanding.
   sleeps added. M4 adherence streak remains zero: these are tests, not review
   passes. Full production acquisition/orchestration and remaining M4 design/error
   path review are still outstanding; later milestones remain unadvanced.
+
+### M4 production namespace/root helper extraction (v122–v123)
+
+- Previous turn progressed in b419e25 with source-grounded integration findings.
+  GatedCommandSetup::execute now owns namespace entry, root-input transfer,
+  trusted child launch and wait. The process wait used here is crate-private and
+  has no independent execution timeout: this helper is already inside the
+  supervisor-owned containment domain. Supervisor deadline/cancellation remain
+  required. Wait failures retain the child owner. No timer loop or sleep added.
+- GatedRootSetup::restrict now owns private mount namespace/root/runtime setup,
+  privilege/seccomp restriction and start endpoint retention. Its immutable
+  GatedRestrictedCommand is consumed at start. Errors are exit-only in trusted
+  helpers; no supervisor restoration or new guardian is introduced. The fixture
+  calls production methods and keeps benign extra-descriptor injection separate.
+- v122 normal VM and v123 supervisor-death VM pass. Timeout/cgroup cancellation,
+  label/descriptor checks and outcome-preserving cleanup still pass through the
+  extracted path. Host tests (44 compile-fail), both Clippy checks and formatting
+  pass; exact source/logs and all evidence hashes are preserved and verified.
+- I1/I3 are partly resolved, not closed. The outer receiver and binary dispatch
+  are not extracted, the receiver still has an independent thirty-second wait,
+  and setup cutoffs still need propagation. Preparation aggregate/error ownership
+  also remains open. M4-INTEGRATION.md records these limits. M4 streak zero;
+  tests are not adherence passes, and later milestones remain pending.

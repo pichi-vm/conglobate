@@ -10,7 +10,10 @@ mod setup;
 pub use gate::{ExecutionEndpoint, ExecutionGate, GateState, Ready, Waiting};
 mod user;
 pub use namespaces::CommandNamespaces;
-pub use setup::{CommandSetup, GatedCommandSetup, GatedRootSetup};
+pub use setup::{
+    CommandSetup, GatedCommandSetup, GatedRestrictedCommand, GatedRootSetup, HelperExecutionError,
+    RootPreparationError,
+};
 pub use user::{
     IdRange, Mapped, NamespaceViewFailure, PinnedNamespace, UserNamespace, UserNamespaceFailure,
     UserNamespaceReleaseFailure, UserNamespaceState,

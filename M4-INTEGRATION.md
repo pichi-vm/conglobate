@@ -67,3 +67,21 @@ fresh deadlines into production. No sleep establishes readiness or termination.
 
 M5–M8 remain required. This review neither moves their scope into M4 nor treats
 unavailable architecture/confidential-platform qualification as passed.
+
+## Extraction progress after review
+
+`GatedCommandSetup::execute` now owns ordinary namespace entry, startup input
+transfer, child launch and child status collection. Its crate-private process
+wait has no independent execution cutoff; it is used only inside the supervised
+command domain. The build supervisor must retain its finite deadline and domain
+cancellation. This is not an unbounded supervisor wait API.
+
+`GatedRootSetup::restrict` now owns ordinary private mount namespace creation,
+root entry, capability/seccomp restriction and retention of the start endpoint.
+The returned `GatedRestrictedCommand` consumes itself at start. The fixture uses
+these production methods while retaining its extra-descriptor fault injection.
+
+I1 and I3 are only partially resolved: the outer volume receiver is still fixture
+orchestration with a thirty-second child wait, and the full binary dispatcher is
+not implemented. I2, I4–I7 remain open. Short success/cancellation tests do not
+prove support for all authored durations; do not close the timing finding yet.

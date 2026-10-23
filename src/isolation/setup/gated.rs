@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
 use crate::isolation::{CommandNamespaces, ExecutionEndpoint};
+mod helper;
+pub use helper::{GatedRestrictedCommand, HelperExecutionError, RootPreparationError};
 
 #[derive(Debug)]
 pub struct GatedCommandSetup {

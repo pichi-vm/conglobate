@@ -1,0 +1,1 @@
+Extracted namespace execution and restricted-root preparation into production methods. Namespace child waits under supervisor-owned cancellation with no independent 30s command cutoff. Normal VM passes; outer receiver deadline/extraction remains outstanding.
