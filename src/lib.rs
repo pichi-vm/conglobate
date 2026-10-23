@@ -12,6 +12,7 @@ pub mod context;
 pub mod copy;
 pub mod document;
 pub mod domain;
+pub mod execution;
 pub mod filesystem;
 pub mod image;
 pub mod input;

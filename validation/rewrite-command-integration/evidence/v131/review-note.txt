@@ -1,0 +1,1 @@
+Production helper dispatch: supervisor-death suite passes. Independent VM controller observes live command domain and retained policy/filesystem pin, then powers off. No guardian is introduced. Full M4 remains unqualified.

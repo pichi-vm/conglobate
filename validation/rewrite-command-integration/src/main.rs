@@ -6,6 +6,7 @@ mod readiness;
 use conglobate::{
     anchor::{FilesystemPin, RecoveryDirectory},
     domain::RecordedDomain,
+    execution::{HelperInvocation, HelperProgram},
     filesystem::{Detached, Mount, MountPoint},
     isolation::{
         CommandDevices, CommandNamespaces, CommandRoot, CommandSetup, IdRange, Mapped,
@@ -33,6 +34,10 @@ impl Integration {
     fn run() -> Result<(), Box<dyn std::error::Error>> {
         if !Path::new("/conglobate-disposable-validation-vm").exists() {
             return Err("disposable guest required".into());
+        }
+        let helper_args: Vec<_> = std::env::args_os().skip(1).collect();
+        if let Some(invocation) = HelperInvocation::parse(&helper_args)? {
+            invocation.execute(&HelperProgram::current()?);
         }
         let args: Vec<_> = std::env::args().collect();
         if args.get(1).is_some_and(|a| a == "gated-namespaces") {
@@ -176,8 +181,7 @@ impl Integration {
             fs::create_dir(recovery)?;
             fs::set_permissions(recovery, fs::Permissions::from_mode(0o700))?;
             let lease = RecoveryDirectory::open(recovery)?;
-            let mut creator = Command::new(std::env::current_exe()?);
-            creator.arg("namespace-seed").env_clear();
+            let creator = HelperProgram::current()?.namespace_creator(setup_budget.cutoff()?)?;
             let user = UserNamespace::<Mapped>::create(
                 creator,
                 IdRange::new(100000, 65536)?,
@@ -274,12 +278,30 @@ impl Integration {
                 let policy = PolicyFixture::prepare(&lease, user, pin.expect("init volume pin"))?;
                 let parent = Path::new("/work/cgroups");
                 let domain = RecordedDomain::create(&lease, parent)?;
-                let mut command = Command::new(std::env::current_exe()?);
-                command
-                    .arg("volume-receiver")
-                    .arg(mode)
-                    .arg(setup_budget.cutoff()?.to_argument())
-                    .env_clear();
+                let command = if matches!(
+                    mode,
+                    "setup-detached-failure" | "setup-attached-exit" | "descriptor-rejection"
+                ) {
+                    let mut command = Command::new(std::env::current_exe()?);
+                    command
+                        .arg("volume-receiver")
+                        .arg(mode)
+                        .arg(setup_budget.cutoff()?.to_argument())
+                        .env_clear();
+                    command
+                } else {
+                    HelperProgram::current()?.receiver(
+                        Self::command_script(if mode == "policy-cleanup" {
+                            "shell-failure"
+                        } else {
+                            mode
+                        }),
+                        setup_budget.cutoff()?,
+                        100000,
+                        100000,
+                        Path::new("/work"),
+                    )?
+                };
                 let deadline = setup_budget.deadline();
                 let helper = domain
                     .launch(command, deadline)

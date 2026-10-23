@@ -2431,3 +2431,22 @@ rules rather than silently shrinking acceptance criteria.
   and evidence hashes pass. I4 is reduced, not closed: earlier acquisition and
   helper-launch failures still need a preparation aggregate. M4 streak remains
   zero; no clean adherence pass or later milestone advancement is claimed.
+
+### M4 production helper dispatcher (v130–v131)
+
+- Added HelperProgram/HelperInvocation with bounded canonical launch inputs,
+  explicit receiver identities/mount parent and immutable absolute setup cutoff.
+  Dispatch always exits after namespace/root changes. Ordinary VM cases now use
+  these production roles; deliberate fault injection stays in the fixture.
+- v130 normal VM suite passes, exercising labels, timeout, nonzero exit,
+  cleanup/finalization retry and execution beyond the setup deadline.
+- Host tests cover role round trips, unchanged cutoff, non-UTF8 mount path,
+  malformed/trailing/oversized inputs and invalid receiver identities/paths.
+  Root and fixture Clippy pass with warnings denied.
+- This does not provide the public build binary or the aggregate parent
+  preparation/rollback owner. Successful-step receipt gating remains open.
+  M4 stays at zero clean adherence passes; M5–M8 remain pending.
+
+- v131 supervisor-death suite passes through the production dispatcher; the
+  independent controller verifies retained live-domain policy/storage and
+  shuts down the VM. Source, host checks and artifact hashes are archived.

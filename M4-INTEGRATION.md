@@ -124,3 +124,26 @@ closed before identities are returned after successful policy cleanup.
 PrepareFailure state is removed. This reduces I4's fallible preparation surface,
 but does not replace the missing aggregate for earlier acquisitions or helper
 launch failure cleanup.
+
+### Production helper dispatch (v130–v131)
+
+The production execution module now owns immutable, versioned helper launch
+inputs and dispatch for namespace creation, volume reception, namespace entry
+and restricted root entry. All transitions carry the same absolute setup
+cutoff. The executable is supplied by the trusted caller; no helper is copied
+into the command filesystem. Launch inputs are bounded and canonical CBOR
+encoded for private argv transport, with receiver IDs and mount parent supplied
+explicitly rather than taken from fixture constants.
+
+Ordinary owned-volume fixture cases now call this dispatcher, including long
+commands, timeout, nonzero exit, cleanup retry and supervisor death. Only
+intentional setup and descriptor faults use the fixture helper branches.
+v130 passes the normal suite. The public build executable and parent acquisition
+coordinator are still absent: this is production library dispatch exercised by
+the fixture executable, not a complete CLI. I1 is reduced, not closed. I4's
+aggregate preparation failure owner and I6's success receipt remain required.
+No M4 adherence pass is claimed.
+
+- v131 supervisor-death suite passes through the production dispatcher; the
+  independent controller verifies retained live-domain policy/storage and
+  shuts down the VM. Source, host checks and artifact hashes are archived.
