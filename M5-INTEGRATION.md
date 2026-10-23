@@ -1,7 +1,7 @@
 # M5 direct-layer bootstrap implementation
 
-M4 is accepted with three clean self-review passes. M5 is active with zero clean
-passes. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
+M4 is accepted with three clean self-review passes. M5 is active with one clean
+self-review pass of three. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
 The integrated VM fixture now demonstrates a verified tool chain, dual-root
 commands through production aggregate preparation and execution acceptance,
 direct output sealing and verified reopening. Initial metadata and formatter
@@ -353,3 +353,12 @@ checks. All 56 library tests, 49 doctests and root/fixture strict Clippy pass.
 Exact evidence is preserved. R1 is addressed; the initial review is non-clean.
 See preservation/MILESTONE-5-ADHERENCE.md for coverage and remaining review work.
 No clean adherence pass is claimed; M5 remains at zero.
+
+
+## Full adherence pass 1
+
+Requirements/ownership-first self-review on frozen implementation f8ad64d is
+clean. Scope hashes and detailed observations are in preservation/m5-review/
+scope.json and preservation/MILESTONE-5-ADHERENCE.md. Evidence hashes and verdicts
+were reverified; test reruns were not treated as reviews. M5 remains unaccepted
+at 1/3 clean passes, and M6 remains gated.

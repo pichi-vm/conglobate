@@ -1,6 +1,6 @@
 # Milestone 5 adherence review
 
-Status: initial review with a finding; clean streak **0/3**. M5 is not accepted.
+Status: first full clean self-review complete; clean streak **1/3**. M5 is not accepted.
 Starting implementation: `1cd3b69`. This review covers changes since the M4
 accepted implementation scope `ed0fecd408562aed8bc083e8fbe412c4b80ec514`.
 The complete milestone boundary remains DESIGN.md, SANDBOX-DESIGN.txt,
@@ -57,3 +57,78 @@ requirements-to-evidence review remain before starting a clean streak. Repeated
 VM runs are regression evidence, not adherence passes. M6 publication/inventory,
 M7 distro/architecture/confidential-platform qualification and M8 retirement are
 not inferred from these tests. Legacy code and exploratory evidence remain intact.
+
+
+## Full clean pass 1 — requirements and ownership first
+
+Frozen implementation: `f8ad64d`; exact source/design/build/fixture hashes are in
+`preservation/m5-review/scope.json`. Ledger-only changes do not alter this scope.
+This is a self-review, not independent security qualification.
+
+1. Requirements: traced DESIGN.md bootstrap rules and SANDBOX-DESIGN.txt sections
+   3–8 through the actual verified-tool fixture and production APIs. Output is a
+   writable snapshot over a 64GiB dm-zero origin; filesystem size is independently
+   validated and passed as 4096-byte blocks. Captured trusted formatter runtime,
+   explicit ext4 profile, cleared environment and private assigned device are
+   used. No image import/conversion or recipe-provided privileged formatter args.
+   The tool overlay persists across its own steps, contributes no inherited
+   layer to output, and is discarded after finalization. Immutable input layer
+   data remains cache-backed. Both roots remount and receive scoped policy for
+   every command. Context/control/backing descriptors do not enter commands.
+2. Acquisition and transfer: traced namespace creation/pinning, both mounts,
+   both filesystem pins, domain creation, policy installation and helper launch
+   through StoragePreparation. Partial second mount/pin failure retains acquired
+   resources. Before admission, Step checks both roots against its bound policy.
+   The versioned packet enforces three CLOEXEC descriptors in tool/output/userns
+   order. Both idmapped views share the namespace; confined no-symlink/no-submount
+   `/mnt` resolution is repeated at attachment. Partial attachment owns both the
+   attached tool and detached output. The restricted command has no mount/control
+   descriptors or SYS_ADMIN; these restrictions remain the accepted M4 path.
+3. Teardown and acceptance: reviewed cancellation, reaping, domain drain/removal,
+   policy/identity cleanup, output-then-tool unmount and retry states. The original
+   setup/execution/teardown cutoffs are retained, with no retry renewal. Unfinished
+   command owners retain storage; R1 now also retains unfinished formatter inputs.
+   ExecutionStorage dispatch cannot manufacture a receipt: acceptance is private
+   and requires this command's exit success plus both snapshot health checks.
+   Failed outcomes stay failed through cleanup retries. Sealing requires detached
+   COW authority, trims only unused trailing capacity, uses snapshot wire codecs,
+   preserves recorded zero writes and hashes the retained bytes. Read-only sealed
+   cursors expose neither write access nor raw descriptors. Low-level sealing is
+   deliberately separate from command-success and future publication authority.
+4. Rust style/safety: reviewed changed modules and their generic interfaces.
+   Sealed marker states and associated resource types prevent invalid public
+   transitions; invariant-bearing fields remain private. Shared preparation and
+   execution traits have two concrete storage implementations, not parallel
+   single/pair command state machines. Internal cleanup enums own distinct partial
+   resource states; Options denote optional output/deadline or destructor slots.
+   Immutable formatter descriptions, consuming resource transitions and fallible
+   explicit cleanup are used. ManuallyDrop retention is safe Rust for unresolved
+   lifetime ownership, not unsafe field extraction. No new application unsafe,
+   production freestanding utility functions, synchronization sleeps or dependency
+   changes were introduced by M5. Cargo and lib.rs still forbid unsafe Rust.
+5. Evidence and preservation: checked assertions as well as pass markers. v176
+   covers partial pair acquisition and busy rollback; v178 covers aggregate setup
+   failures; v180 covers nonzero/timeout and successful/failed busy finalization;
+   v181 covers exact metadata; v183 covers formatter timeout/exhaustion; v184/v185
+   cover abandoned formatter owners; v186 runs the complete normal suite on R1's
+   corrected implementation. Recomputed all recorded hashes and checked verdicts
+   for those runs, including external kernel/initramfs/binary artifacts. All 26
+   changed source files present in v186's source archive match the working tree;
+   the remaining changed file is lib.rs's formatter module export, separately
+   covered by the frozen scope. Current host evidence is 56 library tests,
+   49 doctests and strict Clippy. No redundant test run was counted as review.
+   The external preservation archive exists and no preserved legacy/validation
+   paths were deleted since M4's accepted scope.
+
+Evidence boundaries: the fixture uses production preparation, execution,
+finalization and sealing, while fixture-owned cache metadata and orchestration
+exercise them together. M6 still owns the recipe coordinator, COPY, remaining
+stages, networking, inventory and atomic OCI publication. This review does not
+claim the binary is a completed builder. Distro boots and amd64/arm64 confidential
+hardware qualification remain M7; retirement remains M8. Formatter supervision
+covers the selected trusted direct executable, not arbitrary fork-capable tools.
+The deployment trusts its kernel and formatters and disposes of the VM if the
+supervisor dies; no guardian or cross-invocation recovery is reinstated.
+
+Result: no new finding; clean streak **1/3**. Two further full clean passes are
+required before M6. The R1-containing initial review is not part of this streak.
