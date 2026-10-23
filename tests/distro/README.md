@@ -94,3 +94,19 @@ a successful result record, then verifies all exported blob hashes. This avoids
 relying on an exit line that the kernel's reboot printk can interrupt; no sleep
 is used. Expected failed builds still produce a failing runner verdict, with
 negative-test assessments recorded separately.
+
+`--network-fixture` stages the maintained lifecycle fixture as a trusted DNS/TCP
+service in the disposable VM and waits for pipe-based readiness. It supplies
+that service's address through the ordinary `--resolv-conf` input. The service
+answers only the fixed `build.fixture` question and checks the expected TCP
+request; it does not fetch artifacts. The runner waits for successful service
+completion and checks that no conglobate veth links or nftables tables remain
+on either build success or failure. The service has a finite observation deadline.
+
+`network/recipe.yaml` exercises actual recipe DNS/TCP, read-only resolver injection,
+and a following offline step. `network/nonzero.yaml` and `network/timeout.yaml`
+reach the same exchange and then fail deliberately. Assess each completed run with
+`python3 tests/distro/network/verify.py RUN success|nonzero|timeout`. Failed builds
+still make the runner fail; the separate assessment requires the expected error,
+independent rejection status, output absence and cleanup checks. These are local
+VM-destination tests, not proof of external outbound NAT or IPv6 connectivity.

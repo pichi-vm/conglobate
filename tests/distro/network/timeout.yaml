@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+carapace:
+  from: qualification.local/fedora:43
+  derive:
+    - run: |
+        if printf 'invalid\n' >> /etc/resolv.conf; then
+          echo 'resolver unexpectedly writable' >&2
+          exit 1
+        fi
+        /bin/bash -eu -c '
+          exec 3<>/dev/tcp/build.fixture/45457
+          printf "request\n" >&3
+          IFS= read -r response <&3
+          test "$response" = reply
+          exec 3>&-
+        '
+        printf 'NETWORK_RECIPE_DNS_TCP_AND_READONLY_RESOLVER_PASS\n'
+        printf 'COMMAND_TIMEOUT_STARTED\n'
+        exec /bin/sleep 60
+      network: true
+      timeout: 5s

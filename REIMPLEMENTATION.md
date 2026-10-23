@@ -4633,3 +4633,27 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   collision, not an address collision. Link-local NAT is a separate design question;
   no address-policy change or link-local qualification is claimed by these tests.
   The previous goal turn's mounted rollback tests were concrete progress.
+
+### Actual recipe DNS/TCP, resolver protection and network failure cleanup
+
+- Added optional maintained distro-runner network fixture: safe Rust DNS/TCP
+  service in the disposable VM, pipe readiness before build, finite observation
+  timeout, resolver supplied through the normal CLI. Recipes use Fedora libc/bash
+  to resolve build.fixture and exchange fixed request/reply; attempts to append
+  to the injected resolver must fail. No production APIs or dependencies changed.
+- Successful network-command-v1 build/export passes, all artifact blob digests
+  verified. Following offline recipe step sees only loopback and no IPv4 routes.
+  Independent trusted guest status plus service/recipe markers and post-build
+  veth/nftables absence all pass. Source/context/input/artifact hashes preserved.
+- network-nonzero-v1 and network-timeout-v1 each reach DNS/TCP before deliberate
+  exit(7) or five-second timeout. Runners correctly fail; separate maintained
+  assessments require exact expected error, cleanup complete, output absent,
+  independent build rejection and all network resources removed. Both pass.
+- Strict lifecycle-fixture Clippy and Python compilation pass. Small evidence,
+  context bundles, verifier and source snapshots preserved; large VM assets remain
+  explicitly pending durable archival. Earlier goal turn's network ownership
+  migration was progress. No synchronization sleeps or policy registration added.
+- Scope limitation: destination is inside the VM, so these runs do not demonstrate
+  external outbound NAT or IPv6 forwarding. Nor do they close receiver start-gate,
+  supervisor-death or writeback cases. M4 remains 0/3 and the broader M5-M8 gates
+  remain open; these runs are validation evidence, not adherence passes.

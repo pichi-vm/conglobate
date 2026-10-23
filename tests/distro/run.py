@@ -22,7 +22,7 @@ from runtime import GuestRuntime
 
 
 class DistroRuntime(GuestRuntime):
-    TOOLS = GuestRuntime.TOOLS + ('ip', 'tar', 'sync')
+    TOOLS = GuestRuntime.TOOLS + ('ip', 'tar', 'sync', 'mkfifo')
     MODULES = GuestRuntime.MODULES + ('virtio_pci', 'virtio_blk', 'virtio_net')
 
 
@@ -42,7 +42,7 @@ class DistroRun:
         self.output.mkdir()
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as snapshot:
             for name in ('src', 'Cargo.toml', 'Cargo.lock',
-                         'tests/distro', 'validation/global-label-policy',
+                         'tests/distro', 'tests/lifecycle', 'validation/global-label-policy',
                          'validation/rewrite-command-integration/runtime.py'):
                 snapshot.add(REPOSITORY / name, arcname=name)
         env = os.environ.copy()
@@ -62,6 +62,27 @@ class DistroRun:
             policy_startup += '/label-fault\n'
             fault_observation = '/label-fault observe'
         runtime.executable(REPOSITORY / 'target/m7-stable/debug/conglobate', Path('usr/bin/conglobate'))
+        network_startup = ''
+        network_cleanup = ':'
+        if self.arguments.network_fixture:
+            with (self.output / 'network-fixture-build.log').open('wb') as log:
+                subprocess.run(['cargo', '+stable', 'build', '--locked', '--offline',
+                                '--manifest-path', 'tests/lifecycle/Cargo.toml'], cwd=REPOSITORY,
+                               env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
+            runtime.executable(REPOSITORY / 'target/m7-stable/debug/conglobate-lifecycle-tests',
+                               Path('network-fixture'))
+            network_startup = """mkfifo /work/network-ready
+/network-fixture network-service > /work/network-ready &
+network_service=$!
+read -r ready < /work/network-ready
+test "$ready" = NETWORK_SERVICE_READY
+rm /work/network-ready
+"""
+            network_cleanup = """wait "$network_service"
+for link in /sys/class/net/cgb*; do test ! -e "$link"; done
+nft list tables > /work/network-tables
+test -z "$(grep conglobate_ /work/network-tables)"
+echo NETWORK_BUILD_RESOURCE_CLEANUP_PASS"""
         # Enumerate only the trusted host formatter, never an image executable.
         formatter = Path(shutil.which('mke2fs'))
         formatter_files = {'usr/bin/mke2fs'}
@@ -94,7 +115,8 @@ class DistroRun:
         commit = subprocess.check_output(['git', '-C', str(context), 'rev-parse', 'HEAD'], text=True).strip()
         subprocess.run(['git', '-C', str(context), 'bundle', 'create',
                         str(self.output / 'context.bundle'), '--all'], check=True)
-        (self.root / 'etc/resolv.conf').write_text('nameserver 10.0.2.3\n')
+        (self.root / 'etc/resolv.conf').write_text(
+            'nameserver 10.0.2.15\n' if self.arguments.network_fixture else 'nameserver 10.0.2.3\n')
         (self.root / 'conglobate-disposable-validation-vm').touch()
         (self.root / 'build.sh').write_text(f'''#!/bin/bash
 set -eux
@@ -117,11 +139,14 @@ ip address add 10.0.2.15/24 dev "$interface"
 ip route add default via 10.0.2.2
 echo 1 > /proc/sys/net/ipv4/ip_forward
 echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
+{network_startup}
 if conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --resolv-conf /etc/resolv.conf --formatter-runtime /formatter.json; then
     {fault_observation or ':'}
+    {network_cleanup}
 else
     status=$?
     {fault_observation or ':'}
+    {network_cleanup}
     test ! -e /work/output
     echo FAILED_BUILD_OUTPUT_ABSENT
     exit "$status"
@@ -214,6 +239,8 @@ if __name__ == '__main__':
     parser.add_argument('--reference', default='qualification.local/fedora:43')
     parser.add_argument('--firmware-pmi', type=Path)
     parser.add_argument('--firmware-dtb', type=Path)
+    parser.add_argument('--network-fixture', action='store_true',
+                        help='Serve controlled guest DNS/TCP and assert network cleanup')
     parser.add_argument('--without-label-policy', action='store_true',
                         help='Negative validation only: omit environment policy loading')
     parser.add_argument('--label-fault-second-filesystem', action='store_true',

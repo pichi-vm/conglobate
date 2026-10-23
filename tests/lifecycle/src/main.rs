@@ -24,6 +24,7 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "network-service" => network::NetworkProbe::service(),
             [mode] if mode == "network-composite" => network::NetworkProbe::composite_failures(),
             [mode, contended] if mode == "network-allocation-lock-child" => {
                 match contended.to_str() {
