@@ -3,6 +3,11 @@ carapace:
   from: qualification.local/fedora:43
   derive:
     - run: |
+        mkdir -p /run/conglobate-resolver
+        rm -f /etc/resolv.conf
+        ln -s /run/conglobate-resolver/config /etc/resolv.conf
+        printf 'nameserver 192.0.2.123\n' > /run/conglobate-resolver/config
+    - run: |
         if printf 'invalid\n' >> /etc/resolv.conf; then
           echo 'resolver unexpectedly writable' >&2
           exit 1
@@ -21,4 +26,8 @@ carapace:
         test "$(wc -l < /proc/net/route)" = 1
         test "$(grep -c : /proc/net/dev)" = 1
         grep -q "lo:" /proc/net/dev
+        test -L /etc/resolv.conf
+        test "$(readlink /etc/resolv.conf)" = /run/conglobate-resolver/config
+        test "$(cat /run/conglobate-resolver/config)" = 'nameserver 192.0.2.123'
+        printf 'NETWORK_RESOLVER_SYMLINK_AND_CONTENT_RESTORED_PASS\n'
         printf 'NETWORK_FOLLOWING_OFFLINE_STEP_PASS\n'

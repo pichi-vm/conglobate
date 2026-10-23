@@ -1,0 +1,18 @@
+{
+  "mode": "success",
+  "checks": {
+    "NETWORK_RESTRICTED_IMAGE_DNS_AND_TCP_PASS": true,
+    "NETWORK_RECIPE_DNS_TCP_AND_READONLY_RESOLVER_PASS": true,
+    "NETWORK_BUILD_RESOURCE_CLEANUP_PASS": true,
+    "runtime_cleanup": true,
+    "resolver_restored": true,
+    "following_offline_step": true,
+    "build_export": true,
+    "independent_status": true
+  },
+  "passed": true,
+  "external_ipv4_tcp_observed": false,
+  "ipv4_source_translation_observed": false,
+  "external_outbound_nat_qualified": false,
+  "full_sandbox_qualified": false
+}

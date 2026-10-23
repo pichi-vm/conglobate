@@ -5120,3 +5120,24 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   No target boot, kernel D-state child or confidential-platform claim. Remaining
   resolver-failure reruns and integrated timing review are next. M4 remains 0/3;
   full milestone scope and durable-archive obligations are unchanged.
+
+### M4-T1 network failure paths and resolver restoration rerun
+
+- Previous turn progressed with cleanup deadline and live descendant tests
+  f1a5a22. Reran actual network command nonzero and timeout recipes against the
+  separated shell/cleanup protocol. Both pass controlled DNS/TCP and read-only
+  injection checks, preserve expected failure, complete cleanup, remove owned
+  links/rules, and leave output absent. Runner nonzero is the expected result;
+  independent failure-mode verifiers pass.
+- Strengthened success recipe with known original resolver bytes behind an
+  absolute /etc/resolv.conf symlink into /run. Network injection works; the next
+  offline step observes the original symlink and exact original contents plus
+  no network attachment. Actual build/export and independent verifier pass.
+- Sources, context bundles, logs, status, assessments and executed verifier are
+  preserved under preservation/m7-review/status-network-{nonzero,timeout,resolver}-v1.
+  Production source bytes match current tree. No production changes or new boot,
+  external-NAT/IPv6 or platform qualification. Large assets remain unarchived.
+- These close the planned resolver/failure-path reruns for the timing correction.
+  Source/evidence reconciliation and remaining kernel-blocked descendant scope
+  still require review before claiming M4-T1 fully qualified. M4 remains 0/3;
+  all full milestone and preservation obligations remain active.

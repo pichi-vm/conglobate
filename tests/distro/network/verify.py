@@ -26,6 +26,7 @@ class NetworkEvidence:
         checks['runtime_cleanup'] = 'runtime cleanup:' not in serial and 'runtime retained' not in serial
         if self.mode in ('success', 'external', 'external-nat'):
             if self.mode == 'success':
+                checks['resolver_restored'] = '\nNETWORK_RESOLVER_SYMLINK_AND_CONTENT_RESTORED_PASS\n' in serial
                 checks['following_offline_step'] = '\nNETWORK_FOLLOWING_OFFLINE_STEP_PASS\n' in serial
             checks['build_export'] = '\nDISTRO_BUILD_AND_EXPORT_PASS\n' in serial
             checks['independent_status'] = status == b'DISTRO_BUILD_EXIT 0\n'

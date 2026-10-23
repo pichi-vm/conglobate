@@ -1,0 +1,12 @@
+{
+  "baseline": "f1a5a22",
+  "production_changed": false,
+  "passed": true,
+  "coverage": "actual network command reaches DNS/TCP then execution timeout; cleanup complete; links/rules absent; failed build output absent",
+  "limitations": [
+    "VM-local controlled service, not external NAT or IPv6",
+    "discarded storage not asserted content-restored",
+    "ordinary amd64 VM only",
+    "large artifacts unarchived"
+  ]
+}
