@@ -50,6 +50,23 @@ pub struct RuntimeFailure<'w> {
     retained: Option<RuntimeMounts<'w>>,
     deadline: Instant,
 }
+/// A scoped operation failed, or its runtime could not be closed. Cleanup
+/// failures retain the runtime owner; successful operation output never escapes
+/// alongside a failed close.
+#[derive(Debug, thiserror::Error)]
+pub enum RuntimeScopeFailure<'w, E> {
+    #[error("{0}")]
+    Create(RuntimeFailure<'w>),
+    #[error("{0}")]
+    Operation(E),
+    #[error("{0}")]
+    Cleanup(RuntimeFailure<'w>),
+    #[error("{operation}; runtime cleanup: {cleanup}")]
+    Both {
+        operation: E,
+        cleanup: RuntimeFailure<'w>,
+    },
+}
 impl RuntimeFailure<'_> {
     pub fn cleanup(self) -> Result<(), Self> {
         let Self {
@@ -70,6 +87,30 @@ impl RuntimeFailure<'_> {
     }
 }
 impl<'w> Runtime<'w> {
+    /// Run trusted stage orchestration and require explicit runtime close on
+    /// either returned outcome. Panic/crash still requires dedicated VM disposal.
+    /// Returned output cannot borrow the runtime being closed.
+    /// ```compile_fail
+    /// use conglobate::storage::{Runtime, Workspace};
+    /// fn cannot_escape(workspace: &Workspace) {
+    ///     let paths = Runtime::scoped(workspace, std::path::Path::new("/run"),
+    ///         |runtime| runtime.paths());
+    /// }
+    /// ```
+    pub fn scoped<T, E>(
+        workspace: &'w Workspace,
+        parent: &Path,
+        operation: impl FnOnce(&Self) -> Result<T, E>,
+    ) -> Result<T, RuntimeScopeFailure<'w, E>> {
+        let runtime = Self::create(workspace, parent).map_err(RuntimeScopeFailure::Create)?;
+        let result = operation(&runtime);
+        match (result, runtime.close()) {
+            (Ok(output), Ok(())) => Ok(output),
+            (Err(error), Ok(())) => Err(RuntimeScopeFailure::Operation(error)),
+            (Ok(_), Err(error)) => Err(RuntimeScopeFailure::Cleanup(error)),
+            (Err(operation), Err(cleanup)) => Err(RuntimeScopeFailure::Both { operation, cleanup }),
+        }
+    }
     /// The deployment parent must be a real root-owned directory, not writable
     /// by group/other. Only an empty private attachment point is created there;
     /// mutable control data lives on the existing workspace tmpfs.

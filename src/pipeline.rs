@@ -42,6 +42,14 @@ pub enum BuildError {
     #[error("conglobate requires root")]
     RootRequired,
 }
+impl From<crate::storage::RuntimeScopeFailure<'_, BuildError>> for BuildError {
+    fn from(failure: crate::storage::RuntimeScopeFailure<'_, BuildError>) -> Self {
+        match failure {
+            crate::storage::RuntimeScopeFailure::Operation(error) => error,
+            failure => Self::Execution(failure.to_string()),
+        }
+    }
+}
 #[derive(Debug)]
 pub struct Pipeline {
     request: BuildRequest,

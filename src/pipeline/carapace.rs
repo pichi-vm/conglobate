@@ -60,17 +60,10 @@ impl<'a> CarapaceBuild<'a> {
         request: &BuildRequest,
         workspace: &Workspace,
     ) -> Result<CompletedImage, BuildError> {
-        let runtime = Runtime::create(workspace, Path::new("/run")).map_err(Self::error)?;
-        let result = self.derive(request, workspace, &runtime);
-        let cleanup = runtime.close().map_err(Self::error);
-        match (result, cleanup) {
-            (Ok(output), Ok(())) => Ok(output),
-            (Err(error), Ok(())) => Err(error),
-            (Ok(_), Err(error)) => Err(error),
-            (Err(error), Err(cleanup)) => {
-                Err(Self::error(format!("{error}; runtime cleanup: {cleanup}")))
-            }
-        }
+        Runtime::scoped(workspace, Path::new("/run"), |runtime| {
+            self.derive(request, workspace, runtime)
+        })
+        .map_err(BuildError::from)
     }
     pub(super) fn run_layers<'w>(
         &self,

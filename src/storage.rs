@@ -3,7 +3,7 @@
 
 //! Supervisor-owned mutable RAM storage. Immutable layers remain cache-backed.
 mod runtime;
-pub use runtime::{Runtime, RuntimeFailure, RuntimePaths};
+pub use runtime::{Runtime, RuntimeFailure, RuntimePaths, RuntimeScopeFailure};
 mod diagnostics;
 pub use diagnostics::FailureDiagnostics;
 mod chain;

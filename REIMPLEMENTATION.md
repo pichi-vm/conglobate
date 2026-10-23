@@ -5357,3 +5357,18 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   preservation/m7-review/api-simplification/.
 - Updated historical action dispositions. No new VM/platform evidence, no full
   adherence pass. M4 stays 0/3 and all larger outstanding goal requirements remain.
+
+
+### Shared runtime create/close orchestration
+
+- Previous turn progressed with three accepted API simplifications. Implemented
+  simplification-011: Runtime::scoped now owns all three coordinators' explicit
+  create/operation/close flow. Typed scope failures retain cleanup owners and
+  both errors; successful cleanup preserves the original typed stage error.
+- Output cannot escape on close failure or borrow the runtime being closed.
+  Added a compile-fail lifetime check. Bootstrap formatter staging remains inside
+  the close scope. Panic/crash disposal contract and existing close deadlines
+  remain unchanged; broader typed pipeline diagnostics remain open.
+- 126 library tests, 53 doctests and strict library Clippy passed. Retained the
+  invalid combined Cargo invocation and successful separate runs. No VM execution
+  or complete adherence pass; M4 streak stays 0/3. Logs/review: runtime-scope/.

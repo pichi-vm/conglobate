@@ -52,27 +52,21 @@ impl<'a> BootstrapBuild<'a> {
             .formatter_runtime()
             .ok_or_else(|| Self::error("bootstrap requires --formatter-runtime"))?;
         let captured = FormatterManifest::capture(manifest)?;
-        let runtime = Runtime::create(workspace, Path::new("/run")).map_err(Self::error)?;
-        let result = match captured.stage(workspace) {
-            Ok(formatter) => self.produce(request, workspace, &runtime, formatter),
-            Err(failure) => {
-                let primary = failure.to_string();
-                Err(match failure.cleanup() {
-                    Ok(()) => Self::error(primary),
-                    Err(cleanup) => {
-                        Self::error(format!("{primary}; formatter staging cleanup: {cleanup}"))
-                    }
-                })
+        Runtime::scoped(workspace, Path::new("/run"), |runtime| {
+            match captured.stage(workspace) {
+                Ok(formatter) => self.produce(request, workspace, runtime, formatter),
+                Err(failure) => {
+                    let primary = failure.to_string();
+                    Err(match failure.cleanup() {
+                        Ok(()) => Self::error(primary),
+                        Err(cleanup) => {
+                            Self::error(format!("{primary}; formatter staging cleanup: {cleanup}"))
+                        }
+                    })
+                }
             }
-        };
-        let cleanup = runtime.close().map_err(Self::error);
-        match (result, cleanup) {
-            (Ok(output), Ok(())) => Ok(output),
-            (Err(error), Ok(())) | (Ok(_), Err(error)) => Err(error),
-            (Err(error), Err(cleanup)) => {
-                Err(Self::error(format!("{error}; runtime cleanup: {cleanup}")))
-            }
-        }
+        })
+        .map_err(BuildError::from)
     }
     fn produce(
         &self,

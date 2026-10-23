@@ -57,16 +57,10 @@ impl<'a> FirmwareBuild<'a> {
         request: &BuildRequest,
         workspace: &Workspace,
     ) -> Result<CompletedImage, BuildError> {
-        let runtime = Runtime::create(workspace, Path::new("/run")).map_err(Self::error)?;
-        let result = self.produce(request, workspace, &runtime);
-        let cleanup = runtime.close().map_err(Self::error);
-        match (result, cleanup) {
-            (Ok(output), Ok(())) => Ok(output),
-            (Err(error), Ok(())) | (Ok(_), Err(error)) => Err(error),
-            (Err(error), Err(cleanup)) => {
-                Err(Self::error(format!("{error}; runtime cleanup: {cleanup}")))
-            }
-        }
+        Runtime::scoped(workspace, Path::new("/run"), |runtime| {
+            self.produce(request, workspace, runtime)
+        })
+        .map_err(BuildError::from)
     }
     fn produce(
         &self,
