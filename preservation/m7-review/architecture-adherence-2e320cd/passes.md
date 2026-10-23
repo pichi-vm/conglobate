@@ -112,3 +112,49 @@ M8 still requires durable recovery of external bytes. M4-M8 and the three-pass
 implementation gates remain open; architectural completeness does not substitute
 for their tests. No new architecture findings. Clean streak 2/3; one full pass
 remains before M2 acceptance.
+
+## Pass 3 — evidence/claims-first — CLEAN (3/3)
+
+Rechecked frozen hashes, then started from maintained assessors and fixture
+assertions rather than design prose. Differential labeling assessment requires
+one trusted observation, first-device allow and second-device denial, rejected
+build status, no command admission, clean cleanup and no published output. It
+cannot be replaced by command-level xattr success. Confinement assessment scopes
+its capability/FD/path observations to native amd64 ordinary VM; descendant
+fixture uses FIFO readiness and nonblocking reader absence, not sleeps. Bootstrap
+assessment separately verifies output graph/receipt/canonical inventory and
+explicitly denies distro/full-sandbox qualification. These narrow claims match
+the architecture mapping, not a claim that the full required suite passes.
+
+Worked from those evidence boundaries through all M2 categories again: actual
+module/owner table and sealed state traits; immutable input plan/profile; scoped
+borrowed filesystem authority; consuming resource transitions and retained
+failure owners; explicit quiescence/finalization; typed ext4 capacity/label
+properties; version-two strict deterministic inventory and no-replace output;
+requirements-to-tests mapping with historical and outstanding coverage identified.
+The design keeps untrusted commands separate from supervisor inputs, runtime
+controls, image backing and publication. Fixed external labeling policy removes
+registration authority without removing containment or both-root admission.
+
+Style/ownership cross-check: private fields, sealed markers and safe library APIs
+support the stated boundaries; no new abstraction is required simply to rename
+source to match old proposals. RAII is not a successful-finalization receipt.
+CommandOutcome remains distinct from helper status; cleanup retries cannot
+launder failure into success. Publication follows complete image/inventory and
+context cleanup. The dedicated VM shutdown assumption is now explicit in both
+introductory and detailed contracts, without coupling binary code to VM transport.
+
+Preservation/claims check: prior source/evidence remains recoverable in Git and
+named archives; the architecture archive checksums were verified in this sequence.
+Large external assets explicitly remain not durably archived. Runtime-constructor
+migration, legacy policy-API fault coverage, receiver start-send injection,
+Fedora/Debian reruns and Alpine/NixOS/arm64/confidential-platform qualification
+remain requirements. Neither a successful parser test nor an ordinary VM marker
+is treated as proof of those obligations. Latest terminal Claude consensus has no
+unresolved architecture findings; its review is not counted as a self-review pass.
+
+All reviewed hashes unchanged after inspection. No findings. Clean streak 3/3.
+M2 architecture is accepted for the registration-free lifecycle revision. This
+restores permission to work on M4; it does not accept M4-M8 or waive any of their
+three-pass gates. No test rerun, production mutation or reference retirement was
+used to manufacture this result.
