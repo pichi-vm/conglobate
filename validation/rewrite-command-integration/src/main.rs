@@ -266,6 +266,145 @@ impl Integration {
             fs::create_dir(recovery)?;
             fs::set_permissions(recovery, fs::Permissions::from_mode(0o700))?;
             let lease = RecoveryDirectory::open(recovery)?;
+            if matches!(
+                args[1].as_str(),
+                "volume-supervisor-sandbox"
+                    | "volume-supervisor-sandbox-mount-failure"
+                    | "volume-supervisor-sandbox-namespace-failure"
+            ) {
+                use conglobate::step::{CommandSandbox, SandboxDirectories};
+                let mut volume = Volume::<Unmounted>::in_init_namespace(snapshot, &lease)
+                    .map_err(|e| e.to_string())?;
+                if args[1] == "volume-supervisor-sandbox" {
+                    assert!(
+                        Command::new("mke2fs")
+                            .args(["-q", "-t", "ext4", "-F"])
+                            .arg(node)
+                            .status()?
+                            .success()
+                    );
+                    let mounted = volume
+                        .mount_ext4(Path::new("/work"))
+                        .map_err(|e| e.to_string())?;
+                    let paths = points()?;
+                    let point = paths.first().unwrap();
+                    assert!(
+                        Command::new("cp")
+                            .args(["-a", "/image-root/."])
+                            .arg(point)
+                            .status()?
+                            .success()
+                    );
+                    volume = mounted.unmount().map_err(|e| e.to_string())?;
+                }
+                let sandbox = CommandSandbox::new(
+                    HelperProgram::current()?,
+                    SandboxDirectories::new(
+                        &lease,
+                        Path::new("/work"),
+                        Path::new("/work/pins"),
+                        Path::new("/work/cgroups"),
+                    ),
+                    IdRange::new(100000, 65536)?,
+                    IdRange::new(100000, 65536)?,
+                );
+                let mut reaper = ChildReaper::install()?;
+                if args[1] != "volume-supervisor-sandbox" {
+                    let namespace_failure =
+                        args[1] == "volume-supervisor-sandbox-namespace-failure";
+                    let limit = Path::new("/proc/sys/user/max_user_namespaces");
+                    let original = fs::read_to_string(limit)?;
+                    if namespace_failure {
+                        fs::write(limit, "0")?;
+                    }
+                    let result = sandbox.prepare(volume, reaper, &setup_budget);
+                    if namespace_failure {
+                        fs::write(limit, original)?;
+                    }
+                    let failure = result.unwrap_err();
+                    let original_kind = failure.diagnostics().operation().kind();
+                    assert_ne!(original_kind, std::io::ErrorKind::TimedOut);
+                    if !namespace_failure {
+                        assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(22));
+                    }
+                    let (diagnostics, returned) =
+                        failure.rollback().map_err(|e| e.to_string())?.into_parts();
+                    assert_eq!(diagnostics.operation().kind(), original_kind);
+                    assert_eq!(fs::read_dir(recovery)?.count(), 0);
+                    assert!(points()?.is_empty());
+                    returned
+                        .into_snapshot()
+                        .close()
+                        .map_err(|e| e.to_string())?
+                        .detach()
+                        .map_err(|e| e.to_string())?;
+                    origin.close()?;
+                    drop(sandbox);
+                    drop(lease);
+                    fs::remove_dir(recovery)?;
+                    fs::remove_file(node)?;
+                    assert!(
+                        fs::read_to_string("/proc/thread-self/children")?
+                            .trim()
+                            .is_empty()
+                    );
+                    if namespace_failure {
+                        println!("SANDBOX_NAMESPACE_FAILURE_ROLLBACK_PASS");
+                    } else {
+                        println!("SANDBOX_MOUNT_FAILURE_ROLLBACK_PASS");
+                    }
+                    return Ok(());
+                }
+                for index in 0..2 {
+                    let budget = conglobate::step::SetupBudget::begin();
+                    let script = if index == 0 {
+                        Self::command_script("success")
+                    } else {
+                        r#"read -r value < /command-started; test "$value" = image-write; test ! -e /work; test ! -e /dev/shm/step-data; printf second > /second-step"#.into()
+                    };
+                    let command = sandbox.receiver(script, &budget)?;
+                    let preparation = sandbox
+                        .prepare(volume, reaper, &budget)
+                        .map_err(|e| e.to_string())?;
+                    let step = preparation
+                        .launch(command, budget.deadline(), Path::new("/work/cgroups"))
+                        .map_err(|e| e.to_string())?;
+                    let completed = step
+                        .execute(budget, "5s".parse()?, Path::new("/work/cgroups"))
+                        .map_err(|e| e.to_string())?;
+                    (volume, reaper) = completed.into_parts();
+                    assert_eq!(fs::read_dir(recovery)?.count(), 0);
+                    assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
+                    assert!(points()?.is_empty());
+                    assert!(
+                        fs::read_to_string("/proc/thread-self/children")?
+                            .trim()
+                            .is_empty()
+                    );
+                }
+                let mounted = volume
+                    .mount_ext4(Path::new("/work"))
+                    .map_err(|e| e.to_string())?;
+                let paths = points()?;
+                assert_eq!(
+                    fs::read(paths.first().unwrap().join("second-step"))?,
+                    b"second"
+                );
+                let volume = mounted.unmount().map_err(|e| e.to_string())?;
+                volume
+                    .into_snapshot()
+                    .close()
+                    .map_err(|e| e.to_string())?
+                    .detach()
+                    .map_err(|e| e.to_string())?;
+                origin.close()?;
+                drop(sandbox);
+                drop(lease);
+                fs::remove_dir(recovery)?;
+                fs::remove_file(node)?;
+                println!("SANDBOX_TWO_STEP_PIPELINE_PASS");
+                return Ok(());
+            }
             let creator = HelperProgram::current()?.namespace_creator(setup_budget.cutoff()?)?;
             let user = UserNamespace::<Mapped>::create(
                 creator,

@@ -1,0 +1,1 @@
+Full CommandSandbox preparation and two-command same-supervisor execution pass, with reused reaper and fresh temporary mounts. Unformatted filesystem rollback also passes. Fixture Clippy subsequently rejects explicit drop of non-Drop reaper token; preserved separately. Full M4 remains unqualified.

@@ -77,6 +77,23 @@ pub(super) struct PinFailure {
     pub cleanup: PinCleanup,
 }
 impl PinCleanup {
+    pub(super) fn target(target: PinTarget) -> Self {
+        Self {
+            filesystems: Vec::new(),
+            namespace: Namespace::Target(target),
+        }
+    }
+    pub(super) fn namespace(namespace: UserNamespace<PinnedNamespace>) -> Self {
+        Self {
+            filesystems: Vec::new(),
+            namespace: Namespace::Mapped(namespace),
+        }
+    }
+    pub(super) fn with_target(mut self, target: FilesystemPinTarget) -> Self {
+        self.filesystems.push(Filesystem::Target(target));
+        self
+    }
+
     pub(super) fn run(mut self, deadline: Instant) -> Result<(), Box<PinFailure>> {
         while !self.filesystems.is_empty() {
             if let Err(source) = super::teardown::Deadline::check(deadline) {

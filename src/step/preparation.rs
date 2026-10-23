@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Ownership across helper launch, before the ready Step exists.
+//! Ownership across acquisition and helper launch, before the ready Step exists.
+mod sandbox;
 use super::{Ready, Retained, Step, pins::PinCleanup, teardown::Deadline};
 use crate::{
     domain::{
@@ -11,6 +12,7 @@ use crate::{
     process::{ChildReaper, Identified, LaunchFailure, Process, Running},
     storage::{FailureDiagnostics, Mounted, Unmounted, Volume, VolumeUnmountFailure},
 };
+pub use sandbox::{CommandSandbox, SandboxDirectories};
 use std::{
     io,
     mem::ManuallyDrop,
@@ -169,6 +171,21 @@ impl<'l, 'n, 'o, 'w> CommandPreparation<'l, 'n, 'o, 'w> {
 }
 #[derive(Debug)]
 enum Phase<'l, 'n, 'o, 'w> {
+    EarlyRunning(Process<Running>, ChildReaper, Volume<'n, 'o, 'w, Unmounted>),
+    EarlyIdentified(
+        Process<Identified>,
+        ChildReaper,
+        Volume<'n, 'o, 'w, Unmounted>,
+    ),
+    EarlyDrain(ChildReaper, Volume<'n, 'o, 'w, Unmounted>),
+    EarlyPins(PinCleanup, ChildReaper, Volume<'n, 'o, 'w, Unmounted>),
+    MountedPins(
+        PinCleanup,
+        ChildReaper,
+        Retained<Volume<'n, 'o, 'w, Mounted>>,
+    ),
+    MountedDrain(ChildReaper, Retained<Volume<'n, 'o, 'w, Mounted>>),
+
     DomainSetup(
         DomainCreationRollback<'l>,
         ChildReaper,
@@ -235,6 +252,15 @@ impl<'n, 'o, 'w> RolledBackPreparation<'n, 'o, 'w> {
     }
 }
 impl<'l, 'n, 'o, 'w> PreparationFailure<'l, 'n, 'o, 'w> {
+    fn early(source: io::Error, phase: Phase<'l, 'n, 'o, 'w>, parent: &Path) -> Box<Self> {
+        Box::new(Self {
+            diagnostics: source.into(),
+            phase,
+            parent: parent.to_owned(),
+            deadline: Instant::now() + Duration::from_secs(30),
+        })
+    }
+
     pub fn diagnostics(&self) -> &FailureDiagnostics {
         &self.diagnostics
     }
@@ -253,6 +279,58 @@ impl<'l, 'n, 'o, 'w> PreparationFailure<'l, 'n, 'o, 'w> {
         } = self;
         let next: Result<Phase<'l, 'n, 'o, 'w>, (FailureDiagnostics, Phase<'l, 'n, 'o, 'w>)> =
             match phase {
+                Phase::EarlyRunning(process, reaper, volume) => {
+                    match process.terminate_until(deadline) {
+                        Ok(_) => Ok(Phase::EarlyDrain(reaper, volume)),
+                        Err(failure) => {
+                            let (source, process) = failure.into_parts();
+                            Err((
+                                io::Error::other(source).into(),
+                                Phase::EarlyRunning(process, reaper, volume),
+                            ))
+                        }
+                    }
+                }
+                Phase::EarlyIdentified(process, reaper, volume) => {
+                    match process.terminate_until(deadline) {
+                        Ok(_) => Ok(Phase::EarlyDrain(reaper, volume)),
+                        Err(failure) => {
+                            let (source, process) = failure.into_parts();
+                            Err((
+                                io::Error::other(source).into(),
+                                Phase::EarlyIdentified(process, reaper, volume),
+                            ))
+                        }
+                    }
+                }
+                Phase::EarlyDrain(reaper, volume) => match reaper.drain_until(deadline) {
+                    Ok(_) => Ok(Phase::Complete(volume)),
+                    Err(failure) => {
+                        let (source, reaper) = failure.into_parts();
+                        Err((source.into(), Phase::EarlyDrain(reaper, volume)))
+                    }
+                },
+                Phase::EarlyPins(pins, reaper, volume) => match pins.run(deadline) {
+                    Ok(()) => Ok(Phase::EarlyDrain(reaper, volume)),
+                    Err(failure) => Err((
+                        failure.source.into(),
+                        Phase::EarlyPins(failure.cleanup, reaper, volume),
+                    )),
+                },
+                Phase::MountedPins(pins, reaper, volume) => match pins.run(deadline) {
+                    Ok(()) => Ok(Phase::MountedDrain(reaper, volume)),
+                    Err(failure) => Err((
+                        failure.source.into(),
+                        Phase::MountedPins(failure.cleanup, reaper, volume),
+                    )),
+                },
+                Phase::MountedDrain(reaper, volume) => match reaper.drain_until(deadline) {
+                    Ok(_) => Ok(Phase::Unmount(volume)),
+                    Err(failure) => {
+                        let (source, reaper) = failure.into_parts();
+                        Err((source.into(), Phase::MountedDrain(reaper, volume)))
+                    }
+                },
                 Phase::DomainSetup(rollback, reaper, assigned) => {
                     match rollback.retry_until(&parent, deadline) {
                         Ok(()) => Ok(Phase::EmptyDrain(reaper, assigned)),

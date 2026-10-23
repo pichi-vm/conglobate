@@ -38,8 +38,13 @@ impl ExecutionOutcome {
 #[derive(Debug)]
 pub struct ExecutedVolume<'n, 'o, 'w> {
     volume: Volume<'n, 'o, 'w, Unmounted>,
+    reaped: crate::process::ReapedChildren,
 }
 impl<'n, 'o, 'w> ExecutedVolume<'n, 'o, 'w> {
+    /// Continue the assembly line with the same exclusive supervisor reaper.
+    pub fn into_parts(self) -> (Volume<'n, 'o, 'w, Unmounted>, crate::process::ChildReaper) {
+        (self.volume, self.reaped.into_reaper())
+    }
     pub fn into_volume(self) -> Volume<'n, 'o, 'w, Unmounted> {
         self.volume
     }
@@ -126,9 +131,8 @@ impl<'l, 'n, 'o, 'w> ExecutionFailure<'l, 'n, 'o, 'w> {
         volume: FinalizedVolume<'n, 'o, 'w>,
     ) -> ExecutionResult<'l, 'n, 'o, 'w> {
         if outcome.success() {
-            Ok(ExecutedVolume {
-                volume: volume.into_parts().2,
-            })
+            let (_, reaped, volume) = volume.into_parts();
+            Ok(ExecutedVolume { volume, reaped })
         } else {
             Err(Box::new(Self {
                 outcome,

@@ -26,6 +26,9 @@ pub struct IdRange {
     count: u32,
 }
 impl IdRange {
+    pub(crate) fn first(self) -> u32 {
+        self.first
+    }
     pub fn new(first: u32, count: u32) -> io::Result<Self> {
         if first == 0 || count == 0 || first.checked_add(count).is_none() {
             return Err(io::Error::other("invalid mapped ID range"));

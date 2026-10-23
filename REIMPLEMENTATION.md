@@ -2540,3 +2540,29 @@ rules rather than silently shrinking acceptance criteria.
 - v140 completes the normal suite; v141 passes supervisor-death regression
   through aggregate domain acquisition. Host tests/Clippy and archived hashes
   pass. These results do not constitute a full M4 adherence pass.
+
+### M4 complete single-volume preparation entry (v142 onward)
+
+- CommandSandbox::prepare owns namespace creation/reaping, namespace pinning,
+  ext4 mounting and filesystem pinning before domain/policy/helper preparation.
+  It starts from Volume<Unmounted> and an installed reaper; deployment paths and
+  identity allocation are explicit immutable inputs. Pre/post acquisition checks
+  retain the original setup cutoff. Cleanup retains partial targets, creator
+  wait ownership and assigned storage instead of dropping them through strings.
+- Found and fixed cross-step reaper loss: ReapedChildren now retains the
+  supervisor's exclusive reaper. ExecutedVolume::into_parts transfers it with the
+  finalized volume for the next command without reinstalling subreaping.
+- v143 passes two full commands in one supervisor, verifying persistent output
+  and fresh temporary mounts, plus malformed-filesystem rollback. v142 compile
+  failure and v143 fixture Clippy failure are preserved. v144 was an unintended
+  unchanged repeat after a patch assertion; no extra coverage is claimed.
+- Single-volume production acquisition/execution is now assembled. Remaining
+  M4 work is a comprehensive integration/error/API/style review and fixes, then
+  three clean adherence passes. No milestone advancement is claimed; M4 remains
+  zero clean passes and M5–M8 remain pending.
+
+- v145 passes the complete normal suite, including a temporarily zeroed user-
+  namespace quota inside the disposable VM. The setting is restored immediately
+  after preparation returns; rollback reaps the failed creator and leaves no
+  pins or child processes. Host tests, root/fixture Clippy, formatting and archived
+  hashes pass. No full adherence pass is claimed.

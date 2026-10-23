@@ -1,0 +1,1 @@
+Fixture compilation failed due to incorrect Rust string quoting in the second-step shell command. No VM ran. Corrected to a raw Rust string.

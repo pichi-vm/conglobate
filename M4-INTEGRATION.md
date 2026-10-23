@@ -267,3 +267,38 @@ complete adherence review remain open; M4 has zero clean passes.
 - v140 completes the normal suite; v141 passes supervisor-death regression
   through aggregate domain acquisition. Host tests/Clippy and archived hashes
   pass. These results do not constitute a full M4 adherence pass.
+
+### Full namespace/filesystem preparation and multi-step ownership (v142 onward)
+
+CommandSandbox now accepts an unmounted volume, the existing supervisor reaper,
+immutable UID/GID allocation and deployment directories. Under the original
+setup cutoff it creates/reaps the trusted namespace helper, pins the namespace,
+mounts ext4, pins the filesystem, then enters CommandPreparation::create.
+Failures retain an owned creator process, partial pin target, namespace pin,
+mounted volume or unmounted volume as appropriate. Rollback uses the same fixed
+cleanup budget and never permits failed setup to restart command admission.
+
+Integration exposed a cross-step ownership gap: ReapedChildren previously kept
+only a diagnostic count, discarding the process-wide reaper owner. Subreaping is
+installed once, so a later step could not reinstall it. ReapedChildren now owns
+that token; ExecutedVolume::into_parts returns the finalized volume and reaper
+for the next step, with a fresh per-step diagnostic count.
+
+v142 preserves a fixture shell-string quoting compile failure. v143 passes a
+two-command pipeline in one supervisor using full production acquisition, plus
+an unformatted-volume mount failure which releases the namespace pin. Its
+fixture Clippy failure (explicit drop of a non-Drop token) is preserved and
+fixed. v144 is an unintended identical repeat after a failed patch-script
+assertion; it provides no additional coverage. Its source snapshot is explicit.
+
+The full single-volume acquisition path is now assembled as a production
+library API. Existing decomposed probes remain for fault injection. This still
+requires source/design/style review, remaining error-path coverage assessment,
+low-level API visibility review and three clean M4 adherence passes. Public
+build/pipeline orchestration and later milestones remain outstanding.
+
+- v145 passes the complete normal suite, including a temporarily zeroed user-
+  namespace quota inside the disposable VM. The setting is restored immediately
+  after preparation returns; rollback reaps the failed creator and leaves no
+  pins or child processes. Host tests, root/fixture Clippy, formatting and archived
+  hashes pass. No full adherence pass is claimed.

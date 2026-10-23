@@ -1,0 +1,21 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+   Compiling conglobate-command-integration v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration)
+error: prefix `value` is unknown
+   --> src/main.rs:309:67
+    |
+309 | ...   "read -r value < /command-started; test "$value" = image-write; test ! -e /work; test ! -e /dev/shm/step-data; printf second ...
+    |                                                 ^^^^^ unknown prefix
+    |
+    = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+    |
+309 |                         "read -r value < /command-started; test "$value " = image-write; test ! -e /work; test ! -e /dev/shm/step-data; printf second > /second-step".into()
+    |                                                                        +
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `$`
+   --> src/main.rs:309:66
+    |
+309 | ...   "read -r value < /command-started; test "$value" = image-write; test ! -e /work; test ! -e /dev/shm/step-data; printf second ...
+    |                                                ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: could not compile `conglobate-command-integration` (bin "conglobate-command-integration") due to 2 previous errors

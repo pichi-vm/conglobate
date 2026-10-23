@@ -1,0 +1,1 @@
+Full normal VM suite passes with production CommandSandbox. Two commands reuse one supervisor reaper and preserve filesystem output while temporary mounts reset. Zero user-namespace quota in disposable VM exercises creator failure; quota is restored before rollback assertions. Malformed ext4 exercises mounted-namespace cleanup. Full M4 remains unqualified.

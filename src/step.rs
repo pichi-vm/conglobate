@@ -16,7 +16,10 @@ use std::{
 mod execution;
 pub use execution::{ExecutedVolume, ExecutionFailure, ExecutionOutcome};
 mod preparation;
-pub use preparation::{CommandPreparation, PreparationFailure, RolledBackPreparation};
+pub use preparation::{
+    CommandPreparation, CommandSandbox, PreparationFailure, RolledBackPreparation,
+    SandboxDirectories,
+};
 mod finalize;
 mod outcome;
 pub use outcome::{CommandOutcome, CommandResult};

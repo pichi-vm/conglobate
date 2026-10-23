@@ -24,11 +24,19 @@ pub struct ChildReaper {
 /// receipt. Admission must be closed and containment independently quiescent.
 #[derive(Debug)]
 pub struct ReapedChildren {
-    collected: u64,
+    reaper: ChildReaper,
 }
 impl ReapedChildren {
     pub fn collected(&self) -> u64 {
-        self.collected
+        self.reaper.collected
+    }
+    /// Resume exclusive reaping for the next step without reinstalling the
+    /// process-wide subreaper setting. Counts begin anew for that step.
+    pub fn into_reaper(self) -> ChildReaper {
+        ChildReaper {
+            collected: 0,
+            ..self.reaper
+        }
     }
 }
 #[derive(Debug, thiserror::Error)]
@@ -82,9 +90,7 @@ impl ChildReaper {
                 reaper: self,
             });
         }
-        Ok(ReapedChildren {
-            collected: self.collected,
-        })
+        Ok(ReapedChildren { reaper: self })
     }
     fn drain(&mut self, deadline: Instant) -> io::Result<()> {
         if getpid() != self.process || !prctl::get_child_subreaper()? {
