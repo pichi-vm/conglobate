@@ -62,7 +62,7 @@ impl NamespaceInit {
             if let Some(code) = code {
                 // Exiting PID 1 kills remaining namespace members in the
                 // kernel. The outer step must still cancel its cgroup, reap
-                // helpers and establish quiescence before removing policy.
+                // helpers and establish quiescence before releasing storage.
                 std::process::exit(code);
             }
         }

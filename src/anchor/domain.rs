@@ -35,7 +35,7 @@ impl RecoveryDirectory {
         CommandDomain::recover_record(self, parent, self.load_domain(name)?)
     }
     /// Remove a matching record only after its exact parent is verified and the
-    /// named target is absent. Policy/reaping completion are separate obligations.
+    /// named target is absent. Reaping completion remains a separate obligation.
     pub fn remove_domain_record(&self, parent: &Path, record: &DomainRecord) -> io::Result<()> {
         if self.load_domain(record.name())? != *record {
             return Err(io::Error::new(

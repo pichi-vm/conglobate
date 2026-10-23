@@ -1,5 +1,10 @@
 # M4 integration review
 
+> Historical review of baseline `78eaf96`, retained for finding provenance.
+> Its descriptions of missing production orchestration and scoped policy are
+> not current requirements. Use ARCHITECTURE.md and SANDBOX-DESIGN.txt for the
+> current lifecycle and REIMPLEMENTATION.md for reopened qualification gates.
+
 Reviewed baseline: `78eaf96`. This is a focused source review with findings,
 not a clean milestone adherence pass. M4 remains at zero clean passes.
 

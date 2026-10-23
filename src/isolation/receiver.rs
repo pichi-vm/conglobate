@@ -12,7 +12,7 @@ use std::{
 };
 
 /// Outer trusted helper, already contained and in its private mount namespace.
-/// The supervisor retains the volume, policy and cancellation authority. Errors
+/// The supervisor retains the volume, mapped namespace and cancellation authority. Errors
 /// are exit-only in this helper; returned resources remain owned for teardown.
 #[derive(Debug)]
 pub struct CommandReceiver<'ns> {

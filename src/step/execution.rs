@@ -26,8 +26,8 @@ impl ExecutionOutcome {
     }
 }
 
-/// This command exited successfully, all descendants were drained, namespace and
-/// pins were removed, and all assigned volumes were flushed and unmounted within
+/// This command exited successfully, all descendants were drained, namespace
+/// ownership was released, and all assigned volumes were flushed and unmounted within
 /// the original teardown deadline. No public constructor accepts an unrelated
 /// command outcome or arbitrary cleanup result. This is not an image seal.
 ///

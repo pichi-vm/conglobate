@@ -9,14 +9,13 @@ they do not prove that external state cannot change or that destructors run.
 
 ### Registration-free lifecycle revision (2026-10-23)
 
-The latest user decision replaces the scoped labeling-policy lifecycle below.
-Historical scoped-policy diagrams remain reference material during migration;
-they must not be implemented as requirements for the replacement.
+This architecture incorporates the fixed environment-owned labeling policy.
+The superseded scoped-policy architecture is preserved in
+[preservation/registration-free-architecture-c1073b9](preservation/registration-free-architecture-c1073b9).
 
 The environment owns the fixed labeling exception for the VM lifetime.
-Conglobate owns neither its program object nor map/link/pin handles. Remove
-the policy module and BPF build dependencies after callers and validation
-fixtures have migrated. Keep the historical asset and loader recoverable.
+Conglobate owns neither its program object nor map/link/pin handles. The production policy module and BPF build dependencies have been removed.
+Historical assets, loaders and validation fixtures remain recoverable.
 
 `CommandSandbox` prepares mapped namespace ownership and assigned storage.
 `Step<S, R>` retains those owners through cgroup containment, admission,
@@ -26,18 +25,17 @@ directly; the owned volume determines which mount is transferred. No policy
 scope/map lookup is required to prove that ownership. Remove filesystem pins
 used only to prevent policy target identity reuse.
 
-The existing `namespace_for_root` dev/ino check compares a volume root with
-policy pins to establish agreement between two independently supplied owners.
-Intentionally remove that policy-consistency check with the policy owner.
-Do not replace it with another registration list: sealed `ExecutionStorage`
-implementations derive every transferred `VolumeView` from the storage retained
-by this `Step`, using its private root descriptor and mount-namespace check.
-Bootstrap derives both views from its retained tool/output owners. No caller
-may substitute an arbitrary root FD at this boundary. Retain tests for this
-ownership invariant and for confined receiver mount attachment.
+Sealed `ExecutionStorage` implementations derive every transferred `VolumeView`
+from the storage retained by this `Step`, using its private root descriptor and
+mount-namespace check. Bootstrap derives both views from its retained tool/output
+owners. No caller may substitute an arbitrary root FD at this boundary. Retain
+tests for this ownership invariant and confined receiver mount attachment.
+The old `namespace_for_root` check reconciled independently supplied policy pins
+and volumes; removing that policy owner removes the need for the check, not the
+requirement that transferred mounts belong to the step.
 
 Before recipe execution, the existing trusted leaf checks labeling after
-`EnteredRoot::restrict` applies command capabilities and seccomp, and before
+`GatedRootSetup::restrict` applies command capabilities and seccomp, and before
 `ExecutionEndpoint::ready_and_wait` reports readiness. A small owning probe
 uses an anonymous `O_TMPFILE|O_EXCL|O_CLOEXEC` inode on each assigned filesystem,
 performs descriptor-based label set/read/remove, and closes before readiness.
@@ -49,19 +47,17 @@ mounts. A successful root-supervisor write is not evidence; neither is a named
 bpffs pin. A failed check enters the same bounded setup-failure cleanup path.
 Anonymous inode allocation can still change filesystem metadata; this is not
 a claim of byte-for-byte neutrality. Test both bootstrap roots, missing-policy
-failure and descriptor closure under the production filter. The v3 fixture
-proves the anonymous-inode mechanism, not this production integration.
+failure and descriptor closure under the production filter. The mechanism fixture alone does not qualify production integration.
+Single-root positive/negative and two-root bootstrap CLI regressions are recorded
+in preservation/m7-review/label-unpinned-{on,off}-v1 and bootstrap-unpinned-v1;
+broad failure, confinement and platform qualification remain outstanding.
 
 After descendant drain, release process-domain records and namespace resources,
 then unmount/finalize storage. There is no activation, disable, policy-close,
 installation-retry or policy-identity-release state. Cgroup joining remains a
-distinct protocol; rename `Registered` to describe containment rather than
-deleting its acknowledgment or descriptor closure. Errors continue to retain
+distinct protocol represented by `Joined`, including its acknowledgment and
+descriptor closure. Errors continue to retain
 resource owners, and unfinished steps cannot yield publication authority.
-
-The production code still implements the old lifecycle. Passing mechanism
-evidence at `preservation/m7-review/global-label-v2` does not qualify this
-replacement architecture or restore the reopened adherence gates.
 
 | Module | Owned or immutable domain types | Boundary |
 | --- | --- | --- |
@@ -73,7 +69,7 @@ replacement architecture or restore the reopened adherence gates.
 | storage | Workspace, Volume<S>, Layer<S>, StorageLease | Tmpfs, verified cache-backed chain, device mapping and writable storage ownership |
 | filesystem | FilesystemSpec, Backend, FormatterIdentity, RootView | Validated formatter properties, supported kernel driver and idmapped view |
 | execution | Step<S>, StepOutcome, RecoveryLease | Own all authority passed to commands and completion/teardown order |
-| isolation | NamespaceLease, IdentityLease, ProcessDomain, LabelPolicy<S> | Kernel identity lifetimes, descendants, private mounts and scoped authorization |
+| isolation | UserNamespace<Mapped>, AssignedRoots, LabelProbe | Mapped identity, private mounts and restricted labeling admission |
 | network | NetworkLease, ResolverInput | Disabled default, owned outbound NAT and confined temporary resolver injection |
 | copy | CopyPlan, ContextReader, RootWriter | Explicit selected context files; no context mount; confined handles |
 | firmware | FirmwareSelection, FirmwarePair, FirmwareContract | Extract both files after writers stop; validate before accepting replacement |
@@ -106,24 +102,18 @@ No unsafe field extraction, transmute, or manually asserted state transition.
   of other writers. Explicit snapshot closure and loop detachment return the
   scratch owner; `Scratch::seal_snapshot` produces a `SealedScute` only after
   validating the persistent snapshot extent and constructing its verity data.
-- `Step<Ready>::admit_until` produces `Step<Running>`. Activation failure retains
-  Ready; failed admission retains Cancelling. Ready, Running or Cancelling can
-  enter cleanup through `cancel_until`, producing Reaping; `reap_until` produces
-  Draining, `drain_until` produces Quiescent, `finish_record` produces Finishing,
-  and `disable` returns StepCompletion. Failed cancellation retains Cancelling;
-  later failures retain their input state. `teardown` also closes policy and
-  identity pins, yielding TeardownCompletion under the original fixed deadline.
-  Storage finalization and sealing still follow. A normal shell exit does not
-  bypass cancellation or descendant drain.
-- `LabelPolicy<Prepared> -> LabelPolicy<LoadedDisabled> ->
-  LabelPolicy<PinnedDisabled> -> LabelPolicy<BoundDisabled>` constructs and binds
-  disabled authorization. Step owns activation, retains the bound policy through
-  quiescence, and disables it before returning ownership. Policy closure returns
-  namespace/filesystem identity pins for separate cleanup; raw policy owners
-  expose no enable operation.
-- `Supervision<Unpaired> -> Supervision<Paired> -> Supervision<Registered> ->
-  Supervision<Admitted>` separates identity exchange, domain registration and
-  command admission. Peer observation alone is not admission authority.
+- `Step<Ready>::admit_until` produces `Step<Running>`; failed admission retains
+  Cancelling. Ready, Running or Cancelling enters cleanup through `cancel_until`,
+  producing Reaping; `reap_until` produces Draining, `drain_until` produces
+  Quiescent, `finish_record` produces Finishing, and infallible `finish` returns
+  StepCompletion. Failed cancellation retains Cancelling; subsequent fallible
+  transitions retain their input state. `teardown` drives this sequence under
+  the fixed cleanup deadline, then drops the mapped namespace descriptor.
+  TeardownCompletion retains storage for explicit finalization and sealing.
+  A normal shell exit does not bypass cancellation or descendant drain.
+- `Supervision<Unpaired> -> Supervision<Paired> -> Supervision<Joined> ->
+  Supervision<Admitted>` separates identity exchange, cgroup joining and command
+  admission. Peer observation alone is not admission authority.
 - `StagedDirectory` owns low-level output storage. `AssembledImage` binds the
   component layout, and the private `CompletedImage` couples it to validated
   inventory after the selected pipeline completes. Publication consumes that
@@ -151,8 +141,9 @@ Otherwise return a RecoveryLease owning the remaining resources and primary plus
 cleanup diagnostics. Do not claim retryable mounted/unmounted state after an
 uncertain partial operation. No successful output token is available on failure. Quiescent means no remaining
 command authority, not command success. Step<Quiescent> retains a StepOutcome;
-teardown produces Step<Completed> only for successful execution and successful
-cleanup. Otherwise it returns failure/diagnostics without a completion receipt.
+teardown produces storage ownership and the command outcome, not a successful
+build receipt. The enclosing execution/finalization owner checks command success
+and clean storage finalization before permitting the pipeline to continue.
 An exit-zero shell with surviving descendants still requires containment cleanup;
 a timed-out, cancelled or failed command never becomes successful through cleanup.
 
@@ -160,35 +151,29 @@ Drop is best-effort cancellation/rollback, never a successful finalization proof
 No guarantee depends on unwinding, forgetting being impossible, or a destructor
 running after process death. Explicit fallible methods establish completion;
 independent VM shutdown handles abrupt supervisor death. Keep ownership of
-unresolved mappings, policy pins and identities until recovery completes.
+unresolved mappings, namespaces and storage until recovery completes.
 
 The step aggregate, not incidental field-drop order, enforces:
 1. Stop admission and stop/reap every descendant, including daemonized commands.
 2. Prove quiescence under the containment mechanism.
-3. Disable/remove scoped labeling policy while namespace and mount identities
-   remain held. Never mutate policy while a command can be between its two hooks.
+3. Finish process-domain records and release command namespace ownership.
+   The environment labeling exception remains installed until VM shutdown.
 4. Remove temporary resolver/network/runtime attachments, preserving image state.
 5. Flush and cleanly unmount all assigned filesystems; inspect storage errors.
 6. Release kernel resources and permit finalization, sealing or the next step.
 
-Partial setup needs acquisition guards before each fallible operation. Policy
-installation starts disabled and installs/pins every guard before enabling.
+Partial setup needs acquisition guards before each fallible operation.
 Unknown startup process scope or failed quiescence retains protection and rejects
 publication. Supervisor death and environment-driven VM shutdown require explicit
 qualification, not inference from loader-death experiments. Fixed internal deadlines bound
 acceptance/waiting but cannot guarantee recovery from uninterruptible kernel I/O.
 
-The current integration gaps and extraction order are recorded in
-[M4-INTEGRATION.md](M4-INTEGRATION.md). The validation executable still assembles
-the command path; it is not the production build coordinator.
-
-The existing domain, process, mount and disabled-policy primitives are reference
-inputs for the integrated executor. Reuse their typed ownership and bounded
-cancellation where appropriate, but persistent recovery records and a guardian
-are not prerequisites for command startup under the dedicated-VM contract.
-Earlier implementation details and the superseded recovery protocol are preserved
-in preservation/pre-dedicated-vm-contract/ARCHITECTURE.md. They are historical
-mechanisms, not additional current requirements.
+The production build coordinator owns the integrated execution path. Historical
+extraction findings are preserved in
+[preservation/registration-free-architecture-c1073b9/M4-INTEGRATION.md](preservation/registration-free-architecture-c1073b9/M4-INTEGRATION.md).
+The old validation executable still references retired policy APIs and must be
+migrated without losing failure coverage. Its historical passes do not qualify
+the new lifecycle. Current gate status and outstanding work are in REIMPLEMENTATION.md.
 
 ## Pipeline owners
 
@@ -199,8 +184,9 @@ all low-level setup logic or mutating a shared manifest throughout the build.
 
 BootstrapSession owns a disposable tool layer and a new writable output layer
 over dm-zero. Trusted formatting happens through the assigned output device.
-Each command gets / and /mnt views, and policy authorizes exactly both intended
-filesystems. COPY uses the same root layout. No rootfs file import/conversion.
+Each command gets / and /mnt views; restricted setup validates labeling on both
+using the environment exception. Mount and descriptor confinement isolate them
+from supervisor resources. COPY uses the same root layout. No rootfs file import/conversion.
 Successful teardown seals the output layer and discards tool changes.
 
 CarapaceSession derives output layers while preserving every inherited component.
@@ -250,12 +236,11 @@ The formatter runs in trusted setup with only the assigned device and captured
 runtime, no context or image scripts. Complete executable/dependency capture and
 formatter-failure qualification are M4/M5 tests, not claimed prototype coverage.
 
-BPF authorization must support an explicit set of superblock owner/device pairs,
-separate from the command user namespace and mapped-root identity. No wildcard
-for all filesystems owned by the supervisor. Bind both bootstrap filesystems,
-pin their lifetime, match the exact security.selinux name and preserve other
-LSM denials. No SYS_ADMIN fallback. Runtime mount/device/filter restrictions
-remain necessary even though labeling no longer needs that capability.
+The environment exception matches exactly security.selinux and preserves prior
+LSM results and checks for other attributes. It has no target registry or
+per-command policy lifecycle. Conglobate never grants command CAP_SYS_ADMIN.
+Read-only views, inode/descriptor confinement, capabilities and syscall filters
+remain the boundary protecting supervisor resources from label mutation.
 
 ## Tests and evidence structure
 
@@ -270,7 +255,7 @@ avoid mirroring every method signature. Runtime tests validate external effects.
 | Recipe correctness | Every stage combination, omitted/empty distinctions, from rules, transform types/defaults |
 | Owned lifecycle | Partial acquisition at each boundary; cleanup failure retains recovery; no publishable token |
 | Command isolation | No context/device/control access; five capability sets; private namespace/FD checks |
-| Scoped LSM | Exact-name regression, both authorized mounts, denied third mount/nonroot/other namespace, policy-off denial |
+| Labeling boundary | Exact-name behavior, both assigned roots, missing-policy admission failure, read-only denial, unrelated attribute checks, no supervisor inode/descriptor exposure |
 | Teardown | Live descendants, timeout/cancellation, helper death, supervisor death plus VM shutdown, blocked I/O |
 | Bootstrap | Actual zero-backed chain, formatter geometry, / plus /mnt packages, metadata persistence, direct sealing |
 | Filesystem fidelity | UID/GID, ACL access/defaults, file capabilities, SELinux labels and target enforcing boot |
@@ -286,19 +271,18 @@ unexpectedly; the binary has no pichi/VM transport dependency. The controller mu
 not launch another build or permit abandoned resources to be reused in that VM.
 This contract replaces the separate guardian and cross-invocation recovery design.
 
-The main conglobate process owns image storage, policy, command containment and
+The main conglobate process owns image storage, command containment and
 publication. A trusted setup helper establishes each command's isolation and
 starts its untrusted payload. Namespace init reaps command descendants. No second
 recovery supervisor or serialized resume protocol is needed. This does not remove
 bounded cancellation, normal error cleanup, subreaping where needed, or explicit
 fallible teardown. Destructors remain best effort, never completion evidence.
 
-The step owner retains namespace, superblock and policy lifetimes together until
-commands stop and authorization is removed. On abrupt supervisor death, the
-remaining lifetime arrangement must remain safe until the environment stops the
-VM. VM shutdown is not instantaneous and does not justify partial guard removal
-or unsafe identity reuse while commands still execute. The integrated execution
-path must establish that behavior before enabling the policy. If cleanup cannot
+The step owner retains mapped namespace and storage lifetimes until commands
+stop and descendants are drained. On abrupt supervisor death, the remaining
+lifetime arrangement must remain safe until the environment stops the VM.
+VM shutdown is not instantaneous and does not justify exposing privileged
+handles or reusing storage while commands still execute. If cleanup cannot
 finish while conglobate lives, fail and require disposal; never advance or publish.
 
 Validation must include actual supervisor termination and externally triggered VM
@@ -308,63 +292,11 @@ Independent VMs provide build concurrency; persistent shared-host execution is
 not covered. Preserved guardian/anchor experiments remain useful reference data,
 but do not impose an implementation requirement.
 
-## Safe integration and dependency evidence
+## Historical dependency and validation evidence
 
-- Inspected reference carapace 99caf79 (not an active crate dependency):
-  Chain::assemble uses a fixed 64 GiB zero target and returns a read-only device
-  File with deferred removal. Its public API rejects empty chains. The M4
-  integration therefore owns read-only stack activation/cleanup with devmap and
-  lodown, retaining each dependency until upper mappings are removed. Bootstrap
-  zero/writable activation also uses devmap APIs. See the integration boundary
-  above and the accepted M4 source/evidence record.
-- devmap 2679426: snapshot Header/Exception and verity types supply wire parsing
-  and sealing primitives. A COW's clean kernel-produced state still needs checked
-  length/status/finalization; it is not trusted merely because a command exited.
-- Cached rustix 1.1.5 has safe open_tree/move_mount/pidfd APIs but lists
-  mount_setattr as unimplemented. Cached nix 0.30 also lacks that wrapper.
-  Treat this as a dependency gap: qualify an existing safe wrapper or contribute
-  a general safe API upstream before native idmapping integration. Do not hide
-  application FFI in a locally named dependency to bypass forbid(unsafe_code).
-  M4 follow-up: upstream rustix proposal 1630, revision 8bda151d, supplies a
-  borrowed-descriptor MountAttr and internal structure sizing. Both backends
-  passed the disposable-VM ext4 idmap/metadata/cleanup fixture recorded in
-  validation/rewrite-mount-api. Production now pins that revision; it is not
-  represented as a released/merged API. Production lifecycle ownership and
-  broader sandbox qualification remain required.
-- libbpf-rs provides owned links with pin/unpin and byte-slice map updates; it is
-  the candidate safe userspace LSM interface. Explicit byte encoding avoids
-  application unsafe POD implementations. Dependency/version/license and actual
-  hook attachment remain M4 checks. The BPF policy is separately reviewed trusted
-  policy code; safe Rust in userspace does not make BPF semantics automatically safe.
-  M4 follow-up: libbpf-rs/libbpf-cargo 0.27.2 and libbpf-sys 1.7.0 are now locked.
-  The build embeds the policy object without generating unsafe Rust skeletons.
-  Prepared -> LoadedDisabled validates the embedded schema, loads programs and
-  initializes targets while checking config remains zero. No links or pins are
-  created. VM tests cover successful load/Drop and permission-failure cleanup;
-  activation, anchoring and link-lifetime ownership remain unimplemented.
-  A subsequent disabled-pinning owner now attaches/pins the complete hook set
-  under a private bpffs directory, returning partial resources on failure and
-  retaining cleanup authority on error. Explicit close, Drop and pin-collision
-  recovery pass in the VM. Config remains zero; this owner cannot enable policy.
-  Its directory descriptors are not process-death-resistant namespace anchors.
-- The architecture probe in validation/rewrite-architecture/ compiles state-specific
-  RAII payloads and an ownership-preserving error without unsafe code. Borrow and
-  invalid-state negative examples fail with E0505 and E0599. It models API legality,
-  not mount behavior or kernel recovery.
-
-Primary references inspected:
-- https://man7.org/linux/man-pages/man8/mke2fs.8.html (explicit block count/config).
-- https://docs.rs/libbpf-rs/latest/libbpf_rs/struct.Link.html (pinning/ownership).
-- https://docs.rs/libbpf-rs/latest/libbpf_rs/trait.MapCore.html (byte map interface).
-- Preserved reference carapace src/lib.rs and src/assemble.rs; cached rustix mount/process APIs.
-
-## Acceptance boundaries
-
-Architecture fixes the invariants, schema and ownership/recovery protocol. It
-identifies dependency gaps explicitly rather than claiming implementations exist.
-M3 handles pure inputs/planning. M4 must prove the actual safe syscall/policy,
-process containment and dedicated-VM shutdown contract. M5 must prove direct formatted snapshot
-behavior and dual mounts. Failure of those proofs reopens the architecture gate.
-Hardware and distro qualification remain M7 requirements; no absence of hardware
-can be recorded as a pass. Public library APIs may evolve within these boundaries
-without adopting mutable option bags or weakening the safety constraints.
+The previous architecture's dependency investigations and milestone appendices
+are preserved verbatim with checksums in
+[preservation/registration-free-architecture-c1073b9/ARCHITECTURE.md](preservation/registration-free-architecture-c1073b9/ARCHITECTURE.md).
+They describe their recorded revisions, not additional current requirements.
+Current dependency pins are authoritative in Cargo.toml/Cargo.lock; milestone
+acceptance and subsequent reopened gates are recorded in REIMPLEMENTATION.md.

@@ -125,7 +125,7 @@ impl<'a> StepState<'a> for Finishing {
 /// ```
 ///
 /// Failed cancellation retains Cancelling; subsequent transition failures
-/// retain their input state. `teardown` drives this sequence and releases the namespace attachment under one fixed deadline, including retries.
+/// retain their input state. `teardown` drives this sequence and releases the namespace descriptor under one fixed deadline, including retries.
 /// Its TeardownCompletion still owns storage: explicit unmount/flush and sealing
 /// remain necessary before publication. Normal command exit uses this same
 /// cleanup sequence; it does not skip descendant cancellation or drain.

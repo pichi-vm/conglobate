@@ -16,8 +16,8 @@ use std::{
 /// The caller must supply its assigned mounted image in an isolated setup
 /// process. Procfs, empty read-only sys and supplied private devices are prepared
 /// here, including private devpts/shm. This is not admission authority:
-/// PID/user/network isolation, containment and policy must be established by
-/// the enclosing step. No raw root handle is returned to callers.
+/// PID/user/network isolation, containment and restricted labeling admission
+/// must be established by the enclosing step. No raw root handle is returned to callers.
 ///
 /// ```compile_fail
 /// use conglobate::isolation::{CommandRoot, CommandDevices, PrivateMountNamespace};

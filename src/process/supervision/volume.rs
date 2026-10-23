@@ -21,7 +21,7 @@ pub struct VolumeInput {
 }
 impl Supervision<Joined> {
     /// Transfer a view through the already paired and joined control channel.
-    /// The enclosing owner must retain the volume and policy identities until
+    /// The enclosing owner must retain the volume and mapped namespace until
     /// descendant quiescence. Sending is not permission to unmount the volume.
     pub(crate) fn send_volume_until(
         &self,

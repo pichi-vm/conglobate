@@ -4166,3 +4166,19 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Broader legacy command fixture still references retired policy/pin APIs and
   requires explicit coverage migration. It is not presently a runnable current
   regression suite. No historical failure or validation evidence was removed.
+
+
+### Registration-free architecture reconciliation in progress
+
+- Removed conflicting scoped-policy transitions and stale pre-integration status
+  from active ARCHITECTURE.md. Preserved the full original architecture and M4
+  integration review with SHA-256 records under
+  preservation/registration-free-architecture-c1073b9. Historical dependency
+  appendices remain recoverable there; current source and lockfiles govern.
+- Corrected source comments for descriptor release, storage quiescence and
+  containment. No production behavior changed in this documentation pass.
+- Resumed the existing custom Claude review session for the source changes from
+  522011a through c1073b9 plus architecture reconciliation. Review invocation and
+  raw stream are under preservation/m7-review/registration-free-implementation-review.
+  Findings require parent source-grounded evaluation and consensus. No clean
+  adherence pass or milestone acceptance is claimed; M2/M4–M6 remain 0/3.

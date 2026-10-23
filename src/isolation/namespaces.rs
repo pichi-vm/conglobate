@@ -25,7 +25,7 @@ use std::{
 ///
 /// This is not sandbox admission: the child must be trusted root-entry code
 /// which pivots, installs runtime mounts and drops capabilities/syscalls before
-/// executing image commands. The outer step must already own containment/policy.
+/// executing image commands. The outer step must already own containment and mapped namespace resources.
 /// Any error after entry is exit-only. Never call from the build supervisor.
 /// Do not create other children or threads between entry and spawning init.
 ///
