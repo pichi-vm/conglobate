@@ -1,0 +1,80 @@
+error[source-not-allowed]: detected 'git' source not explicitly allowed
+    ┌─ /home/nathaniel/Projects/pichi-vm/conglobate/Cargo.lock:151:14
+    │
+151 │ rustix 1.1.5 git+https://github.com/bytecodealliance/rustix?rev=8bda151df87574f56f1e4c0b59f2d1df5d61609e
+    │              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ source
+    │
+    ├ rustix v1.1.5
+      └── conglobate v0.2.0
+
+error[rejected]: failed to satisfy license requirements
+   ┌─ /home/nathaniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libbpf-cargo-0.27.2/Cargo.toml:36:12
+   │
+36 │ license = "LGPL-2.1-only OR BSD-2-Clause"
+   │            ━━━━━━━━━━━━━────━━━━━━━━━━━━
+   │            │                │
+   │            │                rejected: license is not explicitly allowed
+   │            rejected: license is not explicitly allowed
+   │
+   ├ LGPL-2.1-only - GNU Lesser General Public License v2.1 only:
+   ├   - OSI approved
+   ├   - FSF Free/Libre
+   ├   - Copyleft
+   ├ BSD-2-Clause - BSD 2-Clause "Simplified" License:
+   ├   - OSI approved
+   ├   - FSF Free/Libre
+   ├ libbpf-cargo v0.27.2
+     └── (build) conglobate v0.2.0
+
+error[rejected]: failed to satisfy license requirements
+   ┌─ /home/nathaniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libbpf-rs-0.27.2/Cargo.toml:36:12
+   │
+36 │ license = "LGPL-2.1-only OR BSD-2-Clause"
+   │            ━━━━━━━━━━━━━────━━━━━━━━━━━━
+   │            │                │
+   │            │                rejected: license is not explicitly allowed
+   │            rejected: license is not explicitly allowed
+   │
+   ├ LGPL-2.1-only - GNU Lesser General Public License v2.1 only:
+   ├   - OSI approved
+   ├   - FSF Free/Libre
+   ├   - Copyleft
+   ├ BSD-2-Clause - BSD 2-Clause "Simplified" License:
+   ├   - OSI approved
+   ├   - FSF Free/Libre
+   ├ libbpf-rs v0.27.2
+     ├── conglobate v0.2.0
+     └── libbpf-cargo v0.27.2
+         └── (build) conglobate v0.2.0 (*)
+
+error[rejected]: failed to satisfy license requirements
+   ┌─ /home/nathaniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libbpf-sys-1.7.0+v1.7.0/Cargo.toml:43:12
+   │
+43 │ license = "BSD-2-Clause"
+   │            ━━━━━━━━━━━━
+   │            │
+   │            rejected: license is not explicitly allowed
+   │
+   ├ BSD-2-Clause - BSD 2-Clause "Simplified" License:
+   ├   - OSI approved
+   ├   - FSF Free/Libre
+   ├ libbpf-sys v1.7.0+v1.7.0
+     └── (build) libbpf-rs v0.27.2
+         ├── conglobate v0.2.0
+         └── libbpf-cargo v0.27.2
+             └── (build) conglobate v0.2.0 (*)
+
+error[rejected]: failed to satisfy license requirements
+   ┌─ /home/nathaniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/minicbor-2.3.1/Cargo.toml:33:12
+   │
+33 │ license = "BlueOak-1.0.0"
+   │            ━━━━━━━━━━━━━
+   │            │
+   │            rejected: license is not explicitly allowed
+   │
+   ├ BlueOak-1.0.0 - Blue Oak Model License 1.0.0:
+   ├   - OSI approved
+   ├ minicbor v2.3.1
+     └── conglobate v0.2.0
+
+licenses FAILED, sources FAILED
