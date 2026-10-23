@@ -1,0 +1,33 @@
+{
+  "checks": [
+    {
+      "name": "finalization-tests",
+      "exit_code": 0,
+      "log_sha256": "eb4c803329149ca01f15247f796fe94ba1c7dd5f2207591b9936f16050132952"
+    },
+    {
+      "name": "finalization-doctests",
+      "exit_code": 0,
+      "log_sha256": "1ff23409aad6e2b9b85f6de4cca2cc8a933ae1edcde8c1a9f53fbcb38b765081"
+    },
+    {
+      "name": "finalization-clippy",
+      "exit_code": 0,
+      "log_sha256": "ae1a38913cce367198f34037d8fb079f572438c7d4fd5fd7a899f427a2214e38"
+    },
+    {
+      "name": "finalization-fmt",
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "source_sha256": {
+    "src/step.rs": "74393781253b9a58924ad2c5b686cf213b640176129dac5513eb1e062a9eb0e1",
+    "src/step/bootstrap.rs": "6edb2e21eb8b66fd41361fad94d2ef2071b3c4164fe17b8b469298f326adecbb",
+    "src/step/directives.rs": "30d821dcf36bb99b62f0f55f294eba70e7bd778245dfff57ecbcc845151e65c4",
+    "src/step/finalize.rs": "9b3b4d80b0f86f548bb3654d5b0b39665b39b560faba6339254cceba3f994267",
+    "src/step/network.rs": "2df813950aba5466c6d77865d5297d9168094d5338e56306a29cb3bf27e346d8",
+    "src/step/preparation/storage.rs": "352fdc77ae92189da962fbf46182fbc86f6dd8e66ab464c5a331dde6dcccfedb"
+  },
+  "vm_source_archive_matches": true
+}

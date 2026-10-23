@@ -4089,3 +4089,16 @@ rules rather than silently shrinking acceptance criteria.
 - Read-only Fedora cache inspection verified four component content identities.
   The selected image is a direct manifest; fixture index preparation, chain
   verification and conglobate distro build/boot are still required.
+
+
+### M7 review remediation: shared storage finalization
+
+- Consolidated the single-volume and bootstrap finalization machines using the
+  existing sealed storage traits; retained typed aliases and consuming retries.
+- Original deadlines, concrete storage retention, diagnostics history and primary
+  command outcomes remain intact. Snapshot validation belongs to StorageLayout.
+- 198 rootless tests, 54 doctests, strict stable Clippy and formatting pass.
+  Full disposable-VM v261 passes; source, logs and provenance are retained.
+- Independent review reconciliation remains active. Follow-up review must assess
+  this refactor and evidence; no consensus or M7 adherence pass is claimed.
+  M7 stays at 0/3; distro, platform, hosted CI and M8 retirement remain outstanding.

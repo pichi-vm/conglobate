@@ -1,21 +1,24 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::teardown::{Deadline, TeardownCompletion};
+use super::{
+    PreparationStorage,
+    teardown::{Deadline, TeardownCompletion},
+};
 use crate::{
     process::ReapedChildren,
-    storage::{FailureDiagnostics, Mounted, Unmounted, Volume, VolumeUnmountFailure},
+    storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Volume},
 };
 use std::{process::ExitStatus, time::Instant};
 
 #[derive(Debug)]
-enum Pending<'ns, 'origin, 'workspace> {
-    Mounted(Volume<'ns, 'origin, 'workspace, Mounted>),
-    Retry(VolumeUnmountFailure<'ns, 'origin, 'workspace>),
-    Complete(Volume<'ns, 'origin, 'workspace, Unmounted>),
+enum Pending<R: PreparationStorage> {
+    Mounted(R),
+    Retry(R::UnmountFailure),
+    Complete(R::Unmounted),
 }
 #[derive(Debug)]
-struct Finalization<'ns, 'origin, 'workspace> {
-    pending: Pending<'ns, 'origin, 'workspace>,
+struct Finalization<R: PreparationStorage> {
+    pending: Pending<R>,
     deadline: Instant,
     status: ExitStatus,
     reaped: ReapedChildren,
@@ -24,19 +27,13 @@ struct Finalization<'ns, 'origin, 'workspace> {
 /// within the original teardown budget. The status is the outer trusted helper's exit status, not the
 /// command outcome. This is not a sealed-image receipt.
 #[derive(Debug)]
-pub struct FinalizedVolume<'ns, 'origin, 'workspace> {
-    volume: Volume<'ns, 'origin, 'workspace, Unmounted>,
+pub struct FinalizedStorage<R: PreparationStorage> {
+    volume: R::Unmounted,
     status: ExitStatus,
     reaped: ReapedChildren,
 }
-impl<'ns, 'origin, 'workspace> FinalizedVolume<'ns, 'origin, 'workspace> {
-    pub fn into_parts(
-        self,
-    ) -> (
-        ExitStatus,
-        ReapedChildren,
-        Volume<'ns, 'origin, 'workspace, Unmounted>,
-    ) {
+impl<R: PreparationStorage> FinalizedStorage<R> {
+    pub fn into_parts(self) -> (ExitStatus, ReapedChildren, R::Unmounted) {
         (self.status, self.reaped, self.volume)
     }
 }
@@ -49,15 +46,15 @@ impl<'ns, 'origin, 'workspace> FinalizedVolume<'ns, 'origin, 'workspace> {
 /// ```
 #[derive(Debug, thiserror::Error)]
 #[error("step storage finalization: {diagnostics}")]
-pub struct FinalizationFailure<'ns, 'origin, 'workspace> {
+pub struct StorageFinalizationFailure<R: PreparationStorage> {
     diagnostics: FailureDiagnostics,
-    finalization: Finalization<'ns, 'origin, 'workspace>,
+    finalization: Finalization<R>,
 }
-impl<'ns, 'origin, 'workspace> FinalizationFailure<'ns, 'origin, 'workspace> {
+impl<R: PreparationStorage> StorageFinalizationFailure<R> {
     pub fn diagnostics(&self) -> &FailureDiagnostics {
         &self.diagnostics
     }
-    pub fn retry(self) -> Result<FinalizedVolume<'ns, 'origin, 'workspace>, Box<Self>> {
+    pub fn retry(self) -> Result<FinalizedStorage<R>, Box<Self>> {
         self.finalization.run().map_err(|failure| {
             let Self {
                 diagnostics,
@@ -70,15 +67,10 @@ impl<'ns, 'origin, 'workspace> FinalizationFailure<'ns, 'origin, 'workspace> {
         })
     }
 }
-impl<'ns, 'origin, 'workspace> Finalization<'ns, 'origin, 'workspace> {
-    fn run(
-        self,
-    ) -> Result<
-        FinalizedVolume<'ns, 'origin, 'workspace>,
-        Box<FinalizationFailure<'ns, 'origin, 'workspace>>,
-    > {
+impl<R: PreparationStorage> Finalization<R> {
+    fn run(self) -> Result<FinalizedStorage<R>, Box<StorageFinalizationFailure<R>>> {
         if let Err(error) = Deadline::check(self.deadline) {
-            return Err(Box::new(FinalizationFailure {
+            return Err(Box::new(StorageFinalizationFailure {
                 diagnostics: error.into(),
                 finalization: self,
             }));
@@ -90,14 +82,11 @@ impl<'ns, 'origin, 'workspace> Finalization<'ns, 'origin, 'workspace> {
             reaped,
         } = self;
         let result = match pending {
-            Pending::Mounted(volume) => volume.unmount(),
-            Pending::Retry(failure) => failure.retry(),
+            Pending::Mounted(volume) => volume.unmount_until(deadline),
+            Pending::Retry(failure) => R::retry_unmount(failure),
             Pending::Complete(volume) => {
-                if let Err(error) = volume
-                    .validate_snapshot()
-                    .and_then(|()| Deadline::check(deadline))
-                {
-                    return Err(Box::new(FinalizationFailure {
+                if let Err(error) = R::validate(&volume).and_then(|()| Deadline::check(deadline)) {
+                    return Err(Box::new(StorageFinalizationFailure {
                         diagnostics: error.into(),
                         finalization: Self {
                             pending: Pending::Complete(volume),
@@ -107,7 +96,7 @@ impl<'ns, 'origin, 'workspace> Finalization<'ns, 'origin, 'workspace> {
                         },
                     }));
                 }
-                return Ok(FinalizedVolume {
+                return Ok(FinalizedStorage {
                     volume,
                     status,
                     reaped,
@@ -123,8 +112,8 @@ impl<'ns, 'origin, 'workspace> Finalization<'ns, 'origin, 'workspace> {
             }
             .run(),
             Err(failure) => {
-                let diagnostics = failure.diagnostics().latest_only();
-                Err(Box::new(FinalizationFailure {
+                let diagnostics = R::unmount_diagnostics(&failure).latest_only();
+                Err(Box::new(StorageFinalizationFailure {
                     diagnostics,
                     finalization: Self {
                         pending: Pending::Retry(failure),
@@ -137,14 +126,9 @@ impl<'ns, 'origin, 'workspace> Finalization<'ns, 'origin, 'workspace> {
         }
     }
 }
-impl<'ns, 'origin, 'workspace> TeardownCompletion<Volume<'ns, 'origin, 'workspace, Mounted>> {
+impl<R: PreparationStorage> TeardownCompletion<R> {
     /// Continue with the existing deadline; no new finalization budget is minted.
-    pub fn unmount(
-        self,
-    ) -> Result<
-        FinalizedVolume<'ns, 'origin, 'workspace>,
-        Box<FinalizationFailure<'ns, 'origin, 'workspace>>,
-    > {
+    pub fn unmount(self) -> Result<FinalizedStorage<R>, Box<StorageFinalizationFailure<R>>> {
         Finalization {
             pending: Pending::Mounted(self.released.storage),
             deadline: self.deadline,
@@ -160,26 +144,30 @@ impl TeardownCompletion<()> {
     }
 }
 
-impl<'ns, 'origin, 'workspace>
-    super::CommandResult<TeardownCompletion<Volume<'ns, 'origin, 'workspace, Mounted>>>
-{
+impl<R: PreparationStorage> super::CommandResult<TeardownCompletion<R>> {
     pub fn unmount(
         self,
     ) -> Result<
-        super::CommandResult<FinalizedVolume<'ns, 'origin, 'workspace>>,
-        super::CommandResult<Box<FinalizationFailure<'ns, 'origin, 'workspace>>>,
+        super::CommandResult<FinalizedStorage<R>>,
+        super::CommandResult<Box<StorageFinalizationFailure<R>>>,
     > {
         self.map_cleanup(|completion| completion.unmount())
             .transpose()
     }
 }
-impl<'ns, 'origin, 'workspace>
-    super::CommandResult<Box<FinalizationFailure<'ns, 'origin, 'workspace>>>
-{
+impl<R: PreparationStorage> super::CommandResult<Box<StorageFinalizationFailure<R>>> {
     /// Preserve both primary outcome and the existing finalization deadline.
-    pub fn retry(
-        self,
-    ) -> Result<super::CommandResult<FinalizedVolume<'ns, 'origin, 'workspace>>, Self> {
+    pub fn retry(self) -> Result<super::CommandResult<FinalizedStorage<R>>, Self> {
         self.map_cleanup(|failure| failure.retry()).transpose()
     }
 }
+
+/// Finalized storage for a single command root.
+pub type FinalizedVolume<'n, 'o, 'w> = FinalizedStorage<Volume<'n, 'o, 'w, Mounted>>;
+/// Failed finalization retaining a single command root.
+pub type FinalizationFailure<'n, 'o, 'w> = StorageFinalizationFailure<Volume<'n, 'o, 'w, Mounted>>;
+/// Both bootstrap filesystems were flushed, unmounted and snapshot-validated.
+pub type FinalizedBootstrap<'n, 'o, 'w> = FinalizedStorage<BootstrapVolumes<'n, 'o, 'w, Mounted>>;
+/// Failed finalization retaining both bootstrap filesystem owners.
+pub type BootstrapFinalizationFailure<'n, 'o, 'w> =
+    StorageFinalizationFailure<BootstrapVolumes<'n, 'o, 'w, Mounted>>;

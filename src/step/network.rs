@@ -38,6 +38,9 @@ impl<R: NetworkEligibleStorage> private::Storage for NetworkedStorage<R> {}
 impl<R: NetworkEligibleStorage> StepStorage for NetworkedStorage<R> {}
 impl<R: NetworkEligibleStorage> StorageLayout for NetworkedStorage<R> {
     type Unmounted = R::Unmounted;
+    fn validate(storage: &Self::Unmounted) -> io::Result<()> {
+        R::validate(storage)
+    }
 }
 impl<'l, R: NetworkEligibleStorage> Step<'l, Ready, R> {
     /// Consume network ownership while the registered helper is blocked on its

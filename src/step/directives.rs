@@ -21,23 +21,15 @@ pub trait DirectiveStorage:
 {
     #[doc(hidden)]
     fn copy(&mut self, context: &CapturedContext, directive: &Copy) -> Result<(), CopyError>;
-    #[doc(hidden)]
-    fn validate(storage: &Self::Unmounted) -> io::Result<()>;
 }
 impl DirectiveStorage for Volume<'_, '_, '_, Mounted> {
     fn copy(&mut self, context: &CapturedContext, directive: &Copy) -> Result<(), CopyError> {
         self.copy(context, directive)
     }
-    fn validate(storage: &Self::Unmounted) -> io::Result<()> {
-        storage.validate_snapshot()
-    }
 }
 impl DirectiveStorage for BootstrapVolumes<'_, '_, '_, Mounted> {
     fn copy(&mut self, context: &CapturedContext, directive: &Copy) -> Result<(), CopyError> {
         self.copy(context, directive)
-    }
-    fn validate(storage: &Self::Unmounted) -> io::Result<()> {
-        storage.validate_snapshots()
     }
 }
 #[derive(Debug)]

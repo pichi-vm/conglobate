@@ -443,3 +443,28 @@ license/source/bans checks pass with cargo-deny 0.19.9; duplicate-package warnin
 remain visible. Pinned cargo-deny/cargo-audit CI steps are authored, not yet run
 on GitHub. These graph checks do not qualify arm64 execution. Advisory matching
 limitations remain documented; no dependency vulnerability-free claim is made.
+
+
+## Shared storage finalization (simplification-001, implementation in review)
+
+The two finalization machines now share `Finalization<R: PreparationStorage>`.
+The existing sealed layout trait owns snapshot validation, including forwarding
+for a networked layout; directive completion uses the same validation contract.
+No new callback, mutable mode flag or forgeable receipt constructor is introduced.
+The public single-volume and bootstrap result names are typed aliases retaining
+the concrete unmounted owner. Network teardown remains before storage finalization.
+
+The existing PreparationStorage operations preserve the important differences:
+single-volume unmount is checked by the outer deadline, while bootstrap unmount
+also checks the same deadline between its two filesystem operations. Failed
+unmount retains its concrete retry owner. Complete-but-invalid storage remains
+owned for retry. Retry appends diagnostics and never renews the cutoff. The
+CommandResult wrapper retains the original command outcome through either path.
+
+All 198 rootless tests, 54 doctests, strict stable Clippy and formatting pass
+(`finalization-*.log`). Full disposable-VM regression v261 passed (exit 0); its source archive matches
+all modified production files. Logs, inputs and provenance are retained under
+validation/rewrite-command-integration/evidence/v261. This covers the existing
+regression suite, not distro/architecture/confidential-hardware qualification. Claude reconciliation was launched
+before this refactor, so its earlier mechanical checks do not cover these edits.
+The change requires a follow-up review against the completed VM evidence.

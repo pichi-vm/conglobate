@@ -14,6 +14,9 @@ use std::{fmt::Debug, io, path::Path, time::Instant};
 /// Cleanup preserves the concrete unmounted layout and its owning retry error.
 pub trait StorageLayout: StepStorage + Sized {
     type Unmounted: Debug;
+    /// Validate every snapshot in the unmounted layout before accepting it.
+    #[doc(hidden)]
+    fn validate(storage: &Self::Unmounted) -> io::Result<()>;
 }
 pub trait PreparationStorage: StorageLayout {
     type MountFailure: Debug;
@@ -44,6 +47,9 @@ pub trait PreparationStorage: StorageLayout {
 }
 impl<'n, 'o, 'w> StorageLayout for Volume<'n, 'o, 'w, Mounted> {
     type Unmounted = Volume<'n, 'o, 'w, Unmounted>;
+    fn validate(storage: &Self::Unmounted) -> io::Result<()> {
+        storage.validate_snapshot()
+    }
 }
 impl<'n, 'o, 'w> PreparationStorage for Volume<'n, 'o, 'w, Mounted> {
     type MountFailure = Volume<'n, 'o, 'w, Unmounted>;
@@ -88,6 +94,9 @@ impl<'n, 'o, 'w> PreparationStorage for Volume<'n, 'o, 'w, Mounted> {
 }
 impl<'n, 'o, 'w> StorageLayout for BootstrapVolumes<'n, 'o, 'w, Mounted> {
     type Unmounted = BootstrapVolumes<'n, 'o, 'w, Unmounted>;
+    fn validate(storage: &Self::Unmounted) -> io::Result<()> {
+        storage.validate_snapshots()
+    }
 }
 impl<'n, 'o, 'w> PreparationStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
     type MountFailure = Box<BootstrapMountFailure<'n, 'o, 'w>>;

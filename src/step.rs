@@ -34,7 +34,10 @@ pub use cutoff::SetupCutoff;
 pub use setup::{CommandStartFailure, PreparedStep, RunningCommand, SetupBudget};
 mod pins;
 mod teardown;
-pub use finalize::{FinalizationFailure, FinalizedVolume};
+pub use finalize::{
+    BootstrapFinalizationFailure, FinalizationFailure, FinalizedBootstrap, FinalizedStorage,
+    FinalizedVolume, StorageFinalizationFailure,
+};
 pub use teardown::{TeardownCompletion, TeardownFailure};
 
 mod private {
@@ -549,7 +552,6 @@ mod tests {
 }
 
 mod bootstrap;
-pub use bootstrap::{BootstrapFinalizationFailure, FinalizedBootstrap};
 
 mod directives;
 pub use directives::{
