@@ -71,6 +71,16 @@ impl HelperProgram {
             role: Role::NetworkSeed,
         })
     }
+    pub(crate) fn network_configure(
+        &self,
+        configuration: crate::network::LinkConfiguration,
+        cutoff: SetupCutoff,
+    ) -> io::Result<Command> {
+        self.command(HelperInvocation {
+            cutoff,
+            role: Role::NetworkConfigure(configuration),
+        })
+    }
     pub fn receiver(
         &self,
         script: String,
@@ -87,6 +97,7 @@ impl HelperProgram {
 enum Role {
     Seed,
     NetworkSeed,
+    NetworkConfigure(crate::network::LinkConfiguration),
     Receiver {
         script: String,
         uid: u32,
@@ -152,6 +163,7 @@ impl HelperInvocation {
         let (length, tag) = match self.role {
             Role::Seed => (3, 0),
             Role::NetworkSeed => (3, 5),
+            Role::NetworkConfigure(_) => (4, 6),
             Role::Receiver { .. } => (7, 1),
             Role::Namespaces(_) => (4, 2),
             Role::Root(_) => (4, 3),
@@ -167,6 +179,9 @@ impl HelperInvocation {
             .expect("Vec writer");
         match &self.role {
             Role::Seed | Role::NetworkSeed => {}
+            Role::NetworkConfigure(configuration) => {
+                e.bytes(&configuration.encode()).expect("Vec writer");
+            }
             Role::Receiver {
                 script,
                 uid,
@@ -218,6 +233,9 @@ impl HelperInvocation {
             let role = match (length, tag) {
                 (Some(3), 0) => Role::Seed,
                 (Some(3), 5) => Role::NetworkSeed,
+                (Some(4), 6) => {
+                    Role::NetworkConfigure(crate::network::LinkConfiguration::decode(d.bytes()?)?)
+                }
                 (Some(7), 1) => Role::receiver(
                     d.str()?.to_owned(),
                     d.u32()?,
@@ -300,6 +318,10 @@ impl HelperInvocation {
                     .env("MKE2FS_CONFIG", "/etc/mke2fs.conf")
                     .exec()
                     .into())
+            }
+            Role::NetworkConfigure(configuration) => {
+                configuration.serve(deadline)?;
+                Ok(ExitStatus::from_raw(0))
             }
             Role::NetworkSeed => {
                 crate::network::NetworkNamespace::serve(deadline)?;

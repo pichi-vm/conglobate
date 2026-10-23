@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{NetworkNamespace, route::RouteRequest};
+use super::{LinkConfiguration, NetworkAddress, NetworkNamespace, route::RouteRequest};
 use crate::storage::FailureDiagnostics;
 use netlink_packet_core::{NLM_F_CREATE, NLM_F_EXCL};
 use netlink_packet_route::{
@@ -350,5 +350,128 @@ impl ConnectionFailure {
             failure,
             namespace: self.namespace,
         })
+    }
+}
+
+/// Link addresses and routes are configured; NAT and command admission are
+/// separate gates. The owner must outlive command descendants.
+#[derive(Debug)]
+pub struct ConfiguredVeth(ConnectedVeth);
+impl ConfiguredVeth {
+    pub fn namespace(&self) -> &NetworkNamespace {
+        &self.0.namespace
+    }
+    pub fn close(self) -> Result<(), ConnectionFailure> {
+        self.0.close()
+    }
+}
+#[derive(Debug, thiserror::Error)]
+#[error("network configuration: {diagnostics}")]
+pub struct ConfigurationFailure {
+    diagnostics: FailureDiagnostics,
+    connection: ConnectedVeth,
+    worker: Option<crate::process::Process<crate::process::Running>>,
+    deadline: Instant,
+}
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigurationCleanupFailure {
+    #[error("network worker cleanup: {0}")]
+    Worker(Box<ConfigurationFailure>),
+    #[error("network resource cleanup: {0}")]
+    Network(ConnectionFailure),
+}
+impl ConfigurationFailure {
+    fn new(
+        connection: ConnectedVeth,
+        error: io::Error,
+        worker: Option<crate::process::Process<crate::process::Running>>,
+    ) -> Box<Self> {
+        Box::new(Self {
+            diagnostics: error.into(),
+            connection,
+            worker,
+            deadline: Instant::now() + Duration::from_secs(30),
+        })
+    }
+    pub fn cleanup(self) -> Result<(), ConfigurationCleanupFailure> {
+        let Self {
+            diagnostics,
+            connection,
+            worker,
+            deadline,
+        } = self;
+        if let Some(worker) = worker
+            && let Err(error) = worker.terminate_until(deadline)
+        {
+            let (error, worker) = error.into_parts();
+            return Err(ConfigurationCleanupFailure::Worker(Box::new(Self {
+                diagnostics: diagnostics.followed_by(std::io::Error::other(error).into()),
+                connection,
+                worker: Some(worker),
+                deadline,
+            })));
+        }
+        connection
+            .close()
+            .map_err(ConfigurationCleanupFailure::Network)
+    }
+}
+impl ConnectedVeth {
+    pub fn configure(
+        self,
+        host: Vec<NetworkAddress>,
+        peer: Vec<NetworkAddress>,
+        program: &crate::execution::HelperProgram,
+        cutoff: crate::step::SetupCutoff,
+    ) -> Result<ConfiguredVeth, Box<ConfigurationFailure>> {
+        let start = (|| -> io::Result<crate::process::Process<crate::process::Running>> {
+            let deadline = cutoff.deadline()?;
+            self.pair.verify_namespace()?;
+            if host.iter().any(NetworkAddress::has_gateway) {
+                return Err(io::Error::other(
+                    "private host link cannot change default routes",
+                ));
+            }
+            let host = LinkConfiguration::new(
+                self.pair.host.clone(),
+                self.pair.host_address.clone(),
+                host,
+            )?;
+            let peer = LinkConfiguration::new(
+                self.pair.peer.clone(),
+                self.pair.peer_address.clone(),
+                peer,
+            )?;
+            host.apply(deadline)?;
+            let namespace = self.namespace.descriptor().try_clone()?;
+            let mut command = program.network_configure(peer, cutoff)?;
+            command.stdin(namespace);
+            command.spawn().map(crate::process::Process::from)
+        })();
+
+        let worker = match start {
+            Ok(worker) => worker,
+            Err(error) => return Err(ConfigurationFailure::new(self, error, None)),
+        };
+        let deadline = match cutoff.deadline() {
+            Ok(deadline) => deadline,
+            Err(error) => return Err(ConfigurationFailure::new(self, error, Some(worker))),
+        };
+        match worker.wait_until(deadline) {
+            Ok(reaped) if reaped.status().success() => Ok(ConfiguredVeth(self)),
+            Ok(reaped) => Err(ConfigurationFailure::new(
+                self,
+                io::Error::other(format!("network helper exited {}", reaped.status())),
+                None,
+            )),
+            Err(error) => {
+                let (error, worker) = error.into_parts();
+                Err(ConfigurationFailure::new(
+                    self,
+                    io::Error::other(error),
+                    Some(worker),
+                ))
+            }
+        }
     }
 }

@@ -3615,3 +3615,34 @@ rules rather than silently shrinking acceptance criteria.
   address/routing/NAT setup, resolver mounting/cleanup and actual network receipts
   are still required before admission. These results do not count as a full M6
   adherence pass. Remaining matrix/ORAS, three reviews, M7 and M8 remain required.
+
+### M6 dual-stack link configuration
+
+- Previous turn progressed in e25b9d5. Added immutable NetworkAddress descriptions,
+  bounded native netlink address creation, link activation and default routes.
+  LinkConfiguration verifies the private MAC identifier before changing a link,
+  accepts at most one address per family and has canonical validated CBOR helper
+  input. Host-side default gateways are rejected; no primary interface is changed.
+- ConnectedVeth::configure returns a distinct ConfiguredVeth only after the trusted
+  namespace helper exits successfully. The helper joins the owned namespace,
+  applies peer addresses/routes and activates loopback. IPv6 private addresses
+  explicitly suppress DAD because the allocated pair is isolated and owned; this
+  avoids a timing sleep before use. Kernel rejection is still a build setup error.
+- Configuration failures retain the connection and any live helper. Cleanup must
+  terminate/reap the helper within its original cleanup cutoff before removing
+  the pair/namespace. ConfiguredVeth does not certify NAT or command admission.
+- Disposable VM v220 passes IPv4/IPv6 private-link UDP from mapped-root helpers
+  through both regular and gated setup, default-route source selection via UDP
+  connect (no upstream packet sent), and actual IPv4/IPv6 loopback send/receive.
+  A deliberately unreachable gateway causes the configuration helper to fail;
+  cleanup removes the links/control marker and leaves no creator/helper children.
+  Existing collision, namespace, descriptor-closure and expiry checks pass.
+- Host tests (93 library tests, integrations and 52 doctests) and strict root and
+  fixture Clippy pass. The focused test does not repeat the full offline v219
+  suite; those paths are unchanged. Source/log provenance is in evidence/v220.
+- Required next: NAT/stateful reply-only ingress and forwarding ownership,
+  supervisor-volume-helper plumbing, resolver mounting/cleanup and network
+  receipts. Offline namespaces currently leave loopback down; activate it within
+  the existing bounded setup before image execution and validate local-only
+  communication. Required worker-timeout/partial-setup cases and ORAS/full M6
+  reviews also remain. M6 is active at zero passes; M7/M8 remain required.

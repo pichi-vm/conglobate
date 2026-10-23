@@ -11,3 +11,9 @@ pub use veth::{ConnectedVeth, ConnectionFailure, InterfaceName, VethFailure, Vet
 
 mod namespace;
 pub use namespace::{NetworkNamespace, NetworkNamespaceFailure};
+
+mod configuration;
+pub(crate) use configuration::LinkConfiguration;
+pub use configuration::NetworkAddress;
+
+pub use veth::{ConfigurationCleanupFailure, ConfigurationFailure, ConfiguredVeth};
