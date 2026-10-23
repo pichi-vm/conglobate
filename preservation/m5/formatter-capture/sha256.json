@@ -1,0 +1,6 @@
+{
+  "src/formatter.rs": "ea643d42fdd7e115438de73fb6839fe61f42fa6320dc3dadf5a01f6d196e0bdb",
+  "src/formatter/runtime.rs": "371648d476128c5314e05178875336202c3f9b6df2acf00e09c493f03531cc13",
+  "preservation/m5/formatter-capture/tests.log": "e3d915f3af7e141bd62df8fc05e34eb180649eba9974f9ae8b71d3927d06957b",
+  "preservation/m5/formatter-capture/clippy.log": "f344eca93fed671cd3c3942a4fc708804f045a0600d91df9049d41526302f92b"
+}

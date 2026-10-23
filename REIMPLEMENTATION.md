@@ -2692,3 +2692,13 @@ rules rather than silently shrinking acceptance criteria.
 - Recorded integrated implementation order and acceptance fixture in
   M5-INTEGRATION.md: captured trusted formatting, owned dual mounts, direct
   sealing and reopened-chain metadata checks. M5 clean streak is zero.
+
+### M5 immutable trusted formatter capture
+
+- Added CapturedFormatter/FormatterFile with confined file capture and immutable
+  digests/bytes. Runtime file lists belong to trusted setup, never recipes.
+  Captured bytes survive source mutation; duplicate/missing/nonexecutable and
+  conflicting runtime paths are rejected. No source handles escape capture.
+- Targeted capture tests and strict Clippy/format checks pass; logs preserved
+  under preservation/m5/formatter-capture. Staging, actual formatter execution,
+  dual-volume integration and sealing are still required. M5 clean streak zero.

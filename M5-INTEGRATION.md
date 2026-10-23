@@ -47,3 +47,25 @@ Implementation should build toward this fixture early, avoiding another long
 sequence of disconnected primitives. M6 adds the build coordinator's remaining
 stages and publication; M7 still owns representative distro boots and actual
 amd64/arm64 confidential-platform qualification.
+
+## Formatter runtime capture started
+
+CapturedFormatter captures a trusted-environment list of regular runtime files
+into immutable measured bytes, sorted by normalized runtime path. The requested
+executable must be present with execute permission. Resolve source symlinks inside
+the supplied root; do not preserve host symlinks in the captured runtime. Reject
+duplicates, missing files, special files and file/directory collisions. Keep
+source path/descriptor authority out of the resulting object. Later staging must
+materialize these bytes with ordinary executable/read-only permissions, removing
+set-ID bits, and execute inside that captured root. This is not a formatting
+receipt, automatic dependency discovery or a runnable formatter yet.
+
+Tests establish source-mutation independence, confined absolute symlink resolution,
+digest agreement and missing/duplicate/nonexecutable input rejection. Targeted
+tests and strict Clippy pass. No privileged host operations were used.
+
+Formatter option semantics checked against the e2fsprogs mke2fs manual:
+https://man7.org/linux/man-pages/man8/mke2fs.8.html . The documented explicit block
+count, root_owner, nodiscard, and lazy initialization controls match the existing
+architecture contract. Versioned profile/configuration and isolated execution
+remain to implement and validate in the disposable VM.

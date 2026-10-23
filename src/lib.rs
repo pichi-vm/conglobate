@@ -14,6 +14,7 @@ pub mod document;
 pub mod domain;
 pub mod execution;
 pub mod filesystem;
+pub mod formatter;
 pub mod image;
 pub mod input;
 pub mod isolation;
