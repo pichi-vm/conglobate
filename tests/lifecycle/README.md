@@ -98,3 +98,15 @@ collision preserving the pre-existing table, distinct simultaneous allocations,
 and fixed expired cleanup deadlines retaining ownership. The final case leaves
 resources for VM disposal intentionally. All networking is inside the disconnected
 guest; this does not validate actual recipe DNS/TCP or external outbound traffic.
+
+`--case sandbox-gate-failure` exercises the real mounted CommandReceiver after
+supervisor admission. A trusted fixture child receives the ordinary gated offer,
+shuts down its gate receive side before sending Ready, and waits on a fixture
+socket for explicit release. Start must fail with BrokenPipe. The receiver's
+primary-error diagnostic establishes entry into local cleanup; the supervisor
+then verifies its control channel remains open while the child is held alive.
+After release the receiver must return Cleaned, reap the child, close its view,
+and exit successfully. The supervisor still treats the absent command completion
+as failure and finalizes rejected storage. No image command or labeling executes.
+An isolated early-channel-close mutant fails the liveness assertion; no production
+API or descriptor access was widened for this test. No sleeps establish order.

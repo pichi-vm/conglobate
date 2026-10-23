@@ -17,6 +17,7 @@ pub(super) enum FailurePoint {
     Launch,
     Join,
     AttachedExit,
+    Gate,
 }
 #[derive(Debug)]
 pub(super) struct SandboxFailures;
@@ -72,7 +73,10 @@ impl SandboxFailures {
             .map_err(|e| e.to_string())?;
         let snapshot = if matches!(
             point,
-            FailurePoint::Launch | FailurePoint::Join | FailurePoint::AttachedExit
+            FailurePoint::Launch
+                | FailurePoint::Join
+                | FailurePoint::AttachedExit
+                | FailurePoint::Gate
         ) {
             let files = fs::read_to_string("/formatter-runtime-files")?
                 .lines()
@@ -111,7 +115,10 @@ impl SandboxFailures {
             .map_err(|e| e.to_string())?;
         if matches!(
             point,
-            FailurePoint::Launch | FailurePoint::Join | FailurePoint::AttachedExit
+            FailurePoint::Launch
+                | FailurePoint::Join
+                | FailurePoint::AttachedExit
+                | FailurePoint::Gate
         ) {
             let mounted = volume
                 .mount_ext4(paths.volumes())
@@ -158,7 +165,10 @@ impl SandboxFailures {
                 assert!(diagnostics.cleanup().is_empty());
                 returned
             }
-            FailurePoint::Launch | FailurePoint::Join | FailurePoint::AttachedExit => {
+            FailurePoint::Launch
+            | FailurePoint::Join
+            | FailurePoint::AttachedExit
+            | FailurePoint::Gate => {
                 let prepared = result.map_err(|e| e.to_string())?;
                 // Preparation has acquired the volume mount, namespace and domain.
                 assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
@@ -169,13 +179,71 @@ impl SandboxFailures {
                     let mut command = std::process::Command::new(std::env::current_exe()?);
                     command.arg(if matches!(point, FailurePoint::Join) {
                         "contained-reject"
+                    } else if matches!(point, FailurePoint::Gate) {
+                        "sandbox-gate-receiver"
                     } else {
                         "sandbox-attached-helper"
                     });
                     command
                 };
                 command.env_clear();
-                if matches!(point, FailurePoint::AttachedExit) {
+                if matches!(point, FailurePoint::Gate) {
+                    use std::{
+                        io::{BufRead, BufReader},
+                        os::unix::net::{UnixDatagram, UnixStream},
+                        process::Stdio,
+                        time::{Duration, Instant},
+                    };
+                    let (diagnostics, writer) = UnixStream::pair()?;
+                    diagnostics.set_read_timeout(Some(Duration::from_secs(10)))?;
+                    command.stderr(Stdio::from(std::os::fd::OwnedFd::from(writer)));
+                    command.arg(budget.cutoff()?.to_argument());
+                    fs::create_dir("/work/runtime-parent/receiver-view")?;
+                    let step = prepared
+                        .launch(command, budget.deadline(), paths.domains())
+                        .map_err(|e| e.to_string())?;
+                    step.send_volume_until(budget.deadline())?;
+                    let command = budget
+                        .await_prepared(step)
+                        .map_err(|e| e.to_string())?
+                        .start("10s".parse()?)
+                        .map_err(|e| e.to_string())?;
+                    let mut diagnostics = BufReader::new(diagnostics);
+                    let mut line = String::new();
+                    loop {
+                        line.clear();
+                        assert_ne!(diagnostics.read_line(&mut line)?, 0);
+                        eprint!("{line}");
+                        if line.starts_with("restricted command startup failed:") {
+                            break;
+                        }
+                    }
+                    // The diagnostic is emitted on entering local cleanup. The
+                    // child cannot exit before this check and explicit release.
+                    assert!(!command.supervision().peer_lost()?);
+                    println!("RECEIVER_CONTROL_HELD_DURING_GATE_FAILURE_CLEANUP_PASS");
+                    UnixDatagram::unbound()?
+                        .send_to(b"exit", "/work/runtime-parent/gate-release.sock")?;
+                    command
+                        .supervision()
+                        .wait_for_peer_exit_until(Instant::now() + Duration::from_secs(10))?;
+                    let (outcome, completion) =
+                        command.observe().teardown(paths.domains()).into_parts();
+                    assert!(!outcome.success());
+                    let finalized = completion
+                        .map_err(|e| e.to_string())?
+                        .unmount()
+                        .map_err(|e| e.to_string())?;
+                    let (status, _, returned) = finalized.into_parts();
+                    assert!(status.success());
+                    assert_eq!(
+                        fs::read_to_string("/work/receiver-gate-cleaned")?,
+                        "cleaned"
+                    );
+                    fs::remove_file("/work/receiver-gate-cleaned")?;
+                    fs::remove_dir("/work/runtime-parent/receiver-view")?;
+                    returned
+                } else if matches!(point, FailurePoint::AttachedExit) {
                     fs::create_dir("/work/runtime-parent/receiver-view")?;
                     command.arg(budget.cutoff()?.to_argument());
                     let step = prepared
@@ -256,6 +324,7 @@ impl SandboxFailures {
                 FailurePoint::Launch => "SANDBOX_LAUNCH_FAILURE_ROLLBACK_PASS",
                 FailurePoint::Join => "SANDBOX_JOIN_FAILURE_ROLLBACK_PASS",
                 FailurePoint::AttachedExit => "SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS",
+                FailurePoint::Gate => "SANDBOX_GATE_FAILURE_ROLLBACK_PASS",
             }
         );
         Ok(())

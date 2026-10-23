@@ -4684,3 +4684,30 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   other remaining lifecycle gates are not inferred from IPv4 TCP success. Broader
   distro/platform qualification and retirement remain open. No adherence pass
   claimed from these runs.
+
+### Deterministic post-admission receiver start-gate failure regression
+
+- Added maintained sandbox-gate-failure using real formatted storage, mapped root
+  attachment, CommandReceiver and supervisor admission. Trusted fixture child
+  shuts its own gate receive side before reporting Ready and stays alive until
+  explicit release. Start deterministically returns BrokenPipe; no recipe runs.
+- Moved the existing primary startup-error diagnostic before bounded child wait,
+  so failures remain observable even when cleanup blocks. The fixture uses that
+  diagnostic to establish entry into cleanup and verifies the supervision channel
+  is still open while the child is held. Release then permits direct-child reap,
+  diagnostic drain, explicit local view close and helper exit. Supervisor retains
+  failed command observation despite successful helper status, and finalizes
+  rejected storage with no children, domains, records or mounts remaining.
+- Fresh receiver-gate-failure-v1/v2 pass. An isolated source copy reintroducing
+  drop(channel) before startup.failure fails exactly at the channel-liveness
+  assertion. It was never applied to the worktree. Mutation source/hash and VM
+  failure evidence preserved alongside passing runs. No sleeps or widened APIs.
+- Initial fixture Clippy needless-borrow finding was corrected and its log kept.
+  Final strict fixture/root Clippy, full rootless tests and 50 documentation tests
+  pass. Small evidence/source snapshots preserved; large artifacts and isolated
+  mutation source remain tracked for durable archival.
+- This closes the explicitly tracked post-admission gate-send cleanup coverage
+  gap from the receiver review. It does not qualify image execution/labeling in
+  this fixture, supervisor crash or blocked kernel I/O. M4 remains 0/3; this is
+  a regression test plus mutation evidence, not a whole-milestone adherence pass.
+  Previous turn's external IPv4 NAT validation was concrete progress.

@@ -3,6 +3,7 @@
 mod contained;
 mod domain_publication;
 mod formatter_failures;
+mod gate_failure;
 mod network;
 mod sandbox_failures;
 use conglobate::execution::{HelperInvocation, HelperProgram};
@@ -24,6 +25,13 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "sandbox-gate-failure" => {
+                sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Gate)
+            }
+            [mode, cutoff] if mode == "sandbox-gate-receiver" => {
+                gate_failure::GateFailure::receiver(cutoff)
+            }
+            [mode] if mode == "sandbox-gate-child" => gate_failure::GateFailure::child(),
             [mode, interface, port] if mode == "network-capture" => {
                 network::NetworkProbe::capture(interface, port)
             }

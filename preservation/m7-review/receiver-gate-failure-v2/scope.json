@@ -1,0 +1,16 @@
+{
+  "baseline": "255b750",
+  "production_change": "startup failure diagnostic emitted before bounded cleanup",
+  "coverage": [
+    "real formatted/mounted storage and idmapped receiver view",
+    "explicit supervisor admission before start gate BrokenPipe",
+    "receiver control held while child awaits explicit release",
+    "Cleaned failure with child reaped and local view closed",
+    "supervisor finalization preserves failed command observation despite successful helper exit"
+  ],
+  "limitations": [
+    "fixture child simulates ready protocol; no recipe or labels execute",
+    "not supervisor crash or blocked kernel I/O"
+  ],
+  "mutant": false
+}

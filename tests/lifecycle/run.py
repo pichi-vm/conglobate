@@ -143,6 +143,9 @@ exec sleep infinity
                        'NETWORK_COMPOSITE_NAT_FAILURE_PRESERVES_FOREIGN_TABLE_PASS',
                        'NETWORK_PRODUCTION_ALLOCATION_RELEASE_AND_DISTINCT_LIVE_PREFIX_PASS',
                        'NETWORK_COMPOSITE_EXPIRED_TEARDOWN_RETRY_RETAINS_OWNER_PASS']
+        elif self.args.case == 'sandbox-gate-failure':
+            markers = ['RECEIVER_CONTROL_HELD_DURING_GATE_FAILURE_CLEANUP_PASS',
+                       'SANDBOX_GATE_FAILURE_ROLLBACK_PASS']
         elif self.args.case.startswith('sandbox-'):
             markers = [self.args.case.upper().replace('-', '_') + '_ROLLBACK_PASS']
         elif self.args.drop:
@@ -166,7 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite'], default='formatter-failures')
+    parser.add_argument('--case', choices=['formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':

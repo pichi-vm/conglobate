@@ -169,6 +169,7 @@ struct ReceiverStartup<'ns> {
 }
 impl<'ns> ReceiverStartup<'ns> {
     fn failure(self, source: io::Error) -> Box<ReceiverFailure<'ns>> {
+        eprintln!("restricted command startup failed: {source}");
         let (mount, _) = match self.mount.wait_until(self.deadline) {
             Ok(completion) => completion,
             Err(failure) => {
@@ -181,7 +182,6 @@ impl<'ns> ReceiverStartup<'ns> {
         if let Err(error) = self.diagnostics.finish() {
             eprintln!("startup diagnostic relay: {error}");
         }
-        eprintln!("restricted command startup failed: {source}");
         Box::new(match mount.close() {
             Ok(()) => ReceiverFailure::Cleaned(source),
             Err(cleanup) => ReceiverFailure::Cleanup { source, cleanup },

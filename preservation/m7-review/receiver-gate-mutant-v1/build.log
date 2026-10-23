@@ -1,0 +1,3 @@
+   Compiling conglobate v0.2.0 (/var/tmp/conglobate-gate-mutant-source-v1)
+   Compiling conglobate-lifecycle-tests v0.0.0 (/var/tmp/conglobate-gate-mutant-source-v1/tests/lifecycle)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.59s
