@@ -19,8 +19,7 @@ pub use setup::{
     RootPreparationError,
 };
 pub use user::{
-    IdRange, Mapped, NamespaceViewFailure, PinnedNamespace, UserNamespace, UserNamespaceFailure,
-    UserNamespaceReleaseFailure, UserNamespaceState,
+    IdRange, Mapped, NamespaceViewFailure, UserNamespace, UserNamespaceFailure, UserNamespaceState,
 };
 mod root;
 mod runtime;

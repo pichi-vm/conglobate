@@ -5,11 +5,11 @@ use super::{
     PreparationFailure, PreparationStorage, StoragePreparation, StoragePreparationFailure,
 };
 use crate::{
-    anchor::{CreateFailure, RecoveryDirectory},
+    anchor::RecoveryDirectory,
     execution::HelperProgram,
     isolation::{IdRange, Mapped, UserNamespace, UserNamespaceFailure},
     process::{ChildReaper, LaunchFailure},
-    step::{Retained, SetupBudget, pins::PinCleanup},
+    step::{Retained, SetupBudget},
     storage::{BootstrapVolumes, Mounted, Unmounted, Volume},
 };
 use std::{io, mem::ManuallyDrop, path::Path, process::Command};
@@ -157,36 +157,13 @@ impl<'l> CommandSandbox<'l> {
                 directories.domains,
             ));
         }
-        let namespace = match namespace.pin(directories.recovery) {
-            Ok(namespace) => namespace,
-            Err(CreateFailure::Before(source)) => {
-                return Err(StoragePreparationFailure::early(
-                    source,
-                    Phase::EarlyDrain(reaper, volume),
-                    directories.domains,
-                ));
-            }
-            Err(CreateFailure::Mount { source, target }) => {
-                return Err(StoragePreparationFailure::early(
-                    source,
-                    Phase::EarlyPins(PinCleanup::target(target), reaper, volume),
-                    directories.domains,
-                ));
-            }
-        };
-        if let Err(error) = budget.check() {
-            return Err(StoragePreparationFailure::early(
-                error,
-                Phase::EarlyPins(PinCleanup::namespace(namespace), reaper, volume),
-                directories.domains,
-            ));
-        }
         let volume = match R::mount(volume, directories.mounts, budget.deadline()) {
             Ok(volume) => volume,
             Err((source, failure)) => {
+                drop(namespace);
                 return Err(StoragePreparationFailure::early(
                     source,
-                    Phase::MountPins(PinCleanup::namespace(namespace), reaper, failure),
+                    Phase::MountDrain(reaper, failure),
                     directories.domains,
                 ));
             }

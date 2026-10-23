@@ -1,6 +1,5 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::pins::{PinCleanup, PinFailure};
 use super::{
     Cancelling, Draining, Finishing, Quiescent, Ready, Reaping, Running, Step, StepFailure,
     StepState, StepStorage,
@@ -26,7 +25,6 @@ enum Phase<'a, R: StepStorage> {
     Draining(Step<'a, Draining, R>),
     Quiescent(Step<'a, Quiescent, R>),
     Finishing(Step<'a, Finishing, R>),
-    Pins(Released<R>, PinCleanup),
     Complete(Released<R>),
 }
 #[derive(Debug)]
@@ -167,25 +165,13 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
             ),
             Phase::Finishing(step) => {
                 let (status, reaped, namespace, storage) = step.finish().into_parts();
-                Ok(Phase::Pins(
-                    Released {
-                        status,
-                        reaped,
-                        storage,
-                    },
-                    PinCleanup::namespace(namespace),
-                ))
+                drop(namespace);
+                Ok(Phase::Complete(Released {
+                    status,
+                    reaped,
+                    storage,
+                }))
             }
-            Phase::Pins(released, cleanup) => match cleanup.run(deadline) {
-                Ok(()) => Ok(Phase::Complete(released)),
-                Err(failure) => {
-                    let PinFailure { source, cleanup } = *failure;
-                    Err(Box::new(TransitionFailure {
-                        source,
-                        phase: Phase::Pins(released, cleanup),
-                    }))
-                }
-            },
             Phase::Complete(released) => return Ok(TeardownCompletion { released, deadline }),
         };
         match next {

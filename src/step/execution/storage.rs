@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use crate::{
-    isolation::{PinnedNamespace, UserNamespace},
+    isolation::{Mapped, UserNamespace},
     network::CommandNetwork,
     process::{Joined, ReapedChildren, Supervision},
     step::{
@@ -20,7 +20,7 @@ pub trait ExecutionStorage: StorageLayout {
     #[doc(hidden)]
     fn send(
         &self,
-        namespace: &UserNamespace<PinnedNamespace>,
+        namespace: &UserNamespace<Mapped>,
         channel: &Supervision<Joined>,
         network: Option<&CommandNetwork>,
         deadline: Instant,
@@ -43,7 +43,7 @@ impl<'n, 'o, 'w> ExecutionStorage for Volume<'n, 'o, 'w, Mounted> {
     type FinalizationFailure = Box<FinalizationFailure<'n, 'o, 'w>>;
     fn send(
         &self,
-        namespace: &UserNamespace<PinnedNamespace>,
+        namespace: &UserNamespace<Mapped>,
         channel: &Supervision<Joined>,
         network: Option<&CommandNetwork>,
         deadline: Instant,
@@ -84,7 +84,7 @@ impl<'n, 'o, 'w> ExecutionStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
     type FinalizationFailure = Box<BootstrapFinalizationFailure<'n, 'o, 'w>>;
     fn send(
         &self,
-        namespace: &UserNamespace<PinnedNamespace>,
+        namespace: &UserNamespace<Mapped>,
         channel: &Supervision<Joined>,
         network: Option<&CommandNetwork>,
         deadline: Instant,

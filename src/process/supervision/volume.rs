@@ -3,9 +3,7 @@
 use super::{Joined, Supervision, joining::Packet};
 use crate::{
     filesystem::{Detached, Idmapped, Mount},
-    isolation::{
-        CommandDevices, CommandSetup, PinnedNamespace, PrivateMountNamespace, UserNamespace,
-    },
+    isolation::{CommandDevices, CommandSetup, Mapped, PrivateMountNamespace, UserNamespace},
     network::{CommandNetwork, ResolverTarget, ResolverView},
     storage::VolumeView,
 };
@@ -28,7 +26,7 @@ impl Supervision<Joined> {
     pub(crate) fn send_volume_until(
         &self,
         view: &VolumeView<'_>,
-        namespace: &UserNamespace<PinnedNamespace>,
+        namespace: &UserNamespace<Mapped>,
         deadline: Instant,
     ) -> io::Result<()> {
         Packet::Volume(view.descriptor()?.into(), namespace.descriptor()?.into())
@@ -39,7 +37,7 @@ impl Supervision<Joined> {
         &self,
         root: &VolumeView<'_>,
         output: &VolumeView<'_>,
-        namespace: &UserNamespace<PinnedNamespace>,
+        namespace: &UserNamespace<Mapped>,
         deadline: Instant,
     ) -> io::Result<()> {
         Packet::Bootstrap(
@@ -55,7 +53,7 @@ impl Supervision<Joined> {
         root: &VolumeView<'_>,
         output: Option<&VolumeView<'_>>,
         raw: &VolumeView<'_>,
-        namespace: &UserNamespace<PinnedNamespace>,
+        namespace: &UserNamespace<Mapped>,
         network: &CommandNetwork,
         deadline: Instant,
     ) -> io::Result<()> {

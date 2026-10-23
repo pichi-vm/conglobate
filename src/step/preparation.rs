@@ -3,13 +3,13 @@
 //! Ownership across acquisition and helper launch, before the ready Step exists.
 mod sandbox;
 mod storage;
-use super::{Ready, Retained, Step, pins::PinCleanup, teardown::Deadline};
+use super::{Ready, Retained, Step, teardown::Deadline};
 use crate::{
     domain::{
         DomainCancellation, DomainCreateFailure, DomainCreationRollback, DomainRecordCleanup,
         HelperLaunchFailure, RecordDomainFailure, RecordedDomain,
     },
-    isolation::{PinnedNamespace, UserNamespace},
+    isolation::{Mapped, UserNamespace},
     process::{ChildReaper, Identified, LaunchFailure, Process, Running},
     storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Volume},
 };
@@ -25,14 +25,14 @@ pub use storage::{PreparationStorage, StorageLayout};
 
 #[derive(Debug)]
 struct Assigned<R: PreparationStorage> {
-    namespace: ManuallyDrop<UserNamespace<PinnedNamespace>>,
+    namespace: ManuallyDrop<UserNamespace<Mapped>>,
     volume: Retained<R>,
 }
 /// Namespace ownership and mounted storage stay together even if
 /// helper startup fails before cgroup joining. The reaper must already be installed.
 #[derive(Debug)]
 pub struct StoragePreparation<'l, R: PreparationStorage> {
-    namespace: ManuallyDrop<UserNamespace<PinnedNamespace>>,
+    namespace: ManuallyDrop<UserNamespace<Mapped>>,
     volume: Retained<R>,
     domain: RecordedDomain<'l>,
     reaper: ChildReaper,
@@ -41,7 +41,7 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
     /// Acquire and publish containment before launching a helper. Every failure
     /// retains the supplied namespace, mounted storage and child reaper.
     pub fn create(
-        namespace: UserNamespace<PinnedNamespace>,
+        namespace: UserNamespace<Mapped>,
         volume: R,
         reaper: ChildReaper,
         recovery: &'l crate::anchor::RecoveryDirectory,
@@ -74,7 +74,7 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
     }
 
     pub fn new(
-        namespace: UserNamespace<PinnedNamespace>,
+        namespace: UserNamespace<Mapped>,
         volume: R,
         domain: RecordedDomain<'l>,
         reaper: ChildReaper,
@@ -132,13 +132,11 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
 }
 #[derive(Debug)]
 enum Phase<'l, R: PreparationStorage> {
-    MountPins(PinCleanup, ChildReaper, R::MountFailure),
     MountDrain(ChildReaper, R::MountFailure),
     MountRollback(R::MountFailure),
     EarlyRunning(Process<Running>, ChildReaper, R::Unmounted),
     EarlyIdentified(Process<Identified>, ChildReaper, R::Unmounted),
     EarlyDrain(ChildReaper, R::Unmounted),
-    EarlyPins(PinCleanup, ChildReaper, R::Unmounted),
 
     DomainSetup(DomainCreationRollback<'l>, ChildReaper, Assigned<R>),
     EmptyDrain(ChildReaper, Assigned<R>),
@@ -157,7 +155,6 @@ enum Phase<'l, R: PreparationStorage> {
     Domain(DomainCancellation<'l>, ChildReaper, Assigned<R>),
     Drain(DomainRecordCleanup<'l>, ChildReaper, Assigned<R>),
     Record(DomainRecordCleanup<'l>, Assigned<R>),
-    Pins(PinCleanup, Retained<R>),
     Unmount(Retained<R>),
     UnmountRetry(R::UnmountFailure),
     Complete(R::Unmounted),
@@ -226,13 +223,6 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
             deadline,
         } = self;
         let next: Result<Phase<'l, R>, (FailureDiagnostics, Phase<'l, R>)> = match phase {
-            Phase::MountPins(pins, reaper, failure) => match pins.run(deadline) {
-                Ok(()) => Ok(Phase::MountDrain(reaper, failure)),
-                Err(error) => Err((
-                    error.source.into(),
-                    Phase::MountPins(error.cleanup, reaper, failure),
-                )),
-            },
             Phase::MountDrain(reaper, failure) => match reaper.drain_until(deadline) {
                 Ok(_) => Ok(Phase::MountRollback(failure)),
                 Err(error) => {
@@ -278,13 +268,6 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
                     Err((source.into(), Phase::EarlyDrain(reaper, volume)))
                 }
             },
-            Phase::EarlyPins(pins, reaper, volume) => match pins.run(deadline) {
-                Ok(()) => Ok(Phase::EarlyDrain(reaper, volume)),
-                Err(failure) => Err((
-                    failure.source.into(),
-                    Phase::EarlyPins(failure.cleanup, reaper, volume),
-                )),
-            },
             Phase::DomainSetup(rollback, reaper, assigned) => {
                 match rollback.retry_until(&parent, deadline) {
                     Ok(()) => Ok(Phase::EmptyDrain(reaper, assigned)),
@@ -295,10 +278,10 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
                 }
             }
             Phase::EmptyDrain(reaper, assigned) => match reaper.drain_until(deadline) {
-                Ok(_) => Ok(Phase::Pins(
-                    PinCleanup::namespace(ManuallyDrop::into_inner(assigned.namespace)),
-                    assigned.volume,
-                )),
+                Ok(_) => {
+                    drop(ManuallyDrop::into_inner(assigned.namespace));
+                    Ok(Phase::Unmount(assigned.volume))
+                }
                 Err(failure) => {
                     let (error, reaper) = failure.into_parts();
                     Err((error.into(), Phase::EmptyDrain(reaper, assigned)))
@@ -343,18 +326,14 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
                 }
             },
             Phase::Record(record, assigned) => match record.finish(&parent) {
-                Ok(()) => Ok(Phase::Pins(
-                    PinCleanup::namespace(ManuallyDrop::into_inner(assigned.namespace)),
-                    assigned.volume,
-                )),
+                Ok(()) => {
+                    drop(ManuallyDrop::into_inner(assigned.namespace));
+                    Ok(Phase::Unmount(assigned.volume))
+                }
                 Err(failure) => {
                     let (error, record) = failure.into_parts();
                     Err((error.into(), Phase::Record(record, assigned)))
                 }
-            },
-            Phase::Pins(pins, volume) => match pins.run(deadline) {
-                Ok(()) => Ok(Phase::Unmount(volume)),
-                Err(failure) => Err((failure.source.into(), Phase::Pins(failure.cleanup, volume))),
             },
             Phase::Unmount(volume) => match volume.release().unmount_until(deadline) {
                 Ok(volume) => Ok(Phase::Complete(volume)),

@@ -1,0 +1,26 @@
+    Checking conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+error: field `namespace` is never read
+   --> src/anchor.rs:157:5
+    |
+155 | pub struct NamespacePin {
+    |            ------------ field in this struct
+156 |     backing: Backing,
+157 |     namespace: File,
+    |     ^^^^^^^^^
+    |
+    = note: `NamespacePin` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+    = note: `-D dead-code` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+error: method `namespace` is never used
+   --> src/anchor.rs:236:19
+    |
+188 | impl NamespacePin {
+    | ----------------- method in this implementation
+...
+236 |     pub(crate) fn namespace(&self) -> io::Result<File> {
+    |                   ^^^^^^^^^
+
+error: could not compile `conglobate` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `conglobate` (lib test) due to 2 previous errors

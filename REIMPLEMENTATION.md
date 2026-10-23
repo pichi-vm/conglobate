@@ -4122,3 +4122,24 @@ rules rather than silently shrinking acceptance criteria.
 Registration-free M2 revision: three frozen-scope parent adherence passes are
 recorded in `preservation/m7-review/policy-revision-adherence.md`, with terminal
 Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
+
+
+### Registration-free implementation: namespace ownership
+
+- Removed policy-identity namespace bind pins, their control records and cleanup
+  states. UserNamespace<Mapped> owns the descriptor required for idmapped mounts
+  and command setup; step ownership retains it through descendant quiescence.
+  Cgroup control records, mount ownership and cleanup remain in place.
+- Retired source and namespace-record tests are preserved in the hashed
+  namespace-pins-24ccd81 archive under preservation/scoped-policy-522011a.
+- 192 rootless tests, 50 doctests and strict all-target Clippy pass. Three
+  namespace-record tests and one obsolete pin compile-fail example retired;
+  the ID-range boundary test is retained. Initial failed checks are preserved.
+- Native amd64 disposable-VM positive test executes the recipe, exports the OCI
+  artifact and verifies its hashes; missing-policy negative test rejects before
+  recipe execution with the specific labeling diagnostic and complete cleanup.
+  Evidence: preservation/m7-review/label-unpinned-{on,off}-v1. External large VM
+  assets remain under /var/tmp and still need durable recovery before M8.
+- These are narrow single-root regressions, not milestone adherence reviews.
+  Bootstrap two-root, broad failure/isolation migration, independent review and
+  three clean adherence passes remain outstanding. M4–M6 stay reopened at 0/3.

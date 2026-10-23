@@ -5,7 +5,7 @@
 //! remain prerequisites; this owner couples command admission to its own drain.
 use crate::{
     domain::{ContainedHelper, DescendantDrain, DrainedHelper, HelperCancellation, HelperReaping},
-    isolation::{PinnedNamespace, UserNamespace},
+    isolation::{Mapped, UserNamespace},
     process::{Admitted, ChildReaper, ReapedChildren, Supervision},
 };
 use std::{
@@ -30,7 +30,6 @@ mod cutoff;
 mod setup;
 pub use cutoff::SetupCutoff;
 pub use setup::{CommandStartFailure, PreparedStep, RunningCommand, SetupBudget};
-mod pins;
 mod teardown;
 pub use finalize::{
     BootstrapFinalizationFailure, FinalizationFailure, FinalizedBootstrap, FinalizedStorage,
@@ -152,7 +151,7 @@ impl<'a> StepState<'a> for Finishing {
 #[derive(Debug)]
 pub struct Step<'lease, S: StepState<'lease>, R: StepStorage = ()> {
     storage: Retained<R>,
-    namespace: ManuallyDrop<UserNamespace<PinnedNamespace>>,
+    namespace: ManuallyDrop<UserNamespace<Mapped>>,
     resources: S::Resources,
     _lease: PhantomData<&'lease ()>,
 }
@@ -182,7 +181,7 @@ impl<'lease> Step<'lease, Ready> {
     /// owns its mapped namespace and assigned storage. Install the reaper
     /// before spawning it. No other process may admit commands to this scope.
     pub fn new(
-        namespace: UserNamespace<PinnedNamespace>,
+        namespace: UserNamespace<Mapped>,
         helper: ContainedHelper<'lease>,
         reaper: ChildReaper,
     ) -> Self {
@@ -432,18 +431,11 @@ impl<'lease, R: StepStorage> Step<'lease, Quiescent, R> {
 pub struct StepCompletion<R: StepStorage> {
     status: ExitStatus,
     reaped: ReapedChildren,
-    namespace: UserNamespace<PinnedNamespace>,
+    namespace: UserNamespace<Mapped>,
     storage: R,
 }
 impl<R: StepStorage> StepCompletion<R> {
-    pub fn into_parts(
-        self,
-    ) -> (
-        ExitStatus,
-        ReapedChildren,
-        UserNamespace<PinnedNamespace>,
-        R,
-    ) {
+    pub fn into_parts(self) -> (ExitStatus, ReapedChildren, UserNamespace<Mapped>, R) {
         (self.status, self.reaped, self.namespace, self.storage)
     }
 }

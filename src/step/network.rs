@@ -5,7 +5,7 @@ use super::{
     private, teardown::Released,
 };
 use crate::{
-    isolation::{PinnedNamespace, UserNamespace},
+    isolation::{Mapped, UserNamespace},
     network::{CommandNetwork, NetworkCleanupFailure},
     process::{Joined, ReapedChildren, Supervision},
     storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Volume},
@@ -94,7 +94,7 @@ impl<R: NetworkEligibleStorage> ExecutionStorage for NetworkedStorage<R> {
     type FinalizationFailure = Box<NetworkFinalizationFailure<R>>;
     fn send(
         &self,
-        namespace: &UserNamespace<PinnedNamespace>,
+        namespace: &UserNamespace<Mapped>,
         channel: &Supervision<Joined>,
         network: Option<&CommandNetwork>,
         deadline: Instant,
