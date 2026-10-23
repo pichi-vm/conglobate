@@ -1,0 +1,10 @@
+{
+  "implementation": "87de85e",
+  "source_hashes_checked": 35,
+  "mismatches": [],
+  "application_test_cargo_diff_since_implementation": "empty",
+  "format_check_exit": 0,
+  "doctests": 53,
+  "full_milestone_self_reviews": 3,
+  "whole_goal_complete": false
+}
