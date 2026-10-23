@@ -39,6 +39,7 @@ fn reject_invalid_names_and_zero_identity_inodes() {
         "conglobate-command-../x",
         "/conglobate-command-a",
         "conglobate-command-é",
+        "conglobate-command-a\0",
         "namespace-a",
     ] {
         assert!(DomainRecord::try_from(Fixture::bytes(name, 2, 4).as_slice()).is_err());
@@ -61,6 +62,10 @@ fn reject_truncated_noncanonical_oversized_and_trailing_records() {
     let mut wider = vec![0x98, 6];
     wider.extend_from_slice(&bytes[1..]);
     assert!(DomainRecord::try_from(wider.as_slice()).is_err());
+    let mut indefinite = vec![0x9f];
+    indefinite.extend_from_slice(&bytes[1..]);
+    indefinite.push(0xff);
+    assert!(DomainRecord::try_from(indefinite.as_slice()).is_err());
     let mut trailing = bytes.clone();
     trailing.push(0);
     assert!(DomainRecord::try_from(trailing.as_slice()).is_err());

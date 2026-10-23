@@ -76,3 +76,18 @@ impl LabelProbe {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::AssignedRoots;
+
+    #[test]
+    fn rejects_unknown_root_layouts() {
+        for tag in 2..=u8::MAX {
+            assert_eq!(
+                AssignedRoots::try_from(tag).unwrap_err().kind(),
+                std::io::ErrorKind::InvalidData
+            );
+        }
+    }
+}

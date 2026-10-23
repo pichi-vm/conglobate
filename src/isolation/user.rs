@@ -163,28 +163,6 @@ impl UserNamespace<Mapped> {
     pub(crate) fn descriptor(&self) -> io::Result<File> {
         self.resources.try_clone()
     }
-    pub fn idmap<'ns>(
-        &self,
-        mount: crate::filesystem::Mount<'ns, crate::filesystem::Detached>,
-    ) -> Result<crate::filesystem::Mount<'ns, crate::filesystem::Idmapped>, NamespaceViewFailure<'ns>>
-    {
-        match self.resources.try_clone() {
-            Ok(namespace) => mount
-                .idmap(namespace)
-                .map_err(NamespaceViewFailure::Mapping),
-            Err(source) => Err(NamespaceViewFailure::Descriptor { source, mount }),
-        }
-    }
-}
-#[derive(Debug, thiserror::Error)]
-pub enum NamespaceViewFailure<'ns> {
-    #[error("duplicate mapped namespace descriptor: {source}")]
-    Descriptor {
-        source: io::Error,
-        mount: crate::filesystem::Mount<'ns, crate::filesystem::Detached>,
-    },
-    #[error("apply namespace mapping: {0}")]
-    Mapping(crate::filesystem::IdmapFailure<'ns>),
 }
 
 #[cfg(test)]

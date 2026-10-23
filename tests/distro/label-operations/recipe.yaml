@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: Apache-2.0
+bootstrap:
+  from: qualification.local/fedora-label-tools:43
+  filesystem:
+    type: ext4
+    size: 64MiB
+  derive:
+    - run: |
+        set -x
+        label=foreign_u:object_r:foreign_build_t:s0
+        for root in / /mnt/; do
+          file=${root}label-check
+          printf 'label test\n' > "$file"
+          setfattr -n security.selinux -v "$label" "$file"
+          test "$(getfattr --only-values -n security.selinux "$file")" = "$label"
+          for attribute in security.selinux.extra security.other trusted.conglobate; do
+            if setfattr -n "$attribute" -v denied "$file"; then exit 1; fi
+          done
+        done
+        if LC_ALL=C setfattr -n security.selinux -v "$label" /sys 2>/readonly-label-error; then exit 1; fi
+        grep -q 'Read-only file system' /readonly-label-error
+        printf 'COMMAND_TWO_ROOT_LABEL_WRITE_PASS\n'
+    - run: |
+        set -x
+        label=foreign_u:object_r:foreign_build_t:s0
+        for root in / /mnt/; do
+          file=${root}label-check
+          test "$(getfattr --only-values -n security.selinux "$file")" = "$label"
+          setfattr -x security.selinux "$file"
+          if LC_ALL=C getfattr -n security.selinux "$file" 2>/label-remove-error; then exit 1; fi
+          grep -q 'No such attribute' /label-remove-error
+          setfattr -n security.selinux -v "$label" "$file"
+        done
+        printf 'COMMAND_TWO_ROOT_LABEL_REMOUNT_PASS\n'

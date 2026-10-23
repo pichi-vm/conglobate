@@ -4276,3 +4276,29 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   merely mirror implementation, since DESIGN 6.1 mandates that geometry and
   formatter capacity. Full evaluation/consensus awaits terminal synthesis and
   follow-up review of current fixes. No adherence passes counted.
+
+
+### Provisional review remediation and command-level label validation
+
+- Removed unused UserNamespace::idmap/NamespaceViewFailure public wrapper. The
+  production handoff already maps received Mount owners directly. Kept namespace
+  descriptor ownership and mapped-state constraints; no runtime behavior change.
+- Added rejection of every unknown assigned-root tag, and indefinite-length CBOR
+  array / embedded-NUL domain-record cases. 193 rootless tests, 50 doctests and
+  strict all-target Clippy pass; review-boundaries-static preserves logs.
+- Maintained missing-policy assessor reproduces rejection of the historical
+  off-v1 failure and acceptance of off-v2/latest clean negative using only
+  repository-preserved serial/status files. New label-assessment.json files are
+  derived evidence; original records remain unchanged.
+- Actual native amd64 CLI bootstrap label-operations-v1 passes command-level
+  foreign-label set/read/remove/re-add on both roots, persistence across per-step
+  remount, exact-name security/trusted negatives and read-only /sys EROFS. Uses
+  verified local prior Fedora output as tool image, no network/downloads. Output
+  seals/exports with one produced scute. Tool-input provenance and complete small
+  evidence preserved; large external artifacts still need durable M8 recovery.
+- This closes command-level xattr coverage for these operations, not the separate
+  differential second-root pre-admission probe test. Full distro/architecture/
+  confidential-platform qualification and legacy fault migration remain open.
+- Claude review invocation remains live in session 78027; follow-up prompt updated
+  with source-grounded remediation and disagreements for terminal reconciliation.
+  No new adherence pass or milestone acceptance is claimed.
