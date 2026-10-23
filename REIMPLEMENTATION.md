@@ -5981,3 +5981,15 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Native amd64 VM build/export and every confinement verifier check passed.
   Evidence: preservation/m7-review/seeded-key-confinement/REVIEW.md. security-003
   remains partial for sched_debug-present/arm64 coverage; M4 stays 0/3.
+
+### Lifecycle abstraction dispositions and fixture diagnostics
+
+- Re-evaluated simplification-003/013 against current ownership paths. Declined
+  generic helpers around one-line path construction and short typed teardown
+  wrappers; shared teardown engine already owns the substantive transitions.
+  Historical acceptance remains recorded; current reasons in lifecycle-dispositions/.
+- Resolved dependencies-008: trusted fixture compiler errors now name current
+  BPF/C/libbpf prerequisites and preserve original causes/stderr. Success,
+  missing-tool and nonzero subprocess checks plus Python syntax pass.
+- No production Rust or lifecycle behavior changed. Fixed fixture paths remain
+  an M7 portability item. No complete M4 adherence pass; streak remains 0/3.

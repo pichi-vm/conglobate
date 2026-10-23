@@ -12,6 +12,19 @@ class LabelEnvironment:
         self.output = output
         self.runtime = runtime
 
+    def compile(self, command, env):
+        try:
+            subprocess.run(command, env=env, check=True)
+        except (OSError, subprocess.CalledProcessError) as error:
+            raise RuntimeError(
+                'Disposable-VM labeling fixture compilation failed. Requires clang '
+                'with the BPF target, a C compiler, libbpf headers under '
+                '/var/tmp/conglobate-cap-review-bpf/sysroot/usr/include and '
+                '/usr/lib64/libbpf.so.1. This is a test-environment prerequisite, '
+                'not a conglobate binary dependency. Compiler diagnostics and '
+                'the original failure are retained above.'
+            ) from error
+
     def stage(self):
         source = self.repository / 'validation/global-label-policy'
         retained = self.output / 'label-environment'
@@ -21,13 +34,13 @@ class LabelEnvironment:
         env = os.environ.copy()
         env['TMPDIR'] = '/var/tmp/conglobate-rewrite-tmp'
         headers = '-I/var/tmp/conglobate-cap-review-bpf/sysroot/usr/include'
-        subprocess.run(['clang', '-O2', '-g', '-Wall', '-Werror', '-target', 'bpf',
+        self.compile(['clang', '-O2', '-g', '-Wall', '-Werror', '-target', 'bpf',
             headers, '-c', str(retained / 'labels.bpf.c'), '-o',
-            str(self.runtime.root / 'labels.bpf.o')], env=env, check=True)
+            str(self.runtime.root / 'labels.bpf.o')], env=env)
         loader = retained / 'loader'
-        subprocess.run(['cc', '-O2', '-Wall', '-Wextra', '-Werror', headers,
+        self.compile(['cc', '-O2', '-Wall', '-Wextra', '-Werror', headers,
             str(retained / 'loader.c'), '/usr/lib64/libbpf.so.1', '-o', str(loader)],
-            env=env, check=True)
+            env=env)
         self.runtime.executable(loader, Path('label-loader'))
 
     def stage_second_filesystem_fault(self):
@@ -37,13 +50,13 @@ class LabelEnvironment:
         env = os.environ.copy()
         env['TMPDIR'] = '/var/tmp/conglobate-rewrite-tmp'
         headers = '-I/var/tmp/conglobate-cap-review-bpf/sysroot/usr/include'
-        subprocess.run(['clang', '-O2', '-g', '-Wall', '-Werror', '-target', 'bpf',
+        self.compile(['clang', '-O2', '-g', '-Wall', '-Werror', '-target', 'bpf',
             headers, '-c', str(retained / 'fault.bpf.c'), '-o',
-            str(self.runtime.root / 'label-fault.bpf.o')], env=env, check=True)
+            str(self.runtime.root / 'label-fault.bpf.o')], env=env)
         loader = retained / 'loader'
-        subprocess.run(['cc', '-O2', '-Wall', '-Wextra', '-Werror', headers,
+        self.compile(['cc', '-O2', '-Wall', '-Wextra', '-Werror', headers,
             str(retained / 'loader.c'), '/usr/lib64/libbpf.so.1', '-o', str(loader)],
-            env=env, check=True)
+            env=env)
         self.runtime.executable(loader, Path('label-fault'))
 
     @staticmethod

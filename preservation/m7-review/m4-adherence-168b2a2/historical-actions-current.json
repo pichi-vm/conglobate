@@ -35,8 +35,8 @@
       "evidence": "build.rs relies on SkeletonBuilder diagnostics; 148ef66 added C_INCLUDE_PATH after the Ubuntu failure",
       "remaining_action": "Wrap the error with the clang/libbpf prerequisite message",
       "historical_status": "accept",
-      "current_status": "superseded application path; fixture work remains",
-      "current_evidence": "Current Cargo.toml has no BPF build dependency/build script. External fixture compilation remains in tests/distro/label_environment.py; old policy source preserved."
+      "current_status": "resolved",
+      "current_evidence": "No binary BPF compilation remains. Trusted fixture compiler calls now explain clang/BPF/C/libbpf prerequisites while preserving original exception and stderr. Success/missing executable/nonzero command checks and Python syntax pass. VM CI portability remains a separate M7 item. See lifecycle-dispositions/REVIEW.md."
     },
     {
       "id": "dependencies-011",
@@ -242,8 +242,8 @@
       "evidence": "Three identical /proc/self/fd path() bodies; Drop semantics genuinely differ across the five owners",
       "remaining_action": "Share only the path() construction",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "declined after source re-evaluation",
+      "current_evidence": "Keep local one-line path methods on owners with different validation/drop semantics. A shared string-construction helper adds indirection without improving confinement or lifetime safety; no implementation claimed. See lifecycle-dispositions/REVIEW.md."
     },
     {
       "id": "simplification-004",
@@ -314,8 +314,8 @@
       "evidence": "Three teardown impls differ only by Phase variant; Phase is module-private",
       "remaining_action": "Private From<Step> for Phase over a sealed marker; typestate preserved",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "declined after source re-evaluation",
+      "current_evidence": "Private Teardown engine already centralizes transitions/recovery; Ready/Running/Cancelling typed wrappers retained. Running has distinct supplied-deadline and AwaitingCleanup entrypoints. Generic public wrapper adds state bounds/conversions without simplifying core engine. See lifecycle-dispositions/REVIEW.md."
     },
     {
       "id": "simplification-017",
