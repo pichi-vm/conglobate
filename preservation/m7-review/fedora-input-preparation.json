@@ -1,0 +1,9 @@
+{
+  "output": "/var/tmp/conglobate-fedora-input-v1",
+  "pin": "sha256:4b1b5a79839b8d115987aefb23dabe4282713396101b4c5416d17be974b2b2ab",
+  "component_hashes_and_sizes_verified": true,
+  "existing_output_rejected": true,
+  "existing_output_exit": 1,
+  "chain_verified": false,
+  "conglobate_build_boot_pass": false
+}
