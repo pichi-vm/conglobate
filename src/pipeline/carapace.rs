@@ -93,24 +93,7 @@ impl<'a> CarapaceBuild<'a> {
             reaper: _reaper,
         } = self.run_layers(workspace, runtime)?;
         active.close().map_err(Self::error)?;
-        let source = self
-            .base
-            .image()
-            .manifest()
-            .layers
-            .iter()
-            .find_map(|layer| match layer {
-                pichi_artifact::Layer::Dtb(descriptor) => Some(descriptor),
-                _ => None,
-            })
-            .map(|d| {
-                let digest = d
-                    .digest
-                    .parse()
-                    .map_err(|_| CacheError::Invalid("invalid DTB digest"))?;
-                self.build.cache().metadata(&digest, Some(d.size))
-            })
-            .transpose()?;
+        let source = self.base.inherited_dtb(self.build.cache())?;
         let root = hex::encode(produced.last().expect("nonempty directives").root());
         let transformed = self
             .build

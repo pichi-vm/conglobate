@@ -118,6 +118,29 @@ pub struct CheckedImage {
     receipts: Vec<crate::cache::BlobReceipt>,
 }
 impl CheckedImage {
+    /// Capture the selected DTB with a fresh digest/size check. Earlier input
+    /// receipts do not authorize trusting mutable cache bytes on this read.
+    pub(crate) fn inherited_dtb(
+        &self,
+        cache: &crate::cache::Cache,
+    ) -> Result<Option<crate::cache::VerifiedMetadata>, crate::cache::CacheError> {
+        self.image
+            .manifest()
+            .layers
+            .iter()
+            .find_map(|layer| match layer {
+                pichi_artifact::Layer::Dtb(descriptor) => Some(descriptor),
+                _ => None,
+            })
+            .map(|descriptor| {
+                let digest = descriptor
+                    .digest
+                    .parse()
+                    .map_err(|_| crate::cache::CacheError::Invalid("invalid DTB digest"))?;
+                cache.metadata(&digest, Some(descriptor.size))
+            })
+            .transpose()
+    }
     pub fn image(&self) -> &crate::cache::ResolvedImage {
         &self.image
     }

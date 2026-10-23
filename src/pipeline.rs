@@ -133,27 +133,7 @@ impl<'a> InheritedBuild<'a> {
         self.build
     }
     pub(crate) fn assemble(&self, request: &BuildRequest) -> Result<CompletedImage, BuildError> {
-        let source = self
-            .base
-            .image()
-            .manifest()
-            .layers
-            .iter()
-            .find_map(|layer| {
-                if let pichi_artifact::Layer::Dtb(descriptor) = layer {
-                    Some(descriptor)
-                } else {
-                    None
-                }
-            })
-            .map(|d| {
-                let digest = d
-                    .digest
-                    .parse()
-                    .map_err(|_| CacheError::Invalid("invalid DTB digest"))?;
-                self.build.cache().metadata(&digest, Some(d.size))
-            })
-            .transpose()?;
+        let source = self.base.inherited_dtb(self.build.cache())?;
         let root = self.base.chain().map(|chain| hex::encode(chain.root()));
         let transformed = self
             .build

@@ -305,8 +305,8 @@
       "evidence": "Identical Dtb find_map+digest-parse+metadata at pipeline.rs:135 and carapace.rs:110",
       "remaining_action": "CheckedImage::inherited_dtb(&self,cache)",
       "historical_status": "accept",
-      "current_status": "open",
-      "current_evidence": "InheritedBuild and CarapaceBuild still select/read inherited DTB independently."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "CheckedImage::inherited_dtb centralizes descriptor selection and fresh verified metadata read for InheritedBuild and CarapaceBuild. 126 library and 13 context tests pass; preservation/m7-review/inherited-dtb/REVIEW.md."
     },
     {
       "id": "simplification-013",

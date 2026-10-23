@@ -5389,3 +5389,15 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   /var/tmp and are hashed, not claimed durably archived. No evidence deleted.
 - This tests Runtime::scoped directly, not full recipe execution, all sandbox
   behavior, other architectures or confidential hardware. M4 remains 0/3.
+
+
+### Shared inherited DTB capture
+
+- Previous turn progressed with actual scoped-runtime VM validation. Implemented
+  simplification-012: CheckedImage::inherited_dtb now owns the shared descriptor
+  selection and fresh digest/size-checked cache read for both inherited and
+  derived carapace output. Earlier receipts do not bypass this read verification.
+- 126 library and 13 context/input tests passed; formatting/whitespace checks
+  passed. Evidence/review: preservation/m7-review/inherited-dtb/. No redundant
+  mirror test added for the extraction, no VM run or full adherence pass claimed.
+- Historical action updated; M4 stays 0/3 and the original goal remains active.
