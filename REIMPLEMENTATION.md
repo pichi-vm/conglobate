@@ -20,14 +20,30 @@ M4 implementation. Prior passes remain historical, not approvals of this revisio
 
 ## Milestones and acceptance criteria
 
+### Current revision: environment-owned labeling exception
+
+The user's registration-removal direction supersedes the scoped-policy wording
+in the stored goal and historical passes. DESIGN.md and SANDBOX-DESIGN.txt now
+require a fixed environment-loaded exact-name exception with no conglobate
+policy installation, registrations or revocation. Preserve cgroup containment,
+namespace ownership for idmapped mounts, descendant drain and storage cleanup.
+The passing global-label-v2 probe is mechanism evidence only.
+
+Reopen M2 and M4–M6 at zero clean passes for affected architecture/lifecycle and
+integration scope. Their prior acceptance remains historical. Complete three
+clean architecture reviews before implementing the replacement lifecycle;
+restore each affected implementation gate before resuming M7 advancement.
+M7 remains at zero and M8 remains pending. Existing distro evidence is retained,
+but must not be claimed to validate the new policy implementation.
+
 | Milestone | Deliverables and success criteria | Status | Clean streak |
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
-| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: revised dedicated-VM lifecycle | 3 |
+| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: registration-free architecture revision | 3 |
 | 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete: revised context lifecycle | 3 |
-| 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, scoped LSM, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Complete: single-volume lifecycle | 3 |
-| 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Complete: direct-layer bootstrap | 3 |
-| 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Complete: pipeline and publication | 3 |
+| 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, environment-owned labeling exception, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Reopened: registration-free lifecycle | 0 |
+| 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Reopened: two-root lifecycle regression | 0 |
+| 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Reopened: replacement lifecycle integration | 0 |
 | 7. Integrated qualification | Critical source/design/style review resolved; Fedora/Debian/Alpine/NixOS representative builds and boots; amd64/arm64 and TDX/SEV-SNP/CCA qualification with evidence; repository checks and CI green. Unavailable required environments remain outstanding, never passes. | In progress: qualification inventory | 0 |
 | 8. Retire references | Historical findings migrated to maintained tests/docs; remove legacy implementation and exploratory validation from active repo only after recoverability verified and replacement evidence accepted; final coherent docs/code, tests and three adherence passes. | Pending | 0 |
 
@@ -4102,3 +4118,7 @@ rules rather than silently shrinking acceptance criteria.
 - Independent review reconciliation remains active. Follow-up review must assess
   this refactor and evidence; no consensus or M7 adherence pass is claimed.
   M7 stays at 0/3; distro, platform, hosted CI and M8 retirement remain outstanding.
+
+Registration-free M2 revision: three frozen-scope parent adherence passes are
+recorded in `preservation/m7-review/policy-revision-adherence.md`, with terminal
+Claude consensus and hashed design scope. M4–M6 remain reopened at zero.

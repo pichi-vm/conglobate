@@ -7,6 +7,62 @@ they do not prove that external state cannot change or that destructors run.
 
 ## Ownership and modules
 
+### Registration-free lifecycle revision (2026-10-23)
+
+The latest user decision replaces the scoped labeling-policy lifecycle below.
+Historical scoped-policy diagrams remain reference material during migration;
+they must not be implemented as requirements for the replacement.
+
+The environment owns the fixed labeling exception for the VM lifetime.
+Conglobate owns neither its program object nor map/link/pin handles. Remove
+the policy module and BPF build dependencies after callers and validation
+fixtures have migrated. Keep the historical asset and loader recoverable.
+
+`CommandSandbox` prepares mapped namespace ownership and assigned storage.
+`Step<S, R>` retains those owners through cgroup containment, admission,
+cancellation, reaping and descendant drain. A namespace handle belongs to the
+isolation module, not a `LabelPolicy` wrapper. Storage handoff takes that handle
+directly; the owned volume determines which mount is transferred. No policy
+scope/map lookup is required to prove that ownership. Remove filesystem pins
+used only to prevent policy target identity reuse.
+
+The existing `namespace_for_root` dev/ino check compares a volume root with
+policy pins to establish agreement between two independently supplied owners.
+Intentionally remove that policy-consistency check with the policy owner.
+Do not replace it with another registration list: sealed `ExecutionStorage`
+implementations derive every transferred `VolumeView` from the storage retained
+by this `Step`, using its private root descriptor and mount-namespace check.
+Bootstrap derives both views from its retained tool/output owners. No caller
+may substitute an arbitrary root FD at this boundary. Retain tests for this
+ownership invariant and for confined receiver mount attachment.
+
+Before recipe execution, the existing trusted leaf checks labeling after
+`EnteredRoot::restrict` applies command capabilities and seccomp, and before
+`ExecutionEndpoint::ready_and_wait` reports readiness. A small owning probe
+uses an anonymous `O_TMPFILE|O_EXCL|O_CLOEXEC` inode on each assigned filesystem,
+performs descriptor-based label set/read/remove, and closes before readiness.
+No named image path, new process, policy handle or extra admission channel is
+needed. Supply the assigned-root layout through the existing trusted setup
+input; do not discover bootstrap from an image-controlled `/mnt` entry.
+Root selection must use confined, no-symlink handles for the actual assigned
+mounts. A successful root-supervisor write is not evidence; neither is a named
+bpffs pin. A failed check enters the same bounded setup-failure cleanup path.
+Anonymous inode allocation can still change filesystem metadata; this is not
+a claim of byte-for-byte neutrality. Test both bootstrap roots, missing-policy
+failure and descriptor closure under the production filter. The v3 fixture
+proves the anonymous-inode mechanism, not this production integration.
+
+After descendant drain, release process-domain records and namespace resources,
+then unmount/finalize storage. There is no activation, disable, policy-close,
+installation-retry or policy-identity-release state. Cgroup joining remains a
+distinct protocol; rename `Registered` to describe containment rather than
+deleting its acknowledgment or descriptor closure. Errors continue to retain
+resource owners, and unfinished steps cannot yield publication authority.
+
+The production code still implements the old lifecycle. Passing mechanism
+evidence at `preservation/m7-review/global-label-v2` does not qualify this
+replacement architecture or restore the reopened adherence gates.
+
 | Module | Owned or immutable domain types | Boundary |
 | --- | --- | --- |
 | request | BuildRequest, ContextPath, OutputDestination | Parse CLI without privileged effects; require recipe and lock paths |

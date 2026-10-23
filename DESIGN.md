@@ -20,8 +20,8 @@ platforms. See [the platform review](validation/sandbox/CONFIDENTIAL-PLATFORM-RE
 for candidate constraints and the distinction between source analysis and
 hardware validation.
 
-**Build commands are untrusted. The build kernel, supervisor, scoped BPF LSM
-policy and formatting tools are trusted.** Running without host root does not
+**Build commands are untrusted. The build kernel, supervisor, environment-provided BPF LSM
+labeling exception and formatting tools are trusted.** Running without host root does not
 by itself establish this boundary.
 
 The builder verifies inputs, interprets recipes, assembles storage, formats and
@@ -52,7 +52,7 @@ Before sealing an output, the builder must terminate and reap all command
 descendants, revoke their write access, and finish filesystem writeback and clean unmount.
 The bytes hashed for the inventory must remain stable through publication.
 Future attestation must bind the trusted execution environment, including the
-kernel, scoped labeling policy, formatter identities and effective configuration, to that inventory; measuring conglobate alone is
+kernel, environment-provided labeling policy, formatter identities and effective configuration, to that inventory; measuring conglobate alone is
 insufficient.
 
 This is the agreed target model, not a claim about the existing executor.
@@ -404,7 +404,7 @@ are errors rather than ignored instructions.
 
 Commands execute as UID/GID 0 in a mapped user namespace, with a disposable
 or layered working filesystem exposed through an idmapped kernel mount.
-A scoped BPF LSM policy permits foreign SELinux labels without command
+An environment-provided BPF LSM exception permits foreign SELinux labels without command
 `CAP_SYS_ADMIN`; that capability is absent from every command capability set.
 They never receive initial-user-namespace root authority.
 Tools may be installed during execution; a tool carapace only needs enough
@@ -824,14 +824,18 @@ root semantics through mapping, without backing-device access. No userspace
 filesystem worker is required. Ext4 is initially validated. Other drivers,
 formatters and metadata combinations require explicit qualification.
 
-A scoped BPF LSM policy delegates the generic capability check for the exact
-`security.selinux` attribute. Separate set/remove guards restrict changes to an
-explicit set of assigned superblocks and the authorized command identity. Both
-the tool and output filesystems may be authorized during bootstrap. Install/pin
-all guards before admission; configuration stays immutable while commands run.
-Keep policy controls private. Hold namespace and superblock identities until
-policy removal; reusable numeric IDs alone are insufficient authorization tokens.
-Fail on unavailable policy prerequisites, with no capability fallback.
+The trusted environment loads and retains a fixed BPF LSM exception for exactly
+`security.selinux`. Conglobate does not compile/load/attach the policy or register
+subjects and filesystems. The VM has SELinux disabled; foreign labels belong to
+the target OS and confer no authority in the build environment. Before recipe
+admission, verify required behavior under restricted command credentials; missing
+support fails without a capability fallback. See SANDBOX-DESIGN.txt section 4.
+
+Label mutation is not constrained by ordinary file write-mode checks. Integrity
+therefore depends on inode/descriptor reachability and read-only views, alongside
+normal filesystem and remaining LSM checks. Never expose mutable supervisor,
+cache, context or control inodes to commands. Both bootstrap roots use the same
+fixed exception without a target registration protocol.
 
 Each run remounts its assigned filesystems and launches a fresh command sandbox.
 COPY and extraction occur only while command writers are stopped, using scoped
@@ -845,14 +849,14 @@ outbound NAT without destination filtering; supervisor controls must not be
 exposed on reachable network addresses. The environment supplies `--resolv-conf`;
 there is no built-in DNS relay, resolver inventory entry or persistent injection.
 
-On every exit path, stop/reap all descendants before mutating policy or detaching
-its guards. Then remove authorization, runtime mounts and networking, flush and
-cleanly unmount the filesystems before sealing. Hold identities and storage
-leases until cleanup completes. If quiescence cannot be proved, retain protection
-and ownership and reject publication. Recover partial setup while conglobate is
-alive. If safe teardown cannot complete, fail the build and require VM disposal;
-do not start another step or reuse its resources. Until commands are quiescent or
-the VM has stopped, authorization and its identities must remain valid together.
+On every exit path, stop/reap all descendants before removing runtime mounts
+and networking, flushing and cleanly unmounting filesystems for sealing. Retain
+namespace handles and storage leases as needed for their actual resource
+lifetimes, with no policy-specific identity pins or revocation transition. If
+quiescence cannot be proved, retain ownership and reject publication. Recover
+partial setup while conglobate is alive. If safe teardown cannot complete, fail
+the build and require VM disposal; do not start another step or reuse resources.
+The environment-owned labeling exception remains loaded until VM shutdown.
 Propagate filesystem/writeback errors; forced/lazy unmount is not evidence of
 clean finalization. Supervisor death is an environment shutdown test, not an
 in-guest recovery protocol.

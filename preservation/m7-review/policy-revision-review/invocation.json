@@ -1,0 +1,27 @@
+{
+  "argv": [
+    "claude",
+    "--print",
+    "--resume",
+    "3100814a-c11f-4fd0-90c8-d7fbec5f4897",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--permission-mode",
+    "dontAsk",
+    "--append-system-prompt",
+    "Review the entire active conglobate implementation in src/, with tests/, policy/, Cargo.toml/Cargo.lock/build.rs and validation/rewrite-command-integration source as supporting evidence. Do NOT review reference/legacy or historical experiments as current code. DESIGN.md and SANDBOX-DESIGN.txt are the agreed requirements. ARCHITECTURE.md, REIMPLEMENTATION.md and preservation/MILESTONE-6-ADHERENCE.md explain evidence boundaries, not reasons to waive bugs. This is a fresh rewrite (publish=false), not a backward compatible public-library release. Preserve user preference for methods on meaningful owning types, RAII, sealed marker-trait typestate, immutable inputs and consuming transitions. Do not propose freestanding functions or remove typestate solely due to one caller. Commands are untrusted; supervisor, kernel, scoped BPF LSM and formatter are trusted. Dedicated disposable build VM is independently destroyed on supervisor crash. No synchronization sleeps. No application unsafe Rust. Unavailable confidential/Arm hardware coverage must remain explicit, not inferred from synthetic tests. Findings only, no source/docs/Git modifications. Read-only shell commands and ordinary rootless checks are allowed; NEVER sudo, mount, BPF load, network configuration or privileged tests on host. Do not execute ignored tests or VM harnesses during this review. Serialize cargo commands; CARGO_BUILD_JOBS=2, TMPDIR=/var/tmp/conglobate-rewrite-tmp. Do not download/install tools; report unavailable coverage tooling. Do not publish/push or message external services. Use the custom /review workflow and its reviewers/critics. Preserve file/line evidence and distinguish demonstrated bugs from speculation.",
+    "--tools",
+    "Read,Glob,Grep,Bash,Agent,Task,Skill",
+    "--allowedTools",
+    "Read",
+    "Glob",
+    "Grep",
+    "Agent",
+    "Task",
+    "Skill",
+    "Bash"
+  ],
+  "stdin": "Continue the existing source-grounded critical review. Scope: uncommitted DESIGN.md, SANDBOX-DESIGN.txt, ARCHITECTURE.md, REIMPLEMENTATION.md revisions and committed validation/global-label-policy with evidence preservation/m7-review/global-label-v2. User has directed removal of per-step policy registration and expects substantial simplification. The trusted environment can load a fixed exact security.selinux skipcap exception; build VM SELinux disabled. Do not re-propose scoped maps solely from old requirements. Review this new contract against source and evidence, not as already implemented production behavior. Focus on concrete remaining risks, whether behavior-validation admission is appropriately placed, namespace vs policy ownership, cgroup handshake preservation, limitations of zero-effective-cap one-UID mechanism test, and any unnecessary new machinery. No edits, no privileged host/VM operations, no cargo needed. Trace production root restrict/ready path and policy/storage coupling. Critically evaluate whether a disposable-file xattr probe before readiness can be implemented simply with existing safe APIs without exposing descriptors or leaving output artifacts; give source-grounded findings, not speculative demands. Prior user preferences: forbid unsafe application Rust, RAII/sealed typestate, no sleep synchronization, dedicated disposable VM on supervisor crash. Historical passes are reopened, not silently reused. Return concise findings with paths and reasons; distinguish design bugs from unimplemented obligations. We will negotiate findings before architecture acceptance.",
+  "permission_correction": "Allow Bash, including compound and env-prefixed commands; retain review constraints."
+}

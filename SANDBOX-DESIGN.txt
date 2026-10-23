@@ -1,6 +1,6 @@
 Conglobate sandbox design
 ========================
-Agreed target design, updated 2026-10-22
+Agreed target design, updated 2026-10-23
 
 This document specifies the sandbox to implement, not the security properties
 of the current executor. DESIGN.md specifies the standalone binary, committed
@@ -24,7 +24,7 @@ Historical experiments are evidence, not competing specifications.
          are not required. Qualify shutdown behavior in the execution environment.
 
    1.2. Build commands are untrusted, including namespace root. Trust the build
-        kernel, supervisor, scoped BPF LSM policy and trusted formatting tools.
+        kernel, supervisor, environment-provided BPF LSM labeling exception and trusted formatting tools.
         Native filesystem drivers execute inside the trusted kernel. There is
         no userspace filesystem worker in the selected design. A filesystem
         driver vulnerability can compromise that shared kernel; this replaces
@@ -32,7 +32,7 @@ Historical experiments are evidence, not competing specifications.
         Verification of an image's identity is not proof its filesystem is safe
         to parse. Include hostile filesystem inputs in the kernel threat model.
 
-   1.3. The root supervisor owns block devices, mounts, formatting, policy and
+   1.3. The root supervisor owns block devices, mounts, formatting and
         publication. Commands run in separate mapped user/mount/PID/IPC/UTS/net
         namespaces and receive only assigned filesystem views. They must not
         alter supervisor state, inputs, inventory, control interfaces, output
@@ -42,7 +42,7 @@ Historical experiments are evidence, not competing specifications.
 
    1.4. The design must work inside confidential VMs on Intel TDX, AMD SEV-SNP,
         and Arm CCA, without nested virtualization. Use native command
-        execution, Linux namespaces, idmapped kernel mounts and scoped BPF LSM policy. UML and
+        execution, Linux namespaces, idmapped kernel mounts and environment-provided BPF LSM labeling exception. UML and
         nested KVM are not the baseline; software CPU emulation is not the
         baseline either. Actual qualification on all three platforms remains
         required. Ordinary x86 VM tests do not establish it.
@@ -118,8 +118,8 @@ Historical experiments are evidence, not competing specifications.
 
    3.4. Mount assigned filesystems with trusted kernel drivers. Only one writer
         implementation may own a writable backing volume at a time. Retain the
-        mounts, device handles and identities through command quiescence and
-        policy removal. Raw block access is supervisor-only, including formatting.
+        mounts and device handles through command quiescence and clean
+        filesystem finalization. Raw block access is supervisor-only, including formatting.
 
    3.5. Bootstrap starts a new writable snapshot layer directly over dm-zero.
         Format through its block-device view: formatting and population write
@@ -127,7 +127,7 @@ Historical experiments are evidence, not competing specifications.
         or image-to-scute conversion is part of bootstrap. After clean teardown,
         seal/hash the resulting scute and package the new carapace.
 
-4. Mount filesystems and establish scoped labeling authority
+4. Mount filesystems under the environment-provided labeling exception
 
    4.1. Use kernel filesystems supporting the required idmapped-mount and metadata
         semantics. Ext4 is validated initially; qualify additional filesystems
@@ -144,48 +144,58 @@ Historical experiments are evidence, not competing specifications.
         kernel ownership, mode and ACL permission checking. Use nosuid,nodev;
         storing file capabilities/setuid bits must not grant build-host privilege.
 
-   4.3. Install a narrowly scoped BPF LSM exception for security.selinux. The
-        inode_xattr_skipcap hook delegates this exact attribute's generic
-        capability check; inode_setxattr/inode_removexattr guards restrict its
-        target. Bind command user namespace and mapped root identity separately
-        from the authorized superblock owner/device identities. Authorize an
-        explicit set of assigned writable filesystems: bootstrap needs both
-        its disposable tool root and its output root. Never wildcard by owner
-        namespace alone. Reads and ordinary filesystem checks remain unchanged.
+   4.3. The trusted environment loads a fixed BPF LSM exception before
+        conglobate starts. It delegates the generic capability check for exactly
+        security.selinux through inode_xattr_skipcap. There are no per-command
+        registrations, subject/filesystem maps, target guards or activation
+        transitions. Conglobate does not compile, load, attach, update or remove
+        this policy. The environment retains it for the lifetime of the VM.
 
    4.4. Match the complete attribute name, including termination; truncated
-        prefix matches are forbidden. Preserve earlier LSM denials. This is
-        not a general capability override or permission to administer SELinux.
-        Other security attributes retain their normal checks; any extension
-        needs explicit review. Use a qualified build-kernel LSM configuration;
-        the demonstrated configuration has SELinux boot-disabled.
+        prefix matches are forbidden. Preserve earlier LSM results. Other
+        security attributes retain normal checks. The build VM must have SELinux
+        disabled; image label strings belong to the target OS's independent
+        policy and must not confer authority in the build environment. The
+        exception is not a grant of CAP_SYS_ADMIN or SELinux administration.
 
-   4.5. Install and pin every target guard before enabling the exception and
-        admitting commands. Keep configuration immutable while commands can
-        execute. Keep policy maps, links, bpffs and control descriptors private.
-        Loader death must not detach guards independently of the exception.
-        Policy setup failure rejects the build; never broaden capabilities.
+   4.5. Ordinary file write-mode denial is not a labeling integrity boundary:
+        security.* attribute checks can bypass that DAC check. Commands must
+        not reach mutable supervisor/cache/context/control inodes or their
+        descriptors. Assigned read-only views must reject label mutation.
+        Keep bpffs, policy controls and privileged handles inaccessible.
+        The same fixed exception supports both bootstrap writable roots.
+        Enforce this boundary through private mount construction, pivot_root
+        and old-root detachment, confined runtime mount targets, private proc
+        and non-dumpable trusted helpers, and closure/audit of all non-stdio
+        descriptors before image code. Command stdout/stderr are pipes relayed
+        by trusted setup, not direct handles to supervisor output files;
+        stdin is the assigned null device. Read-only mounts protect supplied
+        immutable views. Seccomp and capability restrictions prevent commands
+        from obtaining new mounts or joining outside namespaces. Validate this
+        combined boundary again with the global exception active.
 
-   4.6. The hooks are separate: changing policy between the skipcap decision and
-        the target check can invalidate confinement. Stop/reap every command
-        descendant before changing configuration or detaching any policy link.
-        Retain namespace and superblock lifetimes until authorization is gone:
-        numeric namespace/device identifiers are reusable, not permanent tokens.
-        Recover partial setup while conglobate is alive. If quiescence cannot
-        be proved, retain protection and resource ownership, reject publication
-        and fail closed; the environment must dispose of the VM before reuse.
+   4.6. Validate the required labeling behavior before admitting recipe commands
+        under the restricted command credentials. Missing or incompatible
+        environment support fails the build, with no capability fallback.
+        Do not infer support from a familiar pin pathname or a successful
+        supervisor-root write. This is a behavioral admission prerequisite,
+        not dynamic policy installation. Its production implementation and
+        failure tests must accompany the lifecycle migration.
+        Complete the cgroup-join acknowledgment before launching the restricted
+        leaf. Probe in that contained leaf after capabilities and seccomp are
+        applied, before reporting readiness or receiving command admission.
+        Check both assigned filesystems in bootstrap using anonymous inodes;
+        close all probe handles before readiness and the final descriptor audit.
 
-   4.7. Keep command namespace and assigned superblock identities alive for the
-        lifetime of active authorization, including the interval before an
-        independently triggered VM shutdown completes. Keep guards and exception
-        lifetime coupled; supervisor death must not leave a selectively detached
-        policy usable by surviving commands. Commands cannot access policy or
-        identity handles. Do not require serialized recovery records, a guardian,
-        or a persistent initial-mount-namespace recovery service merely to resume
-        cleanup in a later invocation. There is no later build in that VM.
-        The concrete policy/resource lifetime must still be qualified under
-        abrupt supervisor death; VM disposal is not permission for an unsafe
-        interval before the VM stops.
+   4.7. Retain namespace handles needed for idmapped views and command setup,
+        process containment, mounted volumes and explicit fallible cleanup.
+        Remove identity pins and rollback states used solely for policy
+        registration. Stop/reap all descendants before storage finalization;
+        cgroup joining and admission handshakes remain necessary. Failure to
+        prove quiescence rejects publication and requires VM disposal. There
+        is no policy revocation step and no numeric policy-identity reuse race.
+        Supervisor death still must not expose privileged handles or permit
+        storage reuse before the independently triggered VM shutdown.
 
 5. Execute the assembly pipeline without changing its inheritance rules
 
@@ -276,7 +286,7 @@ Historical experiments are evidence, not competing specifications.
         no_new_privs. CAP_SYS_ADMIN MUST be absent from all five command
         capability sets, including the bounding set. Preserve supported chown,
         ACL, mode, credential, file-capability and label operations through
-        idmapping and the scoped LSM policy. Block namespace creation/join and
+        idmapping and the environment-provided labeling exception. Block namespace creation/join and
         mount APIs; a new user namespace would grant new scoped capabilities.
         Restrict devices, ioctls, keyrings, process inspection and descriptor
         access. Validate the actual profile on amd64 and arm64; the prototype
@@ -301,7 +311,7 @@ Historical experiments are evidence, not competing specifications.
         Reject zero, infinite, invalid, or overflowing durations. The timer
         covers command execution only, from release to execute through command
         completion; remaining descendant cleanup belongs to teardown. It does
-        not include setup, policy installation, mounts, or teardown. Timeout fails
+        not include setup, environment validation, mounts, or teardown. Timeout fails
         the build and starts cancellation; partial results are not accepted.
 
 8. Networking and DNS
@@ -389,17 +399,15 @@ Historical experiments are evidence, not competing specifications.
          deadline bounds waiting/acceptance; it cannot guarantee the kernel can
          immediately reap a task stuck in uninterruptible I/O.
 
-   10.3. On normal completion, stop/reap all descendants before changing policy.
-         Remove the labeling authorization while its identities remain pinned,
-         remove runtime/network mounts, flush and cleanly unmount assigned
+   10.3. On normal completion, stop/reap all descendants, then remove
+         runtime/network mounts, flush and cleanly unmount assigned
          filesystems, and release references before sealing or the next step.
          Detect and propagate storage/writeback errors. Preserve primary failure
          and cleanup diagnostics independently; process exit is not durability.
 
    10.4. Command error, timeout, filesystem error, helper death,
          cancellation or setup/teardown deadline rejects the build. Quiesce
-         commands before policy mutation and mount teardown. Do not tear down
-         guards first to escape blocked cleanup, nor accept a forced/lazy unmount
+         commands before mount teardown. Do not accept a forced/lazy unmount
          as clean finalization. Retain recovery ownership if cleanup cannot finish.
          Never silently resume a failed command on remounted storage.
 
@@ -504,7 +512,7 @@ Paths below are relative to validation/sandbox/ unless stated otherwise.
 
 Chat decision review, 2026-10-22
 ------------------------------
-Kernel-mounted filesystems with idmapped views and a scoped BPF LSM policy
+Kernel-mounted filesystems with idmapped views and a environment-provided BPF LSM labeling exception
 supersede the FUSE-worker backend. Commands remain untrusted and never receive
 SYS_ADMIN or backing-device access. Bootstrap writes directly into a new writable
 carapace layer over dm-zero: trusted formatting, disposable tool root at /, output
@@ -515,8 +523,8 @@ deadlines, networking off by default, outbound NAT, explicit resolver configurat
 excluded from inventory, and the existing inheritance/transform contracts.
 
 Open implementation details include the exact filesystem-property schema and
-backend allowlists, formatter provenance/inventory schema revision, multi-target
-LSM representation and lifecycle, UID/GID range allocation, trusted formatting on
+backend allowlists, formatter provenance/inventory schema revision, external-policy
+admission validation and lifecycle simplification, UID/GID range allocation, trusted formatting on
 the actual snapshot chain, and full dual-mount integration qualification. None is
 permission to weaken the trust boundary or silently claim prototype coverage.
 
