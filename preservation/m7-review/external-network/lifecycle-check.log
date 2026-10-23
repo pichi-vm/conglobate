@@ -1,0 +1,40 @@
+    Checking zerocopy v0.8.63
+    Checking gix-protocol v0.62.0
+    Checking gix v0.84.0
+    Checking iocuddle v0.4.0
+    Checking half v2.7.1
+    Checking devmap-core v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+    Checking devmap-linux v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+    Checking ciborium-ll v0.2.2
+    Checking iocuddle v0.3.0
+    Checking lodown v0.1.0 (https://github.com/pichi-vm/lodown.git?rev=31f8951293af180150e5e4c654c47a5b190097b9#31f89512)
+    Checking devmap-snapshot v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+    Checking devmap-verity v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+    Checking ciborium v0.2.2
+    Checking netlink-packet-route v0.33.0
+    Checking conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+warning: associated function `dump` is never used
+  --> /home/nathaniel/Projects/pichi-vm/conglobate/src/network/route.rs:30:19
+   |
+22 | impl RouteRequest {
+   | ----------------- associated function in this implementation
+...
+30 |     pub(super) fn dump(message: RouteNetlinkMessage) -> Self {
+   |                   ^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: variant `Dump` is never constructed
+   --> /home/nathaniel/Projects/pichi-vm/conglobate/src/network/route.rs:121:5
+    |
+118 | enum Completion {
+    |      ---------- variant in this enum
+...
+121 |     Dump,
+    |     ^^^^
+    |
+    = note: `Completion` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: `conglobate` (lib) generated 2 warnings
+    Checking conglobate-lifecycle-tests v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/tests/lifecycle)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 12.04s

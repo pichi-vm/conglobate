@@ -1,0 +1,26 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+warning: associated function `dump` is never used
+  --> /home/nathaniel/Projects/pichi-vm/conglobate/src/network/route.rs:30:19
+   |
+22 | impl RouteRequest {
+   | ----------------- associated function in this implementation
+...
+30 |     pub(super) fn dump(message: RouteNetlinkMessage) -> Self {
+   |                   ^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: variant `Dump` is never constructed
+   --> /home/nathaniel/Projects/pichi-vm/conglobate/src/network/route.rs:121:5
+    |
+118 | enum Completion {
+    |      ---------- variant in this enum
+...
+121 |     Dump,
+    |     ^^^^
+    |
+    = note: `Completion` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: `conglobate` (lib) generated 2 warnings
+   Compiling conglobate-lifecycle-tests v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/tests/lifecycle)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.64s

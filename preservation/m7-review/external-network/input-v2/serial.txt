@@ -1,0 +1,9 @@
++ /lifecycle-tests external-network-input
+mkdir /var/run/netns failed: No such file or directory
+
+thread 'main' (154) panicked at src/network.rs:65:9:
+assertion failed: std::process::Command::new("ip").args(arguments).status()?.success()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+LIFECYCLE_EXIT 101
+[    1.467181] sysrq: Power Off
+[    1.469409] reboot: Power down

@@ -10,8 +10,8 @@ User accepted externalizing networking. This supersedes earlier proposals and
 conglobate-owned NAT wording in the stored goal/history. No requirement is being
 removed: provisioning and ingress enforcement move to the trusted environment.
 The implementation still uses the old network path until the following batch
-lands. Architecture gate M2 restored at 3/3 by the external-network self-review record;
-M4–M6 remain 0/3.
+lands. Architecture gate M2 reopened at 0/3 after the VM exposed the bind-mounted
+namespace type-check assumption; M4–M6 remain 0/3.
 
 1. **External networking (current):** complete architecture adherence gate;
    capture/validate --network-namespace; reuse its pinned descriptor for enabled
@@ -74,7 +74,7 @@ but must not be claimed to validate the new policy implementation.
 | Milestone | Deliverables and success criteria | Status | Clean streak |
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
-| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: external-network architecture revision | 3 |
+| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Reopened: namespace type-check correction | 0 |
 | 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete: revised context lifecycle | 3 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, environment-owned labeling exception, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Reopened: registration-free lifecycle | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Reopened: two-root lifecycle regression | 0 |
@@ -5870,3 +5870,41 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - One initial finding corrected, then three consecutive clean architecture
   self-review passes: preservation/m7-review/external-network/architecture-review.md.
   M2 restored to 3/3; implementation/qualification M4–M6 remain at 0/3.
+
+### External-network implementation batch (validation in progress)
+
+- Enabled networking now captures a namespace FD with resolver bytes, joins it
+  through existing trusted descriptor transfer, and only cleans up resolver
+  sources. Removed veth/address/NAT/allocation implementations, network creator
+  and configuration helper roles, and the netfilter packet dependency. Offline
+  loopback still uses the small existing route request path.
+- Preserved removed production sources and lifecycle probes under
+  preservation/m7-review/external-network/. Trusted VM fixtures now own namespace,
+  veth and NAT provisioning. Initial root tests passed; final checks and VM runs
+  are recorded there as they finish.
+- Namespace-input v1/v2 exposed missing fixture ip and /var/run setup. v3 exposed
+  a real design defect: procfs FD links of bind-mounted namespaces may show the
+  mount path rather than net:[inode]. Type checking now occurs via explicit
+  CLONE_NEWNET at trusted setns before command admission. Capturing still checks
+  nsfs and distinct identity. Architecture gate resets; previous three passes
+  remain historical. v4 passed replacement/pinning and non-destructive release;
+  all 150 compared source files match its archived snapshot at verification.
+- DNS/output and wrong-type admission regressions remain pending at this entry.
+  No full lifecycle, architecture gate restoration or platform qualification is
+  claimed. NAT and ingress are trusted environment requirements, not inferred
+  properties of a namespace FD.
+
+### External-network batch validation result
+
+- New binary path implemented; roughly 2,400 net source lines removed alongside
+  retired infrastructure tests. References preserved before deletion. Trusted VM
+  fixtures provision the external network; no systemd dependency in the binary.
+- Final root suite: 220 tests pass, strict all-target Clippy passes. Namespace
+  replacement/release VM, image DNS/resolver/offline/output VM, and wrong-type
+  pre-admission rejection VM pass. Retained environment network verified after
+  success. Detailed scope/failures/hashes: external-network/IMPLEMENTATION.md.
+- Architecture type-preflight correction reopens M2 to 0/3; M4–M6 remain 0/3.
+  Next: review the frozen replacement boundary and complete remaining external
+  network failure/authority cases in a single validation batch, then restore
+  complete milestone gates. IPv6/ingress/platform and distro qualification remain
+  outstanding. No complete adherence pass is claimed for this implementation.

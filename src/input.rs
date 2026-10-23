@@ -29,6 +29,10 @@ pub enum InputError {
     Lock(#[from] LockError),
     #[error("network-enabled commands require --resolv-conf")]
     ResolverRequired,
+    #[error("network-enabled commands require --network-namespace")]
+    NetworkNamespaceRequired,
+    #[error("network namespace input: {0}")]
+    NetworkNamespace(#[source] std::io::Error),
     #[error("resolver input: {0}")]
     Resolver(std::io::Error),
 }
@@ -62,7 +66,7 @@ pub struct CapturedBuild {
     recipe: SelectedDocument,
     lock: SelectedDocument,
     plan: BuildPlan,
-    resolver: Option<crate::network::ResolverInput>,
+    networking: Option<crate::network::NetworkInput>,
 }
 impl TryFrom<&BuildRequest> for CapturedBuild {
     type Error = InputError;
@@ -74,11 +78,18 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
         let recipe = Recipe::try_from(YamlDocument::from(recipe_file.text()?))?;
         let lock = ImageLock::try_from(YamlDocument::from(lock_file.text()?))?;
         let plan = BuildPlan::new(recipe, &lock)?;
-        let resolver = if plan.network_steps().is_empty() {
+        let networking = if plan.network_steps().is_empty() {
             None
         } else {
             let path = request.resolv_conf().ok_or(InputError::ResolverRequired)?;
-            Some(crate::network::ResolverInput::capture(path).map_err(InputError::Resolver)?)
+            let resolver =
+                crate::network::ResolverInput::capture(path).map_err(InputError::Resolver)?;
+            let namespace = request
+                .network_namespace()
+                .ok_or(InputError::NetworkNamespaceRequired)?;
+            let namespace = crate::network::NetworkNamespace::open(namespace)
+                .map_err(InputError::NetworkNamespace)?;
+            Some(crate::network::NetworkInput::new(namespace, resolver))
         };
         let recipe = SelectedDocument::new(request.recipe().clone(), &recipe_file);
         let lock = SelectedDocument::new(request.lock().clone(), &lock_file);
@@ -87,7 +98,7 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
             recipe,
             lock,
             plan,
-            resolver,
+            networking,
         })
     }
 }
@@ -101,8 +112,8 @@ impl CapturedBuild {
     pub fn lock_document(&self) -> &SelectedDocument {
         &self.lock
     }
-    pub fn resolver(&self) -> Option<&crate::network::ResolverInput> {
-        self.resolver.as_ref()
+    pub fn networking(&self) -> Option<&crate::network::NetworkInput> {
+        self.networking.as_ref()
     }
     pub fn plan(&self) -> &BuildPlan {
         &self.plan

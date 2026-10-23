@@ -1,0 +1,14 @@
+[
+  {
+    "path": "/storage/conglobate-validation/external-network-input-v2/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-input-v2/initramfs.gz",
+    "size": 84410477,
+    "sha256": "fc6f50f3b2ba340e96bf223272834a9ab9e31f906bfdc8f28ca594ff4c784c71",
+    "durably_archived": false
+  }
+]

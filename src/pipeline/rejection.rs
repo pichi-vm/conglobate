@@ -46,7 +46,6 @@ impl<R: DirectiveStorage> StageFailure<'_, R> {
             | Self::Preparation { index, .. }
             | Self::Copy { index, .. }
             | Self::Execution { index, .. }
-            | Self::NetworkSetup { index, .. }
             | Self::NetworkExecution { index, .. } => *index,
         };
         self.reject_at(index)
@@ -86,12 +85,6 @@ impl<R: DirectiveStorage> StageFailure<'_, R> {
                 Err(failure) => BuildError::Copy(failure.diagnostics().clone()).at_directive(index),
             },
             StageFailure::Execution { failure, .. } => failure.reject_command(index),
-            StageFailure::NetworkSetup { failure, .. } => match failure.retry_cleanup() {
-                Ok(failure) => failure.reject_command(index),
-                Err(failure) => {
-                    BuildError::NetworkSetup(failure.diagnostics().clone()).at_directive(index)
-                }
-            },
             StageFailure::NetworkExecution { failure, .. } => failure.reject_command(index),
         }
     }

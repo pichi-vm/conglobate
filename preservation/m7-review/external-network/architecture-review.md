@@ -43,3 +43,12 @@ No new unsafe wrapper, process, publication path or forgotten destructor guarant
 Rechecked requirements and style against unchanged storage/bootstrap/firmware/
 inventory boundaries. Full distro/platform qualification and durable archival
 remain outstanding. All three passes are self-review, not independent review.
+
+## Reopened by implementation evidence
+
+The three passes above are historical. Input VM v3 disproved the assumed procfs
+FD-link type check for bind-mounted namespaces. Runtime capture now checks nsfs
+and distinct identity, with explicit setns(CLONE_NEWNET) enforcing type at trusted
+entry before image admission. M2 resets to 0/3 pending final batch review. v4
+proves pinned identity survives path replacement and descriptor release leaves
+the environment namespace intact; it does not exercise command admission.

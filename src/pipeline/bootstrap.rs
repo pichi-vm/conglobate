@@ -119,7 +119,7 @@ impl<'a> BootstrapBuild<'a> {
         let networking = self
             .build
             .captured()
-            .resolver()
+            .networking()
             .map(|resolver| crate::network::CommandNetworking::new(resolver, workspace));
         let completed = sandbox
             .directives_with_network::<BootstrapVolumes<'_, '_, '_, Mounted>>(

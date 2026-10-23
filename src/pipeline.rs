@@ -59,8 +59,6 @@ pub enum BuildError {
         #[source]
         source: Box<BuildError>,
     },
-    #[error("command network setup: {0}")]
-    NetworkSetup(#[source] crate::storage::FailureDiagnostics),
     #[error("command preparation: {0}")]
     Preparation(#[source] crate::storage::FailureDiagnostics),
     #[error("COPY: {0}")]

@@ -58,8 +58,8 @@ impl<'l> CommandSandbox<'l> {
         &self,
         network: &crate::network::CommandNetworking<'_>,
         budget: &SetupBudget,
-    ) -> Result<crate::network::CommandNetwork, Box<crate::network::NetworkSetupFailure>> {
-        network.prepare(self.mount_parent(), &self.program, budget)
+    ) -> io::Result<crate::network::CommandNetwork> {
+        network.prepare(budget)
     }
     pub(crate) fn mount_parent(&self) -> &Path {
         self.directories.mounts

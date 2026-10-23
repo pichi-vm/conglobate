@@ -272,10 +272,16 @@ fn network_recipe_captures_an_explicit_resolver_once() {
     std::fs::write(resolver.path(), selected).unwrap();
     args.extend(["--resolv-conf", resolver.path().to_str().unwrap()]);
     let request = BuildRequest::parse_from(&args).unwrap();
-    let captured = CapturedBuild::try_from(&request).unwrap();
-    assert_eq!(captured.plan().network_steps().len(), 1);
-    std::fs::write(resolver.path(), b"changed after capture").unwrap();
-    assert_eq!(captured.resolver().unwrap().bytes(), selected);
+    assert!(matches!(
+        CapturedBuild::try_from(&request),
+        Err(InputError::NetworkNamespaceRequired)
+    ));
+    args.extend(["--network-namespace", "/proc/self/ns/net"]);
+    let request = BuildRequest::parse_from(&args).unwrap();
+    assert!(matches!(
+        CapturedBuild::try_from(&request),
+        Err(InputError::NetworkNamespace(_))
+    ));
     std::fs::remove_file(resolver.path()).unwrap();
     assert!(matches!(
         CapturedBuild::try_from(&request),
@@ -292,7 +298,7 @@ fn network_recipe_captures_an_explicit_resolver_once() {
     assert!(
         CapturedBuild::try_from(&request)
             .unwrap()
-            .resolver()
+            .networking()
             .is_none()
     );
 }

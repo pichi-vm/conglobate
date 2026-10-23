@@ -114,14 +114,7 @@ impl Lifecycle {
                 network::NetworkProbe::capture(interface, port)
             }
             [mode] if mode == "network-service" => network::NetworkProbe::service(),
-            [mode] if mode == "network-composite" => network::NetworkProbe::composite_failures(),
-            [mode, contended] if mode == "network-allocation-lock-child" => {
-                match contended.to_str() {
-                    Some("true") => network::NetworkProbe::allocation_lock_child(true),
-                    Some("false") => network::NetworkProbe::allocation_lock_child(false),
-                    _ => Err("expected lock contention boolean".into()),
-                }
-            }
+            [mode] if mode == "external-network-input" => network::NetworkProbe::external_input(),
             [mode, cutoff] if mode == "sandbox-attached-helper" => {
                 sandbox_failures::SandboxFailures::attached_helper(
                     cutoff,

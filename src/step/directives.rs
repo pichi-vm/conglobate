@@ -62,11 +62,6 @@ pub enum StageFailure<'l, R: DirectiveStorage> {
         failure: Box<StorageExecutionFailure<'l, R>>,
     },
     #[error("directive {index}: {failure}")]
-    NetworkSetup {
-        index: usize,
-        failure: Box<NetworkStageFailure<'l, R>>,
-    },
-    #[error("directive {index}: {failure}")]
     NetworkExecution {
         index: usize,
         failure: Box<StorageExecutionFailure<'l, super::NetworkedStorage<R>>>,
@@ -76,32 +71,6 @@ pub enum StageFailure<'l, R: DirectiveStorage> {
         index: usize,
         failure: Box<CopyStageFailure<R>>,
     },
-}
-/// A network creator may still own a child. Keep command teardown blocked until
-/// that individually owned child is reaped, before the global subreaper drain.
-#[derive(Debug, thiserror::Error)]
-#[error("network setup: {network}")]
-pub struct NetworkStageFailure<'l, R: DirectiveStorage> {
-    network: Box<crate::network::NetworkSetupFailure>,
-    ready: super::Step<'l, super::Ready, R>,
-    domain_parent: &'l std::path::Path,
-}
-impl<'l, R: DirectiveStorage> NetworkStageFailure<'l, R> {
-    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
-        self.network.diagnostics()
-    }
-
-    pub fn retry_cleanup(self) -> Result<Box<StorageExecutionFailure<'l, R>>, Box<Self>> {
-        let primary = io::Error::other(self.network.diagnostics().clone());
-        match self.network.cleanup() {
-            Ok(()) => Ok(self.ready.reject_setup(primary, self.domain_parent)),
-            Err(network) => Err(Box::new(Self {
-                network,
-                ready: self.ready,
-                domain_parent: self.domain_parent,
-            })),
-        }
-    }
 }
 #[derive(Debug)]
 enum CopyCleanup<R: DirectiveStorage> {
@@ -229,20 +198,11 @@ impl<'l> CommandSandbox<'l> {
                         let networking = network.expect("preflight checked captured networking");
                         let network = match self.prepare_network(networking, &budget) {
                             Ok(network) => network,
-                            Err(failure) => {
-                                let failure = NetworkStageFailure {
-                                    network: failure,
-                                    ready,
-                                    domain_parent: self.domain_parent(),
-                                };
-                                return Err(match failure.retry_cleanup() {
-                                    Ok(failure) => {
-                                        Box::new(StageFailure::Execution { index, failure })
-                                    }
-                                    Err(failure) => {
-                                        Box::new(StageFailure::NetworkSetup { index, failure })
-                                    }
-                                });
+                            Err(source) => {
+                                return Err(Box::new(StageFailure::Execution {
+                                    index,
+                                    failure: ready.reject_setup(source, self.domain_parent()),
+                                }));
                             }
                         };
                         ready

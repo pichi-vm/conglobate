@@ -478,9 +478,7 @@ mod tests {
 mod bootstrap;
 
 mod directives;
-pub use directives::{
-    CompletedDirectives, CopyStageFailure, DirectiveStorage, NetworkStageFailure, StageFailure,
-};
+pub use directives::{CompletedDirectives, CopyStageFailure, DirectiveStorage, StageFailure};
 
 mod network;
 pub use network::{NetworkEligibleStorage, NetworkFinalizationFailure, NetworkedStorage};

@@ -1,45 +1,20 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Captured network inputs. Link/NAT and resolver-mount execution are separate
-//! ownership gates; capturing configuration does not enable a command network.
+//! External network handles and temporary resolver views. The environment owns
+//! enabled networking; conglobate configures only isolated offline loopback.
 mod resolver;
 pub use resolver::ResolverInput;
-
-mod route;
-mod veth;
-pub use veth::{ConnectedVeth, ConnectionFailure, InterfaceName, VethFailure, VethPair};
-
-mod namespace;
-pub use namespace::{NetworkNamespace, NetworkNamespaceFailure};
-
-mod configuration;
-pub(crate) use configuration::LinkConfiguration;
-pub use configuration::NetworkAddress;
-
-pub use veth::{ConfigurationCleanupFailure, ConfigurationFailure, ConfiguredVeth};
-
 mod loopback;
+mod route;
 pub(crate) use loopback::Loopback;
-
-mod firewall;
-mod netfilter;
-pub use firewall::{FirewallCloseFailure, FirewallTable};
-
-mod nat;
-pub use nat::{NatCloseFailure, NatInstallFailure, NatPolicy};
-
+mod namespace;
+pub use namespace::NetworkNamespace;
 mod resolver_target;
 pub use resolver_target::{ResolverTarget, ResolverTargetFailure};
-
 mod resolver_mount;
 pub(crate) use resolver_mount::ResolverView;
 pub use resolver_mount::{ResolverMount, ResolverSource, ResolverSourceFailure};
-
 mod command;
 pub use command::{CommandNetwork, NetworkCleanupFailure};
-
-mod topology;
-pub use topology::{LinkAllocation, NetworkTopology};
-
 mod setup;
-pub use setup::{CommandNetworking, NetworkSetupFailure};
+pub use setup::{CommandNetworking, NetworkInput};

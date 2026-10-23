@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use netlink_packet_core::{
-    NLM_F_ACK, NLM_F_DUMP, NLM_F_DUMP_INTR, NLM_F_REQUEST, NetlinkMessage, NetlinkPayload,
+    NLM_F_ACK, NLM_F_DUMP_INTR, NLM_F_REQUEST, NetlinkMessage, NetlinkPayload,
 };
 use netlink_packet_route::RouteNetlinkMessage;
 use rustix::{
@@ -17,22 +17,10 @@ use std::{io, os::fd::OwnedFd, time::Instant};
 pub(super) struct RouteRequest {
     message: RouteNetlinkMessage,
     flags: u16,
-    completion: Completion,
 }
 impl RouteRequest {
     pub(super) fn new(message: RouteNetlinkMessage, flags: u16) -> Self {
-        Self {
-            message,
-            flags,
-            completion: Completion::Acknowledgment,
-        }
-    }
-    pub(super) fn dump(message: RouteNetlinkMessage) -> Self {
-        Self {
-            message,
-            flags: NLM_F_DUMP,
-            completion: Completion::Dump,
-        }
+        Self { message, flags }
     }
     pub(super) fn execute(self, deadline: Instant) -> io::Result<Vec<RouteNetlinkMessage>> {
         let socket = net::socket_with(
@@ -44,12 +32,7 @@ impl RouteRequest {
         net::bind(&socket, &SocketAddrNetlink::new(0, 0))?;
         let mut packet = NetlinkMessage::from(self.message);
         packet.header.sequence_number = 1;
-        packet.header.flags = self.flags
-            | NLM_F_REQUEST
-            | match self.completion {
-                Completion::Acknowledgment => NLM_F_ACK,
-                Completion::Dump => 0,
-            };
+        packet.header.flags = self.flags | NLM_F_REQUEST | NLM_F_ACK;
         packet.finalize();
         let mut bytes = vec![0; packet.buffer_len()];
         packet.serialize(&mut bytes);
@@ -67,10 +50,7 @@ impl RouteRequest {
                 Err(error) => return Err(error.into()),
             }
         }
-        let mut reply = RouteReply {
-            messages: Vec::new(),
-            completion: self.completion,
-        };
+        let mut reply = RouteReply::default();
         let mut buffer = vec![0; 65536];
         loop {
             Self::ready(&socket, PollFlags::IN, deadline)?;
@@ -114,16 +94,9 @@ impl RouteRequest {
         }
     }
 }
-#[derive(Debug, Default, Clone, Copy)]
-enum Completion {
-    #[default]
-    Acknowledgment,
-    Dump,
-}
 #[derive(Debug, Default)]
 struct RouteReply {
     messages: Vec<RouteNetlinkMessage>,
-    completion: Completion,
 }
 impl RouteReply {
     fn receive(&mut self, bytes: &[u8]) -> io::Result<bool> {
@@ -145,20 +118,7 @@ impl RouteReply {
                 return Err(io::Error::other("invalid route reply framing or sequence"));
             }
             match packet.payload {
-                NetlinkPayload::Error(error) if error.code.is_none() => {
-                    if matches!(self.completion, Completion::Acknowledgment) {
-                        acknowledged = true;
-                    }
-                }
-                NetlinkPayload::Done(done) if matches!(self.completion, Completion::Dump) => {
-                    if done.code != 0 {
-                        return Err(io::Error::other(format!(
-                            "route dump failed: {}",
-                            done.code
-                        )));
-                    }
-                    acknowledged = true;
-                }
+                NetlinkPayload::Error(error) if error.code.is_none() => acknowledged = true,
                 NetlinkPayload::Error(error) => return Err(error.to_io()),
                 NetlinkPayload::InnerMessage(message) => self.messages.push(message),
                 _ => return Err(io::Error::other("unexpected route control message")),
@@ -196,48 +156,6 @@ mod tests {
             packet.serialize(&mut bytes);
             bytes
         }
-    }
-    #[test]
-    fn dump_requires_done_and_rejects_interruption_or_error() {
-        use netlink_packet_core::DoneMessage;
-        let mut packet = NetlinkMessage::<RouteNetlinkMessage>::new(
-            Default::default(),
-            NetlinkPayload::Done(DoneMessage::default()),
-        );
-        packet.header.sequence_number = 1;
-        packet.finalize();
-        let mut bytes = vec![0; packet.buffer_len()];
-        packet.serialize(&mut bytes);
-        let mut reply = RouteReply {
-            messages: Vec::new(),
-            completion: Completion::Dump,
-        };
-        assert!(!reply.receive(&ReplyFixture::ack(1, None)).unwrap());
-        assert!(reply.receive(&bytes).unwrap());
-        assert!(RouteReply::default().receive(&bytes).is_err());
-        packet.header.flags = NLM_F_DUMP_INTR;
-        packet.serialize(&mut bytes);
-        assert!(
-            RouteReply {
-                messages: Vec::new(),
-                completion: Completion::Dump
-            }
-            .receive(&bytes)
-            .is_err()
-        );
-        packet.header.flags = 0;
-        if let NetlinkPayload::Done(done) = &mut packet.payload {
-            done.code = -5;
-        }
-        packet.serialize(&mut bytes);
-        assert!(
-            RouteReply {
-                messages: Vec::new(),
-                completion: Completion::Dump
-            }
-            .receive(&bytes)
-            .is_err()
-        );
     }
     #[test]
     fn acknowledgement_is_required_and_rejects_wrong_sequence_truncation_and_nack() {

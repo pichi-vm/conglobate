@@ -8,8 +8,8 @@ import subprocess
 
 class GuestRuntime:
     TOOLS = (
-        'bash', 'cat', 'chmod', 'chown', 'cp', 'e2fsck', 'getcap', 'getfacl',
-        'getfattr', 'git', 'grep', 'ln', 'mkdir', 'mke2fs', 'modprobe', 'mount',
+        'bash', 'cat', 'cmp', 'chmod', 'chown', 'cp', 'e2fsck', 'getcap', 'getfacl',
+        'getfattr', 'git', 'grep', 'ip', 'ln', 'mkdir', 'mke2fs', 'modprobe', 'mount',
         'mv', 'newgidmap', 'newuidmap', 'nft', 'rm', 'rmdir', 'setcap',
         'setfacl', 'setfattr', 'setpriv', 'sleep', 'stat', 'touch', 'true',
         'truncate', 'umount', 'unshare',
@@ -27,10 +27,10 @@ class GuestRuntime:
     def create(self):
         self.root.mkdir()
         for directory in ('usr/bin', 'usr/sbin', 'usr/lib', 'usr/lib64',
-                          'etc', 'proc', 'sys', 'dev', 'tmp', 'run'):
+                          'etc', 'proc', 'sys', 'dev', 'tmp', 'run', 'var'):
             (self.root / directory).mkdir(parents=True, exist_ok=True)
         for name, target in (('bin', 'usr/bin'), ('sbin', 'usr/sbin'),
-                             ('lib', 'usr/lib'), ('lib64', 'usr/lib64')):
+                             ('lib', 'usr/lib'), ('lib64', 'usr/lib64'), ('var/run', '../run')):
             (self.root / name).symlink_to(target)
         (self.root / 'tmp').chmod(0o1777)
         (self.root / 'etc/passwd').write_text('root:x:0:0:root:/:/bin/bash\n')

@@ -47,6 +47,8 @@ struct BuildArguments {
     #[arg(long)]
     resolv_conf: Option<PathBuf>,
     #[arg(long)]
+    network_namespace: Option<PathBuf>,
+    #[arg(long)]
     formatter_runtime: Option<PathBuf>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,6 +77,7 @@ pub struct BuildRequest {
     cache: PathBuf,
     output: PathBuf,
     resolv_conf: Option<PathBuf>,
+    network_namespace: Option<PathBuf>,
     formatter_runtime: Option<PathBuf>,
 }
 impl BuildRequest {
@@ -100,6 +103,7 @@ impl BuildRequest {
             cache: raw.cache,
             output: raw.output,
             resolv_conf: raw.resolv_conf,
+            network_namespace: raw.network_namespace,
             formatter_runtime: raw.formatter_runtime,
         })
     }
@@ -126,6 +130,9 @@ impl BuildRequest {
     }
     pub fn formatter_runtime(&self) -> Option<&Path> {
         self.formatter_runtime.as_deref()
+    }
+    pub fn network_namespace(&self) -> Option<&Path> {
+        self.network_namespace.as_deref()
     }
     pub fn resolv_conf(&self) -> Option<&Path> {
         self.resolv_conf.as_deref()

@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/tests/distro/run.py", line 323, in <module>
+    DistroRun(parser.parse_args()).run()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/tests/distro/run.py", line 40, in run
+    self.build(service)
+    ~~~~~~~~~~^^^^^^^^^
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/tests/distro/run.py", line 285, in build
+    raise RuntimeError('distro build failed; inspect preserved serial.txt')
+RuntimeError: distro build failed; inspect preserved serial.txt

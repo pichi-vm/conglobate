@@ -23,7 +23,7 @@ from vm_runtime import GuestRuntime
 
 
 class DistroRuntime(GuestRuntime):
-    TOOLS = GuestRuntime.TOOLS + ('ip', 'tar', 'sync', 'mkfifo')
+    TOOLS = GuestRuntime.TOOLS + ('tar', 'sync', 'mkfifo')
     MODULES = GuestRuntime.MODULES + ('virtio_pci', 'virtio_blk', 'virtio_net')
 
 
@@ -97,10 +97,10 @@ test "$ready" = NETWORK_CAPTURE_READY
 rm /work/network-capture-ready
 """
         if self.arguments.network_fixture or service:
-            network_cleanup = ('wait "$network_service"\n' if self.arguments.network_fixture else '') + """for link in /sys/class/net/cgb*; do test ! -e "$link"; done
-nft list tables > /work/network-tables
-test -z "$(grep conglobate_ /work/network-tables)"
-echo NETWORK_BUILD_RESOURCE_CLEANUP_PASS"""
+            network_cleanup = ('wait "$network_service"\n' if self.arguments.network_fixture else '') + """ip netns exec build ip address show dev command0 | grep -q 192.0.2.2
+nft list table ip build_environment > /work/network-after
+cmp /work/network-before /work/network-after
+echo NETWORK_ENVIRONMENT_RETAINED_PASS"""
             if service:
                 network_cleanup = 'wait "$network_capture"\n' + network_cleanup
         # Enumerate only the trusted host formatter, never an image executable.
@@ -159,6 +159,7 @@ echo NETWORK_BUILD_RESOURCE_CLEANUP_PASS"""
         (self.root / 'etc/resolv.conf').write_text(
             'nameserver 10.0.2.15\n' if self.arguments.network_fixture else 'nameserver 10.0.2.3\n')
         (self.root / 'conglobate-disposable-validation-vm').touch()
+        namespace_input = '/proc/self/ns/user' if self.arguments.wrong_network_type else '/run/netns/build'
         (self.root / 'build.sh').write_text(f'''#!/bin/bash
 set -eux
 {policy_startup}
@@ -180,9 +181,33 @@ ip address add 10.0.2.15/24 dev "$interface"
 ip route add default via 10.0.2.2
 echo 1 > /proc/sys/net/ipv4/ip_forward
 echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
+# Trusted fixture provisions the build network independently of conglobate.
+ip netns add build
+ip link add build0 type veth peer name command0
+ip link set command0 netns build
+ip address add 192.0.2.1/30 dev build0
+ip link set build0 up
+ip netns exec build ip link set lo up
+ip netns exec build ip address add 192.0.2.2/30 dev command0
+ip netns exec build ip link set command0 up
+ip netns exec build ip route add default via 192.0.2.1
+nft -f - <<'RULES'
+table ip build_environment {{
+ chain forward {{
+  type filter hook forward priority 0; policy accept;
+  oifname "build0" ct state established,related accept
+  oifname "build0" drop
+ }}
+ chain postrouting {{
+  type nat hook postrouting priority srcnat; policy accept;
+  ip saddr 192.0.2.2 masquerade
+ }}
+}}
+RULES
+nft list table ip build_environment > /work/network-before
 {network_startup}
 {probe_control}
-if conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --resolv-conf /etc/resolv.conf --formatter-runtime /formatter.json; then
+if conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --resolv-conf /etc/resolv.conf --network-namespace {namespace_input} --formatter-runtime /formatter.json; then
     {fault_observation or ':'}
     {network_cleanup}
 else
@@ -289,6 +314,8 @@ if __name__ == '__main__':
                         help='Serve controlled guest DNS/TCP and assert network cleanup')
     parser.add_argument('--command-probe', action='store_true',
                         help='Commit safe syscall probe and keyctl runtime into fixture context')
+    parser.add_argument('--wrong-network-type', action='store_true',
+                        help='Negative validation: supply a user namespace as the network input')
     parser.add_argument('--without-label-policy', action='store_true',
                         help='Negative validation only: omit environment policy loading')
     parser.add_argument('--label-fault-second-filesystem', action='store_true',

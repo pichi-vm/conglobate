@@ -13,10 +13,10 @@ class NetworkEvidence:
     def verify(self):
         serial = (self.run / 'serial.txt').read_text()
         status = (self.run / 'status.raw').read_bytes().rstrip(b'\0')
-        markers = ('NETWORK_EXTERNAL_TCP_REPLY_PASS', 'NETWORK_BUILD_RESOURCE_CLEANUP_PASS') if self.mode in ('external', 'external-nat') else (
+        markers = ('NETWORK_EXTERNAL_TCP_REPLY_PASS', 'NETWORK_ENVIRONMENT_RETAINED_PASS') if self.mode in ('external', 'external-nat') else (
             'NETWORK_RESTRICTED_IMAGE_DNS_AND_TCP_PASS',
             'NETWORK_RECIPE_DNS_TCP_AND_READONLY_RESOLVER_PASS',
-            'NETWORK_BUILD_RESOURCE_CLEANUP_PASS')
+            'NETWORK_ENVIRONMENT_RETAINED_PASS')
         checks = {marker: f'\n{marker}\n' in serial for marker in markers}
         if self.mode in ('external', 'external-nat'):
             checks['independent_external_exchange'] = json.loads(

@@ -1,0 +1,37 @@
+    Checking conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+error: associated function `dump` is never used
+  --> src/network/route.rs:30:19
+   |
+22 | impl RouteRequest {
+   | ----------------- associated function in this implementation
+...
+30 |     pub(super) fn dump(message: RouteNetlinkMessage) -> Self {
+   |                   ^^^^
+   |
+   = note: `-D dead-code` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+error: variant `Dump` is never constructed
+   --> src/network/route.rs:121:5
+    |
+118 | enum Completion {
+    |      ---------- variant in this enum
+...
+121 |     Dump,
+    |     ^^^^
+    |
+    = note: `Completion` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+error: this creates an owned instance just for comparison
+  --> src/network/namespace.rs:28:20
+   |
+28 |         if link != std::path::PathBuf::from(format!("net:[{}]", selected.ino())) {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `format!("net:[{}]", selected.ino())`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.94.0/index.html#cmp_owned
+   = note: `-D clippy::cmp-owned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
+
+error: could not compile `conglobate` (lib) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `conglobate` (lib test) due to 2 previous errors

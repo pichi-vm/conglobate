@@ -1,0 +1,10 @@
+{
+  "checks": {
+    "build_rejected": true,
+    "command_not_admitted": true,
+    "namespace_entry_rejected": true,
+    "output_absent": true
+  },
+  "passed": true,
+  "full_sandbox_qualified": false
+}

@@ -347,7 +347,7 @@ acceptance and subsequent reopened gates are recorded in REIMPLEMENTATION.md.
 The environment, optionally using systemd services, provisions the enabled build
 network and owns its namespace lifetime, veth/interfaces, addressing, routes, NAT
 and ingress policy. Conglobate receives --network-namespace and --resolv-conf.
-It captures an owned namespace descriptor once, validates type and distinct identity,
+It captures an owned namespace descriptor once, validates nsfs and distinct identity,
 and retains it through command quiescence; the path is not reopened per step.
 The namespace belongs to the initial user namespace and differs from the
 supervisor network namespace. Image code cannot configure it or receive its FD.
@@ -369,9 +369,10 @@ isolation, DNS/restoration and environment-retention tests. Provision NAT in the
 trusted disposable-VM fixture. Keep external namespaces out of output artifacts;
 network step permissions remain recorded in inventory.
 
-Capture validates nsfs and the kernel-generated net:[inode] identity through the
-pinned descriptor's procfs link; explicit CLONE_NEWNET at setns also enforces
-namespace type at entry. Initial-user-namespace ownership is an environment
+Capture validates nsfs and distinct identity. A bind-mounted namespace's procfs
+FD link may name its mount path rather than its type. Explicit CLONE_NEWNET at
+setns enforces namespace type in trusted setup before command admission.
+Initial-user-namespace ownership is an environment
 requirement, not a new ioctl preflight. The network handle predates every command
 user namespace and cannot be owned by one of those later-created namespaces.
 CommandPrivileges excludes NET_ADMIN, NET_RAW and SYS_ADMIN from its allowed

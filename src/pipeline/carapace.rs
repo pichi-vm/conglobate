@@ -150,7 +150,7 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
                 .map_err(BuildError::from)?;
             let networking = build
                 .captured()
-                .resolver()
+                .networking()
                 .map(|resolver| crate::network::CommandNetworking::new(resolver, workspace));
             let completed = sandbox
                 .directives_with_network::<Volume<'_, '_, '_, Mounted>>(
