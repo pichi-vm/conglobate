@@ -1,0 +1,38 @@
+usage: run.py [-h] --kernel KERNEL --kernel-release KERNEL_RELEASE
+              --module-root MODULE_ROOT --cache CACHE --pin PIN
+              --recipe RECIPE [--reference REFERENCE]
+              [--firmware-pmi FIRMWARE_PMI] [--firmware-dtb FIRMWARE_DTB]
+              [--external-network-fixture] [--network-fixture]
+              [--command-probe] [--without-label-policy]
+              [--label-fault-second-filesystem]
+              output
+
+Build a real distro in a disposable VM; no privileged host operations.
+
+positional arguments:
+  output
+
+options:
+  -h, --help            show this help message and exit
+  --kernel KERNEL
+  --kernel-release KERNEL_RELEASE
+  --module-root MODULE_ROOT
+  --cache CACHE
+  --pin PIN
+  --recipe RECIPE
+  --reference REFERENCE
+  --firmware-pmi FIRMWARE_PMI
+  --firmware-dtb FIRMWARE_DTB
+  --external-network-fixture
+                        Serve a loopback-only host TCP endpoint reached
+                        through VM outbound networking
+  --network-fixture     Serve controlled guest DNS/TCP and assert network
+                        cleanup
+  --command-probe       Commit safe syscall probe and keyctl runtime into
+                        fixture context
+  --without-label-policy
+                        Negative validation only: omit environment policy
+                        loading
+  --label-fault-second-filesystem
+                        VM-only differential test: reject the second
+                        filesystem label probe

@@ -5005,3 +5005,19 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   Context Git errors and broader Execution(String) diagnostic design remain
   separate. No new VM qualification or complete adherence pass claimed; M4 is
   still 0/3 and the full remaining objective is unchanged.
+
+### Maintained shared guest-runtime constructor
+
+- Previous turn progressed with typed dependency errors f100f57. Copied the
+  historical rootless GuestRuntime to tests/vm_runtime.py and updated lifecycle,
+  distro and seed imports plus their source archive manifests. Original remains
+  unchanged. Python AST equality confirms no executable behavior change.
+- Independent import inspection resolves the maintained file for all three
+  runners; all help entrypoints pass. Fresh maintained-runtime-v1 disposable VM
+  passes full synthetic two-scute chain checks, status and poweroff. Snapshot
+  matches current runtime, runner and production Rust bytes. Evidence/provenance
+  preserved in preservation/m7-review/maintained-runtime-v1/.
+- This closes the historical runtime import dependency only. Distro policy
+  assets, other historical validations and durable external archival still need
+  retirement work. No legacy removal, new distro build or milestone acceptance
+  inferred. M4 remains 0/3; full objective and all remaining gates stay active.

@@ -35,8 +35,8 @@ case assertions, status-disk exit zero and VM poweroff. It does not run BPF or
 mount/device operations on the host. These trusted-formatter tests do not exercise
 command labeling, so no LSM exception is needed for this subset.
 
-The runner currently reuses the historical rootless GuestRuntime constructor;
-that dependency must be migrated before M8 retirement. The original runner and
+The runner uses the maintained rootless GuestRuntime in tests/vm_runtime.py,
+shared with the distro and seed runners. The original runner and
 all historical results remain unchanged. Large run artifacts must be durably
 archived before deletion; a temporary run path is not sufficient preservation.
 

@@ -18,9 +18,8 @@ import tarfile
 from label_environment import LabelEnvironment
 
 REPOSITORY = Path(__file__).resolve().parents[2]
-# This shared runtime constructor must migrate to maintained tests before M8.
-sys.path.insert(0, str(REPOSITORY / 'validation/rewrite-command-integration'))
-from runtime import GuestRuntime
+sys.path.insert(0, str(REPOSITORY / 'tests'))
+from vm_runtime import GuestRuntime
 
 
 class DistroRuntime(GuestRuntime):
@@ -50,7 +49,7 @@ class DistroRun:
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as snapshot:
             for name in ('src', 'Cargo.toml', 'Cargo.lock',
                          'tests/distro', 'tests/lifecycle', 'validation/global-label-policy',
-                         'validation/rewrite-command-integration/runtime.py'):
+                         'tests/vm_runtime.py'):
                 snapshot.add(REPOSITORY / name, arcname=name)
         env = os.environ.copy()
         env.update(CARGO_BUILD_JOBS='2', CARGO_TARGET_DIR=str(REPOSITORY / 'target/m7-stable'),

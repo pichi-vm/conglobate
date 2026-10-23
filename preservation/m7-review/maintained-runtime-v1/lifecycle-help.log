@@ -1,0 +1,18 @@
+usage: run.py [-h] --kernel KERNEL --kernel-release KERNEL_RELEASE
+              --module-root MODULE_ROOT
+              [--case {clone-filter,chain-storage,sandbox-busy-execution,cache-storage,sandbox-writeback,formatter-failures,domain-publication,contained,sandbox-namespace-failure,sandbox-mount-failure,sandbox-launch-failure,sandbox-join-failure,sandbox-attached-exit,network-composite,sandbox-gate-failure,sandbox-blocked-io,sandbox-supervisor-death}]
+              [--drop {running,wait}]
+              output
+
+Package locally; run privileged lifecycle assertions only in a disposable VM.
+
+positional arguments:
+  output
+
+options:
+  -h, --help            show this help message and exit
+  --kernel KERNEL
+  --kernel-release KERNEL_RELEASE
+  --module-root MODULE_ROOT
+  --case {clone-filter,chain-storage,sandbox-busy-execution,cache-storage,sandbox-writeback,formatter-failures,domain-publication,contained,sandbox-namespace-failure,sandbox-mount-failure,sandbox-launch-failure,sandbox-join-failure,sandbox-attached-exit,network-composite,sandbox-gate-failure,sandbox-blocked-io,sandbox-supervisor-death}
+  --drop {running,wait}

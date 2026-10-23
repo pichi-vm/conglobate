@@ -39,7 +39,7 @@ class SeedRun:
                     raise RuntimeError('requires a single complete rootfs archive without whiteouts')
         self.output.mkdir()
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as archive:
-            for name in ['tests/distro', 'validation/rewrite-command-integration/runtime.py']:
+            for name in ['tests/distro', 'tests/vm_runtime.py']:
                 archive.add(REPOSITORY / name, arcname=name)
         runtime = SeedRuntime(self.root, self.arguments.module_root.resolve(), self.arguments.kernel_release)
         runtime.create()

@@ -17,8 +17,8 @@ import tarfile
 from cache_fixture import CacheFixture
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / 'validation/rewrite-command-integration'))
-from runtime import GuestRuntime
+sys.path.insert(0, str(REPO / 'tests'))
+from vm_runtime import GuestRuntime
 
 
 class LifecycleRuntime(GuestRuntime):
@@ -54,7 +54,7 @@ class LifecycleRun:
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as archive:
             for name in ('src', 'Cargo.toml', 'Cargo.lock', 'tests/lifecycle/src',
                          'tests/lifecycle/Cargo.toml', 'tests/lifecycle/Cargo.lock',
-                         'tests/lifecycle/run.py', 'tests/lifecycle/cache_fixture.py', 'tests/lifecycle/clone-probe.c', 'validation/rewrite-command-integration/runtime.py'):
+                         'tests/lifecycle/run.py', 'tests/lifecycle/cache_fixture.py', 'tests/lifecycle/clone-probe.c', 'tests/vm_runtime.py'):
                 archive.add(REPO / name, arcname=name)
         env = os.environ.copy()
         env.update(CARGO_BUILD_JOBS='2', TMPDIR='/var/tmp/conglobate-rewrite-tmp')

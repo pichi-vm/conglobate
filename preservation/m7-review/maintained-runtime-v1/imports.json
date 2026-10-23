@@ -1,0 +1,8 @@
+{
+  "identical_python_ast": true,
+  "imports": {
+    "tests/lifecycle/run.py": "/home/nathaniel/Projects/pichi-vm/conglobate/tests/vm_runtime.py",
+    "tests/distro/run.py": "/home/nathaniel/Projects/pichi-vm/conglobate/tests/vm_runtime.py",
+    "tests/distro/seed.py": "/home/nathaniel/Projects/pichi-vm/conglobate/tests/vm_runtime.py"
+  }
+}
