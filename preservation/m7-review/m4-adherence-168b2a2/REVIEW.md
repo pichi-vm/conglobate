@@ -420,3 +420,105 @@ reconciled in the network segment. No new execution occurred during this segment
 Remaining full-review scope: network/resolver ownership and evidence; current
 external label-policy controls and dual-root failures; pipeline/sealing consumers;
 historical finding reconciliation and complete preservation assessment. M4 0/3.
+
+
+## Segment E: network ownership, NAT and resolver injection
+
+Reviewed all production network modules plus Step's network storage adapter
+(16 files in network-source-sha256.json). This continues the same full review;
+it is not another adherence pass. No new functional defect established here.
+The previously recorded reachability gap and missing qualification remain open.
+
+1. CommandNetworking captures an immutable resolver input and workspace borrow.
+   Enabled setup checks both environment forwarding settings without changing
+   them. A nonblocking lease on the network namespace serializes cooperating
+   allocators through topology capture, exclusive link creation and configuration.
+   This does not exclude unrelated privileged environment network changes.
+2. Topology examines assigned addresses and nondefault routes in both families,
+   across route dumps, and chooses /30 and /126 links plus unused names. Interrupted
+   dumps fail. It cannot discover destinations behind default routes, so the
+   known collision/reachability issue in link-local-nat.md remains unresolved.
+   Link-local was not adopted or validated by this review. Visible topology
+   avoidance is not proof that all previously reachable destinations remain so.
+3. Namespace creator unshares before identity exchange; the parent pins its net
+   namespace and verifies separation/user namespace before reaping the creator.
+   No readiness sleeps. Peer configuration runs in a fresh trusted helper and
+   retains the worker/connection on failure. Commands enter the configured net
+   namespace before dropping initial user-namespace authority.
+4. Veth acquisition is exclusive, initially down, with generated MAC ownership
+   tags and protected control markers. Operations verify the pinned supervisor
+   net namespace. Failed creation never authorizes deleting a foreign same-name
+   link. Tags are cooperative ownership checks, not protection against another
+   privileged actor deliberately replacing interfaces. Abandonment retains the
+   marker; successful explicit deletion removes it.
+5. Netlink sockets are nonblocking/CLOEXEC, kernel unicast replies are checked,
+   truncated/framing/sequence/duplicate/interrupted replies fail. Route requests
+   each use a fresh socket; nft transactions track individual acknowledgements
+   and ignore older transactions' ACKs without extending their deadline.
+   Lost acknowledgement is not assumed to mean no mutation occurred.
+6. NAT's nft table is socket-owned, exclusively created, with transactional rules.
+   Forward/output traffic toward the command link admits established/related
+   replies and otherwise drops, except local IPv6 neighbor discovery. Masquerade
+   matches traffic arriving from the command interface. No destination filter
+   was added. Existing environment policy can still deny traffic; this table's
+   accept verdict does not override all other tables. VM-routable services are
+   not isolated merely by using a separate command namespace.
+7. Explicit network close requires acknowledged policy removal before interface
+   deletion, then resolver source removal. Failure carries exact remaining
+   owners and the original cutoff; retries do not renew it. Setup failures never
+   yield an admissible network. Step stores network and volumes together until
+   descendant teardown, then closes networking before storage finalization.
+   Low-level public close methods require trusted callers to establish quiescence.
+8. ResolverInput pins a regular file before reopening, captures bytes once,
+   rejects observed length changes, hides contents in Debug and does not invent
+   DNS servers. Concurrent same-length source writes are not an atomic snapshot
+   guarantee; the supplied file is trusted environment input. No source path is
+   reopened between steps. Inventory exclusion follows the explicit user decision.
+9. Source bytes live on workspace tmpfs with no retained writable FD. Detached
+   views require read-only/nosuid/nodev/noexec tmpfs regular-file mounts. Target
+   traversal follows ordinary symlinks within root, bounds expansion, rejects
+   escapes/runtime targets/incompatible types, and kernel-rechecks the original
+   spelling against the selected inode. Selection occurs before image writers.
+10. Temporary scaffolding records pinned parents/inodes before further operations.
+    Cleanup checks identity and removes only owned entries in reverse order;
+    replacements/nonempty directories/unpinned mkdir obligations reject cleanup.
+    Existing files/symlinks are preserved. Receiver restores scaffolding after
+    namespace command exit and before Cleaned. A failure discards the build layer;
+    destructor behavior does not turn it into an accepted output.
+11. Style uses immutable address/configuration values, consuming connection/policy
+    transitions and owned error phases. The internal cleanup enum carries actual
+    resources rather than public mutable flags. Resolver's private vector tracks
+    acquisitions for reverse cleanup. Netlink sequence mutation is transport
+    state. No unsafe application code or free-standing orchestration introduced.
+
+### Network evidence fidelity and outstanding coverage
+
+network-evidence-comparison.json compares all 16 files to five preserved archives:
+maintained-network-composite-v1, network-external-v3, status-network-resolver-v1,
+status-network-nonzero-v1 and status-network-timeout-v1. All selected files match.
+The comparison uses exact archive paths, avoiding the separate lifecycle fixture
+also named src/network.rs. Saved assessments pass; no new executions were run.
+
+- Composite fixture checks namespace flock exclusion/release, contention before
+  mutation, partial setup cleanup, foreign nft-table preservation, distinct live
+  allocations, and expired teardown/retry retaining resources. Its final retained
+  state is disposed by the VM, not successful teardown.
+- External-v3 observes actual outbound TCP outside the VM and the translated
+  IPv4 SYN source before QEMU NAT. It does not establish IPv6 or unsolicited
+  inbound denial. Its full production caller predates later status/cutoff changes.
+- Later status runs cover actual recipe DNS/TCP with read-only resolver injection,
+  nonzero/timeout rejection and no output, and a successful subsequent offline
+  step verifying the original absolute resolver symlink and original bytes.
+  These service endpoints are VM-local, not new external NAT evidence.
+- Reviewed the maintained network verifier's independent status/output/cleanup
+  checks and success recipe. Rootless resolver tests cover dangling paths and
+  replacement cleanup mechanics, but do not qualify command-time concurrent
+  rename/replacement of a mounted resolver in the complete sandbox.
+
+Before declaring the network requirement qualified: settle default-route collision
+handling (including any link-local experiment), validate unsolicited inbound denial
+and IPv6, and qualify dangling/concurrently changed resolver targets in actual
+commands. These are not waived by exact source comparisons or successful IPv4.
+Remaining cumulative review: external label-policy controls/dual-root failures,
+pipeline and sealing consumers, historical findings and preservation reconciliation.
+M4 remains 0/3 full clean passes.

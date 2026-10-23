@@ -1,0 +1,194 @@
+{
+  "maintained-network-composite-v1": {
+    "assessment": {
+      "checks": {
+        "NETWORK_NAMESPACE_FLOCK_EXCLUSION_AND_RELEASE_PASS": true,
+        "NETWORK_PRODUCTION_ALLOCATION_CONTENTION_BEFORE_MUTATION_PASS": true,
+        "NETWORK_COMPOSITE_AFTER_NAMESPACE_FAILURE_CLEANUP_PASS": true,
+        "NETWORK_COMPOSITE_NAT_FAILURE_PRESERVES_FOREIGN_TABLE_PASS": true,
+        "NETWORK_PRODUCTION_ALLOCATION_RELEASE_AND_DISTINCT_LIVE_PREFIX_PASS": true,
+        "NETWORK_COMPOSITE_EXPIRED_TEARDOWN_RETRY_RETAINS_OWNER_PASS": true,
+        "exit_zero": true,
+        "vm_powered_off": true
+      },
+      "passed": true,
+      "full_lifecycle_qualified": false
+    },
+    "files_equal": {
+      "src/network.rs": true,
+      "src/step/network.rs": true,
+      "src/network/command.rs": true,
+      "src/network/configuration.rs": true,
+      "src/network/firewall.rs": true,
+      "src/network/loopback.rs": true,
+      "src/network/namespace.rs": true,
+      "src/network/nat.rs": true,
+      "src/network/netfilter.rs": true,
+      "src/network/resolver.rs": true,
+      "src/network/resolver_mount.rs": true,
+      "src/network/resolver_target.rs": true,
+      "src/network/route.rs": true,
+      "src/network/setup.rs": true,
+      "src/network/topology.rs": true,
+      "src/network/veth.rs": true
+    },
+    "missing": []
+  },
+  "network-external-v3": {
+    "assessment": {
+      "mode": "external-nat",
+      "checks": {
+        "NETWORK_EXTERNAL_TCP_REPLY_PASS": true,
+        "NETWORK_BUILD_RESOURCE_CLEANUP_PASS": true,
+        "independent_external_exchange": true,
+        "source_translation": true,
+        "runtime_cleanup": true,
+        "build_export": true,
+        "independent_status": true
+      },
+      "passed": true,
+      "external_ipv4_tcp_observed": true,
+      "ipv4_source_translation_observed": true,
+      "external_outbound_nat_qualified": false,
+      "full_sandbox_qualified": false
+    },
+    "files_equal": {
+      "src/network.rs": true,
+      "src/step/network.rs": true,
+      "src/network/command.rs": true,
+      "src/network/configuration.rs": true,
+      "src/network/firewall.rs": true,
+      "src/network/loopback.rs": true,
+      "src/network/namespace.rs": true,
+      "src/network/nat.rs": true,
+      "src/network/netfilter.rs": true,
+      "src/network/resolver.rs": true,
+      "src/network/resolver_mount.rs": true,
+      "src/network/resolver_target.rs": true,
+      "src/network/route.rs": true,
+      "src/network/setup.rs": true,
+      "src/network/topology.rs": true,
+      "src/network/veth.rs": true
+    },
+    "missing": []
+  },
+  "status-network-resolver-v1": {
+    "assessment": {
+      "mode": "success",
+      "checks": {
+        "NETWORK_RESTRICTED_IMAGE_DNS_AND_TCP_PASS": true,
+        "NETWORK_RECIPE_DNS_TCP_AND_READONLY_RESOLVER_PASS": true,
+        "NETWORK_BUILD_RESOURCE_CLEANUP_PASS": true,
+        "runtime_cleanup": true,
+        "resolver_restored": true,
+        "following_offline_step": true,
+        "build_export": true,
+        "independent_status": true
+      },
+      "passed": true,
+      "external_ipv4_tcp_observed": false,
+      "ipv4_source_translation_observed": false,
+      "external_outbound_nat_qualified": false,
+      "full_sandbox_qualified": false
+    },
+    "files_equal": {
+      "src/network.rs": true,
+      "src/step/network.rs": true,
+      "src/network/command.rs": true,
+      "src/network/configuration.rs": true,
+      "src/network/firewall.rs": true,
+      "src/network/loopback.rs": true,
+      "src/network/namespace.rs": true,
+      "src/network/nat.rs": true,
+      "src/network/netfilter.rs": true,
+      "src/network/resolver.rs": true,
+      "src/network/resolver_mount.rs": true,
+      "src/network/resolver_target.rs": true,
+      "src/network/route.rs": true,
+      "src/network/setup.rs": true,
+      "src/network/topology.rs": true,
+      "src/network/veth.rs": true
+    },
+    "missing": []
+  },
+  "status-network-nonzero-v1": {
+    "assessment": {
+      "mode": "nonzero",
+      "checks": {
+        "NETWORK_RESTRICTED_IMAGE_DNS_AND_TCP_PASS": true,
+        "NETWORK_RECIPE_DNS_TCP_AND_READONLY_RESOLVER_PASS": true,
+        "NETWORK_BUILD_RESOURCE_CLEANUP_PASS": true,
+        "runtime_cleanup": true,
+        "build_rejected": true,
+        "output_absent": true,
+        "command_cleanup": true,
+        "failure_reached": true,
+        "expected_error": true
+      },
+      "passed": true,
+      "external_ipv4_tcp_observed": false,
+      "ipv4_source_translation_observed": false,
+      "external_outbound_nat_qualified": false,
+      "full_sandbox_qualified": false
+    },
+    "files_equal": {
+      "src/network.rs": true,
+      "src/step/network.rs": true,
+      "src/network/command.rs": true,
+      "src/network/configuration.rs": true,
+      "src/network/firewall.rs": true,
+      "src/network/loopback.rs": true,
+      "src/network/namespace.rs": true,
+      "src/network/nat.rs": true,
+      "src/network/netfilter.rs": true,
+      "src/network/resolver.rs": true,
+      "src/network/resolver_mount.rs": true,
+      "src/network/resolver_target.rs": true,
+      "src/network/route.rs": true,
+      "src/network/setup.rs": true,
+      "src/network/topology.rs": true,
+      "src/network/veth.rs": true
+    },
+    "missing": []
+  },
+  "status-network-timeout-v1": {
+    "assessment": {
+      "mode": "timeout",
+      "checks": {
+        "NETWORK_RESTRICTED_IMAGE_DNS_AND_TCP_PASS": true,
+        "NETWORK_RECIPE_DNS_TCP_AND_READONLY_RESOLVER_PASS": true,
+        "NETWORK_BUILD_RESOURCE_CLEANUP_PASS": true,
+        "runtime_cleanup": true,
+        "build_rejected": true,
+        "output_absent": true,
+        "command_cleanup": true,
+        "failure_reached": true,
+        "expected_error": true
+      },
+      "passed": true,
+      "external_ipv4_tcp_observed": false,
+      "ipv4_source_translation_observed": false,
+      "external_outbound_nat_qualified": false,
+      "full_sandbox_qualified": false
+    },
+    "files_equal": {
+      "src/network.rs": true,
+      "src/step/network.rs": true,
+      "src/network/command.rs": true,
+      "src/network/configuration.rs": true,
+      "src/network/firewall.rs": true,
+      "src/network/loopback.rs": true,
+      "src/network/namespace.rs": true,
+      "src/network/nat.rs": true,
+      "src/network/netfilter.rs": true,
+      "src/network/resolver.rs": true,
+      "src/network/resolver_mount.rs": true,
+      "src/network/resolver_target.rs": true,
+      "src/network/route.rs": true,
+      "src/network/setup.rs": true,
+      "src/network/topology.rs": true,
+      "src/network/veth.rs": true
+    },
+    "missing": []
+  }
+}

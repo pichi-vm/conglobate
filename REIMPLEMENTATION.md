@@ -5265,3 +5265,18 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - M4 remains 0/3. Network/environment/pipeline and historical reconciliation
   remain. About 446 MiB disk free at review time; no evidence deleted, no new
   build/VM run. Large external artifacts still require durable preservation.
+
+
+### M4 cumulative adherence attempt: network and resolver segment
+
+- Previous turn progressed with protocol review and evidence reconciliation.
+  Continued through all network modules and the network/storage adapter.
+- Recorded 16 source hashes and comparisons against five preserved network runs;
+  every selected source matches. Reviewed verifier, success recipe and composite
+  failure assertions, with scope limits captured in the cumulative review.
+- No new defect established in this source subset. Existing default-route
+  collision gap remains unresolved; link-local is still an untested proposal.
+  IPv6, unsolicited inbound denial and actual concurrent resolver replacement
+  remain qualification obligations. Exact-source parity does not close them.
+- No production changes, builds, VM runs or evidence deletion. M4 remains 0/3;
+  environment-policy, pipeline/sealing and historical reconciliation remain.
