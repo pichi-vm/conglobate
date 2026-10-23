@@ -73,9 +73,7 @@ impl GatedCommandSetup {
         };
         Ok(Self { setup, gate })
     }
-    pub fn enter(self) -> io::Result<(CommandNamespaces, GatedRootSetup)> {
-        self.enter_until(std::time::Instant::now() + std::time::Duration::from_secs(30))
-    }
+    /// Enter using the existing setup deadline, without starting a new budget.
     pub fn enter_until(
         self,
         deadline: std::time::Instant,

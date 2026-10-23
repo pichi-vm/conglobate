@@ -4974,3 +4974,19 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   CLONE_NEWTIME, Arm, full command-composition or confidential-platform claim.
   M4 remains 0/3 pending full adherence passes. Other milestone gates and durable
   archival remain open; historical sources and failures remain intact.
+
+### Explicit setup-deadline APIs
+
+- Previous turn progressed with direct-clone validation b3df3a3. Completed
+  caller inspection for historical concurrency-003: three convenience enter
+  wrappers chose a new 30-second budget but had no current production or
+  maintained-test callers. Removed them; retained explicit-deadline entry APIs
+  and unchanged production SetupCutoff propagation.
+- This closes the API cleanup finding, not a claim of a previously demonstrated
+  production deadline renewal. Historical callers remain preserved unchanged;
+  migration must supply their explicit cutoff rather than restore wrappers.
+- Full rootless suite and 51 doctests pass, as do strict root/maintained-fixture
+  Clippy and formatting. Patch, hashes, source review and logs preserved in
+  preservation/m7-review/explicit-setup-deadlines/. No new VM result claimed.
+- M4 remains 0/3. Full source/design/style passes, broader finding reconciliation,
+  all later milestones and external platform/archive gates remain outstanding.

@@ -177,9 +177,7 @@ impl CommandSetup {
     /// Enter only in a fresh trusted setup process. Partial namespace transition
     /// is exit-only. The remaining device owner must be passed to root setup;
     /// this does not authorize image execution or certify complete isolation.
-    pub fn enter(self) -> io::Result<(CommandNamespaces, CommandDevices)> {
-        self.enter_until(std::time::Instant::now() + std::time::Duration::from_secs(30))
-    }
+    /// The caller supplies its existing setup deadline; entry never renews it.
     pub fn enter_until(
         self,
         deadline: std::time::Instant,

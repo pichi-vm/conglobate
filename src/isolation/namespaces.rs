@@ -13,7 +13,7 @@ use std::{
     marker::PhantomData,
     process::Command,
     rc::Rc,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 /// Namespace preparation in a fresh single-threaded trusted helper. The helper
@@ -40,13 +40,6 @@ pub struct CommandNamespaces {
     _thread: PhantomData<Rc<()>>,
 }
 impl CommandNamespaces {
-    pub fn enter(user_namespace: File) -> io::Result<Self> {
-        Self::enter_with_network(
-            user_namespace,
-            None,
-            Instant::now() + Duration::from_secs(30),
-        )
-    }
     pub(super) fn enter_with_network(
         user_namespace: File,
         network: Option<File>,
