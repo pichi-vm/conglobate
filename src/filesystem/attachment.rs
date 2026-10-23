@@ -265,6 +265,14 @@ impl<'ns> Mount<'ns, Attached> {
     }
 }
 impl<'ns> Mount<'ns, InUse> {
+    /// Trusted contained helper only; the external supervisor owns the command
+    /// deadline and cancels this helper and all descendants together.
+    pub(crate) fn wait_under_supervisor(
+        self,
+    ) -> Result<(Mount<'ns, Attached>, std::process::ExitStatus), RootWaitFailure<'ns>> {
+        self.finish(|process| process.wait_under_supervisor())
+    }
+
     /// Collect the direct setup child's status. This is not proof of descendant
     /// quiescence or successful filesystem finalization. Failure retains both
     /// mount and process ownership; callers can retry or request cancellation.

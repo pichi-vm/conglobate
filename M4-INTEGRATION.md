@@ -85,3 +85,15 @@ I1 and I3 are only partially resolved: the outer volume receiver is still fixtur
 orchestration with a thirty-second child wait, and the full binary dispatcher is
 not implemented. I2, I4–I7 remain open. Short success/cancellation tests do not
 prove support for all authored durations; do not close the timing finding yet.
+
+
+The receiver's gated launch/readiness/admission/child-wait/completion sequence now
+lives in `CommandReceiver`. It consumes the registered channel, attached mount
+and command setup; failure variants retain the attached or in-use mount and any
+child wait ownership. Its child wait is supervisor-controlled. Completion status
+delivery has a fresh fixed internal communication deadline instead of reusing
+an expired setup cutoff. The supervisor still rejects completion observed after
+the recipe execution deadline. I3's independent child execution cutoffs are now
+removed from this path; I2's cross-process setup cutoff propagation remains open.
+Initial receiver input decoding, mount/device preparation, helper dispatch and
+parent acquisition orchestration are still fixture code, so I1/I4 remain open.

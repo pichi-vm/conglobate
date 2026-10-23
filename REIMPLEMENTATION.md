@@ -2351,3 +2351,30 @@ rules rather than silently shrinking acceptance criteria.
   and setup cutoffs still need propagation. Preparation aggregate/error ownership
   also remains open. M4-INTEGRATION.md records these limits. M4 streak zero;
   tests are not adherence passes, and later milestones remain pending.
+
+### M4 production receiver and long-command regression (v124–v125)
+
+- Previous turn progressed in a978af6. CommandReceiver now consumes the registered
+  channel, attached mount and namespace setup, owning gate creation, launch,
+  restricted readiness, admission, start, command-helper wait and completion
+  reporting. Failure variants retain attached/in-use mount and child wait owners.
+  Root wait uses the supervisor-controlled wait with no independent command
+  cutoff. Host setup errors remain exit-only; no guardian is introduced.
+- Found and fixed an additional timing issue: the fixture reported completion
+  using its old setup deadline. Production receiver status delivery instead uses
+  a fixed internal 30-second communication bound. The parent still enforces the
+  original recipe execution cutoff; report delivery cannot extend that cutoff.
+- v124 normal VM passes a new duration regression: assigned-root FIFO blocks the
+  command; an atomic readiness marker establishes entry, a pidfd wait verifies
+  the helper does not exit over 31 seconds, then an explicit FIFO write releases
+  it. The command completes successfully under a 45-second recipe limit, through
+  finalization. No synchronization sleep is used. v125 supervisor-death VM also
+  passes, including the duration regression prefix and external VM poweroff.
+- Host suite (44 compile-fail tests), both Clippy checks and formatting pass.
+  Initial thiserror non-static-source compilation failure is preserved in
+  receiver-compile-v1. Exact source/logs and evidence hashes verified. No full
+  qualification/adherence claim; M4 clean streak remains zero.
+- I3's independent execution limits are removed for the extracted path. Shared
+  cross-process setup cutoff (I2), initial input/mount/device preparation, binary
+  dispatch, parent acquisition ownership and successful receipt gating remain
+  open. M4-INTEGRATION.md records the partial resolution; M5–M8 remain pending.

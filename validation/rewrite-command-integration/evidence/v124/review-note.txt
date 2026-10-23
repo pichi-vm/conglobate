@@ -1,0 +1,1 @@
+Production CommandReceiver owns gated launch and completion. Command stays alive beyond 30s then completes after FIFO release under 45s supervisor timeout. Completion no longer reuses setup deadline. Normal VM passes; shared cross-process setup cutoff remains outstanding.

@@ -1,0 +1,1 @@
+Supervisor-death VM passes through production receiver. Long-command prefix passes. Environment controller shuts VM down with protected live domain; no guardian added.

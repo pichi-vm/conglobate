@@ -3,6 +3,8 @@
 
 //! Trusted helper namespace setup; this alone is not a command sandbox.
 mod devices;
+mod receiver;
+pub use receiver::{CommandReceiver, ReceiverCompletion, ReceiverFailure};
 mod gate;
 mod init;
 mod namespaces;

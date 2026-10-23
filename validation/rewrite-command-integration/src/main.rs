@@ -84,28 +84,22 @@ impl Integration {
                 // Fixture fault injection: no Rust destructors run in this helper.
                 std::process::exit(73);
             }
-            let (gate, endpoint) = conglobate::isolation::ExecutionGate::pair()?;
             let mut command = Command::new(std::env::current_exe()?);
-            command
-                .arg("gated-namespaces")
-                .arg(Self::command_script(if mode == "policy-cleanup" {
+            command.arg("gated-namespaces").arg(Self::command_script(
+                if mode == "policy-cleanup" {
                     "shell-failure"
                 } else {
                     mode
-                }))
-                .stdin(setup.with_gate(endpoint).into_input()?);
+                },
+            ));
             if mode == "descriptor-rejection" {
                 command.arg("--probe-extra-fd");
             }
-            let running = view.launch(command).map_err(|e| e.to_string())?;
-            let gate = gate.wait_ready_until(deadline)?;
-            println!("RESTRICTED_LEAF_READY_BEFORE_ADMISSION_PASS");
-            channel.report_prepared_until(deadline)?;
-            let channel = channel.await_admission_until(deadline)?;
-            gate.start_until(deadline)?;
-            let (view, status) = running
-                .wait_until(Instant::now() + Duration::from_secs(30))
+            let completion = conglobate::isolation::CommandReceiver::new(channel, view, setup)
+                .execute(command, deadline)
                 .map_err(|e| e.to_string())?;
+            let (channel, view, status) = completion.into_parts();
+            println!("RESTRICTED_LEAF_READY_BEFORE_ADMISSION_PASS");
             assert_eq!(
                 status.code(),
                 Some(
@@ -116,7 +110,6 @@ impl Integration {
                     }
                 )
             );
-            channel.report_completion_until(status, deadline)?;
             view.close().map_err(|e| e.to_string())?;
             channel.wait_for_loss_until(Instant::now() + Duration::from_secs(5))?;
             scope.restore().map_err(|e| e.to_string())?;
@@ -241,8 +234,29 @@ impl Integration {
                     "volume-supervisor-setup-attached" => "setup-attached-exit",
                     "volume-supervisor-vm-death" => "vm-death",
                     "volume-supervisor-policy-cleanup" => "policy-cleanup",
+                    "volume-supervisor-long-command" => "long-command",
                     "volume-supervisor-descriptor-rejection" => "descriptor-rejection",
                     _ => "success",
+                };
+                let release = if mode == "long-command" {
+                    let path = point.join("release-command");
+                    rustix::fs::mknodat(
+                        rustix::fs::CWD,
+                        &path,
+                        rustix::fs::FileType::Fifo,
+                        rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
+                        0,
+                    )?;
+                    Some(fs::File::from(rustix::fs::openat(
+                        rustix::fs::CWD,
+                        path,
+                        rustix::fs::OFlags::RDWR
+                            | rustix::fs::OFlags::NONBLOCK
+                            | rustix::fs::OFlags::CLOEXEC,
+                        rustix::fs::Mode::empty(),
+                    )?))
+                } else {
+                    None
                 };
                 let reaper = ChildReaper::install()?;
                 let policy = PolicyFixture::prepare(&lease, user, pin.expect("init volume pin"))?;
@@ -293,7 +307,11 @@ impl Integration {
                         let prepared = setup_budget
                             .await_prepared(step)
                             .map_err(|e| e.to_string())?;
-                        let timeout = if mode == "timeout" { "200ms" } else { "5s" };
+                        let timeout = match mode {
+                            "timeout" => "200ms",
+                            "long-command" => "45s",
+                            _ => "5s",
+                        };
                         let step = prepared
                             .start(timeout.parse()?)
                             .map_err(|e| e.to_string())?;
@@ -314,6 +332,25 @@ impl Integration {
                             let started = point.join("command-started");
                             Readiness::new(&started)?
                                 .wait_until(deadline, || step.supervision().peer_lost())?;
+                        }
+                        if let Some(mut release) = release {
+                            use std::io::Write;
+                            Readiness::new(&point.join("command-waiting"))?
+                                .wait_until(deadline, || step.supervision().peer_lost())?;
+                            // Deliberate duration regression: wait for an unexpected
+                            // helper exit beyond its former 30-second cutoff. FIFO
+                            // release, not elapsed time, lets the command complete.
+                            assert_eq!(
+                                step.supervision()
+                                    .wait_for_peer_exit_until(
+                                        Instant::now() + Duration::from_secs(31)
+                                    )
+                                    .unwrap_err()
+                                    .kind(),
+                                std::io::ErrorKind::TimedOut
+                            );
+                            release.write_all(b"go\n")?;
+                            println!("COMMAND_EXCEEDS_OLD_HELPER_LIMIT_PASS");
                         }
                         let observed = step.observe();
                         match observed.outcome() {
@@ -1811,6 +1848,13 @@ impl Integration {
                 "#
             } else if mode == "timeout" {
                 "while :; do :; done"
+            } else if mode == "long-command" {
+                r#"
+                    printf 'waiting' > /command-waiting.tmp
+                    mv /command-waiting.tmp /command-waiting
+                    read -r release < /release-command
+                    test "$release" = go
+                "#
             } else if mode == "shell-failure" {
                 "exit 37"
             } else {
