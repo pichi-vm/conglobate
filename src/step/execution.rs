@@ -185,7 +185,7 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
     pub(crate) fn reject_setup(
         self,
         error: io::Error,
-        domain_parent: &Path,
+        domain_parent: &'l Path,
     ) -> Box<StorageExecutionFailure<'l, R>> {
         StorageExecutionFailure::after_teardown(
             ExecutionOutcome::SetupFailed(error),
@@ -200,7 +200,7 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
         self,
         budget: SetupBudget,
         timeout: CommandTimeout,
-        domain_parent: &Path,
+        domain_parent: &'l Path,
     ) -> ExecutionResult<'l, R> {
         if let Err(error) = budget.check().and_then(|()| {
             self.storage.0.send(

@@ -84,13 +84,13 @@ pub enum StageFailure<'l, R: DirectiveStorage> {
 pub struct NetworkStageFailure<'l, R: DirectiveStorage> {
     network: Box<crate::network::NetworkSetupFailure>,
     ready: super::Step<'l, super::Ready, R>,
-    domain_parent: std::path::PathBuf,
+    domain_parent: &'l std::path::Path,
 }
 impl<'l, R: DirectiveStorage> NetworkStageFailure<'l, R> {
     pub fn retry_cleanup(self) -> Result<Box<StorageExecutionFailure<'l, R>>, Box<Self>> {
         let primary = io::Error::other(self.network.to_string());
         match self.network.cleanup() {
-            Ok(()) => Ok(self.ready.reject_setup(primary, &self.domain_parent)),
+            Ok(()) => Ok(self.ready.reject_setup(primary, self.domain_parent)),
             Err(network) => Err(Box::new(Self {
                 network,
                 ready: self.ready,
@@ -229,7 +229,7 @@ impl<'l> CommandSandbox<'l> {
                                 let failure = NetworkStageFailure {
                                     network: failure,
                                     ready,
-                                    domain_parent: self.domain_parent().to_owned(),
+                                    domain_parent: self.domain_parent(),
                                 };
                                 return Err(match failure.retry_cleanup() {
                                     Ok(failure) => {

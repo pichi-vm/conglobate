@@ -5510,3 +5510,18 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Supported ID allocation remains open; asked whether the build environment
   should configure the supported ranges rather than fixing them in the binary.
   No answer is assumed and no allocation change was made. M4 remains 0/3.
+
+### Borrowed domain-parent paths across recovery
+
+- Previous turn progressed with default-ACL GID validation. While the allocation
+  question remains pending, resolved accepted review finding ownership-010.
+  Preparation, network setup and teardown failures now borrow their domain
+  parent through the runtime lifetime they already carry. Removed five redundant
+  path clones; propagated the lifetime through setup/execution/observation APIs.
+- Cleanup phases, resource ownership, original deadlines and error diagnostics
+  are unchanged. An independent compiler probe confirms E0515 when returning a
+  failure owner that would reference a local parent path. All 128 library tests,
+  54 doctests and strict lifecycle Clippy passed, including maintained callers.
+- Disposition ledger updated; logs/focused review are preserved under
+  preservation/m7-review/borrowed-domain-path/. No new VM qualification or full
+  adherence pass is claimed. M4 remains 0/3; the full goal remains active.

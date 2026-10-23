@@ -17,7 +17,7 @@ pub use sandbox::{CommandSandbox, SandboxDirectories};
 use std::{
     io,
     mem::ManuallyDrop,
-    path::{Path, PathBuf},
+    path::Path,
     process::Command,
     time::{Duration, Instant},
 };
@@ -45,7 +45,7 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
         volume: R,
         reaper: ChildReaper,
         recovery: &'l crate::anchor::RecoveryDirectory,
-        domain_parent: &Path,
+        domain_parent: &'l Path,
         budget: &super::SetupBudget,
     ) -> Result<Self, Box<StoragePreparationFailure<'l, R>>> {
         let domain = budget
@@ -66,7 +66,7 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
                             volume: Retained::new(volume),
                         },
                     ),
-                    parent: domain_parent.to_owned(),
+                    parent: domain_parent,
                     deadline: Instant::now() + Duration::from_secs(30),
                 }))
             }
@@ -90,7 +90,7 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
         self,
         command: Command,
         setup_deadline: Instant,
-        domain_parent: &Path,
+        domain_parent: &'l Path,
     ) -> Result<Step<'l, Ready, R>, Box<StoragePreparationFailure<'l, R>>> {
         let Self {
             namespace,
@@ -123,7 +123,7 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
                 Err(Box::new(StoragePreparationFailure {
                     diagnostics: source.into(),
                     phase,
-                    parent: domain_parent.to_owned(),
+                    parent: domain_parent,
                     deadline: Instant::now() + Duration::from_secs(30),
                 }))
             }
@@ -173,12 +173,23 @@ enum Phase<'l, R: PreparationStorage> {
 ///     failure.rollback(std::time::Instant::now());
 /// }
 /// ```
+/// Recovery borrows the same deployment paths as the prepared domain.
+/// ```compile_fail
+/// use conglobate::step::{PreparationStorage, StoragePreparation, StoragePreparationFailure};
+/// fn cannot_return_with_local_parent<'a, R: PreparationStorage>(
+///     prepared: StoragePreparation<'a, R>,
+/// ) -> Box<StoragePreparationFailure<'a, R>> {
+///     let parent = std::path::PathBuf::from("/temporary-domain-parent");
+///     prepared.launch(std::process::Command::new("/trusted-helper"),
+///         std::time::Instant::now(), &parent).unwrap_err()
+/// }
+/// ```
 #[derive(Debug, thiserror::Error)]
 #[error("command preparation: {diagnostics}")]
 pub struct StoragePreparationFailure<'l, R: PreparationStorage> {
     diagnostics: FailureDiagnostics,
     phase: Phase<'l, R>,
-    parent: PathBuf,
+    parent: &'l Path,
     deadline: Instant,
 }
 /// Failed setup was completely rolled back. This is never a successful step.
@@ -196,12 +207,12 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
     fn early(
         source: impl Into<FailureDiagnostics>,
         phase: Phase<'l, R>,
-        parent: &Path,
+        parent: &'l Path,
     ) -> Box<Self> {
         Box::new(Self {
             diagnostics: source.into(),
             phase,
-            parent: parent.to_owned(),
+            parent,
             deadline: Instant::now() + Duration::from_secs(30),
         })
     }
@@ -269,7 +280,7 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
                 }
             },
             Phase::DomainSetup(rollback, reaper, assigned) => {
-                match rollback.retry_until(&parent, deadline) {
+                match rollback.retry_until(parent, deadline) {
                     Ok(()) => Ok(Phase::EmptyDrain(reaper, assigned)),
                     Err(failure) => {
                         let (error, rollback) = failure.into_parts();

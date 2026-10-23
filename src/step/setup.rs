@@ -132,7 +132,7 @@ impl<'a, R: StepStorage> PreparedStep<'a, R> {
 impl<'a, R: StepStorage> RunningCommand<'a, R> {
     pub(super) fn teardown_after_command(
         self,
-        parent: &Path,
+        parent: &'a Path,
         deadline: Instant,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         self.step.teardown_after_command(parent, deadline)
@@ -140,7 +140,7 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
 
     pub(super) fn teardown_until(
         self,
-        parent: &Path,
+        parent: &'a Path,
         deadline: Instant,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         self.step.teardown_until(parent, deadline)
@@ -154,7 +154,7 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
     }
     pub fn teardown(
         self,
-        parent: &Path,
+        parent: &'a Path,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         self.step.teardown(parent)
     }

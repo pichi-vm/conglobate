@@ -7,7 +7,7 @@ use super::{
 use crate::storage::FailureDiagnostics;
 use std::{
     io,
-    path::{Path, PathBuf},
+    path::Path,
     time::{Duration, Instant},
 };
 
@@ -31,7 +31,7 @@ enum Phase<'a, R: StepStorage> {
 #[derive(Debug)]
 struct Teardown<'a, R: StepStorage> {
     phase: Phase<'a, R>,
-    parent: PathBuf,
+    parent: &'a Path,
     deadline: Instant,
 }
 #[derive(Debug)]
@@ -105,13 +105,13 @@ impl<'a, R: StepStorage> TeardownFailure<'a, R> {
     }
 }
 impl<'a, R: StepStorage> Teardown<'a, R> {
-    fn new(phase: Phase<'a, R>, parent: &Path) -> Self {
+    fn new(phase: Phase<'a, R>, parent: &'a Path) -> Self {
         Self::until(phase, parent, Instant::now() + TEARDOWN_TIMEOUT)
     }
-    fn until(phase: Phase<'a, R>, parent: &Path, deadline: Instant) -> Self {
+    fn until(phase: Phase<'a, R>, parent: &'a Path, deadline: Instant) -> Self {
         Self {
             phase,
-            parent: parent.to_owned(),
+            parent,
             deadline,
         }
     }
@@ -171,7 +171,7 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
                 Phase::Draining,
             ),
             Phase::Quiescent(step) => Self::transition(
-                step.finish_record(&parent).map(Phase::Finishing),
+                step.finish_record(parent).map(Phase::Finishing),
                 Phase::Quiescent,
             ),
             Phase::Finishing(step) => {
@@ -208,7 +208,7 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
 impl<'a, R: StepStorage> Step<'a, Ready, R> {
     pub fn teardown(
         self,
-        parent: &Path,
+        parent: &'a Path,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         Teardown::new(Phase::Ready(self), parent).run()
     }
@@ -216,7 +216,7 @@ impl<'a, R: StepStorage> Step<'a, Ready, R> {
 impl<'a, R: StepStorage> Step<'a, Running, R> {
     pub(super) fn teardown_after_command(
         self,
-        parent: &Path,
+        parent: &'a Path,
         deadline: Instant,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         Teardown::until(Phase::AwaitingCleanup(self), parent, deadline).run()
@@ -224,13 +224,13 @@ impl<'a, R: StepStorage> Step<'a, Running, R> {
 
     pub fn teardown(
         self,
-        parent: &Path,
+        parent: &'a Path,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         self.teardown_until(parent, Instant::now() + TEARDOWN_TIMEOUT)
     }
     pub(super) fn teardown_until(
         self,
-        parent: &Path,
+        parent: &'a Path,
         deadline: Instant,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         Teardown::until(Phase::Running(self), parent, deadline).run()
@@ -239,7 +239,7 @@ impl<'a, R: StepStorage> Step<'a, Running, R> {
 impl<'a, R: StepStorage> Step<'a, Cancelling, R> {
     pub fn teardown(
         self,
-        parent: &Path,
+        parent: &'a Path,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         Teardown::new(Phase::Cancelling(self), parent).run()
     }

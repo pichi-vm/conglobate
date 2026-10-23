@@ -64,7 +64,7 @@ impl<'l> CommandSandbox<'l> {
     pub(crate) fn mount_parent(&self) -> &Path {
         self.directories.mounts
     }
-    pub(crate) fn domain_parent(&self) -> &Path {
+    pub(crate) fn domain_parent(&self) -> &'l Path {
         self.directories.domains
     }
     /// Construct immutable launch input before acquiring the command resources.

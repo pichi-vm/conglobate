@@ -104,7 +104,7 @@ impl<R: StepStorage> ObservedCommand<'_, R> {
 impl<'a, R: StepStorage> CommandResult<ObservedCommand<'a, R>> {
     pub fn teardown(
         self,
-        parent: &Path,
+        parent: &'a Path,
     ) -> CommandResult<Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>>> {
         match self.outcome {
             CommandOutcome::Exited(_) => self.map_cleanup(|observed| {

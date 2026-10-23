@@ -161,8 +161,8 @@
       "evidence": "Failure already pinned to 'l via Phase<'l,R>; the PathBuf buys no lifetime freedom",
       "remaining_action": "Widen domain_parent() to &'l Path; drop five to_owned()",
       "historical_status": "accept",
-      "current_status": "open",
-      "current_evidence": "CommandSandbox::domain_parent returns &Path, not explicit lifetime; remaining simplification must preserve ownership requirements."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "Preparation, network setup and teardown failures borrow domain parent for their existing runtime lifetime; five path clones removed. Setup/execution/observation entry points propagate that lifetime. 128 library tests, 54 doctests, strict lifecycle Clippy passed; explicit rustc E0515 confirms local parent cannot escape in failure. See preservation/m7-review/borrowed-domain-path/REVIEW.md."
     },
     {
       "id": "performance-001",

@@ -1,0 +1,12 @@
+error[E0515]: cannot return value referencing local variable `parent`
+ --> preservation/m7-review/borrowed-domain-path/lifetime-rejection.rs:4:5
+  |
+4 |     prepared.launch(std::process::Command::new("/trusted-helper"), std::time::Instant::now(), &parent).unwrap_err()
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^^^^^^^^
+  |     |                                                                                         |
+  |     |                                                                                         `parent` is borrowed here
+  |     returns a value referencing data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.
