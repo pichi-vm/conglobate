@@ -1,0 +1,212 @@
+[
+  {
+    "path": "Cargo.toml",
+    "prior": "67cdf091858b3101c5ee899583bd5bbf81489aff7d43b3668eff9ad97601db5f",
+    "current": "6d1ef2e9f6e1b6126047e6cb71322f4c2d383028765212cfc532e8178138e044",
+    "unchanged": false
+  },
+  {
+    "path": "Cargo.lock",
+    "prior": "a6e6d30507f3b74a38475de4fbc58e4b022210869fa827e07c383927978ae434",
+    "current": "98166c2ee486e86d09174bd8ba1903bf1d162f19a06ddb849893be9184c1041e",
+    "unchanged": false
+  },
+  {
+    "path": "DESIGN.md",
+    "prior": "c4484792304cd63097031c37bb1811f31ab0d755a3477093d01ff27d4617c34c",
+    "current": "c4484792304cd63097031c37bb1811f31ab0d755a3477093d01ff27d4617c34c",
+    "unchanged": true
+  },
+  {
+    "path": "SANDBOX-DESIGN.txt",
+    "prior": "44f4222fd37f0974877c292c6a7e2ae75e41aa01b3c0278289754cfed02b0cae",
+    "current": "44f4222fd37f0974877c292c6a7e2ae75e41aa01b3c0278289754cfed02b0cae",
+    "unchanged": true
+  },
+  {
+    "path": "src/lib.rs",
+    "prior": "35d1b5ba736dd7a90d4540f8a315403fa2ccf2248b0c5e006687af1d551b0191",
+    "current": "35d1b5ba736dd7a90d4540f8a315403fa2ccf2248b0c5e006687af1d551b0191",
+    "unchanged": true
+  },
+  {
+    "path": "src/request.rs",
+    "prior": "c6ee0edd5bb0da6591af9023fdd6077d603bc44219681c1958ee16acc8df3195",
+    "current": "c6ee0edd5bb0da6591af9023fdd6077d603bc44219681c1958ee16acc8df3195",
+    "unchanged": true
+  },
+  {
+    "path": "src/path.rs",
+    "prior": "fcc61acbc307f0924c806de31bb9ee6fb19cb345483306b896b3f1ea9a1b0056",
+    "current": "fcc61acbc307f0924c806de31bb9ee6fb19cb345483306b896b3f1ea9a1b0056",
+    "unchanged": true
+  },
+  {
+    "path": "src/input.rs",
+    "prior": "3409c08fb224b44c60b8087d85eb6e84e189f441b27a36a0b5c5b321adc5f1ec",
+    "current": "3409c08fb224b44c60b8087d85eb6e84e189f441b27a36a0b5c5b321adc5f1ec",
+    "unchanged": true
+  },
+  {
+    "path": "src/document.rs",
+    "prior": "9eb143ba9ceab5cd7c94947884a24afc7fcf890dca895bd8244d561b089a858a",
+    "current": "9eb143ba9ceab5cd7c94947884a24afc7fcf890dca895bd8244d561b089a858a",
+    "unchanged": true
+  },
+  {
+    "path": "src/image.rs",
+    "prior": "c7bc5c5862d056a5219497c34b4bf63b38561d5820bb018adc7b2ae9c6989141",
+    "current": "c7bc5c5862d056a5219497c34b4bf63b38561d5820bb018adc7b2ae9c6989141",
+    "unchanged": true
+  },
+  {
+    "path": "src/lock.rs",
+    "prior": "95aa0e8c7ceae587a1f8eb45ea77c9d479a340fea67673e347b9c4a932908d40",
+    "current": "95aa0e8c7ceae587a1f8eb45ea77c9d479a340fea67673e347b9c4a932908d40",
+    "unchanged": true
+  },
+  {
+    "path": "src/plan.rs",
+    "prior": "582f93e203ee32b4d787aa8a27e2fcb6ed92f9cc1f77465917cc5ef29b86c24a",
+    "current": "582f93e203ee32b4d787aa8a27e2fcb6ed92f9cc1f77465917cc5ef29b86c24a",
+    "unchanged": true
+  },
+  {
+    "path": "src/value.rs",
+    "prior": "eea72c213e2e2f4dcb29a64f73424115e18c873ebbddc424f0bb5ad2f5726f1b",
+    "current": "eea72c213e2e2f4dcb29a64f73424115e18c873ebbddc424f0bb5ad2f5726f1b",
+    "unchanged": true
+  },
+  {
+    "path": "src/template.rs",
+    "prior": "373d619ce0006ccb8e12658a194648ea9191178d795778a44723a64eb6173fe0",
+    "current": "373d619ce0006ccb8e12658a194648ea9191178d795778a44723a64eb6173fe0",
+    "unchanged": true
+  },
+  {
+    "path": "src/context/cleanup.rs",
+    "prior": "78bd7275379a0499e21583f8c8eb1e01f0d4bd4ebca2ce694565b625f31a2ea7",
+    "current": "78bd7275379a0499e21583f8c8eb1e01f0d4bd4ebca2ce694565b625f31a2ea7",
+    "unchanged": true
+  },
+  {
+    "path": "src/context/materialize.rs",
+    "prior": "49a653f2352c1126773e356b68455389288da2d6e24c16d7d05a5544f19b9c42",
+    "current": "49a653f2352c1126773e356b68455389288da2d6e24c16d7d05a5544f19b9c42",
+    "unchanged": true
+  },
+  {
+    "path": "src/context/mod.rs",
+    "prior": "95ba326d3d32bb8c7fa52de74c7bb48320190f61661db6558f5cb7a53a6aba36",
+    "current": "95ba326d3d32bb8c7fa52de74c7bb48320190f61661db6558f5cb7a53a6aba36",
+    "unchanged": true
+  },
+  {
+    "path": "src/context/read.rs",
+    "prior": "9fd9eec046b6c4040578dfcf10874d85e7570d3f9c600be1f805a144a06ede61",
+    "current": "9fd9eec046b6c4040578dfcf10874d85e7570d3f9c600be1f805a144a06ede61",
+    "unchanged": true
+  },
+  {
+    "path": "src/context/readonly.rs",
+    "prior": "ca055c2fa044e9ffeaa03a0eab45947b5b14872b22dc60fe889cb316592b46d2",
+    "current": "ca055c2fa044e9ffeaa03a0eab45947b5b14872b22dc60fe889cb316592b46d2",
+    "unchanged": true
+  },
+  {
+    "path": "src/context/state.rs",
+    "prior": "fe6f2697f55e0f96bf4905523497f6fdead15ab204c8f3f7be6858c1398468b9",
+    "current": "fe6f2697f55e0f96bf4905523497f6fdead15ab204c8f3f7be6858c1398468b9",
+    "unchanged": true
+  },
+  {
+    "path": "src/recipe/mod.rs",
+    "prior": "139e7750b0b58b2ae6e756dd606b584498a5fbc40fbba1b48b33a10f1d5b2a0d",
+    "current": "139e7750b0b58b2ae6e756dd606b584498a5fbc40fbba1b48b33a10f1d5b2a0d",
+    "unchanged": true
+  },
+  {
+    "path": "src/recipe/transform.rs",
+    "prior": "efa12c81574aac304604a2764d0c67e486d39afbfd638574fe80500d20ffccbe",
+    "current": "efa12c81574aac304604a2764d0c67e486d39afbfd638574fe80500d20ffccbe",
+    "unchanged": true
+  },
+  {
+    "path": "src/cache/chain/prepared.rs",
+    "prior": "9a614f96a56b0e69c0a5eb46aa2ad7855927a1b8aa741cf17556f46a92c33046",
+    "current": "9a614f96a56b0e69c0a5eb46aa2ad7855927a1b8aa741cf17556f46a92c33046",
+    "unchanged": true
+  },
+  {
+    "path": "src/cache/chain.rs",
+    "prior": "e9ba3ebe6611bc7a0f0d559740a6cdcffb15fc2d41df917098e75dcdb8563115",
+    "current": "e9ba3ebe6611bc7a0f0d559740a6cdcffb15fc2d41df917098e75dcdb8563115",
+    "unchanged": true
+  },
+  {
+    "path": "src/cache/mod.rs",
+    "prior": "c17b173a9dd01348c05b5e9d5c7045614c064cbee735224ed30cf76b7b12c171",
+    "current": "c17b173a9dd01348c05b5e9d5c7045614c064cbee735224ed30cf76b7b12c171",
+    "unchanged": true
+  },
+  {
+    "path": "src/cache/resolve.rs",
+    "prior": "c35d48ffa4505b299dc86a4dacaf9c182f1cf48be2f6a4463645cd298db44e28",
+    "current": "c35d48ffa4505b299dc86a4dacaf9c182f1cf48be2f6a4463645cd298db44e28",
+    "unchanged": true
+  },
+  {
+    "path": "tests/contexts.rs",
+    "prior": "3568399148fc7ec65cd90579cde788eb1a2f26916f03c02d3e2b5bd9683270cf",
+    "current": "3568399148fc7ec65cd90579cde788eb1a2f26916f03c02d3e2b5bd9683270cf",
+    "unchanged": true
+  },
+  {
+    "path": "tests/requests.rs",
+    "prior": "158f16976193999d7d2201a2496b92e2c6200942b98a01e1bf4d0afc92f5af25",
+    "current": "158f16976193999d7d2201a2496b92e2c6200942b98a01e1bf4d0afc92f5af25",
+    "unchanged": true
+  },
+  {
+    "path": "tests/recipes.rs",
+    "prior": "84aeec20b23df25beb7f4b4b25fc9371a1a3c5b98dfec4339c1dd0b02ab5458f",
+    "current": "84aeec20b23df25beb7f4b4b25fc9371a1a3c5b98dfec4339c1dd0b02ab5458f",
+    "unchanged": true
+  },
+  {
+    "path": "tests/plans.rs",
+    "prior": "1ea37431d33f8095e4ac2b4a0398ad9cc4a404317126608e99633d7d8b7c03ec",
+    "current": "1ea37431d33f8095e4ac2b4a0398ad9cc4a404317126608e99633d7d8b7c03ec",
+    "unchanged": true
+  },
+  {
+    "path": "tests/locks.rs",
+    "prior": "f8ba03a75fa90721f3edd59156a9af5db733d76efbc9b5e9099280e5c109e431",
+    "current": "f8ba03a75fa90721f3edd59156a9af5db733d76efbc9b5e9099280e5c109e431",
+    "unchanged": true
+  },
+  {
+    "path": "tests/cache.rs",
+    "prior": "bfc1358f6988299274c932d5b97e2646e1c386dcf7553976f25806f92714c749",
+    "current": "bfc1358f6988299274c932d5b97e2646e1c386dcf7553976f25806f92714c749",
+    "unchanged": true
+  },
+  {
+    "path": "tests/identities.rs",
+    "prior": "5b6d711cc7e71f0ab9545fcb48ed0f49f71e230f1748399184459e2b213f1166",
+    "current": "5b6d711cc7e71f0ab9545fcb48ed0f49f71e230f1748399184459e2b213f1166",
+    "unchanged": true
+  },
+  {
+    "path": "tests/values.rs",
+    "prior": "0355d3a074d8b5b0c8f98ce5779280a66eb21b3b9d515789de6cba143e3e809c",
+    "current": "0355d3a074d8b5b0c8f98ce5779280a66eb21b3b9d515789de6cba143e3e809c",
+    "unchanged": true
+  },
+  {
+    "path": "tests/templates.rs",
+    "prior": "ae59d43dcdcad67aa5eaf9df3bff9b93060fdaa008aaee44395e249dd57b2247",
+    "current": "ae59d43dcdcad67aa5eaf9df3bff9b93060fdaa008aaee44395e249dd57b2247",
+    "unchanged": true
+  }
+]
