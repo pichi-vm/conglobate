@@ -5221,3 +5221,18 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   across remaining source scopes; subset segments are not separate passes.
 - No source changes, new VM runs, artifact deletions or qualification claims.
   Full goal and all preservation obligations remain active.
+
+### M4 cumulative adherence attempt: isolation segment
+
+- Previous turn progressed with lifecycle ownership review. Continued the same
+  168b2a2 attempt through namespaces, root entry, runtime targets/devices,
+  capabilities, syscall filter, trusted setup transport, init and status gate.
+  No new defect established in this source subset; M4 remains 0/3.
+- Added hashes for 14 reviewed production files and comparisons against five
+  preserved runs. Actual descendant-status and latest blocked-descendant runs
+  match all selected sources. Clone-filter evidence matches the filter, not the
+  whole later composition. Historical label admission evidence predates namespace
+  and gate changes and is not represented as current integrated coverage.
+- Recorded exact assertion limits, trusted low-level caller preconditions and
+  remaining source/evidence scopes in the cumulative review. No new VM run or
+  production change; no full adherence or architecture qualification claimed.

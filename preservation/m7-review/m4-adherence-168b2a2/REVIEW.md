@@ -115,3 +115,113 @@ that an entire historical build matches current code.
 M5/M6 and platform/distro/CI/retirement gates remain separate obligations. When
 all sections are reviewed, record the full result; findings reset the streak.
 Do not count this segment, or a second segment, as separate clean passes.
+
+## Segment B: command isolation and init status authority
+
+Production scope is bound by isolation-source-sha256.json (14 files). Also read
+confinement recipe/verifier behavior, maintained command-probe assertions and
+preserved clone-filter/label-admission assessments. No production changes or new
+execution in this segment. No new defect established within the reviewed scope.
+
+1. UserNamespace creates a fresh namespace through a trusted, wait-owned helper,
+   excludes parent root/invalid IDs, rejects preexisting maps, and writes each
+   mapping once. The creator is reaped before returning the descriptor owner.
+   Disjoint ID-range allocation remains the trusted caller's responsibility.
+2. Namespace entry clears supplementary groups before joining mapped user root.
+   Configured networking is joined before surrendering initial-user-namespace
+   authority; offline networking gets a fresh namespace and loopback. Mount,
+   IPC, UTS and child PID namespaces are private. Namespace descriptors close
+   during entry; root setup is the next child and must be PID 1.
+3. PrivateMountNamespace retains restoration authority only during trusted
+   setup. Root entry commits that guard, closes its original-namespace handle,
+   pivots using the pinned assigned root, detaches the old root, and changes cwd
+   to /. Partial failure is exit-only in the production helper contract.
+4. Runtime targets resolve with IN_ROOT/NO_MAGICLINKS/NO_XDEV. Alias and ancestor
+   checks reject root, duplicate and nested targets before attaching runtime
+   filesystems. This depends on the trusted exclusive pre-admission view; it is
+   not a general concurrent filesystem service. Proc is new for the PID
+   namespace, /sys is empty/read-only, and selected proc controls are read-only.
+5. /dev is fresh tmpfs with only approved device nodes, owned by the mapped IDs.
+   It does not bind host device inodes. Private devpts and /dev/shm are created
+   under pinned trusted targets; setsid removes the inherited controlling tty.
+   The image mount's nodev requirement is reviewed separately with filesystem
+   attachment. No context, cache or device-mapper authority is added here.
+6. Capability setup queries all supported ABI bits and verifies effective,
+   permitted, bounding, inheritable and ambient results. It removes SYS_ADMIN,
+   SYS_PTRACE and other capabilities outside the filesystem profile, sets
+   no_new_privs and clears ambient/inheritable sets. Errors cannot continue to
+   image exec. This allowlist is still subject to distro compatibility review.
+7. Native seccomp defaults to EPERM, with a separate clone3 ENOSYS fallback.
+   Namespace clone flags are masked out; unshare/setns/mount/bpf/ptrace/keyctl
+   are not ordinary allowed operations. Socket families, prctl and ioctl are
+   restricted; mknod/mknodat only admit FIFO mode. ABI guards and source support
+   for aarch64 do not establish tested Arm compatibility.
+8. Trusted setup messages require exact opcode/length/descriptor-count shapes,
+   reject truncation, and receive rights CLOEXEC. nsfs/tmpfs object checks are
+   sanity checks, not authentication for arbitrary senders: private trusted
+   handoff and enclosing ownership provide authority. Malformed-message tests
+   check received-right closure rather than racy process-wide FD counts.
+9. Root setup replaces stdin with trusted null, clears environment, restricts
+   capabilities, makes resident init non-dumpable and installs seccomp before
+   spawning /bin/sh -eu -c. Descriptor audit permits only standard descriptors
+   and the exact owned CLOEXEC completion endpoint. Init verifies mapped root
+   and PID 1. It reports the reaped shell's status before namespace exit, then
+   the outer lifecycle still requires cleanup/quiescence/finalization.
+10. Gate typestate separates Waiting, Ready and Started. CompletionEndpoint is
+    consumed by its one nonblocking status report. Exact terminal wait-status
+    encoding is validated; malformed packets or ancillary descriptors fail.
+    The endpoint exposes no raw handle to public consumers. Diagnostic pipes
+    are separate from this protocol and are not decoded as status messages.
+11. Label admission probes only anonymous inodes on assigned roots after
+    privilege restrictions. It requires successful write/read/remove of the
+    foreign security.selinux value before start. Failure aborts admission;
+    the binary does not install or modify BPF policy. Exact-name environment
+    policy semantics and both-root bootstrap qualification remain coupled
+    review obligations, not proven by this anonymous probe alone.
+12. Safe Rust methods and consuming transitions carry setup authority; thread-
+    local guards cannot be sent across threads. Optional network/resolver and
+    optional status endpoint describe supported inputs/paths, not mutable
+    acceptance flags. Low-level ungated APIs have explicit trusted-caller
+    preconditions; production uses the gated composition.
+
+### Evidence scope and source comparison
+
+`isolation-evidence-comparison.json` compares all selected files against five
+preserved source snapshots, with no missing files. descendant-status-v1 and
+observation-blocked-descendant-v1 match all 14 current files. The former's actual
+CLI confinement recipe verifies five capability sets, mapped IDs, no live extra
+shell descriptors, PID-1 proc access denials, private runtime recreation, selected
+syscall denials with controls, and successful command/process/socket use.
+The latter demonstrates early shell status with a real D-state descendant.
+Neither constitutes comprehensive escape testing or platform qualification.
+
+clone-filter-v2 matches the current syscall and capability policy, but predates
+other isolation changes. Its controls establish seven legacy namespace-clone
+flag denials and ordinary-clone success; it does not test NEWTIME, Arm, or the
+whole current sandbox composition. Proc observations accept empty/absent key
+and scheduler interfaces; they do not prove seeded-key isolation or denial of
+a present sched_debug file on another kernel configuration.
+
+label-admission-off/on-v2 assessments demonstrate historical no-policy rejection
+and enabled-policy build success. Their snapshots differ from the current
+namespace/gate implementation. The label probe changes add contextual errors
+and invalid-tag tests; namespace pin retirement and later status handling are
+substantive composition changes. Do not label these entire runs current-source
+coverage. Current successful admission is exercised by the matching confinement
+and blocked-descendant runs. Current negative-policy composition and both-root
+fault evidence still need reconciliation with the newer label-unpinned and
+bootstrap evidence in the remaining integrated review.
+
+### Remaining scope after segments A and B
+
+- Complete supervisor identity/join/volume protocols and receiver cleanup
+  composition, including the final M4-T1 evidence reconciliation.
+- Environment-policy exact-name controls, applicable newer negative admission
+  and bootstrap fault evidence; architecture/platform limitations.
+- Workspace/cache/verity/scute chain, mapping/loop ownership, filesystem views
+  and idmapping, recovery anchors and record serialization.
+- Network/resolver preparation and teardown, historical finding dispositions,
+  full evidence sufficiency and preservation status.
+
+The earlier remaining-section list is refined by this list. No segment is a
+full clean pass; M4 stays 0/3 until the complete attempt is evaluated.

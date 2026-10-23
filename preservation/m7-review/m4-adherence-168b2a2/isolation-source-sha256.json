@@ -1,0 +1,16 @@
+{
+  "src/isolation.rs": "b8d6531ff6597568352db0afb9385bd7924b987c5fe3d1aed94408a4227ff7eb",
+  "src/isolation/user.rs": "ac17aa87d56447c746e31e8ccd09d47c055112fcaec0585d6c8347e168f462b6",
+  "src/isolation/namespaces.rs": "b1329aff3841b360556691743c758308072d3a29584f5e7d7270c692299f37ae",
+  "src/isolation/setup.rs": "d7c0baddb189099bd695113103b6982ae38dedeeb4c0ab9547130923cbd93f35",
+  "src/isolation/setup/gated.rs": "e5a9f06858bb28cbab7725d518eb2bb3822eee58c4743dc928debaf9fd93032d",
+  "src/isolation/setup/gated/helper.rs": "d16a2b766e6fc512a36bf93eeb6769484677a80e745e22c0861b287f2eeddc3d",
+  "src/isolation/root.rs": "520cc0915a93403e0a803fbc970131d8cd7a5099c89dd8b3be0e9e807077a2a4",
+  "src/isolation/runtime.rs": "32f9cb810049b4f2ccb6a48742614f534f8fa994d5264536e38d246bab7f0f0f",
+  "src/isolation/devices.rs": "9c1293a7bc9559df60f952a2089d22166c7200112fa23c49a1228dc6affeda64",
+  "src/isolation/gate.rs": "2bddaa2778e3b1b3dc128629c62ea87ba40b87c717892d8a9563ef56ab752508",
+  "src/isolation/init.rs": "b6e8bd84d72bb6e5896ec72ffdc9c5adf52c0a2d5ed0874f67cd3767e37887fe",
+  "src/isolation/labels.rs": "1f69590ba86f42f4d3eb4c21218476b8c56ce8fa11fc2a0d9552b0d5e52e214e",
+  "src/process/privileges.rs": "70334274ce91f985e17cc45159e775e25945b71e695523444cacab119fb6b65a",
+  "src/process/syscalls.rs": "a24cf8d7245367d2e8cb263ca29d4e7323c94a0ce6920cbd587d997e43e5862e"
+}
