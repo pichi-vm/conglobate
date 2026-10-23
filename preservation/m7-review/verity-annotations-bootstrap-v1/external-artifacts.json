@@ -1,0 +1,17 @@
+{
+  "/storage/conglobate-validation/verity-annotations-bootstrap-v1/vmlinuz": {
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "durably_archived": false
+  },
+  "/storage/conglobate-validation/verity-annotations-bootstrap-v1/initramfs.gz": {
+    "size": 202938515,
+    "sha256": "bfea873c8d68df413ee7e292afe64b163034a67d0574d1e341c55f4fca18ff3e",
+    "durably_archived": false
+  },
+  "/storage/conglobate-validation/verity-annotations-bootstrap-v1/export.raw": {
+    "size": 2147483648,
+    "sha256": "9b014cf3d38539f4d967b32875e0c0fbe5a8b9d5ff26f5f2df1ec74fc5a2d67b",
+    "durably_archived": false
+  }
+}

@@ -278,8 +278,8 @@
       "evidence": "Five-key verity annotation literal duplicated at assembly.rs:155-161 and :260-267",
       "remaining_action": "Extract the annotation literal only; do NOT unify the three parent-chain anchors",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "Private AssembledImage::verity_annotations extracts only five fixed parameters. Firmware/base selection, bootstrap zero-parent checks and derived ancestry remain separate; callers assign the final hash. 131 library tests, strict all-target Clippy and current bootstrap VM export verification pass; verity-annotations/REVIEW.md."
     },
     {
       "id": "simplification-009",

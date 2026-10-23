@@ -1,0 +1,10 @@
+{
+  "baseline": "fe545ca plus verity annotation extraction",
+  "coverage": "Two-root bootstrap CLI, remount ownership/mode, scute export, manifest graph and canonical inventory",
+  "limitations": [
+    "Native amd64 ordinary KVM only",
+    "No firmware-replacement VM run",
+    "Not a target distro boot or full adherence pass",
+    "Large artifacts locally retained only"
+  ]
+}

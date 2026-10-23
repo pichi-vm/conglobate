@@ -35,6 +35,15 @@ impl AssemblyFailure {
     }
 }
 impl AssembledImage {
+    fn verity_annotations() -> serde_json::Value {
+        serde_json::json!({
+            "dev.pichi.carapace.verity.algo": "sha256",
+            "dev.pichi.carapace.verity.data-block-size": "4096",
+            "dev.pichi.carapace.verity.hash-block-size": "4096",
+            "dev.pichi.carapace.verity.version": "1",
+            "dev.pichi.carapace.verity.hash-type": "1"
+        })
+    }
     pub(crate) fn publish_inventory(
         self,
         inventory: &crate::inventory::Inventory,
@@ -142,13 +151,7 @@ impl AssembledImage {
                 None => Some([0; 32]),
             };
             if base.is_none() && !scutes.is_empty() {
-                manifest["annotations"] = serde_json::json!({
-                    "dev.pichi.carapace.verity.algo": "sha256",
-                    "dev.pichi.carapace.verity.data-block-size": "4096",
-                    "dev.pichi.carapace.verity.hash-block-size": "4096",
-                    "dev.pichi.carapace.verity.version": "1",
-                    "dev.pichi.carapace.verity.hash-type": "1"
-                });
+                manifest["annotations"] = Self::verity_annotations();
             }
             for scute in scutes {
                 if parent.as_ref() != Some(scute.parent()) {
@@ -241,20 +244,15 @@ impl AssembledImage {
                 layers.push(pichi_artifact::Layer::Scute(scute.descriptor().clone()));
                 parent = *scute.root();
             }
+            let mut annotations = Self::verity_annotations();
+            annotations["dev.pichi.carapace.verity.hash"] = hex::encode(parent).into();
             let manifest = serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
                 "artifactType": pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                 "config": pichi_artifact::ConfigDescriptor::canonical(),
                 "layers": layers,
-                "annotations": {
-                    "dev.pichi.carapace.verity.algo": "sha256",
-                    "dev.pichi.carapace.verity.data-block-size": "4096",
-                    "dev.pichi.carapace.verity.hash-block-size": "4096",
-                    "dev.pichi.carapace.verity.version": "1",
-                    "dev.pichi.carapace.verity.hash-type": "1",
-                    "dev.pichi.carapace.verity.hash": hex::encode(parent)
-                }
+                "annotations": annotations
             }))?;
             Self::resolve_staging(
                 &staged,

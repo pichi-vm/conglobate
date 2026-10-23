@@ -5612,3 +5612,18 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Updated historical dispositions; review/logs/source hashes are preserved in
   preservation/m7-review/unused-api-cleanup/. No new VM qualification or complete
   adherence pass; M4 remains 0/3. The full goal remains active.
+
+### Shared fixed verity annotations
+
+- Previous turn resolved unused APIs and infallible encoder clarity. Resolved
+  simplification-008 by extracting only the five fixed verity parameters into
+  an AssembledImage method. Firmware, bootstrap and derived parent-chain anchors
+  remain independent and unchanged; each caller sets its final root hash.
+- 131 library tests and strict all-target Clippy passed. A current native amd64
+  disposable VM passed two-root bootstrap/remount and artifact export checks;
+  the verifier checked descriptors, formatter receipt and canonical inventory.
+  All 168 compared source files match the archived run.
+- Evidence/artifact and focused review: verity-annotations/ and
+  verity-annotations-bootstrap-v1/ under preservation/m7-review/. Historical
+  action updated. No firmware-replacement VM or broader platform qualification
+  claimed, and no complete adherence pass. M4 remains 0/3.
