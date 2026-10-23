@@ -4470,3 +4470,22 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   M7 incomplete and M8 pending. Next work is meaningful legacy lifecycle fault
   coverage migration under the fixed environment policy, including the receiver
   post-admission failure case; no historical passing run substitutes for reruns.
+
+### Maintained lifecycle harness migration started
+
+- With M2 accepted, checked historical command-integration against current API:
+  64 errors, principally removed policy/pin owners. Preserved full compiler log
+  and the check-generated Cargo.lock diff, then restored that generated lock
+  mutation so historical input remains unchanged. No privileged host execution.
+- Added tests/lifecycle safe-Rust fixture binary, initially extracting formatter
+  deadline/cancel/reap, exhausted-snapshot rejection and terminal drop-retention
+  cases. Exact formatter test body is unchanged from 5ee7018 and hash-verified;
+  original source/evidence retained. Entrypoint handles trusted helper re-exec and
+  requires the disposable guest marker. Marker is not a security boundary.
+- Current API check and strict all-target Clippy pass. Evidence/provenance:
+  preservation/m7-review/lifecycle-migration-start. New runner/fresh guest runs
+  still required; compile success does not qualify lifecycle behavior. Remaining
+  command/network and broader fault cases are not removed or claimed covered.
+- Network fixtures formerly read namespace handles through policy-specific pins.
+  Do not restore pins or widen raw-descriptor exposure solely for tests; adapt
+  those fixtures to current production ownership interfaces. M4 remains 0/3.

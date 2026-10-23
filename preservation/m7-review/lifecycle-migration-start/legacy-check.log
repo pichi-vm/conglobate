@@ -1,0 +1,592 @@
+    Checking conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Checking conglobate-command-integration v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration)
+error[E0432]: unresolved imports `conglobate::anchor::FilesystemPin`, `conglobate::isolation::PinnedNamespace`, `conglobate::policy`
+  --> src/main.rs:14:14
+   |
+14 |     anchor::{FilesystemPin, RecoveryDirectory},
+   |              ^^^^^^^^^^^^^ no `FilesystemPin` in `anchor`
+...
+20 |         PinnedNamespace, PrivateMountNamespace, UserNamespace,
+   |         ^^^^^^^^^^^^^^^
+   |         |
+   |         no `PinnedNamespace` in `isolation`
+   |         help: a similar name exists in the module: `UserNamespace`
+21 |     },
+22 |     policy::{BoundDisabled, FilesystemTarget, LabelPolicy, PinDirectory},
+   |     ^^^^^^ could not find `policy` in `conglobate`
+
+error[E0433]: failed to resolve: could not find `policy` in `conglobate`
+   --> src/main.rs:774:37
+    |
+774 |                         conglobate::policy::PolicyInstallation::new(user, vec![pin], pin_parent);
+    |                                     ^^^^^^ could not find `policy` in `conglobate`
+
+error[E0061]: this function takes 3 arguments but 4 arguments were supplied
+   --> src/bootstrap.rs:100:17
+    |
+100 |                   SandboxDirectories::new(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^
+...
+108 | /                     if failure_mode == "domain" {
+109 | |                         Path::new("/missing-domain-parent")
+110 | |                     } else {
+111 | |                         parent
+112 | |                     },
+    | |_____________________- unexpected argument #4 of type `&std::path::Path`
+    |
+note: associated function defined here
+   --> /home/nathaniel/Projects/pichi-vm/conglobate/src/step/preparation/sandbox.rs:26:12
+    |
+ 26 |     pub fn new(recovery: &'l RecoveryDirectory, mounts: &'l Path, domains: &'l Path) -> Self {
+    |            ^^^
+help: remove the extra argument
+    |
+107 -                     },
+108 -                     if failure_mode == "domain" {
+109 -                         Path::new("/missing-domain-parent")
+110 -                     } else {
+111 -                         parent
+    |
+
+error[E0061]: this function takes 3 arguments but 4 arguments were supplied
+   --> src/bootstrap.rs:167:13
+    |
+167 |             SandboxDirectories::new(&lease, Path::new("/work"), Path::new("/work/pins"), parent),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^                                                      ------ unexpected argument #4 of type `&std::path::Path`
+    |
+note: associated function defined here
+   --> /home/nathaniel/Projects/pichi-vm/conglobate/src/step/preparation/sandbox.rs:26:12
+    |
+ 26 |     pub fn new(recovery: &'l RecoveryDirectory, mounts: &'l Path, domains: &'l Path) -> Self {
+    |            ^^^
+help: remove the extra argument
+    |
+167 -             SandboxDirectories::new(&lease, Path::new("/work"), Path::new("/work/pins"), parent),
+167 +             SandboxDirectories::new(&lease, Path::new("/work"), Path::new("/work/pins")),
+    |
+
+error[E0599]: no method named `pin` found for struct `UserNamespace<S>` in the current scope
+   --> src/forwarding.rs:296:10
+    |
+290 |           let user = UserNamespace::<Mapped>::create(
+    |  ____________________-
+291 | |             program.namespace_creator(cutoff)?,
+292 | |             IdRange::new(100000, 65536)?,
+293 | |             IdRange::new(100000, 65536)?,
+294 | |             cutoff.deadline()?,
+295 | |         )?
+296 | |         .pin(&recovery)?;
+    | |         -^^^ method not found in `UserNamespace<Mapped>`
+    | |_________|
+    |
+
+error[E0599]: no method named `pin` found for struct `UserNamespace<S>` in the current scope
+   --> src/network.rs:583:10
+    |
+577 |           let user = UserNamespace::<Mapped>::create(
+    |  ____________________-
+578 | |             program.namespace_creator(cutoff)?,
+579 | |             IdRange::new(100000, 65536)?,
+580 | |             IdRange::new(100000, 65536)?,
+581 | |             cutoff.deadline()?,
+582 | |         )?
+583 | |         .pin(&recovery)?;
+    | |         -^^^ method not found in `UserNamespace<Mapped>`
+    | |_________|
+    |
+
+error[E0599]: no function or associated item named `create` found for struct `MountPoint` in the current scope
+   --> src/main.rs:238:37
+    |
+238 |                 .attach(MountPoint::create(Path::new("/work"))?)
+    |                                     ^^^^^^ function or associated item not found in `MountPoint`
+    |
+note: if you're trying to build a new `MountPoint`, consider using `MountPoint::open` which returns `Result<MountPoint, std::io::Error>`
+   --> /home/nathaniel/Projects/pichi-vm/conglobate/src/filesystem/attachment.rs:24:5
+    |
+ 24 |     pub fn open(path: &Path) -> io::Result<Self> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `pin` found for struct `UserNamespace<S>` in the current scope
+   --> src/main.rs:644:14
+    |
+638 |               let user = UserNamespace::<Mapped>::create(
+    |  ________________________-
+639 | |                 creator,
+640 | |                 IdRange::new(100000, 65536)?,
+641 | |                 IdRange::new(100000, 65536)?,
+642 | |                 setup_budget.deadline(),
+643 | |             )?
+644 | |             .pin(&lease)?;
+    | |             -^^^ method not found in `UserNamespace<Mapped>`
+    | |_____________|
+    |
+
+error[E0599]: no method named `pin` found for struct `Volume<'ns, 'origin, 'workspace, S>` in the current scope
+   --> src/main.rs:691:29
+    |
+691 |                 Some(volume.pin(&lease)?)
+    |                             ^^^ method not found in `Volume<'_, '_, '_, Mounted>`
+
+error[E0282]: type annotations needed
+   --> src/main.rs:697:22
+    |
+697 |                     (pin.metadata()?.dev(), pin.metadata()?.ino()),
+    |                      ^^^ cannot infer type
+
+error[E0599]: no associated item named `Admission` found for struct `Box<StepFailure<'_, Cancelling, _>>` in the current scope
+    --> src/main.rs:1061:61
+     |
+1061 |                         let conglobate::step::StartFailure::Admission(failure) = failure else {
+     |                                                             ^^^^^^^^^ associated item not found in `Box<StepFailure<'_, Cancelling, _>>`
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1065:36
+     |
+1065 |                         assert_ne!(error.kind(), std::io::ErrorKind::TimedOut);
+     |                                    ^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1075:50
+     |
+1075 |                         FinalizationProbe::Setup(step.teardown(parent).map_err(|e| e.to_string())?)
+     |                                                  ^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1075:81
+     |
+1075 |                         FinalizationProbe::Setup(step.teardown(parent).map_err(|e| e.to_string())?)
+     |                                                                                 ^  - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+1075 |                         FinalizationProbe::Setup(step.teardown(parent).map_err(|e: /* Type */| e.to_string())?)
+     |                                                                                  ++++++++++++
+
+error[E0599]: no associated item named `Admission` found for struct `Box<StepFailure<'_, Cancelling, _>>` in the current scope
+    --> src/main.rs:1079:61
+     |
+1079 |                         let conglobate::step::StartFailure::Admission(failure) = failure else {
+     |                                                             ^^^^^^^^^ associated item not found in `Box<StepFailure<'_, Cancelling, _>>`
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1083:36
+     |
+1083 |                         assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+     |                                    ^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1084:50
+     |
+1084 |                         FinalizationProbe::Setup(step.teardown(parent).map_err(|e| e.to_string())?)
+     |                                                  ^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1084:81
+     |
+1084 |                         FinalizationProbe::Setup(step.teardown(parent).map_err(|e| e.to_string())?)
+     |                                                                                 ^  - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+1084 |                         FinalizationProbe::Setup(step.teardown(parent).map_err(|e: /* Type */| e.to_string())?)
+     |                                                                                  ++++++++++++
+
+error[E0599]: no method named `pin` found for struct `UserNamespace<S>` in the current scope
+    --> src/main.rs:1233:18
+     |
+1227 |                   let user = UserNamespace::<Mapped>::create(
+     |  ____________________________-
+1228 | |                     creator,
+1229 | |                     IdRange::new(100000, 65536)?,
+1230 | |                     IdRange::new(100000, 65536)?,
+1231 | |                     Instant::now() + Duration::from_secs(5),
+1232 | |                 )?
+1233 | |                 .pin(&lease)?;
+     | |                 -^^^ method not found in `UserNamespace<Mapped>`
+     | |_________________|
+     |
+
+error[E0599]: no method named `pin` found for struct `Volume<'ns, 'origin, 'workspace, S>` in the current scope
+    --> src/main.rs:1234:34
+     |
+1234 |                 let pin = volume.pin(&lease)?;
+     |                                  ^^^ method not found in `Volume<'_, '_, '_, Mounted>`
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1243:24
+     |
+1243 |             let view = volume.view()?;
+     |                        ^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1247:24
+     |
+1247 |             let view = user
+     |                        ^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1249:27
+     |
+1249 |                 .map_err(|e| e.to_string())?
+     |                           ^  - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+1249 |                 .map_err(|e: /* Type */| e.to_string())?
+     |                            ++++++++++++
+
+error[E0599]: no function or associated item named `create` found for struct `MountPoint` in the current scope
+    --> src/main.rs:1250:37
+     |
+1250 |                 .attach(MountPoint::create(Path::new("/work"))?)
+     |                                     ^^^^^^ function or associated item not found in `MountPoint`
+     |
+note: if you're trying to build a new `MountPoint`, consider using `MountPoint::open` which returns `Result<MountPoint, std::io::Error>`
+    --> /home/nathaniel/Projects/pichi-vm/conglobate/src/filesystem/attachment.rs:24:5
+     |
+  24 |     pub fn open(path: &Path) -> io::Result<Self> {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1251:27
+     |
+1251 |                 .map_err(|e| e.to_string())?;
+     |                           ^  - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+1251 |                 .map_err(|e: /* Type */| e.to_string())?;
+     |                            ++++++++++++
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1253:35
+     |
+1253 |             view.close().map_err(|e| e.to_string())?;
+     |                                   ^  - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+1253 |             view.close().map_err(|e: /* Type */| e.to_string())?;
+     |                                    ++++++++++++
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1257:17
+     |
+1257 |                 pin.release()?;
+     |                 ^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1285:27
+     |
+1285 |                     .all(|error| error.to_string().contains("namespace"))
+     |                           ^^^^^  ----- type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+1285 |                     .all(|error: /* Type */| error.to_string().contains("namespace"))
+     |                                ++++++++++++
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1290:51
+     |
+1290 |             let volume = failure.retry().map_err(|e| e.to_string())?;
+     |                                                   ^  - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+1290 |             let volume = failure.retry().map_err(|e: /* Type */| e.to_string())?;
+     |                                                    ++++++++++++
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1294:27
+     |
+1294 |                 .map_err(|e| e.to_string())?;
+     |                           ^  - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+1294 |                 .map_err(|e: /* Type */| e.to_string())?;
+     |                            ++++++++++++
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1301:52
+     |
+1301 |             let volume = volume.unmount().map_err(|e| e.to_string())?;
+     |                                                    ^  - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+1301 |             let volume = volume.unmount().map_err(|e: /* Type */| e.to_string())?;
+     |                                                     ++++++++++++
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1307:27
+     |
+1307 |                 .map_err(|e| e.to_string())?
+     |                           ^  - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+1307 |                 .map_err(|e: /* Type */| e.to_string())?
+     |                            ++++++++++++
+
+error[E0282]: type annotations needed
+    --> src/main.rs:1309:27
+     |
+1309 |                 .map_err(|e| e.to_string())?;
+     |                           ^  - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+1309 |                 .map_err(|e: /* Type */| e.to_string())?;
+     |                            ++++++++++++
+
+error[E0599]: no method named `pin` found for struct `UserNamespace<S>` in the current scope
+    --> src/main.rs:2255:35
+     |
+2255 |         let namespace = namespace.pin(&lease)?;
+     |                                   ^^^ method not found in `UserNamespace<Mapped>`
+
+error[E0599]: no method named `disable` found for struct `conglobate::step::Step<'lease, S, R>` in the current scope
+    --> src/main.rs:2405:18
+     |
+2396 |               let (_, _, policy, ()) = step
+     |  ______________________________________-
+2397 | |                 .cancel_until(deadline)
+2398 | |                 .map_err(|e| e.to_string())?
+2399 | |                 .reap_until(deadline)
+...    |
+2404 | |                 .map_err(|e| e.to_string())?
+2405 | |                 .disable()
+     | |                 -^^^^^^^ method not found in `conglobate::step::Step<'_, Finishing>`
+     | |_________________|
+     |
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2406:27
+     |
+2406 |                 .map_err(|e| e.to_string())?
+     |                           ^  - type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+2406 |                 .map_err(|e: /* Type */| e.to_string())?
+     |                            ++++++++++++
+
+error[E0599]: no associated item named `Admission` found for struct `Box<StepFailure<'_, Cancelling, _>>` in the current scope
+    --> src/main.rs:2423:49
+     |
+2423 |             let conglobate::step::StartFailure::Admission(failure) = failure else {
+     |                                                 ^^^^^^^^^ associated item not found in `Box<StepFailure<'_, Cancelling, _>>`
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2427:24
+     |
+2427 |             assert_eq!(source.kind(), std::io::ErrorKind::TimedOut);
+     |                        ^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2429:38
+     |
+2429 |             let (_, _, policy, ()) = cancellation
+     |                                      ^^^^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2431:27
+     |
+2431 |                 .map_err(|error| error.to_string())?
+     |                           ^^^^^  ----- type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+2431 |                 .map_err(|error: /* Type */| error.to_string())?
+     |                                ++++++++++++
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2433:27
+     |
+2433 |                 .map_err(|error| error.to_string())?
+     |                           ^^^^^  ----- type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+2433 |                 .map_err(|error: /* Type */| error.to_string())?
+     |                                ++++++++++++
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2435:27
+     |
+2435 |                 .map_err(|error| error.to_string())?
+     |                           ^^^^^  ----- type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+2435 |                 .map_err(|error: /* Type */| error.to_string())?
+     |                                ++++++++++++
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2437:27
+     |
+2437 |                 .map_err(|error| error.to_string())?
+     |                           ^^^^^  ----- type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+2437 |                 .map_err(|error: /* Type */| error.to_string())?
+     |                                ++++++++++++
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2439:27
+     |
+2439 |                 .map_err(|error| error.to_string())?
+     |                           ^^^^^  ----- type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+2439 |                 .map_err(|error: /* Type */| error.to_string())?
+     |                                ++++++++++++
+
+error[E0599]: no method named `disable` found for struct `conglobate::step::Step<'lease, S, R>` in the current scope
+    --> src/main.rs:2504:14
+     |
+2495 |           let (status, _, policy, ()) = helper
+     |  _______________________________________-
+2496 | |             .cancel_until(teardown)
+2497 | |             .map_err(|e| e.to_string())?
+2498 | |             .reap_until(teardown)
+...    |
+2503 | |             .map_err(|e| e.to_string())?
+2504 | |             .disable()
+     | |             -^^^^^^^ method not found in `conglobate::step::Step<'_, Finishing>`
+     | |_____________|
+     |
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2505:23
+     |
+2505 |             .map_err(|error| error.to_string())?
+     |                       ^^^^^  ----- type must be known at this point
+     |
+help: consider giving this closure parameter an explicit type
+     |
+2505 |             .map_err(|error: /* Type */| error.to_string())?
+     |                            ++++++++++++
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2510:20
+     |
+2510 |         assert_eq!(status.success(), mode == "success" || mode == "policy-off");
+     |                    ^^^^^^ cannot infer type
+
+error[E0599]: no function or associated item named `create` found for struct `MountPoint` in the current scope
+    --> src/main.rs:2732:33
+     |
+2732 |             .attach(MountPoint::create(Path::new("/work"))?)
+     |                                 ^^^^^^ function or associated item not found in `MountPoint`
+     |
+note: if you're trying to build a new `MountPoint`, consider using `MountPoint::open` which returns `Result<MountPoint, std::io::Error>`
+    --> /home/nathaniel/Projects/pichi-vm/conglobate/src/filesystem/attachment.rs:24:5
+     |
+  24 |     pub fn open(path: &Path) -> io::Result<Self> {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2810:13
+     |
+2810 |             source
+     |             ^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2814:34
+     |
+2814 |         let (namespace, empty) = identities.into_parts();
+     |                                  ^^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2815:17
+     |
+2815 |         assert!(empty.is_empty());
+     |                 ^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2817:23
+     |
+2817 |         let failure = pinned.bind(namespace, vec![wrong]).unwrap_err();
+     |                       ^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2819:17
+     |
+2819 |         assert!(source.to_string().contains("targets differ"));
+     |                 ^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2820:34
+     |
+2820 |         let (namespace, wrong) = identities.into_parts();
+     |                                  ^^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2822:13
+     |
+2822 |             pin.release()?;
+     |             ^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2832:22
+     |
+2832 |         let result = pinned.bind(namespace, vec![filesystem]);
+     |                      ^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2835:20
+     |
+2835 |         assert_eq!(source.raw_os_error(), Some(24));
+     |                    ^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2836:40
+     |
+2836 |         let (namespace, filesystems) = identities.into_parts();
+     |                                        ^^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2837:20
+     |
+2837 |         assert_eq!(filesystems.len(), 1);
+     |                    ^^^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2838:22
+     |
+2838 |         let pinned = pinned.bind(namespace, filesystems)?;
+     |                      ^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2862:20
+     |
+2862 |         assert_eq!(source.kind(), std::io::ErrorKind::DirectoryNotEmpty);
+     |                    ^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2865:26
+     |
+2865 |         let identities = cleanup.retry()?;
+     |                          ^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2869:13
+     |
+2869 |             filesystem.release()?;
+     |             ^^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+    --> src/main.rs:2871:9
+     |
+2871 |         namespace.release()?;
+     |         ^^^^^^^^^ cannot infer type
+
+Some errors have detailed explanations: E0061, E0282, E0432, E0433, E0599.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `conglobate-command-integration` (bin "conglobate-command-integration") due to 64 previous errors
