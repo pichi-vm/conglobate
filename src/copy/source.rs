@@ -6,6 +6,7 @@ use crate::context::{CapturedContext, ContextEntry};
 use std::{
     collections::{BTreeMap, VecDeque},
     ffi::{OsStr, OsString},
+    ops::Bound::{Included, Unbounded},
     os::unix::ffi::OsStrExt,
     path::{Path, PathBuf},
 };
@@ -45,13 +46,15 @@ impl CopySource<'_> {
             || matches!(self.entry(), Some(ContextEntry::Directory))
     }
     pub fn descendants(&self) -> impl Iterator<Item = (&Path, &ContextEntry)> {
-        self.tree.entries.iter().filter_map(|(path, entry)| {
-            if !self.is_directory() {
-                return None;
-            }
-            let relative = path.strip_prefix(&self.resolved).ok()?;
-            (!relative.as_os_str().is_empty()).then_some((relative, entry))
-        })
+        let directory = self.is_directory();
+        self.tree
+            .entries
+            .range::<Path, _>((Included(self.resolved.as_path()), Unbounded))
+            .take_while(move |(path, _)| directory && path.starts_with(&self.resolved))
+            .filter_map(|(path, entry)| {
+                let relative = path.strip_prefix(&self.resolved).ok()?;
+                (!relative.as_os_str().is_empty()).then_some((relative, entry))
+            })
     }
 }
 #[derive(Debug)]
@@ -112,7 +115,9 @@ impl<'a> SourceTree<'a> {
                     if wildcard || wildcard_seen {
                         for child in self
                             .entries
-                            .keys()
+                            .range::<Path, _>((Included(actual.as_path()), Unbounded))
+                            .take_while(|(path, _)| path.starts_with(&actual))
+                            .map(|(path, _)| path)
                             .filter(|p| p.parent() == Some(actual.as_path()))
                         {
                             let name = child.file_name().expect("captured entry name");
@@ -307,6 +312,39 @@ mod tests {
             fixture.select(&[r"*/a\?"]).unwrap().entries()[0].selected(),
             Path::new("dir/a?")
         );
+    }
+    #[test]
+    fn subtree_selection_respects_components_and_direct_child_depth() {
+        let mut fixture = Fixture::new();
+        for name in ["dir-x", "dir/sub", "dir/sub/deeper", "dir2"] {
+            fixture.0.insert(name.into(), ContextEntry::Directory);
+        }
+        let sources = fixture.select(&["dir"]).unwrap();
+        let descendants: Vec<_> = sources.entries()[0]
+            .descendants()
+            .map(|(path, _)| path.to_path_buf())
+            .collect();
+        assert_eq!(
+            descendants,
+            ["file", "link", "sub", "sub/deeper"].map(PathBuf::from)
+        );
+        let children = fixture.select(&["dir/*"]).unwrap();
+        assert_eq!(
+            children
+                .entries()
+                .iter()
+                .map(CopySource::selected)
+                .collect::<Vec<_>>(),
+            [
+                Path::new("dir/file"),
+                Path::new("dir/link"),
+                Path::new("dir/sub")
+            ]
+        );
+        let file = fixture.select(&["dir/file"]).unwrap();
+        assert_eq!(file.entries()[0].descendants().count(), 0);
+        let root = fixture.select(&["/"]).unwrap();
+        assert_eq!(root.entries()[0].descendants().count(), fixture.0.len());
     }
     #[test]
     fn root_selection_and_symlink_confinement() {

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::{Ready, Retained, Step, StepStorage, private};
 use crate::storage::{BootstrapVolumes, Mounted};
-use std::{marker::PhantomData, time::Instant};
+use std::marker::PhantomData;
 impl private::Storage for BootstrapVolumes<'_, '_, '_, Mounted> {}
 impl StepStorage for BootstrapVolumes<'_, '_, '_, Mounted> {}
 impl<'l> Step<'l, Ready> {
@@ -18,24 +18,5 @@ impl<'l> Step<'l, Ready> {
             resources: self.resources,
             _lease: PhantomData,
         }
-    }
-}
-impl Step<'_, Ready, BootstrapVolumes<'_, '_, '_, Mounted>> {
-    pub fn send_bootstrap_until(&self, deadline: Instant) -> std::io::Result<()> {
-        let volumes = &self.storage.0;
-        volumes.tool().prepare_output_mountpoint()?;
-        let namespace = self
-            .policy
-            .policy
-            .namespace_for_root(&volumes.tool().root_metadata()?)?;
-        self.policy
-            .policy
-            .namespace_for_root(&volumes.output().root_metadata()?)?;
-        self.resources.0.supervision().send_bootstrap_until(
-            &volumes.tool().view()?,
-            &volumes.output().view()?,
-            namespace,
-            deadline,
-        )
     }
 }

@@ -519,3 +519,31 @@ Hosted run 39964805125 at 148ef66 passes the Rust job (format, strict Clippy,
 rootless tests and doctests). Dependency job is still pending at this observation.
 The job log and progress snapshot are retained; this is not a claim of full CI,
 VM, distro or confidential-platform qualification. M7 remains at zero passes.
+
+## Round two follow-up and current evidence
+
+The reviewer supplied 111 unique dispositions (20 fixed, 37 accept, 40 reject,
+9 open, 5 duplicate). These are reviewer positions, not blanket parent acceptance.
+The shared finalizer preserves deadlines, concrete recovery owners, both bootstrap
+snapshots and primary command outcomes. Its lost bootstrap diagnostic specificity
+is restored through StorageLayout::LABEL; NetworkedStorage forwards that identity.
+The unused send_bootstrap_until wrapper is removed; the live ExecutionStorage
+path remains. No runtime policy change is included.
+
+COPY descendant and wildcard scans now start at the relevant BTreeMap subtree
+and stop at its component boundary. A regression covers similarly prefixed sibling
+names, direct-child depth, a file and the context root. No benchmark gain is claimed.
+All 199 rootless tests, 54 doctests, strict Clippy, fixture compilation and fmt pass
+(review-followup logs/checks JSON). These are not new privileged VM results.
+
+Round two's tests-001 proposal still needs correction: production clone rejection
+is EPERM; only clone3 uses ENOSYS. Changing the policy errno to make a test easy
+is unwarranted. An ordinary clone positive control alone cannot distinguish a
+namespace capability rejection from the clone mask. The next review requests a
+control demonstrating namespace creation before applying the unchanged filter,
+or another source-grounded test of the actual compiled filter.
+
+Hosted run 39964805125 has now completed successfully for BOTH Rust and dependency
+jobs at 148ef66. New local commits still require hosted checks. The always-active
+labeling alternative is recorded in policy-alternative.md without claiming adoption
+or qualification. M7 remains at zero adherence passes.

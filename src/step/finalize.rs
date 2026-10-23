@@ -45,7 +45,7 @@ impl<R: PreparationStorage> FinalizedStorage<R> {
 /// }
 /// ```
 #[derive(Debug, thiserror::Error)]
-#[error("step storage finalization: {diagnostics}")]
+#[error("{} storage finalization: {diagnostics}", R::LABEL)]
 pub struct StorageFinalizationFailure<R: PreparationStorage> {
     diagnostics: FailureDiagnostics,
     finalization: Finalization<R>,

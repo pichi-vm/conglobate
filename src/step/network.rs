@@ -37,6 +37,7 @@ pub struct NetworkedStorage<R: NetworkEligibleStorage> {
 impl<R: NetworkEligibleStorage> private::Storage for NetworkedStorage<R> {}
 impl<R: NetworkEligibleStorage> StepStorage for NetworkedStorage<R> {}
 impl<R: NetworkEligibleStorage> StorageLayout for NetworkedStorage<R> {
+    const LABEL: &'static str = R::LABEL;
     type Unmounted = R::Unmounted;
     fn validate(storage: &Self::Unmounted) -> io::Result<()> {
         R::validate(storage)

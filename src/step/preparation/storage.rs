@@ -13,6 +13,8 @@ use std::{fmt::Debug, io, path::Path, time::Instant};
 /// Sealed mounted storage layouts sharing the command preparation lifecycle.
 /// Cleanup preserves the concrete unmounted layout and its owning retry error.
 pub trait StorageLayout: StepStorage + Sized {
+    /// Identifies the concrete layout in cleanup diagnostics.
+    const LABEL: &'static str;
     type Unmounted: Debug;
     /// Validate every snapshot in the unmounted layout before accepting it.
     #[doc(hidden)]
@@ -46,6 +48,7 @@ pub trait PreparationStorage: StorageLayout {
     fn unmount_diagnostics(failure: &Self::UnmountFailure) -> &FailureDiagnostics;
 }
 impl<'n, 'o, 'w> StorageLayout for Volume<'n, 'o, 'w, Mounted> {
+    const LABEL: &'static str = "step";
     type Unmounted = Volume<'n, 'o, 'w, Unmounted>;
     fn validate(storage: &Self::Unmounted) -> io::Result<()> {
         storage.validate_snapshot()
@@ -93,6 +96,7 @@ impl<'n, 'o, 'w> PreparationStorage for Volume<'n, 'o, 'w, Mounted> {
     }
 }
 impl<'n, 'o, 'w> StorageLayout for BootstrapVolumes<'n, 'o, 'w, Mounted> {
+    const LABEL: &'static str = "bootstrap";
     type Unmounted = BootstrapVolumes<'n, 'o, 'w, Unmounted>;
     fn validate(storage: &Self::Unmounted) -> io::Result<()> {
         storage.validate_snapshots()
