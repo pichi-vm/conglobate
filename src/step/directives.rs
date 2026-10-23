@@ -54,7 +54,7 @@ pub enum StageFailure<'l, R: DirectiveStorage> {
     #[error("directive {index}: {failure}")]
     Preparation {
         index: usize,
-        failure: Box<StoragePreparationFailure<'l, R>>,
+        failure: Box<StoragePreparationFailure<R>>,
     },
     #[error("directive {index}: {failure}")]
     Execution {
@@ -189,11 +189,12 @@ impl<'l> CommandSandbox<'l> {
                         .map_err(|failure| {
                             Box::new(StageFailure::Preparation { index, failure })
                         })?;
-                    let ready = prepared
-                        .launch(receiver, budget.deadline(), self.domain_parent())
-                        .map_err(|failure| {
-                            Box::new(StageFailure::Preparation { index, failure })
-                        })?;
+                    let ready =
+                        prepared
+                            .launch(receiver, budget.deadline())
+                            .map_err(|failure| {
+                                Box::new(StageFailure::Preparation { index, failure })
+                            })?;
                     (storage, reaper) = if run.network() {
                         let networking = network.expect("preflight checked captured networking");
                         let network = match self.prepare_network(networking, &budget) {

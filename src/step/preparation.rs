@@ -40,14 +40,14 @@ pub struct StoragePreparation<R: PreparationStorage> {
 impl<R: PreparationStorage> StoragePreparation<R> {
     /// Acquire and publish containment before launching a helper. Every failure
     /// retains the supplied namespace, mounted storage and child reaper.
-    pub fn create<'l>(
+    pub fn create(
         namespace: UserNamespace<Mapped>,
         volume: R,
         reaper: ChildReaper,
-        recovery: &'l crate::anchor::RecoveryDirectory,
-        domain_parent: &'l Path,
+        recovery: &crate::anchor::RecoveryDirectory,
+        domain_parent: &Path,
         budget: &super::SetupBudget,
-    ) -> Result<Self, Box<StoragePreparationFailure<'l, R>>> {
+    ) -> Result<Self, Box<StoragePreparationFailure<R>>> {
         let domain = budget
             .check()
             .map_err(DomainCreateFailure::Before)
@@ -66,7 +66,6 @@ impl<R: PreparationStorage> StoragePreparation<R> {
                             volume: Retained::new(volume),
                         },
                     ),
-                    parent: domain_parent,
                     deadline: Instant::now() + Duration::from_secs(30),
                 }))
             }
@@ -90,8 +89,7 @@ impl<R: PreparationStorage> StoragePreparation<R> {
         self,
         command: Command,
         setup_deadline: Instant,
-        domain_parent: &'l Path,
-    ) -> Result<Step<'l, Ready, R>, Box<StoragePreparationFailure<'l, R>>> {
+    ) -> Result<Step<'l, Ready, R>, Box<StoragePreparationFailure<R>>> {
         let Self {
             namespace,
             volume,
@@ -123,7 +121,6 @@ impl<R: PreparationStorage> StoragePreparation<R> {
                 Err(Box::new(StoragePreparationFailure {
                     diagnostics: source.into(),
                     phase,
-                    parent: domain_parent,
                     deadline: Instant::now() + Duration::from_secs(30),
                 }))
             }
@@ -161,33 +158,21 @@ enum Phase<R: PreparationStorage> {
 /// Dropping before quiescence retains namespace and storage for VM disposal.
 /// ```compile_fail
 /// use conglobate::step::PreparationFailure;
-/// fn cannot_extract_live_storage(failure: PreparationFailure<'_, '_, '_, '_>) {
+/// fn cannot_extract_live_storage(failure: PreparationFailure<'_, '_, '_>) {
 ///     failure.into_parts();
 /// }
 /// ```
 /// ```compile_fail
 /// use conglobate::step::PreparationFailure;
-/// fn cannot_renew_cleanup_budget(failure: PreparationFailure<'_, '_, '_, '_>) {
+/// fn cannot_renew_cleanup_budget(failure: PreparationFailure<'_, '_, '_>) {
 ///     failure.rollback(std::time::Instant::now());
-/// }
-/// ```
-/// Recovery borrows the same deployment paths as the prepared domain.
-/// ```compile_fail
-/// use conglobate::step::{PreparationStorage, StoragePreparation, StoragePreparationFailure};
-/// fn cannot_return_with_local_parent<'a, R: PreparationStorage>(
-///     prepared: StoragePreparation<R>,
-/// ) -> Box<StoragePreparationFailure<'a, R>> {
-///     let parent = std::path::PathBuf::from("/temporary-domain-parent");
-///     prepared.launch(std::process::Command::new("/trusted-helper"),
-///         std::time::Instant::now(), &parent).unwrap_err()
 /// }
 /// ```
 #[derive(Debug, thiserror::Error)]
 #[error("command preparation: {diagnostics}")]
-pub struct StoragePreparationFailure<'l, R: PreparationStorage> {
+pub struct StoragePreparationFailure<R: PreparationStorage> {
     diagnostics: FailureDiagnostics,
     phase: Phase<R>,
-    parent: &'l Path,
     deadline: Instant,
 }
 /// Failed setup was completely rolled back. This is never a successful step.
@@ -201,16 +186,11 @@ impl<R: PreparationStorage> StorageRollback<R> {
         (self.diagnostics, self.volume)
     }
 }
-impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
-    fn early(
-        source: impl Into<FailureDiagnostics>,
-        phase: Phase<R>,
-        parent: &'l Path,
-    ) -> Box<Self> {
+impl<R: PreparationStorage> StoragePreparationFailure<R> {
+    fn early(source: impl Into<FailureDiagnostics>, phase: Phase<R>) -> Box<Self> {
         Box::new(Self {
             diagnostics: source.into(),
             phase,
-            parent,
             deadline: Instant::now() + Duration::from_secs(30),
         })
     }
@@ -228,7 +208,6 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
         let Self {
             diagnostics,
             phase,
-            parent,
             deadline,
         } = self;
         let next: Result<Phase<R>, (FailureDiagnostics, Phase<R>)> = match phase {
@@ -352,14 +331,12 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
             Ok(phase) => Self {
                 diagnostics,
                 phase,
-                parent,
                 deadline,
             }
             .rollback(),
             Err((error, phase)) => Err(Box::new(Self {
                 diagnostics: diagnostics.followed_by(error),
                 phase,
-                parent,
                 deadline,
             })),
         }
@@ -368,10 +345,9 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
 
 /// Single-volume preparation uses the shared storage lifecycle.
 pub type CommandPreparation<'n, 'o, 'w> = StoragePreparation<Volume<'n, 'o, 'w, Mounted>>;
-pub type PreparationFailure<'l, 'n, 'o, 'w> =
-    StoragePreparationFailure<'l, Volume<'n, 'o, 'w, Mounted>>;
+pub type PreparationFailure<'n, 'o, 'w> = StoragePreparationFailure<Volume<'n, 'o, 'w, Mounted>>;
 /// Bootstrap preparation retains both roots through the same namespace/process rollback.
 pub type BootstrapPreparation<'n, 'o, 'w> =
     StoragePreparation<BootstrapVolumes<'n, 'o, 'w, Mounted>>;
-pub type BootstrapPreparationFailure<'l, 'n, 'o, 'w> =
-    StoragePreparationFailure<'l, BootstrapVolumes<'n, 'o, 'w, Mounted>>;
+pub type BootstrapPreparationFailure<'n, 'o, 'w> =
+    StoragePreparationFailure<BootstrapVolumes<'n, 'o, 'w, Mounted>>;

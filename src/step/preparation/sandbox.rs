@@ -64,9 +64,6 @@ impl<'l> CommandSandbox<'l> {
     pub(crate) fn mount_parent(&self) -> &Path {
         self.directories.mounts
     }
-    pub(crate) fn domain_parent(&self) -> &'l Path {
-        self.directories.domains
-    }
     /// Construct immutable launch input before acquiring the command resources.
     pub fn receiver(&self, script: String, budget: &SetupBudget) -> io::Result<Command> {
         self.program.receiver(
@@ -82,7 +79,7 @@ impl<'l> CommandSandbox<'l> {
         volume: Volume<'n, 'o, 'w, Unmounted>,
         reaper: ChildReaper,
         budget: &SetupBudget,
-    ) -> Result<CommandPreparation<'n, 'o, 'w>, Box<PreparationFailure<'l, 'n, 'o, 'w>>> {
+    ) -> Result<CommandPreparation<'n, 'o, 'w>, Box<PreparationFailure<'n, 'o, 'w>>> {
         self.prepare_storage::<Volume<'n, 'o, 'w, Mounted>>(volume, reaper, budget)
     }
     pub fn prepare_bootstrap<'n, 'o, 'w>(
@@ -90,7 +87,7 @@ impl<'l> CommandSandbox<'l> {
         volumes: BootstrapVolumes<'n, 'o, 'w, Unmounted>,
         reaper: ChildReaper,
         budget: &SetupBudget,
-    ) -> Result<BootstrapPreparation<'n, 'o, 'w>, Box<BootstrapPreparationFailure<'l, 'n, 'o, 'w>>>
+    ) -> Result<BootstrapPreparation<'n, 'o, 'w>, Box<BootstrapPreparationFailure<'n, 'o, 'w>>>
     {
         self.prepare_storage::<BootstrapVolumes<'n, 'o, 'w, Mounted>>(volumes, reaper, budget)
     }
@@ -99,7 +96,7 @@ impl<'l> CommandSandbox<'l> {
         volume: R::Unmounted,
         reaper: ChildReaper,
         budget: &SetupBudget,
-    ) -> Result<StoragePreparation<R>, Box<StoragePreparationFailure<'l, R>>> {
+    ) -> Result<StoragePreparation<R>, Box<StoragePreparationFailure<R>>> {
         let directories = &self.directories;
         let creator = match budget
             .cutoff()
@@ -110,7 +107,6 @@ impl<'l> CommandSandbox<'l> {
                 return Err(StoragePreparationFailure::early(
                     error,
                     Phase::EarlyDrain(reaper, volume),
-                    directories.domains,
                 ));
             }
         };
@@ -140,11 +136,7 @@ impl<'l> CommandSandbox<'l> {
                             (io::Error::other(failure), Phase::EarlyDrain(reaper, volume))
                         }
                     };
-                    return Err(StoragePreparationFailure::early(
-                        source,
-                        phase,
-                        directories.domains,
-                    ));
+                    return Err(StoragePreparationFailure::early(source, phase));
                 }
             };
         if let Err(error) = budget.check() {
@@ -152,7 +144,6 @@ impl<'l> CommandSandbox<'l> {
             return Err(StoragePreparationFailure::early(
                 error,
                 Phase::EarlyDrain(reaper, volume),
-                directories.domains,
             ));
         }
         let volume = match R::mount(volume, directories.mounts, budget.deadline()) {
@@ -162,7 +153,6 @@ impl<'l> CommandSandbox<'l> {
                 return Err(StoragePreparationFailure::early(
                     source,
                     Phase::MountDrain(reaper, failure),
-                    directories.domains,
                 ));
             }
         };
@@ -178,7 +168,6 @@ impl<'l> CommandSandbox<'l> {
             return Err(StoragePreparationFailure::early(
                 source,
                 Phase::EmptyDrain(reaper, assigned),
-                directories.domains,
             ));
         }
         StoragePreparation::create(

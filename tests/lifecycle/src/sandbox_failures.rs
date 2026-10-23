@@ -359,7 +359,7 @@ impl SandboxFailures {
                     reader.set_read_timeout(Some(Duration::from_secs(10)))?;
                     receiver.stderr(Stdio::from(OwnedFd::from(writer)));
                     let step = prepared
-                        .launch(receiver, budget.deadline(), paths.domains())
+                        .launch(receiver, budget.deadline())
                         .map_err(|e| e.to_string())?;
                     step.send_volume_until(budget.deadline())?;
                     let admitted = match budget.await_prepared(step) {
@@ -482,7 +482,7 @@ impl SandboxFailures {
                     ready.set_read_timeout(Some(Duration::from_secs(10)))?;
                     command.arg(budget.cutoff()?.to_argument());
                     let step = prepared
-                        .launch(command, budget.deadline(), paths.domains())
+                        .launch(command, budget.deadline())
                         .map_err(|e| e.to_string())?;
                     step.send_volume_until(budget.deadline())?;
                     let command = budget
@@ -562,7 +562,7 @@ impl SandboxFailures {
                     command.arg(budget.cutoff()?.to_argument());
                     fs::create_dir("/work/runtime-parent/receiver-view")?;
                     let step = prepared
-                        .launch(command, budget.deadline(), paths.domains())
+                        .launch(command, budget.deadline())
                         .map_err(|e| e.to_string())?;
                     step.send_volume_until(budget.deadline())?;
                     let command = budget
@@ -661,7 +661,7 @@ impl SandboxFailures {
                     fs::create_dir("/work/runtime-parent/receiver-view")?;
                     command.arg(budget.cutoff()?.to_argument());
                     let step = prepared
-                        .launch(command, budget.deadline(), paths.domains())
+                        .launch(command, budget.deadline())
                         .map_err(|e| e.to_string())?;
                     if matches!(point, FailurePoint::DelayedTeardown) {
                         step.send_volume_until(budget.deadline())?;
@@ -803,7 +803,7 @@ impl SandboxFailures {
                         .ok_or("missing volume")??;
                     let holder = fs::File::open(entry.path())?;
                     let step = prepared
-                        .launch(command, budget.deadline(), paths.domains())
+                        .launch(command, budget.deadline())
                         .map_err(|e| e.to_string())?;
                     let failure = step
                         .execute(budget, "5s".parse()?)
@@ -830,7 +830,7 @@ impl SandboxFailures {
                     fs::create_dir("/work/runtime-parent/receiver-view")?;
                     command.arg(budget.cutoff()?.to_argument());
                     let step = prepared
-                        .launch(command, budget.deadline(), paths.domains())
+                        .launch(command, budget.deadline())
                         .map_err(|e| e.to_string())?;
                     let failure = step
                         .execute(budget, "5s".parse()?)
@@ -853,7 +853,7 @@ impl SandboxFailures {
                     returned
                 } else {
                     let failure = prepared
-                        .launch(command, budget.deadline(), paths.domains())
+                        .launch(command, budget.deadline())
                         .unwrap_err();
                     let kind = failure.diagnostics().operation().kind();
                     if matches!(point, FailurePoint::Launch) {
