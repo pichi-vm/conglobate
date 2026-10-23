@@ -1,15 +1,17 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 //! One command lifecycle, with acceptance tied to its own finalized storage.
+mod storage;
 use super::{
-    CommandOutcome, CommandStartFailure, FinalizationFailure, FinalizedVolume, Ready, SetupBudget,
-    StartFailure, Step, TeardownCompletion, TeardownFailure,
+    CommandOutcome, CommandStartFailure, Ready, SetupBudget, StartFailure, Step,
+    TeardownCompletion, TeardownFailure,
 };
 use crate::{
-    storage::{FailureDiagnostics, Mounted, Unmounted, Volume},
+    storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Unmounted, Volume},
     value::CommandTimeout,
 };
 use std::{io, path::Path};
+pub use storage::ExecutionStorage;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ExecutionOutcome {
@@ -25,89 +27,83 @@ impl ExecutionOutcome {
 }
 
 /// This command exited successfully, all descendants were drained, policy and
-/// pins were removed, and its assigned volume was flushed and unmounted within
+/// pins were removed, and all assigned volumes were flushed and unmounted within
 /// the original teardown deadline. No public constructor accepts an unrelated
 /// command outcome or arbitrary cleanup result. This is not an image seal.
 ///
 /// ```compile_fail
 /// use conglobate::{step::ExecutedVolume, storage::{Volume, Unmounted}};
-/// fn cannot_forge_receipt(volume: Volume<'_, '_, '_, Unmounted>) {
-///     let _ = ExecutedVolume { volume };
+/// fn cannot_forge_receipt(volume: Volume<'_, '_, '_, Unmounted>, reaped: conglobate::process::ReapedChildren) {
+///     let _ = ExecutedVolume { volume, reaped };
 /// }
 /// ```
 #[derive(Debug)]
-pub struct ExecutedVolume<'n, 'o, 'w> {
-    volume: Volume<'n, 'o, 'w, Unmounted>,
+pub struct ExecutedStorage<R: ExecutionStorage> {
+    volume: R::Unmounted,
     reaped: crate::process::ReapedChildren,
 }
-impl<'n, 'o, 'w> ExecutedVolume<'n, 'o, 'w> {
+impl<R: ExecutionStorage> ExecutedStorage<R> {
     /// Continue the assembly line with the same exclusive supervisor reaper.
-    pub fn into_parts(self) -> (Volume<'n, 'o, 'w, Unmounted>, crate::process::ChildReaper) {
+    pub fn into_parts(self) -> (R::Unmounted, crate::process::ChildReaper) {
         (self.volume, self.reaped.into_reaper())
     }
-    pub fn into_volume(self) -> Volume<'n, 'o, 'w, Unmounted> {
+    pub fn into_storage(self) -> R::Unmounted {
         self.volume
     }
 }
 
 #[derive(Debug)]
-enum Cleanup<'l, 'n, 'o, 'w> {
-    Teardown(Box<TeardownFailure<'l, Volume<'n, 'o, 'w, Mounted>>>),
-    Finalization(Box<FinalizationFailure<'n, 'o, 'w>>),
-    Complete(FinalizedVolume<'n, 'o, 'w>),
+enum Cleanup<'l, R: ExecutionStorage> {
+    Teardown(Box<TeardownFailure<'l, R>>),
+    Finalization(R::FinalizationFailure),
+    Complete(R::Finalized),
 }
 /// Retains the primary setup/command outcome and any unfinished cleanup owner.
 /// A retry cannot restart the command or extend any cleanup deadline.
 #[derive(Debug, thiserror::Error)]
 #[error("{outcome}; cleanup: {cleanup:?}")]
-pub struct ExecutionFailure<'l, 'n, 'o, 'w> {
+pub struct StorageExecutionFailure<'l, R: ExecutionStorage> {
     outcome: ExecutionOutcome,
-    cleanup: Cleanup<'l, 'n, 'o, 'w>,
+    cleanup: Cleanup<'l, R>,
 }
-type ExecutionResult<'l, 'n, 'o, 'w> =
-    Result<ExecutedVolume<'n, 'o, 'w>, Box<ExecutionFailure<'l, 'n, 'o, 'w>>>;
-type TeardownResult<'l, 'n, 'o, 'w> = Result<
-    TeardownCompletion<Volume<'n, 'o, 'w, Mounted>>,
-    Box<TeardownFailure<'l, Volume<'n, 'o, 'w, Mounted>>>,
->;
+type ExecutionResult<'l, R> = Result<ExecutedStorage<R>, Box<StorageExecutionFailure<'l, R>>>;
+type TeardownResult<'l, R> = Result<TeardownCompletion<R>, Box<TeardownFailure<'l, R>>>;
 
-impl<'l, 'n, 'o, 'w> ExecutionFailure<'l, 'n, 'o, 'w> {
+impl<'l, R: ExecutionStorage> StorageExecutionFailure<'l, R> {
     pub fn outcome(&self) -> &ExecutionOutcome {
         &self.outcome
     }
     pub fn cleanup_error(&self) -> Option<&FailureDiagnostics> {
         match &self.cleanup {
             Cleanup::Teardown(failure) => Some(failure.diagnostics()),
-            Cleanup::Finalization(failure) => Some(failure.diagnostics()),
+            Cleanup::Finalization(failure) => Some(R::finalization_diagnostics(failure)),
             Cleanup::Complete(_) => None,
         }
     }
     /// A completed cleanup still cannot turn a failed command into success.
-    pub fn retry_cleanup(self) -> ExecutionResult<'l, 'n, 'o, 'w> {
+    pub fn retry_cleanup(self) -> ExecutionResult<'l, R> {
         match self.cleanup {
             Cleanup::Teardown(failure) => Self::after_teardown(self.outcome, failure.retry()),
             Cleanup::Finalization(failure) => {
-                Self::after_finalization(self.outcome, failure.retry())
+                Self::after_finalization(self.outcome, R::retry_finalization(failure))
             }
             Cleanup::Complete(volume) => Self::accept(self.outcome, volume),
         }
     }
     /// Only rejected, fully finalized storage can be recovered from failure.
     /// This does not manufacture an ExecutedVolume receipt.
-    pub fn into_rejected_volume(
-        self,
-    ) -> Result<(ExecutionOutcome, Volume<'n, 'o, 'w, Unmounted>), Box<Self>> {
+    pub fn into_rejected_storage(self) -> Result<(ExecutionOutcome, R::Unmounted), Box<Self>> {
         match self.cleanup {
-            Cleanup::Complete(volume) => Ok((self.outcome, volume.into_parts().2)),
+            Cleanup::Complete(volume) => Ok((self.outcome, R::finalized_parts(volume).1)),
             _ => Err(Box::new(self)),
         }
     }
     fn after_teardown(
         outcome: ExecutionOutcome,
-        result: TeardownResult<'l, 'n, 'o, 'w>,
-    ) -> ExecutionResult<'l, 'n, 'o, 'w> {
+        result: TeardownResult<'l, R>,
+    ) -> ExecutionResult<'l, R> {
         match result {
-            Ok(completion) => Self::after_finalization(outcome, completion.unmount()),
+            Ok(completion) => Self::after_finalization(outcome, R::finalize(completion)),
             Err(failure) => Err(Box::new(Self {
                 outcome,
                 cleanup: Cleanup::Teardown(failure),
@@ -116,8 +112,8 @@ impl<'l, 'n, 'o, 'w> ExecutionFailure<'l, 'n, 'o, 'w> {
     }
     fn after_finalization(
         outcome: ExecutionOutcome,
-        result: Result<FinalizedVolume<'n, 'o, 'w>, Box<FinalizationFailure<'n, 'o, 'w>>>,
-    ) -> ExecutionResult<'l, 'n, 'o, 'w> {
+        result: Result<R::Finalized, R::FinalizationFailure>,
+    ) -> ExecutionResult<'l, R> {
         match result {
             Ok(volume) => Self::accept(outcome, volume),
             Err(failure) => Err(Box::new(Self {
@@ -126,13 +122,10 @@ impl<'l, 'n, 'o, 'w> ExecutionFailure<'l, 'n, 'o, 'w> {
             })),
         }
     }
-    fn accept(
-        outcome: ExecutionOutcome,
-        volume: FinalizedVolume<'n, 'o, 'w>,
-    ) -> ExecutionResult<'l, 'n, 'o, 'w> {
+    fn accept(outcome: ExecutionOutcome, volume: R::Finalized) -> ExecutionResult<'l, R> {
         if outcome.success() {
-            let (_, reaped, volume) = volume.into_parts();
-            Ok(ExecutedVolume { volume, reaped })
+            let (reaped, volume) = R::finalized_parts(volume);
+            Ok(ExecutedStorage { volume, reaped })
         } else {
             Err(Box::new(Self {
                 outcome,
@@ -141,7 +134,7 @@ impl<'l, 'n, 'o, 'w> ExecutionFailure<'l, 'n, 'o, 'w> {
         }
     }
 }
-impl<'l, 'n, 'o, 'w> Step<'l, Ready, Volume<'n, 'o, 'w, Mounted>> {
+impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
     /// Transfer this step's assigned volume, require restricted-leaf readiness,
     /// start under the recipe timeout, observe completion and finalize storage.
     /// Every failure after launch performs bounded cleanup before returning.
@@ -150,12 +143,12 @@ impl<'l, 'n, 'o, 'w> Step<'l, Ready, Volume<'n, 'o, 'w, Mounted>> {
         budget: SetupBudget,
         timeout: CommandTimeout,
         domain_parent: &Path,
-    ) -> ExecutionResult<'l, 'n, 'o, 'w> {
+    ) -> ExecutionResult<'l, R> {
         if let Err(error) = budget
             .check()
-            .and_then(|()| self.send_volume_until(budget.deadline()))
+            .and_then(|()| R::send(&self, budget.deadline()))
         {
-            return ExecutionFailure::after_teardown(
+            return StorageExecutionFailure::after_teardown(
                 ExecutionOutcome::SetupFailed(error),
                 self.teardown(domain_parent),
             );
@@ -164,7 +157,7 @@ impl<'l, 'n, 'o, 'w> Step<'l, Ready, Volume<'n, 'o, 'w, Mounted>> {
             Ok(prepared) => prepared,
             Err(failure) => {
                 let (error, step) = failure.into_parts();
-                return ExecutionFailure::after_teardown(
+                return StorageExecutionFailure::after_teardown(
                     ExecutionOutcome::SetupFailed(error),
                     step.teardown(domain_parent),
                 );
@@ -187,13 +180,41 @@ impl<'l, 'n, 'o, 'w> Step<'l, Ready, Volume<'n, 'o, 'w, Mounted>> {
                         (source, command.teardown(domain_parent))
                     }
                 };
-                return ExecutionFailure::after_teardown(
+                return StorageExecutionFailure::after_teardown(
                     ExecutionOutcome::SetupFailed(error),
                     cleanup,
                 );
             }
         };
         let (outcome, cleanup) = command.observe().teardown(domain_parent).into_parts();
-        ExecutionFailure::after_teardown(ExecutionOutcome::Command(outcome), cleanup)
+        StorageExecutionFailure::after_teardown(ExecutionOutcome::Command(outcome), cleanup)
+    }
+}
+
+/// Successful single-volume execution, retaining the concrete storage type.
+pub type ExecutedVolume<'n, 'o, 'w> = ExecutedStorage<Volume<'n, 'o, 'w, Mounted>>;
+pub type ExecutionFailure<'l, 'n, 'o, 'w> =
+    StorageExecutionFailure<'l, Volume<'n, 'o, 'w, Mounted>>;
+/// Successful bootstrap execution; both tool and output were finalized.
+///
+/// ```compile_fail
+/// use conglobate::{step::ExecutedBootstrap, storage::{BootstrapVolumes, Unmounted}};
+/// fn cannot_forge_bootstrap_receipt(volume: BootstrapVolumes<'_, '_, '_, Unmounted>, reaped: conglobate::process::ReapedChildren) {
+///     let _ = ExecutedBootstrap { volume, reaped };
+/// }
+/// ```
+pub type ExecutedBootstrap<'n, 'o, 'w> = ExecutedStorage<BootstrapVolumes<'n, 'o, 'w, Mounted>>;
+pub type BootstrapExecutionFailure<'l, 'n, 'o, 'w> =
+    StorageExecutionFailure<'l, BootstrapVolumes<'n, 'o, 'w, Mounted>>;
+impl<'n, 'o, 'w> ExecutedVolume<'n, 'o, 'w> {
+    pub fn into_volume(self) -> Volume<'n, 'o, 'w, Unmounted> {
+        self.into_storage()
+    }
+}
+impl<'l, 'n, 'o, 'w> ExecutionFailure<'l, 'n, 'o, 'w> {
+    pub fn into_rejected_volume(
+        self,
+    ) -> Result<(ExecutionOutcome, Volume<'n, 'o, 'w, Unmounted>), Box<Self>> {
+        self.into_rejected_storage()
     }
 }

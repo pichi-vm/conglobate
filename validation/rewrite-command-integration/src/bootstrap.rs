@@ -23,6 +23,7 @@ impl BootstrapProbe {
         workspace: &'w Workspace,
     ) -> Result<Option<conglobate::storage::SealedScute<'w>>, Box<dyn std::error::Error>> {
         let failure_mode = std::env::var("BOOTSTRAP_FAILURE").ok();
+        let command_mode = std::env::var("BOOTSTRAP_COMMAND_FAILURE").ok();
         let records = Path::new("/work/bootstrap-records");
         fs::create_dir(records)?;
         fs::set_permissions(records, fs::Permissions::from_mode(0o700))?;
@@ -60,7 +61,10 @@ impl BootstrapProbe {
         let (tool_store, tool_pin) = crate::sealed::FixtureCache::import(
             &Path::new("/work").join(format!(
                 "tool-cache-{}",
-                failure_mode.as_deref().unwrap_or("success")
+                failure_mode
+                    .as_deref()
+                    .or(command_mode.as_deref())
+                    .unwrap_or("success")
             )),
             &tool,
         )?;
@@ -164,6 +168,121 @@ impl BootstrapProbe {
             IdRange::new(100000, 65536)?,
             IdRange::new(100000, 65536)?,
         );
+        if let Some(mode) = command_mode.as_deref() {
+            let budget = SetupBudget::begin();
+            let script = match mode {
+                "timeout" => "echo partial > /mnt/state; while :; do :; done",
+                "success-busy" => "echo output > /mnt/state; echo tool > /tool-state",
+                _ => "echo partial > /mnt/state; echo partial > /tool-state; exit 17",
+            };
+            let receiver = sandbox.receiver(script.into(), &budget)?;
+            let preparation = sandbox
+                .prepare_bootstrap(BootstrapVolumes::new(tool, output), reaper, &budget)
+                .map_err(|e| e.to_string())?;
+            let holder = if mode.ends_with("busy") {
+                // Fixture-only open handle deterministically makes output unmount busy.
+                let point = fs::read_dir("/work")?
+                    .find_map(|entry| {
+                        let entry = entry.ok()?;
+                        (entry
+                            .file_name()
+                            .as_encoded_bytes()
+                            .starts_with(b"conglobate-volume-")
+                            && !entry.path().join("bin").exists())
+                        .then(|| entry.path())
+                    })
+                    .ok_or("missing bootstrap output mount")?;
+                Some(fs::File::open(point)?)
+            } else {
+                None
+            };
+            let step = preparation
+                .launch(receiver, budget.deadline(), parent)
+                .map_err(|e| e.to_string())?;
+            let failure = step
+                .execute(
+                    budget,
+                    if mode == "timeout" { "100ms" } else { "5s" }.parse()?,
+                    parent,
+                )
+                .unwrap_err();
+            match (mode, failure.outcome()) {
+                (
+                    "timeout",
+                    conglobate::step::ExecutionOutcome::Command(
+                        conglobate::step::CommandOutcome::ObservationFailed(error),
+                    ),
+                ) => {
+                    assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+                }
+                (
+                    "success-busy",
+                    conglobate::step::ExecutionOutcome::Command(
+                        conglobate::step::CommandOutcome::Exited(status),
+                    ),
+                ) => assert!(status.success()),
+                (
+                    _,
+                    conglobate::step::ExecutionOutcome::Command(
+                        conglobate::step::CommandOutcome::Exited(status),
+                    ),
+                ) => assert_eq!(status.code(), Some(17)),
+                (_, outcome) => panic!("unexpected bootstrap outcome: {outcome:?}"),
+            }
+            let before = format!("{:?}", failure.outcome());
+            let failure = if holder.is_some() {
+                assert_eq!(
+                    failure.cleanup_error().unwrap().latest().raw_os_error(),
+                    Some(16)
+                );
+                let failure = failure.into_rejected_storage().unwrap_err();
+                let failure = failure.retry_cleanup().unwrap_err();
+                assert_eq!(format!("{:?}", failure.outcome()), before);
+                drop(holder);
+                failure
+            } else {
+                assert!(failure.cleanup_error().is_none());
+                failure
+            };
+            let volumes = if mode == "success-busy" {
+                failure
+                    .retry_cleanup()
+                    .map_err(|e| e.to_string())?
+                    .into_storage()
+            } else {
+                let failure = failure.retry_cleanup().unwrap_err();
+                assert_eq!(format!("{:?}", failure.outcome()), before);
+                assert!(failure.cleanup_error().is_none());
+                let (_, volumes) = failure.into_rejected_storage().map_err(|e| e.to_string())?;
+                volumes
+            };
+            let (tool, output) = volumes.into_parts();
+            tool.into_snapshot()
+                .close()
+                .map_err(|e| e.to_string())?
+                .detach()
+                .map_err(|e| e.to_string())?;
+            output
+                .into_snapshot()
+                .close()
+                .map_err(|e| e.to_string())?
+                .detach()
+                .map_err(|e| e.to_string())?;
+            active_tool.close().map_err(|e| e.to_string())?;
+            assert_eq!(fs::read_dir(records)?.count(), 0);
+            assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
+            assert!(!fs::read_dir("/work")?.any(|entry| {
+                entry
+                    .unwrap()
+                    .file_name()
+                    .as_encoded_bytes()
+                    .starts_with(b"conglobate-volume-")
+            }));
+            drop(lease);
+            fs::remove_dir(records)?;
+            println!("BOOTSTRAP_EXECUTION_{}_PASS", mode.to_uppercase());
+            return Ok(None);
+        }
         for index in 0..2 {
             let budget = SetupBudget::begin();
             let script = if index == 0 {
@@ -178,27 +297,12 @@ impl BootstrapProbe {
             let step = preparation
                 .launch(receiver, budget.deadline(), parent)
                 .map_err(|e| e.to_string())?;
-            step.send_bootstrap_until(budget.deadline())?;
-            let prepared = match budget.await_prepared(step) {
-                Ok(prepared) => prepared,
-                Err(failure) => {
-                    let (error, step) = failure.into_parts();
-                    eprintln!("dual bootstrap readiness: {error}");
-                    let teardown = step.teardown(parent).map_err(|e| e.to_string())?;
-                    let _ = teardown.unmount().map_err(|e| e.to_string())?;
-                    return Err(error.into());
-                }
-            };
-            let command = prepared.start("5s".parse()?).map_err(|e| e.to_string())?;
-            let (outcome, teardown) = command.observe().teardown(parent).into_parts();
-            let finalized = teardown
-                .map_err(|e| e.to_string())?
-                .unmount()
+            let executed = step
+                .execute(budget, "5s".parse()?, parent)
                 .map_err(|e| e.to_string())?;
-            assert!(outcome.success(), "{outcome:?}");
-            let (_, reaped, volumes) = finalized.into_parts();
+            let (volumes, next_reaper) = executed.into_parts();
             (tool, output) = volumes.into_parts();
-            reaper = reaped.into_reaper();
+            reaper = next_reaper;
             assert_eq!(fs::read_dir(records)?.count(), 0);
             assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
         }

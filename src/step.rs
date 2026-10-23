@@ -14,7 +14,10 @@ use std::{
 };
 
 mod execution;
-pub use execution::{ExecutedVolume, ExecutionFailure, ExecutionOutcome};
+pub use execution::{
+    BootstrapExecutionFailure, ExecutedBootstrap, ExecutedStorage, ExecutedVolume,
+    ExecutionFailure, ExecutionOutcome, ExecutionStorage, StorageExecutionFailure,
+};
 mod preparation;
 pub use preparation::{
     BootstrapPreparation, BootstrapPreparationFailure, CommandPreparation, CommandSandbox,

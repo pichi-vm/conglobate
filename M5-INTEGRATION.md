@@ -3,8 +3,8 @@
 M4 is accepted with three clean self-review passes. M5 is active with zero clean
 passes. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
 The integrated VM fixture now demonstrates a verified tool chain, dual-root
-commands through production aggregate preparation, direct output sealing and
-verified reopening. Production execution acceptance, remaining failure
+commands through production aggregate preparation and execution acceptance,
+direct output sealing and verified reopening. Remaining failure/metadata
 qualification and the review gate remain.
 This file records implementation order, not a substitute design or acceptance.
 
@@ -277,3 +277,31 @@ Execution acceptance is still assembled by the fixture; it must become a
 production receipt tied to the pair's own command outcome and finalization.
 Remaining formatter cancellation/exhaustion and metadata qualification, plus
 three full adherence passes, are still required. No M5 acceptance is claimed.
+
+
+## Production execution acceptance for both volumes (v179–v180)
+
+Step::execute now shares one acceptance path for single-volume and bootstrap
+storage through sealed ExecutionStorage implementations. ExecutedBootstrap is
+an immutable success receipt created only after the command's successful exit,
+descendant quiescence, policy/pin cleanup, both filesystem unmounts and both
+snapshot health checks under the original teardown cutoff. StorageExecutionFailure
+retains the same primary outcome and concrete cleanup owner across retries.
+Rejected storage cannot be extracted before finalization, and a completed cleanup
+cannot convert a nonzero exit or timeout into success. Existing single-volume
+names remain concrete aliases; no separate bootstrap acceptance state machine.
+
+The fixture's two successful commands now use production prepare/launch/execute,
+then seal and reopen the output. Four separate cases prove exit 17 rejection,
+100ms command timeout rejection, retained nonzero outcome through busy-output
+cleanup retries, and successful receipt issuance only after a busy-output handle
+is released and finalization succeeds. v179 rejected an invalid timeout fixture
+that assumed /bin/sleep existed; v180 uses shell builtins and passes the entire
+normal VM suite. No timing sleep is used for synchronization.
+
+All 56 library tests and 49 doctests pass; root and fixture strict Clippy pass.
+Post-run doctest-only edits strengthen receipt-construction checks to provide
+all fields, ensuring privacy is the reason compilation fails. Exact booted
+source and the post-run doctest source are separately preserved. Remaining
+formatter cancellation/exhaustion and metadata qualification and three full
+adherence passes remain; M5 is not accepted.

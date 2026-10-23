@@ -2813,3 +2813,18 @@ rules rather than silently shrinking acceptance criteria.
   reopening; 56 library tests, 48 doctests and strict Clippy pass. Both run
   records are preserved. Production execution acceptance and remaining failure
   qualification/reviews remain; M5 clean streak is zero.
+
+
+### M5 production bootstrap execution acceptance (v179–v180)
+
+- Generalized the existing execution acceptance path over sealed storage layouts.
+  Bootstrap commands now receive a success receipt only after their own successful
+  exit and finalization of both filesystems/snapshots. Cleanup failures retain the
+  command outcome; rejected storage remains inaccessible until cleanup completes.
+- Converted the two-command bootstrap fixture to production execute. Verified
+  exit 17, timeout, nonzero-plus-busy and success-plus-busy outcomes and retries.
+  v179 caught a nonexistent timeout-fixture executable; v180 uses shell builtins
+  and passes the complete normal VM suite, sealing and reopening included.
+- 56 library tests, 49 doctests and strict Clippy pass. Exact failed/successful
+  evidence and post-run strengthened doctest source preserved. Remaining M5
+  failure/metadata qualification and all three adherence passes stay outstanding.
