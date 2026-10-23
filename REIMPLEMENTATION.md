@@ -5813,3 +5813,15 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   batches, resetting error positions to zero. Recorded source and required
   regression in that report. Full adherence remains NEEDS WORK, M4–M6 at 0/3;
   qualification and retirement remain incomplete.
+
+### Stage-relative diagnostic regression completed
+
+- Carapace now supplies its stage-relative index when consuming a failed
+  one-directive batch. Bootstrap/firmware retain their batch positions. Cleanup
+  ownership, order and deadlines are unchanged.
+- 150 library tests and strict Clippy passed. Maintained two-command VM regression
+  passed: first command completed, second failure reports directive 1, cleanup
+  completion is reported, and no artifact exported. All 170 compared archived
+  sources match. Evidence: preservation/m7-review/directive-index/.
+- Initial verifier invocation occurred while the VM was still running; its
+  premature assessment is preserved separately. No milestone pass claimed.

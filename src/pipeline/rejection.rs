@@ -41,18 +41,31 @@ impl<R: DirectiveStorage> StageFailure<'_, R> {
     where
         R::Unmounted: DiscardStorage,
     {
+        let index = match &self {
+            Self::Before { index, .. }
+            | Self::Preparation { index, .. }
+            | Self::Copy { index, .. }
+            | Self::Execution { index, .. }
+            | Self::NetworkSetup { index, .. }
+            | Self::NetworkExecution { index, .. } => *index,
+        };
+        self.reject_at(index)
+    }
+
+    /// Reject a one-directive batch at its position in the containing stage.
+    pub(super) fn reject_at(self, index: usize) -> BuildError
+    where
+        R::Unmounted: DiscardStorage,
+    {
         match self {
             StageFailure::Before {
-                index,
-                source,
-                storage,
-                ..
+                source, storage, ..
             } => BuildError::Directive {
                 index,
                 source: Box::new(BuildError::Io(source)),
             }
             .with_cleanup(storage.discard()),
-            StageFailure::Preparation { index, failure } => match failure.rollback() {
+            StageFailure::Preparation { failure, .. } => match failure.rollback() {
                 Ok(done) => {
                     let (history, storage) = done.into_parts();
                     BuildError::Preparation(history)
@@ -63,7 +76,7 @@ impl<R: DirectiveStorage> StageFailure<'_, R> {
                     BuildError::Preparation(failure.diagnostics().clone()).at_directive(index)
                 }
             },
-            StageFailure::Copy { index, failure } => match failure
+            StageFailure::Copy { failure, .. } => match failure
                 .retry_cleanup()
                 .into_rejected_storage()
             {
@@ -72,14 +85,14 @@ impl<R: DirectiveStorage> StageFailure<'_, R> {
                     .with_cleanup(storage.discard()),
                 Err(failure) => BuildError::Copy(failure.diagnostics().clone()).at_directive(index),
             },
-            StageFailure::Execution { index, failure } => failure.reject_command(index),
-            StageFailure::NetworkSetup { index, failure } => match failure.retry_cleanup() {
+            StageFailure::Execution { failure, .. } => failure.reject_command(index),
+            StageFailure::NetworkSetup { failure, .. } => match failure.retry_cleanup() {
                 Ok(failure) => failure.reject_command(index),
                 Err(failure) => {
                     BuildError::NetworkSetup(failure.diagnostics().clone()).at_directive(index)
                 }
             },
-            StageFailure::NetworkExecution { index, failure } => failure.reject_command(index),
+            StageFailure::NetworkExecution { failure, .. } => failure.reject_command(index),
         }
     }
 }

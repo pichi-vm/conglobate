@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+carapace:
+  from: qualification.local/fedora:43
+  derive:
+    - run: printf 'FIRST_DIRECTIVE_COMPLETE\n'
+    - run: exit 7

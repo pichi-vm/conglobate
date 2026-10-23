@@ -136,7 +136,7 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
             IdRange::new(100000, 65536)?,
             IdRange::new(100000, 65536)?,
         );
-        for directive in directives {
+        for (index, directive) in directives.iter().enumerate() {
             let scratch = workspace.snapshot_store()?;
             let snapshot = Mapping::<Created>::create()?
                 .snapshot(
@@ -161,7 +161,7 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
                     None,
                     networking.as_ref(),
                 )
-                .map_err(|failure| (*failure).reject())?;
+                .map_err(|failure| (*failure).reject_at(index))?;
             let (volume, returned_reaper) = completed.into_parts();
             reaper = returned_reaper;
             let scute = Arc::new(
