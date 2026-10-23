@@ -202,3 +202,36 @@ API visibility review remains required; the public CLI/build coordinator and
 earlier acquisition aggregate are still absent. Other fixture cases remain
 deliberately decomposed for fault injection and inspection. M4 has no clean
 adherence pass yet.
+
+### Production policy installation and rollback (v136 onward)
+
+PolicyInstallation owns namespace/filesystem pins while constructing the
+embedded policy, loading it disabled, creating its protected pin directory,
+attaching/pinning guards and binding the identities. Acquisitions check the
+original setup cutoff before proceeding and after returning. Installation
+requires the supervisor's initial user namespace; the trusted storage path
+must still establish that it created the assigned superblocks there.
+
+CommandPreparation::install incorporates installation failure into the existing
+domain/descendant/policy/pin/storage rollback owner. Partial disabled attachments
+and failed binding retain their policy resources and identity pins until
+explicit cleanup. A late successful binding likewise returns cleanup-only
+ownership. No failure returns an executable preparation.
+
+Ordinary fixture cases now use production installation; the success fixture
+case retains independent malformed-bind/descriptor-exhaustion probes. v136
+passes the normal suite and a missing-policy-parent failure after object load.
+The failure keeps ENOENT through a forced EBUSY unmount/retry, verifies domain and
+identity records disappear before storage release, and closes the writable
+snapshot normally. This does not independently exercise every partial attach
+or late-binding error in the new aggregate.
+
+Namespace creation/pinning, filesystem mount/pinning and recorded-domain
+creation still precede CommandPreparation. In particular, domain publication
+failure may leave a complete record and must be reconciled under its retained
+lease, rather than discarded through a string error. These remain I4 work.
+No full M4 adherence pass is claimed.
+
+- v137 supervisor-death regression passes through production policy installation.
+  Its source/artifact hashes and independent-controller shutdown evidence are
+  preserved; this does not constitute a full adherence or qualification pass.

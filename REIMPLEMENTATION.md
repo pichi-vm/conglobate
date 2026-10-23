@@ -2494,3 +2494,27 @@ rules rather than silently shrinking acceptance criteria.
   the three M4 adherence passes remain outstanding. No milestone advancement
   is claimed. The next integration boundary is namespace/mount/policy/domain
   acquisition before CommandPreparation.
+
+### M4 production policy acquisition (v136 onward)
+
+- Added identity-owning PolicyInstallation for embedded-object load, disabled
+  attachment/pinning and identity binding. It checks the original setup cutoff
+  around acquisitions and rejects a supervisor outside the initial user
+  namespace. Trusted storage construction still establishes superblock owner
+  provenance; stat alone cannot prove it.
+- CommandPreparation::install now retains installation failures together with
+  the domain, reaper and mounted volume. Rollback removes disabled policy before
+  identity pins and storage; partial attachments and late binding have typed
+  cleanup owners rather than string-only propagation.
+- v136 normal suite passes with ordinary commands using production installation.
+  A missing policy parent preserves ENOENT through domain/pin cleanup and a
+  forced EBUSY unmount/retry. Host tests, root/fixture Clippy and source/artifact
+  hashes pass. Initial large-enum Clippy failure is preserved.
+- This moves the policy acquisition boundary into production. Namespace/mount/
+  filesystem-pin acquisition and domain creation/publication remain outside it.
+  Partial attachment/late-binding aggregate faults still need coverage review.
+  M4 clean streak stays zero; no milestone advancement is claimed.
+
+- v137 supervisor-death regression passes through production policy installation.
+  Its source/artifact hashes and independent-controller shutdown evidence are
+  preserved; this does not constitute a full adherence or qualification pass.

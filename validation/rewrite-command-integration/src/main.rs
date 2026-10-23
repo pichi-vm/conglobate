@@ -256,6 +256,7 @@ impl Integration {
                     "volume-supervisor-execute-failure" => "execute-shell-failure",
                     "volume-supervisor-execute-timeout" => "execute-timeout",
                     "volume-supervisor-execute-setup" => "execute-setup",
+                    "volume-supervisor-install-failure" => "install-failure",
                     "volume-supervisor-timeout" => "timeout",
                     "volume-supervisor-failure" => "shell-failure",
                     "volume-supervisor-pre-admission" => "pre-admission",
@@ -289,9 +290,67 @@ impl Integration {
                     None
                 };
                 let reaper = ChildReaper::install()?;
-                let policy = PolicyFixture::prepare(&lease, user, pin.expect("init volume pin"))?;
                 let parent = Path::new("/work/cgroups");
                 let domain = RecordedDomain::create(&lease, parent)?;
+                let pin = pin.expect("init volume pin");
+                let preparation = if mode == "success" {
+                    // Keep the independent malformed-bind probes in this fixture case.
+                    conglobate::step::CommandPreparation::new(
+                        PolicyFixture::prepare(&lease, user, pin)?,
+                        volume,
+                        domain,
+                        reaper,
+                    )
+                } else {
+                    let pin_parent = if mode == "install-failure" {
+                        Path::new("/nonexistent-policy-parent")
+                    } else {
+                        Path::new("/work/pins")
+                    };
+                    let installation =
+                        conglobate::policy::PolicyInstallation::new(user, vec![pin], pin_parent);
+                    let result = conglobate::step::CommandPreparation::install(
+                        installation,
+                        volume,
+                        domain,
+                        reaper,
+                        &setup_budget,
+                        parent,
+                    );
+                    if mode == "install-failure" {
+                        let failure = result.unwrap_err();
+                        assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(2));
+                        assert_eq!(fs::read_dir(recovery)?.count(), 3);
+                        let holder = fs::File::open(point)?;
+                        let failure = failure.rollback().unwrap_err();
+                        assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(2));
+                        assert_eq!(
+                            failure.diagnostics().latest().kind(),
+                            std::io::ErrorKind::ResourceBusy
+                        );
+                        assert_eq!(fs::read_dir(recovery)?.count(), 0);
+                        assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
+                        drop(holder);
+                        let (diagnostics, volume) =
+                            failure.rollback().map_err(|e| e.to_string())?.into_parts();
+                        assert_eq!(diagnostics.operation().raw_os_error(), Some(2));
+                        assert_eq!(diagnostics.cleanup().len(), 1);
+                        assert!(points()?.is_empty());
+                        volume
+                            .into_snapshot()
+                            .close()
+                            .map_err(|e| e.to_string())?
+                            .detach()
+                            .map_err(|e| e.to_string())?;
+                        origin.close()?;
+                        drop(lease);
+                        fs::remove_dir(recovery)?;
+                        fs::remove_file(node)?;
+                        println!("POLICY_INSTALLATION_FAILURE_ROLLBACK_PASS");
+                        return Ok(());
+                    }
+                    result.map_err(|e| e.to_string())?
+                };
                 if matches!(
                     mode,
                     "launch-failure" | "exchange-failure" | "registration-failure"
@@ -307,8 +366,6 @@ impl Integration {
                         command.args(["-c", "exit 0"]).env_clear();
                         command
                     };
-                    let preparation =
-                        conglobate::step::CommandPreparation::new(policy, volume, domain, reaper);
                     let failure = preparation
                         .launch(command, setup_budget.deadline(), parent)
                         .unwrap_err();
@@ -392,10 +449,9 @@ impl Integration {
                     )?
                 };
                 let deadline = setup_budget.deadline();
-                let step =
-                    conglobate::step::CommandPreparation::new(policy, volume, domain, reaper)
-                        .launch(command, deadline, parent)
-                        .map_err(|e| e.to_string())?;
+                let step = preparation
+                    .launch(command, deadline, parent)
+                    .map_err(|e| e.to_string())?;
                 if mode.starts_with("execute-") {
                     use conglobate::step::{CommandOutcome, ExecutionOutcome};
                     // Force finalization failure, then prove that receipt creation

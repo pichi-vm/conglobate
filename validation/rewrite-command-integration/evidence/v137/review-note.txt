@@ -1,0 +1,1 @@
+Supervisor-death regression passes with production policy installation. Independent controller verifies command domain, active policy and filesystem pin remain until VM shutdown. Full M4 remains unqualified.

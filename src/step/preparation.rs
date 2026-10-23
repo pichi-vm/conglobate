@@ -4,7 +4,7 @@
 use super::{Ready, Retained, Step, pins::PinCleanup, teardown::Deadline};
 use crate::{
     domain::{DomainCancellation, DomainRecordCleanup, HelperLaunchFailure, RecordedDomain},
-    policy::{BoundCleanup, BoundDisabled, LabelPolicy},
+    policy::{BoundCleanup, BoundDisabled, InstallationFailure, LabelPolicy, PolicyInstallation},
     process::{ChildReaper, Identified, LaunchFailure, Process, Running},
     storage::{FailureDiagnostics, Mounted, Unmounted, Volume, VolumeUnmountFailure},
 };
@@ -17,19 +17,54 @@ use std::{
 };
 
 #[derive(Debug)]
+enum PolicyAssignment {
+    Bound(Box<ManuallyDrop<LabelPolicy<BoundDisabled>>>),
+    Failed(ManuallyDrop<Box<InstallationFailure>>),
+}
+#[derive(Debug)]
 struct Assigned<'n, 'o, 'w> {
-    policy: ManuallyDrop<LabelPolicy<BoundDisabled>>,
+    policy: PolicyAssignment,
     volume: Retained<Volume<'n, 'o, 'w, Mounted>>,
 }
 /// Bound policy, pinned identities and mounted storage stay together even if
 /// helper startup fails before registration. The reaper must already be installed.
 #[derive(Debug)]
 pub struct CommandPreparation<'l, 'n, 'o, 'w> {
-    assigned: Assigned<'n, 'o, 'w>,
+    policy: ManuallyDrop<LabelPolicy<BoundDisabled>>,
+    volume: Retained<Volume<'n, 'o, 'w, Mounted>>,
     domain: RecordedDomain<'l>,
     reaper: ChildReaper,
 }
 impl<'l, 'n, 'o, 'w> CommandPreparation<'l, 'n, 'o, 'w> {
+    pub fn install(
+        installation: PolicyInstallation,
+        volume: Volume<'n, 'o, 'w, Mounted>,
+        domain: RecordedDomain<'l>,
+        reaper: ChildReaper,
+        budget: &super::SetupBudget,
+        domain_parent: &Path,
+    ) -> Result<Self, Box<PreparationFailure<'l, 'n, 'o, 'w>>> {
+        match installation.install(budget.deadline()) {
+            Ok(policy) => Ok(Self::new(policy, volume, domain, reaper)),
+            Err(failure) => {
+                let diagnostics = failure.diagnostics().latest_only();
+                Err(Box::new(PreparationFailure {
+                    diagnostics,
+                    phase: Phase::Domain(
+                        domain.cancellation(),
+                        reaper,
+                        Assigned {
+                            policy: PolicyAssignment::Failed(ManuallyDrop::new(failure)),
+                            volume: Retained::new(volume),
+                        },
+                    ),
+                    parent: domain_parent.to_owned(),
+                    deadline: Instant::now() + Duration::from_secs(30),
+                }))
+            }
+        }
+    }
+
     pub fn new(
         policy: LabelPolicy<BoundDisabled>,
         volume: Volume<'n, 'o, 'w, Mounted>,
@@ -37,10 +72,8 @@ impl<'l, 'n, 'o, 'w> CommandPreparation<'l, 'n, 'o, 'w> {
         reaper: ChildReaper,
     ) -> Self {
         Self {
-            assigned: Assigned {
-                policy: ManuallyDrop::new(policy),
-                volume: Retained::new(volume),
-            },
+            policy: ManuallyDrop::new(policy),
+            volume: Retained::new(volume),
             domain,
             reaper,
         }
@@ -53,16 +86,19 @@ impl<'l, 'n, 'o, 'w> CommandPreparation<'l, 'n, 'o, 'w> {
     ) -> Result<Step<'l, Ready, Volume<'n, 'o, 'w, Mounted>>, Box<PreparationFailure<'l, 'n, 'o, 'w>>>
     {
         let Self {
-            assigned,
+            policy,
+            volume,
             domain,
             reaper,
         } = self;
         match domain.launch(command, setup_deadline) {
-            Ok(helper) => Ok(
-                Step::new(ManuallyDrop::into_inner(assigned.policy), helper, reaper)
-                    .with_volume(assigned.volume.release()),
-            ),
+            Ok(helper) => Ok(Step::new(ManuallyDrop::into_inner(policy), helper, reaper)
+                .with_volume(volume.release())),
             Err(failure) => {
+                let assigned = Assigned {
+                    policy: PolicyAssignment::Bound(Box::new(policy)),
+                    volume,
+                };
                 let (source, phase) = match *failure {
                     HelperLaunchFailure::Launch {
                         source: LaunchFailure::Before(source),
@@ -107,6 +143,10 @@ enum Phase<'l, 'n, 'o, 'w> {
     Record(DomainRecordCleanup<'l>, Assigned<'n, 'o, 'w>),
     Policy(Assigned<'n, 'o, 'w>),
     PolicyRetry(BoundCleanup, Retained<Volume<'n, 'o, 'w, Mounted>>),
+    InstallationRetry(
+        Box<InstallationFailure>,
+        Retained<Volume<'n, 'o, 'w, Mounted>>,
+    ),
     Pins(PinCleanup, Retained<Volume<'n, 'o, 'w, Mounted>>),
     Unmount(Retained<Volume<'n, 'o, 'w, Mounted>>),
     UnmountRetry(VolumeUnmountFailure<'n, 'o, 'w>),
@@ -209,15 +249,33 @@ impl<'l, 'n, 'o, 'w> PreparationFailure<'l, 'n, 'o, 'w> {
                         Err((error.into(), Phase::Record(record, assigned)))
                     }
                 },
-                Phase::Policy(assigned) => {
-                    match ManuallyDrop::into_inner(assigned.policy).close() {
-                        Ok(identities) => Ok(Phase::Pins(identities.into(), assigned.volume)),
-                        Err(failure) => {
-                            let (error, policy) = failure.into_parts();
-                            Err((error.into(), Phase::PolicyRetry(policy, assigned.volume)))
+                Phase::Policy(assigned) => match assigned.policy {
+                    PolicyAssignment::Bound(policy) => {
+                        match ManuallyDrop::into_inner(*policy).close() {
+                            Ok(identities) => Ok(Phase::Pins(identities.into(), assigned.volume)),
+                            Err(failure) => {
+                                let (error, policy) = failure.into_parts();
+                                Err((error.into(), Phase::PolicyRetry(policy, assigned.volume)))
+                            }
                         }
                     }
-                }
+                    PolicyAssignment::Failed(failure) => {
+                        match ManuallyDrop::into_inner(failure).cleanup() {
+                            Ok(identities) => Ok(Phase::Pins(identities.into(), assigned.volume)),
+                            Err(failure) => Err((
+                                failure.diagnostics().latest_only(),
+                                Phase::InstallationRetry(failure, assigned.volume),
+                            )),
+                        }
+                    }
+                },
+                Phase::InstallationRetry(failure, volume) => match failure.cleanup() {
+                    Ok(identities) => Ok(Phase::Pins(identities.into(), volume)),
+                    Err(failure) => Err((
+                        failure.diagnostics().latest_only(),
+                        Phase::InstallationRetry(failure, volume),
+                    )),
+                },
                 Phase::PolicyRetry(policy, volume) => match policy.retry() {
                     Ok(identities) => Ok(Phase::Pins(identities.into(), volume)),
                     Err(failure) => {

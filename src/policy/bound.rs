@@ -37,6 +37,22 @@ pub struct PolicyIdentities {
     filesystems: Vec<FilesystemPin>,
 }
 impl PolicyIdentities {
+    pub(super) fn new(
+        namespace: UserNamespace<PinnedNamespace>,
+        filesystems: Vec<FilesystemPin>,
+    ) -> Self {
+        Self {
+            namespace,
+            filesystems,
+        }
+    }
+    pub(super) fn namespace(&self) -> &UserNamespace<PinnedNamespace> {
+        &self.namespace
+    }
+    pub(super) fn filesystems(&self) -> &[FilesystemPin] {
+        &self.filesystems
+    }
+
     fn verify(&self, scope: &LabelScope) -> io::Result<()> {
         let expected = self
             .namespace

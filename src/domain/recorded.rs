@@ -73,7 +73,7 @@ impl<'lease> RecordCleanupFailure<'lease> {
     }
 }
 impl<'lease> RecordedDomain<'lease> {
-    pub(super) fn cancellation(self) -> DomainCancellation<'lease> {
+    pub(crate) fn cancellation(self) -> DomainCancellation<'lease> {
         DomainCancellation { domain: self }
     }
 
