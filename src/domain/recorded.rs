@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 mod setup;
-use super::{CommandDomain, DomainCreateFailure, DomainRecord, DomainRegistration};
+use super::{CommandDomain, DomainCreateFailure, DomainJoin, DomainRecord};
 use crate::anchor::RecoveryDirectory;
 pub use setup::{DomainCreationCleanupFailure, DomainCreationRollback};
 use std::{io, path::Path, time::Instant};
@@ -44,12 +44,12 @@ impl<'lease> RecordedCancelFailure<'lease> {
         (self.source, self.cancellation)
     }
 }
-/// Cancellation has begun. This owner permits cleanup retry, never registration.
+/// Cancellation has begun. This owner permits cleanup retry, never domain joining.
 ///
 /// ```compile_fail
 /// use conglobate::domain::DomainCancellation;
-/// fn cannot_register_after_cancellation(owner: DomainCancellation<'_>) {
-///     owner.registration();
+/// fn cannot_join_after_cancellation(owner: DomainCancellation<'_>) {
+///     owner.join_permit();
 /// }
 /// ```
 #[derive(Debug)]
@@ -99,8 +99,8 @@ impl<'lease> RecordedDomain<'lease> {
     pub fn record(&self) -> &DomainRecord {
         &self.record
     }
-    pub fn registration(&self) -> io::Result<DomainRegistration<'_>> {
-        self.domain.registration()
+    pub fn join_permit(&self) -> io::Result<DomainJoin<'_>> {
+        self.domain.join_permit()
     }
     /// Stop admission first. Failure retains the entire domain/record owner.
     /// Success moves to record cleanup without manufacturing a reaping receipt.

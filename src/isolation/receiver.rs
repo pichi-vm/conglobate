@@ -3,7 +3,7 @@
 use super::{CommandSetup, ExecutionGate};
 use crate::{
     filesystem::{Attached, InUse, Mount, RootLaunchFailure, RootWaitFailure},
-    process::{Admitted, Registered, Supervision},
+    process::{Admitted, Joined, Supervision},
     step::SetupCutoff,
 };
 use std::{
@@ -16,7 +16,7 @@ use std::{
 /// are exit-only in this helper; returned resources remain owned for teardown.
 #[derive(Debug)]
 pub struct CommandReceiver<'ns> {
-    channel: Supervision<Registered>,
+    channel: Supervision<Joined>,
     mount: Mount<'ns, Attached>,
     setup: CommandSetup,
 }
@@ -58,7 +58,7 @@ impl<'ns> ReceiverCompletion<'ns> {
 }
 impl<'ns> CommandReceiver<'ns> {
     pub fn new(
-        channel: Supervision<Registered>,
+        channel: Supervision<Joined>,
         mount: Mount<'ns, Attached>,
         setup: CommandSetup,
     ) -> Self {

@@ -7,7 +7,7 @@ use super::{
 use crate::{
     network::{CommandNetwork, NetworkCleanupFailure},
     policy::{BoundDisabled, LabelPolicy},
-    process::{ReapedChildren, Registered, Supervision},
+    process::{Joined, ReapedChildren, Supervision},
     storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Volume},
 };
 use std::{io, marker::PhantomData, time::Instant};
@@ -95,7 +95,7 @@ impl<R: NetworkEligibleStorage> ExecutionStorage for NetworkedStorage<R> {
     fn send(
         &self,
         policy: &LabelPolicy<BoundDisabled>,
-        channel: &Supervision<Registered>,
+        channel: &Supervision<Joined>,
         network: Option<&CommandNetwork>,
         deadline: Instant,
     ) -> io::Result<()> {

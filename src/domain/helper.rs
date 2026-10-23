@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{DomainCancellation, DomainRecordCleanup, DomainRegistration, RecordedDomain};
+use super::{DomainCancellation, DomainJoin, DomainRecordCleanup, RecordedDomain};
 use crate::process::{
-    Admitted, Identified, LaunchFailure, ObservedState, Paired, Process, Registered, Supervision,
+    Admitted, Identified, Joined, LaunchFailure, ObservedState, Paired, Process, Supervision,
     WaitError,
 };
 use std::{
@@ -12,7 +12,7 @@ use std::{
     time::Instant,
 };
 
-/// Owns a registered trusted helper, supervision channel and recorded domain.
+/// Owns a contained trusted helper, supervision channel and recorded domain.
 /// This does not configure a command sandbox or authorize recipe execution.
 ///
 /// ```compile_fail
@@ -22,7 +22,7 @@ use std::{
 /// }
 /// ```
 #[derive(Debug)]
-pub struct ContainedHelper<'lease, S: ObservedState = Registered> {
+pub struct ContainedHelper<'lease, S: ObservedState = Joined> {
     domain: RecordedDomain<'lease>,
     process: Process<Identified>,
     channel: Supervision<S>,
@@ -34,8 +34,8 @@ pub enum HelperLaunchFailure<'lease> {
         source: LaunchFailure,
         domain: DomainCancellation<'lease>,
     },
-    #[error("contained helper registration: {source}")]
-    Registration {
+    #[error("contained helper cgroup join: {source}")]
+    Join {
         source: io::Error,
         process: Process<Identified>,
         domain: DomainCancellation<'lease>,
@@ -83,7 +83,7 @@ impl<'lease> HelperReapFailure<'lease> {
         (self.source, self.reaping)
     }
 }
-/// The registered helper was reaped after domain cancellation. Its record still
+/// The joined helper was reaped after domain cancellation. Its record still
 /// needs cleanup. This is not proof that every adopted descendant was reaped.
 #[derive(Debug)]
 pub struct ReapedHelper<'lease> {
@@ -112,16 +112,13 @@ impl<'lease> RecordedDomain<'lease> {
     ) -> Result<ContainedHelper<'lease>, Box<HelperLaunchFailure<'lease>>> {
         self.finish_launch(
             Process::launch_supervised(command, deadline),
-            |channel, permit| channel.register_helper_until(permit, deadline),
+            |channel, permit| channel.join_helper_until(permit, deadline),
         )
     }
     fn finish_launch(
         self,
         launched: Result<(Process<Identified>, Supervision<Paired>), LaunchFailure>,
-        register: impl FnOnce(
-            Supervision<Paired>,
-            DomainRegistration<'_>,
-        ) -> io::Result<Supervision<Registered>>,
+        join: impl FnOnce(Supervision<Paired>, DomainJoin<'_>) -> io::Result<Supervision<Joined>>,
     ) -> Result<ContainedHelper<'lease>, Box<HelperLaunchFailure<'lease>>> {
         let (process, channel) = match launched {
             Ok(pair) => pair,
@@ -132,16 +129,14 @@ impl<'lease> RecordedDomain<'lease> {
                 }));
             }
         };
-        let registered = self
-            .registration()
-            .and_then(|permit| register(channel, permit));
-        match registered {
+        let joined = self.join_permit().and_then(|permit| join(channel, permit));
+        match joined {
             Ok(channel) => Ok(ContainedHelper {
                 domain: self,
                 process,
                 channel,
             }),
-            Err(source) => Err(Box::new(HelperLaunchFailure::Registration {
+            Err(source) => Err(Box::new(HelperLaunchFailure::Join {
                 source,
                 process,
                 domain: self.cancellation(),
@@ -153,7 +148,7 @@ impl<'lease, S: ObservedState> ContainedHelper<'lease, S> {
     pub fn supervision(&self) -> &Supervision<S> {
         &self.channel
     }
-    /// Consumes registration authority and closes the channel before requesting
+    /// Consumes domain-join authority and closes the channel before requesting
     /// subtree cancellation. Failures retain cleanup-only ownership.
     pub fn cancel_until(
         self,
@@ -240,9 +235,9 @@ impl<'lease> AdmissionFailure<'lease> {
         (self.source, self.cancellation)
     }
 }
-impl<'lease> ContainedHelper<'lease, Registered> {
-    /// Release a registered trusted helper. The enclosing step must establish
-    /// policy and isolation prerequisites before calling; registration alone
+impl<'lease> ContainedHelper<'lease, Joined> {
+    /// Release a contained trusted helper. The enclosing step must establish
+    /// policy and isolation prerequisites before calling; cgroup membership alone
     /// never authorizes image commands. Failure permits cancellation only.
     /// A failed acknowledgment may follow successful delivery: never assume
     /// admission failure proves that image execution did not start.

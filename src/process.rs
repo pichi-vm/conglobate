@@ -19,7 +19,7 @@ mod reaper;
 pub use reaper::{ChildReaper, DrainFailure, ReapedChildren};
 mod supervision;
 pub use supervision::{
-    Admitted, ObservedState, Paired, Registered, Supervision, SupervisionChild, SupervisionState,
+    Admitted, Joined, ObservedState, Paired, Supervision, SupervisionChild, SupervisionState,
     Unpaired, VolumeInput,
 };
 mod observation;

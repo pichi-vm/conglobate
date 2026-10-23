@@ -1,9 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{
-    ProcessObservation, Registered, Supervision, SupervisionState, private, registration::Packet,
-};
+use super::{Joined, ProcessObservation, Supervision, SupervisionState, joining::Packet, private};
 use std::{io, time::Instant};
 
 /// The trusted helper received the supervisor's explicit admission message.
@@ -14,7 +12,7 @@ impl private::Sealed for Admitted {}
 impl SupervisionState for Admitted {
     type Resources = ProcessObservation;
 }
-impl Supervision<Registered> {
+impl Supervision<Joined> {
     /// Trusted helper only, after its restricted leaf reports readiness.
     pub fn report_prepared_until(&self, deadline: Instant) -> io::Result<()> {
         Packet::Prepared.send(&self.socket.0, deadline)
@@ -42,7 +40,7 @@ impl Supervision<Registered> {
             peer: self.peer,
         })
     }
-    /// Dedicated trusted helper only. Wait after registration and before running
+    /// Dedicated trusted helper only. Wait after domain joining and before running
     /// any image command. EOF, malformed input or timeout closes the channel;
     /// none authorize execution. The supervisor separately cancels and reaps.
     pub fn await_admission_until(self, deadline: Instant) -> io::Result<Supervision<Admitted>> {
@@ -95,7 +93,7 @@ mod tests {
         fn deadline() -> Instant {
             Instant::now() + Duration::from_secs(5)
         }
-        fn pair() -> (Supervision<Registered>, Supervision<Registered>) {
+        fn pair() -> (Supervision<Joined>, Supervision<Joined>) {
             let (parent, child) = Supervision::pair().unwrap();
             let thread = std::thread::spawn(move || {
                 let peer = Supervision::<super::super::Unpaired> {
@@ -157,7 +155,7 @@ mod tests {
         assert!(parent.wait_prepared_until(Fixture::deadline()).is_err());
     }
     #[test]
-    fn registered_helper_waits_for_explicit_admission() {
+    fn joined_helper_waits_for_explicit_admission() {
         let (parent, helper) = Fixture::pair();
         let waiter =
             std::thread::spawn(move || helper.await_admission_until(Fixture::deadline()).unwrap());

@@ -35,7 +35,7 @@ struct Assigned<R: PreparationStorage> {
     volume: Retained<R>,
 }
 /// Bound policy, pinned identities and mounted storage stay together even if
-/// helper startup fails before registration. The reaper must already be installed.
+/// helper startup fails before cgroup joining. The reaper must already be installed.
 #[derive(Debug)]
 pub struct StoragePreparation<'l, R: PreparationStorage> {
     policy: ManuallyDrop<LabelPolicy<BoundDisabled>>,
@@ -154,7 +154,7 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
                         source: LaunchFailure::Started { source, process },
                         domain,
                     } => (source, Phase::Running(process, domain, reaper, assigned)),
-                    HelperLaunchFailure::Registration {
+                    HelperLaunchFailure::Join {
                         source,
                         process,
                         domain,

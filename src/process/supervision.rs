@@ -13,8 +13,8 @@ mod volume;
 pub use volume::VolumeInput;
 mod admission;
 pub use admission::Admitted;
-mod registration;
-pub use registration::Registered;
+mod joining;
+pub use joining::Joined;
 
 mod private {
     pub trait Sealed {}
@@ -45,10 +45,10 @@ impl Drop for ControlSocket {
     }
 }
 /// Mutual stable-identity observation between trusted supervisor/helper code.
-/// Pairing is not readiness, registration, containment or command admission.
+/// Pairing is not readiness, domain joining, containment or command admission.
 /// Neither side may expose this endpoint or its process identity to commands.
 /// Both endpoints progress Unpaired -> Paired through identity exchange, then
-/// Registered through helper registration/domain joining, and finally Admitted
+/// Joined through domain joining, and finally Admitted
 /// through the admission handshake. Each transition consumes the prior owner;
 /// paired peer observation alone never permits image-code execution.
 ///
@@ -114,7 +114,7 @@ impl Supervision<Unpaired> {
 }
 pub trait ObservedState: SupervisionState<Resources = ProcessObservation> {}
 impl ObservedState for Paired {}
-impl ObservedState for Registered {}
+impl ObservedState for Joined {}
 impl ObservedState for Admitted {}
 impl<S: ObservedState> Supervision<S> {
     pub(super) fn duplicate_observation(&self) -> io::Result<ProcessObservation> {
@@ -165,7 +165,7 @@ impl<S: ObservedState> Supervision<S> {
 
     /// Nonblocking observation. True means cancel and begin ordered teardown,
     /// never that descendants are quiescent. Errors must also fail the build.
-    /// Outside an explicit registration exchange, no messages are accepted. Invalid
+    /// Outside an explicit domain-join exchange, no messages are accepted. Invalid
     /// traffic remains queued so subsequent observations cannot report healthy.
     pub fn peer_lost(&self) -> io::Result<bool> {
         if self.peer.has_exited()? {

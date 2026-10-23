@@ -3,7 +3,7 @@
 use crate::{
     network::CommandNetwork,
     policy::{BoundDisabled, LabelPolicy},
-    process::{ReapedChildren, Registered, Supervision},
+    process::{Joined, ReapedChildren, Supervision},
     step::{
         BootstrapFinalizationFailure, FinalizationFailure, FinalizedBootstrap, FinalizedVolume,
         StorageLayout, TeardownCompletion,
@@ -21,7 +21,7 @@ pub trait ExecutionStorage: StorageLayout {
     fn send(
         &self,
         policy: &LabelPolicy<BoundDisabled>,
-        channel: &Supervision<Registered>,
+        channel: &Supervision<Joined>,
         network: Option<&CommandNetwork>,
         deadline: Instant,
     ) -> io::Result<()>;
@@ -44,7 +44,7 @@ impl<'n, 'o, 'w> ExecutionStorage for Volume<'n, 'o, 'w, Mounted> {
     fn send(
         &self,
         policy: &LabelPolicy<BoundDisabled>,
-        channel: &Supervision<Registered>,
+        channel: &Supervision<Joined>,
         network: Option<&CommandNetwork>,
         deadline: Instant,
     ) -> io::Result<()> {
@@ -86,7 +86,7 @@ impl<'n, 'o, 'w> ExecutionStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
     fn send(
         &self,
         policy: &LabelPolicy<BoundDisabled>,
-        channel: &Supervision<Registered>,
+        channel: &Supervision<Joined>,
         network: Option<&CommandNetwork>,
         deadline: Instant,
     ) -> io::Result<()> {

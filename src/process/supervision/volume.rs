@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{Registered, Supervision, registration::Packet};
+use super::{Joined, Supervision, joining::Packet};
 use crate::{
     filesystem::{Detached, Idmapped, Mount},
     isolation::{
@@ -21,8 +21,8 @@ pub struct VolumeInput {
     output: Option<File>,
     network: Option<(File, ResolverView, File)>,
 }
-impl Supervision<Registered> {
-    /// Transfer a view through the already paired and registered control channel.
+impl Supervision<Joined> {
+    /// Transfer a view through the already paired and joined control channel.
     /// The enclosing owner must retain the volume and policy identities until
     /// descendant quiescence. Sending is not permission to unmount the volume.
     pub(crate) fn send_volume_until(

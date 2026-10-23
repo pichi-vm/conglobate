@@ -3,7 +3,7 @@
 
 use super::{Paired, ProcessObservation, Supervision, SupervisionState, private};
 use crate::{
-    domain::DomainRegistration,
+    domain::DomainJoin,
     process::identity::{ExchangeWait, IdentitySocket},
 };
 use rustix::{
@@ -26,29 +26,29 @@ use std::{
 /// Trusted helper acknowledged self-placement in a command domain. This is not
 /// sandbox readiness, persisted recovery ownership or permission to run a recipe.
 #[derive(Debug)]
-pub struct Registered;
-impl private::Sealed for Registered {}
-impl SupervisionState for Registered {
+pub struct Joined;
+impl private::Sealed for Joined {}
+impl SupervisionState for Joined {
     type Resources = ProcessObservation;
 }
 
 impl Supervision<Paired> {
     /// Supervisor side. Domain ownership stays with the caller on every outcome.
-    /// A verified persisted-domain registration capability is required. Retain
+    /// A verified persisted-domain joining capability is required. Retain
     /// the separate child wait owner. Errors cancel the channel; they do not remove the domain or reap.
-    pub fn register_helper_until(
+    pub fn join_helper_until(
         self,
-        domain: DomainRegistration<'_>,
+        domain: DomainJoin<'_>,
         deadline: Instant,
-    ) -> io::Result<Supervision<Registered>> {
-        self.register_helper_with(domain, &deadline)
+    ) -> io::Result<Supervision<Joined>> {
+        self.join_helper_with(domain, &deadline)
     }
-    fn register_helper_with(
+    fn join_helper_with(
         self,
-        domain: DomainRegistration<'_>,
+        domain: DomainJoin<'_>,
         wait: &impl ExchangeWait,
-    ) -> io::Result<Supervision<Registered>> {
-        Packet::Offer(domain.registration_file()?.into()).send_with(&self.socket.0, wait)?;
+    ) -> io::Result<Supervision<Joined>> {
+        Packet::Offer(domain.join_file()?.into()).send_with(&self.socket.0, wait)?;
         match Packet::receive_with(&self.socket.0, wait)? {
             Packet::Joined => Ok(Supervision {
                 socket: self.socket,
@@ -56,14 +56,14 @@ impl Supervision<Paired> {
             }),
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "expected domain registration acknowledgment",
+                "expected domain joining acknowledgment",
             )),
         }
     }
     /// Helper side, before creating any threads or descendants. The helper writes
     /// its own membership, closes the transferred control FD, then acknowledges.
     /// The task-count check diagnoses misuse; trusted startup must prevent races.
-    pub fn join_domain_until(self, deadline: Instant) -> io::Result<Supervision<Registered>> {
+    pub fn join_domain_until(self, deadline: Instant) -> io::Result<Supervision<Joined>> {
         if fs::read_dir("/proc/self/task")?
             .collect::<Result<Vec<_>, _>>()?
             .len()
@@ -71,19 +71,19 @@ impl Supervision<Paired> {
             || rustix::process::getpid() == rustix::process::Pid::INIT
         {
             return Err(io::Error::other(
-                "domain registration requires a dedicated single-threaded helper",
+                "domain joining requires a dedicated single-threaded helper",
             ));
         }
         let Packet::Offer(descriptor) = Packet::receive(&self.socket.0, deadline)? else {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "expected domain registration descriptor",
+                "expected domain joining descriptor",
             ));
         };
         if rustix::fs::fstatfs(&descriptor)?.f_type as u64 != 0x6367_7270 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "registration descriptor is not cgroup2",
+                "joining descriptor is not cgroup2",
             ));
         }
         let mut file = File::from(descriptor);
@@ -168,7 +168,7 @@ impl Packet {
             if !descriptors.is_empty()
                 && !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors))
             {
-                return Err(io::Error::other("registration ancillary buffer too small"));
+                return Err(io::Error::other("joining ancillary buffer too small"));
             }
             match sendmsg(
                 &socket.0,
@@ -177,7 +177,7 @@ impl Packet {
                 SendFlags::DONTWAIT | SendFlags::NOSIGNAL,
             ) {
                 Ok(count) if count == bytes.len() => return Ok(()),
-                Ok(_) => return Err(io::Error::other("incomplete registration packet")),
+                Ok(_) => return Err(io::Error::other("incomplete joining packet")),
                 Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
                 Err(error) => return Err(error.into()),
             }
@@ -205,7 +205,7 @@ impl Packet {
             if result.bytes == 0 {
                 return Err(io::Error::new(
                     io::ErrorKind::UnexpectedEof,
-                    "registration peer closed",
+                    "joining peer closed",
                 ));
             }
             if result
@@ -216,7 +216,7 @@ impl Packet {
             {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
-                    "invalid registration packet",
+                    "invalid joining packet",
                 ));
             }
             let mut descriptors = Vec::new();
@@ -224,7 +224,7 @@ impl Packet {
                 let RecvAncillaryMessage::ScmRights(rights) = message else {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
-                        "unexpected registration control",
+                        "unexpected joining control",
                     ));
                 };
                 descriptors.extend(rights);
@@ -296,7 +296,7 @@ impl Packet {
                 }
                 _ => Err(io::Error::new(
                     io::ErrorKind::InvalidData,
-                    "registration opcode/descriptor mismatch",
+                    "joining opcode/descriptor mismatch",
                 )),
             };
         }
@@ -390,7 +390,7 @@ mod tests {
         );
     }
     #[test]
-    fn registration_packets_require_exact_opcode_descriptor_pairs() {
+    fn joining_packets_require_exact_opcode_descriptor_pairs() {
         let file = File::open("/dev/null").unwrap();
         for (bytes, count) in [
             (&[0x82, 1, 1][..], 0),
@@ -418,7 +418,7 @@ mod tests {
         }
     }
     #[test]
-    fn registration_packets_transfer_cloexec_ownership_and_acknowledge() {
+    fn joining_packets_transfer_cloexec_ownership_and_acknowledge() {
         let (a, b) = Fixture::pair();
         Packet::Offer(File::open("/dev/null").unwrap().into())
             .send(&a, Fixture::deadline())
@@ -556,7 +556,7 @@ mod tests {
         }
     }
     #[test]
-    fn registration_receive_is_bounded_and_rejects_peer_loss() {
+    fn joining_receive_is_bounded_and_rejects_peer_loss() {
         let (a, b) = Fixture::pair();
         assert_eq!(
             Packet::receive(&b, Instant::now() + Duration::from_millis(10))

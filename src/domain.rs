@@ -15,8 +15,8 @@ pub use recorded::{
     DomainCancellation, DomainCreationCleanupFailure, DomainCreationRollback, DomainRecordCleanup,
     RecordCleanupFailure, RecordDomainFailure, RecordedCancelFailure, RecordedDomain,
 };
-mod registration;
-pub use registration::DomainRegistration;
+mod joining;
+pub use joining::DomainJoin;
 mod record;
 pub use record::DomainRecord;
 
@@ -104,7 +104,7 @@ impl DomainTarget {
     fn path(&self) -> PathBuf {
         PathBuf::from(format!("/proc/self/fd/{}", self.parent.as_raw_fd())).join(&self.name)
     }
-    /// Only for a fresh setup failure before registration. Errors retain the
+    /// Only for a fresh setup failure before domain joining. Errors retain the
     /// target. Never recursively delete cgroup control files or child domains.
     pub fn remove(self) -> Result<(), DomainTargetFailure> {
         let result = self
@@ -118,7 +118,7 @@ impl DomainTarget {
     }
 }
 impl CommandDomain {
-    fn registration_file(&self) -> io::Result<File> {
+    fn join_file(&self) -> io::Result<File> {
         self.target.lease.verify_current()?;
         Ok(File::from(rustix::fs::openat(
             &self.root,
@@ -130,7 +130,7 @@ impl CommandDomain {
 
     /// Create only; no API accepts an arbitrary existing cgroup to kill.
     /// Caller must serialize this protected parent and persist ownership before
-    /// registration. This primitive neither mounts cgroupfs nor sets limits.
+    /// domain joining. This primitive neither mounts cgroupfs nor sets limits.
     pub fn create(
         recovery: &RecoveryDirectory,
         parent: &Path,
