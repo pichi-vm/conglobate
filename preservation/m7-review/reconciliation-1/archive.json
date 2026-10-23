@@ -1,0 +1,9 @@
+{
+  "raw_sha256": "ba5cea99a0662e408c7d7bc1cb971c60218efe29df86629e919e9b4d5914c697",
+  "gzip_sha256": "29895aba6dee14f534dc803fc150ee488d696a6037c7848957f0682ee489426d",
+  "events": 1011,
+  "critic_evaluations": 41,
+  "exit_code": 0,
+  "consensus_complete": false,
+  "limitation": "Synthesis category counts and membership conflict; a unique per-ID ledger is requested."
+}

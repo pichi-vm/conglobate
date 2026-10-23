@@ -62,8 +62,9 @@ impl SourcePattern {
         let bytes = name.as_bytes();
         let mut reachable = vec![false; bytes.len() + 1];
         reachable[0] = true;
+        let mut next = vec![false; reachable.len()];
         for token in &self.tokens {
-            let mut next = vec![false; reachable.len()];
+            next.fill(false);
             for offset in 0..=bytes.len() {
                 if matches!(token, Token::Star) {
                     next[offset] = reachable[offset]
@@ -93,7 +94,7 @@ impl SourcePattern {
                     _ => {}
                 }
             }
-            reachable = next;
+            std::mem::swap(&mut reachable, &mut next);
         }
         reachable[bytes.len()]
     }

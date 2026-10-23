@@ -492,3 +492,30 @@ job log is retained. The workflow now supplies the native GCC multiarch include
 directory through C_INCLUDE_PATH; build.rs tracks that variable and README
 explains the native Debian/Ubuntu requirement. The corrected hosted result is
 pending. This packaging failure is distinct from the passing Fedora-host checks.
+
+
+## Reconciliation round one completed; follow-up in progress
+
+All 41 remaining findings received critic evaluations (nine batches); combined
+with the first 70, every original finding has now been critiqued. The terminal
+stream is losslessly archived in reconciliation-1. The synthesis withdraws its
+incorrect project-level mechanical-status claim and several unsupported API,
+buffering, DTB bounds and YAML-limit claims. Its category counts/membership are
+inconsistent, so it is not an accepted unique disposition ledger. The follow-up
+requests exactly the 111 original IDs with one status each and explicit duplicates.
+
+The parent accepts performance-001's duplicated initial identity scan as a real
+optimization opportunity, preserving later exact-inode verification. tests-001
+needs a clone-mask test with a positive control: unshare and missing SYS_ADMIN
+cannot establish that clone's filter mask works. The argc-zero claim remains
+rejected as unreachable on supported kernels, not a required speculative fix.
+
+performance-010 now reuses two per-match scratch buffers, clearing the next state
+before each token and swapping only after the transition. Star propagation is
+unchanged. All 198 rootless tests and strict Clippy pass; the two allocations per
+match are not misreported as a single allocation. No new runtime authority exists.
+
+Hosted run 39964805125 at 148ef66 passes the Rust job (format, strict Clippy,
+rootless tests and doctests). Dependency job is still pending at this observation.
+The job log and progress snapshot are retained; this is not a claim of full CI,
+VM, distro or confidential-platform qualification. M7 remains at zero passes.
