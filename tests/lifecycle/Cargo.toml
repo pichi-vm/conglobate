@@ -6,6 +6,7 @@ publish = false
 license = "Apache-2.0"
 
 [dependencies]
+nix = { version = "0.31", default-features = false, features = ["sched", "process", "uio"] }
 conglobate = { path = "../.." }
 minicbor = { version = "2.3.1", features = ["std"] }
 rustix = { git = "https://github.com/bytecodealliance/rustix", rev = "8bda151df87574f56f1e4c0b59f2d1df5d61609e", version = "1", features = ["fs", "event", "net", "stdio"] }

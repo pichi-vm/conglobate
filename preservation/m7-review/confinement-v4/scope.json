@@ -1,0 +1,6 @@
+{
+  "passed": false,
+  "reason": "fixture socket wrapper compile error; no VM execution",
+  "baseline": "e760e03",
+  "production_changed": false
+}

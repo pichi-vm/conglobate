@@ -91,3 +91,9 @@ carapace:
         test ! -e /dev/shm/confinement-marker
         test "$(cat /confinement-marker)" = persistent
         printf 'COMMAND_RUNTIME_RECREATED_PASS\n'
+    - copy:
+        from: probe-runtime/
+        into: /probe-runtime
+    - run: |
+        /probe-runtime/loader --library-path /probe-runtime/lib /probe-runtime/command-probe
+        rm -rf /probe-runtime

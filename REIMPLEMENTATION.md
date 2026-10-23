@@ -4823,3 +4823,30 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   at their recorded scope; no new VM qualification is claimed.
 - M4 stays 0/3. Finish the identified evidence gap and remaining ownership/
   storage/lifecycle review before beginning the three clean-pass sequence.
+
+### M4-E1 actual command syscall checks
+
+- Previous review turn was progress: e760e03 identified missing maintained
+  syscall-denial observations. Added a safe Rust command-probe binary in the
+  maintained lifecycle crate, using existing pinned nix/rustix safe interfaces.
+  No production API, filtering rules or dependency versions changed.
+- Runner --command-probe commits the probe, keyctl tool and library runtime
+  into the context; ordinary COPY supplies them to the command root. Probe
+  checks EPERM for no-op unshare, zero-length process_vm_readv of self, netlink
+  socket creation and a read-only keyctl query. Same-VM unrestricted control
+  confirms availability. Ordinary shell child and Unix socket operations pass.
+- confinement-v4 failed to compile due to wrong socket wrapper; preserved.
+  v5 reached sandbox probes but exposed keyctl supports masking query denial;
+  preserved with failed output absent. Replaced with keyctl show, requiring
+  explicit EPERM diagnostic and nonzero exit, with a successful VM control.
+- confinement-v6 passes actual CLI build, all prior confinement checks, new
+  control/denial/positive markers, independent status/CBOR assessment, OCI
+  export and blob digest verification. Strict fixture Clippy passes. Sources,
+  context bundle (including tool bytes), failures and final evidence preserved
+  under preservation/m7-review/confinement-v4/v5/v6. Large artifacts remain
+  external and not durably archived; do not remove them before M8 recovery.
+- M4-E1 has maintained native-amd64 command evidence; Arm and full policy
+  qualification remain outstanding. This does not prove every syscall restriction
+  or absence of vulnerabilities, and no boot was performed. M4 remains 0/3
+  while complete ownership/storage/lifecycle review and three clean passes
+  remain. The full remaining milestone scope is unchanged.

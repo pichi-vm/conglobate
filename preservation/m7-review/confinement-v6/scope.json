@@ -1,0 +1,20 @@
+{
+  "baseline": "e760e03",
+  "production_changed": false,
+  "passed": true,
+  "coverage": [
+    "actual recipe command under production restrictions",
+    "EPERM for empty unshare, zero-length self process_vm_readv, netlink socket, keyctl read",
+    "unrestricted same-VM control operations succeed",
+    "ordinary process and Unix socket positive controls",
+    "existing confinement and per-step recreation assertions",
+    "OCI export and blob digest checks"
+  ],
+  "limitations": [
+    "native amd64 ordinary VM only",
+    "no full syscall or sandbox qualification",
+    "no boot performed",
+    "denial can combine seccomp and credential checks",
+    "large artifacts await durable archival"
+  ]
+}

@@ -1,9 +1,9 @@
 # Command confinement observations
 
-Use this recipe with `tests/distro/run.py`, then run `verify.py RUN_DIRECTORY`
+Use this recipe with `tests/distro/run.py --command-probe`, then run `verify.py RUN_DIRECTORY`
 (Python cbor2 required). The environment-owned labeling exception is active.
 
-The two command steps check:
+The command steps check:
 
 - PID namespace parentage and open-only denial of trusted PID-1 process views.
 - No live inherited descriptors except null input and pipe output/error.
@@ -11,6 +11,19 @@ The two command steps check:
 - Absence of known supervisor/context/cache/backing paths, private device nodes
   and devpts, read-only proc/sysfs views, and loopback-only networking.
 - Filesystem persistence alongside fresh `/dev/shm` on the second step.
+- EPERM from no-op unshare, a zero-length process_vm_readv targeting self,
+  netlink socket creation, and a keyctl read. These operations succeed in an
+  unrestricted control process inside the same disposable VM.
+- Ordinary Unix sockets and child-process execution remain usable.
+
+The safe Rust probe and host keyctl executable/library runtime are committed
+into the fixture context by the runner, then COPY supplies them to the command
+root. Commands use the ordinary production filter. No test-only filter or raw
+syscall interface is introduced; no process outside the command is targeted.
+The fixture removes its copied runtime before output sealing. The VM control
+is an availability check, not evidence that credential checks cannot also deny
+an operation. `keyctl supports` is deliberately not used as a denial oracle:
+it can return success when the capabilities query is denied.
 
 The capability mask is the agreed CHOWN, DAC_OVERRIDE, FOWNER, FSETID, KILL,
 SETGID, SETUID, NET_BIND_SERVICE, SYS_CHROOT and SETFCAP profile; SYS_ADMIN is

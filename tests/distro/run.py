@@ -63,6 +63,8 @@ class DistroRun:
         label_environment = LabelEnvironment(REPOSITORY, self.output, runtime)
         label_environment.stage()
         policy_startup = '' if self.arguments.without_label_policy else label_environment.startup()
+        probe_control = ('/context/probe-runtime/loader --library-path /context/probe-runtime/lib '
+                         '/context/probe-runtime/command-probe control' if self.arguments.command_probe else ':')
         fault_observation = ''
         if self.arguments.label_fault_second_filesystem:
             label_environment.stage_second_filesystem_fault()
@@ -119,6 +121,25 @@ echo NETWORK_BUILD_RESOURCE_CLEANUP_PASS"""
         shutil.copytree(self.arguments.recipe.resolve().parent, context)
         if service:
             (context / 'external-endpoint').write_text(service.context_input())
+        if self.arguments.command_probe:
+            with (self.output / 'command-probe-build.log').open('wb') as log:
+                subprocess.run(['cargo', '+stable', 'build', '--locked', '--offline',
+                                '--manifest-path', 'tests/lifecycle/Cargo.toml', '--bin', 'command-probe'],
+                               cwd=REPOSITORY, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
+            probe = context / 'probe-runtime'
+            (probe / 'lib').mkdir(parents=True)
+            for binary, name in [(REPOSITORY / 'target/m7-stable/debug/command-probe', 'command-probe'),
+                                 (Path(shutil.which('keyctl')), 'keyctl')]:
+                shutil.copy2(binary, probe / name)
+                for line in subprocess.check_output(['ldd', str(binary)], text=True).splitlines():
+                    if 'not found' in line:
+                        raise RuntimeError(line)
+                    match = re.search(r'(/\S+)', line)
+                    if match:
+                        library = Path(match.group(1))
+                        shutil.copy2(library, probe / 'lib' / library.name)
+                        if library.name.startswith('ld-linux'):
+                            shutil.copy2(library, probe / 'loader')
         selected = context / self.arguments.recipe.name
         if selected.name != 'recipe.yaml':
             shutil.copy2(selected, context / 'recipe.yaml')
@@ -161,6 +182,7 @@ ip route add default via 10.0.2.2
 echo 1 > /proc/sys/net/ipv4/ip_forward
 echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
 {network_startup}
+{probe_control}
 if conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --resolv-conf /etc/resolv.conf --formatter-runtime /formatter.json; then
     {fault_observation or ':'}
     {network_cleanup}
@@ -266,6 +288,8 @@ if __name__ == '__main__':
                         help='Serve a loopback-only host TCP endpoint reached through VM outbound networking')
     parser.add_argument('--network-fixture', action='store_true',
                         help='Serve controlled guest DNS/TCP and assert network cleanup')
+    parser.add_argument('--command-probe', action='store_true',
+                        help='Commit safe syscall probe and keyctl runtime into fixture context')
     parser.add_argument('--without-label-policy', action='store_true',
                         help='Negative validation only: omit environment policy loading')
     parser.add_argument('--label-fault-second-filesystem', action='store_true',
