@@ -26,7 +26,7 @@ M4 implementation. Prior passes remain historical, not approvals of this revisio
 | 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: revised dedicated-VM lifecycle | 3 |
 | 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete: revised context lifecycle | 3 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, scoped LSM, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Complete: single-volume lifecycle | 3 |
-| 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | In progress: R2 documentation correction | 0 |
+| 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | In progress: restarted adherence reviews | 2 |
 | 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Pending | 0 |
 | 7. Integrated qualification | Critical source/design/style review resolved; Fedora/Debian/Alpine/NixOS representative builds and boots; amd64/arm64 and TDX/SEV-SNP/CCA qualification with evidence; repository checks and CI green. Unavailable required environments remain outstanding, never passes. | Pending | 0 |
 | 8. Retire references | Historical findings migrated to maintained tests/docs; remove legacy implementation and exploratory validation from active repo only after recoverability verified and replacement evidence accepted; final coherent docs/code, tests and three adherence passes. | Pending | 0 |
@@ -2889,3 +2889,13 @@ rules rather than silently shrinking acceptance criteria.
 - Reconciled the integration ledger's sealing API wording with R2 as well.
   Production source is unchanged. Detailed review is in the M5 adherence record.
 - Restarted clean streak 1/3. M5 is not accepted; M6–M8 remain pending.
+
+
+### M5 restarted adherence pass 2
+
+- Reverse-lifecycle full self-review on unchanged scope-v2 is clean. Checked
+  requirements, consuming/typestate APIs, backing/identity ownership, explicit
+  flush/unmount versus destructor fallback, retries, evidence and preservation.
+- Reviewed concrete failure assertions and existing test/Clippy logs; no runtime
+  rerun was counted as review and no production code changed.
+- Clean streak 2/3; milestone summary synchronized. M6–M8 remain pending.

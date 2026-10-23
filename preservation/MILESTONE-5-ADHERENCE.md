@@ -1,6 +1,6 @@
 # Milestone 5 adherence review
 
-Status: restarted review after R2; clean streak **1/3** on scope-v2.
+Status: restarted review after R2; clean streak **2/3** on scope-v2.
 M5 is not accepted. The earlier 1/3 pass and scope remain historical.
 Starting implementation: `1cd3b69`. This review covers changes since the M4
 accepted implementation scope `ed0fecd408562aed8bc083e8fbe412c4b80ec514`.
@@ -216,3 +216,57 @@ remain intact. Full recipe orchestration and publication still belong to M6;
 representative distro boots, other architectures and confidential hardware are
 not proved by this VM fixture. No preservation material was retired. Two further
 complete clean passes are required before advancing.
+
+
+## Restarted full pass 2 — reverse lifecycle and failure evidence
+
+Scope-v2 remains unchanged (all 120 source/design/build/fixture hashes checked).
+This separate self-review starts at final output and works backward through
+cleanup, admission, preparation and formatter acquisition. No production change
+or new runtime test was needed.
+
+1. Requirements and acceptance: compared DESIGN's bootstrap and sandbox rules
+   and SANDBOX-DESIGN sections 5–7 against the two-command fixture and production
+   APIs. Only the new zero-origin output store is sealed; the verified tool
+   origin remains unchanged and its disposable overlay is discarded. Every run
+   remounts both assigned roots. Typed ext4 geometry/label, captured formatter
+   execution, scoped two-filesystem labeling and no image conversion remain
+   consistent. COPY/network/publication examples require M6, not additional M5
+   qualification claims.
+2. Ownership and failures: traced SealedScute back to detached scratch, confirmed
+   loop unbound-state checking rather than treating deferred clear as detachment,
+   and checked snapshot-origin borrowing. Volume finalization explicitly syncfs's
+   before normal unmount; lazy detach is destructor fallback only. Paired cleanup
+   retains output/tool partial states and one original deadline. Step teardown
+   drains descendants before removing policy and pins, then both volumes pass
+   health validation. Pending failures expose no partial accepted output.
+   Reviewed helper attachment failures and their lease fallback: they retain
+   mapped namespace owners, while supervisor storage stays independently owned.
+   Formatter launch has no live child on failure; wait/cancel retention persists
+   until a successful reap. VM disposal remains the unresolved-owner fallback.
+3. API/style: checked sealed marker states and private acceptance constructors,
+   shared storage-associated cleanup types, immutable formatting inputs and
+   consuming transitions. Destructor ownership slots and cleanup enums represent
+   remaining resources; none substitutes a boolean for public state proof.
+   No new freestanding production utility layer, synchronization sleeps or unsafe
+   application Rust. Cargo/lib.rs retain the unsafe-code prohibition. The generic
+   execution path checks the original outcome after finalization, including retry.
+4. Evidence: read actual assertions in formatter_failures and bootstrap fixtures.
+   Timeout checks require the expected Deadline error; cancellation checks an
+   empty child list. Exhaustion checks invalid snapshot health. Drop tests check
+   retained mapping and deliberately terminate the disposable test process. Busy
+   output cases prove extraction fails before unmount and that retry preserves
+   exit 17 versus success. Successful two-step and reopened-chain checks cover
+   ownership, ACL, mode, capability and foreign labels; no boot-time behavior is
+   inferred. Existing logs still show 56 library tests, 49 doctests and successful
+   root/fixture Clippy. Evidence hashes were checked in the preceding pass and
+   the frozen source has not changed.
+5. Preservation and claims: external original archive exists (5,081,763,840 bytes);
+   no legacy/preservation/validation paths were deleted since the M4 accepted
+   scope. Historical failures and reviews remain. This review does not turn
+   fixture-owned orchestration/OCI metadata into production pipeline completion,
+   or make distro, Arm or confidential-hardware claims.
+
+Result: clean, restarted streak **2/3**. One further full pass is required. The
+summary milestone table is synchronized with this ledger; that status recording
+is outside the frozen implementation scope. M6 remains gated.

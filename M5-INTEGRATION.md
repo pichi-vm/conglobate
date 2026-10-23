@@ -1,7 +1,7 @@
 # M5 direct-layer bootstrap implementation
 
-M4 is accepted with three clean self-review passes. M5 is active with one clean
-pass on the corrected review scope after R2. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
+M4 is accepted with three clean self-review passes. M5 is active with two clean
+passes on the corrected review scope after R2. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
 The integrated VM fixture now demonstrates a verified tool chain, dual-root
 commands through production aggregate preparation and execution acceptance,
 direct output sealing and verified reopening. Initial metadata and formatter
@@ -382,3 +382,12 @@ above: sealing uses devmap-snapshot and verity/hash APIs, not a carapace crate
 dependency. This reconciles the ledger with the already accepted architecture.
 The restarted requirements/lifecycle/API/evidence review is clean on scope-v2.
 M5 is at 1/3; M6 remains gated. See the adherence record for checked boundaries.
+
+
+## Restarted adherence pass 2
+
+Reverse-lifecycle full self-review on unchanged scope-v2 is clean. It traces
+sealing back through confirmed loop detachment, explicit flush/unmount, snapshot
+health, descendant/policy cleanup, pair acquisition and formatter ownership.
+Failure assertions preserve outcome and prohibit premature extraction. M5 is
+2/3; one further complete pass is required before M6.
