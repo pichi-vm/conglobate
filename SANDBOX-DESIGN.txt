@@ -327,8 +327,10 @@ Historical experiments are evidence, not competing specifications.
         disconnected network namespace. Enabled commands join the externally
         supplied --network-namespace PATH, captured once as an owned descriptor
         before command execution. Reject missing/invalid input, the supervisor's
-        own network namespace, or a namespace not owned by the initial user
-        namespace. Join during trusted setup; no handle or administration
+        own network namespace. The environment supplies initial-user-namespace
+        ownership; conglobate does not introspect it. Capture precedes command
+        user-namespace creation and restricted capabilities exclude network
+        administration. Join during trusted setup; no handle or administration
         authority reaches command code.
 
    8.2. The environment owns the enabled build namespace and its interfaces,

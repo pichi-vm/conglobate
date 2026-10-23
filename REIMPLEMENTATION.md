@@ -10,7 +10,8 @@ User accepted externalizing networking. This supersedes earlier proposals and
 conglobate-owned NAT wording in the stored goal/history. No requirement is being
 removed: provisioning and ingress enforcement move to the trusted environment.
 The implementation still uses the old network path until the following batch
-lands. Architecture gate M2 reopens at 0/3; M4–M6 remain 0/3.
+lands. Architecture gate M2 restored at 3/3 by the external-network self-review record;
+M4–M6 remain 0/3.
 
 1. **External networking (current):** complete architecture adherence gate;
    capture/validate --network-namespace; reuse its pinned descriptor for enabled
@@ -73,7 +74,7 @@ but must not be claimed to validate the new policy implementation.
 | Milestone | Deliverables and success criteria | Status | Clean streak |
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
-| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Reopened: accepted external networking | 0 |
+| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: external-network architecture revision | 3 |
 | 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete: revised context lifecycle | 3 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, environment-owned labeling exception, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Reopened: registration-free lifecycle | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Reopened: two-root lifecycle regression | 0 |
@@ -5859,3 +5860,13 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   sources match. Evidence: preservation/m7-review/directive-index/.
 - Initial verifier invocation occurred while the VM was still running; its
   premature assessment is preserved separately. No milestone pass claimed.
+
+### External-network architecture gate
+
+- Reviewed requirements, ownership/handoff and failure/evidence boundaries.
+  Removed unnecessary namespace-owner ioctl preflight; owner scope remains an
+  environment requirement. Capturing before command user namespaces plus the
+  restricted capability set prevents command network administration.
+- One initial finding corrected, then three consecutive clean architecture
+  self-review passes: preservation/m7-review/external-network/architecture-review.md.
+  M2 restored to 3/3; implementation/qualification M4–M6 remain at 0/3.

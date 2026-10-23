@@ -203,7 +203,10 @@ Defaults and failure behavior:
 - `--network-namespace PATH` is required when any run step enables networking.
   Open and retain the namespace descriptor once before execution; do not reopen
   the pathname per step. It must be a network namespace distinct from the
-  supervisor's and owned by the initial user namespace. The environment owns
+  supervisor's. The environment supplies a namespace owned by the initial user
+  namespace; conglobate does not inspect that ownership with an ioctl. It captures
+  the handle before creating any command user namespace, and command capabilities
+  exclude network administration. The environment owns
   its lifetime, interfaces, addresses, routes, NAT and firewall policy. Conglobate
   joins it only in trusted command setup and never exposes the handle to image
   commands. Sequential enabled steps reuse this namespace; it is dedicated to
