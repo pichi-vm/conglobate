@@ -5250,3 +5250,18 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Cumulative review remains preservation/m7-review/m4-adherence-168b2a2/REVIEW.md.
   Protocol/receiver/network, environment evidence and pipeline/sealing consumers
   remain before the full review can be evaluated. M4 stays 0/3; no gate waived.
+
+
+### M4 cumulative adherence attempt: supervisor/helper protocol segment
+
+- Previous conversational NAT answer did not advance implementation or validation;
+  resumed the available source review rather than treating it as a completed test.
+- Reviewed identity exchange, typed admission/join/volume transport, helper entry,
+  receiver status/cleanup and observation-owned teardown cutoff. Added 11 source
+  hashes and comparisons with three preserved runs; all selected sources match.
+- Recorded the trusted-peer assumptions, separate status/cleanup receipts,
+  nonrenewable deadline and M4-T1 reconciliation in the cumulative review.
+  No new functional defect established in this subset, no full clean pass.
+- M4 remains 0/3. Network/environment/pipeline and historical reconciliation
+  remain. About 446 MiB disk free at review time; no evidence deleted, no new
+  build/VM run. Large external artifacts still require durable preservation.

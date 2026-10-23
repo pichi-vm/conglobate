@@ -341,3 +341,82 @@ reconciliation; network/resolver ownership; current environment-label controls;
 sealing and pipeline consumers at the M4/M5 boundary; historical finding
 reconciliation and complete evidence/preservation assessment. This cumulative
 attempt still has no full clean pass and M4 remains 0/3.
+
+
+## Segment D: supervisor/helper protocol and command observation
+
+Reviewed the 11 files in protocol-source-sha256.json, continuing the same
+production baseline. No new functional defect established in this subset.
+This is not a full clean pass.
+
+1. Identity uses a private sequence-packet socketpair and a self-opened pidfd,
+   avoiding parent numeric-PID lookup. Exact version/opcode, payload length,
+   descriptor count and ancillary truncation checks fail closed; received rights
+   are CLOEXEC. Socket possession and trusted startup are the authority: the
+   decoder does not prove an arbitrary supplied FD is a self-pidfd. It must not
+   become an untrusted public endpoint. Observation never substitutes for reap.
+2. ControlSocket shutdown explicitly cancels despite transient duplicate FDs.
+   pidfd exit detects abnormal peer death independently of socket closure.
+   Unexpected traffic remains queued when sampling peer health, so a repeated
+   sample cannot consume a malformed message into an apparently healthy state.
+3. Sealed Unpaired/Paired/Joined/Admitted states express protocol progression.
+   Joining requires the published DomainJoin capability on the supervisor side;
+   the trusted single-threaded helper writes its own membership before closing
+   the cgroup FD and acknowledging. The cgroup filesystem check is not independent
+   authentication of an arbitrary sender. Prepared and admission are separate.
+4. Volume/bootstrap/network packets have exact descriptor order and count.
+   Raw resolver cleanup view is checked against root device/inode before use.
+   Namespace/root metadata checks are structural; trusted transfer and later
+   kernel operations supply the remaining preconditions. No received control FD
+   is intended to survive into image commands. The supervisor retains backing.
+5. Helper launch is bounded canonical versioned CBOR in argv, with environment
+   cleared and no fault-selection role. Parsing alone grants no privilege. All
+   execution paths exit the dedicated helper; partial namespace entry cannot
+   return into the supervisor. The trusted executable runs before root entry,
+   with no binary copy into the image. Formatter and network dispatch are
+   identified here; their implementations remain separate review scopes.
+6. Receiver waits for restricted readiness, explicit supervisor admission, then
+   opens the execution gate. Setup failures preserve the live mount/child state
+   under the original setup cutoff. Error rendering before helper exit does not
+   confer cleanup success; parent independently retains cancellation resources.
+7. Completion is a terminal shell wait status, validated separately from cleanup.
+   Receiver relays it before waiting for namespace helper exit/diagnostic drain.
+   The helper's normalized exit must agree with reported shell status. Resolver
+   release, view close and namespace restoration precede Cleaned. The receiver's
+   local send/wait budgets cannot extend the supervisor's cleanup acceptance
+   deadline; its blocking work remains externally bounded by cancellation.
+8. RunningCommand observation consumes observation authority and records the
+   fixed cleanup cutoff. Exited outcomes wait for Cleaned; observation failure
+   cancels immediately. Missing/wrong cleanup fails with the running owner
+   retained; retry can cancel under the same cutoff but cannot recover an
+   accepted execution. Cleaned alone is not sufficient: cancellation, helper
+   reap, adopted-child drain, domain record removal and storage finalization
+   remain required. Every transition checks the original cleanup deadline.
+9. The private Teardown enum owns distinct typed phase resources, rather than
+   exposing mutable state flags. Immutable launch values, consuming transitions,
+   private failure owners and RAII carry authority. Serialization methods and
+   transport methods remain associated with meaningful objects; no unsafe code
+   was introduced. These are trusted orchestration interfaces, not an assertion
+   that any arbitrary library caller can safely impersonate a helper.
+
+### Protocol evidence fidelity and M4-T1
+
+protocol-evidence-comparison.json compares all 11 source files against the
+preserved observation-blocked-descendant-v1, observation-held-cleanup-v1 and
+delayed-teardown-v1 archives. All are present and identical; each saved
+assessment passed. The first exercises the production receiver/init with an
+actually blocked descendant and requires retained storage on cleanup expiry.
+The latter two are controlled-helper tests of separate cleanup timing and the
+nonrenewable observation cutoff. They do not substitute for production resolver
+coverage or demonstrate successful removal of a kernel-blocked task.
+
+Together with the prior status gate review, these source transitions explain
+why the original M4-T1 timing defect is addressed: recipe observation no longer
+waits for descendant/receiver cleanup, and early status cannot release storage.
+The accepted kernel-blocking limitation and rejection-only cleanup failures
+remain explicit. Network-specific resolver cleanup evidence is still to be
+reconciled in the network segment. No new execution occurred during this segment.
+
+Remaining full-review scope: network/resolver ownership and evidence; current
+external label-policy controls and dual-root failures; pipeline/sealing consumers;
+historical finding reconciliation and complete preservation assessment. M4 0/3.
