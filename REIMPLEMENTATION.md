@@ -4399,3 +4399,17 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Findings reset/retain M2 at 0/3; no implementation gate advanced. Review scope,
   source observations and corrected hashes are preserved under
   preservation/m7-review/architecture-traceability-9c412ef. No production change.
+
+### Full architecture review in progress at fc0ad91
+
+- Previous turn made documentation/traceability corrections. Started full custom
+  Claude follow-up review on frozen architecture/design scope (session 81625,
+  verified live), read-only with no privileged operations. Scope hashes and parent
+  preliminary findings are under preservation/m7-review/architecture-full-review.
+- Parent source trace found an outcome-owner mismatch: architecture attributes
+  command outcome to Step<Quiescent>, but source retains helper status there and
+  separately carries CommandOutcome through CommandResult/ExecutionOutcome.
+  Acceptance checks the latter after finalization. Reconcile prose, not sound
+  source. Also reconcile no-VM integration wording with disposable-VM privileged
+  qualification. Leave reviewed documents frozen until terminal synthesis.
+- Findings mean no clean pass; M2 remains 0/3. No dependent milestone advanced.
