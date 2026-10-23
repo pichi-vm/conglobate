@@ -94,3 +94,23 @@ logs are preserved with verified hashes. The source snapshot includes a later
 documentation-only line wrap in FinalizedVolume's comment; executable logic is
 unchanged from the booted build. The dedicated negative acceptance test is still
 outstanding.
+
+### R2 integrated rejection demonstrated (v152–v153)
+
+v152 failed before exhaustion coverage: the fixture selected an ext4 block size
+smaller than the underlying device permits. Preserved the failure and corrected
+the fixture to 4096-byte blocks, keeping its filesystem at 16 MiB.
+
+v153 passes the complete normal suite. A successful command first reaches the
+existing busy-unmount fixture after syncfs. The trusted fixture then exhausts the
+32 MiB COW store by writing into the tail of a 64 MiB device, beyond its 16 MiB
+filesystem. After releasing the busy holder, finalization returns InvalidData,
+preserves the successful command outcome and removes the mount. Neither volume
+extraction nor a further cleanup retry produces an acceptance receipt. This
+exercises the production finalization/acceptance connection, not only status
+parsing. Commands never receive the device descriptor.
+
+R2 is addressed. Fixture Clippy/format checks and evidence hashes pass. The
+runner now requires the new marker; this assertion was added after v153 and
+checked against its preserved serial output. Its booted runner is preserved.
+Remaining source/evidence review is still incomplete: clean streak remains zero.

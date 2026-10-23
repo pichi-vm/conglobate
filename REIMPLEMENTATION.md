@@ -2602,3 +2602,14 @@ rules rather than silently shrinking acceptance criteria.
 - R2 remains open for a dedicated exhaustion-through-command-acceptance test.
   This is implementation progress, not a clean adherence pass. M4 remains zero;
   M5–M8 remain pending.
+
+### M4 snapshot-exhaustion regression (v152–v153)
+
+- Preserved v152's fixture formatting failure; corrected block size to match the
+  underlying device. v153 passes the complete normal disposable-VM suite.
+- Successful command followed by trusted snapshot-exhaustion injection is
+  rejected during production finalization. Retry still rejects InvalidData;
+  no accepted volume escapes and the mount is removed. R2 is addressed.
+- Fixture Clippy/format checks and evidence hashes pass. Added the required
+  exhaustion marker to runner evaluation and checked v153's existing output.
+- M4 review remains incomplete with zero clean passes. M5–M8 are pending.

@@ -1,0 +1,1 @@
+Failed fixture: explicit 1024-byte ext4 block size rejected as smaller than device block size. No exhaustion coverage reached. Fixture Clippy passes.

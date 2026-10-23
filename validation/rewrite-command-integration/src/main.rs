@@ -248,7 +248,8 @@ impl Integration {
             let workspace = Workspace::create()?;
             let mut scratch = workspace.scratch()?;
             scratch.set_len(32 * 1024 * 1024)?;
-            let sectors = NonZeroU64::new(32768).unwrap();
+            let exhaustion = args[1] == "volume-supervisor-execute-exhaustion";
+            let sectors = NonZeroU64::new(if exhaustion { 131072 } else { 32768 }).unwrap();
             let origin = Mapping::<Created>::create()?.zero(sectors)?;
             let snapshot = Mapping::<Created>::create()?
                 .snapshot(
@@ -439,8 +440,9 @@ impl Integration {
             // Fixture-only formatting; production typed formatter is an M5 task.
             assert!(
                 Command::new("mke2fs")
-                    .args(["-q", "-t", "ext4", "-F"])
+                    .args(["-q", "-t", "ext4", "-F", "-b", "4096"])
                     .arg(node)
+                    .arg("4096")
                     .status()?
                     .success()
             );
@@ -481,6 +483,7 @@ impl Integration {
                     "volume-supervisor-execute-timeout" => "execute-timeout",
                     "volume-supervisor-execute-setup" => "execute-setup",
                     "volume-supervisor-execute-finish" => "execute-finish",
+                    "volume-supervisor-execute-exhaustion" => "execute-exhaustion",
                     "volume-supervisor-domain-failure" => "domain-failure",
                     "volume-supervisor-install-failure" => "install-failure",
                     "volume-supervisor-timeout" => "timeout",
@@ -719,6 +722,38 @@ impl Integration {
                             .is_empty()
                     );
                     drop(holder);
+                    if exhaustion {
+                        use std::io::{Seek, SeekFrom, Write};
+                        // Trusted fixture fault injection, after command exit and
+                        // syncfs. Write only beyond the formatted filesystem.
+                        let mut device = fs::OpenOptions::new().write(true).open(node)?;
+                        device.seek(SeekFrom::Start(16 * 1024 * 1024))?;
+                        let write = device.write_all(&vec![42; 40 * 1024 * 1024]);
+                        let sync = device.sync_all();
+                        assert!(write.is_err() || sync.is_err());
+                        drop(device);
+                        let failure = failure.retry_cleanup().unwrap_err();
+                        assert!(matches!(failure.outcome(),
+                            ExecutionOutcome::Command(CommandOutcome::Exited(status)) if status.success()));
+                        assert_eq!(
+                            failure.cleanup_error().unwrap().latest().kind(),
+                            std::io::ErrorKind::InvalidData
+                        );
+                        assert!(points()?.is_empty());
+                        let failure = failure.into_rejected_volume().unwrap_err();
+                        let failure = failure.retry_cleanup().unwrap_err();
+                        assert_eq!(
+                            failure.cleanup_error().unwrap().latest().kind(),
+                            std::io::ErrorKind::InvalidData
+                        );
+                        drop(failure);
+                        origin.close()?;
+                        drop(lease);
+                        fs::remove_dir(recovery)?;
+                        fs::remove_file(node)?;
+                        println!("INTEGRATED_EXECUTION_SNAPSHOT_EXHAUSTION_REJECTED_PASS");
+                        return Ok(());
+                    }
                     let volume = match failure.retry_cleanup() {
                         Ok(receipt) => {
                             assert_eq!(mode, "execute-success");
