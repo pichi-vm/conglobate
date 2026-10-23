@@ -1,0 +1,27 @@
+{
+  "argv": [
+    "claude",
+    "--print",
+    "--resume",
+    "3100814a-c11f-4fd0-90c8-d7fbec5f4897",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--permission-mode",
+    "dontAsk",
+    "--append-system-prompt",
+    "Review the entire active conglobate implementation in src/, with tests/, policy/, Cargo.toml/Cargo.lock/build.rs and validation/rewrite-command-integration source as supporting evidence. Do NOT review reference/legacy or historical experiments as current code. DESIGN.md and SANDBOX-DESIGN.txt are the agreed requirements. ARCHITECTURE.md, REIMPLEMENTATION.md and preservation/MILESTONE-6-ADHERENCE.md explain evidence boundaries, not reasons to waive bugs. This is a fresh rewrite (publish=false), not a backward compatible public-library release. Preserve user preference for methods on meaningful owning types, RAII, sealed marker-trait typestate, immutable inputs and consuming transitions. Do not propose freestanding functions or remove typestate solely due to one caller. Commands are untrusted; supervisor, kernel, scoped BPF LSM and formatter are trusted. Dedicated disposable build VM is independently destroyed on supervisor crash. No synchronization sleeps. No application unsafe Rust. Unavailable confidential/Arm hardware coverage must remain explicit, not inferred from synthetic tests. Findings only, no source/docs/Git modifications. Read-only shell commands and ordinary rootless checks are allowed; NEVER sudo, mount, BPF load, network configuration or privileged tests on host. Do not execute ignored tests or VM harnesses during this review. Serialize cargo commands; CARGO_BUILD_JOBS=2, TMPDIR=/var/tmp/conglobate-rewrite-tmp. Do not download/install tools; report unavailable coverage tooling. Do not publish/push or message external services. Use the custom /review workflow and its reviewers/critics. Preserve file/line evidence and distinguish demonstrated bugs from speculation.",
+    "--tools",
+    "Read,Glob,Grep,Bash,Agent,Task,Skill",
+    "--allowedTools",
+    "Read",
+    "Glob",
+    "Grep",
+    "Agent",
+    "Task",
+    "Skill",
+    "Bash"
+  ],
+  "stdin": "Reconcile the full M2 review, focused follow-up only, no new agents, read-only/no privileged work. Your prior architecture-full-review is terminal exit0. Current dirty docs contain fixes; read them.\nF1 accepted and fixed: DESIGN1.1 distinguishes code independence from mandatory disposable VM deployment; rootless versus privileged tests separated.\nF2: historical chronological acceptance wasn't a current acceptance claim (top status explicitly 0/3), so Medium contradiction is overstated. Added local superseded marker anyway to remove ambiguity, preserving original evidence.\nF3: reject as source/architecture defect. \"Public handles must not permit\" is an obligation, not a claim that private visibility is insufficient. Private fields and pub(crate) access are compile-time Rust API boundaries. VolumeView::descriptor is in src/storage/volume.rs, not filesystem/attachment.rs. Public view() doesn't expose the private File. No unsafe/AsFd/Deref public escape demonstrated. Added mechanism clarification without changing requirement. Please retract or ground a reachable violation; don't invent abstractions or tests solely to satisfy wording.\nParent found a substantive missed issue: ARCHITECTURE said Step<Quiescent> retained command outcome. Actually its resources are DrainedHelper; Finishing has trusted helper ExitStatus/ReapedChildren. Recipe CommandOutcome is separate in CommandResult (step/outcome.rs), then ExecutionOutcome and StorageExecutionFailure (step/execution.rs); accept checks outcome.success() after finalization. Corrected docs to this exact separation. Review this fix and confirm cleanup/helper success cannot substitute for command success.\nReturn agreed/disputed/open findings, and assess corrected M2 architecture coverage. This is not M4-M8 qualification or automatic milestone acceptance. Do not restate open implementation coverage as an architecture defect when explicitly required. No edits or new test runs.\n",
+  "permission_correction": "Allow Bash, including compound and env-prefixed commands; retain review constraints."
+}

@@ -1,0 +1,23 @@
+{
+  "baseline": "2e320cd",
+  "scope": "M2 architecture, not implementation qualification",
+  "sha256": {
+    "ARCHITECTURE.md": "761583dabadb8477049887cd865d80ec440040883829a4e3c70a91c6d967cd38",
+    "DESIGN.md": "6ac7b27ccd436ae2b3720e2ac683ba529556e27a0dbcae0351324629ee77d358",
+    "SANDBOX-DESIGN.txt": "9f4f5dfd65196dde338b54675d503400c72d5e7d62f24501f59db7a107e59455",
+    "src/lib.rs": "35d1b5ba736dd7a90d4540f8a315403fa2ccf2248b0c5e006687af1d551b0191",
+    "src/plan.rs": "102aee393123fce58b117d3e0482656f838e63fd94698c7f5121c7fa7afd5021",
+    "src/step.rs": "5a6afb43f65d52a0c2ef8eee1347f52296b9b02ad49617eba7e1401a346ccfcd",
+    "src/step/outcome.rs": "4d457c9363894425d46a03066327e7f7ba7f8bfae11f5756d41beed70307b79f",
+    "src/step/execution.rs": "90a471260b76b50bb94ab3c5212374ccaf284e5cc7dbf52caa385b7a7a07c541",
+    "src/step/execution/storage.rs": "55790db42ed273195713b0e84c5824fb421f6da0fbe6a780af97711d88065409",
+    "src/step/finalize.rs": "467bd913ec2c3bd9ef9a181abe9cfda7aa943738304157ca903ee0fbbee341a1",
+    "src/step/teardown.rs": "cee78b8b6e84b303cafdb017a01f90b902d6002d68ba4a9f25c7f810c54ae625",
+    "src/storage/volume.rs": "d2e44fb113b4380d062715b7bc574e902c9cf761cc27f962676bfa08a6bfc9c1",
+    "src/pipeline.rs": "4137f14fe61c8e1e3bc3dcee7ac8f1938160e7dc96b03c17978c92e076098799",
+    "src/formatter/profile.rs": "0e62c0707af4a84ad9976370cc9df9035fb9fdf8f0d46d4f0ecc98293eccc5a4",
+    "src/inventory/schema.rs": "6db3d5e49037e92e61325f8642f0144769c68b6cef5c80458a7138ef6d34e374",
+    "src/isolation/receiver.rs": "759b4d1f0c954d23663cfd5c0c11cac6c97bd61f5c0b23d8b58c8417846f5371",
+    "src/isolation/labels.rs": "1f69590ba86f42f4d3eb4c21218476b8c56ce8fa11fc2a0d9552b0d5e52e214e"
+  }
+}
