@@ -1,0 +1,2 @@
+__populate_fs_from_tar: you need to compile e2fsprogs without --without-libarchivebe able to process tarballs
+mke2fs: Operation not supported while populating file system

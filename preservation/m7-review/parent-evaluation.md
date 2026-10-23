@@ -734,3 +734,19 @@ identities are preserved in fedora-build-v3. This is the representative Fedora
 layering/SELinux workload on amd64, not blanket OS/security/confidential coverage.
 Other distro builds/boots, real bootstrap/firmware generation and review actions
 remain. M7 stays at zero. Hosted run 39972246944 succeeded at f54645f.
+
+## Debian preparation and trusted formatter input
+
+Stock debootstrap's device/mount setup does not fit the agreed command authority;
+no capability or syscall exception was added. Preparing an initial Debian tool
+carapace outside conglobate follows the design's explicit seed requirement.
+The official trixie-slim amd64 OCI seed archive is downloaded and verified, with
+manifest/config/layer identities and archive checks recorded in
+`debian-seed-research`. It is not yet a carapace and no Debian build/boot passes.
+
+The installed mke2fs lacks optional libarchive tar population; a small regular-file
+probe failed and is retained. Seed formatting/extraction will therefore happen in
+a disposable VM, preserving numeric UID/GID without mounting images on the host.
+The distro runner now emits the explicit trusted formatter manifest needed for
+bootstrap; its paths were checked against the existing guest, and Python syntax
+checks pass. Actual bootstrap execution of that change remains outstanding.

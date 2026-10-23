@@ -56,3 +56,9 @@ The harness terminates the VM after the marker; it does not claim guest shutdown
 A different `--expect` marker narrows the claim accordingly (e.g. login alone does
 not execute the file-label assertions). Console logs and launcher identities are
 preserved. Waiting uses pipe readiness, not synchronization sleeps.
+
+The runner also supplies `--formatter-runtime` for bootstrap recipes. Its manifest
+names the trusted environment's mke2fs executable and loader/library files already
+copied into the VM. It enumerates dependencies only from the trusted host tool;
+it never runs ldd on a recipe/image executable. Formatter bytes are captured and
+measured by conglobate under the normal bootstrap contract.

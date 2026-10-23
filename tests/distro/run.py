@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -47,6 +48,18 @@ class DistroRun:
         runtime = DistroRuntime(self.root, self.arguments.module_root.resolve(), self.arguments.kernel_release)
         runtime.create()
         runtime.executable(REPOSITORY / 'target/m7-stable/debug/conglobate', Path('usr/bin/conglobate'))
+        # Enumerate only the trusted host formatter, never an image executable.
+        formatter = Path(shutil.which('mke2fs'))
+        formatter_files = {'usr/bin/mke2fs'}
+        for line in subprocess.check_output(['ldd', str(formatter)], text=True).splitlines():
+            if 'not found' in line:
+                raise RuntimeError('incomplete trusted formatter runtime')
+            match = re.search(r'(/\S+)', line)
+            if match:
+                formatter_files.add(match.group(1).lstrip('/'))
+        (self.root / 'formatter.json').write_text(json.dumps({
+            'root': '/', 'executable': 'usr/bin/mke2fs', 'files': sorted(formatter_files),
+        }, indent=2) + '\n')
         shutil.copytree(self.arguments.cache, self.root / 'cache')
         context = self.root / 'context'
         shutil.copytree(self.arguments.recipe.resolve().parent, context)
@@ -84,7 +97,7 @@ ip address add 10.0.2.15/24 dev "$interface"
 ip route add default via 10.0.2.2
 echo 1 > /proc/sys/net/ipv4/ip_forward
 echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
-conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --resolv-conf /etc/resolv.conf
+conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --resolv-conf /etc/resolv.conf --formatter-runtime /formatter.json
 # Only the trusted VM supervisor sees this export device. The build workspace
 # remains RAM-backed; commands receive neither the device nor an export path.
 tar -C /work/output -cf /dev/vda .
