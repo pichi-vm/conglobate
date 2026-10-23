@@ -50,6 +50,11 @@ impl CommandSyscalls {
                 .map_err(io::Error::other)?,
             ],
         );
+        // Named pipes are ordinary build filesystem objects, not device nodes.
+        // Inspect mode_t's file-type bits; never admit character/block devices.
+        rules.insert(i64::from(sys::__NR_mknodat), Self::fifo_rules(2)?);
+        #[cfg(target_arch = "x86_64")]
+        rules.insert(i64::from(sys::__NR_mknod), Self::fifo_rules(1)?);
         // clone3's pointer cannot be inspected safely by classic seccomp. The
         // separate fallback filter returns ENOSYS for libc's ordinary fallback.
         rules.insert(i64::from(sys::__NR_clone3), Vec::new());
@@ -126,6 +131,19 @@ impl CommandSyscalls {
                 SeccompRule::new(vec![condition]).map_err(io::Error::other)
             })
             .collect()
+    }
+
+    fn fifo_rules(argument: u8) -> io::Result<Vec<SeccompRule>> {
+        let condition = SeccompCondition::new(
+            argument,
+            SeccompCmpArgLen::Dword,
+            SeccompCmpOp::MaskedEq(u64::from(sys::S_IFMT)),
+            u64::from(sys::S_IFIFO),
+        )
+        .map_err(io::Error::other)?;
+        Ok(vec![
+            SeccompRule::new(vec![condition]).map_err(io::Error::other)?,
+        ])
     }
 
     fn ordinary() -> &'static [u32] {

@@ -1,0 +1,5 @@
+{
+  "external_directory": "/var/tmp/conglobate-descendants-v4",
+  "durably_archived": false,
+  "limitation": "Child acknowledged before opening release FIFO. v5 strengthens ordering by holding FIFO read/write FD before acknowledgment."
+}

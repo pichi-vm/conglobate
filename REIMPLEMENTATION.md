@@ -4250,3 +4250,29 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Existing Claude review remains live under session 78027. Prepared follow-up
   prompt records timeout failure/fix and new evidence; send only after the
   current invocation is terminal, preserving its session and findings.
+
+
+### Named pipes and background-child cleanup
+
+- Maintained CLI descendant fixture initially failed before teardown because the
+  syscall filter denied mkfifo. Named pipes are ordinary filesystem objects,
+  distinct from unsupported persistent character/block devices. Permit only
+  S_IFIFO in mknodat mode argument 2 (both supported ABIs) and legacy amd64
+  mknod mode argument 1. No new capability or unrestricted syscall is allowed.
+  DESIGN/SANDBOX-DESIGN clarify the distinction; gates remain reopened.
+- Native amd64 v5 passes FIFO creation, character/block creation denial, and
+  cleanup of an unwaited background child. The child holds a read/write FIFO FD
+  before readiness acknowledgment; next-step nonblocking writer-open gets ENXIO
+  and no child output exists. No sleeps establish ordering. Actual CLI build,
+  clean remount and artifact export succeed. This is one concrete descendant
+  case, not comprehensive helper-death or syscall/architecture qualification.
+- Preserved v1 incorrect host-cache-path construction failure, v2/v3 FIFO denial,
+  v4 passing but weaker readiness ordering, and v5 strengthened test. Evidence
+  and source snapshots are in preservation/m7-review/descendants-v1..v5.
+  192 rootless tests, 50 doctests and strict all-target Clippy pass (fifo-static).
+- Existing Claude review remains running (session 78027); completed subreviews
+  have been read provisionally. Accept differential second-root admission and
+  command-level xattr coverage gaps; challenge assertion that geometry checks
+  merely mirror implementation, since DESIGN 6.1 mandates that geometry and
+  formatter capacity. Full evaluation/consensus awaits terminal synthesis and
+  follow-up review of current fixes. No adherence passes counted.

@@ -373,6 +373,8 @@ Historical experiments are evidence, not competing specifications.
         inherited flags. Inherited flags can block edits or deletion. Fail with
         useful diagnostics; do not silently fake success or discard metadata.
         Temporary sandbox /dev is distinct from persistent image device nodes.
+        Named pipes are supported: restrict mknod/mknodat by mode to FIFO only;
+        character and block device creation remain denied.
         Untouched inherited bytes remain inherited; this is not a promise to
         copy inaccessible metadata through file-level operations.
 

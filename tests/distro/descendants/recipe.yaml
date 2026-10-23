@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: Apache-2.0
+carapace:
+  from: qualification.local/fedora:43
+  derive:
+    - run: |
+        set -x
+        if mknod /forbidden-character-device c 1 3; then exit 1; fi
+        if mknod /forbidden-block-device b 1 0; then exit 1; fi
+        test ! -e /forbidden-character-device
+        test ! -e /forbidden-block-device
+        mkfifo /descendant-ready /descendant-release
+        /bin/sh -eu -c '
+          exec 3<> /descendant-release
+          printf "ready\n" > /descendant-ready
+          read -r token <&3
+          printf "unexpected surviving writer\n" > /descendant-output
+        ' &
+        read -r token < /descendant-ready
+        test "$token" = ready
+        printf 'BACKGROUND_CHILD_STARTED_PASS\n'
+        # Intentionally exit without waiting. PID-1/domain teardown must stop
+        # the child before the next step can mount this filesystem.
+    - run: |
+        set -x
+        test -p /descendant-release
+        test ! -e /descendant-output
+        # Nonblocking FIFO open returns ENXIO when no reader survived. This
+        # makes no sleep/timing assumption and cannot block on a missing reader.
+        if LC_ALL=C dd if=/dev/null of=/descendant-release oflag=nonblock count=0 status=none 2>/descendant-check; then
+          exit 1
+        fi
+        grep -q 'No such device or address' /descendant-check
+        test ! -e /descendant-output
+        rm /descendant-ready /descendant-release /descendant-check
+        printf 'BACKGROUND_CHILD_DRAINED_PASS\n'

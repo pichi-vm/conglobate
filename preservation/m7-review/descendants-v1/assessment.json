@@ -1,0 +1,7 @@
+{
+  "passed": false,
+  "vm_started": false,
+  "finding": "Incorrect host cache path; failed during guest construction.",
+  "external_directory": "/var/tmp/conglobate-descendants-v1",
+  "durably_archived": false
+}

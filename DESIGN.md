@@ -869,7 +869,9 @@ must survive into the booted image independently of the build VM policy. The
 validated foreign-label environment disables build-VM SELinux; an enforcing
 configuration requires separate qualification. Initially unsupported are
 `trusted.*` access, persistent device creation, and immutable/append-only flag
-changes (including clearing inherited flags). Document failures explicitly.
+changes (including clearing inherited flags). Named pipes (FIFOs) are supported
+filesystem objects; permitting FIFO mode does not permit character or block
+device creation. Document failures explicitly.
 
 This contract requires containment of untrusted commands. It is not a claim
 that the legacy executor already meets it or that prototype checks prove

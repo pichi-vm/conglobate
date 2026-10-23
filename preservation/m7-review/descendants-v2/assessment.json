@@ -1,0 +1,7 @@
+{
+  "passed": false,
+  "vm_started": true,
+  "finding": "mkfifo denied by command filter before descendant test could run.",
+  "external_directory": "/var/tmp/conglobate-descendants-v2",
+  "durably_archived": false
+}
