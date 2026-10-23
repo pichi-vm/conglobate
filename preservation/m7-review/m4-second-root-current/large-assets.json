@@ -1,0 +1,26 @@
+[
+  {
+    "path": "/storage/conglobate-validation/m4-second-root-current-v1/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/m4-second-root-current-v1/initramfs.gz",
+    "size": 200770606,
+    "sha256": "0276b27bcb7427cbe218d59e56e53fbfce14635de13660a5dfecf209bf63fdb4",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/m4-second-root-current-v1/label-environment/fault/loader",
+    "size": 13456,
+    "sha256": "7b66c3db08dc7b1b50cc46867400aee3ee8978dcd609210dc0078f971ce77add",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/m4-second-root-current-v1/label-environment/loader",
+    "size": 13048,
+    "sha256": "f78b1f3b6f36dc185ec1a510b7228275dd2c6cf0c9e6a4c24e0ededff41141e7",
+    "durably_archived": false
+  }
+]

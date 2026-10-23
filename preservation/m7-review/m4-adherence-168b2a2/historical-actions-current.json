@@ -1,7 +1,43 @@
 {
   "baseline": "124c2c2",
-  "scope": "46 historically accepted/open actions; not a disposition of all 111 findings. Pending items are not assumed fixed or still-defective.",
+  "scope": "All 111 original findings indexed. Existing current dispositions retained; newly indexed historical dispositions explicitly lack current-source revalidation. Historical action/evidence fields remain immutable.",
   "actions": [
+    {
+      "id": "api-surface-001",
+      "canonical_id": null,
+      "evidence": "UnmountRecovery reached only through UnmountFailure::cleanup(self); private_interfaces is allow-by-default",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "api-surface-002",
+      "canonical_id": null,
+      "evidence": "E0446 reproduced: pub(crate) payload behind a public sealed trait's associated type does not compile",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "api-surface-003",
+      "canonical_id": null,
+      "evidence": "7 of 9 modules named by validation/rewrite-command-integration; my agent wrongly excluded it",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "api-surface-004",
+      "canonical_id": null,
+      "evidence": "16 of 22 sampled orphans live, mostly via inference through public signatures",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
     {
       "id": "api-surface-005",
       "canonical_id": null,
@@ -10,6 +46,33 @@
       "historical_status": "open",
       "current_status": "pending revalidation",
       "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+    },
+    {
+      "id": "api-surface-006",
+      "canonical_id": null,
+      "evidence": "src/output/assembly.rs:437-439 uses firmware::tests::Fixture; narrowing breaks a real caller",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "concurrency-001",
+      "canonical_id": null,
+      "evidence": "DiagnosticRelay permits join only after quiescence; a pipe writer may still be alive so the proposed join can block",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "concurrency-002",
+      "canonical_id": null,
+      "evidence": "Final quiescence has not been observed; design requires completion within the original budget",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
     },
     {
       "id": "concurrency-003",
@@ -21,6 +84,24 @@
       "current_evidence": "Deadline-free CommandSetup/GatedCommandSetup/CommandNamespaces enter wrappers absent; production uses cutoff-bearing entry. Historical source retained."
     },
     {
+      "id": "correctness-001",
+      "canonical_id": null,
+      "evidence": "v259 reproduced in-VM; 27091e6 sorts RuntimeFile by String path; v260 passed",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "dependencies-001",
+      "canonical_id": null,
+      "evidence": "Review-coverage gap, not a code defect; cargo audit exit 0, 0 advisories across 246 deps",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
       "id": "dependencies-002",
       "canonical_id": null,
       "evidence": "rustsec query.rs:181-194 compares source kind and URL; git sources are not categorically unmatchable",
@@ -30,6 +111,51 @@
       "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
     },
     {
+      "id": "dependencies-003",
+      "canonical_id": null,
+      "evidence": "ARCHITECTURE.md:247-257 documents the unreleased safe mount_setattr API; Cargo.toml pointer added",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "dependencies-004",
+      "canonical_id": null,
+      "evidence": "Two rustix copies real but only tempfile pulls the registry one; multiple-versions=warn is correct",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "dependencies-005",
+      "canonical_id": null,
+      "evidence": "4c1546b added rustix Git URL to deny.toml sources; amd64+arm64 checks exit 0",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "dependencies-006",
+      "canonical_id": null,
+      "evidence": "4c1546b added BSD-2-Clause and BlueOak-1.0.0 (BlueOak/minicbor was missed by the review)",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "dependencies-007",
+      "canonical_id": null,
+      "evidence": "publish=false removes downstream consumers; CI pins RUSTUP_TOOLCHAIN 1.94.0; README records no MSRV floor established",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
       "id": "dependencies-008",
       "canonical_id": null,
       "evidence": "build.rs relies on SkeletonBuilder diagnostics; 148ef66 added C_INCLUDE_PATH after the Ubuntu failure",
@@ -37,6 +163,24 @@
       "historical_status": "accept",
       "current_status": "resolved",
       "current_evidence": "No binary BPF compilation remains. Trusted fixture compiler calls now explain clang/BPF/C/libbpf prerequisites while preserving original exception and stderr. Success/missing executable/nonzero command checks and Python syntax pass. VM CI portability remains a separate M7 item. See lifecycle-dispositions/REVIEW.md."
+    },
+    {
+      "id": "dependencies-009",
+      "canonical_id": null,
+      "evidence": "Cargo.lock committed and --locked used; = pins are deliberate anti-drift on seccomp/syscall layers",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "dependencies-010",
+      "canonical_id": null,
+      "evidence": "gix-transport client code gated behind async-client/blocking-client, neither enabled",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
     },
     {
       "id": "dependencies-011",
@@ -57,6 +201,87 @@
       "current_evidence": "zstd default features disabled. Root and lifecycle feature graphs retain only std; legacy, arrays and zdict_builder absent. 128 library and 13 cache tests pass, including corrupted/truncated/trailing-junk frames and concatenated streams. See preservation/m7-review/zstd-features/REVIEW.md."
     },
     {
+      "id": "dependencies-013",
+      "canonical_id": null,
+      "evidence": "CI exists (.github/workflows/checks.yml) AND hosted run 39964805125 at 148ef66 passed its Rust job",
+      "remaining_action": "Dependency job result still pending; not a defect",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "documentation-001",
+      "canonical_id": null,
+      "evidence": "5ce229a; strict rustdoc + 54 doctests pass (verified by me)",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "documentation-002",
+      "canonical_id": null,
+      "evidence": "5ce229a; strict rustdoc + 54 doctests pass (verified by me)",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "documentation-003",
+      "canonical_id": null,
+      "evidence": "5ce229a; strict rustdoc + 54 doctests pass (verified by me)",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "documentation-004",
+      "canonical_id": null,
+      "evidence": "5ce229a; strict rustdoc + 54 doctests pass (verified by me)",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "documentation-005",
+      "canonical_id": null,
+      "evidence": "5ce229a; strict rustdoc + 54 doctests pass (verified by me)",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "documentation-006",
+      "canonical_id": null,
+      "evidence": "Wording was already behaviourally accurate (no Drop impl); clarified in 5ce229a",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "documentation-007",
+      "canonical_id": null,
+      "evidence": "src/isolation.rs:45 already documents Drop setns restoration; commit() comment correctly scoped",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "errors-api-001",
+      "canonical_id": null,
+      "evidence": "Same argc==0 refutation; I withdraw 'accept as defensive' \u2014 an unreachable branch is not a demonstrated defect",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
       "id": "errors-api-002",
       "canonical_id": null,
       "evidence": "main.rs prints and exits uniformly; exit taxonomy deferred in DESIGN.md",
@@ -73,6 +298,15 @@
       "historical_status": "open",
       "current_status": "implemented after review baseline",
       "current_evidence": "Original finding concerns InventoryError, not BuildError. Previous current_evidence incorrectly duplicated the pipeline entry. InventoryError now distinguishes executable I/O, CBOR decode/encode, schema decode/encode, and semantic validation. Typed library causes are retained through Error::source. Tests exercise malformed CBOR, invalid schema, semantic validation, injected executable read errno and successful executable digest. 150 library tests and strict all-target Clippy pass. See preservation/m7-review/inventory-errors/REVIEW.md. Historical evidence/action wording retained unchanged."
+    },
+    {
+      "id": "errors-api-004",
+      "canonical_id": "simplification-020",
+      "evidence": "Same copy-mode re-export",
+      "remaining_action": "none",
+      "historical_status": "duplicate",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
     },
     {
       "id": "errors-api-005",
@@ -138,6 +372,51 @@
       "current_evidence": "COPY wildcard traversal now moves its consumed path candidate instead of cloning; the earlier entries.get borrow ends before this move. Current COPY tests pass. See preservation/m7-review/copy-cache-dispositions/REVIEW.md."
     },
     {
+      "id": "ownership-002",
+      "canonical_id": "performance-010",
+      "evidence": "Same glob matcher allocation",
+      "remaining_action": "none",
+      "historical_status": "duplicate",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "ownership-003",
+      "canonical_id": null,
+      "evidence": "Cold inventory decode; try_from consumes String by signature",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "ownership-004",
+      "canonical_id": null,
+      "evidence": "Callee needs is_empty() and scutes[0]; iterator signature cannot express them",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "ownership-005",
+      "canonical_id": null,
+      "evidence": "Borrowed key not a drop-in: map borrows recipe, which is moved into the same literal; cold path",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "ownership-006",
+      "canonical_id": null,
+      "evidence": "One ~30-byte String clone once per network setup; below churn threshold",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
       "id": "ownership-007",
       "canonical_id": null,
       "evidence": "Final length is manifest.layers.len()+1, known before the loop",
@@ -154,6 +433,15 @@
       "historical_status": "accept",
       "current_status": "implemented after review baseline",
       "current_evidence": "DtbContract now checks exactly one matching fill with a lazy iterator; existing malformed/missing/duplicate tests pass. See preservation/m7-review/api-simplification/REVIEW.md."
+    },
+    {
+      "id": "ownership-009",
+      "canonical_id": null,
+      "evidence": "Final-tree equality is required to preserve exact original DTB bytes when edits cancel; a changed flag is not equivalent",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
     },
     {
       "id": "ownership-010",
@@ -183,6 +471,24 @@
       "current_evidence": "PreparedScute materializes decoded bytes while ScuteExtent::format produces the verity tree, eliminating reread. Exact extent, synthetic zero padding, trailing/late errors, encoded digest completion and root checks retained. 144 library + 13 cache tests, strict Clippy and native amd64 cache-storage VM pass. See materializing-cache/REVIEW.md; no full M4/platform pass claimed."
     },
     {
+      "id": "performance-003",
+      "canonical_id": null,
+      "evidence": "devmap format/sync.rs uses io::copy (8 KiB reads > 4096); tree writer seeks before each block so BufWriter would flush anyway",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "performance-004",
+      "canonical_id": null,
+      "evidence": "Per-component resolve is the deliberate RESOLVE_BENEATH|NO_SYMLINKS confinement with a 40-link limit",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
       "id": "performance-005",
       "canonical_id": null,
       "evidence": "entries is a BTreeMap; descendants() scans all of it and re-runs loop-invariant is_directory()",
@@ -199,6 +505,60 @@
       "historical_status": "accept",
       "current_status": "implemented before review baseline; revalidated",
       "current_evidence": "eb767f3 introduced ordered subtree ranges for wildcard walking. Current code retains the direct-child parent filter and wildcard symlink-leaf behavior; existing component/depth tests pass. See preservation/m7-review/copy-cache-dispositions/REVIEW.md."
+    },
+    {
+      "id": "performance-007",
+      "canonical_id": "security-001",
+      "evidence": "Same resource-policy question as security-001",
+      "remaining_action": "none",
+      "historical_status": "duplicate",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "performance-008",
+      "canonical_id": null,
+      "evidence": "Stderr is not line-buffered; LineWriter batches to the last newline per chunk",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "performance-009",
+      "canonical_id": null,
+      "evidence": "policy() runs once per COPY directive, not per file",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "performance-010",
+      "canonical_id": null,
+      "evidence": "Two per-match scratch buffers replace per-token allocation; 198 tests + strict Clippy pass",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "security-001",
+      "canonical_id": null,
+      "evidence": "Uncapped measuring copy is real but DESIGN.md:48/:237 assign resource limits to the environment; data_blocks is Optional by wire contract",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "security-002",
+      "canonical_id": "security-001",
+      "evidence": "Downstream consequence of the same missing bound",
+      "remaining_action": "none",
+      "historical_status": "duplicate",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
     },
     {
       "id": "security-003",
@@ -226,6 +586,42 @@
       "historical_status": "open",
       "current_status": "trusted boundary; optional hardening unqualified",
       "current_evidence": "Formatter is explicitly trusted. A separate profile is not proved and should not silently become a command-equivalent confinement claim."
+    },
+    {
+      "id": "security-006",
+      "canonical_id": null,
+      "evidence": "publish=false; all in-tree publication goes through AssembledImage::publish_inventory; type doc disclaims receipt status",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "security-007",
+      "canonical_id": null,
+      "evidence": "Design requires SYS_ADMIN absent from all sets, not a permanently empty ambient set; raises stay bounded by permitted",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "security-008",
+      "canonical_id": "unsafe-ffi-002",
+      "evidence": "Same slice as unsafe-ffi-002",
+      "remaining_action": "none",
+      "historical_status": "duplicate",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "simplification-001",
+      "canonical_id": null,
+      "evidence": "72293a1 Finalization<R: PreparationStorage>; verified deadlines, retention, retry ownership, diagnostics, both validations, CommandResult; v261 exit 0",
+      "remaining_action": "Display regression: bootstrap now prints 'step storage finalization' (see disagreement 1)",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
     },
     {
       "id": "simplification-002",
@@ -273,6 +669,15 @@
       "current_evidence": "eb767f3 removed the unused Step::send_bootstrap_until wrapper in src/step/bootstrap.rs. The distinct live Supervision transport method and its ExecutionStorage caller remain. Historical validation source remains preserved. See preservation/m7-review/copy-cache-dispositions/REVIEW.md."
     },
     {
+      "id": "simplification-007",
+      "canonical_id": null,
+      "evidence": "with_volume is exercised by a compile_fail doctest encoding a typestate invariant; with_bootstrap is the only public seam",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
       "id": "simplification-008",
       "canonical_id": null,
       "evidence": "Five-key verity annotation literal duplicated at assembly.rs:155-161 and :260-267",
@@ -289,6 +694,15 @@
       "historical_status": "accept",
       "current_status": "resolved",
       "current_evidence": "Storage-private LoopDevice<ReadOnly/Writable> shares configure, identity and confirmed detach. Writable mode syncs before clear; failures retain ownership; read-only mode exposes no IO traits. 141 library tests and strict all-target Clippy pass. Native amd64 disposable-VM chain/cache checks pass, including deferred detach/retry/writeback and verity corruption rejection. See preservation/m7-review/m4-owner-batch/REVIEW.md for exact scope and source differences."
+    },
+    {
+      "id": "simplification-010",
+      "canonical_id": null,
+      "evidence": "Four-line guard whose payload is the distinct operator message; setup.rs variant reads &self",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
     },
     {
       "id": "simplification-011",
@@ -318,6 +732,33 @@
       "current_evidence": "Private Teardown engine already centralizes transitions/recovery; Ready/Running/Cancelling typed wrappers retained. Running has distinct supplied-deadline and AwaitingCleanup entrypoints. Generic public wrapper adds state bounds/conversions without simplifying core engine. See lifecycle-dispositions/REVIEW.md."
     },
     {
+      "id": "simplification-014",
+      "canonical_id": null,
+      "evidence": "a71c61c applied the source-supported subset; 198 tests, 54 doctests, Clippy, fixture compile pass",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "simplification-015",
+      "canonical_id": null,
+      "evidence": "4 live callsites in validation/rewrite-command-integration/src/main.rs",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "simplification-016",
+      "canonical_id": null,
+      "evidence": "a71c61c applied the source-supported subset; 198 tests, 54 doctests, Clippy, fixture compile pass",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
       "id": "simplification-017",
       "canonical_id": null,
       "evidence": "hash_reader has exactly one tree-wide hit (its definition); data_reader has 3 live consumers",
@@ -334,6 +775,33 @@
       "historical_status": "accept",
       "current_status": "implemented after review baseline",
       "current_evidence": "Removed unused SnapshotUsage::total_sectors and metadata_sectors accessors; TryFrom still validates nonzero total and metadata <= allocated <= total, retaining all counters internally. Active/maintained/reference harness callers audited; library and lifecycle checks pass. See preservation/m7-review/unused-api-cleanup/REVIEW.md."
+    },
+    {
+      "id": "simplification-019",
+      "canonical_id": null,
+      "evidence": "data_size/hash_size called at validation main.rs:1488,1489,1569",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "simplification-020",
+      "canonical_id": null,
+      "evidence": "a71c61c applied the source-supported subset; 198 tests, 54 doctests, Clippy, fixture compile pass",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "simplification-021",
+      "canonical_id": null,
+      "evidence": "E0446: payloads are associated-type values of the public sealed CheckoutState",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
     },
     {
       "id": "simplification-022",
@@ -354,6 +822,33 @@
       "current_evidence": "StagedDirectory::write_metadata still present; inventory-only replacement not implemented."
     },
     {
+      "id": "simplification-024",
+      "canonical_id": null,
+      "evidence": "a71c61c applied the source-supported subset; 198 tests, 54 doctests, Clippy, fixture compile pass",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "simplification-025",
+      "canonical_id": null,
+      "evidence": "a71c61c applied the source-supported subset; 198 tests, 54 doctests, Clippy, fixture compile pass",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "simplification-026",
+      "canonical_id": null,
+      "evidence": "source_error is a crate-wide convention: 11 definitions, 13 live calls; removing two breaks uniformity",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
       "id": "simplification-027",
       "canonical_id": null,
       "evidence": "Only .format() callers resolve to FormatReceipt::format",
@@ -372,6 +867,15 @@
       "current_evidence": "Inventory::sha256 and equality assertion still present."
     },
     {
+      "id": "simplification-029",
+      "canonical_id": null,
+      "evidence": "a71c61c applied the source-supported subset; 198 tests, 54 doctests, Clippy, fixture compile pass",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
       "id": "tests-001",
       "canonical_id": null,
       "evidence": "compile() is pure/unprivileged; mask 0x7e020080 covers 7 namespace flags + CLONE_NEWTIME; VM fixture exercises only user-ns denial",
@@ -379,6 +883,15 @@
       "historical_status": "accept",
       "current_status": "partial qualification",
       "current_evidence": "Native amd64 VM positive control covers seven legacy clone namespace flags plus CLONE_NEWTIME through unshare (the flag overlaps the legacy clone signal byte). Both arms retain CAP_SYS_ADMIN/no_new_privs; controls succeed, real command filter returns EPERM, ordinary clone succeeds. Time namespace identity changes only in control. See time-namespace-control/REVIEW.md. arm64 execution remains outstanding; historical ENOSYS demand withdrawn."
+    },
+    {
+      "id": "tests-002",
+      "canonical_id": null,
+      "evidence": "Independent rootless SYS_ADMIN-exclusion contract test added (suite now 198)",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
     },
     {
       "id": "tests-003",
@@ -399,6 +912,15 @@
       "current_evidence": "PE fixture sections accept a machine parameter. New .pmi.vm test reaches 0xaa64 with both valid PSTATE modes, rejects missing/invalid/foreign CPU fields and machine/schema mismatches, and checks unsupported machine rejection. Structural parser coverage only, not ARM execution qualification. See parser-boundaries/REVIEW.md."
     },
     {
+      "id": "tests-005",
+      "canonical_id": null,
+      "evidence": "tests/chains.rs covers ScuteExtent::root/format; ReadOnlyLoop::attach is private and unreachable unprivileged",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
       "id": "tests-006",
       "canonical_id": null,
       "evidence": "InterfaceName::try_from boundaries unpinned; input is supervisor-constructed, not untrusted",
@@ -406,6 +928,69 @@
       "historical_status": "accept",
       "current_status": "implemented after review baseline",
       "current_evidence": "InterfaceName boundary test covers accepted single-byte/15-byte names, mixed allowed characters, and rejection of empty/16-byte names, separators, whitespace, NUL and non-ASCII. Wrapper policy coverage only. See parser-boundaries/REVIEW.md."
+    },
+    {
+      "id": "tests-007",
+      "canonical_id": null,
+      "evidence": "Forward NFA over a reachability bitset, O(tokens x len); catastrophic backtracking impossible",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "tests-008",
+      "canonical_id": null,
+      "evidence": "serde-saphyr Options::default() budget preserved: depth 64, alias ratio, scalar caps",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "tests-009",
+      "canonical_id": null,
+      "evidence": "ChildReaper::install requires a single-threaded process; the cargo test harness always violates it",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "tests-010",
+      "canonical_id": null,
+      "evidence": "Peer runs hold_until_terminated() and is killed only after the assertion; no legitimate completion exists",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "tests-011",
+      "canonical_id": null,
+      "evidence": "README.md:39 documents the writable /dev/shm tmpfs requirement; fallback correctly refused",
+      "remaining_action": "none",
+      "historical_status": "fixed",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "unsafe-ffi-001",
+      "canonical_id": null,
+      "evidence": "execve probe on this kernel yielded argc=1 with synthesized empty argv[0]; unreachable",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+    },
+    {
+      "id": "unsafe-ffi-002",
+      "canonical_id": null,
+      "evidence": "devtree e90bafc header.rs:26-28 rejects <40 bytes; owned.rs:713-715 always emits the 40-byte header",
+      "remaining_action": "none",
+      "historical_status": "reject",
+      "current_status": "historical disposition; current source not revalidated",
+      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
     },
     {
       "id": "unsafe-ffi-003",

@@ -5993,3 +5993,16 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   missing-tool and nonzero subprocess checks plus Python syntax pass.
 - No production Rust or lifecycle behavior changed. Fixed fixture paths remain
   an M7 portability item. No complete M4 adherence pass; streak remains 0/3.
+
+### Current M4 gap reconciliation and two-root failure
+
+- Current bootstrap two-root negative VM passes: one tool probe allowed, one
+  output probe denied, image command not admitted, cleanup reported complete,
+  no output published. Expected runner exit 1; independent verifier passes.
+  Raw/source evidence: preservation/m7-review/m4-second-root-current/.
+- Expanded the authoritative finding index to all 111 original IDs, retaining
+  historical fields verbatim. Newly indexed historical dispositions are explicitly
+  not current-source revalidation. No blanket closure or adherence pass.
+- Current remaining queue: preservation/m7-review/CURRENT-M4.md. Asked user for
+  the supported UID/GID mapping contract; no answer inferred. Resolver command-time
+  mutation coverage remains concrete independent work. M4 still 0/3.
