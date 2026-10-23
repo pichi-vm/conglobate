@@ -305,8 +305,8 @@
       "evidence": "Same copy-mode re-export",
       "remaining_action": "none",
       "historical_status": "duplicate",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "duplicate; current fix verified",
+      "current_evidence": "Same copy-mode public-surface fix as simplification-020. Current copy module exports only CopyMode and ModeError; parser representation remains private. See loop-supervision-current/REVIEW.md."
     },
     {
       "id": "errors-api-005",
@@ -377,8 +377,8 @@
       "evidence": "Same glob matcher allocation",
       "remaining_action": "none",
       "historical_status": "duplicate",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "duplicate; current fix verified",
+      "current_evidence": "Same two-buffer matcher as performance-010: both vectors allocated before token loop, cleared/swapped per iteration. Current source inspected; no per-token allocation remains. See loop-supervision-current/REVIEW.md."
     },
     {
       "id": "ownership-003",
@@ -512,8 +512,8 @@
       "evidence": "Same resource-policy question as security-001",
       "remaining_action": "none",
       "historical_status": "duplicate",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "duplicate; current policy disposition retained",
+      "current_evidence": "Same unannotated decoded-size resource-policy issue as security-001/002. Current branch still measures to EOF with authenticated reads; no absolute decoded-size cap introduced. Environment resource policy remains distinct; no exhaustion-resistance claim. See loop-supervision-current/REVIEW.md."
     },
     {
       "id": "performance-008",
@@ -917,8 +917,8 @@
       "evidence": "tests/chains.rs covers ScuteExtent::root/format; ReadOnlyLoop::attach is private and unreachable unprivileged",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "addressed after reconsideration",
+      "current_evidence": "The private LoopDevice::attach validates length before opening loop control, so a unit test can exercise rejection safely. Added zero and misaligned lengths for both access markers, asserting InvalidInput and the specific diagnostic; no valid backing or privileged device access requested. Positive attach/detach remains VM-only. See loop-supervision-current/REVIEW.md."
     },
     {
       "id": "tests-006",
@@ -962,8 +962,8 @@
       "evidence": "Peer runs hold_until_terminated() and is killed only after the assertion; no legitimate completion exists",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "partially accepted; launch deadline widened",
+      "current_evidence": "Already-paired hold tests have no legitimate successful completion and keep their short negative waits. launch_supervised also performs startup under the deadline, so the prior blanket rejection missed startup sensitivity. Increased only that test to one second, with the same Started/TimedOut and cleanup assertions. This reduces ordinary CI sensitivity, not a proof against arbitrary scheduler stalls. See loop-supervision-current/REVIEW.md."
     },
     {
       "id": "tests-011",

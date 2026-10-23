@@ -1,0 +1,9 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.71s
+     Running unittests src/lib.rs (target/m7-stable/debug/deps/conglobate-9ea7d67db5612e01)
+
+running 1 test
+test storage::loop_device::tests::invalid_backing_lengths_fail_before_loop_control_access ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 150 filtered out; finished in 0.00s
+

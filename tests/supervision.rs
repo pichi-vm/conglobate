@@ -121,8 +121,10 @@ fn supervised_launch_retains_identity_and_wait_ownership() {
 #[test]
 fn supervised_exchange_failure_retains_the_started_child() {
     let command = Fixture::command("unresponsive");
-    let failure = Process::launch_supervised(command, Instant::now() + Duration::from_millis(20))
-        .unwrap_err();
+    // This budget includes spawning the helper, unlike the already-paired
+    // negative waits above. Allow ordinary loaded-CI startup latency.
+    let failure =
+        Process::launch_supervised(command, Instant::now() + Duration::from_secs(1)).unwrap_err();
     let conglobate::process::LaunchFailure::Started { source, process } = failure else {
         panic!("expected a started helper");
     };

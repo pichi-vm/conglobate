@@ -6116,3 +6116,7 @@ Completed the third full consumer-oriented requirements/style/ownership/error/ev
 ### Current missing-policy VM admission check after 0291f04
 
 Fresh maintained native amd64 disposable-VM run rejected command admission with the environment label policy absent. Strengthened assessor requires trusted output-absence marker; all six checks pass and source archive matches current scoped files. Raw failure/status/source/provenance in `preservation/m7-review/m4-missing-policy-current/`. Runner exit 1 is expected negative behavior. Kernel/initramfs remain local, not remotely durable. No application changes or M4 full pass. Previous turn restored M3; this turn closes the current missing-policy evidence gap in the M4 queue.
+
+### Reconsidered loop/supervision coverage after c5a6b4e
+
+Corrected two overbroad historical rejections: private LoopDevice invalid-size validation is rootlessly testable before control access; supervised-launch timeout includes startup unlike paired negative waits. Added both-access-mode invalid-boundary coverage and widened only launch timeout to one second. Targeted loop test, seven supervision tests and strict Clippy pass. Reconciled three duplicate findings. Evidence: `preservation/m7-review/loop-supervision-current/`. No production behavior change or full milestone pass. Previous turn refreshed VM failure evidence; this turn adds maintained coverage and corrects review reasoning.

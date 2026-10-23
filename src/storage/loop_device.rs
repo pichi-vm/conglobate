@@ -106,3 +106,24 @@ impl Seek for LoopDevice<Writable> {
         self.device.seek(offset)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invalid_backing_lengths_fail_before_loop_control_access() {
+        let backing = tempfile::tempfile().unwrap();
+        // Invalid inputs only: this test never requests a kernel loop device.
+        for length in [0, 1, 4095, 4097, 8191] {
+            backing.set_len(length).unwrap();
+            for error in [
+                LoopDevice::<ReadOnly>::attach(&backing).unwrap_err(),
+                LoopDevice::<Writable>::attach(&backing).unwrap_err(),
+            ] {
+                assert_eq!(error.kind(), io::ErrorKind::InvalidInput, "{length}");
+                assert!(error.to_string().contains("4096-byte blocks"));
+            }
+        }
+    }
+}
