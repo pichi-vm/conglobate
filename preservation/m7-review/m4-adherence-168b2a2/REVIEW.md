@@ -225,3 +225,119 @@ bootstrap evidence in the remaining integrated review.
 
 The earlier remaining-section list is refined by this list. No segment is a
 full clean pass; M4 stays 0/3 until the complete attempt is evaluated.
+
+## Segment C: storage backing, filesystem views and recovery anchors
+
+Scope: 18 files in storage-source-sha256.json. Reviewed at unchanged production
+baseline 168b2a2. No new defect established in this subset; no source change or
+new test execution. Cache manifest resolution, sealing and complete pipeline
+consumers remain separate review scope rather than assumed from these owners.
+
+1. Workspace creates one detached root-owned 0700 tmpfs with nodev/nosuid/noexec.
+   Scratch is anonymous and borrowed from it; no writable raw descriptor or
+   clone escapes publicly. Snapshot capacity is sparse logical capacity, not a
+   claim that corresponding RAM is available. Allocation/write errors do not
+   fall back to disk. Ordinary tmpfs/swap policy remains environment-owned.
+2. VerifiedChain authenticates compressed/plain blob reads and derives ancestry
+   from computed roots and parent salts. Duplicate/disconnected roots fail;
+   removing candidates bounds ancestry traversal even for cycles. PreparedScute
+   retains the exact open inode used to construct the verity tree. Aligned plain
+   scutes stay cache-backed; compression or a partial final block materializes
+   in RAM. This does not promise every immutable format stays cache-backed.
+3. Preparation authenticates the current read, not future cache contents.
+   VerityMapping keeps read-only data/hash loops and the prepared owner; kernel
+   reads are checked against the trusted root. Snapshot headers are read through
+   that mapping before snapshot-target activation, with fixed supported chunk
+   size and valid-state checks. Paths cannot redirect a pinned inode afterward.
+4. ReadOnlyChain assembles base-to-top over the fixed dm-zero origin and closes
+   top-to-base. Failure variants retain exactly the active mapping, verity,
+   backing and lower stack still requiring cleanup. Produced-layer parent roots
+   must match the current chain; creating a root requires the zero parent.
+   A copied device ID is documented diagnostic data, not a lifetime lease.
+5. Writable SnapshotMapping borrows its origin and owns its loop backing. Those
+   owners remain on activation/removal failure. Mapping activation is consuming
+   Created-to-Active; names are newly generated and collisions are errors, never
+   authority to adopt/remove an existing mapping. Active mappings cannot reload
+   through the public API. Snapshot health rejects invalid/overflow/unknown and
+   inconsistent counters; health observation alone is not sealing permission.
+6. Loop clear is not assumed to mean immediate detachment. Explicit writable
+   detach flushes and requires unbound status before returning Scratch. Read-only
+   detach similarly checks actual state. Deferred DM removal and loop autoclear
+   in destructor paths keep kernel backing references, but never return an
+   explicit successful cleanup receipt.
+7. Volume couples mounted filesystem resources to snapshot ownership. Views
+   borrow the volume and clone nonrecursively. The ext4 mount uses fixed
+   nodev/nosuid flags and a verified owned device descriptor; no recipe mount
+   options reach this operation. COPY requires exclusive borrowing. Low-level
+   mounting requires the documented trusted parent; the production Runtime
+   supplies protected directories. Direct library callers do not gain arbitrary
+   parent authentication from the tmpfs type check alone.
+8. Normal unmount verifies namespace, calls syncfs, closes the root pin, performs
+   non-lazy unmount, then removes its empty attachment point. Each failure keeps
+   the correct flush/mount/target owner. Lazy destructor detach is explicitly
+   non-finalizing. Single-volume syscall duration is not interruptibly bounded;
+   outer lifecycle checks before/after it reject late completion. This is the
+   accepted kernel-blocked-operation limitation, not a guaranteed kill time.
+9. Idmapped detached views keep namespace identity and set nosuid/nodev. The
+   scope borrow prevents normal restoration while they are live. Bootstrap pairs
+   require the same user namespace and confined ordinary /mnt target; attachment
+   failure owns both partial views. InUse views retain child wait ownership and
+   cannot be explicitly closed before that child is reaped. Direct child exit
+   still is not proof of all descendant quiescence.
+10. BootstrapVolumes keeps tool/output together through partial mount/unmount
+    states. Output unmount precedes tool unmount; a partial pair cannot escape
+    through the failure API. Step preparation/finalization uses the original
+    cutoff. The public low-level unbounded unmount helper is not substituted for
+    that bounded acceptance composition. Actual formatting and output sealing
+    remain M5 review obligations.
+11. Runtime attaches control backing from the same workspace and mounts cgroup2
+    under a protected fresh path. Namespace identity checks bind it to a live,
+    independent deployment init. Close requires empty recovery/volume/domain
+    directories before unmounting control resources; no recursive deletion or
+    lazy detach turns live command resources into successful runtime closure.
+    Acquisition failures retain the attachment list and their cleanup cutoff.
+12. RecoveryDirectory verifies attached tmpfs, root ownership, exact 0700 mode,
+    init PID/mount namespace and a nonblocking exclusive cooperative lease.
+    Derived owners share lock lifetime through Arc without raw-FD/early-unlock
+    access. This excludes cooperating owners, not an independently privileged
+    environment replacing paths; that trust limitation is explicit.
+13. ControlRecords bounds names/content, uses nofollow/nonblocking reads with
+    owner/mode/type checks, and publishes without replacement. Publication may
+    succeed before a later sync error, so domain rollback inspects actual records.
+    Record removal checks expected identity and target absence; it does not
+    independently certify process reaping or allow output publication.
+14. Style: immutable verified inputs, sealed mapping/volume states, lifetime
+    borrows and consuming failure owners carry authority. Option fields in
+    destructor leases track whether ownership has moved, not whether an image
+    is accepted. Runtime's private attachment vector records incremental kernel
+    acquisitions for rollback; it is not externally mutable build state. No
+    unsafe application code or new free-standing orchestration was found here.
+
+### Storage evidence fidelity
+
+storage-evidence-comparison.json compares all 18 files to six executed source
+archives: cache-storage-v2, chain-storage-v1, maintained-runtime-v1, writeback-v3,
+maintained-domain-publication-v1 and observation-blocked-descendant-v1. Every
+selected file is present and byte-identical. Assessments are preserved in the
+comparison; their scope still matters:
+
+- Cache tests cover aligned backing, materialization cases, read-time corruption
+  rejection and retained diagnostics. Chain tests establish two-layer ordering,
+  zero fallback, read-only parents, writable top snapshot and invalid-header
+  rollback. They are synthetic block tests, not a distro boot.
+- Writeback tests force owned snapshot exhaustion and require rejected
+  finalization/retry. Publication and runtime tests cover selected acquisition
+  and cleanup failure paths, not every possible kernel failure.
+- Latest blocked-descendant test retains storage on cleanup expiration; it
+  expressly does not prove successful release of an uninterruptible task.
+- Exact source matches in this selected set do not imply all callers or the
+  whole historical binary match current production. Earlier sections record
+  relevant execution/cutoff changes separately.
+
+### Remaining scope after segment C
+
+Continue supervisor identity/join/volume protocols, receiver cleanup and M4-T1
+reconciliation; network/resolver ownership; current environment-label controls;
+sealing and pipeline consumers at the M4/M5 boundary; historical finding
+reconciliation and complete evidence/preservation assessment. This cumulative
+attempt still has no full clean pass and M4 remains 0/3.

@@ -5236,3 +5236,17 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Recorded exact assertion limits, trusted low-level caller preconditions and
   remaining source/evidence scopes in the cumulative review. No new VM run or
   production change; no full adherence or architecture qualification claimed.
+
+### M4 cumulative adherence attempt: storage and recovery segment
+
+- Previous turn progressed with isolation review. Continued the same production
+  baseline through workspace, verified/prepared scutes, verity/loop/DM chains,
+  writable snapshots, volume/idmapped attachment owners, bootstrap pair cleanup,
+  runtime mounts and recovery anchors/records. No new defect established in this
+  subset; no production changes or new executions.
+- Added hashes for 18 source files and comparisons with six preserved VM source
+  archives/assessments. All selected files match. Recorded coverage limits rather
+  than inferring distro boot, arbitrary-kernel failure or complete-binary parity.
+- Cumulative review remains preservation/m7-review/m4-adherence-168b2a2/REVIEW.md.
+  Protocol/receiver/network, environment evidence and pipeline/sealing consumers
+  remain before the full review can be evaluated. M4 stays 0/3; no gate waived.
