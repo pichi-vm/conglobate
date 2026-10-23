@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "peer": [
+    "127.0.0.1",
+    34302
+  ],
+  "endpoint": {
+    "port": 39835,
+    "token": "8ba114fe3abc61b6f3c1cb5f35a5c7f2"
+  },
+  "bound_address": "127.0.0.1",
+  "privileged_host_setup": false
+}

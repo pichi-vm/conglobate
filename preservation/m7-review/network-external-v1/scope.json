@@ -1,0 +1,11 @@
+{
+  "baseline": "62ee3b6",
+  "production_changed": false,
+  "result": "external IPv4 TCP exchange and build pass; no inner packet observation",
+  "privileged_host_setup": false,
+  "not_covered": [
+    "IPv6",
+    "unsolicited inbound denial",
+    "confidential platforms"
+  ]
+}

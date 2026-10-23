@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Build a real distro in a disposable VM; no privileged host operations."""
 import argparse
+from contextlib import nullcontext
+from external_service import ExternalService
 import gzip
 import hashlib
 import json
@@ -33,13 +35,18 @@ class DistroRun:
         self.root = self.output / 'root'
 
     def run(self):
+        self.output.mkdir()
+        with (ExternalService(self.output) if self.arguments.external_network_fixture
+              else nullcontext(None)) as service:
+            self.build(service)
+
+    def build(self, service):
         if platform.machine() != 'x86_64':
             raise RuntimeError('this runner currently qualifies only native amd64/KVM')
         if bool(self.arguments.firmware_pmi) != bool(self.arguments.firmware_dtb):
             raise RuntimeError('firmware PMI and DTB must be supplied together')
         if self.arguments.without_label_policy and self.arguments.label_fault_second_filesystem:
             raise RuntimeError('label fault requires the normal labeling exception')
-        self.output.mkdir()
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as snapshot:
             for name in ('src', 'Cargo.toml', 'Cargo.lock',
                          'tests/distro', 'tests/lifecycle', 'validation/global-label-policy',
@@ -64,13 +71,14 @@ class DistroRun:
         runtime.executable(REPOSITORY / 'target/m7-stable/debug/conglobate', Path('usr/bin/conglobate'))
         network_startup = ''
         network_cleanup = ':'
-        if self.arguments.network_fixture:
+        if self.arguments.network_fixture or service:
             with (self.output / 'network-fixture-build.log').open('wb') as log:
                 subprocess.run(['cargo', '+stable', 'build', '--locked', '--offline',
                                 '--manifest-path', 'tests/lifecycle/Cargo.toml'], cwd=REPOSITORY,
                                env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             runtime.executable(REPOSITORY / 'target/m7-stable/debug/conglobate-lifecycle-tests',
                                Path('network-fixture'))
+        if self.arguments.network_fixture:
             network_startup = """mkfifo /work/network-ready
 /network-fixture network-service > /work/network-ready &
 network_service=$!
@@ -78,11 +86,22 @@ read -r ready < /work/network-ready
 test "$ready" = NETWORK_SERVICE_READY
 rm /work/network-ready
 """
-            network_cleanup = """wait "$network_service"
-for link in /sys/class/net/cgb*; do test ! -e "$link"; done
+        if service:
+            runtime.executable(Path(shutil.which('tcpdump')), Path('usr/bin/tcpdump'))
+            network_startup += f"""mkfifo /work/network-capture-ready
+/network-fixture network-capture "$interface" {service.endpoint['port']} > /work/network-capture-ready &
+network_capture=$!
+read -r ready < /work/network-capture-ready
+test "$ready" = NETWORK_CAPTURE_READY
+rm /work/network-capture-ready
+"""
+        if self.arguments.network_fixture or service:
+            network_cleanup = ('wait "$network_service"\n' if self.arguments.network_fixture else '') + """for link in /sys/class/net/cgb*; do test ! -e "$link"; done
 nft list tables > /work/network-tables
 test -z "$(grep conglobate_ /work/network-tables)"
 echo NETWORK_BUILD_RESOURCE_CLEANUP_PASS"""
+            if service:
+                network_cleanup = 'wait "$network_capture"\n' + network_cleanup
         # Enumerate only the trusted host formatter, never an image executable.
         formatter = Path(shutil.which('mke2fs'))
         formatter_files = {'usr/bin/mke2fs'}
@@ -98,6 +117,8 @@ echo NETWORK_BUILD_RESOURCE_CLEANUP_PASS"""
         shutil.copytree(self.arguments.cache, self.root / 'cache')
         context = self.root / 'context'
         shutil.copytree(self.arguments.recipe.resolve().parent, context)
+        if service:
+            (context / 'external-endpoint').write_text(service.context_input())
         selected = context / self.arguments.recipe.name
         if selected.name != 'recipe.yaml':
             shutil.copy2(selected, context / 'recipe.yaml')
@@ -205,6 +226,8 @@ exec sleep infinity
         (self.output / 'command.json').write_text(json.dumps(command, indent=2) + '\n')
         with (self.output / 'serial.txt').open('wb') as log:
             subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=2400, check=True)
+        if service:
+            service.finish()
         serial = (self.output / 'serial.txt').read_text(errors='replace')
         exit_record = result.read_bytes().split(b'\0', 1)[0]
         passed = ('\nDISTRO_BUILD_AND_EXPORT_PASS\n' in serial
@@ -239,6 +262,8 @@ if __name__ == '__main__':
     parser.add_argument('--reference', default='qualification.local/fedora:43')
     parser.add_argument('--firmware-pmi', type=Path)
     parser.add_argument('--firmware-dtb', type=Path)
+    parser.add_argument('--external-network-fixture', action='store_true',
+                        help='Serve a loopback-only host TCP endpoint reached through VM outbound networking')
     parser.add_argument('--network-fixture', action='store_true',
                         help='Serve controlled guest DNS/TCP and assert network cleanup')
     parser.add_argument('--without-label-policy', action='store_true',

@@ -10,6 +10,57 @@ use std::{
 #[derive(Debug)]
 pub(super) struct NetworkProbe;
 impl NetworkProbe {
+    pub(super) fn capture(
+        interface: &std::ffi::OsStr,
+        port: &std::ffi::OsStr,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        use std::{
+            io::{BufRead, Read},
+            process::{Command, Stdio},
+        };
+        let port: u16 = port.to_str().ok_or("non-UTF8 port")?.parse()?;
+        let mut child = Command::new("/usr/bin/tcpdump")
+            .args(["-nn", "-l", "-Z", "root", "-i"])
+            .arg(interface)
+            .args(["-c", "1"])
+            .arg(format!(
+                "tcp dst port {port} and tcp[tcpflags] & tcp-syn != 0"
+            ))
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+        let mut output = child.stdout.take().ok_or("capture stdout absent")?;
+        let mut diagnostics =
+            std::io::BufReader::new(child.stderr.take().ok_or("capture stderr absent")?);
+        let process = conglobate::process::Process::from(child);
+        let mut line = String::new();
+        loop {
+            line.clear();
+            if diagnostics.read_line(&mut line)? == 0 {
+                return Err("capture ended before readiness".into());
+            }
+            eprint!("{line}");
+            if line.contains("listening on ") {
+                break;
+            }
+        }
+        println!("NETWORK_CAPTURE_READY");
+        assert!(
+            process
+                .wait_until(Instant::now() + Duration::from_secs(120))?
+                .status()
+                .success()
+        );
+        let mut packet = String::new();
+        output.read_to_string(&mut packet)?;
+        eprint!("{packet}");
+        assert_eq!(packet.lines().count(), 1);
+        assert!(packet.contains(" IP 10.0.2.15."));
+        assert!(packet.contains(&format!(" > 10.0.2.2.{port}: Flags [S]")));
+        eprintln!("NETWORK_EXTERNAL_IPV4_SOURCE_NAT_PASS");
+        Ok(())
+    }
+
     pub(super) fn allocation_lock_child(contended: bool) -> Result<(), Box<dyn std::error::Error>> {
         let namespace = fs::File::open("/proc/self/ns/net")?;
         let result = rustix::fs::flock(

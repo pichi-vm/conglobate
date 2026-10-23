@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/tests/distro/run.py", line 273, in <module>
+    DistroRun(parser.parse_args()).run()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/tests/distro/run.py", line 41, in run
+    self.build(service)
+    ~~~~~~~~~~^^^^^^^^^
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/tests/distro/run.py", line 230, in build
+    service.finish()
+    ~~~~~~~~~~~~~~^^
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/tests/distro/external_service.py", line 44, in finish
+    if self.process.wait(timeout=5) != 0:
+       ~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib64/python3.14/subprocess.py", line 1279, in wait
+    return self._wait(timeout=timeout)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.14/subprocess.py", line 2076, in _wait
+    raise TimeoutExpired(self.args, timeout)
+subprocess.TimeoutExpired: Command '['/usr/bin/python3', '/home/nathaniel/Projects/pichi-vm/conglobate/tests/distro/external_service.py', '--serve', '/var/tmp/conglobate-network-external-v2']' timed out after 5 seconds

@@ -110,3 +110,20 @@ reach the same exchange and then fail deliberately. Assess each completed run wi
 still make the runner fail; the separate assessment requires the expected error,
 independent rejection status, output absence and cleanup checks. These are local
 VM-destination tests, not proof of external outbound NAT or IPv6 connectivity.
+
+`--external-network-fixture` starts a separate ordinary-user service bound only to
+host loopback on an ephemeral port. The port and per-run request token are added
+to the committed context as `external-endpoint`. `network/external.yaml` copies
+that input through COPY, reaches the endpoint via the VM's QEMU gateway and
+requires its reply. The service independently records the exchange, is bounded
+by a timeout, and is terminated/reaped on runner failure. No privileged host
+network configuration occurs. Assess with `network/verify.py RUN external`.
+The runner also starts trusted tcpdump inside the VM before admission, waits for
+its readiness, and captures only the outgoing TCP SYN to the selected fixture
+port. The safe Rust observer requires the source to be the VM's 10.0.2.15 and
+the destination to be 10.0.2.2 at that port, before QEMU's outer translation.
+Use `network/verify.py RUN external-nat` to require this observation as well as
+external reply, cleanup and independent build status. `external` assesses only
+connectivity for earlier runs. Tcpdump explicitly runs as root in the trusted
+VM fixture because this minimal runtime has no tcpdump account. No host packet
+capture occurs. IPv6 and unsolicited inbound filtering remain separate tests.

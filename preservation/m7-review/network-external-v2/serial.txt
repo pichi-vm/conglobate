@@ -1,0 +1,49 @@
++ touch /run/global-label-fixture
++ mount -t bpf bpf /sys/fs/bpf
++ /label-loader
++ modprobe virtio_pci
++ modprobe virtio_net
++ modprobe virtio_blk
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe loop
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe ext4
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe dm-zero
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe dm-snapshot
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe dm-verity
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe veth
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe nf_tables
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe nft_chain_nat
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe nft_masq
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe nft_ct
++ ip link set lo up
++ interface=
++ for candidate in /sys/class/net/*
++ test eth0 = lo
++ test -z ''
++ interface=eth0
++ for candidate in /sys/class/net/*
++ test lo = lo
++ continue
++ test -n eth0
++ ip link set eth0 up
++ ip address add 10.0.2.15/24 dev eth0
++ ip route add default via 10.0.2.2
++ echo 1
++ echo 1
++ mkfifo /work/network-capture-ready
++ /network-fixture network-capture eth0 37387
++ network_capture=180
++ read -r ready
+tcpdump: Couldn't find user 'tcpdump'
+lifecycle fixture: capture ended before readiness
+DISTRO_BUILD_EXIT 1
+[    4.171864] sysrq: Resetting

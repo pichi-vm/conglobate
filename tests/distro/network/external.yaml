@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+carapace:
+  from: qualification.local/fedora:43
+  derive:
+    - copy: {from: external-endpoint, into: /external-endpoint}
+    - network: true
+      timeout: 30s
+      run: |
+        /bin/bash -eu -c '
+          read -r port token < /external-endpoint
+          exec 3<>/dev/tcp/10.0.2.2/$port
+          printf "%s\n" "$token" >&3
+          IFS= read -r response <&3
+          test "$response" = external-reply
+          exec 3>&-
+        '
+        rm /external-endpoint
+        printf 'NETWORK_EXTERNAL_TCP_REPLY_PASS\n'

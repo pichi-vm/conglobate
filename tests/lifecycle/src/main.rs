@@ -24,6 +24,9 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode, interface, port] if mode == "network-capture" => {
+                network::NetworkProbe::capture(interface, port)
+            }
             [mode] if mode == "network-service" => network::NetworkProbe::service(),
             [mode] if mode == "network-composite" => network::NetworkProbe::composite_failures(),
             [mode, contended] if mode == "network-allocation-lock-child" => {

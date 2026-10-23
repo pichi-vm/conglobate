@@ -4657,3 +4657,30 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   external outbound NAT or IPv6 forwarding. Nor do they close receiver start-gate,
   supervisor-death or writeback cases. M4 remains 0/3 and the broader M5-M8 gates
   remain open; these runs are validation evidence, not adherence passes.
+
+### External recipe TCP and VM-side IPv4 source translation
+
+- Added ordinary-user loopback-only host endpoint with ephemeral port and per-run
+  request token committed as a context input. Recipe consumes it through COPY,
+  connects through QEMU's gateway and requires the reply. Service independently
+  records the exact exchange; context-managed subprocess is bounded and reaped.
+  No privileged host network operation, mount or packet capture is performed.
+- network-external-v1 passed actual outbound IPv4 TCP/build/export/cleanup but
+  could not isolate inner NAT from QEMU's outer translation. Preserved as scoped
+  connectivity evidence. Added trusted VM-side tcpdump observer of only the SYN
+  to the selected port, ready before admission, with bounded child wait and
+  exact source/destination assertions. No production API widening or registration.
+- network-external-v2 failed before build because the minimal guest has no tcpdump
+  account. Failure/log/source retained. v3 explicitly runs this trusted capture
+  as VM root, preserving production command restrictions. v3 passes: outgoing
+  SYN uses 10.0.2.15 before QEMU translation, external endpoint replies, network
+  resources are removed, independent exit zero and verified artifact export.
+- Strict fixture Clippy, Python compilation and whitespace checks pass. Maintained
+  external-nat assessor requires source observation in addition to independent
+  service/build/cleanup evidence. Small evidence/source/context/artifact hashes
+  preserved; large VM artifacts remain tracked for durable archival.
+- Prior turn's actual recipe DNS/failure tests were progress. M4 remains 0/3;
+  IPv6, unsolicited inbound denial, receiver gate failure, supervisor death and
+  other remaining lifecycle gates are not inferred from IPv4 TCP success. Broader
+  distro/platform qualification and retirement remain open. No adherence pass
+  claimed from these runs.
