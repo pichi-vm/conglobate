@@ -1,0 +1,1 @@
+Current supervisor-death regression passes: policy/identity protection retained with live command domain until independent controller powers off VM. Evidence for M4 pass 1; not confidential-platform qualification.
