@@ -94,8 +94,8 @@ create_one_protected_tmpfs_workspace
 # Immutable image layers stay cache-backed; do not copy them into the workspace.
 
 # No Git clone, fetch or checkout in conglobate.
-retain_verified_readonly_context
-# Used only by trusted recipe/COPY processing. Not a command mount.
+retain_verified_context_bytes
+# Used directly by trusted recipe/COPY processing. No second checkout or mount.
 
 for stage in bootstrap carapace firmware; do
     if ! recipe_has_stage "$stage"; then
@@ -149,7 +149,7 @@ write_deterministic_cbor_inventory
 # Network configuration is not inventoried. Attestation belongs to the appliance.
 verify_staged_output_and_inventory
 
-close_context_and_all_build_resources
+release_captured_context_and_close_build_resources
 # Explicitly check cleanup before publication. RAII handles ordinary ownership;
 # destructors must not manufacture a successful quiescence/unmount receipt.
 

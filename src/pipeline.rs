@@ -27,12 +27,6 @@ pub enum BuildError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
-    Materialize(#[from] crate::context::ContextMaterializeFailure),
-    #[error(transparent)]
-    ReadOnly(#[from] crate::context::ContextMountFailure),
-    #[error(transparent)]
-    Cleanup(#[from] crate::context::ContextCleanupFailure),
-    #[error(transparent)]
     Assembly(#[from] AssemblyFailure),
     #[error(transparent)]
     Inventory(#[from] InventoryError),
@@ -181,9 +175,6 @@ impl Pipeline {
         let build =
             CapturedBuild::try_from(&self.request)?.resolve(Cache::open(self.request.cache())?)?;
         let workspace = Workspace::create()?;
-        let context = workspace
-            .materialize(build.captured().context())?
-            .read_only()?;
         let output = if build.captured().plan().recipe().bootstrap().is_some() {
             bootstrap::BootstrapBuild::new(&build)?.execute(&self.request, &workspace)?
         } else if build.captured().plan().recipe().firmware().is_some() {
@@ -199,8 +190,6 @@ impl Pipeline {
         } else {
             InheritedBuild::new(&build)?.assemble(&self.request)?
         };
-        // No artifact can be published if private input cleanup fails.
-        context.close()?;
         drop(workspace);
         output.publish()?;
         Ok(())

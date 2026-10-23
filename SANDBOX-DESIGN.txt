@@ -61,9 +61,9 @@ Historical experiments are evidence, not competing specifications.
         and new output destination. Neither path has a default filename or
         special directory. Require committed files resolved within the selected
         context; reject absolute paths, escapes and missing/non-file inputs.
-        Record selected paths and exact content identities in inventory. Make a private,
-        read-only checkout of the specified commit; do not expose the source
-        checkout to commands. Use the Git, lock, and host-architecture rules in
+        Record selected paths and exact content identities in inventory. Capture verified committed bytes from the environment-prepared local
+        repository; do not clone or create another checkout. Keep captured input
+        private and immutable; commands never receive the context. Use the Git, lock, and host-architecture rules in
         DESIGN.md. Working-tree policy for callers is outside this interface.
 
    2.2. Resolve recipe references only through the committed, architecture-aware
@@ -110,7 +110,7 @@ Historical experiments are evidence, not competing specifications.
         builds must not collide or remove each other's resources.
 
    3.3. Use one private build-wide tmpfs for mutable snapshots and scratch:
-        private context materialization, disposable tool roots, newly generated
+        disposable tool roots, newly generated
         output-layer storage, runtime state, resolver bytes, and intermediate outputs.
         Use ordinary tmpfs behavior, with no disk fallback. The environment
         configures capacity and resource limits; do not add per-step memory,
@@ -260,7 +260,7 @@ Historical experiments are evidence, not competing specifications.
         context access. Use a controlled mount session without command writers,
         root-confined path resolution and narrowly scoped handles. Complete it
         before the next run. Apply the same rules to disposable tool roots and
-        bootstrap output roots; do not expose the private checkout to commands.
+        bootstrap output roots; do not expose the captured context to commands.
 
    6.3. Extract declared firmware outputs only after commands and
         descendants have stopped. Validate types, bounds, paths, and formats.

@@ -67,16 +67,6 @@ impl Workspace {
         )?;
         Ok(Self { root: root.into() })
     }
-    /// Stage committed inputs on this workspace's tmpfs. The staged owner keeps
-    /// an independent reference to the filesystem until its cleanup completes.
-    /// This does not yet enforce a read-only mount or authorize command access.
-    pub fn materialize(
-        &self,
-        context: &crate::context::CapturedContext,
-    ) -> Result<crate::context::StagedContext, crate::context::ContextMaterializeFailure> {
-        context.materialize_in(self.root.try_clone()?)
-    }
-
     /// Sparse capacity for the full logical device, with 256 exception entries
     /// per metadata chunk plus the header and terminal metadata chunk.
     pub fn snapshot_store(&self) -> io::Result<Scratch<'_>> {

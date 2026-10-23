@@ -442,9 +442,9 @@ fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_command
 }
 
 #[test]
-fn materialization_preserves_committed_data_modes_and_confined_links_on_tmpfs() {
+fn captured_bytes_modes_and_links_survive_source_changes() {
     use conglobate::path::ContextPath;
-    use std::{io::Read, os::unix::fs::PermissionsExt};
+    use std::os::unix::fs::PermissionsExt;
     let repo = Repository::new("sha1");
     repo.write("dir/plain", b"original");
     repo.write("dir/executable", b"#!/bin/sh\n");
@@ -457,56 +457,23 @@ fn materialization_preserves_committed_data_modes_and_confined_links_on_tmpfs() 
     std::os::unix::fs::symlink("../outside", repo.0.path().join("escape")).unwrap();
     let commit = repo.commit();
     let captured = repo.capture(&commit, ".").unwrap();
-    let scratch = tempfile::tempdir_in("/dev/shm").unwrap();
-    let checkout = captured.materialize(scratch.path()).unwrap();
     repo.write("dir/plain", b"changed");
-    let mut file = checkout
-        .open(&ContextPath::try_from(Path::new("link")).unwrap())
+    let plain = captured
+        .read(&ContextPath::try_from(Path::new("link")).unwrap())
         .unwrap();
-    let mut bytes = Vec::new();
-    file.read_to_end(&mut bytes).unwrap();
-    assert_eq!(bytes, b"original");
-    let executable = checkout
-        .open(&ContextPath::try_from(Path::new("dir/executable")).unwrap())
-        .unwrap();
-    assert_ne!(
-        executable.metadata().unwrap().permissions().mode() & 0o100,
-        0
-    );
-    assert_eq!(file.metadata().unwrap().permissions().mode() & 0o111, 0);
+    assert_eq!(plain.bytes(), b"original");
+    assert!(!plain.executable());
     assert!(
-        checkout
-            .open(&ContextPath::try_from(Path::new("escape")).unwrap())
+        captured
+            .read(&ContextPath::try_from(Path::new("dir/executable")).unwrap())
+            .unwrap()
+            .executable()
+    );
+    assert!(
+        captured
+            .read(&ContextPath::try_from(Path::new("escape")).unwrap())
             .is_err()
     );
-    assert_eq!(std::fs::read_dir(scratch.path()).unwrap().count(), 1);
-    drop(file);
-    drop(executable);
-    checkout.close().unwrap();
-    assert_eq!(std::fs::read_dir(scratch.path()).unwrap().count(), 0);
-}
-
-#[test]
-fn staging_cleanup_retains_parent_authority_across_rename() {
-    use std::os::unix::fs::PermissionsExt;
-    let repo = Repository::new("sha1");
-    repo.write("file", b"bytes");
-    let commit = repo.commit();
-    let captured = repo.capture(&commit, ".").unwrap();
-    let scratch = tempfile::tempdir_in("/dev/shm").unwrap();
-    let original = scratch.path().join("original");
-    let moved = scratch.path().join("moved");
-    std::fs::create_dir(&original).unwrap();
-    let checkout = captured.materialize(&original).unwrap();
-    let created = std::fs::read_dir(&original)
-        .unwrap()
-        .next()
-        .unwrap()
-        .unwrap();
-    assert_eq!(created.metadata().unwrap().permissions().mode() & 0o077, 0);
-    std::fs::rename(&original, &moved).unwrap();
-    drop(checkout);
-    assert_eq!(std::fs::read_dir(&moved).unwrap().count(), 0);
 }
 
 impl Repository {
@@ -545,7 +512,7 @@ fn subtree_selection_rejects_duplicate_entries_in_ancestor_trees() {
     );
 }
 #[test]
-fn captured_and_materialized_reads_agree_on_trailing_symlink_separators() {
+fn captured_reads_reject_trailing_symlink_separators() {
     use conglobate::path::ContextPath;
     let repo = Repository::new("sha1");
     repo.write("file", b"content");
@@ -557,48 +524,4 @@ fn captured_and_materialized_reads_agree_on_trailing_symlink_separators() {
     let dotpath = ContextPath::try_from(Path::new("dotlink")).unwrap();
     assert!(captured.read(&path).is_err());
     assert!(captured.read(&dotpath).is_err());
-    let scratch = tempfile::tempdir_in("/dev/shm").unwrap();
-    let staged = captured.materialize(scratch.path()).unwrap();
-    assert!(staged.open(&path).is_err());
-    assert!(staged.open(&dotpath).is_err());
-    staged.close().unwrap();
-}
-
-#[test]
-fn failed_population_returns_cleanup_not_a_partial_checkout() {
-    let repo = Repository::new("sha1");
-    let blob = repo.object("blob", b"content");
-    let mut tree = Vec::new();
-    // Valid Git names can exceed the destination filesystem's NAME_MAX.
-    // The first file succeeds before the second fails during materialization.
-    for name in ["a".to_owned(), "z".repeat(256)] {
-        tree.extend_from_slice(format!("100644 {name}\0").as_bytes());
-        tree.extend(hex::decode(&blob).unwrap());
-    }
-    let tree = repo.object("tree", &tree);
-    let commit = repo.object("commit", format!("tree {tree}\nauthor Fixture <fixture@example.invalid> 1 +0000\ncommitter Fixture <fixture@example.invalid> 1 +0000\n\nfixture\n").as_bytes());
-    let context = repo
-        .capture(&CommitIdentity::try_from(commit.as_str()).unwrap(), ".")
-        .unwrap();
-    let parent = tempfile::tempdir_in("/dev/shm").unwrap();
-    let failure = context.materialize(parent.path()).unwrap_err();
-    let conglobate::context::ContextMaterializeFailure::Partial { source, cleanup } = failure
-    else {
-        panic!("must retain partially populated directory");
-    };
-    assert!(
-        matches!(source, conglobate::context::ContextError::Io(ref error)
-        if error.raw_os_error() == Some(36))
-    );
-    let entries = std::fs::read_dir(parent.path())
-        .unwrap()
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
-    assert_eq!(entries.len(), 1);
-    assert_eq!(
-        std::fs::read(entries[0].path().join("a")).unwrap(),
-        b"content"
-    );
-    cleanup.close().unwrap();
-    assert_eq!(std::fs::read_dir(parent.path()).unwrap().count(), 0);
 }

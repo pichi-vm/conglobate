@@ -262,22 +262,22 @@ tree or index snapshot. Caller-side working-tree cleanliness policy is outside
 this interface. Conglobate does not create repositories, commit files, or fetch
 remote content.
 
-It verifies the selected Git objects and makes a private read-only checkout of
-the commit. The recipes, lock, scripts, and copy sources all come from that
-checkout. Subsequent changes to the caller's working tree cannot affect it.
-Submodules and Git LFS are rejected in the initial implementation.
+The environment prepares the local Git repository and any working checkout.
+Conglobate verifies the selected committed objects and captures their contents
+privately. Recipes, lock files and COPY sources read those immutable captured
+bytes directly; there is no second filesystem checkout or context mount.
+Subsequent source changes cannot alter the captured bytes. The context is never
+exposed to image commands. Submodules and Git LFS are initially rejected.
 
-### 3.1 Context materialization
+### 3.1 Context ownership
 
-Use ordinary Git checkout behavior, without an additional metadata-normalization
-policy. The context is not converted to a carapace. It remains private and
-read-only during execution. Record the repository's object format, selected
-commit, and context subtree identity in the inventory.
-
-Do not run caller-provided hooks or arbitrary checkout filters as an implicit
-part of ingestion. Git backend selection must preserve the agreed checkout
-semantics and reject unsupported submodule/LFS content rather than silently
-building from pointer files. The precise implementation checks need tests.
+Conglobate does not clone, fetch or run checkout operations. It records the
+repository object format, selected commit and context subtree identity in the
+inventory. Input capture verifies object content against these identities;
+filesystem paths and the caller's working tree do not substitute for verification.
+Preserve committed bytes, executable bits and symlink targets. Do not execute
+caller-provided hooks or checkout filters. Existing local repository/commit and
+context-relative recipe/lock arguments remain the input interface.
 
 Git's object format must be recorded. Whether SHA-1 Git identities require an
 additional independently authenticated commitment for the intended threat
@@ -1154,7 +1154,7 @@ pass. Appliance transport and attestation remain separate integration work.
 ## 13. Remaining decisions
 
 The initial implementation uses gix and verifies each consumed Git object's
-identity before materialization. Recipe symlinks resolve only to captured files
+identity during private capture. Recipe symlinks resolve only to captured files
 within the context; hooks and checkout filters do not execute. The lock and
 inventory wire formats, YAML values, device exposure, and supported firmware
 measurement contracts are specified above. Temporary writable mappings use

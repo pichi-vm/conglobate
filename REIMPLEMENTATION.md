@@ -10,8 +10,9 @@ Latest user direction: simplify to linear build-session orchestration. Remove
 persisted cgroup recovery records; retain descriptor-based containment, bounded
 quiescence/cleanup and publication exclusion. M2 is reopened at 0/3 for this
 architecture correction; M4–M6 remain 0/3. Earlier M2 acceptance below is historical.
-The environment will prepare the Git checkout; adapt the input contract and
-implementation next, preserving verification of committed, stable input bytes.
+The environment prepares Git inputs. Conglobate now captures verified local
+objects directly without a redundant filesystem checkout. M3 is reopened at 0/3
+for removal of context materialization; source verification remains required.
 BUILD-FLOW.sh expresses this direction; it does not claim implementation parity.
 
 

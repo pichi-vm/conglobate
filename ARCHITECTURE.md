@@ -74,7 +74,7 @@ names from the original design are not additional implementation requirements.
 | Module | Owned or immutable domain types | Boundary |
 | --- | --- | --- |
 | request, path | BuildRequest, ContextPath, ContextDirectory | Parse CLI and relative locators without granting filesystem authority |
-| context, input | CapturedContext, Checkout<S>, ContextFile, CapturedBuild, ResolvedBuild | Exact committed objects, private read-only materialization and verified input resolution; no command access |
+| context, input | CapturedContext, ContextFile, CapturedBuild, ResolvedBuild | Exact committed objects, immutable captured bytes and verified input resolution; no command access |
 | recipe, value | Recipe, Directive, FilesystemSpec, CommandTimeout | Raw deserialization followed by validated immutable values |
 | plan | BuildPlan, LockedInput, InputRole, StepId | Resolve inheritance/references and requirements before command admission |
 | cache, image | ResolvedImage, VerifiedChain, VerifiedScute, ImageReference, IndexDigest | Verified component identities and cache-backed chain inputs |
