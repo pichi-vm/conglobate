@@ -1,0 +1,18 @@
+   Compiling zerocopy v0.8.63
+   Compiling gix-protocol v0.62.0
+   Compiling gix v0.84.0
+   Compiling iocuddle v0.4.0
+   Compiling devmap-core v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+   Compiling devmap-linux v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+   Compiling half v2.7.1
+   Compiling ciborium-ll v0.2.2
+   Compiling iocuddle v0.3.0
+   Compiling ciborium v0.2.2
+   Compiling lodown v0.1.0 (https://github.com/pichi-vm/lodown.git?rev=31f8951293af180150e5e4c654c47a5b190097b9#31f89512)
+   Compiling devmap-verity v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+   Compiling devmap-snapshot v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+   Compiling netlink-packet-route v0.33.0
+   Compiling netlink-packet-netfilter v0.4.0
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+   Compiling conglobate-command-integration v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 22.06s

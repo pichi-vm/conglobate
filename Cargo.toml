@@ -9,6 +9,7 @@ description = "Standalone image builder with isolated command execution"
 
 [dependencies]
 netlink-packet-core = "=0.9.0"
+netlink-packet-netfilter = "=0.4.0"
 netlink-packet-route = "=0.33.0"
 goblin = { version = "0.10", default-features = false, features = ["std", "pe32", "pe64"] }
 pmi = { git = "https://github.com/pichi-vm/pmi", rev = "364ee0be240fa44c9d7cef7692593f3b52e45b78", version = "0.1.0" }

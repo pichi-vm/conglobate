@@ -62,6 +62,7 @@ impl Integration {
                 args[2].parse()?,
                 args[3].parse()?,
                 args[4].parse()?,
+                args[5].parse()?,
             );
         }
         if args.get(1).is_some_and(|arg| arg == "network-probe") {

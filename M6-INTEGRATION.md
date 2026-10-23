@@ -663,3 +663,42 @@ disposable firmware changes and failure after successful carapace derivation.
 - NAT/forwarding policy, DNS injection, supervisor-to-volume-helper integration,
   enabled-command receipts and remaining failure/ORAS cases remain required.
   M6 stays active at zero adherence passes; no M7/M8 advancement is claimed.
+
+### M6 native nftables policy and local reply filtering
+
+- Previous turn progressed in e6bc7c9. Selected pinned MIT-licensed
+  netlink-packet-netfilter 0.4.0, compatible with the existing netlink-packet-core
+  0.9 codec. No libnftnl or runtime nft executable dependency in production.
+  Primary source/API: https://docs.rs/netlink-packet-netfilter/0.4.0/netlink_packet_netfilter/
+  and the downloaded crate source (license/version captured with v222).
+- Added bounded nonblocking nfnetlink batches on an owned CLOEXEC socket. Each
+  operation has a unique sequence and requires its ACK; truncated, duplicate,
+  unexpected and wrong-sequence messages fail. Unread old ACKs after failure
+  cannot acknowledge a later transaction. Socket polling shares the existing
+  absolute-deadline implementation. Host parser tests exercise these properties.
+- FirewallTable uses kernel TableFlags::Owner and exclusive creation. Explicit
+  close requires acknowledged deletion and retains the socket on failure. Socket
+  ownership provides kernel cleanup on close; asynchronous abandonment/crash
+  timing and failed-batch rollback still need dedicated runtime qualification.
+- NatPolicy atomically submits the owner table, forward/output chains accepting
+  established/related traffic toward the private interface, otherwise dropping
+  inbound traffic, and a postrouting masquerade rule matching its ingress name.
+  Scoped IPv6 neighbor-discovery exceptions require hop limit 255 and NS/NA type.
+  Other interfaces/destinations are not filtered. Safe generic expression attrs
+  cover ct/masq absent from the codec's typed enums; constants cite Linux UAPI.
+- NatPolicy borrows ConfiguredVeth through close (including close failure), keeping
+  explicit link teardown behind policy ownership. This is not command admission
+  or forwarding-readiness proof. Production never changes the primary NIC here.
+- Disposable VM v222 independently lists the resulting table with nft and passes
+  IPv4/IPv6 request/reply from mapped-root namespace helpers. Ready listeners do
+  not receive unsolicited local-origin packets while policy is installed; the
+  same packets arrive after removal (positive control). Table-name collision is
+  rejected without losing original policy; acknowledged deletion is observed.
+  These are setup helpers, not the complete restricted image-command lifecycle.
+- Host suite (95 library tests, integrations, 52 doctests), strict root/fixture
+  Clippy and focused VM checks pass. Source/logs/lock provenance is in evidence/v222.
+- Still required: forwarded upstream IPv4/IPv6 traffic and observed NAT source
+  translation; unsolicited forwarded input; forwarding prerequisites/ownership
+  without primary-NIC changes; crash and rejected-batch cases; DNS injection,
+  lifecycle/plumbing, actual network receipts, remaining ORAS/matrix coverage and
+  three complete M6 reviews. M6 remains active at zero passes; M7/M8 remain open.

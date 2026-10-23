@@ -358,6 +358,9 @@ impl ConnectionFailure {
 #[derive(Debug)]
 pub struct ConfiguredVeth(ConnectedVeth);
 impl ConfiguredVeth {
+    pub(super) fn host_name(&self) -> &InterfaceName {
+        self.0.pair.host_name()
+    }
     pub fn namespace(&self) -> &NetworkNamespace {
         &self.0.namespace
     }

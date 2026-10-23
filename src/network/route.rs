@@ -72,7 +72,7 @@ impl RouteRequest {
             }
         }
     }
-    fn ready(socket: &OwnedFd, flags: PollFlags, deadline: Instant) -> io::Result<()> {
+    pub(super) fn ready(socket: &OwnedFd, flags: PollFlags, deadline: Instant) -> io::Result<()> {
         loop {
             let remaining = deadline
                 .checked_duration_since(Instant::now())

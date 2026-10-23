@@ -20,3 +20,10 @@ pub use veth::{ConfigurationCleanupFailure, ConfigurationFailure, ConfiguredVeth
 
 mod loopback;
 pub(crate) use loopback::Loopback;
+
+mod firewall;
+mod netfilter;
+pub use firewall::{FirewallCloseFailure, FirewallTable};
+
+mod nat;
+pub use nat::{NatCloseFailure, NatPolicy};

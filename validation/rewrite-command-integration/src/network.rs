@@ -7,7 +7,9 @@ use conglobate::{
         CommandDevices, CommandSetup, ExecutionGate, GatedCommandSetup, IdRange, Mapped,
         UserNamespace,
     },
-    network::{InterfaceName, NetworkAddress, NetworkNamespace, VethPair},
+    network::{
+        FirewallTable, InterfaceName, NatPolicy, NetworkAddress, NetworkNamespace, VethPair,
+    },
     process::Process,
     step::SetupBudget,
 };
@@ -24,6 +26,7 @@ impl NetworkProbe {
         gated: bool,
         expected: u64,
         traffic: bool,
+        deny: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if gated {
             let (_scope, _root) = GatedCommandSetup::from_input()?.enter()?;
@@ -50,7 +53,28 @@ impl NetworkProbe {
                 let socket = std::net::UdpSocket::bind(bind)?;
                 socket.connect(remote)?;
                 assert!(!socket.local_addr()?.ip().is_unspecified());
-                socket.send_to(b"private-network", gateway)?;
+                let unsolicited = std::net::UdpSocket::bind(if bind.starts_with('[') {
+                    "[::]:45455"
+                } else {
+                    "0.0.0.0:45455"
+                })?;
+                unsolicited.set_read_timeout(Some(Duration::from_secs(1)))?;
+                socket.set_read_timeout(Some(Duration::from_secs(3)))?;
+                socket.connect(gateway)?;
+                socket.send(b"private-network")?;
+                let mut bytes = [0; 32];
+                let count = socket.recv(&mut bytes)?;
+                assert_eq!(&bytes[..count], b"reply");
+                let incoming = unsolicited.recv(&mut bytes);
+                if deny {
+                    let error = incoming.unwrap_err();
+                    assert!(matches!(
+                        error.kind(),
+                        std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                    ));
+                } else {
+                    assert_eq!(&bytes[..incoming?], b"unsolicited");
+                }
             }
             for bind in ["127.0.0.1:0", "[::1]:0"] {
                 let socket = std::net::UdpSocket::bind(bind)?;
@@ -99,6 +123,7 @@ impl NetworkProbe {
         program: &HelperProgram,
         network: &NetworkNamespace,
         traffic: bool,
+        deny: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let parent = Path::new("/work/network-user-pin");
         fs::create_dir(parent)?;
@@ -137,18 +162,25 @@ impl NetworkProbe {
                 .arg(gated.to_string())
                 .arg(network.metadata()?.ino().to_string())
                 .arg(traffic.to_string())
+                .arg(deny.to_string())
                 .stdin(input)
                 .spawn()?;
+            for listener in &listeners {
+                listener.set_read_timeout(Some(Duration::from_secs(5)))?;
+                let mut bytes = [0; 32];
+                let (count, peer) = listener.recv_from(&mut bytes)?;
+                assert_eq!(&bytes[..count], b"private-network");
+                listener.send_to(b"reply", peer)?;
+                let target = std::net::SocketAddr::new(peer.ip(), 45455);
+                let result = listener.send_to(b"unsolicited", target);
+                if !deny {
+                    result?;
+                }
+            }
             let status = Process::from(child)
                 .wait_until(Instant::now() + Duration::from_secs(10))?
                 .status();
             assert!(status.success());
-            for listener in &listeners {
-                listener.set_read_timeout(Some(Duration::from_secs(3)))?;
-                let mut bytes = [0; 32];
-                let count = listener.recv(&mut bytes)?;
-                assert_eq!(&bytes[..count], b"private-network");
-            }
             drop(gate);
         }
         if !traffic {
@@ -199,7 +231,7 @@ impl NetworkProbe {
                 .trim()
                 .is_empty()
         );
-        Self::entry_roundtrip(&program, &first, false)?;
+        Self::entry_roundtrip(&program, &first, false, false)?;
         drop(first);
         drop(second);
         println!("NETWORK_NAMESPACE_CREATOR_REAPED_PASS");
@@ -267,7 +299,32 @@ impl NetworkProbe {
         ];
         let configured =
             connection.configure(host, peer, &program, SetupBudget::begin().cutoff()?)?;
-        Self::entry_roundtrip(&program, configured.namespace(), true)?;
+        let policy = NatPolicy::install(&configured, Instant::now() + Duration::from_secs(10))?;
+        let listed = std::process::Command::new("/usr/bin/nft")
+            .args(["list", "table", "inet", "conglobate_cg_host"])
+            .output()?;
+        assert!(listed.status.success());
+        println!("NFT_POLICY {}", String::from_utf8_lossy(&listed.stdout));
+        assert!(
+            FirewallTable::create(
+                "conglobate_cg_host",
+                Instant::now() + Duration::from_secs(10)
+            )
+            .is_err()
+        );
+        Self::entry_roundtrip(&program, configured.namespace(), true, true)?;
+        policy
+            .close(Instant::now() + Duration::from_secs(10))
+            .expect("acknowledged policy teardown");
+        Self::entry_roundtrip(&program, configured.namespace(), true, false)?;
+        assert!(
+            !std::process::Command::new("/usr/bin/nft")
+                .args(["list", "table", "inet", "conglobate_cg_host"])
+                .output()?
+                .status
+                .success()
+        );
+        println!("NETWORK_NFT_REPLY_ONLY_AND_TEARDOWN_PASS");
         configured.close()?;
         println!("NETWORK_DUAL_STACK_ADDRESSES_ROUTES_LOOPBACK_PASS");
         assert!(!Path::new("/sys/class/net/cg-host").exists());
