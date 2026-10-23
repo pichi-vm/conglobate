@@ -110,7 +110,14 @@ ip address add 10.0.2.15/24 dev "$interface"
 ip route add default via 10.0.2.2
 echo 1 > /proc/sys/net/ipv4/ip_forward
 echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
-conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --resolv-conf /etc/resolv.conf --formatter-runtime /formatter.json
+if conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --resolv-conf /etc/resolv.conf --formatter-runtime /formatter.json; then
+    :
+else
+    status=$?
+    test ! -e /work/output
+    echo FAILED_BUILD_OUTPUT_ABSENT
+    exit "$status"
+fi
 # Only the trusted VM supervisor sees this export device. The build workspace
 # remains RAM-backed; commands receive neither the device nor an export path.
 tar -C /work/output -cf /dev/vda .

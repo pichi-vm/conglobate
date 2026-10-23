@@ -4182,3 +4182,26 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   raw stream are under preservation/m7-review/registration-free-implementation-review.
   Findings require parent source-grounded evaluation and consensus. No clean
   adherence pass or milestone acceptance is claimed; M2/M4–M6 remain 0/3.
+
+
+### Registration-free CLI error-path regression: timeout failure found
+
+- Maintained tests/distro/failures recipes and assessor exercise ordinary exit 7
+  and a finite one-second recipe timeout. Trusted VM runner explicitly checks
+  that failed builds have no published output directory.
+- Nonzero case passes command error preservation, complete command/runtime
+  cleanup and no publication. Timeout case starts the command, reaches the
+  execution deadline and rejects publication, but fails final runtime cleanup
+  with Directory not empty. This is a failed regression, not accepted cleanup.
+  Evidence is preserved in preservation/m7-review/cli-{nonzero,timeout}-v1.
+- Working hypothesis from source: receiver creates MountPoint under the shared
+  runtime volumes directory; cgroup cancellation kills the helper before its
+  temporary directory destructor can unlink that point. Namespace teardown
+  removes private mounts but not shared tmpfs directory entries. Runtime::close
+  correctly refuses to remove a nonempty volumes directory. Confirm residual
+  ownership and implement cancellation-safe attachment storage; do not paper
+  over this with sleeps, recursive deletion or relaxed cleanup/publication.
+- Claude implementation review still running in the existing session (tool
+  session 78027 at this checkpoint). Its scope predates this new failure test;
+  present the failure evidence during source-grounded consensus reconciliation.
+  All reopened gates remain 0/3. No complete sandbox qualification is claimed.

@@ -1,0 +1,52 @@
++ touch /run/global-label-fixture
++ mount -t bpf bpf /sys/fs/bpf
++ /label-loader
++ modprobe virtio_pci
++ modprobe virtio_net
++ modprobe virtio_blk
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe loop
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe ext4
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe dm-zero
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe dm-snapshot
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe dm-verity
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe veth
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe nf_tables
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe nft_chain_nat
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe nft_masq
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe nft_ct
++ ip link set lo up
++ interface=
++ for candidate in /sys/class/net/*
++ test eth0 = lo
++ test -z ''
++ interface=eth0
++ for candidate in /sys/class/net/*
++ test lo = lo
++ continue
++ test -n eth0
++ ip link set eth0 up
++ ip address add 10.0.2.15/24 dev eth0
++ ip route add default via 10.0.2.2
++ echo 1
++ echo 1
++ conglobate build --repository /context --commit 5f6807807268641a7c40095c01006dbe21a30d04 --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --resolv-conf /etc/resolv.conf --formatter-runtime /formatter.json
+COMMAND_TIMEOUT_STARTED
+runtime retained until VM disposal: /proc/self/fd/9/conglobate-runtime-AhtYAk
+conglobate: build execution: build execution: directive 0: command outcome: command observation failed: identity exchange deadline expired; cleanup: complete; runtime cleanup: build execution: build runtime: Directory not empty (os error 39)
++ status=1
++ test '!' -e /work/output
++ echo FAILED_BUILD_OUTPUT_ABSENT
+FAILED_BUILD_OUTPUT_ABSENT
++ exit 1
+DISTRO_BUILD_EXIT 1
+[   41.420049] sysrq: Resetting
