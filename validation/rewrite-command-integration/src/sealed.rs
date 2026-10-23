@@ -21,6 +21,21 @@ impl SealProbe {
         sealed: &SealedScute<'_>,
         workspace: &Workspace,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        let bootstrap = conglobate::output::AssembledImage::bootstrap(
+            sealed,
+            Path::new("/work/bootstrap-produced-output"),
+        )?;
+        let bootstrap_chain = bootstrap.chain().ok_or("missing bootstrap chain")?;
+        assert_eq!(bootstrap_chain.root(), sealed.root());
+        assert_eq!(bootstrap_chain.scutes().len(), 1);
+        assert_eq!(bootstrap.image().manifest().layers.len(), 1);
+        assert_eq!(
+            bootstrap.image().manifest().layers[0].digest_str(),
+            sealed.descriptor().digest
+        );
+        assert!(bootstrap.image().manifest().config.is_empty());
+        assert!(!Path::new("/work/bootstrap-produced-output").exists());
+        bootstrap.discard()?;
         let (store, pin) = FixtureCache::import(Path::new("/work/sealed-cache"), sealed)?;
         let cache = store.open()?;
         let image = cache.resolve(pin)?;
@@ -99,6 +114,18 @@ impl SealProbe {
             .map_err(|e| e.to_string())?
             .seal_snapshot(*sealed.root())
             .map_err(|e| e.to_string())?;
+        let failure = conglobate::output::AssembledImage::bootstrap(
+            &child,
+            Path::new("/work/nonzero-bootstrap-output"),
+        )
+        .unwrap_err();
+        let (error, staged) = failure.into_parts();
+        assert!(error.to_string().contains("nonzero parent"));
+        staged
+            .ok_or("missing rejected bootstrap staging")?
+            .discard()?;
+        assert!(!Path::new("/work/nonzero-bootstrap-output").exists());
+        println!("BOOTSTRAP_OUTPUT_ASSEMBLY_PASS");
         let extended = conglobate::output::AssembledImage::extend(
             &cache,
             &image,

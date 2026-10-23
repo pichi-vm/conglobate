@@ -85,6 +85,85 @@ impl AssembledImage {
     ) -> Result<Self, AssemblyFailure> {
         Self::assemble(cache, image, destination, None, Some(scute))
     }
+    /// Assemble a new root carapace with no inherited tool components.
+    /// Command/formatter success and final firmware remain coordinator obligations.
+    pub fn bootstrap(
+        scute: &crate::storage::SealedScute<'_>,
+        destination: &std::path::Path,
+    ) -> Result<Self, AssemblyFailure> {
+        let staged = StagedDirectory::create(destination).map_err(AssemblyFailure::Before)?;
+        let result = (|| -> Result<_, CacheError> {
+            if scute.parent() != &[0; 32] {
+                return Err(CacheError::Invalid("bootstrap scute has a nonzero parent"));
+            }
+            staged.store_blob(b"{}")?;
+            staged.store_scute(scute)?;
+            let manifest = serde_json::to_vec(&serde_json::json!({
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "artifactType": pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+                "config": pichi_artifact::ConfigDescriptor::canonical(),
+                "layers": [pichi_artifact::Layer::Scute(scute.descriptor().clone())],
+                "annotations": {
+                    "dev.pichi.carapace.verity.algo": "sha256",
+                    "dev.pichi.carapace.verity.data-block-size": "4096",
+                    "dev.pichi.carapace.verity.hash-block-size": "4096",
+                    "dev.pichi.carapace.verity.version": "1",
+                    "dev.pichi.carapace.verity.hash-type": "1",
+                    "dev.pichi.carapace.verity.hash": hex::encode(scute.root())
+                }
+            }))?;
+            Self::resolve_staging(
+                &staged,
+                &manifest,
+                crate::cache::HostArchitecture::current()?,
+            )
+        })();
+        match result {
+            Ok((image, chain)) => Ok(Self {
+                staged,
+                image,
+                chain,
+            }),
+            Err(source) => Err(AssemblyFailure::Staged { source, staged }),
+        }
+    }
+    fn resolve_staging(
+        staged: &StagedDirectory,
+        manifest: &[u8],
+        architecture: crate::cache::HostArchitecture,
+    ) -> Result<(ResolvedImage, Option<VerifiedChain>), CacheError> {
+        let digest = staged.store_blob(manifest)?;
+        let index = serde_json::to_vec(&serde_json::json!({
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "manifests": [{
+                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "artifactType": pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+                "digest": digest.to_string(),
+                "size": manifest.len(),
+                "platform": {"os": "pichi", "architecture": architecture.oci_name()}
+            }]
+        }))?;
+        let pin: IndexDigest = staged
+            .store_blob(&index)?
+            .to_string()
+            .parse()
+            .map_err(|_| CacheError::Invalid("invalid output index digest"))?;
+        staged.write_file(&staged.temporary.path().join("index.json"), &index)?;
+        staged.write_file(
+            &staged.temporary.path().join("oci-layout"),
+            b"{\"imageLayoutVersion\":\"1.0.0\"}",
+        )?;
+        let output_cache = Cache::open(staged.temporary.path())?;
+        let output_image = output_cache.resolve(pin)?;
+        output_cache.verify_references(&output_image)?;
+        let chain = output_cache.verify_chain(&output_image)?;
+        // The index is the layout entrypoint, not referenced by its own
+        // manifest. Remove the temporary lookup blob after validation.
+        std::fs::remove_file(staged.blob_path(&Digest::from_bytes_sha256(&index)))?;
+        Ok((output_image, chain))
+    }
     fn assemble(
         cache: &Cache,
         image: &ResolvedImage,
@@ -155,36 +234,7 @@ impl AssembledImage {
             } else {
                 image.manifest_bytes().bytes().to_vec()
             };
-            let digest = staged.store_blob(&manifest)?;
-            let index = serde_json::to_vec(&serde_json::json!({
-                "schemaVersion": 2,
-                "mediaType": "application/vnd.oci.image.index.v1+json",
-                "manifests": [{
-                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                    "artifactType": pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
-                    "digest": digest.to_string(),
-                    "size": manifest.len(),
-                    "platform": {"os": "pichi", "architecture": image.architecture().oci_name()}
-                }]
-            }))?;
-            let pin: IndexDigest = staged
-                .store_blob(&index)?
-                .to_string()
-                .parse()
-                .map_err(|_| CacheError::Invalid("invalid output index digest"))?;
-            staged.write_file(&staged.temporary.path().join("index.json"), &index)?;
-            staged.write_file(
-                &staged.temporary.path().join("oci-layout"),
-                b"{\"imageLayoutVersion\":\"1.0.0\"}",
-            )?;
-            let output_cache = Cache::open(staged.temporary.path())?;
-            let output_image = output_cache.resolve(pin)?;
-            output_cache.verify_references(&output_image)?;
-            let chain = output_cache.verify_chain(&output_image)?;
-            // The index is the layout entrypoint, not referenced by its own
-            // manifest. Remove the temporary lookup blob after validation.
-            std::fs::remove_file(staged.blob_path(&Digest::from_bytes_sha256(&index)))?;
-            Ok((output_image, chain))
+            Self::resolve_staging(&staged, &manifest, image.architecture())
         })();
         match assembled {
             Ok((image, chain)) => Ok(AssembledImage {

@@ -3162,3 +3162,24 @@ rules rather than silently shrinking acceptance criteria.
   coordinator must bind CompletedDirectives, finalize DTB/firmware and inventory,
   and publish only after cleanup. CLI stage integration remains open; M6 zero
   adherence passes and goal active.
+
+### M6 fresh bootstrap output assembly
+
+- The preceding status-only user turn made no implementation progress. Resumed
+  the pending production bootstrap assembler and completed its validation.
+- AssembledImage::bootstrap requires a zero-parent sealed scute and builds a fresh
+  canonical-config, single-layer manifest, with no inherited tool components.
+  Common final layout construction reopens and verifies all blobs and the chain.
+  Assembly errors retain staging for explicit cleanup; construction does not
+  authorize publication or prove successful recipe execution.
+- v196 full disposable-VM suite passes, including the actual sealed bootstrap
+  output, exactly one output layer, canonical config, matching root and rejection
+  of a nonzero-parent child. Both success and rejection staging are discarded;
+  the destination remains unpublished. Existing fixture cache construction is
+  still used for independent filesystem inspection.
+- Full cargo test passes (82 library tests, integration suites, 50 doctests);
+  root and fixture strict Clippy pass. Logs, source and context/cache evidence
+  preserved in validation/rewrite-command-integration/evidence/v196.
+- M6 remains zero adherence passes. Next critical integration is CLI ownership
+  of runtime mount/policy/cgroup paths and command-stage execution, followed by
+  completed-stage inventory binding and publication. No full CLI build claimed.
