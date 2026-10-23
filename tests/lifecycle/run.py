@@ -155,7 +155,10 @@ exec sleep infinity
         serial = (self.output / 'serial.txt').read_text(errors='replace')
         # Immediate abandonment need not schedule the child before VM disposal.
         markers = [] if self.args.drop == 'running' else ['FORMATTER_STALL_ENTERED']
-        if self.args.case == 'clone-filter':
+        if self.args.case == 'runtime-scope':
+            markers = ['RUNTIME_SCOPE_SUCCESS_CLOSED_PASS', 'RUNTIME_SCOPE_OPERATION_ERROR_CLOSED_PASS',
+                       'RUNTIME_SCOPE_CLEANUP_FAILURE_OWNERS_RETAINED_PASS']
+        elif self.args.case == 'clone-filter':
             markers = ['NATIVE_CLONE_NAMESPACE_MASK_PASS']
             markers += [f'CLONE_PROBE {arm} {case} PASS errno={1 if arm == "filtered" and case != "ordinary" else 0}'
                         for arm in ('control', 'filtered')
@@ -235,7 +238,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['sandbox-delayed-teardown', 'sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['runtime-scope', 'sandbox-delayed-teardown', 'sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':

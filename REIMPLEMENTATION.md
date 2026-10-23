@@ -5372,3 +5372,20 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - 126 library tests, 53 doctests and strict library Clippy passed. Retained the
   invalid combined Cargo invocation and successful separate runs. No VM execution
   or complete adherence pass; M4 streak stays 0/3. Logs/review: runtime-scope/.
+
+
+### Runtime scope: maintained disposable-VM validation
+
+- Previous turn implemented shared runtime orchestration. Added runtime-scope
+  lifecycle case using actual private tmpfs/cgroup attachments, with success and
+  typed operation-error paths plus both cleanup-error combinations. An ordinary
+  fixture-owned recovery file prevents close; retained owners successfully retry
+  after its removal. No sleeps or malicious payloads involved.
+- Native amd64 disposable KVM run passed all three markers, independent exit 0
+  and poweroff. Selected production and fixture files exactly match archived
+  source. Strict lifecycle Clippy and whitespace checks passed.
+- Preserved source, serial/status, assessment, commands and hashes under
+  preservation/m7-review/runtime-scope-v1/. Large kernel/initramfs remain in
+  /var/tmp and are hashed, not claimed durably archived. No evidence deleted.
+- This tests Runtime::scoped directly, not full recipe execution, all sandbox
+  behavior, other architectures or confidential hardware. M4 remains 0/3.

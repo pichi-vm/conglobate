@@ -296,8 +296,8 @@
       "evidence": "Three identical Runtime create/close four-arm merges",
       "remaining_action": "Runtime::scoped(workspace,parent,closure) owning create/close/merge",
       "historical_status": "accept",
-      "current_status": "implemented after review baseline; integrated qualification pending",
-      "current_evidence": "Runtime::scoped owns create/callback/close and typed failure combinations; all three pipeline coordinators use it. 126 library tests, 53 doctests and strict library Clippy passed. See preservation/m7-review/runtime-scope/REVIEW.md."
+      "current_status": "implemented with targeted VM evidence; full pipeline qualification pending",
+      "current_evidence": "Runtime::scoped owns create/callback/close and typed failure combinations; all three pipeline coordinators use it. 126 library tests, 53 doctests and strict library Clippy passed. See preservation/m7-review/runtime-scope/REVIEW.md. Maintained runtime-scope-v1 passes actual mount cleanup and both retained cleanup-failure combinations on amd64 KVM; full CLI build not exercised."
     },
     {
       "id": "simplification-012",

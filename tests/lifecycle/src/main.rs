@@ -10,6 +10,7 @@ mod domain_publication;
 mod formatter_failures;
 mod gate_failure;
 mod network;
+mod runtime_scope;
 mod sandbox_failures;
 mod writeback;
 use conglobate::execution::{HelperInvocation, HelperProgram};
@@ -31,6 +32,7 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "runtime-scope" => runtime_scope::RuntimeScope::run(),
             [mode] if mode == "sandbox-delayed-teardown" => sandbox_failures::SandboxFailures::run(
                 sandbox_failures::FailurePoint::DelayedTeardown,
             ),
