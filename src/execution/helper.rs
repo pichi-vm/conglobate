@@ -365,11 +365,23 @@ impl HelperInvocation {
                 // resolver mount namespace is now gone; remove only our pinned
                 // scaffolding before closing this root view. Failed cleanup
                 // prevents the helper from reporting successful completion.
-                if let Some(resolver) = resolver {
-                    resolver.release()?;
+                let cleanup = (|| -> Result<(), Box<dyn std::error::Error>> {
+                    if let Some(resolver) = resolver {
+                        resolver.release()?;
+                    }
+                    view.close().map_err(|e| e.to_string())?;
+                    Ok(())
+                })();
+                let cleanup = cleanup
+                    .and_then(|()| scope.restore().map_err(|error| error.to_string().into()));
+                if let Err(error) = cleanup {
+                    let deadline = Instant::now() + Duration::from_secs(30);
+                    channel.report_cleanup_failure_until(&error, deadline)?;
+                    // Keep the channel alive until the parent acts on the failure.
+                    // Parent cancellation, not a timing delay, ends this helper.
+                    channel.wait_for_loss_until(deadline)?;
+                    return Err(error);
                 }
-                view.close().map_err(|e| e.to_string())?;
-                scope.restore().map_err(|e| e.to_string())?;
                 channel.report_cleanup_until(Instant::now() + Duration::from_secs(30))?;
                 channel.wait_for_loss_until(Instant::now() + Duration::from_secs(30))?;
                 Ok(status)

@@ -107,11 +107,13 @@ pub(super) enum Packet {
     Prepared,
     Completed(ExitStatus),
     Cleaned,
+    CleanupFailed(String),
 }
 impl Packet {
     // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4, Volume=5, Prepared=6; Completed=[1,7,bstr(wait status)]; Bootstrap=8 (tool, output, namespace).
     // VolumeNetwork=9 (root, user, network, resolver, raw cleanup root);
     // BootstrapNetwork=10 adds output immediately after root; Cleaned=11.
+    // CleanupFailed=[1,12,text], at most 1024 UTF-8 bytes, no descriptors.
     pub(super) fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
         self.send_with(socket, &deadline)
     }
@@ -148,11 +150,28 @@ impl Packet {
             ),
             Self::Prepared => (6, vec![]),
             Self::Cleaned => (11, vec![]),
+            Self::CleanupFailed(_) => (12, vec![]),
             Self::Completed(_) => (7, vec![]),
         };
         // The status payload is a fixed four-byte Linux wait status, carried
         // in a canonical CBOR byte string rather than a native-endian integer.
-        let bytes = match self {
+        let bytes = match &self {
+            Self::CleanupFailed(message) => {
+                if message.is_empty() || message.len() > 1024 {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "invalid cleanup diagnostic size",
+                    ));
+                }
+                let mut encoded = minicbor::Encoder::new(Vec::new());
+                encoded
+                    .array(3)
+                    .and_then(|e| e.u8(1))
+                    .and_then(|e| e.u8(12))
+                    .and_then(|e| e.str(message))
+                    .expect("Vec writer");
+                encoded.into_writer()
+            }
             Self::Completed(status) => {
                 let mut bytes = vec![0x83, 1, opcode, 0x44];
                 bytes.extend_from_slice(&status.into_raw().to_be_bytes());
@@ -188,7 +207,7 @@ impl Packet {
     fn receive_with(socket: &IdentitySocket, wait: &impl ExchangeWait) -> io::Result<Self> {
         loop {
             wait.ready(socket, PollFlags::IN)?;
-            let mut bytes = [0; 8];
+            let mut bytes = [0; 1030];
             let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(7))];
             let mut ancillary = RecvAncillaryBuffer::new(&mut space);
             let result = match recvmsg(
@@ -211,7 +230,8 @@ impl Packet {
                 .flags
                 .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
                 || !((result.bytes == 3 && bytes[..2] == [0x82, 1] && bytes[2] != 7)
-                    || (result.bytes == 8 && bytes[..4] == [0x83, 1, 7, 0x44]))
+                    || (result.bytes == 8 && bytes[..4] == [0x83, 1, 7, 0x44])
+                    || (result.bytes >= 5 && bytes[..3] == [0x83, 1, 12]))
             {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -235,6 +255,24 @@ impl Packet {
                 (4, 0) => Ok(Self::Admitted),
                 (6, 0) => Ok(Self::Prepared),
                 (11, 0) => Ok(Self::Cleaned),
+                (12, 0) => {
+                    let mut decoder = minicbor::Decoder::new(&bytes[3..result.bytes]);
+                    let message = decoder.str().map_err(|_| {
+                        io::Error::new(io::ErrorKind::InvalidData, "invalid cleanup diagnostic")
+                    })?;
+                    let mut canonical = minicbor::Encoder::new(Vec::new());
+                    canonical.str(message).expect("Vec writer");
+                    if message.is_empty()
+                        || message.len() > 1024
+                        || canonical.writer().as_slice() != &bytes[3..result.bytes]
+                    {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "invalid cleanup diagnostic encoding or size",
+                        ));
+                    }
+                    Ok(Self::CleanupFailed(message.to_owned()))
+                }
                 (7, 0) => {
                     let raw = i32::from_be_bytes(bytes[4..8].try_into().expect("four bytes"));
                     let status = ExitStatus::from_raw(raw);
@@ -341,6 +379,45 @@ mod tests {
             )
             .unwrap();
         }
+    }
+    #[test]
+    fn cleanup_failure_is_bounded_canonical_and_descriptor_free() {
+        for message in ["cause".to_owned(), "é".repeat(512)] {
+            let (a, b) = Fixture::pair();
+            Packet::CleanupFailed(message.clone())
+                .send(&a, Fixture::deadline())
+                .unwrap();
+            assert!(matches!(Packet::receive(&b, Fixture::deadline()).unwrap(),
+                Packet::CleanupFailed(actual) if actual == message));
+        }
+        for message in [String::new(), "x".repeat(1025)] {
+            let (a, _) = Fixture::pair();
+            assert_eq!(
+                Packet::CleanupFailed(message)
+                    .send(&a, Fixture::deadline())
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::InvalidInput
+            );
+        }
+        for bytes in [
+            vec![0x83, 1, 12, 0x60],
+            vec![0x83, 1, 12, 0x61, 0xff],
+            vec![0x83, 1, 12, 0x78, 1, b'x'],
+            vec![0x83, 1, 12, 0x61, b'x', 0],
+            vec![0x82, 1, 12],
+        ] {
+            let (a, b) = Fixture::pair();
+            Fixture::raw(&a, &bytes, &[]);
+            assert_eq!(
+                Packet::receive(&b, Fixture::deadline()).unwrap_err().kind(),
+                io::ErrorKind::InvalidData
+            );
+        }
+        let (a, b) = Fixture::pair();
+        let file = std::fs::File::open("/dev/null").unwrap();
+        Fixture::raw(&a, &[0x83, 1, 12, 0x61, b'x'], &[file.as_fd()]);
+        assert!(Packet::receive(&b, Fixture::deadline()).is_err());
     }
     #[test]
     fn completion_preserves_exit_and_signal_status() {

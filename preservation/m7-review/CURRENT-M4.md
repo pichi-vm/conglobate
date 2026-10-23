@@ -18,8 +18,9 @@ No full new adherence pass has been awarded.
 3. **Resolver mutation:** resolver_target unit tests cover dangling targets,
    replaced scaffold entries and pinned parent replacement. Command-time dangling-target and pinned-parent replacement VM coverage now passes
    (resolver-lifecycle/). Replacement of an owned scaffold rejects publication but
-   exposes resolver-cleanup-diagnostic-001: the specific cause races channel EOF
-   and cancellation. Strict negative verifier remains failing; fix the protocol.
+   exposed resolver-cleanup-diagnostic-001. It is now resolved by the bounded
+   trusted cleanup-failure message; current positive/negative VM verifiers pass
+   (cleanup-failure-protocol/). No full arbitrary-race/platform claim is added.
 4. **Label admission:** current two-root denial now passes (m4-second-root-current).
    Missing-policy negative evidence exists in command-error-missing-label-v2;
    compare affected source before using it for the next complete gate. Do not

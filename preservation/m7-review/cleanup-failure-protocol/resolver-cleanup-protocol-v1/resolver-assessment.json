@@ -1,0 +1,13 @@
+{
+  "checks": {
+    "replacement_reached": true,
+    "identity_mismatch_rejected": true,
+    "supervisor_received_cleanup_failure": true,
+    "build_rejected": true,
+    "output_absent": true,
+    "environment_retained": true
+  },
+  "passed": true,
+  "full_sandbox_qualified": false,
+  "cleanup_complete_claimed": false
+}

@@ -34,6 +34,10 @@ class ResolverEvidence:
         checks = {
             'replacement_reached': '\nRESOLVER_OWNED_DIRECTORY_REPLACED_PASS\n' in serial,
             'identity_mismatch_rejected': 'resolver scaffold entry was replaced' in serial,
+            'supervisor_received_cleanup_failure': any(
+                line.startswith('conglobate: directive ')
+                and 'cleanup: receiver cleanup: resolver target: resolver scaffold entry was replaced' in line
+                for line in serial.splitlines()),
             'build_rejected': (self.run / 'status.raw').read_bytes().rstrip(b'\0') == b'DISTRO_BUILD_EXIT 1\n',
             'output_absent': '\nFAILED_BUILD_OUTPUT_ABSENT\n' in serial,
             'environment_retained': '\nNETWORK_ENVIRONMENT_RETAINED_PASS\n' in serial,

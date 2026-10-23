@@ -6019,3 +6019,16 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   reporting. Next: bounded trusted cleanup-failure protocol, no sleep workaround.
 - Evidence: preservation/m7-review/resolver-lifecycle/REVIEW.md. Production source
   unchanged; Python syntax/whitespace checks pass. M4 remains 0/3.
+
+### Reliable receiver cleanup-failure handoff
+
+- Resolved resolver-cleanup-diagnostic-001 with a bounded canonical CBOR failure
+  message on the trusted channel before it closes. Parent receives the specific
+  cause, then cancels/drains and rejects; success receipt remains distinct. No
+  sleeps or deadline extensions. Text crosses processes, not native Rust errors.
+- 146 library tests and strict Clippy pass, including malformed messages and
+  delivery after peer exit. Native amd64 negative VM now requires and receives
+  the supervisor's specific error; output absent, external network retained.
+  Positive resolver VM also passes restoration and artifact publication.
+- Evidence and initial compile failures: cleanup-failure-protocol/. Previous VM
+  failures preserved. M4 remains 0/3; no full adherence/platform pass claimed.

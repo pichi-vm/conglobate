@@ -63,9 +63,21 @@ impl Supervision<Admitted> {
     pub fn report_cleanup_until(&self, deadline: Instant) -> io::Result<()> {
         Packet::Cleaned.send(&self.socket.0, deadline)
     }
+    /// Send a bounded failure while the trusted channel is still live. This is
+    /// never a cleanup receipt; the supervisor must cancel/drain and reject.
+    pub(crate) fn report_cleanup_failure_until(
+        &self,
+        error: &dyn std::fmt::Display,
+        deadline: Instant,
+    ) -> io::Result<()> {
+        let mut message = format!("receiver cleanup: {error}");
+        message.truncate(message.floor_char_boundary(1024));
+        Packet::CleanupFailed(message).send(&self.socket.0, deadline)
+    }
     pub(crate) fn cleanup_until(&self, deadline: Instant) -> io::Result<()> {
         match Packet::receive(&self.socket.0, deadline)? {
             Packet::Cleaned => Ok(()),
+            Packet::CleanupFailed(message) => Err(io::Error::other(message)),
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "expected receiver cleanup",
@@ -231,6 +243,36 @@ mod tests {
         let helper = worker.join().unwrap();
         parent.cleanup_until(Fixture::deadline()).unwrap();
         drop(helper);
+    }
+    #[test]
+    fn explicit_cleanup_failure_survives_peer_exit_and_preserves_shell_status() {
+        use std::os::unix::process::ExitStatusExt;
+        let (parent, helper) = Fixture::pair();
+        let worker = std::thread::spawn(move || {
+            let helper = helper.await_admission_until(Fixture::deadline()).unwrap();
+            helper
+                .report_completion_until(std::process::ExitStatus::from_raw(0), Fixture::deadline())
+                .unwrap();
+            helper
+                .report_cleanup_failure_until(
+                    &"resolver scaffold entry was replaced",
+                    Fixture::deadline(),
+                )
+                .unwrap();
+        });
+        let parent = parent.admit_until(Fixture::deadline()).unwrap();
+        worker.join().unwrap(); // queued packet must survive channel closure
+        assert!(
+            parent
+                .completion_until(Fixture::deadline())
+                .unwrap()
+                .success()
+        );
+        let error = parent.cleanup_until(Fixture::deadline()).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "receiver cleanup: resolver scaffold entry was replaced"
+        );
     }
     #[test]
     fn shell_status_cannot_substitute_for_cleanup_receipt() {

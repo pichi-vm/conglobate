@@ -1,0 +1,16 @@
+{
+  "checks": {
+    "RESOLVER_DANGLING_INJECTION_PASS": true,
+    "RESOLVER_DANGLING_SCAFFOLD_REMOVED_PASS": true,
+    "RESOLVER_PARENT_REPLACED_DURING_COMMAND_PASS": true,
+    "RESOLVER_PINNED_PARENT_CLEANUP_PASS": true,
+    "NETWORK_RESTRICTED_IMAGE_DNS_AND_TCP_PASS": true,
+    "NETWORK_ENVIRONMENT_RETAINED_PASS": true,
+    "DISTRO_BUILD_AND_EXPORT_PASS": true,
+    "exit_zero": true,
+    "runtime_cleanup": true,
+    "artifact_published": true
+  },
+  "passed": true,
+  "full_sandbox_qualified": false
+}
