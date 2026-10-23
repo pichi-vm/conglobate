@@ -1,0 +1,1 @@
+v236 PASS: NAT owns its configured connection; acknowledged close returns that owner. Installation collision and expired installation retain connections until explicit cleanup; collision cleanup preserves the separately owned table. Dual-stack NAT, UDP/TCP and resolver transport regressions pass. No complete CLI networking claim.

@@ -273,16 +273,16 @@ impl ForwardingProbe {
             ["10.44.0.1", "fd42:44::1"],
             ["10.44.0.2", "fd42:44::2"],
         )?;
-        let policy = NatPolicy::install(&command, Instant::now() + Duration::from_secs(10))?;
+        let policy = NatPolicy::install(command, Instant::now() + Duration::from_secs(10))?;
         Self::exchange(
             &pins.join(user.record().name()),
             upstream.namespace(),
-            command.namespace(),
+            policy.namespace(),
             true,
         )?;
         println!("NETWORK_FORWARDED_DUAL_STACK_NAT_AND_REPLY_ONLY_PASS");
         println!("NETWORK_FORWARDED_DUAL_STACK_TCP_PASS");
-        policy
+        let command = policy
             .close(Instant::now() + Duration::from_secs(10))
             .expect("policy cleanup");
         Self::exchange(

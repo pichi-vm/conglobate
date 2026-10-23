@@ -3825,3 +3825,32 @@ rules rather than silently shrinking acceptance criteria.
   admission and actual network receipts. Remaining matrix/failure coverage,
   ORAS and three complete M6 adherence reviews still apply. M6 stays active at
   zero clean passes; this work does not advance M7/M8 or complete the goal.
+
+### M6 owned NAT connection lifecycle
+
+- NatPolicy now consumes ConfiguredVeth instead of borrowing it. This removes
+  the self-reference obstacle to keeping network resources inside command
+  teardown state. The policy exposes its namespace by shared reference, and
+  acknowledged firewall removal returns the configured connection for link
+  teardown. A compile-fail test rejects using the connection after assignment.
+- Failed installation owns the connection and a fixed internal cleanup cutoff.
+  Explicit cleanup removes only that connection. If cleanup fails, it retains
+  the pending connection cleanup, initial installation diagnostics and original
+  deadline; retries cannot renew the budget or manufacture a successful policy.
+  Failed policy removal likewise retains the connection until removal succeeds.
+- ConfiguredVeth::close_until allows the enclosing command teardown to pass its
+  original cutoff through link deletion and namespace release rather than
+  starting another independent timeout at that boundary.
+- v236/v237 pass in disposable VMs: a colliding table prevents installation,
+  failure retains live links until explicit cleanup, cleanup preserves the
+  independently owned table, and expired installation removes its owned links
+  without leaving a table. Both successful NAT traffic paths now use the owning
+  API and return the connection before the no-policy positive controls.
+  Existing IPv4/IPv6 UDP/TCP, resolver transport and namespace cleanup tests pass.
+- Full cargo tests (including 53 compile-fail doctests) and production/fixture
+  strict Clippy pass. Evidence, sources and hashes are preserved in
+  validation/rewrite-command-integration/evidence/v236-v237. This ownership
+  refactoring is not a completed command-network lifetime integration or an M6
+  adherence pass. Supervisor step ownership/transport, scaffold lifecycle,
+  forwarding readiness/address allocation, enabled recipes and network receipts
+  remain next; M6 stays at zero, and M7/M8/full qualification remain outstanding.

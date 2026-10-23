@@ -5,46 +5,101 @@ use netlink_packet_core::{DefaultNla, NLM_F_APPEND, NLM_F_CREATE, NLM_F_EXCL};
 use netlink_packet_netfilter::nftables::*;
 use std::{io, time::Instant};
 
-/// A scoped inet policy: outbound masquerade, replies toward the command, and
-/// no unsolicited inbound. Forwarding readiness is a separate environment gate.
-/// The connection borrow prevents explicit interface teardown before policy close.
+/// A scoped inet policy owning its configured interface pair and namespace.
+/// Forwarding readiness and command admission are separate gates. Only an
+/// acknowledged policy close returns the connection for interface teardown.
+///
+/// ```compile_fail
+/// use conglobate::network::{ConfiguredVeth, NatPolicy};
+/// fn cannot_close_links_while_policy_owns_them(connection: ConfiguredVeth) {
+///     let policy = NatPolicy::install(connection, std::time::Instant::now());
+///     connection.close();
+/// }
+/// ```
 #[derive(Debug)]
-pub struct NatPolicy<'a> {
+pub struct NatPolicy {
     table: FirewallTable,
-    connection: &'a ConfiguredVeth,
+    connection: ConfiguredVeth,
 }
 #[derive(Debug, thiserror::Error)]
-#[error("NAT teardown: {failure}")]
-pub struct NatCloseFailure<'a> {
-    failure: FirewallCloseFailure,
-    connection: &'a ConfiguredVeth,
+#[error("NAT installation: {diagnostics}")]
+pub struct NatInstallFailure {
+    diagnostics: crate::storage::FailureDiagnostics,
+    connection: RejectedConnection,
+    deadline: Instant,
 }
-impl NatCloseFailure<'_> {
-    pub fn cleanup(self) -> Result<(), Self> {
-        self.failure.cleanup().map_err(|failure| Self {
-            failure,
-            connection: self.connection,
+#[derive(Debug)]
+enum RejectedConnection {
+    Configured(ConfiguredVeth),
+    Cleanup(super::ConnectionFailure),
+}
+impl NatInstallFailure {
+    /// Failed installation never admits commands. Cleanup retains the original
+    /// deadline and cannot turn this rejection into a configured policy.
+    pub fn cleanup(self) -> Result<(), Box<Self>> {
+        let result = match self.connection {
+            RejectedConnection::Configured(connection) => connection.close_until(self.deadline),
+            RejectedConnection::Cleanup(failure) => failure.cleanup(),
+        };
+        result.map_err(|failure| {
+            Box::new(Self {
+                diagnostics: self
+                    .diagnostics
+                    .followed_by(io::Error::other(failure.to_string()).into()),
+                connection: RejectedConnection::Cleanup(failure),
+                deadline: self.deadline,
+            })
         })
     }
 }
-impl<'a> NatPolicy<'a> {
-    pub fn install(connection: &'a ConfiguredVeth, deadline: Instant) -> io::Result<Self> {
+#[derive(Debug, thiserror::Error)]
+#[error("NAT teardown: {failure}")]
+pub struct NatCloseFailure {
+    failure: FirewallCloseFailure,
+    connection: ConfiguredVeth,
+}
+impl NatCloseFailure {
+    pub fn cleanup(self) -> Result<ConfiguredVeth, Box<Self>> {
+        match self.failure.cleanup() {
+            Ok(()) => Ok(self.connection),
+            Err(failure) => Err(Box::new(Self {
+                failure,
+                connection: self.connection,
+            })),
+        }
+    }
+}
+impl NatPolicy {
+    pub fn install(
+        connection: ConfiguredVeth,
+        deadline: Instant,
+    ) -> Result<Self, Box<NatInstallFailure>> {
         let interface = connection.host_name().as_ref();
         let name = format!("conglobate_{}", interface.replace('-', "_"));
         let plan = NatRules {
             table: name.clone(),
             interface: interface.into(),
         };
-        let table = FirewallTable::install(&name, plan.messages(), deadline)?;
-        Ok(Self { table, connection })
+        match FirewallTable::install(&name, plan.messages(), deadline) {
+            Ok(table) => Ok(Self { table, connection }),
+            Err(source) => Err(Box::new(NatInstallFailure {
+                diagnostics: source.into(),
+                connection: RejectedConnection::Configured(connection),
+                deadline: Instant::now() + std::time::Duration::from_secs(30),
+            })),
+        }
     }
-    pub fn close(self, deadline: Instant) -> Result<(), NatCloseFailure<'a>> {
-        self.table
-            .close(deadline)
-            .map_err(|failure| NatCloseFailure {
+    pub fn namespace(&self) -> &super::NetworkNamespace {
+        self.connection.namespace()
+    }
+    pub fn close(self, deadline: Instant) -> Result<ConfiguredVeth, Box<NatCloseFailure>> {
+        match self.table.close(deadline) {
+            Ok(()) => Ok(self.connection),
+            Err(failure) => Err(Box::new(NatCloseFailure {
                 failure,
                 connection: self.connection,
-            })
+            })),
+        }
     }
 }
 #[derive(Debug)]

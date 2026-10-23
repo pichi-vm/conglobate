@@ -22,6 +22,61 @@ use std::{
 
 pub(crate) struct NetworkProbe;
 impl NetworkProbe {
+    fn nat_install_failures(
+        parent: &Path,
+        program: &HelperProgram,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        for collision in [true, false] {
+            let pair = VethPair::create(
+                parent,
+                InterfaceName::try_from("cg-host")?,
+                InterfaceName::try_from("cg-peer")?,
+                Instant::now() + Duration::from_secs(10),
+            )?;
+            let namespace = NetworkNamespace::create(program, SetupBudget::begin().cutoff()?)?;
+            let configured = pair
+                .connect(namespace, Instant::now() + Duration::from_secs(10))?
+                .configure(
+                    vec![NetworkAddress::new("10.44.0.1".parse()?, 30, None)?],
+                    vec![NetworkAddress::new(
+                        "10.44.0.2".parse()?,
+                        30,
+                        Some("10.44.0.1".parse()?),
+                    )?],
+                    program,
+                    SetupBudget::begin().cutoff()?,
+                )?;
+            let foreign = if collision {
+                Some(FirewallTable::create(
+                    "conglobate_cg_host",
+                    Instant::now() + Duration::from_secs(10),
+                )?)
+            } else {
+                None
+            };
+            let deadline = if collision {
+                Instant::now() + Duration::from_secs(10)
+            } else {
+                Instant::now()
+            };
+            let failure = NatPolicy::install(configured, deadline).unwrap_err();
+            // The installation error owns the live connection until cleanup.
+            assert!(Path::new("/sys/class/net/cg-host").exists());
+            failure.cleanup()?;
+            assert!(!Path::new("/sys/class/net/cg-host").exists());
+            assert!(!Path::new("/sys/class/net/cg-peer").exists());
+            assert_eq!(fs::read_dir(parent)?.count(), 0);
+            let listed = std::process::Command::new("/usr/bin/nft")
+                .args(["list", "table", "inet", "conglobate_cg_host"])
+                .output()?;
+            assert_eq!(listed.status.success(), collision);
+            if let Some(foreign) = foreign {
+                foreign.close(Instant::now() + Duration::from_secs(10))?;
+            }
+        }
+        println!("NETWORK_OWNED_NAT_INSTALL_FAILURE_CLEANUP_PASS");
+        Ok(())
+    }
     fn resolver_mount() -> Result<(), Box<dyn std::error::Error>> {
         use conglobate::{
             isolation::PrivateMountNamespace,
@@ -405,7 +460,7 @@ impl NetworkProbe {
         ];
         let configured =
             connection.configure(host, peer, &program, SetupBudget::begin().cutoff()?)?;
-        let policy = NatPolicy::install(&configured, Instant::now() + Duration::from_secs(10))?;
+        let policy = NatPolicy::install(configured, Instant::now() + Duration::from_secs(10))?;
         let listed = std::process::Command::new("/usr/bin/nft")
             .args(["list", "table", "inet", "conglobate_cg_host"])
             .output()?;
@@ -418,8 +473,8 @@ impl NetworkProbe {
             )
             .is_err()
         );
-        Self::entry_roundtrip(&program, configured.namespace(), true, true)?;
-        policy
+        Self::entry_roundtrip(&program, policy.namespace(), true, true)?;
+        let configured = policy
             .close(Instant::now() + Duration::from_secs(10))
             .expect("acknowledged policy teardown");
         Self::entry_roundtrip(&program, configured.namespace(), true, false)?;
@@ -436,6 +491,7 @@ impl NetworkProbe {
         assert!(!Path::new("/sys/class/net/cg-host").exists());
         assert_eq!(fs::read_dir(parent)?.count(), 0);
         println!("NETWORK_PEER_NAMESPACE_HANDOFF_CLEANUP_PASS");
+        Self::nat_install_failures(parent, &program)?;
         let pair = VethPair::create(
             parent,
             InterfaceName::try_from("cg-host")?,

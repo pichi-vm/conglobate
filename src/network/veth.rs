@@ -209,6 +209,9 @@ impl VethPair {
     }
     pub fn close(self) -> Result<(), VethFailure> {
         let deadline = Instant::now() + Duration::from_secs(30);
+        self.close_until(deadline)
+    }
+    fn close_until(self, deadline: Instant) -> Result<(), VethFailure> {
         Box::new(self)
             .release(deadline)
             .map_err(|(error, pair)| VethFailure::retained(error, pair, deadline))
@@ -332,10 +335,15 @@ pub struct ConnectedVeth {
 }
 impl ConnectedVeth {
     pub fn close(self) -> Result<(), ConnectionFailure> {
-        self.pair.close().map_err(|failure| ConnectionFailure {
-            failure,
-            namespace: self.namespace,
-        })
+        self.close_until(Instant::now() + Duration::from_secs(30))
+    }
+    fn close_until(self, deadline: Instant) -> Result<(), ConnectionFailure> {
+        self.pair
+            .close_until(deadline)
+            .map_err(|failure| ConnectionFailure {
+                failure,
+                namespace: self.namespace,
+            })
     }
 }
 #[derive(Debug, thiserror::Error)]
@@ -366,6 +374,9 @@ impl ConfiguredVeth {
     }
     pub fn close(self) -> Result<(), ConnectionFailure> {
         self.0.close()
+    }
+    pub fn close_until(self, deadline: Instant) -> Result<(), ConnectionFailure> {
+        self.0.close_until(deadline)
     }
 }
 #[derive(Debug, thiserror::Error)]

@@ -26,7 +26,7 @@ mod netfilter;
 pub use firewall::{FirewallCloseFailure, FirewallTable};
 
 mod nat;
-pub use nat::{NatCloseFailure, NatPolicy};
+pub use nat::{NatCloseFailure, NatInstallFailure, NatPolicy};
 
 mod resolver_target;
 pub use resolver_target::{ResolverTarget, ResolverTargetFailure};
