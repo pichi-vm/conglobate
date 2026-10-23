@@ -1,0 +1,4 @@
+carapace:
+  from: example.test/firmware:1
+transform:
+  - {op: remove, property: /missing/value}

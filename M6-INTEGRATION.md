@@ -184,3 +184,16 @@ are covered by tests. The default definition is shared with inventory hashing.
 This is not yet called by the coordinator. Next replace the staged DTB descriptor
 while preserving unrelated manifest fields, bind inventory to the execution
 receipt, and exercise success/failure through the real CLI in the disposable VM.
+
+## DTB publication integration
+
+InheritedBuild now executes transforms with verified DTB/root inputs, constructs
+an updated self-contained manifest, and records observed transform disposition.
+No-op edits preserve exact manifest bytes; changed DTB descriptors retain their
+unrelated fields but discard obsolete inline content/location hints. Output
+assembly revalidates all references before inventory binding/publication.
+
+v190 passes real-CLI default and authored edits plus missing-DTB/property failures
+without publication. v189's diagnostic-expectation failure is preserved. Next
+connect stage execution and COPY, firmware pair extraction, and enabled networking;
+this successful inherited-image workflow is not full recipe execution.

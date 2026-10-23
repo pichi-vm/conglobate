@@ -11,8 +11,6 @@ use crate::{
     storage::Workspace,
 };
 
-pub(crate) use crate::recipe::DEFAULT_TRANSFORM;
-
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
     #[error(transparent)]
@@ -33,6 +31,8 @@ pub enum BuildError {
     Inventory(#[from] InventoryError),
     #[error(transparent)]
     Publication(#[from] PublicationFailure),
+    #[error(transparent)]
+    Transform(#[from] crate::transform::TransformError),
     #[error("build path is not implemented yet: {0}")]
     Unsupported(&'static str),
     #[error("conglobate requires root")]
@@ -52,7 +52,7 @@ impl Pipeline {
         }
         let build =
             CapturedBuild::try_from(&self.request)?.resolve(Cache::open(self.request.cache())?)?;
-        let selected = PassThrough::new(&build)?;
+        let selected = InheritedBuild::new(&build)?;
         let workspace = Workspace::create()?;
         let context = workspace
             .materialize(build.captured().context())?
@@ -65,15 +65,15 @@ impl Pipeline {
         Ok(())
     }
 }
-/// Private proof that this recipe has no command/COPY/firmware work and that
-/// its effective transformation is a no-op. This is not a fallback for stages.
+/// Selected inherited-image path with no command/COPY/firmware work.
+/// DTB transformations still execute before inventory and publication.
 #[derive(Debug)]
-pub(crate) struct PassThrough<'a> {
+pub(crate) struct InheritedBuild<'a> {
     build: &'a ResolvedBuild,
     base: &'a CheckedImage,
     authored: bool,
 }
-impl<'a> PassThrough<'a> {
+impl<'a> InheritedBuild<'a> {
     pub(crate) fn new(build: &'a ResolvedBuild) -> Result<Self, BuildError> {
         let recipe = build.captured().plan().recipe();
         if recipe.bootstrap().is_some() {
@@ -92,17 +92,7 @@ impl<'a> PassThrough<'a> {
             .from()
             .and_then(|name| build.images().get(name))
             .ok_or(BuildError::Unsupported("missing resolved output base"))?;
-        let dtb = base
-            .image()
-            .manifest()
-            .layers
-            .iter()
-            .any(|l| matches!(l, pichi_artifact::Layer::Dtb(_)));
-        let authored = match recipe.transform() {
-            TransformSelection::Authored(ops) if ops.is_empty() && dtb => true,
-            TransformSelection::Builtin if !dtb => false,
-            _ => return Err(BuildError::Unsupported("DTB transformations")),
-        };
+        let authored = matches!(recipe.transform(), TransformSelection::Authored(_));
         Ok(Self {
             build,
             base,
@@ -116,9 +106,42 @@ impl<'a> PassThrough<'a> {
         self.authored
     }
     pub(crate) fn assemble(&self, request: &BuildRequest) -> Result<CompletedImage, BuildError> {
-        let image =
-            AssembledImage::inherit(self.build.cache(), self.base.image(), request.output())?;
-        let inventory = Inventory::pass_through(request, self, &image)?;
+        let source = self
+            .base
+            .image()
+            .manifest()
+            .layers
+            .iter()
+            .find_map(|layer| {
+                if let pichi_artifact::Layer::Dtb(descriptor) = layer {
+                    Some(descriptor)
+                } else {
+                    None
+                }
+            })
+            .map(|d| {
+                let digest = d
+                    .digest
+                    .parse()
+                    .map_err(|_| CacheError::Invalid("invalid DTB digest"))?;
+                self.build.cache().metadata(&digest, Some(d.size))
+            })
+            .transpose()?;
+        let root = self.base.chain().map(|chain| hex::encode(chain.root()));
+        let transformed = self
+            .build
+            .captured()
+            .plan()
+            .recipe()
+            .transform()
+            .apply(source.as_ref().map(|s| s.bytes()), root.as_deref())?;
+        let image = AssembledImage::transformed(
+            self.build.cache(),
+            self.base.image(),
+            request.output(),
+            &transformed,
+        )?;
+        let inventory = Inventory::inherited(request, self, &image, &transformed)?;
         inventory.check_output(&image)?;
         Ok(CompletedImage { image, inventory })
     }

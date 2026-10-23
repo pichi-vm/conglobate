@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::{Inventory, InventoryError, schema::*};
 use crate::{
-    output::AssembledImage,
-    pipeline::{DEFAULT_TRANSFORM, PassThrough},
+    output::AssembledImage, pipeline::InheritedBuild, recipe::DEFAULT_TRANSFORM,
     request::BuildRequest,
 };
 use sha2::{Digest as _, Sha256};
@@ -96,10 +95,11 @@ impl Outputs {
     }
 }
 impl Inventory {
-    pub(crate) fn pass_through(
+    pub(crate) fn inherited(
         request: &BuildRequest,
-        completed: &PassThrough<'_>,
+        completed: &InheritedBuild<'_>,
         output: &AssembledImage,
+        transformed: &crate::transform::TransformedDtb,
     ) -> Result<Self, InventoryError> {
         let build = completed.build();
         let captured = build.captured();
@@ -160,8 +160,8 @@ impl Inventory {
                     } else {
                         Digest::from_bytes(DEFAULT_TRANSFORM.as_bytes())
                     },
-                    target_present: completed.authored(),
-                    default_skipped: !completed.authored(),
+                    target_present: transformed.bytes().is_some(),
+                    default_skipped: transformed.default_skipped(),
                 },
                 formatters: vec![],
                 network_steps: vec![],

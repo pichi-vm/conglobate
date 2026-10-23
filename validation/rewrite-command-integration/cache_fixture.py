@@ -8,7 +8,7 @@ import struct
 class CacheFixture:
     def __init__(self, root):
         self.root = root
-        (root / 'blobs/sha256').mkdir(parents=True)
+        (root / 'blobs/sha256').mkdir(parents=True, exist_ok=True)
 
     def blob(self, data):
         digest = hashlib.sha256(data).hexdigest()

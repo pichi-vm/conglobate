@@ -64,6 +64,22 @@ impl AssembledImage {
         image: &ResolvedImage,
         destination: &std::path::Path,
     ) -> Result<AssembledImage, AssemblyFailure> {
+        Self::assemble(cache, image, destination, None)
+    }
+    pub(crate) fn transformed(
+        cache: &Cache,
+        image: &ResolvedImage,
+        destination: &std::path::Path,
+        dtb: &crate::transform::TransformedDtb,
+    ) -> Result<Self, AssemblyFailure> {
+        Self::assemble(cache, image, destination, dtb.bytes())
+    }
+    fn assemble(
+        cache: &Cache,
+        image: &ResolvedImage,
+        destination: &std::path::Path,
+        dtb: Option<&[u8]>,
+    ) -> Result<Self, AssemblyFailure> {
         let staged = StagedDirectory::create(destination).map_err(AssemblyFailure::Before)?;
         let assembled = (|| -> Result<_, CacheError> {
             let config = &image.manifest().config;
@@ -79,20 +95,38 @@ impl AssembledImage {
                     .map_err(|_| CacheError::Invalid("invalid config digest"))?;
                 staged.copy_blob(cache, &digest, config.size)?;
             }
-            for layer in &image.manifest().layers {
+            let mut manifest: serde_json::Value =
+                serde_json::from_slice(image.manifest_bytes().bytes())?;
+            let mut changed = false;
+            for (position, layer) in image.manifest().layers.iter().enumerate() {
+                if let (pichi_artifact::Layer::Dtb(old), Some(bytes)) = (layer, dtb) {
+                    let digest = staged.store_blob(bytes)?;
+                    if digest.to_string() != old.digest || bytes.len() as u64 != old.size {
+                        let descriptor = &mut manifest["layers"][position];
+                        descriptor["digest"] = digest.to_string().into();
+                        descriptor["size"] = (bytes.len() as u64).into();
+                        // Inline OCI data must describe the replaced bytes too.
+                        if let Some(object) = descriptor.as_object_mut() {
+                            object.remove("data");
+                            object.remove("urls");
+                        }
+                        changed = true;
+                    }
+                    continue;
+                }
                 let digest = layer
                     .digest_str()
                     .parse()
                     .map_err(|_| CacheError::Invalid("invalid output layer digest"))?;
                 staged.copy_blob(cache, &digest, layer.size())?;
             }
-            // Preserve extensions, annotations and original JSON bytes rather
-            // than reserializing a typed subset of the inherited manifest.
-            let manifest = image.manifest_bytes();
-            let digest = staged.store_blob(manifest.bytes())?;
-            if &digest != manifest.digest() {
-                return Err(CacheError::Invalid("captured manifest identity mismatch"));
-            }
+            // Preserve unrelated fields, and preserve exact JSON bytes for no-op edits.
+            let manifest = if changed {
+                serde_json::to_vec(&manifest)?
+            } else {
+                image.manifest_bytes().bytes().to_vec()
+            };
+            let digest = staged.store_blob(&manifest)?;
             let index = serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -100,7 +134,7 @@ impl AssembledImage {
                     "mediaType": "application/vnd.oci.image.manifest.v1+json",
                     "artifactType": pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                     "digest": digest.to_string(),
-                    "size": manifest.bytes().len(),
+                    "size": manifest.len(),
                     "platform": {"os": "pichi", "architecture": image.architecture().oci_name()}
                 }]
             }))?;
@@ -151,7 +185,14 @@ mod tests {
             let directory = tempfile::tempdir().unwrap();
             let mut blobs = BTreeMap::new();
             let pmi = b"fixture firmware bytes".to_vec();
-            let dtb = b"fixture dtb bytes".to_vec();
+            let dtb =
+                devtree::OwnedTree::new(devtree::OwnedNode::new("").with_child(
+                    devtree::OwnedNode::new("chosen").with_property(
+                        devtree::OwnedProperty::new("bootargs").with_str("corium=old"),
+                    ),
+                ))
+                .encode()
+                .unwrap();
             let config = if empty_config {
                 b"{}".to_vec()
             } else {
@@ -227,6 +268,44 @@ mod tests {
             let image = cache.resolve(self.pin).unwrap();
             (cache, image)
         }
+    }
+    #[test]
+    fn transformed_output_replaces_only_dtb_and_is_self_contained() {
+        let input = Input::new(false);
+        let (cache, image) = input.open();
+        let old: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
+        let old_digest = old["layers"][1]["digest"].as_str().unwrap();
+        let result = crate::recipe::TransformSelection::Builtin
+            .apply(Some(&input.blobs[old_digest]), Some("new"))
+            .unwrap();
+        let parent = tempfile::tempdir().unwrap();
+        let assembled =
+            AssembledImage::transformed(&cache, &image, &parent.path().join("output"), &result)
+                .unwrap();
+        let new: serde_json::Value =
+            serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
+        assert_eq!(new["config"], old["config"]);
+        assert_eq!(new["layers"][0], old["layers"][0]);
+        assert_eq!(new["annotations"], old["annotations"]);
+        assert_eq!(new["x-preserved-extension"], old["x-preserved-extension"]);
+        assert_ne!(new["layers"][1]["digest"], old["layers"][1]["digest"]);
+        let digest = Digest::from_bytes_sha256(result.bytes().unwrap());
+        assert_eq!(new["layers"][1]["digest"], digest.to_string());
+        assert_eq!(
+            fs::read(assembled.staged.blob_path(&digest)).unwrap(),
+            result.bytes().unwrap()
+        );
+        assert!(
+            !assembled
+                .staged
+                .blob_path(&old_digest.parse().unwrap())
+                .exists()
+        );
+        drop(cache);
+        fs::remove_dir_all(input.directory.path()).unwrap();
+        let cache = Cache::open(assembled.staged.temporary.path()).unwrap();
+        cache.verify_references(assembled.image()).unwrap();
+        assembled.discard().unwrap();
     }
     #[test]
     fn inheritance_preserves_all_selected_content_and_exact_manifest_without_source_cache() {

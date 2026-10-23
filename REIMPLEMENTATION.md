@@ -3003,3 +3003,28 @@ rules rather than silently shrinking acceptance criteria.
 - This executor is not yet connected to CLI publication: manifest replacement,
   receipt-based inventory binding and end-to-end transform cases are next.
   No new VM run or full adherence pass is claimed. M6 remains at zero passes.
+
+### M6 DTB transforms connected to publication
+
+- Previous turn progressed in cff57e1. The inherited-image coordinator now reads
+  the verified DTB, executes the selected transformation with the verified root,
+  and binds actual target/skip disposition into inventory before publication.
+  The selected path is renamed InheritedBuild: it is no longer pass-through-only.
+- Assembly replaces DTB content/digest/size without retaining obsolete blobs.
+  Unrelated manifest fields survive; stale inline data/URLs are removed on edits.
+  No-op edits retain exact manifest bytes. Final manifest/references/chain are
+  revalidated from staged output before inventory/publication.
+- 71 library tests, 49 doctests and root/fixture strict Clippy pass. The new
+  assembly regression checks changed identity, extension preservation and
+  independence from the source cache after deleting it.
+- Disposable VM v189 passed default/authored edits but failed the test's expected
+  error text for missing DTB: input validation rejects earlier with its own
+  correct diagnostic. Preserved this failure, corrected the assertion, and added
+  the transform marker to the runner's acceptance conditions. v190 passes actual
+  CLI default/authored edits, final DTB/inventory identities, unchanged boot CPU,
+  all output blob digests and no-publication for missing DTB/property. Prior
+  collision/unsupported/missing-cache/pass-through cases still pass.
+- Evidence and source snapshots for both runs are preserved under validation/
+  rewrite-command-integration/evidence/v189 and v190. No image-authored command,
+  distro boot, ORAS or confidential-platform qualification is inferred. M6 remains
+  at zero adherence passes; stage execution, COPY, firmware and networking remain.

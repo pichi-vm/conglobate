@@ -30,7 +30,11 @@ impl PipelineProbe {
             ])
             .output()
     }
-    fn verify(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    fn verify(
+        path: &Path,
+        recipe: &str,
+        transformed: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let index: serde_json::Value = serde_json::from_slice(&fs::read(path.join("index.json"))?)?;
         assert_eq!(index["manifests"].as_array().unwrap().len(), 1);
         let descriptor = &index["manifests"][0];
@@ -88,11 +92,16 @@ impl PipelineProbe {
             inventory
                 .get(&["execution", "recipe", "content", "digest"])?
                 .bytes()?,
-            Sha256::digest(fs::read("/pipeline-recipe-committed")?).as_slice()
+            Sha256::digest(if transformed {
+                fs::read(Path::new("/pipeline-context").join(recipe))?
+            } else {
+                fs::read("/pipeline-recipe-committed")?
+            })
+            .as_slice()
         );
         assert_eq!(
             inventory.get(&["execution", "recipe", "path"])?.text()?,
-            "recipes/image.yml"
+            recipe
         );
         assert_eq!(
             inventory.get(&["execution", "lock", "path"])?.text()?,
@@ -102,23 +111,29 @@ impl PipelineProbe {
             inventory
                 .get(&["execution", "transform", "source"])?
                 .text()?,
-            "builtin"
+            if recipe == "recipes/authored.yml" {
+                "authored"
+            } else {
+                "builtin"
+            }
         );
-        assert!(
+        assert_eq!(
             minicbor::Decoder::new(
                 inventory
                     .get(&["execution", "transform", "default_skipped"])?
                     .0
             )
-            .bool()?
+            .bool()?,
+            !transformed
         );
-        assert!(
-            !minicbor::Decoder::new(
+        assert_eq!(
+            minicbor::Decoder::new(
                 inventory
                     .get(&["execution", "transform", "target_present"])?
                     .0
             )
-            .bool()?
+            .bool()?,
+            transformed
         );
         assert_eq!(
             inventory.get(&["outputs", "carapace_root"])?.bytes()?,
@@ -128,6 +143,39 @@ impl PipelineProbe {
                     .unwrap()
             )?
         );
+        if transformed {
+            assert_eq!(manifest["x-preserved"]["value"], 42);
+            let descriptor = manifest["layers"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|l| l["mediaType"] == "application/vnd.pichi.dtb.v1")
+                .unwrap();
+            let digest = descriptor["digest"]
+                .as_str()
+                .unwrap()
+                .strip_prefix("sha256:")
+                .unwrap();
+            let dtb = fs::read(path.join("blobs/sha256").join(digest))?;
+            assert_eq!(
+                inventory.get(&["outputs", "dtb", "digest"])?.bytes()?,
+                hex::decode(digest)?
+            );
+            // Independent fixture encoding: find the expected complete NUL-terminated string.
+            let root = manifest["annotations"]["dev.pichi.carapace.verity.hash"]
+                .as_str()
+                .unwrap();
+            let expected = if recipe == "recipes/authored.yml" {
+                format!("authored {root}\0")
+            } else {
+                format!("quiet corium={root}\0")
+            };
+            assert!(
+                dtb.windows(expected.len())
+                    .any(|w| w == expected.as_bytes())
+            );
+            assert_eq!(&dtb[28..32], &7u32.to_be_bytes());
+        }
         Ok(())
     }
     pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
@@ -135,7 +183,11 @@ impl PipelineProbe {
         if !output.status.success() {
             return Err(String::from_utf8_lossy(&output.stderr).into_owned().into());
         }
-        Self::verify(Path::new("/work/pipeline-output"))?;
+        Self::verify(
+            Path::new("/work/pipeline-output"),
+            "recipes/image.yml",
+            false,
+        )?;
         let before = fs::read("/work/pipeline-output/index.json")?;
         println!("PIPELINE_INDEX_HEX {}", hex::encode(&before));
         println!(
@@ -164,8 +216,37 @@ impl PipelineProbe {
         assert!(!unsupported.status.success());
         assert!(String::from_utf8_lossy(&unsupported.stderr).contains("not implemented"));
         assert!(!Path::new("/work/unsupported-output").exists());
+        for name in ["default", "authored"] {
+            let destination = format!("/work/{name}-output");
+            let recipe = format!("recipes/{name}.yml");
+            let result = Self::build(&destination, &recipe)?;
+            assert!(
+                result.status.success(),
+                "{}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+            Self::verify(Path::new(&destination), &recipe, true)?;
+        }
+        for name in ["missing-property", "missing-dtb"] {
+            let destination = format!("/work/{name}-output");
+            let result = Self::build(&destination, &format!("recipes/{name}.yml"))?;
+            assert!(!result.status.success());
+            assert!(
+                String::from_utf8_lossy(&result.stderr).contains(if name == "missing-dtb" {
+                    "requires an inherited or generated DTB"
+                } else {
+                    "missing DTB property"
+                })
+            );
+            assert!(!Path::new(&destination).exists());
+        }
+        println!("PIPELINE_CLI_TRANSFORM_PASS");
         fs::remove_dir_all("/cache-fixture")?;
-        Self::verify(Path::new("/work/pipeline-output"))?;
+        Self::verify(
+            Path::new("/work/pipeline-output"),
+            "recipes/image.yml",
+            false,
+        )?;
         assert!(
             !Self::build("/work/missing-output", "recipes/image.yml")?
                 .status

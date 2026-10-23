@@ -1,0 +1,6 @@
+version: 1
+images:
+  example.test/base:1:
+    index: sha256:5773ea1593634fbabfa8ed19b11ab2ae7d1efc0f4f243bbe30d7a83727cdd2e6
+  example.test/firmware:1:
+    index: sha256:5d79a5b2d983831cf3332ccd0f37320974edc8f36c829854f76274bd9a93b21c
