@@ -4,7 +4,7 @@ use super::ReapedHelper;
 use crate::process::{ChildReaper, ReapedChildren};
 use std::{io, path::Path, process::ExitStatus, time::Instant};
 
-/// Owns the helper's remaining record and the guardian's process-wide drain.
+/// Owns the helper's remaining record and the supervisor's process-wide drain.
 /// Installation must precede helper creation. Other individually owned children
 /// must already be reaped; this cannot enforce that process-wide prerequisite.
 ///

@@ -152,3 +152,35 @@ not a completed native-library/distribution license audit. Unfiltered offline
 metadata failed on an uncached Android-only package; host-filtered metadata
 succeeded. Native libbpf dependencies and appliance packaging remain to inspect.
 No clean adherence pass is claimed.
+
+### Superseded guardian API retirement
+
+Removed RegisteredGuardian/GuardianStop, GuardianWatch/ShutdownTrigger and the
+unused upstream-watched launch/registration wrappers. Source search showed no
+production or current integration-fixture callers; their only remaining uses
+were their own unit tests. Removed those two unit tests and the guardian-specific
+compile-fail example along with the APIs. Active comments now describe the
+supervisor/helper relationship. Normal startup identity exchange, helper
+supervision, admission and cancellation remain intact.
+
+Exact pre-removal files, including all tests, are retained under
+retired-guardian/ with a baseline commit and verified SHA-256 manifest. Root
+unit/doc tests (46 compile-fail examples), root Clippy and integration-fixture
+Clippy pass; logs are preserved there. No fresh VM coverage is claimed for this
+removal. Previous runtime evidence remains applicable to the unchanged production
+path, while whole-milestone acceptance still requires the remaining review.
+
+### Storage source inspection
+
+Inspected Workspace/Scratch, PreparedScute, ReadOnlyChain ownership and
+Volume::mount_ext4/unmount transitions. Workspace uses detached private tmpfs,
+no executable/device/suid semantics and anonymous scratch files, without a disk
+fallback. PreparedScute keeps an opened cache inode for aligned raw data and
+creates verification metadata separately; compressed/partial data materializes
+into workspace scratch with size/root validation. Later kernel reads require
+verity. Chain ownership releases layers top-first. Mount creation acquires its
+root descriptor before attachment and transfers ownership infallibly after
+move_mount; successful completion requires syncfs and normal unmount, with
+failures retaining state. Trusted parent/procfs/initial-superblock assumptions
+remain part of supervisor setup, not guarantees inferred from an arbitrary path.
+This inspection does not replace metadata qualification or full error-path review.

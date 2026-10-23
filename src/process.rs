@@ -19,8 +19,8 @@ mod reaper;
 pub use reaper::{ChildReaper, DrainFailure, ReapedChildren};
 mod supervision;
 pub use supervision::{
-    Admitted, GuardianWatch, ObservedState, Paired, Registered, ShutdownTrigger, Supervision,
-    SupervisionChild, SupervisionState, Unpaired, VolumeInput,
+    Admitted, ObservedState, Paired, Registered, Supervision, SupervisionChild, SupervisionState,
+    Unpaired, VolumeInput,
 };
 mod observation;
 pub use observation::ProcessObservation;

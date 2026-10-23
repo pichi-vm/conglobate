@@ -33,17 +33,6 @@ impl Process<Identified> {
         Self::launch_supervised_with(command, deadline, &deadline)
     }
 
-    /// Observe upstream loss while exchanging helper identity. Errors retain any
-    /// started child. Kernel spawn itself cannot be interrupted by this poll.
-    pub fn launch_watched(
-        command: Command,
-        supervisor: &Supervision<Paired>,
-        deadline: Instant,
-    ) -> Result<(Self, Supervision<Paired>), LaunchFailure> {
-        let watch = super::supervision::StartupWatch::new(supervisor, deadline);
-        watch.check().map_err(LaunchFailure::Before)?;
-        Self::launch_supervised_with(command, deadline, &watch)
-    }
     fn launch_supervised_with(
         mut command: Command,
         deadline: Instant,

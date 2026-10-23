@@ -43,15 +43,6 @@ impl Supervision<Paired> {
     ) -> io::Result<Supervision<Registered>> {
         self.register_helper_with(domain, &deadline)
     }
-    /// Observe upstream loss during descriptor transfer and registration ACK.
-    pub fn register_helper_watched(
-        self,
-        domain: DomainRegistration<'_>,
-        supervisor: &Supervision<Paired>,
-        deadline: Instant,
-    ) -> io::Result<Supervision<Registered>> {
-        self.register_helper_with(domain, &super::StartupWatch::new(supervisor, deadline))
-    }
     fn register_helper_with(
         self,
         domain: DomainRegistration<'_>,

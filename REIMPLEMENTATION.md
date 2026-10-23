@@ -2625,3 +2625,14 @@ rules rather than silently shrinking acceptance criteria.
   obsolete guardian exports for preserved retirement from the active crate.
 - Recorded host Cargo dependency license declarations; native/appliance audit is
   not complete. M4 remains zero clean passes; M5–M8 remain pending.
+
+### M4 obsolete guardian API retirement
+
+- Removed unused guardian types and upstream-watched launch/registration APIs,
+  their exclusive tests and stale active comments. Exact original files/tests
+  remain in preservation/retired-guardian with verified hashes and baseline.
+- Root tests (46 remaining compile-fail examples), root/fixture strict Clippy and
+  formatting pass. Logs preserved. No production lifecycle behavior changed and
+  no new VM run is claimed for this removal.
+- Continued storage/mount source review; observations recorded in the M4 review.
+  Three full clean adherence passes are still outstanding; M4 streak stays zero.

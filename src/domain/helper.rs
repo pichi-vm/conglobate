@@ -115,20 +115,6 @@ impl<'lease> RecordedDomain<'lease> {
             |channel, permit| channel.register_helper_until(permit, deadline),
         )
     }
-    /// Guardian startup: observe upstream loss during both identity exchange and
-    /// registration. Failures retain any started child and a cleanup-only domain.
-    /// This does not make kernel spawn interruptible or authorize recipe code.
-    pub fn launch_watched(
-        self,
-        command: Command,
-        supervisor: &Supervision<Paired>,
-        deadline: Instant,
-    ) -> Result<ContainedHelper<'lease>, Box<HelperLaunchFailure<'lease>>> {
-        self.finish_launch(
-            Process::launch_watched(command, supervisor, deadline),
-            |channel, permit| channel.register_helper_watched(permit, supervisor, deadline),
-        )
-    }
     fn finish_launch(
         self,
         launched: Result<(Process<Identified>, Supervision<Paired>), LaunchFailure>,

@@ -5,8 +5,6 @@
 mod drain;
 mod events;
 pub use drain::{DescendantDrain, DescendantDrainFailure, DrainedFinishFailure, DrainedHelper};
-mod guardian;
-pub use guardian::{GuardianStop, RegisteredGuardian};
 mod helper;
 pub use helper::{
     AdmissionFailure, ContainedHelper, HelperCancelFailure, HelperCancellation,
@@ -35,7 +33,7 @@ use std::{
 };
 
 /// A fresh cgroup owned exclusively by trusted control code. It must never
-/// contain the guardian/supervisor, and commands must not receive its descriptor
+/// contain the supervisor, and commands must not receive its descriptor
 /// or control paths. Drop closes descriptors but leaves the kernel domain for
 /// recovery; it is not a cancellation or quiescence receipt.
 #[derive(Debug)]
