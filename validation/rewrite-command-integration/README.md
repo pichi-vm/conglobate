@@ -987,3 +987,14 @@ the holder. v113 also blocks policy directory removal, checks retained identity
 pins, and retries after removing the blocker. Root tests, Clippy and VM suites
 pass. Source/evidence hashes are preserved. Setup budgeting and command-versus-
 cleanup outcome handling remain outstanding.
+
+## Restricted command preparation boundary
+
+v114 separates final root/capability/seccomp preparation from image execution.
+The helper obtains RestrictedCommand, then execution audits descriptors immediately
+before spawning image code. A benign extra /dev/null FD is rejected after
+restriction, with no image output; normal command cases pass. Host tests, Clippy
+and VM checks pass. The source review also identified that outer-helper admission
+still precedes inner sandbox preparation. A leaf readiness/start handshake and
+correct setup-versus-execution clocks remain required; this test does not claim
+to resolve that timing boundary.

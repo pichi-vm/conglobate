@@ -120,6 +120,7 @@ chmod 700 /work/pins
 /idmap-probe volume-supervisor-setup-detached
 /idmap-probe volume-supervisor-setup-attached
 /idmap-probe volume-supervisor-policy-cleanup
+/idmap-probe volume-supervisor-descriptor-rejection
 /idmap-probe loop-probe
 /idmap-probe mapping-probe
 /idmap-probe workspace-probe

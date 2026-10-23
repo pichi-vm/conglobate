@@ -1,0 +1,1 @@
+RestrictedCommand separates completed root/capability/syscall preparation from image spawn. Final descriptor audit runs after restrictions immediately before execution. Benign extra /dev/null FD is rejected with no command output; normal suite and host checks pass. Leaf readiness/start handshake and fixed setup clock remain outstanding.

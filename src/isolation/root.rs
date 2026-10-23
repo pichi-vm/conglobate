@@ -8,7 +8,6 @@ use std::{
     fs::{self, File},
     io,
     marker::PhantomData,
-    os::fd::AsRawFd,
     process::Command,
     rc::Rc,
 };
@@ -43,6 +42,22 @@ pub struct CommandRoot {
 #[derive(Debug)]
 pub struct EnteredRoot {
     input: File,
+    _thread: PhantomData<Rc<()>>,
+}
+
+/// Trusted command prepared in its final root with capabilities and syscalls
+/// restricted. No image code has run. A start handshake may occur before
+/// execute, but every extra descriptor must be closed before that call.
+/// ```compile_fail
+/// use conglobate::isolation::RestrictedCommand;
+/// fn cannot_run_twice(command: RestrictedCommand) {
+///     command.execute();
+///     command.execute();
+/// }
+/// ```
+#[derive(Debug)]
+pub struct RestrictedCommand {
+    command: Command,
     _thread: PhantomData<Rc<()>>,
 }
 
@@ -129,7 +144,18 @@ impl EnteredRoot {
         privileges: CommandPrivileges,
         syscalls: CommandSyscalls,
     ) -> io::Result<std::convert::Infallible> {
-        self.check_descriptors()?;
+        self.restrict(script, privileges, syscalls)?.execute()
+    }
+
+    /// Finish trusted isolation before the execution clock starts. This does
+    /// not grant command admission; the enclosing helper owns the start gate.
+    /// Errors remain exit-only because privilege changes cannot be rolled back.
+    pub fn restrict(
+        self,
+        script: &str,
+        privileges: CommandPrivileges,
+        syscalls: CommandSyscalls,
+    ) -> io::Result<RestrictedCommand> {
         rustix::stdio::dup2_stdin(&self.input)?;
         drop(self.input);
         privileges.apply().map_err(io::Error::other)?;
@@ -148,7 +174,19 @@ impl EnteredRoot {
             )
             .env("HOME", "/root")
             .env("LANG", "C.UTF-8");
-        super::init::NamespaceInit::spawn(command)?.execute()
+        Ok(RestrictedCommand {
+            command,
+            _thread: PhantomData,
+        })
+    }
+}
+
+impl RestrictedCommand {
+    /// The enclosing helper must have received start authorization and closed
+    /// its startup handles. Reaudit immediately before spawning image code.
+    pub fn execute(self) -> io::Result<std::convert::Infallible> {
+        self.check_descriptors()?;
+        super::init::NamespaceInit::spawn(self.command)?.execute()
     }
 
     fn check_descriptors(&self) -> io::Result<()> {
@@ -159,7 +197,7 @@ impl EnteredRoot {
         drop(proc);
         // Init remains resident instead of execing: CLOEXEC alone would leave
         // outside handles visible through its /proc/1/fd. Reject every extra
-        // descriptor except the owned null input, which execute closes next.
+        // descriptor. The owned null input was installed and closed by restrict.
         // Collect names first so the audit's own directory descriptors close.
         let names = fs::read_dir("/proc/self/fdinfo")?
             .map(|entry| entry.map(|entry| entry.file_name()))
@@ -169,7 +207,7 @@ impl EnteredRoot {
                 .to_str()
                 .and_then(|n| n.parse().ok())
                 .ok_or_else(|| io::Error::other("invalid proc descriptor entry"))?;
-            if fd <= 2 || fd == self.input.as_raw_fd() {
+            if fd <= 2 {
                 continue;
             }
             match fs::metadata(std::path::Path::new("/proc/self/fdinfo").join(name)) {

@@ -2174,3 +2174,30 @@ rules rather than silently shrinking acceptance criteria.
   review. Bootstrap's two-volume aggregate is not implemented by this single-
   volume result. Streak remains zero; no milestone advancement or whole-build
   qualification is claimed.
+
+### M4 execution-boundary finding and restricted command (v114)
+
+- Previous turn progressed in f98b7f8. Setup-clock source review found that the
+  fixture's outer helper acknowledges admission before the inner helper installs
+  runtime mounts, pivots root, applies capabilities and installs seccomp. Therefore
+  outer admission cannot yet mark the command-only execution-clock boundary.
+  Adding a fixed timeout around that acknowledgment would preserve the wrong
+  semantics. This is a concrete outstanding M4 finding, not a clean pass.
+- EnteredRoot::restrict now consumes root state, installs null stdin and final
+  restrictions, and returns a thread-affine RestrictedCommand without running
+  image code. RestrictedCommand::execute performs the final descriptor audit
+  immediately before spawning namespace init's image shell. It consumes the
+  command; no public mutation or descriptor access is exposed. The old execute
+  convenience method delegates to the same transitions for compatibility.
+- v114 runs the normal VM cases through the explicit restricted-command boundary.
+  A fixture-only extra /dev/null descriptor is opened after restriction; final
+  audit rejects it and verifies no command-started/labelled output exists. Normal
+  commands still pass all restrictions/label checks. Host tests (43 compile-fail),
+  both Clippy checks, formatting and VM pass. Exact source/evidence hashes are
+  archived and verified.
+- Next: a trusted leaf-ready/start handshake at this boundary, closing all startup
+  descriptors before the final audit, then one setup cutoff and a separate finite
+  execution timeout. Namespace-init validation/spawn overhead must be considered
+  explicitly when defining that boundary. The current fixture still acknowledges
+  admission early; do not claim setup/execution timing is resolved. Primary command
+  outcomes versus cleanup diagnostics and M4 review also remain open; streak zero.

@@ -17,7 +17,7 @@ mod root;
 mod runtime;
 pub use devices::CommandDevices;
 use nix::sched::{CloneFlags, setns, unshare};
-pub use root::{CommandRoot, EnteredRoot};
+pub use root::{CommandRoot, EnteredRoot, RestrictedCommand};
 use rustix::mount::MountPropagationFlags;
 use std::{
     fs::{self, File},

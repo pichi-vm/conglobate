@@ -61,6 +61,9 @@ impl Integration {
                 .arg("native-namespaces")
                 .arg(Self::command_script(mode))
                 .stdin(setup.into_input()?);
+            if mode == "descriptor-rejection" {
+                command.arg("--probe-extra-fd");
+            }
             let running = view.launch(command).map_err(|e| e.to_string())?;
             let (view, status) = running
                 .wait_until(Instant::now() + Duration::from_secs(30))
@@ -200,6 +203,7 @@ impl Integration {
                     "volume-supervisor-setup-attached" => "setup-attached-exit",
                     "volume-supervisor-vm-death" => "vm-death",
                     "volume-supervisor-policy-cleanup" => "policy-cleanup",
+                    "volume-supervisor-descriptor-rejection" => "descriptor-rejection",
                     _ => "success",
                 };
                 let reaper = ChildReaper::install()?;
@@ -316,6 +320,7 @@ impl Integration {
                         | "admission-timeout"
                         | "setup-detached-failure"
                         | "setup-attached-exit"
+                        | "descriptor-rejection"
                 ) {
                     assert!(!point.join("command-started").exists());
                     assert!(!point.join("labelled").exists());
@@ -1207,6 +1212,9 @@ impl Integration {
                 .args(["native-root", script])
                 .env_clear()
                 .stdin(devices.into_input()?);
+            if args.get(3).is_some_and(|arg| arg == "--probe-extra-fd") {
+                setup.arg("--probe-extra-fd");
+            }
             let child = scope.spawn(setup)?;
             let status = child
                 .wait_until(Instant::now() + Duration::from_secs(30))?
@@ -1221,7 +1229,16 @@ impl Integration {
                 CommandRoot::from_current_directory(scope, CommandDevices::from_input()?)?;
             let filter = CommandSyscalls::compile()?;
             let entered = selected.enter()?;
-            entered.execute(script, CommandPrivileges::filesystem(), filter)?;
+            let command = entered.restrict(script, CommandPrivileges::filesystem(), filter)?;
+            if args.get(3).is_some_and(|arg| arg == "--probe-extra-fd") {
+                let extra = fs::File::open("/dev/null")?;
+                let error = command.execute().unwrap_err();
+                assert!(error.to_string().contains("would remain in command init"));
+                drop(extra);
+                println!("RESTRICTED_COMMAND_EXTRA_DESCRIPTOR_REJECTED_PASS");
+                return Ok(());
+            }
+            command.execute()?;
             unreachable!();
         }
         if args
