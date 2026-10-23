@@ -5561,3 +5561,21 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   review, source hashes and logs: preservation/m7-review/copy-cache-dispositions/.
   No benchmark, fresh privileged validation or complete adherence pass claimed.
   M4 remains 0/3, and the supported-ID allocation question remains pending.
+
+### Cancellation reconstruction and network cleanup clarity
+
+- Previous turn fixed/reconciled COPY/cache actions. Resolved simplification-005:
+  a private Reaping constructor shares cancellation-result owner reconstruction,
+  retaining all three typestate entry points and their cancel/cancel/retry calls.
+  No deadlines, retained resources or error outcomes changed.
+- Resolved errors-api-009 in NetworkSetupFailure::cleanup using a single match.
+  Complete succeeds before the expiry guard; unfinished expired states retain
+  the original owner. Removed a proven-unreachable arm without claiming a
+  reachable panic or new security fix.
+- 128 library tests, 54 doctests and strict all-target Clippy passed. Maintained
+  network-composite and attached-helper-exit VM regressions passed with status 0
+  and independent poweroff; all 155 compared source files match each snapshot.
+  Evidence: cancellation-recovery/, cancellation-network-v1/ and
+  cancellation-attached-v1/ under preservation/m7-review/.
+- Updated historical action dispositions. No all-branch/platform qualification
+  or full adherence pass claimed. M4 remains 0/3; the full goal stays active.

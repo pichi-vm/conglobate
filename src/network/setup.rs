@@ -94,14 +94,9 @@ impl NetworkSetupFailure {
         &self.diagnostics
     }
     pub fn cleanup(self) -> Result<(), Box<Self>> {
-        if matches!(self.pending, Pending::Complete) {
-            return Ok(());
-        }
-        if Instant::now() >= self.deadline {
-            return Err(Box::new(self));
-        }
         let result = match self.pending {
-            Pending::Complete => unreachable!(),
+            Pending::Complete => return Ok(()),
+            _ if Instant::now() >= self.deadline => return Err(Box::new(self)),
             Pending::Creator(process) => process
                 .terminate_until(self.deadline)
                 .map(|_| ())

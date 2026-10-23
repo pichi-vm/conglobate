@@ -116,8 +116,8 @@
       "evidence": "Early Complete return makes the arm genuinely unreachable",
       "remaining_action": "Single match expressing the invariant (clarity only)",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "NetworkSetupFailure::cleanup now uses a single match: Complete returns success before the expired-deadline guard; unfinished expiry retains self. Removed genuinely unreachable arm without changing cleanup order. Network-composite VM regression passes; cancellation-recovery/REVIEW.md."
     },
     {
       "id": "errors-api-010",
@@ -260,8 +260,8 @@
       "evidence": "Ready/Running bodies byte-identical; Cancelling differs only in retry_until; all return Step<Reaping,R> and rebuild Step<Cancelling,R>",
       "remaining_action": "Factor the Step-rebuild/error-wrap into a private helper; keep all three typestate entry points",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "Private Step<Reaping>::after_cancellation shares owner/error reconstruction; Ready/Running/Cancelling methods remain separate and call cancel/cancel/retry respectively with the original deadline. Library/doctest/Clippy and attached-helper VM rollback pass; cancellation-recovery/REVIEW.md."
     },
     {
       "id": "simplification-006",

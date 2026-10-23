@@ -253,90 +253,75 @@ impl<'lease, R: StepStorage> Step<'lease, Ready, R> {
     }
 }
 
+impl<'lease, R: StepStorage> Step<'lease, Reaping, R> {
+    fn after_cancellation(
+        storage: Retained<R>,
+        namespace: ManuallyDrop<UserNamespace<Mapped>>,
+        reaper: ChildReaper,
+        result: Result<HelperReaping<'lease>, Box<crate::domain::HelperCancelFailure<'lease>>>,
+    ) -> Result<Self, Box<StepFailure<'lease, Cancelling, R>>> {
+        match result {
+            Ok(helper) => Ok(Step {
+                storage,
+                namespace,
+                resources: (helper, reaper),
+                _lease: PhantomData,
+            }),
+            Err(failure) => {
+                let (source, helper) = failure.into_parts();
+                Err(Box::new(StepFailure {
+                    source,
+                    step: Step {
+                        storage,
+                        namespace,
+                        resources: (helper, reaper),
+                        _lease: PhantomData,
+                    },
+                }))
+            }
+        }
+    }
+}
 impl<'lease, R: StepStorage> Step<'lease, Ready, R> {
     pub fn cancel_until(
         self,
         deadline: Instant,
     ) -> Result<Step<'lease, Reaping, R>, Box<StepFailure<'lease, Cancelling, R>>> {
         let (helper, reaper) = self.resources;
-        match helper.cancel_until(deadline) {
-            Ok(helper) => Ok(Step {
-                storage: self.storage,
-                namespace: self.namespace,
-                resources: (helper, reaper),
-                _lease: PhantomData,
-            }),
-            Err(failure) => {
-                let (source, helper) = failure.into_parts();
-                Err(Box::new(StepFailure {
-                    source,
-                    step: Step {
-                        storage: self.storage,
-                        namespace: self.namespace,
-                        resources: (helper, reaper),
-                        _lease: PhantomData,
-                    },
-                }))
-            }
-        }
+        Step::after_cancellation(
+            self.storage,
+            self.namespace,
+            reaper,
+            helper.cancel_until(deadline),
+        )
     }
 }
-
 impl<'lease, R: StepStorage> Step<'lease, Running, R> {
     pub fn cancel_until(
         self,
         deadline: Instant,
     ) -> Result<Step<'lease, Reaping, R>, Box<StepFailure<'lease, Cancelling, R>>> {
         let (helper, reaper) = self.resources;
-        match helper.cancel_until(deadline) {
-            Ok(helper) => Ok(Step {
-                storage: self.storage,
-                namespace: self.namespace,
-                resources: (helper, reaper),
-                _lease: PhantomData,
-            }),
-            Err(failure) => {
-                let (source, helper) = failure.into_parts();
-                Err(Box::new(StepFailure {
-                    source,
-                    step: Step {
-                        storage: self.storage,
-                        namespace: self.namespace,
-                        resources: (helper, reaper),
-                        _lease: PhantomData,
-                    },
-                }))
-            }
-        }
+        Step::after_cancellation(
+            self.storage,
+            self.namespace,
+            reaper,
+            helper.cancel_until(deadline),
+        )
     }
 }
-
 impl<'lease, R: StepStorage> Step<'lease, Cancelling, R> {
     pub fn cancel_until(
         self,
         deadline: Instant,
     ) -> Result<Step<'lease, Reaping, R>, Box<StepFailure<'lease, Cancelling, R>>> {
         let (helper, reaper) = self.resources;
-        match helper.retry_until(deadline) {
-            Ok(helper) => Ok(Step {
-                storage: self.storage,
-                namespace: self.namespace,
-                resources: (helper, reaper),
-                _lease: PhantomData,
-            }),
-            Err(failure) => {
-                let (source, helper) = failure.into_parts();
-                Err(Box::new(StepFailure {
-                    source,
-                    step: Step {
-                        storage: self.storage,
-                        namespace: self.namespace,
-                        resources: (helper, reaper),
-                        _lease: PhantomData,
-                    },
-                }))
-            }
-        }
+        Step::after_cancellation(
+            self.storage,
+            self.namespace,
+            reaper,
+            helper.retry_until(deadline),
+        )
     }
 }
 impl<R: StepStorage> Step<'_, Running, R> {

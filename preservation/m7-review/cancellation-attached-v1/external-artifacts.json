@@ -1,0 +1,12 @@
+{
+  "/storage/conglobate-validation/cancellation-attached-v1/vmlinuz": {
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "durably_archived": false
+  },
+  "/storage/conglobate-validation/cancellation-attached-v1/initramfs.gz": {
+    "size": 88298489,
+    "sha256": "c7c7ee5b3bf1adcc19a57afce1042baed1d9657d965950d260a5211007d96cb5",
+    "durably_archived": false
+  }
+}
