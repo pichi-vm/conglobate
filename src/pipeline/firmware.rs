@@ -79,12 +79,12 @@ impl<'a> FirmwareBuild<'a> {
             let derived = CarapaceBuild::new(self.build)?.run_layers(workspace, runtime)?;
             let root = Some(*derived.active.root());
             let tools = if self.stage.from().is_some() {
-                derived.active.close().map_err(Self::error)?;
+                derived.active.close().map_err(BuildError::from)?;
                 self.tools
                     .chain()
                     .expect("validated tools")
                     .assemble(self.build.cache(), workspace)
-                    .map_err(Self::error)?
+                    .map_err(BuildError::from)?
             } else {
                 derived.active
             };
@@ -95,7 +95,7 @@ impl<'a> FirmwareBuild<'a> {
                     .chain()
                     .expect("validated tools")
                     .assemble(self.build.cache(), workspace)
-                    .map_err(Self::error)?,
+                    .map_err(BuildError::from)?,
                 Vec::new(),
                 self.base.and_then(|base| base.chain()).map(|c| *c.root()),
                 ChildReaper::install()?,
@@ -117,9 +117,6 @@ impl<'a> FirmwareBuild<'a> {
         let inventory = Inventory::from_build(request, self.build, &image, pair.dtb(), &produced)?;
         inventory.check_output(&image)?;
         Ok(CompletedImage { image, inventory })
-    }
-    fn error(error: impl std::fmt::Display) -> BuildError {
-        BuildError::Execution(error.to_string())
     }
 }
 
@@ -150,12 +147,12 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
                 workspace
                     .snapshot_store()?
                     .attach()
-                    .map_err(FirmwareBuild::error)?,
+                    .map_err(BuildError::from)?,
                 NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap(),
             )
-            .map_err(FirmwareBuild::error)?;
+            .map_err(BuildError::from)?;
         let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())
-            .map_err(FirmwareBuild::error)?;
+            .map_err(BuildError::from)?;
         let paths = runtime.paths()?;
         let sandbox = CommandSandbox::new(
             HelperProgram::current()?,
@@ -181,29 +178,27 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
         let budget = SetupBudget::begin();
         let mut mounted = volume
             .mount_ext4(paths.volumes())
-            .map_err(FirmwareBuild::error)?;
+            .map_err(BuildError::from)?;
         let captured = mounted.extract_firmware(stage, workspace, &budget);
         let cleanup_budget = SetupBudget::begin();
         let cleanup = (|| -> Result<(), BuildError> {
             mounted
                 .unmount()
-                .map_err(FirmwareBuild::error)?
+                .map_err(BuildError::from)?
                 .into_snapshot()
                 .close()
-                .map_err(FirmwareBuild::error)?
+                .map_err(BuildError::from)?
                 .detach()
-                .map_err(FirmwareBuild::error)?;
+                .map_err(BuildError::from)?;
             Ok(())
         })()
-        .and_then(|()| active.close().map_err(FirmwareBuild::error))
+        .and_then(|()| active.close().map_err(BuildError::from))
         .and_then(|()| cleanup_budget.check().map_err(BuildError::from));
-        let captured = match (captured.map_err(FirmwareBuild::error), cleanup) {
+        let captured = match (captured.map_err(BuildError::from), cleanup) {
             (Ok(captured), Ok(())) => captured,
             (Err(error), Ok(())) | (Ok(_), Err(error)) => return Err(error),
             (Err(error), Err(cleanup)) => {
-                return Err(FirmwareBuild::error(format!(
-                    "{error}; firmware cleanup: {cleanup}"
-                )));
+                return Err(error.with_cleanup(Err(cleanup)));
             }
         };
         let root = root.map(hex::encode);
@@ -212,6 +207,6 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
                 build.captured().plan().recipe().transform(),
                 root.as_deref(),
             )
-            .map_err(FirmwareBuild::error)
+            .map_err(BuildError::from)
     }
 }

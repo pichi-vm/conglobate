@@ -3,6 +3,7 @@
 //! Recipe orchestration. Unsupported execution paths fail before publication.
 mod bootstrap;
 mod carapace;
+mod failures;
 mod firmware;
 mod rejection;
 use crate::{
@@ -43,6 +44,24 @@ pub enum BuildError {
     Unsupported(&'static str),
     #[error("build execution: {0}")]
     Execution(String),
+    #[error("device mapping: {0}")]
+    Mapping(#[source] crate::storage::FailureDiagnostics),
+    #[error("snapshot mapping: {0}")]
+    Snapshot(#[source] crate::storage::FailureDiagnostics),
+    #[error("read-only chain: {0}")]
+    ReadOnlyChain(#[source] crate::storage::FailureDiagnostics),
+    #[error("volume mount: {0}")]
+    VolumeMount(#[source] std::io::Error),
+    #[error("volume unmount: {0}")]
+    VolumeUnmount(#[source] crate::storage::FailureDiagnostics),
+    #[error("loop attachment: {0}")]
+    LoopAttach(#[source] std::io::Error),
+    #[error("loop detachment: {0}")]
+    LoopDetach(#[source] std::io::Error),
+    #[error("snapshot sealing: {0}")]
+    Seal(#[source] crate::chain::ChainError),
+    #[error(transparent)]
+    Firmware(#[from] crate::firmware::ExtractionError),
     #[error("formatter staging: {0}")]
     FormatterStaging(#[source] std::io::Error),
     #[error("formatter wait: {0}")]

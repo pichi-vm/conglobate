@@ -5684,3 +5684,21 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   errno history. Evidence: preservation/m7-review/formatter-staging-wait-errors/.
 - Generic stage/storage error conversion and full taxonomy remain open. No new
   VM validation or complete adherence pass; M4 remains 0/3 and goal active.
+
+### Typed storage and firmware errors at pipeline boundaries
+
+- Previous turn completed formatter staging/wait diagnostic preservation. This
+  turn replaced coordinator Display-to-string storage adapters with typed From
+  conversions for mappings, snapshots, chains, volume mount/unmount, loop
+  attach/detach and sealing. Firmware extraction/finalization also retains its
+  concrete error, including independent cleanup failure branches.
+- Terminal conversions preserve concrete causes and histories then relinquish
+  borrowing recovery owners, with existing Drop behavior and VM-disposal
+  requirements. No cleanup receipt, retry or publication permission was added.
+- 141 library tests, strict all-target Clippy and lifecycle compilation passed.
+  Current native amd64 KVM two-root bootstrap/export validation passed; all 169
+  compared source files match the run snapshot. Evidence and hashes:
+  preservation/m7-review/storage-pipeline-errors/ and storage-pipeline-bootstrap-v1/.
+- Generic stage rejection still erases error details; errors-api-002/003 remain
+  open. Target distro boots, full sandbox qualification and durable remote
+  archival are not claimed. No complete adherence pass; M4 remains 0/3.

@@ -63,7 +63,7 @@
       "remaining_action": "Owned diagnostic representation preserving failure ownership and both messages",
       "historical_status": "open",
       "current_status": "open",
-      "current_evidence": "Partial progress: typed runtime create/cleanup and combined operation errors; formatter execution/wait histories; formatter staging io::Error; owned formatter cleanup; named paired storage cleanup. Existing terminal VM-disposal contract retained. Generic stage/storage conversions and full diagnostic taxonomy remain open. Evidence: terminal-runtime-errors/, formatter-error-structure/, formatter-staging-wait-errors/ under preservation/m7-review/."
+      "current_evidence": "Partial progress: typed runtime and formatter errors; coordinator storage errors now retain concrete causes/histories through From conversions; firmware extraction/finalization and combined cleanup remain separate. Lower-level retry ownership and terminal VM-disposal contract retained. Generic stage rejection and full diagnostic taxonomy remain open. Evidence in terminal-runtime-errors/, formatter-error-structure/, formatter-staging-wait-errors/, storage-pipeline-errors/ and current-source bootstrap storage-pipeline-bootstrap-v1/ under preservation/m7-review/."
     },
     {
       "id": "errors-api-003",
@@ -72,7 +72,7 @@
       "remaining_action": "Same as errors-api-002",
       "historical_status": "open",
       "current_status": "open",
-      "current_evidence": "Partial progress: typed runtime create/cleanup and combined operation errors; formatter execution/wait histories; formatter staging io::Error; owned formatter cleanup; named paired storage cleanup. Existing terminal VM-disposal contract retained. Generic stage/storage conversions and full diagnostic taxonomy remain open. Evidence: terminal-runtime-errors/, formatter-error-structure/, formatter-staging-wait-errors/ under preservation/m7-review/."
+      "current_evidence": "Partial progress: typed runtime and formatter errors; coordinator storage errors now retain concrete causes/histories through From conversions; firmware extraction/finalization and combined cleanup remain separate. Lower-level retry ownership and terminal VM-disposal contract retained. Generic stage rejection and full diagnostic taxonomy remain open. Evidence in terminal-runtime-errors/, formatter-error-structure/, formatter-staging-wait-errors/, storage-pipeline-errors/ and current-source bootstrap storage-pipeline-bootstrap-v1/ under preservation/m7-review/."
     },
     {
       "id": "errors-api-005",

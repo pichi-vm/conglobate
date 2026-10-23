@@ -14,9 +14,9 @@ impl DiscardStorage for Volume<'_, '_, '_, Unmounted> {
     fn discard(self) -> Result<(), BuildError> {
         self.into_snapshot()
             .close()
-            .map_err(BuildError::execution)?
+            .map_err(BuildError::from)?
             .detach()
-            .map_err(BuildError::execution)?;
+            .map_err(BuildError::from)?;
         Ok(())
     }
 }

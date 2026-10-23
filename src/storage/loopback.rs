@@ -29,6 +29,14 @@ pub struct LoopDetachFailure<'workspace> {
     attachment: LoopAttachment<'workspace>,
 }
 impl<'w> LoopDetachFailure<'w> {
+    /// Terminal pipeline conversion: abandon retry authority, preserving the
+    /// exact I/O cause. Drop/autoclear is not a successful detachment receipt.
+    pub(crate) fn into_terminal_error(self) -> io::Error {
+        let Self { source, attachment } = self;
+        drop(attachment);
+        source
+    }
+
     pub fn source_error(&self) -> &io::Error {
         &self.source
     }

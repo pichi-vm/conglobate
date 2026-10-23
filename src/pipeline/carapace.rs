@@ -73,7 +73,7 @@ impl<'a> CarapaceBuild<'a> {
         let chain = self.base.chain().expect("validated root volume");
         let active = chain
             .assemble(self.build.cache(), workspace)
-            .map_err(Self::error)?;
+            .map_err(BuildError::from)?;
         DerivedCarapace {
             active,
             scutes: Vec::new(),
@@ -92,7 +92,7 @@ impl<'a> CarapaceBuild<'a> {
             scutes: produced,
             reaper: _reaper,
         } = self.run_layers(workspace, runtime)?;
-        active.close().map_err(Self::error)?;
+        active.close().map_err(BuildError::from)?;
         let source = self.base.inherited_dtb(self.build.cache())?;
         let root = hex::encode(produced.last().expect("nonempty directives").root());
         let transformed = self
@@ -113,9 +113,6 @@ impl<'a> CarapaceBuild<'a> {
             Inventory::from_build(request, self.build, &image, &transformed, &produced)?;
         inventory.check_output(&image)?;
         Ok(CompletedImage { image, inventory })
-    }
-    fn error(error: impl std::fmt::Display) -> BuildError {
-        BuildError::Execution(error.to_string())
     }
 }
 
@@ -144,13 +141,13 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
             let snapshot = Mapping::<Created>::create()?
                 .snapshot(
                     &active,
-                    scratch.attach().map_err(CarapaceBuild::error)?,
+                    scratch.attach().map_err(BuildError::from)?,
                     NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512)
                         .unwrap(),
                 )
-                .map_err(CarapaceBuild::error)?;
+                .map_err(BuildError::from)?;
             let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())
-                .map_err(CarapaceBuild::error)?;
+                .map_err(BuildError::from)?;
             let networking = build
                 .captured()
                 .resolver()
@@ -171,15 +168,15 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
                 volume
                     .into_snapshot()
                     .close()
-                    .map_err(CarapaceBuild::error)?
+                    .map_err(BuildError::from)?
                     .detach()
-                    .map_err(CarapaceBuild::error)?
+                    .map_err(BuildError::from)?
                     .seal_snapshot(*active.root())
-                    .map_err(CarapaceBuild::error)?,
+                    .map_err(BuildError::from)?,
             );
             active = active
                 .extend(Arc::clone(&scute))
-                .map_err(CarapaceBuild::error)?;
+                .map_err(BuildError::from)?;
             produced.push(scute);
         }
         Ok(DerivedCarapace {

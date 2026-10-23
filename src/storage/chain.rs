@@ -292,3 +292,23 @@ impl<'s, 'w> Cleanup<'s, 'w> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Cleanup;
+    use crate::{pipeline::BuildError, storage::FailureDiagnostics};
+    use std::io;
+
+    #[test]
+    fn terminal_chain_conversion_preserves_original_and_cleanup_causes() {
+        let history = FailureDiagnostics::from(io::Error::from_raw_os_error(5))
+            .followed_by(io::Error::from_raw_os_error(16).into());
+        let failure = Cleanup::Empty.failure(history.clone());
+        let BuildError::ReadOnlyChain(retained) = BuildError::from(failure) else {
+            panic!("chain failure classification erased");
+        };
+        assert!(std::ptr::eq(history.operation(), retained.operation()));
+        assert_eq!(retained.operation().raw_os_error(), Some(5));
+        assert_eq!(retained.cleanup()[0].raw_os_error(), Some(16));
+    }
+}

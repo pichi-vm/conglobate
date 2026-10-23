@@ -75,14 +75,17 @@ impl<'a> BootstrapBuild<'a> {
             NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap();
         let origin = Mapping::<Created>::create()?
             .zero(sectors)
-            .map_err(Self::error)?;
+            .map_err(BuildError::from)?;
         let output = Mapping::<Created>::create()?
             .snapshot(
                 &origin,
-                workspace.snapshot_store()?.attach().map_err(Self::error)?,
+                workspace
+                    .snapshot_store()?
+                    .attach()
+                    .map_err(BuildError::from)?,
                 sectors,
             )
-            .map_err(Self::error)?;
+            .map_err(BuildError::from)?;
         let formatted = self.format(formatter, output)?;
         let (formatter, output, receipt) = formatted.into_recorded_parts();
         formatter.close().map_err(BuildError::from)?;
@@ -91,18 +94,21 @@ impl<'a> BootstrapBuild<'a> {
             .chain()
             .expect("validated tools")
             .assemble(self.build.cache(), workspace)
-            .map_err(Self::error)?;
+            .map_err(BuildError::from)?;
         let tool = Mapping::<Created>::create()?
             .snapshot(
                 &active,
-                workspace.snapshot_store()?.attach().map_err(Self::error)?,
+                workspace
+                    .snapshot_store()?
+                    .attach()
+                    .map_err(BuildError::from)?,
                 sectors,
             )
-            .map_err(Self::error)?;
+            .map_err(BuildError::from)?;
         let tool = Volume::<Unmounted>::in_init_namespace(tool, runtime.recovery())
-            .map_err(Self::error)?;
+            .map_err(BuildError::from)?;
         let output = Volume::<Unmounted>::in_init_namespace(output, runtime.recovery())
-            .map_err(Self::error)?;
+            .map_err(BuildError::from)?;
         let paths = runtime.paths()?;
         let sandbox = CommandSandbox::new(
             HelperProgram::current()?,
@@ -132,14 +138,14 @@ impl<'a> BootstrapBuild<'a> {
             output
                 .into_snapshot()
                 .close()
-                .map_err(Self::error)?
+                .map_err(BuildError::from)?
                 .detach()
-                .map_err(Self::error)?
+                .map_err(BuildError::from)?
                 .seal_snapshot([0; 32])
-                .map_err(Self::error)?,
+                .map_err(BuildError::from)?,
         );
-        active.close().map_err(Self::error)?;
-        origin.close().map_err(Self::error)?;
+        active.close().map_err(BuildError::from)?;
+        origin.close().map_err(BuildError::from)?;
         let produced = vec![scute];
         let recipe = self.build.captured().plan().recipe();
         let directives = recipe
@@ -152,7 +158,7 @@ impl<'a> BootstrapBuild<'a> {
         } else {
             let derived = super::carapace::DerivedCarapace {
                 active: crate::storage::ReadOnlyChain::from_root(Arc::clone(&produced[0]))
-                    .map_err(Self::error)?,
+                    .map_err(BuildError::from)?,
                 scutes: produced,
                 reaper,
             }
@@ -163,7 +169,7 @@ impl<'a> BootstrapBuild<'a> {
         let (image, inventory) = if let Some(stage) = recipe.firmware() {
             let tools = if let Some(reference) = stage.from() {
                 if let Some(active) = active {
-                    active.close().map_err(Self::error)?;
+                    active.close().map_err(BuildError::from)?;
                 }
                 let tools = self
                     .build
@@ -174,12 +180,12 @@ impl<'a> BootstrapBuild<'a> {
                     .chain()
                     .ok_or_else(|| Self::error("firmware tools require a root volume"))?
                     .assemble(self.build.cache(), workspace)
-                    .map_err(Self::error)?
+                    .map_err(BuildError::from)?
             } else {
                 match active {
                     Some(active) => active,
                     None => crate::storage::ReadOnlyChain::from_root(Arc::clone(&produced[0]))
-                        .map_err(Self::error)?,
+                        .map_err(BuildError::from)?,
                 }
             };
             let pair = super::firmware::FirmwareTools {
@@ -200,7 +206,7 @@ impl<'a> BootstrapBuild<'a> {
             (image, inventory)
         } else {
             if let Some(active) = active {
-                active.close().map_err(Self::error)?;
+                active.close().map_err(BuildError::from)?;
             }
             let root = hex::encode(root);
             let transformed = recipe.transform().apply(None, Some(&root))?;
@@ -252,8 +258,8 @@ impl<'a> BootstrapBuild<'a> {
     ) -> BuildError {
         let storage = snapshot
             .close()
-            .map_err(Self::error)
-            .and_then(|closed| closed.detach().map_err(Self::error));
+            .map_err(BuildError::from)
+            .and_then(|closed| closed.detach().map_err(BuildError::from));
         let runtime = formatter.close().map_err(BuildError::from);
         BuildError::Formatter(error.into())
             .with_cleanup(storage.map(|_| ()))
