@@ -512,9 +512,12 @@ and formatter identity with an explicit inventory schema revision.
 `/mnt` is reserved for the output mount during bootstrap. Resolve its mountpoint
 within the pinned tool root; never follow an image symlink outside that root.
 COPY destinations use this same layout, so `/mnt/...` addresses output and other
-paths address the tool root. Context is never mounted into commands. Scope the
-LSM authorization to both assigned filesystems so tool installation and output
-population can label files; neither authorizes unrelated supervisor mounts.
+paths address the tool root. Context is never mounted into commands. The trusted
+environment provides the fixed exact-`security.selinux` labeling exception.
+After restrictions are applied, validate labeling on both assigned roots before
+admitting each command. Filesystem reachability, read-only mounts, descriptor
+confinement and process isolation protect unrelated supervisor inodes; the
+labeling policy does not maintain a per-filesystem authorization registry.
 
 After writers stop and both filesystems are cleanly unmounted, seal/hash the
 output scute and package its carapace. Discard the tool writable layer. No tool

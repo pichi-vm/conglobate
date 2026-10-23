@@ -1,0 +1,1 @@
+Initial independent assessment failed with KeyError: lib64/ld-linux-x86-64.so.2. The input manifest excludes symlinks. Corrected verification resolves each formatter runtime path within the staged trusted runtime and compares the recorded target hash. The corrected assessment passes. No production change or VM rerun was required.

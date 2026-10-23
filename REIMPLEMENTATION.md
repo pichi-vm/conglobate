@@ -4143,3 +4143,26 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - These are narrow single-root regressions, not milestone adherence reviews.
   Bootstrap two-root, broad failure/isolation migration, independent review and
   three clean adherence passes remain outstanding. M4–M6 stay reopened at 0/3.
+
+
+### Registration-free bootstrap regression and design correction
+
+- Actual CLI bootstrap passes in native amd64 disposable VM with fixed external
+  labeling policy: trusted ext4 formatting on dm-zero snapshot, two assigned
+  roots, restricted pre-admission anonymous label probes, two command steps,
+  numeric ownership/mode persistence across remount, clean sealing and export.
+- Independent assessment verifies canonical CBOR, bootstrap-tools input role,
+  one produced scute, no inherited tool firmware or scutes, exact OCI descriptor
+  sizes/hashes and blob closure, and measured formatter runtime/configuration.
+  Evidence: preservation/m7-review/bootstrap-unpinned-v1; maintained recipe and
+  assessment: tests/distro/bootstrap-labeling. This minimal filesystem is not a
+  distro boot qualification and does not replace broad failure/isolation tests.
+- Found stale normative bootstrap wording requiring per-filesystem LSM scopes
+  in DESIGN.md 6.1; corrected to the fixed environment exception, both-root
+  admission checks and inode-reachability boundary already specified in section
+  9 and SANDBOX-DESIGN.txt 4. Architecture review scope changed: the prior M2
+  passes remain historical evidence; revised M2 streak resets to 0/3 pending
+  renewed adherence review. M4–M6 remain 0/3; M7/M8 incomplete.
+- Broader legacy command fixture still references retired policy/pin APIs and
+  requires explicit coverage migration. It is not presently a runnable current
+  regression suite. No historical failure or validation evidence was removed.
