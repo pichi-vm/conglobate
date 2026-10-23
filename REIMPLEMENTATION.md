@@ -4,6 +4,40 @@ Status: active. No milestone may advance until its three-pass gate is clean.
 The target is the latest DESIGN.md, SANDBOX-DESIGN.txt and user decisions.
 This ledger describes required work, not claims about the current executor.
 
+## Current execution batches
+
+User accepted externalizing networking. This supersedes earlier proposals and
+conglobate-owned NAT wording in the stored goal/history. No requirement is being
+removed: provisioning and ingress enforcement move to the trusted environment.
+The implementation still uses the old network path until the following batch
+lands. Architecture gate M2 reopens at 0/3; M4–M6 remain 0/3.
+
+1. **External networking (current):** complete architecture adherence gate;
+   capture/validate --network-namespace; reuse its pinned descriptor for enabled
+   steps; retain isolated offline steps and resolver restoration; remove binary
+   NAT/link/route allocation and obsolete helpers/dependencies after preserving
+   references. Adapt trusted VM fixtures to supply networking. Validate invalid,
+   missing, wrong-type and supervisor namespace inputs, namespace path replacement,
+   restricted command authority, enabled/offline behavior, DNS and retained
+   environment networking after step/build failure. Three complete clean passes
+   are required before advancing the affected milestone gates.
+2. **Remaining M4 correctness/style batch:** reconcile the full original review
+   with current source, concentrating on proc visibility, syscall compatibility,
+   UID/GID bounds and resource ownership; settle outstanding lifecycle/style
+   items together. Use historical-actions-current.json as the finding ledger,
+   not this list as a replacement. Freeze M4 and conduct its full three-pass gate.
+3. **M5/M6 integration batch:** bootstrap/firmware/layering, metadata, transform,
+   inventory and publication regressions plus remaining relevant review findings;
+   restore each milestone's full gate in order.
+4. **M7/M8:** representative distro builds/boots, platform availability evidence,
+   maintained VM CI, all original review findings reconciled, durable preservation
+   verification, then reference retirement. Unavailable required qualification
+   remains outstanding. No claim of completion from component tests alone.
+
+Recent source-review refinements are not a substitute for these complete gates.
+Batch source changes and run one relevant validation cycle; retain raw failures
+and results without repeating narrative reports for each small adjustment.
+
 ## Current deployment correction
 
 The user's dedicated-VM clarification supersedes earlier guardian/recovery
@@ -39,7 +73,7 @@ but must not be claimed to validate the new policy implementation.
 | Milestone | Deliverables and success criteria | Status | Clean streak |
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
-| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: corrected registration-free architecture | 3 |
+| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Reopened: accepted external networking | 0 |
 | 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete: revised context lifecycle | 3 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, environment-owned labeling exception, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Reopened: registration-free lifecycle | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Reopened: two-root lifecycle regression | 0 |

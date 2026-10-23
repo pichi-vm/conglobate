@@ -84,7 +84,8 @@ Historical experiments are evidence, not competing specifications.
         evaluated, and DNS configuration for network-enabled commands. Reject
         unsupported behavior rather than silently weakening the sandbox.
 
-   2.4. Read --resolv-conf PATH once if networking is needed and retain the
+   2.4. Require and capture --network-namespace when any step enables networking
+        as specified in section 8. Read --resolv-conf PATH once if networking is needed and retain the
         selected bytes privately. The argument is mandatory if any run step
         has network: true. An unreadable or invalid selected file is an error;
         there is no implicit host-file or public-resolver fallback. Resolver
@@ -272,10 +273,12 @@ Historical experiments are evidence, not competing specifications.
    7.1. Remount assigned filesystems for every command step.
         Create a fresh command sandbox; complete teardown before advancing.
         Persistent image changes survive through the writable storage, not
-        through surviving processes, namespaces, or long-lived mounts.
+        through surviving processes or long-lived filesystem mounts. The externally
+        owned enabled network namespace is intentionally shared across steps.
 
    7.2. Execute as UID/GID 0 inside the mapped command user namespace, with
-        private mount, PID, IPC, UTS, and network namespaces and private mount
+        private mount, PID, IPC and UTS namespaces, a separate network namespace
+        selected according to section 8, and private mount
         propagation. Pivot to the assigned image root and detach the old root.
         No initial-user-namespace root authority, context, backing device,
         /dev/fuse, cache, supervisor executable, or outside-root descriptors
@@ -320,19 +323,25 @@ Historical experiments are evidence, not competing specifications.
 
 8. Networking and DNS
 
-   8.1. Networking defaults to disabled. Every command still has a separate
-        network namespace. Offline steps have no external network attachment.
+   8.1. Networking defaults to disabled. Offline commands receive a fresh
+        disconnected network namespace. Enabled commands join the externally
+        supplied --network-namespace PATH, captured once as an owned descriptor
+        before command execution. Reject missing/invalid input, the supervisor's
+        own network namespace, or a namespace not owned by the initial user
+        namespace. Join during trusted setup; no handle or administration
+        authority reaches command code.
 
-   8.2. network: true receives outbound NAT through the build environment's
-        existing routes, allowing replies but no inbound port forwarding or
-        unsolicited inbound connections. All reachable destinations, including
-        private networks, are allowed. Do not add destination filtering or
-        modify the environment's primary NIC configuration. Scope links and
-        firewall/NAT rules to the build and remove them during teardown.
-        The current dual-stack backend requires the environment to enable
-        net.ipv4.ip_forward and net.ipv6.conf.all.forwarding in the supervisor
-        network namespace. Check both before attaching the command network;
-        fail if unavailable, without changing these namespace-wide settings.
+   8.2. The environment owns the enabled build namespace and its interfaces,
+        addresses, routes, NAT, firewall policy and lifetime. It provides outbound
+        NAT with replies allowed, no unsolicited inbound connections or inbound
+        forwarding, and access to all reachable destinations including private
+        networks. Conglobate neither provisions nor tears down these resources
+        and does not require supervisor-namespace forwarding sysctls. The
+        environment dedicates the namespace to this build. Sequential enabled
+        steps reuse it; connection tracking and other network state can persist,
+        but no command processes may survive a step. No unrelated services or
+        concurrent builds share the namespace. Systemd is an optional environment
+        implementation, not a dependency of the binary.
 
    8.3. Namespace separation isolates loopback and abstract Unix sockets, not
         services listening on routable supervisor addresses. This design does
@@ -409,7 +418,8 @@ Historical experiments are evidence, not competing specifications.
          immediately reap a task stuck in uninterruptible I/O.
 
    10.3. On normal completion, stop/reap all descendants, then remove
-         runtime/network mounts, flush and cleanly unmount assigned
+         runtime/resolver mounts, release borrowed network handles without modifying
+         the external network, flush and cleanly unmount assigned
          filesystems, and release references before sealing or the next step.
          Detect and propagate storage/writeback errors. Preserve primary failure
          and cleanup diagnostics independently; process exit is not durability.

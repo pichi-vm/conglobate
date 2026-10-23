@@ -82,7 +82,7 @@ names from the original design are not additional implementation requirements.
 | filesystem, formatter | Mount<S>, Ext4Format, CapturedFormatter, FormatterRuntime, FormatReceipt | Idmapped views and trusted, measured formatting with explicit cleanup |
 | step, domain, process | Step<S, R>, StepCompletion<R>, RecordedDomain, Supervision<S> | Retain authority through admission, cancellation, reaping and descendant drain |
 | execution, isolation | HelperProgram, HelperInvocation, UserNamespace<Mapped>, CommandReceiver, AssignedRoots, LabelProbe | Trusted helper entry, private mounts, mapped identity and restricted labeling admission |
-| network | CommandNetwork, CommandNetworking, ResolverInput, ResolverMount | Disabled default, owned outbound NAT and confined temporary resolver injection |
+| network | CommandNetwork, CommandNetworking, ResolverInput, ResolverMount | Disabled default; captured external namespace handle and confined temporary resolver injection; environment owns NAT |
 | copy | CopySources, CopySource, CopyDestination | Explicit selected context files; exclusive confined writes; no context mount |
 | pipeline | Pipeline, BootstrapBuild, CarapaceBuild, FirmwareBuild, CompletedImage | Sequence stages, retain completed outputs and reject publication on failure |
 | firmware | DtbContract | Validate declared firmware contract; pipeline firmware owner extracts the declared pair after writers stop |
@@ -176,7 +176,7 @@ The step aggregate, not incidental field-drop order, enforces:
 2. Prove quiescence under the containment mechanism.
 3. Finish process-domain records and release command namespace ownership.
    The environment labeling exception remains installed until VM shutdown.
-4. Remove temporary resolver/network/runtime attachments, preserving image state.
+4. Remove temporary resolver/runtime attachments and release borrowed network handles, preserving image state and the environment-owned network.
 5. Flush and cleanly unmount all assigned filesystems; inspect storage errors.
 6. Release kernel resources and permit finalization, sealing or the next step.
 
@@ -277,7 +277,7 @@ avoid mirroring every method signature. Runtime tests validate external effects.
 | Teardown | Live descendants, timeout/cancellation, helper death, supervisor death plus VM shutdown, blocked I/O |
 | Bootstrap | Actual zero-backed chain, formatter geometry, / plus /mnt packages, metadata persistence, direct sealing |
 | Filesystem fidelity | UID/GID, ACL access/defaults, file capabilities, SELinux labels and target enforcing boot |
-| Network | Disabled default, outbound NAT/replies, explicit resolver including confined symlinks and cleanup |
+| Network | Disabled default, externally supplied build namespace/NAT, explicit resolver including confined symlinks and cleanup |
 | Outputs | Paired firmware validation, final DTB, deterministic CBOR, inherited blobs, OCI/ORAS, atomic failure cases |
 | Platforms | amd64/arm64 and TDX/SEV-SNP/CCA evidence; unavailable environments remain outstanding |
 
@@ -341,3 +341,30 @@ are preserved verbatim with checksums in
 They describe their recorded revisions, not additional current requirements.
 Current dependency pins are authoritative in Cargo.toml/Cargo.lock; milestone
 acceptance and subsequent reopened gates are recorded in REIMPLEMENTATION.md.
+
+## Accepted external-network revision (implementation pending)
+
+The environment, optionally using systemd services, provisions the enabled build
+network and owns its namespace lifetime, veth/interfaces, addressing, routes, NAT
+and ingress policy. Conglobate receives --network-namespace and --resolv-conf.
+It captures an owned namespace descriptor once, validates type/identity/ownership,
+and retains it through command quiescence; the path is not reopened per step.
+The namespace belongs to the initial user namespace and differs from the
+supervisor network namespace. Image code cannot configure it or receive its FD.
+A supplied namespace is not proof of NAT or firewall policy: the trusted
+environment must satisfy that contract. Namespace setup requires safe library
+interfaces; application unsafe code remains forbidden.
+
+Enabled steps reuse that build-dedicated namespace. Disabled steps receive fresh
+disconnected namespaces. Resolver injection and restoration remain conglobate's
+responsibility. Borrowed descriptor release does not destroy or reconfigure the
+external network. No network namespace creator, allocation lease, address/route
+selection, NAT installation, or network teardown retry owner is needed for the
+enabled path. Resolver-mount cleanup and command descendant ownership remain.
+
+The old network implementation and tests are preserved as reference at e249a90;
+they are not evidence of the replacement boundary. Replace application-specific
+network infrastructure tests with input-validation, pinned-handle, command
+isolation, DNS/restoration and environment-retention tests. Provision NAT in the
+trusted disposable-VM fixture. Keep external namespaces out of output artifacts;
+network step permissions remain recorded in inventory.

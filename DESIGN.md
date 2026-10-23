@@ -200,6 +200,14 @@ Defaults and failure behavior:
 - The cache is never mutated. Missing locked objects are errors; image tags
   are never resolved opportunistically during a build. Conglobate downloads
   no additional image artifacts.
+- `--network-namespace PATH` is required when any run step enables networking.
+  Open and retain the namespace descriptor once before execution; do not reopen
+  the pathname per step. It must be a network namespace distinct from the
+  supervisor's and owned by the initial user namespace. The environment owns
+  its lifetime, interfaces, addresses, routes, NAT and firewall policy. Conglobate
+  joins it only in trusted command setup and never exposes the handle to image
+  commands. Sequential enabled steps reuse this namespace; it is dedicated to
+  this build, with no unrelated processes or concurrent builds sharing it.
 - `--resolv-conf PATH` is required when any run step enables networking. Capture
   its contents once and inject them temporarily, read-only, following symlinks
   confined to the command root. No implicit resolver or DNS relay. Resolver
@@ -424,15 +432,17 @@ derive:
       into: /build/source
 ```
 
-Network access is opt-in per `run` directive and defaults to false. Conglobate
-enforces private network namespaces and outbound NAT for enabled steps, with
-reply traffic allowed, no inbound forwarding, and no destination filtering.
-The environment supplies upstream connectivity and explicit resolver configuration.
-The current dual-stack backend also requires IPv4 forwarding
-(`net.ipv4.ip_forward=1`) and IPv6 forwarding
-(`net.ipv6.conf.all.forwarding=1`) in the supervisor's network namespace.
-Conglobate checks these prerequisites before attaching an enabled step and fails
-if either is unavailable; it does not change these environment-wide settings.
+Network access is opt-in per `run` directive and defaults to false. For enabled
+steps conglobate joins the supplied `--network-namespace`; for disabled steps it
+creates a fresh disconnected namespace. Commands cannot administer either.
+The environment provides outbound NAT, permits reply traffic and all reachable
+destinations, and prevents unsolicited inbound connections and inbound port
+forwarding. Conglobate does not create interfaces, allocate addresses, inspect or
+modify routes, install NAT/firewall rules, or require particular forwarding
+sysctls in its own namespace. This is an environment contract, not a policy that
+conglobate can infer from a namespace descriptor. No systemd dependency is imposed.
+Enabled steps may share network state (including conntrack), but no command
+process may survive its step. The namespace must not expose trusted controls.
 
 Every `run` has a finite positive command-execution timeout, defaulting to `5m`.
 The optional `timeout` field accepts duration strings such as `30m` or `1h`;
@@ -849,13 +859,14 @@ capability set, restricted syscalls/ioctls, `no_new_privs`, private proc/dev/dev
 shm, empty read-only sysfs, and explicit environment and stdio. Namespace/mount
 creation and control access are prohibited. Context enters only through COPY.
 
-Commands never share the supervisor network namespace. Enabled steps use
-outbound NAT without destination filtering; supervisor controls must not be
+Commands never share the supervisor network namespace. Enabled steps join the
+environment-owned build namespace with outbound NAT without destination filtering; supervisor controls must not be
 exposed on reachable network addresses. The environment supplies `--resolv-conf`;
 there is no built-in DNS relay, resolver inventory entry or persistent injection.
 
 On every exit path, stop/reap all descendants before removing runtime mounts
-and networking, flushing and cleanly unmounting filesystems for sealing. Retain
+and resolver mounts, flushing and cleanly unmounting filesystems for sealing.
+Release borrowed network handles without dismantling the environment-owned network. Retain
 namespace handles and storage leases as needed for their actual resource
 lifetimes, with no policy-specific identity pins or revocation transition. If
 quiescence cannot be proved, retain ownership and reject publication. Recover
