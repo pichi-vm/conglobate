@@ -5,9 +5,9 @@ use std::{fmt, io, sync::Arc};
 /// The original operation failure followed by failed cleanup attempts in order.
 /// Errors retain their concrete payloads and OS error codes. Access is read-only;
 /// retry transitions consume and extend the history while retaining resources.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FailureDiagnostics(Box<History>);
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct History {
     operation: Arc<io::Error>,
     cleanup: Vec<Arc<io::Error>>,

@@ -306,30 +306,26 @@ impl<'a> BootstrapBuild<'a> {
                 .rollback()
                 .map_err(Self::error)
                 .and_then(|done| Self::discard_pair(done.into_parts().1)),
-            StageFailure::Execution { failure, .. } => match failure.retry_cleanup() {
-                Ok(done) => Self::discard_pair(done.into_storage()),
-                Err(failure) => failure
-                    .into_rejected_storage()
-                    .map_err(Self::error)
-                    .and_then(|(_, storage)| Self::discard_pair(storage)),
-            },
+            StageFailure::Execution { failure, .. } => failure
+                .retry_cleanup()
+                .into_rejected_storage()
+                .map_err(Self::error)
+                .and_then(|(_, storage)| Self::discard_pair(storage)),
             StageFailure::NetworkSetup { failure, .. } => failure
                 .retry_cleanup()
                 .map_err(Self::error)
-                .and_then(|failure| match failure.retry_cleanup() {
-                    Ok(done) => Self::discard_pair(done.into_storage()),
-                    Err(failure) => failure
+                .and_then(|failure| {
+                    failure
+                        .retry_cleanup()
                         .into_rejected_storage()
                         .map_err(Self::error)
-                        .and_then(|(_, storage)| Self::discard_pair(storage)),
+                        .and_then(|(_, storage)| Self::discard_pair(storage))
                 }),
-            StageFailure::NetworkExecution { failure, .. } => match failure.retry_cleanup() {
-                Ok(done) => Self::discard_pair(done.into_storage()),
-                Err(failure) => failure
-                    .into_rejected_storage()
-                    .map_err(Self::error)
-                    .and_then(|(_, storage)| Self::discard_pair(storage)),
-            },
+            StageFailure::NetworkExecution { failure, .. } => failure
+                .retry_cleanup()
+                .into_rejected_storage()
+                .map_err(Self::error)
+                .and_then(|(_, storage)| Self::discard_pair(storage)),
             StageFailure::Copy { failure, .. } => failure
                 .retry_cleanup()
                 .into_rejected_storage()

@@ -4783,3 +4783,24 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   gate. M4 remains 0/3 pending full source/design/style review and any gaps that
   review identifies. M5-M8 and external qualification remain outstanding.
   All large artifacts remain recoverable in /var/tmp but not durably archived.
+
+### M4 review finding: cleanup retry could promote failed lifecycle
+
+- Prior turn progressed with committed real writeback-error regression 1cafa57.
+  Began source review from SANDBOX-DESIGN 10.3–10.5 and storage ownership paths.
+- Found StorageExecutionFailure::retry_cleanup could return ExecutedStorage
+  when a successful command's initially failed cleanup later succeeded. Pipeline
+  rejection discarded that receipt already; no publication bypass is claimed.
+  The public acceptance contract still contradicted lifecycle failure rejection.
+- Corrected consuming retry to return only a failure owner, with completed
+  rejected storage recoverable for disposal. Retain original cleanup diagnostics
+  after success and append later failures. Simplified both pipeline rejection
+  paths to consume only rejected storage. No acceptance flags or unsafe code.
+- Full rootless suite and 51 doctests pass; strict root and maintained lifecycle
+  fixture Clippy pass. Added successful-command/cleanup-failure regression,
+  multi-retry diagnostic history test and compile-fail acceptance guard. Review,
+  patch, source hashes and logs: preservation/m7-review/rejected-cleanup-retry/.
+- This finding interrupts the adherence review; M4 remains 0/3. Do not count
+  these tests as passes. Restart complete review on the corrected source.
+  No current VM qualification of the changed high-level retry API is claimed.
+  Remaining milestones and external platform/distro requirements stay intact.

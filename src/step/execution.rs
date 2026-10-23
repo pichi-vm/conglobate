@@ -64,6 +64,7 @@ enum Cleanup<'l, R: ExecutionStorage> {
 pub struct StorageExecutionFailure<'l, R: ExecutionStorage> {
     outcome: ExecutionOutcome,
     cleanup: Cleanup<'l, R>,
+    diagnostics: Option<FailureDiagnostics>,
 }
 impl<R: ExecutionStorage> fmt::Display for StorageExecutionFailure<'_, R> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -82,21 +83,55 @@ impl<'l, R: ExecutionStorage> StorageExecutionFailure<'l, R> {
     pub fn outcome(&self) -> &ExecutionOutcome {
         &self.outcome
     }
+    /// Cleanup error history, retained even after a successful cleanup retry.
     pub fn cleanup_error(&self) -> Option<&FailureDiagnostics> {
-        match &self.cleanup {
-            Cleanup::Teardown(failure) => Some(failure.diagnostics()),
-            Cleanup::Finalization(failure) => Some(R::finalization_diagnostics(failure)),
-            Cleanup::Complete(_) => None,
-        }
+        self.diagnostics.as_ref()
     }
-    /// A completed cleanup still cannot turn a failed command into success.
-    pub fn retry_cleanup(self) -> ExecutionResult<'l, R> {
-        match self.cleanup {
-            Cleanup::Teardown(failure) => Self::after_teardown(self.outcome, failure.retry()),
+    /// Retry resource release only. A failed lifecycle cannot become an accepted
+    /// execution, even if the command succeeded and cleanup now completes.
+    /// ```compile_fail
+    /// use conglobate::step::{ExecutionFailure, ExecutedVolume};
+    /// fn cannot_promote<'l, 'n, 'o, 'w>(failure: ExecutionFailure<'l, 'n, 'o, 'w>)
+    ///     -> Result<ExecutedVolume<'n, 'o, 'w>, Box<ExecutionFailure<'l, 'n, 'o, 'w>>> {
+    ///     failure.retry_cleanup()
+    /// }
+    /// ```
+    pub fn retry_cleanup(self) -> Self {
+        let Self {
+            outcome,
+            cleanup,
+            diagnostics,
+        } = self;
+        let cleanup = match cleanup {
+            Cleanup::Teardown(failure) => match failure.retry() {
+                Ok(completion) => match R::finalize(completion) {
+                    Ok(volume) => Cleanup::Complete(volume),
+                    Err(failure) => Cleanup::Finalization(failure),
+                },
+                Err(failure) => Cleanup::Teardown(failure),
+            },
+            Cleanup::Finalization(failure) => match R::retry_finalization(failure) {
+                Ok(volume) => Cleanup::Complete(volume),
+                Err(failure) => Cleanup::Finalization(failure),
+            },
+            Cleanup::Complete(volume) => Cleanup::Complete(volume),
+        };
+        let latest = match &cleanup {
+            Cleanup::Teardown(failure) => Some(failure.diagnostics().latest_only()),
             Cleanup::Finalization(failure) => {
-                Self::after_finalization(self.outcome, R::retry_finalization(failure))
+                Some(R::finalization_diagnostics(failure).latest_only())
             }
-            Cleanup::Complete(volume) => Self::accept(self.outcome, volume),
+            Cleanup::Complete(_) => None,
+        };
+        let diagnostics = match (diagnostics, latest) {
+            (Some(history), Some(latest)) => Some(history.followed_by(latest)),
+            (history, None) => history,
+            (None, latest) => latest,
+        };
+        Self {
+            outcome,
+            cleanup,
+            diagnostics,
         }
     }
     /// Only rejected, fully finalized storage can be recovered from failure.
@@ -115,6 +150,7 @@ impl<'l, R: ExecutionStorage> StorageExecutionFailure<'l, R> {
             Ok(completion) => Self::after_finalization(outcome, R::finalize(completion)),
             Err(failure) => Err(Box::new(Self {
                 outcome,
+                diagnostics: Some(failure.diagnostics().clone()),
                 cleanup: Cleanup::Teardown(failure),
             })),
         }
@@ -127,6 +163,7 @@ impl<'l, R: ExecutionStorage> StorageExecutionFailure<'l, R> {
             Ok(volume) => Self::accept(outcome, volume),
             Err(failure) => Err(Box::new(Self {
                 outcome,
+                diagnostics: Some(R::finalization_diagnostics(&failure).clone()),
                 cleanup: Cleanup::Finalization(failure),
             })),
         }
@@ -139,6 +176,7 @@ impl<'l, R: ExecutionStorage> StorageExecutionFailure<'l, R> {
             Err(Box::new(Self {
                 outcome,
                 cleanup: Cleanup::Complete(volume),
+                diagnostics: None,
             }))
         }
     }
@@ -237,5 +275,108 @@ impl<'l, 'n, 'o, 'w> ExecutionFailure<'l, 'n, 'o, 'w> {
         self,
     ) -> Result<(ExecutionOutcome, Volume<'n, 'o, 'w, Unmounted>), Box<Self>> {
         self.into_rejected_storage()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        isolation::{Mapped, UserNamespace},
+        network::CommandNetwork,
+        process::{Joined, ReapedChildren, Supervision},
+        step::{StepStorage, StorageLayout},
+    };
+    use std::{os::unix::process::ExitStatusExt, time::Instant};
+
+    #[derive(Debug)]
+    struct RetryableStorage;
+    impl crate::step::private::Storage for RetryableStorage {}
+    impl StepStorage for RetryableStorage {}
+    impl StorageLayout for RetryableStorage {
+        const LABEL: &'static str = "retry fixture";
+        type Unmounted = ();
+        fn validate(_: &()) -> io::Result<()> {
+            Ok(())
+        }
+    }
+    impl ExecutionStorage for RetryableStorage {
+        type Finalized = ();
+        type FinalizationFailure = FailureDiagnostics;
+        fn send(
+            &self,
+            _: &UserNamespace<Mapped>,
+            _: &Supervision<Joined>,
+            _: Option<&CommandNetwork>,
+            _: Instant,
+        ) -> io::Result<()> {
+            unreachable!("fixture only exercises finalization recovery")
+        }
+        fn finalize(_: TeardownCompletion<Self>) -> Result<(), FailureDiagnostics> {
+            unreachable!("fixture starts at a finalization failure")
+        }
+        fn retry_finalization(failure: FailureDiagnostics) -> Result<(), FailureDiagnostics> {
+            if failure.operation().raw_os_error() == Some(16) {
+                Err(io::Error::from_raw_os_error(5).into())
+            } else {
+                Ok(())
+            }
+        }
+        fn finalization_diagnostics(failure: &FailureDiagnostics) -> &FailureDiagnostics {
+            failure
+        }
+        fn finalized_parts(_: ()) -> (ReapedChildren, ()) {
+            panic!("cleanup retry must not manufacture an accepted execution")
+        }
+    }
+
+    #[test]
+    fn successful_command_cannot_be_accepted_after_cleanup_failure() {
+        let failure = StorageExecutionFailure::<RetryableStorage>::after_finalization(
+            ExecutionOutcome::Command(CommandOutcome::Exited(std::process::ExitStatus::from_raw(
+                0,
+            ))),
+            Err(io::Error::from_raw_os_error(5).into()),
+        )
+        .unwrap_err();
+        let recovered = failure.retry_cleanup();
+        assert!(recovered.outcome().success());
+        assert!(matches!(recovered.cleanup, Cleanup::Complete(())));
+        assert_eq!(
+            recovered
+                .cleanup_error()
+                .unwrap()
+                .operation()
+                .raw_os_error(),
+            Some(5)
+        );
+        let recovered = recovered.retry_cleanup();
+        assert!(matches!(recovered.cleanup, Cleanup::Complete(())));
+        assert_eq!(
+            recovered
+                .cleanup_error()
+                .unwrap()
+                .operation()
+                .raw_os_error(),
+            Some(5)
+        );
+    }
+    #[test]
+    fn cleanup_history_survives_failed_then_successful_retry() {
+        let failure = StorageExecutionFailure::<RetryableStorage>::after_finalization(
+            ExecutionOutcome::Command(CommandOutcome::Exited(std::process::ExitStatus::from_raw(
+                0,
+            ))),
+            Err(io::Error::from_raw_os_error(16).into()),
+        )
+        .unwrap_err();
+        let failure = failure.retry_cleanup();
+        assert!(matches!(failure.cleanup, Cleanup::Finalization(_)));
+        let recovered = failure.retry_cleanup();
+        assert!(matches!(recovered.cleanup, Cleanup::Complete(())));
+        let history = recovered.cleanup_error().unwrap();
+        assert_eq!(history.operation().raw_os_error(), Some(16));
+        assert_eq!(history.cleanup().len(), 1);
+        assert_eq!(history.cleanup()[0].raw_os_error(), Some(5));
     }
 }
