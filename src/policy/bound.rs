@@ -144,6 +144,21 @@ pub struct BoundCleanup {
     resources: BoundResources,
 }
 impl LabelPolicy<BoundDisabled> {
+    pub(crate) fn namespace_for_root(
+        &self,
+        root: &std::fs::Metadata,
+    ) -> io::Result<&UserNamespace<PinnedNamespace>> {
+        for pin in &self.resources.identities.filesystems {
+            let metadata = pin.metadata()?;
+            if (metadata.dev(), metadata.ino()) == (root.dev(), root.ino()) {
+                return Ok(&self.resources.identities.namespace);
+            }
+        }
+        Err(io::Error::other(
+            "step volume root is not pinned by its policy",
+        ))
+    }
+
     pub(crate) fn config_handle(&self) -> Result<libbpf_rs::MapHandle, super::PolicyError> {
         self.resources.policy.config_handle()
     }

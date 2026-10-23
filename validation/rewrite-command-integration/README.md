@@ -910,3 +910,14 @@ releases its view. Existing volume cleanup and remount checks still pass. The
 helper runs no image commands in this probe. Full protected-command integration
 and aggregate Step/Volume lifetime enforcement remain outstanding. Host protocol
 tests verify descriptor count, order and CLOEXEC; all evidence is retained.
+
+## Step owns its command volume
+
+v101/v102 add `STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS`. The transfer helper now
+receives admission through a Step that owns the mounted volume and bound policy.
+The parent recovers the volume only after cancellation, reaping, descendant drain,
+record cleanup and policy disablement. Existing unmount/remount checks pass.
+The helper executes no image command in this probe. v101 retains intermediate
+Clippy findings; v102 passes all checks with an explicit StepCompletion result.
+Unfinished-step storage retention and two compile-time misuse cases are tested.
+Volume fault injection and full image-command integration remain outstanding.

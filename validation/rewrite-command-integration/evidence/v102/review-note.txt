@@ -1,0 +1,1 @@
+Step retains sealed storage through admission/cancellation/reaping/drain/disable. VM returns volume only after full lifecycle and preserves unmount/remount tests. Raw transfer is crate-private. Host tests and Clippy pass. Full image-command integration, failure matrix and M4 gate remain open.

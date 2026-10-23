@@ -46,6 +46,7 @@ impl Integration {
                 .map_err(|e| e.to_string())?;
             assert_eq!(view.root_metadata()?.uid(), 100000);
             drop(setup);
+            let channel = channel.await_admission_until(deadline)?;
             fs::write("/work/volume-transfer-ready", "ready")?;
             channel.wait_for_loss_until(deadline)?;
             view.close().map_err(|e| e.to_string())?;
@@ -152,8 +153,9 @@ impl Integration {
                     (volume.root_metadata()?.dev(), volume.root_metadata()?.ino())
                 );
             }
-            if scope.is_none() {
-                let view = volume.view()?;
+            let (volume, user, pin) = if scope.is_none() {
+                let reaper = ChildReaper::install()?;
+                let policy = PolicyFixture::prepare(&lease, user, pin.expect("init volume pin"))?;
                 let parent = Path::new("/work/cgroups");
                 let domain = RecordedDomain::create(&lease, parent)?;
                 let mut command = Command::new(std::env::current_exe()?);
@@ -162,22 +164,34 @@ impl Integration {
                 let helper = domain
                     .launch(command, deadline)
                     .map_err(|e| e.to_string())?;
-                helper
-                    .supervision()
-                    .send_volume_until(&view, &user, deadline)?;
+                let step = conglobate::step::Step::new(policy, helper, reaper)
+                    .map_err(|e| e.to_string())?
+                    .with_volume(volume);
+                step.send_volume_until(deadline)?;
+                let step = step.admit_until(deadline).map_err(|e| e.to_string())?;
                 let ready = Path::new("/work/volume-transfer-ready");
-                Readiness::new(ready)?.wait_until(deadline, || helper.supervision().peer_lost())?;
-                helper
+                Readiness::new(ready)?.wait_until(deadline, || step.supervision().peer_lost())?;
+                let (_, _, policy, volume) = step
                     .cancel_until(deadline)
                     .map_err(|e| e.to_string())?
                     .reap_until(deadline)
                     .map_err(|e| e.to_string())?
-                    .finish(parent)
-                    .map_err(|e| e.to_string())?;
+                    .drain_until(deadline)
+                    .map_err(|e| e.to_string())?
+                    .finish_record(parent)
+                    .map_err(|e| e.to_string())?
+                    .disable()
+                    .map_err(|e| e.to_string())?
+                    .into_parts();
+                let (user, mut pins) = policy.close()?.into_parts();
+                assert_eq!(pins.len(), 1);
                 fs::remove_file(ready)?;
-                drop(view);
                 println!("OWNED_VOLUME_SUPERVISED_TRANSFER_PASS");
-            }
+                println!("STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS");
+                (volume, user, pins.pop())
+            } else {
+                (volume, user, pin)
+            };
             let view = volume.view()?;
             let command_scope = PrivateMountNamespace::enter()?;
             assert!(volume.pin(&lease).is_err());
@@ -1214,7 +1228,7 @@ impl Integration {
         println!("PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS");
         if mode == "pre-admission-cancel" {
             let deadline = Instant::now() + Duration::from_secs(5);
-            let (_, _, policy) = step
+            let (_, _, policy, ()) = step
                 .cancel_until(deadline)
                 .map_err(|e| e.to_string())?
                 .reap_until(deadline)
@@ -1224,7 +1238,8 @@ impl Integration {
                 .finish_record(parent)
                 .map_err(|e| e.to_string())?
                 .disable()
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| e.to_string())?
+                .into_parts();
             PolicyFixture::cleanup(policy)?;
             assert!(!Path::new("/work/origin/command-started").exists());
             assert!(
@@ -1246,7 +1261,7 @@ impl Integration {
             let (source, cancellation) = failure.into_parts();
             assert_eq!(source.kind(), std::io::ErrorKind::TimedOut);
             let deadline = Instant::now() + Duration::from_secs(5);
-            let (_, _, policy) = cancellation
+            let (_, _, policy, ()) = cancellation
                 .cancel_until(deadline)
                 .map_err(|error| error.to_string())?
                 .reap_until(deadline)
@@ -1256,7 +1271,8 @@ impl Integration {
                 .finish_record(parent)
                 .map_err(|error| error.to_string())?
                 .disable()
-                .map_err(|error| error.to_string())?;
+                .map_err(|error| error.to_string())?
+                .into_parts();
             PolicyFixture::cleanup(policy)?;
             assert!(!Path::new("/work/origin/command-started").exists());
             assert!(
@@ -1311,7 +1327,7 @@ impl Integration {
             helper.supervision().wait_for_peer_exit_until(execution)?;
         }
         let teardown = Instant::now() + Duration::from_secs(5);
-        let (status, _, policy) = helper
+        let (status, _, policy, ()) = helper
             .cancel_until(teardown)
             .map_err(|e| e.to_string())?
             .reap_until(teardown)
@@ -1321,7 +1337,8 @@ impl Integration {
             .finish_record(parent)
             .map_err(|e| e.to_string())?
             .disable()
-            .map_err(|error| error.to_string())?;
+            .map_err(|error| error.to_string())?
+            .into_parts();
         // This is the only policy teardown site: cancellation, helper reaping
         // and descendant draining have all completed above.
         PolicyFixture::cleanup(policy)?;

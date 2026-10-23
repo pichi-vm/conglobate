@@ -22,7 +22,7 @@ impl Supervision<Registered> {
     /// Transfer a view through the already paired and registered control channel.
     /// The enclosing owner must retain the volume and policy identities until
     /// descendant quiescence. Sending is not permission to unmount the volume.
-    pub fn send_volume_until(
+    pub(crate) fn send_volume_until(
         &self,
         view: &VolumeView<'_>,
         namespace: &UserNamespace<PinnedNamespace>,

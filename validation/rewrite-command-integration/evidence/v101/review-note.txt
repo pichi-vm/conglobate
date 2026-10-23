@@ -1,0 +1,1 @@
+Intermediate owned-volume Step passes VM lifecycle and 39 compile-fail tests. Root Clippy rejects completion tuple complexity and explicit drop of retention wrapper; preserved before fixes. No adherence pass.

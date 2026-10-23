@@ -108,6 +108,9 @@ modprobe dm-verity
 /idmap-probe assemble-chain
 mkdir /work/cgroups
 mount -t cgroup2 cgroup2 /work/cgroups
+mkdir /work/pins
+mount -t bpf bpf /work/pins
+chmod 700 /work/pins
 /idmap-probe volume-probe
 /idmap-probe volume-supervisor
 /idmap-probe loop-probe
@@ -119,9 +122,6 @@ mount -t cgroup2 cgroup2 /work/cgroups
 rm /usr/bin/unshare
 test ! -e /usr/bin/nsenter
 test ! -e /usr/bin/bwrap
-mkdir /work/pins
-mount -t bpf bpf /work/pins
-chmod 700 /work/pins
 /idmap-probe supervisor pre-admission-cancel
 /idmap-probe supervisor admission-timeout
 /idmap-probe supervisor policy-off

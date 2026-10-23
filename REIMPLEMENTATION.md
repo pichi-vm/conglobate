@@ -1986,3 +1986,32 @@ rules rather than silently shrinking acceptance criteria.
   Connect these owners and replace that path next; do not interpret the passing
   probe as full command integration. Setup/teardown deadlines, broader failures
   and qualification also remain open. M4 stays at zero clean adherence passes.
+
+### M4 step-owned mounted volume (v101–v102)
+
+- Previous turn progressed in 05748d6. Step now carries sealed StepStorage through
+  every success/failure transition. Ready.with_volume consumes the mounted owner;
+  there is no active-state accessor or replacement operation. The retained owner
+  deliberately survives unfinished-step destruction until dedicated-VM disposal.
+  Successful drain, record cleanup and policy disable return StepCompletion,
+  which yields the volume alongside disabled policy and diagnostic child status.
+- Step.send_volume_until derives the namespace from its bound policy and checks
+  the volume root against an owned filesystem pin (device and inode). The raw
+  supervision send is now crate-private. This prevents callers bypassing the
+  storage-owning entrypoint for the new volume-transfer protocol.
+- VM v101/v102 exercises owned volume transfer with policy preparation, explicit
+  admission, event readiness, cancellation, reaping, descendant drain, policy
+  disable/cleanup and volume recovery. Subsequent idmap/unmount/busy recovery and
+  persisted remount checks still pass. This helper runs no image commands; the
+  older full command fixture still needs conversion from its historical paths.
+- v101 preserves successful runtime evidence plus Clippy findings: complex result
+  tuple and an explicit drop in the retention test. v102 uses StepCompletion and
+  lexical test scope; host tests including 39 compile-fail checks, both Clippy
+  checks and VM suite pass. Compile-fail checks prohibit reusing the moved volume
+  or disabling a running volume-owning step; retention test distinguishes ordinary
+  unfinished scope exit from explicit release. All logs/sources/hashes retained.
+- Review limits: no dedicated fault-injection coverage yet for owned-volume
+  startup/teardown failure and supervisor death; a successful helper probe does
+  not prove those paths. Bootstrap needs a sealed two-volume storage aggregate.
+  Full command integration, bounded setup/teardown orchestration and remaining M4
+  fault/qualification work stay open. Zero clean adherence passes; no advancement.
