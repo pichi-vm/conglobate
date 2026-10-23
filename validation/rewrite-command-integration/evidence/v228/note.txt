@@ -1,0 +1,1 @@
+v228 FAILED: resolver mount fixture returned ENOENT before completing its first case. Exact failing operation not yet identified; preserve before adding operation diagnostics. No resolver mount success claim.

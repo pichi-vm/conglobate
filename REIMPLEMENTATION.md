@@ -3744,3 +3744,45 @@ rules rather than silently shrinking acceptance criteria.
   pipeline and actual network receipts; rejected-batch/crash/timeout coverage,
   unsolicited TCP coverage, ORAS, and three full M6 reviews. M6 remains active at
   zero passes. M7/M8 and full objective remain open.
+
+### M6 confined resolver targets and read-only mount sources
+
+- Added ResolverTarget: resolves /etc/resolv.conf against an exclusively owned
+  command root, follows confined absolute/relative symlinks, creates missing
+  ancestors/placeholders, and rejects loops, escapes, nonregular targets and
+  command runtime mount locations (including aliases). Final openat2 resolution
+  verifies the kernel's interpretation and inode identity. Files are inspected
+  with O_PATH; FIFO/socket/device nodes are never activated.
+- Temporary scaffold entries retain pinned parents and created inodes. Explicit
+  reverse cleanup removes only those entries, refuses replacements/nonempty
+  directories, and retains failures for retry. Abandonment requires discarding
+  the writable layer. A mkdir followed by failed pinning remains an explicit
+  unresolved cleanup obligation rather than claiming successful removal.
+- Added ResolverSource on the build's existing tmpfs. A private generated name
+  survives while borrowed ResolverMount views are prepared and attached. Source
+  construction closes the writable descriptor; detached views are made read-only,
+  nosuid/nodev/noexec before attachment. Explicit source cleanup retains its owner
+  on failure. Resolver bytes remain excluded from inventory and no original
+  environment pathname is reopened.
+- Runtime evidence changed the implementation: an anonymous O_TMPFILE inode can
+  be cloned as a detached mount, but move_mount rejected its attachment with
+  ENOENT. v228/v229 preserve that failure and its operation diagnostics. The
+  named source resolves it. v226/v227/v230 preserve fixture/compiler failures;
+  none launched a successful runtime probe.
+- v231/v232 verify exact non-UTF8 bytes after deleting the original input,
+  read-only enforcement against root writes, restoration of existing contents,
+  dangling /run symlink scaffold cleanup, and preservation of the image symlink.
+  v232 additionally rejects a target pinned in a different mount namespace,
+  before attachment. The existing network fixture still passes IPv4/IPv6 NAT,
+  UDP inbound filtering/positive controls, TCP replies and teardown.
+- Host tests additionally cover parent-directory replacement, replacement-inode
+  cleanup refusal/retry, nonempty scaffolding, partial resolution failure,
+  runtime aliases and incompatible target types. Full cargo tests/doctests and
+  production/fixture strict Clippy pass. Evidence and source snapshots are in
+  validation/rewrite-command-integration/evidence/v226-v232.
+- This establishes the source/target/mount primitives, not complete DNS command
+  integration: descriptor transport, setup ordering against idmapped volumes,
+  command namespace access, quiescent cleanup, enabled recipe admission and
+  actual network receipts remain. Forwarding preflight, remaining failure/matrix
+  coverage, ORAS and three complete M6 reviews remain open. M6 is still active
+  at zero adherence passes; M7/M8 and the full goal remain pending.

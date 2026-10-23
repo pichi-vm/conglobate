@@ -27,3 +27,9 @@ pub use firewall::{FirewallCloseFailure, FirewallTable};
 
 mod nat;
 pub use nat::{NatCloseFailure, NatPolicy};
+
+mod resolver_target;
+pub use resolver_target::{ResolverTarget, ResolverTargetFailure};
+
+mod resolver_mount;
+pub use resolver_mount::{ResolverMount, ResolverSource, ResolverSourceFailure};

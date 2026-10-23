@@ -1,0 +1,11 @@
+{
+  "base_commit": "e1d9de67df4591a97382d272d9e6fb633253a2b4",
+  "sha256": {
+    "validation/rewrite-command-integration/evidence/v230/build.txt": "0446d37fbea1cfcd5859a8cbde33e0241226005bea5782713fb8ee4035f39edc",
+    "validation/rewrite-command-integration/evidence/v230/run.log": "1d29f1048ca310e9ac1080342c3667369e36b53d3ad8e1d99d76dc41353f1b95",
+    "validation/rewrite-command-integration/evidence/v230/source.tar.gz": "db4270a1287661e099b3c0f6fcc20dbde37fbfc424cb859d1189e0ea622d1ffd",
+    "validation/rewrite-command-integration/evidence/v230/note.txt": "e73b73e84dd1070c6dcf8931d92cf19410b7b50adcc1d768ca2cc568b387ef02"
+  },
+  "full_sandbox_qualified": false,
+  "vm_launched": false
+}

@@ -1,0 +1,13 @@
+   Compiling conglobate-command-integration v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration)
+error[E0599]: no method named `path` found for reference `&std::path::Path` in the current scope
+  --> src/network.rs:43:18
+   |
+42 |               let image = fixture
+   |  _________________________-
+43 | |                 .path()
+   | |                 -^^^^ method not found in `&std::path::Path`
+   | |_________________|
+   |
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `conglobate-command-integration` (bin "conglobate-command-integration") due to 1 previous error

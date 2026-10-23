@@ -22,6 +22,76 @@ use std::{
 
 pub(crate) struct NetworkProbe;
 impl NetworkProbe {
+    fn resolver_mount() -> Result<(), Box<dyn std::error::Error>> {
+        use conglobate::{
+            isolation::PrivateMountNamespace,
+            network::{ResolverInput, ResolverSource, ResolverTarget},
+            storage::Workspace,
+        };
+        use std::{fs::File, os::unix::fs::symlink};
+        let scope = PrivateMountNamespace::enter()?;
+        let workspace = Workspace::create()?;
+        let fixture = Path::new("/work/resolver-probe");
+        fs::create_dir(fixture)?;
+        let source = fixture.join("source");
+        let bytes = b"nameserver 192.0.2.53\nsearch test.invalid\n# exact \xff\n";
+        fs::write(&source, bytes)?;
+        let input = ResolverInput::capture(&source)?;
+        fs::remove_file(source)?;
+        let source = ResolverSource::prepare(&input, &workspace)?;
+        for existing in [false, true] {
+            let image = fixture.join(if existing { "existing" } else { "missing" });
+            fs::create_dir_all(image.join("etc"))?;
+            symlink("/run/resolver", image.join("etc/resolv.conf"))?;
+            if existing {
+                fs::create_dir(image.join("run"))?;
+                fs::write(image.join("run/resolver"), b"original")?;
+            }
+            eprintln!("resolver selecting target existing={existing}");
+            let target = ResolverTarget::resolve(File::open(&image)?)?;
+            let mountpoint = image.join(target.path());
+            let wrong_namespace = PrivateMountNamespace::enter()?;
+            assert!(
+                source
+                    .mount()?
+                    .attach(&target)
+                    .unwrap_err()
+                    .to_string()
+                    .contains("another mount namespace")
+            );
+            wrong_namespace.restore()?;
+            let mount = source.mount()?;
+            eprintln!("resolver mount prepared");
+            mount.attach(&target)?;
+            eprintln!("resolver mount attached");
+            assert_eq!(fs::read(&mountpoint)?, bytes);
+            let error = fs::OpenOptions::new()
+                .write(true)
+                .open(&mountpoint)
+                .unwrap_err();
+            assert_eq!(
+                error.raw_os_error(),
+                Some(rustix::io::Errno::ROFS.raw_os_error())
+            );
+            rustix::mount::unmount(&mountpoint, rustix::mount::UnmountFlags::empty())?;
+            target.release()?;
+            assert_eq!(
+                fs::read_link(image.join("etc/resolv.conf"))?,
+                Path::new("/run/resolver")
+            );
+            if existing {
+                assert_eq!(fs::read(image.join("run/resolver"))?, b"original");
+            } else {
+                assert!(!image.join("run").exists());
+            }
+        }
+        source.close()?;
+        fs::remove_dir_all(fixture)?;
+        drop(workspace);
+        scope.restore()?;
+        println!("NETWORK_RESOLVER_READONLY_EXACT_BYTES_AND_RESTORATION_PASS");
+        Ok(())
+    }
     pub(crate) fn entry(
         gated: bool,
         expected: u64,
@@ -218,6 +288,7 @@ impl NetworkProbe {
         Ok(())
     }
     pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
+        Self::resolver_mount()?;
         let original = fs::metadata("/proc/self/ns/net")?;
         let program = HelperProgram::current()?;
         let first = NetworkNamespace::create(&program, SetupBudget::begin().cutoff()?)?;

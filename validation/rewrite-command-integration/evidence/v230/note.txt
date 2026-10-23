@@ -1,0 +1,1 @@
+Build failed before VM launch: thiserror treats field named source as an Error, but it held the retained ResolverSource owner. Rename field owner. No runtime validation claimed.

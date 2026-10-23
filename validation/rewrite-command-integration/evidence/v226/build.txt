@@ -1,0 +1,12 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+   Compiling conglobate-command-integration v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration)
+error[E0433]: cannot find module or crate `tempfile` in this scope
+  --> src/network.rs:34:23
+   |
+34 |         let fixture = tempfile::tempdir_in("/work")?;
+   |                       ^^^^^^^^ use of unresolved module or unlinked crate `tempfile`
+   |
+   = help: if you wanted to use a crate named `tempfile`, use `cargo add tempfile` to add it to your `Cargo.toml`
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `conglobate-command-integration` (bin "conglobate-command-integration") due to 1 previous error
