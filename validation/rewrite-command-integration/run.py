@@ -301,7 +301,7 @@ modprobe dm-snapshot
 if pipeline_mode:
     (root / 'fixture.sh').write_text('#!/bin/bash\nset -eux\n/idmap-probe pipeline-probe\n')
 if network_mode:
-    (root / 'fixture.sh').write_text('#!/bin/bash\nset -eux\nmodprobe veth\nmodprobe nf_tables\nmodprobe nft_chain_nat\nmodprobe nft_masq\nmodprobe nft_ct\n/idmap-probe network-probe\n')
+    (root / 'fixture.sh').write_text('#!/bin/bash\nset -eux\nmodprobe veth\nmodprobe nf_tables\nmodprobe nft_chain_nat\nmodprobe nft_masq\nmodprobe nft_ct\n/idmap-probe network-probe\n/idmap-probe forward-probe\n')
 paths = sorted(root.rglob('*'))
 (out / 'inputs.json').write_text(json.dumps({str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths if p.is_file() and not p.is_symlink()}, indent=2))
 archive = subprocess.run(['cpio', '--null', '-o', '--format=newc', '--owner=0:0'], input=b'\0'.join(str(p.relative_to(root)).encode() for p in paths) + b'\0', cwd=root, capture_output=True, check=True).stdout
@@ -320,7 +320,7 @@ if pipeline_mode:
     passed = all(marker in serial for marker in ['PIPELINE_CLI_PASSTHROUGH_INVENTORY_PASS',
         'PIPELINE_CLI_FAILURE_NO_PUBLICATION_PASS', 'PIPELINE_FIRMWARE_DTB_CONTRACT_PASS', 'PIPELINE_CLI_TRANSFORM_PASS', 'IDMAP_PROBE_EXIT 0'])
 elif network_mode:
-    passed = all(marker in serial for marker in ['NETWORK_NFT_REPLY_ONLY_AND_TEARDOWN_PASS', 'NETWORK_OFFLINE_LOOPBACK_WITHOUT_EXTERNAL_ROUTE_PASS', 'NETWORK_CONFIGURATION_FAILURE_CLEANUP_PASS', 'NETWORK_DUAL_STACK_ADDRESSES_ROUTES_LOOPBACK_PASS', 'NETWORK_COMMAND_ENTRY_AND_DESCRIPTOR_CLOSURE_PASS', 'NETWORK_PEER_NAMESPACE_HANDOFF_CLEANUP_PASS', 'NETWORK_NAMESPACE_CREATOR_REAPED_PASS', 'NETWORK_EXCLUSIVE_COLLISION_PRESERVES_OWNER_PASS', 'NETWORK_PAIR_EXPLICIT_TEARDOWN_PASS', 'NETWORK_EXPIRED_SETUP_ROLLBACK_PASS', 'IDMAP_PROBE_EXIT 0'])
+    passed = all(marker in serial for marker in ['NETWORK_FORWARDED_DUAL_STACK_TCP_PASS', 'NETWORK_FORWARDED_DUAL_STACK_NAT_AND_REPLY_ONLY_PASS', 'NETWORK_FORWARDED_WITHOUT_POLICY_POSITIVE_CONTROL_PASS', 'NETWORK_FORWARDED_TOPOLOGY_TEARDOWN_PASS', 'NETWORK_NFT_REPLY_ONLY_AND_TEARDOWN_PASS', 'NETWORK_OFFLINE_LOOPBACK_WITHOUT_EXTERNAL_ROUTE_PASS', 'NETWORK_CONFIGURATION_FAILURE_CLEANUP_PASS', 'NETWORK_DUAL_STACK_ADDRESSES_ROUTES_LOOPBACK_PASS', 'NETWORK_COMMAND_ENTRY_AND_DESCRIPTOR_CLOSURE_PASS', 'NETWORK_PEER_NAMESPACE_HANDOFF_CLEANUP_PASS', 'NETWORK_NAMESPACE_CREATOR_REAPED_PASS', 'NETWORK_EXCLUSIVE_COLLISION_PRESERVES_OWNER_PASS', 'NETWORK_PAIR_EXPLICIT_TEARDOWN_PASS', 'NETWORK_EXPIRED_SETUP_ROLLBACK_PASS', 'IDMAP_PROBE_EXIT 0'])
 elif formatter_mode.startswith('--formatter-drop-'):
     stage = formatter_mode.removeprefix('--formatter-drop-').upper()
     passed = f'FORMATTER_DROP_{stage}_RETAINS_STORAGE_PASS' in serial and 'IDMAP_PROBE_EXIT 0' in serial

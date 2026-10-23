@@ -5,6 +5,7 @@ mod bootstrap;
 mod finalization;
 mod formatter;
 mod formatter_failures;
+mod forwarding;
 mod network;
 mod pipeline;
 mod readiness;
@@ -56,6 +57,12 @@ impl Integration {
             .is_some_and(|arg| arg == "network-offline-probe")
         {
             return network::NetworkProbe::offline(args[2].parse()?, args[3].parse()?);
+        }
+        if args.get(1).is_some_and(|arg| arg == "forward-helper") {
+            return forwarding::ForwardingProbe::helper(args[2].parse()?, args[3].parse()?);
+        }
+        if args.get(1).is_some_and(|arg| arg == "forward-probe") {
+            return forwarding::ForwardingProbe::run();
         }
         if args.get(1).is_some_and(|arg| arg == "network-entry-probe") {
             return network::NetworkProbe::entry(

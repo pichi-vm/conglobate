@@ -702,3 +702,40 @@ disposable firmware changes and failure after successful carapace derivation.
   without primary-NIC changes; crash and rejected-batch cases; DNS injection,
   lifecycle/plumbing, actual network receipts, remaining ORAS/matrix coverage and
   three complete M6 reviews. M6 remains active at zero passes; M7/M8 remain open.
+
+### M6 forwarded IPv4/IPv6 UDP and TCP qualification
+
+- Previous turn progressed in a88f2e1. Added a maintained disposable-VM fixture
+  using production namespace creation, connected/configured veth ownership,
+  mapped-user setup and NatPolicy. Command and upstream namespaces are entirely
+  inside the NIC-less guest. No host network operation is performed.
+- Fixture-only environment setup enables global IPv4/IPv6 forwarding before its
+  links are created. An upstream helper binds all listeners before signaling
+  readiness over a pipe; parent readiness is poll/deadline bounded, with no sleep.
+  Each helper remains directly owned and deadline-waited. Ready command listeners
+  make unsolicited UDP checks meaningful; receive timeouts are negative checks,
+  not setup synchronization. TCP uses bounded connect/read/write and parent wait.
+- v223 preserved a fixture error: nested pin directory was mode 0755; production
+  pin validation rejected it before topology setup. Set the fixture directory to
+  required 0700. v224 passes UDP; v225 adds TCP. Upstream asserts the actual IPv4
+  and IPv6 masqueraded source addresses, replies reach the command, and unsolicited
+  forwarded UDP cannot reach its listener while policy is installed.
+- After acknowledged policy removal, fresh flows show the original source
+  addresses and unsolicited UDP arrives. Explicit distinct UDP source ports avoid
+  confusing retained conntrack NAT mappings with newly generated flows. Cleanup
+  verifies all four link names, namespace pin/control directories and helper
+  children are gone. Earlier local network cases also pass in each successful run.
+- Strict fixture Clippy passes. Production source is unchanged this turn, so host
+  tests were not redundantly rerun. Failed/successful source snapshots and logs are
+  preserved in evidence/v223-v225. These are mapped-root helpers, not the final
+  restricted image-command pipeline, and no DNS/attestation claim is inferred.
+- Forwarding environment contract remains to be implemented: kernel documentation
+  warns that changing IPv4 ip_forward resets other network parameters, and IPv6
+  conf/all/forwarding changes interface host/router behavior. Production must
+  honor the existing prohibition on primary-NIC changes; fixture sysctl writes
+  are not a proposed production implementation. Primary reference:
+  https://docs.kernel.org/networking/ip-sysctl.html
+- Remaining: forwarding preflight/ownership; DNS mount lifecycle; complete command
+  pipeline and actual network receipts; rejected-batch/crash/timeout coverage,
+  unsolicited TCP coverage, ORAS, and three full M6 reviews. M6 remains active at
+  zero passes. M7/M8 and full objective remain open.
