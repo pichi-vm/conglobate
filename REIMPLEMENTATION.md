@@ -5141,3 +5141,19 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   Source/evidence reconciliation and remaining kernel-blocked descendant scope
   still require review before claiming M4-T1 fully qualified. M4 remains 0/3;
   all full milestone and preservation obligations remain active.
+
+### M4-T1 coverage reconciliation and link-local NAT proposal
+
+- Previous conversational turn produced no implementation progress. Rechecked
+  current source before continuing. Added a targeted M4-T1 reconciliation that
+  separates the original blocked-I/O helper (no completion report) from the
+  actual namespace-init blocked-descendant regression still needed. Existing
+  parked-helper and FIFO-child evidence cannot close that integration gap.
+- Traced early shell reporting, receiver acknowledgment and retained teardown
+  deadline at 2dc93c5; recorded required integration assertions and fixture
+  authority constraints. No new VM run or full adherence pass; M4 remains 0/3.
+- Recorded the user's link-local NAT option and the existing allocator's
+  default-route blind spot. RFC forwarding restrictions and endpoint collisions
+  remain unresolved; no production topology change is justified by this review.
+- References: preservation/m7-review/command-timeout-boundary/RECONCILIATION.md
+  and preservation/m7-review/link-local-nat.md. Full goal remains active.
