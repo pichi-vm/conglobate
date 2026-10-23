@@ -7,7 +7,6 @@ use super::{
 use crate::storage::FailureDiagnostics;
 use std::{
     io,
-    path::Path,
     time::{Duration, Instant},
 };
 
@@ -30,7 +29,6 @@ enum Phase<'a, R: StepStorage> {
 #[derive(Debug)]
 struct Teardown<'a, R: StepStorage> {
     phase: Phase<'a, R>,
-    parent: &'a Path,
     deadline: Instant,
 }
 #[derive(Debug)]
@@ -104,15 +102,11 @@ impl<'a, R: StepStorage> TeardownFailure<'a, R> {
     }
 }
 impl<'a, R: StepStorage> Teardown<'a, R> {
-    fn new(phase: Phase<'a, R>, parent: &'a Path) -> Self {
-        Self::until(phase, parent, Instant::now() + TEARDOWN_TIMEOUT)
+    fn new(phase: Phase<'a, R>) -> Self {
+        Self::until(phase, Instant::now() + TEARDOWN_TIMEOUT)
     }
-    fn until(phase: Phase<'a, R>, parent: &'a Path, deadline: Instant) -> Self {
-        Self {
-            phase,
-            parent,
-            deadline,
-        }
+    fn until(phase: Phase<'a, R>, deadline: Instant) -> Self {
+        Self { phase, deadline }
     }
     fn failed(self, source: io::Error) -> Box<TeardownFailure<'a, R>> {
         Box::new(TeardownFailure {
@@ -136,11 +130,7 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
         if let Err(source) = Deadline::check(self.deadline) {
             return Err(self.failed(source));
         }
-        let Self {
-            phase,
-            parent,
-            deadline,
-        } = self;
+        let Self { phase, deadline } = self;
         let next = match phase {
             Phase::AwaitingCleanup(step) => match step.supervision().cleanup_until(deadline) {
                 Ok(()) => Ok(Phase::Running(step)),
@@ -182,61 +172,40 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
         };
         match next {
             // A bounded number of ownership transitions. No polling or timing retries happen here.
-            Ok(phase) => Self {
-                phase,
-                parent,
-                deadline,
-            }
-            .run(),
+            Ok(phase) => Self { phase, deadline }.run(),
             Err(failure) => {
                 let TransitionFailure { source, phase } = *failure;
-                Err(Self {
-                    phase,
-                    parent,
-                    deadline,
-                }
-                .failed(source))
+                Err(Self { phase, deadline }.failed(source))
             }
         }
     }
 }
 impl<'a, R: StepStorage> Step<'a, Ready, R> {
-    pub fn teardown(
-        self,
-        parent: &'a Path,
-    ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
-        Teardown::new(Phase::Ready(self), parent).run()
+    pub fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+        Teardown::new(Phase::Ready(self)).run()
     }
 }
 impl<'a, R: StepStorage> Step<'a, Running, R> {
     pub(super) fn teardown_after_command(
         self,
-        parent: &'a Path,
         deadline: Instant,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
-        Teardown::until(Phase::AwaitingCleanup(self), parent, deadline).run()
+        Teardown::until(Phase::AwaitingCleanup(self), deadline).run()
     }
 
-    pub fn teardown(
-        self,
-        parent: &'a Path,
-    ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
-        self.teardown_until(parent, Instant::now() + TEARDOWN_TIMEOUT)
+    pub fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+        self.teardown_until(Instant::now() + TEARDOWN_TIMEOUT)
     }
     pub(super) fn teardown_until(
         self,
-        parent: &'a Path,
         deadline: Instant,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
-        Teardown::until(Phase::Running(self), parent, deadline).run()
+        Teardown::until(Phase::Running(self), deadline).run()
     }
 }
 impl<'a, R: StepStorage> Step<'a, Cancelling, R> {
-    pub fn teardown(
-        self,
-        parent: &'a Path,
-    ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
-        Teardown::new(Phase::Cancelling(self), parent).run()
+    pub fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+        Teardown::new(Phase::Cancelling(self)).run()
     }
 }
 #[cfg(test)]

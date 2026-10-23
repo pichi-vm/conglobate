@@ -10,7 +10,7 @@ use crate::{
     storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Unmounted, Volume},
     value::CommandTimeout,
 };
-use std::{fmt, io, path::Path};
+use std::{fmt, io};
 pub use storage::ExecutionStorage;
 
 #[derive(Debug, thiserror::Error)]
@@ -199,26 +199,17 @@ impl<'l, R: ExecutionStorage> StorageExecutionFailure<'l, R> {
     }
 }
 impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
-    pub(crate) fn reject_setup(
-        self,
-        error: io::Error,
-        domain_parent: &'l Path,
-    ) -> Box<StorageExecutionFailure<'l, R>> {
+    pub(crate) fn reject_setup(self, error: io::Error) -> Box<StorageExecutionFailure<'l, R>> {
         StorageExecutionFailure::after_teardown(
             ExecutionOutcome::SetupFailed(error),
-            self.teardown(domain_parent),
+            self.teardown(),
         )
         .expect_err("failed setup cannot yield an accepted command")
     }
     /// Transfer this step's assigned volume, require restricted-leaf readiness,
     /// start under the recipe timeout, observe completion and finalize storage.
     /// Every failure after launch performs bounded cleanup before returning.
-    pub fn execute(
-        self,
-        budget: SetupBudget,
-        timeout: CommandTimeout,
-        domain_parent: &'l Path,
-    ) -> ExecutionResult<'l, R> {
+    pub fn execute(self, budget: SetupBudget, timeout: CommandTimeout) -> ExecutionResult<'l, R> {
         if let Err(error) = budget.check().and_then(|()| {
             self.storage.0.send(
                 &self.namespace,
@@ -229,7 +220,7 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
         }) {
             return StorageExecutionFailure::after_teardown(
                 ExecutionOutcome::SetupFailed(error),
-                self.teardown(domain_parent),
+                self.teardown(),
             );
         }
         let prepared = match budget.await_prepared(self) {
@@ -238,7 +229,7 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
                 let (error, step) = failure.into_parts();
                 return StorageExecutionFailure::after_teardown(
                     ExecutionOutcome::SetupFailed(error),
-                    step.teardown(domain_parent),
+                    step.teardown(),
                 );
             }
         };
@@ -248,15 +239,13 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
                 let (error, cleanup) = match *failure {
                     CommandStartFailure::Ready(failure) => {
                         let (error, step) = failure.into_parts();
-                        (error, step.teardown(domain_parent))
+                        (error, step.teardown())
                     }
                     CommandStartFailure::Admission(failure) => {
                         let (error, step) = failure.into_parts();
-                        (error, step.teardown(domain_parent))
+                        (error, step.teardown())
                     }
-                    CommandStartFailure::Late { source, command } => {
-                        (source, command.teardown(domain_parent))
-                    }
+                    CommandStartFailure::Late { source, command } => (source, command.teardown()),
                 };
                 return StorageExecutionFailure::after_teardown(
                     ExecutionOutcome::SetupFailed(error),
@@ -264,7 +253,7 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
                 );
             }
         };
-        let (outcome, cleanup) = command.observe().teardown(domain_parent).into_parts();
+        let (outcome, cleanup) = command.observe().teardown().into_parts();
         StorageExecutionFailure::after_teardown(ExecutionOutcome::Command(outcome), cleanup)
     }
 }

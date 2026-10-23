@@ -10,7 +10,6 @@ use crate::{
 };
 use std::{
     io,
-    path::Path,
     time::{Duration, Instant},
 };
 
@@ -132,18 +131,16 @@ impl<'a, R: StepStorage> PreparedStep<'a, R> {
 impl<'a, R: StepStorage> RunningCommand<'a, R> {
     pub(super) fn teardown_after_command(
         self,
-        parent: &'a Path,
         deadline: Instant,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
-        self.step.teardown_after_command(parent, deadline)
+        self.step.teardown_after_command(deadline)
     }
 
     pub(super) fn teardown_until(
         self,
-        parent: &'a Path,
         deadline: Instant,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
-        self.step.teardown_until(parent, deadline)
+        self.step.teardown_until(deadline)
     }
 
     pub fn deadline(&self) -> Instant {
@@ -152,11 +149,8 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
     pub fn supervision(&self) -> &Supervision<Admitted> {
         self.step.supervision()
     }
-    pub fn teardown(
-        self,
-        parent: &'a Path,
-    ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
-        self.step.teardown(parent)
+    pub fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+        self.step.teardown()
     }
 }
 #[cfg(test)]

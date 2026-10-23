@@ -416,7 +416,7 @@ impl SandboxFailures {
                     assert!(observed.outcome().success(), "{}", observed.outcome());
                     println!("SHELL_SUCCESS_BEFORE_BLOCKED_DESCENDANT_CLEANUP_PASS");
                     let started = Instant::now();
-                    let (outcome, cleanup) = observed.teardown(paths.domains()).into_parts();
+                    let (outcome, cleanup) = observed.teardown().into_parts();
                     assert!(outcome.success());
                     let failure = cleanup.unwrap_err();
                     assert_eq!(
@@ -525,7 +525,7 @@ impl SandboxFailures {
                         if error.kind() == std::io::ErrorKind::TimedOut)
                     );
                     let started = Instant::now();
-                    let (outcome, cleanup) = observed.teardown(paths.domains()).into_parts();
+                    let (outcome, cleanup) = observed.teardown().into_parts();
                     assert!(!outcome.success());
                     let failure = cleanup.unwrap_err();
                     assert!(started.elapsed() >= Duration::from_secs(30));
@@ -591,7 +591,7 @@ impl SandboxFailures {
                         .wait_for_peer_exit_until(Instant::now() + Duration::from_secs(10))?;
                     let completion = command
                         .observe()
-                        .teardown(paths.domains())
+                        .teardown()
                         .transpose()
                         .map_err(|failure| failure.cleanup().to_string())?;
                     assert!(matches!(
@@ -683,7 +683,7 @@ impl SandboxFailures {
                             }
                         }
                         let started = Instant::now();
-                        let (outcome, cleanup) = observed.teardown(paths.domains()).into_parts();
+                        let (outcome, cleanup) = observed.teardown().into_parts();
                         assert!(outcome.success());
                         let failure = cleanup.unwrap_err();
                         assert!(started.elapsed() < std::time::Duration::from_secs(1));
@@ -702,7 +702,7 @@ impl SandboxFailures {
                         use std::time::Duration;
                         let started = Instant::now();
                         let failure = step
-                            .execute(budget, "1s".parse()?, paths.domains())
+                            .execute(budget, "1s".parse()?)
                             .unwrap_err();
                         assert!(
                             matches!(failure.outcome(), conglobate::step::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status)) if status.success())
@@ -768,7 +768,7 @@ impl SandboxFailures {
                         }
                         UnixDatagram::unbound()?
                             .send_to(b"go", "/work/runtime-parent/cleanup-release.sock")?;
-                        let (outcome, cleanup) = observed.teardown(paths.domains()).into_parts();
+                        let (outcome, cleanup) = observed.teardown().into_parts();
                         assert!(outcome.success());
                         let finalized = cleanup
                             .map_err(|e| e.to_string())?
@@ -779,7 +779,7 @@ impl SandboxFailures {
                         returned
                     } else {
                         let failure = step
-                            .execute(budget, "5s".parse()?, paths.domains())
+                            .execute(budget, "5s".parse()?)
                             .unwrap_err();
                         assert!(
                             matches!(failure.outcome(), conglobate::step::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status)) if status.success())
@@ -806,7 +806,7 @@ impl SandboxFailures {
                         .launch(command, budget.deadline(), paths.domains())
                         .map_err(|e| e.to_string())?;
                     let failure = step
-                        .execute(budget, "5s".parse()?, paths.domains())
+                        .execute(budget, "5s".parse()?)
                         .unwrap_err();
                     assert!(matches!(failure.outcome(),
                         conglobate::step::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status)) if status.success()));
@@ -833,7 +833,7 @@ impl SandboxFailures {
                         .launch(command, budget.deadline(), paths.domains())
                         .map_err(|e| e.to_string())?;
                     let failure = step
-                        .execute(budget, "5s".parse()?, paths.domains())
+                        .execute(budget, "5s".parse()?)
                         .unwrap_err();
                     eprintln!("attached fixture outcome: {failure}");
                     assert!(matches!(

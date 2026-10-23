@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use super::{RunningCommand, StepStorage, TeardownCompletion, TeardownFailure};
-use std::{io, path::Path, process::ExitStatus, time::Instant};
+use std::{io, process::ExitStatus, time::Instant};
 
 /// Command observation is independent of the trusted helper's eventual exit
 /// status and of cleanup. An observation error (including timeout) is not success.
@@ -104,16 +104,13 @@ impl<R: StepStorage> ObservedCommand<'_, R> {
 impl<'a, R: StepStorage> CommandResult<ObservedCommand<'a, R>> {
     pub fn teardown(
         self,
-        parent: &'a Path,
     ) -> CommandResult<Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>>> {
         match self.outcome {
-            CommandOutcome::Exited(_) => self.map_cleanup(|observed| {
-                observed
-                    .command
-                    .teardown_after_command(parent, observed.deadline)
-            }),
-            CommandOutcome::ObservationFailed(_) => self
-                .map_cleanup(|observed| observed.command.teardown_until(parent, observed.deadline)),
+            CommandOutcome::Exited(_) => self
+                .map_cleanup(|observed| observed.command.teardown_after_command(observed.deadline)),
+            CommandOutcome::ObservationFailed(_) => {
+                self.map_cleanup(|observed| observed.command.teardown_until(observed.deadline))
+            }
         }
     }
 }

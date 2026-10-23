@@ -201,20 +201,20 @@ impl<'l> CommandSandbox<'l> {
                             Err(source) => {
                                 return Err(Box::new(StageFailure::Execution {
                                     index,
-                                    failure: ready.reject_setup(source, self.domain_parent()),
+                                    failure: ready.reject_setup(source),
                                 }));
                             }
                         };
                         ready
                             .with_network(network)
-                            .execute(budget, run.timeout(), self.domain_parent())
+                            .execute(budget, run.timeout())
                             .map_err(|failure| {
                                 Box::new(StageFailure::NetworkExecution { index, failure })
                             })?
                             .into_parts()
                     } else {
                         ready
-                            .execute(budget, run.timeout(), self.domain_parent())
+                            .execute(budget, run.timeout())
                             .map_err(|failure| {
                                 Box::new(StageFailure::Execution { index, failure })
                             })?
