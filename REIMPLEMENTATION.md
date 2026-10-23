@@ -5294,3 +5294,20 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Recorded the remaining validation-directory/header dependency for M8 migration.
   No production changes or VM runs; no evidence deleted. M4 remains 0/3; pipeline,
   sealing and historical/preservation reconciliation remain in this review.
+
+
+### M4 cumulative adherence attempt: pipeline/sealing boundary
+
+- Previous turn progressed with label environment review. Traced accepted and
+  rejected command results through directives, bootstrap/carapace/firmware,
+  detachment/sealing and final runtime/context cleanup before publication.
+- Added eight source hashes and three archive comparisons. Saved successful
+  network CLI and blocked-descendant sources match this selection, with different
+  execution scopes; older differential label callers predate cleanup API changes.
+- Recorded a concrete requirement to reconcile: all pipeline command paths use
+  the prototype 65,536-ID mapping, while sandbox 4.2 requires supported-ID coverage
+  and unmapped-ID rejection. Inherited out-of-range inode/ACL behavior and the
+  supported range contract are not yet established. No universal fidelity claim.
+- No production change, new test or evidence deletion. M4 remains 0/3. Historical
+  finding/preservation reconciliation and outstanding coverage still prevent a
+  full clean result; M5/M6 scopes are not advanced by this boundary review.

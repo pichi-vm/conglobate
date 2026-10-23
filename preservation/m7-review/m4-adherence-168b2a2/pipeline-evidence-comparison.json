@@ -1,0 +1,41 @@
+{
+  "status-network-resolver-v1": {
+    "files_equal": {
+      "src/pipeline.rs": true,
+      "src/pipeline/bootstrap.rs": true,
+      "src/pipeline/carapace.rs": true,
+      "src/pipeline/firmware.rs": true,
+      "src/storage/sealed.rs": true,
+      "src/step/directives.rs": true,
+      "src/step/execution.rs": true,
+      "src/firmware/output.rs": true
+    },
+    "missing": []
+  },
+  "receiver-root-negative-v1": {
+    "files_equal": {
+      "src/pipeline.rs": true,
+      "src/pipeline/bootstrap.rs": false,
+      "src/pipeline/carapace.rs": false,
+      "src/pipeline/firmware.rs": true,
+      "src/storage/sealed.rs": true,
+      "src/step/directives.rs": true,
+      "src/step/execution.rs": false,
+      "src/firmware/output.rs": true
+    },
+    "missing": []
+  },
+  "observation-blocked-descendant-v1": {
+    "files_equal": {
+      "src/pipeline.rs": true,
+      "src/pipeline/bootstrap.rs": true,
+      "src/pipeline/carapace.rs": true,
+      "src/pipeline/firmware.rs": true,
+      "src/storage/sealed.rs": true,
+      "src/step/directives.rs": true,
+      "src/step/execution.rs": true,
+      "src/firmware/output.rs": true
+    },
+    "missing": []
+  }
+}

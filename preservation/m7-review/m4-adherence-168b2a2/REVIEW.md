@@ -598,3 +598,91 @@ No new VM run, policy load, source modification or asset deletion in this segmen
 Remaining cumulative review: pipeline/sealing consumers and historical findings/
 preservation reconciliation. Existing network qualification gaps remain open.
 M4 remains 0/3.
+
+
+## Segment G: pipeline consumers and sealing boundary
+
+Reviewed the eight files in pipeline-source-sha256.json, tracing M4 lifecycle
+receipts into the stage coordinators, firmware capture and snapshot sealing.
+This is the lifecycle integration boundary, not a substitute for full M5/M6
+formatter, COPY, transform, inventory or OCI publication reviews.
+
+1. CompletedDirectives is constructed only after every directive succeeds.
+   RUN consumes ExecutedStorage after command success and finalized storage;
+   each subsequent RUN gets fresh mounts. COPY executes between quiescent commands,
+   requires mount/copy/unmount/health checks and cannot recover acceptance after
+   a cleanup error. Missing captured networking rejects enabled steps upfront.
+2. Network setup failure keeps its individually owned creator ahead of global
+   reaping; command rejection proceeds only after that cleanup. Command failure
+   retry returns rejected storage, never an ExecutedStorage. Both carapace and
+   bootstrap failure handlers discard recovered snapshots and return the primary
+   error even when cleanup completes. No cleanup retry resumes the stage loop.
+3. Carapace derives one snapshot per directive, closes the DM target, detaches
+   its loop backing, then seals and extends the verified chain. Thus no mounted
+   mutable volume reaches sealing on the accepted production path. Earlier
+   successful layers do not make a later failed stage publishable.
+4. Bootstrap formats a snapshot over dm-zero and uses a distinct writable tool
+   snapshot. Both roots stay paired through directives and cleanup. Tool writes
+   are discarded; output closes/detaches and seals with the zero parent, without
+   image import/conversion. Later carapace directives extend that output. A
+   separate firmware tool image changes tools, not output-root ancestry.
+5. Firmware tools receive the selected output root as CARAPACE where available,
+   run on a disposable snapshot and extract both PMI and DTB only after commands
+   finalize. Extraction pins confined regular files and copies them to RAM under
+   budget checks. No tool scute is added to outputs. Captured firmware is accepted
+   only after tool volume/chain cleanup and DTB finalization succeed.
+6. Snapshot sealing consumes writable scratch returned after detachment. It checks
+   header validity/chunk geometry, scans exception metadata to the terminator,
+   rejects out-of-range/data-in-metadata references and truncates unused capacity.
+   The wire format remains in devmap-snapshot. This is intentionally not an
+   independent verifier of arbitrary malicious snapshot metadata: command code
+   cannot access backing, and kernel snapshot health precedes detachment.
+7. The same data stream feeds digest and verity generation with known length and
+   parent salt. SealedScute exposes read/seek views, not public writable/raw-FD
+   access. It proves sealed bytes, not successful command execution: production
+   callers must establish the lifecycle receipt first. Failure retains scratch
+   for diagnosis; it does not yield a sealed output.
+8. Stage coordinators require runtime.close even after assembly. Top-level pipeline
+   closes the private context before CompletedImage publication. Inventory output
+   checks precede creation of that private receipt. An assembly or inventory
+   error cannot bypass these calls. Atomic publication implementation remains an
+   M6 review requirement; this segment traces only its admission conditions.
+9. Pipeline error conversion still renders several typed resource errors into
+   strings, losing retry access at this boundary. The VM-disposal contract allows
+   terminal rejection, but structured-error completeness remains part of the
+   historical review reconciliation. No successful cleanup is inferred from an
+   error return or a dropped owner. Low-level cleanup drops may leave resources
+   requiring disposal, as already documented.
+10. Style: stage selection is read-only; successive owned chains and reapers move
+    through consuming transitions. Local loops rebind owners rather than expose
+    mutable stage flags. Private CompletedImage/CompletedDirectives constructors
+    prevent unrelated callers from manufacturing successful pipeline receipts.
+    Broader duplicate coordinator setup/error conversion is not silently counted
+    as resolved style work by this boundary review.
+
+### UID/GID requirement needing reconciliation
+
+All three coordinators currently select IdRange::new(100000, 65536) for both
+UID and GID. SANDBOX-DESIGN.txt 4.2 calls for all supported image IDs, rejection
+of unmapped IDs, and explicitly warns that the prototype range is not a universal
+OS-image requirement. This review has not established a declared supported range,
+input-filesystem ownership validation, or coverage for workloads needing IDs
+outside it. Kernel rejection of an unmappable chown alone does not establish
+handling of an inherited inode already owned outside the range. Treat this as an
+open requirement/qualification item; do not claim universal UID/GID fidelity or
+silently narrow the design. Resolve the supported mapping contract and inspect
+inherited ownership/ACL behavior before a clean milestone pass.
+
+### Pipeline evidence comparison
+
+pipeline-evidence-comparison.json records exact archive paths. All eight selected
+files match status-network-resolver-v1 and observation-blocked-descendant-v1.
+The former exercises successful actual CLI publication after a network command;
+the latter exercises lifecycle rejection/retention, not successful pipeline
+publication. receiver-root-negative-v1 predates rejection-only cleanup API changes
+in the bootstrap/carapace callers and execution module. No missing file is
+represented as a source match. No new execution occurred in this segment.
+
+Remaining cumulative assessment: historical findings, UID/GID contract, preservation
+and current test coverage. Existing network/label qualification gaps remain;
+M4 stays 0/3. This review does not advance M5/M6 or certify their complete scopes.
