@@ -1,0 +1,25 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.25s
+     Running tests/recipes.rs (target/m7-stable/debug/deps/recipes-bf406e0ae4dbce28)
+
+running 6 tests
+test null_nested_mappings_and_directive_lists_are_not_empty_values ... ok
+test duplicate_unknown_sections_and_invalid_firmware_are_rejected ... ok
+test omitted_empty_and_null_have_distinct_meanings ... ok
+test all_pipeline_combinations_obey_input_rules ... ok
+test run_defaults_and_directive_exclusivity ... ok
+test typed_transform_values_are_checked_before_execution ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/values.rs (target/m7-stable/debug/deps/values-63ad4046c75d5e1d)
+
+running 5 tests
+test capacity_is_explicit_aligned_and_bounded ... ok
+test context_relative_paths_do_not_gain_resolution_authority ... ok
+test commands_require_a_finite_positive_timeout ... ok
+test labels_use_encoded_bytes_not_character_count ... ok
+test timeout_parsing_uses_duration_bounds_without_a_policy_limit ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

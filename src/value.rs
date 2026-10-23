@@ -144,11 +144,8 @@ impl FromStr for CommandTimeout {
             .get()
             .checked_mul(factor)
             .ok_or(ValueError::Overflow)?;
-        let duration = Duration::from_millis(millis);
-        // A parsed timeout must also be representable as an execution deadline.
-        std::time::Instant::now()
-            .checked_add(duration)
-            .ok_or(ValueError::Overflow)?;
-        Ok(Self(duration))
+        // Parsing validates the duration independently of the current clock.
+        // PreparedStep::start checks deadline representability before admission.
+        Ok(Self(Duration::from_millis(millis)))
     }
 }

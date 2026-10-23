@@ -98,8 +98,8 @@
       "evidence": "step/setup.rs:106 already checked_add at admission; parse-time Instant sample adds only clock dependence",
       "remaining_action": "Drop the Instant probe; keep checked_mul; introduce NO duration cap",
       "historical_status": "accept",
-      "current_status": "open",
-      "current_evidence": "CommandTimeout FromStr still probes Instant::now().checked_add(duration); accepted removal is not implemented."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "Clock probe removed from scalar parsing; checked arithmetic retained and PreparedStep::start checks execution deadline before admission. Eleven value/recipe tests passed; preservation/m7-review/timeout-parsing/REVIEW.md."
     },
     {
       "id": "errors-api-008",

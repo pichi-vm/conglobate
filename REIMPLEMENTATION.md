@@ -5329,3 +5329,17 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   durably archived. No deletions and no production changes this turn.
 - Current queue and evidence: preservation/m7-review/m4-adherence-168b2a2/REVIEW.md,
   historical-actions-current.json and preservation-check.json. Goal remains active.
+
+
+### Accepted finding errors-api-007: clock-independent timeout parsing
+
+- Previous turn progressed by concluding the cumulative review and identifying
+  the remaining queue. Implemented the accepted timeout parsing action: removed
+  the current-clock probe, preserving positive finite syntax and checked duration
+  arithmetic. No policy maximum introduced; actual admission retains checked_add.
+- Added maximum-representation and overflow boundary assertions. Eleven value/
+  recipe tests passed; formatting and whitespace checks passed. Logs and focused
+  review are in preservation/m7-review/timeout-parsing/.
+- Updated the historical action disposition. No VM evidence reclassified and no
+  artifacts removed. M4 full clean streak remains 0/3; larger mapping/network/
+  qualification and preservation requirements remain outstanding.

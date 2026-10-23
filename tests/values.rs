@@ -92,3 +92,28 @@ fn commands_require_a_finite_positive_timeout() {
         assert!(value.parse::<CommandTimeout>().is_err(), "{value}");
     }
 }
+
+#[test]
+fn timeout_parsing_uses_duration_bounds_without_a_policy_limit() {
+    assert_eq!(
+        format!("{}ms", u64::MAX)
+            .parse::<CommandTimeout>()
+            .unwrap()
+            .duration(),
+        Duration::from_millis(u64::MAX)
+    );
+    let seconds = u64::MAX / 1000;
+    assert_eq!(
+        format!("{seconds}s")
+            .parse::<CommandTimeout>()
+            .unwrap()
+            .duration(),
+        Duration::from_secs(seconds)
+    );
+    assert_eq!(
+        format!("{}s", seconds + 1)
+            .parse::<CommandTimeout>()
+            .unwrap_err(),
+        conglobate::value::ValueError::Overflow
+    );
+}
