@@ -75,7 +75,7 @@ but must not be claimed to validate the new policy implementation.
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
 | 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: corrected external-network architecture | 3 |
-| 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Reopened: hashing migration adherence pass 1 | 1 |
+| 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete: hashing migration adherence restored | 3 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, environment-owned labeling exception, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Reopened: registration-free lifecycle | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Reopened: two-root lifecycle regression | 0 |
 | 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Reopened: replacement lifecycle integration | 0 |
@@ -6155,3 +6155,12 @@ consumer ordering and maintained assertions. No defect found. Current streak is
 1/3; see preservation/m7-review/m3-sha2/PASS-1.md and source hashes. Only the two
 Cargo files differ from the prior 35-file M3 scope; dependency integration evidence
 was hash-verified. No tests were repeated or counted as reviews. M4–M8 remain open.
+
+M3 hashing migration pass 2: complete failure-first review clean on unchanged
+0af85b1 implementation; all recorded source hashes match. See m3-sha2/PASS-2.md.
+Streak 2/3; no later milestone advances.
+
+M3 hashing migration pass 3: complete consumer/evidence review clean on the same
+implementation. Streak restored to 3/3; see m3-sha2/PASS-3.md. M4–M6 remain 0/3.
+An outdated inventory NAT comment is queued for correction with networking test
+documentation; it makes no runtime or wire-format change.
