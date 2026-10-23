@@ -2,7 +2,7 @@
 
 Scope: implementation at ed0fecd408562aed8bc083e8fbe412c4b80ec514,
 with exact source/specification/fixture hashes in m4-review/accepted-scope.json.
-Current streak: **2**. M4 is not accepted; M5 must not start yet.
+Current streak: **3**. M4 accepted; M5 may begin.
 These are self-reviews, not independent external reviews.
 
 ## Pass 1 — requirements through lifecycle, clean
@@ -107,3 +107,55 @@ and normative M4 requirements rather than counting another test execution.
    Changes in this pass are ledger-only.
 
 No new finding. Consecutive clean streak: **2 of 3**. M5 remains gated.
+
+## Pass 3 — authority and lifetime boundaries, clean
+
+Rechecked the frozen scope and active-source membership. Reviewed from the
+untrusted-command boundary outward: transferred volume/setup descriptors,
+root/namespace entry, capability/syscall restrictions, retained policy and
+filesystem identities, disabled-policy construction/pinning, and explicit
+release/acceptance. Cross-checked the preceding lifecycle/error reviews against
+these authority boundaries and the normative milestone categories.
+
+1. Requirements: only a detached assigned filesystem view, selected userns and
+   private devices move between trusted setup helpers. Registered channels are
+   not recipe inputs. No context/cache/raw-device/policy control descriptor is
+   supplied to image code; root-entry's final descriptor audit is an additional
+   gate. Native execution and shared trusted-kernel parsing match the selected
+   design; FUSE/UML/nested virtualization are not substituted. The dedicated VM
+   shutdown assumption is explicit and exercised, not an in-binary transport.
+2. Rust style: authority-bearing descriptors are private fields, exchanged by
+   consuming methods. Mount/namespace/step states and permitted storage types
+   are sealed. Shared directory leases retain immutable identity/lifetime data,
+   not a mutable global state machine. Cleanup owners retain exact failed
+   resources. Safe library APIs implement namespace/mount/process operations;
+   forbid(unsafe_code) remains in the crate and build entrypoint. No new style
+   deviation found while tracing the ownership boundaries.
+3. Safety/error paths: namespace and superblock pins survive process descriptor
+   loss and are not removed by normal Drop while mounted. Policy load verifies
+   disabled config, populates exact targets, pins target guards before skipcap,
+   and binds identity owners before activation. Cleanup disables authorization
+   after quiescence, removes exception/guards, then releases identity pins.
+   Failed cleanup retains ownership, not a successful receipt. R4 retains the
+   directory when setup expires before pinning. Device/map names are created
+   with exclusive kernel operations; numeric IDs alone never authorize adoption.
+   Malformed/truncated descriptor packets are rejected and their owned handles
+   close. Public low-level APIs remain trusted-code interfaces; production
+   composition supplies containment and all gates before command execution.
+4. Evidence: verified current scope against the manifest and reconfirmed v155
+   normal/v156 supervisor-death verdicts explicitly disclaim full qualification.
+   Inspected assertions/source backing the relevant claims across the component
+   reviews: no output receipt on failure, descendant drain, scoped labels,
+   descriptor/capability checks, identity retention, timeout and cleanup retries.
+   Prior checks remain current because source is unchanged. This pass does not
+   claim exhaustive syscall injection, D-state termination, arbitrary distro
+   compatibility or confidential-hardware qualification. Those limits are
+   retained rather than hidden behind passing fixture results.
+5. Preservation and scope: no code/evidence was retired during the gate; original
+   implementation/experiments and exact removed-guardian sources remain recoverable.
+   Frozen implementation scope is unchanged across all three reviews. M5's
+   formatting/dual mounts/sealing and M6–M8 deliverables remain outstanding.
+
+No new finding. Consecutive clean streak: **3 of 3**. M4 is accepted for its
+specified single-volume privileged lifecycle. This permits M5 implementation;
+it does not claim a finished builder or production platform qualification.
