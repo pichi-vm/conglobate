@@ -10,7 +10,7 @@ use crate::{
     storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Unmounted, Volume},
     value::CommandTimeout,
 };
-use std::{io, path::Path};
+use std::{fmt, io, path::Path};
 pub use storage::ExecutionStorage;
 
 #[derive(Debug, thiserror::Error)]
@@ -60,12 +60,21 @@ enum Cleanup<'l, R: ExecutionStorage> {
 }
 /// Retains the primary setup/command outcome and any unfinished cleanup owner.
 /// A retry cannot restart the command or extend any cleanup deadline.
-#[derive(Debug, thiserror::Error)]
-#[error("{outcome}; cleanup: {cleanup:?}")]
+#[derive(Debug)]
 pub struct StorageExecutionFailure<'l, R: ExecutionStorage> {
     outcome: ExecutionOutcome,
     cleanup: Cleanup<'l, R>,
 }
+impl<R: ExecutionStorage> fmt::Display for StorageExecutionFailure<'_, R> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}; cleanup: ", self.outcome)?;
+        match self.cleanup_error() {
+            Some(diagnostics) => fmt::Display::fmt(diagnostics, formatter),
+            None => formatter.write_str("complete"),
+        }
+    }
+}
+impl<R: ExecutionStorage> std::error::Error for StorageExecutionFailure<'_, R> {}
 type ExecutionResult<'l, R> = Result<ExecutedStorage<R>, Box<StorageExecutionFailure<'l, R>>>;
 type TeardownResult<'l, R> = Result<TeardownCompletion<R>, Box<TeardownFailure<'l, R>>>;
 

@@ -569,3 +569,12 @@ The first strict Clippy run rejected the moved modulo alignment expression
 (manual_is_multiple_of). The final implementation uses u64::is_multiple_of; the
 initial failure is preserved. The final full 199-test suite, strict Clippy and fmt
 all pass (numeric-size-fixed-checks.json and corresponding logs).
+
+## Execution failure presentation
+
+errors-api-006: StorageExecutionFailure now renders the primary outcome and
+cleanup_error() diagnostics, or explicitly says cleanup is complete. It no longer
+Debug-dumps retained resources into the user-facing error. The Cleanup enum,
+resource ownership, retry transitions and default absent source() are unchanged.
+Strict Clippy passes (execution-display-clippy.log). This presentation-only fix
+does not claim new lifecycle evidence.
