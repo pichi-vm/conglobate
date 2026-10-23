@@ -1,0 +1,13 @@
+     Locking 5 packages to latest Rust 1.94.0 compatible versions
+    Removing devmap-core v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+      Adding devmap-core v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=3a2728f617e9272be5224bbf76ffc4deafdfe83b#3a2728f6)
+    Removing devmap-linux v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+      Adding devmap-linux v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=3a2728f617e9272be5224bbf76ffc4deafdfe83b#3a2728f6)
+    Removing devmap-snapshot v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+      Adding devmap-snapshot v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=3a2728f617e9272be5224bbf76ffc4deafdfe83b#3a2728f6)
+    Removing devmap-verity v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=2679426fa1d4508fc5c3bbdf643efbdbe64a3edd#2679426f)
+      Adding devmap-verity v0.1.0 (https://github.com/pichi-vm/devmap.git?rev=3a2728f617e9272be5224bbf76ffc4deafdfe83b#3a2728f6)
+    Removing pichi-artifact v0.1.0 (https://github.com/pichi-vm/pichi-artifact?rev=64feac956d4539fb79b9490a90480a81ef098ebb#64feac95)
+      Adding pichi-artifact v0.1.0 (https://github.com/pichi-vm/pichi-artifact?rev=7b97a2427f2f343a90fdd72006e3de022b519057#7b97a242)
+    Removing sha2 v0.10.9
+note: pass `--verbose` to see 2 unchanged dependencies behind latest

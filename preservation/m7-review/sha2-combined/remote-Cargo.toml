@@ -1,0 +1,50 @@
+[package]
+name = "conglobate"
+version = "0.2.0"
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/pichi-vm/conglobate"
+publish = false
+description = "Standalone image builder with isolated command execution"
+
+[dependencies]
+netlink-packet-core = "=0.9.0"
+netlink-packet-route = "=0.33.0"
+goblin = { version = "0.10", default-features = false, features = ["std", "pe32", "pe64"] }
+pmi = { git = "https://github.com/pichi-vm/pmi", rev = "364ee0be240fa44c9d7cef7692593f3b52e45b78", version = "0.1.0" }
+devtree = { git = "https://github.com/pichi-vm/devtree", rev = "e90bafce9ee9e4f7f570f07c5c242b6398c64980", features = ["alloc"] }
+thiserror = "2"
+seccompiler = "=0.5.0"
+linux-raw-sys = { version = "=0.12.1", features = ["general"] }
+minicbor = { version = "2.3.1", features = ["std"] }
+nix = { version = "0.31", default-features = false, features = ["sched", "process"] }
+serde = { version = "1", features = ["derive"] }
+serde-saphyr = { version = "2", default-features = false, features = ["deserialize"] }
+hex = "0.4"
+sha2 = "0.11"
+# Safe borrowed-descriptor mount_setattr API (upstream PR 1630); qualification
+# and the reason for this unreleased revision are recorded in ARCHITECTURE.md.
+rustix = { git = "https://github.com/bytecodealliance/rustix", rev = "8bda151df87574f56f1e4c0b59f2d1df5d61609e", version = "1", features = ["fs", "mount", "process", "event", "net", "stdio", "thread", "time"] }
+pichi-artifact = { git = "https://github.com/pichi-vm/pichi-artifact", rev = "7b97a2427f2f343a90fdd72006e3de022b519057", version = "0.1.0" }
+serde_json = "1"
+ciborium = "0.2.2"
+serde_bytes = "0.11"
+regex = "1"
+zstd = { version = "0.13", default-features = false }
+tempfile = "3"
+gix = { version = "0.84", default-features = false, features = ["sha1", "sha256"] }
+clap = { version = "4", features = ["derive"] }
+
+lodown = { git = "https://github.com/pichi-vm/lodown.git", rev = "31f8951293af180150e5e4c654c47a5b190097b9", version = "0.1.0" }
+devmap-snapshot = { git = "https://github.com/pichi-vm/devmap.git", rev = "3a2728f617e9272be5224bbf76ffc4deafdfe83b", version = "0.1.0" }
+devmap-linux = { git = "https://github.com/pichi-vm/devmap.git", rev = "3a2728f617e9272be5224bbf76ffc4deafdfe83b", version = "0.1.0" }
+devmap-core = { git = "https://github.com/pichi-vm/devmap.git", rev = "3a2728f617e9272be5224bbf76ffc4deafdfe83b", version = "0.1.0" }
+devmap-verity = { git = "https://github.com/pichi-vm/devmap.git", rev = "3a2728f617e9272be5224bbf76ffc4deafdfe83b", version = "0.1.0", features = ["sha2"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+
+[lints.clippy]
+all = "warn"

@@ -75,7 +75,7 @@ but must not be claimed to validate the new policy implementation.
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
 | 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: corrected external-network architecture | 3 |
-| 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete: current planning/input adherence | 3 |
+| 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Reopened: first-party hashing dependency migration | 0 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, environment-owned labeling exception, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Reopened: registration-free lifecycle | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Reopened: two-root lifecycle regression | 0 |
 | 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Reopened: replacement lifecycle integration | 0 |
@@ -6136,3 +6136,14 @@ Added maintained bootstrap-nonzero fixture and verifier mode; current disposable
 ### First-party SHA-2 migration preparation after b393bf2
 
 Revalidated dependencies-011: pinned devmap and artifact still use SHA2 0.10, but sibling devmap already contains its migration. Prepared pichi-artifact update in isolated worktree/branch, commit 7b97a24; 75 all-target tests and strict Clippy pass (doctest target has zero tests). Patch and verified incremental bundle in `preservation/m7-review/sha2-migration/`. Conglobate pins unchanged; combined integration/publication/pin updates pending. Original sibling worktrees preserved. Previous turn validated admitted bootstrap rejection; this turn prepares the missing first-party dependency migration.
+
+## First-party SHA-2 integration
+
+Integrated devmap 3a2728f and pichi-artifact 7b97a24, including the maintained
+lifecycle fixture lockfile. Evidence: preservation/m7-review/sha2-combined/.
+231 tests, 53 doctests, strict Clippy, formatting, both target dependency policies
+and audit pass. Native amd64 cache-storage VM validates independently calculated
+roots, corruption rejection and cleanup; the initial stale-lock pre-boot failure
+is retained. All 157 selected archived source files match. dependencies-011 is
+implemented; M3 is reopened at 0/3 and M4–M6 remain 0/3. Component results do not
+restore gates or qualify other architectures, distro boots or hosted CI.

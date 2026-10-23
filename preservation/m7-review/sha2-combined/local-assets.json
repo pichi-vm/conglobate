@@ -1,0 +1,14 @@
+[
+  {
+    "path": "/storage/conglobate-validation/m3-sha2-cache-current-v2/initramfs.gz",
+    "size": 84276854,
+    "sha256": "32abc23e26a00b07ae046b7245f879c871b43268d55390eed9a36f3a82f22cb1",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/m3-sha2-cache-current-v2/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "durably_archived": false
+  }
+]
