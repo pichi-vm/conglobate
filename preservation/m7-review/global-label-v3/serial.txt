@@ -1,0 +1,32 @@
++ touch /run/global-label-fixture
++ modprobe loop
++ modprobe ext4
++ truncate -s 32M /image
++ mke2fs -q -F -t ext4 /image
++ mkdir /assigned /readonly
++ mount -o loop /image /assigned
++ chown 65536:65536 /assigned
++ touch /assigned/file /assigned/read-only-mode
++ chown 65536:65536 /assigned/file /assigned/read-only-mode
++ chmod 0444 /assigned/read-only-mode
++ mount --bind /assigned /readonly
++ mount -o remount,bind,ro /readonly
++ probe off
++ setpriv --reuid=65536 --regid=65536 --clear-groups unshare --user --map-root-user setpriv --bounding-set=-all --inh-caps=-all --ambient-caps=-all /probe off
+NO_POLICY_DENIED
++ mount -t bpf bpf /sys/fs/bpf
++ /loader
++ probe on
++ setpriv --reuid=65536 --regid=65536 --clear-groups unshare --user --map-root-user setpriv --bounding-set=-all --inh-caps=-all --ambient-caps=-all /probe on
+ANONYMOUS_LABEL_PROBE_PASS
+GLOBAL_EXACT_LABEL_BOUNDARY_PASS
++ rm /sys/fs/bpf/label-exception
++ probe off
++ setpriv --reuid=65536 --regid=65536 --clear-groups unshare --user --map-root-user setpriv --bounding-set=-all --inh-caps=-all --ambient-caps=-all /probe off
+NO_POLICY_DENIED
++ umount /readonly
++ umount /assigned
++ echo GLOBAL_POLICY_FIXTURE_PASS
+GLOBAL_POLICY_FIXTURE_PASS
+FIXTURE_EXIT 0
+[    0.564378] sysrq: Resetting

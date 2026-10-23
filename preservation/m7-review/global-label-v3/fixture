@@ -1,0 +1,27 @@
+#!/bin/bash
+set -eux
+touch /run/global-label-fixture
+modprobe loop
+modprobe ext4
+truncate -s 32M /image
+mke2fs -q -F -t ext4 /image
+mkdir /assigned /readonly
+mount -o loop /image /assigned
+chown 65536:65536 /assigned
+touch /assigned/file /assigned/read-only-mode
+chown 65536:65536 /assigned/file /assigned/read-only-mode
+chmod 0444 /assigned/read-only-mode
+mount --bind /assigned /readonly
+mount -o remount,bind,ro /readonly
+probe() {
+  setpriv --reuid=65536 --regid=65536 --clear-groups     unshare --user --map-root-user     setpriv --bounding-set=-all --inh-caps=-all --ambient-caps=-all /probe "$1"
+}
+probe off
+mount -t bpf bpf /sys/fs/bpf
+/loader
+probe on
+rm /sys/fs/bpf/label-exception
+probe off
+umount /readonly
+umount /assigned
+echo GLOBAL_POLICY_FIXTURE_PASS

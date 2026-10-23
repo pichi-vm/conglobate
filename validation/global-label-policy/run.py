@@ -44,6 +44,7 @@ truncate -s 32M /image
 mke2fs -q -F -t ext4 /image
 mkdir /assigned /readonly
 mount -o loop /image /assigned
+chown 65536:65536 /assigned
 touch /assigned/file /assigned/read-only-mode
 chown 65536:65536 /assigned/file /assigned/read-only-mode
 chmod 0444 /assigned/read-only-mode
@@ -94,7 +95,7 @@ exec sleep infinity
         with (self.output / 'serial.txt').open('wb') as log:
             subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
         serial = (self.output / 'serial.txt').read_text(errors='replace')
-        passed = all(marker in serial for marker in ['GLOBAL_EXACT_LABEL_BOUNDARY_PASS', 'GLOBAL_POLICY_FIXTURE_PASS', 'FIXTURE_EXIT 0'])
+        passed = all(marker in serial for marker in ['ANONYMOUS_LABEL_PROBE_PASS', 'GLOBAL_EXACT_LABEL_BOUNDARY_PASS', 'GLOBAL_POLICY_FIXTURE_PASS', 'FIXTURE_EXIT 0'])
         (self.output / 'verdict.json').write_text(json.dumps({'mechanism_passed': passed,
             'production_lifecycle_validated': False}, indent=2) + '\n')
         if not passed:

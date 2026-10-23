@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 /* Benign metadata assertions on fixture files only, inside disposable VM. */
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/xattr.h>
@@ -28,6 +30,16 @@ int main(int argc, char **argv) {
     assert(getxattr("/assigned/file", "security.selinux", value, sizeof(value)) == sizeof(label));
     assert(!memcmp(value, label, sizeof(label)));
     assert(!removexattr("/assigned/file", "security.selinux"));
+    /* Admission-probe candidate: no pathname or reusable output artifact. */
+    int anonymous = open("/assigned", O_TMPFILE | O_RDWR | O_EXCL | O_CLOEXEC, 0600);
+    assert(anonymous >= 0);
+    assert(!fsetxattr(anonymous, "security.selinux", label, sizeof(label), 0));
+    memset(value, 0, sizeof(value));
+    assert(fgetxattr(anonymous, "security.selinux", value, sizeof(value)) == sizeof(label));
+    assert(!memcmp(value, label, sizeof(label)));
+    assert(!fremovexattr(anonymous, "security.selinux"));
+    assert(!close(anonymous));
+    puts("ANONYMOUS_LABEL_PROBE_PASS");
     /* Ordinary write-mode denial does not protect security.* labels. */
     assert(!setxattr("/assigned/read-only-mode", "security.selinux", label, sizeof(label), 0));
     errno = 0;
