@@ -73,3 +73,25 @@ bootstrap execution state machines. Safe libraries own wire parsing.
 All listed work is required before M6 acceptance. Package-manager builds and
 boots for Fedora/Debian/Alpine/NixOS, additional architecture/confidential hardware
 and full repository qualification remain M7. Preservation retirement remains M8.
+
+## Output storage transaction implemented
+
+StagedDirectory owns a private temporary sibling anchored to a parent descriptor.
+It copies cache blobs through Cache::copy_verified, checking the exact written
+stream and only installing a digest-named blob after successful verification.
+The existing verify method shares that stream validation through a sink. Failed
+copies discard their private temporary file. Captured/produced small bytes can
+be stored by digest; metadata writes have fixed filenames. Publication uses
+renameat2 NOREPLACE and returns the staging owner on failure. It performs no
+fallible work after a successful rename, avoiding ambiguous publication errors.
+
+This is a low-level filesystem transaction, explicitly not a build-success or
+validated-inventory receipt. The coordinator/assembler still must validate the
+manifest, inventory and complete referenced blob set before calling it. No CLI
+build or complete OCI artifact is claimed yet.
+
+Three output tests pass (late collision preservation, cache mutation rejection,
+and parent rename with exact output bytes); all 12 cache tests pass including
+writer failure propagation. Strict all-target Clippy passes. Source/log hashes
+are in preservation/m6/output-storage. Tests use ordinary temporary directories,
+no host mounts or policy loading. M6 remains at zero adherence passes.

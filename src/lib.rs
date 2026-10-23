@@ -19,6 +19,7 @@ pub mod image;
 pub mod input;
 pub mod isolation;
 pub mod lock;
+pub mod output;
 pub mod path;
 pub mod plan;
 pub mod policy;

@@ -2922,3 +2922,14 @@ rules rather than silently shrinking acceptance criteria.
   separate from active resource ownership; reuse the existing lifecycle.
 - M6 has zero clean passes. The previous goal turn was progress (M5 pass 2);
   this turn accepts M5 and establishes the concrete M6 source/API boundary.
+
+### M6 output storage transaction
+
+- Added private sibling staging with parent-directory authority, exact-stream
+  verified cache copying, content-addressed blob writes, fixed metadata names,
+  and atomic no-replacement publication retaining staging on failure.
+- The transaction does not assert build/manifest/inventory validity; the next
+  integration is the output assembler and version-two inventory, then real CLI.
+- Three output tests, 12 cache tests and strict all-target Clippy pass. Preserved
+  source/log hashes under preservation/m6/output-storage. No privileged host
+  operations. M6 remains active with zero adherence passes.

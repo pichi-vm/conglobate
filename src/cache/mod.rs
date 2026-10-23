@@ -12,7 +12,7 @@ use rustix::fs::{Mode, OFlags, ResolveFlags};
 use sha2::{Digest, Sha256};
 use std::{
     fs::File,
-    io::{self, Read},
+    io::{self, Read, Write},
     path::Path,
 };
 
@@ -90,6 +90,17 @@ impl Cache {
     /// Verify one complete read without retaining an unverified future read handle.
     /// Mounting layers requires independent dm-verity verification at use time.
     pub fn verify(&self, digest: &ContentDigest, size: u64) -> Result<BlobReceipt, CacheError> {
+        self.copy_verified(digest, size, &mut io::sink())
+    }
+    /// Copy and verify the same byte stream. On error the destination may hold
+    /// partial or invalid bytes; callers must keep it private and discard it.
+    /// A prior receipt never authorizes a later unverified cache read.
+    pub fn copy_verified(
+        &self,
+        digest: &ContentDigest,
+        size: u64,
+        destination: &mut impl Write,
+    ) -> Result<BlobReceipt, CacheError> {
         let mut file = self.blob(digest)?;
         if file.metadata()?.len() != size {
             return Err(CacheError::Invalid("blob size mismatch"));
@@ -103,6 +114,7 @@ impl Cache {
             if count == 0 {
                 return Err(CacheError::Invalid("blob truncated during read"));
             }
+            destination.write_all(&buffer[..count])?;
             hash.update(&buffer[..count]);
             remaining -= count as u64;
         }

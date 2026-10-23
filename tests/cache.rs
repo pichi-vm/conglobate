@@ -354,3 +354,28 @@ fn compressed_scutes_reject_invalid_streams_even_with_matching_oci_digests() {
         &root
     );
 }
+
+#[test]
+fn verified_copy_propagates_destination_failure() {
+    struct Reject;
+    impl std::io::Write for Reject {
+        fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::StorageFull,
+                "fixture full",
+            ))
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let store = Store::new();
+    let digest = store.put(b"content");
+    let error = store
+        .open()
+        .copy_verified(&digest, 7, &mut Reject)
+        .unwrap_err();
+    assert!(
+        matches!(error, conglobate::cache::CacheError::Io(error) if error.kind() == std::io::ErrorKind::StorageFull)
+    );
+}
