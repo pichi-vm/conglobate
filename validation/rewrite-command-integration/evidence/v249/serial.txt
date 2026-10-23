@@ -1,0 +1,158 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ mkdir -p /work/origin /work/mapped /work/conglobate-mount-decoy
++ unshare --user --map-root-user /idmap-probe privileges
+NATIVE_PRIVILEGES_EXEC_PASS
++ unshare --user --map-root-user /idmap-probe syscalls
+NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS
+NATIVE_PRIVILEGES_EXEC_PASS
++ unshare --user --map-root-user setpriv --bounding-set=-chown /idmap-probe privileges
++ grep -q 'required capability is not available' /work/privileges-negative
++ grep -q NATIVE_PRIVILEGES_EXEC_PASS /work/privileges-negative
++ echo NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
+NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
++ modprobe loop
++ modprobe ext4
++ truncate -s 64M /work/volume.ext4
++ mke2fs -q -t ext4 -F /work/volume.ext4
++ mount -o loop /work/volume.ext4 /work/origin
++ cp -a /image-root/. /work/origin/
++ /idmap-probe namespace-rejections
+POLICY_PRIVATE_NAMESPACE_REJECTED_PASS
+FOREIGN_CONTROL_MOUNT_DESCRIPTORS_REJECTED_PASS
+NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS
++ modprobe dm-zero
++ modprobe dm-snapshot
++ /idmap-probe snapshot-probe
+SNAPSHOT_EXHAUSTION_REJECTS_VALID_USAGE_PASS
+OWNED_PERSISTENT_SNAPSHOT_REACTIVATION_PASS
++ modprobe dm-verity
++ /idmap-probe prepare-scutes
+VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+VERITY_CACHE_CORRUPTION_READ_REJECTED_PASS
+VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+CACHE_BACKED_SCUTE_PREPARATION_PASS
+OWNED_VERITY_READ_AND_CLEANUP_PASS
++ /idmap-probe assemble-chain
+WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS
+CHAIN_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+INVALID_SECOND_SCUTE_CLEANUP_PASS
+OWNED_TWO_SCUTE_CHAIN_PASS
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ mkdir /work/pins
++ mount -t bpf bpf /work/pins
++ chmod 700 /work/pins
++ /idmap-probe domain-publication-probe
+DOMAIN_PUBLICATION_ABSENT_ROLLBACK_PASS
+DOMAIN_PUBLICATION_PRESENT_ROLLBACK_PASS
+DOMAIN_PUBLICATION_MALFORMED_ROLLBACK_PASS
+DOMAIN_PUBLICATION_MISMATCH_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-sandbox
++ cat /work/command-diagnostics
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+SANDBOX_TWO_STEP_PIPELINE_PASS
+OWNED_RUNTIME_COMMAND_LIFECYCLE_PASS
+OWNED_RUNTIME_CLEANUP_REFUSAL_PASS
++ /idmap-probe volume-supervisor-sandbox-namespace-failure
+trusted command helper: No space left on device (os error 28)
+SANDBOX_NAMESPACE_FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-sandbox-mount-failure
+SANDBOX_MOUNT_FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-probe
+EXT4_TYPED_PROFILE_FORMAT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ BOOTSTRAP_COMMAND_FAILURE=nonzero
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_EXECUTION_NONZERO_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ BOOTSTRAP_COMMAND_FAILURE=timeout
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_EXECUTION_TIMEOUT_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ BOOTSTRAP_COMMAND_FAILURE=nonzero-busy
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_EXECUTION_NONZERO-BUSY_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ BOOTSTRAP_COMMAND_FAILURE=success-busy
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_EXECUTION_SUCCESS-BUSY_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ BOOTSTRAP_FAILURE=domain
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_PREPARATION_DOMAIN_ROLLBACK_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ BOOTSTRAP_FAILURE=policy
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_PREPARATION_POLICY_ROLLBACK_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ BOOTSTRAP_FAILURE=launch
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_PREPARATION_LAUNCH_ROLLBACK_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+setfattr: /dev/shm/outside: Operation not permitted
+getfattr: Removing leading '/' from absolute path names
+# file: tool-state
+security.selinux="foreign_u:object_r:foreign_t:s0"
+
+getfattr: Removing leading '/' from absolute path names
+# file: mnt/state
+security.selinux="foreign_u:object_r:foreign_t:s0"
+
+BOOTSTRAP_COPY_BETWEEN_COMMANDS_PASS
+RECIPE_DIRECTIVE_RUNNER_PASS
+COPY_MOUNTED_VOLUME_METADATA_PASS
+BOOTSTRAP_VERIFIED_TOOL_CHAIN_PASS
+BOOTSTRAP_DUAL_COMMAND_REMOUNT_PASS
+warning: templates not found in /usr/share/git-core/templates
+PIPELINE_CLI_CASE network-fail.yml -> /work/network-no-forwarding4-output
+PIPELINE_CLI_NETWORK_FORWARDING_PREFLIGHT_CLEANUP_PASS
+PIPELINE_CLI_CASE network-fail.yml -> /work/network-no-forwarding6-output
+PIPELINE_CLI_NETWORK_FORWARDING_PREFLIGHT_CLEANUP_PASS
+PIPELINE_CLI_CASE network-fail.yml -> /work/network-failed-command-output
+
+thread 'main' (661) panicked at src/pipeline.rs:492:21:
+missing primary command status: conglobate: build execution: directive 0: command outcome: Exited(ExitStatus(unix_wait_status(9472))); cleanup: Complete(FinalizedVolume { volume: Volume { resources: (), snapshot: SnapshotMapping { mapping: Mapping { lease: MappingLease { control: Control(File { fd: 21, path: "/dev/mapper/control", read: true, write: true }), id: Some(DevId { major: 252, minor: 4 }) }, _state: PhantomData<conglobate::storage::mapping::Active> }, origin: SnapshotOrigin { mapping: Mapping { lease: MappingLease { control: Control(File { fd: 19, path: "/dev/mapper/control", read: true, write: true }), id: Some(DevId { major: 252, minor: 3 }) }, _state: PhantomData<conglobate::storage::mapping::Active> } }, backing: LoopAttachment { device: Device(File { fd: 23, path: "/dev/loop3", read: true, write: true }), backing: Scratch { file: File { fd: 20, path: "/#65 (deleted)", read: true, write: true }, _workspace: Workspace { root: File { fd: 5, path: "/", read: true, write: false } } } } }, scope: Init(RecoveryDirectory { lease: DirectoryLease { directory: File { fd: 12, path: "/run/conglobate-runtime-PiLymz/recovery", read: true, write: false }, namespace: InitMountNamespace { init: OwnedFd { fd: 10 }, mount: File { fd: 11, path: "mnt:[4026531832]", read: true, write: false } } } }), _thread: PhantomData<alloc::rc::Rc<()>> }, status: ExitStatus(unix_wait_status(9472)), reaped: ReapedChildren { reaper: ChildReaper { process: Pid(804), collected: 0, _thread: PhantomData<alloc::rc::Rc<()>> } } })
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+IDMAP_PROBE_EXIT 101
+[   39.226308] sysrq: Resetting

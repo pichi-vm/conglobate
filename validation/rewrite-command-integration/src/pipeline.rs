@@ -9,6 +9,48 @@ use std::{
 #[derive(Debug)]
 pub(super) struct PipelineProbe;
 impl PipelineProbe {
+    fn oci_copy(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
+        let index: serde_json::Value =
+            serde_json::from_slice(&fs::read(output.join("index.json"))?)?;
+        let digest = index["manifests"][0]["digest"].as_str().unwrap();
+        let copied = Path::new("/work/oras-copy");
+        assert!(!copied.exists());
+        let result = Command::new("/usr/bin/oras")
+            .args(["cp", "--from-oci-layout", "--to-oci-layout"])
+            .arg(format!("{}@{digest}", output.display()))
+            .arg(format!("{}:verified", copied.display()))
+            .output()?;
+        assert!(
+            result.status.success(),
+            "ORAS {}: {}",
+            output.display(),
+            String::from_utf8_lossy(&result.stderr)
+        );
+        let saved: serde_json::Value =
+            serde_json::from_slice(&fs::read(copied.join("index.json"))?)?;
+        assert_eq!(saved["manifests"][0]["digest"].as_str(), Some(digest));
+        let mut count = 0;
+        for entry in fs::read_dir(output.join("blobs/sha256"))? {
+            let entry = entry?;
+            let original = fs::read(entry.path())?;
+            assert_eq!(
+                hex::encode(Sha256::digest(&original)),
+                entry.file_name().to_str().unwrap()
+            );
+            assert_eq!(
+                original,
+                fs::read(copied.join("blobs/sha256").join(entry.file_name()))?
+            );
+            count += 1;
+        }
+        assert_eq!(count, fs::read_dir(copied.join("blobs/sha256"))?.count());
+        fs::remove_dir_all(copied)?;
+        println!(
+            "PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS {}",
+            output.display()
+        );
+        Ok(())
+    }
     fn network_listener(
         count: usize,
     ) -> std::io::Result<std::thread::JoinHandle<std::io::Result<()>>> {
@@ -284,6 +326,15 @@ impl PipelineProbe {
             repo.join("network-pipeline.yml"),
             serde_json::to_vec(&network_recipe)?,
         )?;
+        fs::write(
+            repo.join("network-fail.yml"),
+            serde_json::to_vec(&serde_json::json!({
+                "carapace": {"from":"example.test/tools:1", "derive":[{
+                    "network":true,
+                    "run":"test -r /etc/resolv.conf; echo NETWORK_FAILURE_COMMAND_ENTERED; echo rejected > /rejected; exit 37"
+                }]}
+            }))?,
+        )?;
         fs::write("/work/network-resolver", b"nameserver 10.0.0.1\n")?;
         for module in ["veth", "nf_tables", "nft_chain_nat", "nft_masq", "nft_ct"] {
             assert!(Command::new("modprobe").arg(module).status()?.success());
@@ -327,6 +378,21 @@ impl PipelineProbe {
         let commit = String::from_utf8(commit.stdout)?;
         fs::write(repo.join("input"), b"uncommitted wrong bytes\n")?;
         for (recipe, output, success) in [
+            (
+                "network-fail.yml",
+                "/work/network-no-forwarding4-output",
+                false,
+            ),
+            (
+                "network-fail.yml",
+                "/work/network-no-forwarding6-output",
+                false,
+            ),
+            (
+                "network-fail.yml",
+                "/work/network-failed-command-output",
+                false,
+            ),
             (
                 "network-pipeline.yml",
                 "/work/network-pipeline-output",
@@ -436,6 +502,15 @@ impl PipelineProbe {
                     },
                 ]);
             }
+            if recipe == "network-fail.yml" {
+                command.args(["--resolv-conf", "/work/network-resolver"]);
+                if output == "/work/network-no-forwarding4-output" {
+                    fs::write("/proc/sys/net/ipv4/ip_forward", "0")?;
+                }
+                if output == "/work/network-no-forwarding6-output" {
+                    fs::write("/proc/sys/net/ipv6/conf/all/forwarding", "0")?;
+                }
+            }
             let listener = if output == "/work/network-pipeline-output" {
                 command.args(["--resolv-conf", "/work/network-resolver"]);
                 Some(Self::network_listener(network_count)?)
@@ -450,12 +525,43 @@ impl PipelineProbe {
                 "{recipe} -> {output}: {}",
                 String::from_utf8_lossy(&result.stderr)
             );
+            if recipe == "network-fail.yml" {
+                let stderr = String::from_utf8_lossy(&result.stderr);
+                let stdout = String::from_utf8_lossy(&result.stdout);
+                let entered = stdout.contains("NETWORK_FAILURE_COMMAND_ENTERED");
+                if output == "/work/network-failed-command-output" {
+                    assert!(entered, "failed command was not admitted: {stderr}");
+                    assert!(
+                        stderr.contains("37"),
+                        "missing primary command status: {stderr}"
+                    );
+                    println!("PIPELINE_CLI_NETWORK_NONZERO_NO_PUBLICATION_PASS");
+                } else {
+                    assert!(!entered, "command ran without forwarding");
+                    assert!(
+                        stderr.contains("require environment forwarding"),
+                        "wrong failure: {stderr}"
+                    );
+                    println!("PIPELINE_CLI_NETWORK_FORWARDING_PREFLIGHT_CLEANUP_PASS");
+                }
+                assert!(!Path::new("/sys/class/net/cgb0h").exists());
+                assert!(
+                    !Command::new("nft")
+                        .args(["list", "table", "inet", "conglobate_cgb0h"])
+                        .output()?
+                        .status
+                        .success()
+                );
+                fs::write("/proc/sys/net/ipv4/ip_forward", "1")?;
+                fs::write("/proc/sys/net/ipv6/conf/all/forwarding", "1")?;
+            }
             if let Some(listener) = listener {
                 listener
                     .join()
                     .expect("network fixture listener panicked")?;
                 let inventory = fs::read(Path::new(output).join("inventory.cbor"))?;
                 conglobate::inventory::Inventory::decode(&inventory)?;
+                println!("CLI_NETWORK_INVENTORY_HEX {}", hex::encode(&inventory));
                 let entries = Field(&inventory).get(&["execution", "network_steps"])?;
                 let mut decoder = minicbor::Decoder::new(entries.0);
                 assert_eq!(decoder.array()?, Some(network_count as u64));
@@ -489,6 +595,10 @@ impl PipelineProbe {
                 );
             }
             assert_eq!(Path::new(output).exists(), success);
+            if success {
+                Self::oci_copy(Path::new(output))?;
+            }
+
             assert_eq!(
                 fs::read_dir("/run")?
                     .filter_map(Result::ok)

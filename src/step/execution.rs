@@ -17,7 +17,7 @@ pub use storage::ExecutionStorage;
 pub enum ExecutionOutcome {
     #[error("command setup: {0}")]
     SetupFailed(io::Error),
-    #[error("command outcome: {0:?}")]
+    #[error("command outcome: {0}")]
     Command(CommandOutcome),
 }
 impl ExecutionOutcome {

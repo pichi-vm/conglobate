@@ -1,0 +1,5 @@
+Version:        1.3.5
+Go version:     go1.26.9
+OS/Arch:        linux/amd64
+Git commit:     d6e7b583b9afc7fa3798de77181c53c94418d727
+Git tree state: clean

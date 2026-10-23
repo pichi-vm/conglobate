@@ -5,9 +5,11 @@ use std::{io, path::Path, process::ExitStatus, time::Instant};
 
 /// Command observation is independent of the trusted helper's eventual exit
 /// status and of cleanup. An observation error (including timeout) is not success.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum CommandOutcome {
+    #[error("command exited with {0}")]
     Exited(ExitStatus),
+    #[error("command observation failed: {0}")]
     ObservationFailed(io::Error),
 }
 impl CommandOutcome {
@@ -121,5 +123,19 @@ mod tests {
         .map_cleanup(|()| Ok::<_, io::Error>(()));
         assert!(!result.outcome().success());
         assert!(result.cleanup().is_ok());
+    }
+}
+
+#[cfg(test)]
+mod diagnostic_tests {
+    use super::*;
+    use std::os::unix::process::ExitStatusExt;
+    #[test]
+    fn diagnostics_render_exit_code_instead_of_raw_wait_status() {
+        let outcome = CommandOutcome::Exited(ExitStatus::from_raw(37 << 8));
+        let message = outcome.to_string();
+        assert!(message.contains("37"));
+        assert!(!message.contains("9472"));
+        assert!(!outcome.success());
     }
 }

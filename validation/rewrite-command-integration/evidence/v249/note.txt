@@ -1,0 +1,1 @@
+v249 FAILED diagnostic assertion: forwarding-disabled cleanup cases passed; enabled command exited 37 and rejected storage was cleaned, but CLI primary diagnostic used Debug raw wait status 9472 instead of readable exit code 37. Preserve before improving Display. Later publication/runtime assertions were not reached for this case.

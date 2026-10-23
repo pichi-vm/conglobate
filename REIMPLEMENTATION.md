@@ -3931,3 +3931,33 @@ rules rather than silently shrinking acceptance criteria.
   network fixture; this CLI case uses a guest-local TCP service. Further setup
   fault/cleanup-expiry tests, network command failure publication checks, ORAS,
   and three complete M6 adherence passes remain. M6 stays at zero passes.
+
+### M6 enabled-network rejection and independent OCI copy (in progress)
+
+- Added CLI negative cases for disabled IPv4 forwarding, disabled IPv6 forwarding,
+  and an admitted network command exiting 37. They check no output publication,
+  command admission markers, scoped link/table removal and runtime cleanup.
+- v249 preserved a failed assertion: both forwarding cases passed; the nonzero
+  command produced a raw Debug wait status (9472) instead of readable exit code
+  37. Publication/runtime assertions for that case had not yet executed. Added
+  Display diagnostics for command outcomes and a focused exit-code test; the
+  original failure and compiler/test logs remain evidence, not a passing run.
+- Added required ORAS copy checks to each successful output in the normal VM
+  pipeline suite. ORAS 1.3.5 uses the preserved legacy CI release URL and archive
+  SHA256 f48a73ea6d026a862c3919fc773da9a8c86fc259c2c737d5baed3b8b9614ad22;
+  the harness verifies binary SHA256
+  7c43d74f5f64c94932b31c76103bb7f48af837fe8aa5316fba7968b6c523350e.
+  ORAS selects the manifest by digest, copies between OCI layouts in the guest,
+  and every referenced blob must have identical bytes and digest. The disposable
+  VM has no external NIC. The successful network inventory is also exported
+  through the serial transcript into a separate CBOR evidence file.
+- v250 passed these checks and the full regression. Both forwarding preflight
+  failures and the admitted nonzero command rejected publication and left no
+  scoped network or runtime resources. ORAS copied all 12 successful pipeline
+  output variants with byte-identical blobs. Focused outcome tests and strict
+  root/fixture Clippy pass. The CBOR inventory, ORAS version and artifact hashes,
+  source snapshot, logs and serial are preserved in evidence/v250.
+- This establishes local OCI-layout interoperability for these emitted outputs,
+  not registry/platform qualification. Composite partial-setup and cleanup-expiry
+  coverage, remaining requirements audit and three complete M6 adherence passes
+  remain. M6 stays at zero passes.
