@@ -107,8 +107,8 @@
       "evidence": "rustsec query.rs:181-194 compares source kind and URL; git sources are not categorically unmatchable",
       "remaining_action": "Document the actual matching limitation",
       "historical_status": "open",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "resolved",
+      "current_evidence": "README dependency-check section explicitly documents package-source identity matching and that clean audit does not certify pinned Git revisions against ordinary registry advisories. Source revalidated at cedb69d; this closes the accepted documentation action, not current advisory or manual revision qualification. See m4-checkpoint-cedb69d/REVIEW.md."
     },
     {
       "id": "dependencies-003",

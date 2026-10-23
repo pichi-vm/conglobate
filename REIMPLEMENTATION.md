@@ -6032,3 +6032,15 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   Positive resolver VM also passes restoration and artifact publication.
 - Evidence and initial compile failures: cleanup-failure-protocol/. Previous VM
   failures preserved. M4 remains 0/3; no full adherence/platform pass claimed.
+
+### Post-protocol rootless checkpoint and kernel scope
+
+- Complete rootless suite after cedb69d: 225 all-target tests and
+  53 doctests pass. Evidence: m4-checkpoint-cedb69d/. These are tests,
+  not adherence passes. No new VM/platform qualification is inferred.
+- Confirmed empty read-only /sys implementation; current kernel documentation
+  places scheduler debug interfaces in debugfs. Alternate proc-exposing kernel
+  coverage remains unproven; no minimum-version restriction invented.
+- Corrected stale README scoped-policy wording. Closed dependencies-002's accepted
+  documentation action by inspecting the existing advisory-source caveat.
+  M4 remains 0/3; UID/GID decision and remaining gate work still outstanding.

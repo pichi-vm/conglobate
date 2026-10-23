@@ -61,9 +61,9 @@ Run image builds only in a dedicated disposable VM with a qualified kernel and
 an independent environment controller that destroys the VM if conglobate
 crashes. The supervisor runs as initial-namespace root. Build commands are
 untrusted and run in restricted namespaces; they receive neither supervisor
-control resources nor backing block devices. The kernel, scoped BPF LSM policy,
+control resources nor backing block devices. The kernel, environment-provided BPF LSM labeling exception,
 supervisor and supplied formatter runtime are trusted. The design requires
-native filesystem/idmapped mount support and the scoped label policy hooks;
+native filesystem/idmapped mount support and the environment-loaded labeling exception;
 generic kernel version numbers alone do not establish those prerequisites.
 
 [SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt) specifies the boundary and teardown

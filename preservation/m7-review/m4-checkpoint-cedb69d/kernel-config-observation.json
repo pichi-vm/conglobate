@@ -1,0 +1,15 @@
+{
+  "path": "/boot/config-7.2.10-200.fc44.x86_64",
+  "sha256": "34363e0d0932e2bfed97bd434d5d7c3daafedc68d4d1eac34a0ee840e4b8d0e1",
+  "matching_lines": [
+    "CONFIG_BLK_DEBUG_FS=y",
+    "# CONFIG_SCSI_SNIC_DEBUG_FS is not set",
+    "# CONFIG_SCSI_LPFC_DEBUG_FS is not set",
+    "# CONFIG_USB_GADGET_DEBUG_FS is not set",
+    "# CONFIG_OCFS2_DEBUG_FS is not set",
+    "CONFIG_DEBUG_FS=y",
+    "CONFIG_DEBUG_FS_ALLOW_ALL=y",
+    "# CONFIG_DEBUG_FS_ALLOW_NONE is not set"
+  ],
+  "scope": "Read-only host kernel configuration inspection; no privileged host validation or scheduler data read."
+}
