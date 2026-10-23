@@ -136,9 +136,6 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
     pub fn supervision(&self) -> &Supervision<Admitted> {
         self.step.supervision()
     }
-    pub fn wait_for_exit(&self) -> io::Result<()> {
-        self.supervision().wait_for_peer_exit_until(self.deadline)
-    }
     pub fn teardown(
         self,
         parent: &Path,

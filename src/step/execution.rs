@@ -219,8 +219,6 @@ pub type ExecutionFailure<'l, 'n, 'o, 'w> =
 /// }
 /// ```
 pub type ExecutedBootstrap<'n, 'o, 'w> = ExecutedStorage<BootstrapVolumes<'n, 'o, 'w, Mounted>>;
-pub type BootstrapExecutionFailure<'l, 'n, 'o, 'w> =
-    StorageExecutionFailure<'l, BootstrapVolumes<'n, 'o, 'w, Mounted>>;
 impl<'n, 'o, 'w> ExecutedVolume<'n, 'o, 'w> {
     pub fn into_volume(self) -> Volume<'n, 'o, 'w, Unmounted> {
         self.into_storage()

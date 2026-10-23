@@ -134,20 +134,6 @@ impl CommandRoot {
 }
 
 impl EnteredRoot {
-    /// Finalize restrictions and remain as the command PID namespace's init,
-    /// reaping descendants while the image shell runs. Exits with the shell's
-    /// outcome; PID namespace destruction and outer containment stop survivors.
-    /// A returned error is fatal: this helper must exit. The directive runner
-    /// supplies CARAPACE, when available, through an export in the script.
-    pub fn execute(
-        self,
-        script: &str,
-        privileges: CommandPrivileges,
-        syscalls: CommandSyscalls,
-    ) -> io::Result<std::convert::Infallible> {
-        self.restrict(script, privileges, syscalls)?.execute()
-    }
-
     /// Finish trusted isolation before the execution clock starts. This does
     /// not grant command admission; the enclosing helper owns the start gate.
     /// Errors remain exit-only because privilege changes cannot be rolled back.

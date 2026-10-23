@@ -492,7 +492,6 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
 pub type CommandPreparation<'l, 'n, 'o, 'w> = StoragePreparation<'l, Volume<'n, 'o, 'w, Mounted>>;
 pub type PreparationFailure<'l, 'n, 'o, 'w> =
     StoragePreparationFailure<'l, Volume<'n, 'o, 'w, Mounted>>;
-pub type RolledBackPreparation<'n, 'o, 'w> = StorageRollback<Volume<'n, 'o, 'w, Mounted>>;
 /// Bootstrap preparation retains both roots through the same policy/process rollback.
 pub type BootstrapPreparation<'l, 'n, 'o, 'w> =
     StoragePreparation<'l, BootstrapVolumes<'n, 'o, 'w, Mounted>>;

@@ -136,10 +136,7 @@ impl Packet {
     }
     fn receive(opcode: u8, count: usize) -> io::Result<Self> {
         let socket = io::stdin().as_fd().try_clone_to_owned()?;
-        Self::receive_from(&socket, opcode, count)
-    }
-    fn receive_from(socket: &impl AsFd, opcode: u8, count: usize) -> io::Result<Self> {
-        Self::receive_shapes(socket, &[(opcode, count)])
+        Self::receive_shapes(&socket, &[(opcode, count)])
     }
     fn receive_shapes(socket: &impl AsFd, shapes: &[(u8, usize)]) -> io::Result<Self> {
         let mut bytes = [0; 4];
@@ -198,7 +195,7 @@ mod tests {
             )
             .unwrap();
             drop(owners);
-            assert!(Packet::receive_from(&receiver, 2, 3).is_err());
+            assert!(Packet::receive_shapes(&receiver, &[(2, 3)]).is_err());
             for mut peer in peers {
                 peer.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
                 assert_eq!(peer.read(&mut [0]).unwrap(), 0);

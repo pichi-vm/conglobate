@@ -8,28 +8,28 @@ use std::str::FromStr;
 pub struct ModeError;
 
 #[derive(Debug)]
-pub enum Permissions {
+enum Permissions {
     Octal(u32),
     Symbolic(Vec<Clause>),
 }
 #[derive(Debug)]
-pub struct Clause {
+struct Clause {
     who: u32,
     changes: Vec<Change>,
 }
 #[derive(Debug)]
-pub struct Change {
+struct Change {
     operator: Operator,
     permissions: Vec<Permission>,
 }
 #[derive(Debug)]
-pub enum Operator {
+enum Operator {
     Add,
     Remove,
     Assign,
 }
 #[derive(Debug)]
-pub enum Permission {
+enum Permission {
     Read,
     Write,
     Execute,
@@ -113,28 +113,6 @@ impl FromStr for Clause {
         Ok(Self { who, changes })
     }
 }
-impl CopyMode {
-    pub fn permissions(&self) -> &Permissions {
-        &self.0
-    }
-}
-impl Clause {
-    pub fn who(&self) -> u32 {
-        self.who
-    }
-    pub fn changes(&self) -> &[Change] {
-        &self.changes
-    }
-}
-impl Change {
-    pub fn operator(&self) -> &Operator {
-        &self.operator
-    }
-    pub fn permissions(&self) -> &[Permission] {
-        &self.permissions
-    }
-}
-
 impl CopyMode {
     /// Apply parsed COPY permissions with BuildKit's zero-umask semantics.
     pub fn apply(&self, original: u32, directory: bool) -> u32 {

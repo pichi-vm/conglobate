@@ -15,15 +15,14 @@ use std::{
 
 mod execution;
 pub use execution::{
-    BootstrapExecutionFailure, ExecutedBootstrap, ExecutedStorage, ExecutedVolume,
-    ExecutionFailure, ExecutionOutcome, ExecutionStorage, StorageExecutionFailure,
+    ExecutedBootstrap, ExecutedStorage, ExecutedVolume, ExecutionFailure, ExecutionOutcome,
+    ExecutionStorage, StorageExecutionFailure,
 };
 mod preparation;
 pub use preparation::{
     BootstrapPreparation, BootstrapPreparationFailure, CommandPreparation, CommandSandbox,
-    PreparationFailure, PreparationStorage, RolledBackPreparation, SandboxDirectories,
-    StorageLayout, StoragePinFailure, StoragePreparation, StoragePreparationFailure,
-    StorageRollback,
+    PreparationFailure, PreparationStorage, SandboxDirectories, StorageLayout, StoragePinFailure,
+    StoragePreparation, StoragePreparationFailure, StorageRollback,
 };
 mod finalize;
 mod outcome;

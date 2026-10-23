@@ -204,9 +204,6 @@ impl VethPair {
     pub fn host_name(&self) -> &InterfaceName {
         &self.host
     }
-    pub fn peer_name(&self) -> &InterfaceName {
-        &self.peer
-    }
     pub fn close(self) -> Result<(), VethFailure> {
         let deadline = Instant::now() + Duration::from_secs(30);
         self.close_until(deadline)
