@@ -1,0 +1,6 @@
+{
+  "/var/tmp/conglobate-global-label-v2/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+  "/var/tmp/conglobate-global-label-v2/initramfs.gz": "3dab9374ac2646d64c52f8c22bb46766e95afbca54c70be3c3c75261dda47bb7",
+  "/var/tmp/conglobate-global-label-v2/loader": "f78b1f3b6f36dc185ec1a510b7228275dd2c6cf0c9e6a4c24e0ededff41141e7",
+  "/var/tmp/conglobate-global-label-v2/probe": "46d0cc4e5b71de71913b573f1456eb8ccb1e134f8b5a82203b7b205791c313b3"
+}

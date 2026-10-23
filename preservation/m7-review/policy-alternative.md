@@ -73,3 +73,18 @@ including bootstrap's two writable roots. Existing scoped-policy passes do
 not establish the behavior of the global exception. Environment validation
 must occur before recipe command admission; its exact mechanism remains to be
 designed and tested, rather than trusting a pathname or configuration flag.
+
+## Initial mechanism evidence
+
+`global-label-v2` now demonstrates a map-free, environment-loaded exact-name
+exception on native amd64/KVM with SELinux disabled. Namespace root maps to
+outer UID 65536 and asserts zero effective capabilities. Foreign label
+set/read/remove succeeds; read-only mounts return EROFS; unrelated protected
+names and valid file-capability writes return EPERM. Labeling fails both before
+loading and after unlinking the pinned hook. A mode-0444 file can be labeled,
+confirming why ordinary write DAC must not be treated as the integrity boundary.
+
+This narrows the remaining work to production integration and environment
+admission validation, followed by full isolation/teardown/dual-volume regression
+coverage. It does not establish that the production binary is registration-free
+or that the production sandbox has been validated under this policy.
