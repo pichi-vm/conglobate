@@ -42,6 +42,22 @@ pub(super) enum HelperCompletion {
 #[derive(Debug)]
 pub(super) struct SandboxFailures;
 impl SandboxFailures {
+    fn assert_owned_domain(parent: &Path) -> std::io::Result<()> {
+        let mut domains = Vec::new();
+        for entry in fs::read_dir(parent)? {
+            let entry = entry?;
+            if entry.file_type()?.is_dir() {
+                domains.push(entry.path());
+            }
+        }
+        assert_eq!(domains.len(), 1);
+        assert_eq!(
+            fs::read_to_string(domains[0].join("cgroup.type"))?.trim(),
+            "domain"
+        );
+        Ok(())
+    }
+
     pub(super) fn attached_helper(
         cutoff: &std::ffi::OsStr,
         completion: HelperCompletion,
@@ -336,7 +352,8 @@ impl SandboxFailures {
                 let prepared = result.map_err(|e| e.to_string())?;
                 // Preparation has acquired the volume mount, namespace and domain.
                 assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
-                assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                Self::assert_owned_domain(paths.domains())?;
+                assert_eq!(fs::read_dir(paths.recovery())?.count(), 0);
                 if matches!(point, FailurePoint::BlockedDescendant) {
                     use crate::blocked_descendant::BlockedDescendant;
                     use std::{
@@ -427,14 +444,16 @@ impl SandboxFailures {
                     assert!(started.elapsed() >= Duration::from_secs(30));
                     assert!(started.elapsed() < Duration::from_secs(40));
                     assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
-                    assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                    Self::assert_owned_domain(paths.domains())?;
+                    assert_eq!(fs::read_dir(paths.recovery())?.count(), 0);
                     assert!(Path::new(&sysfs).exists());
                     let retry_started = Instant::now();
                     let _retained = failure.retry().unwrap_err();
                     assert!(retry_started.elapsed() < Duration::from_secs(1));
                     assert!(outcome.success());
                     assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
-                    assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                    Self::assert_owned_domain(paths.domains())?;
+                    assert_eq!(fs::read_dir(paths.recovery())?.count(), 0);
                     println!("BLOCKED_DESCENDANT_TEARDOWN_RETAINS_SUCCESS_AND_STORAGE_PASS");
                     // Retain failed owners until independent guest init disposes of the VM.
                     std::process::exit(0);
@@ -694,16 +713,15 @@ impl SandboxFailures {
                         let _retained = failure.retry().unwrap_err();
                         assert!(started.elapsed() < std::time::Duration::from_secs(1));
                         assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
-                        assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                        Self::assert_owned_domain(paths.domains())?;
+                        assert_eq!(fs::read_dir(paths.recovery())?.count(), 0);
                         println!("DELAYED_TEARDOWN_CANNOT_RENEW_OBSERVATION_CUTOFF_PASS");
                         std::process::exit(0);
                     }
                     if matches!(point, FailurePoint::CleanupTimeout) {
                         use std::time::Duration;
                         let started = Instant::now();
-                        let failure = step
-                            .execute(budget, "1s".parse()?)
-                            .unwrap_err();
+                        let failure = step.execute(budget, "1s".parse()?).unwrap_err();
                         assert!(
                             matches!(failure.outcome(), conglobate::step::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status)) if status.success())
                         );
@@ -714,7 +732,8 @@ impl SandboxFailures {
                         assert!(started.elapsed() >= Duration::from_secs(30));
                         assert!(started.elapsed() < Duration::from_secs(40));
                         assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
-                        assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                        Self::assert_owned_domain(paths.domains())?;
+                        assert_eq!(fs::read_dir(paths.recovery())?.count(), 0);
                         assert!(
                             Path::new(&format!(
                                 "/sys/dev/block/{}:{}",
@@ -733,7 +752,8 @@ impl SandboxFailures {
                         assert!(retry_started.elapsed() < Duration::from_secs(1));
                         let _retained = rejected.into_rejected_storage().unwrap_err();
                         assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
-                        assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                        Self::assert_owned_domain(paths.domains())?;
+                        assert_eq!(fs::read_dir(paths.recovery())?.count(), 0);
                         println!(
                             "CLEANUP_DEADLINE_PRESERVES_SHELL_SUCCESS_AND_RETAINS_OWNERS_PASS"
                         );
@@ -753,7 +773,8 @@ impl SandboxFailures {
                         assert!(observed.outcome().success());
                         assert!(Path::new("/work/runtime-parent/cleanup-release.sock").exists());
                         assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
-                        assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                        Self::assert_owned_domain(paths.domains())?;
+                        assert_eq!(fs::read_dir(paths.recovery())?.count(), 0);
                         // Deliberately expire the execution timer after observing
                         // status. Cleanup is held by an explicit datagram gate;
                         // this timer wait is not a readiness synchronization.
@@ -778,9 +799,7 @@ impl SandboxFailures {
                         println!("SHELL_STATUS_BEFORE_HELD_CLEANUP_PASS");
                         returned
                     } else {
-                        let failure = step
-                            .execute(budget, "5s".parse()?)
-                            .unwrap_err();
+                        let failure = step.execute(budget, "5s".parse()?).unwrap_err();
                         assert!(
                             matches!(failure.outcome(), conglobate::step::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status)) if status.success())
                         );
@@ -805,9 +824,7 @@ impl SandboxFailures {
                     let step = prepared
                         .launch(command, budget.deadline())
                         .map_err(|e| e.to_string())?;
-                    let failure = step
-                        .execute(budget, "5s".parse()?)
-                        .unwrap_err();
+                    let failure = step.execute(budget, "5s".parse()?).unwrap_err();
                     assert!(matches!(failure.outcome(),
                         conglobate::step::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status)) if status.success()));
                     assert_eq!(
@@ -832,9 +849,7 @@ impl SandboxFailures {
                     let step = prepared
                         .launch(command, budget.deadline())
                         .map_err(|e| e.to_string())?;
-                    let failure = step
-                        .execute(budget, "5s".parse()?)
-                        .unwrap_err();
+                    let failure = step.execute(budget, "5s".parse()?).unwrap_err();
                     eprintln!("attached fixture outcome: {failure}");
                     assert!(matches!(
                         failure.outcome(),
@@ -852,9 +867,7 @@ impl SandboxFailures {
                     fs::remove_file("/work/receiver-stage")?;
                     returned
                 } else {
-                    let failure = prepared
-                        .launch(command, budget.deadline())
-                        .unwrap_err();
+                    let failure = prepared.launch(command, budget.deadline()).unwrap_err();
                     let kind = failure.diagnostics().operation().kind();
                     if matches!(point, FailurePoint::Launch) {
                         assert_eq!(kind, std::io::ErrorKind::NotFound);

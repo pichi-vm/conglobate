@@ -1,8 +1,17 @@
 # Current M4 gate work queue
 
-At 0345372 plus current two-root validation. M4 remains 0/3. This replaces the
-execution queue of m4-adherence-168b2a2/REVIEW.md, not its historical observations.
-No full new adherence pass has been awarded.
+Current simplification batch: 21d8533 removed persisted cgroup records;
+e093ee2 removed the unused filesystem checkout; 1523bc1 and 5204d7d removed
+record-path plumbing from teardown/setup. M2/M3 are reopened and M4–M6 remain
+0/3. No full new adherence pass has been awarded. BUILD-FLOW.sh is the intended
+linear outline. Environment-owned tmpfs workspace is a pending user question,
+not an implemented contract. UID/GID range remains a separate unanswered item.
+
+Hosted lifecycle run 40041269726 passes at 1523bc1 (cache-storage, contained,
+runtime-scope, clone-filter) on HWE. That does not qualify the later setup-path
+change or replace complete sandbox/distro/platform validation. Current local
+setup-failure reruns and the obsolete record-count assertion fix are tracked in
+simplified-setup-current/. Earlier evidence below remains revision-specific.
 
 1. **UID/GID contract:** current ImageOwnership validates all inherited inode and
    access/default ACL IDs before receiver admission; maintained unmapped-owner,

@@ -1,0 +1,74 @@
+[
+  {
+    "path": "/storage/conglobate-validation/simplified-setup-5204d7d/sandbox-namespace-failure/initramfs.gz",
+    "sha256": "f66542a282d5b460c35e4018036ed03508aafdf15229c134f935b18373afe281",
+    "size": 83964614,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-setup-5204d7d/sandbox-namespace-failure/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-setup-5204d7d/sandbox-mount-failure/initramfs.gz",
+    "sha256": "324dff175358f00861f75414fa87ff80f4d1269b56b3ac27ea51afe6d4ee0d73",
+    "size": 83964536,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-setup-5204d7d/sandbox-mount-failure/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-setup-5204d7d/sandbox-launch-failure/initramfs.gz",
+    "sha256": "d969fef92fe814b72aab69477f78c9aad2b1e44b5c2d35a7071c252a5e4d91ef",
+    "size": 83964603,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-setup-5204d7d/sandbox-launch-failure/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-setup-current-v2/sandbox-launch-failure/initramfs.gz",
+    "sha256": "e281b458d52ada810fb4d5b001ec58ff23b96089672418f2e3fd98b87e4f0625",
+    "size": 83978989,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-setup-current-v2/sandbox-launch-failure/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-setup-current-v2/sandbox-join-failure/initramfs.gz",
+    "sha256": "9fe9398bedf80e8fea31c82d2fad15eb2b570551e1d3c7c60984ee93aed45df7",
+    "size": 83978955,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-setup-current-v2/sandbox-join-failure/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-setup-current-v2/sandbox-attached-exit/initramfs.gz",
+    "sha256": "eded4a636749ef711393f6fefb52e62eef981f14d66b15f3b4a0c394f453464f",
+    "size": 83978996,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/simplified-setup-current-v2/sandbox-attached-exit/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  }
+]
