@@ -61,7 +61,28 @@ impl SealProbe {
         assert_eq!(fs::read(directory.join("state"))?, b"output\nsecond\n");
         let metadata = fs::metadata(directory.join("state"))?;
         assert_eq!((metadata.uid(), metadata.gid()), (123, 456));
+        assert_eq!(metadata.mode() & 0o7777, 0o640);
         assert!(!directory.join("tool-state").exists());
+        let acl = Command::new("getfacl")
+            .args(["-cpn"])
+            .arg(directory.join("state"))
+            .output()?;
+        assert!(acl.status.success());
+        assert_eq!(
+            acl.stdout,
+            b"user::rw-\nuser:789:r--\ngroup::r--\nmask::r--\nother::---\n\n"
+        );
+        let executable = directory.join("capability-test");
+        assert_eq!(fs::metadata(&executable)?.mode() & 0o7777, 0o755);
+        let capabilities = Command::new("getcap").arg("-n").arg(&executable).output()?;
+        assert!(capabilities.status.success());
+        // A nonzero v3 rootid would bind the capability to the build namespace
+        // instead of root in the eventual booted image, and must fail this check.
+        assert_eq!(
+            capabilities.stdout,
+            format!("{} cap_net_bind_service=ep\n", executable.display()).as_bytes()
+        );
+        println!("BOOTSTRAP_SEALED_METADATA_PASS");
         let label = Command::new("getfattr")
             .args(["--only-values", "-n", "security.selinux"])
             .arg(directory.join("state"))

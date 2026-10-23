@@ -13,6 +13,7 @@ from cache_fixture import CacheFixture
 
 here = pathlib.Path(__file__).resolve().parent
 seed = pathlib.Path('/var/tmp/conglobate-cap-review-fix-normal-v1')
+formatter_failures = len(sys.argv) == 3 and sys.argv[2] == '--formatter-failures'
 supervisor_death = len(sys.argv) == 3 and sys.argv[2] == '--supervisor-death'
 out = pathlib.Path(sys.argv[1]).resolve()
 out.mkdir()
@@ -35,8 +36,9 @@ for module in ['ext4', 'dm-zero', 'dm-snapshot', 'dm-verity']:
 subprocess.run(['depmod', '-b', str(root), '7.2.10-200.fc44.x86_64'], check=True)
 binary = here / 'target/debug/conglobate-command-integration'
 shutil.copy2(binary, root / 'idmap-probe')
+shutil.copy2(binary, root / 'usr/bin/formatter-stall')
 executables = [binary]
-for name in ['mke2fs', 'unshare', 'newuidmap', 'newgidmap', 'stat', 'e2fsck', 'rmdir', 'setpriv', 'getfattr']:
+for name in ['mke2fs', 'unshare', 'newuidmap', 'newgidmap', 'stat', 'e2fsck', 'rmdir', 'setpriv', 'getfattr', 'getfacl', 'getcap']:
     source = pathlib.Path(shutil.which(name))
     target = root / 'usr/bin' / name
     target.unlink(missing_ok=True)
@@ -56,6 +58,13 @@ for line in subprocess.check_output(['ldd', shutil.which('mke2fs')], text=True).
     if match:
         formatter_files.add(match.group(1).lstrip('/'))
 (root / 'formatter-runtime-files').write_text('\n'.join(sorted(formatter_files)) + '\n')
+stall_files = {'usr/bin/formatter-stall', 'conglobate-disposable-validation-vm'}
+for line in subprocess.check_output(['ldd', str(binary)], text=True).splitlines():
+    match = re.search(r'(/\S+)', line)
+    if match:
+        stall_files.add(match.group(1).lstrip('/'))
+(root / 'formatter-stall-files').write_text('\n'.join(sorted(stall_files)) + '\n')
+
 for name in ['nsenter', 'bwrap']:
     (root / 'usr/bin' / name).unlink(missing_ok=True)
 # A committed, local input repository for production context materialization.
@@ -73,7 +82,7 @@ subprocess.run(['git', '-C', str(context_fixture), '-c', 'user.name=Fixture',
 CacheFixture(root / 'cache-fixture').create()
 image_root = root / 'image-root'
 (image_root / 'bin').mkdir(parents=True)
-for source, name in [('/usr/bin/bash', 'sh'), ('/usr/bin/setfattr', 'setfattr'), ('/usr/bin/getfattr', 'getfattr'), ('/usr/bin/mv', 'mv'), ('/usr/bin/chown', 'chown'), ('/usr/bin/cat', 'cat'), ('/usr/bin/touch', 'touch')]:
+for source, name in [('/usr/bin/bash', 'sh'), ('/usr/bin/setfattr', 'setfattr'), ('/usr/bin/getfattr', 'getfattr'), ('/usr/bin/mv', 'mv'), ('/usr/bin/chown', 'chown'), ('/usr/bin/cat', 'cat'), ('/usr/bin/touch', 'touch'), ('/usr/bin/chmod', 'chmod'), ('/usr/bin/setfacl', 'setfacl'), ('/usr/bin/getfacl', 'getfacl'), ('/usr/bin/setcap', 'setcap'), ('/usr/bin/getcap', 'getcap')]:
     shutil.copy2(source, image_root / 'bin' / name)
     for line in subprocess.check_output(['ldd', source], text=True).splitlines():
         match = re.search(r'(/\S+)', line)
@@ -263,6 +272,15 @@ echo SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN
     init = root / 'init'
     init.write_text(init.read_text().replace('sleep 1\necho b >',
         'echo VM_CONTROLLER_POWER_OFF\necho o >'))
+if formatter_failures:
+    (root / 'fixture.sh').write_text("""#!/bin/bash
+set -eux
+export PATH=/usr/bin:/usr/sbin
+modprobe loop
+modprobe dm-zero
+modprobe dm-snapshot
+/idmap-probe formatter-failures
+""")
 paths = sorted(root.rglob('*'))
 (out / 'inputs.json').write_text(json.dumps({str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths if p.is_file() and not p.is_symlink()}, indent=2))
 archive = subprocess.run(['cpio', '--null', '-o', '--format=newc', '--owner=0:0'], input=b'\0'.join(str(p.relative_to(root)).encode() for p in paths) + b'\0', cwd=root, capture_output=True, check=True).stdout
@@ -273,7 +291,11 @@ command = [v.replace(str(seed), str(out)) for v in json.loads((seed / 'command.j
 with (out / 'serial.txt').open('wb') as log:
     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
 serial = (out / 'serial.txt').read_text()
-if supervisor_death:
+if formatter_failures:
+    passed = all(marker in serial for marker in ['FORMATTER_STALL_ENTERED',
+        'FORMATTER_DEADLINE_CANCEL_REAP_PASS', 'FORMATTER_EXHAUSTED_SNAPSHOT_REJECTED_PASS',
+        'FORMATTER_FAILURE_RESOURCES_RELEASED_PASS', 'IDMAP_PROBE_EXIT 0'])
+elif supervisor_death:
     # Kernel console output can interrupt a userspace status line during power
     # off. Remove complete timestamped kernel messages only for status parsing;
     # still require the actual kernel shutdown message in the untouched log.
@@ -284,7 +306,7 @@ if supervisor_death:
         'FILESYSTEM_PIN_AFTER_SUPERVISOR_DEATH_PASS', 'OWNED_VOLUME_AFTER_SUPERVISOR_DEATH_PASS',
     ]) and 'Power down' in serial and 'INTEGRATED_COMMAND_' not in serial
 else:
-    passed = all(marker in serial for marker in ['BOOTSTRAP_EXECUTION_NONZERO_PASS', 'BOOTSTRAP_EXECUTION_TIMEOUT_PASS', 'BOOTSTRAP_EXECUTION_NONZERO-BUSY_PASS', 'BOOTSTRAP_EXECUTION_SUCCESS-BUSY_PASS', 'BOOTSTRAP_PREPARATION_DOMAIN_ROLLBACK_PASS', 'BOOTSTRAP_PREPARATION_POLICY_ROLLBACK_PASS', 'BOOTSTRAP_PREPARATION_LAUNCH_ROLLBACK_PASS', 'BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS', 'BOOTSTRAP_VERIFIED_TOOL_CHAIN_PASS', 'BOOTSTRAP_SEALED_CHAIN_REOPEN_PASS', 'BOOTSTRAP_DUAL_COMMAND_REMOUNT_PASS', 'BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS', 'CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS', 'CAPTURED_FORMATTER_EXECUTION_PASS', 'EXT4_TYPED_PROFILE_FORMAT_PASS', 'FORMATTER_CAPTURED_READONLY_RUNTIME_PASS', 'INTEGRATED_EXECUTION_EXECUTE-OUTPUT-TIMEOUT_PASS', 'INTEGRATED_EXECUTION_SNAPSHOT_EXHAUSTION_REJECTED_PASS', 'INTEGRATED_EXECUTION_EXECUTE-FINISH_PASS', 'SANDBOX_NAMESPACE_FAILURE_ROLLBACK_PASS', 'SANDBOX_TWO_STEP_PIPELINE_PASS', 'SANDBOX_MOUNT_FAILURE_ROLLBACK_PASS', 'DOMAIN_PUBLICATION_MISMATCH_ROLLBACK_PASS', 'DOMAIN_PUBLICATION_ABSENT_ROLLBACK_PASS', 'DOMAIN_PUBLICATION_PRESENT_ROLLBACK_PASS', 'DOMAIN_PUBLICATION_MALFORMED_ROLLBACK_PASS', 'DOMAIN_CREATION_FAILURE_ROLLBACK_PASS', 'POLICY_INSTALLATION_FAILURE_ROLLBACK_PASS', 'INTEGRATED_EXECUTION_EXECUTE-SUCCESS_PASS', 'INTEGRATED_EXECUTION_EXECUTE-SHELL-FAILURE_PASS', 'INTEGRATED_EXECUTION_EXECUTE-TIMEOUT_PASS', 'INTEGRATED_EXECUTION_EXECUTE-SETUP_PASS', 'PREPARATION_REGISTRATION-FAILURE_ROLLBACK_PASS', 'PREPARATION_LAUNCH-FAILURE_ROLLBACK_PASS', 'PREPARATION_EXCHANGE-FAILURE_ROLLBACK_PASS', 'BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS', 'COMMAND_EXCEEDS_OLD_HELPER_LIMIT_PASS', 'PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS', 'PRIMARY_OUTCOME_AFTER_CLEANUP_PASS', 'NONZERO_OUTCOME_THROUGH_CLEANUP_RETRY_PASS', 'FOREIGN_CONTROL_MOUNT_DESCRIPTORS_REJECTED_PASS', 'PRODUCTION_STEP_CANCEL_BEFORE_ADMISSION_PASS', 'PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS', 'POLICY_PRIVATE_NAMESPACE_REJECTED_PASS', 'ADMISSION_TIMEOUT_CANCELS_WITHOUT_COMMAND_PASS', 'BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS', 'BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS', 'NATIVE_FILESYSTEM_PIN_RETAINS_UNMOUNTED_SOURCE_PASS', 'NATIVE_REAPER_TIMEOUT_AND_RELEASE_PASS', 'SCOPED_ROOT_TERMINATION_PASS', 'SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS', 'NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS', 'NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS', 'NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS', 'INTEGRATED_COMMAND_SHELL-FAILURE_PASS', 'NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS', 'NATIVE_NAMESPACE_INIT_ADOPTION_PASS', 'INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS', 'INTEGRATED_COMMAND_POLICY-OFF_PASS', 'NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
+    passed = all(marker in serial for marker in ['BOOTSTRAP_SEALED_METADATA_PASS', 'BOOTSTRAP_EXECUTION_NONZERO_PASS', 'BOOTSTRAP_EXECUTION_TIMEOUT_PASS', 'BOOTSTRAP_EXECUTION_NONZERO-BUSY_PASS', 'BOOTSTRAP_EXECUTION_SUCCESS-BUSY_PASS', 'BOOTSTRAP_PREPARATION_DOMAIN_ROLLBACK_PASS', 'BOOTSTRAP_PREPARATION_POLICY_ROLLBACK_PASS', 'BOOTSTRAP_PREPARATION_LAUNCH_ROLLBACK_PASS', 'BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS', 'BOOTSTRAP_VERIFIED_TOOL_CHAIN_PASS', 'BOOTSTRAP_SEALED_CHAIN_REOPEN_PASS', 'BOOTSTRAP_DUAL_COMMAND_REMOUNT_PASS', 'BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS', 'CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS', 'CAPTURED_FORMATTER_EXECUTION_PASS', 'EXT4_TYPED_PROFILE_FORMAT_PASS', 'FORMATTER_CAPTURED_READONLY_RUNTIME_PASS', 'INTEGRATED_EXECUTION_EXECUTE-OUTPUT-TIMEOUT_PASS', 'INTEGRATED_EXECUTION_SNAPSHOT_EXHAUSTION_REJECTED_PASS', 'INTEGRATED_EXECUTION_EXECUTE-FINISH_PASS', 'SANDBOX_NAMESPACE_FAILURE_ROLLBACK_PASS', 'SANDBOX_TWO_STEP_PIPELINE_PASS', 'SANDBOX_MOUNT_FAILURE_ROLLBACK_PASS', 'DOMAIN_PUBLICATION_MISMATCH_ROLLBACK_PASS', 'DOMAIN_PUBLICATION_ABSENT_ROLLBACK_PASS', 'DOMAIN_PUBLICATION_PRESENT_ROLLBACK_PASS', 'DOMAIN_PUBLICATION_MALFORMED_ROLLBACK_PASS', 'DOMAIN_CREATION_FAILURE_ROLLBACK_PASS', 'POLICY_INSTALLATION_FAILURE_ROLLBACK_PASS', 'INTEGRATED_EXECUTION_EXECUTE-SUCCESS_PASS', 'INTEGRATED_EXECUTION_EXECUTE-SHELL-FAILURE_PASS', 'INTEGRATED_EXECUTION_EXECUTE-TIMEOUT_PASS', 'INTEGRATED_EXECUTION_EXECUTE-SETUP_PASS', 'PREPARATION_REGISTRATION-FAILURE_ROLLBACK_PASS', 'PREPARATION_LAUNCH-FAILURE_ROLLBACK_PASS', 'PREPARATION_EXCHANGE-FAILURE_ROLLBACK_PASS', 'BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS', 'COMMAND_EXCEEDS_OLD_HELPER_LIMIT_PASS', 'PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS', 'PRIMARY_OUTCOME_AFTER_CLEANUP_PASS', 'NONZERO_OUTCOME_THROUGH_CLEANUP_RETRY_PASS', 'FOREIGN_CONTROL_MOUNT_DESCRIPTORS_REJECTED_PASS', 'PRODUCTION_STEP_CANCEL_BEFORE_ADMISSION_PASS', 'PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS', 'POLICY_PRIVATE_NAMESPACE_REJECTED_PASS', 'ADMISSION_TIMEOUT_CANCELS_WITHOUT_COMMAND_PASS', 'BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS', 'BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS', 'NATIVE_FILESYSTEM_PIN_RETAINS_UNMOUNTED_SOURCE_PASS', 'NATIVE_REAPER_TIMEOUT_AND_RELEASE_PASS', 'SCOPED_ROOT_TERMINATION_PASS', 'SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS', 'NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS', 'NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS', 'NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS', 'INTEGRATED_COMMAND_SHELL-FAILURE_PASS', 'NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS', 'NATIVE_NAMESPACE_INIT_ADOPTION_PASS', 'INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS', 'INTEGRATED_COMMAND_POLICY-OFF_PASS', 'NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])
 (out / 'verdict.json').write_text(json.dumps({'passed': passed, 'full_sandbox_qualified': False}, indent=2))
 assert passed, serial[-5000:]
 print('PASS', out)

@@ -2828,3 +2828,16 @@ rules rather than silently shrinking acceptance criteria.
 - 56 library tests, 49 doctests and strict Clippy pass. Exact failed/successful
   evidence and post-run strengthened doctest source preserved. Remaining M5
   failure/metadata qualification and all three adherence passes stay outstanding.
+
+
+### M5 metadata and formatter failure qualification (v181–v182)
+
+- v181 full normal VM suite verifies ACL UID789, image owner123:456, modes0640/
+  0755, file capabilities without a build-root identity, and foreign SELinux
+  labels after command remount and sealed-chain reopening.
+- v182 targeted VM verifies the fixed 30-second formatter timeout, explicit
+  cancellation/reaping and resource recovery; real mke2fs on undersized COW
+  storage is rejected with invalid snapshot status and releases all backing.
+- Strict fixture Clippy passes; exact evidence retained. No production source
+  changes. Initial listed formatter/metadata checks are now covered; full M5
+  adherence reviews and any resulting fixes remain. Clean streak stays zero.

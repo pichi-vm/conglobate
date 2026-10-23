@@ -286,9 +286,26 @@ impl BootstrapProbe {
         for index in 0..2 {
             let budget = SetupBudget::begin();
             let script = if index == 0 {
-                "echo tool > /tool-state; echo output > /mnt/state; chown 123:456 /mnt/state; setfattr -n security.selinux -v foreign_u:object_r:foreign_t:s0 /tool-state; setfattr -n security.selinux -v foreign_u:object_r:foreign_t:s0 /mnt/state; touch /dev/shm/outside; if setfattr -n security.selinux -v foreign_u:object_r:foreign_t:s0 /dev/shm/outside; then exit 41; fi"
+                r#"echo tool > /tool-state
+                    echo output > /mnt/state
+                    chown 123:456 /mnt/state
+                    chmod 640 /mnt/state
+                    setfacl -m u:789:r-- /mnt/state
+                    cat /bin/cat > /mnt/capability-test
+                    chmod 755 /mnt/capability-test
+                    setcap cap_net_bind_service=ep /mnt/capability-test
+                    setfattr -n security.selinux -v foreign_u:object_r:foreign_t:s0 /tool-state
+                    setfattr -n security.selinux -v foreign_u:object_r:foreign_t:s0 /mnt/state
+                    touch /dev/shm/outside
+                    if setfattr -n security.selinux -v foreign_u:object_r:foreign_t:s0 /dev/shm/outside; then exit 41; fi"#
             } else {
-                "test $(cat /tool-state) = tool; test $(cat /mnt/state) = output; getfattr -n security.selinux /tool-state; getfattr -n security.selinux /mnt/state; echo second >> /mnt/state"
+                r#"test $(cat /tool-state) = tool
+                    test $(cat /mnt/state) = output
+                    test "$(getfacl -cpn /mnt/state)" = "$(printf 'user::rw-\nuser:789:r--\ngroup::r--\nmask::r--\nother::---\n')"
+                    test "$(getcap -n /mnt/capability-test)" = '/mnt/capability-test cap_net_bind_service=ep'
+                    getfattr -n security.selinux /tool-state
+                    getfattr -n security.selinux /mnt/state
+                    echo second >> /mnt/state"#
             };
             let receiver = sandbox.receiver(script.into(), &budget)?;
             let preparation = sandbox

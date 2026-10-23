@@ -4,6 +4,7 @@
 mod bootstrap;
 mod finalization;
 mod formatter;
+mod formatter_failures;
 mod readiness;
 mod sealed;
 use conglobate::{
@@ -38,11 +39,19 @@ impl Integration {
         if !Path::new("/conglobate-disposable-validation-vm").exists() {
             return Err("disposable guest required".into());
         }
+        if std::env::args_os().next().as_deref()
+            == Some(std::ffi::OsStr::new("/usr/bin/formatter-stall"))
+        {
+            formatter_failures::FormatterFailures::stall();
+        }
         let helper_args: Vec<_> = std::env::args_os().skip(1).collect();
         if let Some(invocation) = HelperInvocation::parse(&helper_args)? {
             invocation.execute(&HelperProgram::current()?);
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|arg| arg == "formatter-failures") {
+            return formatter_failures::FormatterFailures::run();
+        }
         if args.get(1).is_some_and(|arg| arg == "formatter-probe") {
             return formatter::FormatterProbe::run();
         }

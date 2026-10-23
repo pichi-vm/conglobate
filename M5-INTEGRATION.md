@@ -4,8 +4,8 @@ M4 is accepted with three clean self-review passes. M5 is active with zero clean
 passes. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
 The integrated VM fixture now demonstrates a verified tool chain, dual-root
 commands through production aggregate preparation and execution acceptance,
-direct output sealing and verified reopening. Remaining failure/metadata
-qualification and the review gate remain.
+direct output sealing and verified reopening. Initial metadata and formatter
+failure qualification now pass; the comprehensive review gate remains.
 This file records implementation order, not a substitute design or acceptance.
 
 The end-to-end acceptance case is an actual verified tool carapace plus a fresh
@@ -305,3 +305,31 @@ all fields, ensuring privacy is the reason compilation fails. Exact booted
 source and the post-run doctest source are separately preserved. Remaining
 formatter cancellation/exhaustion and metadata qualification and three full
 adherence passes remain; M5 is not accepted.
+
+
+## Metadata fidelity and formatter failures (v181–v182)
+
+v181 expands the two-command bootstrap to write an ACL with numeric UID789,
+mode0640 and owner123:456, plus a mode0755 executable with
+cap_net_bind_service=ep. The second command checks ACL/capability persistence
+after remount. Reopening the sealed verified chain outside the command namespace
+checks exact numeric ACL entries, modes/ownership, the capability without a
+nonzero build-root identity, and the foreign SELinux label. Full normal VM suite
+passes. This proves metadata fidelity for these values, not boot-time capability
+execution or distro qualification.
+
+v182 is a separate targeted VM run so it can exercise the real fixed 30-second
+formatter setup cutoff without extending the normal suite's observation timeout.
+A captured trusted fixture executable parks without writing. WaitError::Deadline
+is preserved; explicit cancellation reaps it, the child list is empty, and the
+runtime/snapshot return for cleanup. A real captured mke2fs run on 64KiB COW
+backing exhausts the snapshot and cannot yield FormattedSnapshot; usage reports
+InvalidData. Runtime, snapshot mapping, loop and origin cleanup all succeed.
+The fixture stall uses no synchronization sleep and is guarded by the disposable
+VM marker, also included in its captured runtime. Strict fixture Clippy passes.
+
+Only validation code changed. v181/v182 retain exact sources, logs and artifact
+hashes; v182 is not represented as a full normal suite run. These results close
+the listed initial metadata and formatter cancellation/exhaustion checks. Full
+M5 design/style/ownership/evidence review, findings resolution and three clean
+passes remain before acceptance; milestone clean streak remains zero.
