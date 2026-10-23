@@ -47,15 +47,11 @@ because this subset compiles. Networking tests must use retained namespace
 ownership without recreating policy-specific pins. Future tests must preserve
 actual production ownership boundaries, not widen descriptor APIs for convenience.
 
-`--case domain-publication` migrates the original domain-record rollback probe:
-absent, published, malformed and identity-mismatched records. It uses real empty
-cgroup-v2 domains and injects a publication error through the public failure
-owner. Malformed/mismatched cases must reject cleanup while retaining domain and
-record; restoring the fixture's own correct record then permits rollback. Every
-case also checks no child cgroup remains. No command runs and no LSM registration
-is involved. These are in-process partial-setup tests, not recovery across builds.
+The retired domain-record publication probe and parser tests are preserved under
+`preservation/pre-domain-record-removal/`. The current implementation uses owned
+cgroup descriptors without serialized recovery records.
 
-`--case contained` exercises production `RecordedDomain::launch` and contained
+`--case contained` exercises production `CommandDomain::launch` and contained
 helper cleanup with trusted fixture processes: missing executable, peer exit
 after identity exchange but before cgroup joining, and cancellation before
 command admission with a live descendant. The child acknowledges readiness over

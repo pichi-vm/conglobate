@@ -82,7 +82,7 @@ impl<'l> CommandSandbox<'l> {
         volume: Volume<'n, 'o, 'w, Unmounted>,
         reaper: ChildReaper,
         budget: &SetupBudget,
-    ) -> Result<CommandPreparation<'l, 'n, 'o, 'w>, Box<PreparationFailure<'l, 'n, 'o, 'w>>> {
+    ) -> Result<CommandPreparation<'n, 'o, 'w>, Box<PreparationFailure<'l, 'n, 'o, 'w>>> {
         self.prepare_storage::<Volume<'n, 'o, 'w, Mounted>>(volume, reaper, budget)
     }
     pub fn prepare_bootstrap<'n, 'o, 'w>(
@@ -90,10 +90,8 @@ impl<'l> CommandSandbox<'l> {
         volumes: BootstrapVolumes<'n, 'o, 'w, Unmounted>,
         reaper: ChildReaper,
         budget: &SetupBudget,
-    ) -> Result<
-        BootstrapPreparation<'l, 'n, 'o, 'w>,
-        Box<BootstrapPreparationFailure<'l, 'n, 'o, 'w>>,
-    > {
+    ) -> Result<BootstrapPreparation<'n, 'o, 'w>, Box<BootstrapPreparationFailure<'l, 'n, 'o, 'w>>>
+    {
         self.prepare_storage::<BootstrapVolumes<'n, 'o, 'w, Mounted>>(volumes, reaper, budget)
     }
     pub(crate) fn prepare_storage<R: PreparationStorage>(
@@ -101,7 +99,7 @@ impl<'l> CommandSandbox<'l> {
         volume: R::Unmounted,
         reaper: ChildReaper,
         budget: &SetupBudget,
-    ) -> Result<StoragePreparation<'l, R>, Box<StoragePreparationFailure<'l, R>>> {
+    ) -> Result<StoragePreparation<R>, Box<StoragePreparationFailure<'l, R>>> {
         let directories = &self.directories;
         let creator = match budget
             .cutoff()

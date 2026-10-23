@@ -6,8 +6,8 @@ mod storage;
 use super::{Ready, Retained, Step, teardown::Deadline};
 use crate::{
     domain::{
-        DomainCancellation, DomainCreateFailure, DomainCreationRollback, DomainRecordCleanup,
-        HelperLaunchFailure, RecordDomainFailure, RecordedDomain,
+        CommandDomain, DomainCancellation, DomainCreateFailure, DomainCreationRollback,
+        HelperLaunchFailure,
     },
     isolation::{Mapped, UserNamespace},
     process::{ChildReaper, Identified, LaunchFailure, Process, Running},
@@ -31,16 +31,16 @@ struct Assigned<R: PreparationStorage> {
 /// Namespace ownership and mounted storage stay together even if
 /// helper startup fails before cgroup joining. The reaper must already be installed.
 #[derive(Debug)]
-pub struct StoragePreparation<'l, R: PreparationStorage> {
+pub struct StoragePreparation<R: PreparationStorage> {
     namespace: ManuallyDrop<UserNamespace<Mapped>>,
     volume: Retained<R>,
-    domain: RecordedDomain<'l>,
+    domain: CommandDomain,
     reaper: ChildReaper,
 }
-impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
+impl<R: PreparationStorage> StoragePreparation<R> {
     /// Acquire and publish containment before launching a helper. Every failure
     /// retains the supplied namespace, mounted storage and child reaper.
-    pub fn create(
+    pub fn create<'l>(
         namespace: UserNamespace<Mapped>,
         volume: R,
         reaper: ChildReaper,
@@ -50,12 +50,12 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
     ) -> Result<Self, Box<StoragePreparationFailure<'l, R>>> {
         let domain = budget
             .check()
-            .map_err(|error| RecordDomainFailure::Create(DomainCreateFailure::Before(error)))
-            .and_then(|()| RecordedDomain::create(recovery, domain_parent));
+            .map_err(DomainCreateFailure::Before)
+            .and_then(|()| CommandDomain::create(recovery, domain_parent));
         match domain {
             Ok(domain) => Ok(Self::new(namespace, volume, domain, reaper)),
             Err(failure) => {
-                let (source, rollback) = failure.into_rollback(recovery);
+                let (source, rollback) = failure.into_rollback();
                 Err(Box::new(StoragePreparationFailure {
                     diagnostics: source.into(),
                     phase: Phase::DomainSetup(
@@ -76,7 +76,7 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
     pub fn new(
         namespace: UserNamespace<Mapped>,
         volume: R,
-        domain: RecordedDomain<'l>,
+        domain: CommandDomain,
         reaper: ChildReaper,
     ) -> Self {
         Self {
@@ -86,7 +86,7 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
             reaper,
         }
     }
-    pub fn launch(
+    pub fn launch<'l>(
         self,
         command: Command,
         setup_deadline: Instant,
@@ -131,30 +131,28 @@ impl<'l, R: PreparationStorage> StoragePreparation<'l, R> {
     }
 }
 #[derive(Debug)]
-enum Phase<'l, R: PreparationStorage> {
+enum Phase<R: PreparationStorage> {
     MountDrain(ChildReaper, R::MountFailure),
     MountRollback(R::MountFailure),
     EarlyRunning(Process<Running>, ChildReaper, R::Unmounted),
     EarlyIdentified(Process<Identified>, ChildReaper, R::Unmounted),
     EarlyDrain(ChildReaper, R::Unmounted),
 
-    DomainSetup(DomainCreationRollback<'l>, ChildReaper, Assigned<R>),
+    DomainSetup(DomainCreationRollback, ChildReaper, Assigned<R>),
     EmptyDrain(ChildReaper, Assigned<R>),
     Running(
         Process<Running>,
-        DomainCancellation<'l>,
+        DomainCancellation,
         ChildReaper,
         Assigned<R>,
     ),
     Identified(
         Process<Identified>,
-        DomainCancellation<'l>,
+        DomainCancellation,
         ChildReaper,
         Assigned<R>,
     ),
-    Domain(DomainCancellation<'l>, ChildReaper, Assigned<R>),
-    Drain(DomainRecordCleanup<'l>, ChildReaper, Assigned<R>),
-    Record(DomainRecordCleanup<'l>, Assigned<R>),
+    Domain(DomainCancellation, ChildReaper, Assigned<R>),
     Unmount(Retained<R>),
     UnmountRetry(R::UnmountFailure),
     Complete(R::Unmounted),
@@ -177,7 +175,7 @@ enum Phase<'l, R: PreparationStorage> {
 /// ```compile_fail
 /// use conglobate::step::{PreparationStorage, StoragePreparation, StoragePreparationFailure};
 /// fn cannot_return_with_local_parent<'a, R: PreparationStorage>(
-///     prepared: StoragePreparation<'a, R>,
+///     prepared: StoragePreparation<R>,
 /// ) -> Box<StoragePreparationFailure<'a, R>> {
 ///     let parent = std::path::PathBuf::from("/temporary-domain-parent");
 ///     prepared.launch(std::process::Command::new("/trusted-helper"),
@@ -188,7 +186,7 @@ enum Phase<'l, R: PreparationStorage> {
 #[error("command preparation: {diagnostics}")]
 pub struct StoragePreparationFailure<'l, R: PreparationStorage> {
     diagnostics: FailureDiagnostics,
-    phase: Phase<'l, R>,
+    phase: Phase<R>,
     parent: &'l Path,
     deadline: Instant,
 }
@@ -206,7 +204,7 @@ impl<R: PreparationStorage> StorageRollback<R> {
 impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
     fn early(
         source: impl Into<FailureDiagnostics>,
-        phase: Phase<'l, R>,
+        phase: Phase<R>,
         parent: &'l Path,
     ) -> Box<Self> {
         Box::new(Self {
@@ -233,7 +231,7 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
             parent,
             deadline,
         } = self;
-        let next: Result<Phase<'l, R>, (FailureDiagnostics, Phase<'l, R>)> = match phase {
+        let next: Result<Phase<R>, (FailureDiagnostics, Phase<R>)> = match phase {
             Phase::MountDrain(reaper, failure) => match reaper.drain_until(deadline) {
                 Ok(_) => Ok(Phase::MountRollback(failure)),
                 Err(error) => {
@@ -280,7 +278,7 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
                 }
             },
             Phase::DomainSetup(rollback, reaper, assigned) => {
-                match rollback.retry_until(parent, deadline) {
+                match rollback.retry_until(deadline) {
                     Ok(()) => Ok(Phase::EmptyDrain(reaper, assigned)),
                     Err(failure) => {
                         let (error, rollback) = failure.into_parts();
@@ -323,27 +321,10 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
                 }
             }
             Phase::Domain(domain, reaper, assigned) => match domain.retry_until(deadline) {
-                Ok(record) => Ok(Phase::Drain(record, reaper, assigned)),
+                Ok(()) => Ok(Phase::EmptyDrain(reaper, assigned)),
                 Err(failure) => {
                     let (error, domain) = failure.into_parts();
                     Err((error.into(), Phase::Domain(domain, reaper, assigned)))
-                }
-            },
-            Phase::Drain(record, reaper, assigned) => match reaper.drain_until(deadline) {
-                Ok(_) => Ok(Phase::Record(record, assigned)),
-                Err(failure) => {
-                    let (error, reaper) = failure.into_parts();
-                    Err((error.into(), Phase::Drain(record, reaper, assigned)))
-                }
-            },
-            Phase::Record(record, assigned) => match record.finish(parent) {
-                Ok(()) => {
-                    drop(ManuallyDrop::into_inner(assigned.namespace));
-                    Ok(Phase::Unmount(assigned.volume))
-                }
-                Err(failure) => {
-                    let (error, record) = failure.into_parts();
-                    Err((error.into(), Phase::Record(record, assigned)))
                 }
             },
             Phase::Unmount(volume) => match volume.release().unmount_until(deadline) {
@@ -386,11 +367,11 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
 }
 
 /// Single-volume preparation uses the shared storage lifecycle.
-pub type CommandPreparation<'l, 'n, 'o, 'w> = StoragePreparation<'l, Volume<'n, 'o, 'w, Mounted>>;
+pub type CommandPreparation<'n, 'o, 'w> = StoragePreparation<Volume<'n, 'o, 'w, Mounted>>;
 pub type PreparationFailure<'l, 'n, 'o, 'w> =
     StoragePreparationFailure<'l, Volume<'n, 'o, 'w, Mounted>>;
 /// Bootstrap preparation retains both roots through the same namespace/process rollback.
-pub type BootstrapPreparation<'l, 'n, 'o, 'w> =
-    StoragePreparation<'l, BootstrapVolumes<'n, 'o, 'w, Mounted>>;
+pub type BootstrapPreparation<'n, 'o, 'w> =
+    StoragePreparation<BootstrapVolumes<'n, 'o, 'w, Mounted>>;
 pub type BootstrapPreparationFailure<'l, 'n, 'o, 'w> =
     StoragePreparationFailure<'l, BootstrapVolumes<'n, 'o, 'w, Mounted>>;

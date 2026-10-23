@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use conglobate::{
     anchor::RecoveryDirectory,
-    domain::{HelperLaunchFailure, RecordedDomain},
+    domain::{HelperLaunchFailure, CommandDomain},
     process::{ChildReaper, LaunchFailure, Supervision},
 };
 use std::{
@@ -84,7 +84,7 @@ impl Contained {
         let lease = RecoveryDirectory::open(directory)?;
         let mut reaper = ChildReaper::install()?;
         for reject_join in [false, true] {
-            let domain = RecordedDomain::create(&lease, parent)?;
+            let domain = CommandDomain::create(&lease, parent)?;
             let command = if reject_join {
                 Self::command("contained-reject")?
             } else {
@@ -119,13 +119,12 @@ impl Contained {
                 }
                 (failure, _) => return Err(format!("unexpected launch failure: {failure}").into()),
             };
-            let cleanup = cancellation
+            cancellation
                 .retry_until(Self::deadline())
                 .map_err(|e| e.to_string())?;
             let drained = reaper
                 .drain_until(Self::deadline())
                 .map_err(|e| e.to_string())?;
-            cleanup.finish(parent).map_err(|e| e.to_string())?;
             reaper = drained.into_reaper();
             Self::clean(directory, parent)?;
             println!(
@@ -136,8 +135,8 @@ impl Contained {
         let ready = UnixDatagram::bind("/work/contained-ready.sock")?;
         ready.set_read_timeout(Some(Duration::from_secs(5)))?;
         for abrupt in [false, true] {
-            let domain = RecordedDomain::create(&lease, parent)?;
-            let domain_path = parent.join(domain.record().name());
+            let domain = CommandDomain::create(&lease, parent)?;
+            let domain_path = parent.join(domain.name());
             let helper = domain
                 .launch(
                     Self::command(if abrupt {
@@ -160,7 +159,7 @@ impl Contained {
                         .lines()
                         .any(|line| line == "populated 1")
                 );
-                assert_eq!(fs::read_dir(directory)?.count(), 1);
+                assert_eq!(fs::read_dir(directory)?.count(), 0);
             }
             let (status, children) = helper
                 .cancel_until(Self::deadline())
@@ -170,8 +169,7 @@ impl Contained {
                 .with_reaper(reaper)
                 .drain_until(Self::deadline())
                 .map_err(|e| e.to_string())?
-                .finish(parent)
-                .map_err(|e| e.to_string())?;
+                .finish();
             if abrupt {
                 assert_eq!(status.signal(), Some(6));
             }

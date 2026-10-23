@@ -1,11 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Protected control records in the deployment init's mount namespace.
+//! Protected runtime directory lease in the deployment init's mount namespace.
 use std::{fs::File, io, os::unix::fs::MetadataExt, path::Path, sync::Arc};
 
-mod control_record;
-mod domain;
 mod namespace;
 pub(crate) use namespace::InitMountNamespace;
 
@@ -21,15 +19,6 @@ pub struct RecoveryDirectory {
 #[derive(Debug, Clone)]
 pub(crate) struct RecoveryLease(Arc<DirectoryLease>);
 impl RecoveryLease {
-    pub(crate) fn directory(&self) -> RecoveryDirectory {
-        RecoveryDirectory {
-            lease: Arc::clone(&self.0),
-        }
-    }
-
-    pub(crate) fn belongs_to(&self, directory: &RecoveryDirectory) -> bool {
-        Arc::ptr_eq(&self.0, &directory.lease)
-    }
     pub(crate) fn verify_current(&self) -> io::Result<()> {
         self.0.namespace.verify_current()
     }
@@ -50,7 +39,7 @@ impl RecoveryDirectory {
         rustix::fs::flock(&file, rustix::fs::FlockOperation::NonBlockingLockExclusive)?;
         Ok(Self {
             lease: Arc::new(DirectoryLease {
-                directory: file,
+                _directory: file,
                 namespace,
             }),
         })
@@ -59,7 +48,7 @@ impl RecoveryDirectory {
 
 #[derive(Debug)]
 struct DirectoryLease {
-    directory: File,
+    _directory: File,
     namespace: InitMountNamespace,
 }
 

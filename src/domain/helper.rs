@@ -1,60 +1,59 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{DomainCancellation, DomainJoin, DomainRecordCleanup, RecordedDomain};
+use super::{CommandDomain, DomainCancellation, DomainJoin};
 use crate::process::{
     Admitted, Identified, Joined, LaunchFailure, ObservedState, Paired, Process, Supervision,
     WaitError,
 };
 use std::{
     io,
-    path::Path,
     process::{Command, ExitStatus},
     time::Instant,
 };
 
-/// Owns a contained trusted helper, supervision channel and recorded domain.
+/// Owns a contained trusted helper, supervision channel and cgroup.
 /// This does not configure a command sandbox or authorize recipe execution.
 ///
 /// ```compile_fail
 /// use conglobate::{domain::ContainedHelper, process::Admitted};
-/// fn cannot_admit_twice(helper: ContainedHelper<'_, Admitted>) {
+/// fn cannot_admit_twice(helper: ContainedHelper<Admitted>) {
 ///     helper.admit_until(std::time::Instant::now());
 /// }
 /// ```
 #[derive(Debug)]
-pub struct ContainedHelper<'lease, S: ObservedState = Joined> {
-    domain: RecordedDomain<'lease>,
+pub struct ContainedHelper<S: ObservedState = Joined> {
+    domain: CommandDomain,
     process: Process<Identified>,
     channel: Supervision<S>,
 }
 #[derive(Debug, thiserror::Error)]
-pub enum HelperLaunchFailure<'lease> {
+pub enum HelperLaunchFailure {
     #[error("contained helper launch: {source}")]
     Launch {
         source: LaunchFailure,
-        domain: DomainCancellation<'lease>,
+        domain: DomainCancellation,
     },
     #[error("contained helper cgroup join: {source}")]
     Join {
         source: io::Error,
         process: Process<Identified>,
-        domain: DomainCancellation<'lease>,
+        domain: DomainCancellation,
     },
 }
 /// Admission is closed. Retains both the domain and helper wait owner for retry.
 #[derive(Debug)]
-pub struct HelperCancellation<'lease> {
-    domain: DomainCancellation<'lease>,
+pub struct HelperCancellation {
+    domain: DomainCancellation,
     process: Process<Identified>,
 }
 #[derive(Debug, thiserror::Error)]
 #[error("contained helper domain cancellation: {source}")]
-pub struct HelperCancelFailure<'lease> {
+pub struct HelperCancelFailure {
     source: io::Error,
-    cancellation: HelperCancellation<'lease>,
+    cancellation: HelperCancellation,
 }
-impl<'lease> HelperCancelFailure<'lease> {
-    pub fn into_parts(self) -> (io::Error, HelperCancellation<'lease>) {
+impl HelperCancelFailure {
+    pub fn into_parts(self) -> (io::Error, HelperCancellation) {
         (self.source, self.cancellation)
     }
 }
@@ -62,46 +61,32 @@ impl<'lease> HelperCancelFailure<'lease> {
 ///
 /// ```compile_fail
 /// use conglobate::domain::HelperReaping;
-/// use std::path::Path;
-/// fn cannot_remove_record_before_reaping(owner: HelperReaping<'_>) {
-///     owner.finish(Path::new("/unused"));
+/// fn cannot_finish_before_reaping(owner: HelperReaping) {
+///     owner.finish();
 /// }
 /// ```
 #[derive(Debug)]
-pub struct HelperReaping<'lease> {
+pub struct HelperReaping {
     process: Process<Identified>,
-    cleanup: DomainRecordCleanup<'lease>,
 }
 #[derive(Debug, thiserror::Error)]
 #[error("contained helper reaping: {source}")]
-pub struct HelperReapFailure<'lease> {
+pub struct HelperReapFailure {
     source: WaitError,
-    reaping: HelperReaping<'lease>,
+    reaping: HelperReaping,
 }
-impl<'lease> HelperReapFailure<'lease> {
-    pub fn into_parts(self) -> (WaitError, HelperReaping<'lease>) {
+impl HelperReapFailure {
+    pub fn into_parts(self) -> (WaitError, HelperReaping) {
         (self.source, self.reaping)
     }
 }
-/// The joined helper was reaped after domain cancellation. Its record still
-/// needs cleanup. This is not proof that every adopted descendant was reaped.
+/// The joined helper was reaped after domain cancellation. Adopted descendants
+/// still require a separate drain.
 #[derive(Debug)]
-pub struct ReapedHelper<'lease> {
+pub struct ReapedHelper {
     status: ExitStatus,
-    cleanup: DomainRecordCleanup<'lease>,
 }
-#[derive(Debug, thiserror::Error)]
-#[error("contained helper record cleanup: {source}")]
-pub struct HelperFinishFailure<'lease> {
-    source: io::Error,
-    helper: ReapedHelper<'lease>,
-}
-impl<'lease> HelperFinishFailure<'lease> {
-    pub fn into_parts(self) -> (io::Error, ReapedHelper<'lease>) {
-        (self.source, self.helper)
-    }
-}
-impl<'lease> RecordedDomain<'lease> {
+impl CommandDomain {
     /// Trusted helper only. Startup errors retain all created resources and
     /// restrict domain ownership to cancellation. The caller must explicitly
     /// terminate/reap any started child and cancel its possibly populated domain.
@@ -109,7 +94,7 @@ impl<'lease> RecordedDomain<'lease> {
         self,
         command: Command,
         deadline: Instant,
-    ) -> Result<ContainedHelper<'lease>, Box<HelperLaunchFailure<'lease>>> {
+    ) -> Result<ContainedHelper, Box<HelperLaunchFailure>> {
         self.finish_launch(
             Process::launch_supervised(command, deadline),
             |channel, permit| channel.join_helper_until(permit, deadline),
@@ -119,7 +104,7 @@ impl<'lease> RecordedDomain<'lease> {
         self,
         launched: Result<(Process<Identified>, Supervision<Paired>), LaunchFailure>,
         join: impl FnOnce(Supervision<Paired>, DomainJoin<'_>) -> io::Result<Supervision<Joined>>,
-    ) -> Result<ContainedHelper<'lease>, Box<HelperLaunchFailure<'lease>>> {
+    ) -> Result<ContainedHelper, Box<HelperLaunchFailure>> {
         let (process, channel) = match launched {
             Ok(pair) => pair,
             Err(source) => {
@@ -144,7 +129,7 @@ impl<'lease> RecordedDomain<'lease> {
         }
     }
 }
-impl<'lease, S: ObservedState> ContainedHelper<'lease, S> {
+impl<S: ObservedState> ContainedHelper<S> {
     pub fn supervision(&self) -> &Supervision<S> {
         &self.channel
     }
@@ -153,7 +138,7 @@ impl<'lease, S: ObservedState> ContainedHelper<'lease, S> {
     pub fn cancel_until(
         self,
         deadline: Instant,
-    ) -> Result<HelperReaping<'lease>, Box<HelperCancelFailure<'lease>>> {
+    ) -> Result<HelperReaping, Box<HelperCancelFailure>> {
         let Self {
             domain,
             process,
@@ -167,14 +152,11 @@ impl<'lease, S: ObservedState> ContainedHelper<'lease, S> {
         .retry_until(deadline)
     }
 }
-impl<'lease> HelperCancellation<'lease> {
-    pub fn retry_until(
-        self,
-        deadline: Instant,
-    ) -> Result<HelperReaping<'lease>, Box<HelperCancelFailure<'lease>>> {
+impl HelperCancellation {
+    pub fn retry_until(self, deadline: Instant) -> Result<HelperReaping, Box<HelperCancelFailure>> {
         let Self { domain, process } = self;
         match domain.retry_until(deadline) {
-            Ok(cleanup) => Ok(HelperReaping { process, cleanup }),
+            Ok(()) => Ok(HelperReaping { process }),
             Err(failure) => {
                 let (source, domain) = failure.into_parts();
                 Err(Box::new(HelperCancelFailure {
@@ -185,57 +167,41 @@ impl<'lease> HelperCancellation<'lease> {
         }
     }
 }
-impl<'lease> HelperReaping<'lease> {
-    pub fn reap_until(
-        self,
-        deadline: Instant,
-    ) -> Result<ReapedHelper<'lease>, Box<HelperReapFailure<'lease>>> {
-        let Self { process, cleanup } = self;
+impl HelperReaping {
+    pub fn reap_until(self, deadline: Instant) -> Result<ReapedHelper, Box<HelperReapFailure>> {
+        let Self { process } = self;
         match process.wait_until(deadline) {
             Ok(process) => Ok(ReapedHelper {
                 status: process.status(),
-                cleanup,
             }),
             Err(failure) => {
                 let (source, process) = failure.into_parts();
                 Err(Box::new(HelperReapFailure {
                     source,
-                    reaping: Self { process, cleanup },
+                    reaping: Self { process },
                 }))
             }
         }
     }
 }
-impl<'lease> ReapedHelper<'lease> {
-    /// Return the helper's diagnostic exit status only after record cleanup.
-    /// No policy/filesystem completion or successful image receipt is produced.
-    pub fn finish(self, parent: &Path) -> Result<ExitStatus, HelperFinishFailure<'lease>> {
-        let Self { status, cleanup } = self;
-        match cleanup.finish(parent) {
-            Ok(()) => Ok(status),
-            Err(failure) => {
-                let (source, cleanup) = failure.into_parts();
-                Err(HelperFinishFailure {
-                    source,
-                    helper: Self { status, cleanup },
-                })
-            }
-        }
+impl ReapedHelper {
+    pub fn finish(self) -> ExitStatus {
+        self.status
     }
 }
 
 #[derive(Debug, thiserror::Error)]
 #[error("command admission handshake: {source}")]
-pub struct AdmissionFailure<'lease> {
+pub struct AdmissionFailure {
     source: io::Error,
-    cancellation: HelperCancellation<'lease>,
+    cancellation: HelperCancellation,
 }
-impl<'lease> AdmissionFailure<'lease> {
-    pub fn into_parts(self) -> (io::Error, HelperCancellation<'lease>) {
+impl AdmissionFailure {
+    pub fn into_parts(self) -> (io::Error, HelperCancellation) {
         (self.source, self.cancellation)
     }
 }
-impl<'lease> ContainedHelper<'lease, Joined> {
+impl ContainedHelper<Joined> {
     /// Release a contained trusted helper. The enclosing step must establish
     /// policy and isolation prerequisites before calling; cgroup membership alone
     /// never authorizes image commands. Failure permits cancellation only.
@@ -244,7 +210,7 @@ impl<'lease> ContainedHelper<'lease, Joined> {
     pub fn admit_until(
         self,
         deadline: Instant,
-    ) -> Result<ContainedHelper<'lease, Admitted>, Box<AdmissionFailure<'lease>>> {
+    ) -> Result<ContainedHelper<Admitted>, Box<AdmissionFailure>> {
         let Self {
             domain,
             process,

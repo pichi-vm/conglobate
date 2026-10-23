@@ -61,7 +61,7 @@ storage owners retain the underlying volumes until descendant quiescence.
 Normal helper completion explicitly unmounts its views. No recursive cleanup
 sweep or additional tmpfs is required.
 
-After descendant drain, release process-domain records and namespace resources,
+After descendant drain, release process-domain and namespace resources,
 then unmount/finalize storage. There is no activation, disable, policy-close,
 installation-retry or policy-identity-release state. Cgroup joining remains a
 distinct protocol represented by `Joined`, including its acknowledgment and
@@ -118,7 +118,7 @@ No unsafe field extraction, transmute, or manually asserted state transition.
 - `Step<Ready>::admit_until` produces `Step<Running>`; failed admission retains
   Cancelling. Ready, Running or Cancelling enters cleanup through `cancel_until`,
   producing Reaping; `reap_until` produces Draining, `drain_until` produces
-  Quiescent, `finish_record` produces Finishing, and infallible `finish` returns
+  Quiescent, and infallible `finish` returns
   StepCompletion. Failed cancellation retains Cancelling; subsequent fallible
   transitions retain their input state. `teardown` drives this sequence under
   the fixed cleanup deadline, then drops the mapped namespace descriptor.
@@ -148,7 +148,7 @@ shows a concrete benefit. Thread-affine setup guards must not be Send/Sync merel
 because their fields happen to be; namespace mutation remains isolated to an
 appropriate single-threaded helper. Immutable plans may be freely shared.
 
-## Error and recovery ownership
+## Error and cleanup ownership
 
 Every fallible consuming transition describes the external state on failure.
 Return the original typed owner only if its invariant remains known true.
@@ -174,7 +174,7 @@ unresolved mappings, namespaces and storage until recovery completes.
 The step aggregate, not incidental field-drop order, enforces:
 1. Stop admission and stop/reap every descendant, including daemonized commands.
 2. Prove quiescence under the containment mechanism.
-3. Finish process-domain records and release command namespace ownership.
+3. Release command namespace ownership after cgroup removal and process drain.
    The environment labeling exception remains installed until VM shutdown.
 4. Remove temporary resolver/runtime attachments and release borrowed network handles, preserving image state and the environment-owned network.
 5. Flush and cleanly unmount all assigned filesystems; inspect storage errors.

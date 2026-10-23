@@ -1,24 +1,21 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Fresh private cgroup-v2 domains. Registration and reaping are separate gates.
+//! Fresh private cgroup-v2 domains. Containment and reaping are separate gates.
 mod drain;
 mod events;
-pub use drain::{DescendantDrain, DescendantDrainFailure, DrainedFinishFailure, DrainedHelper};
+pub use drain::{DescendantDrain, DescendantDrainFailure, DrainedHelper};
 mod helper;
 pub use helper::{
     AdmissionFailure, ContainedHelper, HelperCancelFailure, HelperCancellation,
-    HelperFinishFailure, HelperLaunchFailure, HelperReapFailure, HelperReaping, ReapedHelper,
+    HelperLaunchFailure, HelperReapFailure, HelperReaping, ReapedHelper,
 };
-mod recorded;
-pub use recorded::{
-    DomainCancellation, DomainCreationCleanupFailure, DomainCreationRollback, DomainRecordCleanup,
-    RecordCleanupFailure, RecordDomainFailure, RecordedCancelFailure, RecordedDomain,
+mod cancellation;
+pub use cancellation::{
+    DomainCancelFailure, DomainCancellation, DomainCreationCleanupFailure, DomainCreationRollback,
 };
 mod joining;
 pub use joining::DomainJoin;
-mod record;
-pub use record::DomainRecord;
 
 use crate::anchor::{RecoveryDirectory, RecoveryLease};
 use std::{
@@ -129,8 +126,7 @@ impl CommandDomain {
     }
 
     /// Create only; no API accepts an arbitrary existing cgroup to kill.
-    /// Caller must serialize this protected parent and persist ownership before
-    /// domain joining. This primitive neither mounts cgroupfs nor sets limits.
+    /// Caller must serialize this protected parent. This primitive neither mounts cgroupfs nor sets limits.
     pub fn create(
         recovery: &RecoveryDirectory,
         parent: &Path,

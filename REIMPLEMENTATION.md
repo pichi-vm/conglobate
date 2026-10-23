@@ -6,6 +6,15 @@ This ledger describes required work, not claims about the current executor.
 
 ## Current execution batches
 
+Latest user direction: simplify to linear build-session orchestration. Remove
+persisted cgroup recovery records; retain descriptor-based containment, bounded
+quiescence/cleanup and publication exclusion. M2 is reopened at 0/3 for this
+architecture correction; M4–M6 remain 0/3. Earlier M2 acceptance below is historical.
+The environment will prepare the Git checkout; adapt the input contract and
+implementation next, preserving verification of committed, stable input bytes.
+BUILD-FLOW.sh expresses this direction; it does not claim implementation parity.
+
+
 User accepted externalizing networking. This supersedes earlier proposals and
 conglobate-owned NAT wording in the stored goal/history. No requirement is being
 removed: provisioning and ingress enforcement move to the trusted environment.

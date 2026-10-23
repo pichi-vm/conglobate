@@ -1,0 +1,15 @@
+    Checking conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+warning: field `directory` is never read
+  --> /home/nathaniel/Projects/pichi-vm/conglobate/src/anchor.rs:51:5
+   |
+50 | struct DirectoryLease {
+   |        -------------- field in this struct
+51 |     directory: File,
+   |     ^^^^^^^^^
+   |
+   = note: `DirectoryLease` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `conglobate` (lib) generated 1 warning
+    Checking conglobate-lifecycle-tests v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/tests/lifecycle)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.98s

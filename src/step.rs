@@ -8,9 +8,7 @@ use crate::{
     isolation::{Mapped, UserNamespace},
     process::{Admitted, ChildReaper, ReapedChildren, Supervision},
 };
-use std::{
-    io, marker::PhantomData, mem::ManuallyDrop, path::Path, process::ExitStatus, time::Instant,
-};
+use std::{io, marker::PhantomData, mem::ManuallyDrop, process::ExitStatus, time::Instant};
 
 mod execution;
 pub use execution::{
@@ -78,35 +76,29 @@ pub struct Reaping;
 pub struct Draining;
 #[derive(Debug)]
 pub struct Quiescent;
-#[derive(Debug)]
-pub struct Finishing;
 impl private::Sealed for Ready {}
 impl private::Sealed for Running {}
 impl private::Sealed for Cancelling {}
 impl private::Sealed for Reaping {}
 impl private::Sealed for Draining {}
 impl private::Sealed for Quiescent {}
-impl private::Sealed for Finishing {}
 impl<'a> StepState<'a> for Ready {
-    type Resources = (ContainedHelper<'a>, ChildReaper);
+    type Resources = (ContainedHelper, ChildReaper);
 }
 impl<'a> StepState<'a> for Running {
-    type Resources = (ContainedHelper<'a, Admitted>, ChildReaper);
+    type Resources = (ContainedHelper<Admitted>, ChildReaper);
 }
 impl<'a> StepState<'a> for Cancelling {
-    type Resources = (HelperCancellation<'a>, ChildReaper);
+    type Resources = (HelperCancellation, ChildReaper);
 }
 impl<'a> StepState<'a> for Reaping {
-    type Resources = (HelperReaping<'a>, ChildReaper);
+    type Resources = (HelperReaping, ChildReaper);
 }
 impl<'a> StepState<'a> for Draining {
-    type Resources = DescendantDrain<'a>;
+    type Resources = DescendantDrain;
 }
 impl<'a> StepState<'a> for Quiescent {
-    type Resources = DrainedHelper<'a>;
-}
-impl<'a> StepState<'a> for Finishing {
-    type Resources = (ExitStatus, ReapedChildren);
+    type Resources = DrainedHelper;
 }
 
 /// No namespace or storage handle escapes before this command's quiescence.
@@ -120,7 +112,7 @@ impl<'a> StepState<'a> for Finishing {
 /// ```text
 /// Ready | Running | Cancelling
 ///     --cancel_until--> Reaping --reap_until--> Draining
-///     --drain_until--> Quiescent --finish_record--> Finishing
+///     --drain_until--> Quiescent --finish--> completion
 ///     --finish--> StepCompletion
 /// ```
 ///
@@ -139,7 +131,7 @@ impl<'a> StepState<'a> for Finishing {
 /// ```compile_fail
 /// use conglobate::step::{Step, Reaping};
 /// fn cannot_skip_descendant_drain(step: Step<'_, Reaping>) {
-///     step.finish_record(std::path::Path::new("/unused"));
+///     step.finish();
 /// }
 /// ```
 /// ```compile_fail
@@ -182,7 +174,7 @@ impl<'lease> Step<'lease, Ready> {
     /// before spawning it. No other process may admit commands to this scope.
     pub fn new(
         namespace: UserNamespace<Mapped>,
-        helper: ContainedHelper<'lease>,
+        helper: ContainedHelper,
         reaper: ChildReaper,
     ) -> Self {
         Self {
@@ -258,7 +250,7 @@ impl<'lease, R: StepStorage> Step<'lease, Reaping, R> {
         storage: Retained<R>,
         namespace: ManuallyDrop<UserNamespace<Mapped>>,
         reaper: ChildReaper,
-        result: Result<HelperReaping<'lease>, Box<crate::domain::HelperCancelFailure<'lease>>>,
+        result: Result<HelperReaping, Box<crate::domain::HelperCancelFailure>>,
     ) -> Result<Self, Box<StepFailure<'lease, Cancelling, R>>> {
         match result {
             Ok(helper) => Ok(Step {
@@ -384,33 +376,6 @@ impl<'lease, R: StepStorage> Step<'lease, Draining, R> {
         }
     }
 }
-impl<'lease, R: StepStorage> Step<'lease, Quiescent, R> {
-    pub fn finish_record(
-        self,
-        parent: &Path,
-    ) -> Result<Step<'lease, Finishing, R>, Box<StepFailure<'lease, Quiescent, R>>> {
-        match self.resources.finish(parent) {
-            Ok(resources) => Ok(Step {
-                storage: self.storage,
-                namespace: self.namespace,
-                resources,
-                _lease: PhantomData,
-            }),
-            Err(failure) => {
-                let (source, resources) = failure.into_parts();
-                Err(Box::new(StepFailure {
-                    source,
-                    step: Step {
-                        storage: self.storage,
-                        namespace: self.namespace,
-                        resources,
-                        _lease: PhantomData,
-                    },
-                }))
-            }
-        }
-    }
-}
 /// Command descendants are quiescent. Storage still requires clean finalization.
 #[derive(Debug)]
 pub struct StepCompletion<R: StepStorage> {
@@ -424,11 +389,12 @@ impl<R: StepStorage> StepCompletion<R> {
         (self.status, self.reaped, self.namespace, self.storage)
     }
 }
-impl<R: StepStorage> Step<'_, Finishing, R> {
+impl<R: StepStorage> Step<'_, Quiescent, R> {
     pub fn finish(self) -> StepCompletion<R> {
+        let (status, reaped) = self.resources.finish();
         StepCompletion {
-            status: self.resources.0,
-            reaped: self.resources.1,
+            status,
+            reaped,
             namespace: ManuallyDrop::into_inner(self.namespace),
             storage: self.storage.release(),
         }

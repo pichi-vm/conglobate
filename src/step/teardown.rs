@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use super::{
-    Cancelling, Draining, Finishing, Quiescent, Ready, Reaping, Running, Step, StepFailure,
-    StepState, StepStorage,
+    Cancelling, Draining, Quiescent, Ready, Reaping, Running, Step, StepFailure, StepState,
+    StepStorage,
 };
 use crate::storage::FailureDiagnostics;
 use std::{
@@ -25,7 +25,6 @@ enum Phase<'a, R: StepStorage> {
     Reaping(Step<'a, Reaping, R>),
     Draining(Step<'a, Draining, R>),
     Quiescent(Step<'a, Quiescent, R>),
-    Finishing(Step<'a, Finishing, R>),
     Complete(Released<R>),
 }
 #[derive(Debug)]
@@ -170,11 +169,7 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
                 step.drain_until(deadline).map(Phase::Quiescent),
                 Phase::Draining,
             ),
-            Phase::Quiescent(step) => Self::transition(
-                step.finish_record(parent).map(Phase::Finishing),
-                Phase::Quiescent,
-            ),
-            Phase::Finishing(step) => {
+            Phase::Quiescent(step) => {
                 let (status, reaped, namespace, storage) = step.finish().into_parts();
                 drop(namespace);
                 Ok(Phase::Complete(Released {

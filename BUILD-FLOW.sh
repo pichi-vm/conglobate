@@ -6,6 +6,7 @@ echo 'Design sketch only; do not execute.' >&2
 exit 2
 
 # ENVIRONMENT owns the VM/kernel, labeling policy, network namespace and DNS.
+# It also clones/checks out Git and supplies a stable local build context.
 # It destroys the VM when conglobate exits unexpectedly or cannot clean up.
 # CONGLOBATE owns one build session: workspace, volumes, commands and output.
 # COMMANDS own nothing outside their assigned filesystem views and processes.
@@ -77,7 +78,7 @@ validate_request_and_recipe
 # Root execution; explicit context-relative recipe and lock paths; validate the
 # complete recipe before any commands. No conventionally named YAML files.
 
-capture_committed_git_input
+verify_and_capture_environment_supplied_context
 resolve_locked_images_from_local_readonly_cache
 verify_all_referenced_content
 # No downloads by conglobate. Missing Git objects, image blobs or host-architecture
@@ -92,7 +93,8 @@ create_one_protected_tmpfs_workspace
 # supervisor's namespace. Rust owns its descriptor, attachment and cleanup.
 # Immutable image layers stay cache-backed; do not copy them into the workspace.
 
-materialize_private_readonly_context
+# No Git clone, fetch or checkout in conglobate.
+retain_verified_readonly_context
 # Used only by trusted recipe/COPY processing. Not a command mount.
 
 for stage in bootstrap carapace firmware; do

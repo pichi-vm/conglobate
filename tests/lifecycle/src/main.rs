@@ -6,7 +6,6 @@ mod cache_storage;
 mod chain_storage;
 mod clone_filter;
 mod contained;
-mod domain_publication;
 mod formatter_failures;
 mod gate_failure;
 mod network;
@@ -139,7 +138,6 @@ impl Lifecycle {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Mount)
             }
             [mode] if mode == "formatter-failures" => formatter_failures::FormatterFailures::run(),
-            [mode] if mode == "domain-publication" => domain_publication::DomainPublication::run(),
             [mode] if mode == "contained" => contained::Contained::run(),
             [mode] if mode == "contained-helper" => {
                 contained::Contained::helper(contained::HelperMode::Wait)
