@@ -1,0 +1,9 @@
+{
+  "baseline": "8d579fe",
+  "rootless_tests": 202,
+  "doctests": 51,
+  "strict_clippy": true,
+  "production_integration_complete": false,
+  "M4_T1_resolved": false,
+  "vm_validation": false
+}

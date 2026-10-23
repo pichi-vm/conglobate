@@ -11,7 +11,9 @@ mod gate;
 mod init;
 mod namespaces;
 mod setup;
-pub use gate::{ExecutionEndpoint, ExecutionGate, GateState, Ready, Waiting};
+pub use gate::{
+    CompletionEndpoint, ExecutionEndpoint, ExecutionGate, GateState, Ready, Started, Waiting,
+};
 mod user;
 pub use namespaces::CommandNamespaces;
 pub use setup::{

@@ -1,0 +1,119 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.78s
+     Running unittests src/lib.rs (target/m7-stable/debug/deps/conglobate-15d5f812db926622)
+
+running 9 tests
+test isolation::gate::tests::expired_status_observation_does_not_wait_for_cleanup ... ok
+test isolation::gate::tests::expired_start_closes_gate_without_authorizing_ready_child ... ok
+test isolation::gate::tests::malformed_readiness_and_ancillary_rights_fail_closed ... ok
+test isolation::gate::tests::peer_loss_after_readiness_rejects_start ... ok
+test isolation::gate::tests::peer_loss_expiry_and_wrong_phase_never_authorize ... ok
+test isolation::gate::tests::cancellation_after_readiness_does_not_release_command ... ok
+test isolation::gate::tests::invalid_or_missing_status_does_not_become_success ... ok
+test isolation::gate::tests::readiness_requires_explicit_start ... ok
+test isolation::gate::tests::command_status_arrives_before_reporter_cleanup ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 114 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/m7-stable/debug/deps/conglobate-c1430c02300c1580)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/anchors.rs (target/m7-stable/debug/deps/anchors-f20c3e0ec4b3d1db)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/cache.rs (target/m7-stable/debug/deps/cache-e549ddbecd4f0f6d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
+     Running tests/chains.rs (target/m7-stable/debug/deps/chains-275ea983bd16551c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/contexts.rs (target/m7-stable/debug/deps/contexts-cc0b99d6588529a5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
+     Running tests/copy_modes.rs (target/m7-stable/debug/deps/copy_modes-dec936f84a4c4edc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/copy_patterns.rs (target/m7-stable/debug/deps/copy_patterns-2b62e903322e44c6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/domain_records.rs (target/m7-stable/debug/deps/domain_records-7fec059534b85966)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/identities.rs (target/m7-stable/debug/deps/identities-3bda81d976c2b1b7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests/locks.rs (target/m7-stable/debug/deps/locks-1ea686de92df35e5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/plans.rs (target/m7-stable/debug/deps/plans-cfa2a5d139505c47)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/processes.rs (target/m7-stable/debug/deps/processes-d89836da88e4b47f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/recipes.rs (target/m7-stable/debug/deps/recipes-bf406e0ae4dbce28)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/requests.rs (target/m7-stable/debug/deps/requests-9dc0b4e673ec4907)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/supervision.rs (target/m7-stable/debug/deps/supervision-d372f6e9a8fb9877)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/templates.rs (target/m7-stable/debug/deps/templates-5ed71db4fdff749e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/values.rs (target/m7-stable/debug/deps/values-63ad4046c75d5e1d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+

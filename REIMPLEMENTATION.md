@@ -5042,3 +5042,19 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   retain fixed teardown ownership and command descriptor isolation, then test
   actual composed behavior. No production change or new pass claimed. Integrated
   review is interrupted; M4 remains 0/3 and all other gates remain outstanding.
+
+### M4-T1 command-status transport implementation
+
+- Previous turn progressed by identifying/recording timing mismatch 8d579fe.
+  Added sealed Started gate state and a consuming status-only reporter transition.
+  Terminal status can be observed before reporter cleanup, without granting a
+  cleanup receipt. Fixed version/shape/status validation rejects unexpected FDs.
+- Deterministic channel-gated regression proves status observation while cleanup
+  remains held; malformed/peer-loss/expiry and SCM_RIGHTS rejection/closure tests
+  pass. Full rootless suite and 51 doctests plus strict Clippy pass. Patch, hashes,
+  logs and scope review: preservation/m7-review/command-status-gate/.
+- Intermediate implementation only: production receiver/namespace init are not
+  connected to the new transport yet. M4-T1 remains open and must be completed
+  next, including child FD isolation and mandatory separate cleanup acknowledgment
+  under the fixed teardown deadline. Existing acceptance behavior is unchanged.
+  No new VM qualification or clean adherence pass claimed; M4 stays 0/3.

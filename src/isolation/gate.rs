@@ -12,6 +12,8 @@ use std::{
     io::{self, IoSliceMut},
     marker::PhantomData,
     mem::MaybeUninit,
+    os::unix::process::ExitStatusExt,
+    process::ExitStatus,
     time::Instant,
 };
 
@@ -23,10 +25,15 @@ pub trait GateState: private::Sealed + std::fmt::Debug {}
 pub struct Waiting;
 #[derive(Debug)]
 pub struct Ready;
+/// Start was sent; only a terminal shell-status report can be received.
+#[derive(Debug)]
+pub struct Started;
 impl private::Sealed for Waiting {}
 impl private::Sealed for Ready {}
+impl private::Sealed for Started {}
 impl GateState for Waiting {}
 impl GateState for Ready {}
+impl GateState for Started {}
 
 #[derive(Debug)]
 struct Control(Socket);
@@ -76,12 +83,125 @@ impl ExecutionGate<Waiting> {
         })
     }
 }
+/// Status-only endpoint for resident init. It conveys no filesystem or
+/// cancellation authority. Image children must not inherit it across exec.
+#[derive(Debug)]
+pub struct CompletionEndpoint(Socket);
+impl CompletionEndpoint {
+    /// Send once without waiting for peer cleanup. A full/broken channel fails;
+    /// it never extends command time with a new relative timeout.
+    pub fn report(self, status: ExitStatus) -> io::Result<()> {
+        let packet = CompletionPacket::new(status)?;
+        loop {
+            match net::send(
+                &self.0.0,
+                &packet.0,
+                SendFlags::DONTWAIT | SendFlags::NOSIGNAL,
+            ) {
+                Ok(8) => return Ok(()),
+                Ok(_) => return Err(io::Error::other("short command status packet")),
+                Err(rustix::io::Errno::INTR) => continue,
+                Err(error) => return Err(error.into()),
+            }
+        }
+    }
+}
+#[derive(Debug)]
+struct CompletionPacket([u8; 8]);
+impl CompletionPacket {
+    fn new(status: ExitStatus) -> io::Result<Self> {
+        let raw = status.into_raw();
+        Self::validate(raw)?;
+        let mut bytes = [0x83, 1, 3, 0x44, 0, 0, 0, 0];
+        bytes[4..].copy_from_slice(&raw.to_be_bytes());
+        Ok(Self(bytes))
+    }
+    fn validate(raw: i32) -> io::Result<()> {
+        if (raw & !0xff00 == 0) || (raw > 0 && raw & !0xff == 0 && (1..=64).contains(&(raw & 0x7f)))
+        {
+            Ok(())
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "nonterminal command status",
+            ))
+        }
+    }
+    fn status(&self) -> io::Result<ExitStatus> {
+        if self.0[..4] != [0x83, 1, 3, 0x44] {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "invalid command status packet",
+            ));
+        }
+        let raw = i32::from_be_bytes(self.0[4..].try_into().expect("four status bytes"));
+        Self::validate(raw)?;
+        Ok(ExitStatus::from_raw(raw))
+    }
+}
+impl ExecutionGate<Started> {
+    /// Observe shell status only. This is not helper exit, descendant quiescence,
+    /// resolver cleanup, or permission to finalize/publish storage.
+    pub fn completion_until(self, deadline: Instant) -> io::Result<ExitStatus> {
+        loop {
+            self.socket.0.wait(PollFlags::IN, deadline)?;
+            let mut bytes = [0; 9];
+            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
+            let mut ancillary = RecvAncillaryBuffer::new(&mut space);
+            let received = match net::recvmsg(
+                &self.socket.0.0,
+                &mut [IoSliceMut::new(&mut bytes)],
+                &mut ancillary,
+                RecvFlags::DONTWAIT | RecvFlags::CMSG_CLOEXEC,
+            ) {
+                Ok(value) => value,
+                Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
+                Err(error) => return Err(error.into()),
+            };
+            if received.bytes == 0 {
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "command status peer closed",
+                ));
+            }
+            if received.bytes != 8
+                || received
+                    .flags
+                    .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
+                || ancillary.drain().next().is_some()
+            {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "invalid command status packet",
+                ));
+            }
+            return CompletionPacket(bytes[..8].try_into().expect("eight status bytes")).status();
+        }
+    }
+}
 impl ExecutionGate<Ready> {
+    /// Retain a status-only observation channel after authorizing start.
+    pub fn start_reporting_until(self, deadline: Instant) -> io::Result<ExecutionGate<Started>> {
+        self.socket.0.send(2, deadline)?;
+        Ok(ExecutionGate {
+            socket: self.socket,
+            state: PhantomData,
+        })
+    }
+
     pub fn start_until(self, deadline: Instant) -> io::Result<()> {
         self.socket.0.send(2, deadline)
     }
 }
 impl ExecutionEndpoint {
+    /// Complete startup and retain only the ability to report shell status.
+    /// The caller is trusted resident init, not the image shell.
+    pub fn ready_for_reporting(self, deadline: Instant) -> io::Result<CompletionEndpoint> {
+        self.0.send(1, deadline)?;
+        self.0.receive(2, deadline)?;
+        Ok(CompletionEndpoint(self.0))
+    }
+
     pub(super) fn into_handle(self) -> OwnedFd {
         self.0.0
     }
@@ -273,6 +393,124 @@ mod tests {
         assert_eq!(
             parent
                 .wait_ready_until(Fixture::deadline())
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::InvalidData
+        );
+        peer.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+        assert_eq!(peer.read(&mut [0]).unwrap(), 0);
+    }
+    #[test]
+    fn command_status_arrives_before_reporter_cleanup() {
+        for raw in [0, 37 << 8, 9, 11 | 0x80] {
+            let (parent, child) = ExecutionGate::pair().unwrap();
+            let (release, held) = std::sync::mpsc::channel();
+            let worker = std::thread::spawn(move || {
+                let reporter = child.ready_for_reporting(Fixture::deadline()).unwrap();
+                reporter.report(ExitStatus::from_raw(raw)).unwrap();
+                held.recv().unwrap(); // Explicit cleanup gate, never a sleep.
+            });
+            let running = parent
+                .wait_ready_until(Fixture::deadline())
+                .unwrap()
+                .start_reporting_until(Fixture::deadline())
+                .unwrap();
+            assert_eq!(
+                running
+                    .completion_until(Fixture::deadline())
+                    .unwrap()
+                    .into_raw(),
+                raw
+            );
+            assert!(!worker.is_finished());
+            release.send(()).unwrap();
+            worker.join().unwrap();
+        }
+    }
+    #[test]
+    fn invalid_or_missing_status_does_not_become_success() {
+        for bytes in [
+            vec![0x82, 1, 1],
+            vec![0x83, 2, 3, 0x44, 0, 0, 0, 0],
+            vec![0x83, 1, 3, 0x44, 0, 0, 0, 0x7f],
+            vec![0; 40],
+        ] {
+            let (parent, child) = ExecutionGate::pair().unwrap();
+            child.0.send(1, Fixture::deadline()).unwrap();
+            let running = parent
+                .wait_ready_until(Fixture::deadline())
+                .unwrap()
+                .start_reporting_until(Fixture::deadline())
+                .unwrap();
+            child.0.receive(2, Fixture::deadline()).unwrap();
+            net::send(&child.0.0, &bytes, SendFlags::NOSIGNAL).unwrap();
+            assert_eq!(
+                running
+                    .completion_until(Fixture::deadline())
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::InvalidData
+            );
+        }
+        let (parent, child) = ExecutionGate::pair().unwrap();
+        child.0.send(1, Fixture::deadline()).unwrap();
+        let running = parent
+            .wait_ready_until(Fixture::deadline())
+            .unwrap()
+            .start_reporting_until(Fixture::deadline())
+            .unwrap();
+        child.0.receive(2, Fixture::deadline()).unwrap();
+        drop(child);
+        assert!(running.completion_until(Fixture::deadline()).is_err());
+    }
+    #[test]
+    fn expired_status_observation_does_not_wait_for_cleanup() {
+        let (parent, child) = ExecutionGate::pair().unwrap();
+        child.0.send(1, Fixture::deadline()).unwrap();
+        let running = parent
+            .wait_ready_until(Fixture::deadline())
+            .unwrap()
+            .start_reporting_until(Fixture::deadline())
+            .unwrap();
+        child.0.receive(2, Fixture::deadline()).unwrap();
+        assert_eq!(
+            running.completion_until(Instant::now()).unwrap_err().kind(),
+            io::ErrorKind::TimedOut
+        );
+    }
+    #[test]
+    fn status_packet_cannot_transfer_descriptor_authority() {
+        use rustix::net::{SendAncillaryBuffer, SendAncillaryMessage};
+        use std::{
+            io::{IoSlice, Read},
+            os::{fd::AsFd, unix::net::UnixStream},
+        };
+        let (parent, child) = ExecutionGate::pair().unwrap();
+        child.0.send(1, Fixture::deadline()).unwrap();
+        let running = parent
+            .wait_ready_until(Fixture::deadline())
+            .unwrap()
+            .start_reporting_until(Fixture::deadline())
+            .unwrap();
+        child.0.receive(2, Fixture::deadline()).unwrap();
+        let (owner, mut peer) = UnixStream::pair().unwrap();
+        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
+        let mut ancillary = SendAncillaryBuffer::new(&mut space);
+        let fds = [owner.as_fd()];
+        assert!(ancillary.push(SendAncillaryMessage::ScmRights(&fds)));
+        net::sendmsg(
+            &child.0.0,
+            &[IoSlice::new(
+                &CompletionPacket::new(ExitStatus::from_raw(0)).unwrap().0,
+            )],
+            &mut ancillary,
+            SendFlags::NOSIGNAL,
+        )
+        .unwrap();
+        drop(owner);
+        assert_eq!(
+            running
+                .completion_until(Fixture::deadline())
                 .unwrap_err()
                 .kind(),
             io::ErrorKind::InvalidData
