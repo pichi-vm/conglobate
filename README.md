@@ -20,7 +20,7 @@ execution environment supplies the fixed labeling exception described in
 [SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt). Disposable-VM fixture tools build their
 own environment policy separately and have additional compiler prerequisites.
 
-The registration-free migration has 193 rootless tests and 50 doctests passing
+The registration-free migration has 195 rootless tests and 50 doctests passing
 with rustc/Cargo 1.94.0; retired policy-API tests remain preserved as historical
 evidence. This does not qualify the composed sandbox. Earlier checks used rustc
 1.99.0-nightly (1a98b1e13, 2026-08-07) and Cargo 1.98.0. These are tested

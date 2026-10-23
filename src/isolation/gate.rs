@@ -220,6 +220,31 @@ mod tests {
         assert!(worker.join().unwrap().is_err());
     }
     #[test]
+    fn peer_loss_after_readiness_rejects_start() {
+        let (parent, child) = ExecutionGate::pair().unwrap();
+        child.0.send(1, Fixture::deadline()).unwrap();
+        let parent = parent.wait_ready_until(Fixture::deadline()).unwrap();
+        drop(child);
+        assert_eq!(
+            parent.start_until(Fixture::deadline()).unwrap_err().kind(),
+            io::ErrorKind::BrokenPipe
+        );
+    }
+    #[test]
+    fn expired_start_closes_gate_without_authorizing_ready_child() {
+        let (parent, child) = ExecutionGate::pair().unwrap();
+        child.0.send(1, Fixture::deadline()).unwrap();
+        let parent = parent.wait_ready_until(Fixture::deadline()).unwrap();
+        assert_eq!(
+            parent.start_until(Instant::now()).unwrap_err().kind(),
+            io::ErrorKind::TimedOut
+        );
+        assert_eq!(
+            child.0.receive(2, Fixture::deadline()).unwrap_err().kind(),
+            io::ErrorKind::UnexpectedEof
+        );
+    }
+    #[test]
     fn malformed_readiness_and_ancillary_rights_fail_closed() {
         use rustix::net::{SendAncillaryBuffer, SendAncillaryMessage};
         use std::{

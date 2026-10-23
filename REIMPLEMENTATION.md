@@ -4354,3 +4354,20 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   remain 0/3; legacy fault migration, durable M8 recovery and full distro/platform
   qualification remain outstanding. Prior turn was a status-only response; this
   turn resumes concrete remediation and records new evidence.
+
+### Focused receiver review resolved; execution-gate failure regressions
+
+- Focused Claude invocation 45045 is terminal exit 0. Closed both source findings
+  with no new defects. Original stream, result and parent evaluation preserved in
+  receiver-cleanup-review. Parent qualifies overly broad cleanup wording: wait
+  failure retains the running mount and drops the unjoined relay in an exit-only
+  helper; cancellation remains supervisor-owned. Protocol failure need not mean
+  a physically broken socket, but closing that channel still fails closed.
+- Added deterministic socket tests for peer loss after readiness and expired
+  start deadline. The latter also verifies EOF without start authorization at the
+  ready child. No sleeps or production injection mechanism. Exact receiver-level
+  post-admission failure/cleanup ordering remains an explicit coverage gap.
+- Final suite: 195 rootless tests and 50 doctests pass; updated README count.
+  Evidence: receiver-gate-static. Legacy command-integration still references
+  removed registration APIs; its broader meaningful cases must be migrated before
+  retirement. No adherence pass or milestone acceptance claimed.
