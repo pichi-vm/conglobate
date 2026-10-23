@@ -262,6 +262,17 @@ remain the boundary protecting supervisor resources from label mutation.
 
 ## Tests and evidence structure
 
+The rustix Git revision `8bda151df87574f56f1e4c0b59f2d1df5d61609e`
+provides the safe `mount_setattr` interface with a lifetime-bound `MountAttr`.
+The locked registry rustix 1.1.5 does not expose this interface. Conglobate uses
+it for idmapped filesystem views and restricted mounts of the context, resolver,
+formatter runtime and command runtime. This pin keeps application code free of
+unsafe syscall wrappers; it is not a claim that every upstream change has been
+audited. Cargo.lock fixes the exact source identity, and deny.toml explicitly
+allows that Git source. A separate registry rustix remains through tempfile.
+Dependency policy checks cover both architecture graphs; runtime mount behavior
+requires the separate disposable-VM qualification evidence.
+
 New tests live in maintained test modules/integration fixtures, not in legacy
 validation. Use methods for fixture objects; test entry functions are justified
 harness integration. Compile-fail tests cover key ownership restrictions, but

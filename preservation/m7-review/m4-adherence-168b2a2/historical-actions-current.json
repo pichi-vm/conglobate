@@ -98,8 +98,8 @@
       "evidence": "Review-coverage gap, not a code defect; cargo audit exit 0, 0 advisories across 246 deps",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Current cargo-audit 0.22.2 exited 0 after loading 1351 advisories and scanning 205 dependencies. This is advisory coverage, not a full dependency source audit; README states Git-source matching limitations. See dependencies-current/REVIEW.md and raw evidence."
     },
     {
       "id": "dependencies-002",
@@ -116,8 +116,8 @@
       "evidence": "ARCHITECTURE.md:247-257 documents the unreleased safe mount_setattr API; Cargo.toml pointer added",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "documentation repaired; pin rationale revalidated",
+      "current_evidence": "Cargo.toml still referenced an ARCHITECTURE explanation that had disappeared. Restored it after inspecting exact Git rustix mount_setattr with MountAttr lifetime and confirming no such interface in locked registry rustix 1.1.5. Application callsites require that safe API. See dependencies-current/REVIEW.md and raw evidence."
     },
     {
       "id": "dependencies-004",
@@ -125,8 +125,8 @@
       "evidence": "Two rustix copies real but only tempfile pulls the registry one; multiple-versions=warn is correct",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Qualified cargo tree source identities show registry rustix enters through tempfile, while application mount APIs use pinned Git rustix. Multiple-version warnings are intentional; source replacement would erase the required API distinction. See dependencies-current/REVIEW.md and raw evidence."
     },
     {
       "id": "dependencies-005",
@@ -134,8 +134,8 @@
       "evidence": "4c1546b added rustix Git URL to deny.toml sources; amd64+arm64 checks exit 0",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "deny.toml explicitly allows bytecodealliance/rustix and pichi-vm Git sources. Both amd64 and arm64 licenses/sources/bans checks exited 0. See dependencies-current/REVIEW.md and raw evidence."
     },
     {
       "id": "dependencies-006",
@@ -143,8 +143,8 @@
       "evidence": "4c1546b added BSD-2-Clause and BlueOak-1.0.0 (BlueOak/minicbor was missed by the review)",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "License allowlist includes BSD-2-Clause and BlueOak-1.0.0; both target-graph checks pass. This is tool policy evidence, not a legal compatibility opinion. See dependencies-current/REVIEW.md and raw evidence."
     },
     {
       "id": "dependencies-007",
@@ -152,8 +152,8 @@
       "evidence": "publish=false removes downstream consumers; CI pins RUSTUP_TOOLCHAIN 1.94.0; README records no MSRV floor established",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Package remains publish=false and workflow pins Rust 1.94.0. No lower MSRV is promised by Cargo.toml. This batch does not establish compatibility with other compiler versions. See dependencies-current/REVIEW.md and raw evidence."
     },
     {
       "id": "dependencies-008",
@@ -170,8 +170,8 @@
       "evidence": "Cargo.lock committed and --locked used; = pins are deliberate anti-drift on seccomp/syscall layers",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Cargo.lock remains tracked; CI uses --locked for compilation and deny checks. Exact seccompiler/linux-raw-sys/netlink pins remain deliberate and are not an observed defect. See dependencies-current/REVIEW.md and raw evidence."
     },
     {
       "id": "dependencies-010",
@@ -179,8 +179,8 @@
       "evidence": "gix-transport client code gated behind async-client/blocking-client, neither enabled",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Resolved gix features are sha1/sha256 and gix-transport has only default. Exact gix-transport source gates async_io, blocking_io and client::git behind disabled client features. Presence of the package alone does not enable transport clients. See dependencies-current/REVIEW.md and raw evidence."
     },
     {
       "id": "dependencies-011",
@@ -206,8 +206,8 @@
       "evidence": "CI exists (.github/workflows/checks.yml) AND hosted run 39964805125 at 148ef66 passed its Rust job",
       "remaining_action": "Dependency job result still pending; not a defect",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "local checks current; hosted qualification outstanding",
+      "current_evidence": "Current rootless/dependency workflow exists with pinned actions and checker versions. Both local target policy checks and audit pass. Historical hosted result is retained; no current-head hosted CI success is claimed. See dependencies-current/REVIEW.md and raw evidence."
     },
     {
       "id": "documentation-001",

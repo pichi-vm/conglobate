@@ -1,0 +1,22 @@
+rustix v1.1.5
+└── tempfile v3.27.0
+    ├── conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    ├── gix-odb v0.81.0
+    │   └── gix v0.84.0
+    │       └── conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    └── gix-tempfile v23.0.2
+        ├── gix v0.84.0 (*)
+        ├── gix-lock v23.0.1
+        │   ├── gix v0.84.0 (*)
+        │   ├── gix-ref v0.64.0
+        │   │   ├── gix v0.84.0 (*)
+        │   │   ├── gix-config v0.57.0
+        │   │   │   └── gix v0.84.0 (*)
+        │   │   ├── gix-discover v0.52.0
+        │   │   │   └── gix v0.84.0 (*)
+        │   │   └── gix-protocol v0.62.0
+        │   │       └── gix v0.84.0 (*)
+        │   └── gix-shallow v0.12.1
+        │       ├── gix v0.84.0 (*)
+        │       └── gix-protocol v0.62.0 (*)
+        └── gix-ref v0.64.0 (*)

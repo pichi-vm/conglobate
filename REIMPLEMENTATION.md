@@ -6088,3 +6088,7 @@ Revalidated documentation-001 through documentation-007 against current source a
 ### Parser and capability regression batch after 48c6662
 
 Reconsidered tests-008: retained parser defaults alone did not justify rejecting missing regression coverage. Added a bounded depth test with a successful shallow control; alias/scalar budget coverage remains outstanding. Expanded tests-002 to exclude all six reviewed supervisor/network capabilities. Revalidated performance-010 against its two-buffer matcher. All 148 library tests and strict all-target Clippy pass; initial test-placement lint failure retained in `preservation/m7-review/parser-capability-current/`. No behavior change or full milestone adherence pass. Previous turn made documentation-reconciliation progress; this turn adds maintained regression evidence.
+
+### Dependency source and policy reconciliation after 503fbe3
+
+Revalidated nine dependency findings against locked metadata, exact source feature gates, qualified reverse trees and CI configuration. Restored the missing ARCHITECTURE rationale referenced by Cargo.toml for the safe rustix mount_setattr pin. amd64/arm64 dependency-policy checks and current cargo-audit passed; warnings and initial ambiguous tree-query failure retained in `preservation/m7-review/dependencies-current/`. No current hosted CI or arm64 execution claim. Dependency versions unchanged. Previous turn added maintained tests; this turn repairs documentation and establishes current dependency evidence. No full milestone pass awarded.

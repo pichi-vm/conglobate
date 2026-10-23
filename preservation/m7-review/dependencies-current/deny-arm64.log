@@ -1,0 +1,870 @@
+warning[duplicate]: found 2 duplicate entries for crate 'block-buffer'
+   ┌─ /home/nathaniel/Projects/pichi-vm/conglobate/Cargo.lock:12:1
+   │  
+12 │ ╭ block-buffer 0.10.4 registry+https://github.com/rust-lang/crates.io-index
+13 │ │ block-buffer 0.12.1 registry+https://github.com/rust-lang/crates.io-index
+   │ ╰─────────────────────────────────────────────────────────────────────────┘ lock entries
+   │  
+   ├ block-buffer v0.10.4
+     └── digest v0.10.7
+         ├── devmap-verity v0.1.0
+         │   └── conglobate v0.2.0
+         ├── sha1 v0.10.7
+         │   └── sha1-checked v0.10.0
+         │       └── gix-hash v0.25.1
+         │           ├── gix v0.84.0
+         │           │   └── conglobate v0.2.0 (*)
+         │           ├── gix-commitgraph v0.37.1
+         │           │   ├── gix v0.84.0 (*)
+         │           │   ├── gix-revision v0.46.0
+         │           │   │   ├── gix v0.84.0 (*)
+         │           │   │   └── gix-refspec v0.42.0
+         │           │   │       └── gix v0.84.0 (*)
+         │           │   ├── gix-revwalk v0.32.0
+         │           │   │   ├── gix v0.84.0 (*)
+         │           │   │   ├── gix-revision v0.46.0 (*)
+         │           │   │   └── gix-traverse v0.58.0
+         │           │   │       └── gix v0.84.0 (*)
+         │           │   └── gix-traverse v0.58.0 (*)
+         │           ├── gix-diff v0.64.0
+         │           │   └── gix v0.84.0 (*)
+         │           ├── gix-hashtable v0.15.2
+         │           │   ├── gix v0.84.0 (*)
+         │           │   ├── gix-object v0.61.0
+         │           │   │   ├── gix v0.84.0 (*)
+         │           │   │   ├── gix-diff v0.64.0 (*)
+         │           │   │   ├── gix-odb v0.81.0
+         │           │   │   │   └── gix v0.84.0 (*)
+         │           │   │   ├── gix-pack v0.71.0
+         │           │   │   │   ├── gix v0.84.0 (*)
+         │           │   │   │   └── gix-odb v0.81.0 (*)
+         │           │   │   ├── gix-ref v0.64.0
+         │           │   │   │   ├── gix v0.84.0 (*)
+         │           │   │   │   ├── gix-config v0.57.0
+         │           │   │   │   │   └── gix v0.84.0 (*)
+         │           │   │   │   ├── gix-discover v0.52.0
+         │           │   │   │   │   └── gix v0.84.0 (*)
+         │           │   │   │   └── gix-protocol v0.62.0
+         │           │   │   │       └── gix v0.84.0 (*)
+         │           │   │   ├── gix-revision v0.46.0 (*)
+         │           │   │   ├── gix-revwalk v0.32.0 (*)
+         │           │   │   └── gix-traverse v0.58.0 (*)
+         │           │   ├── gix-odb v0.81.0 (*)
+         │           │   ├── gix-pack v0.71.0 (*)
+         │           │   ├── gix-revwalk v0.32.0 (*)
+         │           │   └── gix-traverse v0.58.0 (*)
+         │           ├── gix-object v0.61.0 (*)
+         │           ├── gix-odb v0.81.0 (*)
+         │           ├── gix-pack v0.71.0 (*)
+         │           ├── gix-protocol v0.62.0 (*)
+         │           ├── gix-ref v0.64.0 (*)
+         │           ├── gix-refspec v0.42.0 (*)
+         │           ├── gix-revision v0.46.0 (*)
+         │           ├── gix-revwalk v0.32.0 (*)
+         │           ├── gix-shallow v0.12.1
+         │           │   ├── gix v0.84.0 (*)
+         │           │   └── gix-protocol v0.62.0 (*)
+         │           └── gix-traverse v0.58.0 (*)
+         ├── sha1-checked v0.10.0 (*)
+         └── sha2 v0.10.9
+             ├── devmap-verity v0.1.0 (*)
+             └── pichi-artifact v0.1.0
+                 └── conglobate v0.2.0 (*)
+   ├ block-buffer v0.12.1
+     └── digest v0.11.3
+         └── sha2 v0.11.1
+             ├── conglobate v0.2.0
+             └── gix-hash v0.25.1
+                 ├── gix v0.84.0
+                 │   └── conglobate v0.2.0 (*)
+                 ├── gix-commitgraph v0.37.1
+                 │   ├── gix v0.84.0 (*)
+                 │   ├── gix-revision v0.46.0
+                 │   │   ├── gix v0.84.0 (*)
+                 │   │   └── gix-refspec v0.42.0
+                 │   │       └── gix v0.84.0 (*)
+                 │   ├── gix-revwalk v0.32.0
+                 │   │   ├── gix v0.84.0 (*)
+                 │   │   ├── gix-revision v0.46.0 (*)
+                 │   │   └── gix-traverse v0.58.0
+                 │   │       └── gix v0.84.0 (*)
+                 │   └── gix-traverse v0.58.0 (*)
+                 ├── gix-diff v0.64.0
+                 │   └── gix v0.84.0 (*)
+                 ├── gix-hashtable v0.15.2
+                 │   ├── gix v0.84.0 (*)
+                 │   ├── gix-object v0.61.0
+                 │   │   ├── gix v0.84.0 (*)
+                 │   │   ├── gix-diff v0.64.0 (*)
+                 │   │   ├── gix-odb v0.81.0
+                 │   │   │   └── gix v0.84.0 (*)
+                 │   │   ├── gix-pack v0.71.0
+                 │   │   │   ├── gix v0.84.0 (*)
+                 │   │   │   └── gix-odb v0.81.0 (*)
+                 │   │   ├── gix-ref v0.64.0
+                 │   │   │   ├── gix v0.84.0 (*)
+                 │   │   │   ├── gix-config v0.57.0
+                 │   │   │   │   └── gix v0.84.0 (*)
+                 │   │   │   ├── gix-discover v0.52.0
+                 │   │   │   │   └── gix v0.84.0 (*)
+                 │   │   │   └── gix-protocol v0.62.0
+                 │   │   │       └── gix v0.84.0 (*)
+                 │   │   ├── gix-revision v0.46.0 (*)
+                 │   │   ├── gix-revwalk v0.32.0 (*)
+                 │   │   └── gix-traverse v0.58.0 (*)
+                 │   ├── gix-odb v0.81.0 (*)
+                 │   ├── gix-pack v0.71.0 (*)
+                 │   ├── gix-revwalk v0.32.0 (*)
+                 │   └── gix-traverse v0.58.0 (*)
+                 ├── gix-object v0.61.0 (*)
+                 ├── gix-odb v0.81.0 (*)
+                 ├── gix-pack v0.71.0 (*)
+                 ├── gix-protocol v0.62.0 (*)
+                 ├── gix-ref v0.64.0 (*)
+                 ├── gix-refspec v0.42.0 (*)
+                 ├── gix-revision v0.46.0 (*)
+                 ├── gix-revwalk v0.32.0 (*)
+                 ├── gix-shallow v0.12.1
+                 │   ├── gix v0.84.0 (*)
+                 │   └── gix-protocol v0.62.0 (*)
+                 └── gix-traverse v0.58.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'cpufeatures'
+   ┌─ /home/nathaniel/Projects/pichi-vm/conglobate/Cargo.lock:30:1
+   │  
+30 │ ╭ cpufeatures 0.2.17 registry+https://github.com/rust-lang/crates.io-index
+31 │ │ cpufeatures 0.3.1 registry+https://github.com/rust-lang/crates.io-index
+   │ ╰───────────────────────────────────────────────────────────────────────┘ lock entries
+   │  
+   ├ cpufeatures v0.2.17
+     ├── sha1 v0.10.7
+     │   └── sha1-checked v0.10.0
+     │       └── gix-hash v0.25.1
+     │           ├── gix v0.84.0
+     │           │   └── conglobate v0.2.0
+     │           ├── gix-commitgraph v0.37.1
+     │           │   ├── gix v0.84.0 (*)
+     │           │   ├── gix-revision v0.46.0
+     │           │   │   ├── gix v0.84.0 (*)
+     │           │   │   └── gix-refspec v0.42.0
+     │           │   │       └── gix v0.84.0 (*)
+     │           │   ├── gix-revwalk v0.32.0
+     │           │   │   ├── gix v0.84.0 (*)
+     │           │   │   ├── gix-revision v0.46.0 (*)
+     │           │   │   └── gix-traverse v0.58.0
+     │           │   │       └── gix v0.84.0 (*)
+     │           │   └── gix-traverse v0.58.0 (*)
+     │           ├── gix-diff v0.64.0
+     │           │   └── gix v0.84.0 (*)
+     │           ├── gix-hashtable v0.15.2
+     │           │   ├── gix v0.84.0 (*)
+     │           │   ├── gix-object v0.61.0
+     │           │   │   ├── gix v0.84.0 (*)
+     │           │   │   ├── gix-diff v0.64.0 (*)
+     │           │   │   ├── gix-odb v0.81.0
+     │           │   │   │   └── gix v0.84.0 (*)
+     │           │   │   ├── gix-pack v0.71.0
+     │           │   │   │   ├── gix v0.84.0 (*)
+     │           │   │   │   └── gix-odb v0.81.0 (*)
+     │           │   │   ├── gix-ref v0.64.0
+     │           │   │   │   ├── gix v0.84.0 (*)
+     │           │   │   │   ├── gix-config v0.57.0
+     │           │   │   │   │   └── gix v0.84.0 (*)
+     │           │   │   │   ├── gix-discover v0.52.0
+     │           │   │   │   │   └── gix v0.84.0 (*)
+     │           │   │   │   └── gix-protocol v0.62.0
+     │           │   │   │       └── gix v0.84.0 (*)
+     │           │   │   ├── gix-revision v0.46.0 (*)
+     │           │   │   ├── gix-revwalk v0.32.0 (*)
+     │           │   │   └── gix-traverse v0.58.0 (*)
+     │           │   ├── gix-odb v0.81.0 (*)
+     │           │   ├── gix-pack v0.71.0 (*)
+     │           │   ├── gix-revwalk v0.32.0 (*)
+     │           │   └── gix-traverse v0.58.0 (*)
+     │           ├── gix-object v0.61.0 (*)
+     │           ├── gix-odb v0.81.0 (*)
+     │           ├── gix-pack v0.71.0 (*)
+     │           ├── gix-protocol v0.62.0 (*)
+     │           ├── gix-ref v0.64.0 (*)
+     │           ├── gix-refspec v0.42.0 (*)
+     │           ├── gix-revision v0.46.0 (*)
+     │           ├── gix-revwalk v0.32.0 (*)
+     │           ├── gix-shallow v0.12.1
+     │           │   ├── gix v0.84.0 (*)
+     │           │   └── gix-protocol v0.62.0 (*)
+     │           └── gix-traverse v0.58.0 (*)
+     └── sha2 v0.10.9
+         ├── devmap-verity v0.1.0
+         │   └── conglobate v0.2.0 (*)
+         └── pichi-artifact v0.1.0
+             └── conglobate v0.2.0 (*)
+   ├ cpufeatures v0.3.1
+     └── sha2 v0.11.1
+         ├── conglobate v0.2.0
+         └── gix-hash v0.25.1
+             ├── gix v0.84.0
+             │   └── conglobate v0.2.0 (*)
+             ├── gix-commitgraph v0.37.1
+             │   ├── gix v0.84.0 (*)
+             │   ├── gix-revision v0.46.0
+             │   │   ├── gix v0.84.0 (*)
+             │   │   └── gix-refspec v0.42.0
+             │   │       └── gix v0.84.0 (*)
+             │   ├── gix-revwalk v0.32.0
+             │   │   ├── gix v0.84.0 (*)
+             │   │   ├── gix-revision v0.46.0 (*)
+             │   │   └── gix-traverse v0.58.0
+             │   │       └── gix v0.84.0 (*)
+             │   └── gix-traverse v0.58.0 (*)
+             ├── gix-diff v0.64.0
+             │   └── gix v0.84.0 (*)
+             ├── gix-hashtable v0.15.2
+             │   ├── gix v0.84.0 (*)
+             │   ├── gix-object v0.61.0
+             │   │   ├── gix v0.84.0 (*)
+             │   │   ├── gix-diff v0.64.0 (*)
+             │   │   ├── gix-odb v0.81.0
+             │   │   │   └── gix v0.84.0 (*)
+             │   │   ├── gix-pack v0.71.0
+             │   │   │   ├── gix v0.84.0 (*)
+             │   │   │   └── gix-odb v0.81.0 (*)
+             │   │   ├── gix-ref v0.64.0
+             │   │   │   ├── gix v0.84.0 (*)
+             │   │   │   ├── gix-config v0.57.0
+             │   │   │   │   └── gix v0.84.0 (*)
+             │   │   │   ├── gix-discover v0.52.0
+             │   │   │   │   └── gix v0.84.0 (*)
+             │   │   │   └── gix-protocol v0.62.0
+             │   │   │       └── gix v0.84.0 (*)
+             │   │   ├── gix-revision v0.46.0 (*)
+             │   │   ├── gix-revwalk v0.32.0 (*)
+             │   │   └── gix-traverse v0.58.0 (*)
+             │   ├── gix-odb v0.81.0 (*)
+             │   ├── gix-pack v0.71.0 (*)
+             │   ├── gix-revwalk v0.32.0 (*)
+             │   └── gix-traverse v0.58.0 (*)
+             ├── gix-object v0.61.0 (*)
+             ├── gix-odb v0.81.0 (*)
+             ├── gix-pack v0.71.0 (*)
+             ├── gix-protocol v0.62.0 (*)
+             ├── gix-ref v0.64.0 (*)
+             ├── gix-refspec v0.42.0 (*)
+             ├── gix-revision v0.46.0 (*)
+             ├── gix-revwalk v0.32.0 (*)
+             ├── gix-shallow v0.12.1
+             │   ├── gix v0.84.0 (*)
+             │   └── gix-protocol v0.62.0 (*)
+             └── gix-traverse v0.58.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'crypto-common'
+   ┌─ /home/nathaniel/Projects/pichi-vm/conglobate/Cargo.lock:33:1
+   │  
+33 │ ╭ crypto-common 0.1.7 registry+https://github.com/rust-lang/crates.io-index
+34 │ │ crypto-common 0.2.2 registry+https://github.com/rust-lang/crates.io-index
+   │ ╰─────────────────────────────────────────────────────────────────────────┘ lock entries
+   │  
+   ├ crypto-common v0.1.7
+     └── digest v0.10.7
+         ├── devmap-verity v0.1.0
+         │   └── conglobate v0.2.0
+         ├── sha1 v0.10.7
+         │   └── sha1-checked v0.10.0
+         │       └── gix-hash v0.25.1
+         │           ├── gix v0.84.0
+         │           │   └── conglobate v0.2.0 (*)
+         │           ├── gix-commitgraph v0.37.1
+         │           │   ├── gix v0.84.0 (*)
+         │           │   ├── gix-revision v0.46.0
+         │           │   │   ├── gix v0.84.0 (*)
+         │           │   │   └── gix-refspec v0.42.0
+         │           │   │       └── gix v0.84.0 (*)
+         │           │   ├── gix-revwalk v0.32.0
+         │           │   │   ├── gix v0.84.0 (*)
+         │           │   │   ├── gix-revision v0.46.0 (*)
+         │           │   │   └── gix-traverse v0.58.0
+         │           │   │       └── gix v0.84.0 (*)
+         │           │   └── gix-traverse v0.58.0 (*)
+         │           ├── gix-diff v0.64.0
+         │           │   └── gix v0.84.0 (*)
+         │           ├── gix-hashtable v0.15.2
+         │           │   ├── gix v0.84.0 (*)
+         │           │   ├── gix-object v0.61.0
+         │           │   │   ├── gix v0.84.0 (*)
+         │           │   │   ├── gix-diff v0.64.0 (*)
+         │           │   │   ├── gix-odb v0.81.0
+         │           │   │   │   └── gix v0.84.0 (*)
+         │           │   │   ├── gix-pack v0.71.0
+         │           │   │   │   ├── gix v0.84.0 (*)
+         │           │   │   │   └── gix-odb v0.81.0 (*)
+         │           │   │   ├── gix-ref v0.64.0
+         │           │   │   │   ├── gix v0.84.0 (*)
+         │           │   │   │   ├── gix-config v0.57.0
+         │           │   │   │   │   └── gix v0.84.0 (*)
+         │           │   │   │   ├── gix-discover v0.52.0
+         │           │   │   │   │   └── gix v0.84.0 (*)
+         │           │   │   │   └── gix-protocol v0.62.0
+         │           │   │   │       └── gix v0.84.0 (*)
+         │           │   │   ├── gix-revision v0.46.0 (*)
+         │           │   │   ├── gix-revwalk v0.32.0 (*)
+         │           │   │   └── gix-traverse v0.58.0 (*)
+         │           │   ├── gix-odb v0.81.0 (*)
+         │           │   ├── gix-pack v0.71.0 (*)
+         │           │   ├── gix-revwalk v0.32.0 (*)
+         │           │   └── gix-traverse v0.58.0 (*)
+         │           ├── gix-object v0.61.0 (*)
+         │           ├── gix-odb v0.81.0 (*)
+         │           ├── gix-pack v0.71.0 (*)
+         │           ├── gix-protocol v0.62.0 (*)
+         │           ├── gix-ref v0.64.0 (*)
+         │           ├── gix-refspec v0.42.0 (*)
+         │           ├── gix-revision v0.46.0 (*)
+         │           ├── gix-revwalk v0.32.0 (*)
+         │           ├── gix-shallow v0.12.1
+         │           │   ├── gix v0.84.0 (*)
+         │           │   └── gix-protocol v0.62.0 (*)
+         │           └── gix-traverse v0.58.0 (*)
+         ├── sha1-checked v0.10.0 (*)
+         └── sha2 v0.10.9
+             ├── devmap-verity v0.1.0 (*)
+             └── pichi-artifact v0.1.0
+                 └── conglobate v0.2.0 (*)
+   ├ crypto-common v0.2.2
+     └── digest v0.11.3
+         └── sha2 v0.11.1
+             ├── conglobate v0.2.0
+             └── gix-hash v0.25.1
+                 ├── gix v0.84.0
+                 │   └── conglobate v0.2.0 (*)
+                 ├── gix-commitgraph v0.37.1
+                 │   ├── gix v0.84.0 (*)
+                 │   ├── gix-revision v0.46.0
+                 │   │   ├── gix v0.84.0 (*)
+                 │   │   └── gix-refspec v0.42.0
+                 │   │       └── gix v0.84.0 (*)
+                 │   ├── gix-revwalk v0.32.0
+                 │   │   ├── gix v0.84.0 (*)
+                 │   │   ├── gix-revision v0.46.0 (*)
+                 │   │   └── gix-traverse v0.58.0
+                 │   │       └── gix v0.84.0 (*)
+                 │   └── gix-traverse v0.58.0 (*)
+                 ├── gix-diff v0.64.0
+                 │   └── gix v0.84.0 (*)
+                 ├── gix-hashtable v0.15.2
+                 │   ├── gix v0.84.0 (*)
+                 │   ├── gix-object v0.61.0
+                 │   │   ├── gix v0.84.0 (*)
+                 │   │   ├── gix-diff v0.64.0 (*)
+                 │   │   ├── gix-odb v0.81.0
+                 │   │   │   └── gix v0.84.0 (*)
+                 │   │   ├── gix-pack v0.71.0
+                 │   │   │   ├── gix v0.84.0 (*)
+                 │   │   │   └── gix-odb v0.81.0 (*)
+                 │   │   ├── gix-ref v0.64.0
+                 │   │   │   ├── gix v0.84.0 (*)
+                 │   │   │   ├── gix-config v0.57.0
+                 │   │   │   │   └── gix v0.84.0 (*)
+                 │   │   │   ├── gix-discover v0.52.0
+                 │   │   │   │   └── gix v0.84.0 (*)
+                 │   │   │   └── gix-protocol v0.62.0
+                 │   │   │       └── gix v0.84.0 (*)
+                 │   │   ├── gix-revision v0.46.0 (*)
+                 │   │   ├── gix-revwalk v0.32.0 (*)
+                 │   │   └── gix-traverse v0.58.0 (*)
+                 │   ├── gix-odb v0.81.0 (*)
+                 │   ├── gix-pack v0.71.0 (*)
+                 │   ├── gix-revwalk v0.32.0 (*)
+                 │   └── gix-traverse v0.58.0 (*)
+                 ├── gix-object v0.61.0 (*)
+                 ├── gix-odb v0.81.0 (*)
+                 ├── gix-pack v0.71.0 (*)
+                 ├── gix-protocol v0.62.0 (*)
+                 ├── gix-ref v0.64.0 (*)
+                 ├── gix-refspec v0.42.0 (*)
+                 ├── gix-revision v0.46.0 (*)
+                 ├── gix-revwalk v0.32.0 (*)
+                 ├── gix-shallow v0.12.1
+                 │   ├── gix v0.84.0 (*)
+                 │   └── gix-protocol v0.62.0 (*)
+                 └── gix-traverse v0.58.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'digest'
+   ┌─ /home/nathaniel/Projects/pichi-vm/conglobate/Cargo.lock:40:1
+   │  
+40 │ ╭ digest 0.10.7 registry+https://github.com/rust-lang/crates.io-index
+41 │ │ digest 0.11.3 registry+https://github.com/rust-lang/crates.io-index
+   │ ╰───────────────────────────────────────────────────────────────────┘ lock entries
+   │  
+   ├ digest v0.10.7
+     ├── devmap-verity v0.1.0
+     │   └── conglobate v0.2.0
+     ├── sha1 v0.10.7
+     │   └── sha1-checked v0.10.0
+     │       └── gix-hash v0.25.1
+     │           ├── gix v0.84.0
+     │           │   └── conglobate v0.2.0 (*)
+     │           ├── gix-commitgraph v0.37.1
+     │           │   ├── gix v0.84.0 (*)
+     │           │   ├── gix-revision v0.46.0
+     │           │   │   ├── gix v0.84.0 (*)
+     │           │   │   └── gix-refspec v0.42.0
+     │           │   │       └── gix v0.84.0 (*)
+     │           │   ├── gix-revwalk v0.32.0
+     │           │   │   ├── gix v0.84.0 (*)
+     │           │   │   ├── gix-revision v0.46.0 (*)
+     │           │   │   └── gix-traverse v0.58.0
+     │           │   │       └── gix v0.84.0 (*)
+     │           │   └── gix-traverse v0.58.0 (*)
+     │           ├── gix-diff v0.64.0
+     │           │   └── gix v0.84.0 (*)
+     │           ├── gix-hashtable v0.15.2
+     │           │   ├── gix v0.84.0 (*)
+     │           │   ├── gix-object v0.61.0
+     │           │   │   ├── gix v0.84.0 (*)
+     │           │   │   ├── gix-diff v0.64.0 (*)
+     │           │   │   ├── gix-odb v0.81.0
+     │           │   │   │   └── gix v0.84.0 (*)
+     │           │   │   ├── gix-pack v0.71.0
+     │           │   │   │   ├── gix v0.84.0 (*)
+     │           │   │   │   └── gix-odb v0.81.0 (*)
+     │           │   │   ├── gix-ref v0.64.0
+     │           │   │   │   ├── gix v0.84.0 (*)
+     │           │   │   │   ├── gix-config v0.57.0
+     │           │   │   │   │   └── gix v0.84.0 (*)
+     │           │   │   │   ├── gix-discover v0.52.0
+     │           │   │   │   │   └── gix v0.84.0 (*)
+     │           │   │   │   └── gix-protocol v0.62.0
+     │           │   │   │       └── gix v0.84.0 (*)
+     │           │   │   ├── gix-revision v0.46.0 (*)
+     │           │   │   ├── gix-revwalk v0.32.0 (*)
+     │           │   │   └── gix-traverse v0.58.0 (*)
+     │           │   ├── gix-odb v0.81.0 (*)
+     │           │   ├── gix-pack v0.71.0 (*)
+     │           │   ├── gix-revwalk v0.32.0 (*)
+     │           │   └── gix-traverse v0.58.0 (*)
+     │           ├── gix-object v0.61.0 (*)
+     │           ├── gix-odb v0.81.0 (*)
+     │           ├── gix-pack v0.71.0 (*)
+     │           ├── gix-protocol v0.62.0 (*)
+     │           ├── gix-ref v0.64.0 (*)
+     │           ├── gix-refspec v0.42.0 (*)
+     │           ├── gix-revision v0.46.0 (*)
+     │           ├── gix-revwalk v0.32.0 (*)
+     │           ├── gix-shallow v0.12.1
+     │           │   ├── gix v0.84.0 (*)
+     │           │   └── gix-protocol v0.62.0 (*)
+     │           └── gix-traverse v0.58.0 (*)
+     ├── sha1-checked v0.10.0 (*)
+     └── sha2 v0.10.9
+         ├── devmap-verity v0.1.0 (*)
+         └── pichi-artifact v0.1.0
+             └── conglobate v0.2.0 (*)
+   ├ digest v0.11.3
+     └── sha2 v0.11.1
+         ├── conglobate v0.2.0
+         └── gix-hash v0.25.1
+             ├── gix v0.84.0
+             │   └── conglobate v0.2.0 (*)
+             ├── gix-commitgraph v0.37.1
+             │   ├── gix v0.84.0 (*)
+             │   ├── gix-revision v0.46.0
+             │   │   ├── gix v0.84.0 (*)
+             │   │   └── gix-refspec v0.42.0
+             │   │       └── gix v0.84.0 (*)
+             │   ├── gix-revwalk v0.32.0
+             │   │   ├── gix v0.84.0 (*)
+             │   │   ├── gix-revision v0.46.0 (*)
+             │   │   └── gix-traverse v0.58.0
+             │   │       └── gix v0.84.0 (*)
+             │   └── gix-traverse v0.58.0 (*)
+             ├── gix-diff v0.64.0
+             │   └── gix v0.84.0 (*)
+             ├── gix-hashtable v0.15.2
+             │   ├── gix v0.84.0 (*)
+             │   ├── gix-object v0.61.0
+             │   │   ├── gix v0.84.0 (*)
+             │   │   ├── gix-diff v0.64.0 (*)
+             │   │   ├── gix-odb v0.81.0
+             │   │   │   └── gix v0.84.0 (*)
+             │   │   ├── gix-pack v0.71.0
+             │   │   │   ├── gix v0.84.0 (*)
+             │   │   │   └── gix-odb v0.81.0 (*)
+             │   │   ├── gix-ref v0.64.0
+             │   │   │   ├── gix v0.84.0 (*)
+             │   │   │   ├── gix-config v0.57.0
+             │   │   │   │   └── gix v0.84.0 (*)
+             │   │   │   ├── gix-discover v0.52.0
+             │   │   │   │   └── gix v0.84.0 (*)
+             │   │   │   └── gix-protocol v0.62.0
+             │   │   │       └── gix v0.84.0 (*)
+             │   │   ├── gix-revision v0.46.0 (*)
+             │   │   ├── gix-revwalk v0.32.0 (*)
+             │   │   └── gix-traverse v0.58.0 (*)
+             │   ├── gix-odb v0.81.0 (*)
+             │   ├── gix-pack v0.71.0 (*)
+             │   ├── gix-revwalk v0.32.0 (*)
+             │   └── gix-traverse v0.58.0 (*)
+             ├── gix-object v0.61.0 (*)
+             ├── gix-odb v0.81.0 (*)
+             ├── gix-pack v0.71.0 (*)
+             ├── gix-protocol v0.62.0 (*)
+             ├── gix-ref v0.64.0 (*)
+             ├── gix-refspec v0.42.0 (*)
+             ├── gix-revision v0.46.0 (*)
+             ├── gix-revwalk v0.32.0 (*)
+             ├── gix-shallow v0.12.1
+             │   ├── gix v0.84.0 (*)
+             │   └── gix-protocol v0.62.0 (*)
+             └── gix-traverse v0.58.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'hashbrown'
+   ┌─ /home/nathaniel/Projects/pichi-vm/conglobate/Cargo.lock:92:1
+   │  
+92 │ ╭ hashbrown 0.16.1 registry+https://github.com/rust-lang/crates.io-index
+93 │ │ hashbrown 0.17.1 registry+https://github.com/rust-lang/crates.io-index
+   │ ╰──────────────────────────────────────────────────────────────────────┘ lock entries
+   │  
+   ├ hashbrown v0.16.1
+     └── clru v0.6.3
+         └── gix-pack v0.71.0
+             ├── gix v0.84.0
+             │   └── conglobate v0.2.0
+             └── gix-odb v0.81.0
+                 └── gix v0.84.0 (*)
+   ├ hashbrown v0.17.1
+     └── gix-hashtable v0.15.2
+         ├── gix v0.84.0
+         │   └── conglobate v0.2.0
+         ├── gix-object v0.61.0
+         │   ├── gix v0.84.0 (*)
+         │   ├── gix-diff v0.64.0
+         │   │   └── gix v0.84.0 (*)
+         │   ├── gix-odb v0.81.0
+         │   │   └── gix v0.84.0 (*)
+         │   ├── gix-pack v0.71.0
+         │   │   ├── gix v0.84.0 (*)
+         │   │   └── gix-odb v0.81.0 (*)
+         │   ├── gix-ref v0.64.0
+         │   │   ├── gix v0.84.0 (*)
+         │   │   ├── gix-config v0.57.0
+         │   │   │   └── gix v0.84.0 (*)
+         │   │   ├── gix-discover v0.52.0
+         │   │   │   └── gix v0.84.0 (*)
+         │   │   └── gix-protocol v0.62.0
+         │   │       └── gix v0.84.0 (*)
+         │   ├── gix-revision v0.46.0
+         │   │   ├── gix v0.84.0 (*)
+         │   │   └── gix-refspec v0.42.0
+         │   │       └── gix v0.84.0 (*)
+         │   ├── gix-revwalk v0.32.0
+         │   │   ├── gix v0.84.0 (*)
+         │   │   ├── gix-revision v0.46.0 (*)
+         │   │   └── gix-traverse v0.58.0
+         │   │       └── gix v0.84.0 (*)
+         │   └── gix-traverse v0.58.0 (*)
+         ├── gix-odb v0.81.0 (*)
+         ├── gix-pack v0.71.0 (*)
+         ├── gix-revwalk v0.32.0 (*)
+         └── gix-traverse v0.58.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'iocuddle'
+   ┌─ /home/nathaniel/Projects/pichi-vm/conglobate/Cargo.lock:98:1
+   │  
+98 │ ╭ iocuddle 0.3.0 registry+https://github.com/rust-lang/crates.io-index
+99 │ │ iocuddle 0.4.0 registry+https://github.com/rust-lang/crates.io-index
+   │ ╰────────────────────────────────────────────────────────────────────┘ lock entries
+   │  
+   ├ iocuddle v0.3.0
+     └── lodown v0.1.0
+         └── conglobate v0.2.0
+   ├ iocuddle v0.4.0
+     ├── devmap-core v0.1.0
+     │   ├── conglobate v0.2.0
+     │   ├── devmap-linux v0.1.0
+     │   │   ├── conglobate v0.2.0 (*)
+     │   │   ├── devmap-snapshot v0.1.0
+     │   │   │   └── conglobate v0.2.0 (*)
+     │   │   └── devmap-verity v0.1.0
+     │   │       └── conglobate v0.2.0 (*)
+     │   ├── devmap-snapshot v0.1.0 (*)
+     │   └── devmap-verity v0.1.0 (*)
+     └── devmap-linux v0.1.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'rustix'
+    ┌─ /home/nathaniel/Projects/pichi-vm/conglobate/Cargo.lock:134:1
+    │  
+134 │ ╭ rustix 1.1.5 git+https://github.com/bytecodealliance/rustix?rev=8bda151df87574f56f1e4c0b59f2d1df5d61609e
+135 │ │ rustix 1.1.5 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰──────────────────────────────────────────────────────────────────┘ lock entries
+    │  
+    ├ rustix v1.1.5
+      └── conglobate v0.2.0
+    ├ rustix v1.1.5
+      └── tempfile v3.27.0
+          ├── conglobate v0.2.0
+          ├── gix-odb v0.81.0
+          │   └── gix v0.84.0
+          │       └── conglobate v0.2.0 (*)
+          └── gix-tempfile v23.0.2
+              ├── gix v0.84.0 (*)
+              ├── gix-lock v23.0.1
+              │   ├── gix v0.84.0 (*)
+              │   ├── gix-ref v0.64.0
+              │   │   ├── gix v0.84.0 (*)
+              │   │   ├── gix-config v0.57.0
+              │   │   │   └── gix v0.84.0 (*)
+              │   │   ├── gix-discover v0.52.0
+              │   │   │   └── gix v0.84.0 (*)
+              │   │   └── gix-protocol v0.62.0
+              │   │       └── gix v0.84.0 (*)
+              │   └── gix-shallow v0.12.1
+              │       ├── gix v0.84.0 (*)
+              │       └── gix-protocol v0.62.0 (*)
+              └── gix-ref v0.64.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'sha2'
+    ┌─ /home/nathaniel/Projects/pichi-vm/conglobate/Cargo.lock:150:1
+    │  
+150 │ ╭ sha2 0.10.9 registry+https://github.com/rust-lang/crates.io-index
+151 │ │ sha2 0.11.1 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰─────────────────────────────────────────────────────────────────┘ lock entries
+    │  
+    ├ sha2 v0.10.9
+      ├── devmap-verity v0.1.0
+      │   └── conglobate v0.2.0
+      └── pichi-artifact v0.1.0
+          └── conglobate v0.2.0 (*)
+    ├ sha2 v0.11.1
+      ├── conglobate v0.2.0
+      └── gix-hash v0.25.1
+          ├── gix v0.84.0
+          │   └── conglobate v0.2.0 (*)
+          ├── gix-commitgraph v0.37.1
+          │   ├── gix v0.84.0 (*)
+          │   ├── gix-revision v0.46.0
+          │   │   ├── gix v0.84.0 (*)
+          │   │   └── gix-refspec v0.42.0
+          │   │       └── gix v0.84.0 (*)
+          │   ├── gix-revwalk v0.32.0
+          │   │   ├── gix v0.84.0 (*)
+          │   │   ├── gix-revision v0.46.0 (*)
+          │   │   └── gix-traverse v0.58.0
+          │   │       └── gix v0.84.0 (*)
+          │   └── gix-traverse v0.58.0 (*)
+          ├── gix-diff v0.64.0
+          │   └── gix v0.84.0 (*)
+          ├── gix-hashtable v0.15.2
+          │   ├── gix v0.84.0 (*)
+          │   ├── gix-object v0.61.0
+          │   │   ├── gix v0.84.0 (*)
+          │   │   ├── gix-diff v0.64.0 (*)
+          │   │   ├── gix-odb v0.81.0
+          │   │   │   └── gix v0.84.0 (*)
+          │   │   ├── gix-pack v0.71.0
+          │   │   │   ├── gix v0.84.0 (*)
+          │   │   │   └── gix-odb v0.81.0 (*)
+          │   │   ├── gix-ref v0.64.0
+          │   │   │   ├── gix v0.84.0 (*)
+          │   │   │   ├── gix-config v0.57.0
+          │   │   │   │   └── gix v0.84.0 (*)
+          │   │   │   ├── gix-discover v0.52.0
+          │   │   │   │   └── gix v0.84.0 (*)
+          │   │   │   └── gix-protocol v0.62.0
+          │   │   │       └── gix v0.84.0 (*)
+          │   │   ├── gix-revision v0.46.0 (*)
+          │   │   ├── gix-revwalk v0.32.0 (*)
+          │   │   └── gix-traverse v0.58.0 (*)
+          │   ├── gix-odb v0.81.0 (*)
+          │   ├── gix-pack v0.71.0 (*)
+          │   ├── gix-revwalk v0.32.0 (*)
+          │   └── gix-traverse v0.58.0 (*)
+          ├── gix-object v0.61.0 (*)
+          ├── gix-odb v0.81.0 (*)
+          ├── gix-pack v0.71.0 (*)
+          ├── gix-protocol v0.62.0 (*)
+          ├── gix-ref v0.64.0 (*)
+          ├── gix-refspec v0.42.0 (*)
+          ├── gix-revision v0.46.0 (*)
+          ├── gix-revwalk v0.32.0 (*)
+          ├── gix-shallow v0.12.1
+          │   ├── gix v0.84.0 (*)
+          │   └── gix-protocol v0.62.0 (*)
+          └── gix-traverse v0.58.0 (*)
+
+warning[duplicate]: found 2 duplicate entries for crate 'syn'
+    ┌─ /home/nathaniel/Projects/pichi-vm/conglobate/Cargo.lock:158:1
+    │  
+158 │ ╭ syn 2.0.119 registry+https://github.com/rust-lang/crates.io-index
+159 │ │ syn 3.0.9 registry+https://github.com/rust-lang/crates.io-index
+    │ ╰───────────────────────────────────────────────────────────────┘ lock entries
+    │  
+    ├ syn v2.0.119
+      ├── maybe-async v0.2.11
+      │   └── gix-protocol v0.62.0
+      │       └── gix v0.84.0
+      │           └── conglobate v0.2.0
+      └── zerocopy-derive v0.8.63
+          └── zerocopy v0.8.63
+              ├── devmap-linux v0.1.0
+              │   ├── conglobate v0.2.0 (*)
+              │   ├── devmap-snapshot v0.1.0
+              │   │   └── conglobate v0.2.0 (*)
+              │   └── devmap-verity v0.1.0
+              │       └── conglobate v0.2.0 (*)
+              ├── half v2.7.1
+              │   └── ciborium-ll v0.2.2
+              │       └── ciborium v0.2.2
+              │           └── conglobate v0.2.0 (*)
+              ├── iocuddle v0.3.0
+              │   └── lodown v0.1.0
+              │       └── conglobate v0.2.0 (*)
+              ├── iocuddle v0.4.0
+              │   ├── devmap-core v0.1.0
+              │   │   ├── conglobate v0.2.0 (*)
+              │   │   ├── devmap-linux v0.1.0 (*)
+              │   │   ├── devmap-snapshot v0.1.0 (*)
+              │   │   └── devmap-verity v0.1.0 (*)
+              │   └── devmap-linux v0.1.0 (*)
+              ├── lodown v0.1.0 (*)
+              └── netlink-packet-route v0.33.0
+                  └── conglobate v0.2.0 (*)
+    ├ syn v3.0.9
+      ├── clap_derive v4.6.7
+      │   └── clap v4.6.7
+      │       └── conglobate v0.2.0
+      ├── scroll_derive v0.13.2
+      │   └── scroll v0.13.0
+      │       └── goblin v0.10.7
+      │           └── conglobate v0.2.0 (*)
+      ├── serde_derive v1.0.229
+      │   └── serde v1.0.229
+      │       ├── ciborium v0.2.2
+      │       │   └── conglobate v0.2.0 (*)
+      │       ├── conglobate v0.2.0 (*)
+      │       ├── pichi-artifact v0.1.0
+      │       │   └── conglobate v0.2.0 (*)
+      │       └── pmi v0.1.0
+      │           └── conglobate v0.2.0 (*)
+      └── thiserror-impl v2.0.21
+          └── thiserror v2.0.21
+              ├── conglobate v0.2.0 (*)
+              ├── gix v0.84.0
+              │   └── conglobate v0.2.0 (*)
+              ├── gix-config v0.57.0
+              │   └── gix v0.84.0 (*)
+              ├── gix-config-value v0.18.1
+              │   └── gix-config v0.57.0 (*)
+              ├── gix-diff v0.64.0
+              │   └── gix v0.84.0 (*)
+              ├── gix-discover v0.52.0
+              │   └── gix v0.84.0 (*)
+              ├── gix-features v0.48.1
+              │   ├── gix v0.84.0 (*)
+              │   ├── gix-config v0.57.0 (*)
+              │   ├── gix-fs v0.21.2
+              │   │   ├── gix v0.84.0 (*)
+              │   │   ├── gix-discover v0.52.0 (*)
+              │   │   ├── gix-odb v0.81.0
+              │   │   │   └── gix v0.84.0 (*)
+              │   │   ├── gix-ref v0.64.0
+              │   │   │   ├── gix v0.84.0 (*)
+              │   │   │   ├── gix-config v0.57.0 (*)
+              │   │   │   ├── gix-discover v0.52.0 (*)
+              │   │   │   └── gix-protocol v0.62.0
+              │   │   │       └── gix v0.84.0 (*)
+              │   │   └── gix-tempfile v23.0.2
+              │   │       ├── gix v0.84.0 (*)
+              │   │       ├── gix-lock v23.0.1
+              │   │       │   ├── gix v0.84.0 (*)
+              │   │       │   ├── gix-ref v0.64.0 (*)
+              │   │       │   └── gix-shallow v0.12.1
+              │   │       │       ├── gix v0.84.0 (*)
+              │   │       │       └── gix-protocol v0.62.0 (*)
+              │   │       └── gix-ref v0.64.0 (*)
+              │   ├── gix-glob v0.26.1
+              │   │   ├── gix v0.84.0 (*)
+              │   │   ├── gix-config v0.57.0 (*)
+              │   │   └── gix-refspec v0.42.0
+              │   │       └── gix v0.84.0 (*)
+              │   ├── gix-hash v0.25.1
+              │   │   ├── gix v0.84.0 (*)
+              │   │   ├── gix-commitgraph v0.37.1
+              │   │   │   ├── gix v0.84.0 (*)
+              │   │   │   ├── gix-revision v0.46.0
+              │   │   │   │   ├── gix v0.84.0 (*)
+              │   │   │   │   └── gix-refspec v0.42.0 (*)
+              │   │   │   ├── gix-revwalk v0.32.0
+              │   │   │   │   ├── gix v0.84.0 (*)
+              │   │   │   │   ├── gix-revision v0.46.0 (*)
+              │   │   │   │   └── gix-traverse v0.58.0
+              │   │   │   │       └── gix v0.84.0 (*)
+              │   │   │   └── gix-traverse v0.58.0 (*)
+              │   │   ├── gix-diff v0.64.0 (*)
+              │   │   ├── gix-hashtable v0.15.2
+              │   │   │   ├── gix v0.84.0 (*)
+              │   │   │   ├── gix-object v0.61.0
+              │   │   │   │   ├── gix v0.84.0 (*)
+              │   │   │   │   ├── gix-diff v0.64.0 (*)
+              │   │   │   │   ├── gix-odb v0.81.0 (*)
+              │   │   │   │   ├── gix-pack v0.71.0
+              │   │   │   │   │   ├── gix v0.84.0 (*)
+              │   │   │   │   │   └── gix-odb v0.81.0 (*)
+              │   │   │   │   ├── gix-ref v0.64.0 (*)
+              │   │   │   │   ├── gix-revision v0.46.0 (*)
+              │   │   │   │   ├── gix-revwalk v0.32.0 (*)
+              │   │   │   │   └── gix-traverse v0.58.0 (*)
+              │   │   │   ├── gix-odb v0.81.0 (*)
+              │   │   │   ├── gix-pack v0.71.0 (*)
+              │   │   │   ├── gix-revwalk v0.32.0 (*)
+              │   │   │   └── gix-traverse v0.58.0 (*)
+              │   │   ├── gix-object v0.61.0 (*)
+              │   │   ├── gix-odb v0.81.0 (*)
+              │   │   ├── gix-pack v0.71.0 (*)
+              │   │   ├── gix-protocol v0.62.0 (*)
+              │   │   ├── gix-ref v0.64.0 (*)
+              │   │   ├── gix-refspec v0.42.0 (*)
+              │   │   ├── gix-revision v0.46.0 (*)
+              │   │   ├── gix-revwalk v0.32.0 (*)
+              │   │   ├── gix-shallow v0.12.1 (*)
+              │   │   └── gix-traverse v0.58.0 (*)
+              │   ├── gix-object v0.61.0 (*)
+              │   ├── gix-odb v0.81.0 (*)
+              │   ├── gix-pack v0.71.0 (*)
+              │   ├── gix-protocol v0.62.0 (*)
+              │   ├── gix-ref v0.64.0 (*)
+              │   └── gix-transport v0.57.2
+              │       └── gix-protocol v0.62.0 (*)
+              ├── gix-fs v0.21.2 (*)
+              ├── gix-hash v0.25.1 (*)
+              ├── gix-lock v23.0.1 (*)
+              ├── gix-object v0.61.0 (*)
+              ├── gix-odb v0.81.0 (*)
+              ├── gix-pack v0.71.0 (*)
+              ├── gix-packetline v0.21.5
+              │   └── gix-transport v0.57.2 (*)
+              ├── gix-path v0.12.6
+              │   ├── gix v0.84.0 (*)
+              │   ├── gix-command v0.9.2
+              │   │   └── gix-transport v0.57.2 (*)
+              │   ├── gix-config v0.57.0 (*)
+              │   ├── gix-config-value v0.18.1 (*)
+              │   ├── gix-discover v0.52.0 (*)
+              │   ├── gix-features v0.48.1 (*)
+              │   ├── gix-fs v0.21.2 (*)
+              │   ├── gix-glob v0.26.1 (*)
+              │   ├── gix-odb v0.81.0 (*)
+              │   ├── gix-pack v0.71.0 (*)
+              │   ├── gix-ref v0.64.0 (*)
+              │   └── gix-url v0.36.2
+              │       ├── gix v0.84.0 (*)
+              │       └── gix-transport v0.57.2 (*)
+              ├── gix-protocol v0.62.0 (*)
+              ├── gix-ref v0.64.0 (*)
+              ├── gix-refspec v0.42.0 (*)
+              ├── gix-revwalk v0.32.0 (*)
+              ├── gix-shallow v0.12.1 (*)
+              ├── gix-transport v0.57.2 (*)
+              ├── gix-traverse v0.58.0 (*)
+              ├── gix-url v0.36.2 (*)
+              └── pichi-artifact v0.1.0 (*)
+
+bans ok, licenses ok, sources ok
