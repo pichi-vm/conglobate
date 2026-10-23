@@ -6084,3 +6084,7 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 ### Current documentation reconciliation at ca728ef
 
 Revalidated documentation-001 through documentation-007 against current source and architecture; retained historical evidence unchanged. Strict rustdoc passed and all 53 doctests passed. Evidence: `preservation/m7-review/documentation-current/`. README clarifies that the environment owns networking and supplies both namespace and resolver inputs. No application behavior changed, no new VM result claimed, and no full M4 adherence pass awarded. The previous turn made documentation and targeted-check progress; this turn closes seven current-source reconciliation gaps. All remaining milestone gates remain open.
+
+### Parser and capability regression batch after 48c6662
+
+Reconsidered tests-008: retained parser defaults alone did not justify rejecting missing regression coverage. Added a bounded depth test with a successful shallow control; alias/scalar budget coverage remains outstanding. Expanded tests-002 to exclude all six reviewed supervisor/network capabilities. Revalidated performance-010 against its two-buffer matcher. All 148 library tests and strict all-target Clippy pass; initial test-placement lint failure retained in `preservation/m7-review/parser-capability-current/`. No behavior change or full milestone adherence pass. Previous turn made documentation-reconciliation progress; this turn adds maintained regression evidence.

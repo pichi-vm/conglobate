@@ -115,13 +115,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn filesystem_commands_have_no_sys_admin_authority() {
+    fn filesystem_commands_exclude_supervisor_and_network_authority() {
         // A design requirement independent of the chosen filesystem allowlist.
         // VM tests separately verify application to all five capability sets.
+        let forbidden = CapabilitySet::SYS_ADMIN
+            | CapabilitySet::SETPCAP
+            | CapabilitySet::SYS_MODULE
+            | CapabilitySet::BPF
+            | CapabilitySet::NET_ADMIN
+            | CapabilitySet::NET_RAW;
         assert!(
             !CommandPrivileges::filesystem()
                 .allowed()
-                .contains(CapabilitySet::SYS_ADMIN)
+                .intersects(forbidden)
         );
     }
 }

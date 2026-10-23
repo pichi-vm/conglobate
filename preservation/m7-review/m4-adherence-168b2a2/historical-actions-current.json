@@ -539,8 +539,8 @@
       "evidence": "Two per-match scratch buffers replace per-token allocation; 198 tests + strict Clippy pass",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "SourcePattern::matches allocates two state vectors before the token loop, clears and swaps them per token. No per-token vector allocation remains. This is source evidence, not a throughput benchmark. See parser-capability-current/REVIEW.md and logs."
     },
     {
       "id": "security-001",
@@ -890,8 +890,8 @@
       "evidence": "Independent rootless SYS_ADMIN-exclusion contract test added (suite now 198)",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "The rootless capability contract now excludes SYS_ADMIN, SETPCAP, SYS_MODULE, BPF, NET_ADMIN and NET_RAW independently of the retained allowlist. This checks policy construction, not kernel application; VM tests remain necessary. See parser-capability-current/REVIEW.md and logs."
     },
     {
       "id": "tests-003",
@@ -944,8 +944,8 @@
       "evidence": "serde-saphyr Options::default() budget preserved: depth 64, alias ratio, scalar caps",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "partially addressed; additional budget coverage outstanding",
+      "current_evidence": "Reconsidered the historical blanket rejection: default budgets do not by themselves supply wrapper regression coverage. A small 8-level successful control and 80-level nested sequence verify depth rejection through YamlDocument::decode. Alias-expansion and scalar-budget coverage remain outstanding; no general resource-exhaustion proof claimed. See parser-capability-current/REVIEW.md and logs."
     },
     {
       "id": "tests-009",

@@ -25,3 +25,27 @@ impl YamlDocument<'_> {
         serde_saphyr::from_str_with_options(self.text, options)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decoding_retains_the_parser_depth_budget() {
+        // Small input exercises depth enforcement without resource exhaustion.
+        let shallow = format!("{}0{}", "[".repeat(8), "]".repeat(8));
+        let deep = format!("{}0{}", "[".repeat(80), "]".repeat(80));
+        assert!(
+            YamlDocument::from(shallow.as_str())
+                .decode::<serde_json::Value>()
+                .is_ok()
+        );
+        let error = YamlDocument::from(deep.as_str())
+            .decode::<serde_json::Value>()
+            .unwrap_err();
+        assert!(
+            error.to_string().to_lowercase().contains("depth"),
+            "{error}"
+        );
+    }
+}
