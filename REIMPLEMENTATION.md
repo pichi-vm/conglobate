@@ -4554,3 +4554,19 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - M4 stays 0/3. Receiver post-admission gate-send failure, mounted partial-setup,
   supervisor death, network and writeback fault coverage still need migration and
   current runs. No implementation adherence pass is inferred from this test.
+
+### Abrupt contained-helper death validation
+
+- Extended the maintained contained fixture with trusted helper abort after
+  descendant readiness. No sleeps: pidfd exit observation precedes checking the
+  still-populated cgroup and retained protected record. Explicit cancellation,
+  direct-helper reaping, adopted-descendant drain and finish must remove all
+  children, child cgroups and records; helper status must report SIGABRT.
+- Fresh disconnected native amd64 VM run maintained-contained-v2 passes all four
+  cases, independent status-disk exit zero and guest poweroff. Strict fixture
+  Clippy passes. Small evidence and exact source snapshot preserved; large assets
+  explicitly await durable archival. No production changes or policy registration.
+- M4 remains 0/3. This component test does not cover mounted receiver admission,
+  supervisor death, writeback, network or output publication. It is validation
+  evidence, not an adherence pass. The prior goal turn was clarification only;
+  this turn resumed execution and produced new lifecycle evidence.

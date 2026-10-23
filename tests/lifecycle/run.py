@@ -130,7 +130,8 @@ exec sleep infinity
                        for mode in ('ABSENT', 'PRESENT', 'MALFORMED', 'MISMATCH')]
         elif self.args.case == 'contained':
             markers = ['CONTAINED_LAUNCH_FAILURE_CLEANUP_PASS', 'CONTAINED_JOIN_FAILURE_CLEANUP_PASS',
-                       'CONTAINED_PRE_ADMISSION_DESCENDANT_DRAIN_PASS']
+                       'CONTAINED_PRE_ADMISSION_DESCENDANT_DRAIN_PASS',
+                       'CONTAINED_ABRUPT_HELPER_DEATH_DRAIN_PASS']
         elif self.args.drop:
             markers += [f'FORMATTER_DROP_{self.args.drop.upper()}_RETAINS_STORAGE_PASS']
         else:

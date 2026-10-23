@@ -7,12 +7,18 @@ use conglobate::{
 use std::{
     fs,
     io::{Read, Write},
-    os::unix::{fs::PermissionsExt, net::UnixDatagram},
+    os::unix::{fs::PermissionsExt, net::UnixDatagram, process::ExitStatusExt},
     path::Path,
     process::{Command, Stdio},
     time::{Duration, Instant},
 };
 
+#[derive(Debug, Clone, Copy)]
+pub(super) enum HelperMode {
+    RejectJoin,
+    Wait,
+    Abort,
+}
 #[derive(Debug)]
 pub(super) struct Contained;
 impl Contained {
@@ -31,9 +37,9 @@ impl Contained {
             std::thread::park();
         }
     }
-    pub(super) fn helper(reject_join: bool) -> Result<(), Box<dyn std::error::Error>> {
+    pub(super) fn helper(mode: HelperMode) -> Result<(), Box<dyn std::error::Error>> {
         let channel = Supervision::from_stdin()?.exchange_until(Self::deadline())?;
-        if reject_join {
+        if matches!(mode, HelperMode::RejectJoin) {
             return Ok(());
         }
         let channel = channel.join_domain_until(Self::deadline())?;
@@ -49,6 +55,10 @@ impl Contained {
             .read_exact(&mut ready)?;
         assert_eq!(ready, *b"R");
         UnixDatagram::unbound()?.send_to(b"ready", "/work/contained-ready.sock")?;
+        if matches!(mode, HelperMode::Abort) {
+            // Deliberately skip all Rust destructors after the child is ready.
+            std::process::abort();
+        }
         // The supervisor owns containment cancellation and descendant reaping.
         channel.wait_for_loss_until(Self::deadline())?;
         drop(child);
@@ -125,31 +135,62 @@ impl Contained {
         }
         let ready = UnixDatagram::bind("/work/contained-ready.sock")?;
         ready.set_read_timeout(Some(Duration::from_secs(5)))?;
-        let helper = RecordedDomain::create(&lease, parent)?
-            .launch(Self::command("contained-helper")?, Self::deadline())
-            .map_err(|e| e.to_string())?;
-        let mut bytes = [0; 16];
-        let count = ready.recv(&mut bytes)?;
-        assert_eq!(&bytes[..count], b"ready");
-        let (status, children) = helper
-            .cancel_until(Self::deadline())
-            .map_err(|e| e.to_string())?
-            .reap_until(Self::deadline())
-            .map_err(|e| e.to_string())?
-            .with_reaper(reaper)
-            .drain_until(Self::deadline())
-            .map_err(|e| e.to_string())?
-            .finish(parent)
-            .map_err(|e| e.to_string())?;
-        // Helper exit may race cancellation; descendant drain must not.
-        let _ = status;
-        assert!(children.collected() >= 1);
-        Self::clean(directory, parent)?;
+        for abrupt in [false, true] {
+            let domain = RecordedDomain::create(&lease, parent)?;
+            let domain_path = parent.join(domain.record().name());
+            let helper = domain
+                .launch(
+                    Self::command(if abrupt {
+                        "contained-abort"
+                    } else {
+                        "contained-helper"
+                    })?,
+                    Self::deadline(),
+                )
+                .map_err(|e| e.to_string())?;
+            let mut bytes = [0; 16];
+            let count = ready.recv(&mut bytes)?;
+            assert_eq!(&bytes[..count], b"ready");
+            if abrupt {
+                helper
+                    .supervision()
+                    .wait_for_peer_exit_until(Self::deadline())?;
+                assert!(
+                    fs::read_to_string(domain_path.join("cgroup.events"))?
+                        .lines()
+                        .any(|line| line == "populated 1")
+                );
+                assert_eq!(fs::read_dir(directory)?.count(), 1);
+            }
+            let (status, children) = helper
+                .cancel_until(Self::deadline())
+                .map_err(|e| e.to_string())?
+                .reap_until(Self::deadline())
+                .map_err(|e| e.to_string())?
+                .with_reaper(reaper)
+                .drain_until(Self::deadline())
+                .map_err(|e| e.to_string())?
+                .finish(parent)
+                .map_err(|e| e.to_string())?;
+            if abrupt {
+                assert_eq!(status.signal(), Some(6));
+            }
+            assert!(children.collected() >= 1);
+            reaper = children.into_reaper();
+            Self::clean(directory, parent)?;
+            println!(
+                "{}",
+                if abrupt {
+                    "CONTAINED_ABRUPT_HELPER_DEATH_DRAIN_PASS"
+                } else {
+                    "CONTAINED_PRE_ADMISSION_DESCENDANT_DRAIN_PASS"
+                }
+            );
+        }
         drop(ready);
         fs::remove_file("/work/contained-ready.sock")?;
         drop(lease);
         fs::remove_dir(directory)?;
-        println!("CONTAINED_PRE_ADMISSION_DESCENDANT_DRAIN_PASS");
         Ok(())
     }
 }

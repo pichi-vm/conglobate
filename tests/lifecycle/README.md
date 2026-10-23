@@ -64,3 +64,9 @@ Cancellation must remove the cgroup, reap the direct helper, drain at least one
 adopted descendant and remove the protected record. Each case checks no remaining
 children, child cgroups or records. No sleeps establish readiness. This is
 containment-component coverage, not a mounted command-sandbox or publication test.
+
+The contained case also aborts a trusted helper after descendant readiness. A
+pidfd observes helper death before the fixture checks that its populated cgroup
+and protected record remain owned. Explicit cancellation and drain must collect
+the descendant, report SIGABRT for the helper and release those resources. This
+exercises abrupt helper loss without Rust destructor execution.

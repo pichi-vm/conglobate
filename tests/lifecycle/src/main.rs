@@ -25,8 +25,15 @@ impl Lifecycle {
             [mode] if mode == "formatter-failures" => formatter_failures::FormatterFailures::run(),
             [mode] if mode == "domain-publication" => domain_publication::DomainPublication::run(),
             [mode] if mode == "contained" => contained::Contained::run(),
-            [mode] if mode == "contained-helper" => contained::Contained::helper(false),
-            [mode] if mode == "contained-reject" => contained::Contained::helper(true),
+            [mode] if mode == "contained-helper" => {
+                contained::Contained::helper(contained::HelperMode::Wait)
+            }
+            [mode] if mode == "contained-reject" => {
+                contained::Contained::helper(contained::HelperMode::RejectJoin)
+            }
+            [mode] if mode == "contained-abort" => {
+                contained::Contained::helper(contained::HelperMode::Abort)
+            }
             [mode] if mode == "contained-child" => contained::Contained::child(),
             _ => Err("expected lifecycle case or trusted helper invocation".into()),
         }

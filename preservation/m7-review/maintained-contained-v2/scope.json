@@ -1,0 +1,13 @@
+{
+  "baseline": "ad5b647",
+  "fixture": "tests/lifecycle/src/contained.rs",
+  "fixture_sha256": "d758645006a2a37b3e41ba3ce1bef318b67033720474ca25d4f12be1cd804a6b",
+  "production_changed": false,
+  "new_case": "trusted helper aborts after child readiness; pidfd observes death; populated cgroup and protected record persist until explicit cancellation, reaping, descendant drain and finish",
+  "not_covered": [
+    "mounted command sandbox",
+    "receiver post-admission start-gate send failure",
+    "supervisor death",
+    "publication"
+  ]
+}
