@@ -4591,3 +4591,28 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   receiver post-admission gate-send failure, supervisor death, network or writeback.
   These validation runs are not adherence passes; remaining milestone scope is
   unchanged. Previous turn's committed abrupt-death regression was progress.
+
+### Mounted preparation and abrupt attached-view helper failure migration
+
+- Extended the maintained sandbox fixture with trusted formatting of a real ext4
+  snapshot, initial scaffold creation, remount and production CommandSandbox
+  preparation. Added helper launch ENOENT, exit before join, and abrupt exit after
+  private idmapped root attachment. All assert live mount/record acquisition
+  before injection and no children, volumes, domains or records after rollback;
+  rejected snapshots explicitly validate/close/detach and runtime closes cleanly.
+- Attached-exit uses Step::execute and requires SetupFailed with complete cleanup,
+  never an accepted execution receipt. Helper confirms mapped root ownership and
+  records attachment before exit(73), bypassing Rust destructors. No recipe runs.
+- Fresh mounted-launch-v1, mounted-join-v1 and mounted-exit-v3 VM runs pass required
+  markers, independent exit-zero status and poweroff. Strict fixture Clippy passes.
+  An initial cutoff argument type mismatch was fixed; its compiler failure log is
+  retained. No production changes or labeling policy registration introduced.
+- Preserved failed mounted-exit-v1/v2 runs: fixture incorrectly placed its view
+  under writable /work, and production rejected the attachment. Diagnostics in
+  v2 located the issue; v3 uses existing protected runtime-parent. Production
+  protections were not weakened. Every run retains exact source and small evidence;
+  large run assets remain explicitly pending durable archival.
+- Prior goal turn made progress with committed acquisition tests. This turn adds
+  mounted-storage failure evidence, not an adherence pass. M4 remains 0/3; recipe
+  admission/start-gate failure, supervisor death, network and writeback coverage
+  still need completion, alongside the unchanged M5-M8 qualification gates.

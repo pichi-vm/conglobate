@@ -79,3 +79,14 @@ snapshot unformatted. Both use the production CommandSandbox/Runtime owners,
 retain original diagnostics, require clean resource directories and child drain,
 and explicitly release the returned snapshot and runtime. No recipe runs and
 these cases do not validate receiver admission, labels or mounted command teardown.
+
+The `sandbox-launch-failure`, `sandbox-join-failure` and `sandbox-attached-exit`
+cases format ext4 through the trusted production formatter and prepare a mounted
+volume, mapped namespace and cgroup before injecting helper failure. Launch uses
+a missing executable; join reuses the peer that exits after identity exchange.
+Attached-exit receives the volume, prepares and attaches an idmapped root in a
+private mount namespace, confirms mapped ownership, records its stage and exits
+without destructors. The supervisor must reject setup and fully finalize rejected
+storage. The fixture requires no children, attachment directories or cgroups,
+then explicitly detaches the snapshot and closes the runtime. No recipe executes,
+so this does not exercise labeling admission or post-admission receiver failure.

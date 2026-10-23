@@ -23,6 +23,18 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode, cutoff] if mode == "sandbox-attached-helper" => {
+                sandbox_failures::SandboxFailures::attached_helper(cutoff)
+            }
+            [mode] if mode == "sandbox-launch-failure" => {
+                sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Launch)
+            }
+            [mode] if mode == "sandbox-join-failure" => {
+                sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Join)
+            }
+            [mode] if mode == "sandbox-attached-exit" => {
+                sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::AttachedExit)
+            }
             [mode] if mode == "sandbox-namespace-failure" => {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Namespace)
             }

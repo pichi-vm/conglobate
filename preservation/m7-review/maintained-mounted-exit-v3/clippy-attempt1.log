@@ -1,0 +1,21 @@
+    Checking conglobate-lifecycle-tests v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/tests/lifecycle)
+error[E0308]: mismatched types
+  --> src/sandbox_failures.rs:33:67
+   |
+33 |         let cutoff = conglobate::step::SetupCutoff::from_argument(cutoff)?;
+   |                      -------------------------------------------- ^^^^^^ expected `&str`, found `&OsStr`
+   |                      |
+   |                      arguments to this function are incorrect
+   |
+   = note: expected reference `&str`
+              found reference `&std::ffi::OsStr`
+note: associated function defined here
+  --> /home/nathaniel/Projects/pichi-vm/conglobate/src/step/cutoff.rs:59:12
+   |
+59 |     pub fn from_argument(text: &str) -> io::Result<Self> {
+   |            ^^^^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `conglobate-lifecycle-tests` (bin "conglobate-lifecycle-tests" test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `conglobate-lifecycle-tests` (bin "conglobate-lifecycle-tests") due to 1 previous error

@@ -1,0 +1,14 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe ext4
++ /lifecycle-tests sandbox-attached-exit
+attached fixture: joined
+attached fixture: received volume
+attached fixture: prepared view
+attached fixture: attached and recorded
+attached fixture outcome: command setup: joining peer closed; cleanup: complete
+SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS
+LIFECYCLE_EXIT 0
+[    2.305109] sysrq: Power Off
+[    2.307779] reboot: Power down

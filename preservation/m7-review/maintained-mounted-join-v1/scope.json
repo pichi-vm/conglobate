@@ -1,0 +1,15 @@
+{
+  "baseline": "20aef88",
+  "fixture_sha256": "20a8ce32a6d1d7d156251b9f8f404e44ddc5b67e47c28a79c981cfc38cc76f6e",
+  "production_changed": false,
+  "historical_reference": "volume-supervisor launch/exchange/setup-attached failures in validation/rewrite-command-integration/src/main.rs",
+  "new_coverage": "real formatted ext4 snapshot with production mounting, namespace and storage rollback; attached-exit reaches private idmapped view then exits without Rust destructors",
+  "failure_note": "exit-v1/v2 rejected unprotected /work parent; v3 uses protected runtime-parent without weakening production checks",
+  "not_covered": [
+    "recipe execution",
+    "label admission",
+    "receiver post-admission start-gate failure",
+    "supervisor death",
+    "output publication"
+  ]
+}
