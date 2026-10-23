@@ -1,0 +1,6 @@
+{
+  "passed": false,
+  "finding": "First command exits 1 before descriptor checkpoint; exact assertion requires traced rerun.",
+  "external_directory": "/var/tmp/conglobate-confinement-v1",
+  "durably_archived": false
+}

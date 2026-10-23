@@ -1,0 +1,6 @@
+{
+  "passed": false,
+  "finding": "PID-1 access checks pass; fourth FD glob entry triggers rejection. Rerun distinguishes live inherited descriptor from closed enumeration descriptor.",
+  "external_directory": "/var/tmp/conglobate-confinement-v2",
+  "durably_archived": false
+}

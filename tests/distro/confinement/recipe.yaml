@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: Apache-2.0
+carapace:
+  from: qualification.local/fedora:43
+  derive:
+    - run: |
+        set -x
+        test "$PPID" = 1
+        test "$$" -ne 1
+        for interface in exe mem maps environ fd/0; do
+          if (: < "/proc/1/$interface") 2>/dev/null; then exit 1; fi
+        done
+        for fd in /proc/$$/fd/*; do
+          # Shell globbing briefly opens this directory itself. Ignore only
+          # entries that are already closed; every live extra FD is a failure.
+          if test -L "$fd"; then
+            case "${fd##*/}" in
+              0|1|2) ;;
+              *) printf 'UNEXPECTED_LIVE_DESCRIPTOR %s\n' "$fd"; readlink "$fd"; exit 1 ;;
+            esac
+          else
+            printf 'CLOSED_ENUMERATION_DESCRIPTOR %s\n' "$fd"
+          fi
+        done
+        test -c /proc/$$/fd/0
+        test "$(stat -Lc '%t:%T' /proc/$$/fd/0)" = 1:3
+        test -p /proc/$$/fd/1
+        test -p /proc/$$/fd/2
+        printf 'COMMAND_DESCRIPTOR_BOUNDARY_PASS\n'
+        caps=0
+        nnp=0
+        filter=0
+        while read -r key value rest; do
+          case "$key" in
+            CapPrm:|CapEff:|CapBnd:)
+              test "$value" = 00000000800404fb
+              caps=$((caps + 1));;
+            CapInh:|CapAmb:)
+              test "$value" = 0000000000000000
+              caps=$((caps + 1));;
+            NoNewPrivs:) test "$value" = 1; nnp=1;;
+            Seccomp:) test "$value" = 2; filter=1;;
+          esac
+        done < /proc/self/status
+        test "$caps:$nnp:$filter" = 5:1:1
+        read -r inside outside count < /proc/self/uid_map
+        test "$inside" = 0
+        test "$outside" -ne 0
+        test "$count" -ge 65536
+        read -r inside outside count < /proc/self/gid_map
+        test "$inside" = 0
+        test "$outside" -ne 0
+        test "$count" -ge 65536
+        printf 'COMMAND_CREDENTIAL_BOUNDARY_PASS\n'
+        for path in /context /build-context /cache /work /dev/fuse /dev/mapper /dev/vda /dev/vdb; do
+          test ! -e "$path"
+        done
+        for node in null zero full random urandom tty; do
+          test -c "/dev/$node"
+          test -O "/dev/$node"
+        done
+        set -- /dev/*
+        test "$#" = 13
+        test -c /dev/ptmx
+        test ! -e /dev/pts/0
+        exec 3<> /dev/ptmx
+        test -c /dev/pts/0
+        exec 3>&-
+        test ! -e /dev/pts/0
+        restricted=0
+        while read -r id parent device root point options rest; do
+          case "$point" in
+            /proc/sys|/proc/sysrq-trigger|/proc/irq|/proc/bus|/sys)
+              case ",$options," in
+                *,ro,*) restricted=$((restricted + 1));;
+                *) exit 1;;
+              esac;;
+          esac
+        done < /proc/self/mountinfo
+        test "$restricted" = 5
+        while read -r interface rest; do
+          case "$interface" in
+            lo:) ;;
+            *:) exit 1;;
+          esac
+        done < /proc/net/dev
+        printf 'temporary\n' > /dev/shm/confinement-marker
+        printf 'persistent\n' > /confinement-marker
+        printf 'COMMAND_RUNTIME_BOUNDARY_PASS\n'
+    - run: |
+        set -x
+        test ! -e /dev/shm/confinement-marker
+        test "$(cat /confinement-marker)" = persistent
+        printf 'COMMAND_RUNTIME_RECREATED_PASS\n'

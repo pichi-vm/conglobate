@@ -127,7 +127,7 @@ impl<'ns> CommandReceiver<'ns> {
         };
         // Keep the supervisor channel alive while collecting an early leaf
         // failure. Otherwise channel loss can cancel us before diagnostics or
-        // removal of our shared attachment directory have completed.
+        // explicit teardown of our mounted view have completed.
         let gate = match gate.wait_ready_until(setup_deadline) {
             Ok(gate) => gate,
             Err(source) => {

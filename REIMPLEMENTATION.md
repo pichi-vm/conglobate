@@ -4228,3 +4228,25 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   Evidence and initial compiler warning are retained. No adherence pass inferred.
   M2/M4–M6 remain 0/3. Claude review session 78027 remains active at this
   checkpoint; its follow-up must include the timeout failure and this fix.
+
+
+### Maintained CLI confinement observations
+
+- Added tests/distro/confinement recipe/assessor using actual production CLI with
+  the global environment labeling exception. Native amd64 ordinary VM v3 passes
+  PID-1 parentage/access denial, live-FD allowlist and pipe/null stdio, five
+  capability sets without SYS_ADMIN, no_new_privs and seccomp mode, nonzero ID
+  maps, private device/devpts observations, read-only proc/sysfs, loopback-only
+  networking and fresh shm alongside persistent filesystem data across steps.
+  Build/export and inventory's disabled-network record also pass.
+- v1 failed before its first checkpoint; tracing in v2 located a fourth proc-FD
+  glob entry. v3 confirms this entry was already closed (enumeration descriptor).
+  Corrected the test to ignore only closed entries, retaining rejection of every
+  live FD beyond 0/1/2. No production behavior changed. All failed attempts and
+  the successful source/logs/inventory are preserved under confinement-v1/v2/v3.
+- These observations migrate a subset of old harness checks, not its broad
+  fault-injection, metadata, syscall or platform coverage. No complete sandbox
+  claim or adherence pass; reopened gates remain 0/3.
+- Existing Claude review remains live under session 78027. Prepared follow-up
+  prompt records timeout failure/fix and new evidence; send only after the
+  current invocation is terminal, preserving its session and findings.
