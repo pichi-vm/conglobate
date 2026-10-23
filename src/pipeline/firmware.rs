@@ -114,54 +114,12 @@ impl<'a> FirmwareBuild<'a> {
                 ChildReaper::install()?,
             )
         };
-        let snapshot = Mapping::<Created>::create()?
-            .snapshot(
-                &active,
-                workspace.snapshot_store()?.attach().map_err(Self::error)?,
-                NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap(),
-            )
-            .map_err(Self::error)?;
-        let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())
-            .map_err(Self::error)?;
-        let paths = runtime.paths()?;
-        let sandbox = CommandSandbox::new(
-            HelperProgram::current()?,
-            paths.sandbox(),
-            IdRange::new(100000, 65536)?,
-            IdRange::new(100000, 65536)?,
-        );
-        let completed = sandbox
-            .directives::<Volume<'_, '_, '_, Mounted>>(
-                volume,
-                reaper,
-                self.build.captured().context(),
-                self.stage.directives(),
-                root.as_ref(),
-            )
-            .map_err(|failure| CarapaceBuild::reject(*failure))?;
-        let (volume, _reaper) = completed.into_parts();
-        let budget = SetupBudget::begin();
-        let mut mounted = volume.mount_ext4(paths.volumes()).map_err(Self::error)?;
-        let captured = mounted.extract_firmware(self.stage, workspace, &budget);
-        let cleanup = SetupBudget::begin();
-        mounted
-            .unmount()
-            .map_err(Self::error)?
-            .into_snapshot()
-            .close()
-            .map_err(Self::error)?
-            .detach()
-            .map_err(Self::error)?;
-        active.close().map_err(Self::error)?;
-        cleanup.check()?;
-        let root = root.map(hex::encode);
-        let pair = captured
-            .map_err(Self::error)?
-            .finalize(
-                self.build.captured().plan().recipe().transform(),
-                root.as_deref(),
-            )
-            .map_err(Self::error)?;
+        let pair = FirmwareTools {
+            active,
+            root,
+            reaper,
+        }
+        .run(self.build, self.stage, workspace, runtime)?;
         let image = AssembledImage::firmware(
             self.build.cache(),
             self.base.map(|b| b.image()),
@@ -175,5 +133,82 @@ impl<'a> FirmwareBuild<'a> {
     }
     fn error(error: impl std::fmt::Display) -> BuildError {
         BuildError::Execution(error.to_string())
+    }
+}
+
+/// A disposable tool chain plus the separately selected output-root identity.
+/// Consuming execution cannot turn firmware writes into retained scutes.
+#[derive(Debug)]
+pub(super) struct FirmwareTools<'s, 'w> {
+    pub(super) active: crate::storage::ReadOnlyChain<'s, 'w>,
+    pub(super) root: Option<[u8; 32]>,
+    pub(super) reaper: ChildReaper,
+}
+impl<'s, 'w> FirmwareTools<'s, 'w> {
+    pub(super) fn run(
+        self,
+        build: &ResolvedBuild,
+        stage: &Firmware,
+        workspace: &'w Workspace,
+        runtime: &Runtime<'_>,
+    ) -> Result<crate::firmware::FinalizedFirmware<'w>, BuildError> {
+        let Self {
+            active,
+            root,
+            reaper,
+        } = self;
+        let snapshot = Mapping::<Created>::create()?
+            .snapshot(
+                &active,
+                workspace
+                    .snapshot_store()?
+                    .attach()
+                    .map_err(FirmwareBuild::error)?,
+                NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap(),
+            )
+            .map_err(FirmwareBuild::error)?;
+        let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())
+            .map_err(FirmwareBuild::error)?;
+        let paths = runtime.paths()?;
+        let sandbox = CommandSandbox::new(
+            HelperProgram::current()?,
+            paths.sandbox(),
+            IdRange::new(100000, 65536)?,
+            IdRange::new(100000, 65536)?,
+        );
+        let completed = sandbox
+            .directives::<Volume<'_, '_, '_, Mounted>>(
+                volume,
+                reaper,
+                build.captured().context(),
+                stage.directives(),
+                root.as_ref(),
+            )
+            .map_err(|failure| CarapaceBuild::reject(*failure))?;
+        let (volume, _reaper) = completed.into_parts();
+        let budget = SetupBudget::begin();
+        let mut mounted = volume
+            .mount_ext4(paths.volumes())
+            .map_err(FirmwareBuild::error)?;
+        let captured = mounted.extract_firmware(stage, workspace, &budget);
+        let cleanup = SetupBudget::begin();
+        mounted
+            .unmount()
+            .map_err(FirmwareBuild::error)?
+            .into_snapshot()
+            .close()
+            .map_err(FirmwareBuild::error)?
+            .detach()
+            .map_err(FirmwareBuild::error)?;
+        active.close().map_err(FirmwareBuild::error)?;
+        cleanup.check()?;
+        let root = root.map(hex::encode);
+        captured
+            .map_err(FirmwareBuild::error)?
+            .finalize(
+                build.captured().plan().recipe().transform(),
+                root.as_deref(),
+            )
+            .map_err(FirmwareBuild::error)
     }
 }

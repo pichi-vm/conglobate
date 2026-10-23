@@ -147,7 +147,19 @@ impl AssembledImage {
                     "artifactType":pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                     "config":pichi_artifact::ConfigDescriptor::canonical(),"layers":[]})
             };
-            let mut parent = base.and_then(|image| image.manifest().carapace_verity_hash());
+            let mut parent = match base {
+                Some(image) => image.manifest().carapace_verity_hash(),
+                None => Some([0; 32]),
+            };
+            if base.is_none() && !scutes.is_empty() {
+                manifest["annotations"] = serde_json::json!({
+                    "dev.pichi.carapace.verity.algo": "sha256",
+                    "dev.pichi.carapace.verity.data-block-size": "4096",
+                    "dev.pichi.carapace.verity.hash-block-size": "4096",
+                    "dev.pichi.carapace.verity.version": "1",
+                    "dev.pichi.carapace.verity.hash-type": "1"
+                });
+            }
             for scute in scutes {
                 if parent.as_ref() != Some(scute.parent()) {
                     return Err(CacheError::Invalid(

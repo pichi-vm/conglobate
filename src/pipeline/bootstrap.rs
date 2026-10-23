@@ -28,15 +28,18 @@ impl<'a> BootstrapBuild<'a> {
         let stage = recipe
             .bootstrap()
             .ok_or(BuildError::Unsupported("missing bootstrap stage"))?;
-        if recipe.firmware().is_some() {
-            return Err(BuildError::Unsupported("bootstrap firmware composition"));
-        }
         if stage
             .directives()
             .iter()
             .chain(
                 recipe
                     .carapace()
+                    .into_iter()
+                    .flat_map(|stage| stage.directives()),
+            )
+            .chain(
+                recipe
+                    .firmware()
                     .into_iter()
                     .flat_map(|stage| stage.directives()),
             )
@@ -160,17 +163,15 @@ impl<'a> BootstrapBuild<'a> {
         );
         active.close().map_err(Self::error)?;
         origin.close().map_err(Self::error)?;
-        let mut produced = vec![scute];
-        let directives = self
-            .build
-            .captured()
-            .plan()
-            .recipe()
+        let produced = vec![scute];
+        let recipe = self.build.captured().plan().recipe();
+        let directives = recipe
             .carapace()
             .map(|stage| stage.directives())
             .unwrap_or(&[]);
-        let root = if directives.is_empty() {
-            *produced[0].root()
+        let (active, produced, reaper, root) = if directives.is_empty() {
+            let root = *produced[0].root();
+            (None, produced, reaper, root)
         } else {
             let derived = super::carapace::DerivedCarapace {
                 active: crate::storage::ReadOnlyChain::from_root(Arc::clone(&produced[0]))
@@ -180,22 +181,58 @@ impl<'a> BootstrapBuild<'a> {
             }
             .derive(self.build, workspace, runtime, directives)?;
             let root = *derived.active.root();
-            derived.active.close().map_err(Self::error)?;
-            produced = derived.scutes;
-            root
+            (Some(derived.active), derived.scutes, derived.reaper, root)
         };
-        let root = hex::encode(root);
-        let transformed = self
-            .build
-            .captured()
-            .plan()
-            .recipe()
-            .transform()
-            .apply(None, Some(&root))?;
-        let image = AssembledImage::bootstrap_layers(&produced, request.output())?;
-        let inventory =
-            Inventory::from_build(request, self.build, &image, &transformed, &produced)?
-                .with_formatter(receipt)?;
+        let (image, inventory) = if let Some(stage) = recipe.firmware() {
+            let tools = if let Some(reference) = stage.from() {
+                if let Some(active) = active {
+                    active.close().map_err(Self::error)?;
+                }
+                let tools = self
+                    .build
+                    .images()
+                    .get(reference)
+                    .ok_or_else(|| Self::error("missing resolved firmware tools"))?;
+                tools
+                    .chain()
+                    .ok_or_else(|| Self::error("firmware tools require a root volume"))?
+                    .assemble(self.build.cache(), workspace)
+                    .map_err(Self::error)?
+            } else {
+                match active {
+                    Some(active) => active,
+                    None => crate::storage::ReadOnlyChain::from_root(Arc::clone(&produced[0]))
+                        .map_err(Self::error)?,
+                }
+            };
+            let pair = super::firmware::FirmwareTools {
+                active: tools,
+                root: Some(root),
+                reaper,
+            }
+            .run(self.build, stage, workspace, runtime)?;
+            let image = AssembledImage::firmware(
+                self.build.cache(),
+                None,
+                &pair,
+                &produced,
+                request.output(),
+            )?;
+            let inventory =
+                Inventory::from_build(request, self.build, &image, pair.dtb(), &produced)?;
+            (image, inventory)
+        } else {
+            if let Some(active) = active {
+                active.close().map_err(Self::error)?;
+            }
+            let root = hex::encode(root);
+            let transformed = recipe.transform().apply(None, Some(&root))?;
+            let image = AssembledImage::bootstrap_layers(&produced, request.output())?;
+            let inventory =
+                Inventory::from_build(request, self.build, &image, &transformed, &produced)?;
+            (image, inventory)
+        };
+        let inventory = inventory.with_formatter(receipt)?;
         inventory.check_output(&image)?;
         Ok(CompletedImage { image, inventory })
     }

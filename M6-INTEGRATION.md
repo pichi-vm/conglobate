@@ -442,3 +442,43 @@ disposable firmware changes and failure after successful carapace derivation.
   composition path. Enabled networking, remaining variable/matrix/fault coverage,
   ORAS, three full M6 adherence passes and all later milestones remain required.
   M6 stays active at zero clean passes; these checks are not a milestone review.
+
+### M6 firmware after bootstrap
+
+- Previous goal turn progressed in 2f8c9aa. Removed the bootstrap/firmware
+  composition rejection. FirmwareTools now owns the selected read-only tool chain,
+  separate output-root identity and transferred child reaper. Both cached-base
+  FirmwareBuild and BootstrapBuild consume the same firmware command/extraction
+  implementation; no second executor or intermediate cache publication is added.
+- Bootstrap with retained directives transfers its active derived chain to
+  implicit firmware tools. Explicit firmware.from closes that chain and activates
+  the selected cached tools while retaining immutable output scutes. Without
+  retained directives, implicit firmware activates the fresh sealed root directly;
+  explicit tools do not require a runnable shell in the retained bootstrap output.
+  CARAPACE always denotes the output root, not the selected tool root.
+- Fresh firmware output assembly now accepts the complete zero-parent produced
+  chain, checks each parent, supplies canonical carapace metadata, and appends the
+  captured PMI/DTB pair. No bootstrap tool components or disposable firmware writes
+  become output ancestry. Final DTB transformation occurs after firmware capture.
+  The original formatter receipt and all produced scute origins reach inventory;
+  cleanup remains required before publication.
+- v211 full normal disposable-VM suite passes (233.33 guest seconds). New CLI cases
+  cover implicit/explicit tools with/without retained carapace directives plus a
+  missing-DTB failure after bootstrap. Firmware observes the selected tool files,
+  embeds CARAPACE in PMI, and output reopening verifies that value equals the final
+  published root and differs from the original tool root. Output has exactly one
+  or four produced scutes and paired firmware; retained contents survive, temporary
+  firmware files do not, and the formatter receipt is present. Failure publishes
+  nothing and leaves no runtime attachment. Existing cached-base, firmware-only,
+  transform, storage and lifecycle checks in the normal suite also pass.
+- Host tests (87 library tests, integration suites, 52 doctests), strict root and
+  fixture Clippy, formatting and diff checks pass. Evidence/source/executable hashes
+  preserved under validation/rewrite-command-integration/evidence/v211. Full suite
+  host observation timeout increased to 330 seconds for five additional real CLI
+  builds; no production execution or cleanup deadline changed.
+- Enabled networking/DNS is now the next major implementation gap: it is still
+  explicitly rejected in pipeline and directive execution. General string-variable
+  expansion audit, remaining stage/failure matrix and runtime acquisition faults,
+  ORAS interoperability, three full M6 adherence passes, M7 qualification and M8
+  retirement remain required. Runtime target directories are still author-supplied
+  as recorded above. M6 stays active with zero clean adherence passes.

@@ -119,6 +119,48 @@ impl PipelineProbe {
         let dtb = Self::empty_dtb();
         fs::write(repo.join("firmware.pmi"), b"custom firmware output")?;
         fs::write(repo.join("firmware.dtb"), &dtb)?;
+        for (name, layered, explicit, missing) in [
+            ("bootstrap-fw-implicit", false, false, false),
+            ("bootstrap-fw-explicit", false, true, false),
+            ("bootstrap-fw-layered", true, false, false),
+            ("bootstrap-fw-layered-explicit", true, true, false),
+            ("bootstrap-fw-missing", false, true, true),
+        ] {
+            let source = if layered {
+                "bootstrap-layers.yml"
+            } else {
+                "bootstrap.yml"
+            };
+            let mut recipe: serde_json::Value =
+                serde_json::from_slice(&fs::read(repo.join(source))?)?;
+            if !layered && !explicit {
+                recipe["bootstrap"]["derive"]
+                    .as_array_mut()
+                    .unwrap()
+                    .push(serde_json::json!({"copy":{"from":"runtime/", "into":"/mnt/"}}));
+            }
+            let visibility = if explicit {
+                "test ! -e /fresh; test ! -e /layered"
+            } else if layered {
+                "test $(cat /fresh) = fresh; test $(cat /layered) = retained"
+            } else {
+                "test $(cat /fresh) = fresh"
+            };
+            recipe["firmware"] = serde_json::json!({
+                "derive":[
+                    {"copy":{"from":"firmware.dtb", "into":"/out/image.dtb"}},
+                    {"run":format!("{visibility}; printf '%s' \"$CARAPACE\" > /out/image.pmi; echo discarded > /firmware-tool-change")},
+                ],
+                "into":{"pmi":"/out/image.pmi", "dtb":if missing {"/missing.dtb"} else {"/out/image.dtb"}},
+            });
+            if explicit {
+                recipe["firmware"]["from"] = "example.test/tools:1".into();
+            }
+            fs::write(
+                repo.join(format!("{name}.yml")),
+                serde_json::to_vec(&recipe)?,
+            )?;
+        }
         let cache = Cache::open(Path::new("/work/tool-cache-success"))?;
         let image = cache.resolve(pin)?;
         let base_root = image
@@ -214,6 +256,31 @@ impl PipelineProbe {
         for (recipe, output, success) in [
             ("build.yml", "/work/derived-output", true),
             ("bootstrap.yml", "/work/bootstrap-output", true),
+            (
+                "bootstrap-fw-implicit.yml",
+                "/work/bootstrap-fw-implicit-output",
+                true,
+            ),
+            (
+                "bootstrap-fw-explicit.yml",
+                "/work/bootstrap-fw-explicit-output",
+                true,
+            ),
+            (
+                "bootstrap-fw-layered.yml",
+                "/work/bootstrap-fw-layered-output",
+                true,
+            ),
+            (
+                "bootstrap-fw-layered-explicit.yml",
+                "/work/bootstrap-fw-layered-explicit-output",
+                true,
+            ),
+            (
+                "bootstrap-fw-missing.yml",
+                "/work/bootstrap-fw-missing-output",
+                false,
+            ),
             (
                 "bootstrap-missing-targets.yml",
                 "/work/bootstrap-missing-targets-output",
@@ -387,6 +454,10 @@ impl PipelineProbe {
             ("derived", 4),
             ("bootstrap", 1),
             ("bootstrap-layers", 4),
+            ("bootstrap-fw-implicit", 1),
+            ("bootstrap-fw-explicit", 1),
+            ("bootstrap-fw-layered", 4),
+            ("bootstrap-fw-layered-explicit", 4),
             ("composed-implicit", 2),
             ("composed-explicit", 2),
         ] {
@@ -473,13 +544,42 @@ impl PipelineProbe {
             if name.starts_with("bootstrap") {
                 assert_eq!(fs::read(directory.join("fresh"))?, b"fresh\n");
                 assert_eq!(fs::read(directory.join("copied"))?, b"committed copy\n");
-                assert_eq!(directory.join("bin").exists(), name == "bootstrap-layers");
-                if name == "bootstrap-layers" {
+                assert_eq!(
+                    directory.join("bin").exists(),
+                    name != "bootstrap" && name != "bootstrap-fw-explicit"
+                );
+                if name == "bootstrap-layers" || name.starts_with("bootstrap-fw-layered") {
                     assert_eq!(fs::read(directory.join("layered"))?, b"retained\n");
                     assert_eq!(fs::read(directory.join("layer-copy"))?, b"committed copy\n");
                 }
                 assert!(!directory.join("tool-only").exists());
-                assert_eq!(image.manifest().layers.len(), count);
+                let firmware = name.starts_with("bootstrap-fw-");
+                assert_eq!(
+                    image.manifest().layers.len(),
+                    count + if firmware { 2 } else { 0 }
+                );
+                assert!(!directory.join("firmware-tool-change").exists());
+                assert!(!directory.join("out/image.pmi").exists());
+                if firmware {
+                    let manifest: serde_json::Value =
+                        serde_json::from_slice(image.manifest_bytes().bytes())?;
+                    let pmi = manifest["layers"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .find(|layer| layer["mediaType"] == "application/vnd.pichi.pmi.v1")
+                        .unwrap();
+                    let digest = pmi["digest"]
+                        .as_str()
+                        .unwrap()
+                        .strip_prefix("sha256:")
+                        .unwrap();
+                    assert_eq!(
+                        fs::read(output.join("blobs/sha256").join(digest))?,
+                        hex::encode(chain.root()).as_bytes()
+                    );
+                    assert_ne!(chain.root(), &base_root);
+                }
                 let bytes = fs::read(output.join("inventory.cbor"))?;
                 conglobate::inventory::Inventory::decode(&bytes)?;
                 let value: ciborium::Value = ciborium::from_reader(bytes.as_slice())?;
@@ -522,6 +622,7 @@ impl PipelineProbe {
         }
         println!("PIPELINE_CLI_BOOTSTRAP_PASS");
         println!("PIPELINE_CLI_BOOTSTRAP_LAYERS_PASS");
+        println!("PIPELINE_CLI_BOOTSTRAP_FIRMWARE_PASS");
         println!("PIPELINE_CLI_COMPOSED_FIRMWARE_PASS");
         println!("PIPELINE_CLI_DERIVE_PASS");
         Ok(())
