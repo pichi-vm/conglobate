@@ -3278,3 +3278,37 @@ rules rather than silently shrinking acceptance criteria.
   remaining matrix/fault coverage, ORAS and M6 reviews remain outstanding. This
   is a correction to the actual publication boundary, not completion of firmware
   execution or launch/platform qualification.
+
+### M6 firmware execution, paired extraction and publication
+
+- Previous goal turn progressed in 1edd17b. Added an immutable ExtractedFirmware
+  owner and consuming finalization into FinalizedFirmware. An exclusive mounted
+  volume borrow captures both declared regular files through IN_ROOT openat2,
+  with no magic links or submount crossing. O_PATH metadata checks precede
+  reopening the pinned inode, so FIFOs/devices are never activated for reading.
+  Absolute and parent symlinks retain image-root semantics.
+- Captured files stream into the existing RAM workspace with measured size/digest
+  and fixed extraction budget. No mutable/raw file authority escapes. Finalization
+  applies the requested transform and checks the captured PMI contract whenever
+  DTB bytes change. The coordinator separately requires successful commands,
+  quiescence, unmount/storage teardown and runtime/context cleanup.
+- FirmwareBuild now supports firmware-only builds and replacement on an unchanged
+  inherited carapace. All firmware directives share a disposable writable tool
+  root, and both outputs are extracted after final command completion. Tool
+  filesystem changes never produce output scutes. CARAPACE comes only from the
+  output base, and is absent for firmware-only builds.
+- Output assembly emits a fresh canonical firmware-only image or preserves all
+  non-firmware components/config/annotations of the selected output base while
+  replacing PMI and DTB together. Inventory/publication use the existing checked
+  successful-output path. Shared sparse snapshot capacity moved onto Workspace.
+- v203 full normal VM suite passes, including real CLI firmware-only and
+  inherited-base builds, absolute-symlink extraction, expected PMI/DTB bytes,
+  zero/one inherited scute, unchanged base root and inventory shape. Missing DTB
+  leaves no output or runtime attachment. Host tests cover confined paths,
+  missing/cyclic links and rejection of directories/FIFOs before opening them.
+- Full host tests pass (86 library tests, integration suites, 51 doctests), as do
+  root/fixture strict Clippy. Logs, fixture sources/contexts/cache and executable
+  hashes preserved in evidence/v203. No complete M6 adherence pass claimed.
+- Still required: composition of newly derived carapace layers with firmware,
+  bootstrap CLI coordination, enabled NAT/DNS, remaining matrix/failure coverage,
+  ORAS interoperability and three clean reviews. M6 remains active at zero.

@@ -311,3 +311,17 @@ The earlier opaque-success transform fixtures were incorrect for this requiremen
 they are retained in historical evidence and replaced in maintained validation.
 Firmware execution/extraction must apply this same check to its resulting PMI/DTB
 pair before publication; that coordinator remains pending.
+
+## Firmware-only and inherited-base replacement CLI paths
+
+FirmwareBuild executes directives on a disposable tool snapshot, captures both
+regular outputs using root-confined handles, tears down storage, and finalizes
+the DTB against the new PMI contract. Publication emits either a fresh pair-only
+image or the unchanged inherited output base with its firmware pair replaced.
+The tool image is never implicit output ancestry. v203 checks both paths, root
+and inventory semantics, declared-output symlinks and missing-file rejection.
+
+Combining newly produced carapace layers with firmware remains an explicit
+unsupported path until the shared pipeline composition is connected. Bootstrap
+coordination, enabled networking and the remaining qualification/gate work are
+also still open; the full stage matrix has not been accepted.

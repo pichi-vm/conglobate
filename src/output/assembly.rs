@@ -100,6 +100,86 @@ impl AssembledImage {
             &scutes.iter().map(AsRef::as_ref).collect::<Vec<_>>(),
         )
     }
+    /// Replace the firmware pair while preserving only the chosen output base.
+    /// Tool image components are never implicit output ancestry.
+    pub(crate) fn firmware(
+        cache: &Cache,
+        base: Option<&ResolvedImage>,
+        pair: &crate::firmware::FinalizedFirmware<'_>,
+        destination: &std::path::Path,
+    ) -> Result<Self, AssemblyFailure> {
+        let staged = StagedDirectory::create(destination).map_err(AssemblyFailure::Before)?;
+        let result = (|| -> Result<_, CacheError> {
+            let mut manifest = if let Some(base) = base {
+                let config = &base.manifest().config;
+                if config.is_empty() {
+                    staged.store_blob(b"{}")?;
+                } else {
+                    let digest = config
+                        .digest
+                        .parse()
+                        .map_err(|_| CacheError::Invalid("invalid config digest"))?;
+                    staged.copy_blob(cache, &digest, config.size)?;
+                }
+                let mut document: serde_json::Value =
+                    serde_json::from_slice(base.manifest_bytes().bytes())?;
+                let mut layers = Vec::new();
+                for (index, layer) in base.manifest().layers.iter().enumerate() {
+                    if matches!(
+                        layer,
+                        pichi_artifact::Layer::Pmi(_) | pichi_artifact::Layer::Dtb(_)
+                    ) {
+                        continue;
+                    }
+                    let digest = layer
+                        .digest_str()
+                        .parse()
+                        .map_err(|_| CacheError::Invalid("invalid layer digest"))?;
+                    staged.copy_blob(cache, &digest, layer.size())?;
+                    layers.push(document["layers"][index].clone());
+                }
+                document["layers"] = layers.into();
+                document
+            } else {
+                staged.store_blob(b"{}")?;
+                serde_json::json!({"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json",
+                    "artifactType":pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+                    "config":pichi_artifact::ConfigDescriptor::canonical(),"layers":[]})
+            };
+            let pmi = pair.pmi_descriptor();
+            let digest = pmi
+                .digest
+                .parse()
+                .map_err(|_| CacheError::Invalid("invalid captured PMI digest"))?;
+            staged.store_verified(pair.pmi_reader(), &digest, pmi.size)?;
+            let bytes = pair
+                .dtb()
+                .bytes()
+                .ok_or(CacheError::Invalid("missing finalized DTB"))?;
+            let dtb = pichi_artifact::DtbDescriptor {
+                digest: staged.store_blob(bytes)?.to_string(),
+                size: bytes.len() as u64,
+            };
+            let layers = manifest["layers"]
+                .as_array_mut()
+                .ok_or(CacheError::Invalid("missing output layers"))?;
+            layers.push(serde_json::to_value(pichi_artifact::Layer::Pmi(pmi))?);
+            layers.push(serde_json::to_value(pichi_artifact::Layer::Dtb(dtb))?);
+            Self::resolve_staging(
+                &staged,
+                &serde_json::to_vec(&manifest)?,
+                crate::cache::HostArchitecture::current()?,
+            )
+        })();
+        match result {
+            Ok((image, chain)) => Ok(Self {
+                staged,
+                image,
+                chain,
+            }),
+            Err(source) => Err(AssemblyFailure::Staged { source, staged }),
+        }
+    }
     /// Assemble a new root carapace with no inherited tool components.
     /// Command/formatter success and final firmware remain coordinator obligations.
     pub fn bootstrap(

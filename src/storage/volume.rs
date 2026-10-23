@@ -426,6 +426,24 @@ impl Drop for MountLease {
 }
 
 impl Volume<'_, '_, '_, Mounted> {
+    /// Capture declared output files under an exclusive borrow. The coordinator
+    /// separately proves command success and quiescence before this operation.
+    pub fn extract_firmware<'w>(
+        &mut self,
+        firmware: &crate::recipe::Firmware,
+        workspace: &'w super::Workspace,
+        budget: &crate::step::SetupBudget,
+    ) -> Result<crate::firmware::ExtractedFirmware<'w>, crate::firmware::ExtractionError> {
+        self.scope.verify_current()?;
+        crate::firmware::ExtractedFirmware::capture(
+            &self.resources.root,
+            firmware.pmi(),
+            firmware.dtb(),
+            workspace,
+            budget,
+        )
+    }
+
     /// Reserved bootstrap mountpoint, created through the original unmapped
     /// filesystem so image UID/GID 0 remain UID/GID 0 on disk. Called before
     /// any command admission; reject symlinks and preexisting submounts.

@@ -65,6 +65,15 @@ pub struct ScuteReader<'a> {
     position: u64,
     length: u64,
 }
+impl<'a> ScuteReader<'a> {
+    pub(crate) fn new(file: &'a File, length: u64) -> Self {
+        Self {
+            file,
+            position: 0,
+            length,
+        }
+    }
+}
 impl Read for ScuteReader<'_> {
     fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
         let count = self

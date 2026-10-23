@@ -35,6 +35,43 @@ impl PipelineProbe {
                 hex::encode(pin.bytes())
             ),
         )?;
+        let dtb = Self::empty_dtb();
+        fs::write(repo.join("firmware.pmi"), b"custom firmware output")?;
+        fs::write(repo.join("firmware.dtb"), &dtb)?;
+        let cache = Cache::open(Path::new("/work/tool-cache-success"))?;
+        let image = cache.resolve(pin)?;
+        let base_root = image
+            .manifest()
+            .carapace_verity_hash()
+            .ok_or("missing tool root")?;
+        for (name, base, missing) in [
+            ("firmware-only", false, false),
+            ("firmware-base", true, false),
+            ("firmware-missing", false, true),
+        ] {
+            let check = if base {
+                format!("test \"$CARAPACE\" = {}", hex::encode(base_root))
+            } else {
+                "test -z \"${CARAPACE+x}\"".into()
+            };
+            let mut document = serde_json::json!({"firmware": {
+                "derive": [
+                    {"copy":{"from":"firmware.pmi","into":"/out/image.pmi"}},
+                    {"copy":{"from":"firmware.dtb","into":"/out/image.dtb"}},
+                    {"run":format!("{check}; ln -s /out /alias; echo disposable > /firmware-tool-change")}
+                ],
+                "into":{"pmi":"/alias/image.pmi","dtb":if missing {"/missing.dtb"} else {"/alias/image.dtb"}}
+            }});
+            if base {
+                document["carapace"] = serde_json::json!({"from":"example.test/tools:1"});
+            } else {
+                document["firmware"]["from"] = "example.test/tools:1".into();
+            }
+            fs::write(
+                repo.join(format!("{name}.yml")),
+                serde_json::to_vec(&document)?,
+            )?;
+        }
         for args in [
             vec!["init", "--quiet"],
             vec!["add", "."],
@@ -71,6 +108,13 @@ impl PipelineProbe {
         for (recipe, output, success) in [
             ("build.yml", "/work/derived-output", true),
             ("fail.yml", "/work/rejected-output", false),
+            ("firmware-only.yml", "/work/firmware-only-output", true),
+            ("firmware-base.yml", "/work/firmware-base-output", true),
+            (
+                "firmware-missing.yml",
+                "/work/firmware-missing-output",
+                false,
+            ),
         ] {
             let result = Command::new("/usr/bin/conglobate")
                 .args([
@@ -107,6 +151,62 @@ impl PipelineProbe {
                 0
             );
         }
+        for (name, count) in [("firmware-only", 0), ("firmware-base", 1)] {
+            let path = Path::new("/work").join(format!("{name}-output"));
+            let index: serde_json::Value =
+                serde_json::from_slice(&fs::read(path.join("index.json"))?)?;
+            let digest = index["manifests"][0]["digest"]
+                .as_str()
+                .unwrap()
+                .strip_prefix("sha256:")
+                .unwrap();
+            let manifest: serde_json::Value =
+                serde_json::from_slice(&fs::read(path.join("blobs/sha256").join(digest))?)?;
+            let layers = manifest["layers"].as_array().unwrap();
+            assert_eq!(layers.len(), count + 2);
+            for (kind, expected) in [
+                ("pmi", b"custom firmware output".as_slice()),
+                ("dtb", dtb.as_slice()),
+            ] {
+                let layer = layers
+                    .iter()
+                    .find(|l| l["mediaType"] == format!("application/vnd.pichi.{kind}.v1"))
+                    .unwrap();
+                let digest = layer["digest"]
+                    .as_str()
+                    .unwrap()
+                    .strip_prefix("sha256:")
+                    .unwrap();
+                assert_eq!(fs::read(path.join("blobs/sha256").join(digest))?, expected);
+                assert_eq!(digest, hex::encode(Sha256::digest(expected)));
+            }
+            let inventory = fs::read(path.join("inventory.cbor"))?;
+            conglobate::inventory::Inventory::decode(&inventory)?;
+            assert_eq!(
+                minicbor::Decoder::new(Field(&inventory).get(&["outputs", "scutes"])?.0).array()?,
+                Some(count as u64)
+            );
+            if count == 1 {
+                assert_eq!(
+                    manifest["annotations"]["dev.pichi.carapace.verity.hash"],
+                    hex::encode(base_root)
+                );
+                assert_eq!(
+                    Field(&inventory)
+                        .get(&["outputs", "carapace_root"])?
+                        .bytes()?,
+                    base_root
+                );
+            } else {
+                assert!(
+                    Field(&inventory)
+                        .get(&["outputs", "carapace_root"])
+                        .is_err()
+                );
+                assert!(manifest["annotations"]["dev.pichi.carapace.verity.hash"].is_null());
+            }
+        }
+        println!("PIPELINE_CLI_FIRMWARE_PAIR_PASS");
         let output = Path::new("/work/derived-output");
         let inventory = fs::read(output.join("inventory.cbor"))?;
         conglobate::inventory::Inventory::decode(&inventory)?;
@@ -176,6 +276,17 @@ impl PipelineProbe {
         active.close().map_err(|e| e.to_string())?;
         println!("PIPELINE_CLI_DERIVE_PASS");
         Ok(())
+    }
+    fn empty_dtb() -> Vec<u8> {
+        let mut bytes = Vec::new();
+        for word in [0xd00dfeedu32, 72, 56, 72, 40, 17, 16, 0, 0, 16] {
+            bytes.extend_from_slice(&word.to_be_bytes());
+        }
+        bytes.extend_from_slice(&[0; 16]);
+        for word in [1u32, 0, 2, 9] {
+            bytes.extend_from_slice(&word.to_be_bytes());
+        }
+        bytes
     }
     fn build(output: &str, recipe: &str) -> std::io::Result<Output> {
         Command::new("/usr/bin/conglobate")

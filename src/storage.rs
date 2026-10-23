@@ -75,6 +75,14 @@ impl Workspace {
         context.materialize_in(self.root.try_clone()?)
     }
 
+    /// Sparse capacity for the full logical device, with 256 exception entries
+    /// per metadata chunk plus the header and terminal metadata chunk.
+    pub fn snapshot_store(&self) -> io::Result<Scratch<'_>> {
+        let chunks = crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 4096;
+        let mut scratch = self.scratch()?;
+        scratch.set_len((chunks + chunks.div_ceil(256) + 2) * 4096)?;
+        Ok(scratch)
+    }
     /// New anonymous scratch storage, removed on last close. Neither names nor
     /// raw descriptors escape; future kernel consumers must retain an owner, not
     /// merely claim this Rust borrow represents a device's kernel lifetime.

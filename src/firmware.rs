@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 //! Firmware permission to substitute a final measured external DTB.
+mod output;
 use ciborium::Value;
+pub use output::{ExtractedFirmware, ExtractionError, FinalizedFirmware};
 use std::collections::BTreeSet;
 
 #[derive(Debug, thiserror::Error)]

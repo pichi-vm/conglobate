@@ -94,11 +94,7 @@ impl<'a> CarapaceBuild<'a> {
         let mut reaper = ChildReaper::install()?;
         let mut produced = Vec::<Arc<SealedScute<'_>>>::new();
         for directive in self.directives {
-            let mut scratch = workspace.scratch()?;
-            // Sparse capacity covers every logical chunk plus snapshot metadata.
-            // Ordinary tmpfs limits determine actual allocation, never disk spill.
-            let chunks = crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 4096;
-            scratch.set_len((chunks + chunks.div_ceil(256) + 2) * 4096)?;
+            let scratch = workspace.snapshot_store()?;
             let snapshot = Mapping::<Created>::create()?
                 .snapshot(
                     &active,
@@ -184,7 +180,7 @@ impl<'a> CarapaceBuild<'a> {
             .map_err(Self::error)?;
         Ok(())
     }
-    fn reject(failure: StageFailure<'_, Volume<'_, '_, '_, Mounted>>) -> BuildError {
+    pub(super) fn reject(failure: StageFailure<'_, Volume<'_, '_, '_, Mounted>>) -> BuildError {
         let primary = failure.to_string();
         let cleanup = match failure {
             StageFailure::Before { storage, .. } => Self::discard(storage),
