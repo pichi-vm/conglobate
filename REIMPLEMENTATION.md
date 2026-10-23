@@ -27,7 +27,7 @@ M4 implementation. Prior passes remain historical, not approvals of this revisio
 | 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete: revised context lifecycle | 3 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, scoped LSM, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Complete: single-volume lifecycle | 3 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Complete: direct-layer bootstrap | 3 |
-| 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | In progress: pipeline integration | 0 |
+| 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | In progress: first clean adherence pass | 1 |
 | 7. Integrated qualification | Critical source/design/style review resolved; Fedora/Debian/Alpine/NixOS representative builds and boots; amd64/arm64 and TDX/SEV-SNP/CCA qualification with evidence; repository checks and CI green. Unavailable required environments remain outstanding, never passes. | Pending | 0 |
 | 8. Retire references | Historical findings migrated to maintained tests/docs; remove legacy implementation and exploratory validation from active repo only after recoverability verified and replacement evidence accepted; final coherent docs/code, tests and three adherence passes. | Pending | 0 |
 
@@ -4024,3 +4024,17 @@ rules rather than silently shrinking acceptance criteria.
   refusal evidence for each disabled setting. Conglobate does not mutate them.
 - Continued atomic publication and firmware assembly audit, recorded in the M6
   adherence ledger. No full clean review claimed; M6 remains 0/3.
+
+### M6 first complete clean adherence pass
+
+- Previous goal turn fixed R2/R3. Committed the previously untracked evidence
+  archives in ec81986 so preservation does not depend on local untracked files.
+- Completed integrated requirements/ownership review on frozen scope
+  preservation/m6-review/scope-v1.json. Covered coordinator combinations, confined
+  COPY and paired firmware extraction, transforms/firmware contracts, networking
+  ownership/transport/DNS, deterministic inventory and verified atomic publication,
+  Rust style and evidence/qualification boundaries. No further finding.
+- Current 54 doctests passed; existing current host tests, strict Clippy and v255
+  plus focused network evidence were inspected rather than gratuitously rerun.
+- Clean streak 1/3. M6 remains gated; two complete consecutive reviews are required.
+  M7/M8 remain pending. Detailed pass record: preservation/MILESTONE-6-ADHERENCE.md.

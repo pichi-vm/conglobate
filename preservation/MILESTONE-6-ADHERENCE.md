@@ -1,7 +1,7 @@
 # Milestone 6 adherence review
 
-Status: **0/3** clean passes. Requirements/evidence audit in progress; no full
-clean pass has been claimed. The complete scope is DESIGN.md, SANDBOX-DESIGN.txt,
+Status: **1/3** clean passes. First complete requirements-first self-review
+recorded below; M6 remains gated until two more consecutive clean passes. The complete scope is DESIGN.md, SANDBOX-DESIGN.txt,
 ARCHITECTURE.md, latest user decisions and the M6 row in REIMPLEMENTATION.md.
 Tests are evidence, not adherence passes. These are self-reviews unless stated.
 
@@ -141,3 +141,82 @@ Reviewed firmware assembly preservation of config and non-firmware layers,
 separate tool ancestry, paired replacement and parent-chain checks. Remaining
 assembly branches, inventory and coordinator audit still prevent a full clean
 pass; the streak remains zero.
+
+## Clean pass 1 — integrated requirements and ownership
+
+Scope: preservation/m6-review/scope-v1.json, implementation baseline ec81986.
+This pass follows the R1–R3 corrections and supersedes the earlier incomplete
+coverage notes. No source or contract change occurred during this pass. It is a
+self-review of M6, not independent security or confidential-platform qualification.
+
+1. Requirements and pipeline: traced Pipeline::run dispatch and all bootstrap,
+   carapace, firmware and inherited coordinators against DESIGN sections 5–11.
+   Bootstrap formats a zero-backed output, discards tool writes and records the
+   successful formatter receipt. Carapace derives one retained layer per directive;
+   empty derivation invents none. Firmware selects its tools separately from output
+   ancestry, uses the final output root for CARAPACE, captures both files only
+   after completed directives, and discards its writable snapshot. A bootstrap
+   output feeds omitted-from later stages without importing an intermediate image.
+2. Content authority: COPY selects committed entries rather than mutable checkout
+   paths. Destination traversal uses image-root semantics and no-follow confined
+   handles under exclusive storage ownership. Source-pattern/mode compatibility
+   is covered by existing reference tests; runtime metadata by the preserved VM
+   suite. Firmware extraction pins checked regular inodes, rejects special files,
+   follows confined symlinks and captures bytes into private RAM storage. R3 keeps
+   primary extraction errors when cleanup also fails; either failure blocks output.
+3. Transform and firmware binding: reviewed TransformSelection, PropertyPath,
+   typed PropertyValue and Template expansion against sections 7–8. Authored empty
+   requires a DTB; only implicit defaults skip absent DTB/bootargs. Reads/removes
+   fail when absent, set creates ancestors, regex requires one NUL-terminated UTF-8
+   string and replaces every match, zero matches do not evaluate replacements.
+   Unavailable evaluated CARAPACE fails. Exact unchanged bytes are preserved;
+   changed DTBs preserve reserved/header semantics and pass DtbContract for every
+   recognized PMI target before assembly. Opaque/signed/incompatible firmware
+   cannot authorize changed DTBs; unchanged firmware remains usable.
+4. Network lifecycle: traced directives -> NetworkStageFailure/Ready ->
+   NetworkedStorage -> NetworkFinalizationFailure and CommandNetwork cleanup.
+   The setup lease encloses topology allocation and assignment. Forwarding is
+   checked without modifying environment-wide settings. The creator is reaped
+   before the command subreaper drain. Network/storage ownership remains together
+   until command quiescence; NAT deletion precedes link release and resolver
+   cleanup, with original deadlines retained on retries. Failed cleanup cannot
+   produce an accepted receipt. Native netfilter transactions require sequenced
+   kernel ACKs; private tables are socket-owned and exclusively created.
+5. DNS/transport: reviewed resolver capture, target traversal/scaffolding, volume
+   packet transport and helper release order. Resolver bytes are captured once,
+   mounted read-only and excluded from inventory. Raw cleanup and idmapped command
+   views remain separate. Runtime-mount/special-file targets fail. Scaffolding
+   cleanup checks inode identities after namespace descendants stop; a failure
+   rejects the layer instead of deleting replacement image content. Control and
+   namespace descriptors do not become command authority. R2 keeps logs on stderr.
+6. Output and inventory: reviewed all assembly variants, resolve_staging,
+   StagedDirectory, inventory schema/encoder/record creation and final publication.
+   Config and all selected layers are copied through verified streams; firmware
+   replacement drops only the old pair and preserves unrelated components/fields.
+   Scute parent checks and reopening staging validate the actual output chain.
+   Inventory identifies committed recipe/lock/context, selected image identities,
+   executed formatter/network steps and final transformed bytes; origins are
+   checked against produced scutes. Deterministic CBOR rejects ambiguous encodings.
+   Private staging is published only after runtime/context cleanup, with an atomic
+   no-replace rename and no fallible post-rename step.
+7. Rust style and safety: owners expose read-only observations and consuming
+   transitions; CompletedImage cannot be made from decoded inventory. The sealed
+   storage traits prevent nested network ownership. Cleanup enums represent
+   retained error obligations, not mutable successful build state. Mutable local
+   trees/buffers implement transformations without leaking mutable public state.
+   Production behavior is on methods; freestanding functions are entrypoints.
+   Unsafe code remains forbidden. No synchronization sleeps were introduced.
+8. Evidence and limits: inspected v255 verdict/CLI assertions and its successful
+   stage/output matrix, 12 independent ORAS copies, failed-command/no-publication
+   and resolver/forwarding checks. v251–v254 cover composite setup/cleanup,
+   unsolicited TCP controls, namespace allocation contention and independent
+   builders. The R3 host suite passes (112 library tests plus integration suites),
+   strict Clippy passes, and 54 current doctests pass, including ownership rejection
+   examples. R3's dual-error combination is source-reviewed, not claimed as a new
+   simultaneous kernel fault injection. Historical failed runs and sources remain
+   preserved. Distro builds/boots, additional architectures/confidential platforms,
+   independent review/CI and final retirement remain M7/M8 obligations.
+
+Result: clean, streak **1/3**. This is a complete requirements/ownership review,
+not a count of repeated tests. Two further complete reviews of this frozen scope
+remain mandatory before M7 starts. Any substantive finding/change resets the streak.
