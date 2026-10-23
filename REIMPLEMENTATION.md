@@ -4954,3 +4954,23 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   source. Evidence in preservation/m7-review/confinement-v7/v8/. No production
   changes or boot claim. M4 stays 0/3; all remaining milestone gates, maintained
   clone-mask migration and durable external archival remain outstanding.
+
+### Maintained direct-clone argument-filter validation
+
+- Previous turn progressed with proc visibility and finding reconciliation at
+  d1f5618. Migrated historical benign clone fixture unchanged and added a safe
+  Rust owner-method driver applying current production CommandSyscalls.
+- Both arms retain namespace capability and set no_new_privs. Seven legacy
+  namespace clones succeed in the control and return EPERM when filtered;
+  ordinary clone succeeds in both. Every created inert child is reaped. Runner
+  requires all sixteen individual results, aggregate marker, exit and poweroff.
+- v1 failed before VM execution because cc used quota-exhausted /tmp. Preserved
+  failure and snapshot; compiler now receives Cargo's existing /var/tmp TMPDIR.
+  v2 passes in disconnected native amd64 VM; strict fixture Clippy passes.
+- Evidence, exact executed-source comparison and unchanged-C migration identity:
+  preservation/m7-review/clone-filter-v1/v2/. No production change or new unsafe
+  Rust. Host compiles only; privileged namespace calls run only inside the VM.
+- Closes maintained legacy-clone-mask evidence gap for this architecture. No
+  CLONE_NEWTIME, Arm, full command-composition or confidential-platform claim.
+  M4 remains 0/3 pending full adherence passes. Other milestone gates and durable
+  archival remain open; historical sources and failures remain intact.

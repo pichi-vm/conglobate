@@ -1,0 +1,9 @@
+{
+  "source": "validation/rewrite-command-integration/clone-probe.c",
+  "destination": "tests/lifecycle/clone-probe.c",
+  "sha256": "afb0de655df8ae5795ef6db52a0f1202c1e69219db6822669691a160e2ccc3f3",
+  "c_fixture_unchanged": true,
+  "rust_driver": "tests/lifecycle/src/clone_filter.rs",
+  "unsafe_application_rust": false,
+  "privileged_execution": "disposable VM only"
+}

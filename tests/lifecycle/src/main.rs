@@ -3,6 +3,7 @@
 mod blocked_io;
 mod cache_storage;
 mod chain_storage;
+mod clone_filter;
 mod contained;
 mod domain_publication;
 mod formatter_failures;
@@ -29,6 +30,7 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "clone-filter" => clone_filter::CloneFilter::run(),
             [mode] if mode == "sandbox-busy-execution" => sandbox_failures::SandboxFailures::run(
                 sandbox_failures::FailurePoint::BusyExecution,
             ),

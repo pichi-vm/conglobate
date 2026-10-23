@@ -54,7 +54,7 @@ class LifecycleRun:
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as archive:
             for name in ('src', 'Cargo.toml', 'Cargo.lock', 'tests/lifecycle/src',
                          'tests/lifecycle/Cargo.toml', 'tests/lifecycle/Cargo.lock',
-                         'tests/lifecycle/run.py', 'tests/lifecycle/cache_fixture.py', 'validation/rewrite-command-integration/runtime.py'):
+                         'tests/lifecycle/run.py', 'tests/lifecycle/cache_fixture.py', 'tests/lifecycle/clone-probe.c', 'validation/rewrite-command-integration/runtime.py'):
                 archive.add(REPO / name, arcname=name)
         env = os.environ.copy()
         env.update(CARGO_BUILD_JOBS='2', TMPDIR='/var/tmp/conglobate-rewrite-tmp')
@@ -66,6 +66,13 @@ class LifecycleRun:
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
         runtime = LifecycleRuntime(self.root, self.args.module_root.resolve(), self.args.kernel_release)
         runtime.create()
+        if self.args.case == 'clone-filter':
+            probe = self.output / 'clone-probe'
+            with (self.output / 'clone-probe-build.log').open('wb') as log:
+                subprocess.run(['cc', '-std=c11', '-O2', '-Wall', '-Wextra', '-Werror',
+                                str(REPO / 'tests/lifecycle/clone-probe.c'), '-o', str(probe)],
+                               env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
+            runtime.executable(probe, Path('usr/bin/clone-probe'))
         if self.args.case in ("cache-storage", "chain-storage"):
             CacheFixture(self.root / "cache-fixture").create()
         binary = target / 'debug/conglobate-lifecycle-tests'
@@ -81,6 +88,8 @@ class LifecycleRun:
         setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\nmodprobe dm-verity\nmodprobe ext4\n'
                  if self.args.case in ('formatter-failures', 'cache-storage', 'chain-storage') or self.args.case.startswith('sandbox-') else
                  'mkdir /work/cgroups\nmount -t cgroup2 cgroup2 /work/cgroups\n')
+        if self.args.case == 'clone-filter':
+            setup = ''
         if self.args.case == 'network-composite':
             setup = ''.join(f'modprobe {name}\n' for name in
                             ('veth', 'nf_tables', 'nft_chain_nat', 'nft_masq', 'nft_ct'))
@@ -134,7 +143,12 @@ exec sleep infinity
         serial = (self.output / 'serial.txt').read_text(errors='replace')
         # Immediate abandonment need not schedule the child before VM disposal.
         markers = [] if self.args.drop == 'running' else ['FORMATTER_STALL_ENTERED']
-        if self.args.case == 'domain-publication':
+        if self.args.case == 'clone-filter':
+            markers = ['NATIVE_CLONE_NAMESPACE_MASK_PASS']
+            markers += [f'CLONE_PROBE {arm} {case} PASS errno={1 if arm == "filtered" and case != "ordinary" else 0}'
+                        for arm in ('control', 'filtered')
+                        for case in ('ordinary', 'mount', 'cgroup', 'uts', 'ipc', 'user', 'pid', 'network')]
+        elif self.args.case == 'domain-publication':
             markers = [f'DOMAIN_PUBLICATION_{mode}_ROLLBACK_PASS'
                        for mode in ('ABSENT', 'PRESENT', 'MALFORMED', 'MISMATCH')]
         elif self.args.case == 'contained':
@@ -197,7 +211,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['clone-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':

@@ -157,3 +157,13 @@ finalization fail with EBUSY. After releasing the holder, retry must return a
 failure owner with the original cleanup error and only rejected storage for
 disposal. Final resource checks require complete release. No image code or
 labeling executes in this focused test.
+
+`--case clone-filter` compiles the preserved benign C clone fixture and executes
+it only inside the disconnected disposable VM. The Rust driver applies the
+current production `CommandSyscalls` filter between control and filtered arms.
+Both retain namespace authority and set no_new_privs; each child does nothing
+and is reaped. Ordinary clone must succeed in both arms. All seven tested legacy
+namespace flags must succeed before filtering and return EPERM afterward. The
+runner checks every case plus status and poweroff. This is filter-only amd64
+coverage, not command capability-drop composition or Arm qualification. The
+legacy CLONE_NEWTIME bit overlaps the exit-signal byte and is not covered.
