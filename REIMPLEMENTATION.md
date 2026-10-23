@@ -5099,3 +5099,24 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   These simulate shell status in a trusted helper, not actual image-command or
   blocked-descendant behavior. Remaining M4-T1 cleanup-timeout, actual descendant
   and resolver-failure coverage stays open. M4 remains 0/3; full goal unchanged.
+
+### M4-T1 cleanup deadline and actual live-descendant coverage
+
+- Previous turn progressed with held/missing-cleanup regression 01e99e6. Added
+  cleanup-timeout helper mode. A one-second command budget still yields primary
+  shell success followed by fixed 30-second teardown timeout, retained mounts,
+  device/domain records and live child, and immediate failed retry under the
+  original cutoff. Independent VM disposal ends the terminal scenario.
+- cleanup-timeout-v1 passed; strengthened v2 explicitly keeps the failed storage
+  recovery owner alive and rechecks mounts/records before process exit. Both
+  evidence sets preserved. Strict maintained fixture Clippy passes.
+- Extended actual confinement recipe: a child signals readiness then blocks on
+  a FIFO; shell verifies it is live and exits. descendant-status-v1 passes this
+  step, fresh-runtime next step, all earlier confinement checks, build/export,
+  inventory/status assessment and blob verification. No synchronization sleeps.
+- Evidence under preservation/m7-review/cleanup-timeout-v1/v2 and
+  descendant-status-v1. Executed production bytes match current source; scopes
+  distinguish simulated parked receiver from actual interruptible descendant.
+  No target boot, kernel D-state child or confidential-platform claim. Remaining
+  resolver-failure reruns and integrated timing review are next. M4 remains 0/3;
+  full milestone scope and durable-archive obligations are unchanged.

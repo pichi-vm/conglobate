@@ -162,6 +162,8 @@ exec sleep infinity
                        'NETWORK_COMPOSITE_NAT_FAILURE_PRESERVES_FOREIGN_TABLE_PASS',
                        'NETWORK_PRODUCTION_ALLOCATION_RELEASE_AND_DISTINCT_LIVE_PREFIX_PASS',
                        'NETWORK_COMPOSITE_EXPIRED_TEARDOWN_RETRY_RETAINS_OWNER_PASS']
+        elif self.args.case == 'sandbox-cleanup-timeout':
+            markers = ['CLEANUP_DEADLINE_PRESERVES_SHELL_SUCCESS_AND_RETAINS_OWNERS_PASS']
         elif self.args.case == 'sandbox-held-cleanup':
             markers = ['SHELL_STATUS_BEFORE_HELD_CLEANUP_PASS', 'SANDBOX_HELD_CLEANUP_ROLLBACK_PASS']
         elif self.args.case == 'sandbox-missing-cleanup':
@@ -215,7 +217,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':

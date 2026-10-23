@@ -97,3 +97,22 @@ carapace:
     - run: |
         /probe-runtime/loader --library-path /probe-runtime/lib /probe-runtime/command-probe
         rm -rf /probe-runtime
+    - run: |
+        set -x
+        mkfifo /dev/shm/descendant-ready /dev/shm/descendant-hold
+        (
+          exec 3<> /dev/shm/descendant-hold
+          printf 'ready\n' > /dev/shm/descendant-ready
+          read -r ignored <&3
+          exit 91
+        ) &
+        child=$!
+        read -r state < /dev/shm/descendant-ready
+        test "$state" = ready
+        kill -0 "$child"
+        printf 'COMMAND_EXITS_WITH_LIVE_DESCENDANT_PASS\n'
+      timeout: 5s
+    - run: |
+        test ! -e /dev/shm/descendant-ready
+        test ! -e /dev/shm/descendant-hold
+        printf 'COMMAND_AFTER_DESCENDANT_CLEANUP_PASS\n'

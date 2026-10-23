@@ -20,6 +20,7 @@ pub(super) enum FailurePoint {
     BusyExecution,
     HeldCleanup,
     MissingCleanup,
+    CleanupTimeout,
     Gate,
     Writeback,
     BlockedIo,
@@ -31,6 +32,7 @@ pub(super) enum HelperCompletion {
     Normal,
     Held,
     Missing,
+    Never,
 }
 #[derive(Debug)]
 pub(super) struct SandboxFailures;
@@ -78,6 +80,11 @@ impl SandboxFailures {
                 None
             };
             channel.report_completion_until(std::process::ExitStatus::from_raw(0), deadline)?;
+            if matches!(completion, HelperCompletion::Never) {
+                loop {
+                    std::thread::park();
+                }
+            }
             if let Some(release) = release {
                 release.set_read_timeout(Some(std::time::Duration::from_secs(10)))?;
                 let mut packet = [0; 2];
@@ -124,6 +131,7 @@ impl SandboxFailures {
                 | FailurePoint::BusyExecution
                 | FailurePoint::HeldCleanup
                 | FailurePoint::MissingCleanup
+                | FailurePoint::CleanupTimeout
                 | FailurePoint::Gate
                 | FailurePoint::Writeback
                 | FailurePoint::BlockedIo
@@ -172,6 +180,7 @@ impl SandboxFailures {
                 | FailurePoint::BusyExecution
                 | FailurePoint::HeldCleanup
                 | FailurePoint::MissingCleanup
+                | FailurePoint::CleanupTimeout
                 | FailurePoint::Gate
                 | FailurePoint::Writeback
                 | FailurePoint::BlockedIo
@@ -229,6 +238,7 @@ impl SandboxFailures {
             | FailurePoint::BusyExecution
             | FailurePoint::HeldCleanup
             | FailurePoint::MissingCleanup
+            | FailurePoint::CleanupTimeout
             | FailurePoint::Gate
             | FailurePoint::Writeback
             | FailurePoint::BlockedIo
@@ -252,6 +262,8 @@ impl SandboxFailures {
                         "sandbox-gate-receiver"
                     } else if matches!(point, FailurePoint::HeldCleanup) {
                         "sandbox-held-helper"
+                    } else if matches!(point, FailurePoint::CleanupTimeout) {
+                        "sandbox-cleanup-timeout-helper"
                     } else if matches!(point, FailurePoint::MissingCleanup) {
                         "sandbox-missing-cleanup-helper"
                     } else if matches!(point, FailurePoint::BusyExecution) {
@@ -445,7 +457,9 @@ impl SandboxFailures {
                     returned
                 } else if matches!(
                     point,
-                    FailurePoint::HeldCleanup | FailurePoint::MissingCleanup
+                    FailurePoint::HeldCleanup
+                        | FailurePoint::MissingCleanup
+                        | FailurePoint::CleanupTimeout
                 ) {
                     use std::{os::unix::net::UnixDatagram, time::Instant};
                     fs::create_dir("/work/runtime-parent/receiver-view")?;
@@ -453,6 +467,49 @@ impl SandboxFailures {
                     let step = prepared
                         .launch(command, budget.deadline(), paths.domains())
                         .map_err(|e| e.to_string())?;
+                    if matches!(point, FailurePoint::CleanupTimeout) {
+                        use std::time::Duration;
+                        let started = Instant::now();
+                        let failure = step
+                            .execute(budget, "1s".parse()?, paths.domains())
+                            .unwrap_err();
+                        assert!(
+                            matches!(failure.outcome(), conglobate::step::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status)) if status.success())
+                        );
+                        assert_eq!(
+                            failure.cleanup_error().unwrap().operation().kind(),
+                            std::io::ErrorKind::TimedOut
+                        );
+                        assert!(started.elapsed() >= Duration::from_secs(30));
+                        assert!(started.elapsed() < Duration::from_secs(40));
+                        assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
+                        assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                        assert!(
+                            Path::new(&format!(
+                                "/sys/dev/block/{}:{}",
+                                device.major(),
+                                device.minor()
+                            ))
+                            .exists()
+                        );
+                        assert!(
+                            !fs::read_to_string("/proc/thread-self/children")?
+                                .trim()
+                                .is_empty()
+                        );
+                        let retry_started = Instant::now();
+                        let rejected = failure.retry_cleanup();
+                        assert!(retry_started.elapsed() < Duration::from_secs(1));
+                        let _retained = rejected.into_rejected_storage().unwrap_err();
+                        assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
+                        assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                        println!(
+                            "CLEANUP_DEADLINE_PRESERVES_SHELL_SUCCESS_AND_RETAINS_OWNERS_PASS"
+                        );
+                        // Deliberately abandon retained live owners; independent
+                        // guest init disposes of this VM. No clean teardown claim.
+                        std::process::exit(0);
+                    }
                     let returned = if matches!(point, FailurePoint::HeldCleanup) {
                         step.send_volume_until(budget.deadline())?;
                         let running = budget
@@ -623,7 +680,8 @@ impl SandboxFailures {
                 FailurePoint::HeldCleanup => "SANDBOX_HELD_CLEANUP_ROLLBACK_PASS",
                 FailurePoint::MissingCleanup => "SANDBOX_MISSING_CLEANUP_ROLLBACK_PASS",
                 FailurePoint::Gate => "SANDBOX_GATE_FAILURE_ROLLBACK_PASS",
-                FailurePoint::BlockedIo
+                FailurePoint::CleanupTimeout
+                | FailurePoint::BlockedIo
                 | FailurePoint::SupervisorDeath
                 | FailurePoint::Writeback => unreachable!("terminal VM-disposal case"),
             }

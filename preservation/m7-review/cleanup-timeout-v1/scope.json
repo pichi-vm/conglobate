@@ -1,0 +1,12 @@
+{
+  "baseline": "01e99e6",
+  "production_changed": false,
+  "passed": true,
+  "coverage": "successful simulated shell status; fixed teardown timeout despite 1s command timeout; mounted volume, device, recovery record and child still present; immediate retry cannot recover storage; independent VM disposal",
+  "limitations": [
+    "trusted helper deliberately parks, not an uninterruptible image descendant",
+    "no successful cleanup or safe resource reuse claimed",
+    "ordinary amd64 VM only",
+    "large artifacts unarchived"
+  ]
+}

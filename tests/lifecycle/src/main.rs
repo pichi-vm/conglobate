@@ -30,6 +30,15 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "sandbox-cleanup-timeout" => sandbox_failures::SandboxFailures::run(
+                sandbox_failures::FailurePoint::CleanupTimeout,
+            ),
+            [mode, cutoff] if mode == "sandbox-cleanup-timeout-helper" => {
+                sandbox_failures::SandboxFailures::attached_helper(
+                    cutoff,
+                    sandbox_failures::HelperCompletion::Never,
+                )
+            }
             [mode] if mode == "sandbox-held-cleanup" => {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::HeldCleanup)
             }

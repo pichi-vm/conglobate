@@ -1,0 +1,11 @@
+{
+  "baseline": "01e99e6",
+  "production_changed": false,
+  "passed": true,
+  "coverage": "actual recipe shell exits with a FIFO-blocked child whose readiness and liveness were verified; subsequent step sees fresh runtime mounts; build and OCI export succeed; all prior confinement checks pass",
+  "limitations": [
+    "ordinary interruptible FIFO read, not uninterruptible I/O",
+    "no target boot or Arm/confidential qualification",
+    "large assets unarchived"
+  ]
+}

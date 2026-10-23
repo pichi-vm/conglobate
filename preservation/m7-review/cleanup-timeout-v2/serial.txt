@@ -1,0 +1,13 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe dm-verity
++ modprobe ext4
++ /lifecycle-tests sandbox-cleanup-timeout
+attached fixture: joined
+attached fixture: received volume
+attached fixture: prepared view
+CLEANUP_DEADLINE_PRESERVES_SHELL_SUCCESS_AND_RETAINS_OWNERS_PASS
+LIFECYCLE_EXIT 0
+[   31.781168] sysrq: Power Off
+[   31.785829] reboot: Power down

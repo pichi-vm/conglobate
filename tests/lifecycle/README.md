@@ -179,3 +179,11 @@ protocol, never by sleeping. This is a lifecycle test with simulated shell statu
 without sending a cleanup acknowledgment. Production `Step::execute` must return
 failure; cleanup retry retains diagnostics and recovers only rejected storage.
 Both cases check all resources and child processes are released before poweroff.
+
+`--case sandbox-cleanup-timeout` reports simulated shell success and parks the
+trusted receiver with its view still attached. With a one-second command budget,
+production execution must instead fail at the fixed 30-second cleanup deadline,
+retain the successful primary outcome and resource owners, and refuse storage
+recovery after an immediate retry. The fixture retains its failure owner and
+requires independent VM poweroff; it does not claim clean teardown or resource
+reuse. A parked helper is not a kernel uninterruptible-I/O test.
