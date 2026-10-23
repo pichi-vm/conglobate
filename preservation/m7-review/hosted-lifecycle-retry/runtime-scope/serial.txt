@@ -1,0 +1,7 @@
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ /lifecycle-tests runtime-scope
+lifecycle fixture: build runtime: Invalid argument (os error 22)
+LIFECYCLE_EXIT 1
+[    1.142951] sysrq: Power Off
+[    1.144089] reboot: Power down

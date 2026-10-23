@@ -6198,3 +6198,11 @@ then QEMU could not open KVM for contained (permission denied before boot).
 Preserved raw evidence in hosted-lifecycle-first/. Replaced one-time ACL setup
 with a runner-user-only udev rule plus explicit device-access diagnostics/checks
 before each case. Retry pending; no full workflow success or M4 pass claimed.
+
+## Hosted runtime portability failure
+
+Run 40038660026: KVM permissions remained correct; cache-storage and contained
+passed. runtime-scope booted but Runtime::create returned EINVAL on Ubuntu
+6.8.0-147-generic. Source archives match 5d95d69 (157 selected files each).
+Preserved hosted-lifecycle-retry/ evidence and added opt-in guest mount syscall
+tracing for diagnosis. No production correction or passing runtime-scope claim.

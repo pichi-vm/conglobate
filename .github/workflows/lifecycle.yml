@@ -26,7 +26,7 @@ jobs:
       - name: Install trusted guest inputs
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev qemu-system-x86 cpio zstd kmod linux-generic e2fsprogs acl attr libcap2-bin uidmap nftables iproute2 dmsetup
+          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev qemu-system-x86 cpio zstd kmod linux-generic e2fsprogs acl attr libcap2-bin uidmap nftables iproute2 dmsetup strace
           rustup toolchain install 1.94.0 --profile minimal
       - name: Require KVM and select installed guest kernel
         run: |
@@ -52,7 +52,7 @@ jobs:
             test -w /dev/kvm
             python3 tests/lifecycle/run.py "$RUNNER_TEMP/lifecycle-results/$case" \
               --kernel "$GUEST_KERNEL" --kernel-release "$GUEST_RELEASE" \
-              --module-root / --case "$case" \
+              --module-root / --case "$case" --trace-mounts \
               > "$RUNNER_TEMP/lifecycle-results/$case.log" 2>&1
           done
       - name: Preserve results including failures

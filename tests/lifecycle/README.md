@@ -245,3 +245,8 @@ CI uploads raw logs/status, assessments, input records, source archive and guest
 kernel/initramfs even after failure. Artifact retention is 14 days, not a durable
 M8 archive. This job covers lifecycle components, not full distro builds/boots,
 arm64, confidential VMs, or the environment-loaded labeling policy.
+
+For mount compatibility diagnosis, --trace-mounts stages the trusted host strace
+executable and records selected mount/pidfd/statx syscalls in guest serial output.
+Tracing runs only inside the disposable guest. Treat an instrumented result as
+diagnostic evidence; repeat ordinary execution when qualifying a fix.

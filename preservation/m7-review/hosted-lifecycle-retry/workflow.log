@@ -1,0 +1,1008 @@
+native-amd64	Set up job	﻿2026-10-23T23:15:51.3970885Z Current runner version: '2.338.0'
+native-amd64	Set up job	2026-10-23T23:15:51.3991464Z ##[group]Runner Image Provisioner
+native-amd64	Set up job	2026-10-23T23:15:51.3992253Z Hosted Compute Agent
+native-amd64	Set up job	2026-10-23T23:15:51.3992729Z Version: 20261012.601
+native-amd64	Set up job	2026-10-23T23:15:51.3993450Z Commit: f3dc54e1fb89da6852db922499a0233137369e1d
+native-amd64	Set up job	2026-10-23T23:15:51.3994064Z Build Date: 2026-10-12T17:48:21Z
+native-amd64	Set up job	2026-10-23T23:15:51.3994596Z Worker ID: {01c22c56-0d71-4a98-8946-aa712443086e}
+native-amd64	Set up job	2026-10-23T23:15:51.3995231Z Region: centralus
+native-amd64	Set up job	2026-10-23T23:15:51.3995697Z Cloud: Azure
+native-amd64	Set up job	2026-10-23T23:15:51.3996169Z ##[endgroup]
+native-amd64	Set up job	2026-10-23T23:15:51.3997477Z ##[group]Operating System
+native-amd64	Set up job	2026-10-23T23:15:51.3997993Z Ubuntu
+native-amd64	Set up job	2026-10-23T23:15:51.3998502Z 24.04.5
+native-amd64	Set up job	2026-10-23T23:15:51.3998934Z LTS
+native-amd64	Set up job	2026-10-23T23:15:51.3999654Z ##[endgroup]
+native-amd64	Set up job	2026-10-23T23:15:51.4000151Z ##[group]Runner Image
+native-amd64	Set up job	2026-10-23T23:15:51.4000658Z Image: ubuntu-24.04
+native-amd64	Set up job	2026-10-23T23:15:51.4001163Z Version: 20261012.334.1
+native-amd64	Set up job	2026-10-23T23:15:51.4002012Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261012.334/images/ubuntu/Ubuntu2404-Readme.md
+native-amd64	Set up job	2026-10-23T23:15:51.4003597Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261012.334
+native-amd64	Set up job	2026-10-23T23:15:51.4004376Z ##[endgroup]
+native-amd64	Set up job	2026-10-23T23:15:51.4005283Z ##[group]GITHUB_TOKEN Permissions
+native-amd64	Set up job	2026-10-23T23:15:51.4007788Z Contents: read
+native-amd64	Set up job	2026-10-23T23:15:51.4008624Z Metadata: read
+native-amd64	Set up job	2026-10-23T23:15:51.4009302Z ##[endgroup]
+native-amd64	Set up job	2026-10-23T23:15:51.4011406Z Secret source: Actions
+native-amd64	Set up job	2026-10-23T23:15:51.4012662Z Cache mode: write
+native-amd64	Set up job	2026-10-23T23:15:51.4013814Z Prepare workflow directory
+native-amd64	Set up job	2026-10-23T23:15:51.4548301Z Prepare all required actions
+native-amd64	Set up job	2026-10-23T23:15:51.4595381Z Getting action download info
+native-amd64	Set up job	2026-10-23T23:15:51.6813776Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+native-amd64	Set up job	2026-10-23T23:15:52.1954966Z Download action repository 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+native-amd64	Set up job	2026-10-23T23:15:52.9873002Z Complete job name: native-amd64
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	﻿2026-10-23T23:15:53.0715375Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0716942Z with:
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0717660Z   persist-credentials: false
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0718522Z   repository: pichi-vm/conglobate
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0725418Z   token: ***
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0726126Z   ssh-strict: true
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0726852Z   ssh-user: git
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0727546Z   clean: true
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0728284Z   sparse-checkout-cone-mode: true
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0729531Z   fetch-depth: 1
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0730426Z   fetch-tags: false
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0731175Z   show-progress: true
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0731926Z   lfs: false
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0732630Z   submodules: false
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0733482Z   set-safe-directory: true
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0734329Z   allow-unsafe-pr-checkout: false
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0735474Z env:
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0736162Z   CARGO_BUILD_JOBS: 2
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0736923Z   RUSTUP_TOOLCHAIN: 1.94.0
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.0737733Z ##[endgroup]
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1557464Z Syncing repository: pichi-vm/conglobate
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1559618Z ##[group]Getting Git version info
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1560751Z Working directory is '/home/runner/work/conglobate/conglobate'
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1562353Z [command]/usr/bin/git version
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1619948Z git version 2.55.0
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1635842Z ##[endgroup]
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1644020Z Temporarily overriding HOME='/home/runner/work/_temp/9689b00c-da73-48b3-8197-d0d923ceb49d' before making global git config changes
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1647475Z Adding repository directory to the temporary git global config as a safe directory
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1650347Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/conglobate/conglobate
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1695695Z Deleting the contents of '/home/runner/work/conglobate/conglobate'
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1698798Z ##[group]Determining repository object format
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1700740Z ##[endgroup]
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1702323Z ##[group]Initializing the repository
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1704400Z [command]/usr/bin/git init /home/runner/work/conglobate/conglobate
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1837367Z hint: Using 'master' as the name for the initial branch. This default branch name
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1840033Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1842792Z hint: to use in all of your new repositories, which will suppress this warning,
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1846299Z hint: call:
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1847798Z hint:
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1849233Z hint: 	git config --global init.defaultBranch <name>
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1850847Z hint:
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1852368Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1854958Z hint: 'development'. The just-created branch can be renamed via this command:
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1856990Z hint:
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1858631Z hint: 	git branch -m <name>
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1860115Z hint:
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1861937Z hint: Disable this message with "git config set advice.defaultBranchName false"
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1865349Z Initialized empty Git repository in /home/runner/work/conglobate/conglobate/.git/
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1869582Z [command]/usr/bin/git remote add origin https://github.com/pichi-vm/conglobate
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1953690Z ##[endgroup]
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1955602Z ##[group]Disabling automatic garbage collection
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.1957302Z [command]/usr/bin/git config --local gc.auto 0
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2034184Z ##[endgroup]
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2036381Z ##[group]Setting up auth
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2037964Z Removing SSH command configuration
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2039878Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2071009Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2346412Z Removing HTTP extra header
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2351301Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2381562Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2560727Z Removing includeIf entries pointing to credentials config files
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2564561Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2594373Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2779989Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-5ab11eed-0863-4fcb-95ae-a1fc85447bb1.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2850399Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/conglobate/conglobate/.git.path /home/runner/work/_temp/git-credentials-5ab11eed-0863-4fcb-95ae-a1fc85447bb1.config
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.2935297Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/conglobate/conglobate/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-5ab11eed-0863-4fcb-95ae-a1fc85447bb1.config
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.3016085Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-5ab11eed-0863-4fcb-95ae-a1fc85447bb1.config
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.3113931Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-5ab11eed-0863-4fcb-95ae-a1fc85447bb1.config
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.3193897Z ##[endgroup]
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.3195141Z ##[group]Fetching the repository
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:53.3199275Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +5d95d6943269a91639231b3d2814a12fa26497df:refs/remotes/origin/rewrite-qualification
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4220378Z From https://github.com/pichi-vm/conglobate
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4221022Z  * [new ref]         5d95d6943269a91639231b3d2814a12fa26497df -> origin/rewrite-qualification
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4229623Z [command]/usr/bin/git branch --list --remote origin/rewrite-qualification
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4254593Z   origin/rewrite-qualification
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4260972Z [command]/usr/bin/git rev-parse refs/remotes/origin/rewrite-qualification
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4282809Z 5d95d6943269a91639231b3d2814a12fa26497df
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4285928Z ##[endgroup]
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4286245Z ##[group]Determining the checkout info
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4287083Z ##[endgroup]
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4290046Z [command]/usr/bin/git sparse-checkout disable
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4335126Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4363872Z ##[group]Checking out the ref
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:58.4367887Z [command]/usr/bin/git checkout --progress --force -B rewrite-qualification refs/remotes/origin/rewrite-qualification
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.4985761Z Updating files:  67% (17738/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.5108019Z Updating files:  68% (17925/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.5244814Z Updating files:  69% (18189/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.5367575Z Updating files:  70% (18452/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.5488265Z Updating files:  71% (18716/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.5601974Z Updating files:  72% (18980/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.5746150Z Updating files:  73% (19243/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.5869290Z Updating files:  74% (19507/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.5996197Z Updating files:  75% (19770/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.6117301Z Updating files:  76% (20034/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.6254225Z Updating files:  77% (20298/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.6375893Z Updating files:  78% (20561/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.6504887Z Updating files:  79% (20825/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.6633943Z Updating files:  80% (21088/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.6777601Z Updating files:  81% (21352/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.6905971Z Updating files:  82% (21616/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.7068467Z Updating files:  83% (21879/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.7187070Z Updating files:  84% (22143/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.7298557Z Updating files:  85% (22406/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.7419479Z Updating files:  86% (22670/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.7534847Z Updating files:  87% (22934/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.7656238Z Updating files:  88% (23197/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.7774749Z Updating files:  89% (23461/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.7893253Z Updating files:  90% (23724/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.8004421Z Updating files:  91% (23988/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.8117596Z Updating files:  92% (24252/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.8319828Z Updating files:  93% (24515/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.8432331Z Updating files:  94% (24779/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.8547035Z Updating files:  95% (25042/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.8649977Z Updating files:  96% (25306/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.8780069Z Updating files:  97% (25570/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.8905653Z Updating files:  98% (25833/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9067834Z Updating files:  99% (26097/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9068144Z Updating files: 100% (26360/26360)
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9068376Z Updating files: 100% (26360/26360), done.
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9321767Z Switched to a new branch 'rewrite-qualification'
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9326334Z branch 'rewrite-qualification' set up to track 'origin/rewrite-qualification'.
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9384237Z ##[endgroup]
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9429497Z [command]/usr/bin/git log -1 --format=%H
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9453976Z 5d95d6943269a91639231b3d2814a12fa26497df
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9461216Z ##[group]Removing auth
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9461474Z Removing SSH command configuration
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9464544Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9495763Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9705824Z Removing HTTP extra header
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9708458Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9737833Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9942664Z Removing includeIf entries pointing to credentials config files
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9954147Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9972831Z includeif.gitdir:/home/runner/work/conglobate/conglobate/.git.path
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9974609Z includeif.gitdir:/home/runner/work/conglobate/conglobate/.git/worktrees/*.path
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9975413Z includeif.gitdir:/github/workspace/.git.path
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9976196Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:15:59.9981277Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/conglobate/conglobate/.git.path
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0006790Z /home/runner/work/_temp/git-credentials-5ab11eed-0863-4fcb-95ae-a1fc85447bb1.config
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0015921Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/conglobate/conglobate/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-5ab11eed\-0863\-4fcb\-95ae\-a1fc85447bb1\.config
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0059105Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/conglobate/conglobate/.git/worktrees/*.path
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0090118Z /home/runner/work/_temp/git-credentials-5ab11eed-0863-4fcb-95ae-a1fc85447bb1.config
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0094516Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/conglobate/conglobate/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-5ab11eed\-0863\-4fcb\-95ae\-a1fc85447bb1\.config
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0129223Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0154721Z /github/runner_temp/git-credentials-5ab11eed-0863-4fcb-95ae-a1fc85447bb1.config
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0160882Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-5ab11eed\-0863\-4fcb\-95ae\-a1fc85447bb1\.config
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0192358Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0214592Z /github/runner_temp/git-credentials-5ab11eed-0863-4fcb-95ae-a1fc85447bb1.config
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0224346Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-5ab11eed\-0863\-4fcb\-95ae\-a1fc85447bb1\.config
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0257834Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0466128Z Removing credentials config '/home/runner/work/_temp/git-credentials-5ab11eed-0863-4fcb-95ae-a1fc85447bb1.config'
+native-amd64	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:16:00.0475333Z ##[endgroup]
+native-amd64	Install trusted guest inputs	﻿2026-10-23T23:16:00.0646366Z ##[group]Run sudo apt-get update
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.0646676Z ^[[36;1msudo apt-get update^[[0m
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.0647362Z ^[[36;1msudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev qemu-system-x86 cpio zstd kmod linux-generic e2fsprogs acl attr libcap2-bin uidmap nftables iproute2 dmsetup^[[0m
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.0648092Z ^[[36;1mrustup toolchain install 1.94.0 --profile minimal^[[0m
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.0832883Z shell: /usr/bin/bash -e {0}
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.0833123Z env:
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.0833483Z   CARGO_BUILD_JOBS: 2
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.0833674Z   RUSTUP_TOOLCHAIN: 1.94.0
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.0833863Z ##[endgroup]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.1526449Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.1829631Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.1841475Z Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.1849176Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.1875871Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.1915972Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.2817625Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [652 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.2954301Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [589 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.3058203Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main armhf Packages [12.4 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.3212351Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1400 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.3268371Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [310 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.3289273Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1706 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.3367934Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [342 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.3391375Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1805 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.3473623Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [411 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.4250631Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1146 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.4302607Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [231 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.4319543Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1222 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.4370161Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [246 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.4799947Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1713 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:00.4870232Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [392 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:07.6383878Z Fetched 12.6 MB in 1s (12.2 MB/s)
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.3452423Z Reading package lists...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.3706795Z Reading package lists...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.5471735Z Building dependency tree...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.5477569Z Reading state information...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6828202Z pkg-config is already the newest version (1.8.1-2build1).
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6828807Z cpio is already the newest version (2.15+dfsg-1ubuntu2.1).
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6829283Z cpio set to manually installed.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6829699Z zstd is already the newest version (1.5.5+dfsg2-2build1.1).
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6830155Z zstd set to manually installed.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6830619Z kmod is already the newest version (31+20240202-2ubuntu7.2).
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6831121Z kmod set to manually installed.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6831717Z e2fsprogs is already the newest version (1.47.0-2.4~exp1ubuntu4.1).
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6832183Z e2fsprogs set to manually installed.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6833178Z acl is already the newest version (2.3.2-1build1.1).
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6833828Z libcap2-bin is already the newest version (1:2.66-5ubuntu2.4).
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6834296Z libcap2-bin set to manually installed.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6834746Z uidmap is already the newest version (1:4.13+dfsg1-4ubuntu3.2).
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6835199Z uidmap set to manually installed.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6835591Z nftables is already the newest version (1.0.9-1ubuntu0.1).
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6836135Z iproute2 is already the newest version (6.1.0-1ubuntu6.4).
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6836658Z dmsetup is already the newest version (2:1.02.185-3ubuntu3.2).
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6837365Z dmsetup set to manually installed.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6837825Z The following additional packages will be installed:
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6838430Z   amd64-microcode intel-microcode ipxe-qemu iucode-tool libbrlapi0.8
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6839074Z   libcacard0 libdaxctl1 libfdt1 libndctl6 libpcsclite1 libpmem1 librdmacm1t64
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6839817Z   liburing2 libusbredirparser1t64 linux-cloud-tools-common linux-firmware
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6840394Z   linux-firmware-amd-graphics linux-firmware-amd-misc
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6840938Z   linux-firmware-broadcom-wireless linux-firmware-intel-graphics
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6841443Z   linux-firmware-intel-misc linux-firmware-intel-wireless
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6841929Z   linux-firmware-marvell-prestera linux-firmware-marvell-wireless
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6842372Z   linux-firmware-mediatek linux-firmware-mellanox-spectrum linux-firmware-misc
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6842760Z   linux-firmware-netronome linux-firmware-nvidia-graphics
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6843079Z   linux-firmware-qlogic linux-firmware-qualcomm-graphics
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6843653Z   linux-firmware-qualcomm-misc linux-firmware-qualcomm-wireless
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6844082Z   linux-firmware-realtek linux-headers-6.8.0-147
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6844377Z   linux-headers-6.8.0-147-generic linux-headers-generic
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6844705Z   linux-image-6.8.0-147-generic linux-image-generic linux-libc-dev
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6845084Z   linux-modules-6.8.0-147-generic linux-modules-extra-6.8.0-147-generic
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6845449Z   linux-tools-common qemu-system-common qemu-system-data seabios
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6845830Z   wireless-regdb zlib1g
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6846030Z Suggested packages:
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6846235Z   pcscd fdutils samba vde2
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6846442Z Recommended packages:
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6846713Z   firmware-sof-signed linux-tools-6.8.0-147-generic thermald qemu-utils
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6847051Z   ipxe-qemu-256k-compat-efi-roms ovmf qemu-system-gui
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6847508Z   qemu-system-modules-spice qemu-system-modules-opengl qemu-block-extra
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.6847929Z   cpu-checker
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7158973Z The following NEW packages will be installed:
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7159657Z   amd64-microcode attr build-essential intel-microcode ipxe-qemu iucode-tool
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7160792Z   libbrlapi0.8 libcacard0 libdaxctl1 libfdt1 libndctl6 libpcsclite1 libpmem1
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7162500Z   librdmacm1t64 liburing2 libusbredirparser1t64 linux-firmware
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7163002Z   linux-firmware-amd-graphics linux-firmware-amd-misc
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7164708Z   linux-firmware-broadcom-wireless linux-firmware-intel-graphics
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7165246Z   linux-firmware-intel-misc linux-firmware-intel-wireless
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7165654Z   linux-firmware-marvell-prestera linux-firmware-marvell-wireless
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7166064Z   linux-firmware-mediatek linux-firmware-mellanox-spectrum linux-firmware-misc
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7166446Z   linux-firmware-netronome linux-firmware-nvidia-graphics
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7166776Z   linux-firmware-qlogic linux-firmware-qualcomm-graphics
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7167108Z   linux-firmware-qualcomm-misc linux-firmware-qualcomm-wireless
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7167450Z   linux-firmware-realtek linux-generic linux-headers-6.8.0-147
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7167781Z   linux-headers-6.8.0-147-generic linux-headers-generic
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7168309Z   linux-image-6.8.0-147-generic linux-image-generic
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7168644Z   linux-modules-6.8.0-147-generic linux-modules-extra-6.8.0-147-generic
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7169063Z   qemu-system-common qemu-system-data qemu-system-x86 seabios wireless-regdb
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7169534Z The following packages will be upgraded:
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7171273Z   linux-cloud-tools-common linux-libc-dev linux-tools-common zlib1g zlib1g-dev
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7316775Z 5 upgraded, 48 newly installed, 0 to remove and 94 not upgraded.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7317272Z Need to get 874 MB of archives.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7317585Z After this operation, 1045 MB of additional disk space will be used.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7318183Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.7795824Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 zlib1g-dev amd64 1:1.3.dfsg-3.1ubuntu2.3 [894 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.8261479Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 zlib1g amd64 1:1.3.dfsg-3.1ubuntu2.3 [63.2 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.8598689Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 attr amd64 1:2.5.2-1ubuntu0.1 [25.3 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.8927665Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 build-essential amd64 12.10ubuntu1 [4928 B]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.9272021Z Get:6 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 ipxe-qemu all 1.21.1+git-20220113.fbbdc3926-0ubuntu2 [1565 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.9664472Z Get:7 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 iucode-tool amd64 2.3.1-3build1 [43.9 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:08.9968242Z Get:8 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libbrlapi0.8 amd64 6.6-4ubuntu5 [31.4 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:09.0297585Z Get:9 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libpcsclite1 amd64 2.0.3-1build1 [21.4 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:09.0704722Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libcacard0 amd64 1:2.8.0-3build4 [36.5 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:09.1112513Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libdaxctl1 amd64 77-2ubuntu2 [21.4 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:09.1457002Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libndctl6 amd64 77-2ubuntu2 [62.8 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:09.1801462Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libpmem1 amd64 1.13.1-1.1ubuntu2 [84.8 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:09.2148487Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 librdmacm1t64 amd64 50.0-2ubuntu0.2 [70.7 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:09.2497599Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 liburing2 amd64 2.5-1build1 [21.1 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:09.2912730Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libusbredirparser1t64 amd64 0.13.0-2.1build1 [16.5 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:09.3326674Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-cloud-tools-common all 6.8.0-147.147 [203 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:09.3785647Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-amd-graphics all 20240318.git3b128b60-0ubuntu3.3 [30.1 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:10.1491754Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-amd-misc all 20240318.git3b128b60-0ubuntu3.1 [266 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:10.2752356Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-broadcom-wireless all 20240318.git3b128b60-0ubuntu3.1 [11.3 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:10.5091856Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-intel-graphics all 20240318.git3b128b60-0ubuntu3.1 [22.0 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:10.8080273Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-intel-misc all 20240318.git3b128b60-0ubuntu3.1 [10.2 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:10.9473930Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-intel-wireless all 20240318.git3b128b60-0ubuntu3.1 [112 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:12.7078543Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-marvell-prestera all 20240318.git3b128b60-0ubuntu3.1 [74.8 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:14.2247142Z Get:25 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-marvell-wireless all 20240318.git3b128b60-0ubuntu3.1 [7568 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:14.3384365Z Get:26 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-mediatek all 20240318.git3b128b60-0ubuntu3.1 [24.7 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:14.7292730Z Get:27 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-mellanox-spectrum all 20240318.git3b128b60-0ubuntu3.1 [80.8 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:15.9565382Z Get:28 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-misc all 20240318.git3b128b60-0ubuntu3.1 [33.1 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:16.4312780Z Get:29 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-netronome all 20240318.git3b128b60-0ubuntu3.1 [5827 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:16.5212434Z Get:30 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-nvidia-graphics all 20240318.git3b128b60-0ubuntu3.1 [109 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:18.2595631Z Get:31 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-qlogic all 20240318.git3b128b60-0ubuntu3.1 [13.3 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:18.5075855Z Get:32 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-qualcomm-graphics all 20240318.git3b128b60-0ubuntu3.1 [6728 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:18.7406085Z Get:33 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-qualcomm-misc all 20240318.git3b128b60-0ubuntu3.1 [60.2 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:19.7623227Z Get:34 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-qualcomm-wireless all 20240318.git3b128b60-0ubuntu3.1 [47.8 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:20.6327636Z Get:35 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware-realtek all 20240318.git3b128b60-0ubuntu3.1 [6185 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:20.7394569Z Get:36 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-firmware all 20240318.git3b128b60.0ubuntu3.1 [1816 B]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:20.7751193Z Get:37 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-modules-6.8.0-147-generic amd64 6.8.0-147.147 [39.3 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:21.3712536Z Get:38 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-image-6.8.0-147-generic amd64 6.8.0-147.147 [14.8 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:21.5451005Z Get:39 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 wireless-regdb all 2026.05.30-0ubuntu1~24.04.1 [7714 B]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:21.5768561Z Get:40 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-modules-extra-6.8.0-147-generic amd64 6.8.0-147.147 [114 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:23.2185994Z Get:41 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 intel-microcode amd64 3.20260210.0ubuntu0.24.04.1 [13.5 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:23.5513192Z Get:42 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 amd64-microcode amd64 3.20251202.1ubuntu0.24.04.1 [458 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:23.6032454Z Get:43 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-image-generic amd64 6.8.0-147.147 [11.6 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:23.6322351Z Get:44 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-headers-6.8.0-147 all 6.8.0-147.147 [13.7 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:23.7795544Z Get:45 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-headers-6.8.0-147-generic amd64 6.8.0-147.147 [3894 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:23.8400710Z Get:46 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-headers-generic amd64 6.8.0-147.147 [11.4 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:23.8697877Z Get:47 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-generic amd64 6.8.0-147.147 [1694 B]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:23.8976619Z Get:48 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-libc-dev amd64 6.8.0-147.147 [1595 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:23.9329216Z Get:49 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 linux-tools-common all 6.8.0-147.147 [434 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:23.9730487Z Get:50 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 qemu-system-common amd64 1:8.2.2+ds-0ubuntu1.18 [1255 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.0221398Z Get:51 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 qemu-system-data all 1:8.2.2+ds-0ubuntu1.18 [1796 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.0682922Z Get:52 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libfdt1 amd64 1.7.0-2build1 [20.1 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.0997239Z Get:53 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 seabios all 1.16.3-2 [175 kB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.1777839Z Get:54 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 qemu-system-x86 amd64 1:8.2.2+ds-0ubuntu1.18 [11.2 MB]
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.5920292Z Fetched 874 MB in 16s (55.9 MB/s)
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.6565217Z (Reading database ... 
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.6565798Z (Reading database ... 5%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.6566326Z (Reading database ... 10%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.6566590Z (Reading database ... 15%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.6566801Z (Reading database ... 20%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.6567003Z (Reading database ... 25%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.6567190Z (Reading database ... 30%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.6567379Z (Reading database ... 35%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.6567568Z (Reading database ... 40%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.6567875Z (Reading database ... 45%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.6568180Z (Reading database ... 50%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.6605403Z (Reading database ... 55%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.7337605Z (Reading database ... 60%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:24.9416221Z (Reading database ... 65%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.1466191Z (Reading database ... 70%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.3327619Z (Reading database ... 75%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.4524268Z (Reading database ... 80%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.5902980Z (Reading database ... 85%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.7408670Z (Reading database ... 90%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.8531415Z (Reading database ... 95%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.8531865Z (Reading database ... 100%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.8532295Z (Reading database ... 203540 files and directories currently installed.)
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.8571063Z Preparing to unpack .../zlib1g-dev_1%3a1.3.dfsg-3.1ubuntu2.3_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.8639157Z Unpacking zlib1g-dev:amd64 (1:1.3.dfsg-3.1ubuntu2.3) over (1:1.3.dfsg-3.1ubuntu2.2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9166068Z Preparing to unpack .../zlib1g_1%3a1.3.dfsg-3.1ubuntu2.3_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9299396Z Unpacking zlib1g:amd64 (1:1.3.dfsg-3.1ubuntu2.3) over (1:1.3.dfsg-3.1ubuntu2.2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9688997Z Setting up zlib1g:amd64 (1:1.3.dfsg-3.1ubuntu2.3) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9931301Z Selecting previously unselected package attr.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9978302Z (Reading database ... 
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9978608Z (Reading database ... 5%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9978972Z (Reading database ... 10%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9979306Z (Reading database ... 15%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9979662Z (Reading database ... 20%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9979995Z (Reading database ... 25%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9980298Z (Reading database ... 30%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9980613Z (Reading database ... 35%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9980919Z (Reading database ... 40%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9981224Z (Reading database ... 45%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9981531Z (Reading database ... 50%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:25.9987999Z (Reading database ... 55%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0070290Z (Reading database ... 60%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0092551Z (Reading database ... 65%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0108820Z (Reading database ... 70%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0136609Z (Reading database ... 75%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0159529Z (Reading database ... 80%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0267393Z (Reading database ... 85%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0451006Z (Reading database ... 90%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0529069Z (Reading database ... 95%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0529412Z (Reading database ... 100%
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0529843Z (Reading database ... 203540 files and directories currently installed.)
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0565265Z Preparing to unpack .../00-attr_1%3a2.5.2-1ubuntu0.1_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0572058Z Unpacking attr (1:2.5.2-1ubuntu0.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0747701Z Selecting previously unselected package build-essential.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0850882Z Preparing to unpack .../01-build-essential_12.10ubuntu1_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.0856660Z Unpacking build-essential (12.10ubuntu1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.1011027Z Selecting previously unselected package ipxe-qemu.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.1115234Z Preparing to unpack .../02-ipxe-qemu_1.21.1+git-20220113.fbbdc3926-0ubuntu2_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.1120531Z Unpacking ipxe-qemu (1.21.1+git-20220113.fbbdc3926-0ubuntu2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.1668321Z Selecting previously unselected package iucode-tool.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.1778390Z Preparing to unpack .../03-iucode-tool_2.3.1-3build1_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.1783497Z Unpacking iucode-tool (2.3.1-3build1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.1959169Z Selecting previously unselected package libbrlapi0.8:amd64.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.2072208Z Preparing to unpack .../04-libbrlapi0.8_6.6-4ubuntu5_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.2078083Z Unpacking libbrlapi0.8:amd64 (6.6-4ubuntu5) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.2235880Z Selecting previously unselected package libpcsclite1:amd64.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.2339668Z Preparing to unpack .../05-libpcsclite1_2.0.3-1build1_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.2345359Z Unpacking libpcsclite1:amd64 (2.0.3-1build1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.2500284Z Selecting previously unselected package libcacard0:amd64.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.2602687Z Preparing to unpack .../06-libcacard0_1%3a2.8.0-3build4_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.2607811Z Unpacking libcacard0:amd64 (1:2.8.0-3build4) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.2768370Z Selecting previously unselected package libdaxctl1:amd64.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.2872542Z Preparing to unpack .../07-libdaxctl1_77-2ubuntu2_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.2878007Z Unpacking libdaxctl1:amd64 (77-2ubuntu2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.3038005Z Selecting previously unselected package libndctl6:amd64.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.3141761Z Preparing to unpack .../08-libndctl6_77-2ubuntu2_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.3147463Z Unpacking libndctl6:amd64 (77-2ubuntu2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.3313617Z Selecting previously unselected package libpmem1:amd64.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.3417517Z Preparing to unpack .../09-libpmem1_1.13.1-1.1ubuntu2_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.3609472Z Unpacking libpmem1:amd64 (1.13.1-1.1ubuntu2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.3789929Z Selecting previously unselected package librdmacm1t64:amd64.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.3897297Z Preparing to unpack .../10-librdmacm1t64_50.0-2ubuntu0.2_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.3903998Z Unpacking librdmacm1t64:amd64 (50.0-2ubuntu0.2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.4079762Z Selecting previously unselected package liburing2:amd64.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.4182629Z Preparing to unpack .../11-liburing2_2.5-1build1_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.4187947Z Unpacking liburing2:amd64 (2.5-1build1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.4343960Z Selecting previously unselected package libusbredirparser1t64:amd64.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.4447691Z Preparing to unpack .../12-libusbredirparser1t64_0.13.0-2.1build1_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.4453651Z Unpacking libusbredirparser1t64:amd64 (0.13.0-2.1build1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.4725852Z Preparing to unpack .../13-linux-cloud-tools-common_6.8.0-147.147_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.4778397Z Unpacking linux-cloud-tools-common (6.8.0-147.147) over (6.8.0-146.146) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.5063757Z Selecting previously unselected package linux-firmware-amd-graphics.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.5174213Z Preparing to unpack .../14-linux-firmware-amd-graphics_20240318.git3b128b60-0ubuntu3.3_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.5179098Z Unpacking linux-firmware-amd-graphics (20240318.git3b128b60-0ubuntu3.3) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.8587841Z Selecting previously unselected package linux-firmware-amd-misc.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.8701023Z Preparing to unpack .../15-linux-firmware-amd-misc_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.8705739Z Unpacking linux-firmware-amd-misc (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.8881469Z Selecting previously unselected package linux-firmware-broadcom-wireless.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.8990735Z Preparing to unpack .../16-linux-firmware-broadcom-wireless_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.8996343Z Unpacking linux-firmware-broadcom-wireless (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.9766939Z Selecting previously unselected package linux-firmware-intel-graphics.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.9877251Z Preparing to unpack .../17-linux-firmware-intel-graphics_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:26.9887732Z Unpacking linux-firmware-intel-graphics (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:27.1379708Z Selecting previously unselected package linux-firmware-intel-misc.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:27.1490892Z Preparing to unpack .../18-linux-firmware-intel-misc_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:27.1496794Z Unpacking linux-firmware-intel-misc (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:27.2154074Z Selecting previously unselected package linux-firmware-intel-wireless.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:27.2263766Z Preparing to unpack .../19-linux-firmware-intel-wireless_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:27.2268823Z Unpacking linux-firmware-intel-wireless (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:27.9066000Z Selecting previously unselected package linux-firmware-marvell-prestera.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:27.9177468Z Preparing to unpack .../20-linux-firmware-marvell-prestera_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:27.9183092Z Unpacking linux-firmware-marvell-prestera (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:28.3519666Z Selecting previously unselected package linux-firmware-marvell-wireless.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:28.3631587Z Preparing to unpack .../21-linux-firmware-marvell-wireless_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:28.3636312Z Unpacking linux-firmware-marvell-wireless (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:28.4155394Z Selecting previously unselected package linux-firmware-mediatek.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:28.4265202Z Preparing to unpack .../22-linux-firmware-mediatek_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:28.4270214Z Unpacking linux-firmware-mediatek (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:28.5899919Z Selecting previously unselected package linux-firmware-mellanox-spectrum.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:28.6011338Z Preparing to unpack .../23-linux-firmware-mellanox-spectrum_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:28.6015760Z Unpacking linux-firmware-mellanox-spectrum (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:29.0316994Z Selecting previously unselected package linux-firmware-misc.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:29.0430216Z Preparing to unpack .../24-linux-firmware-misc_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:29.0435009Z Unpacking linux-firmware-misc (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:29.4795445Z Selecting previously unselected package linux-firmware-netronome.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:29.4915207Z Preparing to unpack .../25-linux-firmware-netronome_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:29.4921258Z Unpacking linux-firmware-netronome (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:29.5310331Z Selecting previously unselected package linux-firmware-nvidia-graphics.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:29.5420677Z Preparing to unpack .../26-linux-firmware-nvidia-graphics_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:29.5425956Z Unpacking linux-firmware-nvidia-graphics (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:30.2696267Z Selecting previously unselected package linux-firmware-qlogic.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:30.2811040Z Preparing to unpack .../27-linux-firmware-qlogic_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:30.2970253Z Unpacking linux-firmware-qlogic (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:30.3717775Z Selecting previously unselected package linux-firmware-qualcomm-graphics.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:30.3832545Z Preparing to unpack .../28-linux-firmware-qualcomm-graphics_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:30.3838275Z Unpacking linux-firmware-qualcomm-graphics (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:30.4313187Z Selecting previously unselected package linux-firmware-qualcomm-misc.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:30.4425857Z Preparing to unpack .../29-linux-firmware-qualcomm-misc_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:30.4431049Z Unpacking linux-firmware-qualcomm-misc (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:30.7878690Z Selecting previously unselected package linux-firmware-qualcomm-wireless.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:30.7991526Z Preparing to unpack .../30-linux-firmware-qualcomm-wireless_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:30.7997046Z Unpacking linux-firmware-qualcomm-wireless (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.0943454Z Selecting previously unselected package linux-firmware-realtek.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.1057168Z Preparing to unpack .../31-linux-firmware-realtek_20240318.git3b128b60-0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.1062177Z Unpacking linux-firmware-realtek (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.1697262Z Selecting previously unselected package linux-firmware.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.1809619Z Preparing to unpack .../32-linux-firmware_20240318.git3b128b60.0ubuntu3.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.1816152Z Unpacking linux-firmware (20240318.git3b128b60.0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.1972623Z Selecting previously unselected package linux-modules-6.8.0-147-generic.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.2082356Z Preparing to unpack .../33-linux-modules-6.8.0-147-generic_6.8.0-147.147_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.2087232Z Unpacking linux-modules-6.8.0-147-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.6289166Z Selecting previously unselected package linux-image-6.8.0-147-generic.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.6409789Z Preparing to unpack .../34-linux-image-6.8.0-147-generic_6.8.0-147.147_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.6450257Z Unpacking linux-image-6.8.0-147-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.7774569Z Selecting previously unselected package wireless-regdb.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.7889132Z Preparing to unpack .../35-wireless-regdb_2026.05.30-0ubuntu1~24.04.1_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.7894911Z Unpacking wireless-regdb (2026.05.30-0ubuntu1~24.04.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.8070558Z Selecting previously unselected package linux-modules-extra-6.8.0-147-generic.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.8179975Z Preparing to unpack .../36-linux-modules-extra-6.8.0-147-generic_6.8.0-147.147_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:31.8185153Z Unpacking linux-modules-extra-6.8.0-147-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:33.4499563Z Selecting previously unselected package intel-microcode.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:33.4641797Z Preparing to unpack .../37-intel-microcode_3.20260210.0ubuntu0.24.04.1_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:33.4647493Z Unpacking intel-microcode (3.20260210.0ubuntu0.24.04.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:33.6102612Z Selecting previously unselected package amd64-microcode.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:33.6219578Z Preparing to unpack .../38-amd64-microcode_3.20251202.1ubuntu0.24.04.1_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:33.6226198Z Unpacking amd64-microcode (3.20251202.1ubuntu0.24.04.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:33.6445643Z Selecting previously unselected package linux-image-generic.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:33.6562285Z Preparing to unpack .../39-linux-image-generic_6.8.0-147.147_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:33.6566669Z Unpacking linux-image-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:33.6793705Z Selecting previously unselected package linux-headers-6.8.0-147.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:33.6905133Z Preparing to unpack .../40-linux-headers-6.8.0-147_6.8.0-147.147_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:33.6910884Z Unpacking linux-headers-6.8.0-147 (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:36.3073431Z Selecting previously unselected package linux-headers-6.8.0-147-generic.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:36.3265347Z Preparing to unpack .../41-linux-headers-6.8.0-147-generic_6.8.0-147.147_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:36.3272258Z Unpacking linux-headers-6.8.0-147-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.3020709Z Selecting previously unselected package linux-headers-generic.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.3192402Z Preparing to unpack .../42-linux-headers-generic_6.8.0-147.147_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.3198329Z Unpacking linux-headers-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.3354351Z Selecting previously unselected package linux-generic.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.3486351Z Preparing to unpack .../43-linux-generic_6.8.0-147.147_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.3491599Z Unpacking linux-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.3778333Z Preparing to unpack .../44-linux-libc-dev_6.8.0-147.147_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.3795992Z Unpacking linux-libc-dev:amd64 (6.8.0-147.147) over (6.8.0-146.146) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.7204380Z Preparing to unpack .../45-linux-tools-common_6.8.0-147.147_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.7220667Z Unpacking linux-tools-common (6.8.0-147.147) over (6.8.0-146.146) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.8191040Z Selecting previously unselected package qemu-system-common.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.8332116Z Preparing to unpack .../46-qemu-system-common_1%3a8.2.2+ds-0ubuntu1.18_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.8337946Z Unpacking qemu-system-common (1:8.2.2+ds-0ubuntu1.18) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.9273955Z Selecting previously unselected package qemu-system-data.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.9415239Z Preparing to unpack .../47-qemu-system-data_1%3a8.2.2+ds-0ubuntu1.18_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:37.9420612Z Unpacking qemu-system-data (1:8.2.2+ds-0ubuntu1.18) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.0140342Z Selecting previously unselected package libfdt1:amd64.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.0278146Z Preparing to unpack .../48-libfdt1_1.7.0-2build1_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.0283707Z Unpacking libfdt1:amd64 (1.7.0-2build1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.0456374Z Selecting previously unselected package seabios.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.0591049Z Preparing to unpack .../49-seabios_1.16.3-2_all.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.0596727Z Unpacking seabios (1.16.3-2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.1198900Z Selecting previously unselected package qemu-system-x86.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.1337842Z Preparing to unpack .../50-qemu-system-x86_1%3a8.2.2+ds-0ubuntu1.18_amd64.deb ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.1394596Z Unpacking qemu-system-x86 (1:8.2.2+ds-0ubuntu1.18) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.5489760Z Setting up linux-firmware-broadcom-wireless (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.5564763Z Setting up iucode-tool (2.3.1-3build1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.5578041Z Setting up attr (1:2.5.2-1ubuntu0.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.5591137Z Setting up intel-microcode (3.20260210.0ubuntu0.24.04.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.5833456Z update-initramfs: deferring update (trigger activated)
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.5834505Z intel-microcode: microcode will be updated at next boot
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.5855030Z Setting up linux-firmware-nvidia-graphics (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.5892219Z Setting up wireless-regdb (2026.05.30-0ubuntu1~24.04.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.5905366Z Setting up linux-firmware-mellanox-spectrum (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.5937762Z Setting up linux-libc-dev:amd64 (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.5950077Z Setting up linux-firmware-qlogic (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.5982616Z Setting up linux-firmware-amd-graphics (20240318.git3b128b60-0ubuntu3.3) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:38.6016136Z Setting up linux-cloud-tools-common (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.0984230Z Setting up libfdt1:amd64 (1.7.0-2build1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1039565Z Setting up amd64-microcode (3.20251202.1ubuntu0.24.04.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1079112Z update-initramfs: deferring update (trigger activated)
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1079967Z amd64-microcode: microcode will be updated at next boot
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1090472Z Setting up linux-firmware-qualcomm-wireless (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1124577Z Setting up linux-headers-6.8.0-147 (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1137701Z Setting up linux-firmware-amd-misc (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1170737Z Setting up linux-firmware-intel-misc (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1204184Z Setting up libpcsclite1:amd64 (2.0.3-1build1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1218100Z Setting up linux-firmware-intel-graphics (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1251744Z Setting up libdaxctl1:amd64 (77-2ubuntu2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1267919Z Setting up linux-firmware-realtek (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1304699Z Setting up qemu-system-data (1:8.2.2+ds-0ubuntu1.18) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:39.1324317Z Setting up linux-modules-6.8.0-147-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:40.4039900Z Setting up seabios (1.16.3-2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:40.4053460Z Setting up linux-firmware-intel-wireless (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:40.4141867Z Setting up linux-modules-extra-6.8.0-147-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.6745694Z Setting up zlib1g-dev:amd64 (1:1.3.dfsg-3.1ubuntu2.3) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.6759183Z Setting up linux-firmware-marvell-prestera (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.6793528Z Setting up linux-firmware-qualcomm-misc (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.6826748Z Setting up linux-firmware-marvell-wireless (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.7017707Z Setting up libusbredirparser1t64:amd64 (0.13.0-2.1build1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.7040242Z Setting up ipxe-qemu (1.21.1+git-20220113.fbbdc3926-0ubuntu2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.7057842Z Setting up linux-firmware-netronome (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.7092146Z Setting up linux-firmware-mediatek (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.7162214Z Setting up libndctl6:amd64 (77-2ubuntu2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.7175545Z Setting up build-essential (12.10ubuntu1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.7188560Z Setting up librdmacm1t64:amd64 (50.0-2ubuntu0.2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.7201609Z Setting up libbrlapi0.8:amd64 (6.6-4ubuntu5) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.7214347Z Setting up liburing2:amd64 (2.5-1build1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:41.7227497Z Setting up libpmem1:amd64 (1.13.1-1.1ubuntu2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:42.0019886Z Setting up linux-firmware-misc (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:42.0056029Z Setting up linux-tools-common (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:42.0069201Z Setting up linux-firmware-qualcomm-graphics (20240318.git3b128b60-0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:42.0101757Z Setting up linux-headers-6.8.0-147-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:42.0124230Z Setting up linux-firmware (20240318.git3b128b60.0ubuntu3.1) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:42.0137876Z Setting up linux-image-6.8.0-147-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:43.2817943Z I: /boot/vmlinuz is now a symlink to vmlinuz-6.8.0-147-generic
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:43.2818601Z I: /boot/initrd.img is now a symlink to initrd.img-6.8.0-147-generic
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:43.2879398Z Setting up linux-headers-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:43.2892704Z Setting up libcacard0:amd64 (1:2.8.0-3build4) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:43.2906264Z Setting up linux-image-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:43.2919645Z Setting up qemu-system-common (1:8.2.2+ds-0ubuntu1.18) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:43.3727270Z Created symlink /etc/systemd/system/multi-user.target.wants/qemu-kvm.service → /usr/lib/systemd/system/qemu-kvm.service.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:43.3727737Z 
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:43.6226341Z Setting up linux-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:43.6241760Z Setting up qemu-system-x86 (1:8.2.2+ds-0ubuntu1.18) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:43.6297638Z Processing triggers for hicolor-icon-theme (0.17-2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:43.9031802Z Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:44.0353911Z Processing triggers for man-db (2.12.0-4build2) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:44.0371306Z Not building database; man-db/auto-update is not 'true'.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:44.0384002Z Processing triggers for initramfs-tools (0.142ubuntu25.8) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:44.0624225Z update-initramfs: Generating /boot/initrd.img-6.17.0-1022-azure
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:51.4532179Z Processing triggers for linux-image-6.8.0-147-generic (6.8.0-147.147) ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:51.4582860Z /etc/kernel/postinst.d/initramfs-tools:
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:51.4583423Z update-initramfs: Generating /boot/initrd.img-6.8.0-147-generic
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:56.7591497Z /etc/kernel/postinst.d/zz-update-grub:
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:56.7591886Z Sourcing file `/etc/default/grub'
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:56.7606188Z Sourcing file `/etc/default/grub.d/40-force-partuuid.cfg'
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:56.7615927Z Sourcing file `/etc/default/grub.d/50-cloudimg-settings.cfg'
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:56.7625971Z Sourcing file `/etc/default/grub.d/99-runner-performance.cfg'
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:56.7640909Z Generating grub configuration file ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:56.8502611Z GRUB_FORCE_PARTUUID is set, will attempt initrdless boot
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:56.9072449Z Found linux image: /boot/vmlinuz-6.17.0-1022-azure
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:56.9971959Z Found initrd image: /boot/initrd.img-6.17.0-1022-azure
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.1262585Z Found linux image: /boot/vmlinuz-6.8.0-147-generic
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.1314227Z Found initrd image: /boot/initrd.img-6.8.0-147-generic
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.2739604Z Warning: os-prober will not be executed to detect other bootable partitions.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.2740184Z Systems on them will not be added to the GRUB boot configuration.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.2740513Z Check GRUB_DISABLE_OS_PROBER documentation entry.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.2753172Z Adding boot menu entry for UEFI Firmware Settings ...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.3332942Z done
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.6811373Z 
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.6811923Z Running kernel seems to be up-to-date.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.6812207Z 
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.6812334Z Restarting services...
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.7351671Z  systemctl restart packagekit.service php8.3-fpm.service polkit.service rsyslog.service udisks2.service
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.8872276Z 
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.8873064Z Service restarts being deferred:
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.8873817Z  systemctl restart ModemManager.service
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.8874326Z  systemctl restart networkd-dispatcher.service
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.8874842Z  systemctl restart walinuxagent.service
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.8875187Z 
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.8875431Z No containers need to be restarted.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.8875756Z 
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.8876023Z No user sessions are running outdated binaries.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.8876386Z 
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:57.8876744Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:58.7228253Z info: syncing channel updates for 1.94.0-x86_64-unknown-linux-gnu
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:58.9718590Z info: latest update on 2026-03-05 for version 1.94.0 (4a4ef493e 2026-03-02)
+native-amd64	Install trusted guest inputs	2026-10-23T23:16:58.9718991Z info: downloading 3 components
+native-amd64	Install trusted guest inputs	2026-10-23T23:17:05.5768535Z 
+native-amd64	Install trusted guest inputs	2026-10-23T23:17:05.5829605Z   1.94.0-x86_64-unknown-linux-gnu installed - rustc 1.94.0 (4a4ef493e 2026-03-02)
+native-amd64	Install trusted guest inputs	2026-10-23T23:17:05.5830029Z 
+native-amd64	Require KVM and select installed guest kernel	﻿2026-10-23T23:17:05.5947956Z ##[group]Run test -c /dev/kvm
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.5948253Z ^[[36;1mtest -c /dev/kvm^[[0m
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.5948626Z ^[[36;1mprintf 'KERNEL=="kvm", OWNER="%s", MODE="0600"\n' "$(id -un)" | sudo tee /etc/udev/rules.d/99-conglobate-kvm.rules^[[0m
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.5949026Z ^[[36;1msudo udevadm control --reload-rules^[[0m
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.5949276Z ^[[36;1msudo udevadm trigger --name-match=kvm^[[0m
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.5949508Z ^[[36;1msudo udevadm settle^[[0m
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.5949703Z ^[[36;1mtest -r /dev/kvm^[[0m
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.5949891Z ^[[36;1mtest -w /dev/kvm^[[0m
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.5950191Z ^[[36;1mkernel=$(find /boot -maxdepth 1 -name 'vmlinuz-*-generic' | sort -V | tail -n 1)^[[0m
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.5950548Z ^[[36;1mtest -n "$kernel"^[[0m
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.5950745Z ^[[36;1msudo chmod a+r "$kernel"^[[0m
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.5951098Z ^[[36;1mprintf 'GUEST_KERNEL=%s\nGUEST_RELEASE=%s\n' "$kernel" "${kernel#/boot/vmlinuz-}" >> "$GITHUB_ENV"^[[0m
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.6023933Z shell: /usr/bin/bash -e {0}
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.6024184Z env:
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.6024346Z   CARGO_BUILD_JOBS: 2
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.6024532Z   RUSTUP_TOOLCHAIN: 1.94.0
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.6024715Z ##[endgroup]
+native-amd64	Require KVM and select installed guest kernel	2026-10-23T23:17:05.6151211Z KERNEL=="kvm", OWNER="runner", MODE="0600"
+native-amd64	Fetch locked build dependencies	﻿2026-10-23T23:17:05.6670240Z ##[group]Run cargo fetch --locked --manifest-path tests/lifecycle/Cargo.toml
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:05.6670662Z ^[[36;1mcargo fetch --locked --manifest-path tests/lifecycle/Cargo.toml^[[0m
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:05.6725521Z shell: /usr/bin/bash -e {0}
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:05.6725735Z env:
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:05.6725908Z   CARGO_BUILD_JOBS: 2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:05.6726098Z   RUSTUP_TOOLCHAIN: 1.94.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:05.6726472Z   GUEST_KERNEL: /boot/vmlinuz-6.8.0-147-generic
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:05.6726724Z   GUEST_RELEASE: 6.8.0-147-generic
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:05.6726926Z ##[endgroup]
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:05.7033536Z     Updating crates.io index
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:05.7034634Z     Updating git repository `https://github.com/bytecodealliance/rustix`
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:07.1516499Z     Updating git repository `https://github.com/pichi-vm/devmap.git`
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:07.7830848Z     Updating git repository `https://github.com/pichi-vm/devtree`
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:08.0586502Z     Updating git submodule `https://github.com/pichi-vm/.agent.git`
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:08.3085777Z     Updating git submodule `https://github.com/multica-ai/andrej-karpathy-skills`
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:08.5706326Z     Updating git repository `https://github.com/pichi-vm/lodown.git`
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:08.9402384Z     Updating git repository `https://github.com/pichi-vm/pichi-artifact`
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:09.2496448Z     Updating git repository `https://github.com/pichi-vm/pmi`
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:09.9407866Z  Downloading crates ...
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:09.9909365Z   Downloaded cfg-if v1.0.5
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:09.9924748Z   Downloaded windows-link v0.2.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:09.9934035Z   Downloaded cfg_aliases v0.2.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:09.9994045Z   Downloaded errno v0.3.14
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0023447Z   Downloaded zstd v0.13.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0165028Z   Downloaded crypto-common v0.1.7
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0240062Z   Downloaded scopeguard v1.2.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0259757Z   Downloaded minicbor v2.3.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0285245Z   Downloaded winapi-util v0.1.11
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0300424Z   Downloaded same-file v1.0.6
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0313794Z   Downloaded redox_syscall v0.5.18
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0337718Z   Downloaded crc32fast v1.5.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0361127Z   Downloaded itoa v1.0.18
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0375476Z   Downloaded cpufeatures v0.3.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0391414Z   Downloaded block-buffer v0.12.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0404139Z   Downloaded gix-trace v0.1.21
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0416123Z   Downloaded quote v1.0.47
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0444762Z   Downloaded serde_bytes v0.11.19
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0461602Z   Downloaded hex v0.4.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0476919Z   Downloaded cpufeatures v0.2.17
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0490063Z   Downloaded multiversion_no_op v1.0.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0499831Z   Downloaded crypto-common v0.2.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0512918Z   Downloaded plain v0.2.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0528047Z   Downloaded gix-path v0.12.6
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0547254Z   Downloaded gix-hashtable v0.15.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0557214Z   Downloaded bitflags v2.13.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0597973Z   Downloaded hash32 v0.3.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0631511Z   Downloaded version_check v0.9.5
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0646398Z   Downloaded faster-hex v0.10.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0666782Z   Downloaded walkdir v2.5.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0685605Z   Downloaded gix-refspec v0.42.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0702207Z   Downloaded static_assertions v1.1.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0718683Z   Downloaded block-buffer v0.10.4
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0731033Z   Downloaded anstyle-query v1.1.5
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0743085Z   Downloaded defmt-parser v1.1.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0754392Z   Downloaded scroll_derive v0.13.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0769929Z   Downloaded gix-command v0.9.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0782494Z   Downloaded gix-lock v23.0.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0795260Z   Downloaded core_detect v1.0.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0817454Z   Downloaded gix-config-value v0.18.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0829869Z   Downloaded is_terminal_polyfill v1.70.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0838812Z   Downloaded shlex v2.0.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0852247Z   Downloaded digest v0.10.7
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0870741Z   Downloaded once_cell_polyfill v1.70.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0882384Z   Downloaded gix-chunk v0.7.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0897545Z   Downloaded bitflags v1.3.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0926692Z   Downloaded defmt-macros v1.2.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0964351Z   Downloaded unicode-bom v2.0.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0987349Z   Downloaded utf8parse v0.2.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.0996985Z   Downloaded annotate-snippets v0.12.17
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1028346Z   Downloaded ciborium-io v0.2.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1035282Z   Downloaded crunchy v0.2.4
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1045702Z   Downloaded anstyle-wincon v3.0.11
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1062140Z   Downloaded clap_lex v1.1.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1077685Z   Downloaded memchr v2.8.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1128823Z   Downloaded strsim v0.11.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1154611Z   Downloaded foldhash v0.2.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1172571Z   Downloaded gix-glob v0.26.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1187143Z   Downloaded hashbrown v0.17.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1236468Z   Downloaded maybe-async v0.2.11
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1267083Z   Downloaded anstyle-parse v1.0.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1286375Z   Downloaded anstream v1.0.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1311024Z   Downloaded iocuddle v0.4.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1328388Z   Downloaded netlink-packet-route v0.33.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1521030Z   Downloaded half v2.7.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1546269Z   Downloaded gix-protocol v0.62.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1573668Z   Downloaded gix-filter v0.31.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1596644Z   Downloaded bstr v1.13.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1669422Z   Downloaded gix-config v0.57.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1709342Z   Downloaded clap v4.6.7
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1790944Z   Downloaded gix-pack v0.71.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1847806Z   Downloaded gix-ref v0.64.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1887384Z   Downloaded jiff-core v0.1.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1919935Z   Downloaded clap_builder v4.6.7
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.1977461Z   Downloaded zlib-rs v0.6.8
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2025233Z   Downloaded portable-atomic v1.15.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2084201Z   Downloaded hashbrown v0.16.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2139038Z   Downloaded rustix v1.1.5
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2353527Z   Downloaded encoding_rs v0.8.42
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2432474Z   Downloaded heapless v0.8.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2465644Z   Downloaded arc-swap v1.9.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2497941Z   Downloaded allocator-api2 v0.2.21
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2519350Z   Downloaded gix-transport v0.57.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2550347Z   Downloaded prodash v31.0.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2582569Z   Downloaded regex-automata v0.4.18
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2697884Z   Downloaded gix-diff v0.64.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2721210Z   Downloaded gix-odb v0.81.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2747573Z   Downloaded bytes v1.12.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.2776185Z   Downloaded serde-saphyr v2.0.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.3124304Z   Downloaded regex-syntax v0.8.11
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.3179480Z   Downloaded gix v0.84.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.3310013Z   Downloaded sha1-checked v0.10.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.3356511Z   Downloaded zstd-sys v2.1.2+zstd.1.5.7
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.3492100Z   Downloaded libc v0.2.191
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.3863856Z   Downloaded syn v2.0.119
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.3946428Z   Downloaded zerocopy v0.8.63
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4157867Z   Downloaded syn v3.0.9
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4241008Z   Downloaded nix v0.31.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4332576Z   Downloaded jiff-tzdb v0.1.9
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4344885Z   Downloaded portable-atomic-util v0.2.8
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4360662Z   Downloaded defmt v1.2.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4400589Z   Downloaded goblin v0.10.7
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4456831Z   Downloaded unicode-width v0.2.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4502288Z   Downloaded jiff v0.2.38
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4626560Z   Downloaded ciborium v0.2.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4647556Z   Downloaded clap_derive v4.6.7
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4664606Z   Downloaded gix-revision v0.46.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4678503Z   Downloaded memmap2 v0.9.12
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4692793Z   Downloaded gix-discover v0.52.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4704875Z   Downloaded clru v0.6.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4715334Z   Downloaded granit-parser v2.0.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4781850Z   Downloaded gix-fs v0.21.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4794714Z   Downloaded gix-error v0.2.5
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4807938Z   Downloaded byteorder v1.5.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4820743Z   Downloaded gix-sec v0.14.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4830336Z   Downloaded gix-tempfile v23.0.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4841151Z   Downloaded gix-url v0.36.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4851371Z   Downloaded gix-commitgraph v0.37.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4863695Z   Downloaded aho-corasick v1.1.5
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4906014Z   Downloaded serde_json v1.0.154
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.4966472Z   Downloaded regex v1.13.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5008152Z   Downloaded cc v1.10.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5041184Z   Downloaded stable_deref_trait v1.2.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5048152Z   Downloaded zerocopy-derive v0.8.63
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5145961Z   Downloaded kstring v2.0.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5158675Z   Downloaded gix-attributes v0.33.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5171555Z   Downloaded gix-packetline v0.21.5
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5185953Z   Downloaded jiff-static v0.2.38
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5193865Z   Downloaded seccompiler v0.5.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5222022Z   Downloaded dunce v1.0.5
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5229502Z   Downloaded equivalent v1.0.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5237749Z   Downloaded gix-shallow v0.12.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5245539Z   Downloaded jiff-tzdb-platform v0.1.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5252088Z   Downloaded unicode-normalization v0.1.26
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5280681Z   Downloaded typenum v1.20.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5308292Z   Downloaded serde v1.0.229
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5336297Z   Downloaded colorchoice v1.0.5
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5344289Z   Downloaded heck v0.5.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5354115Z   Downloaded gix-object v0.61.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5379319Z   Downloaded serde_derive v1.0.229
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5403427Z   Downloaded ciborium-ll v0.2.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5411877Z   Downloaded serde_core v1.0.229
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5433003Z   Downloaded proc-macro2 v1.0.107
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5456467Z   Downloaded r-efi v6.0.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5495155Z   Downloaded percent-encoding v2.3.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5501848Z   Downloaded shell-words v1.1.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5509716Z   Downloaded const-oid v0.10.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5528479Z   Downloaded getrandom v0.4.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5558198Z   Downloaded pkg-config v0.3.34
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5570466Z   Downloaded gix-features v0.48.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5589828Z   Downloaded tinyvec v1.13.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5619358Z   Downloaded parking_lot_core v0.9.12
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5636263Z   Downloaded parking_lot v0.12.5
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5655943Z   Downloaded log v0.4.34
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5675919Z   Downloaded num-traits v0.2.19
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5696137Z   Downloaded tempfile v3.27.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5716608Z   Downloaded zmij v1.0.23
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5731278Z   Downloaded thiserror v2.0.21
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5782183Z   Downloaded smallvec v1.16.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5792998Z   Downloaded gix-hash v0.25.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5804616Z   Downloaded gix-traverse v0.58.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5818660Z   Downloaded hybrid-array v0.4.15
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5839629Z   Downloaded unicode-ident v1.0.27
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5862116Z   Downloaded gix-utils v0.3.6
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5872087Z   Downloaded jobserver v0.1.35
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5888583Z   Downloaded zstd-safe v7.3.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5899950Z   Downloaded gix-revwalk v0.32.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5911120Z   Downloaded gix-worktree-stream v0.33.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5921367Z   Downloaded scroll v0.13.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5932470Z   Downloaded iocuddle v0.3.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5939592Z   Downloaded netlink-packet-core v0.9.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5956652Z   Downloaded autocfg v1.5.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5970876Z   Downloaded sha2 v0.11.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.5998731Z   Downloaded digest v0.11.3
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6017053Z   Downloaded once_cell v1.21.4
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6036962Z   Downloaded thiserror-impl v2.0.21
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6048496Z   Downloaded nonempty v0.12.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6058160Z   Downloaded anstyle v1.0.14
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6069515Z   Downloaded rustversion v1.0.23
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6091467Z   Downloaded gix-quote v0.7.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6099825Z   Downloaded gix-actor v0.41.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6109610Z   Downloaded defmt v0.3.101
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6116209Z   Downloaded lock_api v0.4.14
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6126444Z   Downloaded simdutf8 v0.1.5
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6144677Z   Downloaded encoding_rs_io v0.1.8
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6155580Z   Downloaded arraydeque v0.5.1
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6165772Z   Downloaded find-msvc-tools v0.1.15
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6178798Z   Downloaded fastrand v2.5.0
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6190515Z   Downloaded generic-array v0.14.7
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6201556Z   Downloaded windows-sys v0.61.2
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6705846Z   Downloaded gix-validate v0.11.4
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6714651Z   Downloaded gix-date v0.15.6
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6727155Z   Downloaded sha1 v0.10.7
+native-amd64	Fetch locked build dependencies	2026-10-23T23:17:10.6741894Z   Downloaded linux-raw-sys v0.12.1
+native-amd64	Run lifecycle cases in disposable guests	﻿2026-10-23T23:17:10.7855438Z ##[group]Run mkdir -p "$RUNNER_TEMP/lifecycle-results"
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7855806Z ^[[36;1mmkdir -p "$RUNNER_TEMP/lifecycle-results"^[[0m
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7856142Z ^[[36;1mfor case in cache-storage contained runtime-scope clone-filter; do^[[0m
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7856444Z ^[[36;1m  stat /dev/kvm^[[0m
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7856636Z ^[[36;1m  test -r /dev/kvm^[[0m
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7856835Z ^[[36;1m  test -w /dev/kvm^[[0m
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7857120Z ^[[36;1m  python3 tests/lifecycle/run.py "$RUNNER_TEMP/lifecycle-results/$case" \^[[0m
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7857532Z ^[[36;1m    --kernel "$GUEST_KERNEL" --kernel-release "$GUEST_RELEASE" \^[[0m
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7857846Z ^[[36;1m    --module-root / --case "$case" \^[[0m
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7858116Z ^[[36;1m    > "$RUNNER_TEMP/lifecycle-results/$case.log" 2>&1^[[0m
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7858365Z ^[[36;1mdone^[[0m
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7913633Z shell: /usr/bin/bash -e {0}
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7913842Z env:
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7914019Z   CARGO_BUILD_JOBS: 2
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7914209Z   RUSTUP_TOOLCHAIN: 1.94.0
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7914464Z   GUEST_KERNEL: /boot/vmlinuz-6.8.0-147-generic
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7914708Z   GUEST_RELEASE: 6.8.0-147-generic
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.7914905Z ##[endgroup]
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.8001029Z   File: /dev/kvm
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.8001437Z   Size: 0         	Blocks: 0          IO Block: 4096   character special file
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.8001900Z Device: 0,6	Inode: 428         Links: 1     Device type: 10,232
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.8002249Z Access: (0600/crw-------)  Uid: ( 1001/  runner)   Gid: (  993/     kvm)
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.8002534Z Access: 2026-10-23 23:17:05.641715464 +0000
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.8002749Z Modify: 2026-10-23 23:17:05.641715464 +0000
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.8002956Z Change: 2026-10-23 23:17:05.641715464 +0000
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:17:10.8003158Z  Birth: 2026-10-23 23:15:30.521551179 +0000
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:03.5798298Z   File: /dev/kvm
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:03.5798736Z   Size: 0         	Blocks: 0          IO Block: 4096   character special file
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:03.5799298Z Device: 0,6	Inode: 428         Links: 1     Device type: 10,232
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:03.5799801Z Access: (0600/crw-------)  Uid: ( 1001/  runner)   Gid: (  993/     kvm)
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:03.5800239Z Access: 2026-10-23 23:18:03.510195562 +0000
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:03.5800580Z Modify: 2026-10-23 23:18:03.510195562 +0000
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:03.5800916Z Change: 2026-10-23 23:18:03.510195562 +0000
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:03.5801235Z  Birth: 2026-10-23 23:15:30.521551179 +0000
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:08.9283106Z   File: /dev/kvm
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:08.9283671Z   Size: 0         	Blocks: 0          IO Block: 4096   character special file
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:08.9284033Z Device: 0,6	Inode: 428         Links: 1     Device type: 10,232
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:08.9284363Z Access: (0600/crw-------)  Uid: ( 1001/  runner)   Gid: (  993/     kvm)
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:08.9284825Z Access: 2026-10-23 23:18:08.878991646 +0000
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:08.9285187Z Modify: 2026-10-23 23:18:08.878991646 +0000
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:08.9285505Z Change: 2026-10-23 23:18:08.878991646 +0000
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:08.9285856Z  Birth: 2026-10-23 23:15:30.521551179 +0000
+native-amd64	Run lifecycle cases in disposable guests	2026-10-23T23:18:14.5896738Z ##[error]Process completed with exit code 1.
+native-amd64	Preserve results including failures	﻿2026-10-23T23:18:14.5979547Z ##[group]Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5979907Z with:
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5980093Z   name: lifecycle-native-amd64
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5980303Z   retention-days: 14
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5980484Z   if-no-files-found: warn
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5981615Z   path: /home/runner/work/_temp/lifecycle-results/*.log
+native-amd64	Preserve results including failures	/home/runner/work/_temp/lifecycle-results/*/*.log
+native-amd64	Preserve results including failures	/home/runner/work/_temp/lifecycle-results/*/*.json
+native-amd64	Preserve results including failures	/home/runner/work/_temp/lifecycle-results/*/*.txt
+native-amd64	Preserve results including failures	/home/runner/work/_temp/lifecycle-results/*/*.raw
+native-amd64	Preserve results including failures	/home/runner/work/_temp/lifecycle-results/*/*.gz
+native-amd64	Preserve results including failures	/home/runner/work/_temp/lifecycle-results/*/vmlinuz
+native-amd64	Preserve results including failures	
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5982601Z   compression-level: 6
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5982793Z   overwrite: false
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5982972Z   include-hidden-files: false
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5983159Z env:
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5983503Z   CARGO_BUILD_JOBS: 2
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5983689Z   RUSTUP_TOOLCHAIN: 1.94.0
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5983899Z   GUEST_KERNEL: /boot/vmlinuz-6.8.0-147-generic
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5984171Z   GUEST_RELEASE: 6.8.0-147-generic
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.5984368Z ##[endgroup]
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.7285944Z (node:17173) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.7287161Z (Use `node --trace-deprecation ...` to show where the warning was created)
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.7389008Z With the provided path, there will be 33 files uploaded
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.7393887Z Artifact name is valid!
+native-amd64	Preserve results including failures	2026-10-23T23:18:14.7394447Z Root directory input is valid!
+native-amd64	Preserve results including failures	2026-10-23T23:18:15.0134284Z Beginning upload of artifact content to blob storage
+native-amd64	Preserve results including failures	2026-10-23T23:18:15.2568029Z (node:17173) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+native-amd64	Preserve results including failures	2026-10-23T23:18:15.7727770Z Uploaded bytes 8388608
+native-amd64	Preserve results including failures	2026-10-23T23:18:15.9958459Z Uploaded bytes 16777216
+native-amd64	Preserve results including failures	2026-10-23T23:18:16.1036317Z Uploaded bytes 25165824
+native-amd64	Preserve results including failures	2026-10-23T23:18:16.1230685Z Uploaded bytes 33554432
+native-amd64	Preserve results including failures	2026-10-23T23:18:16.3062719Z Uploaded bytes 41943040
+native-amd64	Preserve results including failures	2026-10-23T23:18:16.5602134Z Uploaded bytes 50331648
+native-amd64	Preserve results including failures	2026-10-23T23:18:16.7881929Z Uploaded bytes 58720256
+native-amd64	Preserve results including failures	2026-10-23T23:18:16.9024250Z Uploaded bytes 67108864
+native-amd64	Preserve results including failures	2026-10-23T23:18:17.2428571Z Uploaded bytes 75497472
+native-amd64	Preserve results including failures	2026-10-23T23:18:17.3428416Z Uploaded bytes 83886080
+native-amd64	Preserve results including failures	2026-10-23T23:18:17.5888754Z Uploaded bytes 92274688
+native-amd64	Preserve results including failures	2026-10-23T23:18:17.7448389Z Uploaded bytes 100663296
+native-amd64	Preserve results including failures	2026-10-23T23:18:18.0161599Z Uploaded bytes 109051904
+native-amd64	Preserve results including failures	2026-10-23T23:18:18.2934295Z Uploaded bytes 117440512
+native-amd64	Preserve results including failures	2026-10-23T23:18:18.3867059Z Uploaded bytes 125829120
+native-amd64	Preserve results including failures	2026-10-23T23:18:18.6214260Z Uploaded bytes 134217728
+native-amd64	Preserve results including failures	2026-10-23T23:18:18.9171501Z Uploaded bytes 142606336
+native-amd64	Preserve results including failures	2026-10-23T23:18:19.0229574Z Uploaded bytes 150994944
+native-amd64	Preserve results including failures	2026-10-23T23:18:19.2547906Z Uploaded bytes 159383552
+native-amd64	Preserve results including failures	2026-10-23T23:18:19.5044129Z Uploaded bytes 167772160
+native-amd64	Preserve results including failures	2026-10-23T23:18:19.7399653Z Uploaded bytes 176160768
+native-amd64	Preserve results including failures	2026-10-23T23:18:19.8953921Z Uploaded bytes 184549376
+native-amd64	Preserve results including failures	2026-10-23T23:18:20.2408098Z Uploaded bytes 192937984
+native-amd64	Preserve results including failures	2026-10-23T23:18:20.3549068Z Uploaded bytes 201326592
+native-amd64	Preserve results including failures	2026-10-23T23:18:20.6094779Z Uploaded bytes 209715200
+native-amd64	Preserve results including failures	2026-10-23T23:18:20.8239270Z Uploaded bytes 218103808
+native-amd64	Preserve results including failures	2026-10-23T23:18:21.0220488Z Uploaded bytes 226492416
+native-amd64	Preserve results including failures	2026-10-23T23:18:21.3239822Z Uploaded bytes 234881024
+native-amd64	Preserve results including failures	2026-10-23T23:18:21.5926550Z Uploaded bytes 243269632
+native-amd64	Preserve results including failures	2026-10-23T23:18:21.7733076Z Uploaded bytes 251658240
+native-amd64	Preserve results including failures	2026-10-23T23:18:21.9846863Z Uploaded bytes 260046848
+native-amd64	Preserve results including failures	2026-10-23T23:18:22.2655350Z Uploaded bytes 268435456
+native-amd64	Preserve results including failures	2026-10-23T23:18:22.3951473Z Uploaded bytes 276824064
+native-amd64	Preserve results including failures	2026-10-23T23:18:22.7126202Z Uploaded bytes 285212672
+native-amd64	Preserve results including failures	2026-10-23T23:18:22.7974220Z Uploaded bytes 293601280
+native-amd64	Preserve results including failures	2026-10-23T23:18:22.8907947Z Uploaded bytes 294625671
+native-amd64	Preserve results including failures	2026-10-23T23:18:22.9325517Z Finished uploading artifact content to blob storage!
+native-amd64	Preserve results including failures	2026-10-23T23:18:22.9327200Z SHA256 digest of uploaded artifact zip is 8059c3bb073dd062c6f6b35b5f8771aafb960cb2a9b2f04121352436328acf4a
+native-amd64	Preserve results including failures	2026-10-23T23:18:22.9329090Z Finalizing artifact upload
+native-amd64	Preserve results including failures	2026-10-23T23:18:23.4698950Z Artifact lifecycle-native-amd64.zip successfully finalized. Artifact ID 12538437150
+native-amd64	Preserve results including failures	2026-10-23T23:18:23.4699927Z Artifact lifecycle-native-amd64 has been successfully uploaded! Final size is 294625671 bytes. Artifact ID is 12538437150
+native-amd64	Preserve results including failures	2026-10-23T23:18:23.4705290Z Artifact download URL: https://github.com/pichi-vm/conglobate/actions/runs/40038660026/artifacts/12538437150
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	﻿2026-10-23T23:18:23.4919208Z Post job cleanup.
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.5572517Z [command]/usr/bin/git version
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.5617682Z git version 2.55.0
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.5645922Z Temporarily overriding HOME='/home/runner/work/_temp/20e93f5a-df5c-41f8-a702-9f8259c7a9c1' before making global git config changes
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.5646991Z Adding repository directory to the temporary git global config as a safe directory
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.5650248Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/conglobate/conglobate
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.5677645Z Removing SSH command configuration
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.5682811Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.5715275Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.5950190Z Removing HTTP extra header
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.5955577Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.5985475Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.6209274Z Removing includeIf entries pointing to credentials config files
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.6215054Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+native-amd64	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-10-23T23:18:23.6248841Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+native-amd64	Complete job	﻿2026-10-23T23:18:23.6606136Z Cleaning up orphan processes
+native-amd64	Complete job	2026-10-23T23:18:23.6971949Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
