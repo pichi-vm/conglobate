@@ -1,0 +1,29 @@
+Targeted follow-up only, no full review rerun. Round three's proposed unshare
+control still cannot exercise clone. I reject that mechanism; the current marker
+says namespace denial, not specifically clone-mask coverage, so retain historical
+markers and document the actual gap.
+
+Inspect the new uncommitted validation/rewrite-command-integration/clone-probe.c,
+run.py and src/main.rs clone-filter mode and README. It is a separate benign C
+fixture using libc clone directly with fixed flags and no shared VM, child only
+returns zero, parent waits. Both arms require effective SYS_ADMIN and set NNP;
+ordinary clone succeeds in both, seven namespace flags require baseline success
+then EPERM under unchanged production CommandSyscalls::apply. Application Rust
+remains forbid unsafe. No untrusted command runs with extra capabilities.
+
+Actual disposable VM v262 is running. Its serial.txt already records all sixteen
+control/filtered cases passing and NATIVE_CLONE_NAMESPACE_MASK_PASS. Do NOT claim
+full-suite pass until verdict exists; inspect /var/tmp/conglobate-rewrite-v262.
+The legacy CLONE_NEWTIME bit is in the exit signal byte, so not claimed as a time
+namespace control. No host execution of probe or privileged actions. No edits.
+
+Check whether this really closes tests-001 for supported legacy namespace flags,
+find any concrete flaw in the probe or overclaim, and reconcile. The source archive
+captured before run also has an accidental extra marker requirement on subset-mode
+verdicts; current runner fixes that, while the full-mode behavior under test is
+unchanged. Review that delta explicitly rather than claiming exact byte identity.
+
+Recent 5460f68 implements numeric FilesystemSize TryFrom plus fallible task read_dir;
+0496311 changes only StorageExecutionFailure Display to outcome+cleanup diagnostics.
+Review those source changes too if needed for updated dispositions. Evidence in
+numeric-size-fixed logs and execution-display-clippy. No broad qualification claim.

@@ -608,3 +608,42 @@ is a test proposal, not implemented coverage.
 
 Hosted run 39968209040 at eb767f3 was cancelled when 0496311 was pushed; it is
 not reported as a failure or a pass. New run 39968905679 is pending.
+
+## Hosted current-code checks
+
+Run 39968905679 completed successfully for Rust and dependency jobs at 0496311.
+The authoritative job metadata is preserved in hosted-ci-0496311-success.json.
+This covers numeric size conversion, thread-enumeration error propagation and
+execution-error presentation, but predates the new clone fixture. It remains
+rootless CI, not portable VM CI or distro/platform qualification.
+
+## v262 direct legacy clone validation
+
+Full disposable amd64 VM suite passed, including actual clone calls for all seven
+legacy namespace flags and an ordinary clone control in both arms. Both retain
+SYS_ADMIN and set NNP; baseline namespace clones succeed, filtered ones return
+EPERM. The filter and its errno are unchanged. The separate C fixture creates
+only inert children and reaps them; application and fixture Rust remain safe.
+Legacy CLONE_NEWTIME overlaps the exit-signal byte, so no time-namespace control
+is claimed. Evidence/provenance and exact source snapshot are under evidence/v262.
+
+The captured runner accidentally required the new marker in unrelated subset
+modes. The final runner corrects those predicates; the full-mode run, executed
+helper, Rust fixture, production filter and diagnostics match the snapshot. The
+precise post-capture patch is retained. No extra full rerun is justified by this
+subset-only correction; subset coverage is not newly claimed. Claude round four
+is reviewing the probe and the corrected predicates. M7 remains at zero.
+
+Round four is terminal and accepts the direct-clone mechanism and the three
+recent fixes (numeric size conversion, task-enumeration errors, failure Display).
+It withdraws its earlier unshare proposal and historical-marker objection. Its
+observation that v262 had no verdict was true when inspected; the subsequently
+completed run has a passing verdict, now preserved. It confirms the runner delta
+affects only three subset predicates, not the full suite.
+
+The review's reported count totals are inconsistent again: 28+30+40+9+5 is 112,
+not 111 (round three also totals 112). Do not treat those prose totals as an
+authoritative disposition ledger. The 111-ID round-two JSON remains the baseline
+with subsequent per-ID fixes recorded here; no extra finding is invented.
+The 0x80 exit-signal mask bit is not exercised by the seven namespace tests.
+M7 remains at zero; full security/design/style/distro/platform acceptance is open.

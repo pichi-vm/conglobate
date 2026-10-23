@@ -8,7 +8,7 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
 
 | Requirement | Current state | Acceptance evidence still required |
 | --- | --- | --- |
-| Source-grounded critical review | Initial Claude review and three reconciliation rounds completed; accepted fixes and unresolved dispositions preserved in preservation/m7-review | Final review, source-grounded disposition, fixes and agreement on disputed findings |
+| Source-grounded critical review | Initial Claude review and four reconciliation rounds completed; accepted fixes and unresolved dispositions preserved in preservation/m7-review | Final review, source-grounded disposition, fixes and agreement on disputed findings |
 | Fedora build and boot | Sibling fedora repo and its .build directory exist; existing recipe uses mkosi | New conglobate recipe runs package transactions, generates boot firmware, emits an image that boots with its own SELinux policy |
 | Debian build and boot | No sibling Debian image repo discovered | Maintained conglobate recipe, package/firmware build and boot evidence |
 | Alpine build and boot | No sibling Alpine image repo discovered | Maintained conglobate recipe, package/firmware build and boot evidence |
@@ -88,8 +88,9 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
 
 The current VM fixture demonstrates ordinary thread creation and rejection of
 `unshare --user` under command restrictions. It does not exercise the `clone`
-argument-mask rule: unshare is a different syscall and is default-denied. A
-clone-specific control with namespace-creation authority before applying the
-unchanged filter remains required. See the round-three parent evaluation; neither
-EPERM alone nor ordinary thread creation distinguishes capability denial from
-the namespace argument filter.
+argument-mask rule: unshare is a different syscall and is default-denied. The v262 disposable-VM run adds a direct legacy-clone probe: all seven supported
+namespace flags succeed with namespace authority and no_new_privs before filtering,
+then fail with EPERM under the unchanged filter while ordinary clone still works.
+Both arms retain effective SYS_ADMIN. This distinguishes the argument filter from
+capability denial. The full v262 suite passed; independent review accepts the mechanism. No time-namespace
+control is claimed because legacy clone uses that bit as part of its exit signal.

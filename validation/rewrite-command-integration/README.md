@@ -1210,3 +1210,25 @@ outcome/timeout orchestration remain outstanding.
   and evidence hashes pass. I4 is reduced, not closed: earlier acquisition and
   helper-launch failures still need a preparation aggregate. M4 streak remains
   zero; no clean adherence pass or later milestone advancement is claimed.
+
+## Direct clone argument-filter probe
+
+The full suite builds clone-probe.c with the host C compiler and packages it only
+for execution inside the disposable VM. Application and Rust fixture code remain
+forbid(unsafe_code). This small C fixture calls libc clone directly with fixed
+flags, no shared memory/files/threads, and a child that immediately returns zero.
+The parent reaps every created child. It executes no image code or arbitrary
+command and refuses to run without the disposable-guest marker.
+
+A trusted Rust fixture runs the probe before and after applying the unchanged
+production CommandSyscalls filter. Both arms set no_new_privs and require effective
+CAP_SYS_ADMIN. Each ordinary clone must succeed; mount/cgroup/UTS/IPC/user/PID/net
+namespace clones must succeed before filtering and return EPERM afterward. Thus
+capability denial cannot substitute for testing the clone argument mask.
+
+This covers the seven namespace flags accepted by legacy clone. The bit named
+CLONE_NEWTIME belongs to legacy clone's exit-signal byte, not its namespace flags;
+we do not misreport a time-namespace positive control. clone3 remains separately
+blocked with ENOSYS. See https://man7.org/linux/man-pages/man2/clone.2.html for
+the legacy flags/exit-signal split. The existing unshare and ordinary-thread
+checks remain separate coverage. Host execution of this probe is prohibited.

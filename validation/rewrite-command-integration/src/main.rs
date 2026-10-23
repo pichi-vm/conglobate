@@ -2153,6 +2153,25 @@ test "$(cat /etc/resolv.conf)" = 'nameserver 10.44.0.1'; if (echo bad > /etc/res
             command.execute()?;
             unreachable!();
         }
+        if args.get(1).is_some_and(|a| a == "clone-filter") {
+            // Trusted fixture retains namespace authority in BOTH arms. The
+            // helper creates/reaps inert children; no image commands run here.
+            assert!(
+                Command::new("/usr/bin/clone-probe")
+                    .arg("control")
+                    .status()?
+                    .success()
+            );
+            CommandSyscalls::compile()?.apply()?;
+            assert!(
+                Command::new("/usr/bin/clone-probe")
+                    .arg("filtered")
+                    .status()?
+                    .success()
+            );
+            println!("NATIVE_CLONE_NAMESPACE_MASK_PASS");
+            return Ok(());
+        }
         if args
             .get(1)
             .is_some_and(|a| a == "privileges" || a == "syscalls")
