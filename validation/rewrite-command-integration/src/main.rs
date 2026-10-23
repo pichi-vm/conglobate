@@ -360,6 +360,25 @@ impl Integration {
             let wrong_scope = PrivateMountNamespace::enter()?;
             let failure = failure.retry().unwrap_err();
             assert!(failure.source_error().to_string().contains("namespace"));
+            assert_eq!(
+                failure.diagnostics().operation().kind(),
+                std::io::ErrorKind::ResourceBusy
+            );
+            assert_eq!(failure.diagnostics().cleanup().len(), 1);
+            let failure = failure.retry().unwrap_err();
+            assert_eq!(
+                failure.diagnostics().operation().kind(),
+                std::io::ErrorKind::ResourceBusy
+            );
+            assert_eq!(failure.diagnostics().cleanup().len(), 2);
+            assert!(
+                failure
+                    .diagnostics()
+                    .cleanup()
+                    .iter()
+                    .all(|error| error.to_string().contains("namespace"))
+            );
+            println!("VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS");
             wrong_scope.restore().map_err(|e| e.to_string())?;
             drop(holder);
             let volume = failure.retry().map_err(|e| e.to_string())?;
@@ -784,8 +803,14 @@ impl Integration {
             assert_eq!(bytes, [0; 4096]);
             let failure = active.close().unwrap_err();
             assert_eq!(failure.source_error().raw_os_error(), Some(16));
+            let failure = failure.cleanup().unwrap_err();
+            assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(16));
+            assert_eq!(failure.diagnostics().cleanup().len(), 1);
+            assert_eq!(failure.diagnostics().cleanup()[0].raw_os_error(), Some(16));
+            assert!(failure.to_string().contains("cleanup attempt 1:"));
             drop(holder);
             failure.cleanup()?;
+            println!("MAPPING_CLEANUP_DIAGNOSTICS_RETAINED_PASS");
             assert!(fs::File::open(path).is_err());
             fs::remove_file(path)?;
             let empty = Mapping::<Created>::create()?;

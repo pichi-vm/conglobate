@@ -77,8 +77,12 @@ pub struct SnapshotMappingFailure<'lease, 'workspace> {
     backing: LoopAttachment<'workspace>,
 }
 impl<'a, 'w> SnapshotMappingFailure<'a, 'w> {
+    /// Most recent failure. `diagnostics()` also retains the original operation.
     pub fn source_error(&self) -> &io::Error {
         self.failure.source_error()
+    }
+    pub fn diagnostics(&self) -> &super::FailureDiagnostics {
+        self.failure.diagnostics()
     }
     pub fn cleanup(self) -> Result<LoopAttachment<'w>, Self> {
         match self.failure.cleanup() {

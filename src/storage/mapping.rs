@@ -47,15 +47,22 @@ struct MappingLease {
 #[derive(Debug, thiserror::Error)]
 #[error("device mapping operation: {source}")]
 pub struct MappingFailure {
-    source: io::Error,
+    source: super::FailureDiagnostics,
     lease: MappingLease,
 }
 impl MappingFailure {
+    /// Most recent failure. `diagnostics()` also retains the original operation.
     pub fn source_error(&self) -> &io::Error {
-        &self.source
+        self.source.latest()
     }
     pub fn cleanup(self) -> Result<(), Self> {
-        self.lease.close()
+        self.lease.close().map_err(|Self { source, lease }| Self {
+            source: self.source.followed_by(source),
+            lease,
+        })
+    }
+    pub fn diagnostics(&self) -> &super::FailureDiagnostics {
+        &self.source
     }
 }
 impl Mapping<Created> {
@@ -102,7 +109,7 @@ impl Mapping<Created> {
                 _state: PhantomData,
             }),
             Err(source) => Err(MappingFailure {
-                source,
+                source: source.into(),
                 lease: self.lease,
             }),
         }
@@ -149,7 +156,7 @@ impl Mapping<Active> {
 impl<S: MappingState> Mapping<S> {
     pub(super) fn failed(self, source: io::Error) -> MappingFailure {
         MappingFailure {
-            source,
+            source: source.into(),
             lease: self.lease,
         }
     }
@@ -177,7 +184,7 @@ impl MappingLease {
                 Ok(())
             }
             Err(source) => Err(MappingFailure {
-                source,
+                source: source.into(),
                 lease: self,
             }),
         }

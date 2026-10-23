@@ -2070,3 +2070,27 @@ rules rather than silently shrinking acceptance criteria.
   orchestration around blocking operations, combined primary/cleanup diagnostics,
   further fault review, and production stage orchestration. M4 has zero clean
   adherence passes; no milestone advancement or whole-sandbox claim.
+
+### M4 cleanup diagnostic history (v107–v108)
+
+- Previous turn progressed in f79cc20. MappingFailure and VolumeUnmountFailure
+  now retain FailureDiagnostics: the original io::Error plus ordered failed
+  cleanup attempts. SnapshotMappingFailure exposes the underlying diagnostics.
+  Consuming retry transitions preserve history and cleanup-only resource owners;
+  source_error remains the most recent error for existing callers. The explicit
+  diagnostics accessor retains original OS codes and concrete error payloads.
+- Unit coverage checks flattening, original errno and retry ordering. VM probes
+  retry a busy mapping before releasing its holder, and retry unmount twice from
+  the wrong namespace after an original EBUSY. They assert preserved original
+  causes and cleanup errors, then restore conditions and complete cleanup.
+- v107 passes runtime/tests but Clippy finds the larger unmount error layout.
+  v108 boxes the diagnostic history, preserving the original compact failure
+  layout without boxing each retry or suppressing the lint. Root tests including
+  39 compile-fail cases, both Clippy checks and normal VM suite pass. Both exact
+  implementations and evidence, including the Clippy finding, are archived with
+  verified hashes. No timing retries or sleeps were added.
+- Coverage is intentionally specific: outer VerityFailure/ReadOnlyChainFailure
+  still replace errors during their cleanup transitions, and other lifecycle
+  failure reporting must be reviewed. Propagate history there next; do not claim
+  combined diagnostics complete. Fixed deadline orchestration and remaining M4
+  qualification/adherence also remain open. Clean-pass streak stays zero.

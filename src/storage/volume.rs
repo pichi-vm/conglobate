@@ -122,7 +122,7 @@ impl<'ns, 'a, 'w> VolumeMountFailure<'ns, 'a, 'w> {
 #[derive(Debug, thiserror::Error)]
 #[error("volume unmount: {source}")]
 pub struct VolumeUnmountFailure<'ns, 'a, 'w> {
-    source: io::Error,
+    source: super::FailureDiagnostics,
     pending: UnmountPending<'ns, 'a, 'w>,
 }
 #[derive(Debug)]
@@ -132,8 +132,9 @@ enum UnmountPending<'ns, 'a, 'w> {
     Target(Point, Volume<'ns, 'a, 'w, Unmounted>),
 }
 impl<'ns, 'a, 'w> VolumeUnmountFailure<'ns, 'a, 'w> {
+    /// Most recent failure. `diagnostics()` also retains the original operation.
     pub fn source_error(&self) -> &io::Error {
-        &self.source
+        self.source.latest()
     }
     pub fn retry(self) -> Result<Volume<'ns, 'a, 'w, Unmounted>, Self> {
         match self.pending {
@@ -141,6 +142,13 @@ impl<'ns, 'a, 'w> VolumeUnmountFailure<'ns, 'a, 'w> {
             UnmountPending::Mounted(lease, volume) => volume.release_mount(lease),
             UnmountPending::Target(point, volume) => volume.release_point(point),
         }
+        .map_err(|Self { source, pending }| Self {
+            source: self.source.followed_by(source),
+            pending,
+        })
+    }
+    pub fn diagnostics(&self) -> &super::FailureDiagnostics {
+        &self.source
     }
 }
 impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
@@ -234,7 +242,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
     ) -> Result<Self, VolumeUnmountFailure<'ns, 'a, 'w>> {
         if let Err(source) = self.scope.verify_current() {
             return Err(VolumeUnmountFailure {
-                source,
+                source: source.into(),
                 pending: UnmountPending::Mounted(lease, self),
             });
         }
@@ -250,14 +258,14 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
     fn release_point(self, point: Point) -> Result<Self, VolumeUnmountFailure<'ns, 'a, 'w>> {
         if let Err(source) = self.scope.verify_current() {
             return Err(VolumeUnmountFailure {
-                source,
+                source: source.into(),
                 pending: UnmountPending::Target(point, self),
             });
         }
         match point.remove() {
             Ok(()) => Ok(self),
             Err(source) => Err(VolumeUnmountFailure {
-                source,
+                source: source.into(),
                 pending: UnmountPending::Target(point, self),
             }),
         }
@@ -293,7 +301,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
     ) -> Result<Volume<'ns, 'a, 'w, Unmounted>, VolumeUnmountFailure<'ns, 'a, 'w>> {
         if let Err(source) = self.scope.verify_current() {
             return Err(VolumeUnmountFailure {
-                source,
+                source: source.into(),
                 pending: UnmountPending::Flush(self),
             });
         }

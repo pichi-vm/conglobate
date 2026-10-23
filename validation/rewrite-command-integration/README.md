@@ -947,3 +947,12 @@ filesystem pin. It then powers off the VM. Serial evidence includes
 `OWNED_VOLUME_AFTER_SUPERVISOR_DEATH_PASS` and the kernel shutdown message.
 This proves these failure scenarios in the fixture, not exhaustive fault coverage
 or recovery for another build in the same VM. Prior death evidence is preserved.
+
+## Cleanup diagnostics preserve original failures
+
+v107/v108 add mapping and volume diagnostic-history checks. A busy mapping remains
+busy on retry; an unmount first fails EBUSY and then fails twice in the wrong
+namespace. The failures retain original causes and ordered cleanup errors, and
+still permit cleanup after the blocking condition is removed. v107 retains a
+Clippy layout finding; v108 boxes history and passes all checks. Snapshot failures
+expose mapping history too. Outer verity/chain cleanup propagation remains open.

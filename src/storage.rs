@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Supervisor-owned mutable RAM storage. Immutable layers remain cache-backed.
+mod diagnostics;
+pub use diagnostics::FailureDiagnostics;
 mod chain;
 mod volume;
 pub use volume::{
