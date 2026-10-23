@@ -1,7 +1,7 @@
 # M5 direct-layer bootstrap implementation
 
-M4 is accepted with three clean self-review passes. M5 is active with one clean
-self-review pass of three. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
+M4 is accepted with three clean self-review passes. M5 is active with zero clean
+passes after the second review found R2 documentation divergence. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
 The integrated VM fixture now demonstrates a verified tool chain, dual-root
 commands through production aggregate preparation and execution acceptance,
 direct output sealing and verified reopening. Initial metadata and formatter
@@ -362,3 +362,14 @@ clean. Scope hashes and detailed observations are in preservation/m5-review/
 scope.json and preservation/MILESTONE-5-ADHERENCE.md. Evidence hashes and verdicts
 were reverified; test reruns were not treated as reviews. M5 remains unaccepted
 at 1/3 clean passes, and M6 remains gated.
+
+
+## Second review finding R2
+
+The architecture's readonly-chain ownership description lagged the explicit M4
+integration decision already recorded and reviewed: conglobate owns the device
+stack with devmap/lodown because the inspected carapace API does not expose its
+required fallible cleanup contract. ARCHITECTURE.md now reflects that decision
+while preserving carapace format authority and devmap wire codecs. No production
+code changed. The design document is in the frozen scope, so M5 resets to 0/3;
+prior scope/pass evidence remains historical. M6 remains gated.

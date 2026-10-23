@@ -1,6 +1,7 @@
 # Milestone 5 adherence review
 
-Status: first full clean self-review complete; clean streak **1/3**. M5 is not accepted.
+Status: second review found R2 documentation divergence; clean streak **0/3**.
+M5 is not accepted. The earlier 1/3 pass and scope remain historical.
 Starting implementation: `1cd3b69`. This review covers changes since the M4
 accepted implementation scope `ed0fecd408562aed8bc083e8fbe412c4b80ec514`.
 The complete milestone boundary remains DESIGN.md, SANDBOX-DESIGN.txt,
@@ -132,3 +133,34 @@ supervisor dies; no guardian or cross-invocation recovery is reinstated.
 
 Result: no new finding; clean streak **1/3**. Two further full clean passes are
 required before M6. The R1-containing initial review is not part of this streak.
+
+
+## R2 — stale chain-assembly boundary in the architecture document
+
+The reverse-lifecycle pass traced sealed output back through ReadOnlyChain and
+found that ARCHITECTURE.md still said read-only assembly belonged to the carapace
+crate and referred to its API as pinned. The current Cargo.toml has no carapace
+crate dependency, and src/storage/chain.rs owns the read-only stack through
+devmap/lodown. This was an explicit, source-grounded M4 integration refinement:
+REIMPLEMENTATION.md's ReadOnlyChain entry explains that the reference API's
+returned File/deferred removal cannot provide the required owning partial-setup
+and teardown errors. M4's accepted reviews cover that aggregate cleanup behavior.
+The architecture document had not been reconciled with that recorded decision.
+
+Correction: document carapace's format/layout authority separately from the
+current conglobate-owned device activation/cleanup, retain devmap-snapshot wire
+parsing, identify the inspected carapace revision as reference rather than an
+active dependency, and link the existing M4 rationale. No executable code,
+dependency, format, trust requirement or accepted lifecycle behavior changes.
+This is not approval to duplicate wire codecs or to relax explicit cleanup.
+
+Because ARCHITECTURE.md is in the frozen review scope, R2 resets the streak to
+zero. The scope.json manifest and pass 1 remain historical and must not be
+silently rewritten. A new scope will be frozen before restarting full reviews.
+No runtime tests are repeated for this documentation-only correction.
+
+This pass also examined reverse ownership through loop detachment, writable
+backing recovery, filesystem flush/unmount, both-volume finalization, command
+outcome acceptance, policy-pin release, shared rollback and formatter capture.
+The final-state metadata assertions and failure receipts still match the stored
+VM evidence. That partial review does not count as a clean pass after R2.

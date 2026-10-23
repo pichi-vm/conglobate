@@ -145,13 +145,21 @@ range. The lower bound is the initial journaled-ext4 backend contract; unsupport
 sizes fail early. Additional filesystem types/properties need qualified backends.
 
 The requested size is FILESYSTEM capacity, not a new carapace geometry. The
-pinned carapace API uses a 64 GiB zero origin. Create that geometry unchanged and
+carapace v1 format uses a 64 GiB zero origin. Create that geometry unchanged and
 format exactly size/4096 blocks with an explicit 4096-byte mke2fs block size.
 Unused logical space remains zero-backed. No image conversion or second full
 volume is created. Record both filesystem capacity and logical device capacity
 in effective execution metadata. Scute wire parsing belongs to devmap-snapshot;
-verified read-only chain assembly belongs to carapace. Conglobate owns writable
-activation/finalization and uses those APIs rather than reimplementing formats.
+carapace defines the read-only chain layout and geometry. The accepted M4
+integration keeps read-only activation and its explicit cleanup owners in
+conglobate's storage module, using devmap/lodown. The inspected carapace
+Chain::assemble API returns a read-only File with deferred removal, which cannot
+supply conglobate's fallible, ownership-preserving partial-setup and teardown
+contract. Conglobate also owns writable activation/finalization. Both paths use
+ecosystem wire/target APIs rather than duplicating codecs. This is the integration
+refinement recorded in REIMPLEMENTATION.md's ReadOnlyChain work and accepted by
+preservation/MILESTONE-4-ADHERENCE.md; it does not change the carapace format or
+introduce a dependency on the pichi binary/repository.
 
 Formatter selection belongs to the trusted environment/backend. Capture the
 formatter executable and dependencies into private immutable execution inputs,
@@ -226,9 +234,13 @@ but do not impose an implementation requirement.
 
 ## Safe integration and dependency evidence
 
-- carapace 99caf79: Chain::assemble uses a fixed 64 GiB zero target and returns
-  a read-only device File with deferred removal. Its public API rejects empty
-  chains; create the bootstrap zero/writable activation through devmap APIs.
+- Inspected reference carapace 99caf79 (not an active crate dependency):
+  Chain::assemble uses a fixed 64 GiB zero target and returns a read-only device
+  File with deferred removal. Its public API rejects empty chains. The M4
+  integration therefore owns read-only stack activation/cleanup with devmap and
+  lodown, retaining each dependency until upper mappings are removed. Bootstrap
+  zero/writable activation also uses devmap APIs. See the integration boundary
+  above and the accepted M4 source/evidence record.
 - devmap 2679426: snapshot Header/Exception and verity types supply wire parsing
   and sealing primitives. A COW's clean kernel-produced state still needs checked
   length/status/finalization; it is not trusted merely because a command exited.
@@ -268,7 +280,7 @@ Primary references inspected:
 - https://man7.org/linux/man-pages/man8/mke2fs.8.html (explicit block count/config).
 - https://docs.rs/libbpf-rs/latest/libbpf_rs/struct.Link.html (pinning/ownership).
 - https://docs.rs/libbpf-rs/latest/libbpf_rs/trait.MapCore.html (byte map interface).
-- Pinned carapace src/lib.rs and src/assemble.rs; cached rustix mount/process APIs.
+- Preserved reference carapace src/lib.rs and src/assemble.rs; cached rustix mount/process APIs.
 
 ## Acceptance boundaries
 
