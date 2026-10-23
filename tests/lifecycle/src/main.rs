@@ -3,6 +3,7 @@
 mod contained;
 mod domain_publication;
 mod formatter_failures;
+mod sandbox_failures;
 use conglobate::execution::{HelperInvocation, HelperProgram};
 use std::{ffi::OsStr, path::Path};
 
@@ -22,6 +23,12 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "sandbox-namespace-failure" => {
+                sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Namespace)
+            }
+            [mode] if mode == "sandbox-mount-failure" => {
+                sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Mount)
+            }
             [mode] if mode == "formatter-failures" => formatter_failures::FormatterFailures::run(),
             [mode] if mode == "domain-publication" => domain_publication::DomainPublication::run(),
             [mode] if mode == "contained" => contained::Contained::run(),

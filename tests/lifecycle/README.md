@@ -70,3 +70,12 @@ pidfd observes helper death before the fixture checks that its populated cgroup
 and protected record remain owned. Explicit cancellation and drain must collect
 the descendant, report SIGABRT for the helper and release those resources. This
 exercises abrupt helper loss without Rust destructor execution.
+
+`--case sandbox-namespace-failure` and `--case sandbox-mount-failure` migrate
+pre-admission acquisition rollback from the historical volume-supervisor cases.
+The former temporarily sets the disposable guest's user-namespace allowance to
+zero and restores it before rollback; the latter deliberately leaves a dm-zero
+snapshot unformatted. Both use the production CommandSandbox/Runtime owners,
+retain original diagnostics, require clean resource directories and child drain,
+and explicitly release the returned snapshot and runtime. No recipe runs and
+these cases do not validate receiver admission, labels or mounted command teardown.

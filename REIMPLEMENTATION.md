@@ -4570,3 +4570,24 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   supervisor death, writeback, network or output publication. It is validation
   evidence, not an adherence pass. The prior goal turn was clarification only;
   this turn resumed execution and produced new lifecycle evidence.
+
+### Namespace and filesystem acquisition rollback migration
+
+- Migrated historical volume-supervisor-sandbox namespace/mount failure cases to
+  tests/lifecycle/src/sandbox_failures.rs, using current production CommandSandbox,
+  Runtime and Volume owners. No policy APIs or extra raw-descriptor exposure.
+- Disposable guest only: namespace allowance is temporarily zero and restored
+  before rollback; mount case supplies an unformatted dm-zero snapshot. Original
+  error kind/errno survive rollback, cleanup diagnostics stay empty, actual runtime
+  recovery/volume/domain directories and process children are checked, returned
+  snapshot validates and explicitly closes/detaches, device disappears and runtime
+  directory closes cleanly. Strict fixture Clippy passes.
+- Fresh namespace-v1 and mount-v2 runs pass markers, independent exit-zero status
+  and guest poweroff. Mount-v1 is preserved too; v2 strengthens the cgroup directory
+  assertion to propagate enumeration/type errors instead of ignoring them. All
+  exact source snapshots and small evidence preserved; large assets remain tracked
+  for durable archival. No failure or historical source was discarded.
+- M4 remains 0/3. Acquisition rollback does not cover mounted command execution,
+  receiver post-admission gate-send failure, supervisor death, network or writeback.
+  These validation runs are not adherence passes; remaining milestone scope is
+  unchanged. Previous turn's committed abrupt-death regression was progress.

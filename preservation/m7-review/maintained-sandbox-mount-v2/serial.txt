@@ -1,0 +1,9 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe ext4
++ /lifecycle-tests sandbox-mount-failure
+SANDBOX_MOUNT_FAILURE_ROLLBACK_PASS
+LIFECYCLE_EXIT 0
+[    2.090407] sysrq: Power Off
+[    2.095011] reboot: Power down

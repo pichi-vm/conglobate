@@ -72,8 +72,8 @@ class LifecycleRun:
         for name, files in [('formatter-runtime-files', formatter), ('formatter-stall-files', stalled)]:
             (self.root / name).write_text('\n'.join(sorted(files)) + '\n')
         mode = '' if self.args.drop is None else f'FORMATTER_DROP={self.args.drop} '
-        setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\n'
-                 if self.args.case == 'formatter-failures' else
+        setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\nmodprobe ext4\n'
+                 if self.args.case == 'formatter-failures' or self.args.case.startswith('sandbox-') else
                  'mkdir /work/cgroups\nmount -t cgroup2 cgroup2 /work/cgroups\n')
         (self.root / 'fixture.sh').write_text(
             '#!/bin/bash\nset -eux\n' + setup + mode + '/lifecycle-tests ' + self.args.case + '\n')
@@ -132,6 +132,8 @@ exec sleep infinity
             markers = ['CONTAINED_LAUNCH_FAILURE_CLEANUP_PASS', 'CONTAINED_JOIN_FAILURE_CLEANUP_PASS',
                        'CONTAINED_PRE_ADMISSION_DESCENDANT_DRAIN_PASS',
                        'CONTAINED_ABRUPT_HELPER_DEATH_DRAIN_PASS']
+        elif self.args.case.startswith('sandbox-'):
+            markers = [self.args.case.upper().replace('-', '_') + '_ROLLBACK_PASS']
         elif self.args.drop:
             markers += [f'FORMATTER_DROP_{self.args.drop.upper()}_RETAINS_STORAGE_PASS']
         else:
@@ -153,7 +155,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['formatter-failures', 'domain-publication', 'contained'], default='formatter-failures')
+    parser.add_argument('--case', choices=['formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':
