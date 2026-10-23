@@ -1,0 +1,14 @@
+[
+  {
+    "path": "/storage/conglobate-validation/resolver-replaced-scaffold-v2/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/resolver-replaced-scaffold-v2/initramfs.gz",
+    "size": 235826772,
+    "sha256": "a4061af3a1c537b4be2c0d5a35d5b72233699b2efdb13293518dbfc9b8869c00",
+    "durably_archived": false
+  }
+]

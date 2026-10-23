@@ -6006,3 +6006,16 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Current remaining queue: preservation/m7-review/CURRENT-M4.md. Asked user for
   the supported UID/GID mapping contract; no answer inferred. Resolver command-time
   mutation coverage remains concrete independent work. M4 still 0/3.
+
+### Resolver mutation validation and diagnostic failure
+
+- Positive command-time dangling/resolver-parent replacement VM passes DNS,
+  read-only injection, scaffold removal, retained author replacements and export.
+- Negative v1 exposed a missing fixture exchange; preserved. Corrected v2 rejects
+  replacement, retains environment network and publishes nothing, but loses the
+  specific cleanup diagnostic. Strict verifier deliberately remains failing.
+- New M4 finding resolver-cleanup-diagnostic-001: resolver.release error drops the
+  admitted channel before top-level reporting; parent cancellation can interrupt
+  reporting. Next: bounded trusted cleanup-failure protocol, no sleep workaround.
+- Evidence: preservation/m7-review/resolver-lifecycle/REVIEW.md. Production source
+  unchanged; Python syntax/whitespace checks pass. M4 remains 0/3.

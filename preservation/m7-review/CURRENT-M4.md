@@ -16,8 +16,10 @@ No full new adherence pass has been awarded.
    are covered in external-network and external-network-followup. IPv6/ingress
    remain environment qualification, not proved by a namespace descriptor.
 3. **Resolver mutation:** resolver_target unit tests cover dangling targets,
-   replaced scaffold entries and pinned parent replacement. Full command-time
-   mutation/dangling-target VM coverage remains required by sandbox section 8.4.
+   replaced scaffold entries and pinned parent replacement. Command-time dangling-target and pinned-parent replacement VM coverage now passes
+   (resolver-lifecycle/). Replacement of an owned scaffold rejects publication but
+   exposes resolver-cleanup-diagnostic-001: the specific cause races channel EOF
+   and cancellation. Strict negative verifier remains failing; fix the protocol.
 4. **Label admission:** current two-root denial now passes (m4-second-root-current).
    Missing-policy negative evidence exists in command-error-missing-label-v2;
    compare affected source before using it for the next complete gate. Do not

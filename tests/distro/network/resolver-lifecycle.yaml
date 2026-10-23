@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+carapace:
+  from: qualification.local/fedora:43
+  derive:
+    - run: |
+        test ! -e /resolver-lifecycle
+        rm -f /etc/resolv.conf
+        ln -s /resolver-lifecycle/missing/nested/config /etc/resolv.conf
+    - run: |
+        test -L /etc/resolv.conf
+        test -f /resolver-lifecycle/missing/nested/config
+        if printf 'invalid\n' >> /etc/resolv.conf; then exit 1; fi
+        /bin/bash -eu -c '
+          exec 3<>/dev/tcp/build.fixture/45457
+          printf "request\n" >&3
+          IFS= read -r response <&3
+          test "$response" = reply
+        '
+        printf 'RESOLVER_DANGLING_INJECTION_PASS\n'
+      network: true
+      timeout: 30s
+    - run: |
+        test -L /etc/resolv.conf
+        test "$(readlink /etc/resolv.conf)" = /resolver-lifecycle/missing/nested/config
+        test ! -e /resolver-lifecycle
+        printf 'RESOLVER_DANGLING_SCAFFOLD_REMOVED_PASS\n'
+        mkdir -p /resolver-lifecycle/existing
+        rm /etc/resolv.conf
+        ln -s /resolver-lifecycle/existing/config /etc/resolv.conf
+    - run: |
+        test -f /resolver-lifecycle/existing/config
+        if printf 'invalid\n' >> /etc/resolv.conf; then exit 1; fi
+        mv /resolver-lifecycle/existing /resolver-lifecycle/saved
+        mkdir /resolver-lifecycle/existing
+        printf 'author replacement\n' > /resolver-lifecycle/existing/config
+        test "$(cat /etc/resolv.conf)" = 'author replacement'
+        if printf 'invalid\n' >> /resolver-lifecycle/saved/config; then exit 1; fi
+        printf 'RESOLVER_PARENT_REPLACED_DURING_COMMAND_PASS\n'
+      network: true
+      timeout: 30s
+    - run: |
+        test "$(cat /etc/resolv.conf)" = 'author replacement'
+        test -L /etc/resolv.conf
+        test -d /resolver-lifecycle/saved
+        test ! -e /resolver-lifecycle/saved/config
+        printf 'RESOLVER_PINNED_PARENT_CLEANUP_PASS\n'

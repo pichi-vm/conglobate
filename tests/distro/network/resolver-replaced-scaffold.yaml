@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+carapace:
+  from: qualification.local/fedora:43
+  derive:
+    - run: |
+        test ! -e /resolver-replaced
+        mkdir /resolver-replaced
+        rm -f /etc/resolv.conf
+        ln -s /resolver-replaced/generated/config /etc/resolv.conf
+    - run: |
+        test -f /etc/resolv.conf
+        if printf 'invalid\n' >> /etc/resolv.conf; then exit 1; fi
+        /bin/bash -eu -c '
+          exec 3<>/dev/tcp/build.fixture/45457
+          printf "request\n" >&3
+          IFS= read -r response <&3
+          test "$response" = reply
+        '
+        mv /resolver-replaced/generated /resolver-replaced/saved
+        mkdir /resolver-replaced/generated
+        printf 'author replacement\n' > /resolver-replaced/generated/keep
+        printf 'RESOLVER_OWNED_DIRECTORY_REPLACED_PASS\n'
+      network: true
+      timeout: 30s
