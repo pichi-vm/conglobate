@@ -1,7 +1,7 @@
 # Milestone 5 adherence review
 
-Status: restarted review after R2; clean streak **2/3** on scope-v2.
-M5 is not accepted. The earlier 1/3 pass and scope remain historical.
+Status: M5 accepted with **3/3** consecutive clean self-review passes on scope-v2.
+The earlier pre-R2 pass and scope remain historical.
 Starting implementation: `1cd3b69`. This review covers changes since the M4
 accepted implementation scope `ed0fecd408562aed8bc083e8fbe412c4b80ec514`.
 The complete milestone boundary remains DESIGN.md, SANDBOX-DESIGN.txt,
@@ -270,3 +270,56 @@ or new runtime test was needed.
 Result: clean, restarted streak **2/3**. One further full pass is required. The
 summary milestone table is synchronized with this ledger; that status recording
 is outside the frozen implementation scope. M6 remains gated.
+
+
+## Restarted full pass 3 — public API and milestone acceptance
+
+Reviewed unchanged scope-v2 from exported authority and the complete M5 acceptance
+criteria. All 120 frozen hashes still match; all 41 archived source/build/fixture
+files in v186 match current bytes. This is the third self-review, not an independent
+review or production security qualification.
+
+1. Requirements: traced recipe FilesystemSpec through validated capacity/label,
+   Ext4Format, captured runtime/configuration, writable zero-origin snapshot and
+   paired tool/output execution. Initial ext4 support and fixed 64GiB device
+   geometry are explicit. Tool changes persist between commands, not into the
+   output chain. Both roots remount with two-target policy. Fixture output is
+   sealed directly and reopened through production cache verification/assembly.
+2. Public authority: inspected formatter, storage and execution exports and their
+   constructors/accessors. Formatting carries live child plus retained inputs;
+   FormattedSnapshot proves only reaping/health. Mounted BootstrapVolumes cannot
+   be split. FinalizedBootstrap is cleanup proof, while ExecutedBootstrap's
+   private construction additionally requires its own successful command outcome.
+   SealedScute owns data/tree and exposes read-only cursors. Low-level supervisor
+   storage APIs intentionally remain distinct from future publication authority.
+3. Failure/ownership: rechecked the shared preparation/execution dispatch, owning
+   partial acquisition states, descriptor transfer, private mount attachment,
+   fixed cutoffs and non-renewable cleanup retries against the prior two passes.
+   R1's release requires a successful reap; unresolved input retention survives
+   Drop. Finalization flushes/unmounts both volumes and checks both snapshots;
+   failure never manufactures successful execution or publication. Origin and
+   workspace borrows plus kernel references retain backing through explicit
+   detachment. No guardian, recovery invocation or synchronization sleep added.
+4. Rust style: immutable validated descriptions and consuming resource owners;
+   sealed state/storage traits and private fields; methods on meaningful types;
+   safe library operations under forbid(unsafe_code). Existing compile-fail
+   tests check receipt construction and early extraction restrictions. Runtime
+   variants own cleanup resources; no new arbitrary shared mutability or state
+   flag interface is introduced.
+5. Evidence: checked capture mutation/collision tests, typed label arguments,
+   missing-loader rejection and actual formatter fixture; then verified reopened
+   output assertions for bytes, numeric ownership/mode, ACL, file capability
+   without build-root binding and foreign SELinux label. Timeout/exhaustion/drop,
+   acquisition rollback and busy finalization evidence remain applicable to the
+   unchanged source. Existing 56 library tests, 49 doctests, strict Clippy and
+   v186 normal VM pass stand; reviews are not repeated test runs.
+6. Preservation/scope: no code/reference retirement. M6 still must connect recipe
+   orchestration, COPY, layering, firmware, transforms, networking, inventory and
+   publication. The OCI fixture writer is not production output. Package installs,
+   distro boots, enforcing target policy and architecture/confidential hardware
+   require M7 evidence. The trust contract still assumes the deployment disposes
+   of the VM on supervisor death.
+
+Result: clean, streak **3/3**. M5 is accepted at its defined direct-layer bootstrap
+implementation boundary. M6 may begin. Later findings reopen the relevant gate;
+this acceptance does not complete the overall rewrite.

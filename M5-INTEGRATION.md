@@ -1,7 +1,7 @@
 # M5 direct-layer bootstrap implementation
 
-M4 is accepted with three clean self-review passes. M5 is active with two clean
-passes on the corrected review scope after R2. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
+M4 and M5 are accepted with three clean self-review passes each. M5 acceptance
+uses the corrected scope-v2 after R2. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
 The integrated VM fixture now demonstrates a verified tool chain, dual-root
 commands through production aggregate preparation and execution acceptance,
 direct output sealing and verified reopening. Initial metadata and formatter
@@ -391,3 +391,13 @@ sealing back through confirmed loop detachment, explicit flush/unmount, snapshot
 health, descendant/policy cleanup, pair acquisition and formatter ownership.
 Failure assertions preserve outcome and prohibit premature extraction. M5 is
 2/3; one further complete pass is required before M6.
+
+
+## Acceptance
+
+The third full self-review is clean on unchanged scope-v2. M5 is accepted with
+3/3 consecutive passes. Production direct-layer bootstrap APIs and integrated
+fixture satisfy this milestone; M6 owns their recipe-driven orchestration and
+publication. Detailed observations and qualification limits remain in the M5
+adherence record. Historical work-log entries above describe their original
+status, not outstanding current implementation work.
