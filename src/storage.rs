@@ -130,3 +130,6 @@ impl Seek for Scratch<'_> {
         self.file.seek(offset)
     }
 }
+
+mod bootstrap;
+pub use bootstrap::{BootstrapUnmountFailure, BootstrapVolumes};

@@ -1,0 +1,24 @@
+    Checking conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+error: the `Err`-variant returned from this function is very large
+   --> src/storage/bootstrap.rs:147:10
+    |
+147 |     ) -> Result<Pending<'n, 'o, 'w>, (FailureDiagnostics, Pending<'n, 'o, 'w>)> {
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 240 bytes
+    |
+    = help: try reducing the size of `(storage::diagnostics::FailureDiagnostics, storage::bootstrap::Pending<'n, 'o, 'w>)`, for example by boxing large elements or replacing it with `Box<(storage::diagnostics::FailureDiagnostics, storage::bootstrap::Pending<'n, 'o, 'w>)>`
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+    = note: `-D clippy::result-large-err` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::result_large_err)]`
+
+error: the `Err`-variant returned from this function is very large
+   --> src/storage/bootstrap.rs:159:10
+    |
+159 |     ) -> Result<Pending<'n, 'o, 'w>, (FailureDiagnostics, Pending<'n, 'o, 'w>)> {
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 240 bytes
+    |
+    = help: try reducing the size of `(storage::diagnostics::FailureDiagnostics, storage::bootstrap::Pending<'n, 'o, 'w>)`, for example by boxing large elements or replacing it with `Box<(storage::diagnostics::FailureDiagnostics, storage::bootstrap::Pending<'n, 'o, 'w>)>`
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
+
+error: could not compile `conglobate` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `conglobate` (lib test) due to 2 previous errors

@@ -1,0 +1,1 @@
+Normal suite passed, including two formatted snapshots and busy output/tool unmount retention/retry. This is pair ownership, not dual-root command execution. Pre-review pair finalizer did not check deadline between unmounts.

@@ -515,3 +515,6 @@ mod tests {
         assert_eq!(drops.get(), 1);
     }
 }
+
+mod bootstrap;
+pub use bootstrap::{BootstrapFinalizationFailure, FinalizedBootstrap};

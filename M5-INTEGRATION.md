@@ -136,3 +136,28 @@ both owners. The complete normal VM suite passes. Post-v163 review tightened the
 cleanup cutoff and error-history handling; these edits have host checks, not a
 new timeout-injection claim. Formatter timeout/cancellation, backing-exhaustion
 and dual-volume failure qualification remain M5 work. No adherence pass claimed.
+
+## Paired storage ownership (v164–v165)
+
+BootstrapVolumes<Mounted/Unmounted> owns the disposable tool and output together.
+Mounted pairs have no extraction method. Failed unmount retains both resources,
+including the already-unmounted output if tool cleanup fails. Retry preserves
+original diagnostics. Deadline-aware unmount checks before each operation and
+completion, retains the cutoff in failure and cannot renew it.
+
+Step::with_bootstrap retains the pair through existing descendant/policy teardown.
+TeardownCompletion for that pair finalizes both and checks both snapshot statuses
+under its original cutoff. This path does not manufacture command success. The
+new Step finalization path still requires integrated command coverage; the VM
+fixture below exercises the underlying pair, not that complete Step path.
+
+The VM fixture formats two actual snapshots with the captured formatter, mounts
+both and holds a file descriptor open first on output, then on tool. Both cases
+reject unmount with EBUSY, retain the correct remaining mounts, preserve error
+history on a second rejection, and finish after the descriptor closes. v164
+passes the initial pair implementation. Source review then adds cutoff checks
+between unmounts; v165 passes using the deadline-aware path. 47 compile-fail
+doctests and root/fixture Clippy pass. Evidence and failed compile logs preserved.
+
+Dual-view transfer, output attachment at /mnt, aggregate setup rollback, command
+execution with both LSM targets and direct sealing still remain. M5 streak zero.

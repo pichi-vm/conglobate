@@ -6,7 +6,7 @@ use conglobate::{
     isolation::PrivateMountNamespace,
     path::ContextPath,
     step::SetupBudget,
-    storage::{Created, Mapping, Unmounted, Volume, Workspace},
+    storage::{BootstrapVolumes, Created, Mapping, Unmounted, Volume, Workspace},
 };
 use std::{fs, num::NonZeroU64, path::Path};
 #[derive(Debug)]
@@ -82,22 +82,92 @@ impl FormatterProbe {
                 .open(&ContextPath::try_from(Path::new("dev/output"))?)
                 .is_err()
         );
+        let mut output_scratch = workspace.scratch()?;
+        output_scratch.set_len(32 * 1024 * 1024)?;
+        let output = Mapping::<Created>::create()?
+            .snapshot(
+                &origin,
+                output_scratch.attach().map_err(|e| e.to_string())?,
+                sectors,
+            )
+            .map_err(|e| e.to_string())?;
+        let formatted = runtime
+            .format(
+                output,
+                Ext4Format::new("16MiB".parse()?, "output".to_owned().try_into()?),
+                &HelperProgram::current()?,
+                SetupBudget::begin(),
+            )
+            .map_err(|e| e.to_string())?
+            .wait()
+            .map_err(|e| e.to_string())?;
+        let (runtime, output) = formatted.into_parts();
         runtime.close()?;
         let scope = PrivateMountNamespace::enter()?;
-        let volume = Volume::<Unmounted>::new(snapshot, &scope)
-            .mount_ext4(Path::new("/work"))
-            .map_err(|e| e.to_string())?;
-        volume
-            .unmount()
+        let mut tool = Volume::<Unmounted>::new(snapshot, &scope);
+        let mut output = Volume::<Unmounted>::new(output, &scope);
+        for busy_output in [true, false] {
+            let tool_mounted = tool
+                .mount_ext4(Path::new("/work"))
+                .map_err(|e| e.to_string())?;
+            let paths = Self::mount_paths()?;
+            assert_eq!(paths.len(), 1);
+            let tool_path = paths.into_iter().next().unwrap();
+            let output_mounted = output
+                .mount_ext4(Path::new("/work"))
+                .map_err(|e| e.to_string())?;
+            let paths = Self::mount_paths()?;
+            assert_eq!(paths.len(), 2);
+            let output_path = paths.into_iter().find(|path| *path != tool_path).unwrap();
+            let busy = fs::File::open(if busy_output {
+                &output_path
+            } else {
+                &tool_path
+            })?;
+            let pair = BootstrapVolumes::new(tool_mounted, output_mounted);
+            let failure = pair
+                .unmount_until(std::time::Instant::now() + std::time::Duration::from_secs(30))
+                .unwrap_err();
+            assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(16));
+            assert_eq!(Self::mount_paths()?.len(), if busy_output { 2 } else { 1 });
+            let failure = failure.retry().unwrap_err();
+            assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(16));
+            assert_eq!(failure.diagnostics().cleanup().len(), 1);
+            drop(busy);
+            (tool, output) = failure.retry().map_err(|e| e.to_string())?.into_parts();
+            assert!(Self::mount_paths()?.is_empty());
+        }
+        tool.into_snapshot()
+            .close()
             .map_err(|e| e.to_string())?
+            .detach()
+            .map_err(|e| e.to_string())?;
+        output
             .into_snapshot()
             .close()
             .map_err(|e| e.to_string())?
             .detach()
             .map_err(|e| e.to_string())?;
+        println!("BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS");
         scope.restore().map_err(|e| e.to_string())?;
         origin.close()?;
         println!("CAPTURED_FORMATTER_EXECUTION_PASS");
         Ok(())
+    }
+    fn mount_paths() -> std::io::Result<std::collections::BTreeSet<std::path::PathBuf>> {
+        fs::read_dir("/work")?
+            .filter_map(|entry| match entry {
+                Ok(entry)
+                    if entry
+                        .file_name()
+                        .as_encoded_bytes()
+                        .starts_with(b"conglobate-volume-") =>
+                {
+                    Some(Ok(entry.path()))
+                }
+                Ok(_) => None,
+                Err(error) => Some(Err(error)),
+            })
+            .collect()
     }
 }

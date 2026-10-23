@@ -2745,3 +2745,15 @@ rules rather than silently shrinking acceptance criteria.
 - Next connect this execution path to two-volume bootstrap and direct sealing,
   with formatter/cancellation/backing and dual-volume failure coverage. M5 remains
   at zero adherence passes; no later milestone advances.
+
+### M5 paired volume lifetime (v164–v165)
+
+- Added BootstrapVolumes<Mounted/Unmounted>, sealed StepStorage integration and
+  pair finalization under the original teardown budget. Partial cleanup cannot
+  expose either volume; retries preserve original errors and cutoff.
+- v164 passes busy-output and busy-tool cases with two captured-formatter-created
+  snapshots. Review added checks between unmount operations; v165 passes the
+  deadline-aware pair path. 47 compile-fail doctests and root/fixture Clippy pass.
+- Source/log/artifact hashes verified. This is pair ownership coverage, not yet
+  dual-root command execution. Transfer, /mnt attachment, aggregate preparation,
+  two-target command coverage and direct sealing remain. M5 has zero clean passes.

@@ -169,7 +169,8 @@ impl<'ns, 'origin, 'workspace>
         super::CommandResult<FinalizedVolume<'ns, 'origin, 'workspace>>,
         super::CommandResult<Box<FinalizationFailure<'ns, 'origin, 'workspace>>>,
     > {
-        self.map_cleanup(TeardownCompletion::unmount).transpose()
+        self.map_cleanup(|completion| completion.unmount())
+            .transpose()
     }
 }
 impl<'ns, 'origin, 'workspace>
