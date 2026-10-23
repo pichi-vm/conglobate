@@ -5311,3 +5311,21 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - No production change, new test or evidence deletion. M4 remains 0/3. Historical
   finding/preservation reconciliation and outstanding coverage still prevent a
   full clean result; M5/M6 scopes are not advanced by this boundary review.
+
+
+### M4 cumulative review disposition: needs work
+
+- Previous turn progressed with pipeline boundary review. Reconciled selected
+  historical actions against current source; preserved all 46 original actions
+  with current or explicitly pending dispositions. This is not completion of
+  the complete 111-finding ledger.
+- Closed the cumulative 168b2a2 review as NEEDS WORK, zero clean passes, with a
+  concrete queue for mapping coverage, collision handling, refreshed negative
+  controls, remaining accepted cleanup and qualification. Do not repeat subset
+  reviews in place of fixing or validating these items.
+- Rehashed the original 4.8 GiB full working-tree archive: matches BASELINE.txt
+  SHA-256 f249e9535a2fac7b3f4289a3346d8f5d18ebd4954087101b166426e7223a4eb2.
+  This verifies local preservation only; later external assets are not thereby
+  durably archived. No deletions and no production changes this turn.
+- Current queue and evidence: preservation/m7-review/m4-adherence-168b2a2/REVIEW.md,
+  historical-actions-current.json and preservation-check.json. Goal remains active.

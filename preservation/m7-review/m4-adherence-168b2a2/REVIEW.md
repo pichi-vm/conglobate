@@ -1,7 +1,8 @@
 # M4 adherence attempt at 168b2a2
 
-Status: IN PROGRESS, no full pass awarded. This is the cumulative record for
-this attempt; complete every remaining section before evaluating a clean pass.
+Status: NEEDS WORK, no full pass awarded. Segments A–G establish the reviewed
+source/evidence scope. The disposition below records unresolved requirements;
+this attempt cannot serve as one of the three consecutive clean passes.
 The immediately preceding turn made implementation/test progress in 168b2a2.
 No source change or new VM run occurred in this review segment.
 
@@ -686,3 +687,57 @@ represented as a source match. No new execution occurred in this segment.
 Remaining cumulative assessment: historical findings, UID/GID contract, preservation
 and current test coverage. Existing network/label qualification gaps remain;
 M4 stays 0/3. This review does not advance M5/M6 or certify their complete scopes.
+
+
+## Disposition and work queue
+
+This attempt is NOT CLEAN. Source review found substantial lifecycle controls and
+reconciled targeted execution evidence, but required scope remains unproven and
+accepted historical actions remain open. M4 streak stays 0/3. Do not restart
+these seven subset reviews merely to accumulate more prose; resolve the following
+items, then perform a complete fresh adherence pass against the resulting source.
+
+1. Resolve UID/GID mapping coverage (segment G): declare the supported contract
+   consistently with OS-image requirements, handle inherited out-of-range owners
+   and ACL IDs, and add benign disposable-VM boundary tests. Do not assume a
+   prototype mapping covers all distro workloads.
+2. Resolve network destination collisions rather than qualify only visible-route
+   avoidance. Evaluate the proposed link-local alternative with actual forward/
+   reply paths before changing allocation. Independently validate IPv6 and
+   unsolicited inbound denial; use positive controls for connectivity.
+3. Refresh current missing-label-policy and second-root negative controls. Preserve
+   earlier failures and compare tested source explicitly. Qualify dangling and
+   command-time replaced resolver targets; existing rootless helpers are narrower.
+4. Work accepted style/API cleanup from historical-actions-current.json in coherent
+   batches with appropriate tests. Some entries are outside M4 and remain tracked
+   for M5–M7, not counted as lifecycle defects. In particular shared stage recovery
+   and Runtime cleanup must preserve failure owners, diagnostics and rejection.
+5. Finish current dispositions for pending historical actions and all original
+   111 finding IDs. This attempt updates 46 previously accepted/open actions only;
+   it does not reopen rejected findings without evidence or pretend pending ones
+   have been resolved. Original ledgers remain immutable reference evidence.
+6. Preserve capacity for testing without deleting unique artifacts. Original local
+   archive rehashed successfully (preservation-check.json); later large /var/tmp
+   assets and raw untracked review streams still need durable recovery accounting.
+   Root policy/labels.bpf.c is superseded scoped-policy code, not the current
+   environment policy, and remains a retirement/provenance obligation. No removal
+   is authorized by a hash check of the original archive alone.
+7. After fixes and current evidence, execute all full milestone adherence gates.
+   M5/M6, representative distro boots, arm64/confidential hardware, CI and M8
+   retirement retain their original requirements. Missing hardware qualification
+   stays outstanding. This source review cannot substitute for them.
+
+### Historical ledger findings
+
+historical-actions-current.json preserves every original action/evidence field
+and adds a current disposition or explicitly pending revalidation. It corrects
+stale earlier dispositions for removed deadline-free entrypoints and typed DTB/
+manifest errors, while identifying still-present accepted work (timeout parsing,
+zstd features, repeated coordinator cleanup, public accessors and allocations).
+No old "accept" label is treated as proof of implementation. Security hardening
+suggestions remain distinct from demonstrated defects and binding requirements.
+
+The previous goal turn made concrete progress through pipeline/source evidence.
+This turn adds current-action reconciliation and verifies the original 4.8 GiB
+archive hash. No production edit, build, VM execution, artifact deletion or full
+milestone pass occurred. Disk capacity remains limited (~443 MiB observed).
