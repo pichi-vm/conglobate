@@ -1,0 +1,12 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.49s
+     Running unittests src/lib.rs (target/debug/deps/conglobate-a27e453ef45e8d76)
+
+running 4 tests
+test copy::source::tests::explicit_links_resolve_but_nested_links_are_preserved ... ok
+test copy::source::tests::wildcard_walk_is_sorted_and_does_not_follow_directory_links ... ok
+test copy::source::tests::root_selection_and_symlink_confinement ... ok
+test process::supervision::tests::cancellation_does_not_depend_on_the_last_endpoint_copy_closing ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 70 filtered out; finished in 0.00s
+

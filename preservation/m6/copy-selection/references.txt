@@ -1,0 +1,4 @@
+Reviewed 2026-10-23.
+https://docs.docker.com/reference/dockerfile/#copy
+https://raw.githubusercontent.com/tonistiigi/fsutil/master/copy/copy.go
+Source comparison only; not an executed Docker/BuildKit compatibility qualification.

@@ -3028,3 +3028,20 @@ rules rather than silently shrinking acceptance criteria.
   rewrite-command-integration/evidence/v189 and v190. No image-authored command,
   distro boot, ORAS or confidential-platform qualification is inferred. M6 remains
   at zero adherence passes; stage execution, COPY, firmware and networking remain.
+
+### M6 committed COPY source selection
+
+- Previous turn progressed in fde0f6b. Added immutable CopySources borrowing the
+  captured Git tree: ordered source selection, directory contents, explicit
+  symlink resolution, nested-link preservation and confined cycle/escape checks.
+  It never opens caller worktree paths or exposes the context to commands.
+- Reviewed Docker COPY documentation and fsutil copy.go. Explicit prefixes may
+  follow directory links; wildcard traversal treats links as leaves. Escaped
+  wildcard characters do not begin traversal, whereas escaping in a wildcard
+  suffix participates in matching. Added regressions for those distinctions.
+- 75 library tests and strict all-target Clippy pass. Source/reference bytes and
+  successive logs retained in preservation/m6/copy-selection. These are source-
+  grounded regressions, not an executed Docker/BuildKit compatibility claim.
+- Destination writing, metadata application and pipeline execution are still
+  required; source selection alone is not a working COPY directive. M6 remains
+  zero adherence passes. No privileged test was needed for immutable-tree work.

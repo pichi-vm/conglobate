@@ -197,3 +197,13 @@ v190 passes real-CLI default and authored edits plus missing-DTB/property failur
 without publication. v189's diagnostic-expectation failure is preserved. Next
 connect stage execution and COPY, firmware pair extraction, and enabled networking;
 this successful inherited-image workflow is not full recipe execution.
+
+## COPY sources
+
+CopySources selects immutable captured Git entries without ambient filesystem
+reads. Explicit selected symlinks resolve within that tree; descendants of a
+selected directory retain their link entries for the writer. Wildcard walking
+uses the existing Go-style matcher and does not descend through matched symlinks.
+The next boundary is confined destination writing on an inactive mounted volume,
+including image account lookup, owner/mode application and directory merge rules.
+The selector is not yet connected to CLI directive execution.

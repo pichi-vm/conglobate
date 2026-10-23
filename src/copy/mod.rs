@@ -7,3 +7,6 @@ pub use mode::{Change, Clause, CopyMode, ModeError, Operator, Permission, Permis
 
 mod pattern;
 pub use pattern::{PatternError, SourcePattern};
+
+mod source;
+pub use source::{CopySource, CopySources, SelectionError};
