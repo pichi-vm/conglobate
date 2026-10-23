@@ -18,17 +18,26 @@ pub(super) enum FailurePoint {
     Join,
     AttachedExit,
     BusyExecution,
+    HeldCleanup,
+    MissingCleanup,
     Gate,
     Writeback,
     BlockedIo,
     SupervisorDeath,
+}
+#[derive(Debug, Clone, Copy)]
+pub(super) enum HelperCompletion {
+    None,
+    Normal,
+    Held,
+    Missing,
 }
 #[derive(Debug)]
 pub(super) struct SandboxFailures;
 impl SandboxFailures {
     pub(super) fn attached_helper(
         cutoff: &std::ffi::OsStr,
-        successful: bool,
+        completion: HelperCompletion,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use conglobate::{
             filesystem::MountPoint,
@@ -57,15 +66,31 @@ impl SandboxFailures {
             ))?)
             .map_err(|e| e.to_string())?;
         assert_eq!(view.root_metadata()?.uid(), 100000);
-        if successful {
+        if !matches!(completion, HelperCompletion::None) {
             use std::os::unix::process::ExitStatusExt;
             channel.report_prepared_until(deadline)?;
             let channel = channel.await_admission_until(deadline)?;
+            let release = if matches!(completion, HelperCompletion::Held) {
+                Some(std::os::unix::net::UnixDatagram::bind(
+                    "/work/runtime-parent/cleanup-release.sock",
+                )?)
+            } else {
+                None
+            };
+            channel.report_completion_until(std::process::ExitStatus::from_raw(0), deadline)?;
+            if let Some(release) = release {
+                release.set_read_timeout(Some(std::time::Duration::from_secs(10)))?;
+                let mut packet = [0; 2];
+                assert_eq!(release.recv(&mut packet)?, 2);
+                assert_eq!(&packet, b"go");
+                fs::remove_file("/work/runtime-parent/cleanup-release.sock")?;
+            }
             view.close().map_err(|e| e.to_string())?;
             drop(_setup);
             scope.restore().map_err(|e| e.to_string())?;
-            channel.report_completion_until(std::process::ExitStatus::from_raw(0), deadline)?;
-            channel.report_cleanup_until(deadline)?;
+            if !matches!(completion, HelperCompletion::Missing) {
+                channel.report_cleanup_until(deadline)?;
+            }
             return Ok(());
         }
         fs::write("/work/receiver-stage", "attached")?;
@@ -97,6 +122,8 @@ impl SandboxFailures {
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
                 | FailurePoint::BusyExecution
+                | FailurePoint::HeldCleanup
+                | FailurePoint::MissingCleanup
                 | FailurePoint::Gate
                 | FailurePoint::Writeback
                 | FailurePoint::BlockedIo
@@ -143,6 +170,8 @@ impl SandboxFailures {
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
                 | FailurePoint::BusyExecution
+                | FailurePoint::HeldCleanup
+                | FailurePoint::MissingCleanup
                 | FailurePoint::Gate
                 | FailurePoint::Writeback
                 | FailurePoint::BlockedIo
@@ -198,6 +227,8 @@ impl SandboxFailures {
             | FailurePoint::Join
             | FailurePoint::AttachedExit
             | FailurePoint::BusyExecution
+            | FailurePoint::HeldCleanup
+            | FailurePoint::MissingCleanup
             | FailurePoint::Gate
             | FailurePoint::Writeback
             | FailurePoint::BlockedIo
@@ -219,6 +250,10 @@ impl SandboxFailures {
                         "sandbox-blocked-helper"
                     } else if matches!(point, FailurePoint::Gate | FailurePoint::Writeback) {
                         "sandbox-gate-receiver"
+                    } else if matches!(point, FailurePoint::HeldCleanup) {
+                        "sandbox-held-helper"
+                    } else if matches!(point, FailurePoint::MissingCleanup) {
+                        "sandbox-missing-cleanup-helper"
                     } else if matches!(point, FailurePoint::BusyExecution) {
                         "sandbox-success-helper"
                     } else {
@@ -408,6 +443,70 @@ impl SandboxFailures {
                     fs::remove_file("/work/receiver-gate-cleaned")?;
                     fs::remove_dir("/work/runtime-parent/receiver-view")?;
                     returned
+                } else if matches!(
+                    point,
+                    FailurePoint::HeldCleanup | FailurePoint::MissingCleanup
+                ) {
+                    use std::{os::unix::net::UnixDatagram, time::Instant};
+                    fs::create_dir("/work/runtime-parent/receiver-view")?;
+                    command.arg(budget.cutoff()?.to_argument());
+                    let step = prepared
+                        .launch(command, budget.deadline(), paths.domains())
+                        .map_err(|e| e.to_string())?;
+                    let returned = if matches!(point, FailurePoint::HeldCleanup) {
+                        step.send_volume_until(budget.deadline())?;
+                        let running = budget
+                            .await_prepared(step)
+                            .map_err(|e| e.to_string())?
+                            .start("1s".parse()?)
+                            .map_err(|e| e.to_string())?;
+                        let execution_deadline = running.deadline();
+                        let observed = running.observe();
+                        assert!(observed.outcome().success());
+                        assert!(Path::new("/work/runtime-parent/cleanup-release.sock").exists());
+                        assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
+                        assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                        // Deliberately expire the execution timer after observing
+                        // status. Cleanup is held by an explicit datagram gate;
+                        // this timer wait is not a readiness synchronization.
+                        while let Some(remaining) =
+                            execution_deadline.checked_duration_since(Instant::now())
+                        {
+                            let timeout = rustix::event::Timespec::try_from(remaining)?;
+                            match rustix::event::poll(&mut [], Some(&timeout)) {
+                                Ok(_) | Err(rustix::io::Errno::INTR) => {}
+                                Err(error) => return Err(error.into()),
+                            }
+                        }
+                        UnixDatagram::unbound()?
+                            .send_to(b"go", "/work/runtime-parent/cleanup-release.sock")?;
+                        let (outcome, cleanup) = observed.teardown(paths.domains()).into_parts();
+                        assert!(outcome.success());
+                        let finalized = cleanup
+                            .map_err(|e| e.to_string())?
+                            .unmount()
+                            .map_err(|e| e.to_string())?;
+                        let (_, _, returned) = finalized.into_parts();
+                        println!("SHELL_STATUS_BEFORE_HELD_CLEANUP_PASS");
+                        returned
+                    } else {
+                        let failure = step
+                            .execute(budget, "5s".parse()?, paths.domains())
+                            .unwrap_err();
+                        assert!(
+                            matches!(failure.outcome(), conglobate::step::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status)) if status.success())
+                        );
+                        assert!(failure.cleanup_error().is_some());
+                        let rejected = failure.retry_cleanup();
+                        assert!(rejected.cleanup_error().is_some());
+                        let (_, returned) = rejected
+                            .into_rejected_storage()
+                            .map_err(|e| e.to_string())?;
+                        println!("MISSING_CLEANUP_RECEIPT_REJECTS_SHELL_SUCCESS_PASS");
+                        returned
+                    };
+                    fs::remove_dir("/work/runtime-parent/receiver-view")?;
+                    returned
                 } else if matches!(point, FailurePoint::BusyExecution) {
                     fs::create_dir("/work/runtime-parent/receiver-view")?;
                     command.arg(budget.cutoff()?.to_argument());
@@ -521,6 +620,8 @@ impl SandboxFailures {
                 FailurePoint::Join => "SANDBOX_JOIN_FAILURE_ROLLBACK_PASS",
                 FailurePoint::AttachedExit => "SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS",
                 FailurePoint::BusyExecution => "SANDBOX_BUSY_EXECUTION_ROLLBACK_PASS",
+                FailurePoint::HeldCleanup => "SANDBOX_HELD_CLEANUP_ROLLBACK_PASS",
+                FailurePoint::MissingCleanup => "SANDBOX_MISSING_CLEANUP_ROLLBACK_PASS",
                 FailurePoint::Gate => "SANDBOX_GATE_FAILURE_ROLLBACK_PASS",
                 FailurePoint::BlockedIo
                 | FailurePoint::SupervisorDeath

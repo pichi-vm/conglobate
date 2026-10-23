@@ -5080,3 +5080,22 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - M4-T1 implemented but remains open pending composed delayed-descendant/cleanup,
   helper-death/missing-ack, timeout and resolver failure regressions. M4 stays
   0/3; all later milestone and qualification gates remain outstanding.
+
+### M4-T1 held-cleanup and missing-receipt VM regressions
+
+- Previous turn progressed with integrated timing correction 149edbc. Added
+  trusted helper completion modes and two maintained VM cases; no production
+  changes or relaxed descriptor/acceptance APIs.
+- held-cleanup-v1 passes: status is observed while the helper's mount remains
+  behind an explicit datagram gate, original execution deadline then expires,
+  and released cleanup/finalization succeeds under teardown ownership. Timer
+  expiry is deliberately tested; no readiness synchronization uses a sleep.
+- missing-cleanup-v1 passes: helper reports success then exits without cleanup
+  receipt; actual Step::execute rejects. Retry preserves diagnostics and only
+  rejected storage is recoverable. Both assert resource and child cleanup,
+  independent zero status and VM poweroff. Strict fixture Clippy passes.
+- Exact executed production/fixture sources match. Evidence under the named
+  preservation/m7-review directories; large assets remain externally unarchived.
+  These simulate shell status in a trusted helper, not actual image-command or
+  blocked-descendant behavior. Remaining M4-T1 cleanup-timeout, actual descendant
+  and resolver-failure coverage stays open. M4 remains 0/3; full goal unchanged.

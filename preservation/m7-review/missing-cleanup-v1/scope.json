@@ -1,0 +1,13 @@
+{
+  "baseline": "149edbc",
+  "production_changed": false,
+  "passed": true,
+  "executed_sources_match": true,
+  "coverage": "primary success plus absent receiver cleanup acknowledgment rejects Step::execute; retry only recovers rejected storage and retains diagnostics",
+  "limitations": [
+    "trusted helper reports simulated shell status; no actual image command in these cases",
+    "ordinary native amd64 VM only",
+    "does not establish actual blocked-descendant behavior or receiver cleanup timeout",
+    "large artifacts not durably archived"
+  ]
+}

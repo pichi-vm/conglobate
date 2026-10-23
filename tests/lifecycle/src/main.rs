@@ -30,12 +30,33 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "sandbox-held-cleanup" => {
+                sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::HeldCleanup)
+            }
+            [mode] if mode == "sandbox-missing-cleanup" => sandbox_failures::SandboxFailures::run(
+                sandbox_failures::FailurePoint::MissingCleanup,
+            ),
+            [mode, cutoff] if mode == "sandbox-held-helper" => {
+                sandbox_failures::SandboxFailures::attached_helper(
+                    cutoff,
+                    sandbox_failures::HelperCompletion::Held,
+                )
+            }
+            [mode, cutoff] if mode == "sandbox-missing-cleanup-helper" => {
+                sandbox_failures::SandboxFailures::attached_helper(
+                    cutoff,
+                    sandbox_failures::HelperCompletion::Missing,
+                )
+            }
             [mode] if mode == "clone-filter" => clone_filter::CloneFilter::run(),
             [mode] if mode == "sandbox-busy-execution" => sandbox_failures::SandboxFailures::run(
                 sandbox_failures::FailurePoint::BusyExecution,
             ),
             [mode, cutoff] if mode == "sandbox-success-helper" => {
-                sandbox_failures::SandboxFailures::attached_helper(cutoff, true)
+                sandbox_failures::SandboxFailures::attached_helper(
+                    cutoff,
+                    sandbox_failures::HelperCompletion::Normal,
+                )
             }
             [mode] if mode == "chain-storage" => chain_storage::ChainStorage::run(),
             [mode] if mode == "cache-storage" => cache_storage::CacheStorage::run(),
@@ -71,7 +92,10 @@ impl Lifecycle {
                 }
             }
             [mode, cutoff] if mode == "sandbox-attached-helper" => {
-                sandbox_failures::SandboxFailures::attached_helper(cutoff, false)
+                sandbox_failures::SandboxFailures::attached_helper(
+                    cutoff,
+                    sandbox_failures::HelperCompletion::None,
+                )
             }
             [mode] if mode == "sandbox-launch-failure" => {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Launch)

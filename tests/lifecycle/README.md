@@ -167,3 +167,15 @@ namespace flags must succeed before filtering and return EPERM afterward. The
 runner checks every case plus status and poweroff. This is filter-only amd64
 coverage, not command capability-drop composition or Arm qualification. The
 legacy CLONE_NEWTIME bit overlaps the exit-signal byte and is not covered.
+
+`--case sandbox-held-cleanup` uses a trusted attached helper to report shell
+success while its view remains mounted behind a datagram gate. The supervisor
+observes success, deliberately waits for the original command deadline to expire,
+then releases cleanup and requires clean teardown/finalization. The timer wait
+is the assertion target; readiness is synchronized by the status and datagram
+protocol, never by sleeping. This is a lifecycle test with simulated shell status.
+
+`--case sandbox-missing-cleanup` has the helper report shell success and exit
+without sending a cleanup acknowledgment. Production `Step::execute` must return
+failure; cleanup retry retains diagnostics and recovers only rejected storage.
+Both cases check all resources and child processes are released before poweroff.
