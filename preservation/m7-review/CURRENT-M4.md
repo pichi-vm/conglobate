@@ -30,11 +30,11 @@ No full new adherence pass has been awarded.
    privileged unshare control. sched_debug-present/arm64 coverage remains absent.
    splice/tee/vmsplice compatibility and trusted-formatter scope remain explicit
    findings, not demonstrated breakouts or silently changed policy.
-6. **Review completeness:** historical-actions-current.json now indexes all 111
-   original IDs exactly once. 65 added entries retain historical dispositions but
-   explicitly lack current-source revalidation. Existing updated entries retain
-   their source/evidence status. Reconcile changed scopes; do not infer closure
-   from historical reject/fixed labels. Then freeze and run three full reviews.
+6. **Review completeness:** all 111 original IDs now have current dispositions.
+   Historical evidence is preserved; current dispositions include partial coverage
+   and outstanding work, so this does not mean all findings are resolved. Audit
+   those open dispositions, settle the mapping contract, then freeze the source
+   and perform three complete reviews. See final-historical-reconciliation/.
 7. **Preservation and dependent milestones:** all local new evidence remains
    recoverable in current paths/history, but local asset hashes are not durable
    remote archives. Retire nothing until M8 accounting succeeds. M5/M6 gates,

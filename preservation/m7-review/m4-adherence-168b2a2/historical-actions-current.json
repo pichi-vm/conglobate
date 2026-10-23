@@ -278,8 +278,8 @@
       "evidence": "Same argc==0 refutation; I withdraw 'accept as defensive' \u2014 an unreachable branch is not a demonstrated defect",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "duplicate; current conditional disposition retained",
+      "current_evidence": "Same argc-zero claim as unsafe-ffi-001. Current slice unchanged; qualified-environment rejection relies on retained kernel behavior evidence, not a proof that arbitrary Vec input is nonempty. See final-historical-reconciliation/REVIEW.md."
     },
     {
       "id": "errors-api-002",
@@ -476,8 +476,8 @@
       "evidence": "devmap format/sync.rs uses io::copy (8 KiB reads > 4096); tree writer seeks before each block so BufWriter would flush anyway",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Exact pinned devmap format/sync.rs uses io::copy, and format/tree/sync.rs seeks before each emitted tree block. A generic BufWriter does not coalesce across those seeks. No measured speedup supports changing buffering; previous fixed read-size assertion is not needed for this disposition. See final-historical-reconciliation/REVIEW.md."
     },
     {
       "id": "performance-004",
@@ -485,8 +485,8 @@
       "evidence": "Per-component resolve is the deliberate RESOLVE_BENEATH|NO_SYMLINKS confinement with a 40-link limit",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Repeated destination resolution is real but enforces image-root symlinks, O_PATH observations and confined opens with a 40-link limit. Parent-descriptor caching is a possible optimization, not a demonstrated defect; changing this security-sensitive walk without a measured need is not justified. See final-historical-reconciliation/REVIEW.md."
     },
     {
       "id": "performance-005",
@@ -521,8 +521,8 @@
       "evidence": "Stderr is not line-buffered; LineWriter batches to the last newline per chunk",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "The claim that both stdout/stderr are unconditionally line-buffered is false: official Rust stderr documentation states it is unbuffered. Current relay uses io::copy with per-write stream handles, avoiding a global lock across child reads. No per-newline syscall benchmark supports the proposed replacement; no throughput-optimality claim made. See final-historical-reconciliation/REVIEW.md."
     },
     {
       "id": "performance-009",
@@ -530,8 +530,8 @@
       "evidence": "policy() runs once per COPY directive, not per file",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Two passwd reads for named owner are real, but policy is computed once before copying entries. It is not per-file work. Retain simple field selection absent a measured cost; this is a tradeoff disposition, not denial that duplicate reading exists. See final-historical-reconciliation/REVIEW.md."
     },
     {
       "id": "performance-010",
@@ -701,8 +701,8 @@
       "evidence": "Four-line guard whose payload is the distinct operator message; setup.rs variant reads &self",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Short checks retain domain-specific messages; SetupBudget owns its deadline while teardown/runtime consume supplied cutoffs. A universal static utility adds cross-module coupling without changing deadline ownership. Keep the meaningful budget owners and small local guards. See final-historical-reconciliation/REVIEW.md."
     },
     {
       "id": "simplification-011",
@@ -935,8 +935,8 @@
       "evidence": "Forward NFA over a reachability bitset, O(tokens x len); catastrophic backtracking impossible",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "bounded differential coverage added",
+      "current_evidence": "Added 115940 comparisons for nonempty 1\u20134 token patterns over a/b/*/? against 0\u20134 rune names containing a/b, Unicode \u00e9 and invalid byte FF. Reference recursively enumerates star splits, independently of production forward NFA. Existing class/escape/path tests remain. Not a full grammar property proof or benchmark, and no catastrophic-backtracking claim is inferred from tests. See final-historical-reconciliation/REVIEW.md."
     },
     {
       "id": "tests-008",
@@ -971,8 +971,8 @@
       "evidence": "README.md:39 documents the writable /dev/shm tmpfs requirement; fallback correctly refused",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "README explicitly requires writable /dev/shm tmpfs for rootless materialization tests and distinguishes compiler TMPDIR. Falling back to disk or silently skipping would not test the required backing contract. See final-historical-reconciliation/REVIEW.md."
     },
     {
       "id": "unsafe-ffi-001",
@@ -980,8 +980,8 @@
       "evidence": "execve probe on this kernel yielded argc=1 with synthesized empty argv[0]; unreachable",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated conditional rejection",
+      "current_evidence": "main still slices args after argv[0]. The retained kernel-source/probe evidence establishes synthesized argv[0] in the qualified environment, not all historical Linux kernels. No command-side path controls supervisor startup. Current-environment panic trigger not demonstrated; older-kernel portability is not claimed. See final-historical-reconciliation/REVIEW.md."
     },
     {
       "id": "unsafe-ffi-002",

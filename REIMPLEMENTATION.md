@@ -6120,3 +6120,7 @@ Fresh maintained native amd64 disposable-VM run rejected command admission with 
 ### Reconsidered loop/supervision coverage after c5a6b4e
 
 Corrected two overbroad historical rejections: private LoopDevice invalid-size validation is rootlessly testable before control access; supervised-launch timeout includes startup unlike paired negative waits. Added both-access-mode invalid-boundary coverage and widened only launch timeout to one second. Targeted loop test, seven supervision tests and strict Clippy pass. Reconciled three duplicate findings. Evidence: `preservation/m7-review/loop-supervision-current/`. No production behavior change or full milestone pass. Previous turn refreshed VM failure evidence; this turn adds maintained coverage and corrects review reasoning.
+
+### Remaining historical dispositions after 2bf7372
+
+Reconciled the final nine historical-only entries; all 111 IDs now have explicit current dispositions, not all resolved. Added 115940 bounded independent glob comparisons including Unicode and invalid UTF-8, preserving existing tests. Three pattern tests and strict Clippy pass. Evidence in `preservation/m7-review/final-historical-reconciliation/`. No production changes or full M4 pass. UID/GID question re-presented asynchronously; no answer inferred. Previous turn strengthened lifecycle tests; this turn completes current-source reconciliation and updates the M4 queue.

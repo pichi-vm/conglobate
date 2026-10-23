@@ -1,0 +1,11 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.94s
+     Running tests/copy_patterns.rs (target/m7-stable/debug/deps/copy_patterns-e544b71978b34297)
+
+running 3 tests
+test linux_filepath_patterns_cover_unicode_classes_and_literal_braces ... ok
+test malformed_patterns_and_parent_traversal_fail_during_recipe_parsing ... ok
+test short_globs_agree_with_independent_rune_sequence_definition ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
