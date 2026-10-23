@@ -1,8 +1,11 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{Active, Created, Mapping, MappingFailure};
+use super::{
+    Active, Created, Mapping, MappingFailure,
+    loop_device::{LoopDevice, ReadOnly},
+};
 use crate::cache::PreparedScute;
-use std::{fs::File, io, num::NonZeroU64};
+use std::{io, num::NonZeroU64};
 
 /// Read-time verified data, with its loop devices and backing retained. No raw
 /// control or writable backing handle escapes. Drop requests deferred mapping
@@ -32,8 +35,8 @@ pub struct VerityMapping<'s, 'w> {
 
 #[derive(Debug)]
 struct Inputs<'s, 'w> {
-    hash: ReadOnlyLoop,
-    data: ReadOnlyLoop,
+    hash: LoopDevice<ReadOnly>,
+    data: LoopDevice<ReadOnly>,
     prepared: PreparedScute<'s, 'w>,
 }
 
@@ -43,7 +46,7 @@ struct Inputs<'s, 'w> {
 enum Cleanup<'s, 'w> {
     Mapping(MappingFailure, Inputs<'s, 'w>),
     Inputs(Inputs<'s, 'w>),
-    Data(ReadOnlyLoop, PreparedScute<'s, 'w>),
+    Data(LoopDevice<ReadOnly>, PreparedScute<'s, 'w>),
     Prepared(PreparedScute<'s, 'w>),
 }
 
@@ -72,7 +75,7 @@ impl VerityFailure<'_, '_> {
 
 impl<'s, 'w> PreparedScute<'s, 'w> {
     pub fn activate(self) -> Result<VerityMapping<'s, 'w>, VerityFailure<'s, 'w>> {
-        let data = match ReadOnlyLoop::attach(self.files().0) {
+        let data = match LoopDevice::<ReadOnly>::attach(self.files().0) {
             Ok(data) => data,
             Err(source) => {
                 return Err(VerityFailure {
@@ -81,7 +84,7 @@ impl<'s, 'w> PreparedScute<'s, 'w> {
                 });
             }
         };
-        let hash = match ReadOnlyLoop::attach(self.files().1) {
+        let hash = match LoopDevice::<ReadOnly>::attach(self.files().1) {
             Ok(hash) => hash,
             Err(source) => {
                 return Err(VerityFailure {
@@ -199,52 +202,5 @@ impl<'s, 'w> Cleanup<'s, 'w> {
                 Ok(())
             }
         }
-    }
-}
-
-/// Storage-private: never expose the underlying descriptor's control authority.
-/// Single configuration attempt; autoclear keeps backing alive for kernel users.
-#[derive(Debug)]
-struct ReadOnlyLoop(lodown::Device);
-impl ReadOnlyLoop {
-    fn attach(file: &File) -> io::Result<Self> {
-        let length = file.metadata()?.len();
-        if length == 0 || !length.is_multiple_of(4096) {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "invalid read-only loop extent",
-            ));
-        }
-        let device = lodown::Device::open(lodown::Control::open()?.get_free()?)?;
-        device.configure(
-            file,
-            4096,
-            lodown::Configurable {
-                read_only: true,
-                writable: lodown::Writable {
-                    autoclear: true,
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-        )?;
-        Ok(Self(device))
-    }
-    fn id(&self) -> io::Result<devmap_linux::DevId> {
-        self.0.as_ref().metadata()?.try_into()
-    }
-    fn close(self) -> Result<(), (io::Error, Self)> {
-        let detached = (|| -> io::Result<()> {
-            lodown::Device::from(self.0.as_ref().try_clone()?).clear()?;
-            match self.0.status() {
-                Err(error) if error.raw_os_error() == Some(6) => Ok(()),
-                Err(error) => Err(error),
-                Ok(_) => Err(io::Error::new(
-                    io::ErrorKind::ResourceBusy,
-                    "read-only loop detach remains deferred",
-                )),
-            }
-        })();
-        detached.map_err(|source| (source, self))
     }
 }

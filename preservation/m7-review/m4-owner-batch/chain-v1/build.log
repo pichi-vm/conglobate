@@ -1,0 +1,15 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+warning: unreachable `pub` item
+  --> /home/nathaniel/Projects/pichi-vm/conglobate/src/storage/loop_device.rs:10:5
+   |
+10 |     pub trait Sealed {}
+   |     ---^^^^^^^^^^^^^
+   |     |
+   |     help: consider restricting its visibility: `pub(crate)`
+   |
+   = help: or consider exporting it for use by other crates
+   = note: requested on the command line with `-W unreachable-pub`
+
+warning: `conglobate` (lib) generated 1 warning (run `cargo fix --lib -p conglobate` to apply 1 suggestion)
+   Compiling conglobate-lifecycle-tests v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/tests/lifecycle)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.69s

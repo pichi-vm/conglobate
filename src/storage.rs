@@ -12,6 +12,7 @@ mod volume;
 pub use volume::{
     Mounted, Unmounted, Volume, VolumeMountFailure, VolumeState, VolumeUnmountFailure, VolumeView,
 };
+mod loop_device;
 mod loopback;
 pub use chain::{ReadOnlyChain, ReadOnlyChainFailure};
 mod verity;

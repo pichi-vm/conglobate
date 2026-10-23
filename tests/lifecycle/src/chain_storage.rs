@@ -23,9 +23,34 @@ impl ChainStorage {
             .collect()
     }
 
+    fn loop_detachment(
+        workspace: &conglobate::storage::Workspace,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut backing = workspace.scratch()?;
+        backing.set_len(4096)?;
+        let mut attached = backing.attach().map_err(|failure| failure.to_string())?;
+        let number = attached.number()?;
+        attached.write_all(&[0x5a; 4096])?;
+        let holder = fs::File::open(format!("/dev/loop{number}"))?;
+        let failure = attached.detach().unwrap_err();
+        assert_eq!(
+            failure.source_error().kind(),
+            std::io::ErrorKind::ResourceBusy
+        );
+        drop(holder);
+        let mut backing = failure.retry().map_err(|failure| failure.to_string())?;
+        backing.rewind()?;
+        let mut bytes = [0; 4096];
+        backing.read_exact(&mut bytes)?;
+        assert_eq!(bytes, [0x5a; 4096]);
+        println!("LOOP_DEFERRED_DETACH_RETRY_AND_WRITEBACK_PASS");
+        Ok(())
+    }
+
     pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
         let baseline = Self::mappings()?;
         let workspace = conglobate::storage::Workspace::create()?;
+        Self::loop_detachment(&workspace)?;
         let cache = conglobate::cache::Cache::open(Path::new("/cache-fixture"))?;
         for name in ["chain", "invalid-header"] {
             let pin = fs::read_to_string(format!("/cache-fixture/{name}.pin"))?;

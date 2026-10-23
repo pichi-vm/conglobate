@@ -5938,3 +5938,15 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   Network ingress/IPv6 and broad platform qualification remain outstanding. This
   batch does not independently enumerate every retained kernel resource or prove
   external NAT. Next work is the consolidated remaining M4 review/validation gate.
+
+### Shared loop-device owner batch
+
+- Resolved simplification-009 with private LoopDevice<ReadOnly/Writable>, sealed
+  access markers and consuming close. Writable mode retains writeback-before-
+  detach; deferred/error paths preserve owners and backing for retry.
+- 141 library tests and strict all-target Clippy pass. Native amd64 chain/cache
+  VM tests pass, including live-holder deferred detach/retry/writeback and
+  verified cache corruption rejection. Initial Clippy failure is preserved.
+- Evidence and source correspondence: m4-owner-batch/REVIEW.md. This targeted
+  finding closure is not a complete adherence pass; M4 remains 0/3. No platform
+  qualification or durable remote archive claim is added.

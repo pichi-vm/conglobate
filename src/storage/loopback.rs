@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::Scratch;
+use super::{
+    Scratch,
+    loop_device::{LoopDevice, Writable},
+};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 
 /// Owns both the kernel loop attachment and its writable RAM backing. No backing
@@ -8,7 +11,7 @@ use std::io::{self, Read, Seek, SeekFrom, Write};
 /// autoclear retains the kernel backing reference until remaining holders close.
 #[derive(Debug)]
 pub struct LoopAttachment<'workspace> {
-    device: lodown::Device,
+    device: LoopDevice<Writable>,
     backing: Scratch<'workspace>,
 }
 #[derive(Debug, thiserror::Error)]
@@ -48,30 +51,7 @@ impl<'w> Scratch<'w> {
     /// One attempt. Another claimant can win after get_free; kernel EBUSY is
     /// reported with the backing intact. No blocking advisory lock/retry loop.
     pub fn attach(self) -> Result<LoopAttachment<'w>, LoopAttachFailure<'w>> {
-        let attempt = (|| -> io::Result<lodown::Device> {
-            let length = self.file.metadata()?.len();
-            if length == 0 || !length.is_multiple_of(4096) {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "loop backing must contain a positive number of 4096-byte blocks",
-                ));
-            }
-            let control = lodown::Control::open()?;
-            let device = lodown::Device::open(control.get_free()?)?;
-            device.configure(
-                &self.file,
-                4096,
-                lodown::Configurable {
-                    writable: lodown::Writable {
-                        autoclear: true,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            )?;
-            Ok(device)
-        })();
-        match attempt {
+        match LoopDevice::<Writable>::attach(&self.file) {
             Ok(device) => Ok(LoopAttachment {
                 device,
                 backing: self,
@@ -85,36 +65,21 @@ impl<'w> Scratch<'w> {
 }
 impl<'w> LoopAttachment<'w> {
     pub fn id(&self) -> io::Result<devmap_linux::DevId> {
-        self.device.as_ref().metadata()?.try_into()
+        self.device.id()
     }
     /// Diagnostic node number, not a lifetime lease or command authority.
     pub fn number(&self) -> io::Result<u32> {
-        Ok(self.device.status()?.number)
+        self.device.number()
     }
     /// Flush and confirm unbound state before returning writable file authority.
     /// clear() alone can mean deferred detachment, so it is not sufficient.
     pub fn detach(self) -> Result<Scratch<'w>, LoopDetachFailure<'w>> {
-        let detached = (|| -> io::Result<()> {
-            self.device.as_ref().sync_all()?;
-            let duplicate = self.device.as_ref().try_clone()?;
-            lodown::Device::from(duplicate).clear()?;
-            match self.device.status() {
-                Err(error) if error.raw_os_error() == Some(6) => Ok(()), // ENXIO: unbound
-                Err(error) => Err(error),
-                Ok(_) => Err(io::Error::new(
-                    io::ErrorKind::ResourceBusy,
-                    "loop detach remains deferred by a live holder",
-                )),
-            }
-        })();
-        match detached {
-            Ok(()) => {
-                drop(self.device);
-                Ok(self.backing)
-            }
-            Err(source) => Err(LoopDetachFailure {
+        let Self { device, backing } = self;
+        match device.close() {
+            Ok(()) => Ok(backing),
+            Err((source, device)) => Err(LoopDetachFailure {
                 source,
-                attachment: self,
+                attachment: Self { device, backing },
             }),
         }
     }
@@ -129,7 +94,7 @@ impl Write for LoopAttachment<'_> {
         self.device.write(bytes)
     }
     fn flush(&mut self) -> io::Result<()> {
-        self.device.as_ref().sync_all()
+        self.device.flush()
     }
 }
 impl Seek for LoopAttachment<'_> {

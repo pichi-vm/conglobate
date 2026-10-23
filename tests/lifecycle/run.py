@@ -189,7 +189,7 @@ exec sleep infinity
             markers = ['SUCCESSFUL_COMMAND_CLEANUP_FAILURE_STAYS_REJECTED_PASS',
                        'SANDBOX_BUSY_EXECUTION_ROLLBACK_PASS']
         elif self.args.case == 'chain-storage':
-            markers = ['INVALID_SECOND_SCUTE_CLEANUP_PASS',
+            markers = ['LOOP_DEFERRED_DETACH_RETRY_AND_WRITEBACK_PASS', 'INVALID_SECOND_SCUTE_CLEANUP_PASS',
                        'WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS',
                        'CHAIN_CLEANUP_DIAGNOSTICS_RETAINED_PASS', 'OWNED_TWO_SCUTE_CHAIN_PASS']
         elif self.args.case == 'cache-storage':

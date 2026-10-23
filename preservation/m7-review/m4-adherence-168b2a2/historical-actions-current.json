@@ -287,8 +287,8 @@
       "evidence": "LoopAttachment/ReadOnlyLoop duplicate attach, id() and clear+ENXIO detach; loopback syncs first",
       "remaining_action": "One private loop-device owning type, keeping the sync parameterised",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "resolved",
+      "current_evidence": "Storage-private LoopDevice<ReadOnly/Writable> shares configure, identity and confirmed detach. Writable mode syncs before clear; failures retain ownership; read-only mode exposes no IO traits. 141 library tests and strict all-target Clippy pass. Native amd64 disposable-VM chain/cache checks pass, including deferred detach/retry/writeback and verity corruption rejection. See preservation/m7-review/m4-owner-batch/REVIEW.md for exact scope and source differences."
     },
     {
       "id": "simplification-011",

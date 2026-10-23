@@ -1,0 +1,13 @@
+{
+  "checks": {
+    "LOOP_DEFERRED_DETACH_RETRY_AND_WRITEBACK_PASS": true,
+    "INVALID_SECOND_SCUTE_CLEANUP_PASS": true,
+    "WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS": true,
+    "CHAIN_CLEANUP_DIAGNOSTICS_RETAINED_PASS": true,
+    "OWNED_TWO_SCUTE_CHAIN_PASS": true,
+    "exit_zero": true,
+    "vm_powered_off": true
+  },
+  "passed": true,
+  "full_lifecycle_qualified": false
+}
