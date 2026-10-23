@@ -1,0 +1,1 @@
+CommandPreparation aggregate now owns bound policy, volume, reaper and domain across helper launch. Normal VM suite passes including spawn/identity-exchange failure, policy cleanup failure/retry and busy unmount retry. Compile-fail documentation added after build; runtime source unchanged.

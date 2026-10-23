@@ -1,0 +1,1 @@
+Supervisor-death regression passes with CommandPreparation aggregate on ordinary launches. Independent VM controller verifies live domain and retained policy/filesystem identity before shutdown. Full M4 remains unqualified.

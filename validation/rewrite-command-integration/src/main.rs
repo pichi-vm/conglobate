@@ -40,6 +40,13 @@ impl Integration {
             invocation.execute(&HelperProgram::current()?);
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "reject-registration") {
+            let channel = Supervision::from_stdin()?
+                .exchange_until(Instant::now() + Duration::from_secs(5))?;
+            // Complete identity exchange, then deliberately reject registration.
+            drop(channel);
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "gated-namespaces") {
             let script = args.get(2).ok_or("script required")?;
             let cutoff = conglobate::step::SetupCutoff::from_argument(
@@ -242,6 +249,9 @@ impl Integration {
                         .success()
                 );
                 let mode = match args[1].as_str() {
+                    "volume-supervisor-registration-failure" => "registration-failure",
+                    "volume-supervisor-launch-failure" => "launch-failure",
+                    "volume-supervisor-exchange-failure" => "exchange-failure",
                     "volume-supervisor-timeout" => "timeout",
                     "volume-supervisor-failure" => "shell-failure",
                     "volume-supervisor-pre-admission" => "pre-admission",
@@ -278,6 +288,74 @@ impl Integration {
                 let policy = PolicyFixture::prepare(&lease, user, pin.expect("init volume pin"))?;
                 let parent = Path::new("/work/cgroups");
                 let domain = RecordedDomain::create(&lease, parent)?;
+                if matches!(
+                    mode,
+                    "launch-failure" | "exchange-failure" | "registration-failure"
+                ) {
+                    let command = if mode == "launch-failure" {
+                        Command::new("/nonexistent-trusted-helper")
+                    } else if mode == "registration-failure" {
+                        let mut command = Command::new(std::env::current_exe()?);
+                        command.arg("reject-registration").env_clear();
+                        command
+                    } else {
+                        let mut command = Command::new("/bin/sh");
+                        command.args(["-c", "exit 0"]).env_clear();
+                        command
+                    };
+                    let preparation =
+                        conglobate::step::CommandPreparation::new(policy, volume, domain, reaper);
+                    let failure = preparation
+                        .launch(command, setup_budget.deadline(), parent)
+                        .unwrap_err();
+                    let original_kind = failure.diagnostics().operation().kind();
+                    if mode == "launch-failure" {
+                        assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(2));
+                    }
+                    let pins = fs::read_dir("/work/pins")?.collect::<Result<Vec<_>, _>>()?;
+                    assert_eq!(pins.len(), 1);
+                    let blocker = pins[0].path().join("cleanup-blocker");
+                    fs::create_dir(&blocker)?;
+                    let holder = fs::File::open(point)?;
+                    let failure = failure.rollback().unwrap_err();
+                    assert_eq!(failure.diagnostics().operation().kind(), original_kind);
+                    assert_eq!(
+                        failure.diagnostics().latest().kind(),
+                        std::io::ErrorKind::DirectoryNotEmpty
+                    );
+                    assert!(
+                        fs::read_to_string("/proc/thread-self/children")?
+                            .trim()
+                            .is_empty()
+                    );
+                    assert_eq!(fs::read_dir(recovery)?.count(), 2);
+                    fs::remove_dir(&blocker)?;
+                    let failure = failure.rollback().unwrap_err();
+                    assert_eq!(
+                        failure.diagnostics().latest().kind(),
+                        std::io::ErrorKind::ResourceBusy
+                    );
+                    assert_eq!(failure.diagnostics().operation().kind(), original_kind);
+                    assert_eq!(fs::read_dir(recovery)?.count(), 0);
+                    drop(holder);
+                    let (diagnostics, volume) =
+                        failure.rollback().map_err(|e| e.to_string())?.into_parts();
+                    assert_eq!(diagnostics.operation().kind(), original_kind);
+                    assert_eq!(diagnostics.cleanup().len(), 2);
+                    assert!(points()?.is_empty());
+                    volume
+                        .into_snapshot()
+                        .close()
+                        .map_err(|e| e.to_string())?
+                        .detach()
+                        .map_err(|e| e.to_string())?;
+                    origin.close()?;
+                    drop(lease);
+                    fs::remove_dir(recovery)?;
+                    fs::remove_file(node)?;
+                    println!("PREPARATION_{}_ROLLBACK_PASS", mode.to_uppercase());
+                    return Ok(());
+                }
                 let command = if matches!(
                     mode,
                     "setup-detached-failure" | "setup-attached-exit" | "descriptor-rejection"
@@ -303,10 +381,10 @@ impl Integration {
                     )?
                 };
                 let deadline = setup_budget.deadline();
-                let helper = domain
-                    .launch(command, deadline)
-                    .map_err(|e| e.to_string())?;
-                let step = conglobate::step::Step::new(policy, helper, reaper).with_volume(volume);
+                let step =
+                    conglobate::step::CommandPreparation::new(policy, volume, domain, reaper)
+                        .launch(command, deadline, parent)
+                        .map_err(|e| e.to_string())?;
                 step.send_volume_until(deadline)?;
                 let step = match mode {
                     "pre-admission" => {

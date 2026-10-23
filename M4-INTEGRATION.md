@@ -147,3 +147,33 @@ No M4 adherence pass is claimed.
 - v131 supervisor-death suite passes through the production dispatcher; the
   independent controller verifies retained live-domain policy/storage and
   shuts down the VM. Source, host checks and artifact hashes are archived.
+
+### Aggregate ownership across helper launch (v132 onward)
+
+CommandPreparation now consumes the bound disabled policy, assigned mounted
+volume, recorded domain and installed child reaper before launching a helper.
+Success transfers them directly into Step<Ready>. Startup failure produces a
+cleanup-only PreparationFailure, retaining any unregistered or identified child.
+Rollback terminates/reaps that child, cancels its domain, drains descendants,
+removes the record, removes the disabled policy, releases identity pins and
+flushes/unmounts storage. A single fixed thirty-second cleanup budget survives
+all retries. Policy and storage are deliberately retained on abandonment before
+quiescence, under the dedicated-VM disposal contract.
+
+The rollback result retains the original launch error and ordered cleanup
+errors. It is explicitly a failed preparation result, not a successful command
+receipt. Volume cleanup errors retain their concrete shared error payloads.
+v132 tests missing executable and identity-exchange rejection, each combined
+with a blocked policy-directory cleanup followed by a busy unmount; both
+failures recover without losing the original error or remaining resources.
+
+This addresses the launch boundary in I4. It does not yet aggregate namespace
+creation/pinning, mount construction, policy load/pin/bind, or domain creation.
+Those acquisitions still precede CommandPreparation in the fixture. Transfer/
+readiness failures after launch still require caller-driven Step teardown.
+I4 therefore remains open, as do production orchestration and receipt gating.
+
+- v133 adds registration-rejection rollback coverage and passes the normal
+  suite. v134 passes supervisor-death regression through the aggregate launch
+  owner. All three startup failure variants retain their primary error across
+  policy and unmount cleanup retries. Evidence/source hashes are verified.

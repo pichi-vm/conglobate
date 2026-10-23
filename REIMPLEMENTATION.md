@@ -2450,3 +2450,28 @@ rules rather than silently shrinking acceptance criteria.
 - v131 supervisor-death suite passes through the production dispatcher; the
   independent controller verifies retained live-domain policy/storage and
   shuts down the VM. Source, host checks and artifact hashes are archived.
+
+### M4 aggregate helper-launch rollback (v132 onward)
+
+- CommandPreparation consumes bound policy/identities, mounted volume, recorded
+  domain and child reaper before helper launch. On success it transfers them
+  into Step<Ready>; on failure its cleanup-only owner retains every acquired
+  resource through cancellation, child/descendant reaping, record/policy/pin
+  removal and storage finalization.
+- Rollback has a fixed thirty-second deadline, including retries. Original
+  launch error and cleanup attempts remain separate; a rolled-back setup failure
+  cannot become successful command evidence. Compile-fail tests reject live
+  storage extraction and caller-supplied replacement cleanup deadlines.
+- v132 normal VM suite passes through this launch owner, including executable
+  absence and identity-exchange failure combined with policy cleanup and EBUSY
+  unmount failures/retries. Host tests and Clippy pass. The initial compile
+  failure is preserved separately; no validation history was removed.
+- Earlier acquisition (namespace, mounts, policy construction/binding, domain
+  creation) is still outside this owner. Full I4 integration, readiness error
+  cleanup, success receipts and three adherence reviews remain outstanding.
+  M4 stays at zero clean passes; M5–M8 are pending.
+
+- v133 adds registration-rejection rollback coverage and passes the normal
+  suite. v134 passes supervisor-death regression through the aggregate launch
+  owner. All three startup failure variants retain their primary error across
+  policy and unmount cleanup retries. Evidence/source hashes are verified.
