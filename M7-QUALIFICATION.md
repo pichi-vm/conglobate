@@ -8,7 +8,7 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
 
 | Requirement | Current state | Acceptance evidence still required |
 | --- | --- | --- |
-| Source-grounded critical review | M6 self-reviews complete; independent review pending | Review findings, source-grounded disposition, fixes and agreement on disputed findings |
+| Source-grounded critical review | Independent Claude review running; parent checks and provisional dispositions preserved in preservation/m7-review | Final review, source-grounded disposition, fixes and agreement on disputed findings |
 | Fedora build and boot | Sibling fedora repo and its .build directory exist; existing recipe uses mkosi | New conglobate recipe runs package transactions, generates boot firmware, emits an image that boots with its own SELinux policy |
 | Debian build and boot | No sibling Debian image repo discovered | Maintained conglobate recipe, package/firmware build and boot evidence |
 | Alpine build and boot | No sibling Alpine image repo discovered | Maintained conglobate recipe, package/firmware build and boot evidence |
@@ -16,7 +16,7 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
 | amd64 | Local x86_64 QEMU/KVM integration evidence exists | Representative distro qualification and complete repository checks |
 | arm64 | qemu-system-aarch64 installed | Native build/execution profile and boot coverage; executable availability proves no qualification |
 | Intel TDX, AMD SEV-SNP, Arm CCA | Hardware access has not been established | Separate evidence for each platform; missing access remains outstanding |
-| CI | Active .github absent; old workflow preserved | Maintained checks for new build dependencies and disposable-VM integration; green actual workflow results |
+| CI | Rootless workflow authored for Rust 1.94.0; not yet run on GitHub | Dependency gates, portable disposable-VM integration and green actual workflow results |
 | Final M7 adherence | Not started | Three complete consecutive clean passes after required work |
 
 ## Initial environment/source inspection
@@ -30,7 +30,11 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
 - The user's custom Claude Code review command is
   /home/nathaniel/.claude/commands/review.md. It requests parallel review and
   source-grounded critics. Its full instructions must be read before invocation;
-  no independent review has run in M7 yet. The separate rust-release-review skill
+  the M7 invocation, raw stream and parent evaluation are retained under
+  preservation/m7-review. The original launcher denied some shell checks through
+  its narrow allowlist; these are permission denials, not a broken shell or
+  successful checks. The follow-up launcher permits Bash while retaining the
+  explicit review constraints. The separate rust-release-review skill
   targets publishing and is not the selected workflow for this rewrite.
 - Sibling Fedora build.sh produces a reusable tool/base image with mkosi, corium
   and arma. It must not be counted as a conglobate-produced distro image. Its
@@ -39,6 +43,11 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
   restore that lane verbatim: all new privileged validation belongs inside
   disposable VMs. New CI must install the BPF build dependencies used by build.rs
   and supply a qualified VM kernel, not silently skip required runtime coverage.
+- Local stable-toolchain checks now include Rust/Cargo 1.94.0. The first strict
+  Clippy run found a redundant inventory-validation boolean expression; the
+  equivalent simplified expression passes strict Clippy. Both logs are retained.
+  The rootless workflow is only one part of the required CI coverage, and has
+  not yet produced a hosted result.
 
 ## Execution order
 

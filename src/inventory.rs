@@ -148,8 +148,7 @@ impl Document {
             }
         }
         let transform = &self.execution.transform;
-        if (transform.source == TransformSource::Authored
-            && (transform.default_skipped || !transform.target_present))
+        if (transform.source == TransformSource::Authored && transform.default_skipped)
             || (!transform.target_present && !transform.default_skipped)
         {
             return Err(InventoryError::invalid("invalid transform disposition"));

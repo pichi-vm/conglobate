@@ -1,0 +1,105 @@
+{
+  "base_commit": "9e908d3c82a18d81e45d98fdeaf99204b7d1b3d5",
+  "rustc": "rustc 1.94.0 (4a4ef493e 2026-03-02)",
+  "cargo": "cargo 1.94.0 (85eff7c80 2026-01-15)",
+  "environment": {
+    "CARGO_BUILD_JOBS": "2",
+    "TMPDIR": "/var/tmp/conglobate-rewrite-tmp",
+    "CARGO_TARGET_DIR": "target/m7-stable"
+  },
+  "production_change": "src/inventory.rs: remove redundant authored && !target_present term; equivalent truth table; applied before *-after checks and fmt.",
+  "inventory_source_sha256_after": "7c9addbe00964cef26dd2ef4aaf7060ad71c66c5ea15f48b36a2df2f3562e47e",
+  "checks": [
+    {
+      "argv": [
+        "cargo",
+        "+stable",
+        "test",
+        "--locked",
+        "--offline",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "log": "stable-rootless-tests.log",
+      "sha256": "1c03a7afdf03b50efa87838c894e6bda7bdf93226808fa31604fded335701cd9",
+      "passed_tests": 197
+    },
+    {
+      "argv": [
+        "cargo",
+        "+stable",
+        "test",
+        "--locked",
+        "--offline",
+        "--doc"
+      ],
+      "exit_code": 0,
+      "log": "stable-doctests.log",
+      "sha256": "8be5333b02830e7ad9a6cda152405be5d6cd6d8eaea2b31b3beba6cf6cbe5dff",
+      "passed_tests": 54
+    },
+    {
+      "argv": [
+        "cargo",
+        "+stable",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 101,
+      "log": "stable-clippy.log",
+      "sha256": "d92d732ca545ef591a35eab98c6f8cf95eeee0e3a6d57641c65c516e45d789ca",
+      "passed_tests": 0
+    },
+    {
+      "argv": [
+        "cargo",
+        "+stable",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "stable-clippy-after.log",
+      "sha256": "e229cb434312eca982a0abc5326a046913f0d6ffab21ef7c369e623b4bd80628",
+      "passed_tests": 0
+    },
+    {
+      "argv": [
+        "cargo",
+        "+stable",
+        "test",
+        "--locked",
+        "--offline",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "log": "stable-rootless-tests-after.log",
+      "sha256": "9566fbcbdd04b7a027e78fb35b4df3199588df0e906ee7581720733564484d43",
+      "passed_tests": 197
+    },
+    {
+      "argv": [
+        "cargo",
+        "+stable",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "stable-fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed_tests": 0
+    }
+  ],
+  "scope": "Rootless local checks only. No hosted CI, VM, distro boot, arm64 or confidential-hardware qualification."
+}

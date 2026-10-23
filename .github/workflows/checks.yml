@@ -1,0 +1,39 @@
+name: Rootless checks
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rootless-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_TERM_COLOR: always
+      RUSTUP_TOOLCHAIN: '1.94.0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Install build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y clang llvm build-essential pkg-config libelf-dev zlib1g-dev
+          rustup toolchain install 1.94.0 --profile minimal --component clippy --component rustfmt
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Check Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Run rootless tests
+        run: cargo test --locked --all-targets
+      - name: Run doctests
+        run: cargo test --locked --doc

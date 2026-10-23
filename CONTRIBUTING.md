@@ -2,8 +2,9 @@
 
 ## Commit messages
 
-Commits follow Conventional Commits and standard git formatting, enforced by
-gitlint (see `.gitlint`) in CI.
+Commits follow Conventional Commits and standard git formatting. The gitlint
+configuration is in `.gitlint`; restoring its CI gate is part of M7. The current
+rootless workflow checks Rust formatting, Clippy, tests and doctests.
 
 - Subject: `type(scope): summary` — lowercase, imperative, no trailing period,
   at most 50 characters. Types: `feat`, `fix`, `docs`, `style`, `refactor`,
