@@ -1,14 +1,18 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{Assigned, CommandPreparation, Phase, PolicyAssignment, PreparationFailure};
+use super::{
+    Assigned, BootstrapPreparation, BootstrapPreparationFailure, CommandPreparation, Phase,
+    PolicyAssignment, PreparationFailure, PreparationStorage, StoragePreparation,
+    StoragePreparationFailure,
+};
 use crate::{
-    anchor::{CreateFailure, FilesystemPinFailure, RecoveryDirectory},
+    anchor::{CreateFailure, RecoveryDirectory},
     execution::HelperProgram,
     isolation::{IdRange, Mapped, UserNamespace, UserNamespaceFailure},
     policy::PolicyInstallation,
     process::{ChildReaper, LaunchFailure},
     step::{Retained, SetupBudget, pins::PinCleanup},
-    storage::{Unmounted, Volume},
+    storage::{BootstrapVolumes, Mounted, Unmounted, Volume},
 };
 use std::{io, mem::ManuallyDrop, path::Path, process::Command};
 
@@ -75,6 +79,25 @@ impl<'l> CommandSandbox<'l> {
         reaper: ChildReaper,
         budget: &SetupBudget,
     ) -> Result<CommandPreparation<'l, 'n, 'o, 'w>, Box<PreparationFailure<'l, 'n, 'o, 'w>>> {
+        self.prepare_storage::<Volume<'n, 'o, 'w, Mounted>>(volume, reaper, budget)
+    }
+    pub fn prepare_bootstrap<'n, 'o, 'w>(
+        &self,
+        volumes: BootstrapVolumes<'n, 'o, 'w, Unmounted>,
+        reaper: ChildReaper,
+        budget: &SetupBudget,
+    ) -> Result<
+        BootstrapPreparation<'l, 'n, 'o, 'w>,
+        Box<BootstrapPreparationFailure<'l, 'n, 'o, 'w>>,
+    > {
+        self.prepare_storage::<BootstrapVolumes<'n, 'o, 'w, Mounted>>(volumes, reaper, budget)
+    }
+    fn prepare_storage<R: PreparationStorage>(
+        &self,
+        volume: R::Unmounted,
+        reaper: ChildReaper,
+        budget: &SetupBudget,
+    ) -> Result<StoragePreparation<'l, R>, Box<StoragePreparationFailure<'l, R>>> {
         let directories = &self.directories;
         let creator = match budget
             .cutoff()
@@ -82,7 +105,7 @@ impl<'l> CommandSandbox<'l> {
         {
             Ok(creator) => creator,
             Err(error) => {
-                return Err(PreparationFailure::early(
+                return Err(StoragePreparationFailure::early(
                     error,
                     Phase::EarlyDrain(reaper, volume),
                     directories.domains,
@@ -115,7 +138,7 @@ impl<'l> CommandSandbox<'l> {
                             (io::Error::other(failure), Phase::EarlyDrain(reaper, volume))
                         }
                     };
-                    return Err(PreparationFailure::early(
+                    return Err(StoragePreparationFailure::early(
                         source,
                         phase,
                         directories.domains,
@@ -124,7 +147,7 @@ impl<'l> CommandSandbox<'l> {
             };
         if let Err(error) = budget.check() {
             drop(namespace);
-            return Err(PreparationFailure::early(
+            return Err(StoragePreparationFailure::early(
                 error,
                 Phase::EarlyDrain(reaper, volume),
                 directories.domains,
@@ -133,14 +156,14 @@ impl<'l> CommandSandbox<'l> {
         let namespace = match namespace.pin(directories.recovery) {
             Ok(namespace) => namespace,
             Err(CreateFailure::Before(source)) => {
-                return Err(PreparationFailure::early(
+                return Err(StoragePreparationFailure::early(
                     source,
                     Phase::EarlyDrain(reaper, volume),
                     directories.domains,
                 ));
             }
             Err(CreateFailure::Mount { source, target }) => {
-                return Err(PreparationFailure::early(
+                return Err(StoragePreparationFailure::early(
                     source,
                     Phase::EarlyPins(PinCleanup::target(target), reaper, volume),
                     directories.domains,
@@ -148,19 +171,18 @@ impl<'l> CommandSandbox<'l> {
             }
         };
         if let Err(error) = budget.check() {
-            return Err(PreparationFailure::early(
+            return Err(StoragePreparationFailure::early(
                 error,
                 Phase::EarlyPins(PinCleanup::namespace(namespace), reaper, volume),
                 directories.domains,
             ));
         }
-        let volume = match volume.mount_ext4(directories.mounts) {
+        let volume = match R::mount(volume, directories.mounts, budget.deadline()) {
             Ok(volume) => volume,
-            Err(failure) => {
-                let (source, volume) = failure.into_parts();
-                return Err(PreparationFailure::early(
+            Err((source, failure)) => {
+                return Err(StoragePreparationFailure::early(
                     source,
-                    Phase::EarlyPins(PinCleanup::namespace(namespace), reaper, volume),
+                    Phase::MountPins(PinCleanup::namespace(namespace), reaper, failure),
                     directories.domains,
                 ));
             }
@@ -172,32 +194,25 @@ impl<'l> CommandSandbox<'l> {
                 ))),
                 volume: Retained::new(volume),
             };
-            return Err(PreparationFailure::early(
+            return Err(StoragePreparationFailure::early(
                 source,
                 Phase::EmptyDrain(reaper, assigned),
                 directories.domains,
             ));
         }
-        let pin = match volume.pin(directories.recovery) {
-            Ok(pin) => pin,
+        let pins = match volume.pin(directories.recovery) {
+            Ok(pins) => pins,
             Err(failure) => {
-                let (source, pins) = match failure {
-                    FilesystemPinFailure::Before(source) => {
-                        (source, PinCleanup::namespace(namespace))
-                    }
-                    FilesystemPinFailure::Mount { source, target } => {
-                        (source, PinCleanup::namespace(namespace).with_target(target))
-                    }
-                };
-                return Err(PreparationFailure::early(
+                let (source, pins) = failure.into_cleanup(namespace);
+                return Err(StoragePreparationFailure::early(
                     source,
                     Phase::MountedPins(pins, reaper, Retained::new(volume)),
                     directories.domains,
                 ));
             }
         };
-        CommandPreparation::create(
-            PolicyInstallation::new(namespace, vec![pin], directories.policies),
+        StoragePreparation::create(
+            PolicyInstallation::new(namespace, pins, directories.policies),
             volume,
             reaper,
             directories.recovery,

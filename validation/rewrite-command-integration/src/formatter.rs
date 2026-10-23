@@ -196,8 +196,9 @@ impl FormatterProbe {
         let tool = tool.into_snapshot();
         let output = output.into_snapshot();
         scope.restore().map_err(|e| e.to_string())?;
-        let sealed = crate::bootstrap::BootstrapProbe::run(tool, output, &workspace)?;
-        crate::sealed::SealProbe::reopen(&sealed, &workspace)?;
+        if let Some(sealed) = crate::bootstrap::BootstrapProbe::run(tool, output, &workspace)? {
+            crate::sealed::SealProbe::reopen(&sealed, &workspace)?;
+        }
         println!("BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS");
         origin.close()?;
         println!("CAPTURED_FORMATTER_EXECUTION_PASS");

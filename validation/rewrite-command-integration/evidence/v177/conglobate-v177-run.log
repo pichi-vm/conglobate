@@ -1,0 +1,81 @@
+Traceback (most recent call last):
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration/run.py", line 282, in <module>
+    assert passed, serial[-5000:]
+           ^^^^^^
+AssertionError: + export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ mkdir -p /work/origin /work/mapped /work/conglobate-mount-decoy
++ unshare --user --map-root-user /idmap-probe privileges
+NATIVE_PRIVILEGES_EXEC_PASS
++ unshare --user --map-root-user /idmap-probe syscalls
+NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS
+NATIVE_PRIVILEGES_EXEC_PASS
++ unshare --user --map-root-user setpriv --bounding-set=-chown /idmap-probe privileges
++ grep -q 'required capability is not available' /work/privileges-negative
++ grep -q NATIVE_PRIVILEGES_EXEC_PASS /work/privileges-negative
++ echo NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
+NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
++ modprobe loop
++ modprobe ext4
++ truncate -s 64M /work/volume.ext4
++ mke2fs -q -t ext4 -F /work/volume.ext4
++ mount -o loop /work/volume.ext4 /work/origin
++ cp -a /image-root/. /work/origin/
++ /idmap-probe namespace-rejections
+POLICY_PRIVATE_NAMESPACE_REJECTED_PASS
+FOREIGN_CONTROL_MOUNT_DESCRIPTORS_REJECTED_PASS
+NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS
++ modprobe dm-zero
++ modprobe dm-snapshot
++ /idmap-probe snapshot-probe
+SNAPSHOT_EXHAUSTION_REJECTS_VALID_USAGE_PASS
+OWNED_PERSISTENT_SNAPSHOT_REACTIVATION_PASS
++ modprobe dm-verity
++ /idmap-probe prepare-scutes
+VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+VERITY_CACHE_CORRUPTION_READ_REJECTED_PASS
+VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+CACHE_BACKED_SCUTE_PREPARATION_PASS
+OWNED_VERITY_READ_AND_CLEANUP_PASS
++ /idmap-probe assemble-chain
+WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS
+CHAIN_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+INVALID_SECOND_SCUTE_CLEANUP_PASS
+OWNED_TWO_SCUTE_CHAIN_PASS
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ mkdir /work/pins
++ mount -t bpf bpf /work/pins
++ chmod 700 /work/pins
++ /idmap-probe domain-publication-probe
+DOMAIN_PUBLICATION_ABSENT_ROLLBACK_PASS
+DOMAIN_PUBLICATION_PRESENT_ROLLBACK_PASS
+DOMAIN_PUBLICATION_MALFORMED_ROLLBACK_PASS
+DOMAIN_PUBLICATION_MISMATCH_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-sandbox
++ cat /work/command-diagnostics
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+SANDBOX_TWO_STEP_PIPELINE_PASS
++ /idmap-probe volume-supervisor-sandbox-namespace-failure
+trusted command helper: No space left on device (os error 28)
+SANDBOX_NAMESPACE_FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-sandbox-mount-failure
+SANDBOX_MOUNT_FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-probe
+EXT4_TYPED_PROFILE_FORMAT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+subreaper must be installed once before child creation
+IDMAP_PROBE_EXIT 1
+[    7.838877] sysrq: Resetting
+

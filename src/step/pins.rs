@@ -89,6 +89,10 @@ impl PinCleanup {
             namespace: Namespace::Mapped(namespace),
         }
     }
+    pub(super) fn with_filesystem(mut self, pin: FilesystemPin) -> Self {
+        self.filesystems.push(Filesystem::Mounted(pin));
+        self
+    }
     pub(super) fn with_target(mut self, target: FilesystemPinTarget) -> Self {
         self.filesystems.push(Filesystem::Target(target));
         self

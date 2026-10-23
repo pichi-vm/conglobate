@@ -3,8 +3,9 @@
 M4 is accepted with three clean self-review passes. M5 is active with zero clean
 passes. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
 The integrated VM fixture now demonstrates a verified tool chain, dual-root
-commands, direct output sealing and verified reopening. Production aggregate
-preparation/rollback, remaining failure qualification and the review gate remain.
+commands through production aggregate preparation, direct output sealing and
+verified reopening. Production execution acceptance, remaining failure
+qualification and the review gate remain.
 This file records implementation order, not a substitute design or acceptance.
 
 The end-to-end acceptance case is an actual verified tool carapace plus a fresh
@@ -246,3 +247,33 @@ the complete normal command suite, direct sealing and verified reopening.
 Root and fixture strict Clippy pass; all 48 doctests pass. Evidence is preserved
 under evidence/v176. Production namespace/pin/policy/domain acquisition for the
 pair and command acceptance remain to integrate. M5 clean streak remains zero.
+
+
+## Shared production preparation for bootstrap (v177–v178)
+
+CommandSandbox::prepare_bootstrap now acquires the mapped namespace, both
+filesystem mounts, both identity pins, containment domain and label policy.
+StoragePreparation<R> and its owning failure share the single-volume lifecycle;
+sealed PreparationStorage implementations preserve each layout's concrete
+unmounted and cleanup types. Existing single-volume public names are aliases.
+Both layouts use the same fixed setup/rollback cutoffs and retain storage through
+process termination, descendant drain, policy removal and identity release.
+Partial mount acquisition and partial pin acquisition have explicit owning
+rollback states. Original mount errors cross the generic boundary without
+formatting away their concrete payloads.
+
+The bootstrap fixture now calls this production entry point for both commands.
+Three separate rejected-build processes exercise domain creation, policy
+installation and helper launch failures, then verify both volumes are recovered
+and all recovery pins, policy entries and mountpoints are gone. v177 first found
+a fixture error: it tried to reinstall the exclusive subreaper after terminal
+rollback. v178 isolates each rejected build in its own process, preserving the
+production one-installation rule. Both failed and successful evidence is saved.
+The full v178 VM suite passes, including two successful bootstrap commands,
+label persistence and direct output sealing/reopening. All 56 library tests,
+48 doctests and root/fixture strict Clippy pass.
+
+Execution acceptance is still assembled by the fixture; it must become a
+production receipt tied to the pair's own command outcome and finalization.
+Remaining formatter cancellation/exhaustion and metadata qualification, plus
+three full adherence passes, are still required. No M5 acceptance is claimed.

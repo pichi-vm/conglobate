@@ -2796,3 +2796,20 @@ rules rather than silently shrinking acceptance criteria.
   acquisition, and the complete existing normal suite. Evidence v176 preserved.
 - Root/fixture Clippy and 48 doctests pass. Aggregate pair preparation and
   execution acceptance remain outstanding; M5 has zero clean adherence passes.
+
+
+### M5 aggregate bootstrap preparation (v177–v178)
+
+- Generalized the existing preparation/rollback lifecycle over sealed mounted
+  storage layouts, keeping concrete single-volume aliases. Added production
+  CommandSandbox::prepare_bootstrap for namespace, paired mounts, filesystem
+  identity pins, containment and policy acquisition. Both volumes remain owned
+  through helper launch and all partial-setup rollback states.
+- Converted the dual-command bootstrap fixture to production preparation.
+  v177 rejected a fixture attempt to reinstall the exclusive subreaper after
+  rollback; v178 correctly uses separate failed-build processes. Domain,
+  policy-install and helper-launch failures roll back both volumes cleanly.
+- Full v178 normal VM suite passes, including dual commands and sealed output
+  reopening; 56 library tests, 48 doctests and strict Clippy pass. Both run
+  records are preserved. Production execution acceptance and remaining failure
+  qualification/reviews remain; M5 clean streak is zero.

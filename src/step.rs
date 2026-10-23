@@ -17,8 +17,9 @@ mod execution;
 pub use execution::{ExecutedVolume, ExecutionFailure, ExecutionOutcome};
 mod preparation;
 pub use preparation::{
-    CommandPreparation, CommandSandbox, PreparationFailure, RolledBackPreparation,
-    SandboxDirectories,
+    BootstrapPreparation, BootstrapPreparationFailure, CommandPreparation, CommandSandbox,
+    PreparationFailure, PreparationStorage, RolledBackPreparation, SandboxDirectories,
+    StoragePinFailure, StoragePreparation, StoragePreparationFailure, StorageRollback,
 };
 mod finalize;
 mod outcome;
@@ -176,6 +177,15 @@ pub enum StartFailure<'lease, R: StepStorage = ()> {
     Admission(Box<StepFailure<'lease, Cancelling, R>>),
 }
 impl<'lease> Step<'lease, Ready> {
+    fn with_storage<R: StepStorage>(self, storage: R) -> Step<'lease, Ready, R> {
+        Step {
+            storage: Retained::new(storage),
+            policy: self.policy,
+            resources: self.resources,
+            _lease: PhantomData,
+        }
+    }
+
     /// The helper must be trusted, registered and blocked on admission; its
     /// namespace/filesystems must match the bound policy. Install the reaper
     /// before spawning it. No other process may admit commands to this scope.

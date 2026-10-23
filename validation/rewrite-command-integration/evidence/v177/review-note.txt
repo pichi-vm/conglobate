@@ -1,0 +1,1 @@
+Failed fixture: subreaper reinstall rejected after successful preparation rollback in first injected failure case. Production rollback is terminal and consumes the exclusive reaper. Success path not reached. Correct fixture to run each rejected build in a separate process; no production subreaper relaxation.
