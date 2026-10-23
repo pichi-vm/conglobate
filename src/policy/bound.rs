@@ -27,6 +27,7 @@ impl PolicyState for BoundDisabled {
 }
 #[derive(Debug)]
 pub struct BoundResources {
+    config: libbpf_rs::MapHandle,
     policy: DisabledPinRecovery,
     identities: PolicyIdentities,
 }
@@ -122,9 +123,20 @@ impl LabelPolicy<PinnedDisabled> {
                 identities,
             }));
         }
+        let config = match self.resources.config_handle() {
+            Ok(config) => config,
+            Err(error) => {
+                return Err(Box::new(BindFailure {
+                    source: io::Error::other(error),
+                    policy: self,
+                    identities,
+                }));
+            }
+        };
         Ok(LabelPolicy {
             scope: self.scope,
             resources: BoundResources {
+                config,
                 policy: self.resources,
                 identities,
             },
@@ -159,8 +171,8 @@ impl LabelPolicy<BoundDisabled> {
         ))
     }
 
-    pub(crate) fn config_handle(&self) -> Result<libbpf_rs::MapHandle, super::PolicyError> {
-        self.resources.policy.config_handle()
+    pub(crate) fn config_handle(&self) -> &libbpf_rs::MapHandle {
+        &self.resources.config
     }
     /// Return identity owners only after all disabled policy resources have been
     /// removed. Failure retains cleanup-only ownership of the entire aggregate.
@@ -173,15 +185,26 @@ impl LabelPolicy<BoundDisabled> {
 }
 impl BoundCleanup {
     pub fn retry(self) -> Result<PolicyIdentities, Box<BoundCloseFailure>> {
-        let BoundResources { policy, identities } = self.resources;
+        let BoundResources {
+            config,
+            policy,
+            identities,
+        } = self.resources;
         match policy.cleanup() {
-            Ok(()) => Ok(identities),
+            Ok(()) => {
+                drop(config);
+                Ok(identities)
+            }
             Err(failure) => {
                 let (source, policy) = failure.into_parts();
                 Err(Box::new(BoundCloseFailure {
                     source,
                     cleanup: Self {
-                        resources: BoundResources { policy, identities },
+                        resources: BoundResources {
+                            config,
+                            policy,
+                            identities,
+                        },
                     },
                 }))
             }

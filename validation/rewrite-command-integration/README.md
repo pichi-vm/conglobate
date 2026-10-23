@@ -1162,3 +1162,29 @@ outcome/timeout orchestration remain outstanding.
   aggregate failure owner. Those I4 requirements, binary dispatch, launch-input
   integration and success-receipt gating remain open. M4 streak remains zero;
   no full adherence pass or later milestone advancement is claimed.
+
+### M4 activation-handle acquisition before helper launch (v127–v129)
+
+- Previous turn progressed in 678de92. Source review found Step::new duplicated
+  the activation map handle after contained-helper launch. Bound policy binding
+  now acquires that handle and retains it with policy/identity ownership. Its
+  existing BindFailure returns all owners if acquisition fails. Step::new is
+  now an infallible transfer; the unnecessary post-launch PrepareFailure state
+  and its call-site error handling are removed. No new recovery process added.
+- Policy activation/disable use the already-owned handle. Cleanup retains it on
+  error and drops it before returning identities after successful policy removal.
+  Active steps retain the whole policy under their existing explicit teardown
+  guard. This preserves the policy-before-identity cleanup ordering.
+- v127 was compile-only: an older fixture caller still expected Result from the
+  constructor. v128 booted and rejected a test assertion that incorrectly assumed
+  descriptor exhaustion occurred at map-handle acquisition. It actually occurs
+  earlier during filesystem identity verification. Both failures are preserved.
+  v129 checks the actual EMFILE, retained policy/identity ownership and successful
+  binding retry after restoring the limit. It does not claim isolated coverage
+  of the exact map-handle duplication failure branch. Ordinary activation and
+  policy-cleanup failure/retry exercise the newly retained handle.
+- v129 normal VM suite passes including long-command and outcome/finalization
+  regressions. Host tests (44 compile-fail), both final Clippy checks, formatting
+  and evidence hashes pass. I4 is reduced, not closed: earlier acquisition and
+  helper-launch failures still need a preparation aggregate. M4 streak remains
+  zero; no clean adherence pass or later milestone advancement is claimed.

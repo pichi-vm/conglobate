@@ -284,9 +284,7 @@ impl Integration {
                 let helper = domain
                     .launch(command, deadline)
                     .map_err(|e| e.to_string())?;
-                let step = conglobate::step::Step::new(policy, helper, reaper)
-                    .map_err(|e| e.to_string())?
-                    .with_volume(volume);
+                let step = conglobate::step::Step::new(policy, helper, reaper).with_volume(volume);
                 step.send_volume_until(deadline)?;
                 let step = match mode {
                     "pre-admission" => {
@@ -1563,8 +1561,7 @@ impl Integration {
         let helper = domain
             .launch(command, Instant::now() + Duration::from_secs(5))
             .map_err(|e| e.to_string())?;
-        let step = conglobate::step::Step::<conglobate::step::Ready>::new(policy, helper, reaper)
-            .map_err(|error| error.to_string())?;
+        let step = conglobate::step::Step::<conglobate::step::Ready>::new(policy, helper, reaper);
         println!("PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS");
         if mode == "pre-admission-cancel" {
             let deadline = Instant::now() + Duration::from_secs(5);
@@ -1986,7 +1983,22 @@ impl PolicyFixture {
         for pin in wrong {
             pin.release()?;
         }
-        let pinned = pinned.bind(namespace, vec![filesystem])?;
+        let limit = rustix::process::getrlimit(rustix::process::Resource::Nofile);
+        rustix::process::setrlimit(
+            rustix::process::Resource::Nofile,
+            rustix::process::Rlimit {
+                current: Some(0),
+                maximum: limit.maximum,
+            },
+        )?;
+        let result = pinned.bind(namespace, vec![filesystem]);
+        rustix::process::setrlimit(rustix::process::Resource::Nofile, limit)?;
+        let (source, pinned, identities) = result.unwrap_err().into_parts();
+        assert_eq!(source.raw_os_error(), Some(24));
+        let (namespace, filesystems) = identities.into_parts();
+        assert_eq!(filesystems.len(), 1);
+        let pinned = pinned.bind(namespace, filesystems)?;
+        println!("BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS");
         println!("BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS");
         Ok(pinned)
     }

@@ -8,7 +8,7 @@ use crate::{
     policy::{BoundDisabled, LabelPolicy, PolicyError},
     process::{Admitted, ChildReaper, ReapedChildren, Supervision},
 };
-use libbpf_rs::{MapCore, MapFlags, MapHandle};
+use libbpf_rs::{MapCore, MapFlags};
 use std::{
     io, marker::PhantomData, mem::ManuallyDrop, path::Path, process::ExitStatus, time::Instant,
 };
@@ -129,11 +129,10 @@ pub struct Step<'lease, S: StepState<'lease>, R: StepStorage = ()> {
 #[derive(Debug)]
 struct PolicyGuard {
     policy: ManuallyDrop<LabelPolicy<BoundDisabled>>,
-    config: MapHandle,
 }
 impl PolicyGuard {
     fn activate(&self) -> Result<(), PolicyError> {
-        self.config.update(
+        self.policy.config_handle().update(
             &0u32.to_ne_bytes(),
             &self.policy.scope().subject_value(),
             MapFlags::ANY,
@@ -141,33 +140,14 @@ impl PolicyGuard {
         Ok(())
     }
     fn disable(self) -> Result<LabelPolicy<BoundDisabled>, Box<(PolicyError, Self)>> {
-        if let Err(source) = self
-            .config
-            .update(&0u32.to_ne_bytes(), &[0; 8], MapFlags::ANY)
+        if let Err(source) =
+            self.policy
+                .config_handle()
+                .update(&0u32.to_ne_bytes(), &[0; 8], MapFlags::ANY)
         {
             return Err(Box::new((source.into(), self)));
         }
         Ok(ManuallyDrop::into_inner(self.policy))
-    }
-}
-#[derive(Debug, thiserror::Error)]
-#[error("protected step preparation: {source}")]
-pub struct PrepareFailure<'lease> {
-    source: PolicyError,
-    policy: LabelPolicy<BoundDisabled>,
-    helper: ContainedHelper<'lease>,
-    reaper: ChildReaper,
-}
-impl<'lease> PrepareFailure<'lease> {
-    pub fn into_parts(
-        self,
-    ) -> (
-        PolicyError,
-        LabelPolicy<BoundDisabled>,
-        ContainedHelper<'lease>,
-        ChildReaper,
-    ) {
-        (self.source, self.policy, self.helper, self.reaper)
     }
 }
 #[derive(Debug, thiserror::Error)]
@@ -196,27 +176,15 @@ impl<'lease> Step<'lease, Ready> {
         policy: LabelPolicy<BoundDisabled>,
         helper: ContainedHelper<'lease>,
         reaper: ChildReaper,
-    ) -> Result<Self, Box<PrepareFailure<'lease>>> {
-        let config = match policy.config_handle() {
-            Ok(config) => config,
-            Err(source) => {
-                return Err(Box::new(PrepareFailure {
-                    source,
-                    policy,
-                    helper,
-                    reaper,
-                }));
-            }
-        };
-        Ok(Self {
+    ) -> Self {
+        Self {
             storage: Retained::new(()),
             policy: PolicyGuard {
                 policy: ManuallyDrop::new(policy),
-                config,
             },
             resources: (helper, reaper),
             _lease: PhantomData,
-        })
+        }
     }
     /// ```compile_fail
     /// use conglobate::{step::{Step, Ready}, storage::{Volume, Mounted}};

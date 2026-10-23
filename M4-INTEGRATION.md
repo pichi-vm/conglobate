@@ -114,3 +114,13 @@ including initial user-namespace creation. Comprehensive pre/post acquisition
 checks and failure ownership before the ready step remain part of I4, rather
 than being claimed complete by the clock transport. The public binary dispatcher
 and immutable launch-input transport still need integration.
+
+
+The policy activation map handle is now acquired during disabled-policy binding,
+which already retains policy and identity owners on failure. BoundResources owns
+that handle through activation/disable and retains it on cleanup failure. It is
+closed before identities are returned after successful policy cleanup.
+`Step::new` is consequently an infallible ownership transfer; the old post-helper
+PrepareFailure state is removed. This reduces I4's fallible preparation surface,
+but does not replace the missing aggregate for earlier acquisitions or helper
+launch failure cleanup.
