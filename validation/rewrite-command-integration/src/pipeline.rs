@@ -317,7 +317,7 @@ impl PipelineProbe {
                     .map(str::to_owned)
                 {
                     directive["network"] = true.into();
-                    directive["run"] = format!("test \"$(cat /etc/resolv.conf)\" = 'nameserver 10.0.0.1'; exec 3<>/dev/tcp/10.0.0.1/45459; echo request >&3; IFS= read -r reply <&3; test \"$reply\" = reply; exec 3>&-; {run}").into();
+                    directive["run"] = format!("echo PIPELINE_COMMAND_LOG; test \"$(cat /etc/resolv.conf)\" = 'nameserver 10.0.0.1'; exec 3<>/dev/tcp/10.0.0.1/45459; echo request >&3; IFS= read -r reply <&3; test \"$reply\" = reply; exec 3>&-; {run}").into();
                     network_count += 1;
                 }
             }
@@ -519,6 +519,10 @@ impl PipelineProbe {
             };
             println!("PIPELINE_CLI_CASE {recipe} -> {output}");
             let result = command.output()?;
+            assert!(
+                result.stdout.is_empty(),
+                "build logs escaped to stdout: {recipe}"
+            );
             assert_eq!(
                 result.status.success(),
                 success,
@@ -527,8 +531,7 @@ impl PipelineProbe {
             );
             if recipe == "network-fail.yml" {
                 let stderr = String::from_utf8_lossy(&result.stderr);
-                let stdout = String::from_utf8_lossy(&result.stdout);
-                let entered = stdout.contains("NETWORK_FAILURE_COMMAND_ENTERED");
+                let entered = stderr.contains("NETWORK_FAILURE_COMMAND_ENTERED");
                 if output == "/work/network-failed-command-output" {
                     assert!(entered, "failed command was not admitted: {stderr}");
                     assert!(
@@ -556,6 +559,13 @@ impl PipelineProbe {
                 fs::write("/proc/sys/net/ipv6/conf/all/forwarding", "1")?;
             }
             if let Some(listener) = listener {
+                assert_eq!(
+                    String::from_utf8_lossy(&result.stderr)
+                        .matches("PIPELINE_COMMAND_LOG")
+                        .count(),
+                    network_count
+                );
+                println!("PIPELINE_CLI_COMMAND_LOGS_STDERR_PASS");
                 listener
                     .join()
                     .expect("network fixture listener panicked")?;
@@ -1077,7 +1087,8 @@ impl PipelineProbe {
         assert_eq!(fs::read("/work/pipeline-output/index.json")?, before);
         let unsupported = Self::build("/work/unsupported-output", "recipes/unsupported.yml")?;
         assert!(!unsupported.status.success());
-        assert!(!String::from_utf8_lossy(&unsupported.stdout).contains("MUST_NOT_RUN"));
+        assert!(unsupported.stdout.is_empty());
+        assert!(!String::from_utf8_lossy(&unsupported.stderr).contains("MUST_NOT_RUN"));
         assert!(!Path::new("/work/unsupported-output").exists());
         for name in ["default", "authored"] {
             let destination = format!("/work/{name}-output");

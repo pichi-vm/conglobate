@@ -3997,3 +3997,17 @@ rules rather than silently shrinking acceptance criteria.
   entrypoints, blobs and inventory.cbor. This documents the current ORAS-verified
   representation; no implementation, wire-format or attestation scope changed.
 - M6 remains zero clean passes. Source/design/style/ownership review continues.
+
+### M6 adherence R2: CLI log stream contract
+
+- Review traced inherited helper stdout to recipe/formatter output, contrary to
+  DESIGN section 2's stderr logging contract. The shared helper factory now
+  duplicates stderr as stdout before spawn; private control transport is unchanged.
+- Extended the full CLI matrix to require empty stdout on success and failure,
+  successful stage markers on stderr and failed-command admission on stderr.
+  Strict root and fixture Clippy pass. Full VM/ORAS regression v255 passed;
+  sources, logs and provenance are preserved in evidence/v255. This focused
+  correction evidence is not a complete adherence pass. M6 remains zero.
+- Continued source inspection of firmware ancestry/extraction, confined COPY,
+  DTB transformation and output staging. Review coverage and a remaining firmware
+  diagnostic-path question are recorded in MILESTONE-6-ADHERENCE.md.

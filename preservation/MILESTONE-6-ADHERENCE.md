@@ -79,3 +79,38 @@ states perform cleanup only, never resume configuration after releasing the leas
 - Strict root/fixture Clippy pass. Sources, logs and provenance are preserved.
 
 These are focused correction evidence, not a complete M6 adherence review.
+
+## R2 — command stdout bypassed the CLI logging contract
+
+DESIGN section 2 requires logs on stderr. The shared trusted-helper launcher
+inherited stdout, so image command output (and formatter stdout) escaped through
+the public CLI stdout. The v249/v250 nonzero-command fixture confirmed that old
+behavior by observing its command marker on stdout.
+
+Correction: the helper command factory duplicates stderr as its
+stdout before spawn, covering formatter and recipe helper roles without changing
+private stdin/control transport. Image shell redirection retains normal meaning.
+The CLI matrix now asserts empty stdout for success and failure, verifies markers
+from all three enabled recipe stages on stderr, and observes the failed-command
+admission marker there too. Full VM/ORAS regression v255 passed, along with root
+and fixture strict Clippy. Sources, logs and provenance are preserved in
+validation/rewrite-command-integration/evidence/v255. R2 is addressed; this is
+focused correction evidence, not a complete adherence pass.
+
+## Additional source inspection during R2 validation
+
+Read firmware coordinator selection and disposable snapshot execution/extraction,
+COPY source/destination authority and metadata application, DTB property/template
+execution, and output assembly/publication entrypoints. Checked separately selected
+tool/output ancestry, paired extraction after writer quiescence, absent CARAPACE,
+property-exists/default skip behavior, no-match replacement, preservation of exact
+unchanged DTB bytes, and no public mutable staging escape from AssembledImage.
+COPY runs under exclusive quiescent storage authority; image symlinks are resolved
+against that root and created leaf files use exclusive/no-follow opens.
+
+This is an incomplete review, not a clean pass. Remaining source/evidence coverage
+includes the rest of assembly/inventory/publication, bootstrap coordination,
+network setup/transport/finalization, and the shared execution changes, followed
+by the complete style/safety/preservation audit. Firmware extraction can mask its
+primary capture error when cleanup also fails; inspect this diagnostic path before
+acceptance. Successful publication remains blocked in that case.

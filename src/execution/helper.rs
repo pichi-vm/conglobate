@@ -43,6 +43,11 @@ impl HelperProgram {
         }
         let mut command = Command::new(&self.0);
         command.arg(SELECTOR).arg(encoded).env_clear();
+        // Helper and image-command output are build logs. Keep the public CLI
+        // stdout separate; stdin carries the private structured control channel.
+        command.stdout(std::process::Stdio::from(
+            rustix::stdio::stderr().try_clone_to_owned()?,
+        ));
         Ok(command)
     }
     pub(crate) fn formatter(
