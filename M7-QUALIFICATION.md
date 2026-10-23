@@ -16,7 +16,7 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
 | amd64 | Local x86_64 QEMU/KVM integration evidence exists | Representative distro qualification and complete repository checks |
 | arm64 | qemu-system-aarch64 installed | Native build/execution profile and boot coverage; executable availability proves no qualification |
 | Intel TDX, AMD SEV-SNP, Arm CCA | Hardware access has not been established | Separate evidence for each platform; missing access remains outstanding |
-| CI | Rootless and dependency workflows authored for Rust 1.94.0; not yet run on GitHub | Portable disposable-VM integration, commit-message checks and green actual workflow results |
+| CI | First hosted Rust job failed on Ubuntu UAPI include discovery (run 39964104257); correction awaiting hosted checks | Portable disposable-VM integration, commit-message checks and green actual workflow results |
 | Final M7 adherence | Not started | Three complete consecutive clean passes after required work |
 
 ## Initial environment/source inspection
@@ -47,7 +47,9 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
   Clippy run found a redundant inventory-validation boolean expression; the
   equivalent simplified expression passes strict Clippy. Both logs are retained.
   The rootless workflow is only one part of the required CI coverage, and has
-  not yet produced a hosted result.
+  started hosted run 39964104257 on rewrite-qualification. Its Rust job failed
+  because the BPF target lacked the Ubuntu multiarch UAPI include path; the
+  corrected workflow requires a new hosted result.
 - The VM runner now builds its own fresh guest runtime from trusted local tools
   and accepts explicit kernel, module-root and ORAS paths. It no longer copies
   a previous experiment's guest or QEMU command. v256/v257 preserve packaging

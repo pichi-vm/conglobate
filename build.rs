@@ -4,6 +4,7 @@
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=policy/labels.bpf.c");
+    println!("cargo:rerun-if-env-changed=C_INCLUDE_PATH");
     let output = std::path::PathBuf::from(std::env::var_os("OUT_DIR").ok_or("missing OUT_DIR")?);
     libbpf_cargo::SkeletonBuilder::new()
         .source("policy/labels.bpf.c")

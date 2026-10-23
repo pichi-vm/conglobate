@@ -17,9 +17,13 @@ Build on Linux with Rust/Cargo, a C compiler and make, pkg-config, libelf and
 zlib development headers/libraries, and Clang with its BPF target. The locked
 libbpf-sys dependency builds its bundled libbpf; libbpf-cargo supplies the BPF
 helper headers used by build.rs. A separate system libbpf development package is
-not required by this configuration.
+not required by this configuration. Debian/Ubuntu place native Linux UAPI
+headers under a multiarch directory that Clang's BPF target does not discover
+by default. For a native build there, set
+`export C_INCLUDE_PATH="/usr/include/$(gcc -dumpmachine)"` before running Cargo;
+the build script tracks changes to this include-path setting.
 
-The current review evidence includes 197 rootless tests and 54 doctests passing
+The current review evidence includes 198 rootless tests and 54 doctests passing
 with rustc/Cargo 1.94.0 and Clang 22.1.8. Earlier checks used rustc
 1.99.0-nightly (1a98b1e13, 2026-08-07) and Cargo 1.98.0. These are tested
 environments, not a minimum supported Rust version; that floor has not yet been
@@ -45,7 +49,8 @@ workspace storage inside conglobate is separately required to be RAM-backed.
 Serialize Cargo checks and use `CARGO_BUILD_JOBS=2` in constrained development
 environments. The rootless workflow uses Rust 1.94.0 and runs formatting, Clippy,
 tests and doctests. A separate job runs pinned cargo-deny and cargo-audit tools
-for dependency policy and known advisories. Hosted execution is still pending.
+for dependency policy and known advisories. The first hosted run exposed the Ubuntu UAPI include-path requirement above;
+the corrected workflow still needs a green hosted result.
 Local license/source checks pass for amd64 and arm64 dependency graphs; this is
 not arm64 execution qualification. Advisory matching depends on package source
 identities: a clean audit does not certify pinned Git revisions against ordinary

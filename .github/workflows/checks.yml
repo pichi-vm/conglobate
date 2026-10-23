@@ -29,6 +29,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y clang llvm build-essential pkg-config libelf-dev zlib1g-dev
           rustup toolchain install 1.94.0 --profile minimal --component clippy --component rustfmt
+      - name: Locate native Linux UAPI headers for the BPF target
+        run: echo "C_INCLUDE_PATH=/usr/include/$(gcc -dumpmachine)" >> "$GITHUB_ENV"
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Check Clippy

@@ -468,3 +468,27 @@ validation/rewrite-command-integration/evidence/v261. This covers the existing
 regression suite, not distro/architecture/confidential-hardware qualification. Claude reconciliation was launched
 before this refactor, so its earlier mechanical checks do not cover these edits.
 The change requires a follow-up review against the completed VM evidence.
+
+
+## Narrowed API cleanup and first hosted CI result
+
+Applied the source-supported subset of simplification-014/016/020/024/025/029:
+removed the unused RolledBackPreparation and BootstrapExecutionFailure aliases,
+RunningCommand::wait_for_exit, EnteredRoot::execute and VethPair::peer_name.
+The live execution/restriction/supervision APIs and ExecutedBootstrap receipt
+remain. COPY parser internals are module-private with their unused accessors
+removed; CopyMode parsing/application and ModeError remain public. Packet's
+one-shape wrapper is collapsed into receive_shapes, preserving the actual socket
+injection seam and rejection test. The consumer search included production,
+rootless tests and the separate current VM fixture, not just exact type-name hits.
+198 tests, 54 doctests, strict Clippy, formatting and separate fixture compilation
+pass (`api-cleanup-*.log`). No runtime sandbox policy is changed by these removals.
+Other reviewer claims remain subject to reconciliation; this is not blanket
+acceptance of their original orphan counts.
+
+Hosted run 39964104257 on 72293a1 reached BPF compilation but failed because
+Clang's BPF target did not discover Ubuntu's multiarch asm/types.h. The exact
+job log is retained. The workflow now supplies the native GCC multiarch include
+directory through C_INCLUDE_PATH; build.rs tracks that variable and README
+explains the native Debian/Ubuntu requirement. The corrected hosted result is
+pending. This packaging failure is distinct from the passing Fedora-host checks.

@@ -1,7 +1,7 @@
 Continue the same review session. Do not restart the full review workflow.
 
 A source change made while reconciliation-1 was running needs your targeted review:
-`git diff 930b133 -- src/step.rs src/step/bootstrap.rs src/step/finalize.rs src/step/preparation/storage.rs src/step/directives.rs src/step/network.rs`.
+`git show 72293a1 -- src/step.rs src/step/bootstrap.rs src/step/finalize.rs src/step/preparation/storage.rs src/step/directives.rs src/step/network.rs`.
 Read the shared-storage-finalization section at the end of parent-evaluation.md.
 The duplicated finalization machines were replaced by Finalization<R: PreparationStorage>,
 with the existing sealed StorageLayout owning snapshot validation. The old typed
@@ -21,3 +21,8 @@ agreement. Also reconcile any remaining disagreements from reconciliation-1 with
 the parent's source evidence. Do not treat already-fixed findings as original
 false positives. Keep concrete unresolved action items separate from resolved
 findings. No source/docs/Git edits, no downloads, no full discovery restart.
+
+Subsequently the narrowed API cleanup was implemented. Review the parent ledger
+section for simplification-014/016/020/024/025/029 and current caller evidence.
+These changes passed 198 rootless tests, 54 doctests, strict Clippy and separate
+VM-fixture compilation. They do not imply the other orphan allegations are true.
