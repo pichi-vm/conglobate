@@ -7,7 +7,7 @@ use devtree::{OwnedNode, OwnedProperty, OwnedTree, Tree};
 #[derive(Debug, thiserror::Error)]
 pub enum TransformError {
     #[error("invalid DTB: {0}")]
-    Dtb(String),
+    Dtb(#[from] devtree::Error),
     #[error("transform requires a DTB")]
     MissingDtb,
     #[error("missing DTB property: {0}")]
@@ -59,7 +59,7 @@ impl TransformSelection {
                 Err(TransformError::MissingDtb)
             };
         };
-        let tree: Tree<'_> = Tree::parse(bytes).map_err(|e| TransformError::Dtb(e.to_string()))?;
+        let tree: Tree<'_> = Tree::parse(bytes)?;
         let original = OwnedTree::from(&tree);
         let mut edited = original.clone();
         let defaults;
@@ -84,14 +84,11 @@ impl TransformSelection {
         let output = if edited == original {
             bytes.to_vec()
         } else {
-            let mut output = edited
-                .encode()
-                .map_err(|e| TransformError::Dtb(e.to_string()))?;
+            let mut output = edited.encode()?;
             // The shared owned encoder resets these header fields. Property edits
             // preserve the validated compatibility version and physical boot CPU.
             output[24..32].copy_from_slice(&bytes[24..32]);
-            let _: Tree<'_> =
-                Tree::parse(&output).map_err(|e| TransformError::Dtb(e.to_string()))?;
+            let _: Tree<'_> = Tree::parse(&output)?;
             output
         };
         Ok(TransformedDtb {
@@ -361,6 +358,9 @@ mod tests {
             Fixture::apply("\n- {op: remove, property: /missing/p}", Some(&dtb), None).is_err()
         );
         assert!(Fixture::apply("\n- {op: remove, property: /chosen/p}", Some(&dtb), None).is_err());
-        assert!(Fixture::apply("[]", Some(b"not a dtb"), None).is_err());
+        let error = Fixture::apply("[]", Some(b"not a dtb"), None).unwrap_err();
+        let source = std::error::Error::source(&error).unwrap();
+        assert!(source.downcast_ref::<devtree::Error>().is_some());
+        assert_eq!(error.to_string(), format!("invalid DTB: {source}"));
     }
 }

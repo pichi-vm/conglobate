@@ -23,7 +23,7 @@ pub enum CacheError {
     #[error("invalid OCI JSON: {0}")]
     Json(#[from] serde_json::Error),
     #[error("invalid artifact manifest: {0}")]
-    Manifest(String),
+    Manifest(#[from] pichi_artifact::Error),
     #[error("cache I/O: {0}")]
     Io(#[from] io::Error),
     #[error(transparent)]

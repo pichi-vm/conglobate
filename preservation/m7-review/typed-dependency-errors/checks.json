@@ -1,0 +1,9 @@
+{
+  "baseline": "cce54f8",
+  "finding": "errors-api-008",
+  "rootless_tests": 198,
+  "doctests": 51,
+  "strict_root_clippy": true,
+  "strict_fixture_clippy": true,
+  "new_vm_qualification": false
+}

@@ -166,8 +166,7 @@ impl Cache {
             .parse()
             .map_err(|_| CacheError::Invalid("invalid manifest digest"))?;
         let manifest_bytes = self.metadata(&digest, Some(selected.size))?;
-        let manifest = Manifest::from_reader_validated(manifest_bytes.bytes())
-            .map_err(|error| CacheError::Manifest(error.to_string()))?;
+        let manifest = Manifest::from_reader_validated(manifest_bytes.bytes())?;
         // The shared format validates artifact contents, not the OCI envelope.
         if manifest.schema_version != 2 || manifest.media_type != MANIFEST {
             return Err(CacheError::Invalid("invalid manifest envelope"));

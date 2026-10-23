@@ -379,3 +379,18 @@ fn verified_copy_propagates_destination_failure() {
         matches!(error, conglobate::cache::CacheError::Io(error) if error.kind() == std::io::ErrorKind::StorageFull)
     );
 }
+
+#[test]
+fn invalid_manifest_retains_dependency_error_source() {
+    let store = Store::new();
+    let bytes = b"not JSON";
+    let digest = store.put(bytes);
+    let index = store.index(vec![store.descriptor(&digest, bytes.len())]);
+    let error = store.open().resolve(index).unwrap_err();
+    let source = std::error::Error::source(&error).unwrap();
+    assert!(source.downcast_ref::<pichi_artifact::Error>().is_some());
+    assert_eq!(
+        error.to_string(),
+        format!("invalid artifact manifest: {source}")
+    );
+}

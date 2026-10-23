@@ -1,0 +1,6 @@
+{
+  "src/cache/mod.rs": "c17b173a9dd01348c05b5e9d5c7045614c064cbee735224ed30cf76b7b12c171",
+  "src/cache/resolve.rs": "27fd7c68bcc8d60af6c6240b3f0f3f58abd465aea955e948e852971ac9afb15b",
+  "src/transform.rs": "01c3625827bce4251e3e515a502b51b14f41f90de3362e75bf4cdf9580f6cf13",
+  "tests/cache.rs": "bfc1358f6988299274c932d5b97e2646e1c386dcf7553976f25806f92714c749"
+}

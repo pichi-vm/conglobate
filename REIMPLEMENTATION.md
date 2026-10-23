@@ -4990,3 +4990,18 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   preservation/m7-review/explicit-setup-deadlines/. No new VM result claimed.
 - M4 remains 0/3. Full source/design/style passes, broader finding reconciliation,
   all later milestones and external platform/archive gates remain outstanding.
+
+### Preserve cache/DTB dependency error sources
+
+- Previous turn progressed with explicit deadline APIs cce54f8. Resolved
+  historical errors-api-008 by owning devtree and pichi-artifact errors in the
+  existing variants instead of converting them to strings. Caller diagnostics
+  retain their prefixes; Error::source now exposes the original typed cause.
+- Malformed DTB and actual cache-resolution regressions check source downcasts
+  and displayed messages. Full rootless suite, 51 doctests and strict root plus
+  maintained-fixture Clippy pass. Evidence and patch are preserved under
+  preservation/m7-review/typed-dependency-errors/.
+- No dependency, privileged operation, recovery ownership or publication change.
+  Context Git errors and broader Execution(String) diagnostic design remain
+  separate. No new VM qualification or complete adherence pass claimed; M4 is
+  still 0/3 and the full remaining objective is unchanged.
