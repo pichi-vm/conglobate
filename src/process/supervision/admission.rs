@@ -15,6 +15,20 @@ impl SupervisionState for Admitted {
     type Resources = ProcessObservation;
 }
 impl Supervision<Registered> {
+    /// Trusted helper only, after its restricted leaf reports readiness.
+    pub fn report_prepared_until(&self, deadline: Instant) -> io::Result<()> {
+        Packet::Prepared.send(&self.socket.0, deadline)
+    }
+    pub(crate) fn wait_prepared_until(&self, deadline: Instant) -> io::Result<()> {
+        if !matches!(Packet::receive(&self.socket.0, deadline)?, Packet::Prepared) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "expected restricted helper readiness",
+            ));
+        }
+        Ok(())
+    }
+
     pub(crate) fn admit_until(self, deadline: Instant) -> io::Result<Supervision<Admitted>> {
         Packet::Admit.send(&self.socket.0, deadline)?;
         if !matches!(Packet::receive(&self.socket.0, deadline)?, Packet::Admitted) {
@@ -82,6 +96,41 @@ mod tests {
                 thread.join().unwrap(),
             )
         }
+    }
+    #[test]
+    fn prepared_notification_precedes_explicit_admission() {
+        let (parent, helper) = Fixture::pair();
+        let waiter = std::thread::spawn(move || {
+            helper.report_prepared_until(Fixture::deadline()).unwrap();
+            helper.await_admission_until(Fixture::deadline()).unwrap()
+        });
+        parent.wait_prepared_until(Fixture::deadline()).unwrap();
+        let parent = parent.admit_until(Fixture::deadline()).unwrap();
+        assert!(!waiter.join().unwrap().peer_lost().unwrap());
+        drop(parent);
+    }
+    #[test]
+    fn readiness_requires_the_exact_message_and_live_peer() {
+        let (parent, helper) = Fixture::pair();
+        assert_eq!(
+            parent
+                .wait_prepared_until(Instant::now())
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::TimedOut
+        );
+        Packet::Admitted
+            .send(&helper.socket.0, Fixture::deadline())
+            .unwrap();
+        assert_eq!(
+            parent
+                .wait_prepared_until(Fixture::deadline())
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::InvalidData
+        );
+        drop(helper);
+        assert!(parent.wait_prepared_until(Fixture::deadline()).is_err());
     }
     #[test]
     fn registered_helper_waits_for_explicit_admission() {

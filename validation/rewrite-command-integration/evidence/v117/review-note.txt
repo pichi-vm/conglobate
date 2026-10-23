@@ -1,0 +1,1 @@
+Prepared notification precedes supervisor admission; fixed setup budget and execution cutoff before admission. Normal VM suite passes. No full sandbox qualification or adherence pass.

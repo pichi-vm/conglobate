@@ -106,6 +106,7 @@ impl Integration {
             let running = view.launch(command).map_err(|e| e.to_string())?;
             let gate = gate.wait_ready_until(deadline)?;
             println!("RESTRICTED_LEAF_READY_BEFORE_ADMISSION_PASS");
+            channel.report_prepared_until(deadline)?;
             let channel = channel.await_admission_until(deadline)?;
             gate.start_until(deadline)?;
             let (view, status) = running
@@ -133,6 +134,7 @@ impl Integration {
             .is_some_and(|a| a == "volume-probe" || a.starts_with("volume-supervisor"))
         {
             use conglobate::storage::{Created, Mapping, Unmounted, Volume, Workspace};
+            let setup_budget = conglobate::step::SetupBudget::begin();
             use std::{collections::BTreeSet, num::NonZeroU64};
             let points = || -> std::io::Result<BTreeSet<std::path::PathBuf>> {
                 fs::read_dir("/work")?
@@ -255,7 +257,7 @@ impl Integration {
                 let domain = RecordedDomain::create(&lease, parent)?;
                 let mut command = Command::new(std::env::current_exe()?);
                 command.arg("volume-receiver").arg(mode).env_clear();
-                let deadline = Instant::now() + Duration::from_secs(5);
+                let deadline = setup_budget.deadline();
                 let helper = domain
                     .launch(command, deadline)
                     .map_err(|e| e.to_string())?;
@@ -293,7 +295,14 @@ impl Integration {
                         step.teardown(parent).map_err(|e| e.to_string())?
                     }
                     _ => {
-                        let step = step.admit_until(deadline).map_err(|e| e.to_string())?;
+                        let prepared = setup_budget
+                            .await_prepared(step)
+                            .map_err(|e| e.to_string())?;
+                        let timeout = if mode == "timeout" { "200ms" } else { "5s" };
+                        let step = prepared
+                            .start(timeout.parse()?)
+                            .map_err(|e| e.to_string())?;
+                        let deadline = step.deadline();
                         let ready = Path::new("/work/volume-transfer-ready");
                         if mode == "vm-death" {
                             let started = point.join("command-started");
@@ -313,9 +322,7 @@ impl Integration {
                                 .wait_until(deadline, || step.supervision().peer_lost())?;
                             assert_eq!(
                                 step.supervision()
-                                    .wait_for_peer_exit_until(
-                                        Instant::now() + Duration::from_millis(100)
-                                    )
+                                    .wait_for_peer_exit_until(step.deadline())
                                     .unwrap_err()
                                     .kind(),
                                 std::io::ErrorKind::TimedOut

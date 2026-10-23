@@ -14,6 +14,8 @@ use std::{
 };
 
 mod finalize;
+mod setup;
+pub use setup::{CommandStartFailure, PreparedStep, RunningCommand, SetupBudget};
 mod pins;
 mod teardown;
 pub use finalize::{FinalizationFailure, FinalizedVolume};

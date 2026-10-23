@@ -1009,3 +1009,26 @@ packets, unexpected descriptor rights, cancellation, expiry and no start before
 readiness. Exact VM sources and failures are preserved; the final redundant-borrow
 Clippy correction is recorded separately. Production setup budgeting and command
 outcome/timeout orchestration remain outstanding.
+
+### M4 setup budget and supervisor-visible readiness (v117)
+
+- The prior turn inspected synchronization without implementation progress. This
+  turn adds SetupBudget (fixed 30 seconds), PreparedStep and RunningCommand. The
+  trusted helper reports Prepared only after its restricted leaf reports ready.
+  The supervisor consumes readiness before admission. Execution time begins before
+  sending admission; acknowledgment latency, final FD audit and spawn count toward
+  the finite command timeout. Late admission retains the running owner for cleanup.
+- The owned-volume fixture creates its budget before preparation and uses the same
+  cutoff for helper launch, volume transfer and readiness/admission. This is not
+  yet complete production orchestration: intermediate acquisitions still need
+  budget checks and potentially blocking operations need bounded execution.
+- v117 normal disposable-VM suite passes, including timeout, setup failures,
+  descriptor rejection and cleanup retry. Host tests cover readiness ordering,
+  immediate expiry, wrong-phase packets and peer loss, with no sleeps. All host
+  tests and 44 compile-fail tests pass; both Clippy checks pass. The initial large
+  error-variant finding and source are preserved in setup-budget-clippy-v1; boxing
+  its retained RunningCommand fixes it without losing cleanup authority.
+- v117/source preserves exact booted source. Added host readiness tests are saved
+  separately as post-run source. No adherence pass claimed; M4 streak remains zero.
+  Production orchestration, primary command outcomes through cleanup failures and
+  remaining M4 review are still outstanding. Later milestones remain pending.

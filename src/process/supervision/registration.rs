@@ -111,9 +111,10 @@ pub(super) enum Packet {
     Admit,
     Admitted,
     Volume(OwnedFd, OwnedFd),
+    Prepared,
 }
 impl Packet {
-    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4, Volume=5.
+    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4, Volume=5, Prepared=6.
     pub(super) fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
         self.send_with(socket, &deadline)
     }
@@ -124,6 +125,7 @@ impl Packet {
             Self::Admit => (3, vec![]),
             Self::Admitted => (4, vec![]),
             Self::Volume(root, namespace) => (5, vec![root.as_fd(), namespace.as_fd()]),
+            Self::Prepared => (6, vec![]),
         };
         loop {
             wait.ready(socket, PollFlags::OUT)?;
@@ -198,6 +200,7 @@ impl Packet {
                 (2, 0) => Ok(Self::Joined),
                 (3, 0) => Ok(Self::Admit),
                 (4, 0) => Ok(Self::Admitted),
+                (6, 0) => Ok(Self::Prepared),
                 (5, 2) => {
                     let namespace = descriptors.pop().expect("namespace descriptor");
                     Ok(Self::Volume(
@@ -266,6 +269,7 @@ mod tests {
             (&[0x82, 1, 4][..], 1),
             (&[0x82, 1, 5][..], 0),
             (&[0x82, 1, 5][..], 1),
+            (&[0x82, 1, 6][..], 1),
             (&[0x82, 1, 2, 0][..], 0),
         ] {
             let (a, b) = Fixture::pair();
