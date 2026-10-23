@@ -2,6 +2,9 @@
 
 M4 is accepted with three clean self-review passes. M5 is active with zero clean
 passes. DESIGN.md, SANDBOX-DESIGN.txt and ARCHITECTURE.md remain authoritative.
+The integrated VM fixture now demonstrates a verified tool chain, dual-root
+commands, direct output sealing and verified reopening. Production aggregate
+preparation/rollback, remaining failure qualification and the review gate remain.
 This file records implementation order, not a substitute design or acceptance.
 
 The end-to-end acceptance case is an actual verified tool carapace plus a fresh
@@ -193,3 +196,34 @@ production transfer, helper, Step, teardown and paired finalization, but the
 fixture still assembles preparation itself and populates its tool root by trusted
 copy. Production aggregate acquisition/rollback, a verified tool-carapace input,
 direct sealing and expanded failure qualification remain. M5 clean streak zero.
+
+## Direct sealing and verified tool input (v173–v175)
+
+Scratch::seal_snapshot consumes detached COW storage after mapping removal and
+confirmed loop detachment. Header/Exception decoding uses devmap-snapshot. The
+used-extent walk retains all referenced data and the terminating metadata area,
+including an extra area after a full exception chunk. It rejects invalid headers
+and out-of-geometry references, then trims unused trailing capacity in place.
+It preserves recorded zero writes: this is sealing a snapshot, not conversion of
+a filesystem image. Content SHA-256 and verity metadata are generated in one
+streaming pass over the retained extent. SealedScute exposes read-only cursors,
+root/parent and descriptor; it is neither command-success nor publication proof.
+
+The fixture writes a scute into a temporary local cache and uses production
+index resolution, chain verification and dm-verity assembly to reopen it. v173
+found malformed fixture annotations; v174 fixes them and verifies output bytes,
+UID/GID and foreign SELinux label after reopening, with tool-state absent.
+v175 first creates a tool artifact outside the bootstrap command sequence, then
+executes both commands on a disposable overlay of that verified cache-backed
+tool chain. The tool cache root remains unchanged. The independently formatted
+output is sealed directly and reopened successfully. Both logical devices are
+64GiB; their ext4 filesystems are 16MiB. No image-to-scute conversion occurs.
+
+All 56 library tests pass, including extent-boundary, malformed-record and
+independent read-only cursor checks; 48 doctests include rejection of writes through a
+sealed reader. Root/fixture Clippy and the full normal VM suite pass. v173–v175
+sources/logs/artifact hashes are preserved, including fixture metadata/lifetime
+compile failures; post-v175 test-only source changes are identified separately.
+Production aggregate setup and rollback still need integration, as do remaining
+formatter/dual-volume failure tests and three complete adherence passes. No M5
+acceptance or distro/confidential-platform qualification is claimed.

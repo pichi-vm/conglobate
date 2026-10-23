@@ -1,0 +1,1 @@
+Reached direct snapshot sealing after dual commands, but reopen fixture OCI metadata omitted required hash-type annotation and named root annotation incorrectly. No reopened-chain success claimed.

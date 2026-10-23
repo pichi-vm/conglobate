@@ -5,6 +5,7 @@ mod bootstrap;
 mod finalization;
 mod formatter;
 mod readiness;
+mod sealed;
 use conglobate::{
     anchor::{FilesystemPin, RecoveryDirectory},
     domain::RecordedDomain,

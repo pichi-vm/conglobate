@@ -8,7 +8,7 @@ use conglobate::{
     policy::PolicyInstallation,
     process::ChildReaper,
     step::{SetupBudget, Step},
-    storage::{BootstrapVolumes, SnapshotMapping, Unmounted, Volume},
+    storage::{BootstrapVolumes, Created, Mapping, SnapshotMapping, Unmounted, Volume, Workspace},
 };
 use std::{
     fs,
@@ -22,19 +22,69 @@ impl BootstrapProbe {
     pub(super) fn run<'o, 'w>(
         tool: SnapshotMapping<'o, 'w>,
         output: SnapshotMapping<'o, 'w>,
-    ) -> Result<(SnapshotMapping<'o, 'w>, SnapshotMapping<'o, 'w>), Box<dyn std::error::Error>>
-    {
+        workspace: &'w Workspace,
+    ) -> Result<conglobate::storage::SealedScute<'w>, Box<dyn std::error::Error>> {
         let records = Path::new("/work/bootstrap-records");
         fs::create_dir(records)?;
         fs::set_permissions(records, fs::Permissions::from_mode(0o700))?;
         let lease = RecoveryDirectory::open(records)?;
-        let mut tool =
+        let tool =
             Volume::<Unmounted>::in_init_namespace(tool, &lease).map_err(|e| e.to_string())?;
         let mut output =
             Volume::<Unmounted>::in_init_namespace(output, &lease).map_err(|e| e.to_string())?;
         let parent = Path::new("/work/cgroups");
         let program = HelperProgram::current()?;
         let mut reaper = ChildReaper::install()?;
+        // Trusted fixture setup makes a tool artifact; bootstrap execution then
+        // consumes only the verified cache chain and a disposable overlay.
+        let mounted_tool = tool
+            .mount_ext4(Path::new("/work"))
+            .map_err(|e| e.to_string())?;
+        let tool_path = Self::volume_path(mounted_tool.root_metadata()?.dev())?;
+        assert!(
+            Command::new("cp")
+                .args(["-a", "/image-root/."])
+                .arg(&tool_path)
+                .status()?
+                .success()
+        );
+        let tool = mounted_tool
+            .unmount()
+            .map_err(|e| e.to_string())?
+            .into_snapshot()
+            .close()
+            .map_err(|e| e.to_string())?
+            .detach()
+            .map_err(|e| e.to_string())?
+            .seal_snapshot([0; 32])
+            .map_err(|e| e.to_string())?;
+        let (tool_store, tool_pin) =
+            crate::sealed::FixtureCache::import(Path::new("/work/tool-cache"), &tool)?;
+        let tool_cache = tool_store.open()?;
+        let tool_image = tool_cache.resolve(tool_pin)?;
+        let verified_tool = tool_cache
+            .verify_chain(&tool_image)?
+            .ok_or("missing tool chain")?;
+        assert_eq!(verified_tool.root(), tool.root());
+        let active_tool = verified_tool
+            .assemble(&tool_cache, workspace)
+            .map_err(|e| e.to_string())?;
+        let mut tool_cow = workspace.scratch()?;
+        tool_cow.set_len(32 * 1024 * 1024)?;
+        let sectors = std::num::NonZeroU64::new(
+            conglobate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512,
+        )
+        .unwrap();
+        let tool_snapshot = Mapping::<Created>::create()?
+            .snapshot(
+                &active_tool,
+                tool_cow.attach().map_err(|e| e.to_string())?,
+                sectors,
+            )
+            .map_err(|e| e.to_string())?;
+        let mut tool = Volume::<Unmounted>::in_init_namespace(tool_snapshot, &lease)
+            .map_err(|e| e.to_string())?;
+
         for index in 0..2 {
             let budget = SetupBudget::begin();
             let namespace = UserNamespace::<Mapped>::create(
@@ -48,15 +98,6 @@ impl BootstrapProbe {
                 .mount_ext4(Path::new("/work"))
                 .map_err(|e| e.to_string())?;
             let tool_path = Self::volume_path(mounted_tool.root_metadata()?.dev())?;
-            if index == 0 {
-                assert!(
-                    Command::new("cp")
-                        .args(["-a", "/image-root/."])
-                        .arg(&tool_path)
-                        .status()?
-                        .success()
-                );
-            }
             let mounted_output = output
                 .mount_ext4(Path::new("/work"))
                 .map_err(|e| e.to_string())?;
@@ -127,11 +168,29 @@ impl BootstrapProbe {
             .unmount()
             .map_err(|e| e.to_string())?
             .into_snapshot();
-        let tool = tool.into_snapshot();
+        let output = output
+            .close()
+            .map_err(|e| e.to_string())?
+            .detach()
+            .map_err(|e| e.to_string())?;
+        let capacity = output.metadata()?.len();
+        let sealed = output.seal_snapshot([0; 32]).map_err(|e| e.to_string())?;
+        assert!(sealed.descriptor().size < capacity);
+        tool.into_snapshot()
+            .close()
+            .map_err(|e| e.to_string())?
+            .detach()
+            .map_err(|e| e.to_string())?;
+        active_tool.close().map_err(|e| e.to_string())?;
+        assert_eq!(
+            tool_cache.verify_chain(&tool_image)?.unwrap().root(),
+            verified_tool.root()
+        );
+        println!("BOOTSTRAP_VERIFIED_TOOL_CHAIN_PASS");
         drop(lease);
         fs::remove_dir(records)?;
         println!("BOOTSTRAP_DUAL_COMMAND_REMOUNT_PASS");
-        Ok((tool, output))
+        Ok(sealed)
     }
     fn volume_path(device: u64) -> std::io::Result<std::path::PathBuf> {
         for entry in fs::read_dir("/work")? {

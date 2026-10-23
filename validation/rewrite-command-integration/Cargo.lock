@@ -330,8 +330,11 @@ name = "conglobate-command-integration"
 version = "0.0.0"
 dependencies = [
  "conglobate",
+ "hex",
  "minicbor",
  "rustix 1.1.5 (git+https://github.com/bytecodealliance/rustix?rev=8bda151df87574f56f1e4c0b59f2d1df5d61609e)",
+ "serde_json",
+ "sha2 0.11.1",
  "tempfile",
 ]
 

@@ -2771,3 +2771,17 @@ rules rather than silently shrinking acceptance criteria.
   verified. Preparation is still assembled by fixture code; verified tool chain,
   aggregate production rollback, direct sealing and failure coverage remain.
   M5 has zero clean adherence passes; later milestones do not advance.
+
+### M5 direct sealing and verified tool-chain fixture (v173–v175)
+
+- Added consuming snapshot sealing in place, using devmap wire codecs and existing
+  verity formatting. Retain terminating metadata; trim unused capacity; calculate
+  content digest and verity tree together; expose only read/seek cursors afterward.
+- v173 catches malformed fixture OCI annotations. v174 seals and verifies reopened
+  output. v175 supplies a verified cache-backed tool carapace with disposable
+  overlay, runs two dual-root commands, checks tool cache immutability, seals the
+  separate output and reopens it through dm-verity with data/UID/GID/labels intact.
+- 56 library tests, 48 doctests, root/fixture Clippy and normal VM suite pass.
+  Preserved failed attempts and verified evidence hashes. Fixture preparation
+  still awaits production aggregation/rollback; remaining failure tests and three
+  adherence reviews are required. M5 remains active with zero clean passes.

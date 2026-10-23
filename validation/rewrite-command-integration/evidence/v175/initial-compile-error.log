@@ -1,0 +1,47 @@
+    Checking conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+error[E0277]: the trait bound `Array<u8, UInt<UInt<UInt<UInt<_, B0>, B0>, B0>, B0>>: LowerHex` is not satisfied
+   --> src/storage/sealed.rs:108:49
+    |
+108 |             let digest = format!("sha256:{:x}", input.digest.finalize());
+    |                                          ----   ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::fmt::LowerHex` is not implemented for `Array<u8, UInt<UInt<UInt<UInt<UInt<_, B0>, B0>, B0>, B0>, B0>>`
+    |                                          |
+    |                                          required by this formatting parameter
+    |
+    = help: the following other types implement trait `std::fmt::LowerHex`:
+              &T
+              &mut T
+              compiler_builtins::math::libm_math::support::big::i256
+              compiler_builtins::math::libm_math::support::big::u256
+              compiler_builtins::math::libm_math::support::hex_float::hex_fmt::Hex<T>
+              generic_array::GenericArray<u8, T>
+              gix::config::color::Attribute
+              gix::config::color::_::InternalBitFlags
+            and 222 others
+    = note: the full name for the type has been written to '/home/nathaniel/Projects/pichi-vm/conglobate/target/debug/deps/conglobate-b97039df99ac529e.long-type-13686030326381010553.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: the trait bound `Array<u8, UInt<UInt<UInt<UInt<_, B0>, B0>, B0>, B0>>: LowerHex` is not satisfied
+   --> src/storage/sealed.rs:108:49
+    |
+108 |             let digest = format!("sha256:{:x}", input.digest.finalize());
+    |                                          ----   ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::fmt::LowerHex` is not implemented for `Array<u8, UInt<UInt<UInt<UInt<UInt<_, B0>, B0>, B0>, B0>, B0>>`
+    |                                          |
+    |                                          required by this formatting parameter
+    |
+    = help: the following other types implement trait `std::fmt::LowerHex`:
+              &T
+              &mut T
+              compiler_builtins::math::libm_math::support::big::i256
+              compiler_builtins::math::libm_math::support::big::u256
+              compiler_builtins::math::libm_math::support::hex_float::hex_fmt::Hex<T>
+              generic_array::GenericArray<u8, T>
+              gix::config::color::Attribute
+              gix::config::color::_::InternalBitFlags
+            and 222 others
+    = note: the full name for the type has been written to '/home/nathaniel/Projects/pichi-vm/conglobate/target/debug/deps/conglobate-3d3c09f7c68ddb03.long-type-18243782871100787952.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `conglobate` (lib test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `conglobate` (lib) due to 1 previous error
