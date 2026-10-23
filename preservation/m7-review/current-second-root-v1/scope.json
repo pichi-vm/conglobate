@@ -1,0 +1,11 @@
+{
+  "production_baseline": "8cfbf91",
+  "coverage": "Current CLI bootstrap admission rejection when output filesystem label probe fails; tool probe allowed once and output probe denied once",
+  "limitations": [
+    "Native amd64 KVM only",
+    "No enforcing target distro boot",
+    "Cleanup evidence is CLI diagnostics, not independent enumeration of all kernel resources",
+    "Large external artifacts retained locally, not durably archived",
+    "Not a complete adherence pass"
+  ]
+}

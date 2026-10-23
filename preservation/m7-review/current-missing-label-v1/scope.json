@@ -1,0 +1,11 @@
+{
+  "production_baseline": "8cfbf91",
+  "coverage": "Current CLI admission rejection and terminal stage recovery; missing environment label policy",
+  "limitations": [
+    "Native amd64 KVM only",
+    "No enforcing target distro boot",
+    "Cleanup evidence is CLI diagnostics, not independent enumeration of all kernel resources",
+    "Large external artifacts retained locally, not durably archived",
+    "Not a complete adherence pass"
+  ]
+}

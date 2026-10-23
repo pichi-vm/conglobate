@@ -1,0 +1,17 @@
+{
+  "/storage/conglobate-validation/current-bootstrap-label-v1/vmlinuz": {
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "durably_archived": false
+  },
+  "/storage/conglobate-validation/current-bootstrap-label-v1/initramfs.gz": {
+    "size": 203133082,
+    "sha256": "4cd23cdb0053fbe9aa0b58f1cec30b79e0a7a96c6c198d9d705c8e22cc8f05cf",
+    "durably_archived": false
+  },
+  "/storage/conglobate-validation/current-bootstrap-label-v1/export.raw": {
+    "size": 2147483648,
+    "sha256": "18d2044b28741d6e5f2f532a7c65fbed9a77b1bf26b09b2df07fa97d8d78c9a5",
+    "durably_archived": false
+  }
+}

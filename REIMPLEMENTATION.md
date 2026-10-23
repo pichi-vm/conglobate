@@ -5416,3 +5416,29 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   check passed. Preserved both logs and focused review under stage-rejection/.
 - No new VM qualification or full clean pass. M4 remains 0/3 and current complete
   CLI failure-path qualification is still required after these refactors.
+
+### Current CLI label admission and bootstrap regression
+
+- The preceding link-local discussion made no implementation or validation
+  progress. Revalidated process state: both pending negative VM runs had ended;
+  assessed their preserved results rather than restarting them.
+- At production baseline 8cfbf91, missing environment label support rejects
+  admission, reports completed cleanup, and leaves no published output. The
+  second-root fault independently records one allowed tool-filesystem probe and
+  one denied output-filesystem probe; bootstrap admission fails with completed
+  cleanup and no publication. Both maintained negative verifiers pass.
+- A fresh positive two-root bootstrap CLI run passes both steps and remount
+  ownership/mode checks. Its verifier checks the exported OCI descriptor graph,
+  produced scute, formatter receipt, canonical CBOR inventory, and absence of
+  inherited tool firmware. This recipe exercises admission labeling probes,
+  not arbitrary label operations or a target SELinux-enforcing boot.
+- All 165 compared production/manifest/recipe/Python source files match each
+  run's archived source. Evidence is under preservation/m7-review/current-*
+  directories. Large VM assets remain locally on /storage/conglobate-validation
+  with recorded hashes; this is not a claim of durable remote preservation.
+  Previous /var/tmp evidence remains untouched.
+- Cleanup claims are limited to CLI diagnostics, not independent enumeration
+  of all kernel resources. Native amd64 ordinary KVM only. No complete adherence
+  pass: M4 remains 0/3. Network topology/link-local, UID/GID coverage, other
+  failure branches, distro boots, arm64/confidential platforms and retirement
+  remain outstanding under the original milestone criteria.
