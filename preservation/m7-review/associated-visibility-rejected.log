@@ -1,0 +1,11 @@
+error[E0446]: crate-private type `Resources` in public interface
+ --> preservation/m7-review/associated-visibility-rejected.rs:6:44
+  |
+5 |     pub(crate) struct Resources;
+  |     --------------------------- `Resources` declared as crate-private
+6 |     impl super::State for super::Mounted { type Resources = Resources; }
+  |                                            ^^^^^^^^^^^^^^ can't leak crate-private type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0446`.

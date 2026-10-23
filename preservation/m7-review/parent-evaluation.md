@@ -2,7 +2,9 @@
 
 Claude's initial review is still running. These are independent checks of early
 agent claims; the final critic dispositions and follow-up response remain required.
-No production fixes have been applied during this baseline review.
+The baseline remained unchanged during the initial parent checks. A subsequent
+stable-toolchain check found one redundant inventory-validation expression;
+the equivalent simplification is recorded below as a post-baseline change.
 
 ## Mechanical evidence
 
@@ -54,6 +56,13 @@ its aggregate line percentage must not be presented as overall qualification.
   BlueOak-1.0.0 not allowed for minicbor. The latter was missed by the review.
   libbpf-sys itself declares BSD-2-Clause; do not describe this as demonstrated
   accidental LGPL selection. Configuration needs correction and rerun.
+  A separate proposed configuration (`proposed-deny.toml`) adds BSD-2-Clause,
+  BlueOak-1.0.0 and only the specific rustix Git URL. Cached license texts and
+  package declarations were inspected. Separate offline amd64 and arm64
+  license/source checks both exit 0 (`deny-proposed-amd64.log` and
+  `deny-proposed-arm64.log`). A combined multi-target invocation could not
+  resolve uncached foreign-platform crates; that failed attempt is also retained.
+  This proposed configuration is not yet applied to the repository's deny.toml.
 - dependencies-007/008: explicit toolchain/build prerequisite documentation is
   useful and remains part of M7 repository usability. Do not invent an MSRV of
   1.85 from edition alone: dependencies and used language features determine the
@@ -113,3 +122,219 @@ All dispositions above are provisional until Claude evaluates the evidence.
 
 These are provisional assessments, not a substitute for Claude's critics or
 the requested source-grounded follow-up exchange.
+
+## Early performance findings
+
+- performance-001: the separate reference and chain checks do duplicate digest
+  work on scutes. However, the later preparation read is not interchangeable
+  with the earlier check: it holds the exact inode backing the mounted device
+  and verifies its root against the trusted root. Cache contents can change
+  between reads. Any consolidation must keep per-read authentication and input
+  receipts; do not remove mount-time preparation as redundant.
+- performance-002: data_blocks describes rounded block geometry, not the exact
+  decoded byte length. ScuteExtent explicitly requires the known length and
+  preserves canonical padding and late-decoder-error checks. The suggested
+  unknown-length-at-EOF rewrite is not a drop-in equivalent and conflicts with
+  the user's explicit fixed-length verity requirement. Cost is real, but no
+  measured bottleneck or safe equivalent implementation was demonstrated.
+- performance-003: inspect the pinned devmap formatter before asserting syscall
+  counts; the reviewer explicitly did not inspect its internal buffering.
+  Parent inspection of devmap 2679426 `verity/src/format/sync.rs:103-120`
+  finds io::copy for data, rather than an explicit one-read-per-4096-block loop.
+  `format/tree/sync.rs:23-42` seeks before every pending tree block write;
+  a standard BufWriter would flush at those seeks, so the suggested output
+  buffering does not automatically batch those writes. Measure before claiming
+  the proposed fix removes this cost.
+- performance-004/005/006/009: plausible cost reductions, but directory-handle
+  reuse must preserve confined symlink resolution and COPY semantics. These are
+  unmeasured optimization opportunities, not demonstrated security defects.
+- performance-007: decoded unannotated input has no absolute application size
+  ceiling. DESIGN.md:48 and :237-238 explicitly assign resource limits to the
+  environment and permit resource exhaustion to fail a build. A 64 GiB logical
+  root-volume limit is not automatically a valid upper bound on a snapshot COW
+  file including metadata. Review a wire-format-derived bound separately from
+  proposing a new resource policy; do not invent a limit solely to close this
+  finding.
+- performance-008: the claim that Rust stderr is line-buffered like stdout is
+  incorrect. Also, holding build logs until a large buffer fills or a command
+  ends changes diagnostic latency. Need actual syscall/workload evidence before
+  choosing that tradeoff.
+  Installed toolchain source confirms std/io/stdio.rs stores LineWriter for
+  Stdout but StderrRaw directly for Stderr. alloc/io/buffered/linewritershim.rs
+  uses the last newline in a supplied chunk, so even line-buffered stdout does
+  not imply one write syscall per newline in that chunk.
+
+## Early concurrency findings
+
+- concurrency-001: do not implement an unconditional relay join after a failed
+  wait. `DiagnosticRelay` explicitly permits join only after namespace init and
+  descendants have exited. In `receiver.rs:135-148`, the successful wait branch
+  drains diagnostics; the failed wait branch retains the running mount and
+  returns an error through the exit-only helper. A pipe writer may still be
+  alive, so the suggested join can block. The supervisor cancels the domain
+  under its deadline. Losing final logs on timeout is different from losing
+  ordinary failure diagnostics. Check the retained output-timeout VM case before
+  treating this as an unbounded detached-thread bug.
+- concurrency-002: reject accepting teardown success merely because the last
+  child may have exited at an already-expired deadline. The final quiescence
+  observation has not yet occurred, and the design requires completion within
+  the original budget. A strict boundary rejection is not demonstrated flakiness.
+- concurrency-003: inspect actual callers. These deadline-free wrappers cannot
+  consume or silently renew a supplied SetupCutoff because they take none;
+  production helper dispatch passes the cutoff to deadline-aware execution.
+  Specifically, `isolation/setup/gated/helper.rs:35-40` calls
+  `self.enter_until(cutoff.deadline()?)` and rechecks before spawning; the root
+  transition checks the same cutoff before and after restriction and at its
+  start gate. Current deadline-free namespace callers are validation fixtures.
+  Unused convenience wrappers may be removed as API cleanup, but a production
+  budget-renewal bug requires a reachable caller that discards its original
+  cutoff.
+
+## Early unsafe/FFI findings
+
+- unsafe-ffi-001: the proposed empty-argv trigger needs to account for Linux
+  exec behavior. Upstream fs/exec.c adds an empty argv[0] when argc is zero and
+  sets argc to one. This is present even in the older
+  [v6.6.37 source](https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux-stable.git/+/refs/tags/v6.6.37/fs/exec.c),
+  preceding the required Linux 7 environment. A defensive slice accessor is
+  harmless, but the reported current-kernel panic trigger is not established.
+- unsafe-ffi-002: inspect the actual pinned devtree source instead of treating
+  it as unreadable. Revision e90bafc `src/header.rs:26-28` rejects input shorter
+  than FDT_HEADER_SIZE (40); `src/owned.rs:673-693` reserves that header and its
+  writer emits the fixed 40-byte header. The 24..32 ranges are within the
+  dependency's verified representation. No concrete short-buffer path supplied.
+- unsafe-ffi-003: admission and quiescence ordering is precisely why these map
+  writes do not require concurrent-reader atomicity for untrusted subjects.
+  Step::admit_until activates before opening admission, and Step<Finishing>
+  can disable only after drain and finished domain recording. A comment at the
+  raw map update sites would improve local documentation; changing the map
+  protocol without a reachable concurrent subject is not justified by this
+  explicitly hypothetical finding.
+
+## Early API-surface findings
+
+- api-surface-002: the suggested pub(crate) associated resource payload does not
+  compile while the sealed public trait and implementation remain public.
+  `associated-visibility-rejected.rs` reproduces E0446 (rustc exit 1); the same
+  shape with a pub type in a private module and a public associated-type
+  projection compiles (exit 0, `associated-visibility-valid.rs`). This is a
+  necessary Rust visibility distinction, not a private-interface leak. The
+  projection also gives consumers a way to name the associated type.
+- api-surface-003/004/005: the reviewer explicitly excluded validation/ as
+  non-current. That contradicts the supplied scope, which includes the active
+  validation/rewrite-command-integration sources as supporting evidence. For
+  example main.rs:939 imports ExecutionOutcome, :761 uses CommandPreparation,
+  :2373 constructs Step; formatter.rs:221 uses Inventory; sealed.rs:24 uses
+  AssembledImage. Numerous other named alleged orphans are live there. Also,
+  return/error types can be used through inference without explicit type-name
+  references. Recompute the caller analysis before reducing visibility.
+- api-surface-006: directly false. `src/output/assembly.rs:437-439` uses
+  `crate::firmware::tests::Fixture::image` and `Fixture::detached`, so narrowing
+  the fixture module to private would break existing sibling tests.
+- api-surface-001: an unexported concrete error payload can be consumed through
+  inference and its methods. An extra re-export is an ergonomics decision,
+  not proof of a broken recovery path. Evaluate actual external callers before
+  choosing between narrower API and an added export.
+
+The clean-result claim of no proc-macro dependency in unsafe-ffi is also false:
+serde derives, thiserror and clap derive are in use. Application unsafe remains
+forbidden, but do not use that mistaken premise in the final safety summary.
+
+## Early error/API findings
+
+- errors-api-001 duplicates unsafe-ffi-001; the same Linux argv normalization
+  counter-evidence applies.
+- errors-api-002/003/008 identify loss of typed error sources at diagnostic
+  boundaries. The CLI currently reports failure uniformly and the exit taxonomy
+  is explicitly deferred in DESIGN.md. This is an API/diagnostic improvement,
+  not a demonstrated misclassification of successful output. Borrowed cleanup
+  owners must not be boxed as if they were 'static, nor dropped early merely to
+  retain a source chain. A concrete owned diagnostic representation needs to
+  preserve the existing failure ownership and both primary/cleanup messages.
+- errors-api-005 is a useful, concrete conversion improvement: validate decoded
+  u64 capacity through TryFrom<u64> and share it with FromStr, instead of
+  formatting bytes back into human input syntax. Preserve all current bounds.
+- errors-api-006 is a useful diagnostic improvement: Display should report the
+  primary outcome and cleanup diagnostics, not Debug-dump all retained owners.
+  `cleanup_error()` already exposes the relevant summary. Recovery ownership
+  should remain unchanged.
+- errors-api-007: there is already checked_add at execution admission in
+  step/setup.rs:106. Making parsing clock-independent is reasonable, but the
+  suggestion to introduce a new fixed policy maximum is not part of the agreed
+  finite-timeout contract. Keep representational overflow checks and the actual
+  admission check; do not invent an arbitrary duration limit.
+- errors-api-009/010 are small clarity changes, not demonstrated reachable
+  panics: the early Complete return establishes the later unreachable arm, and
+  minicbor Vec writing is infallible. A single match and explicit expect reason
+  can express those existing invariants more clearly.
+
+
+## Early security findings
+
+- security-001/002 duplicate performance-007's resource-policy question.
+  The environment owns resource limits under the agreed design. Requiring an
+  optional wire annotation or treating the logical root volume size as a bound
+  on a snapshot COW extent would change supported input semantics. A concrete
+  format-derived consistency bound is worth considering separately; these
+  suggestions do not establish one.
+- security-003 is a useful hardening candidate requiring precise runtime checks.
+  ProcRestrictions currently makes sys/sysrq-trigger/irq/bus read-only; it does
+  not mask the additional listed entries. A private PID namespace restricts
+  process visibility, but not every global proc entry. Kernel configuration,
+  DAC and kernel pointer restrictions affect which entries disclose what, so
+  "readable" is not established merely by an omitted overmount. Evaluate empty
+  file/directory masks against the actual namespace and qualified kernel, then
+  test positive ordinary /proc use and negative global disclosure in a VM.
+- security-004 identifies an allowlist policy choice, not a demonstrated current
+  vulnerability. The design trusts the kernel and requires representative distro
+  workloads. Historical vulnerabilities alone do not establish that the current
+  syscalls allow a breakout, and pipe transfer operations are not intrinsically
+  outside OS build workloads. Ask for concrete compatibility evidence before
+  removing them; do not silently narrow the intended build environment to the
+  synthetic fixture's syscall set.
+- security-005 correctly observes that the formatter is privileged. That is an
+  explicit trust boundary in SANDBOX-DESIGN.txt 1.2 and 5.1, not a command-sandbox
+  escape: recipes cannot supply arbitrary formatter code or arguments. Further
+  least-privilege confinement can be useful defense in depth, but needs a
+  separate formatter capability/syscall profile and qualification; applying the
+  command profile blindly is not justified. No untrusted-command path into the
+  formatter role was demonstrated.
+- security-006 conflates a low-level filesystem operation with the assembled
+  artifact contract. StagedDirectory::publish explicitly documents that it is
+  not a build-success receipt, and the production coordinator verifies through
+  AssembledImage. A trusted Rust caller can already write/rename arbitrary host
+  directories; library visibility is not the command security boundary. API
+  narrowing can still be considered, checking current integration callers.
+- security-007: the entry point clears ambient and inheritable capabilities,
+  while capset and selected prctl operations let commands manipulate their
+  already-bounded credentials. The design requires SYS_ADMIN absent from all
+  sets, not all ambient capabilities permanently empty. Any raised ambient
+  capabilities remain bounded by the allowed set. Query-only PR_CAP_AMBIENT
+  filtering could be a policy refinement, but the reported violation of a
+  persistent ambient-empty design invariant is not established.
+- security-008 repeats the already checked devtree length invariants in
+  unsafe-ffi-002. Checked slicing would make the boundary defensive locally;
+  current source does not demonstrate a malformed-input panic at that slice.
+
+The security review did not itself inspect the complete current VM harness.
+Its "not checked" entries must remain scoped to that reviewer, rather than
+asserting that the project has no BPF, seccomp, network or teardown evidence.
+
+
+## Stable-toolchain checks and one post-baseline correction
+
+`stable-checks.json` records the additional installed Rust/Cargo 1.94.0 checks.
+All 197 rootless tests and 54 doctests passed. Strict Clippy initially rejected
+an inventory-validation expression as nonminimal; the original failure log is
+retained. Removing the redundant authored-and-absent-target term is logically
+equivalent: skipped authored transforms fail the first term, while every
+non-skipped absent target fails the second. Strict Clippy and all 197 tests pass
+after the simplification; the format check also passes. This is the only
+production source change since the independent review's baseline.
+
+A rootless GitHub workflow and build/prerequisite README are now authored.
+The checkout action is pinned to the v7 commit resolved from the upstream Git
+ref (3d3c42e5aac5ba805825da76410c181273ba90b1), with credentials not persisted.
+The workflow has not run on GitHub. Dependency-policy automation, portable VM
+execution, distro and platform qualification remain open; no clean M7 adherence
+pass is claimed by these checks.
