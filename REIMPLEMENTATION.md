@@ -2713,3 +2713,18 @@ rules rather than silently shrinking acceptance criteria.
   source/log hashes verified. No formatter execution or sealing claim yet.
 - M5 remains in progress, zero clean passes. M4's existing command lifecycle
   regression suite continues to pass with this additive staging path.
+
+### M5 explicit formatter profile (v158–v160)
+
+- Added immutable Ext4Format with validated capacity/label, fixed ext4 options,
+  builder-owned configuration and deterministic CBOR profile identity. Captured
+  runtime configuration rejects duplicate, ancestor and descendant collisions.
+- v158/v159 passed but exposed implicit size-dependent usage selection. v160
+  explicitly selects the conglobate usage profile and passes the normal VM suite
+  without that warning. The fixture formats real snapshots using production
+  arguments/configuration, but still invokes the VM formatter directly.
+- Four formatter unit tests, strict root/fixture Clippy and formatting pass.
+  All three runs are preserved with source/log/artifact hashes verified. The
+  post-v160 host-only collision test is distinguished from booted sources.
+- M5 remains at zero adherence passes. Captured-runtime execution, dual-volume
+  commands, direct sealing and reopened-chain verification are still required.

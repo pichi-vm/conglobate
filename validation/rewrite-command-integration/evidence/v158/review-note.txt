@@ -1,0 +1,1 @@
+Normal suite passes with typed ext4 profile; mke2fs warns implicit small usage type undefined. Preserve pre-correction profile before explicit usage type addition. Captured-root execution still pending.

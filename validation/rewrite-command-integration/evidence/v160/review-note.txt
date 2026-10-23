@@ -1,0 +1,1 @@
+Normal VM suite passed with explicit -T conglobate profile. Fixture invokes original trusted VM formatter, not captured-root execution. Source runtime.rs snapshot is the pre-run source; additional post-run host-only collision test recorded separately.

@@ -6,3 +6,5 @@ mod runtime;
 pub use runtime::{CapturedFormatter, FormatterFile};
 mod staged;
 pub use staged::{FormatterCleanupFailure, FormatterRuntime, FormatterStageFailure};
+mod profile;
+pub use profile::Ext4Format;

@@ -85,3 +85,24 @@ EROFS on chmod through the read-only view, same device as workspace scratch and
 successful close. Full normal integration suite and root/fixture Clippy pass.
 This does not yet prove formatter execution or dependency completeness; those
 require the next captured-root execution integration. No M5 adherence pass.
+
+## Versioned ext4 profile
+
+Ext4Format derives literal argument values from validated filesystem capacity and
+label. The builder owns the mke2fs configuration and rejects captured files that
+conflict with its configuration path, including ancestor/descendant collisions.
+The profile selects ext4, a named usage type, 4096-byte blocks, fixed inode and
+reserved-space defaults, root ownership, no discard and eager initialization.
+Configuration and fixed arguments have a deterministic CBOR profile identity;
+this describes inputs, not a successful execution receipt.
+
+v158 and v159 passed the normal VM suite with the profile on a real writable
+snapshot, but retained an implicit size-dependent `small` usage-type warning.
+v160 explicitly selects `-T conglobate`. The fixture still executes the trusted
+VM formatter at its original path: captured-root execution remains the next
+integration requirement. No M5 adherence pass is claimed for this slice.
+
+The next implementation should connect the captured runtime and assigned device
+to a trusted helper with bounded execution and retained cleanup ownership, then
+immediately use that path in the dual-volume bootstrap fixture. It must not
+introduce another guardian or use synchronization sleeps.

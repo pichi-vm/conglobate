@@ -437,15 +437,27 @@ impl Integration {
                 .into_parts();
             assert_eq!(error.raw_os_error(), Some(22));
             assert!(points()?.is_empty());
-            // Fixture-only formatting; production typed formatter is an M5 task.
+            // Exercise the production profile here; captured-root execution
+            // remains separate from this trusted fixture invocation.
+            let format = conglobate::formatter::Ext4Format::new(
+                "16MiB".parse()?,
+                "bootstrap".to_owned().try_into()?,
+            );
+            let configuration = Path::new("/work/formatter-mke2fs.conf");
+            fs::write(
+                configuration,
+                conglobate::formatter::Ext4Format::configuration(),
+            )?;
             assert!(
-                Command::new("mke2fs")
-                    .args(["-q", "-t", "ext4", "-F", "-b", "4096"])
-                    .arg(node)
-                    .arg("4096")
+                Command::new("/usr/bin/mke2fs")
+                    .env_clear()
+                    .env("MKE2FS_CONFIG", configuration)
+                    .args(format.arguments(node))
                     .status()?
                     .success()
             );
+            fs::remove_file(configuration)?;
+            println!("EXT4_TYPED_PROFILE_FORMAT_PASS");
             let volume = volume
                 .mount_ext4(Path::new("/work"))
                 .map_err(|e| e.to_string())?;
@@ -1533,7 +1545,18 @@ impl Integration {
                 [runtime_path.clone()],
             )?;
             fs::write(runtime_source.join("tool"), b"source changed")?;
-            let runtime = captured.stage(&workspace)?;
+            let runtime = captured.with_ext4_configuration()?.stage(&workspace)?;
+            let configuration_path = conglobate::path::ContextPath::try_from(Path::new(
+                conglobate::formatter::Ext4Format::CONFIGURATION_PATH,
+            ))?;
+            let mut configuration = Vec::new();
+            runtime
+                .open(&configuration_path)?
+                .read_to_end(&mut configuration)?;
+            assert_eq!(
+                configuration,
+                conglobate::formatter::Ext4Format::configuration()
+            );
             let mut staged_file = runtime.open(&runtime_path)?;
             let mut captured_bytes = Vec::new();
             staged_file.read_to_end(&mut captured_bytes)?;

@@ -126,6 +126,30 @@ impl CapturedFormatter {
         }
         Ok(Self { executable, files })
     }
+    /// Add the builder-owned configuration, rejecting a supplied host config.
+    /// The captured root must never choose ambient mke2fs defaults.
+    pub fn with_ext4_configuration(mut self) -> io::Result<Self> {
+        let path = RelativePath::try_from(Path::new(super::Ext4Format::CONFIGURATION_PATH))
+            .expect("fixed configuration path");
+        if self.files.keys().any(|existing| {
+            path.as_ref().starts_with(existing.as_ref())
+                || existing.as_ref().starts_with(path.as_ref())
+        }) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "captured runtime conflicts with builder-owned formatter configuration",
+            ));
+        }
+        self.files.insert(
+            path,
+            FormatterFile {
+                bytes: super::Ext4Format::configuration().into(),
+                digest: super::Ext4Format::configuration_digest(),
+                executable: false,
+            },
+        );
+        Ok(self)
+    }
     pub fn executable(&self) -> &RelativePath<FilePath> {
         &self.executable
     }
@@ -140,6 +164,40 @@ impl CapturedFormatter {
 mod tests {
     use super::*;
     use std::{fs, os::unix::fs::symlink};
+
+    #[test]
+    fn configuration_is_builder_owned_and_rejects_runtime_path_collisions() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(root.path().join("tool"), b"tool").unwrap();
+        fs::set_permissions(root.path().join("tool"), fs::Permissions::from_mode(0o755)).unwrap();
+        let tool = RelativePath::try_from(Path::new("tool")).unwrap();
+        let captured = CapturedFormatter::capture(root.path(), tool.clone(), [tool.clone()])
+            .unwrap()
+            .with_ext4_configuration()
+            .unwrap();
+        let (_, config) = captured
+            .files()
+            .find(|(path, _)| {
+                path.as_ref() == Path::new(super::super::Ext4Format::CONFIGURATION_PATH)
+            })
+            .unwrap();
+        assert_eq!(config.bytes(), super::super::Ext4Format::configuration());
+        assert!(!config.executable());
+        assert!(captured.with_ext4_configuration().is_err());
+
+        for collision in ["etc", "etc/mke2fs.conf", "etc/mke2fs.conf/child"] {
+            let other = tempfile::tempdir().unwrap();
+            fs::copy(root.path().join("tool"), other.path().join("tool")).unwrap();
+            let target = other.path().join(collision);
+            fs::create_dir_all(target.parent().unwrap()).unwrap();
+            fs::write(target, b"ambient configuration").unwrap();
+            let path = RelativePath::try_from(Path::new(collision)).unwrap();
+            let captured =
+                CapturedFormatter::capture(other.path(), tool.clone(), [tool.clone(), path])
+                    .unwrap();
+            assert!(captured.with_ext4_configuration().is_err(), "{collision}");
+        }
+    }
 
     #[test]
     fn capture_resolves_in_root_and_retains_measured_bytes_after_source_change() {

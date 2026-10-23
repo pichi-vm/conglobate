@@ -1,0 +1,1 @@
+Normal VM suite passed. Config stanza added but invocation still lacked -T conglobate; implicit small usage warning remained. This run does not prove captured-root formatter execution.
