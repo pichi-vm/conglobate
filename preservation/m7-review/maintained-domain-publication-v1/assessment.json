@@ -1,0 +1,12 @@
+{
+  "checks": {
+    "DOMAIN_PUBLICATION_ABSENT_ROLLBACK_PASS": true,
+    "DOMAIN_PUBLICATION_PRESENT_ROLLBACK_PASS": true,
+    "DOMAIN_PUBLICATION_MALFORMED_ROLLBACK_PASS": true,
+    "DOMAIN_PUBLICATION_MISMATCH_ROLLBACK_PASS": true,
+    "exit_zero": true,
+    "vm_powered_off": true
+  },
+  "passed": true,
+  "full_lifecycle_qualified": false
+}

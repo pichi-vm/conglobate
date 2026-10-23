@@ -46,3 +46,11 @@ cases need explicit migration; none is considered retired or covered merely
 because this subset compiles. Networking tests must use retained namespace
 ownership without recreating policy-specific pins. Future tests must preserve
 actual production ownership boundaries, not widen descriptor APIs for convenience.
+
+`--case domain-publication` migrates the original domain-record rollback probe:
+absent, published, malformed and identity-mismatched records. It uses real empty
+cgroup-v2 domains and injects a publication error through the public failure
+owner. Malformed/mismatched cases must reject cleanup while retaining domain and
+record; restoring the fixture's own correct record then permits rollback. Every
+case also checks no child cgroup remains. No command runs and no LSM registration
+is involved. These are in-process partial-setup tests, not recovery across builds.

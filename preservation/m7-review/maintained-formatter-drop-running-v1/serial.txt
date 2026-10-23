@@ -1,0 +1,9 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ FORMATTER_DROP=running
++ /lifecycle-tests formatter-failures
+FORMATTER_DROP_RUNNING_RETAINS_STORAGE_PASS
+LIFECYCLE_EXIT 0
+[    7.029079] sysrq: Power Off
+[    7.032666] reboot: Power down

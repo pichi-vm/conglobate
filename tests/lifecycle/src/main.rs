@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
+mod domain_publication;
 mod formatter_failures;
 use conglobate::execution::{HelperInvocation, HelperProgram};
 use std::{ffi::OsStr, path::Path};
@@ -21,7 +22,8 @@ impl Lifecycle {
         }
         match args.as_slice() {
             [mode] if mode == "formatter-failures" => formatter_failures::FormatterFailures::run(),
-            _ => Err("expected formatter-failures or trusted helper invocation".into()),
+            [mode] if mode == "domain-publication" => domain_publication::DomainPublication::run(),
+            _ => Err("expected lifecycle case or trusted helper invocation".into()),
         }
     }
 }

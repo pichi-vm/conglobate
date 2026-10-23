@@ -299,6 +299,7 @@ name = "conglobate-lifecycle-tests"
 version = "0.0.0"
 dependencies = [
  "conglobate",
+ "minicbor",
 ]
 
 [[package]]

@@ -7,3 +7,4 @@ license = "Apache-2.0"
 
 [dependencies]
 conglobate = { path = "../.." }
+minicbor = { version = "2.3.1", features = ["std"] }

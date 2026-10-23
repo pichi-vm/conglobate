@@ -1,0 +1,10 @@
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ /lifecycle-tests domain-publication
+DOMAIN_PUBLICATION_ABSENT_ROLLBACK_PASS
+DOMAIN_PUBLICATION_PRESENT_ROLLBACK_PASS
+DOMAIN_PUBLICATION_MALFORMED_ROLLBACK_PASS
+DOMAIN_PUBLICATION_MISMATCH_ROLLBACK_PASS
+LIFECYCLE_EXIT 0
+[    1.361881] sysrq: Power Off
+[    1.364675] reboot: Power down

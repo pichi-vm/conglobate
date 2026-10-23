@@ -4512,3 +4512,26 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   assertion, trusted status and VM poweroff pass; evidence preserved under
   maintained-formatter-drop-wait-v1. This terminal path intentionally does not
   claim resource release. Immediate running-owner drop case now being run.
+
+### Domain publication rollback migration and formatter abandonment result
+
+- Immediate formatter-owner abandonment run 96375 completed exit 0; retained
+  storage assertion and independent guest status/poweroff pass. Preserved under
+  maintained-formatter-drop-running-v1. Together with earlier wait/drop and
+  cancellation/exhaustion runs, all initially extracted formatter cases now have
+  fresh native amd64 VM evidence, not full lifecycle acceptance.
+- Migrated domain-publication probe into tests/lifecycle/src/domain_publication.rs
+  with all four original states (absent/present/malformed/mismatched). Preserved
+  original harness; no production API or policy owner added. Strengthened final
+  assertion to require no child cgroup after each successful rollback, including
+  absent-record case. Fixture corrupts only its own record and uses real owned
+  empty cgroup domains; no commands or cross-build recovery are involved.
+- New maintained --case domain-publication run passes: invalid records retain
+  domain/record and reject cleanup, restored correct record permits rollback,
+  all resources checked, trusted exit-zero status and guest poweroff observed.
+  Strict fixture Clippy passes. Source hashes, exact migration description and
+  small evidence preserved under maintained-domain-publication-v1; large assets
+  explicitly await durable archival. This is test evidence, not an adherence pass.
+- M4 remains 0/3. Remaining command/helper death, receiver gate failure, network,
+  other partial-acquisition/writeback and broader integration cases still require
+  migration and fresh runs; M5-M8 qualification/retirement gates remain intact.

@@ -72,9 +72,11 @@ class LifecycleRun:
         for name, files in [('formatter-runtime-files', formatter), ('formatter-stall-files', stalled)]:
             (self.root / name).write_text('\n'.join(sorted(files)) + '\n')
         mode = '' if self.args.drop is None else f'FORMATTER_DROP={self.args.drop} '
+        setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\n'
+                 if self.args.case == 'formatter-failures' else
+                 'mkdir /work/cgroups\nmount -t cgroup2 cgroup2 /work/cgroups\n')
         (self.root / 'fixture.sh').write_text(
-            '#!/bin/bash\nset -eux\nmodprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\n'
-            + mode + '/lifecycle-tests formatter-failures\n')
+            '#!/bin/bash\nset -eux\n' + setup + mode + '/lifecycle-tests ' + self.args.case + '\n')
         (self.root / 'init').write_text('''#!/bin/bash
 set -eu
 export PATH=/usr/bin:/usr/sbin
@@ -116,14 +118,17 @@ exec sleep infinity
             '-drive', f'file={status},format=raw,if=virtio']
         (self.output / 'command.json').write_text(json.dumps(command, indent=2) + '\n')
         (self.output / 'runtime.json').write_text(json.dumps({'kernel_sha256':self.digest(self.output/'vmlinuz'),
-            'kernel_release':self.args.kernel_release, 'drop':self.args.drop,
+            'kernel_release':self.args.kernel_release, 'drop':self.args.drop, 'case':self.args.case,
             'architecture':'native amd64 ordinary VM', 'network_attached':False}, indent=2) + '\n')
         with (self.output / 'serial.txt').open('wb') as log:
             subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=180, check=True)
         serial = (self.output / 'serial.txt').read_text(errors='replace')
         # Immediate abandonment need not schedule the child before VM disposal.
         markers = [] if self.args.drop == 'running' else ['FORMATTER_STALL_ENTERED']
-        if self.args.drop:
+        if self.args.case == 'domain-publication':
+            markers = [f'DOMAIN_PUBLICATION_{mode}_ROLLBACK_PASS'
+                       for mode in ('ABSENT', 'PRESENT', 'MALFORMED', 'MISMATCH')]
+        elif self.args.drop:
             markers += [f'FORMATTER_DROP_{self.args.drop.upper()}_RETAINS_STORAGE_PASS']
         else:
             markers += ['FORMATTER_DEADLINE_CANCEL_REAP_PASS', 'FORMATTER_EXHAUSTED_SNAPSHOT_REJECTED_PASS',
@@ -144,10 +149,13 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
+    parser.add_argument('--case', choices=['formatter-failures', 'domain-publication'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':
         parser.error('native amd64/KVM required')
     if '/' in args.kernel_release or args.kernel_release in ('', '.', '..'):
         parser.error('invalid kernel release')
+    if args.drop and args.case != 'formatter-failures':
+        parser.error('--drop applies only to formatter-failures')
     LifecycleRun(args).run()
