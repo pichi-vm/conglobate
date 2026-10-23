@@ -107,6 +107,9 @@ impl Template {
                 }
             }
         }
+        if result.contains('\0') {
+            return Err(TemplateError("expanded string contains NUL"));
+        }
         Ok(result)
     }
 }

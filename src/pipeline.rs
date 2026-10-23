@@ -11,7 +11,7 @@ use crate::{
     storage::Workspace,
 };
 
-pub(crate) const DEFAULT_TRANSFORM: &str = "- op: regex\n  if:\n    exists: /chosen/bootargs\n  property: /chosen/bootargs\n  match: '(^|\\s)corium=[^\\s]*'\n  replace: '${1}corium=${CARAPACE}'\n";
+pub(crate) use crate::recipe::DEFAULT_TRANSFORM;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {

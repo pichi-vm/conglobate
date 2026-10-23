@@ -332,6 +332,7 @@ dependencies = [
  "devmap-linux",
  "devmap-snapshot",
  "devmap-verity",
+ "devtree",
  "gix",
  "hex",
  "libbpf-cargo",
@@ -514,6 +515,11 @@ dependencies = [
  "digest 0.10.7",
  "sha2 0.10.9",
 ]
+
+[[package]]
+name = "devtree"
+version = "0.1.0"
+source = "git+https://github.com/pichi-vm/devtree?rev=e90bafce9ee9e4f7f570f07c5c242b6398c64980#e90bafce9ee9e4f7f570f07c5c242b6398c64980"
 
 [[package]]
 name = "digest"

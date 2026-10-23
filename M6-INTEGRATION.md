@@ -173,3 +173,14 @@ logs, verdicts and external kernel/initramfs/binary hashes are preserved under
 validation/rewrite-command-integration/evidence/v187 and v188; the earlier fixture
 source reconstruction is explicitly identified. No full normal command-suite,
 ORAS, distro/boot or confidential-platform result is inferred from these runs.
+
+## DTB executor
+
+TransformSelection::apply executes the validated sequence through shared devtree
+and returns immutable output plus the observed implicit-default skip state.
+Property types, missing targets, conditional skipping, all-match regex behavior,
+variable failures, unchanged-byte preservation and header/reservation preservation
+are covered by tests. The default definition is shared with inventory hashing.
+This is not yet called by the coordinator. Next replace the staged DTB descriptor
+while preserving unrelated manifest fields, bind inventory to the execution
+receipt, and exercise success/failure through the real CLI in the disposable VM.

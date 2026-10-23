@@ -9,6 +9,7 @@ use crate::{
 };
 use serde::{Deserialize, Deserializer};
 mod transform;
+pub(crate) use transform::DEFAULT_TRANSFORM;
 use transform::TransformDocument;
 pub use transform::{PropertyValue, TransformAction, TransformOperation, TransformSelection};
 

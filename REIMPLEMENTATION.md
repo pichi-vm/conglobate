@@ -2984,3 +2984,22 @@ rules rather than silently shrinking acceptance criteria.
   v188 includes sources, contexts, cache fixtures, logs and boot artifact hashes;
   initial pre-export fixture reconstruction is labeled. Remaining M6 work includes
   stage execution, COPY, firmware/transforms, enabled networking and ORAS coverage.
+
+### M6 DTB transformation execution
+
+- Previous turn was a status-only response (no implementation progress). Resumed
+  with safe shared-devtree execution of validated transform operations. All set
+  types, remove, conditional existence and regex operate on private owned state;
+  callers retain input bytes on failure. Authored empty still requires a DTB.
+- Default sequence now has one canonical recipe-owned definition, used by both
+  parsing/execution and inventory identity. Execution records observed skip
+  disposition rather than assuming it from selection. No-op output preserves
+  exact input bytes; edits preserve reservations, compatibility and boot CPU.
+- Regex checks a single NUL-terminated UTF-8 string before matching, replaces
+  every match, and expands no variables on zero matches. Expanded NUL is rejected.
+- 70 library tests, 49 doctests, strict all-target Clippy and integration-fixture
+  compilation pass. Both dependency locks include the preserved devtree pin.
+  Source snapshots and logs are in preservation/m6/transform-execution.
+- This executor is not yet connected to CLI publication: manifest replacement,
+  receipt-based inventory binding and end-to-end transform cases are next.
+  No new VM run or full adherence pass is claimed. M6 remains at zero passes.

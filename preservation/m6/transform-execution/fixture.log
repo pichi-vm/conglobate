@@ -1,0 +1,6 @@
+     Locking 1 package to latest Rust 1.99.0-nightly compatible version
+      Adding devtree v0.1.0 (https://github.com/pichi-vm/devtree?rev=e90bafce9ee9e4f7f570f07c5c242b6398c64980#e90bafce)
+    Checking devtree v0.1.0 (https://github.com/pichi-vm/devtree?rev=e90bafce9ee9e4f7f570f07c5c242b6398c64980#e90bafce)
+    Checking conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Checking conglobate-command-integration v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.49s

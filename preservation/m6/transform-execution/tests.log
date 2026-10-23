@@ -1,0 +1,13 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.00s
+     Running unittests src/lib.rs (target/debug/deps/conglobate-a27e453ef45e8d76)
+
+running 5 tests
+test inventory::tests::rejects_wrong_types_versions_roots_and_transform_dispositions ... ok
+test transform::tests::typed_sets_create_nodes_and_remove_requires_a_property ... ok
+test transform::tests::regex_checks_type_before_matching_and_conditions_before_reading ... ok
+test transform::tests::default_observes_absence_and_preserves_noops ... ok
+test transform::tests::default_updates_all_matches_and_requires_root_only_for_matches ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 65 filtered out; finished in 0.01s
+

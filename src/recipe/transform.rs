@@ -178,3 +178,14 @@ impl PropertyValue {
         }
     }
 }
+
+pub(crate) const DEFAULT_TRANSFORM: &str = "- op: regex\n  if:\n    exists: /chosen/bootargs\n  property: /chosen/bootargs\n  match: '(^|\\s)corium=[^\\s]*'\n  replace: '${1}corium=${CARAPACE}'\n";
+impl TransformSelection {
+    pub(crate) fn builtin_operations() -> Result<Vec<TransformOperation>, RecipeError> {
+        crate::document::YamlDocument::from(DEFAULT_TRANSFORM)
+            .decode::<Vec<TransformDocument>>()?
+            .into_iter()
+            .map(TransformOperation::try_from)
+            .collect()
+    }
+}

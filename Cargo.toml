@@ -8,6 +8,7 @@ publish = false
 description = "Standalone image builder with isolated command execution"
 
 [dependencies]
+devtree = { git = "https://github.com/pichi-vm/devtree", rev = "e90bafce9ee9e4f7f570f07c5c242b6398c64980", features = ["alloc"] }
 thiserror = "2"
 seccompiler = "=0.5.0"
 linux-raw-sys = { version = "=0.12.1", features = ["general"] }
