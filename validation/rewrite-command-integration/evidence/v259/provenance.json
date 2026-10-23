@@ -1,0 +1,24 @@
+{
+  "base_commit": "e9e5f8548ecf8ea0c4edb89c2e213635beba476f",
+  "exit_code": 1,
+  "passed": false,
+  "reason": "Regression reproduces correctness-001: real bootstrap commands succeed; inventory rejects valid formatter runtime because Path order and String order differ. Source archive captures pre-fix implementation and new fixture paths.",
+  "sha256": {
+    "build.txt": "c0a8998d68916b0242eef9bc646328f324a786fc6d6a869c3f1497860dd30ef4",
+    "pipeline-build.txt": "2b34696728dc82b03cbf6311d7e3a6a41658bbde097834c3010a78bc82842c1a",
+    "serial.txt": "d15dcd8908587552d86373008edca9a71ef3555f5bf52591cefed56c35b2f11b",
+    "verdict.json": "cd53b4987fa420dcbfcbd4cf0d9d2ba6fcdd887d822f62ff3a7ba72c23df88d1",
+    "runtime.json": "74fb39ee22ac562309eddbbb44e7a9092f48c72b4aa8a5b54af7ab1abc145b15",
+    "inputs.json": "bd5ea3eef05cd208cf4174b9544d4cf476491d4af50de9ea21e24dae8cc25a9c",
+    "command.json": "d98fcad20be5601a1fa012aff1eb0a0d4d1a22118ae564cf68fdd813d9c428b5",
+    "source.tar.gz": "deb026fb848d76c5deed9fd1903b956ec056aa9e19f99474ed84656fee96dcdf",
+    "launch.log": "a3832560a706fd3f8403d717f18ab8dfdc77de4b0746c24f880244236bacfd5a",
+    "init.txt": "8e16f6ed197215c886dd96285fa7adc5d46236a43edc58b0b38a7c47d637b965",
+    "fixture.sh.txt": "af0f7f38220286d2f6768c963caf0203568fb8ebe1b1c56fddfc6c72770ccd72"
+  },
+  "external_artifacts": {
+    "/var/tmp/conglobate-rewrite-v259/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-rewrite-v259/initramfs.gz": "932c5e303cf62aabc93c4493714368ee722ff3052f089a9e104dd7e8621d79b2"
+  },
+  "full_sandbox_qualified": false
+}

@@ -226,6 +226,15 @@ impl FormatterProbe {
             assert_eq!(formatter["filesystem"]["label"], "captured");
             assert_eq!(formatter["filesystem"]["size_bytes"], 16 * 1024 * 1024);
             assert_eq!(formatter["executable"]["path"], "usr/bin/mke2fs");
+            let paths = formatter["runtime"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|file| file["path"].as_str().unwrap())
+                .collect::<Vec<_>>();
+            assert!(paths.contains(&"usr/lib/conglobate-order/a"));
+            assert!(paths.contains(&"usr/lib/conglobate-order-x"));
+            assert!(paths.windows(2).all(|pair| pair[0] < pair[1]));
             assert_eq!(
                 formatter["arguments"].as_array().unwrap().last().unwrap(),
                 "4096"

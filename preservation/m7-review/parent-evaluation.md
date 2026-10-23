@@ -338,3 +338,74 @@ ref (3d3c42e5aac5ba805825da76410c181273ba90b1), with credentials not persisted.
 The workflow has not run on GitHub. Dependency-policy automation, portable VM
 execution, distro and platform qualification remain open; no clean M7 adherence
 pass is claimed by these checks.
+
+
+## Correctness finding
+
+- correctness-001 is confirmed. CapturedFormatter stores ContextPath keys in a
+  BTreeMap; FormattedSnapshot::into_recorded_parts preserves that order, as does
+  Formatter::try_from. Formatter::validate instead compares serialized String
+  paths. The standalone safe Rust reproduction in path-order.rs/log demonstrates
+  the disagreement for usr/lib/a and usr/lib-x. This can reject a valid trusted
+  formatter runtime at inventory construction, so it is a correctness bug,
+  rather than merely a low-severity style concern. Proposed correction: sort
+  the serialized runtime records by their string path during receipt conversion,
+  preserving the existing inventory canonical ordering. A VM regression should
+  include both names in a real captured formatter runtime and require successful
+  inventory emission/round-trip; do not add a forgeable production receipt
+  constructor solely to test this conversion.
+
+
+## Documentation findings
+
+- documentation-001/002 are confirmed stale comments: CARAPACE injection and
+  the pipeline/publication paths are implemented. Correct the text; the stale
+  sentence alone is not a high-severity execution/security bug.
+- documentation-003 is useful. ARCHITECTURE.md's early conceptual state names
+  should be reconciled with the actual consuming methods and ownership types.
+  Document normal execution and failure/recovery transitions, without implying
+  that a single linear path covers all cancellation or retry outcomes.
+- documentation-004/007 identify useful public ownership documentation additions.
+  Distinguish destructor fallback from explicit fallible cleanup and from a
+  quiescence/durability receipt. The private commit method's no-restoration
+  comment is true for that method, not a contradiction of default guard Drop.
+- documentation-005: primary operation summaries and error/recovery obligations
+  are useful additions. Focus on behavior callers must uphold, not a boilerplate
+  repetition of each error enum or invented panics.
+- documentation-006 overstates the problem. Dropping ChildReaper naturally leaves
+  subreaping enabled precisely because it has no custom destructor. The existing
+  sentence states the observable behavior correctly; clarification is optional,
+  not a missing destructor bug.
+
+The claim that pinned devtree source was unavailable is contradicted by the
+parent's cached-source inspection recorded above. tests/ and the current
+validation/rewrite-command-integration sources were explicitly supporting scope;
+reviewers excluding them must not turn that omission into claims of absent
+coverage or dead public APIs.
+
+
+## Initial critic scope remains incomplete
+
+The Claude coordinator reports 111 raw findings and selected about 70 medium
+or higher/substantive-low findings for 14 critic batches, leaving about 41 low
+findings uncritiqued. This is not a disposition for the omitted findings. The
+follow-up must finish their source-grounded evaluation as well as negotiate the
+counterexamples above. No full-review consensus is claimed from that subset.
+
+
+## Correctness-001 regression and fix
+
+v259 reproduced the actual failure in the disposable VM: the trusted formatter
+and all three network-enabled pipeline commands completed, then conglobate
+rejected the runtime ordering during inventory construction. The new fixture
+includes usr/lib/conglobate-order/a and usr/lib/conglobate-order-x as real
+captured files. The original failure, source archive and logs are retained.
+
+Formatter::try_from now sorts RuntimeFile values by the serialized String path.
+v260 passes the entire existing VM suite with those same files, including the
+real formatter receipt's inventory round-trip and explicit string-order check,
+CLI publication and ORAS copies. Source archives are captured before building
+from now on. Rootless tests (197), strict production and fixture Clippy, and both
+format checks pass; ordering-checks.json records the evidence. This confirms
+and fixes the bug independently; Claude's final disposition/consensus is still
+pending. No distro or confidential-platform qualification is inferred.

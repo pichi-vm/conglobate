@@ -248,7 +248,7 @@ impl Inventory {
 impl TryFrom<crate::formatter::FormatReceipt> for Formatter {
     type Error = InventoryError;
     fn try_from(receipt: crate::formatter::FormatReceipt) -> Result<Self, Self::Error> {
-        let runtime = receipt
+        let mut runtime = receipt
             .runtime()
             .iter()
             .map(|(path, digest)| {
@@ -258,6 +258,8 @@ impl TryFrom<crate::formatter::FormatReceipt> for Formatter {
                 })
             })
             .collect::<Result<Vec<_>, InventoryError>>()?;
+        // Wire paths use string order; filesystem paths compare by components.
+        runtime.sort_unstable_by(|a, b| a.path.cmp(&b.path));
         let executable = Context::text(receipt.executable().as_ref())?;
         let digest = runtime
             .iter()

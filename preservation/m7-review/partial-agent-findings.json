@@ -1,6 +1,7 @@
 {
-  "stream_event_count": 4970,
+  "stream_event_count": 5352,
   "complete": false,
+  "initial_reviewers_complete": true,
   "reports": {
     "mechanical": {
       "agent": "mechanical",
@@ -1442,6 +1443,134 @@
           "claim": "SPECULATIVE: `output[24..32]` and `bytes[24..32]` index attacker-influenced DTB buffers at fixed offsets and are safe only because `devtree::Tree::parse` rejects blobs under 40 bytes and `OwnedTree::encode` always emits a 40-byte header \u2014 invariants held entirely in a separate crate, so a dependency change would turn this into a supervisor panic on image-supplied input.",
           "evidence_quote": "            output[24..32].copy_from_slice(&bytes[24..32]);",
           "suggested_fix": "Use checked `get(24..32)` on both buffers and return `TransformError::Dtb` on `None` so the safety condition is local to this crate."
+        }
+      ]
+    },
+    "correctness": {
+      "agent": "correctness",
+      "clean": false,
+      "not_checked": [
+        "src/firmware/tests.rs and other #[cfg(test)] fixture modules were read only incidentally; test-logic correctness was not systematically audited",
+        "build.rs and the BPF C source (policy/labels.bpf.c) \u2014 only the Rust-side map/program ABI assertions in src/policy/object.rs were checked, not the BPF program logic itself",
+        "Deep semantics of external crates (devmap-verity tree/root construction, devmap-linux table encoding, lodown, pichi-artifact Manifest validation, goblin PE parsing, seccompiler filter emission, serde-saphyr, ciborium) \u2014 treated as correct; only conglobate's use of their APIs was checked",
+        "src/copy/mode.rs Change::apply bit arithmetic was not independently re-derived; it is validated against an external BuildKit reference digest table (tests/data/copy-mode-reference.json) over all 4096 initial modes, which I accepted as authoritative",
+        "tests/ directory (integration tests) \u2014 not in scope of src/",
+        "src/isolation/setup/gated/* and src/isolation/namespaces.rs were read but only for ordering/condition errors, not for completeness of the sandbox contract against SANDBOX-DESIGN.txt",
+        "Timing/budget adequacy judgments (e.g. whether the 30s SetupBudget is long enough for mke2fs on a 64 GiB logical device in src/formatter/execution.rs) were noted but not reported, as they are policy rather than logic",
+        "Resource-exhaustion paths (e.g. unbounded zstd expansion in src/cache/chain.rs verify_scute when ScuteAnnotations::data_blocks is absent) deliberately left to the allocation/DoS reviewer per role scoping"
+      ],
+      "findings": [
+        {
+          "id": "correctness-001",
+          "file": "src/inventory.rs",
+          "line": 191,
+          "line_end": 191,
+          "severity": "low",
+          "category": "ordering key mismatch",
+          "title": "Formatter runtime order validated as String but produced in Path order",
+          "claim": "The producer emits runtime files in `BTreeMap<RelativePath<FilePath>, _>` order (Rust `Path`/`PathBuf` `Ord` compares component-by-component) while `Formatter::validate` re-checks the ordering on the serialized `String` paths (byte-lexicographic), so a legitimate runtime set such as {\"usr/lib/a\", \"usr/lib-x\"} is emitted in Path order (\"usr/lib/a\" < \"usr/lib-x\" because component \"lib\" < \"lib-x\") but rejected by the string check (\"usr/lib/a\" > \"usr/lib-x\" because '/' 0x2F > '-' 0x2D); the validator should compare the same key the producer sorts on, i.e. compare `Path::new(&w[0].path) >= Path::new(&w[1].path)` (or have `CapturedFormatter` key its map on the UTF-8 string).",
+          "evidence_quote": "            || self.runtime.windows(2).any(|w| w[0].path >= w[1].path)",
+          "suggested_fix": "Compare the two orderings with one key \u2014 either validate with `Path::new(&w[0].path) >= Path::new(&w[1].path)`, or sort/store the captured formatter runtime by its UTF-8 string path so emission and validation agree."
+        }
+      ]
+    },
+    "documentation": {
+      "agent": "documentation",
+      "clean": false,
+      "not_checked": [
+        "Doctests were not compiled or run (Bash/cargo denied), so `compile_fail` blocks were verified only by reading: each was manually checked to reference real sibling items and to fail for the stated reason, but it was not confirmed that none passes vacuously for an unrelated compile error.",
+        "`rustdoc` was not run, so no machine check of intra-doc link resolution; manual grep found zero `[Item]`-style intra-doc links in src/, so none could dangle.",
+        "`unsafe fn` / `# Safety` sections: N/A and confirmed \u2014 `unsafe_code = \"forbid\"` in Cargo.toml and `#![forbid(unsafe_code)]` in both src/lib.rs:6 and src/main.rs:3; grep found no `unsafe` blocks or `unsafe fn` in src/.",
+        "`#[deprecated]` / `# Deprecated` pairing: grep found zero `#[deprecated]` attributes in src/, so nothing to pair.",
+        "Whether `src/transform.rs:84` (`output[24..32].copy_from_slice(&bytes[24..32])`) can panic on a hostile DTB \u2014 this depends on whether the pinned `devtree` crate's `Tree::parse` guarantees a >=40-byte header before returning Ok, and on `OwnedTree::encode` always emitting a full header. The devtree source is a git dependency that was not available to read, so no `# Panics` finding is claimed either way.",
+        "Doc claims about BPF LSM hook semantics (`labels.bpf.c`) were not verified against the C source; only the Rust-side ABI assertions in src/policy/object.rs were read.",
+        "Repo-root docs other than DESIGN.md / SANDBOX-DESIGN.txt / ARCHITECTURE.md (M4/M5/M6/M7 notes, SANDBOX-EVIDENCE/VALIDATION) were only spot-checked; `reference/` and `preservation/` were excluded per instructions.",
+        "tests/ and validation/ directories were out of scope and not reviewed."
+      ],
+      "findings": [
+        {
+          "id": "documentation-001",
+          "file": "src/isolation/root.rs",
+          "line": 137,
+          "line_end": 141,
+          "severity": "high",
+          "category": "stale doc contradicts code",
+          "title": "EnteredRoot::execute doc says \"No CARAPACE support yet\" but CARAPACE is supplied",
+          "claim": "The rustdoc on the command-execution entry point states the documented `$CARAPACE` build variable is unimplemented, while the step layer in fact injects it into every command script, so a reader auditing the build-variable contract is told the opposite of what the code does.",
+          "evidence_quote": "src/isolation/root.rs:137-141:\n    /// Finalize restrictions and remain as the command PID namespace's init,\n    /// reaping descendants while the image shell runs. Exits with the shell's\n    /// outcome; PID namespace destruction and outer containment stop survivors.\n    /// A returned error is fatal: this helper must exit. No CARAPACE support yet.\n    pub fn execute(\n\ncontradicted by src/step/directives.rs:205-210:\n                    let script = match carapace {\n                        Some(root) => {\n                            format!(\"export CARAPACE={}\\n{}\", hex::encode(root), run.command())\n                        }\n                        None => run.command().to_owned(),\n                    };\n\nand by src/pipeline/firmware.rs:182 passing `root.as_ref()` as the `carapace` argument, plus DESIGN.md:611-615 (\"Shell commands access `$CARAPACE` ... through the environment\").",
+          "suggested_fix": "Delete the stale \"No CARAPACE support yet\" sentence and state that CARAPACE reaches the shell as an `export` prefix prepended to the script by the caller, not through `Command::env`."
+        },
+        {
+          "id": "documentation-002",
+          "file": "src/lib.rs",
+          "line": 4,
+          "line_end": 5,
+          "severity": "medium",
+          "category": "stale crate-root doc",
+          "title": "Crate root says pipeline assembly and publication are unimplemented",
+          "claim": "The crate-level `//!` summary \u2014 the first thing any reader of this lib sees \u2014 claims full pipeline assembly and publication are still pending, but `Pipeline::run` already selects a bootstrap/firmware/carapace/inherited path, assembles the OCI layout and publishes it atomically.",
+          "evidence_quote": "src/lib.rs:4-5:\n//! Validated inputs and owned execution primitives for the replacement builder.\n//! Full pipeline assembly and publication remain under implementation.\n\ncontradicted by src/pipeline.rs:63-82:\n        let output = if build.captured().plan().recipe().bootstrap().is_some() {\n            bootstrap::BootstrapBuild::new(&build)?.execute(&self.request, &workspace)?\n        } else if build.captured().plan().recipe().firmware().is_some() {\n            firmware::FirmwareBuild::new(&build)?.execute(&self.request, &workspace)?\n        } ...\n        // No artifact can be published if private input cleanup fails.\n        context.close()?;\n        drop(workspace);\n        output.publish()?;",
+          "suggested_fix": "Rewrite the crate-root summary to describe the implemented pipeline (input capture, storage assembly, isolated execution, sealing, OCI+inventory publication) and name only the genuinely absent stage (`platform`) as unimplemented."
+        },
+        {
+          "id": "documentation-003",
+          "file": "src/step.rs",
+          "line": 112,
+          "line_end": 140,
+          "severity": "medium",
+          "category": "typestate transition order undocumented",
+          "title": "Step's seven-state machine never documents which transitions exist or their order",
+          "claim": "`Step` is the central lifecycle typestate (Ready, Running, Cancelling, Reaping, Draining, Quiescent, Finishing) but neither the type doc, the module doc, nor the state markers state the legal transition order; only three negative `compile_fail` examples hint at it, and the one place in the repo that does spell an order out (ARCHITECTURE.md) names states that no longer exist.",
+          "evidence_quote": "src/step.rs:112-114 (the only prose on the type):\n/// No policy or identity handle escapes before this command's quiescence.\n/// Dropping an unfinished step retains pinned authorization through VM disposal;\n/// best-effort child destruction is never used as a quiescence receipt.\n\nStates declared with no doc comment at all, src/step.rs:69-82:\n#[derive(Debug)]\npub struct Ready;\n#[derive(Debug)]\npub struct Running;\n#[derive(Debug)]\npub struct Cancelling;\n#[derive(Debug)]\npub struct Reaping;\n#[derive(Debug)]\npub struct Draining;\n#[derive(Debug)]\npub struct Quiescent;\n#[derive(Debug)]\npub struct Finishing;\n\nThe actual order is only recoverable by reading src/step/teardown.rs:145-211 (Ready|Running|Cancelling -> Reaping -> Draining -> Quiescent -> Finishing -> Policy -> Pins -> Complete). ARCHITECTURE.md:51-54 documents a different, nonexistent machine: \"Step<Prepared> -> Step<Running> -> Step<Quiescent> -> Step<Completed>\" and \"LabelPolicy<Prepared> -> LabelPolicy<Installed> -> LabelPolicy<Removed>\" (no `Prepared`, `Completed`, `Installed` or `Removed` Step/LabelPolicy state exists in src/). The same gap applies to LabelPolicy (Prepared/LoadedDisabled/PinnedDisabled/BoundDisabled, src/policy/object.rs:14-24 and src/policy/bound.rs:23) and Supervision (Unpaired/Paired/Registered/Admitted, src/process/supervision.rs:26-28).",
+          "suggested_fix": "Add a transition diagram to the `Step` rustdoc (and a one-line order to `LabelPolicy` and `Supervision`) naming each consuming method and its source/target state, and correct the stale state names in ARCHITECTURE.md."
+        },
+        {
+          "id": "documentation-004",
+          "file": "src/storage/volume.rs",
+          "line": 43,
+          "line_end": 45,
+          "severity": "medium",
+          "category": "undocumented Drop teardown",
+          "title": "Volume doc omits that Drop performs a lazy MNT_DETACH unmount",
+          "claim": "Every comparable RAII owner in this crate documents its destructor's behaviour in rustdoc, but `Volume<Mounted>`'s doc says nothing about Drop even though dropping one silently performs a lazy `MNT_DETACH` unmount \u2014 the exact operation SANDBOX-DESIGN 10.4 forbids treating as clean finalization \u2014 with the only explanation in a non-doc `//` comment.",
+          "evidence_quote": "src/storage/volume.rs:43-45 (public doc, no Drop mention):\n/// Filesystem mount ownership coupled to its writable snapshot. Unmounted is\n/// not a sealing receipt or proof that no independent kernel consumer exists.\n/// Root views borrow this owner; no raw root or backing descriptors escape.\n\nsrc/storage/volume.rs:418-431 (actual destructor, `//` not `///`):\nimpl Drop for MountLease {\n    fn drop(&mut self) {\n        if let Some(point) = self.point.take() {\n            // Fallback only: never return an Unmounted value after lazy detach.\n            if let Err(error) = mount::unmount(\n                point.path(),\n                mount::UnmountFlags::DETACH | mount::UnmountFlags::NOFOLLOW,\n            ) {\n                eprintln!(\"volume mount retained until VM disposal: {error}\");\n                std::mem::forget(point);\n            }\n        }\n    }\n}\n\nCompare the explicit path, src/storage/volume.rs:254 `mount::unmount(point.path(), mount::UnmountFlags::NOFOLLOW)` (no DETACH), and SANDBOX-DESIGN.txt:403 \"nor accept a forced/lazy unmount as clean finalization\". Peer types do document this: src/storage/snapshot.rs:42-43 \"Drop only requests deferred mapping removal, not successful finalization or sealing\"; src/storage/mapping.rs:196-197; src/anchor/filesystem.rs:17-18.",
+          "suggested_fix": "Add a Drop sentence to the `Volume` rustdoc stating that abandonment attempts a lazy detach as a best-effort fallback, never flushes, and never yields an `Unmounted` value, so only `unmount()` constitutes clean finalization."
+        },
+        {
+          "id": "documentation-005",
+          "file": "src/pipeline.rs",
+          "line": 53,
+          "line_end": 53,
+          "severity": "medium",
+          "category": "missing rustdoc on primary operations",
+          "title": "Primary entry points have no rustdoc and the crate has no `# Errors` section anywhere",
+          "claim": "The operations named as this crate's primary surface carry no doc comment at all, and a grep for `# Errors`/`# Panics` across all of src/ returns zero hits, so no `Result`-returning primary operation documents which failures a caller must distinguish \u2014 notable because several of these return large error enums whose variants carry recovery-owning values.",
+          "evidence_quote": "Undocumented primary operations (declaration lines, each with no preceding `///`):\nsrc/pipeline.rs:50 `pub fn new(request: BuildRequest) -> Self {`\nsrc/pipeline.rs:53 `pub fn run(self) -> Result<(), BuildError> {`\nsrc/request.rs:81 `pub fn parse_from<I, T>(arguments: I) -> Result<Self, RequestError>`\nsrc/inventory.rs:25 `pub fn decode(bytes: &[u8]) -> Result<Self, InventoryError> {`\nsrc/transform.rs:38 `pub fn apply(` (TransformSelection::apply, the DTB edit over untrusted image bytes)\nsrc/execution/helper.rs:148 `pub fn parse(arguments: &[OsString]) -> io::Result<Option<Self>> {`\nsrc/output.rs:39 `pub fn create(destination: &Path) -> io::Result<Self> {`\nsrc/cache/mod.rs:41 `pub fn open(path: &Path) -> Result<Self, CacheError> {`\n\nAnd `rg '# (Panics|Errors|Safety|Examples|Deprecated)' src/` returns \"No matches found\", while e.g. `BuildError` (src/pipeline.rs:17-44) has twelve variants including `Unsupported`, `Execution` and `RootRequired` that callers plainly need to tell apart.",
+          "suggested_fix": "Add a one-paragraph summary plus an `# Errors` section to each primary operation, at minimum `Pipeline::run`, `BuildRequest::parse_from`, `Inventory::decode`, `TransformSelection::apply` and `HelperInvocation::parse`."
+        },
+        {
+          "id": "documentation-006",
+          "file": "src/process/reaper.rs",
+          "line": 16,
+          "line_end": 16,
+          "severity": "low",
+          "category": "doc describes a nonexistent destructor",
+          "title": "ChildReaper doc describes Drop behaviour but ChildReaper has no Drop impl",
+          "claim": "The `ChildReaper` doc asserts what its destructor deliberately does, but no `impl Drop for ChildReaper` exists anywhere in src/, so a reader auditing teardown ordering may search for a destructor that is not there or assume a guard exists where there is none.",
+          "evidence_quote": "src/process/reaper.rs:13-17:\n/// Process-lifetime adoption in a dedicated, single-threaded supervisor. Install\n/// before spawning children, with normal SIGCHLD zombie semantics and exclusive\n/// wait ownership. Trusted code must not change these settings or fork this owner.\n/// Drop deliberately leaves subreaping enabled: disabling it cannot clean children.\n#[derive(Debug)]\npub struct ChildReaper {\n\n`rg 'impl Drop for' src/` lists fifteen types; `ChildReaper` is not among them. The type's fields are `process: Pid`, `collected: u64`, `_thread: PhantomData<Rc<()>>` (src/process/reaper.rs:19-21), none with a destructor.",
+          "suggested_fix": "Reword to \"This owner has no destructor: `PR_SET_CHILD_SUBREAPER` stays set for the process lifetime, because clearing it cannot clean up already-adopted children.\""
+        },
+        {
+          "id": "documentation-007",
+          "file": "src/isolation.rs",
+          "line": 41,
+          "line_end": 44,
+          "severity": "low",
+          "category": "undocumented Drop teardown",
+          "title": "PrivateMountNamespace doc omits that Drop restores the original namespace",
+          "claim": "The public `PrivateMountNamespace` doc describes creation constraints but never says that dropping the guard calls `setns` back to the original mount namespace, while the only sentence in the file that mentions Drop says the opposite \u2014 it sits on the private `commit()` method, where the claim is true only after the restoration handle has been taken.",
+          "evidence_quote": "src/isolation.rs:41-44 (public type doc, no Drop mention):\n/// Private mount namespace for a dedicated single-threaded setup helper.\n/// Call before starting threads. The thread-count check diagnoses misuse; it\n/// cannot prevent unrelated code from racing to create another thread.\n/// No public raw namespace handle or arbitrary unshare flags are exposed.\n\nsrc/isolation.rs:132-137 (doc on a private fn, asserting the opposite of default behaviour):\n    /// Commit the helper to its current namespace after irreversible root entry.\n    /// Closing the restoration handle prevents the resident command init from\n    /// retaining outside-namespace authority. There is no restoration on Drop.\n    fn commit(mut self) {\n        self.lease.original.take();\n    }\n\nsrc/isolation.rs:160-168 (what Drop actually does by default):\nimpl Drop for NamespaceLease {\n    fn drop(&mut self) {\n        if let Some(original) = self.original.take()\n            && let Err(error) = setns(&original, CloneFlags::CLONE_NEWNS)\n        {\n            eprintln!(\"namespace restoration failed; helper must exit: {error}\");\n        }\n    }\n}",
+          "suggested_fix": "State on the public `PrivateMountNamespace` type that Drop performs a best-effort `setns` back to the original namespace (diagnosing but not propagating failure) unless the guard has been committed by `CommandRoot::enter`."
         }
       ]
     }

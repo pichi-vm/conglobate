@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 from cache_fixture import CacheFixture
 from pipeline_fixture import PipelineFixture
 from runtime import GuestRuntime
@@ -42,6 +43,14 @@ if not formatter_mode and args.oras is None:
     parser.error('--oras is required for the full suite')
 out = args.output.resolve()
 out.mkdir()
+# Capture actual source before building, including uncommitted fixture changes.
+with tarfile.open(out / 'source.tar.gz', 'w:gz') as archive:
+    repo = here.parent.parent
+    for name in ('src', 'policy', 'Cargo.toml', 'Cargo.lock', 'build.rs',
+                 'DESIGN.md', 'SANDBOX-DESIGN.txt'):
+        archive.add(repo / name, arcname=name)
+    for source in sorted(here.glob('*.py')) + sorted(here.glob('Cargo.*')) + [here / 'src']:
+        archive.add(source, arcname=str(source.relative_to(repo)))
 # Never qualify a preceding binary after a failed build. Retain compiler output
 # with this run and abort before constructing or starting the guest on failure.
 build_env = os.environ.copy()
@@ -81,6 +90,13 @@ for executable in executables:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
 formatter_files = {'usr/bin/mke2fs'}
+# Path component ordering differs from string ordering for this valid pair.
+# Exercise actual capture, formatter execution and inventory serialization.
+for name in ('usr/lib/conglobate-order/a', 'usr/lib/conglobate-order-x'):
+    target = root / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text('formatter ordering fixture\n')
+    formatter_files.add(name)
 for line in subprocess.check_output(['ldd', shutil.which('mke2fs')], text=True).splitlines():
     match = re.search(r'(/\S+)', line)
     if match:
