@@ -553,8 +553,14 @@ impl Integration {
                     failure.source_error().kind(),
                     std::io::ErrorKind::ResourceBusy
                 );
+                let failure = failure.cleanup().unwrap_err();
+                assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(16));
+                assert_eq!(failure.diagnostics().cleanup().len(), 1);
+                assert_eq!(failure.diagnostics().cleanup()[0].raw_os_error(), Some(16));
+                assert_eq!(failure.to_string().matches("cleanup attempt").count(), 1);
                 drop(reader);
                 failure.cleanup().map_err(|e| e.to_string())?;
+                println!("CHAIN_CLEANUP_DIAGNOSTICS_RETAINED_PASS");
                 fs::remove_file(node)?;
                 assert_eq!(mappings()?, baseline);
             }
@@ -604,8 +610,21 @@ impl Integration {
                     failure.source_error().kind(),
                     std::io::ErrorKind::ResourceBusy
                 );
+                let failure = failure.cleanup().unwrap_err();
+                let failure = failure.cleanup().unwrap_err();
+                assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(16));
+                assert_eq!(failure.diagnostics().cleanup().len(), 2);
+                assert!(
+                    failure
+                        .diagnostics()
+                        .cleanup()
+                        .iter()
+                        .all(|error| error.raw_os_error() == Some(16))
+                );
+                assert_eq!(failure.to_string().matches("cleanup attempt").count(), 2);
                 drop(holder);
                 failure.cleanup().map_err(|e| e.to_string())?;
+                println!("VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS");
                 fs::remove_file(node)?;
                 if name == "aligned" {
                     // Fresh mapping: corrupt after activation but before its first

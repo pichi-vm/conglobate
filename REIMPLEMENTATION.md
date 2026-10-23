@@ -2094,3 +2094,27 @@ rules rather than silently shrinking acceptance criteria.
   failure reporting must be reviewed. Propagate history there next; do not claim
   combined diagnostics complete. Fixed deadline orchestration and remaining M4
   qualification/adherence also remain open. Clean-pass streak stays zero.
+
+### M4 nested storage cleanup diagnostics (v109)
+
+- Previous turn progressed in a7cf36f. VerityFailure and ReadOnlyChainFailure now
+  preserve their operation and ordered cleanup-attempt errors across retries.
+  Storage diagnostic histories share immutable io::Error payloads at ownership
+  boundaries; latest_only observes the concrete current child error without
+  copying formatted history or losing OS codes. Each outer retry appends exactly
+  that attempt's error; resource owners remain in the existing cleanup-only
+  phases. Read-only history access and consuming transitions remain the API.
+- Unit coverage verifies the same concrete payload survives a boundary and no
+  prior history is replayed. VM v109 repeats a busy verity removal twice and a
+  busy chain removal once, checks exact errno values and history lengths, then
+  releases readers and successfully closes all mappings. It also runs the prior
+  volume and native-command cases. Root tests (39 compile-fail), both Clippy
+  checks and VM suite pass; source/log/artifact hashes are archived and verified.
+- This covers the storage wrappers identified in the preceding finding. It does
+  not establish complete lifecycle diagnostic handling: the eventual build/step
+  orchestration must retain a command's primary error separately from teardown
+  failures, and setup/teardown still need fixed internal deadline orchestration.
+  SANDBOX-DESIGN 10.2 bounds waiting/acceptance rather than promising immediate
+  reaping of uninterruptible kernel I/O. Follow that distinction in the next
+  implementation. M4 remains zero clean adherence passes, with review and other
+  qualification requirements outstanding.

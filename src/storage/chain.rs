@@ -63,15 +63,23 @@ enum Cleanup<'s, 'w> {
 #[derive(Debug, thiserror::Error)]
 #[error("read-only chain: {source}")]
 pub struct ReadOnlyChainFailure<'s, 'w> {
-    source: io::Error,
+    source: super::FailureDiagnostics,
     cleanup: Box<Cleanup<'s, 'w>>,
 }
 impl ReadOnlyChainFailure<'_, '_> {
     pub fn source_error(&self) -> &io::Error {
-        &self.source
+        self.source.latest()
     }
     pub fn cleanup(self) -> Result<(), Self> {
-        self.cleanup.close()
+        self.cleanup
+            .close()
+            .map_err(|Self { source, cleanup }| Self {
+                source: self.source.followed_by(source),
+                cleanup,
+            })
+    }
+    pub fn diagnostics(&self) -> &super::FailureDiagnostics {
+        &self.source
     }
 }
 impl VerifiedChain {
@@ -83,7 +91,7 @@ impl VerifiedChain {
         let sectors = NonZeroU64::new(ORIGIN_SECTORS).expect("nonzero format extent");
         let base = Mapping::<Created>::create().map_err(|error| Cleanup::Empty.failure(error))?;
         let base = base.zero(sectors).map_err(|failure| {
-            let source = io::Error::new(failure.source_error().kind(), failure.to_string());
+            let source = failure.diagnostics().latest_only();
             Cleanup::Base(failure).failure(source)
         })?;
         let mut stack = Stack {
@@ -98,7 +106,7 @@ impl VerifiedChain {
             let cow = match prepared.activate() {
                 Ok(cow) => cow,
                 Err(failure) => {
-                    let source = io::Error::new(failure.source_error().kind(), failure.to_string());
+                    let source = failure.diagnostics().latest_only();
                     return Err(Cleanup::Verity(failure, stack).failure(source));
                 }
             };
@@ -127,14 +135,13 @@ impl VerifiedChain {
                         .and_then(super::SnapshotUsage::try_from)
                     {
                         let failure = mapping.failed(source);
-                        let source =
-                            io::Error::new(failure.source_error().kind(), failure.to_string());
+                        let source = failure.diagnostics().latest_only();
                         return Err(Cleanup::Mapping(failure, cow, stack).failure(source));
                     }
                     stack.layers.0.push(Layer { mapping, cow });
                 }
                 Err(failure) => {
-                    let source = io::Error::new(failure.source_error().kind(), failure.to_string());
+                    let source = failure.diagnostics().latest_only();
                     return Err(Cleanup::Mapping(failure, cow, stack).failure(source));
                 }
             }
@@ -175,24 +182,24 @@ impl<'s, 'w> Stack<'s, 'w> {
     fn close(mut self) -> Result<(), ReadOnlyChainFailure<'s, 'w>> {
         while let Some(Layer { mapping, cow }) = self.layers.0.pop() {
             if let Err(failure) = mapping.close() {
-                let source = io::Error::new(failure.source_error().kind(), failure.to_string());
+                let source = failure.diagnostics().latest_only();
                 return Err(Cleanup::Mapping(failure, cow, self).failure(source));
             }
             if let Err(failure) = cow.close() {
-                let source = io::Error::new(failure.source_error().kind(), failure.to_string());
+                let source = failure.diagnostics().latest_only();
                 return Err(Cleanup::Verity(failure, self).failure(source));
             }
         }
         self.base.close().map_err(|failure| {
-            let source = io::Error::new(failure.source_error().kind(), failure.to_string());
+            let source = failure.diagnostics().latest_only();
             Cleanup::Base(failure).failure(source)
         })
     }
 }
 impl<'s, 'w> Cleanup<'s, 'w> {
-    fn failure(self, source: io::Error) -> ReadOnlyChainFailure<'s, 'w> {
+    fn failure(self, source: impl Into<super::FailureDiagnostics>) -> ReadOnlyChainFailure<'s, 'w> {
         ReadOnlyChainFailure {
-            source,
+            source: source.into(),
             cleanup: Box::new(self),
         }
     }
@@ -203,26 +210,26 @@ impl<'s, 'w> Cleanup<'s, 'w> {
             Self::Cow(cow, stack) => match cow.close() {
                 Ok(()) => stack.close(),
                 Err(failure) => {
-                    let source = io::Error::new(failure.source_error().kind(), failure.to_string());
+                    let source = failure.diagnostics().latest_only();
                     Err(Self::Verity(failure, stack).failure(source))
                 }
             },
             Self::Verity(failure, stack) => match failure.cleanup() {
                 Ok(()) => stack.close(),
                 Err(failure) => {
-                    let source = io::Error::new(failure.source_error().kind(), failure.to_string());
+                    let source = failure.diagnostics().latest_only();
                     Err(Self::Verity(failure, stack).failure(source))
                 }
             },
             Self::Mapping(failure, cow, stack) => match failure.cleanup() {
                 Ok(()) => Self::Cow(cow, stack).close(),
                 Err(failure) => {
-                    let source = io::Error::new(failure.source_error().kind(), failure.to_string());
+                    let source = failure.diagnostics().latest_only();
                     Err(Self::Mapping(failure, cow, stack).failure(source))
                 }
             },
             Self::Base(failure) => failure.cleanup().map_err(|failure| {
-                let source = io::Error::new(failure.source_error().kind(), failure.to_string());
+                let source = failure.diagnostics().latest_only();
                 Self::Base(failure).failure(source)
             }),
         }

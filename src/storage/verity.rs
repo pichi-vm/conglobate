@@ -50,15 +50,23 @@ enum Cleanup<'s, 'w> {
 #[derive(Debug, thiserror::Error)]
 #[error("verity mapping: {source}")]
 pub struct VerityFailure<'s, 'w> {
-    source: io::Error,
+    source: super::FailureDiagnostics,
     cleanup: Cleanup<'s, 'w>,
 }
 impl VerityFailure<'_, '_> {
     pub fn source_error(&self) -> &io::Error {
-        &self.source
+        self.source.latest()
     }
     pub fn cleanup(self) -> Result<(), Self> {
-        self.cleanup.close()
+        self.cleanup
+            .close()
+            .map_err(|Self { source, cleanup }| Self {
+                source: self.source.followed_by(source),
+                cleanup,
+            })
+    }
+    pub fn diagnostics(&self) -> &super::FailureDiagnostics {
+        &self.source
     }
 }
 
@@ -68,7 +76,7 @@ impl<'s, 'w> PreparedScute<'s, 'w> {
             Ok(data) => data,
             Err(source) => {
                 return Err(VerityFailure {
-                    source,
+                    source: source.into(),
                     cleanup: Cleanup::Prepared(self),
                 });
             }
@@ -77,7 +85,7 @@ impl<'s, 'w> PreparedScute<'s, 'w> {
             Ok(hash) => hash,
             Err(source) => {
                 return Err(VerityFailure {
-                    source,
+                    source: source.into(),
                     cleanup: Cleanup::Data(data, self),
                 });
             }
@@ -91,7 +99,7 @@ impl<'s, 'w> PreparedScute<'s, 'w> {
             Ok(mapping) => mapping,
             Err(source) => {
                 return Err(VerityFailure {
-                    source,
+                    source: source.into(),
                     cleanup: Cleanup::Inputs(inputs),
                 });
             }
@@ -154,7 +162,7 @@ impl<'s, 'w> VerityMapping<'s, 'w> {
 impl<'s, 'w> Cleanup<'s, 'w> {
     fn mapping(failure: MappingFailure, inputs: Inputs<'s, 'w>) -> VerityFailure<'s, 'w> {
         VerityFailure {
-            source: io::Error::new(failure.source_error().kind(), failure.to_string()),
+            source: failure.diagnostics().latest_only(),
             cleanup: Self::Mapping(failure, inputs),
         }
     }
@@ -171,7 +179,7 @@ impl<'s, 'w> Cleanup<'s, 'w> {
             }) => match hash.close() {
                 Ok(()) => Self::Data(data, prepared).close(),
                 Err((source, hash)) => Err(VerityFailure {
-                    source,
+                    source: source.into(),
                     cleanup: Self::Inputs(Inputs {
                         hash,
                         data,
@@ -182,7 +190,7 @@ impl<'s, 'w> Cleanup<'s, 'w> {
             Self::Data(data, prepared) => match data.close() {
                 Ok(()) => Self::Prepared(prepared).close(),
                 Err((source, data)) => Err(VerityFailure {
-                    source,
+                    source: source.into(),
                     cleanup: Self::Data(data, prepared),
                 }),
             },

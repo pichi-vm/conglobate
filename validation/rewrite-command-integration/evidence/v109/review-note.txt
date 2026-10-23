@@ -1,0 +1,1 @@
+Verity and chain cleanup preserve original and ordered retry errors. Immutable shared concrete io::Error payloads avoid formatting/nesting child histories; OS error codes survive boundaries. Repeated busy cleanup tests pass and final cleanup succeeds after readers close. Root tests and both Clippy checks pass.

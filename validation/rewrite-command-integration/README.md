@@ -956,3 +956,13 @@ namespace. The failures retain original causes and ordered cleanup errors, and
 still permit cleanup after the blocking condition is removed. v107 retains a
 Clippy layout finding; v108 boxes history and passes all checks. Snapshot failures
 expose mapping history too. Outer verity/chain cleanup propagation remains open.
+
+## Verity and chain cleanup history
+
+v109 extends retained diagnostics through verity and read-only-chain cleanup.
+Busy retries preserve original errno and one entry per attempt; display output
+contains no nested replay of child histories. Tests then close the reader and
+complete cleanup. A host test verifies shared concrete error identity across
+ownership boundaries. Root tests, Clippy and the normal VM suite pass; evidence
+is archived. Command-error versus teardown-error orchestration remains separate
+outstanding work.
