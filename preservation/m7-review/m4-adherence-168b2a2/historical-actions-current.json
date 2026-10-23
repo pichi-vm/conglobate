@@ -386,8 +386,8 @@
       "evidence": "Cold inventory decode; try_from consumes String by signature",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Inventory decode still constructs FilesystemLabel from a cloned String. This cold-path clone preserves a single validated-value constructor; no measured impact justifies a second validation API. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "ownership-004",
@@ -395,8 +395,8 @@
       "evidence": "Callee needs is_empty() and scutes[0]; iterator signature cannot express them",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Assembly borrows a temporary Vec of scute references; bootstrap needs emptiness, first parent, length and iteration. An iterator or generalized slice interface is feasible but not a necessary correctness fix or demonstrated performance improvement. Retain the simple private slice contract. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "ownership-005",
@@ -404,8 +404,8 @@
       "evidence": "Borrowed key not a drop-in: map borrows recipe, which is moved into the same literal; cold path",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "fixed after reconsideration",
+      "current_evidence": "Borrowed ImageReference map keys are feasible: consume inputs into the final Vec before moving recipe into BuildPlan. Implemented that ordering and removed the extra key clones. The previous claim that the move inherently prevents borrowing was too strong. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "ownership-006",
@@ -413,8 +413,8 @@
       "evidence": "One ~30-byte String clone once per network setup; below churn threshold",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "superseded by external networking",
+      "current_evidence": "src/network/nat.rs and NatRules are gone. The cited NAT-table String clone no longer exists. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "ownership-007",
@@ -440,8 +440,8 @@
       "evidence": "Final-tree equality is required to preserve exact original DTB bytes when edits cancel; a changed flag is not equivalent",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Transform compares final owned tree equality with the original and returns exact input bytes when operations cancel. Per-operation changed flags do not preserve this requirement, and encoding first may normalize bytes. Retain comparison copy. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "ownership-010",
@@ -737,8 +737,8 @@
       "evidence": "a71c61c applied the source-supported subset; 198 tests, 54 doctests, Clippy, fixture compile pass",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated partial simplification; retained alias intentional",
+      "current_evidence": "RolledBackPreparation and BootstrapExecutionFailure are absent. ExecutedBootstrap remains as the concrete two-volume completion alias with a compile-fail non-forgeability example. The blanket removal was not the accepted subset; do not label all three removed. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "simplification-015",
@@ -746,8 +746,8 @@
       "evidence": "4 live callsites in validation/rewrite-command-integration/src/main.rs",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "into_volume/into_rejected_volume remain typed convenience conversions with four current preserved integration-harness callsites. Remove only with deliberate caller migration/retirement, not as supposedly unused APIs. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "simplification-016",
@@ -755,8 +755,8 @@
       "evidence": "a71c61c applied the source-supported subset; 198 tests, 54 doctests, Clippy, fixture compile pass",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "RunningCommand::wait_for_exit is absent from current setup source. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "simplification-017",
@@ -791,8 +791,8 @@
       "evidence": "a71c61c applied the source-supported subset; 198 tests, 54 doctests, Clippy, fixture compile pass",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "COPY mode exports only CopyMode and ModeError. Change, Clause, Operator, Permission and Permissions are private implementation types. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "simplification-021",
@@ -800,8 +800,8 @@
       "evidence": "E0446: payloads are associated-type values of the public sealed CheckoutState",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Public sealed CheckoutState exposes StagedResources and ReadOnlyResources as associated type values; fields remain restricted. Demoting these types violates the public interface, regardless of explicit consumer spelling. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "simplification-022",
@@ -827,8 +827,8 @@
       "evidence": "a71c61c applied the source-supported subset; 198 tests, 54 doctests, Clippy, fixture compile pass",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "EnteredRoot provides restrict; the execute method belongs to RestrictedCommand. The unused EnteredRoot convenience wrapper is absent. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "simplification-025",
@@ -836,8 +836,8 @@
       "evidence": "a71c61c applied the source-supported subset; 198 tests, 54 doctests, Clippy, fixture compile pass",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "superseded by external networking",
+      "current_evidence": "VethPair and its module are absent; external environment owns links. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "simplification-026",
@@ -845,8 +845,8 @@
       "evidence": "source_error is a crate-wide convention: 11 definitions, 13 live calls; removing two breaks uniformity",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "FormatterCleanupFailure::source_error has a current unit-test caller asserting NotADirectory. Both formatter error owners retain the common borrowed error-inspection API alongside consuming recovery. A claim of zero use is no longer correct. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "simplification-027",
@@ -872,8 +872,8 @@
       "evidence": "a71c61c applied the source-supported subset; 198 tests, 54 doctests, Clippy, fixture compile pass",
       "remaining_action": "none",
       "historical_status": "fixed",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated fixed",
+      "current_evidence": "Packet::receive forwards directly to receive_shapes; the intermediate receive_from is absent. The negative test also calls receive_shapes directly. See ownership-simplification-current/REVIEW.md and source hashes."
     },
     {
       "id": "tests-001",

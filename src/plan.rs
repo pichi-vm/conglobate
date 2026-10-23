@@ -66,7 +66,7 @@ pub struct BuildPlan {
 }
 impl BuildPlan {
     pub fn new(recipe: Recipe, lock: &ImageLock) -> Result<Self, LockError> {
-        let mut inputs = BTreeMap::<ImageReference, LockedInput>::new();
+        let mut inputs = BTreeMap::<&ImageReference, LockedInput>::new();
         let mut stages = Vec::new();
         let mut network_steps = Vec::new();
         let mut declarations = Vec::new();
@@ -74,7 +74,7 @@ impl BuildPlan {
             stages.push(Stage::Bootstrap);
             declarations.push((Stage::Bootstrap, bootstrap.directives()));
             inputs.insert(
-                bootstrap.from().clone(),
+                bootstrap.from(),
                 LockedInput {
                     reference: bootstrap.from().clone(),
                     index: lock.resolve(bootstrap.from())?,
@@ -89,7 +89,7 @@ impl BuildPlan {
             if let Some(reference) = carapace.from() {
                 let execution_required = !carapace.directives().is_empty()
                     || recipe.firmware().is_some_and(|f| f.from().is_none());
-                let input = inputs.entry(reference.clone()).or_insert(LockedInput {
+                let input = inputs.entry(reference).or_insert(LockedInput {
                     reference: reference.clone(),
                     index: lock.resolve(reference)?,
                     roles: BTreeSet::new(),
@@ -103,7 +103,7 @@ impl BuildPlan {
             stages.push(Stage::Firmware);
             declarations.push((Stage::Firmware, firmware.directives()));
             if let Some(reference) = firmware.from() {
-                let input = inputs.entry(reference.clone()).or_insert(LockedInput {
+                let input = inputs.entry(reference).or_insert(LockedInput {
                     reference: reference.clone(),
                     index: lock.resolve(reference)?,
                     roles: BTreeSet::new(),
@@ -122,10 +122,11 @@ impl BuildPlan {
         }
         // The implicit transform still executes its applicability check.
         stages.push(Stage::Transform);
+        let inputs = inputs.into_values().collect();
         Ok(Self {
             recipe,
             stages,
-            inputs: inputs.into_values().collect(),
+            inputs,
             network_steps,
         })
     }
