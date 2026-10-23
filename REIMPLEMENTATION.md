@@ -3979,3 +3979,21 @@ rules rather than silently shrinking acceptance criteria.
   overlapping addresses. Fix requires an owned namespace-scoped reservation or
   serialization guard, bounded/fail-fast acquisition and VM validation. No clean
   pass has started; M6 remains zero and later milestones remain pending.
+
+### M6 adherence R1 correction: namespace-scoped allocation lease
+
+- `AllocationLease` holds a nonblocking exclusive flock on the current network
+  namespace inode from before topology observation through setup success/failure.
+  Its owned CLOEXEC file closes by RAII; competing setup fails before mutation.
+  No shared lockfile, random-subnet assumption, retry loop or sleep was added.
+- v253 establishes namespace flock behavior. v254 exercises the production guard,
+  competing process and mount namespace, independence across network namespaces,
+  failure release, and distinct prefixes for two simultaneously live networks.
+  Teardown of the second preserves the first. Full network regression and strict
+  root/fixture Clippy pass. Both runs are preserved. R1 is addressed; these focused
+  checks do not constitute a full clean adherence pass.
+- Reconciled DESIGN section 11's explicitly proposed enclosing-layout illustration
+  with the user's OCI-directory requirement: `--output` itself contains OCI
+  entrypoints, blobs and inventory.cbor. This documents the current ORAS-verified
+  representation; no implementation, wire-format or attestation scope changed.
+- M6 remains zero clean passes. Source/design/style/ownership review continues.

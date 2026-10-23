@@ -17,6 +17,33 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// Serialize topology observation and assignment on the network namespace inode.
+/// Independent opens share the kernel lock even across different mount namespaces.
+/// CLOEXEC prevents trusted setup helpers from extending the lease after exec.
+/// Contention fails immediately; the original setup cutoff is never renewed.
+#[derive(Debug)]
+struct AllocationLease {
+    _namespace: std::fs::File,
+}
+impl AllocationLease {
+    fn acquire() -> io::Result<Self> {
+        let namespace = std::fs::File::open("/proc/self/ns/net")?;
+        rustix::fs::flock(
+            &namespace,
+            rustix::fs::FlockOperation::NonBlockingLockExclusive,
+        )
+        .map_err(|error| {
+            io::Error::new(
+                io::Error::from(error).kind(),
+                format!("command network allocation lease: {error}"),
+            )
+        })?;
+        Ok(Self {
+            _namespace: namespace,
+        })
+    }
+}
+
 /// Failed setup retains the exact resources still requiring cleanup. It never
 /// yields an admissible network, even after cleanup succeeds.
 #[derive(Debug, thiserror::Error)]
@@ -162,6 +189,7 @@ impl CommandNetwork {
         budget: &SetupBudget,
     ) -> Result<Self, Box<NetworkSetupFailure>> {
         let cutoff = budget.cutoff().map_err(NetworkSetupFailure::before)?;
+        let _allocation = AllocationLease::acquire().map_err(NetworkSetupFailure::before)?;
         for path in [
             "/proc/sys/net/ipv4/ip_forward",
             "/proc/sys/net/ipv6/conf/all/forwarding",

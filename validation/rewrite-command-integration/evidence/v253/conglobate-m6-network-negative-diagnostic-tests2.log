@@ -1,0 +1,11 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.90s
+     Running unittests src/lib.rs (target/debug/deps/conglobate-74b79561f3dc1698)
+
+running 3 tests
+test step::outcome::tests::successful_cleanup_does_not_turn_timeout_into_success ... ok
+test step::outcome::tests::cleanup_failure_and_retry_preserve_nonzero_primary_status ... ok
+test step::outcome::diagnostic_tests::diagnostics_render_exit_code_instead_of_raw_wait_status ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 109 filtered out; finished in 0.00s
+

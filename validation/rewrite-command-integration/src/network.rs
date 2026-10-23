@@ -22,11 +22,60 @@ use std::{
 
 pub(crate) struct NetworkProbe;
 impl NetworkProbe {
+    pub(crate) fn allocation_lock_child(contended: bool) -> Result<(), Box<dyn std::error::Error>> {
+        let namespace = fs::File::open("/proc/self/ns/net")?;
+        let result = rustix::fs::flock(
+            &namespace,
+            rustix::fs::FlockOperation::NonBlockingLockExclusive,
+        );
+        if contended {
+            assert_eq!(result.unwrap_err(), rustix::io::Errno::WOULDBLOCK);
+        } else {
+            result?;
+        }
+        Ok(())
+    }
+    fn allocation_lock_probe() -> Result<(), Box<dyn std::error::Error>> {
+        let namespace = fs::File::open("/proc/self/ns/net")?;
+        rustix::fs::flock(
+            &namespace,
+            rustix::fs::FlockOperation::NonBlockingLockExclusive,
+        )?;
+        let other = fs::File::open("/proc/self/ns/net")?;
+        assert_eq!(
+            rustix::fs::flock(&other, rustix::fs::FlockOperation::NonBlockingLockExclusive)
+                .unwrap_err(),
+            rustix::io::Errno::WOULDBLOCK
+        );
+        assert!(
+            std::process::Command::new(std::env::current_exe()?)
+                .arg("network-allocation-lock-child")
+                .arg("true")
+                .status()?
+                .success()
+        );
+        for (namespace, contended) in [("--mount", "true"), ("--net", "false")] {
+            assert!(
+                std::process::Command::new("unshare")
+                    .arg(namespace)
+                    .arg(std::env::current_exe()?)
+                    .arg("network-allocation-lock-child")
+                    .arg(contended)
+                    .status()?
+                    .success()
+            );
+        }
+        drop(namespace);
+        rustix::fs::flock(&other, rustix::fs::FlockOperation::NonBlockingLockExclusive)?;
+        println!("NETWORK_NAMESPACE_FLOCK_EXCLUSION_AND_RELEASE_PASS");
+        Ok(())
+    }
     pub(crate) fn composite_failures() -> Result<(), Box<dyn std::error::Error>> {
         use conglobate::{
             network::{CommandNetwork, ResolverInput},
             storage::Workspace,
         };
+        Self::allocation_lock_probe()?;
         let workspace = Workspace::create()?;
         let program = HelperProgram::current()?;
         let parent = Path::new("/work/network-composite");
@@ -39,6 +88,27 @@ impl NetworkProbe {
         // Fixture-only configuration in the NIC-less disposable VM.
         fs::write("/proc/sys/net/ipv4/ip_forward", "1")?;
         fs::write("/proc/sys/net/ipv6/conf/all/forwarding", "1")?;
+        let held = fs::File::open("/proc/self/ns/net")?;
+        rustix::fs::flock(&held, rustix::fs::FlockOperation::NonBlockingLockExclusive)?;
+        let failure = CommandNetwork::prepare(
+            &resolver,
+            &workspace,
+            parent,
+            &program,
+            &SetupBudget::begin(),
+        )
+        .unwrap_err();
+        assert!(failure.to_string().contains("network allocation lease"));
+        failure.cleanup()?;
+        assert!(
+            fs::read_to_string("/proc/thread-self/children")?
+                .trim()
+                .is_empty()
+        );
+        assert_eq!(fs::read_dir(parent)?.count(), 0);
+        assert!(!Path::new("/sys/class/net/cgb0h").exists());
+        drop(held);
+        println!("NETWORK_PRODUCTION_ALLOCATION_CONTENTION_BEFORE_MUTATION_PASS");
         let failure = CommandNetwork::prepare(
             &resolver,
             &workspace,
@@ -93,6 +163,20 @@ impl NetworkProbe {
             &program,
             &SetupBudget::begin(),
         )?;
+        let second = CommandNetwork::prepare(
+            &resolver,
+            &workspace,
+            parent,
+            &program,
+            &SetupBudget::begin(),
+        )?;
+        assert!(Path::new("/sys/class/net/cgb1h").exists());
+        let second_address = std::net::UdpSocket::bind("10.0.0.5:0")?;
+        drop(second_address);
+        second.close(Instant::now() + Duration::from_secs(10))?;
+        assert!(!Path::new("/sys/class/net/cgb1h").exists());
+        assert!(Path::new("/sys/class/net/cgb0h").exists());
+        println!("NETWORK_PRODUCTION_ALLOCATION_RELEASE_AND_DISTINCT_LIVE_PREFIX_PASS");
         let mut failure = network.close(Instant::now()).unwrap_err();
         for _ in 0..2 {
             assert!(

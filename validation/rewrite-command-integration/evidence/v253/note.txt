@@ -1,0 +1,1 @@
+v253 PASS: namespace-inode flock probe demonstrates nonblocking exclusion across independent opens and a separate process, plus release by closing the owner. Full network suite also passes. Production allocation does not yet acquire this lock in this snapshot.

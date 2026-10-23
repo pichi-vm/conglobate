@@ -889,15 +889,19 @@ disable subsequent transforms with `transform: []`.
 
 ## 11. Artifact and inventory
 
-The output is a self-contained OCI image-layout directory with a CBOR
-inventory. Proposed enclosing layout:
+The output directory is itself a self-contained OCI image layout, with the
+successful build inventory alongside its standard entrypoints:
 
 ```text
 result/
-  image.oci/          # OCI image layout; external OCI formats remain JSON
+  oci-layout         # OCI layout version; external OCI formats remain JSON
+  index.json         # output image index
+  blobs/sha256/      # all referenced manifest, configuration and layer blobs
   inventory.cbor     # successful input/output binding
-  evidence/          # optional evidence binding inventory bytes
 ```
+
+OCI consumers use `result/` directly. Attestation and any additional evidence
+binding the inventory bytes belong to the appliance, as specified in section 11.3.
 
 Include every blob referenced by the output image, including inherited blobs
 from the cache. Import must not require the original cache. The destination

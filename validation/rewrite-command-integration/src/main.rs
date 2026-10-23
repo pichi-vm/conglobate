@@ -74,6 +74,12 @@ impl Integration {
         }
         if args
             .get(1)
+            .is_some_and(|arg| arg == "network-allocation-lock-child")
+        {
+            return network::NetworkProbe::allocation_lock_child(args[2].parse()?);
+        }
+        if args
+            .get(1)
             .is_some_and(|arg| arg == "network-composite-failures")
         {
             return network::NetworkProbe::composite_failures();
