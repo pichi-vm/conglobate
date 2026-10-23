@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Integrated command fixture; kernel operations run only in disposable QEMU."""
 import gzip
+import argparse
 import hashlib
 import json
 import os
+import platform
 import pathlib
 import re
 import shutil
@@ -11,15 +13,34 @@ import subprocess
 import sys
 from cache_fixture import CacheFixture
 from pipeline_fixture import PipelineFixture
+from runtime import GuestRuntime
 
 here = pathlib.Path(__file__).resolve().parent
-seed = pathlib.Path('/var/tmp/conglobate-cap-review-fix-normal-v1')
-formatter_mode = sys.argv[2] if len(sys.argv) == 3 else ''
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('output', type=pathlib.Path)
+parser.add_argument('--kernel', type=pathlib.Path, required=True)
+parser.add_argument('--kernel-release', required=True)
+parser.add_argument('--module-root', type=pathlib.Path, required=True,
+                    help='Root containing lib/modules/KERNEL_RELEASE')
+parser.add_argument('--oras', type=pathlib.Path,
+                    help='Checksum-pinned ORAS 1.3.5 binary; required for full suite')
+mode = parser.add_mutually_exclusive_group()
+for name in ('formatter-failures', 'formatter-drop-running', 'formatter-drop-wait',
+             'pipeline', 'network', 'supervisor-death'):
+    mode.add_argument('--' + name, action='store_const', const='--' + name, dest='mode')
+args = parser.parse_args()
+if platform.machine() != 'x86_64':
+    parser.error('this runner currently qualifies only native amd64/KVM')
+if '/' in args.kernel_release or args.kernel_release in ('', '.', '..'):
+    parser.error('--kernel-release must be a release name, not a path')
+formatter_mode = args.mode or ''
 formatter_failures = formatter_mode in ['--formatter-failures', '--formatter-drop-running', '--formatter-drop-wait']
 pipeline_mode = formatter_mode == '--pipeline'
 network_mode = formatter_mode == '--network'
-supervisor_death = len(sys.argv) == 3 and sys.argv[2] == '--supervisor-death'
-out = pathlib.Path(sys.argv[1]).resolve()
+supervisor_death = formatter_mode == '--supervisor-death'
+if not formatter_mode and args.oras is None:
+    parser.error('--oras is required for the full suite')
+out = args.output.resolve()
 out.mkdir()
 # Never qualify a preceding binary after a failed build. Retain compiler output
 # with this run and abort before constructing or starting the guest on failure.
@@ -32,20 +53,12 @@ with (out / 'pipeline-build.txt').open('wb') as build_log:
     subprocess.run(['cargo', 'build', '--locked', '--manifest-path', str(here.parent.parent / 'Cargo.toml')],
                        env=build_env, stdout=build_log, stderr=subprocess.STDOUT, check=True)
 root = out / 'root'
-shutil.copytree(seed / 'root', root, symlinks=True)
+GuestRuntime(root, args.module_root.resolve(), args.kernel_release).create()
 if not formatter_mode:
-    oras = pathlib.Path(os.environ.get('ORAS_TEST_BINARY', '/var/tmp/conglobate-oras-1.3.5/oras'))
+    oras = args.oras.resolve()
     assert hashlib.sha256(oras.read_bytes()).hexdigest() == '7c43d74f5f64c94932b31c76103bb7f48af837fe8aa5316fba7968b6c523350e', 'expected checksum-verified ORAS 1.3.5'
     shutil.copy2(oras, root / 'usr/bin/oras')
 
-for module in ['ext4', 'dm-zero', 'dm-snapshot', 'dm-verity', 'veth', 'nf_tables', 'nft_chain_nat', 'nft_masq', 'nft_ct']:
-    for line in subprocess.check_output(['modprobe', '--show-depends', '--set-version', '7.2.10-200.fc44.x86_64', module], text=True).splitlines():
-        if line.startswith('insmod '):
-            source = pathlib.Path(line.split()[1])
-            target = root / source.relative_to('/')
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, target)
-subprocess.run(['depmod', '-b', str(root), '7.2.10-200.fc44.x86_64'], check=True)
 binary = here / 'target/debug/conglobate-command-integration'
 shutil.copy2(binary, root / 'idmap-probe')
 shutil.copy2(binary, root / 'usr/bin/formatter-stall')
@@ -241,7 +254,6 @@ set +e
 bash /fixture.sh
 status=$?
 echo "IDMAP_PROBE_EXIT $status"
-sleep 1
 echo b > /proc/sysrq-trigger
 exec sleep infinity
 ''')
@@ -288,7 +300,7 @@ echo SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN
 # Return to PID 1, which powers off this VM. Never start another build here.
 """)
     init = root / 'init'
-    init.write_text(init.read_text().replace('sleep 1\necho b >',
+    init.write_text(init.read_text().replace('echo b >',
         'echo VM_CONTROLLER_POWER_OFF\necho o >'))
 if formatter_failures:
     (root / 'fixture.sh').write_text("""#!/bin/bash
@@ -307,12 +319,23 @@ if pipeline_mode:
     (root / 'fixture.sh').write_text('#!/bin/bash\nset -eux\n/idmap-probe pipeline-probe\n')
 if network_mode:
     (root / 'fixture.sh').write_text('#!/bin/bash\nset -eux\nmodprobe veth\nmodprobe nf_tables\nmodprobe nft_chain_nat\nmodprobe nft_masq\nmodprobe nft_ct\n/idmap-probe network-probe\n/idmap-probe forward-probe\nmodprobe loop\nmodprobe ext4\nmodprobe dm-zero\nmodprobe dm-snapshot\nmkdir /work/pins\n/idmap-probe volume-supervisor-network\n/idmap-probe volume-supervisor-network-failure\n/idmap-probe volume-supervisor-network-timeout\nrmdir /work/pins\n/idmap-probe network-composite-failures\n')
+(root / 'init').chmod(0o755)
 paths = sorted(root.rglob('*'))
 (out / 'inputs.json').write_text(json.dumps({str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths if p.is_file() and not p.is_symlink()}, indent=2))
 archive = subprocess.run(['cpio', '--null', '-o', '--format=newc', '--owner=0:0'], input=b'\0'.join(str(p.relative_to(root)).encode() for p in paths) + b'\0', cwd=root, capture_output=True, check=True).stdout
 (out / 'initramfs.gz').write_bytes(gzip.compress(archive, compresslevel=1, mtime=0))
-shutil.copy2(seed / 'vmlinuz', out / 'vmlinuz')
-command = [v.replace(str(seed), str(out)) for v in json.loads((seed / 'command.json').read_text())]
+shutil.copy2(args.kernel, out / 'vmlinuz')
+(out / 'runtime.json').write_text(json.dumps({
+    'architecture': platform.machine(), 'kernel_release': args.kernel_release,
+    'kernel_sha256': hashlib.sha256((out / 'vmlinuz').read_bytes()).hexdigest(),
+    'module_root': str(args.module_root.resolve()),
+    'mode': formatter_mode or 'full', 'legacy_seed_used': False,
+}, indent=2) + '\n')
+command = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-m', '6144',
+           '-smp', '2', '-nodefaults', '-no-reboot', '-display', 'none',
+           '-serial', 'stdio', '-monitor', 'none', '-kernel', str(out / 'vmlinuz'),
+           '-initrd', str(out / 'initramfs.gz'), '-append',
+           'console=ttyS0 rdinit=/init selinux=0 panic=-1 quiet']
 (out / 'command.json').write_text(json.dumps(command, indent=2))
 with (out / 'serial.txt').open('wb') as log:
     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=330, check=True)

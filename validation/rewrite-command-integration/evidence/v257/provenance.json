@@ -1,0 +1,24 @@
+{
+  "base_commit": "e9e5f8548ecf8ea0c4edb89c2e213635beba476f",
+  "exit_code": 1,
+  "passed": false,
+  "reason": "Guest failed loading nft_chain_nat: host modprobe install override concealed nf_conntrack from dependency discovery. Next attempt ignores host modprobe configuration.",
+  "source_notes": "Uncommitted runner changes during M7. Parent-evaluation and final runner patch retain the correction; no pre-launch source archive was captured for these failed attempts.",
+  "sha256": {
+    "build.txt": "2b34696728dc82b03cbf6311d7e3a6a41658bbde097834c3010a78bc82842c1a",
+    "pipeline-build.txt": "f0788aa36d1c86b6ccdfb7f4042a5574102d82061c046422a2d42e008a1e4710",
+    "serial.txt": "a054a38cce2bae3e4309e436c281e79a76e8bcc235ec5fb2ea54002249771b32",
+    "verdict.json": "cd53b4987fa420dcbfcbd4cf0d9d2ba6fcdd887d822f62ff3a7ba72c23df88d1",
+    "runtime.json": "74fb39ee22ac562309eddbbb44e7a9092f48c72b4aa8a5b54af7ab1abc145b15",
+    "inputs.json": "ddbb10b408d556fdc554f54ea9ec7bc0409e02a584867d49fb215c18e8b2f2c5",
+    "command.json": "e34f6932653e97ee6319ce34c245533c8dd304dd65a481464ec806ba9efbf94f",
+    "launch.log": "4e9c0f1e67237314818c38b126cca71489d92ad6decff9b8b2febbe950f6026a",
+    "init.txt": "8e16f6ed197215c886dd96285fa7adc5d46236a43edc58b0b38a7c47d637b965",
+    "fixture.sh.txt": "af0f7f38220286d2f6768c963caf0203568fb8ebe1b1c56fddfc6c72770ccd72"
+  },
+  "external_artifacts": {
+    "/var/tmp/conglobate-rewrite-v257/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-rewrite-v257/initramfs.gz": "2e6b6b92037d6d693413b5afcb1284993eb1f8c68fbc223a8704d9b689778d12"
+  },
+  "full_sandbox_qualified": false
+}

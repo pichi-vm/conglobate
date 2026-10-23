@@ -48,6 +48,14 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
   equivalent simplified expression passes strict Clippy. Both logs are retained.
   The rootless workflow is only one part of the required CI coverage, and has
   not yet produced a hosted result.
+- The VM runner now builds its own fresh guest runtime from trusted local tools
+  and accepts explicit kernel, module-root and ORAS paths. It no longer copies
+  a previous experiment's guest or QEMU command. v256/v257 preserve packaging
+  failures (module-path normalization and host modprobe configuration); v258
+  passes the full existing suite with the new runtime. Inputs, serial logs,
+  source archive and provenance are under
+  validation/rewrite-command-integration/evidence/. CI provisioning of a
+  qualified kernel/module/tool set is still required.
 
 ## Execution order
 

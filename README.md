@@ -62,8 +62,9 @@ generic kernel version numbers alone do not establish those prerequisites.
 [SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt) specifies the boundary and teardown
 requirements. [ARCHITECTURE.md](ARCHITECTURE.md) explains Rust ownership and
 typestate. Privileged integration tests must run inside disposable VMs, never
-directly on the development host. The retained integration harness currently
-depends on local fixture inputs; making it portable is an outstanding M7 task.
+directly on the development host. The retained integration harness builds a
+fresh guest from trusted local tools and explicit kernel/module/ORAS inputs;
+provisioning those inputs in CI remains an outstanding M7 task.
 
 Conglobate does not download missing Git objects or image artifacts. Recipe
 commands have networking disabled by default; enabled commands require an

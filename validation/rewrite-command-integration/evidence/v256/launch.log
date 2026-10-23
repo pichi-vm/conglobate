@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration/run.py", line 56, in <module>
+    GuestRuntime(root, args.module_root.resolve(), args.kernel_release).create()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration/runtime.py", line 46, in create
+    self.modules()
+    ~~~~~~~~~~~~^^
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration/runtime.py", line 78, in modules
+    target = target_tree / source.relative_to(source_tree)
+                           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/usr/lib64/python3.14/pathlib/__init__.py", line 490, in relative_to
+    raise ValueError(f"{str(self)!r} is not in the subpath of {str(other)!r}")
+ValueError: '//lib/modules/7.2.10-200.fc44.x86_64/kernel/drivers/block/loop.ko.xz' is not in the subpath of '/lib/modules/7.2.10-200.fc44.x86_64'

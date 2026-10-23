@@ -9,21 +9,43 @@ The guest has no host disk/share or network device.
 
 ## Reproduction
 
-Requires the preserved seed at
-`/var/tmp/conglobate-cap-review-fix-normal-v1`, Fedora kernel modules for
-`7.2.10-200.fc44.x86_64`, QEMU and the tools named in run.py. Run with:
+The current runner constructs a fresh trusted guest from local tools; it does
+not copy a previous experiment's root or QEMU command. It currently targets
+native amd64 with KVM. Supply a qualified kernel and its matching module tree,
+QEMU, the tools named in runtime.py, plus cpio, zstd, depmod and ORAS 1.3.5.
+ORAS is required for the full suite and checked against its pinned binary hash.
+Run as an ordinary user with access to KVM:
 
 ```
-TMPDIR=/var/tmp/conglobate-rewrite-tmp python3 validation/rewrite-command-integration/run.py /var/tmp/NEW-UNUSED-DIRECTORY
+TMPDIR=/var/tmp/conglobate-rewrite-tmp CARGO_BUILD_JOBS=2 \
+  python3 validation/rewrite-command-integration/run.py \
+  /var/tmp/NEW-UNUSED-DIRECTORY \
+  --kernel /path/to/vmlinuz \
+  --kernel-release MATCHING-KERNEL-RELEASE \
+  --module-root /path/to/root-containing-lib-modules \
+  --oras /path/to/oras
 ```
 
 The runner requires a successful build before packaging the binary and retains
-compiler output in build.txt. The seed supplies the guest initramfs tools and
-QEMU arguments. Per-run input
+compiler output in build.txt and pipeline-build.txt. The kernel must provide
+the scoped BPF LSM hooks and other prerequisites in SANDBOX-DESIGN.txt; merely
+supplying a kernel image is not qualification. The runtime's tools and dynamic
+libraries come from the trusted host, so their ABI must match the guest kernel.
+`modprobe --show-depends` only discovers module inputs on the host; actual
+module loading, mounts, policy loading and command execution occur in the VM.
+Per-run input
 hashes, serial logs, command, source snapshots and verdicts are in evidence/.
 Large guest artifacts remain at the paths in provenance.json; these temporary
 paths must be durably archived before reference retirement. This harness has its
 own pinned Cargo.lock. Sources use safe Rust and methods on the fixture object.
+
+`runtime.json` records the selected kernel digest, module root and run mode.
+The generated guest has no host filesystem share or network device. The full
+suite's network tests create their own topology inside the disposable VM.
+Mode switches (`--network`, `--pipeline`, `--supervisor-death` and formatter
+failure modes) select subsets; they do not qualify the omitted checks.
+The historical results below describe the implementation at each recorded
+revision, including adapters and limitations that later revisions replaced.
 
 ## Results
 
