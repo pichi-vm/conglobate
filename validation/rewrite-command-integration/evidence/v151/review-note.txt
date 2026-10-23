@@ -1,0 +1,1 @@
+Existing normal integration suite passes with snapshot-health finalization gate. Dedicated exhaustion-through-acceptance regression remains outstanding; no clean adherence pass.

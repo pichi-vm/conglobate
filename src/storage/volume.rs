@@ -163,6 +163,10 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
     pub fn into_snapshot(self) -> SnapshotMapping<'a, 'w> {
         self.snapshot
     }
+    /// Observe snapshot health after all filesystem writes have been flushed.
+    pub(crate) fn validate_snapshot(&self) -> std::io::Result<()> {
+        self.snapshot.usage().map(|_| ())
+    }
     /// Mount in the verified init namespace alongside policy identity pins.
     /// Command execution still requires its own private namespace and view.
     pub fn in_init_namespace(

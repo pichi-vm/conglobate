@@ -2590,3 +2590,15 @@ rules rather than silently shrinking acceptance criteria.
 - v150 supervisor-death regression passes with the corrected relay. Host tests,
   root/fixture Clippy, formatting and evidence hashes pass. R2 and the remainder
   of the review remain open; clean adherence streak is still zero.
+
+### M4 snapshot-health acceptance gate (v151)
+
+- Successful flush/unmount now leads to a snapshot-status check before producing
+  FinalizedVolume, followed by another check of the original teardown deadline.
+  Health-check failure retains unmounted storage and the original cutoff for
+  retry, without issuing an acceptance receipt.
+- Host tests, strict Clippy, formatting and the existing normal disposable-VM
+  suite pass. v151 evidence and hashes are preserved and verified.
+- R2 remains open for a dedicated exhaustion-through-command-acceptance test.
+  This is implementation progress, not a clean adherence pass. M4 remains zero;
+  M5–M8 remain pending.

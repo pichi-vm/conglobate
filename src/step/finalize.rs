@@ -20,8 +20,8 @@ struct Finalization<'ns, 'origin, 'workspace> {
     status: ExitStatus,
     reaped: ReapedChildren,
 }
-/// Storage was flushed and cleanly unmounted within the original teardown
-/// budget. The status is the outer trusted helper's exit status, not the
+/// Storage was flushed, cleanly unmounted, and its snapshot status validated
+/// within the original teardown budget. The status is the outer trusted helper's exit status, not the
 /// command outcome. This is not a sealed-image receipt.
 #[derive(Debug)]
 pub struct FinalizedVolume<'ns, 'origin, 'workspace> {
@@ -93,6 +93,20 @@ impl<'ns, 'origin, 'workspace> Finalization<'ns, 'origin, 'workspace> {
             Pending::Mounted(volume) => volume.unmount(),
             Pending::Retry(failure) => failure.retry(),
             Pending::Complete(volume) => {
+                if let Err(error) = volume
+                    .validate_snapshot()
+                    .and_then(|()| Deadline::check(deadline))
+                {
+                    return Err(Box::new(FinalizationFailure {
+                        diagnostics: error.into(),
+                        finalization: Self {
+                            pending: Pending::Complete(volume),
+                            deadline,
+                            status,
+                            reaped,
+                        },
+                    }));
+                }
                 return Ok(FinalizedVolume {
                     volume,
                     status,

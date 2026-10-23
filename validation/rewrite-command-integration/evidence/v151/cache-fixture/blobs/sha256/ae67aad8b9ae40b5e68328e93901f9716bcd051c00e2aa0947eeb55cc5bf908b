@@ -1,0 +1,1 @@
+{"schemaVersion": 2, "mediaType": "application/vnd.oci.image.index.v1+json", "manifests": [{"mediaType": "application/vnd.oci.image.manifest.v1+json", "artifactType": "application/vnd.pichi.artifact.v1+json", "digest": "sha256:b09174e60eb98f15b777240e8b1cffe8ea63c2b4fb195edd568bacab78fc6911", "size": 942, "platform": {"os": "pichi", "architecture": "amd64"}}]}

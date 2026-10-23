@@ -75,3 +75,22 @@ R2 remains open. The review is incomplete and the clean streak remains zero.
 - v150 supervisor-death regression passes with the corrected relay. Host tests,
   root/fixture Clippy, formatting and evidence hashes pass. R2 and the remainder
   of the review remain open; clean adherence streak is still zero.
+
+### R2 finalization gate (in progress)
+
+Finalization now observes snapshot status after successful flush/unmount, and
+checks the original teardown deadline again after that observation. Invalid or
+unreadable status retains the unmounted volume, primary helper status, reaper
+and original cutoff in the owning failure. Retry repeats the health check;
+cleanup alone cannot bypass it. Host tests and strict root Clippy pass.
+
+The existing disposable-VM integration suite is being rerun as v151. A dedicated
+exhaustion regression through command acceptance remains required; the existing
+snapshot-probe exhaustion test alone does not demonstrate that connection.
+R2 remains open pending that evidence. No clean adherence pass is claimed.
+
+v151 completed successfully. Logs, changed implementation source and host check
+logs are preserved with verified hashes. The source snapshot includes a later
+documentation-only line wrap in FinalizedVolume's comment; executable logic is
+unchanged from the booted build. The dedicated negative acceptance test is still
+outstanding.
