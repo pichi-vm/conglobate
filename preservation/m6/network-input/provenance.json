@@ -1,0 +1,10 @@
+{
+  "base_commit": "667709abf4d0d99c7f83bae136e9db448e40be02",
+  "sha256": {
+    "preservation/m6/network-input/conglobate-m6-network-input-tests.log": "5da75dc7d82b87a9c42f223ca6824a68f60f36e046da967e164be35804123fa7",
+    "preservation/m6/network-input/conglobate-m6-network-input-clippy.log": "9727774b62cbed6abb30eebe02cfb14d84b407bb40499fa0f4175c2c1d74d1b7",
+    "preservation/m6/network-input/source.tar.gz": "9d6c2bd663ac9a6c25317f9c61030c1b2bb82c7ab72f806b262778a265063abc",
+    "preservation/m6/network-input/note.txt": "55018c45142f3427a00f4e66b00ea01ac8b5e52566419a292b677e2aa37f5e40"
+  },
+  "network_execution_qualified": false
+}

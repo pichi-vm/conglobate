@@ -226,7 +226,7 @@ fn request_planning_and_document_receipts_use_only_selected_committed_bytes() {
 }
 
 #[test]
-fn network_recipe_requires_an_explicit_resolver_argument() {
+fn network_recipe_captures_an_explicit_resolver_once() {
     use conglobate::{
         input::{CapturedBuild, InputError},
         request::BuildRequest,
@@ -267,16 +267,33 @@ fn network_recipe_requires_an_explicit_resolver_argument() {
         CapturedBuild::try_from(&request),
         Err(InputError::ResolverRequired)
     ));
-    args.extend(["--resolv-conf", "/caller-supplied-resolver"]);
+    let resolver = tempfile::NamedTempFile::new().unwrap();
+    let selected = b"nameserver 192.0.2.53\n";
+    std::fs::write(resolver.path(), selected).unwrap();
+    args.extend(["--resolv-conf", resolver.path().to_str().unwrap()]);
     let request = BuildRequest::parse_from(&args).unwrap();
-    // This phase checks selection only; resolver capture belongs to setup.
-    assert_eq!(
+    let captured = CapturedBuild::try_from(&request).unwrap();
+    assert_eq!(captured.plan().network_steps().len(), 1);
+    std::fs::write(resolver.path(), b"changed after capture").unwrap();
+    assert_eq!(captured.resolver().unwrap().bytes(), selected);
+    std::fs::remove_file(resolver.path()).unwrap();
+    assert!(matches!(
+        CapturedBuild::try_from(&request),
+        Err(InputError::Resolver(_))
+    ));
+
+    // Offline plans neither open nor inject a supplied environment resolver.
+    repo.write("recipe", b"carapace: {from: base}\n");
+    let offline_commit = repo.commit();
+    let offline_id = hex::encode(offline_commit.bytes());
+    let position = args.iter().position(|arg| *arg == "--commit").unwrap();
+    args[position + 1] = &offline_id;
+    let request = BuildRequest::parse_from(&args).unwrap();
+    assert!(
         CapturedBuild::try_from(&request)
             .unwrap()
-            .plan()
-            .network_steps()
-            .len(),
-        1
+            .resolver()
+            .is_none()
     );
 }
 

@@ -482,3 +482,46 @@ disposable firmware changes and failure after successful carapace derivation.
   ORAS interoperability, three full M6 adherence passes, M7 qualification and M8
   retirement remain required. Runtime target directories are still author-supplied
   as recorded above. M6 stays active with zero clean adherence passes.
+
+### M6 immutable resolver input
+
+- Previous goal turn progressed in 667709a. Network source audit confirms that
+  namespace entry currently creates an unattached network namespace and both
+  pipeline/directive layers reject enabled execution. No NAT implementation is
+  implied by the existing network-step plan/inventory schema.
+- ResolverInput now captures the environment's selected regular file once during
+  CapturedBuild construction for a plan with enabled steps. It pins with O_PATH,
+  rejects nonregular objects before activation, reopens the pinned inode, checks
+  capture length and retains immutable bytes without a source locator/handle.
+  Debug redacts contents. Empty/non-UTF8 content is preserved without inventing DNS
+  configuration. Inventory schema/serialization is unchanged and excludes this
+  input as required. Offline plans do not open an otherwise supplied resolver path.
+- Host tests prove capture through a symlink survives source replacement/removal;
+  FIFO/socket/device/directory/missing/loop sources fail; empty contents remain
+  empty; a committed enabled recipe requires a real readable resolver and retains
+  the first capture across source changes. An offline plan ignores the subsequently
+  missing resolver. All host tests (90 library tests, integration suites, 52
+  doctests), strict Clippy, formatting and diff checks pass. Evidence/source hashes
+  are in preservation/m6/network-input. No privileged VM/network test was necessary
+  or claimed for this unprivileged capture change.
+- Preserved network-policy and resolver-target/lifecycle experiments were read as
+  precedent. Their earlier builder-endpoint filtering must not be copied: the final
+  contract allows all reachable destinations. Resolver target handling must extend
+  those experiments to absent/dangling paths, rollback and command quiescence.
+- Required next integration: an owned private network namespace and scoped veth/
+  route/NAT resources, setup acknowledgements before command admission, stateful
+  reply-only ingress, confined read-only resolver injection from captured bytes,
+  and removal/restoration after descendant quiescence. Preserve exclusive creation,
+  failure ownership, original fixed deadlines and existing environment NIC/routes;
+  do not infer cleanup authority merely from a reusable interface name/index.
+  Actual enabled-step receipts must enter inventory only after successful execution.
+- Safe API candidates inspected include rtnetlink link/namespace operations
+  (https://docs.rs/rtnetlink/0.23.0/rtnetlink/struct.LinkMessageBuilder.html),
+  nftables typed JSON (https://docs.rs/crate/nftables/0.6.3), and nftnl
+  (https://docs.rs/crate/nftnl/0.9.4). No dependency/backend selection or privileged
+  mutation was made here. Existing rustix exposes owned netlink sockets, and cached
+  netlink-packet-core/route sources expose safe codecs; implementation must retain
+  bounded acknowledgement handling and explicit resource ownership regardless of
+  wrapper choice. Do not take library documentation as validation of the topology.
+- Enabled network commands remain rejected. M6 is still active at zero clean
+  adherence passes; remaining M6 implementation/qualification and M7/M8 are required.

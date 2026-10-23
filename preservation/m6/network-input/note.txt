@@ -1,0 +1,1 @@
+Unprivileged host validation of immutable resolver capture only. No network namespaces, interfaces, routes, firewall rules, or resolver mounts were modified. Kernel networking and command integration remain unimplemented. Existing v211 VM evidence predates this input-capture change and is not claimed as its execution test.

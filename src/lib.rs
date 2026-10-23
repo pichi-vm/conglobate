@@ -21,6 +21,7 @@ pub mod input;
 pub mod inventory;
 pub mod isolation;
 pub mod lock;
+pub mod network;
 pub mod output;
 pub mod path;
 pub mod pipeline;

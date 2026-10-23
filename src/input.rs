@@ -29,6 +29,8 @@ pub enum InputError {
     Lock(#[from] LockError),
     #[error("network-enabled commands require --resolv-conf")]
     ResolverRequired,
+    #[error("resolver input: {0}")]
+    Resolver(std::io::Error),
 }
 
 /// Selected context-relative name and digest of the exact resolved file bytes.
@@ -60,6 +62,7 @@ pub struct CapturedBuild {
     recipe: SelectedDocument,
     lock: SelectedDocument,
     plan: BuildPlan,
+    resolver: Option<crate::network::ResolverInput>,
 }
 impl TryFrom<&BuildRequest> for CapturedBuild {
     type Error = InputError;
@@ -71,9 +74,12 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
         let recipe = Recipe::try_from(YamlDocument::from(recipe_file.text()?))?;
         let lock = ImageLock::try_from(YamlDocument::from(lock_file.text()?))?;
         let plan = BuildPlan::new(recipe, &lock)?;
-        if !plan.network_steps().is_empty() && request.resolv_conf().is_none() {
-            return Err(InputError::ResolverRequired);
-        }
+        let resolver = if plan.network_steps().is_empty() {
+            None
+        } else {
+            let path = request.resolv_conf().ok_or(InputError::ResolverRequired)?;
+            Some(crate::network::ResolverInput::capture(path).map_err(InputError::Resolver)?)
+        };
         let recipe = SelectedDocument::new(request.recipe().clone(), &recipe_file);
         let lock = SelectedDocument::new(request.lock().clone(), &lock_file);
         Ok(Self {
@@ -81,6 +87,7 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
             recipe,
             lock,
             plan,
+            resolver,
         })
     }
 }
@@ -93,6 +100,9 @@ impl CapturedBuild {
     }
     pub fn lock_document(&self) -> &SelectedDocument {
         &self.lock
+    }
+    pub fn resolver(&self) -> Option<&crate::network::ResolverInput> {
+        self.resolver.as_ref()
     }
     pub fn plan(&self) -> &BuildPlan {
         &self.plan
