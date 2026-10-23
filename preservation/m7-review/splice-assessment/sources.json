@@ -1,0 +1,18 @@
+[
+  {
+    "url": "https://raw.githubusercontent.com/torvalds/linux/v6.8/fs/splice.c",
+    "path": "/storage/conglobate-validation/splice-assessment-sources/linux-v6.8-splice.c",
+    "sha256": "4deab537c1bfe025325fda1249af6e0af6af137be109107a8fb2858a58bf6194",
+    "size": 47687,
+    "license": "GPL-2.0-only",
+    "durably_archived": false
+  },
+  {
+    "url": "https://raw.githubusercontent.com/rust-lang/rust/1.94.0/library/std/src/sys/io/kernel_copy/linux.rs",
+    "path": "/storage/conglobate-validation/splice-assessment-sources/rust-1.94-kernel_copy.rs",
+    "sha256": "3f43af862110447cdbc8e21800ed873b2cf7e40ce1dfa739753f4000e2779480",
+    "size": 30007,
+    "license": "MIT OR Apache-2.0",
+    "durably_archived": false
+  }
+]

@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/runner/work/conglobate/conglobate/tests/lifecycle/run.py", line 257, in <module>
+    LifecycleRun(args).run()
+  File "/home/runner/work/conglobate/conglobate/tests/lifecycle/run.py", line 156, in run
+    subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=180, check=True)
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-m', '4096', '-smp', '2', '-nodefaults', '-no-reboot', '-display', 'none', '-serial', 'stdio', '-monitor', 'none', '-kernel', '/home/runner/work/_temp/lifecycle-results/contained/vmlinuz', '-initrd', '/home/runner/work/_temp/lifecycle-results/contained/initramfs.gz', '-append', 'console=ttyS0 rdinit=/init selinux=0 panic=-1 quiet', '-drive', 'file=/home/runner/work/_temp/lifecycle-results/contained/status.raw,format=raw,if=virtio']' returned non-zero exit status 1.

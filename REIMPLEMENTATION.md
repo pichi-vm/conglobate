@@ -6190,3 +6190,11 @@ runtime-scope and clone-filter. It requires KVM, uses a pinned Rust toolchain
 and local installed Ubuntu generic kernel, and retains raw failure/success
 artifacts. Runner now honors selected toolchain/TMPDIR/jobs. Hosted execution
 is pending; this is not yet passing qualification or a milestone gate.
+
+## First hosted lifecycle result
+
+Run 40038208561 at ff2fbe7 passed cache-storage in its real Ubuntu/KVM guest,
+then QEMU could not open KVM for contained (permission denied before boot).
+Preserved raw evidence in hosted-lifecycle-first/. Replaced one-time ACL setup
+with a runner-user-only udev rule plus explicit device-access diagnostics/checks
+before each case. Retry pending; no full workflow success or M4 pass claimed.

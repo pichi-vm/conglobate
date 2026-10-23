@@ -31,7 +31,10 @@ jobs:
       - name: Require KVM and select installed guest kernel
         run: |
           test -c /dev/kvm
-          sudo setfacl -m "u:$(id -un):rw" /dev/kvm
+          printf 'KERNEL=="kvm", OWNER="%s", MODE="0600"\n' "$(id -un)" | sudo tee /etc/udev/rules.d/99-conglobate-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          sudo udevadm settle
           test -r /dev/kvm
           test -w /dev/kvm
           kernel=$(find /boot -maxdepth 1 -name 'vmlinuz-*-generic' | sort -V | tail -n 1)
@@ -44,6 +47,9 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/lifecycle-results"
           for case in cache-storage contained runtime-scope clone-filter; do
+            stat /dev/kvm
+            test -r /dev/kvm
+            test -w /dev/kvm
             python3 tests/lifecycle/run.py "$RUNNER_TEMP/lifecycle-results/$case" \
               --kernel "$GUEST_KERNEL" --kernel-release "$GUEST_RELEASE" \
               --module-root / --case "$case" \

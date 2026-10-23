@@ -1,0 +1,13 @@
+# Splice-family policy assessment
+
+Implementation: ff2fbe7. security-004 remains a compatibility/hardening question; no syscall policy was changed. This assessment replaces uncertainty about ordinary semantics with explicit evidence, not a claim of kernel vulnerability immunity.
+
+Linux v6.8 fs/splice.c: do_splice and do_tee require readable input and writable output descriptors; tee requires distinct pipes. File splice paths call rw_verify_area. vmsplice selects direction from the supplied file access mode, imports the caller's iovec, and operates through a pipe. These interfaces do not themselves provide a namespace join or a handle to another process. Their implementation still adds kernel attack surface. Source: https://raw.githubusercontent.com/torvalds/linux/v6.8/fs/splice.c (inspection reference, not proof that every qualified kernel has identical code).
+
+Rust 1.94.0 standard-library kernel copy can choose splice for suitable FIFO endpoints. Its sendfile/splice helper falls back for EPERM/ENOSYS and incompatible descriptors. This establishes a legitimate ordinary I/O use but also refutes the stronger assertion that denying splice necessarily breaks Rust io::copy. It does not establish tee/vmsplice usage by our target distros. Source: https://raw.githubusercontent.com/rust-lang/rust/1.94.0/library/std/src/sys/io/kernel_copy/linux.rs.
+
+Current conglobate src/process/syscalls.rs retains splice, tee and vmsplice alongside sendfile/copy_file_range. Existing command descriptor confinement supplies only null input and output/error pipes on entry; commands can obtain further handles only through their permitted sandbox interfaces. Inference under the agreed trusted-kernel model: these syscalls alone do not expand that descriptor authority. This is not an exploit analysis or proof of all indirect interactions. No permission-bypass or hostile payload test was written.
+
+Decision: retain current policy while representative distro qualification is pending. Do not remove all three based on their names, or claim all three are indispensable from the Rust source. Any narrowing must be separately justified with target workload evidence and assessed against the performance/compatibility cost. security-004 therefore remains open for that broader assessment; this report does not invent a clean M4 pass.
+
+Raw upstream source copies are retained locally with hashes/URLs in sources.json, not compiled or vendored into the project. The initial web fetch timed out; curl retrieved Linux successfully. The initial Rust path without the kernel_copy/linux.rs directory returned 404; the official contents API identified the correct tagged path. No VM or distro execution is claimed for this assessment.

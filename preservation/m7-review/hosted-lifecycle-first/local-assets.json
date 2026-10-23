@@ -1,0 +1,26 @@
+[
+  {
+    "path": "/storage/conglobate-validation/hosted-lifecycle-40038208561/cache-storage/initramfs.gz",
+    "size": 83545202,
+    "sha256": "9c5243385e7bee277254d992877b9226a15cf2111afe81e836a7f547970f36ba",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/hosted-lifecycle-40038208561/cache-storage/vmlinuz",
+    "size": 15083912,
+    "sha256": "41ba36d860aa0b0cd995f4ca8856d80249b244577e704929b55be13fbd1ebd2f",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/hosted-lifecycle-40038208561/contained/initramfs.gz",
+    "size": 83532241,
+    "sha256": "c5f4e6afb966c54bb7672ba624398ac6eb37ae3c70bf6734f78c1c0a5a750021",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/hosted-lifecycle-40038208561/contained/vmlinuz",
+    "size": 15083912,
+    "sha256": "41ba36d860aa0b0cd995f4ca8856d80249b244577e704929b55be13fbd1ebd2f",
+    "durably_archived": false
+  }
+]
