@@ -1,0 +1,9 @@
+{
+  "baseline": "a1777fd",
+  "passed": false,
+  "production_changed": false,
+  "failure": "probe wrongly assumed /proc/self/stat comm is command-probe despite explicit ELF loader invocation",
+  "observed": "command failed; cleanup complete; output absent",
+  "correction": "compare stat PID to std::process::id(), not process name",
+  "qualification": false
+}

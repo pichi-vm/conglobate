@@ -4930,3 +4930,27 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   filesystem/boot qualification or a clean adherence pass. M4 remains 0/3.
   Shared historical GuestRuntime migration, historical finding reconciliation,
   all other milestone gates and durable external-artifact archival remain open.
+
+### M4 historical finding reconciliation and proc observations
+
+- Previous turn progressed with maintained chain regression a1777fd. Rechecked
+  historical findings against source, preserving per-ID dispositions and hashes
+  in preservation/m7-review/m4-historical-reconciliation-a1777fd/.
+- Confirmed execution-failure Display and directory-entry error handling fixes.
+  Deadline-free convenience APIs remain, but production helper execution passes
+  its original cutoff; no production timeout renewal established. Broader typed
+  diagnostics and public consumer audit remain open. Formatter trust is explicit;
+  its separate hardening proposal is not treated as an agreed new requirement.
+- Added benign read-only proc checks to the actual command probe. v7 exposed a
+  fixture mistake: explicit ELF loader invocation changes comm. Build rejected
+  the failed probe and left output absent. Preserved failed run; use self PID
+  instead of comm for the corrected ordinary proc access assertion.
+- v8 passes all confinement assertions and actual CLI build/export, independent
+  status and inventory checks. Selected proc interfaces expose no nonzero kernel
+  addresses, key records or scheduler-debug handle. This does not prove denial
+  on configurations where optional interfaces are present or seeded key records
+  exist; those limits are explicit. No raw addresses/key records logged.
+- Strict fixture Clippy passes; executed fixture/production bytes match current
+  source. Evidence in preservation/m7-review/confinement-v7/v8/. No production
+  changes or boot claim. M4 stays 0/3; all remaining milestone gates, maintained
+  clone-mask migration and durable external archival remain outstanding.

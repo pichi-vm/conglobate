@@ -1,0 +1,13 @@
+{
+  "baseline": "a1777fd",
+  "passed": true,
+  "production_changed": false,
+  "coverage": "actual CLI confinement recipe plus ordinary self proc access and no nonzero kallsyms address, nonempty key records or available sched_debug; complete build/export",
+  "limitations": [
+    "kallsyms/keys may be absent or denied; no seeded key visibility control",
+    "sched_debug absence is not demonstrated denial when present",
+    "only the tested kernel configuration; not all global proc interfaces",
+    "no boot, Arm or confidential platform qualification",
+    "large artifacts await durable archival"
+  ]
+}

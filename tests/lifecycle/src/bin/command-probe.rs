@@ -36,6 +36,56 @@ impl CommandProbe {
         println!("COMMAND_SYSCALL_CONTROL_PASS");
         Ok(())
     }
+    fn proc_visibility() -> Result<(), Box<dyn std::error::Error>> {
+        // Only inspect the disposable VM's interfaces. Never print addresses,
+        // key descriptions or scheduler contents into the evidence stream.
+        let stat = fs::read_to_string("/proc/self/stat")?;
+        let pid: u32 = stat
+            .split_whitespace()
+            .next()
+            .ok_or("missing proc PID")?
+            .parse()?;
+        assert_eq!(pid, std::process::id());
+        assert!(!fs::read_to_string("/proc/self/mountinfo")?.is_empty());
+        match fs::read_to_string("/proc/kallsyms") {
+            Ok(symbols) => {
+                assert!(!symbols.is_empty(), "expected kernel symbol control");
+                for line in symbols.lines() {
+                    let address = line.split_whitespace().next().ok_or("missing address")?;
+                    assert!(
+                        address.bytes().all(|byte| byte == b'0'),
+                        "kernel address visible"
+                    );
+                }
+            }
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::PermissionDenied | io::ErrorKind::NotFound
+                ) => {}
+            Err(error) => return Err(error.into()),
+        }
+        match fs::read_to_string("/proc/keys") {
+            Ok(keys) => assert!(keys.trim().is_empty(), "key records visible"),
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::PermissionDenied | io::ErrorKind::NotFound
+                ) => {}
+            Err(error) => return Err(error.into()),
+        }
+        match fs::File::open("/proc/sched_debug") {
+            Ok(_) => return Err("global scheduler interface visible".into()),
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::PermissionDenied | io::ErrorKind::NotFound
+                ) => {}
+            Err(error) => return Err(error.into()),
+        }
+        println!("COMMAND_PROC_VISIBILITY_PASS");
+        Ok(())
+    }
     fn run() -> Result<(), Box<dyn std::error::Error>> {
         if std::env::args().nth(1).as_deref() == Some("control") {
             return Self::control();
@@ -80,6 +130,7 @@ impl CommandProbe {
         let error = String::from_utf8(keys.stderr)?;
         assert!(error.contains("Operation not permitted"), "{error}");
         println!("COMMAND_SYSCALL_DENIAL_PASS");
+        Self::proc_visibility()?;
         let (mut sender, mut receiver) = UnixStream::pair()?;
         use io::{Read, Write};
         sender.write_all(b"ok")?;

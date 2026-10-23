@@ -1,0 +1,56 @@
+{
+  "baseline": "a1777fd",
+  "scope": "Focused source-grounded reconciliation, not a whole-M4 adherence pass or disposition of all 111 findings",
+  "findings": [
+    {
+      "id": "concurrency-003",
+      "disposition": "open API cleanup, no reachable production cutoff renewal established",
+      "evidence": "CommandSetup::enter, GatedCommandSetup::enter and CommandNamespaces::enter still select 30 seconds. GatedCommandSetup::execute uses enter_until(cutoff.deadline()?) and checks cutoff before child spawn. Historical callers use convenience entry. Preserve provenance when migrating callers; remove unused convenience entrypoints after caller audit."
+    },
+    {
+      "id": "errors-api-006",
+      "disposition": "fixed with maintained evidence",
+      "evidence": "StorageExecutionFailure Display emits outcome plus cleanup_error history. rejection-only retry retains history after recovery; busy-execution-v1 exercises successful status with failed cleanup. No Debug resource dump in this Display."
+    },
+    {
+      "id": "errors-api-002/003",
+      "disposition": "partly implemented; broader diagnostic representation remains open",
+      "evidence": "BuildError has typed context/cache/publication errors, but Execution(String) still renders execution rejection. This does not lose retained-owner lifetime inside the execution API. A uniformly typed end-to-end diagnostic API is not complete."
+    },
+    {
+      "id": "errors-api-008",
+      "disposition": "open outside M4 lifecycle subset",
+      "evidence": "Current TransformError::Dtb(String) and CacheError::Manifest(String) still erase dependency error types. Do not infer this requested improvement is fixed from old prose accepting typed diagnostic restoration elsewhere."
+    },
+    {
+      "id": "simplification-002",
+      "disposition": "error handling fixed; optional consolidation not completed",
+      "evidence": "NetworkNamespace::serve collects read_dir entries as Result<Vec<_>, _> before len check. No swallowed directory entry errors. A task-count sample does not prove lasting exclusivity; fresh helper construction supplies that invariant."
+    },
+    {
+      "id": "security-003",
+      "disposition": "tested on current amd64 kernel; broader configuration coverage remains open",
+      "evidence": "Existing runtime masks controls read-only, not kallsyms/keys/sched_debug. Added command checks for zero-or-unavailable kernel addresses, empty-or-unavailable key listing and unavailable scheduler debug, plus ordinary self proc access. Per-kernel observations do not prove every global proc interface is isolated. confinement-v7 failed its comm-name oracle; corrected PID oracle in v8 passes actual build/export. No seeded key control or proof for sched_debug-present configurations."
+    },
+    {
+      "id": "security-004",
+      "disposition": "open compatibility/security review",
+      "evidence": "Production allowlist still includes splice/tee/vmsplice. No demonstrated escape. Do not remove these solely to satisfy a stale proposal; review ordinary pipe workloads and deny scope against actual requirement."
+    },
+    {
+      "id": "security-005",
+      "disposition": "trusted formatter boundary confirmed; hardening proposal remains unqualified",
+      "evidence": "Formatter role uses fresh mount/net/IPC/UTS namespaces, private propagation, captured runtime root and output-only block device, cleared environment and setup cutoff. It intentionally does not receive the untrusted-command seccomp/capability profile. Design explicitly trusts formatter; do not claim command-equivalent confinement or silently promote this suggestion into a new requirement."
+    },
+    {
+      "id": "api-surface-005",
+      "disposition": "open consumer audit",
+      "evidence": "Public ownership types require checking return-position inference and maintained plus historical consumers. Name-search counts do not establish dead APIs."
+    },
+    {
+      "id": "tests-001",
+      "disposition": "historical evidence exists; maintained migration outstanding",
+      "evidence": "parent-evaluation records v262 direct legacy clone positive/negative controls and reviewer withdrawal of ENOSYS/unshare proposal. Current no-op unshare probe tests default syscall denial, not clone flags. Preserve this distinction."
+    }
+  ]
+}
