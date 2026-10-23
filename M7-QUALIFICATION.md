@@ -10,7 +10,7 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
 | --- | --- | --- |
 | Source-grounded critical review | Initial Claude review and four reconciliation rounds completed; accepted fixes and unresolved dispositions preserved in preservation/m7-review | Final review, source-grounded disposition, fixes and agreement on disputed findings |
 | Fedora build and boot | Fedora v3 passed real DNF installation, root labeling and inherited-firmware boot; guest service verifies enforcing mode, expected label and UID 0 | This covers the representative layering/SELinux case on amd64; other distros, real bootstrap/firmware-generation workloads and platform coverage remain separate |
-| Debian build and boot | No sibling Debian image repo discovered | Maintained conglobate recipe, package/firmware build and boot evidence |
+| Debian build and boot | Native amd64/KVM representative APT build and boot passed; `preservation/m7-review/debian-build-v2` preserves sentinel, package records and artifact hashes; v1 volatile-/var failure retained | Debian kernel generation and broader architecture/confidential coverage remain outstanding; this case packages the known Fedora-built kernel/corium pair |
 | Alpine build and boot | No sibling Alpine image repo discovered | Maintained conglobate recipe, package/firmware build and boot evidence |
 | NixOS build and boot | No sibling NixOS image repo or host nix executable discovered | Maintained conglobate recipe, Nix build and boot evidence; host nix is not inherently required |
 | amd64 | Local x86_64 QEMU/KVM integration evidence exists | Representative distro qualification and complete repository checks |

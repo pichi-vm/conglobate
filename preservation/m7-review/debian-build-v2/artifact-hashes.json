@@ -1,0 +1,14 @@
+{
+  "/var/tmp/conglobate-debian-build-v2/artifact/oci-layout": "18f0797eab35a4597c1e9624aa4f15fd91f6254e5538c1e0d193b2a95dd4acc6",
+  "/var/tmp/conglobate-debian-build-v2/artifact/inventory.cbor": "655e466858c975a0c989ba0cec389633d58e7a1dd21f2ee85e36f49595274f0f",
+  "/var/tmp/conglobate-debian-build-v2/artifact/index.json": "035bfbc94322970d072536009b359082e47faf96b314d956ac962032bf23de45",
+  "/var/tmp/conglobate-debian-build-v2/artifact/blobs/sha256/d3a48ba2f4098082a411f439e39ad8156f5e0d72f72d0b3fc9e8c8aff69d923c": "d3a48ba2f4098082a411f439e39ad8156f5e0d72f72d0b3fc9e8c8aff69d923c",
+  "/var/tmp/conglobate-debian-build-v2/artifact/blobs/sha256/deffea2b84cdafae7f00c3767e5f1097117d510f6be20300def014188c54761e": "deffea2b84cdafae7f00c3767e5f1097117d510f6be20300def014188c54761e",
+  "/var/tmp/conglobate-debian-build-v2/artifact/blobs/sha256/5c16ca75aa25d0284d6a8194e66a4f9325549cebea848e4a61b8b5d376c263fb": "5c16ca75aa25d0284d6a8194e66a4f9325549cebea848e4a61b8b5d376c263fb",
+  "/var/tmp/conglobate-debian-build-v2/artifact/blobs/sha256/3bb882cd41f023126ae3621f65d78b22105db22b5e80f87b69d5492219cd1b87": "3bb882cd41f023126ae3621f65d78b22105db22b5e80f87b69d5492219cd1b87",
+  "/var/tmp/conglobate-debian-build-v2/artifact/blobs/sha256/3207424f95132f38e2b4f68c37dccede069a97885d0d728fa7383ed09ef078e0": "3207424f95132f38e2b4f68c37dccede069a97885d0d728fa7383ed09ef078e0",
+  "/var/tmp/conglobate-debian-build-v2/artifact/blobs/sha256/6e050854e9272447761434dd22f4792dde8614719ba78a1dd8ddb3cb946d2d3e": "6e050854e9272447761434dd22f4792dde8614719ba78a1dd8ddb3cb946d2d3e",
+  "/var/tmp/conglobate-debian-build-v2/artifact/blobs/sha256/39fd47f7a1add1ddfa98bab16f9ec089a04827b2444cee5dc6425115a78ad4ea": "39fd47f7a1add1ddfa98bab16f9ec089a04827b2444cee5dc6425115a78ad4ea",
+  "/var/tmp/conglobate-debian-build-v2/artifact/blobs/sha256/cc4d9d3099adf15c59b855e19462c37f2bd05cdd2e21447504dba3c88575451a": "cc4d9d3099adf15c59b855e19462c37f2bd05cdd2e21447504dba3c88575451a",
+  "/var/tmp/conglobate-debian-build-v2/artifact/blobs/sha256/44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+}
