@@ -1,0 +1,18 @@
+{
+  "src/cache/chain.rs": "e9ba3ebe6611bc7a0f0d559740a6cdcffb15fc2d41df917098e75dcdb8563115",
+  "src/cache/chain/prepared.rs": "9a614f96a56b0e69c0a5eb46aa2ad7855927a1b8aa741cf17556f46a92c33046",
+  "src/transform.rs": "552b069e577ce188958239399b0d4b5e71927cb51d581489aa9321c19cc2dd64",
+  "src/output.rs": "ced15ee9dfb57feb9b8dd28ba73b1884c62abd2b90caadebc0f69902417ee4c3",
+  "src/output/assembly.rs": "eb41b2f13f581772691134b3af48563569223787e7a81a2a300e4879f8e89620",
+  "src/pipeline.rs": "3dd6633dde7f921f1a133f666c39a7c680725487ac70b5b0c00018e886c5285a",
+  "src/process/privileges.rs": "473f831c3e21dfcf58946ef9f63b28d6c7a71bae23d96ee430b6df9d2458cf64",
+  "src/process/syscalls.rs": "980f423ae974aa9d8e87eeb7d98a48aafac460e37a25c9ca9d0006ec2eb3b72e",
+  "DESIGN.md": "c4484792304cd63097031c37bb1811f31ab0d755a3477093d01ff27d4617c34c",
+  "SANDBOX-DESIGN.txt": "44f4222fd37f0974877c292c6a7e2ae75e41aa01b3c0278289754cfed02b0cae",
+  "Cargo.toml": "67cdf091858b3101c5ee899583bd5bbf81489aff7d43b3668eff9ad97601db5f",
+  "Cargo.lock": "a6e6d30507f3b74a38475de4fbc58e4b022210869fa827e07c383927978ae434",
+  "/home/nathaniel/.cargo/git/checkouts/devtree-ccdc30da65358379/e90bafc/src/header.rs": "05a346d5d764a8ce702e2be7b31c672d31a8fff6e2b040db0f5dafb0009fc845",
+  "/home/nathaniel/.cargo/git/checkouts/devtree-ccdc30da65358379/e90bafc/src/fdt.rs": "8eb647f023400c7e917953acd3c88dc770634c82f49d9760a9424bd375f2f83f",
+  "/home/nathaniel/.cargo/git/checkouts/devtree-ccdc30da65358379/e90bafc/src/owned.rs": "6a6fb424e737cf0659ea33871bc337cdcf31f84ae3284d80cca82aacdee5ec16",
+  "/home/nathaniel/.cargo/git/checkouts/devtree-ccdc30da65358379/e90bafc/src/writer.rs": "9b1108d867817b1c2c09cefa7292645529d6176ff920ef134c7f6cca7638b946"
+}

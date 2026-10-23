@@ -548,8 +548,8 @@
       "evidence": "Uncapped measuring copy is real but DESIGN.md:48/:237 assign resource limits to the environment; data_blocks is Optional by wire contract",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection of proposed policy change",
+      "current_evidence": "Decoded measuring remains uncapped without optional data_blocks; this is real resource use, not denied. DESIGN assigns capacity/resource policy to environment. Requiring absent optional annotation or applying an unrelated filesystem-size constant changes accepted input semantics. No claim of exhaustion resistance. See security-boundaries-current/REVIEW.md."
     },
     {
       "id": "security-002",
@@ -557,8 +557,8 @@
       "evidence": "Downstream consequence of the same missing bound",
       "remaining_action": "none",
       "historical_status": "duplicate",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated duplicate of security-001",
+      "current_evidence": "Materialized data remains RAM-backed and subject to environment capacity. Current single-pass materialization eliminates reread but does not introduce a resource quota. Preserve environment-resource scope; do not claim streaming bounds total allocation. See security-boundaries-current/REVIEW.md."
     },
     {
       "id": "security-003",
@@ -593,8 +593,8 @@
       "evidence": "publish=false; all in-tree publication goes through AssembledImage::publish_inventory; type doc disclaims receipt status",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection within binary trust scope",
+      "current_evidence": "StagedDirectory explicitly provides atomic storage mechanics, not a successful-build receipt. The sole production staged publish call is AssembledImage::publish_inventory after inventory.check_output; private CompletedImage follows context cleanup. Crate publish=false, and image commands cannot call Rust supervisor APIs. This does not certify arbitrary future library callers. See security-boundaries-current/REVIEW.md."
     },
     {
       "id": "security-007",
@@ -602,8 +602,8 @@
       "evidence": "Design requires SYS_ADMIN absent from all sets, not a permanently empty ambient set; raises stay bounded by permitted",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection of unsupported invariant",
+      "current_evidence": "CommandPrivileges clears inheritable/ambient at admission and removes SYS_ADMIN from all permitted/effective/bounding sets. The design requires permanent absence of SYS_ADMIN, not permanent ambient emptiness for allowed capabilities. No filter tightening without workload need; current deny/allow profiles still require distro qualification. See security-boundaries-current/REVIEW.md."
     },
     {
       "id": "security-008",
@@ -611,8 +611,8 @@
       "evidence": "Same slice as unsafe-ffi-002",
       "remaining_action": "none",
       "historical_status": "duplicate",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated duplicate of unsafe-ffi-002",
+      "current_evidence": "Same fixed-header slice; exact pinned dependency parse/encode invariants and new truncation regression are recorded under unsafe-ffi-002. See security-boundaries-current/REVIEW.md."
     },
     {
       "id": "simplification-001",
@@ -989,8 +989,8 @@
       "evidence": "devtree e90bafc header.rs:26-28 rejects <40 bytes; owned.rs:713-715 always emits the 40-byte header",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection with regression",
+      "current_evidence": "Pinned devtree e90bafc Fdt::parse invokes Header::parse which checks >=40 bytes; OwnedTree::encode prefixes writer::build_header [u8;40]. Thus transform offsets 24..32 are bounded by verified dependency invariants. Added test rejects every truncated header length 0..39 in builtin and authored paths; all five transform tests pass. See security-boundaries-current/REVIEW.md."
     },
     {
       "id": "unsafe-ffi-003",

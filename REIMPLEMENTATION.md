@@ -6068,3 +6068,15 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   live. Requested recount is complete; no claim every export is necessary.
 - Evidence/scripts: api-surface-current/. Initial overbroad scans were stopped and
   retained. No production edits or repeated tests; M4 remains at 0/3.
+
+### Current security boundary reconciliation
+
+- Revalidated security-001/002/006/007/008 and unsafe-ffi-002 against accepted
+  resource policy, production publication path, capability contract and exact
+  pinned DTB parser/encoder sources. No new quota or ambient policy invented;
+  unbounded resource use remains an environment responsibility, not proved safe.
+- Added maintained regression for every DTB header truncation 0..39 in builtin
+  and authored transforms. All five transform tests pass (80 new boundary cases).
+  Evidence: security-boundaries-current/. No production behavior change.
+- This is scoped finding reconciliation, not full M4 adherence. M4 stays 0/3;
+  UID/GID decision and remaining original scope remain outstanding.

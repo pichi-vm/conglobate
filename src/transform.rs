@@ -246,6 +246,27 @@ mod tests {
         }
     }
     #[test]
+    fn every_truncated_header_is_rejected_before_property_processing() {
+        let valid = Fixture::dtb(None);
+        for length in 0..40 {
+            let truncated = &valid[..length];
+            assert!(
+                matches!(
+                    TransformSelection::Builtin.apply(Some(truncated), None),
+                    Err(TransformError::Dtb(_))
+                ),
+                "builtin accepted header length {length}"
+            );
+            assert!(
+                matches!(
+                    Fixture::apply("[]", Some(truncated), None),
+                    Err(TransformError::Dtb(_))
+                ),
+                "authored transform accepted header length {length}"
+            );
+        }
+    }
+    #[test]
     fn default_observes_absence_and_preserves_noops() {
         let default = TransformSelection::Builtin;
         let absent = default.apply(None, None).unwrap();
