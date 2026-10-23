@@ -34,6 +34,13 @@ pub trait PreparationStorage: StorageLayout {
     ) -> Result<Self::Unmounted, Self::UnmountFailure>;
     #[doc(hidden)]
     fn validate_command_root(&self) -> io::Result<()>;
+    #[doc(hidden)]
+    fn validate_ownership(
+        &self,
+        uid: crate::isolation::IdRange,
+        gid: crate::isolation::IdRange,
+        deadline: Instant,
+    ) -> io::Result<()>;
     type UnmountFailure: Debug;
     #[doc(hidden)]
     fn unmount_until(self, deadline: Instant) -> Result<Self::Unmounted, Self::UnmountFailure>;
@@ -71,6 +78,14 @@ impl<'n, 'o, 'w> PreparationStorage for Volume<'n, 'o, 'w, Mounted> {
     }
     fn validate_command_root(&self) -> io::Result<()> {
         self.validate_command_root()
+    }
+    fn validate_ownership(
+        &self,
+        uid: crate::isolation::IdRange,
+        gid: crate::isolation::IdRange,
+        deadline: Instant,
+    ) -> io::Result<()> {
+        self.validate_ownership(uid, gid, deadline)
     }
     type UnmountFailure = VolumeUnmountFailure<'n, 'o, 'w>;
     fn unmount_until(self, _deadline: Instant) -> Result<Self::Unmounted, Self::UnmountFailure> {
@@ -113,6 +128,15 @@ impl<'n, 'o, 'w> PreparationStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
     }
     fn validate_command_root(&self) -> io::Result<()> {
         self.tool().validate_command_root()
+    }
+    fn validate_ownership(
+        &self,
+        uid: crate::isolation::IdRange,
+        gid: crate::isolation::IdRange,
+        deadline: Instant,
+    ) -> io::Result<()> {
+        self.tool().validate_ownership(uid, gid, deadline)?;
+        self.output().validate_ownership(uid, gid, deadline)
     }
     type UnmountFailure = Box<BootstrapUnmountFailure<'n, 'o, 'w>>;
     fn unmount_until(self, deadline: Instant) -> Result<Self::Unmounted, Self::UnmountFailure> {

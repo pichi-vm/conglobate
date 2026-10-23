@@ -19,6 +19,9 @@ pub struct IdRange {
     count: u32,
 }
 impl IdRange {
+    pub(crate) fn contains_image_id(self, id: u32) -> bool {
+        id < self.count
+    }
     pub(crate) fn first(self) -> u32 {
         self.first
     }

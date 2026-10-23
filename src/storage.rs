@@ -7,6 +7,7 @@ pub use runtime::{Runtime, RuntimeFailure, RuntimePaths, RuntimeScopeFailure};
 mod diagnostics;
 pub use diagnostics::FailureDiagnostics;
 mod chain;
+mod ownership;
 mod volume;
 pub use volume::{
     Mounted, Unmounted, Volume, VolumeMountFailure, VolumeState, VolumeUnmountFailure, VolumeView,

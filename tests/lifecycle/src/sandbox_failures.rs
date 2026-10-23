@@ -18,6 +18,7 @@ pub(super) enum FailurePoint {
     Join,
     AttachedExit,
     UnmappedOwner,
+    UnmappedAcl,
     BusyExecution,
     HeldCleanup,
     MissingCleanup,
@@ -32,7 +33,6 @@ pub(super) enum FailurePoint {
 #[derive(Debug, Clone, Copy)]
 pub(super) enum HelperCompletion {
     None,
-    InspectOwners,
     Normal,
     Held,
     Missing,
@@ -72,27 +72,7 @@ impl SandboxFailures {
             ))?)
             .map_err(|e| e.to_string())?;
         assert_eq!(view.root_metadata()?.uid(), 100000);
-        if matches!(completion, HelperCompletion::InspectOwners) {
-            let root = Path::new("/work/runtime-parent/receiver-view");
-            let mapped = fs::metadata(root.join("last-mapped-owner"))?;
-            let unmapped = fs::metadata(root.join("first-unmapped-owner"))?;
-            assert_eq!((mapped.uid(), mapped.gid()), (165535, 165535));
-            let overflow_uid: u32 = fs::read_to_string("/proc/sys/kernel/overflowuid")?
-                .trim()
-                .parse()?;
-            let overflow_gid: u32 = fs::read_to_string("/proc/sys/kernel/overflowgid")?
-                .trim()
-                .parse()?;
-            assert_eq!(
-                (unmapped.uid(), unmapped.gid()),
-                (overflow_uid, overflow_gid)
-            );
-            println!("UNMAPPED_INHERITED_OWNER_PRESENTED_AS_OVERFLOW");
-        }
-        if !matches!(
-            completion,
-            HelperCompletion::None | HelperCompletion::InspectOwners
-        ) {
+        if !matches!(completion, HelperCompletion::None) {
             use std::os::unix::process::ExitStatusExt;
             channel.report_prepared_until(deadline)?;
             let channel = channel.await_admission_until(deadline)?;
@@ -153,6 +133,7 @@ impl SandboxFailures {
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
                 | FailurePoint::UnmappedOwner
+                | FailurePoint::UnmappedAcl
                 | FailurePoint::BusyExecution
                 | FailurePoint::HeldCleanup
                 | FailurePoint::MissingCleanup
@@ -205,6 +186,7 @@ impl SandboxFailures {
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
                 | FailurePoint::UnmappedOwner
+                | FailurePoint::UnmappedAcl
                 | FailurePoint::BusyExecution
                 | FailurePoint::HeldCleanup
                 | FailurePoint::MissingCleanup
@@ -235,6 +217,28 @@ impl SandboxFailures {
                     std::os::unix::fs::chown(file, Some(id), Some(id))?;
                 }
             }
+            if matches!(point, FailurePoint::UnmappedAcl) {
+                let path = entries[0].path().join("named-acl-owner");
+                let file = fs::File::create(path)?;
+                let mut acl = 2u32.to_le_bytes().to_vec();
+                for (tag, permissions, id) in [
+                    (1u16, 7u16, u32::MAX),
+                    (2, 4, 65536),
+                    (4, 5, u32::MAX),
+                    (16, 7, u32::MAX),
+                    (32, 5, u32::MAX),
+                ] {
+                    acl.extend_from_slice(&tag.to_le_bytes());
+                    acl.extend_from_slice(&permissions.to_le_bytes());
+                    acl.extend_from_slice(&id.to_le_bytes());
+                }
+                rustix::fs::fsetxattr(
+                    &file,
+                    "system.posix_acl_access",
+                    &acl,
+                    rustix::fs::XattrFlags::empty(),
+                )?;
+            }
             if matches!(point, FailurePoint::BlockedDescendant) {
                 crate::blocked_descendant::BlockedDescendant::stage(&entries[0].path())?;
             }
@@ -260,11 +264,28 @@ impl SandboxFailures {
             fs::write(limit, original)?;
         }
         let returned = match point {
-            FailurePoint::Namespace | FailurePoint::Mount => {
+            FailurePoint::Namespace
+            | FailurePoint::Mount
+            | FailurePoint::UnmappedOwner
+            | FailurePoint::UnmappedAcl => {
                 let failure = result.unwrap_err();
                 let kind = failure.diagnostics().operation().kind();
                 let errno = failure.diagnostics().operation().raw_os_error();
                 assert_ne!(kind, std::io::ErrorKind::TimedOut);
+                if matches!(
+                    point,
+                    FailurePoint::UnmappedOwner | FailurePoint::UnmappedAcl
+                ) {
+                    assert_eq!(kind, std::io::ErrorKind::InvalidData);
+                    assert!(
+                        failure
+                            .diagnostics()
+                            .operation()
+                            .to_string()
+                            .contains("unmapped image UID 65536")
+                    );
+                    println!("UNMAPPED_IMAGE_ID_REJECTED_BEFORE_RECEIVER");
+                }
                 if matches!(point, FailurePoint::Mount) {
                     assert_eq!(errno, Some(22));
                 }
@@ -278,7 +299,6 @@ impl SandboxFailures {
             FailurePoint::Launch
             | FailurePoint::Join
             | FailurePoint::AttachedExit
-            | FailurePoint::UnmappedOwner
             | FailurePoint::BusyExecution
             | FailurePoint::HeldCleanup
             | FailurePoint::MissingCleanup
@@ -417,8 +437,6 @@ impl SandboxFailures {
                         "sandbox-cleanup-timeout-helper"
                     } else if matches!(point, FailurePoint::MissingCleanup) {
                         "sandbox-missing-cleanup-helper"
-                    } else if matches!(point, FailurePoint::UnmappedOwner) {
-                        "sandbox-unmapped-owner-helper"
                     } else if matches!(point, FailurePoint::BusyExecution) {
                         "sandbox-success-helper"
                     } else {
@@ -784,10 +802,7 @@ impl SandboxFailures {
                     fs::remove_dir("/work/runtime-parent/receiver-view")?;
                     println!("SUCCESSFUL_COMMAND_CLEANUP_FAILURE_STAYS_REJECTED_PASS");
                     returned
-                } else if matches!(
-                    point,
-                    FailurePoint::AttachedExit | FailurePoint::UnmappedOwner
-                ) {
+                } else if matches!(point, FailurePoint::AttachedExit) {
                     fs::create_dir("/work/runtime-parent/receiver-view")?;
                     command.arg(budget.cutoff()?.to_argument());
                     let step = prepared
@@ -889,6 +904,7 @@ impl SandboxFailures {
                 FailurePoint::Join => "SANDBOX_JOIN_FAILURE_ROLLBACK_PASS",
                 FailurePoint::AttachedExit => "SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS",
                 FailurePoint::UnmappedOwner => "SANDBOX_UNMAPPED_OWNER_ROLLBACK_PASS",
+                FailurePoint::UnmappedAcl => "SANDBOX_UNMAPPED_ACL_ROLLBACK_PASS",
                 FailurePoint::BusyExecution => "SANDBOX_BUSY_EXECUTION_ROLLBACK_PASS",
                 FailurePoint::HeldCleanup => "SANDBOX_HELD_CLEANUP_ROLLBACK_PASS",
                 FailurePoint::MissingCleanup => "SANDBOX_MISSING_CLEANUP_ROLLBACK_PASS",

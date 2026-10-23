@@ -1,0 +1,12 @@
+{
+  "/storage/conglobate-validation/ownership-gate-acl-v1/vmlinuz": {
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  },
+  "/storage/conglobate-validation/ownership-gate-acl-v1/initramfs.gz": {
+    "sha256": "d3bec337ccdb9e3d820227a374f69286998f82f39aebf6c52c3ff6d5c23c8f4b",
+    "size": 88738278,
+    "durably_archived": false
+  }
+}

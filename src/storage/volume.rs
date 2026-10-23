@@ -311,6 +311,15 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
             .copy(context, directive)
     }
 
+    pub(crate) fn validate_ownership(
+        &self,
+        uid: crate::isolation::IdRange,
+        gid: crate::isolation::IdRange,
+        deadline: std::time::Instant,
+    ) -> io::Result<()> {
+        self.scope.verify_current()?;
+        super::ownership::ImageOwnership::new(uid, gid, deadline).validate(&self.resources.root)
+    }
     pub(crate) fn validate_command_root(&self) -> io::Result<()> {
         self.scope.verify_current()?;
         crate::isolation::RuntimeTargets::resolve(&self.resources.root).map(|_| ())

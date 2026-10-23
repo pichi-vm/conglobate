@@ -1,0 +1,11 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe dm-verity
++ modprobe ext4
++ /lifecycle-tests sandbox-unmapped-acl
+UNMAPPED_IMAGE_ID_REJECTED_BEFORE_RECEIVER
+SANDBOX_UNMAPPED_ACL_ROLLBACK_PASS
+LIFECYCLE_EXIT 0
+[    1.725804] sysrq: Power Off
+[    1.730090] reboot: Power down

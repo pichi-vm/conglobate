@@ -1,0 +1,14 @@
+    Checking conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+error: manual implementation of `.is_multiple_of()`
+  --> src/storage/ownership.rs:58:67
+   |
+58 |         if bytes.len() < 4 || bytes[..4] != 2u32.to_le_bytes() || (bytes.len() - 4) % 8 != 0 {
+   |                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `!(bytes.len() - 4).is_multiple_of(8)`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.94.0/index.html#manual_is_multiple_of
+   = note: `-D clippy::manual-is-multiple-of` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_is_multiple_of)]`
+
+error: could not compile `conglobate` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `conglobate` (lib test) due to 1 previous error

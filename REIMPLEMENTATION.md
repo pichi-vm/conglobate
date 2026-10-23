@@ -5463,3 +5463,33 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   Next ownership work must settle the supported ID allocation contract and
   validate inherited inode/ACL IDs before command admission, with real command
   coverage. Enlarging the prototype range alone does not resolve the requirement.
+
+### Reject inherited IDs outside the selected command mapping
+
+- Previous turn confirmed overflow-ID presentation. Added ImageOwnership, an
+  immutable validation policy over the selected UID/GID ranges and original
+  setup deadline. Preparation validates inode ownership plus named access and
+  default POSIX ACL IDs on the unmapped filesystem before receiver launch.
+  Bootstrap checks both tool and output roots. Failure uses existing owned
+  rollback; no successful preparation receipt is returned.
+- The descriptor-based traversal does not follow image symlinks, cross child
+  mounts, or open devices/FIFOs for I/O. Trusted supervisor procfs paths provide
+  pinned-inode ACL reads because fgetxattr cannot use O_PATH. Unexpected ACL read
+  failures reject preparation. The filesystem is quiescent and supervisor-owned
+  during validation. Per-entry deadline checks bound acceptance, not a kernel
+  syscall stuck in uninterruptible I/O; VM disposal remains the crash boundary.
+- Maintained inode regression now requires rejection of UID 65536, successful
+  rollback and unchanged disk ownership. Added a root-owned inode with an
+  out-of-range named access ACL entry as a separate VM rejection case. The old
+  overflow characterization and its source archive remain preserved.
+- 128 library tests passed, including separate ACL UID/GID bounds, malformed
+  encoding, dangling-symlink/FIFO traversal and expired deadline. Strict
+  all-target Clippy passed after correcting its remainder-check style finding;
+  initial failure is preserved. Native amd64 VM inode/ACL rejection and positive
+  two-step bootstrap/export verifiers passed. Evidence: ownership-gate-* under
+  preservation/m7-review. Scope records distinguish tested source revisions.
+- This closes the demonstrated inherited-ID admission omission for the selected
+  mapping; it does not settle the supported allocation range. Current coordinator
+  allocations remain the prototype range, explicitly outstanding. Default ACL
+  and special-file behavior still need broader VM coverage; no complete clean
+  adherence pass, distro boot, arm64 or confidential-hardware claim. M4 stays 0/3.

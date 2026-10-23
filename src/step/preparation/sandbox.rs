@@ -168,7 +168,11 @@ impl<'l> CommandSandbox<'l> {
                 ));
             }
         };
-        if let Err(source) = budget.check().and_then(|_| volume.validate_command_root()) {
+        if let Err(source) = budget
+            .check()
+            .and_then(|_| volume.validate_command_root())
+            .and_then(|_| volume.validate_ownership(self.uid, self.gid, budget.deadline()))
+        {
             let assigned = Assigned {
                 namespace: ManuallyDrop::new(namespace),
                 volume: Retained::new(volume),
