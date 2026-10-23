@@ -1,0 +1,12 @@
+{
+  "production_baseline": "6353ae7",
+  "confirmed_requirement_gap": "Sandbox preparation accepts inherited unmapped inode owners; trusted attached view presents overflow UID/GID",
+  "test_changes": "Maintained lifecycle case sandbox-unmapped-owner",
+  "limitations": [
+    "No image command or command-user-namespace permission test",
+    "No ACL test",
+    "Native amd64 ordinary KVM only",
+    "Passing characterization is not adherence success",
+    "Large assets local only"
+  ]
+}

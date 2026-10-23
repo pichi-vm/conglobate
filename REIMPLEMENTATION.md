@@ -5442,3 +5442,24 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   pass: M4 remains 0/3. Network topology/link-local, UID/GID coverage, other
   failure branches, distro boots, arm64/confidential platforms and retirement
   remain outstanding under the original milestone criteria.
+
+### Inherited ownership boundary: confirmed mapping gap
+
+- Previous turn progressed with current CLI positive/negative evidence. Added
+  a maintained benign sandbox-unmapped-owner lifecycle case to investigate the
+  M4 review's UID/GID gap without silently narrowing the supported-ID contract.
+- Production preparation accepts an ext4 filesystem containing ordinary files
+  owned by IDs 65535 and 65536. The trusted receiver's actual idmapped mount
+  presents the former as outer ID 165535 and the latter as overflow UID/GID.
+  Original disk IDs survive rollback/remount unchanged. Thus successful mount
+  preparation and kernel chown rejection do not establish rejection of inherited
+  unmapped owners. This is a confirmed requirement gap, not qualification success.
+- Native amd64 disposable KVM completed with independent status 0/poweroff and
+  checked rollback, mapping removal and child cleanup. No image command or ACL
+  behavior tested. Fixture cargo check and strict Clippy passed. No production
+  source changed and no full adherence pass; M4 remains 0/3.
+- Evidence: preservation/m7-review/unmapped-owner-v1/. Large VM assets retained
+  locally under /storage/conglobate-validation, hashed but not remotely durable.
+  Next ownership work must settle the supported ID allocation contract and
+  validate inherited inode/ACL IDs before command admission, with real command
+  coverage. Enlarging the prototype range alone does not resolve the requirement.

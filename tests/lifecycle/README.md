@@ -209,3 +209,15 @@ under one second with storage and recovery records retained. Waiting for the
 deadline is the assertion target, not synchronization. Independent VM disposal
 ends this terminal case. This tests the split observation/teardown API rather
 than an image command or successful finalization.
+
+`--case sandbox-unmapped-owner` characterizes an unresolved ownership-mapping
+gap. A trusted fixture creates ordinary ext4 files with UID/GID 65535 and 65536
+before production sandbox preparation. A trusted receiver attaches the actual
+idmapped view and observes the first as outer ID 165535 and the second as the
+kernel overflow UID/GID. Preparation currently accepts both. The receiver then
+exits; production rollback must release its resources. A supervisor-side remount
+checks that original disk IDs remain unchanged. Passing this fixture confirms
+the limitation; it does not satisfy the requirement to reject unmapped input
+IDs. It executes no image command and does not test ACL entries or permissions
+inside the command user namespace. Update its expectation when the mapping
+contract and inherited-ID validation are implemented.

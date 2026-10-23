@@ -1,0 +1,12 @@
+{
+  "/storage/conglobate-validation/unmapped-owner-v1/vmlinuz": {
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  },
+  "/storage/conglobate-validation/unmapped-owner-v1/initramfs.gz": {
+    "sha256": "4d9e1e31d92918a99364e0811d48ec369368890f8aa079d1a60d543324705640",
+    "size": 88642555,
+    "durably_archived": false
+  }
+}

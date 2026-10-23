@@ -32,6 +32,15 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "sandbox-unmapped-owner" => sandbox_failures::SandboxFailures::run(
+                sandbox_failures::FailurePoint::UnmappedOwner,
+            ),
+            [mode, cutoff] if mode == "sandbox-unmapped-owner-helper" => {
+                sandbox_failures::SandboxFailures::attached_helper(
+                    cutoff,
+                    sandbox_failures::HelperCompletion::InspectOwners,
+                )
+            }
             [mode] if mode == "runtime-scope" => runtime_scope::RuntimeScope::run(),
             [mode] if mode == "sandbox-delayed-teardown" => sandbox_failures::SandboxFailures::run(
                 sandbox_failures::FailurePoint::DelayedTeardown,

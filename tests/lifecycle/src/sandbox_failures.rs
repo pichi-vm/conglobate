@@ -17,6 +17,7 @@ pub(super) enum FailurePoint {
     Launch,
     Join,
     AttachedExit,
+    UnmappedOwner,
     BusyExecution,
     HeldCleanup,
     MissingCleanup,
@@ -31,6 +32,7 @@ pub(super) enum FailurePoint {
 #[derive(Debug, Clone, Copy)]
 pub(super) enum HelperCompletion {
     None,
+    InspectOwners,
     Normal,
     Held,
     Missing,
@@ -70,7 +72,27 @@ impl SandboxFailures {
             ))?)
             .map_err(|e| e.to_string())?;
         assert_eq!(view.root_metadata()?.uid(), 100000);
-        if !matches!(completion, HelperCompletion::None) {
+        if matches!(completion, HelperCompletion::InspectOwners) {
+            let root = Path::new("/work/runtime-parent/receiver-view");
+            let mapped = fs::metadata(root.join("last-mapped-owner"))?;
+            let unmapped = fs::metadata(root.join("first-unmapped-owner"))?;
+            assert_eq!((mapped.uid(), mapped.gid()), (165535, 165535));
+            let overflow_uid: u32 = fs::read_to_string("/proc/sys/kernel/overflowuid")?
+                .trim()
+                .parse()?;
+            let overflow_gid: u32 = fs::read_to_string("/proc/sys/kernel/overflowgid")?
+                .trim()
+                .parse()?;
+            assert_eq!(
+                (unmapped.uid(), unmapped.gid()),
+                (overflow_uid, overflow_gid)
+            );
+            println!("UNMAPPED_INHERITED_OWNER_PRESENTED_AS_OVERFLOW");
+        }
+        if !matches!(
+            completion,
+            HelperCompletion::None | HelperCompletion::InspectOwners
+        ) {
             use std::os::unix::process::ExitStatusExt;
             channel.report_prepared_until(deadline)?;
             let channel = channel.await_admission_until(deadline)?;
@@ -130,6 +152,7 @@ impl SandboxFailures {
             FailurePoint::Launch
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
+                | FailurePoint::UnmappedOwner
                 | FailurePoint::BusyExecution
                 | FailurePoint::HeldCleanup
                 | FailurePoint::MissingCleanup
@@ -181,6 +204,7 @@ impl SandboxFailures {
             FailurePoint::Launch
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
+                | FailurePoint::UnmappedOwner
                 | FailurePoint::BusyExecution
                 | FailurePoint::HeldCleanup
                 | FailurePoint::MissingCleanup
@@ -201,6 +225,16 @@ impl SandboxFailures {
                 fs::create_dir(entries[0].path().join(name))?;
             }
             fs::write(entries[0].path().join("blocked-writer"), [])?;
+            if matches!(point, FailurePoint::UnmappedOwner) {
+                for (name, id) in [
+                    ("last-mapped-owner", 65535),
+                    ("first-unmapped-owner", 65536),
+                ] {
+                    let file = entries[0].path().join(name);
+                    fs::write(&file, b"ordinary inherited ownership fixture")?;
+                    std::os::unix::fs::chown(file, Some(id), Some(id))?;
+                }
+            }
             if matches!(point, FailurePoint::BlockedDescendant) {
                 crate::blocked_descendant::BlockedDescendant::stage(&entries[0].path())?;
             }
@@ -244,6 +278,7 @@ impl SandboxFailures {
             FailurePoint::Launch
             | FailurePoint::Join
             | FailurePoint::AttachedExit
+            | FailurePoint::UnmappedOwner
             | FailurePoint::BusyExecution
             | FailurePoint::HeldCleanup
             | FailurePoint::MissingCleanup
@@ -382,6 +417,8 @@ impl SandboxFailures {
                         "sandbox-cleanup-timeout-helper"
                     } else if matches!(point, FailurePoint::MissingCleanup) {
                         "sandbox-missing-cleanup-helper"
+                    } else if matches!(point, FailurePoint::UnmappedOwner) {
+                        "sandbox-unmapped-owner-helper"
                     } else if matches!(point, FailurePoint::BusyExecution) {
                         "sandbox-success-helper"
                     } else {
@@ -747,7 +784,10 @@ impl SandboxFailures {
                     fs::remove_dir("/work/runtime-parent/receiver-view")?;
                     println!("SUCCESSFUL_COMMAND_CLEANUP_FAILURE_STAYS_REJECTED_PASS");
                     returned
-                } else if matches!(point, FailurePoint::AttachedExit) {
+                } else if matches!(
+                    point,
+                    FailurePoint::AttachedExit | FailurePoint::UnmappedOwner
+                ) {
                     fs::create_dir("/work/runtime-parent/receiver-view")?;
                     command.arg(budget.cutoff()?.to_argument());
                     let step = prepared
@@ -799,6 +839,26 @@ impl SandboxFailures {
                 .trim()
                 .is_empty()
         );
+        let returned = if matches!(point, FailurePoint::UnmappedOwner) {
+            use std::os::unix::fs::MetadataExt;
+            let mounted = returned
+                .mount_ext4(paths.volumes())
+                .map_err(|e| e.to_string())?;
+            let entry = fs::read_dir(paths.volumes())?
+                .next()
+                .ok_or("missing volume")??;
+            for (name, id) in [
+                ("last-mapped-owner", 65535),
+                ("first-unmapped-owner", 65536),
+            ] {
+                let metadata = fs::metadata(entry.path().join(name))?;
+                assert_eq!((metadata.uid(), metadata.gid()), (id, id));
+            }
+            println!("INHERITED_OWNER_DISK_VALUES_UNCHANGED");
+            mounted.unmount().map_err(|e| e.to_string())?
+        } else {
+            returned
+        };
         let snapshot = returned.into_snapshot();
         snapshot.usage()?;
         snapshot
@@ -828,6 +888,7 @@ impl SandboxFailures {
                 FailurePoint::Launch => "SANDBOX_LAUNCH_FAILURE_ROLLBACK_PASS",
                 FailurePoint::Join => "SANDBOX_JOIN_FAILURE_ROLLBACK_PASS",
                 FailurePoint::AttachedExit => "SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS",
+                FailurePoint::UnmappedOwner => "SANDBOX_UNMAPPED_OWNER_ROLLBACK_PASS",
                 FailurePoint::BusyExecution => "SANDBOX_BUSY_EXECUTION_ROLLBACK_PASS",
                 FailurePoint::HeldCleanup => "SANDBOX_HELD_CLEANUP_ROLLBACK_PASS",
                 FailurePoint::MissingCleanup => "SANDBOX_MISSING_CLEANUP_ROLLBACK_PASS",
