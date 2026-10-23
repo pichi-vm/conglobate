@@ -1,0 +1,6 @@
+f61ab8ab051c468e6d55d8c6eda4fbf13e3c3bcb399c61a259e34a65b0be64c5  preservation/m7-review/sha2-migration/REVIEW.md
+3afcc0148259893efb1c2eddb7b7e6da15342a7d4985b832e5399edf1320cc86  preservation/m7-review/sha2-migration/artifact-clippy.log
+811285453f2eea216771e453f297803952df4c61aff7d17793cf6df697517beb  preservation/m7-review/sha2-migration/artifact-doctests.log
+f9c9cff2f5ef81205b2106592d4d5204849cd23384a9bb22eb90b048066303ab  preservation/m7-review/sha2-migration/artifact-sha2.bundle
+2df024b588095ff9decf51dccabda44f731ee459970ff57c36a49285620277be  preservation/m7-review/sha2-migration/artifact-sha2.patch
+ff26ec2f27f63823309b0499f48461b37538d680f77eb17ec35e780c948a9d2d  preservation/m7-review/sha2-migration/artifact-tests.log

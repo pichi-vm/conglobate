@@ -188,8 +188,8 @@
       "evidence": "conglobate+gix-hash on sha2 0.11; devmap-verity and pichi-artifact (both first-party) still on 0.10",
       "remaining_action": "Bump the two first-party deps to sha2 0.11",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "migration prepared; combined integration and pins pending",
+      "current_evidence": "Devmap already has SHA2 migration 3a2728f. Isolated pichi-artifact commit 7b97a24 updates SHA2 with passing all-target tests/Clippy; patch and incremental bundle retained in sha2-migration/. Conglobate pins unchanged; combined migration not yet validated or published."
     },
     {
       "id": "dependencies-012",

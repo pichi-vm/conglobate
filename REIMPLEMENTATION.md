@@ -6132,3 +6132,7 @@ Maintained two-root bootstrap passed on native amd64 disposable KVM: data and nu
 ### Admitted two-root rejection validation after 96705d0
 
 Added maintained bootstrap-nonzero fixture and verifier mode; current disposable amd64 VM writes both roots, exits 7, skips later step, reports complete cleanup and publishes nothing. Seven verifier checks pass; all 188 source comparisons match. Evidence: `preservation/m7-review/m4-bootstrap-rejection-current/`. Updated simplification-004 with actual integrated rejection coverage; no exhaustive cleanup-fault or full milestone claim. Previous turn validated success; this turn validates rejection after admitted execution. Production unchanged.
+
+### First-party SHA-2 migration preparation after b393bf2
+
+Revalidated dependencies-011: pinned devmap and artifact still use SHA2 0.10, but sibling devmap already contains its migration. Prepared pichi-artifact update in isolated worktree/branch, commit 7b97a24; 75 all-target tests and strict Clippy pass (doctest target has zero tests). Patch and verified incremental bundle in `preservation/m7-review/sha2-migration/`. Conglobate pins unchanged; combined integration/publication/pin updates pending. Original sibling worktrees preserved. Previous turn validated admitted bootstrap rejection; this turn prepares the missing first-party dependency migration.
