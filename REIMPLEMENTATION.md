@@ -4892,3 +4892,23 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   Evidence and sources preserved; large artifacts remain unarchived externally.
   M4 stays 0/3 pending remaining protocol/process/anchor review and complete
   frozen-scope passes. Other milestone/qualification requirements are unchanged.
+
+### M4 protocol review and consolidated acceptance checklist
+
+- Previous NAT clarification was a discussion-only turn, with no source change.
+  Revalidated the clean tracked baseline at 3e8cbc2 and continued source review.
+- Reviewed packet shape/descriptor counts, phase-specific admission, process
+  observations and protected recovery-directory ownership. No new production
+  defect established in this subset; it is not a complete adherence pass.
+- Recorded baseline hashes, observations and whole-M4 checklist in
+  preservation/m7-review/m4-consolidation-3e8cbc2/. The checklist requires all
+  dimensions on each full pass and distinguishes fixture evidence from actual
+  appliance, architecture and confidential-platform qualification.
+- Extracted 46 historical accepted/open actions from the 111-ID reconciliation
+  ledger without relabeling them as current defects. Later fixes and decisions
+  must be reconciled before dispositions; obsolete policy/errno proposals must
+  not be implemented blindly. Original review artifacts remain intact.
+- Next concrete evidence task is maintained full two-scute chain and invalid
+  header coverage; prepared-scute mutation tests alone do not prove composition.
+  M4 remains 0/3. M5–M8 and all outstanding qualification/preservation gates
+  remain open. No code, test result or production qualification changed here.
