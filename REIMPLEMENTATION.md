@@ -5785,3 +5785,17 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   preservation/m7-review/. No display, ownership or lifecycle behavior changed.
 - Broader diagnostic audit remains open; no new VM or full adherence pass.
   M4 remains 0/3 and the goal remains active.
+
+### Inventory error finding reconciled to its original source
+
+- Original errors-api-003 concerns InventoryError; its current ledger entry had
+  incorrectly repeated pipeline remediation. Corrected current evidence while
+  preserving original finding/action text.
+- Inventory errors now distinguish executable I/O, CBOR wire errors, schema
+  conversion and semantic validation, retaining typed sources. Private consuming
+  builder construction supports direct read-failure and digest coverage.
+- 150 library tests and strict all-target Clippy passed. Evidence and source
+  hashes: preservation/m7-review/inventory-errors/. No lifecycle changes or new
+  VM qualification; no full adherence pass. M4–M6 remain reopened at 0/3.
+- Externally provided networking was researched in the preceding discussion;
+  it remains a proposal, not an accepted replacement of per-step networking.

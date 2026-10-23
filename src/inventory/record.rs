@@ -27,13 +27,16 @@ impl Digest {
 }
 impl Builder {
     fn current() -> Result<Self, InventoryError> {
-        let mut executable = File::open("/proc/self/exe").map_err(InventoryError::invalid)?;
+        let executable = File::open("/proc/self/exe").map_err(InventoryError::Executable)?;
+        Self::from_executable(executable)
+    }
+    fn from_executable(mut executable: impl Read) -> Result<Self, InventoryError> {
         let mut hash = Sha256::new();
         let mut buffer = [0; 65536];
         loop {
             let n = executable
                 .read(&mut buffer)
-                .map_err(InventoryError::invalid)?;
+                .map_err(InventoryError::Executable)?;
             if n == 0 {
                 break;
             }
@@ -310,5 +313,40 @@ impl Inventory {
         }
         document.execution.formatters.push(receipt.try_into()?);
         Self::from_document(document)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{error::Error as _, io};
+
+    struct FailedExecutable;
+    impl Read for FailedExecutable {
+        fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
+            Err(io::Error::from_raw_os_error(5))
+        }
+    }
+
+    #[test]
+    fn builder_read_error_retains_io_cause() {
+        let failure = Builder::from_executable(FailedExecutable).unwrap_err();
+        assert!(matches!(failure, InventoryError::Executable(_)));
+        assert_eq!(
+            failure
+                .source()
+                .unwrap()
+                .downcast_ref::<io::Error>()
+                .unwrap()
+                .raw_os_error(),
+            Some(5)
+        );
+    }
+
+    #[test]
+    fn builder_hashes_executable_bytes() {
+        let bytes = b"builder executable";
+        let builder = Builder::from_executable(&bytes[..]).unwrap();
+        assert_eq!(builder.executable.digest, Digest::from_bytes(bytes).digest);
     }
 }

@@ -71,8 +71,8 @@
       "evidence": "Same: decode and host-IO failures share one opaque String",
       "remaining_action": "Same as errors-api-002",
       "historical_status": "open",
-      "current_status": "open",
-      "current_evidence": "Pipeline typed diagnostic conversions implemented across runtime/formatter/storage/directive/command/network setup. Underlying network cleanup now retains typed histories, with context labels preserved through SetupCause. New resolver retry/history unit test and corrected current-source network-composite VM pass; initial context regression preserved. Final public taxonomy/source-chain/ownership audit remains open. See network-cleanup-errors/ and network-cleanup-history-v1/v2/ under preservation/m7-review/ plus preceding records. Source-chain audit found and repaired missing command outcome Error::source links, with failing-before/passing-after regression. See command-source-chain/REVIEW.md. Broader audit remains outstanding."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "Original finding concerns InventoryError, not BuildError. Previous current_evidence incorrectly duplicated the pipeline entry. InventoryError now distinguishes executable I/O, CBOR decode/encode, schema decode/encode, and semantic validation. Typed library causes are retained through Error::source. Tests exercise malformed CBOR, invalid schema, semantic validation, injected executable read errno and successful executable digest. 150 library tests and strict all-target Clippy pass. See preservation/m7-review/inventory-errors/REVIEW.md. Historical evidence/action wording retained unchanged."
     },
     {
       "id": "errors-api-005",

@@ -9,11 +9,23 @@ use schema::*;
 use sha2::{Digest as _, Sha256};
 
 #[derive(Debug, thiserror::Error)]
-#[error("inventory: {0}")]
-pub struct InventoryError(String);
+pub enum InventoryError {
+    #[error("inventory: {0}")]
+    Invalid(String),
+    #[error("inventory: read builder executable: {0}")]
+    Executable(#[source] std::io::Error),
+    #[error("inventory: decode CBOR: {0}")]
+    Decode(#[source] ciborium::de::Error<std::io::Error>),
+    #[error("inventory: decode schema: {0}")]
+    DecodeSchema(#[source] ciborium::value::Error),
+    #[error("inventory: encode schema: {0}")]
+    EncodeSchema(#[source] ciborium::value::Error),
+    #[error("inventory: encode CBOR: {0}")]
+    Encode(#[source] ciborium::ser::Error<std::io::Error>),
+}
 impl InventoryError {
     fn invalid(error: impl std::fmt::Display) -> Self {
-        Self(error.to_string())
+        Self::Invalid(error.to_string())
     }
 }
 #[derive(Debug)]
@@ -30,7 +42,7 @@ impl Inventory {
     /// invalid schema values, inconsistent components and invalid ordering.
     pub fn decode(bytes: &[u8]) -> Result<Self, InventoryError> {
         let mut input = bytes;
-        let value: Value = ciborium::from_reader(&mut input).map_err(InventoryError::invalid)?;
+        let value: Value = ciborium::from_reader(&mut input).map_err(InventoryError::Decode)?;
         if !input.is_empty() {
             return Err(InventoryError::invalid("trailing data"));
         }
@@ -38,7 +50,10 @@ impl Inventory {
         if value.encode()? != bytes {
             return Err(InventoryError::invalid("noncanonical CBOR"));
         }
-        let document: Document = value.0.deserialized().map_err(InventoryError::invalid)?;
+        let document: Document = value
+            .0
+            .deserialized()
+            .map_err(InventoryError::DecodeSchema)?;
         let inventory = Self::from_document(document)?;
         // Also rejects optional nulls, alternate enum representations and any
         // value a serde adapter accepted but the schema would not emit.
@@ -51,7 +66,7 @@ impl Inventory {
     }
     fn from_document(document: Document) -> Result<Self, InventoryError> {
         document.validate()?;
-        let value = Value::serialized(&document).map_err(InventoryError::invalid)?;
+        let value = Value::serialized(&document).map_err(InventoryError::EncodeSchema)?;
         let bytes = CanonicalValue::new(value)?.encode()?;
         Ok(Self { document, bytes })
     }
@@ -106,7 +121,7 @@ impl CanonicalValue {
     }
     fn encode(&self) -> Result<Vec<u8>, InventoryError> {
         let mut bytes = Vec::new();
-        ciborium::into_writer(&self.0, &mut bytes).map_err(InventoryError::invalid)?;
+        ciborium::into_writer(&self.0, &mut bytes).map_err(InventoryError::Encode)?;
         Ok(bytes)
     }
 }
@@ -228,6 +243,29 @@ impl Formatter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn decode_errors_distinguish_wire_schema_and_validation() {
+        use std::error::Error as _;
+
+        let wire = Inventory::decode(&[0xff]).unwrap_err();
+        assert!(matches!(wire, InventoryError::Decode(_)));
+        assert!(
+            wire.source()
+                .unwrap()
+                .is::<ciborium::de::Error<std::io::Error>>()
+        );
+
+        let schema = Inventory::decode(&[0x00]).unwrap_err();
+        assert!(matches!(schema, InventoryError::DecodeSchema(_)));
+        assert!(schema.source().unwrap().is::<ciborium::value::Error>());
+
+        let mut document = Fixture::new().0;
+        document.version = 0;
+        let invalid = Inventory::from_document(document).unwrap_err();
+        assert!(matches!(invalid, InventoryError::Invalid(_)));
+    }
+
     #[derive(Debug)]
     struct Fixture(Document);
     impl Fixture {
