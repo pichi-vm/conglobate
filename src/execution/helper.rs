@@ -65,6 +65,12 @@ impl HelperProgram {
             role: Role::Seed,
         })
     }
+    pub(crate) fn network_namespace_creator(&self, cutoff: SetupCutoff) -> io::Result<Command> {
+        self.command(HelperInvocation {
+            cutoff,
+            role: Role::NetworkSeed,
+        })
+    }
     pub fn receiver(
         &self,
         script: String,
@@ -80,6 +86,7 @@ impl HelperProgram {
 #[derive(Debug)]
 enum Role {
     Seed,
+    NetworkSeed,
     Receiver {
         script: String,
         uid: u32,
@@ -144,6 +151,7 @@ impl HelperInvocation {
         let mut e = minicbor::Encoder::new(Vec::new());
         let (length, tag) = match self.role {
             Role::Seed => (3, 0),
+            Role::NetworkSeed => (3, 5),
             Role::Receiver { .. } => (7, 1),
             Role::Namespaces(_) => (4, 2),
             Role::Root(_) => (4, 3),
@@ -158,7 +166,7 @@ impl HelperInvocation {
             .str(&self.cutoff.to_argument())
             .expect("Vec writer");
         match &self.role {
-            Role::Seed => {}
+            Role::Seed | Role::NetworkSeed => {}
             Role::Receiver {
                 script,
                 uid,
@@ -209,6 +217,7 @@ impl HelperInvocation {
             let cutoff = SetupCutoff::from_argument(d.str()?)?;
             let role = match (length, tag) {
                 (Some(3), 0) => Role::Seed,
+                (Some(3), 5) => Role::NetworkSeed,
                 (Some(7), 1) => Role::receiver(
                     d.str()?.to_owned(),
                     d.u32()?,
@@ -292,6 +301,10 @@ impl HelperInvocation {
                     .exec()
                     .into())
             }
+            Role::NetworkSeed => {
+                crate::network::NetworkNamespace::serve(deadline)?;
+                Ok(ExitStatus::from_raw(0))
+            }
             Role::Seed => {
                 UserNamespace::<Mapped>::serve(deadline)?;
                 Ok(ExitStatus::from_raw(0))
@@ -355,6 +368,7 @@ mod tests {
         let cutoff = SetupBudget::begin().cutoff().unwrap();
         let roles = [
             Role::Seed,
+            Role::NetworkSeed,
             Role::receiver(
                 "printf '%s' hello".into(),
                 100000,

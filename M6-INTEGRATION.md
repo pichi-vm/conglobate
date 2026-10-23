@@ -557,3 +557,29 @@ disposable firmware changes and failure after successful carapace derivation.
   mounting/scaffolding/cleanup, enabled-command admission/receipts, complete failure
   coverage and ORAS. Namespace-mismatch cleanup and abandoned-owner recovery also
   need runtime validation. M6 remains active with zero clean adherence passes.
+
+### M6 network namespace ownership and peer handoff
+
+- Previous turn progressed in 5ca1f27. Added a production network-namespace helper
+  role using the existing bounded process identity/channel protocol. The creator
+  unshares only NEWNET, stays in the supervisor user namespace, and waits for
+  channel closure. The supervisor captures a distinct ns/net descriptor from the
+  owned process, verifies unchanged creator user namespace, releases the creator
+  and reaps it before returning NetworkNamespace. Failure retains process wait/
+  cancellation authority through existing process errors. No readiness sleeps.
+- VethPair::connect consumes the pair and NetworkNamespace, verifies ownership,
+  and moves the peer through native netlink. ConnectedVeth owns both through
+  teardown; opaque ConnectionFailure permits cleanup only and retains both the
+  namespace and pair after failed handoff/cleanup. This does not itself prove
+  command quiescence or authorize image commands. Links remain down/unconfigured.
+- Disposable VM v217 passes distinct fresh namespace identities, unchanged
+  supervisor namespace, absence of surviving creator children, peer disappearance
+  from the original namespace, connected pair teardown and empty control marker
+  directory. Earlier collision/expiry checks still pass. Full host tests and
+  strict root/fixture Clippy pass; helper serialization roundtrip now includes the
+  new role. Evidence/source hashes live in evidence/v217.
+- Namespace creation and link handoff are now implemented. Command-helper input
+  plumbing and entry, addresses/routes/NAT, resolver injection and cleanup,
+  enabled-command receipts, remaining negative/failure cases, ORAS and three
+  complete M6 reviews remain outstanding. M6 stays at zero adherence passes;
+  M7/M8 and the full objective remain active.

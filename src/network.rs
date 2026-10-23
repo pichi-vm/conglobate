@@ -7,4 +7,7 @@ pub use resolver::ResolverInput;
 
 mod route;
 mod veth;
-pub use veth::{InterfaceName, VethFailure, VethPair};
+pub use veth::{ConnectedVeth, ConnectionFailure, InterfaceName, VethFailure, VethPair};
+
+mod namespace;
+pub use namespace::{NetworkNamespace, NetworkNamespaceFailure};

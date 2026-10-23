@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::route::RouteRequest;
+use super::{NetworkNamespace, route::RouteRequest};
 use crate::storage::FailureDiagnostics;
 use netlink_packet_core::{NLM_F_CREATE, NLM_F_EXCL};
 use netlink_packet_route::{
@@ -163,6 +163,44 @@ impl VethPair {
             )),
         }
     }
+    /// Move the peer into a fresh command network namespace. Both the namespace
+    /// and pair stay owned through failed setup and explicit cleanup.
+    pub fn connect(
+        self,
+        namespace: NetworkNamespace,
+        deadline: Instant,
+    ) -> Result<ConnectedVeth, ConnectionFailure> {
+        let result = (|| -> io::Result<()> {
+            self.verify_namespace()?;
+            let peer = self
+                .lookup(&self.peer, deadline)?
+                .ok_or_else(|| io::Error::other("veth peer disappeared before handoff"))?;
+            if !self.owns(&peer) {
+                return Err(io::Error::other("veth peer ownership changed"));
+            }
+            let mut request = LinkMessage::default();
+            request.header.index = peer.header.index;
+            request
+                .attributes
+                .push(LinkAttribute::NetNsFd(namespace.descriptor().as_raw_fd()));
+            RouteRequest::new(RouteNetlinkMessage::NewLink(request), 0).execute(deadline)?;
+            Ok(())
+        })();
+        match result {
+            Ok(()) => Ok(ConnectedVeth {
+                pair: self,
+                namespace,
+            }),
+            Err(error) => Err(ConnectionFailure {
+                failure: VethFailure::retained(
+                    error,
+                    Box::new(self),
+                    Instant::now() + Duration::from_secs(30),
+                ),
+                namespace,
+            }),
+        }
+    }
     pub fn host_name(&self) -> &InterfaceName {
         &self.host
     }
@@ -282,5 +320,35 @@ impl VethPair {
                 Ok(())
             }
         }
+    }
+}
+
+/// A pair whose peer lives in its owned command network namespace. Commands
+/// must be quiescent before close; this resource alone does not prove quiescence.
+#[derive(Debug)]
+pub struct ConnectedVeth {
+    pair: VethPair,
+    namespace: NetworkNamespace,
+}
+impl ConnectedVeth {
+    pub fn close(self) -> Result<(), ConnectionFailure> {
+        self.pair.close().map_err(|failure| ConnectionFailure {
+            failure,
+            namespace: self.namespace,
+        })
+    }
+}
+#[derive(Debug, thiserror::Error)]
+#[error("network connection: {failure}")]
+pub struct ConnectionFailure {
+    failure: VethFailure,
+    namespace: NetworkNamespace,
+}
+impl ConnectionFailure {
+    pub fn cleanup(self) -> Result<(), Self> {
+        self.failure.cleanup().map_err(|failure| Self {
+            failure,
+            namespace: self.namespace,
+        })
     }
 }
