@@ -426,6 +426,11 @@ Network access is opt-in per `run` directive and defaults to false. Conglobate
 enforces private network namespaces and outbound NAT for enabled steps, with
 reply traffic allowed, no inbound forwarding, and no destination filtering.
 The environment supplies upstream connectivity and explicit resolver configuration.
+The current dual-stack backend also requires IPv4 forwarding
+(`net.ipv4.ip_forward=1`) and IPv6 forwarding
+(`net.ipv6.conf.all.forwarding=1`) in the supervisor's network namespace.
+Conglobate checks these prerequisites before attaching an enabled step and fails
+if either is unavailable; it does not change these environment-wide settings.
 
 Every `run` has a finite positive command-execution timeout, defaulting to `5m`.
 The optional `timeout` field accepts duration strings such as `30m` or `1h`;

@@ -4011,3 +4011,16 @@ rules rather than silently shrinking acceptance criteria.
 - Continued source inspection of firmware ancestry/extraction, confined COPY,
   DTB transformation and output staging. Review coverage and a remaining firmware
   diagnostic-path question are recorded in MILESTONE-6-ADHERENCE.md.
+
+### M6 adherence R3 and environment prerequisites
+
+- Corrected firmware extraction error masking when cleanup also fails. Both
+  diagnostics now survive; finalization still requires extraction and cleanup
+  success. Original consuming cleanup order and deadline are retained.
+- Strict Clippy and all-target tests passed; source/log evidence and the initial
+  borrow-check failure are preserved in evidence/firmware-diagnostics. No new
+  simultaneous kernel fault-injection claim.
+- Documented the existing dual-stack forwarding prerequisites; v250 supplies
+  refusal evidence for each disabled setting. Conglobate does not mutate them.
+- Continued atomic publication and firmware assembly audit, recorded in the M6
+  adherence ledger. No full clean review claimed; M6 remains 0/3.

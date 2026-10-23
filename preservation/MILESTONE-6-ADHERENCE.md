@@ -114,3 +114,30 @@ network setup/transport/finalization, and the shared execution changes, followed
 by the complete style/safety/preservation audit. Firmware extraction can mask its
 primary capture error when cleanup also fails; inspect this diagnostic path before
 acceptance. Successful publication remains blocked in that case.
+
+## R3 — firmware extraction diagnostics lost on cleanup failure
+
+Addressed: FirmwareTools::run now captures cleanup as a Result and combines it
+with extraction before finalization. Both failures remain in the diagnostic;
+either failure still prevents finalization/publication. Cleanup retains its
+original order and stops at the first failed teardown operation. The mounted
+borrow is consumed before closing the active chain; no additional mutable owner
+or state flags were introduced.
+
+Strict Clippy and all-target tests pass. Evidence and the initial borrow-check
+failure are preserved in evidence/firmware-diagnostics. The simultaneous kernel
+extraction/cleanup failure was not fault-injected; the exhaustive Result match
+is source evidence for combined diagnostics, not a new kernel qualification.
+
+Also documented the existing IPv4/IPv6 forwarding prerequisites in DESIGN and
+SANDBOX-DESIGN. v250 already tests refusal with either disabled. This does not
+claim that all deployment environments provide those prerequisites.
+
+Continued output audit: reviewed StagedDirectory construction, verified streaming
+writes, metadata writes and renameat NOREPLACE publication. The parent descriptor
+anchors staging and destination; no fallible work follows successful publication.
+Existing tests cover late destination collisions and mutated/truncated blobs.
+Reviewed firmware assembly preservation of config and non-firmware layers,
+separate tool ancestry, paired replacement and parent-chain checks. Remaining
+assembly branches, inventory and coordinator audit still prevent a full clean
+pass; the streak remains zero.

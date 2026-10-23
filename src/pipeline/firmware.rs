@@ -189,20 +189,31 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
             .mount_ext4(paths.volumes())
             .map_err(FirmwareBuild::error)?;
         let captured = mounted.extract_firmware(stage, workspace, &budget);
-        let cleanup = SetupBudget::begin();
-        mounted
-            .unmount()
-            .map_err(FirmwareBuild::error)?
-            .into_snapshot()
-            .close()
-            .map_err(FirmwareBuild::error)?
-            .detach()
-            .map_err(FirmwareBuild::error)?;
-        active.close().map_err(FirmwareBuild::error)?;
-        cleanup.check()?;
+        let cleanup_budget = SetupBudget::begin();
+        let cleanup = (|| -> Result<(), BuildError> {
+            mounted
+                .unmount()
+                .map_err(FirmwareBuild::error)?
+                .into_snapshot()
+                .close()
+                .map_err(FirmwareBuild::error)?
+                .detach()
+                .map_err(FirmwareBuild::error)?;
+            Ok(())
+        })()
+        .and_then(|()| active.close().map_err(FirmwareBuild::error))
+        .and_then(|()| cleanup_budget.check().map_err(BuildError::from));
+        let captured = match (captured.map_err(FirmwareBuild::error), cleanup) {
+            (Ok(captured), Ok(())) => captured,
+            (Err(error), Ok(())) | (Ok(_), Err(error)) => return Err(error),
+            (Err(error), Err(cleanup)) => {
+                return Err(FirmwareBuild::error(format!(
+                    "{error}; firmware cleanup: {cleanup}"
+                )));
+            }
+        };
         let root = root.map(hex::encode);
         captured
-            .map_err(FirmwareBuild::error)?
             .finalize(
                 build.captured().plan().recipe().transform(),
                 root.as_deref(),

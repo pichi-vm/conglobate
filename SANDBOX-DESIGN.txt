@@ -315,6 +315,10 @@ Historical experiments are evidence, not competing specifications.
         private networks, are allowed. Do not add destination filtering or
         modify the environment's primary NIC configuration. Scope links and
         firewall/NAT rules to the build and remove them during teardown.
+        The current dual-stack backend requires the environment to enable
+        net.ipv4.ip_forward and net.ipv6.conf.all.forwarding in the supervisor
+        network namespace. Check both before attaching the command network;
+        fail if unavailable, without changing these namespace-wide settings.
 
    8.3. Namespace separation isolates loopback and abstract Unix sockets, not
         services listening on routable supervisor addresses. This design does
