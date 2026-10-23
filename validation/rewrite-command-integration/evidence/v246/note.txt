@@ -1,0 +1,1 @@
+v246 PASS: restricted image DNS/TCP, resolver write denial and offline successor; rejected exit cleanup; timeout network cleanup with expected retained runtime and fixture-only recovery. No full sandbox qualification claimed.

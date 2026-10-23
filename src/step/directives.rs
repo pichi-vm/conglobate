@@ -16,7 +16,7 @@ use crate::{
 use std::{io, time::Instant};
 
 /// Sealed layouts supporting trusted COPY between finalized commands.
-pub trait DirectiveStorage: ExecutionStorage {
+pub trait DirectiveStorage: ExecutionStorage + super::PreparationStorage {
     #[doc(hidden)]
     fn copy(&mut self, context: &CapturedContext, directive: &Copy) -> Result<(), CopyError>;
     #[doc(hidden)]

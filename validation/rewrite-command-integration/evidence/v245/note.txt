@@ -1,0 +1,1 @@
+v245 FAILED fixture-only runtime cleanup retry: timeout retention was observed and its empty helper target removed, but the collected DirEntry values remained live across retry and retained a directory FD inside the runtime mount, producing EBUSY. Preserve before dropping those inspection handles. Network resources and command storage were already finalized as rejected.

@@ -34,3 +34,6 @@ pub use resolver_target::{ResolverTarget, ResolverTargetFailure};
 mod resolver_mount;
 pub(crate) use resolver_mount::ResolverView;
 pub use resolver_mount::{ResolverMount, ResolverSource, ResolverSourceFailure};
+
+mod command;
+pub use command::{CommandNetwork, NetworkCleanupFailure};

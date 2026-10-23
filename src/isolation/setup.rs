@@ -54,7 +54,10 @@ impl CommandSetup {
     pub fn with_resolver(self, source: &crate::network::ResolverSource) -> io::Result<Self> {
         self.with_resolver_view(source.view()?)
     }
-    fn with_resolver_view(self, resolver: crate::network::ResolverView) -> io::Result<Self> {
+    pub(crate) fn with_resolver_view(
+        self,
+        resolver: crate::network::ResolverView,
+    ) -> io::Result<Self> {
         if self.network.is_none() {
             return Err(io::Error::other(
                 "resolver injection requires configured networking",
@@ -65,7 +68,7 @@ impl CommandSetup {
             ..self
         })
     }
-    fn with_network_handle(self, network: File) -> io::Result<Self> {
+    pub(crate) fn with_network_handle(self, network: File) -> io::Result<Self> {
         if rustix::fs::fstatfs(&network)?.f_type as u64 != 0x6e73_6673 {
             return Err(io::Error::other("setup network namespace requires nsfs"));
         }

@@ -21,7 +21,7 @@ use std::{
     process::Command,
     time::{Duration, Instant},
 };
-pub use storage::{PreparationStorage, StoragePinFailure};
+pub use storage::{PreparationStorage, StorageLayout, StoragePinFailure};
 
 #[derive(Debug)]
 enum PolicyAssignment {

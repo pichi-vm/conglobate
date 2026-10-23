@@ -12,8 +12,10 @@ use std::{fmt::Debug, io, path::Path, time::Instant};
 
 /// Sealed mounted storage layouts sharing the command preparation lifecycle.
 /// Cleanup preserves the concrete unmounted layout and its owning retry error.
-pub trait PreparationStorage: StepStorage + Sized {
+pub trait StorageLayout: StepStorage + Sized {
     type Unmounted: Debug;
+}
+pub trait PreparationStorage: StorageLayout {
     type MountFailure: Debug;
     #[doc(hidden)]
     fn mount(
@@ -40,8 +42,10 @@ pub trait PreparationStorage: StepStorage + Sized {
     #[doc(hidden)]
     fn unmount_diagnostics(failure: &Self::UnmountFailure) -> &FailureDiagnostics;
 }
-impl<'n, 'o, 'w> PreparationStorage for Volume<'n, 'o, 'w, Mounted> {
+impl<'n, 'o, 'w> StorageLayout for Volume<'n, 'o, 'w, Mounted> {
     type Unmounted = Volume<'n, 'o, 'w, Unmounted>;
+}
+impl<'n, 'o, 'w> PreparationStorage for Volume<'n, 'o, 'w, Mounted> {
     type MountFailure = Volume<'n, 'o, 'w, Unmounted>;
     fn mount(
         volume: Self::Unmounted,
@@ -82,8 +86,10 @@ impl<'n, 'o, 'w> PreparationStorage for Volume<'n, 'o, 'w, Mounted> {
         failure.diagnostics()
     }
 }
-impl<'n, 'o, 'w> PreparationStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
+impl<'n, 'o, 'w> StorageLayout for BootstrapVolumes<'n, 'o, 'w, Mounted> {
     type Unmounted = BootstrapVolumes<'n, 'o, 'w, Unmounted>;
+}
+impl<'n, 'o, 'w> PreparationStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
     type MountFailure = Box<BootstrapMountFailure<'n, 'o, 'w>>;
     fn mount(
         volume: Self::Unmounted,

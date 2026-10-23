@@ -3854,3 +3854,32 @@ rules rather than silently shrinking acceptance criteria.
   adherence pass. Supervisor step ownership/transport, scaffold lifecycle,
   forwarding readiness/address allocation, enabled recipes and network receipts
   remain next; M6 stays at zero, and M7/M8/full qualification remain outstanding.
+
+### M6 network ownership through real command execution
+
+- Integrated `CommandNetwork` into consuming `Step<Ready>` ownership using
+  `NetworkedStorage`. It remains retained through command execution and domain
+  quiescence; finalization closes NAT, connection and resolver before storage.
+  Opaque cleanup failures retain both owners and the original teardown deadline.
+- Added network volume handoffs for single-root and bootstrap layouts, with an
+  independent raw tool-root view for resolver scaffold cleanup. The cleanup view
+  stays in the trusted helper and is not exposed to image commands. Failed
+  experiments v238–v241 are preserved alongside subsequent runs.
+- v246 passed restricted image libc DNS and TCP against an isolated guest fixture,
+  resolver write denial, successful scaffold restoration observed by an offline
+  successor, nonzero command cleanup, and timeout network cleanup. Timeout kills
+  the helper and leaves an empty mountpoint: runtime cleanup reports and retains
+  that state. Fixture-only removal/retry is evidence, not production recovery.
+  v243–v245 fixture failures and v242 success are also preserved. These results
+  do not claim complete sandbox or platform qualification.
+- Host tests pass, including exact network descriptor count rejection and ordered
+  CLOEXEC transfer for both packet shapes. Root and fixture strict Clippy pass;
+  the fixture's initial needless-reference lint failure is retained externally
+  in the v247 evidence archive. Full normal VM regression v247 passed, including
+  CLI pipelines and command lifetime/teardown checks. An additional compile-fail
+  test proves a ready networked step cannot receive a replacement network; all
+  54 doctests pass. These focused checks are not a full adherence review.
+- CLI enabled-network admission remains rejected pending network allocation,
+  environment readiness, directive integration and inventory receipts. Bootstrap
+  network execution still needs runtime coverage. M6 remains at zero complete
+  adherence passes; M7 and M8 remain outstanding.

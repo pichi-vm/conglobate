@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use crate::{
-    process::ReapedChildren,
+    network::CommandNetwork,
+    policy::{BoundDisabled, LabelPolicy},
+    process::{ReapedChildren, Registered, Supervision},
     step::{
         BootstrapFinalizationFailure, FinalizationFailure, FinalizedBootstrap, FinalizedVolume,
-        PreparationStorage, Ready, Step, TeardownCompletion,
+        StorageLayout, TeardownCompletion,
     },
     storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Volume},
 };
@@ -12,11 +14,17 @@ use std::{fmt::Debug, io, time::Instant};
 
 /// Sealed storage layouts whose transfer and finalization participate in the
 /// same command acceptance protocol. Finalization verifies every snapshot.
-pub trait ExecutionStorage: PreparationStorage {
+pub trait ExecutionStorage: StorageLayout {
     type Finalized: Debug;
     type FinalizationFailure: Debug;
     #[doc(hidden)]
-    fn send(step: &Step<'_, Ready, Self>, deadline: Instant) -> io::Result<()>;
+    fn send(
+        &self,
+        policy: &LabelPolicy<BoundDisabled>,
+        channel: &Supervision<Registered>,
+        network: Option<&CommandNetwork>,
+        deadline: Instant,
+    ) -> io::Result<()>;
     #[doc(hidden)]
     fn finalize(
         completion: TeardownCompletion<Self>,
@@ -33,8 +41,26 @@ pub trait ExecutionStorage: PreparationStorage {
 impl<'n, 'o, 'w> ExecutionStorage for Volume<'n, 'o, 'w, Mounted> {
     type Finalized = FinalizedVolume<'n, 'o, 'w>;
     type FinalizationFailure = Box<FinalizationFailure<'n, 'o, 'w>>;
-    fn send(step: &Step<'_, Ready, Self>, deadline: Instant) -> io::Result<()> {
-        step.send_volume_until(deadline)
+    fn send(
+        &self,
+        policy: &LabelPolicy<BoundDisabled>,
+        channel: &Supervision<Registered>,
+        network: Option<&CommandNetwork>,
+        deadline: Instant,
+    ) -> io::Result<()> {
+        let namespace = policy.namespace_for_root(&self.root_metadata()?)?;
+        let view = self.view()?;
+        match network {
+            Some(network) => channel.send_network_volume_until(
+                &view,
+                None,
+                &self.view()?,
+                namespace,
+                network,
+                deadline,
+            ),
+            None => channel.send_volume_until(&view, namespace, deadline),
+        }
     }
     fn finalize(
         completion: TeardownCompletion<Self>,
@@ -57,8 +83,29 @@ impl<'n, 'o, 'w> ExecutionStorage for Volume<'n, 'o, 'w, Mounted> {
 impl<'n, 'o, 'w> ExecutionStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
     type Finalized = FinalizedBootstrap<'n, 'o, 'w>;
     type FinalizationFailure = Box<BootstrapFinalizationFailure<'n, 'o, 'w>>;
-    fn send(step: &Step<'_, Ready, Self>, deadline: Instant) -> io::Result<()> {
-        step.send_bootstrap_until(deadline)
+    fn send(
+        &self,
+        policy: &LabelPolicy<BoundDisabled>,
+        channel: &Supervision<Registered>,
+        network: Option<&CommandNetwork>,
+        deadline: Instant,
+    ) -> io::Result<()> {
+        self.tool().prepare_output_mountpoint()?;
+        let namespace = policy.namespace_for_root(&self.tool().root_metadata()?)?;
+        policy.namespace_for_root(&self.output().root_metadata()?)?;
+        let root = self.tool().view()?;
+        let output = self.output().view()?;
+        match network {
+            Some(network) => channel.send_network_volume_until(
+                &root,
+                Some(&output),
+                &self.tool().view()?,
+                namespace,
+                network,
+                deadline,
+            ),
+            None => channel.send_bootstrap_until(&root, &output, namespace, deadline),
+        }
     }
     fn finalize(
         completion: TeardownCompletion<Self>,

@@ -22,7 +22,8 @@ mod preparation;
 pub use preparation::{
     BootstrapPreparation, BootstrapPreparationFailure, CommandPreparation, CommandSandbox,
     PreparationFailure, PreparationStorage, RolledBackPreparation, SandboxDirectories,
-    StoragePinFailure, StoragePreparation, StoragePreparationFailure, StorageRollback,
+    StorageLayout, StoragePinFailure, StoragePreparation, StoragePreparationFailure,
+    StorageRollback,
 };
 mod finalize;
 mod outcome;
@@ -534,3 +535,6 @@ pub use bootstrap::{BootstrapFinalizationFailure, FinalizedBootstrap};
 
 mod directives;
 pub use directives::{CompletedDirectives, CopyStageFailure, DirectiveStorage, StageFailure};
+
+mod network;
+pub use network::{NetworkEligibleStorage, NetworkFinalizationFailure, NetworkedStorage};

@@ -144,10 +144,14 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
         timeout: CommandTimeout,
         domain_parent: &Path,
     ) -> ExecutionResult<'l, R> {
-        if let Err(error) = budget
-            .check()
-            .and_then(|()| R::send(&self, budget.deadline()))
-        {
+        if let Err(error) = budget.check().and_then(|()| {
+            self.storage.0.send(
+                &self.policy.policy,
+                self.resources.0.supervision(),
+                None,
+                budget.deadline(),
+            )
+        }) {
             return StorageExecutionFailure::after_teardown(
                 ExecutionOutcome::SetupFailed(error),
                 self.teardown(domain_parent),

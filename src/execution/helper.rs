@@ -352,9 +352,13 @@ impl HelperInvocation {
                 let channel = Supervision::from_stdin()?
                     .exchange_until(deadline)?
                     .join_domain_until(deadline)?;
-                let input = channel.receive_volume_until(deadline)?;
+                let input = channel
+                    .receive_volume_until(deadline)
+                    .map_err(|error| format!("receive command volume: {error}"))?;
                 let scope = PrivateMountNamespace::enter()?;
-                let (view, setup) = input.prepare(&scope, CommandDevices::create(uid, gid)?)?;
+                let (view, setup, resolver) = input
+                    .prepare(&scope, CommandDevices::create(uid, gid)?)
+                    .map_err(|error| format!("prepare command volume: {error}"))?;
                 self.cutoff.deadline()?;
                 let view = view
                     .attach(MountPoint::create(&parent)?)
@@ -369,6 +373,14 @@ impl HelperInvocation {
                     .execute(entry, self.cutoff)
                     .map_err(|e| e.to_string())?;
                 let (channel, view, status) = completion.into_parts();
+                // Namespace init has exited and its namespace descendants are
+                // dead before the trusted namespace helper can be reaped. Its
+                // resolver mount namespace is now gone; remove only our pinned
+                // scaffolding before closing this root view. Failed cleanup
+                // prevents the helper from reporting successful completion.
+                if let Some(resolver) = resolver {
+                    resolver.release()?;
+                }
                 view.close().map_err(|e| e.to_string())?;
                 scope.restore().map_err(|e| e.to_string())?;
                 channel

@@ -215,7 +215,9 @@ impl Integration {
             let input = channel.receive_volume_until(deadline)?;
             let mode = args.get(2).ok_or("volume command mode required")?;
             let scope = PrivateMountNamespace::enter()?;
-            let (view, setup) = input.prepare(&scope, CommandDevices::create(100000, 100000)?)?;
+            let (view, setup, resolver) =
+                input.prepare(&scope, CommandDevices::create(100000, 100000)?)?;
+            assert!(resolver.is_none());
             if mode == "setup-detached-failure" {
                 fs::write("/work/setup-failure-stage", "detached")?;
                 return Err("injected failure after detached root preparation".into());
@@ -318,10 +320,15 @@ impl Integration {
             if matches!(
                 args[1].as_str(),
                 "volume-supervisor-sandbox"
+                    | "volume-supervisor-network"
+                    | "volume-supervisor-network-failure"
+                    | "volume-supervisor-network-timeout"
                     | "volume-supervisor-sandbox-mount-failure"
                     | "volume-supervisor-sandbox-namespace-failure"
             ) {
                 use conglobate::step::CommandSandbox;
+                let network_failure = args[1] == "volume-supervisor-network-failure";
+                let network_timeout = args[1] == "volume-supervisor-network-timeout";
                 let runtime_parent = Path::new("/work/runtime-parent");
                 fs::create_dir(runtime_parent)?;
                 fs::set_permissions(runtime_parent, fs::Permissions::from_mode(0o700))?;
@@ -331,7 +338,13 @@ impl Integration {
                 let lease = runtime.recovery();
                 let mut volume = Volume::<Unmounted>::in_init_namespace(snapshot, lease)
                     .map_err(|e| e.to_string())?;
-                if args[1] == "volume-supervisor-sandbox" {
+                if matches!(
+                    args[1].as_str(),
+                    "volume-supervisor-sandbox"
+                        | "volume-supervisor-network"
+                        | "volume-supervisor-network-failure"
+                        | "volume-supervisor-network-timeout"
+                ) {
                     assert!(
                         Command::new("mke2fs")
                             .args(["-q", "-t", "ext4", "-F"])
@@ -360,7 +373,13 @@ impl Integration {
                     IdRange::new(100000, 65536)?,
                 );
                 let mut reaper = ChildReaper::install()?;
-                if args[1] != "volume-supervisor-sandbox" {
+                if !matches!(
+                    args[1].as_str(),
+                    "volume-supervisor-sandbox"
+                        | "volume-supervisor-network"
+                        | "volume-supervisor-network-failure"
+                        | "volume-supervisor-network-timeout"
+                ) {
                     let namespace_failure =
                         args[1] == "volume-supervisor-sandbox-namespace-failure";
                     let limit = Path::new("/proc/sys/user/max_user_namespaces");
@@ -410,13 +429,42 @@ impl Integration {
                 }
                 for index in 0..2 {
                     let budget = conglobate::step::SetupBudget::begin();
-                    let script = if index == 0 {
+                    let mut script = if index == 0 {
                         format!(
                             "test -p /proc/self/fd/1; test -p /proc/self/fd/2; {}",
                             Self::command_script("success")
                         )
                     } else {
                         r#"read -r value < /command-started; test "$value" = image-write; test ! -e /work; test ! -e /dev/shm/step-data; printf second > /second-step"#.into()
+                    };
+                    let networked = args[1].starts_with("volume-supervisor-network") && index == 0;
+                    let network_parent = Path::new("/work/command-network");
+                    let (network, listener) = if networked {
+                        fs::create_dir(network_parent)?;
+                        fs::set_permissions(network_parent, fs::Permissions::from_mode(0o700))?;
+                        let network =
+                            network::NetworkProbe::command_network(&workspace, network_parent)?;
+                        if network_failure || network_timeout {
+                            script = if network_failure {
+                                "echo attempted > /command-started; exit 37"
+                            } else {
+                                "echo attempted > /command-started; while :; do :; done"
+                            }
+                            .into();
+                            (Some(network), None)
+                        } else {
+                            script.push_str(r#"
+test "$(cat /etc/resolv.conf)" = 'nameserver 10.44.0.1'; if (echo bad > /etc/resolv.conf) 2>/dev/null; then exit 91; fi; exec 3<>/dev/tcp/build.fixture/45457; printf 'request\n' >&3; read -r reply <&3; test "$reply" = reply; exec 3>&-; echo NETWORK_RESTRICTED_IMAGE_COMMAND_PASS"#);
+                            (
+                                Some(network),
+                                Some(network::NetworkProbe::command_listener()?),
+                            )
+                        }
+                    } else {
+                        if args[1] == "volume-supervisor-network" {
+                            script.push_str("\ntest ! -e /etc/resolv.conf; test ! -d /etc");
+                        }
+                        (None, None)
                     };
                     let command = sandbox.receiver(script, &budget)?;
                     let preparation = sandbox
@@ -425,10 +473,58 @@ impl Integration {
                     let step = preparation
                         .launch(command, budget.deadline(), runtime_paths.domains())
                         .map_err(|e| e.to_string())?;
-                    let completed = step
-                        .execute(budget, "5s".parse()?, runtime_paths.domains())
-                        .map_err(|e| e.to_string())?;
-                    (volume, reaper) = completed.into_parts();
+                    (volume, reaper) = match network {
+                        Some(network) => {
+                            let result = step.with_network(network).execute(
+                                budget,
+                                if network_timeout { "100ms" } else { "5s" }.parse()?,
+                                runtime_paths.domains(),
+                            );
+                            if network_failure || network_timeout {
+                                let failure = result.unwrap_err();
+                                match failure.outcome() {
+                                    conglobate::step::ExecutionOutcome::Command(
+                                        conglobate::step::CommandOutcome::Exited(status),
+                                    ) if network_failure => assert_eq!(status.code(), Some(37)),
+                                    conglobate::step::ExecutionOutcome::Command(
+                                        conglobate::step::CommandOutcome::ObservationFailed(error),
+                                    ) if network_timeout => {
+                                        assert_eq!(error.kind(), std::io::ErrorKind::TimedOut)
+                                    }
+                                    outcome => {
+                                        panic!("unexpected network command outcome: {outcome:?}")
+                                    }
+                                }
+                                assert!(failure.cleanup_error().is_none());
+                                let (_, rejected) =
+                                    failure.into_rejected_storage().map_err(|e| e.to_string())?;
+                                {
+                                    volume = rejected;
+                                    network::NetworkProbe::command_cleanup(network_parent)?;
+                                    assert_eq!(fs::read_dir(recovery)?.count(), 0);
+                                    assert!(points()?.is_empty());
+                                    assert!(
+                                        fs::read_to_string("/proc/thread-self/children")?
+                                            .trim()
+                                            .is_empty()
+                                    );
+                                    break;
+                                }
+                            } else {
+                                result.map_err(|e| e.to_string())?.into_parts()
+                            }
+                        }
+                        None => step
+                            .execute(budget, "5s".parse()?, runtime_paths.domains())
+                            .map_err(|e| e.to_string())?
+                            .into_parts(),
+                    };
+                    if let Some(listener) = listener {
+                        listener.join().expect("fixture listener")?;
+                    }
+                    if networked {
+                        network::NetworkProbe::command_cleanup(network_parent)?;
+                    }
                     assert_eq!(fs::read_dir(recovery)?.count(), 0);
                     assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
                     assert!(points()?.is_empty());
@@ -437,15 +533,21 @@ impl Integration {
                             .trim()
                             .is_empty()
                     );
+                    if network_failure || network_timeout {
+                        break;
+                    }
                 }
                 let mounted = volume
                     .mount_ext4(Path::new("/work"))
                     .map_err(|e| e.to_string())?;
                 let paths = points()?;
-                assert_eq!(
-                    fs::read(paths.first().unwrap().join("second-step"))?,
-                    b"second"
-                );
+                if !network_failure && !network_timeout {
+                    assert_eq!(
+                        fs::read(paths.first().unwrap().join("second-step"))?,
+                        b"second"
+                    );
+                }
+
                 let volume = mounted.unmount().map_err(|e| e.to_string())?;
                 volume
                     .into_snapshot()
@@ -455,12 +557,44 @@ impl Integration {
                     .map_err(|e| e.to_string())?;
                 origin.close()?;
                 drop(sandbox);
+                let helper_targets = runtime_paths.volumes().to_owned();
                 drop(runtime_paths);
-                runtime.close().map_err(|e| e.to_string())?;
+                if network_timeout {
+                    let failure = runtime.close().unwrap_err();
+                    assert!(failure.to_string().contains("Directory not empty"));
+                    let targets =
+                        fs::read_dir(&helper_targets)?.collect::<std::io::Result<Vec<_>>>()?;
+                    assert_eq!(targets.len(), 1);
+                    let target = &targets[0];
+                    assert!(
+                        target
+                            .file_name()
+                            .as_encoded_bytes()
+                            .starts_with(b"conglobate-mount-")
+                    );
+                    assert!(target.file_type()?.is_dir());
+                    assert_eq!(fs::read_dir(target.path())?.count(), 0);
+                    // Fixture-only recovery of its verified empty target. The
+                    // production failure retains this runtime for VM disposal.
+                    fs::remove_dir(target.path())?;
+                    drop(targets);
+                    failure.cleanup().map_err(|e| e.to_string())?;
+                } else {
+                    runtime.close().map_err(|e| e.to_string())?;
+                }
                 fs::remove_dir(runtime_parent)?;
                 fs::remove_dir(recovery)?;
                 fs::remove_file(node)?;
-                println!("SANDBOX_TWO_STEP_PIPELINE_PASS");
+                if args[1] == "volume-supervisor-network" {
+                    println!("NETWORK_COMMAND_LIFECYCLE_AND_OFFLINE_SUCCESSOR_PASS");
+                }
+                if network_failure {
+                    println!("NETWORK_COMMAND_FAILURE_CLEANUP_PASS");
+                } else if network_timeout {
+                    println!("NETWORK_COMMAND_TIMEOUT_NETWORK_CLEANUP_AND_RUNTIME_RETENTION_PASS");
+                } else {
+                    println!("SANDBOX_TWO_STEP_PIPELINE_PASS");
+                }
                 println!("OWNED_RUNTIME_COMMAND_LIFECYCLE_PASS");
                 fs::create_dir(runtime_parent)?;
                 fs::set_permissions(runtime_parent, fs::Permissions::from_mode(0o777))?;

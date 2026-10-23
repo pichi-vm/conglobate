@@ -22,6 +22,128 @@ use std::{
 
 pub(crate) struct NetworkProbe;
 impl NetworkProbe {
+    pub(crate) fn command_cleanup(parent: &Path) -> Result<(), Box<dyn std::error::Error>> {
+        assert!(!Path::new("/sys/class/net/cg-host").exists());
+        assert!(!Path::new("/sys/class/net/cg-peer").exists());
+        assert_eq!(fs::read_dir(parent)?.count(), 0);
+        fs::remove_dir(parent)?;
+        assert!(
+            !std::process::Command::new("/usr/bin/nft")
+                .args(["list", "table", "inet", "conglobate_cg_host"])
+                .output()?
+                .status
+                .success()
+        );
+        Ok(())
+    }
+    pub(crate) fn command_listener() -> std::io::Result<std::thread::JoinHandle<std::io::Result<()>>>
+    {
+        use std::io::{BufRead, Write};
+        let listener = std::net::TcpListener::bind("10.44.0.1:45457")?;
+        let dns = std::net::UdpSocket::bind("10.44.0.1:53")?;
+        Ok(std::thread::spawn(move || {
+            let deadline = Instant::now() + Duration::from_secs(10);
+            let mut queries = 0;
+            loop {
+                let remaining = deadline
+                    .checked_duration_since(Instant::now())
+                    .ok_or_else(|| std::io::Error::other("image DNS/TCP deadline"))?;
+                let timeout =
+                    rustix::event::Timespec::try_from(remaining).map_err(std::io::Error::other)?;
+                let mut poll = [
+                    rustix::event::PollFd::new(&dns, rustix::event::PollFlags::IN),
+                    rustix::event::PollFd::new(&listener, rustix::event::PollFlags::IN),
+                ];
+                if rustix::event::poll(&mut poll, Some(&timeout))? == 0 {
+                    return Err(std::io::Error::other(
+                        "image command did not resolve/connect",
+                    ));
+                }
+                if poll[0].revents().contains(rustix::event::PollFlags::IN) {
+                    let mut bytes = [0u8; 512];
+                    let (length, peer) = dns.recv_from(&mut bytes)?;
+                    let name = b"\x05build\x07fixture\0";
+                    let end = 12 + name.len() + 4;
+                    assert!(length >= end);
+                    assert_eq!(&bytes[4..6], &[0, 1]);
+                    assert_eq!(&bytes[12..12 + name.len()], name);
+                    assert_eq!(&bytes[end - 2..end], &[0, 1]);
+                    let ipv4 = bytes[end - 4..end - 2] == [0, 1];
+                    assert!(ipv4 || bytes[end - 4..end - 2] == [0, 28]);
+                    let mut response = vec![
+                        bytes[0],
+                        bytes[1],
+                        0x81,
+                        0x80,
+                        0,
+                        1,
+                        0,
+                        u8::from(ipv4),
+                        0,
+                        0,
+                        0,
+                        0,
+                    ];
+                    response.extend_from_slice(&bytes[12..end]);
+                    if ipv4 {
+                        response.extend_from_slice(&[
+                            0xc0, 0x0c, 0, 1, 0, 1, 0, 0, 0, 1, 0, 4, 10, 44, 0, 1,
+                        ]);
+                    }
+                    dns.send_to(&response, peer)?;
+                    queries += 1;
+                    assert!(queries <= 16);
+                }
+                if poll[1].revents().contains(rustix::event::PollFlags::IN) {
+                    let (mut stream, _) = listener.accept()?;
+                    stream.set_read_timeout(Some(Duration::from_secs(5)))?;
+                    stream.set_write_timeout(Some(Duration::from_secs(5)))?;
+                    let mut request = String::new();
+                    std::io::BufReader::new(&stream).read_line(&mut request)?;
+                    assert_eq!(request, "request\n");
+                    assert!(queries > 0);
+                    stream.write_all(b"reply\n")?;
+                    println!("NETWORK_RESTRICTED_IMAGE_DNS_AND_TCP_PASS");
+                    return Ok(());
+                }
+            }
+        }))
+    }
+    pub(crate) fn command_network(
+        workspace: &conglobate::storage::Workspace,
+        parent: &Path,
+    ) -> Result<conglobate::network::CommandNetwork, Box<dyn std::error::Error>> {
+        use conglobate::network::{CommandNetwork, ResolverInput, ResolverSource};
+        let program = HelperProgram::current()?;
+        let pair = VethPair::create(
+            parent,
+            InterfaceName::try_from("cg-host")?,
+            InterfaceName::try_from("cg-peer")?,
+            Instant::now() + Duration::from_secs(10),
+        )?;
+        let namespace = NetworkNamespace::create(&program, SetupBudget::begin().cutoff()?)?;
+        let connection = pair
+            .connect(namespace, Instant::now() + Duration::from_secs(10))?
+            .configure(
+                vec![NetworkAddress::new("10.44.0.1".parse()?, 30, None)?],
+                vec![NetworkAddress::new(
+                    "10.44.0.2".parse()?,
+                    30,
+                    Some("10.44.0.1".parse()?),
+                )?],
+                &program,
+                SetupBudget::begin().cutoff()?,
+            )?;
+        let policy = NatPolicy::install(connection, Instant::now() + Duration::from_secs(10))?;
+        let path = parent.join("resolver-input");
+        fs::write(&path, b"nameserver 10.44.0.1\n")?;
+        let input = ResolverInput::capture(&path)?;
+        fs::remove_file(path)?;
+        Ok(CommandNetwork::new(
+            policy,
+            ResolverSource::prepare(&input, workspace)?,
+        ))
+    }
     fn nat_install_failures(
         parent: &Path,
         program: &HelperProgram,

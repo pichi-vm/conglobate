@@ -1,0 +1,1 @@
+v243 FAILED fixture cleanup continuation: nonzero network command finalized rejection, then fixture attempted to reinstall the process-wide subreaper. Preserve before ending the rejected build path without reinstalling it. Positive DNS/TCP and offline-successor cases passed in this run.

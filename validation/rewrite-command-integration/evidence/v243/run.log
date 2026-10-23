@@ -1,0 +1,85 @@
+Traceback (most recent call last):
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration/run.py", line 344, in <module>
+    assert passed, serial[-5000:]
+           ^^^^^^
+AssertionError: + modprobe veth
++ modprobe nf_tables
++ modprobe nft_chain_nat
++ modprobe nft_masq
++ modprobe nft_ct
++ /idmap-probe network-probe
+resolver selecting target existing=false
+resolver mount prepared
+resolver mount attached
+resolver selecting target existing=true
+resolver mount prepared
+resolver mount attached
+NETWORK_RESOLVER_READONLY_EXACT_BYTES_AND_RESTORATION_PASS
+NETWORK_RESOLVER_SETUP_TRANSPORT_MAPPED_ROOT_AND_CLEANUP_PASS
+NETWORK_OFFLINE_LOOPBACK_WITHOUT_EXTERNAL_ROUTE_PASS
+NETWORK_COMMAND_ENTRY_AND_DESCRIPTOR_CLOSURE_PASS
+NETWORK_NAMESPACE_CREATOR_REAPED_PASS
+NETWORK_EXCLUSIVE_COLLISION_PRESERVES_OWNER_PASS
+NETWORK_PAIR_EXPLICIT_TEARDOWN_PASS
+NFT_POLICY table inet conglobate_cg_host { # progname idmap-probe
+	flags owner
+
+	chain forward {
+		type filter hook forward priority filter; policy accept;
+		oifname "cg-host" ct state established,related accept
+		oifname "cg-host" drop
+	}
+
+	chain output {
+		type filter hook output priority filter; policy accept;
+		oifname "cg-host" ct state established,related accept
+		oifname "cg-host" ip6 hoplimit 255 icmpv6 type nd-neighbor-solicit accept
+		oifname "cg-host" ip6 hoplimit 255 icmpv6 type nd-neighbor-advert accept
+		oifname "cg-host" drop
+	}
+
+	chain nat {
+		type nat hook postrouting priority srcnat; policy accept;
+		iifname "cg-host" masquerade
+	}
+}
+
+NETWORK_RESOLVER_SETUP_TRANSPORT_MAPPED_ROOT_AND_CLEANUP_PASS
+NETWORK_COMMAND_ENTRY_AND_DESCRIPTOR_CLOSURE_PASS
+NETWORK_RESOLVER_SETUP_TRANSPORT_MAPPED_ROOT_AND_CLEANUP_PASS
+NETWORK_COMMAND_ENTRY_AND_DESCRIPTOR_CLOSURE_PASS
+NETWORK_NFT_REPLY_ONLY_AND_TEARDOWN_PASS
+NETWORK_DUAL_STACK_ADDRESSES_ROUTES_LOOPBACK_PASS
+NETWORK_PEER_NAMESPACE_HANDOFF_CLEANUP_PASS
+NETWORK_OWNED_NAT_INSTALL_FAILURE_CLEANUP_PASS
+trusted command helper: Network is unreachable (os error 101)
+NETWORK_CONFIGURATION_FAILURE_CLEANUP_PASS
+NETWORK_EXPIRED_SETUP_ROLLBACK_PASS
++ /idmap-probe forward-probe
+NETWORK_FORWARDED_DUAL_STACK_NAT_AND_REPLY_ONLY_PASS
+NETWORK_FORWARDED_DUAL_STACK_TCP_PASS
+NETWORK_FORWARDED_WITHOUT_POLICY_POSITIVE_CONTROL_PASS
+NETWORK_FORWARDED_TOPOLOGY_TEARDOWN_PASS
++ modprobe loop
++ modprobe ext4
++ modprobe dm-zero
++ modprobe dm-snapshot
++ mkdir /work/pins
++ /idmap-probe volume-supervisor-network
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+NETWORK_RESTRICTED_IMAGE_DNS_AND_TCP_PASS
+NETWORK_RESTRICTED_IMAGE_COMMAND_PASS
+NETWORK_COMMAND_LIFECYCLE_AND_OFFLINE_SUCCESSOR_PASS
+SANDBOX_TWO_STEP_PIPELINE_PASS
+OWNED_RUNTIME_COMMAND_LIFECYCLE_PASS
+OWNED_RUNTIME_CLEANUP_REFUSAL_PASS
++ /idmap-probe volume-supervisor-network-failure
+runtime retained until VM disposal: /proc/self/fd/13/conglobate-runtime-XXdfTI
+subreaper must be installed once before child creation
+IDMAP_PROBE_EXIT 1
+[   13.150902] sysrq: Resetting
+
