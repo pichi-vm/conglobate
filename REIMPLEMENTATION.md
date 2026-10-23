@@ -3340,3 +3340,29 @@ rules rather than silently shrinking acceptance criteria.
   M6 remains zero adherence passes. Bootstrap coordination, enabled networking,
   remaining output/failure/variable-expansion matrix, runtime acquisition faults,
   ORAS interoperability and the three-review gate remain open.
+
+### M6 formatter execution receipts
+
+- Previous status-only turn was no implementation progress; resumed work against
+  current source. Bootstrap CLI integration revealed that successful formatter
+  execution had no inventory receipt transition. This gap is now closed without
+  treating a planned formatter invocation as execution evidence.
+- FormattedSnapshot::into_recorded_parts consumes a successful/reaped formatter
+  result and returns its resource owners plus immutable FormatReceipt. The receipt
+  retains exact executable/runtime identities and effective typed ext4 format.
+  Its constructor is private; recipe plans and decoded inventory cannot mint it.
+- Inventory::with_formatter consumes that receipt into the existing version-two
+  schema, including profile/configuration digests, runtime paths/digests, arguments
+  and filesystem geometry. Duplicate bootstrap formatter attachment is rejected.
+  Resource cleanup, command success, sealing and publication remain separate gates.
+- Host tests (86 library tests, integration suites, 52 doctests), root/fixture
+  strict Clippy and formatting pass. v205 full normal disposable-VM suite passed
+  in 132.84 guest seconds. The fixture compares receipt identities to the runtime
+  of an actual successful format, then tests CBOR encoding/decoding in memory.
+  That probe document is not published as a bootstrap CLI build. Source, executable
+  identities and evidence are preserved under validation/rewrite-command-integration/evidence/v205.
+- Bootstrap CLI orchestration remains unfinished. In particular the production
+  CLI still needs trusted formatter runtime selection (currently supplied only
+  by the validation fixture), composition with later stages, and receipt attachment
+  after successful cleanup. Networking, remaining matrix/fault tests, ORAS and
+  three full M6 adherence passes remain outstanding. M6 streak remains zero.

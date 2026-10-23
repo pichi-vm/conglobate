@@ -13,6 +13,6 @@ mod input;
 pub(crate) use input::FormatterInput;
 mod execution;
 pub use execution::{
-    FormatCompletionFailure, FormatFailure, FormatLaunchFailure, FormatWaitFailure,
+    FormatCompletionFailure, FormatFailure, FormatLaunchFailure, FormatReceipt, FormatWaitFailure,
     FormattedSnapshot, Formatting,
 };

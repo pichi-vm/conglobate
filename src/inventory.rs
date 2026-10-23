@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Version-two inventory with strict schema and core deterministic CBOR.
 //! Decoding validates representation, not authenticity or successful execution.
-mod schema;
 mod record;
+mod schema;
 use ciborium::Value;
 use schema::*;
 use sha2::{Digest as _, Sha256};

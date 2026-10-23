@@ -48,7 +48,18 @@ impl FormatterProbe {
             .map_err(|e| e.to_string())?
             .wait()
             .map_err(|e| e.to_string())?;
-        let (runtime, snapshot) = formatted.into_parts();
+        let (runtime, snapshot, receipt) = formatted.into_recorded_parts();
+        assert_eq!(receipt.executable(), runtime.captured().executable());
+        assert_eq!(
+            receipt.runtime(),
+            &runtime
+                .captured()
+                .files()
+                .map(|(path, file)| (path.clone(), *file.digest()))
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(receipt.format().size().bytes(), 16 * 1024 * 1024);
+        assert_eq!(receipt.format().label().as_ref(), "captured");
         fs::rename("/usr/bin/mke2fs-original", "/usr/bin/mke2fs")?;
         // No loader/libraries in this captured root: execution must fail rather
         // than fall back to the ambient VM runtime. Reaping returns both owners.
@@ -200,6 +211,31 @@ impl FormatterProbe {
             crate::sealed::SealProbe::reopen(&sealed, &workspace)?;
         }
         println!("BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS");
+        if std::env::var_os("BOOTSTRAP_FAILURE").is_none()
+            && std::env::var_os("BOOTSTRAP_COMMAND_FAILURE").is_none()
+        {
+            // Wire-format test only: attach the actual standalone probe receipt
+            // to an in-memory document, never publish it as the CLI build record.
+            let bytes = fs::read("/work/derived-output/inventory.cbor")?;
+            let inventory =
+                conglobate::inventory::Inventory::decode(&bytes)?.with_formatter(receipt)?;
+            let value: ciborium::Value = ciborium::from_reader(inventory.bytes())?;
+            let value = serde_json::to_value(value)?;
+            let formatter = &value["execution"]["formatters"][0];
+            assert_eq!(formatter["stage"], "bootstrap");
+            assert_eq!(formatter["filesystem"]["label"], "captured");
+            assert_eq!(formatter["filesystem"]["size_bytes"], 16 * 1024 * 1024);
+            assert_eq!(formatter["executable"]["path"], "usr/bin/mke2fs");
+            assert_eq!(
+                formatter["arguments"].as_array().unwrap().last().unwrap(),
+                "4096"
+            );
+            assert_eq!(
+                conglobate::inventory::Inventory::decode(inventory.bytes())?.bytes(),
+                inventory.bytes()
+            );
+            println!("CAPTURED_FORMATTER_RECEIPT_PASS");
+        }
         origin.close()?;
         println!("CAPTURED_FORMATTER_EXECUTION_PASS");
         Ok(())

@@ -209,9 +209,48 @@ impl<'a, 'w> Formatting<'a, 'w> {
         }
     }
 }
+/// Evidence of one successful, reaped formatter execution and healthy snapshot.
+/// It does not certify later commands, sealing, or output publication. There is
+/// no constructor from a recipe, captured runtime, or decoded inventory.
+///
+/// ```compile_fail
+/// use conglobate::formatter::FormatReceipt;
+/// let receipt = FormatReceipt::default();
+/// ```
+#[derive(Debug)]
+pub struct FormatReceipt {
+    format: Ext4Format,
+    executable: crate::path::ContextPath,
+    runtime: Vec<(crate::path::ContextPath, [u8; 32])>,
+}
+impl FormatReceipt {
+    pub fn format(&self) -> &Ext4Format {
+        &self.format
+    }
+    pub fn executable(&self) -> &crate::path::ContextPath {
+        &self.executable
+    }
+    pub fn runtime(&self) -> &[(crate::path::ContextPath, [u8; 32])] {
+        &self.runtime
+    }
+}
 impl<'a, 'w> FormattedSnapshot<'a, 'w> {
     pub fn format(&self) -> &Ext4Format {
         &self.inputs.format
+    }
+    /// Consume successful execution while retaining its exact input identities.
+    /// Resource owners remain separate so the coordinator must still close them.
+    pub fn into_recorded_parts(self) -> (FormatterRuntime, SnapshotMapping<'a, 'w>, FormatReceipt) {
+        let captured = self.inputs.runtime.captured();
+        let receipt = FormatReceipt {
+            executable: captured.executable().clone(),
+            runtime: captured
+                .files()
+                .map(|(path, file)| (path.clone(), *file.digest()))
+                .collect(),
+            format: self.inputs.format,
+        };
+        (self.inputs.runtime, self.inputs.snapshot, receipt)
     }
     pub fn into_parts(self) -> (FormatterRuntime, SnapshotMapping<'a, 'w>) {
         (self.inputs.runtime, self.inputs.snapshot)

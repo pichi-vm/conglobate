@@ -220,3 +220,69 @@ impl Inventory {
         Ok(())
     }
 }
+
+impl TryFrom<crate::formatter::FormatReceipt> for Formatter {
+    type Error = InventoryError;
+    fn try_from(receipt: crate::formatter::FormatReceipt) -> Result<Self, Self::Error> {
+        let runtime = receipt
+            .runtime()
+            .iter()
+            .map(|(path, digest)| {
+                Ok(RuntimeFile {
+                    path: Context::text(path.as_ref())?,
+                    digest: Digest::identity(digest)?,
+                })
+            })
+            .collect::<Result<Vec<_>, InventoryError>>()?;
+        let executable = Context::text(receipt.executable().as_ref())?;
+        let digest = runtime
+            .iter()
+            .find(|file| file.path == executable)
+            .ok_or_else(|| InventoryError::invalid("missing executed formatter"))?
+            .digest
+            .digest;
+        let format = receipt.format();
+        Ok(Self {
+            stage: Stage::Bootstrap,
+            profile: crate::formatter::Ext4Format::PROFILE.into(),
+            profile_digest: Digest::identity(&crate::formatter::Ext4Format::profile_digest())?,
+            executable: RuntimeFile {
+                path: executable,
+                digest: Digest::identity(&digest)?,
+            },
+            runtime,
+            configuration: Digest::identity(&crate::formatter::Ext4Format::configuration_digest())?,
+            arguments: format
+                .arguments(Path::new("/dev/output"))
+                .into_iter()
+                .map(|arg| {
+                    arg.into_string()
+                        .map_err(|_| InventoryError::invalid("formatter argument is not UTF-8"))
+                })
+                .collect::<Result<_, _>>()?,
+            filesystem: Filesystem {
+                kind: FilesystemType::Ext4,
+                size_bytes: format.size().bytes(),
+                logical_size_bytes: crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES,
+                label: format.label().as_ref().into(),
+            },
+        })
+    }
+}
+impl Inventory {
+    /// Attach actual formatter execution evidence before final publication.
+    /// Consumes the receipt; decoded inventory cannot mint an execution receipt.
+    pub fn with_formatter(
+        self,
+        receipt: crate::formatter::FormatReceipt,
+    ) -> Result<Self, InventoryError> {
+        let mut document = self.document;
+        if !document.execution.formatters.is_empty() {
+            return Err(InventoryError::invalid(
+                "bootstrap formatter already recorded",
+            ));
+        }
+        document.execution.formatters.push(receipt.try_into()?);
+        Self::from_document(document)
+    }
+}
