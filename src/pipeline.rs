@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 //! Recipe orchestration. Unsupported execution paths fail before publication.
+mod carapace;
 use crate::{
     cache::{Cache, CacheError},
     input::{CapturedBuild, CheckedImage, InputError, ResolvedBuild},
     inventory::{Inventory, InventoryError},
     output::{AssembledImage, AssemblyFailure, PublicationFailure},
-    recipe::TransformSelection,
     request::BuildRequest,
     storage::Workspace,
 };
@@ -35,6 +35,8 @@ pub enum BuildError {
     Transform(#[from] crate::transform::TransformError),
     #[error("build path is not implemented yet: {0}")]
     Unsupported(&'static str),
+    #[error("build execution: {0}")]
+    Execution(String),
     #[error("conglobate requires root")]
     RootRequired,
 }
@@ -52,12 +54,21 @@ impl Pipeline {
         }
         let build =
             CapturedBuild::try_from(&self.request)?.resolve(Cache::open(self.request.cache())?)?;
-        let selected = InheritedBuild::new(&build)?;
         let workspace = Workspace::create()?;
         let context = workspace
             .materialize(build.captured().context())?
             .read_only()?;
-        let output = selected.assemble(&self.request)?;
+        let output = if build
+            .captured()
+            .plan()
+            .recipe()
+            .carapace()
+            .is_some_and(|stage| !stage.directives().is_empty())
+        {
+            carapace::CarapaceBuild::new(&build)?.execute(&self.request, &workspace)?
+        } else {
+            InheritedBuild::new(&build)?.assemble(&self.request)?
+        };
         // No artifact can be published if private input cleanup fails.
         context.close()?;
         drop(workspace);
@@ -71,7 +82,6 @@ impl Pipeline {
 pub(crate) struct InheritedBuild<'a> {
     build: &'a ResolvedBuild,
     base: &'a CheckedImage,
-    authored: bool,
 }
 impl<'a> InheritedBuild<'a> {
     pub(crate) fn new(build: &'a ResolvedBuild) -> Result<Self, BuildError> {
@@ -92,18 +102,10 @@ impl<'a> InheritedBuild<'a> {
             .from()
             .and_then(|name| build.images().get(name))
             .ok_or(BuildError::Unsupported("missing resolved output base"))?;
-        let authored = matches!(recipe.transform(), TransformSelection::Authored(_));
-        Ok(Self {
-            build,
-            base,
-            authored,
-        })
+        Ok(Self { build, base })
     }
     pub(crate) fn build(&self) -> &ResolvedBuild {
         self.build
-    }
-    pub(crate) fn authored(&self) -> bool {
-        self.authored
     }
     pub(crate) fn assemble(&self, request: &BuildRequest) -> Result<CompletedImage, BuildError> {
         let source = self

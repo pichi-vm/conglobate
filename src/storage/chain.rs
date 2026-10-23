@@ -103,49 +103,9 @@ impl VerifiedChain {
                 Ok(prepared) => prepared,
                 Err(error) => return Err(Cleanup::Stack(stack).failure(io::Error::other(error))),
             };
-            let cow = match prepared.activate() {
-                Ok(cow) => cow,
-                Err(failure) => {
-                    let source = failure.diagnostics().latest_only();
-                    return Err(Cleanup::Verity(failure, stack).failure(source));
-                }
-            };
-            // Authenticate through dm-verity before the snapshot target sees it.
-            let header = match cow.snapshot_header() {
-                Ok(header) => header,
-                Err(source) => return Err(Cleanup::Cow(cow, stack).failure(source)),
-            };
-            let mapping = match Mapping::<Created>::create() {
-                Ok(mapping) => mapping,
-                Err(source) => return Err(Cleanup::Cow(cow, stack).failure(source)),
-            };
-            let target = devmap_snapshot::Snapshot::from(devmap_snapshot::Parameters {
-                origin: stack.id(),
-                cow: cow.id(),
-                persistence: devmap_snapshot::Persistence::Persistent(
-                    devmap_snapshot::Persistent::Standard,
-                ),
-                chunk_size: header.chunk_size,
-                discard: devmap_snapshot::Discard::Disabled,
-            });
-            match mapping.activate(sectors, &target, true) {
-                Ok(mapping) => {
-                    if let Err(source) = mapping
-                        .snapshot_info()
-                        .and_then(super::SnapshotUsage::try_from)
-                    {
-                        let failure = mapping.failed(source);
-                        let source = failure.diagnostics().latest_only();
-                        return Err(Cleanup::Mapping(failure, cow, stack).failure(source));
-                    }
-                    stack.layers.0.push(Layer { mapping, cow });
-                }
-                Err(failure) => {
-                    let source = failure.diagnostics().latest_only();
-                    return Err(Cleanup::Mapping(failure, cow, stack).failure(source));
-                }
-            }
+            stack = stack.append(prepared)?;
         }
+
         Ok(ReadOnlyChain {
             stack,
             root: *self.root(),
@@ -153,6 +113,28 @@ impl VerifiedChain {
     }
 }
 impl<'s, 'w> ReadOnlyChain<'s, 'w> {
+    /// Consume the previous read-only chain and retain the immutable produced
+    /// layer directly in RAM. Inherited layers keep their original cache backing.
+    pub fn extend(
+        self,
+        scute: std::sync::Arc<super::SealedScute<'w>>,
+    ) -> Result<Self, ReadOnlyChainFailure<'s, 'w>> {
+        if scute.parent() != &self.root {
+            return Err(Cleanup::Stack(self.stack).failure(io::Error::other(
+                "produced scute parent differs from active chain",
+            )));
+        }
+        let root = *scute.root();
+        let prepared = match crate::cache::PreparedScute::produced(scute) {
+            Ok(prepared) => prepared,
+            Err(source) => return Err(Cleanup::Stack(self.stack).failure(io::Error::other(source))),
+        };
+        Ok(Self {
+            stack: self.stack.append(prepared)?,
+            root,
+        })
+    }
+
     pub fn root(&self) -> &[u8; 32] {
         &self.root
     }
@@ -170,6 +152,56 @@ impl<'a> From<&'a ReadOnlyChain<'_, '_>> for super::SnapshotOrigin<'a> {
     }
 }
 impl<'s, 'w> Stack<'s, 'w> {
+    fn append(
+        mut self,
+        prepared: crate::cache::PreparedScute<'s, 'w>,
+    ) -> Result<Self, ReadOnlyChainFailure<'s, 'w>> {
+        let sectors = NonZeroU64::new(ORIGIN_SECTORS).expect("nonzero format extent");
+        let cow = match prepared.activate() {
+            Ok(cow) => cow,
+            Err(failure) => {
+                let source = failure.diagnostics().latest_only();
+                return Err(Cleanup::Verity(failure, self).failure(source));
+            }
+        };
+        // Authenticate through dm-verity before the snapshot target sees it.
+        let header = match cow.snapshot_header() {
+            Ok(header) => header,
+            Err(source) => return Err(Cleanup::Cow(cow, self).failure(source)),
+        };
+        let mapping = match Mapping::<Created>::create() {
+            Ok(mapping) => mapping,
+            Err(source) => return Err(Cleanup::Cow(cow, self).failure(source)),
+        };
+        let target = devmap_snapshot::Snapshot::from(devmap_snapshot::Parameters {
+            origin: self.id(),
+            cow: cow.id(),
+            persistence: devmap_snapshot::Persistence::Persistent(
+                devmap_snapshot::Persistent::Standard,
+            ),
+            chunk_size: header.chunk_size,
+            discard: devmap_snapshot::Discard::Disabled,
+        });
+        match mapping.activate(sectors, &target, true) {
+            Ok(mapping) => {
+                if let Err(source) = mapping
+                    .snapshot_info()
+                    .and_then(super::SnapshotUsage::try_from)
+                {
+                    let failure = mapping.failed(source);
+                    let source = failure.diagnostics().latest_only();
+                    return Err(Cleanup::Mapping(failure, cow, self).failure(source));
+                }
+                self.layers.0.push(Layer { mapping, cow });
+            }
+            Err(failure) => {
+                let source = failure.diagnostics().latest_only();
+                return Err(Cleanup::Mapping(failure, cow, self).failure(source));
+            }
+        }
+        Ok(self)
+    }
+
     fn mapping(&self) -> &Mapping<Active> {
         self.layers
             .0

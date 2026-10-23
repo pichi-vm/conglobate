@@ -12,9 +12,20 @@ use std::{
 /// cache-backed bytes still require dm-verity on every subsequent kernel read.
 #[derive(Debug)]
 pub struct PreparedScute<'scute, 'workspace> {
-    scute: &'scute VerifiedScute,
-    data: Data<'workspace>,
-    hash: Scratch<'workspace>,
+    source: Source<'scute, 'workspace>,
+}
+
+#[derive(Debug)]
+enum Source<'s, 'w> {
+    Cached {
+        scute: &'s VerifiedScute,
+        data: Data<'w>,
+        hash: Scratch<'w>,
+    },
+    Produced {
+        scute: std::sync::Arc<crate::storage::SealedScute<'w>>,
+        header: Box<devmap_verity::Header>,
+    },
 }
 
 #[derive(Debug)]
@@ -73,37 +84,69 @@ impl<'s> VerifiedScute {
         };
         hash.sync_all()?;
         Ok(PreparedScute {
-            scute: self,
-            data,
-            hash,
+            source: Source::Cached {
+                scute: self,
+                data,
+                hash,
+            },
         })
     }
 }
 
-impl PreparedScute<'_, '_> {
-    pub(crate) fn files(&self) -> (&File, &File) {
-        let data = match &self.data {
-            Data::Cache(file) => file,
-            Data::Materialized(scratch) => scratch.file(),
-        };
-        (data, self.hash.file())
-    }
-    pub(crate) fn header(&self) -> devmap_verity::Header {
-        self.scute.extent.header()
-    }
-    pub fn root(&self) -> &[u8; 32] {
-        self.scute.root()
-    }
-    pub fn is_cache_backed(&self) -> bool {
-        matches!(self.data, Data::Cache(_))
-    }
-    pub fn data_size(&self) -> io::Result<u64> {
-        Ok(match &self.data {
-            Data::Cache(file) => file.metadata()?.len(),
-            Data::Materialized(scratch) => scratch.metadata()?.len(),
+impl<'s, 'w> PreparedScute<'s, 'w> {
+    pub(crate) fn produced(
+        scute: std::sync::Arc<crate::storage::SealedScute<'w>>,
+    ) -> Result<Self, crate::chain::ChainError> {
+        let header = crate::chain::ScuteExtent::new(
+            scute.descriptor().size,
+            scute.parent(),
+            scute.descriptor().annotations.data_blocks,
+        )?
+        .header();
+        Ok(Self {
+            source: Source::Produced {
+                scute,
+                header: Box::new(header),
+            },
         })
     }
+    pub(crate) fn files(&self) -> (&File, &File) {
+        match &self.source {
+            Source::Cached { data, hash, .. } => {
+                let data = match data {
+                    Data::Cache(file) => file,
+                    Data::Materialized(scratch) => scratch.file(),
+                };
+                (data, hash.file())
+            }
+            Source::Produced { scute, .. } => scute.files(),
+        }
+    }
+    pub(crate) fn header(&self) -> devmap_verity::Header {
+        match &self.source {
+            Source::Cached { scute, .. } => scute.extent.header(),
+            Source::Produced { header, .. } => **header,
+        }
+    }
+    pub fn root(&self) -> &[u8; 32] {
+        match &self.source {
+            Source::Cached { scute, .. } => scute.root(),
+            Source::Produced { scute, .. } => scute.root(),
+        }
+    }
+    pub fn is_cache_backed(&self) -> bool {
+        matches!(
+            &self.source,
+            Source::Cached {
+                data: Data::Cache(_),
+                ..
+            }
+        )
+    }
+    pub fn data_size(&self) -> io::Result<u64> {
+        Ok(self.files().0.metadata()?.len())
+    }
     pub fn hash_size(&self) -> io::Result<u64> {
-        Ok(self.hash.metadata()?.len())
+        Ok(self.files().1.metadata()?.len())
     }
 }

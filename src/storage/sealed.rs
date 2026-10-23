@@ -31,6 +31,9 @@ pub struct SealedScute<'workspace> {
     hash_size: u64,
 }
 impl SealedScute<'_> {
+    pub(crate) fn files(&self) -> (&File, &File) {
+        (self.data.file(), self.hash.file())
+    }
     pub fn descriptor(&self) -> &ScuteDescriptor {
         &self.descriptor
     }

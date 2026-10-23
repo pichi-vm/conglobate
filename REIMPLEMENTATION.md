@@ -3214,3 +3214,38 @@ rules rather than silently shrinking acceptance criteria.
   CLI coordinator are still outstanding. Next connect this owner to carapace
   directives, finalized storage, produced-origin inventory and publication;
   firmware and enabled networking remain required. No complete CLI build claim.
+
+### M6 executable carapace CLI path
+
+- Previous goal turn progressed in b7ac903. Connected Pipeline to a validated
+  CarapaceBuild for recipes with carapace directives. It owns the runtime, executes
+  each directive against a fresh snapshot, seals it only after successful storage
+  finalization, and publishes after runtime and private-context cleanup.
+- Preserved DESIGN.md's one-scute-per-directive contract. ReadOnlyChain::extend
+  consumes the preceding chain and activates a shared immutable SealedScute
+  directly from RAM through dm-verity. PreparedScute now distinguishes cached
+  inputs from produced inputs; inherited aligned layers remain cache-backed.
+  Appending a layer checks its parent. The existing stack owns ordered teardown.
+- Output assembly appends all produced descriptors, checks their ordered ancestry,
+  applies final DTB edits using the resulting root, and verifies the staged image.
+  Inventory binds produced digests in output-chain order and marks only those
+  entries produced. Sparse COW capacity accommodates the full logical device plus
+  exception metadata; physical allocation still obeys ordinary tmpfs limits.
+- Rejected directives preserve their primary error while attempting bounded
+  cleanup; rejected storage is discarded and cannot become an accepted receipt.
+  Unfinished kernel resources retain the existing dedicated-VM disposal fallback.
+  Bootstrap/firmware coordination and enabled networking remain explicit errors.
+- v200 full normal VM suite passes, including an actual conglobate CLI invocation
+  on a committed RUN/COPY/RUN recipe. It produces exactly three new scutes above
+  one inherited scute; inventory origins match; committed COPY bytes win over
+  dirty worktree bytes; the published chain remounts with the expected files.
+  A separate command exits 37 and leaves neither output nor runtime attachment.
+- v201 pass-through/DTB CLI regressions pass. The test harness now includes the
+  actual CLI in normal runs and has a 150-second observation limit; production
+  command timeouts are unchanged. Host cargo test passes (82 library tests,
+  integration suites, 51 doctests), as do root/fixture strict Clippy. Evidence,
+  source, executable hashes and v201 exported inventory/index are preserved.
+- M6 is still zero adherence passes. Remaining work includes bootstrap and
+  firmware CLI coordination, enabled NAT/DNS, complete output/failure matrix,
+  runtime acquisition fault injection, ORAS interoperability and the three-pass
+  gate. Full distro and platform qualification remains M7.

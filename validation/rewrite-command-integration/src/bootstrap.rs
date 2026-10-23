@@ -407,6 +407,7 @@ impl BootstrapProbe {
         drop(lease);
         fs::remove_dir(records)?;
         println!("BOOTSTRAP_DUAL_COMMAND_REMOUNT_PASS");
+        crate::pipeline::PipelineProbe::derived(tool_pin, workspace)?;
         Ok(Some(sealed))
     }
     fn volume_path(device: u64) -> std::io::Result<std::path::PathBuf> {

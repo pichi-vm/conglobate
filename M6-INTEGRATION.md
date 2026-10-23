@@ -284,3 +284,18 @@ parent, execute directives on verified snapshots, preserve failures through
 cleanup, seal accepted storage, bind produced origins in inventory, and publish
 only after explicit runtime/context cleanup. Acquisition fault-injection coverage
 and full M6 review remain required; this is not a milestone adherence pass.
+
+## Carapace directives connected to CLI
+
+Pipeline now executes carapace RUN/COPY directives through CarapaceBuild and the
+owned runtime. Each directive creates its own sealed scute and extends the active
+read-only chain for the next directive without copying inherited cache-backed
+layers. Produced data/hash files are immutable shared owners retained through
+mapping teardown and final streaming output assembly. The final root feeds DTB
+transformation, and inventory distinguishes inherited and produced scutes.
+Publication follows explicit runtime and context cleanup. v200 demonstrates a
+real committed three-directive CLI build, output remount, and nonzero-command
+rejection; v201 preserves the earlier pass-through and transform coverage.
+
+Bootstrap and firmware coordinators, enabled networking, the complete matrix and
+failure coverage, ORAS verification, and M6 adherence review remain outstanding.

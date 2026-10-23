@@ -101,7 +101,33 @@ impl Inventory {
         output: &AssembledImage,
         transformed: &crate::transform::TransformedDtb,
     ) -> Result<Self, InventoryError> {
-        let build = completed.build();
+        Self::from_build(request, completed.build(), output, transformed, &[])
+    }
+    pub(crate) fn from_build(
+        request: &BuildRequest,
+        build: &crate::input::ResolvedBuild,
+        output: &AssembledImage,
+        transformed: &crate::transform::TransformedDtb,
+        produced: &[std::sync::Arc<crate::storage::SealedScute<'_>>],
+    ) -> Result<Self, InventoryError> {
+        let authored = matches!(
+            build.captured().plan().recipe().transform(),
+            crate::recipe::TransformSelection::Authored(_)
+        );
+        let mut outputs = Outputs::inherited(output)?;
+        let start = outputs
+            .scutes
+            .len()
+            .checked_sub(produced.len())
+            .ok_or_else(|| InventoryError::invalid("missing produced output scutes"))?;
+        for (entry, scute) in outputs.scutes[start..].iter_mut().zip(produced) {
+            if entry.digest.digest != Digest::oci(&scute.descriptor().digest)?.digest {
+                return Err(InventoryError::invalid(
+                    "produced scute differs from output",
+                ));
+            }
+            entry.origin = Origin::Produced;
+        }
         let captured = build.captured();
         let context = captured.context();
         let mut inputs = Vec::new();
@@ -150,12 +176,12 @@ impl Inventory {
                 recipe: SelectedDocument::captured(captured.recipe_document())?,
                 lock: SelectedDocument::captured(captured.lock_document())?,
                 transform: Transform {
-                    source: if completed.authored() {
+                    source: if authored {
                         TransformSource::Authored
                     } else {
                         TransformSource::Builtin
                     },
-                    digest: if completed.authored() {
+                    digest: if authored {
                         Digest::identity(captured.recipe_document().sha256())?
                     } else {
                         Digest::from_bytes(DEFAULT_TRANSFORM.as_bytes())
@@ -166,7 +192,7 @@ impl Inventory {
                 formatters: vec![],
                 network_steps: vec![],
             },
-            outputs: Outputs::inherited(output)?,
+            outputs,
         })
     }
     pub(crate) fn check_output(&self, output: &AssembledImage) -> Result<(), InventoryError> {

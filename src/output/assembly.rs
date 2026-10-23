@@ -64,7 +64,7 @@ impl AssembledImage {
         image: &ResolvedImage,
         destination: &std::path::Path,
     ) -> Result<AssembledImage, AssemblyFailure> {
-        Self::assemble(cache, image, destination, None, None)
+        Self::assemble(cache, image, destination, None, &[])
     }
     pub(crate) fn transformed(
         cache: &Cache,
@@ -72,7 +72,7 @@ impl AssembledImage {
         destination: &std::path::Path,
         dtb: &crate::transform::TransformedDtb,
     ) -> Result<Self, AssemblyFailure> {
-        Self::assemble(cache, image, destination, dtb.bytes(), None)
+        Self::assemble(cache, image, destination, dtb.bytes(), &[])
     }
     /// Append an already sealed scute to this base. This validates the artifact,
     /// not command success; the coordinator still owns execution receipts and
@@ -83,7 +83,22 @@ impl AssembledImage {
         scute: &crate::storage::SealedScute<'_>,
         destination: &std::path::Path,
     ) -> Result<Self, AssemblyFailure> {
-        Self::assemble(cache, image, destination, None, Some(scute))
+        Self::assemble(cache, image, destination, None, &[scute])
+    }
+    pub(crate) fn derived(
+        cache: &Cache,
+        image: &ResolvedImage,
+        scutes: &[std::sync::Arc<crate::storage::SealedScute<'_>>],
+        destination: &std::path::Path,
+        dtb: &crate::transform::TransformedDtb,
+    ) -> Result<Self, AssemblyFailure> {
+        Self::assemble(
+            cache,
+            image,
+            destination,
+            dtb.bytes(),
+            &scutes.iter().map(AsRef::as_ref).collect::<Vec<_>>(),
+        )
     }
     /// Assemble a new root carapace with no inherited tool components.
     /// Command/formatter success and final firmware remain coordinator obligations.
@@ -169,7 +184,7 @@ impl AssembledImage {
         image: &ResolvedImage,
         destination: &std::path::Path,
         dtb: Option<&[u8]>,
-        scute: Option<&crate::storage::SealedScute<'_>>,
+        scutes: &[&crate::storage::SealedScute<'_>],
     ) -> Result<Self, AssemblyFailure> {
         let staged = StagedDirectory::create(destination).map_err(AssemblyFailure::Before)?;
         let assembled = (|| -> Result<_, CacheError> {
@@ -211,8 +226,9 @@ impl AssembledImage {
                     .map_err(|_| CacheError::Invalid("invalid output layer digest"))?;
                 staged.copy_blob(cache, &digest, layer.size())?;
             }
-            if let Some(scute) = scute {
-                if image.manifest().carapace_verity_hash().as_ref() != Some(scute.parent()) {
+            let mut parent = image.manifest().carapace_verity_hash();
+            for scute in scutes {
+                if parent.as_ref() != Some(scute.parent()) {
                     return Err(CacheError::Invalid(
                         "produced scute parent differs from output base",
                     ));
@@ -226,6 +242,7 @@ impl AssembledImage {
                     ))?);
                 manifest["annotations"]["dev.pichi.carapace.verity.hash"] =
                     hex::encode(scute.root()).into();
+                parent = Some(*scute.root());
                 changed = true;
             }
             // Preserve unrelated fields, and preserve exact JSON bytes for no-op edits.

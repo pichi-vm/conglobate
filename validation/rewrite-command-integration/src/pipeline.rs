@@ -9,6 +9,174 @@ use std::{
 #[derive(Debug)]
 pub(super) struct PipelineProbe;
 impl PipelineProbe {
+    pub(super) fn derived(
+        pin: conglobate::image::IndexDigest,
+        workspace: &conglobate::storage::Workspace,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        use conglobate::{
+            cache::Cache,
+            isolation::PrivateMountNamespace,
+            storage::{Created, Mapping, Unmounted, Volume},
+        };
+        use std::{num::NonZeroU64, os::unix::fs::MetadataExt};
+        let repo = Path::new("/work/derive-context");
+        fs::create_dir(repo)?;
+        fs::write(repo.join("input"), b"committed copy\n")?;
+        let recipe = "carapace:\n  from: example.test/tools:1\n  derive:\n    - run: 'echo first > /derived; test ! -e /work/derive-context'\n    - copy: {from: input, into: /copied}\n    - run: 'test $(cat /derived) = first; test \"$(cat /copied)\" = \"committed copy\"; echo final > /derived'\n";
+        fs::write(repo.join("build.yml"), recipe)?;
+        fs::write(
+            repo.join("fail.yml"),
+            "carapace:\n  from: example.test/tools:1\n  derive:\n    - run: 'echo rejected > /rejected; exit 37'\n",
+        )?;
+        fs::write(
+            repo.join("images.lock"),
+            format!(
+                "version: 1\nimages:\n  example.test/tools:1:\n    index: sha256:{}\n",
+                hex::encode(pin.bytes())
+            ),
+        )?;
+        for args in [
+            vec!["init", "--quiet"],
+            vec!["add", "."],
+            vec![
+                "-c",
+                "user.name=Fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "commit",
+                "--quiet",
+                "-m",
+                "CLI derive",
+            ],
+        ] {
+            assert!(
+                Command::new("git")
+                    .arg("-C")
+                    .arg(repo)
+                    .args(args)
+                    .status()?
+                    .success()
+            );
+        }
+        let commit = Command::new("git")
+            .arg("-C")
+            .arg(repo)
+            .args(["rev-parse", "HEAD"])
+            .output()?;
+        assert!(commit.status.success());
+        let commit = String::from_utf8(commit.stdout)?;
+        fs::write(repo.join("input"), b"uncommitted wrong bytes\n")?;
+        for (recipe, output, success) in [
+            ("build.yml", "/work/derived-output", true),
+            ("fail.yml", "/work/rejected-output", false),
+        ] {
+            let result = Command::new("/usr/bin/conglobate")
+                .args([
+                    "build",
+                    "--repository",
+                    repo.to_str().unwrap(),
+                    "--commit",
+                    commit.trim(),
+                    "--recipe",
+                    recipe,
+                    "--lock",
+                    "images.lock",
+                    "--cache",
+                    "/work/tool-cache-success",
+                    "--output",
+                    output,
+                ])
+                .output()?;
+            assert_eq!(
+                result.status.success(),
+                success,
+                "{}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+            assert_eq!(Path::new(output).exists(), success);
+            assert_eq!(
+                fs::read_dir("/run")?
+                    .filter_map(Result::ok)
+                    .filter(|e| e
+                        .file_name()
+                        .as_encoded_bytes()
+                        .starts_with(b"conglobate-runtime-"))
+                    .count(),
+                0
+            );
+        }
+        let output = Path::new("/work/derived-output");
+        let inventory = fs::read(output.join("inventory.cbor"))?;
+        conglobate::inventory::Inventory::decode(&inventory)?;
+        let entries = Field(&inventory).get(&["outputs", "scutes"])?;
+        let mut decoder = minicbor::Decoder::new(entries.0);
+        assert_eq!(decoder.array()?, Some(4));
+        for expected in ["inherited", "produced", "produced", "produced"] {
+            let start = decoder.position();
+            decoder.skip()?;
+            assert_eq!(
+                Field(&entries.0[start..decoder.position()])
+                    .get(&["origin"])?
+                    .text()?,
+                expected
+            );
+        }
+        // Install only the index lookup blob for the cache reader, after checking
+        // the published inventory. Production output contains no such extra blob.
+        let index = fs::read(output.join("index.json"))?;
+        let digest = hex::encode(Sha256::digest(&index));
+        fs::write(output.join("blobs/sha256").join(&digest), &index)?;
+        let cache = Cache::open(output)?;
+        let image = cache.resolve(format!("sha256:{digest}").parse()?)?;
+        cache.verify_references(&image)?;
+        let chain = cache.verify_chain(&image)?.ok_or("missing derived chain")?;
+        assert_eq!(chain.scutes().len(), 4);
+        let active = chain
+            .assemble(&cache, workspace)
+            .map_err(|e| e.to_string())?;
+        let mut scratch = workspace.scratch()?;
+        scratch.set_len(8 * 1024 * 1024)?;
+        let snapshot = Mapping::<Created>::create()?
+            .snapshot(
+                &active,
+                scratch.attach().map_err(|e| e.to_string())?,
+                NonZeroU64::new(conglobate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512)
+                    .unwrap(),
+            )
+            .map_err(|e| e.to_string())?;
+        let scope = PrivateMountNamespace::enter()?;
+        let volume = Volume::<Unmounted>::new(snapshot, &scope)
+            .mount_ext4(Path::new("/work"))
+            .map_err(|e| e.to_string())?;
+        let device = volume.root_metadata()?.dev();
+        let directory = fs::read_dir("/work")?
+            .filter_map(Result::ok)
+            .find(|e| {
+                e.file_name()
+                    .as_encoded_bytes()
+                    .starts_with(b"conglobate-volume-")
+                    && e.metadata().is_ok_and(|m| m.dev() == device)
+            })
+            .ok_or("missing output mount")?
+            .path();
+        assert_eq!(fs::read(directory.join("derived"))?, b"final\n");
+        assert_eq!(fs::read(directory.join("copied"))?, b"committed copy\n");
+        assert!(!directory.join("rejected").exists());
+        volume
+            .unmount()
+            .map_err(|e| e.to_string())?
+            .into_snapshot()
+            .close()
+            .map_err(|e| e.to_string())?
+            .detach()
+            .map_err(|e| e.to_string())?;
+        scope.restore().map_err(|e| e.to_string())?;
+        active.close().map_err(|e| e.to_string())?;
+        println!("PIPELINE_CLI_DERIVE_PASS");
+        Ok(())
+    }
     fn build(output: &str, recipe: &str) -> std::io::Result<Output> {
         Command::new("/usr/bin/conglobate")
             .args([
@@ -214,7 +382,7 @@ impl PipelineProbe {
         assert_eq!(fs::read("/work/pipeline-output/index.json")?, before);
         let unsupported = Self::build("/work/unsupported-output", "recipes/unsupported.yml")?;
         assert!(!unsupported.status.success());
-        assert!(String::from_utf8_lossy(&unsupported.stderr).contains("not implemented"));
+        assert!(!String::from_utf8_lossy(&unsupported.stdout).contains("MUST_NOT_RUN"));
         assert!(!Path::new("/work/unsupported-output").exists());
         for name in ["default", "authored"] {
             let destination = format!("/work/{name}-output");
