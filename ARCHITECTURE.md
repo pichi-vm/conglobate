@@ -102,6 +102,10 @@ publication. Supervisor death and environment-driven VM shutdown require explici
 qualification, not inference from loader-death experiments. Fixed internal deadlines bound
 acceptance/waiting but cannot guarantee recovery from uninterruptible kernel I/O.
 
+The current integration gaps and extraction order are recorded in
+[M4-INTEGRATION.md](M4-INTEGRATION.md). The validation executable still assembles
+the command path; it is not the production build coordinator.
+
 The existing domain, process, mount and disabled-policy primitives are reference
 inputs for the integrated executor. Reuse their typed ownership and bounded
 cancellation where appropriate, but persistent recovery records and a guardian

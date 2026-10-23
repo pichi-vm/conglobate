@@ -2309,3 +2309,22 @@ rules rather than silently shrinking acceptance criteria.
   sleeps added. M4 adherence streak remains zero: these are tests, not review
   passes. Full production acquisition/orchestration and remaining M4 design/error
   path review are still outstanding; later milestones remain unadvanced.
+
+### M4 focused integration review after v121
+
+- Previous turn progressed in 78eaf96. Reviewed actual production module/ownership
+  boundaries against SANDBOX-DESIGN sections 7.6 and 10, ARCHITECTURE and the
+  owned-volume fixture. Findings I1–I7 and source evidence are recorded in
+  M4-INTEGRATION.md. This is a focused review with findings, not a full adherence
+  pass; clean streak remains zero.
+- The next implementation must extract the real helper/orchestrator path rather
+  than add more independent receipt wrappers. In particular, fixture helpers
+  currently use fresh five-/thirty-second cutoffs and independent thirty-second
+  child waits. Copying those would violate shared setup timing and truncate
+  recipes whose allowed execution exceeds thirty seconds. Current short VM tests
+  do not establish support for the five-minute default or longer recipes.
+- Preparation before Step::new still lacks an aggregate error/cleanup owner;
+  fixture string conversions are not a production recovery implementation. Typed
+  acquisition ownership, immutable helper inputs and supervisor-owned timing are
+  the next work. No new guardian is authorized or needed. No code or validation
+  artifacts removed; no passing implementation claim for these open findings.
