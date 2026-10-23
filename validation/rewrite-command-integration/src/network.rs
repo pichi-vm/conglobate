@@ -113,8 +113,20 @@ impl NetworkProbe {
         for entry in fs::read_dir("/proc/self/fd")? {
             if let Ok(target) = fs::read_link(entry?.path()) {
                 assert_ne!(target.to_string_lossy(), format!("net:[{expected}]"));
+                assert!(!target.to_string_lossy().contains("resolver-"));
             }
         }
+        assert_eq!(fs::read("etc/resolv.conf")?, b"nameserver 192.0.2.53\n");
+        let denied = fs::OpenOptions::new()
+            .write(true)
+            .open("etc/resolv.conf")
+            .unwrap_err()
+            .raw_os_error();
+        assert!(
+            denied == Some(rustix::io::Errno::ROFS.raw_os_error())
+                || denied == Some(rustix::io::Errno::ACCESS.raw_os_error())
+        );
+        assert_eq!(fs::read("etc/resolv.conf")?, b"nameserver 192.0.2.53\n");
         if traffic {
             for (bind, remote, gateway) in [
                 ("0.0.0.0:0", "198.51.100.42:7", "10.44.0.1:45454"),
@@ -216,11 +228,25 @@ impl NetworkProbe {
             Vec::new()
         };
         for gated in [false, true] {
+            use conglobate::{
+                network::{ResolverInput, ResolverSource, ResolverTarget},
+                storage::Workspace,
+            };
+            let image = Path::new("/work/network-resolver-root");
+            fs::create_dir(image)?;
+            let target = ResolverTarget::resolve(fs::File::open(image)?)?;
+            let source_path = Path::new("/work/network-resolver-input");
+            fs::write(source_path, b"nameserver 192.0.2.53\n")?;
+            let input = ResolverInput::capture(source_path)?;
+            fs::remove_file(source_path)?;
+            let workspace = Workspace::create()?;
+            let source = ResolverSource::prepare(&input, &workspace)?;
             let setup = CommandSetup::new(
                 fs::File::open(parent.join(user.record().name()))?,
                 CommandDevices::create(100000, 100000)?,
             )?
-            .with_network(network)?;
+            .with_network(network)?
+            .with_resolver(&source)?;
             let (gate, endpoint) = ExecutionGate::pair()?;
             let input = if gated {
                 setup.with_gate(endpoint).into_input()?
@@ -233,6 +259,7 @@ impl NetworkProbe {
                 .arg(network.metadata()?.ino().to_string())
                 .arg(traffic.to_string())
                 .arg(deny.to_string())
+                .current_dir(image)
                 .stdin(input)
                 .spawn()?;
             for listener in &listeners {
@@ -251,8 +278,16 @@ impl NetworkProbe {
                 .wait_until(Instant::now() + Duration::from_secs(10))?
                 .status();
             assert!(status.success());
+            // Child mount namespaces are gone; the supervisor sees its empty
+            // placeholder, never injected bytes, before removing scaffolding.
+            assert!(fs::read(image.join("etc/resolv.conf"))?.is_empty());
+            target.release()?;
+            assert!(!image.join("etc").exists());
+            fs::remove_dir(image)?;
+            source.close()?;
             drop(gate);
         }
+        println!("NETWORK_RESOLVER_SETUP_TRANSPORT_MAPPED_ROOT_AND_CLEANUP_PASS");
         if !traffic {
             for gated in [false, true] {
                 let setup = CommandSetup::new(

@@ -149,13 +149,21 @@ impl ResolverScaffold {
 }
 impl ResolverTarget {
     pub fn resolve(root: File) -> Result<Self, ResolverTargetFailure> {
+        Self::select(root, true)
+    }
+    /// Command setup never creates image paths. Its enclosing owner must have
+    /// prepared and retained any scaffolding before handing off the root.
+    pub(crate) fn existing(root: File) -> Result<Self, ResolverTargetFailure> {
+        Self::select(root, false)
+    }
+    fn select(root: File, create: bool) -> Result<Self, ResolverTargetFailure> {
         let mut scaffold = ResolverScaffold::default();
         let namespace =
             File::open("/proc/self/ns/mnt").map_err(|source| ResolverTargetFailure {
                 diagnostics: source.into(),
                 scaffold: ResolverScaffold::default(),
             })?;
-        match Self::walk(&root, &mut scaffold) {
+        match Self::walk(&root, &mut scaffold, create) {
             Ok((target, path)) => Ok(Self {
                 root,
                 target,
@@ -203,7 +211,11 @@ impl ResolverTarget {
             .map(|part| part.as_os_str().to_owned())
             .collect()
     }
-    fn walk(root: &File, scaffold: &mut ResolverScaffold) -> io::Result<(File, PathBuf)> {
+    fn walk(
+        root: &File,
+        scaffold: &mut ResolverScaffold,
+        create: bool,
+    ) -> io::Result<(File, PathBuf)> {
         if !root.metadata()?.is_dir() {
             return Err(io::Error::other("resolver root is not a directory"));
         }
@@ -271,7 +283,7 @@ impl ResolverTarget {
                 ResolveFlags::BENEATH | ResolveFlags::NO_MAGICLINKS | ResolveFlags::NO_XDEV,
             ) {
                 Ok(node) => File::from(node),
-                Err(rustix::io::Errno::NOENT) => {
+                Err(rustix::io::Errno::NOENT) if create => {
                     scaffold.create(parent, part.clone(), !pending.is_empty())?
                 }
                 Err(error) => return Err(error.into()),
@@ -335,6 +347,22 @@ mod tests {
         fs as stdfs,
         os::unix::{fs::symlink, net::UnixListener},
     };
+    #[test]
+    fn existing_selection_never_creates_scaffolding() {
+        let root = tempfile::tempdir().unwrap();
+        ResolverTarget::existing(File::open(root.path()).unwrap())
+            .unwrap_err()
+            .cleanup()
+            .unwrap();
+        assert_eq!(stdfs::read_dir(root.path()).unwrap().count(), 0);
+        stdfs::create_dir(root.path().join("etc")).unwrap();
+        symlink("/run/resolver", root.path().join("etc/resolv.conf")).unwrap();
+        ResolverTarget::existing(File::open(root.path()).unwrap())
+            .unwrap_err()
+            .cleanup()
+            .unwrap();
+        assert!(!root.path().join("run").exists());
+    }
     #[test]
     fn dangling_absolute_symlink_is_confined_and_scaffold_removed() {
         let root = tempfile::tempdir().unwrap();

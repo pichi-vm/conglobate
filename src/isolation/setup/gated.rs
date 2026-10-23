@@ -27,12 +27,16 @@ impl GatedCommandSetup {
             self.setup.devices.into_handle().into(),
             self.gate.into_handle(),
         ];
-        let opcode = if let Some(network) = self.setup.network {
+        let mut opcode = if let Some(network) = self.setup.network {
             descriptors.push(network.into());
             5
         } else {
             2
         };
+        if let Some(resolver) = self.setup.resolver {
+            descriptors.push(resolver.into_handle().into());
+            opcode = 7;
+        }
         Packet {
             opcode,
             descriptors,
@@ -41,8 +45,15 @@ impl GatedCommandSetup {
     }
     pub fn from_input() -> io::Result<Self> {
         let socket = io::stdin().as_fd().try_clone_to_owned()?;
-        let mut packet = Packet::receive_shapes(&socket, &[(2, 3), (5, 4)])?;
-        let network = if packet.opcode == 5 {
+        let mut packet = Packet::receive_shapes(&socket, &[(2, 3), (5, 4), (7, 5)])?;
+        let resolver = if packet.opcode == 7 {
+            Some(crate::network::ResolverView::from_handle(
+                packet.descriptors.pop().expect("resolver").into(),
+            )?)
+        } else {
+            None
+        };
+        let network = if matches!(packet.opcode, 5 | 7) {
             Some(File::from(packet.descriptors.pop().expect("network")))
         } else {
             None
@@ -54,6 +65,10 @@ impl GatedCommandSetup {
             CommandSetup::new(packet.descriptors.pop().expect("namespace").into(), devices)?;
         let setup = match network {
             Some(network) => setup.with_network_handle(network)?,
+            None => setup,
+        };
+        let setup = match resolver {
+            Some(resolver) => setup.with_resolver_view(resolver)?,
             None => setup,
         };
         Ok(Self { setup, gate })
@@ -103,7 +118,7 @@ impl Packet {
     fn send(self) -> io::Result<Stdio> {
         let (sender, receiver) = UnixDatagram::pair()?;
         let descriptors: Vec<_> = self.descriptors.iter().map(AsFd::as_fd).collect();
-        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(4))];
+        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(5))];
         let mut ancillary = SendAncillaryBuffer::new(&mut space);
         if !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors)) {
             return Err(io::Error::other("gated setup capacity"));
@@ -128,7 +143,7 @@ impl Packet {
     }
     fn receive_shapes(socket: &impl AsFd, shapes: &[(u8, usize)]) -> io::Result<Self> {
         let mut bytes = [0; 4];
-        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(5))];
+        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(6))];
         let mut ancillary = RecvAncillaryBuffer::new(&mut space);
         let received = recvmsg(
             socket,

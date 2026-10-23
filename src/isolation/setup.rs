@@ -22,14 +22,15 @@ use std::{
     process::Stdio,
 };
 
-/// One-shot trusted setup input: the selected namespace and original private
-/// device mount. Neither descriptor is exposed to image commands. This is not
+/// One-shot trusted setup input: the selected namespaces, private device mount
+/// and optional read-only resolver view. No descriptor reaches image commands. This is not
 /// an authenticated input format for an untrusted sender or command stream.
 #[derive(Debug)]
 pub struct CommandSetup {
     namespace: File,
     devices: CommandDevices,
     network: Option<File>,
+    resolver: Option<crate::network::ResolverView>,
 }
 impl CommandSetup {
     pub fn new(namespace: File, devices: CommandDevices) -> io::Result<Self> {
@@ -40,12 +41,29 @@ impl CommandSetup {
             namespace,
             devices,
             network: None,
+            resolver: None,
         })
     }
     /// Select a supervisor-owned network namespace. The enclosing network
     /// resource must remain owned until all command descendants are quiescent.
     pub fn with_network(self, namespace: &crate::network::NetworkNamespace) -> io::Result<Self> {
         self.with_network_handle(namespace.descriptor().try_clone()?)
+    }
+    /// Source and image scaffolding remain owned outside this helper through
+    /// command quiescence. Only configured-network steps accept DNS injection.
+    pub fn with_resolver(self, source: &crate::network::ResolverSource) -> io::Result<Self> {
+        self.with_resolver_view(source.view()?)
+    }
+    fn with_resolver_view(self, resolver: crate::network::ResolverView) -> io::Result<Self> {
+        if self.network.is_none() {
+            return Err(io::Error::other(
+                "resolver injection requires configured networking",
+            ));
+        }
+        Ok(Self {
+            resolver: Some(resolver),
+            ..self
+        })
     }
     fn with_network_handle(self, network: File) -> io::Result<Self> {
         if rustix::fs::fstatfs(&network)?.f_type as u64 != 0x6e73_6673 {
@@ -64,13 +82,17 @@ impl CommandSetup {
         let (sender, receiver) = UnixDatagram::pair()?;
         let device = self.devices.into_handle();
         let mut descriptors = vec![self.namespace.as_fd(), device.as_fd()];
-        let opcode = if let Some(network) = &self.network {
+        let mut opcode = if let Some(network) = &self.network {
             descriptors.push(network.as_fd());
             4
         } else {
             1
         };
-        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(3))];
+        if let Some(resolver) = &self.resolver {
+            descriptors.push(resolver.handle().as_fd());
+            opcode = 6;
+        }
+        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(4))];
         let mut ancillary = SendAncillaryBuffer::new(&mut space);
         if !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors)) {
             return Err(io::Error::other("setup transfer ancillary capacity"));
@@ -93,7 +115,7 @@ impl CommandSetup {
     }
     fn receive(socket: &impl AsFd) -> io::Result<Self> {
         let mut bytes = [0; 4];
-        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(4))];
+        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(5))];
         let mut ancillary = RecvAncillaryBuffer::new(&mut space);
         let received = recvmsg(
             socket,
@@ -110,14 +132,21 @@ impl CommandSetup {
         }
         if received.bytes != 3
             || bytes[..2] != [0x82, 1]
-            || !matches!((bytes[2], descriptors.len()), (1, 2) | (4, 3))
+            || !matches!((bytes[2], descriptors.len()), (1, 2) | (4, 3) | (6, 4))
             || received
                 .flags
                 .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
         {
             return Err(io::Error::other("invalid setup transfer packet"));
         }
-        let network = if bytes[2] == 4 {
+        let resolver = if bytes[2] == 6 {
+            Some(crate::network::ResolverView::from_handle(
+                descriptors.pop().expect("resolver").into(),
+            )?)
+        } else {
+            None
+        };
+        let network = if matches!(bytes[2], 4 | 6) {
             Some(File::from(descriptors.pop().expect("network")))
         } else {
             None
@@ -132,8 +161,12 @@ impl CommandSetup {
                 .into(),
             devices,
         )?;
-        match network {
-            Some(network) => setup.with_network_handle(network),
+        let setup = match network {
+            Some(network) => setup.with_network_handle(network)?,
+            None => setup,
+        };
+        match resolver {
+            Some(resolver) => setup.with_resolver_view(resolver),
             None => Ok(setup),
         }
     }
@@ -148,6 +181,22 @@ impl CommandSetup {
         self,
         deadline: std::time::Instant,
     ) -> io::Result<(CommandNamespaces, CommandDevices)> {
+        if std::time::Instant::now() >= deadline {
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "command setup deadline expired",
+            ));
+        }
+        if let Some(resolver) = self.resolver {
+            // Clone mounts while still initially privileged. Opening cwd after
+            // cloning selects this namespace's mount, not the parent's view.
+            // Scope restoration after a failed attach is exit-only; the helper
+            // cannot proceed to image execution on any error.
+            let scope = super::PrivateMountNamespace::enter()
+                .map_err(|error| io::Error::other(error.to_string()))?;
+            resolver.install(File::open(".")?)?;
+            scope.commit();
+        }
         Ok((
             CommandNamespaces::enter_with_network(self.namespace, self.network, deadline)?,
             self.devices,
@@ -223,12 +272,37 @@ mod tests {
         }
         for count in [0, 1, 2, 3, 4, 8] {
             Transfer::reject(&[0x82, 1, 4], count);
+            Transfer::reject(&[0x82, 1, 6], count);
         }
         let transfer = Transfer::new();
         let namespace = File::open("/proc/self/ns/user").unwrap();
         let proc = File::open("/proc").unwrap();
         transfer.send(&[0x82, 1, 1], &[namespace.as_fd(), proc.as_fd()]);
         assert!(CommandSetup::receive(&transfer.receiver).is_err());
+    }
+    #[test]
+    fn resolver_transport_rejects_a_writable_tmpfs_file() {
+        let directory = tempfile::tempdir_in("/dev/shm").unwrap();
+        let resolver = tempfile::NamedTempFile::new_in(directory.path()).unwrap();
+        let user = File::open("/proc/self/ns/user").unwrap();
+        let network = File::open("/proc/self/ns/net").unwrap();
+        let devices = File::open(directory.path()).unwrap();
+        let transfer = Transfer::new();
+        transfer.send(
+            &[0x82, 1, 6],
+            &[
+                user.as_fd(),
+                devices.as_fd(),
+                network.as_fd(),
+                resolver.as_fd(),
+            ],
+        );
+        assert!(
+            CommandSetup::receive(&transfer.receiver)
+                .unwrap_err()
+                .to_string()
+                .contains("read-only")
+        );
     }
     #[test]
     fn network_transport_retains_identity_and_close_on_exec() {

@@ -1,0 +1,1 @@
+v235 PASS: full normal command integration regression after resolver setup transport changes. Includes isolation, teardown/failure handling, bootstrap and offline CLI pipeline matrix. Resolver-enabled namespace transport is covered separately by v234; this run does not claim network-enabled CLI recipes.

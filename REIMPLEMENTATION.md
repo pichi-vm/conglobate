@@ -3786,3 +3786,42 @@ rules rather than silently shrinking acceptance criteria.
   actual network receipts remain. Forwarding preflight, remaining failure/matrix
   coverage, ORAS and three complete M6 reviews remain open. M6 is still active
   at zero adherence passes; M7/M8 and the full goal remain pending.
+
+### M6 resolver transport into command namespaces
+
+- CommandSetup now accepts a resolver only with a configured network namespace.
+  Regular and gated setup packets carry the detached mount with exact new shapes
+  (opcode 6/four descriptors and opcode 7/five descriptors). Receivers enforce
+  CLOEXEC and reject malformed shapes, wrong objects, writable mounts and mounts
+  lacking readonly/nosuid/nodev/noexec restrictions. No resolver bytes or source
+  filename enter the packet.
+- Before surrendering initial-user-namespace authority, trusted setup clones a
+  private mount namespace and opens its assigned cwd there. It selects only an
+  existing resolver target, installs the read-only view, closes all resolver/root
+  handles and commits the namespace before ordinary mapped-root entry. Existing
+  target selection cannot create scaffolding: ownership of temporary image files
+  remains with the enclosing owner, outside command execution. The original
+  setup cutoff is checked before this work and again before namespace entry.
+- v234 proves both regular and gated transport through real mapped-root entry:
+  exact contents are readable, writes fail, no resolver descriptor survives, the
+  supervisor sees its unchanged empty placeholder after helper exit, and the
+  scaffold owner removes it. Existing dual-stack NAT and offline-loopback cases
+  also pass. This is namespace setup evidence; final pivot/root restriction and
+  network-enabled CLI recipe integration are still outstanding.
+- v233 preserves an overly narrow fixture assertion: mapped root received EACCES
+  on write-open instead of EROFS because the supplied source owner is outside its
+  mapping. The corrected assertion accepts either denial and rechecks contents;
+  v232 already independently proved mount-enforced EROFS for initial root. The
+  initial compile failure (thread-affine namespace errors cannot be boxed as
+  Send+Sync io errors) and source snapshot are retained with this evidence too.
+- Added host tests for writable resolver packet rejection, malformed packet FD
+  closure and missing-target selection without creating image paths. Full cargo
+  tests/doctests and production/fixture strict Clippy pass. v235 passes the full
+  normal disposable-VM command/bootstrap/offline CLI regression (~245 seconds).
+  Runs, source snapshots, logs and hashes are preserved in evidence/v233-v235.
+- Next integration boundary: supervisor-to-volume-helper network/resolver
+  transport, raw-root scaffold preparation and ownership through teardown,
+  configured link/NAT lifecycle and forwarding preflight, enabled directive
+  admission and actual network receipts. Remaining matrix/failure coverage,
+  ORAS and three complete M6 adherence reviews still apply. M6 stays active at
+  zero clean passes; this work does not advance M7/M8 or complete the goal.

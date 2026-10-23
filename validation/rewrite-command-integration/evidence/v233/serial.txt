@@ -1,0 +1,25 @@
++ modprobe veth
++ modprobe nf_tables
++ modprobe nft_chain_nat
++ modprobe nft_masq
++ modprobe nft_ct
++ /idmap-probe network-probe
+resolver selecting target existing=false
+resolver mount prepared
+resolver mount attached
+resolver selecting target existing=true
+resolver mount prepared
+resolver mount attached
+NETWORK_RESOLVER_READONLY_EXACT_BYTES_AND_RESTORATION_PASS
+
+thread 'main' (162) panicked at src/network.rs:120:9:
+assertion `left == right` failed
+  left: Some(13)
+ right: Some(30)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'main' (158) panicked at src/network.rs:278:13:
+assertion failed: status.success()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+IDMAP_PROBE_EXIT 101
+[    5.440074] sysrq: Resetting
