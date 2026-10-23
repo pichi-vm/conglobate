@@ -1,0 +1,9 @@
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ /lifecycle-tests workspace-mount
+DETACHED_SOURCE_REJECTED_EINVAL
+ATTACHED_READONLY_DIRECTORY_AND_FILE_PASS
+ATTACHED_WORKSPACE_NORMAL_UNMOUNT_PASS
+LIFECYCLE_EXIT 0
+[    1.784235] sysrq: Power Off
+[    1.786595] reboot: Power down

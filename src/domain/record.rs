@@ -159,25 +159,4 @@ impl CommandDomain {
         drop(record.open(&self.target.parent)?);
         Ok(record)
     }
-    pub(crate) fn recover_record(
-        recovery: &RecoveryDirectory,
-        parent: &Path,
-        record: DomainRecord,
-    ) -> io::Result<Self> {
-        let lease = recovery.retain()?;
-        let parent = record.parent(parent)?;
-        let root = record.open(&parent)?;
-        let domain = Self {
-            root,
-            target: DomainTarget {
-                parent,
-                name: record.name.into(),
-                lease,
-            },
-        };
-        if domain.text("cgroup.type")?.trim() != "domain" {
-            return Err(io::Error::other("recovered cgroup is not a domain"));
-        }
-        Ok(domain)
-    }
 }

@@ -112,23 +112,6 @@ impl<'lease> RecordedDomain<'lease> {
     }
 }
 impl<'lease> DomainCancellation<'lease> {
-    /// Caller must have excluded the old owner before recovering its domain.
-    pub fn recover(
-        recovery: &'lease RecoveryDirectory,
-        parent: &Path,
-        name: &str,
-    ) -> io::Result<Self> {
-        let record = recovery.load_domain(name)?;
-        let domain = CommandDomain::recover_record(recovery, parent, record.clone())?;
-        Ok(Self {
-            domain: RecordedDomain {
-                domain,
-                record,
-                recovery,
-            },
-        })
-    }
-
     pub fn retry_until(
         self,
         deadline: Instant,

@@ -169,6 +169,9 @@ exec sleep infinity
             markers = ['UNMAPPED_IMAGE_ID_REJECTED_BEFORE_RECEIVER', 'SANDBOX_UNMAPPED_DEFAULT_GROUP_ROLLBACK_PASS']
         elif self.args.case == 'sandbox-unmapped-acl':
             markers = ['UNMAPPED_IMAGE_ID_REJECTED_BEFORE_RECEIVER', 'SANDBOX_UNMAPPED_ACL_ROLLBACK_PASS']
+        elif self.args.case == 'workspace-mount':
+            markers = ['ATTACHED_READONLY_DIRECTORY_AND_FILE_PASS',
+                       'ATTACHED_WORKSPACE_NORMAL_UNMOUNT_PASS']
         elif self.args.case == 'runtime-scope':
             markers = ['RUNTIME_SCOPE_SUCCESS_CLOSED_PASS', 'RUNTIME_SCOPE_OPERATION_ERROR_CLOSED_PASS',
                        'RUNTIME_SCOPE_CLEANUP_FAILURE_OWNERS_RETAINED_PASS']
@@ -249,7 +252,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['sandbox-unmapped-default-group', 'sandbox-unmapped-acl', 'sandbox-unmapped-owner', 'runtime-scope', 'sandbox-delayed-teardown', 'sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'external-network-input', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['workspace-mount', 'sandbox-unmapped-default-group', 'sandbox-unmapped-acl', 'sandbox-unmapped-owner', 'runtime-scope', 'sandbox-delayed-teardown', 'sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'external-network-input', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
     parser.add_argument('--trace-mounts', action='store_true',
                         help='trace fixture mount syscalls inside the disposable guest')
     parser.add_argument('--drop', choices=['running', 'wait'])

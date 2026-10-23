@@ -12,6 +12,7 @@ mod gate_failure;
 mod network;
 mod runtime_scope;
 mod sandbox_failures;
+mod workspace_mount;
 mod writeback;
 use conglobate::execution::{HelperInvocation, HelperProgram};
 use std::{ffi::OsStr, path::Path};
@@ -43,6 +44,7 @@ impl Lifecycle {
             [mode] if mode == "sandbox-unmapped-acl" => {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::UnmappedAcl)
             }
+            [mode] if mode == "workspace-mount" => workspace_mount::WorkspaceMount::run(),
             [mode] if mode == "runtime-scope" => runtime_scope::RuntimeScope::run(),
             [mode] if mode == "sandbox-delayed-teardown" => sandbox_failures::SandboxFailures::run(
                 sandbox_failures::FailurePoint::DelayedTeardown,

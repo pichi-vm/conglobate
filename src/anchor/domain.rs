@@ -29,11 +29,6 @@ impl RecoveryDirectory {
         }
         Ok(record)
     }
-    /// Recover only a domain described by the protected record in this lease.
-    /// The caller must have excluded the old owner; this does not prove reaping.
-    pub fn recover_domain(&self, parent: &Path, name: &str) -> io::Result<CommandDomain> {
-        CommandDomain::recover_record(self, parent, self.load_domain(name)?)
-    }
     /// Remove a matching record only after its exact parent is verified and the
     /// named target is absent. Reaping completion remains a separate obligation.
     pub fn remove_domain_record(&self, parent: &Path, record: &DomainRecord) -> io::Result<()> {
