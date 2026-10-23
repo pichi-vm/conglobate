@@ -1,0 +1,17 @@
+[
+  {
+    "case": "cache-storage",
+    "checked": 159,
+    "mismatches": []
+  },
+  {
+    "case": "contained",
+    "checked": 159,
+    "mismatches": []
+  },
+  {
+    "case": "runtime-scope",
+    "checked": 159,
+    "mismatches": []
+  }
+]

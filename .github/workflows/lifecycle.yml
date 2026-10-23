@@ -26,7 +26,9 @@ jobs:
       - name: Install trusted guest inputs
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev qemu-system-x86 cpio zstd kmod linux-generic e2fsprogs acl attr libcap2-bin uidmap nftables iproute2 dmsetup strace
+          # Detached workspace subtree cloning needs newer mount API support
+          # than Ubuntu's GA 6.8 kernel; retain failures rather than skip cases.
+          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev qemu-system-x86 cpio zstd kmod linux-generic-hwe-24.04 e2fsprogs acl attr libcap2-bin uidmap nftables iproute2 dmsetup
           rustup toolchain install 1.94.0 --profile minimal
       - name: Require KVM and select installed guest kernel
         run: |
@@ -52,7 +54,7 @@ jobs:
             test -w /dev/kvm
             python3 tests/lifecycle/run.py "$RUNNER_TEMP/lifecycle-results/$case" \
               --kernel "$GUEST_KERNEL" --kernel-release "$GUEST_RELEASE" \
-              --module-root / --case "$case" --trace-mounts \
+              --module-root / --case "$case" \
               > "$RUNNER_TEMP/lifecycle-results/$case.log" 2>&1
           done
       - name: Preserve results including failures

@@ -1,0 +1,38 @@
+[
+  {
+    "path": "/storage/conglobate-validation/hosted-lifecycle-40039132104/cache-storage/initramfs.gz",
+    "size": 84338826,
+    "sha256": "cfae3fa6e08c05f4458ef9d4c9d2c71f5a3adaa4e480242793b27507d862bdf9",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/hosted-lifecycle-40039132104/cache-storage/vmlinuz",
+    "size": 15083912,
+    "sha256": "41ba36d860aa0b0cd995f4ca8856d80249b244577e704929b55be13fbd1ebd2f",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/hosted-lifecycle-40039132104/contained/initramfs.gz",
+    "size": 84328863,
+    "sha256": "18aaa7cd875cb2e0c58d3478869e5a88e998d2c3b5a829bd01c2dd4671c88514",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/hosted-lifecycle-40039132104/contained/vmlinuz",
+    "size": 15083912,
+    "sha256": "41ba36d860aa0b0cd995f4ca8856d80249b244577e704929b55be13fbd1ebd2f",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/hosted-lifecycle-40039132104/runtime-scope/initramfs.gz",
+    "size": 84328892,
+    "sha256": "dfae830c262c6e7c0c703e2938af1f434070c380bce64ad911d0b4e66d350694",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/hosted-lifecycle-40039132104/runtime-scope/vmlinuz",
+    "size": 15083912,
+    "sha256": "41ba36d860aa0b0cd995f4ca8856d80249b244577e704929b55be13fbd1ebd2f",
+    "durably_archived": false
+  }
+]

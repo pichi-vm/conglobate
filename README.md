@@ -65,6 +65,10 @@ control resources nor backing block devices. The kernel, environment-provided BP
 supervisor and supplied formatter runtime are trusted. The design requires
 native filesystem/idmapped mount support and the environment-loaded labeling exception;
 generic kernel version numbers alone do not establish those prerequisites.
+The kernel must also support `open_tree(OPEN_TREE_CLONE)` on a subtree of a
+detached mount. This keeps the whole workspace detached while exposing only its
+private control subtree. Ubuntu's GA 6.8 kernel rejects this operation; hosted
+lifecycle qualification uses the HWE kernel and fails if the capability is absent.
 
 [SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt) specifies the boundary and teardown
 requirements. [ARCHITECTURE.md](ARCHITECTURE.md) explains Rust ownership and

@@ -1,0 +1,24 @@
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ strace -f -e trace=open_tree,move_mount,fsopen,fsconfig,fsmount,mount_setattr,pidfd_open,statx,mount,umount2 /lifecycle-tests runtime-scope
+statx(AT_FDCWD, "/conglobate-disposable-validation-vm", AT_STATX_SYNC_AS_STAT, STATX_ALL, {stx_mask=STATX_ALL|STATX_MNT_ID, stx_attributes=0, stx_mode=S_IFREG|0644, stx_size=17, ...}) = 0
+fsopen("tmpfs", FSOPEN_CLOEXEC)         = 3
+fsconfig(3, FSCONFIG_SET_STRING, "mode", "0700", 0) = 0
+fsconfig(3, FSCONFIG_SET_STRING, "uid", "0", 0) = 0
+fsconfig(3, FSCONFIG_SET_STRING, "gid", "0", 0) = 0
+fsconfig(3, FSCONFIG_CMD_CREATE, NULL, NULL, 0) = 0
+fsmount(3, FSMOUNT_CLOEXEC, MOUNT_ATTR_NOSUID|MOUNT_ATTR_NODEV|MOUNT_ATTR_NOEXEC) = 4
+pidfd_open(1, 0)                        = 3
+statx(6, "", AT_STATX_SYNC_AS_STAT|AT_EMPTY_PATH, STATX_ALL, {stx_mask=STATX_BASIC_STATS|STATX_MNT_ID, stx_attributes=0, stx_mode=S_IFREG|0444, stx_size=0, ...}) = 0
+statx(7, "", AT_STATX_SYNC_AS_STAT|AT_EMPTY_PATH, STATX_ALL, {stx_mask=STATX_BASIC_STATS|STATX_MNT_ID, stx_attributes=0, stx_mode=S_IFREG|0444, stx_size=0, ...}) = 0
+statx(5, "", AT_STATX_SYNC_AS_STAT|AT_EMPTY_PATH, STATX_ALL, {stx_mask=STATX_BASIC_STATS|STATX_MNT_ID, stx_attributes=0, stx_mode=S_IFREG|0444, stx_size=0, ...}) = 0
+statx(6, "", AT_STATX_SYNC_AS_STAT|AT_EMPTY_PATH, STATX_ALL, {stx_mask=STATX_BASIC_STATS|STATX_MNT_ID, stx_attributes=0, stx_mode=S_IFREG|0444, stx_size=0, ...}) = 0
+statx(5, "", AT_STATX_SYNC_AS_STAT|AT_EMPTY_PATH, STATX_ALL, {stx_mask=STATX_BASIC_STATS|STATX_MNT_ID, stx_attributes=0, stx_mode=S_IFREG|0444, stx_size=0, ...}) = 0
+statx(6, "", AT_STATX_SYNC_AS_STAT|AT_EMPTY_PATH, STATX_ALL, {stx_mask=STATX_BASIC_STATS|STATX_MNT_ID, stx_attributes=0, stx_mode=S_IFREG|0444, stx_size=0, ...}) = 0
+statx(6, "", AT_STATX_SYNC_AS_STAT|AT_EMPTY_PATH, STATX_ALL, {stx_mask=STATX_ALL|STATX_MNT_ID, stx_attributes=0, stx_mode=S_IFDIR|0700, stx_size=40, ...}) = 0
+open_tree(4, "runtime-rYjg6U", OPEN_TREE_CLONE|OPEN_TREE_CLOEXEC) = -1 EINVAL (Invalid argument)
+lifecycle fixture: build runtime: Invalid argument (os error 22)
++++ exited with 1 +++
+LIFECYCLE_EXIT 1
+[    1.434061] sysrq: Power Off
+[    1.435369] reboot: Power down
