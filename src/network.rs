@@ -37,3 +37,6 @@ pub use resolver_mount::{ResolverMount, ResolverSource, ResolverSourceFailure};
 
 mod command;
 pub use command::{CommandNetwork, NetworkCleanupFailure};
+
+mod topology;
+pub use topology::{LinkAllocation, NetworkTopology};

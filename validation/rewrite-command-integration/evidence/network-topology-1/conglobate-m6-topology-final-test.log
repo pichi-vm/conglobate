@@ -1,0 +1,27 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.00s
+     Running unittests src/lib.rs (target/debug/deps/conglobate-74b79561f3dc1698)
+
+running 19 tests
+test network::configuration::tests::configuration_roundtrip_is_canonical_and_validated ... ok
+test network::netfilter::tests::batches_require_each_ack_and_reject_duplicates_and_wrong_sequences ... ok
+test network::resolver::tests::does_not_invent_configuration_for_an_empty_file ... ok
+test network::route::tests::acknowledgement_is_required_and_rejects_wrong_sequence_truncation_and_nack ... ok
+test network::route::tests::dump_requires_done_and_rejects_interruption_or_error ... ok
+test network::topology::tests::allocation_skips_routes_addresses_and_both_link_names ... ok
+test network::topology::tests::exhaustion_does_not_reuse_an_occupied_prefix ... ok
+test network::topology::tests::prefix_arithmetic_handles_host_routes_and_full_width ... ok
+test network::resolver::tests::captures_symlink_once_and_keeps_exact_bytes_after_source_replacement ... ok
+test network::resolver::tests::rejects_nonregular_sources_without_reading_or_waiting_for_a_writer ... ok
+test network::resolver_target::tests::existing_regular_target_and_relative_symlink_are_preserved ... ok
+test network::resolver_target::tests::existing_selection_never_creates_scaffolding ... ok
+test network::resolver_target::tests::cleanup_uses_pinned_parent_after_parent_path_replacement ... ok
+test network::topology::tests::captures_current_network_without_mutation ... ok
+test network::resolver_target::tests::cleanup_refuses_replacement_and_can_retry_after_original_is_restored ... ok
+test network::resolver_target::tests::dangling_absolute_symlink_is_confined_and_scaffold_removed ... ok
+test network::resolver_target::tests::cleanup_preserves_additions_and_partial_path_failure_remains_owned ... ok
+test network::resolver_target::tests::runtime_mounts_and_their_aliases_cannot_hide_the_resolver ... ok
+test network::resolver_target::tests::rejects_escape_directory_fifo_socket_and_trailing_slash_without_activation ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 92 filtered out; finished in 0.01s
+

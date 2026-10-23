@@ -1,0 +1,1 @@
+Read-only host topology capture and pure allocation/decoder tests. No host network mutations. 19 focused network tests and strict Clippy pass. Allocation is an observation, not a reservation; setup must still create exclusively. No enabled CLI networking or complete M6 acceptance claimed.

@@ -3883,3 +3883,21 @@ rules rather than silently shrinking acceptance criteria.
   environment readiness, directive integration and inventory receipts. Bootstrap
   network execution still needs runtime coverage. M6 remains at zero complete
   adherence passes; M7 and M8 remain outstanding.
+
+### M6 network topology and private link selection
+
+- Added bounded multipart netlink dumps with explicit DONE completion. A plain
+  ACK cannot complete a dump, and interrupted or failed dumps reject the result.
+  Existing mutation requests still require their own ACK.
+- `NetworkTopology` reads links, assigned prefixes and IPv4/IPv6 routes across
+  tables without changing the network. `LinkAllocation` selects unused interface
+  names and private /30 and /126 prefixes, avoiding non-default routes and
+  assigned prefixes. It skips occupied ranges rather than scanning every address;
+  exhaustion fails. Default routes remain the upstream path.
+- Allocation is a topology observation, not a reservation. Exclusive creation,
+  setup ownership, forwarding readiness, enabled directive integration and
+  inventory receipts remain required before CLI admission changes.
+- Nineteen focused network tests pass, including actual read-only host capture,
+  overlap/exhaustion/boundary cases and dump completion/interruption. Strict
+  Clippy passes. Logs and source hashes are in evidence/network-topology-1.
+  M6 remains at zero full adherence passes; this is not platform qualification.
