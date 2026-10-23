@@ -63,7 +63,7 @@
       "remaining_action": "Owned diagnostic representation preserving failure ownership and both messages",
       "historical_status": "open",
       "current_status": "open",
-      "current_evidence": "Pipeline BuildError::Execution(String) still erases typed errors; terminal VM-disposal behavior is documented but requested diagnostic API is incomplete."
+      "current_evidence": "Partial progress: RuntimeCreate/RuntimeCleanup preserve io::Error; OperationAndCleanup preserves both independent variants, including through runtime cleanup failure. Stage rejection separates primary/cleanup. Explicit terminal runtime conversion retains existing VM-disposal contract; lower-level retry owners unchanged. Stage/formatter/storage string erasure and full diagnostic taxonomy remain open. See preservation/m7-review/terminal-runtime-errors/REVIEW.md."
     },
     {
       "id": "errors-api-003",
@@ -72,7 +72,7 @@
       "remaining_action": "Same as errors-api-002",
       "historical_status": "open",
       "current_status": "open",
-      "current_evidence": "Same remaining owned diagnostic representation issue as errors-api-002."
+      "current_evidence": "Partial progress: RuntimeCreate/RuntimeCleanup preserve io::Error; OperationAndCleanup preserves both independent variants, including through runtime cleanup failure. Stage rejection separates primary/cleanup. Explicit terminal runtime conversion retains existing VM-disposal contract; lower-level retry owners unchanged. Stage/formatter/storage string erasure and full diagnostic taxonomy remain open. See preservation/m7-review/terminal-runtime-errors/REVIEW.md."
     },
     {
       "id": "errors-api-005",

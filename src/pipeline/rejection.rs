@@ -75,7 +75,10 @@ impl<R: DirectiveStorage> StageFailure<'_, R> {
         };
         match cleanup {
             Ok(()) => BuildError::execution(primary),
-            Err(error) => BuildError::execution(format!("{primary}; cleanup: {error}")),
+            Err(error) => BuildError::OperationAndCleanup {
+                operation: Box::new(BuildError::execution(primary)),
+                cleanup: Box::new(error),
+            },
         }
     }
 }

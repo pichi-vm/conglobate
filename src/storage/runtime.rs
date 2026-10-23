@@ -68,6 +68,17 @@ pub enum RuntimeScopeFailure<'w, E> {
     },
 }
 impl RuntimeFailure<'_> {
+    /// Terminal pipeline boundary only: relinquish retry authority and preserve
+    /// the I/O cause. Dropping retained owners does not unmount their resources;
+    /// the dedicated VM must be disposed after this conversion.
+    pub(crate) fn into_terminal_error(self) -> io::Error {
+        let Self {
+            source, retained, ..
+        } = self;
+        drop(retained);
+        source
+    }
+
     pub fn cleanup(self) -> Result<(), Self> {
         let Self {
             source,
@@ -336,5 +347,77 @@ impl Drop for RuntimeMounts<'_> {
                 self.path().display()
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{RuntimeFailure, RuntimeScopeFailure};
+    use crate::pipeline::BuildError;
+    use std::{error::Error, io, time::Instant};
+
+    #[test]
+    fn terminal_runtime_diagnostics_preserve_io_causes_and_phase() {
+        for creation in [false, true] {
+            let failure = RuntimeFailure {
+                source: io::Error::from_raw_os_error(13),
+                retained: None,
+                deadline: Instant::now(),
+            };
+            let scope = if creation {
+                RuntimeScopeFailure::Create(failure)
+            } else {
+                RuntimeScopeFailure::Cleanup(failure)
+            };
+            let terminal = BuildError::from(scope);
+            let source = terminal
+                .source()
+                .unwrap()
+                .downcast_ref::<io::Error>()
+                .unwrap();
+            assert_eq!(source.raw_os_error(), Some(13));
+            assert_eq!(source.kind(), io::ErrorKind::PermissionDenied);
+            assert_eq!(matches!(terminal, BuildError::RuntimeCreate(_)), creation);
+            assert_eq!(matches!(terminal, BuildError::RuntimeCleanup(_)), !creation);
+        }
+    }
+
+    #[test]
+    fn terminal_runtime_failure_retains_both_typed_causes() {
+        let operation = BuildError::Io(io::Error::from_raw_os_error(2));
+        let failure = RuntimeScopeFailure::Both {
+            operation,
+            cleanup: RuntimeFailure {
+                source: io::Error::from_raw_os_error(16),
+                retained: None,
+                deadline: Instant::now(),
+            },
+        };
+        let terminal = BuildError::from(failure);
+        let message = terminal.to_string();
+        let BuildError::OperationAndCleanup { operation, cleanup } = terminal else {
+            panic!("both failures must remain independently inspectable");
+        };
+        let BuildError::Io(operation) = *operation else {
+            panic!("operation type was erased");
+        };
+        let BuildError::RuntimeCleanup(cleanup) = *cleanup else {
+            panic!("cleanup phase was erased");
+        };
+        assert_eq!(operation.raw_os_error(), Some(2));
+        assert_eq!(cleanup.raw_os_error(), Some(16));
+        assert!(message.contains(&operation.to_string()));
+        assert!(message.contains(&cleanup.to_string()));
+    }
+
+    #[test]
+    fn successful_runtime_cleanup_preserves_operation_variant() {
+        let terminal = BuildError::from(RuntimeScopeFailure::Operation(BuildError::Io(
+            io::Error::from_raw_os_error(2),
+        )));
+        let BuildError::Io(source) = terminal else {
+            panic!("successful cleanup must not wrap the operation error");
+        };
+        assert_eq!(source.raw_os_error(), Some(2));
     }
 }

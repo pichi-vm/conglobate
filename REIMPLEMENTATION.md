@@ -5640,3 +5640,18 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - 131 library tests, strict all-target Clippy and lifecycle harness compilation
   passed. Focused source review and logs: preservation/m7-review/thread-diagnostics/.
   No new VM qualification or complete adherence pass; M4 remains 0/3, goal active.
+
+### Preserve terminal runtime error structure
+
+- Previous turn made committed progress on thread diagnostics. This turn made
+  partial progress on errors-api-002/003: pipeline runtime creation/cleanup now
+  retains io::Error; combined failures retain independently typed operation and
+  cleanup errors. Stage rejection no longer concatenates these two branches.
+- Explicit terminal conversion relinquishes runtime retry authority with the
+  same retained-mount disposition as before: dedicated VM disposal is required.
+  Lower-level retry owners and cleanup protocols are unchanged.
+- 134 library tests, strict all-target Clippy and lifecycle compilation passed.
+  Three new tests cover errno/phase retention and combined/operation-only cases.
+  Evidence: preservation/m7-review/terminal-runtime-errors/. No new VM run.
+- Findings remain open for remaining stage/formatter/storage string erasure and
+  diagnostic taxonomy. No complete adherence pass; M4 remains 0/3.

@@ -14,6 +14,9 @@ use crate::{
     storage::Workspace,
 };
 
+/// Terminal build diagnostics, not cleanup receipts or authority to retry a
+/// build. Runtime resource ownership ends here; unfinished mounts remain until
+/// disposal of the dedicated VM. Lower-level failures retain retry authority.
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
     #[error(transparent)]
@@ -40,6 +43,18 @@ pub enum BuildError {
     Unsupported(&'static str),
     #[error("build execution: {0}")]
     Execution(String),
+    #[error("build runtime: {0}")]
+    RuntimeCreate(#[source] std::io::Error),
+    #[error("build runtime cleanup: {0}")]
+    RuntimeCleanup(#[source] std::io::Error),
+    /// Both failures remain inspectable. Error::source follows the primary
+    /// operation; the cleanup field exposes the independent secondary cause.
+    #[error("{operation}; cleanup: {cleanup}")]
+    OperationAndCleanup {
+        #[source]
+        operation: Box<BuildError>,
+        cleanup: Box<BuildError>,
+    },
     #[error("conglobate requires root")]
     RootRequired,
 }
@@ -52,7 +67,18 @@ impl From<crate::storage::RuntimeScopeFailure<'_, BuildError>> for BuildError {
     fn from(failure: crate::storage::RuntimeScopeFailure<'_, BuildError>) -> Self {
         match failure {
             crate::storage::RuntimeScopeFailure::Operation(error) => error,
-            failure => Self::Execution(failure.to_string()),
+            crate::storage::RuntimeScopeFailure::Create(failure) => {
+                Self::RuntimeCreate(failure.into_terminal_error())
+            }
+            crate::storage::RuntimeScopeFailure::Cleanup(failure) => {
+                Self::RuntimeCleanup(failure.into_terminal_error())
+            }
+            crate::storage::RuntimeScopeFailure::Both { operation, cleanup } => {
+                Self::OperationAndCleanup {
+                    operation: Box::new(operation),
+                    cleanup: Box::new(Self::RuntimeCleanup(cleanup.into_terminal_error())),
+                }
+            }
         }
     }
 }
