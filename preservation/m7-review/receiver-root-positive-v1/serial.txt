@@ -1,0 +1,51 @@
++ touch /run/global-label-fixture
++ mount -t bpf bpf /sys/fs/bpf
++ /label-loader
++ modprobe virtio_pci
++ modprobe virtio_net
++ modprobe virtio_blk
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe loop
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe ext4
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe dm-zero
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe dm-snapshot
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe dm-verity
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe veth
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe nf_tables
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe nft_chain_nat
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe nft_masq
++ for module in loop ext4 dm-zero dm-snapshot dm-verity veth nf_tables nft_chain_nat nft_masq nft_ct
++ modprobe nft_ct
++ ip link set lo up
++ interface=
++ for candidate in /sys/class/net/*
++ test eth0 = lo
++ test -z ''
++ interface=eth0
++ for candidate in /sys/class/net/*
++ test lo = lo
++ continue
++ test -n eth0
++ ip link set eth0 up
++ ip address add 10.0.2.15/24 dev eth0
++ ip route add default via 10.0.2.2
++ echo 1
++ echo 1
++ conglobate build --repository /context --commit bf8a49e468b6b250e7b084e899c46837dc9cb2c7 --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --resolv-conf /etc/resolv.conf --formatter-runtime /formatter.json
+BOOTSTRAP_TWO_ROOTS_FIRST_STEP_PASS
+BOOTSTRAP_TWO_ROOTS_REMOUNT_PASS
++ :
++ tar -C /work/output -cf /dev/vda .
++ sync
++ echo DISTRO_BUILD_AND_EXPORT_PASS
+DISTRO_BUILD_AND_EXPORT_PASS
+DISTRO_BUILD_EXIT 0
+[   46.135813] sysrq: Resetting

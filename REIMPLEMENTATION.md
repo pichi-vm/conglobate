@@ -4326,3 +4326,31 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Updated follow-up review prompt with proposed closure of differential coverage
   finding. Existing review session 78027 is still live; no replacement launched,
   consensus or adherence pass inferred. M2/M4–M6 remain 0/3; full goal incomplete.
+
+### Registration-free review consensus and receiver startup cleanup
+
+- Completed initial Claude review and focused source-grounded reconciliation;
+  preserved original streams (gzip), final findings and explicit retractions in
+  registration-free-implementation-{review,consensus}. Reviewer withdrew claims
+  about lost tmpfs validation, stale test counts and command-level label tests
+  detecting missing admission probes. Differential probe coverage accepted;
+  additional device-identity guard reclassified as optional defense-in-depth.
+- Fixed the remaining admitted-channel lifetime race: ReceiverStartup owns the
+  running mount, diagnostic relay and original setup deadline. Healthy supervisor
+  channel stays in the caller through start-gate failure cleanup. Earlier errors
+  close the leaf gate before waiting. No sleeps, policy registration, new timeout
+  or renewed deadline. Added root and operation context to label probe failures.
+- receiver-root-negative-v1: differential output-root denial, /mnt write context,
+  command not admitted, complete cleanup, no output; maintained assessor passes.
+  receiver-root-positive-v1: actual CLI bootstrap and remount pass, exported graph,
+  formatter receipt and canonical inventory verified. Native amd64 ordinary VM
+  only. Small artifacts preserved; large artifacts explicitly not durably archived.
+- Receiver refactor passes 193 rootless tests and 50 doctests; final diagnostic
+  edits pass strict all-target Clippy. Logs: receiver-cleanup-static. Exact
+  post-admission gate-send failure has NOT been deterministically injected; the
+  readiness failure exercises shared cleanup but does not establish that branch.
+- Focused review of final dirty source is running (session 45045), with the above
+  coverage gap disclosed. No whole-milestone adherence pass claimed. M2/M4–M6
+  remain 0/3; legacy fault migration, durable M8 recovery and full distro/platform
+  qualification remain outstanding. Prior turn was a status-only response; this
+  turn resumes concrete remediation and records new evidence.

@@ -22,7 +22,9 @@ impl AssignedRoots {
             fs::OFlags::PATH | fs::OFlags::DIRECTORY | fs::OFlags::CLOEXEC,
             fs::Mode::empty(),
         )?;
-        LabelProbe::new(&root)?.verify()?;
+        LabelProbe::new(&root)
+            .and_then(LabelProbe::verify)
+            .map_err(|error| io::Error::other(format!("{error} (command root /)")))?;
         if let Self::Bootstrap = self {
             let output = fs::openat2(
                 &root,
@@ -30,8 +32,15 @@ impl AssignedRoots {
                 fs::OFlags::PATH | fs::OFlags::DIRECTORY | fs::OFlags::CLOEXEC,
                 fs::Mode::empty(),
                 fs::ResolveFlags::BENEATH | fs::ResolveFlags::NO_SYMLINKS,
-            )?;
-            LabelProbe::new(&output)?.verify()?;
+            )
+            .map_err(|error| {
+                io::Error::other(format!(
+                    "open output for labeling: {error} (command root /mnt)"
+                ))
+            })?;
+            LabelProbe::new(&output)
+                .and_then(LabelProbe::verify)
+                .map_err(|error| io::Error::other(format!("{error} (command root /mnt)")))?;
         }
         Ok(())
     }
@@ -56,23 +65,33 @@ impl TryFrom<u8> for AssignedRoots {
 struct LabelProbe(OwnedFd);
 impl LabelProbe {
     fn new(root: &OwnedFd) -> io::Result<Self> {
-        Ok(Self(fs::openat(
-            root,
-            ".",
-            fs::OFlags::TMPFILE | fs::OFlags::EXCL | fs::OFlags::RDWR | fs::OFlags::CLOEXEC,
-            fs::Mode::RUSR | fs::Mode::WUSR,
-        )?))
+        Ok(Self(
+            fs::openat(
+                root,
+                ".",
+                fs::OFlags::TMPFILE | fs::OFlags::EXCL | fs::OFlags::RDWR | fs::OFlags::CLOEXEC,
+                fs::Mode::RUSR | fs::Mode::WUSR,
+            )
+            .map_err(|error| io::Error::other(format!("create anonymous label probe: {error}")))?,
+        ))
     }
     fn verify(self) -> io::Result<()> {
         const LABEL: &[u8] = b"conglobate_probe_u:conglobate_probe_r:conglobate_probe_t:s0\0";
-        fs::fsetxattr(&self.0, "security.selinux", LABEL, fs::XattrFlags::empty())
-            .map_err(|e| io::Error::other(format!("environment labeling support: {e}")))?;
+        fs::fsetxattr(&self.0, "security.selinux", LABEL, fs::XattrFlags::empty()).map_err(
+            |e| {
+                io::Error::other(format!(
+                    "environment labeling support: {e} while writing security.selinux"
+                ))
+            },
+        )?;
         let mut actual = [0u8; LABEL.len()];
-        let count = fs::fgetxattr(&self.0, "security.selinux", &mut actual[..])?;
+        let count = fs::fgetxattr(&self.0, "security.selinux", &mut actual[..])
+            .map_err(|error| io::Error::other(format!("read environment label: {error}")))?;
         if count != LABEL.len() || actual != LABEL {
             return Err(io::Error::other("environment label readback mismatch"));
         }
-        fs::fremovexattr(&self.0, "security.selinux")?;
+        fs::fremovexattr(&self.0, "security.selinux")
+            .map_err(|error| io::Error::other(format!("remove environment label: {error}")))?;
         Ok(())
     }
 }

@@ -9,6 +9,7 @@ use crate::{
 use std::{
     io,
     process::{Command, ExitStatus, Stdio},
+    time::Instant,
 };
 
 /// Outer trusted helper, already contained and in its private mount namespace.
@@ -125,63 +126,77 @@ impl<'ns> CommandReceiver<'ns> {
                 }));
             }
         };
-        // Keep the supervisor channel alive while collecting an early leaf
-        // failure. Otherwise channel loss can cancel us before diagnostics or
-        // explicit teardown of our mounted view have completed.
+        let startup = ReceiverStartup {
+            mount: running,
+            diagnostics,
+            deadline: setup_deadline,
+        };
+        // Channels remain outside consuming admission operations until those
+        // operations need them. In particular a start-gate failure must not
+        // close an admitted supervisor channel before bounded local cleanup.
         let gate = match gate.wait_ready_until(setup_deadline) {
             Ok(gate) => gate,
-            Err(source) => {
-                let (mount, _) = match running.wait_until(setup_deadline) {
-                    Ok(completion) => completion,
-                    Err(failure) => {
-                        return Err(Box::new(ReceiverFailure::Startup {
-                            source,
-                            mount: failure.into_parts().1,
-                        }));
-                    }
-                };
-                if let Err(error) = diagnostics.finish() {
-                    eprintln!("startup diagnostic relay: {error}");
-                }
-                eprintln!("restricted leaf readiness failed: {source}");
-                return Err(Box::new(match mount.close() {
-                    Ok(()) => ReceiverFailure::Cleaned(source),
-                    Err(cleanup) => ReceiverFailure::Cleanup { source, cleanup },
-                }));
-            }
+            Err(source) => return Err(startup.failure(source)),
         };
-        let admitted = (|| -> io::Result<Supervision<Admitted>> {
-            self.channel.report_prepared_until(setup_deadline)?;
-            let channel = self.channel.await_admission_until(setup_deadline)?;
-            gate.start_until(setup_deadline)?;
-            Ok(channel)
-        })();
-        let channel = match admitted {
+        if let Err(source) = self.channel.report_prepared_until(setup_deadline) {
+            drop(gate);
+            return Err(startup.failure(source));
+        }
+        let channel = match self.channel.await_admission_until(setup_deadline) {
             Ok(channel) => channel,
             Err(source) => {
-                // A failed restricted leaf may already have exited. Collect
-                // its direct setup parent before draining diagnostics so that
-                // process exit cannot discard the final explanatory message.
-                // The supervisor still bounds this entire helper's lifetime.
-                let running = match running.wait_until(setup_deadline) {
-                    Ok((mount, _)) => {
-                        if let Err(error) = diagnostics.finish() {
-                            eprintln!("startup diagnostic relay: {error}");
-                        }
-                        return Err(Box::new(ReceiverFailure::Before { source, mount }));
-                    }
-                    Err(failure) => failure.into_parts().1,
-                };
-                return Err(Box::new(ReceiverFailure::Startup {
-                    source,
-                    mount: running,
-                }));
+                drop(gate);
+                return Err(startup.failure(source));
             }
         };
-        let (mount, status) = running
+        if let Err(source) = gate.start_until(setup_deadline) {
+            // `channel` stays alive while failure() reaps/drains/closes the view.
+            return Err(startup.failure(source));
+        }
+        startup.finish(channel)
+    }
+}
+
+/// The receiver's launched namespace child and its diagnostic readers. Failure
+/// consumes this owner under the original setup deadline; success waits under
+/// the supervisor's independent recipe deadline. The caller retains its control
+/// channel while local failure cleanup runs whenever the protocol permits it.
+#[derive(Debug)]
+struct ReceiverStartup<'ns> {
+    mount: Mount<'ns, InUse>,
+    diagnostics: crate::process::DiagnosticRelay,
+    deadline: Instant,
+}
+impl<'ns> ReceiverStartup<'ns> {
+    fn failure(self, source: io::Error) -> Box<ReceiverFailure<'ns>> {
+        let (mount, _) = match self.mount.wait_until(self.deadline) {
+            Ok(completion) => completion,
+            Err(failure) => {
+                return Box::new(ReceiverFailure::Startup {
+                    source,
+                    mount: failure.into_parts().1,
+                });
+            }
+        };
+        if let Err(error) = self.diagnostics.finish() {
+            eprintln!("startup diagnostic relay: {error}");
+        }
+        eprintln!("restricted command startup failed: {source}");
+        Box::new(match mount.close() {
+            Ok(()) => ReceiverFailure::Cleaned(source),
+            Err(cleanup) => ReceiverFailure::Cleanup { source, cleanup },
+        })
+    }
+
+    fn finish(
+        self,
+        channel: Supervision<Admitted>,
+    ) -> Result<ReceiverCompletion<'ns>, Box<ReceiverFailure<'ns>>> {
+        let (mount, status) = self
+            .mount
             .wait_under_supervisor()
             .map_err(|error| Box::new(ReceiverFailure::Wait(error)))?;
-        if let Err(source) = diagnostics.finish() {
+        if let Err(source) = self.diagnostics.finish() {
             return Err(Box::new(ReceiverFailure::Diagnostics { source, mount }));
         }
         Ok(ReceiverCompletion {
