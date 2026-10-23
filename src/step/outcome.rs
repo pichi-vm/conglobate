@@ -62,7 +62,7 @@ impl<T, E> CommandResult<Result<T, E>> {
 impl<'a, R: StepStorage> RunningCommand<'a, R> {
     /// Wait for the trusted helper's report under the original execution cutoff.
     /// Even on timeout or protocol failure, retain the command for full teardown.
-    pub fn observe(self) -> CommandResult<Self> {
+    pub fn observe(self) -> CommandResult<ObservedCommand<'a, R>> {
         let outcome = match self.supervision().completion_until(self.deadline()) {
             Ok(_) if Instant::now() >= self.deadline() => {
                 CommandOutcome::ObservationFailed(io::Error::new(
@@ -75,22 +75,45 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
         };
         CommandResult {
             outcome,
-            cleanup: self,
+            cleanup: ObservedCommand {
+                command: self,
+                deadline: Instant::now() + super::teardown::TEARDOWN_TIMEOUT,
+            },
         }
     }
 }
-impl<'a, R: StepStorage> CommandResult<RunningCommand<'a, R>> {
+/// Observed command with its original, already-running cleanup budget.
+/// Keeping this owner before teardown cannot renew the deadline or restore
+/// command observation authority. Dropping it retains unfinished resources.
+/// ```compile_fail
+/// use conglobate::step::ObservedCommand;
+/// fn cannot_observe_again(command: ObservedCommand<'_, ()>) {
+///     command.observe();
+/// }
+/// ```
+#[derive(Debug)]
+pub struct ObservedCommand<'a, R: StepStorage> {
+    command: RunningCommand<'a, R>,
+    deadline: Instant,
+}
+impl<R: StepStorage> ObservedCommand<'_, R> {
+    pub fn teardown_deadline(&self) -> Instant {
+        self.deadline
+    }
+}
+impl<'a, R: StepStorage> CommandResult<ObservedCommand<'a, R>> {
     pub fn teardown(
         self,
         parent: &Path,
     ) -> CommandResult<Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>>> {
         match self.outcome {
-            CommandOutcome::Exited(_) => {
-                self.map_cleanup(|command| command.teardown_after_command(parent))
-            }
-            CommandOutcome::ObservationFailed(_) => {
-                self.map_cleanup(|command| command.teardown(parent))
-            }
+            CommandOutcome::Exited(_) => self.map_cleanup(|observed| {
+                observed
+                    .command
+                    .teardown_after_command(parent, observed.deadline)
+            }),
+            CommandOutcome::ObservationFailed(_) => self
+                .map_cleanup(|observed| observed.command.teardown_until(parent, observed.deadline)),
         }
     }
 }

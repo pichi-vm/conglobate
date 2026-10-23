@@ -25,7 +25,7 @@ pub use preparation::{
 };
 mod finalize;
 mod outcome;
-pub use outcome::{CommandOutcome, CommandResult};
+pub use outcome::{CommandOutcome, CommandResult, ObservedCommand};
 mod cutoff;
 mod setup;
 pub use cutoff::SetupCutoff;

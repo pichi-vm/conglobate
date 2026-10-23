@@ -1,0 +1,9 @@
+{
+  "checks": {
+    "DELAYED_TEARDOWN_CANNOT_RENEW_OBSERVATION_CUTOFF_PASS": true,
+    "exit_zero": true,
+    "vm_powered_off": true
+  },
+  "passed": true,
+  "full_lifecycle_qualified": false
+}

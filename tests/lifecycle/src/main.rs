@@ -31,6 +31,9 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "sandbox-delayed-teardown" => sandbox_failures::SandboxFailures::run(
+                sandbox_failures::FailurePoint::DelayedTeardown,
+            ),
             [mode] if mode == "sandbox-blocked-descendant" => {
                 sandbox_failures::SandboxFailures::run(
                     sandbox_failures::FailurePoint::BlockedDescendant,

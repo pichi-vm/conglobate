@@ -21,6 +21,7 @@ pub(super) enum FailurePoint {
     HeldCleanup,
     MissingCleanup,
     CleanupTimeout,
+    DelayedTeardown,
     Gate,
     Writeback,
     BlockedIo,
@@ -132,6 +133,7 @@ impl SandboxFailures {
                 | FailurePoint::BusyExecution
                 | FailurePoint::HeldCleanup
                 | FailurePoint::MissingCleanup
+                | FailurePoint::DelayedTeardown
                 | FailurePoint::CleanupTimeout
                 | FailurePoint::Gate
                 | FailurePoint::Writeback
@@ -182,6 +184,7 @@ impl SandboxFailures {
                 | FailurePoint::BusyExecution
                 | FailurePoint::HeldCleanup
                 | FailurePoint::MissingCleanup
+                | FailurePoint::DelayedTeardown
                 | FailurePoint::CleanupTimeout
                 | FailurePoint::Gate
                 | FailurePoint::Writeback
@@ -244,6 +247,7 @@ impl SandboxFailures {
             | FailurePoint::BusyExecution
             | FailurePoint::HeldCleanup
             | FailurePoint::MissingCleanup
+            | FailurePoint::DelayedTeardown
             | FailurePoint::CleanupTimeout
             | FailurePoint::Gate
             | FailurePoint::Writeback
@@ -371,7 +375,10 @@ impl SandboxFailures {
                         "sandbox-gate-receiver"
                     } else if matches!(point, FailurePoint::HeldCleanup) {
                         "sandbox-held-helper"
-                    } else if matches!(point, FailurePoint::CleanupTimeout) {
+                    } else if matches!(
+                        point,
+                        FailurePoint::CleanupTimeout | FailurePoint::DelayedTeardown
+                    ) {
                         "sandbox-cleanup-timeout-helper"
                     } else if matches!(point, FailurePoint::MissingCleanup) {
                         "sandbox-missing-cleanup-helper"
@@ -568,6 +575,7 @@ impl SandboxFailures {
                     point,
                     FailurePoint::HeldCleanup
                         | FailurePoint::MissingCleanup
+                        | FailurePoint::DelayedTeardown
                         | FailurePoint::CleanupTimeout
                 ) {
                     use std::{os::unix::net::UnixDatagram, time::Instant};
@@ -576,6 +584,41 @@ impl SandboxFailures {
                     let step = prepared
                         .launch(command, budget.deadline(), paths.domains())
                         .map_err(|e| e.to_string())?;
+                    if matches!(point, FailurePoint::DelayedTeardown) {
+                        step.send_volume_until(budget.deadline())?;
+                        let observed = budget
+                            .await_prepared(step)
+                            .map_err(|e| e.to_string())?
+                            .start("1s".parse()?)
+                            .map_err(|e| e.to_string())?
+                            .observe();
+                        assert!(observed.outcome().success());
+                        let deadline = observed.cleanup().teardown_deadline();
+                        // Expiration is the test target, not a readiness signal.
+                        while let Some(remaining) = deadline.checked_duration_since(Instant::now())
+                        {
+                            let timeout = rustix::event::Timespec::try_from(remaining)?;
+                            match rustix::event::poll(&mut [], Some(&timeout)) {
+                                Ok(_) | Err(rustix::io::Errno::INTR) => {}
+                                Err(error) => return Err(error.into()),
+                            }
+                        }
+                        let started = Instant::now();
+                        let (outcome, cleanup) = observed.teardown(paths.domains()).into_parts();
+                        assert!(outcome.success());
+                        let failure = cleanup.unwrap_err();
+                        assert!(started.elapsed() < std::time::Duration::from_secs(1));
+                        assert_eq!(
+                            failure.diagnostics().operation().kind(),
+                            std::io::ErrorKind::TimedOut
+                        );
+                        let _retained = failure.retry().unwrap_err();
+                        assert!(started.elapsed() < std::time::Duration::from_secs(1));
+                        assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
+                        assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                        println!("DELAYED_TEARDOWN_CANNOT_RENEW_OBSERVATION_CUTOFF_PASS");
+                        std::process::exit(0);
+                    }
                     if matches!(point, FailurePoint::CleanupTimeout) {
                         use std::time::Duration;
                         let started = Instant::now();
@@ -790,6 +833,7 @@ impl SandboxFailures {
                 FailurePoint::MissingCleanup => "SANDBOX_MISSING_CLEANUP_ROLLBACK_PASS",
                 FailurePoint::Gate => "SANDBOX_GATE_FAILURE_ROLLBACK_PASS",
                 FailurePoint::CleanupTimeout
+                | FailurePoint::DelayedTeardown
                 | FailurePoint::BlockedDescendant
                 | FailurePoint::BlockedIo
                 | FailurePoint::SupervisorDeath

@@ -1,0 +1,10 @@
+{
+  "checks": {
+    "SHELL_STATUS_BEFORE_HELD_CLEANUP_PASS": true,
+    "SANDBOX_HELD_CLEANUP_ROLLBACK_PASS": true,
+    "exit_zero": true,
+    "vm_powered_off": true
+  },
+  "passed": true,
+  "full_lifecycle_qualified": false
+}

@@ -133,8 +133,17 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
     pub(super) fn teardown_after_command(
         self,
         parent: &Path,
+        deadline: Instant,
     ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
-        self.step.teardown_after_command(parent)
+        self.step.teardown_after_command(parent, deadline)
+    }
+
+    pub(super) fn teardown_until(
+        self,
+        parent: &Path,
+        deadline: Instant,
+    ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+        self.step.teardown_until(parent, deadline)
     }
 
     pub fn deadline(&self) -> Instant {

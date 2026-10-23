@@ -201,3 +201,11 @@ or control authority is passed to the command, no synchronization sleeps are
 used, and no successful cleanup, artifact publication or full sandbox
 qualification is claimed. This test supplements the pre-completion
 `sandbox-blocked-io` case; it does not replace it.
+
+`--case sandbox-delayed-teardown` observes simulated shell success from a trusted
+receiver parked before cleanup. It deliberately holds the observed owner until
+its cleanup deadline expires, then requires both teardown and retry to fail in
+under one second with storage and recovery records retained. Waiting for the
+deadline is the assertion target, not synchronization. Independent VM disposal
+ends this terminal case. This tests the split observation/teardown API rather
+than an image command or successful finalization.

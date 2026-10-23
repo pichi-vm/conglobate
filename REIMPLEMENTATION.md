@@ -5179,3 +5179,27 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   in /var/tmp and are not durably archived. No production changes.
 - This closes the missing blocked-descendant regression, not the full integrated
   review or a milestone pass. M4 remains 0/3; all full-goal obligations remain.
+
+### M4-T1 observation-owned cleanup cutoff
+
+- Previous turn progressed with the actual blocked-descendant regression.
+  Follow-up source review found that the split observe/teardown API still started
+  its cleanup budget at the later teardown call, not at observation. The main
+  production caller chained these calls immediately; no unsafe-output acceptance
+  or delayed CLI execution was demonstrated. M4 remains 0/3.
+- RunningCommand now consumes into ObservedCommand with an immutable cutoff.
+  Completion and observation-error cleanup both use it; there is no public
+  re-observation or deadline replacement. Direct pre-observation cancellation
+  retains its existing behavior. Error owners and finalization keep the cutoff.
+- 204 rootless tests and 52 doctests pass; strict root/fixture Clippy pass.
+  delayed-teardown-v1 proves expired observation budgets reject immediate
+  teardown/retry while retaining owners. observation-held-cleanup-v1 proves
+  cleanup within budget succeeds. observation-blocked-descendant-v1 reruns the
+  production receiver/init D-state case successfully after the owner change.
+- Exact executed source comparisons pass. Evidence, failed-run history from
+  earlier iterations, and full external artifact hashes remain preserved.
+  Review: preservation/m7-review/observation-cutoff/REVIEW.md. This is a targeted
+  correction/review, not a full milestone pass. Integrated M4 review remains.
+- External VM assets are still not durably archived; approximately 621 MiB free
+  after this validation. No existing evidence or user work was deleted. Further
+  validation must respect this capacity while source reviews can continue.

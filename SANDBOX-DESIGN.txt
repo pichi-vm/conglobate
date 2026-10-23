@@ -401,6 +401,9 @@ Historical experiments are evidence, not competing specifications.
    10.2. Setup and teardown have finite FIXED INTERNAL DEADLINES, chosen and
          tested as implementation constants. They are not recipe or CLI knobs
          and do not consume command timeout. Exceeding either fails the build.
+         Start teardown's budget when command completion or observation failure
+         is observed. Retain that cutoff across delayed cleanup calls and retries;
+         neither may start a fresh budget.
          Cancellation or an environment deadline may end work earlier. A fixed
          deadline bounds waiting/acceptance; it cannot guarantee the kernel can
          immediately reap a task stuck in uninterruptible I/O.
