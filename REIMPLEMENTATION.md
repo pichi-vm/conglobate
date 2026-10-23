@@ -6128,3 +6128,7 @@ Reconciled the final nine historical-only entries; all 111 IDs now have explicit
 ### Current bootstrap runtime integration after 7730732
 
 Maintained two-root bootstrap passed on native amd64 disposable KVM: data and numeric ownership/mode survive remount, formatting measured, output sealed and published. Independent graph/inventory verifier passes; all 187 source comparisons match. Evidence in `preservation/m7-review/m4-bootstrap-runtime-current/`. This updates simplification-011 with actual successful CLI coverage; does not qualify distro boot, every coordinator or whole sandbox. Large assets local-only; no milestone pass. Previous turn completed historical source dispositions; this turn adds integrated lifecycle evidence.
+
+### Admitted two-root rejection validation after 96705d0
+
+Added maintained bootstrap-nonzero fixture and verifier mode; current disposable amd64 VM writes both roots, exits 7, skips later step, reports complete cleanup and publishes nothing. Seven verifier checks pass; all 188 source comparisons match. Evidence: `preservation/m7-review/m4-bootstrap-rejection-current/`. Updated simplification-004 with actual integrated rejection coverage; no exhaustive cleanup-fault or full milestone claim. Previous turn validated success; this turn validates rejection after admitted execution. Production unchanged.

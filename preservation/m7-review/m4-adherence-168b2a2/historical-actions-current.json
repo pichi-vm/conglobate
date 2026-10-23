@@ -647,8 +647,8 @@
       "evidence": "Mount/retry/validate shape identical apart from discard vs discard_pair across the two coordinators",
       "remaining_action": "Hoist the StageFailure recovery walk behind a DirectiveStorage-keyed discard hook",
       "historical_status": "accept",
-      "current_status": "implemented after review baseline; integrated qualification pending",
-      "current_evidence": "StageFailure::reject shares recovery keyed by DirectiveStorage::Unmounted with private consuming DiscardStorage implementations. Both bootstrap roots attempted; success still returns rejection. 126 library tests and strict all-target Clippy pass; stage-rejection/REVIEW.md."
+      "current_status": "implemented with integrated bootstrap rejection evidence",
+      "current_evidence": "Current maintained bootstrap-nonzero VM writes both roots, exits 7, rejects next step and publication, reports cleanup complete. Reviewed StageFailure::reject_command and independent pair discard attempts. See m4-bootstrap-rejection-current/REVIEW.md. Not exhaustive cleanup fault/platform qualification."
     },
     {
       "id": "simplification-005",

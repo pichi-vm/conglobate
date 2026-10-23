@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+bootstrap:
+  from: qualification.local/fedora:43
+  filesystem:
+    type: ext4
+    size: 64MiB
+  derive:
+    - run: |
+        printf 'tool-write\n' > /bootstrap-tool-write
+        printf 'output-write\n' > /mnt/bootstrap-output-write
+        test "$(cat /bootstrap-tool-write)" = tool-write
+        test "$(cat /mnt/bootstrap-output-write)" = output-write
+        printf 'BOOTSTRAP_BOTH_ROOTS_WRITTEN\n'
+        exit 7
+    - run: printf 'BOOTSTRAP_REJECTED_STEP_RAN\n'

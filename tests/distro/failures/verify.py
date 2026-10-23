@@ -14,8 +14,10 @@ class FailureEvidence:
     def verify(self):
         serial = (self.run / 'serial.txt').read_text()
         marker = {'nonzero': 'COMMAND_EXPECTED_FAILURE',
+                  'bootstrap-nonzero': 'BOOTSTRAP_BOTH_ROOTS_WRITTEN',
                   'timeout': 'COMMAND_TIMEOUT_STARTED'}[self.mode]
         diagnostic = {'nonzero': 'command exited with exit status: 7',
+                      'bootstrap-nonzero': 'command exited with exit status: 7',
                       'timeout': 'deadline expired'}[self.mode]
         checks = {
             'command_started': f'\n{marker}\n' in serial,
@@ -25,6 +27,8 @@ class FailureEvidence:
             'command_cleanup_complete': 'cleanup: complete' in serial,
             'runtime_cleanup_complete': 'runtime cleanup:' not in serial and 'runtime retained' not in serial,
         }
+        if self.mode == 'bootstrap-nonzero':
+            checks['later_step_not_admitted'] = 'BOOTSTRAP_REJECTED_STEP_RAN' not in serial
         report = {'mode': self.mode, 'checks': checks, 'passed': all(checks.values()),
                   'full_sandbox_qualified': False}
         (self.run / 'failure-assessment.json').write_text(json.dumps(report, indent=2) + '\n')
@@ -34,7 +38,7 @@ class FailureEvidence:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('run', type=Path)
-    parser.add_argument('mode', choices=['nonzero', 'timeout'])
+    parser.add_argument('mode', choices=['nonzero', 'timeout', 'bootstrap-nonzero'])
     arguments = parser.parse_args()
     result = FailureEvidence(arguments.run, arguments.mode).verify()
     print(json.dumps(result, indent=2))
