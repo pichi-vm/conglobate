@@ -72,6 +72,31 @@ impl PipelineProbe {
                 serde_json::to_vec(&document)?,
             )?;
         }
+        for (name, explicit, missing) in [
+            ("composed-implicit", false, false),
+            ("composed-explicit", true, false),
+            ("composed-missing", false, true),
+        ] {
+            let visibility = if explicit {
+                "test ! -e /kept"
+            } else {
+                "test $(cat /kept) = retained"
+            };
+            let mut document = serde_json::json!({
+                "carapace":{"from":"example.test/tools:1","derive":[{"run":"echo retained > /kept"}]},
+                "firmware":{"derive":[
+                    {"copy":{"from":"firmware.dtb","into":"/out/image.dtb"}},
+                    {"run":format!("{visibility}; test \"$CARAPACE\" != {}; printf '%s' \"$CARAPACE\" > /out/image.pmi; echo disposable > /firmware-tool-change", hex::encode(base_root))}
+                ],"into":{"pmi":"/out/image.pmi","dtb":if missing {"/missing.dtb"} else {"/out/image.dtb"}}}
+            });
+            if explicit {
+                document["firmware"]["from"] = "example.test/tools:1".into();
+            }
+            fs::write(
+                repo.join(format!("{name}.yml")),
+                serde_json::to_vec(&document)?,
+            )?;
+        }
         for args in [
             vec!["init", "--quiet"],
             vec!["add", "."],
@@ -110,6 +135,21 @@ impl PipelineProbe {
             ("fail.yml", "/work/rejected-output", false),
             ("firmware-only.yml", "/work/firmware-only-output", true),
             ("firmware-base.yml", "/work/firmware-base-output", true),
+            (
+                "composed-implicit.yml",
+                "/work/composed-implicit-output",
+                true,
+            ),
+            (
+                "composed-explicit.yml",
+                "/work/composed-explicit-output",
+                true,
+            ),
+            (
+                "composed-missing.yml",
+                "/work/composed-missing-output",
+                false,
+            ),
             (
                 "firmware-missing.yml",
                 "/work/firmware-missing-output",
@@ -223,57 +263,112 @@ impl PipelineProbe {
                 expected
             );
         }
-        // Install only the index lookup blob for the cache reader, after checking
-        // the published inventory. Production output contains no such extra blob.
-        let index = fs::read(output.join("index.json"))?;
-        let digest = hex::encode(Sha256::digest(&index));
-        fs::write(output.join("blobs/sha256").join(&digest), &index)?;
-        let cache = Cache::open(output)?;
-        let image = cache.resolve(format!("sha256:{digest}").parse()?)?;
-        cache.verify_references(&image)?;
-        let chain = cache.verify_chain(&image)?.ok_or("missing derived chain")?;
-        assert_eq!(chain.scutes().len(), 4);
-        let active = chain
-            .assemble(&cache, workspace)
-            .map_err(|e| e.to_string())?;
-        let mut scratch = workspace.scratch()?;
-        scratch.set_len(8 * 1024 * 1024)?;
-        let snapshot = Mapping::<Created>::create()?
-            .snapshot(
-                &active,
-                scratch.attach().map_err(|e| e.to_string())?,
-                NonZeroU64::new(conglobate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512)
-                    .unwrap(),
-            )
-            .map_err(|e| e.to_string())?;
-        let scope = PrivateMountNamespace::enter()?;
-        let volume = Volume::<Unmounted>::new(snapshot, &scope)
-            .mount_ext4(Path::new("/work"))
-            .map_err(|e| e.to_string())?;
-        let device = volume.root_metadata()?.dev();
-        let directory = fs::read_dir("/work")?
-            .filter_map(Result::ok)
-            .find(|e| {
-                e.file_name()
-                    .as_encoded_bytes()
-                    .starts_with(b"conglobate-volume-")
-                    && e.metadata().is_ok_and(|m| m.dev() == device)
-            })
-            .ok_or("missing output mount")?
-            .path();
-        assert_eq!(fs::read(directory.join("derived"))?, b"final\n");
-        assert_eq!(fs::read(directory.join("copied"))?, b"committed copy\n");
-        assert!(!directory.join("rejected").exists());
-        volume
-            .unmount()
-            .map_err(|e| e.to_string())?
-            .into_snapshot()
-            .close()
-            .map_err(|e| e.to_string())?
-            .detach()
-            .map_err(|e| e.to_string())?;
-        scope.restore().map_err(|e| e.to_string())?;
-        active.close().map_err(|e| e.to_string())?;
+        for (name, count) in [
+            ("derived", 4),
+            ("composed-implicit", 2),
+            ("composed-explicit", 2),
+        ] {
+            let output = Path::new("/work").join(format!("{name}-output"));
+            // Install only the index lookup blob for the cache reader, after checking
+            // the published inventory. Production output contains no such extra blob.
+            let index = fs::read(output.join("index.json"))?;
+            let digest = hex::encode(Sha256::digest(&index));
+            fs::write(output.join("blobs/sha256").join(&digest), &index)?;
+            let cache = Cache::open(&output)?;
+            let image = cache.resolve(format!("sha256:{digest}").parse()?)?;
+            cache.verify_references(&image)?;
+            let chain = cache.verify_chain(&image)?.ok_or("missing derived chain")?;
+            assert_eq!(chain.scutes().len(), count);
+            if count == 2 {
+                let manifest: serde_json::Value =
+                    serde_json::from_slice(image.manifest_bytes().bytes())?;
+                let pmi = manifest["layers"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|l| l["mediaType"] == "application/vnd.pichi.pmi.v1")
+                    .unwrap();
+                let digest = pmi["digest"]
+                    .as_str()
+                    .unwrap()
+                    .strip_prefix("sha256:")
+                    .unwrap();
+                assert_eq!(
+                    fs::read(output.join("blobs/sha256").join(digest))?,
+                    hex::encode(chain.root()).as_bytes()
+                );
+                assert_ne!(chain.root(), &base_root);
+                let inventory = fs::read(output.join("inventory.cbor"))?;
+                conglobate::inventory::Inventory::decode(&inventory)?;
+                assert_eq!(
+                    Field(&inventory)
+                        .get(&["outputs", "carapace_root"])?
+                        .bytes()?,
+                    chain.root()
+                );
+                let entries = Field(&inventory).get(&["outputs", "scutes"])?;
+                let mut decoder = minicbor::Decoder::new(entries.0);
+                assert_eq!(decoder.array()?, Some(2));
+                for origin in ["inherited", "produced"] {
+                    let start = decoder.position();
+                    decoder.skip()?;
+                    assert_eq!(
+                        Field(&entries.0[start..decoder.position()])
+                            .get(&["origin"])?
+                            .text()?,
+                        origin
+                    );
+                }
+            }
+            let active = chain
+                .assemble(&cache, workspace)
+                .map_err(|e| e.to_string())?;
+            let mut scratch = workspace.scratch()?;
+            scratch.set_len(8 * 1024 * 1024)?;
+            let snapshot = Mapping::<Created>::create()?
+                .snapshot(
+                    &active,
+                    scratch.attach().map_err(|e| e.to_string())?,
+                    NonZeroU64::new(conglobate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512)
+                        .unwrap(),
+                )
+                .map_err(|e| e.to_string())?;
+            let scope = PrivateMountNamespace::enter()?;
+            let volume = Volume::<Unmounted>::new(snapshot, &scope)
+                .mount_ext4(Path::new("/work"))
+                .map_err(|e| e.to_string())?;
+            let device = volume.root_metadata()?.dev();
+            let directory = fs::read_dir("/work")?
+                .filter_map(Result::ok)
+                .find(|e| {
+                    e.file_name()
+                        .as_encoded_bytes()
+                        .starts_with(b"conglobate-volume-")
+                        && e.metadata().is_ok_and(|m| m.dev() == device)
+                })
+                .ok_or("missing output mount")?
+                .path();
+            if count == 4 {
+                assert_eq!(fs::read(directory.join("derived"))?, b"final\n");
+                assert_eq!(fs::read(directory.join("copied"))?, b"committed copy\n");
+            } else {
+                assert_eq!(fs::read(directory.join("kept"))?, b"retained\n");
+                assert!(!directory.join("firmware-tool-change").exists());
+                assert!(!directory.join("out/image.pmi").exists());
+            }
+            assert!(!directory.join("rejected").exists());
+            volume
+                .unmount()
+                .map_err(|e| e.to_string())?
+                .into_snapshot()
+                .close()
+                .map_err(|e| e.to_string())?
+                .detach()
+                .map_err(|e| e.to_string())?;
+            scope.restore().map_err(|e| e.to_string())?;
+            active.close().map_err(|e| e.to_string())?;
+        }
+        println!("PIPELINE_CLI_COMPOSED_FIRMWARE_PASS");
         println!("PIPELINE_CLI_DERIVE_PASS");
         Ok(())
     }

@@ -3312,3 +3312,31 @@ rules rather than silently shrinking acceptance criteria.
 - Still required: composition of newly derived carapace layers with firmware,
   bootstrap CLI coordination, enabled NAT/DNS, remaining matrix/failure coverage,
   ORAS interoperability and three clean reviews. M6 remains active at zero.
+
+### M6 retained carapace followed by firmware
+
+- Previous goal turn progressed in 88e3ddd. Split successful carapace execution
+  from final publication: DerivedCarapace carries sealed scutes, their live
+  read-only chain and the exclusive child reaper to the next stage. Standalone
+  carapace publication consumes the same result; no duplicate executor is added.
+- Firmware with implicit tools now executes on that newly derived chain. An
+  explicit tool reference closes the output chain and activates the requested
+  cached tool chain, retaining immutable produced bytes for publication. Both
+  paths receive CARAPACE from the final output root, never the alternate tool.
+  The same reaper transfers across stages instead of reinstalling supervision.
+- Paired firmware assembly appends the successful produced scutes to the selected
+  output base with ordered parent checks, then publishes the replacement pair.
+  Inventory binds produced origins. DTB transformation occurs after firmware
+  production; inherited firmware is not prematurely transformed before replacement.
+- v204 full normal VM suite passes. Actual combined CLI builds cover implicit
+  tools (new file visible), explicit original tools (new file absent), PMI bytes
+  equal to the resulting CARAPACE root, different input/output roots, exactly one
+  new scute, correct inventory origins, and successful output-chain remounts.
+  Retained carapace content survives; disposable firmware files do not. A missing
+  firmware output after successful derivation prevents publication and leaves no
+  runtime attachment.
+- Full host tests pass (86 library tests, integration suites, 51 doctests), with
+  root/fixture strict Clippy. Evidence/source/executable hashes preserved in v204.
+  M6 remains zero adherence passes. Bootstrap coordination, enabled networking,
+  remaining output/failure/variable-expansion matrix, runtime acquisition faults,
+  ORAS interoperability and the three-review gate remain open.

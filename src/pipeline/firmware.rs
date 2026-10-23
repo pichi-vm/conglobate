@@ -28,14 +28,6 @@ impl<'a> FirmwareBuild<'a> {
         if recipe.bootstrap().is_some() {
             return Err(BuildError::Unsupported("bootstrap coordinator"));
         }
-        if recipe
-            .carapace()
-            .is_some_and(|s| !s.directives().is_empty())
-        {
-            return Err(BuildError::Unsupported(
-                "combined carapace/firmware coordinator",
-            ));
-        }
         let stage = recipe
             .firmware()
             .ok_or(BuildError::Unsupported("missing firmware stage"))?;
@@ -89,12 +81,39 @@ impl<'a> FirmwareBuild<'a> {
         workspace: &Workspace,
         runtime: &Runtime<'_>,
     ) -> Result<CompletedImage, BuildError> {
-        let active = self
-            .tools
-            .chain()
-            .expect("validated tools")
-            .assemble(self.build.cache(), workspace)
-            .map_err(Self::error)?;
+        let (active, produced, root, reaper) = if self
+            .build
+            .captured()
+            .plan()
+            .recipe()
+            .carapace()
+            .is_some_and(|stage| !stage.directives().is_empty())
+        {
+            let derived = CarapaceBuild::new(self.build)?.run_layers(workspace, runtime)?;
+            let root = Some(*derived.active.root());
+            let tools = if self.stage.from().is_some() {
+                derived.active.close().map_err(Self::error)?;
+                self.tools
+                    .chain()
+                    .expect("validated tools")
+                    .assemble(self.build.cache(), workspace)
+                    .map_err(Self::error)?
+            } else {
+                derived.active
+            };
+            (tools, derived.scutes, root, derived.reaper)
+        } else {
+            (
+                self.tools
+                    .chain()
+                    .expect("validated tools")
+                    .assemble(self.build.cache(), workspace)
+                    .map_err(Self::error)?,
+                Vec::new(),
+                self.base.and_then(|base| base.chain()).map(|c| *c.root()),
+                ChildReaper::install()?,
+            )
+        };
         let snapshot = Mapping::<Created>::create()?
             .snapshot(
                 &active,
@@ -111,14 +130,13 @@ impl<'a> FirmwareBuild<'a> {
             IdRange::new(100000, 65536)?,
             IdRange::new(100000, 65536)?,
         );
-        let root = self.base.and_then(|base| base.chain()).map(|c| c.root());
         let completed = sandbox
             .directives::<Volume<'_, '_, '_, Mounted>>(
                 volume,
-                ChildReaper::install()?,
+                reaper,
                 self.build.captured().context(),
                 self.stage.directives(),
-                root,
+                root.as_ref(),
             )
             .map_err(|failure| CarapaceBuild::reject(*failure))?;
         let (volume, _reaper) = completed.into_parts();
@@ -148,9 +166,10 @@ impl<'a> FirmwareBuild<'a> {
             self.build.cache(),
             self.base.map(|b| b.image()),
             &pair,
+            &produced,
             request.output(),
         )?;
-        let inventory = Inventory::from_build(request, self.build, &image, pair.dtb(), &[])?;
+        let inventory = Inventory::from_build(request, self.build, &image, pair.dtb(), &produced)?;
         inventory.check_output(&image)?;
         Ok(CompletedImage { image, inventory })
     }

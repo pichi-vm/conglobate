@@ -321,7 +321,17 @@ image or the unchanged inherited output base with its firmware pair replaced.
 The tool image is never implicit output ancestry. v203 checks both paths, root
 and inventory semantics, declared-output symlinks and missing-file rejection.
 
-Combining newly produced carapace layers with firmware remains an explicit
-unsupported path until the shared pipeline composition is connected. Bootstrap
-coordination, enabled networking and the remaining qualification/gate work are
-also still open; the full stage matrix has not been accepted.
+Composition with newly produced carapace layers is now implemented as described
+below. Bootstrap coordination, enabled networking and the remaining qualification/
+gate work are still open; the full stage matrix has not been accepted.
+
+## Derived carapace followed by firmware
+
+DerivedCarapace transfers the successful sealed layers, active read-only chain
+and reaper into firmware execution. Implicit tools use this chain; explicit tools
+use their pinned input chain while CARAPACE still denotes the output root. Final
+assembly retains only the selected base and produced carapace layers, replaces
+the firmware pair, and records produced origins. No intermediate image is
+published and no inherited DTB transform precedes a replacement firmware stage.
+v204 verifies both tool-selection modes, root binding, remounted output contents,
+disposable firmware changes and failure after successful carapace derivation.

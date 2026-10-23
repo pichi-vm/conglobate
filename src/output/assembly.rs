@@ -106,6 +106,7 @@ impl AssembledImage {
         cache: &Cache,
         base: Option<&ResolvedImage>,
         pair: &crate::firmware::FinalizedFirmware<'_>,
+        scutes: &[std::sync::Arc<crate::storage::SealedScute<'_>>],
         destination: &std::path::Path,
     ) -> Result<Self, AssemblyFailure> {
         let staged = StagedDirectory::create(destination).map_err(AssemblyFailure::Before)?;
@@ -146,6 +147,24 @@ impl AssembledImage {
                     "artifactType":pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                     "config":pichi_artifact::ConfigDescriptor::canonical(),"layers":[]})
             };
+            let mut parent = base.and_then(|image| image.manifest().carapace_verity_hash());
+            for scute in scutes {
+                if parent.as_ref() != Some(scute.parent()) {
+                    return Err(CacheError::Invalid(
+                        "produced scute parent differs from firmware output base",
+                    ));
+                }
+                staged.store_scute(scute)?;
+                manifest["layers"]
+                    .as_array_mut()
+                    .ok_or(CacheError::Invalid("missing layers"))?
+                    .push(serde_json::to_value(pichi_artifact::Layer::Scute(
+                        scute.descriptor().clone(),
+                    ))?);
+                parent = Some(*scute.root());
+                manifest["annotations"]["dev.pichi.carapace.verity.hash"] =
+                    hex::encode(scute.root()).into();
+            }
             let pmi = pair.pmi_descriptor();
             let digest = pmi
                 .digest

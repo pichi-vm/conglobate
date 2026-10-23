@@ -23,14 +23,19 @@ pub(super) struct CarapaceBuild<'a> {
     base: &'a CheckedImage,
     directives: &'a [Directive],
 }
+/// Successful retained layers and their live read-only chain, ready for the next
+/// stage. The reaper transfers with the build instead of being reinstalled.
+#[derive(Debug)]
+pub(super) struct DerivedCarapace<'s, 'w> {
+    pub(super) active: crate::storage::ReadOnlyChain<'s, 'w>,
+    pub(super) scutes: Vec<Arc<SealedScute<'w>>>,
+    pub(super) reaper: ChildReaper,
+}
 impl<'a> CarapaceBuild<'a> {
     pub(super) fn new(build: &'a ResolvedBuild) -> Result<Self, BuildError> {
         let recipe = build.captured().plan().recipe();
         if recipe.bootstrap().is_some() {
             return Err(BuildError::Unsupported("bootstrap coordinator"));
-        }
-        if recipe.firmware().is_some() {
-            return Err(BuildError::Unsupported("firmware coordinator"));
         }
         let stage = recipe
             .carapace()
@@ -74,12 +79,11 @@ impl<'a> CarapaceBuild<'a> {
             }
         }
     }
-    fn derive(
+    pub(super) fn run_layers<'w>(
         &self,
-        request: &BuildRequest,
-        workspace: &Workspace,
+        workspace: &'w Workspace,
         runtime: &Runtime<'_>,
-    ) -> Result<CompletedImage, BuildError> {
+    ) -> Result<DerivedCarapace<'a, 'w>, BuildError> {
         let chain = self.base.chain().expect("validated root volume");
         let mut active = chain
             .assemble(self.build.cache(), workspace)
@@ -129,6 +133,23 @@ impl<'a> CarapaceBuild<'a> {
             active = active.extend(Arc::clone(&scute)).map_err(Self::error)?;
             produced.push(scute);
         }
+        Ok(DerivedCarapace {
+            active,
+            scutes: produced,
+            reaper,
+        })
+    }
+    fn derive(
+        &self,
+        request: &BuildRequest,
+        workspace: &Workspace,
+        runtime: &Runtime<'_>,
+    ) -> Result<CompletedImage, BuildError> {
+        let DerivedCarapace {
+            active,
+            scutes: produced,
+            reaper: _reaper,
+        } = self.run_layers(workspace, runtime)?;
         active.close().map_err(Self::error)?;
         let source = self
             .base
