@@ -29,9 +29,10 @@ impl DiscardStorage for BootstrapVolumes<'_, '_, '_, Unmounted> {
         match (tool, output) {
             (Ok(()), Ok(())) => Ok(()),
             (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error),
-            (Err(tool), Err(output)) => Err(BuildError::execution(format!(
-                "tool cleanup: {tool}; output cleanup: {output}"
-            ))),
+            (Err(tool), Err(output)) => Err(BuildError::StoragePairCleanup {
+                tool: Box::new(tool),
+                output: Box::new(output),
+            }),
         }
     }
 }
@@ -73,12 +74,6 @@ impl<R: DirectiveStorage> StageFailure<'_, R> {
                 .map_err(BuildError::execution)
                 .and_then(|(_, storage, _)| storage.discard()),
         };
-        match cleanup {
-            Ok(()) => BuildError::execution(primary),
-            Err(error) => BuildError::OperationAndCleanup {
-                operation: Box::new(BuildError::execution(primary)),
-                cleanup: Box::new(error),
-            },
-        }
+        BuildError::execution(primary).with_cleanup(cleanup)
     }
 }

@@ -5655,3 +5655,17 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   Evidence: preservation/m7-review/terminal-runtime-errors/. No new VM run.
 - Findings remain open for remaining stage/formatter/storage string erasure and
   diagnostic taxonomy. No complete adherence pass; M4 remains 0/3.
+
+### Preserve formatter and paired cleanup diagnostics
+
+- Previous turn committed typed runtime error preservation. Continued the same
+  open findings through formatter rejection and paired storage discard.
+- Formatter launch/completion/cancelled-wait causes now retain FailureDiagnostics;
+  formatter cleanup retains its concrete retry owner. Tool/output cleanup errors
+  retain separate named branches. Cleanup attempt ordering is unchanged and
+  errors still require VM disposal; no successful-build receipt is created.
+- 136 library tests, strict all-target Clippy and lifecycle compilation passed.
+  New diagnostic tests inspect every retained cause and successful cleanup's
+  unwrapped primary error. No new privileged validation or full adherence pass.
+- Evidence: preservation/m7-review/formatter-error-structure/. errors-api-002/003
+  remain open for staging, wait, stage and storage conversion. M4 remains 0/3.

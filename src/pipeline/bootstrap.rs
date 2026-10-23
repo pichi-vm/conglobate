@@ -89,7 +89,7 @@ impl<'a> BootstrapBuild<'a> {
             .map_err(Self::error)?;
         let formatted = self.format(formatter, output)?;
         let (formatter, output, receipt) = formatted.into_recorded_parts();
-        formatter.close().map_err(Self::error)?;
+        formatter.close().map_err(BuildError::from)?;
         let active = self
             .tools
             .chain()
@@ -250,7 +250,7 @@ impl<'a> BootstrapBuild<'a> {
         }
     }
     fn reject_format(
-        error: impl std::fmt::Display,
+        error: impl Into<crate::storage::FailureDiagnostics>,
         formatter: crate::formatter::FormatterRuntime,
         snapshot: crate::storage::SnapshotMapping<'_, '_>,
     ) -> BuildError {
@@ -258,16 +258,12 @@ impl<'a> BootstrapBuild<'a> {
             .close()
             .map_err(Self::error)
             .and_then(|closed| closed.detach().map_err(Self::error));
-        let runtime = formatter.close();
-        let mut diagnostic = error.to_string();
-        if let Err(error) = storage {
-            diagnostic.push_str(&format!("; formatter storage cleanup: {error}"));
-        }
-        if let Err(error) = runtime {
-            diagnostic.push_str(&format!("; formatter runtime cleanup: {error}"));
-        }
-        Self::error(diagnostic)
+        let runtime = formatter.close().map_err(BuildError::from);
+        BuildError::Formatter(error.into())
+            .with_cleanup(storage.map(|_| ()))
+            .with_cleanup(runtime)
     }
+
     fn error(error: impl std::fmt::Display) -> BuildError {
         BuildError::Execution(error.to_string())
     }

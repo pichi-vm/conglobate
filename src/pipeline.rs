@@ -43,6 +43,16 @@ pub enum BuildError {
     Unsupported(&'static str),
     #[error("build execution: {0}")]
     Execution(String),
+    #[error("formatter execution: {0}")]
+    Formatter(#[source] crate::storage::FailureDiagnostics),
+    #[error(transparent)]
+    FormatterCleanup(#[from] crate::formatter::FormatterCleanupFailure),
+    #[error("tool cleanup: {tool}; output cleanup: {output}")]
+    StoragePairCleanup {
+        #[source]
+        tool: Box<BuildError>,
+        output: Box<BuildError>,
+    },
     #[error("build runtime: {0}")]
     RuntimeCreate(#[source] std::io::Error),
     #[error("build runtime cleanup: {0}")]
@@ -59,6 +69,15 @@ pub enum BuildError {
     RootRequired,
 }
 impl BuildError {
+    fn with_cleanup(self, cleanup: Result<(), Self>) -> Self {
+        match cleanup {
+            Ok(()) => self,
+            Err(cleanup) => Self::OperationAndCleanup {
+                operation: Box::new(self),
+                cleanup: Box::new(cleanup),
+            },
+        }
+    }
     fn execution(error: impl std::fmt::Display) -> Self {
         Self::Execution(error.to_string())
     }
@@ -196,5 +215,64 @@ impl CompletedImage {
     pub(crate) fn publish(self) -> Result<(), BuildError> {
         self.image.publish_inventory(&self.inventory)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BuildError;
+    use crate::storage::FailureDiagnostics;
+    use std::io;
+
+    #[test]
+    fn formatter_rejection_retains_history_and_independent_cleanup_errors() {
+        let history = FailureDiagnostics::from(io::Error::from_raw_os_error(5))
+            .followed_by(io::Error::from_raw_os_error(110).into());
+        let failure = BuildError::Formatter(history)
+            .with_cleanup(Err(BuildError::StoragePairCleanup {
+                tool: Box::new(BuildError::Io(io::Error::from_raw_os_error(16))),
+                output: Box::new(BuildError::Io(io::Error::from_raw_os_error(13))),
+            }))
+            .with_cleanup(Err(BuildError::Io(io::Error::from_raw_os_error(28))));
+        let message = failure.to_string();
+        let BuildError::OperationAndCleanup { operation, cleanup } = failure else {
+            panic!("runtime cleanup cause lost");
+        };
+        let BuildError::Io(runtime) = *cleanup else {
+            panic!("runtime cause erased")
+        };
+        assert_eq!(runtime.raw_os_error(), Some(28));
+        let BuildError::OperationAndCleanup { operation, cleanup } = *operation else {
+            panic!("storage cleanup causes lost");
+        };
+        let BuildError::StoragePairCleanup { tool, output } = *cleanup else {
+            panic!("independent storage causes erased");
+        };
+        for (failure, code) in [(tool, 16), (output, 13)] {
+            let BuildError::Io(source) = *failure else {
+                panic!("storage cause erased")
+            };
+            assert_eq!(source.raw_os_error(), Some(code));
+        }
+        let BuildError::Formatter(history) = *operation else {
+            panic!("formatter cause erased");
+        };
+        assert_eq!(history.operation().raw_os_error(), Some(5));
+        assert_eq!(history.cleanup()[0].raw_os_error(), Some(110));
+        for code in [5, 110, 16, 13, 28] {
+            assert!(message.contains(&io::Error::from_raw_os_error(code).to_string()));
+        }
+    }
+
+    #[test]
+    fn successful_cleanup_does_not_wrap_formatter_failure() {
+        let failure = BuildError::Formatter(io::Error::from_raw_os_error(5).into())
+            .with_cleanup(Ok(()))
+            .with_cleanup(Ok(()));
+        let BuildError::Formatter(history) = failure else {
+            panic!("successful cleanup must preserve the formatter variant");
+        };
+        assert_eq!(history.operation().raw_os_error(), Some(5));
+        assert!(history.cleanup().is_empty());
     }
 }
