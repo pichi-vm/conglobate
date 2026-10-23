@@ -1,0 +1,12 @@
+{
+  "checks": {
+    "FORMATTER_STALL_ENTERED": true,
+    "FORMATTER_DEADLINE_CANCEL_REAP_PASS": true,
+    "FORMATTER_EXHAUSTED_SNAPSHOT_REJECTED_PASS": true,
+    "FORMATTER_FAILURE_RESOURCES_RELEASED_PASS": true,
+    "exit_zero": true,
+    "vm_powered_off": true
+  },
+  "passed": true,
+  "full_lifecycle_qualified": false
+}

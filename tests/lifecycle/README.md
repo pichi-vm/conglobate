@@ -19,12 +19,26 @@ CARGO_BUILD_JOBS=2 TMPDIR=/var/tmp/conglobate-rewrite-tmp \
   cargo +stable check --manifest-path tests/lifecycle/Cargo.toml --locked
 ```
 
-Compilation is not validation. A maintained disposable-VM runner and fresh runs
-are still required before these migrated cases qualify the current implementation.
-The source expects a trusted formatter runtime manifest, a copy of this binary
-as `/usr/bin/formatter-stall`, guest-only device-mapper modules and the marker.
-The historical runner documents the packaging precedent; it is not compatible
-with this new binary without adaptation.
+Compilation is not validation. Run the maintained disposable-VM runner with a
+new output directory and a qualified local kernel/module tree:
+
+```sh
+python3 tests/lifecycle/run.py /var/tmp/NEW-LIFECYCLE-RUN \
+  --kernel /path/to/vmlinuz --kernel-release RELEASE --module-root /
+```
+
+Use separate new directories with `--drop running` or `--drop wait` for the
+terminal retention cases. The runner stages trusted host formatter tools and
+the fixture, builds a disconnected native amd64/KVM guest, and preserves source,
+input hashes, kernel identity, serial, raw status and assessment. Success requires
+case assertions, status-disk exit zero and VM poweroff. It does not run BPF or
+mount/device operations on the host. These trusted-formatter tests do not exercise
+command labeling, so no LSM exception is needed for this subset.
+
+The runner currently reuses the historical rootless GuestRuntime constructor;
+that dependency must be migrated before M8 retirement. The original runner and
+all historical results remain unchanged. Large run artifacts must be durably
+archived before deletion; a temporary run path is not sufficient preservation.
 
 The original harness and evidence remain intact. It currently fails to compile
 against removed policy/pin APIs. Remaining command/network/bootstrap/publication

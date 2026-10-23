@@ -4489,3 +4489,21 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Network fixtures formerly read namespace handles through policy-specific pins.
   Do not restore pins or widen raw-descriptor exposure solely for tests; adapt
   those fixtures to current production ownership interfaces. M4 remains 0/3.
+
+### Maintained formatter guest runner and fresh cancellation/exhaustion pass
+
+- Added tests/lifecycle/run.py: rootless local build/packaging, disconnected
+  native amd64/KVM guest, trusted formatter runtime manifests, raw supervisor
+  status disk and required case markers plus guest poweroff. Captures actual
+  source, file hashes, kernel identity and command. No host mount/BPF/device work.
+- maintained-formatter-v1 passes fixed setup deadline cancellation and child
+  reaping, exhausted snapshot rejection, explicit resource release, exit zero
+  and VM poweroff. Expected mke2fs I/O error is the exhaustion negative, not a
+  successful formatted output. Small complete evidence preserved; large assets
+  explicitly not durably archived. This subset needs no labeling exception.
+- Drop-wait retention run is live (42448); not yet claimed passing. Immediate
+  drop-running assessment must not require child scheduling before abandonment;
+  its own retained-storage assertion is the relevant boundary. No sync sleeps.
+- Runner still imports the historical rootless GuestRuntime constructor; migrate
+  it before M8. Broad command/network faults and all implementation adherence
+  gates remain outstanding. This run is evidence, not an adherence pass.
