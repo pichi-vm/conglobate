@@ -383,7 +383,7 @@ impl HelperInvocation {
                     .map_err(|error| format!("prepare command volume: {error}"))?;
                 self.cutoff.deadline()?;
                 let view = view
-                    .attach(MountPoint::create(&parent)?)
+                    .attach(MountPoint::open(&parent)?)
                     .map_err(|e| e.to_string())?;
                 let entry = program.command(Self {
                     cutoff: self.cutoff,

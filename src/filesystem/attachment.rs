@@ -7,37 +7,63 @@ use std::{
     fs::{self, File},
     io,
     marker::PhantomData,
-    os::{fd::AsRawFd, unix::fs::PermissionsExt},
-    path::Path,
+    os::{fd::AsRawFd, unix::fs::MetadataExt},
+    path::{Path, PathBuf},
 };
 
-/// Private empty attachment point, anchored to a pinned tmpfs parent descriptor.
-/// The trusted caller must keep other processes from mutating that parent.
+/// Existing supervisor-owned attachment directory. The helper overlays it only
+/// in its private mount namespace; it creates no shared directory that could
+/// outlive cancellation. The supervisor retains the underlying directory and
+/// must prevent mutation of its parent until this helper is quiescent.
 #[derive(Debug)]
 pub struct MountPoint {
-    directory: tempfile::TempDir,
-    _parent: File,
+    parent: File,
+    name: std::ffi::OsString,
 }
 impl MountPoint {
-    pub fn create(parent: &Path) -> io::Result<Self> {
-        let parent = File::open(parent)?;
-        if !parent.metadata()?.is_dir() || rustix::fs::fstatfs(&parent)?.f_type != 0x0102_1994 {
-            return Err(io::Error::other("mount point requires a tmpfs directory"));
+    pub fn open(path: &Path) -> io::Result<Self> {
+        let name = path.file_name().ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "attachment requires a directory name",
+            )
+        })?;
+        let parent = File::from(rustix::fs::open(
+            path.parent()
+                .ok_or_else(|| io::Error::other("attachment parent missing"))?,
+            rustix::fs::OFlags::RDONLY
+                | rustix::fs::OFlags::DIRECTORY
+                | rustix::fs::OFlags::CLOEXEC
+                | rustix::fs::OFlags::NOFOLLOW,
+            rustix::fs::Mode::empty(),
+        )?);
+        let target = File::from(rustix::fs::openat(
+            &parent,
+            name,
+            rustix::fs::OFlags::PATH
+                | rustix::fs::OFlags::DIRECTORY
+                | rustix::fs::OFlags::CLOEXEC
+                | rustix::fs::OFlags::NOFOLLOW,
+            rustix::fs::Mode::empty(),
+        )?);
+        for directory in [&parent, &target] {
+            let metadata = directory.metadata()?;
+            if metadata.uid() != 0
+                || metadata.mode() & 0o022 != 0
+                || rustix::fs::fstatfs(directory)?.f_type != 0x0102_1994
+            {
+                return Err(io::Error::other(
+                    "attachment requires protected root-owned tmpfs directories",
+                ));
+            }
         }
-        let directory = tempfile::Builder::new()
-            .prefix("conglobate-mount-")
-            .permissions(fs::Permissions::from_mode(0o700))
-            .tempdir_in(format!("/proc/self/fd/{}", parent.as_raw_fd()))?;
         Ok(Self {
-            directory,
-            _parent: parent,
+            parent,
+            name: name.to_owned(),
         })
     }
-    fn close(self) -> io::Result<()> {
-        let Self { directory, _parent } = self;
-        let result = directory.close();
-        drop(_parent);
-        result
+    fn path(&self) -> PathBuf {
+        PathBuf::from(format!("/proc/self/fd/{}", self.parent.as_raw_fd())).join(&self.name)
     }
 }
 
@@ -80,38 +106,38 @@ pub enum AttachmentFailure<'ns> {
     },
 }
 #[derive(Debug, thiserror::Error)]
-pub enum UnmountFailure<'ns> {
-    #[error("unmount failed: {source}")]
-    Mounted {
-        source: io::Error,
-        recovery: UnmountRecovery<'ns>,
-    },
-    #[error("mount point cleanup failed after unmount: {0}")]
-    Cleanup(io::Error),
+#[error("unmount failed: {source}")]
+pub struct UnmountFailure<'ns> {
+    source: io::Error,
+    recovery: UnmountRecovery<'ns>,
 }
 #[derive(Debug)]
-pub struct UnmountRecovery<'ns> {
+struct UnmountRecovery<'ns> {
     scope: &'ns crate::isolation::PrivateMountNamespace,
     lease: AttachmentLease,
     _thread: PhantomData<std::rc::Rc<()>>,
 }
 impl UnmountFailure<'_> {
     pub fn cleanup(self) -> Result<(), Self> {
-        match self {
-            Self::Mounted { recovery, .. } => recovery.lease.close(recovery.scope),
-            error => Err(error),
-        }
+        self.recovery.lease.close(self.recovery.scope)
     }
 }
 impl<'ns> Mount<'ns, Idmapped> {
     /// Attach in the trusted builder's private mount namespace. No command may
     /// run until its separate containment and recovery protocol is established.
     pub fn attach(self, point: MountPoint) -> Result<Mount<'ns, Attached>, AttachmentFailure<'ns>> {
+        if let Err(source) = self._scope.verify_current() {
+            return Err(AttachmentFailure::Root {
+                source,
+                mount: self,
+                point,
+            });
+        }
         if let Err(source) = rustix::mount::move_mount(
             &self.resources.root,
             "",
             rustix::fs::CWD,
-            point.directory.path(),
+            point.path(),
             MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
         ) {
             return Err(AttachmentFailure::Root {
@@ -218,11 +244,10 @@ impl AttachmentLease {
     ) -> Result<(), UnmountFailure<'ns>> {
         let backing = self.backing.as_mut().expect("live attachment lease");
         if backing.output_namespace.is_some() {
-            if let Err(source) = rustix::mount::unmount(
-                backing.point.directory.path().join("mnt"),
-                UnmountFlags::empty(),
-            ) {
-                return Err(UnmountFailure::Mounted {
+            if let Err(source) =
+                rustix::mount::unmount(backing.point.path().join("mnt"), UnmountFlags::empty())
+            {
+                return Err(UnmountFailure {
                     source: source.into(),
                     recovery: UnmountRecovery {
                         lease: self,
@@ -233,10 +258,8 @@ impl AttachmentLease {
             }
             backing.output_namespace.take();
         }
-        if let Err(source) =
-            rustix::mount::unmount(backing.point.directory.path(), UnmountFlags::empty())
-        {
-            return Err(UnmountFailure::Mounted {
+        if let Err(source) = rustix::mount::unmount(backing.point.path(), UnmountFlags::empty()) {
+            return Err(UnmountFailure {
                 source: source.into(),
                 recovery: UnmountRecovery {
                     lease: self,
@@ -245,23 +268,18 @@ impl AttachmentLease {
                 },
             });
         }
-        let backing = self.backing.take().expect("live attachment lease");
-        backing.point.close().map_err(UnmountFailure::Cleanup)
+        drop(self.backing.take().expect("live attachment lease"));
+        Ok(())
     }
 }
 impl Drop for AttachmentLease {
     fn drop(&mut self) {
         if let Some(backing) = self.backing.take() {
-            match rustix::mount::unmount(backing.point.directory.path(), UnmountFlags::DETACH) {
-                Ok(()) => {
-                    if let Err(error) = backing.point.close() {
-                        eprintln!("mount point cleanup: {error}");
-                    }
-                }
+            match rustix::mount::unmount(backing.point.path(), UnmountFlags::DETACH) {
+                Ok(()) => drop(backing),
                 Err(error) => {
-                    // Never recurse through a still-attached writable filesystem.
-                    // Preserve the namespace pin too. Durable crash anchoring is
-                    // a separate prerequisite before command admission.
+                    // Retain attachment and namespace descriptors on failure.
+                    // The supervisor must prove quiescence or dispose of the VM.
                     eprintln!("attachment retained after cleanup failure: {error}");
                     std::mem::forget(backing);
                 }
@@ -272,7 +290,7 @@ impl Drop for AttachmentLease {
 
 /// A mapped view retained by an executing trusted setup child. It cannot be
 /// explicitly unmounted until that child is reaped. Descendant containment and
-/// policy lifetime remain the enclosing step's responsibility.
+/// storage lifetime remain the enclosing step's responsibility.
 ///
 /// ```compile_fail
 /// use conglobate::filesystem::{Mount, InUse};
@@ -329,7 +347,7 @@ impl<'ns> Mount<'ns, Attached> {
             .as_ref()
             .expect("attached mount")
             .point;
-        setup.current_dir(point.directory.path());
+        setup.current_dir(point.path());
         let child = match setup.spawn() {
             Ok(child) => child,
             Err(source) => {

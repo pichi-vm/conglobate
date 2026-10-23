@@ -4205,3 +4205,26 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   session 78027 at this checkpoint). Its scope predates this new failure test;
   present the failure evidence during source-grounded consensus reconciliation.
   All reopened gates remain 0/3. No complete sandbox qualification is claimed.
+
+
+### Cancellation-safe receiver attachment
+
+- Replaced helper-created shared temporary mountpoint with an overlay on the
+  existing supervisor-owned runtime volumes directory in the helper's private
+  mount namespace. MountPoint opens a protected root-owned tmpfs target and
+  parent; attach verifies the private namespace is current. No extra tmpfs,
+  shared-directory creation, destructor-dependent unlink or recursive sweep.
+- Explicit normal unmount remains fallible; cancellation removes private mounts
+  through namespace death while the supervisor retains storage through drain.
+  Removed the obsolete post-unlink failure variant and made recovery private.
+- Timeout regression now passes cleanup and no-publication checks (cli-timeout-v2).
+  Actual two-root bootstrap/remount/sealing and independent graph/inventory
+  assessment pass (bootstrap-attachment-v2); missing-policy rejection retains
+  its diagnostic, completes cleanup and publishes nothing (label-attachment-off-v1).
+  Prior timeout failure remains preserved. VM source snapshots record exact
+  versions; timeout run precedes the private recovery-type cleanup, bootstrap
+  precedes its visibility-only warning correction, final negative uses both.
+- 192 rootless tests and 50 doctests pass; final strict all-target Clippy passes.
+  Evidence and initial compiler warning are retained. No adherence pass inferred.
+  M2/M4–M6 remain 0/3. Claude review session 78027 remains active at this
+  checkpoint; its follow-up must include the timeout failure and this fix.

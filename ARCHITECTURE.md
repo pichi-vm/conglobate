@@ -52,6 +52,15 @@ Single-root positive/negative and two-root bootstrap CLI regressions are recorde
 in preservation/m7-review/label-unpinned-{on,off}-v1 and bootstrap-unpinned-v1;
 broad failure, confinement and platform qualification remain outstanding.
 
+The receiver attaches its mapped root over the existing supervisor-owned runtime
+volumes directory only in its private mount namespace. It must not create a
+shared attachment directory whose deletion depends on its destructor running.
+Timeout cancellation can kill every contained helper. Private mount teardown
+then removes the overlay without leaving shared directory entries; supervisor
+storage owners retain the underlying volumes until descendant quiescence.
+Normal helper completion explicitly unmounts its views. No recursive cleanup
+sweep or additional tmpfs is required.
+
 After descendant drain, release process-domain records and namespace resources,
 then unmount/finalize storage. There is no activation, disable, policy-close,
 installation-retry or policy-identity-release state. Cgroup joining remains a
