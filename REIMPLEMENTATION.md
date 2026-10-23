@@ -3183,3 +3183,34 @@ rules rather than silently shrinking acceptance criteria.
 - M6 remains zero adherence passes. Next critical integration is CLI ownership
   of runtime mount/policy/cgroup paths and command-stage execution, followed by
   completed-stage inventory binding and publication. No full CLI build claimed.
+
+### M6 build-owned runtime control mounts
+
+- Previous goal turn progressed in 9c39c04. Added storage::Runtime to own a
+  protected attachment of an exclusive subdirectory of the existing workspace
+  tmpfs, a private bpffs mount, a cgroup2 view with an exclusive build subtree,
+  and the recovery lease. RuntimePaths borrows the owner and provides canonical
+  paths to helpers; cleanup retains the original parent descriptor. No second
+  workspace tmpfs or command-visible control paths are introduced.
+- Acquisition uses exclusive temporary directories for both backing and target;
+  a collision cannot authorize removal of someone else's entry. Setup uses a
+  fixed budget; consuming close and failed cleanup preserve a fixed deadline.
+  Recovery/volume entries, policy pins and nonempty cgroup subtrees block cleanup.
+  Only empty-directory removal and non-lazy unmounts are used. Unfinished owners
+  retain mounts until VM disposal. A compile-fail test prevents closing Runtime
+  while its sandbox paths are borrowed.
+- v197 caught default bpffs permissions rejected by existing policy validation;
+  archived failure before correcting the new mount to mode 0700. v198 passed the
+  full normal suite. Source review then improved exclusive backing-directory
+  acquisition; v199 validates the final implementation and also passes.
+- The actual two-command sandbox sequence and command preparation failure paths
+  now use Runtime instead of fixture-owned control mounts. Tests also reject an
+  unprotected parent and prove recovery/volume/cgroup entries prevent close,
+  remain present after rejection, and permit explicit cleanup after removal.
+- Full host tests pass (82 library tests, integration suites, 51 doctests); root
+  and fixture strict Clippy pass. All three VM runs, sources, contexts, cache
+  fixtures and provenance are preserved under evidence/v197 through v199.
+- M6 remains zero adherence passes. Runtime acquisition fault injection and the
+  CLI coordinator are still outstanding. Next connect this owner to carapace
+  directives, finalized storage, produced-origin inventory and publication;
+  firmware and enabled networking remain required. No complete CLI build claim.

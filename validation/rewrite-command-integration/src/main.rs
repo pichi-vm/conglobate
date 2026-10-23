@@ -5,8 +5,8 @@ mod bootstrap;
 mod finalization;
 mod formatter;
 mod formatter_failures;
-mod readiness;
 mod pipeline;
+mod readiness;
 mod sealed;
 use conglobate::{
     anchor::{FilesystemPin, RecoveryDirectory},
@@ -296,8 +296,15 @@ impl Integration {
                     | "volume-supervisor-sandbox-mount-failure"
                     | "volume-supervisor-sandbox-namespace-failure"
             ) {
-                use conglobate::step::{CommandSandbox, SandboxDirectories};
-                let mut volume = Volume::<Unmounted>::in_init_namespace(snapshot, &lease)
+                use conglobate::step::CommandSandbox;
+                let runtime_parent = Path::new("/work/runtime-parent");
+                fs::create_dir(runtime_parent)?;
+                fs::set_permissions(runtime_parent, fs::Permissions::from_mode(0o700))?;
+                let runtime = conglobate::storage::Runtime::create(&workspace, runtime_parent)
+                    .map_err(|e| e.to_string())?;
+                let runtime_paths = runtime.paths()?;
+                let lease = runtime.recovery();
+                let mut volume = Volume::<Unmounted>::in_init_namespace(snapshot, lease)
                     .map_err(|e| e.to_string())?;
                 if args[1] == "volume-supervisor-sandbox" {
                     assert!(
@@ -323,12 +330,7 @@ impl Integration {
                 }
                 let sandbox = CommandSandbox::new(
                     HelperProgram::current()?,
-                    SandboxDirectories::new(
-                        &lease,
-                        Path::new("/work"),
-                        Path::new("/work/pins"),
-                        Path::new("/work/cgroups"),
-                    ),
+                    runtime_paths.sandbox(),
                     IdRange::new(100000, 65536)?,
                     IdRange::new(100000, 65536)?,
                 );
@@ -364,7 +366,9 @@ impl Integration {
                         .map_err(|e| e.to_string())?;
                     origin.close()?;
                     drop(sandbox);
-                    drop(lease);
+                    drop(runtime_paths);
+                    runtime.close().map_err(|e| e.to_string())?;
+                    fs::remove_dir(runtime_parent)?;
                     fs::remove_dir(recovery)?;
                     fs::remove_file(node)?;
                     assert!(
@@ -394,10 +398,10 @@ impl Integration {
                         .prepare(volume, reaper, &budget)
                         .map_err(|e| e.to_string())?;
                     let step = preparation
-                        .launch(command, budget.deadline(), Path::new("/work/cgroups"))
+                        .launch(command, budget.deadline(), runtime_paths.domains())
                         .map_err(|e| e.to_string())?;
                     let completed = step
-                        .execute(budget, "5s".parse()?, Path::new("/work/cgroups"))
+                        .execute(budget, "5s".parse()?, runtime_paths.domains())
                         .map_err(|e| e.to_string())?;
                     (volume, reaper) = completed.into_parts();
                     assert_eq!(fs::read_dir(recovery)?.count(), 0);
@@ -426,10 +430,37 @@ impl Integration {
                     .map_err(|e| e.to_string())?;
                 origin.close()?;
                 drop(sandbox);
-                drop(lease);
+                drop(runtime_paths);
+                runtime.close().map_err(|e| e.to_string())?;
+                fs::remove_dir(runtime_parent)?;
                 fs::remove_dir(recovery)?;
                 fs::remove_file(node)?;
                 println!("SANDBOX_TWO_STEP_PIPELINE_PASS");
+                println!("OWNED_RUNTIME_COMMAND_LIFECYCLE_PASS");
+                fs::create_dir(runtime_parent)?;
+                fs::set_permissions(runtime_parent, fs::Permissions::from_mode(0o777))?;
+                assert!(conglobate::storage::Runtime::create(&workspace, runtime_parent).is_err());
+                fs::set_permissions(runtime_parent, fs::Permissions::from_mode(0o700))?;
+                for location in ["recovery", "volumes", "domains"] {
+                    let runtime = conglobate::storage::Runtime::create(&workspace, runtime_parent)
+                        .map_err(|e| e.to_string())?;
+                    let paths = runtime.paths()?;
+                    let parent = match location {
+                        "recovery" => paths.recovery(),
+                        "volumes" => paths.volumes(),
+                        _ => paths.domains(),
+                    };
+                    let marker = parent.join("retained-control");
+                    fs::create_dir(&marker)?;
+                    drop(paths);
+                    let failure = runtime.close().unwrap_err();
+                    assert!(marker.is_dir());
+                    fs::remove_dir(&marker)?;
+                    failure.cleanup().map_err(|e| e.to_string())?;
+                    assert_eq!(fs::read_dir(runtime_parent)?.count(), 0);
+                }
+                fs::remove_dir(runtime_parent)?;
+                println!("OWNED_RUNTIME_CLEANUP_REFUSAL_PASS");
                 return Ok(());
             }
             let creator = HelperProgram::current()?.namespace_creator(setup_budget.cutoff()?)?;

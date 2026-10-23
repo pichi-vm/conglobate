@@ -260,3 +260,27 @@ complete output chain. The constructor is an artifact proof, not a successful
 recipe receipt. v195 exercises real two-layer assembly and wrong-parent rejection;
 normal VM lifecycle tests remain green. Next bind stage execution/sealing to this
 constructor and final DTB/inventory publication in the coordinator.
+
+## Runtime ownership integration
+
+The production storage::Runtime now owns a private attachment of a subdirectory
+of the existing Workspace tmpfs, its bpffs mount, a cgroup2 view with an exclusive
+build subtree, and the recovery lease. RuntimePaths borrows this owner and gives
+CommandSandbox its protected paths. Helpers receive canonical deployment paths;
+supervisor cleanup uses its pinned parent descriptor. This avoids passing
+/proc/self/fd paths whose meaning changes when helper descriptors are closed.
+
+Runtime close consumes the owner, checks empty recovery/volume directories and
+policy pins, removes the private cgroup subtree, and performs non-lazy unmounts.
+Cleanup errors retain the remaining mounts and original fixed deadline. Dropping
+unfinished ownership retains control state until dedicated VM disposal. Partial
+acquisition only owns exclusively-created directories; no second tmpfs or
+recursive removal of command state is introduced.
+
+The disposable-VM command fixture now uses this runtime for its two-command
+sandbox sequence and command preparation failure paths. Full CLI integration is
+still required: select an executable build, acquire Runtime under the deployment
+parent, execute directives on verified snapshots, preserve failures through
+cleanup, seal accepted storage, bind produced origins in inventory, and publish
+only after explicit runtime/context cleanup. Acquisition fault-injection coverage
+and full M6 review remain required; this is not a milestone adherence pass.
