@@ -82,7 +82,7 @@ names from the original design are not additional implementation requirements.
 | filesystem, formatter | Mount<S>, Ext4Format, CapturedFormatter, FormatterRuntime, FormatReceipt | Idmapped views and trusted, measured formatting with explicit cleanup |
 | step, domain, process | Step<S, R>, StepCompletion<R>, RecordedDomain, Supervision<S> | Retain authority through admission, cancellation, reaping and descendant drain |
 | execution, isolation | HelperProgram, HelperInvocation, UserNamespace<Mapped>, CommandReceiver, AssignedRoots, LabelProbe | Trusted helper entry, private mounts, mapped identity and restricted labeling admission |
-| network | CommandNetwork, CommandNetworking, ResolverInput, ResolverMount | Disabled default; captured external namespace handle and confined temporary resolver injection; environment owns NAT |
+| network | NetworkInput, NetworkNamespace, CommandNetwork, CommandNetworking, ResolverInput, ResolverMount | Disabled default; captured external namespace handle and confined temporary resolver injection; environment owns NAT |
 | copy | CopySources, CopySource, CopyDestination | Explicit selected context files; exclusive confined writes; no context mount |
 | pipeline | Pipeline, BootstrapBuild, CarapaceBuild, FirmwareBuild, CompletedImage | Sequence stages, retain completed outputs and reject publication on failure |
 | firmware | DtbContract | Validate declared firmware contract; pipeline firmware owner extracts the declared pair after writers stop |
@@ -300,7 +300,7 @@ must be migrated before they count as current lifecycle regression coverage.
 | Error and timeout cleanup | tests/distro/failures; src/isolation/gate.rs tests | Current nonzero/timeout and gate boundaries; receiver start-send failure, helper/supervisor death, blocked I/O and writeback fault coverage remain |
 | Confined COPY and firmware extraction | src/copy/destination.rs tests; tests/copy_modes.rs, copy_patterns.rs; src/pipeline/firmware.rs | Rootless path/metadata semantics; composed current-lifecycle execution coverage remains to migrate |
 | DTB values, regex and firmware measurement compatibility | src/transform.rs, firmware.rs tests; tests/templates.rs | Pure transform/contract assertions; actual firmware generation and boot remain separate |
-| NAT, DNS and resolver restoration | src/network; validation/rewrite-command-integration/src/network.rs | Maintained rootless component tests; old privileged harness is historical until migrated and rerun |
+| External network inputs, DNS and resolver restoration | src/network; tests/lifecycle/src/network.rs; tests/distro/network | Current namespace-input, DNS/restoration and wrong-type VM evidence in preservation/m7-review/external-network; ingress/IPv6 and full failure qualification remain outstanding |
 | Inventory and atomic self-contained publication | src/inventory.rs, output.rs, output/assembly.rs tests; tests/distro/bootstrap-labeling/verify.py | Current minimal emitted graph/canonical inventory; ORAS and full combination/failure reruns remain required |
 | Distro/platform qualification and preservation | tests/distro/{fedora,debian}, boot.py; REIMPLEMENTATION.md | Historical distro runs do not qualify changed lifecycle; Alpine/NixOS, arm64/confidential hardware and durable external-artifact recovery remain outstanding |
 
@@ -342,7 +342,7 @@ They describe their recorded revisions, not additional current requirements.
 Current dependency pins are authoritative in Cargo.toml/Cargo.lock; milestone
 acceptance and subsequent reopened gates are recorded in REIMPLEMENTATION.md.
 
-## Accepted external-network revision (implementation pending)
+## External-network implementation boundary
 
 The environment, optionally using systemd services, provisions the enabled build
 network and owns its namespace lifetime, veth/interfaces, addressing, routes, NAT
@@ -362,11 +362,13 @@ external network. No network namespace creator, allocation lease, address/route
 selection, NAT installation, or network teardown retry owner is needed for the
 enabled path. Resolver-mount cleanup and command descendant ownership remain.
 
-The old network implementation and tests are preserved as reference at e249a90;
-they are not evidence of the replacement boundary. Replace application-specific
-network infrastructure tests with input-validation, pinned-handle, command
-isolation, DNS/restoration and environment-retention tests. Provision NAT in the
-trusted disposable-VM fixture. Keep external namespaces out of output artifacts;
+The old network implementation and tests are preserved as reference at e249a90
+and preservation/m7-review/external-network/; they are not evidence of the
+replacement boundary. Maintained tests cover input validation and pinned handles
+in tests/lifecycle/src/network.rs, with command DNS/restoration, wrong-type
+rejection and environment retention in tests/distro/network/. The trusted
+disposable-VM fixture provisions NAT. Broader authority/failure qualification
+remains subject to the milestone gates. Keep external namespaces out of output artifacts;
 network step permissions remain recorded in inventory.
 
 Capture validates nsfs and distinct identity. A bind-mounted namespace's procfs

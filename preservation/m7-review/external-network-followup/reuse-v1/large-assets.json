@@ -1,0 +1,92 @@
+[
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/initramfs.gz",
+    "size": 235786841,
+    "sha256": "80853e0e1d3789b68abae833c457aaf56f9b96137d02290185aa5e1256a45a93",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/export.raw",
+    "size": 2147483648,
+    "sha256": "5b6d70b744458f0a3af79225aae7eef7419902737a194fc4095f46b1639a6581",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/artifact/oci-layout",
+    "size": 30,
+    "sha256": "18f0797eab35a4597c1e9624aa4f15fd91f6254e5538c1e0d193b2a95dd4acc6",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/artifact/inventory.cbor",
+    "size": 1570,
+    "sha256": "de66dc2e5a17d95557d47fb87acfb50479bea26e239d2bd99260a24661ebe1ce",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/artifact/index.json",
+    "size": 346,
+    "sha256": "f3d122acc8499524f4a717176d2abf5dcda08a48fef2327d7d4adc842299ac55",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/artifact/blobs/sha256/f0947b1071452d8b9818fbc814a7265fdbdf9fa7efda22af30a21b7321f1421b",
+    "size": 2768,
+    "sha256": "f0947b1071452d8b9818fbc814a7265fdbdf9fa7efda22af30a21b7321f1421b",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/artifact/blobs/sha256/42ccf4144d2581ed223c90875f231fc770edcc109a292d5b56ed0fdcfe02f8f4",
+    "size": 77824,
+    "sha256": "42ccf4144d2581ed223c90875f231fc770edcc109a292d5b56ed0fdcfe02f8f4",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/artifact/blobs/sha256/51e62ee345883800f1b1b5f60b9452109e5412485a71f7d2776eb05c4d3efbff",
+    "size": 77824,
+    "sha256": "51e62ee345883800f1b1b5f60b9452109e5412485a71f7d2776eb05c4d3efbff",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/artifact/blobs/sha256/ae8ccc26974a0765c578f9946c6b8bf0461026e10ca9442f00b55099157793bb",
+    "size": 163840,
+    "sha256": "ae8ccc26974a0765c578f9946c6b8bf0461026e10ca9442f00b55099157793bb",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/artifact/blobs/sha256/90e0a828d51043b88ceedb81ac954d67a8bdb9feafd939d2fa5818002dde0173",
+    "size": 4575232,
+    "sha256": "90e0a828d51043b88ceedb81ac954d67a8bdb9feafd939d2fa5818002dde0173",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/artifact/blobs/sha256/0c1bafbe4d3b976457e532d334c296615455699b1acca80d0f7ffff1e89f6bbd",
+    "size": 1250,
+    "sha256": "0c1bafbe4d3b976457e532d334c296615455699b1acca80d0f7ffff1e89f6bbd",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/artifact/blobs/sha256/5c16ca75aa25d0284d6a8194e66a4f9325549cebea848e4a61b8b5d376c263fb",
+    "size": 68509889,
+    "sha256": "5c16ca75aa25d0284d6a8194e66a4f9325549cebea848e4a61b8b5d376c263fb",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/artifact/blobs/sha256/fab8fdcfb83d3e22e8a960f137379cb6d8d482d1338e087d241ced8e254b0c47",
+    "size": 293433344,
+    "sha256": "fab8fdcfb83d3e22e8a960f137379cb6d8d482d1338e087d241ced8e254b0c47",
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/external-network-reuse-v1/artifact/blobs/sha256/20759e984177e7d35056cbbac4111b6fb53710048119f744d55182efdb63a515",
+    "size": 101,
+    "sha256": "20759e984177e7d35056cbbac4111b6fb53710048119f744d55182efdb63a515",
+    "durably_archived": false
+  }
+]

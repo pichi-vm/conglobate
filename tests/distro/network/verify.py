@@ -26,6 +26,8 @@ class NetworkEvidence:
         checks['runtime_cleanup'] = 'runtime cleanup:' not in serial and 'runtime retained' not in serial
         if self.mode in ('success', 'external', 'external-nat'):
             if self.mode == 'success':
+                checks['shared_enabled_namespace'] = '\nNETWORK_ENABLED_STEPS_REUSE_NAMESPACE_PASS\n' in serial
+                checks['restricted_command_capabilities'] = '\nNETWORK_COMMAND_CAPABILITIES_RESTRICTED_PASS\n' in serial
                 checks['resolver_restored'] = '\nNETWORK_RESOLVER_SYMLINK_AND_CONTENT_RESTORED_PASS\n' in serial
                 checks['following_offline_step'] = '\nNETWORK_FOLLOWING_OFFLINE_STEP_PASS\n' in serial
             checks['build_export'] = '\nDISTRO_BUILD_AND_EXPORT_PASS\n' in serial

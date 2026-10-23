@@ -20,9 +20,27 @@ carapace:
           exec 3>&-
         '
         printf 'NETWORK_RECIPE_DNS_TCP_AND_READONLY_RESOLVER_PASS\n'
+        readlink /proc/self/ns/net > /run/network-identity
+        checked=0
+        while read -r name value rest; do
+          case "$name" in
+            CapInh:|CapPrm:|CapEff:|CapBnd:|CapAmb:)
+              test "$((0x$value & ((1 << 12) | (1 << 13) | (1 << 21))))" = 0
+              checked=$((checked + 1))
+              ;;
+          esac
+        done < /proc/self/status
+        test "$checked" = 5
+        printf 'NETWORK_COMMAND_CAPABILITIES_RESTRICTED_PASS\n'
       network: true
       timeout: 30s
     - run: |
+        test "$(readlink /proc/self/ns/net)" = "$(cat /run/network-identity)"
+        printf 'NETWORK_ENABLED_STEPS_REUSE_NAMESPACE_PASS\n'
+      network: true
+      timeout: 30s
+    - run: |
+        test "$(readlink /proc/self/ns/net)" != "$(cat /run/network-identity)"
         test "$(wc -l < /proc/net/route)" = 1
         test "$(grep -c : /proc/net/dev)" = 1
         grep -q "lo:" /proc/net/dev
