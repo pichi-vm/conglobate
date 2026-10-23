@@ -481,6 +481,7 @@ impl Integration {
                     "volume-supervisor-execute-success" => "execute-success",
                     "volume-supervisor-execute-failure" => "execute-shell-failure",
                     "volume-supervisor-execute-timeout" => "execute-timeout",
+                    "volume-supervisor-execute-output-timeout" => "execute-output-timeout",
                     "volume-supervisor-execute-setup" => "execute-setup",
                     "volume-supervisor-execute-finish" => "execute-finish",
                     "volume-supervisor-execute-exhaustion" => "execute-exhaustion",
@@ -658,7 +659,7 @@ impl Integration {
                     println!("PREPARATION_{}_ROLLBACK_PASS", mode.to_uppercase());
                     return Ok(());
                 }
-                let command = if matches!(
+                let mut command = if matches!(
                     mode,
                     "setup-detached-failure"
                         | "setup-attached-exit"
@@ -692,6 +693,11 @@ impl Integration {
                         Path::new("/work"),
                     )?
                 };
+                if mode == "execute-output-timeout" {
+                    // Retain the read end in the child owner without consuming
+                    // diagnostics. The receiver must remain cancellable when full.
+                    command.stdout(Stdio::piped());
+                }
                 let deadline = setup_budget.deadline();
                 let step = preparation
                     .launch(command, deadline, parent)
@@ -703,6 +709,8 @@ impl Integration {
                     let holder = fs::File::open(point)?;
                     let timeout = if mode == "execute-timeout" {
                         "200ms"
+                    } else if mode == "execute-output-timeout" {
+                        "1s"
                     } else {
                         "5s"
                     };
@@ -713,6 +721,10 @@ impl Integration {
                         failure.cleanup_error().unwrap().latest().kind(),
                         std::io::ErrorKind::ResourceBusy
                     );
+                    if mode == "execute-output-timeout" {
+                        assert!(point.join("output-started").exists());
+                        assert!(!point.join("output-completed").exists());
+                    }
                     let failure = failure.into_rejected_volume().unwrap_err();
                     assert_eq!(fs::read_dir(recovery)?.count(), 0);
                     assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
@@ -768,7 +780,7 @@ impl Integration {
                                     ExecutionOutcome::Command(CommandOutcome::Exited(status)),
                                 ) => assert_eq!(status.code(), Some(37)),
                                 (
-                                    "execute-timeout",
+                                    "execute-timeout" | "execute-output-timeout",
                                     ExecutionOutcome::Command(CommandOutcome::ObservationFailed(
                                         error,
                                     )),
@@ -2379,6 +2391,16 @@ impl Integration {
                     printf 'checked' > /death-policy-checked.tmp
                     mv /death-policy-checked.tmp /death-policy-checked
                     while :; do :; done
+                "#
+            } else if mode == "output-timeout" {
+                r#"
+                    printf started > /output-started
+                    i=0
+                    while test "$i" -lt 64; do
+                        printf '%65536s' x
+                        i=$((i + 1))
+                    done
+                    printf completed > /output-completed
                 "#
             } else if mode == "timeout" {
                 "while :; do :; done"

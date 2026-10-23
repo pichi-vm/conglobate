@@ -2613,3 +2613,15 @@ rules rather than silently shrinking acceptance criteria.
 - Fixture Clippy/format checks and evidence hashes pass. Added the required
   exhaustion marker to runner evaluation and checked v153's existing output.
 - M4 review remains incomplete with zero clean passes. M5–M8 are pending.
+
+### M4 blocked diagnostics and lifecycle review (v154)
+
+- Added an unread diagnostic-pipe regression. Command output begins but cannot
+  finish; the finite command timeout cancels/drains the sandbox and stays failed
+  through storage cleanup retry. Full normal VM suite and fixture Clippy pass;
+  evidence/source hashes verified. This does not claim D-state I/O coverage.
+- Reviewed production teardown/reaping/event/deadline transitions and recorded
+  results and remaining API/coverage limits in MILESTONE-4-REVIEW.md. Identified
+  obsolete guardian exports for preserved retirement from the active crate.
+- Recorded host Cargo dependency license declarations; native/appliance audit is
+  not complete. M4 remains zero clean passes; M5–M8 remain pending.

@@ -1,0 +1,1 @@
+Complete normal suite passes including blocked diagnostic pipe timeout and snapshot exhaustion. Command started output but could not complete it; timeout retained through busy unmount retry, children/pins/records drained. This demonstrates interruptible pipe I/O, not kernel D-state cancellation.

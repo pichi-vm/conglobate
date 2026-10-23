@@ -114,3 +114,41 @@ R2 is addressed. Fixture Clippy/format checks and evidence hashes pass. The
 runner now requires the new marker; this assertion was added after v153 and
 checked against its preserved serial output. Its booted runner is preserved.
 Remaining source/evidence review is still incomplete: clean streak remains zero.
+
+### Cancellation/deadline source and evidence review (v154)
+
+Reviewed Step teardown/finalization, DomainWatch/cgroup cancellation,
+DescendantDrain, ChildReaper and DiagnosticRelay. The production teardown checks
+one absolute 30-second deadline between ownership transitions and retains its
+phase on failure. Cgroup populated=0 precedes helper wait and adopted-child
+drain; policy removal and identity release follow those gates. DomainWatch polls
+the same open cgroup.events descriptor and rereads state, without synchronization
+sleeps. ChildReaper uses waitpid/__WALL plus pidfd observation; it retains the
+original process identity and collected count on failure. Low-level empty-domain
+or ECHILD observations can return after their deadline, but the enclosing
+Teardown transition checks the unchanged cutoff before accepting completion.
+Finalization likewise rechecks after snapshot status. This supports bounded
+acceptance; it does not guarantee a synchronous kernel call can be interrupted.
+
+v154 adds a blocked-diagnostics regression: the fixture retains but never reads
+the outer helper stdout pipe. The command marks output-started, then writes more
+than pipe capacity. Under its one-second command timeout, execution cancels and
+drains the helper/descendants. The output-completed marker is absent. The timeout
+outcome survives the existing busy-unmount cleanup failure/retry; no success
+receipt is issued. Records/pins are absent and storage finalizes normally after
+releasing the busy holder. The complete normal suite and fixture Clippy pass.
+This covers interruptible pipe backpressure, not uninterruptible kernel I/O.
+
+API review also confirmed RegisteredGuardian has no production call site;
+GuardianWatch is used only by that dormant API and its unit tests. These remain
+obsolete exports from the superseded deployment design and need removal from
+the active implementation with preserved source/test provenance. No new guardian
+should be introduced. Other low-level entrypoints still need final visibility
+review; their documented trusted-caller preconditions are not command authority.
+
+Host dependency declarations are recorded in m4-review/host-dependency-licenses.json:
+198 resolved packages, all with SPDX license declarations. This is an inventory,
+not a completed native-library/distribution license audit. Unfiltered offline
+metadata failed on an uncached Android-only package; host-filtered metadata
+succeeded. Native libbpf dependencies and appliance packaging remain to inspect.
+No clean adherence pass is claimed.
