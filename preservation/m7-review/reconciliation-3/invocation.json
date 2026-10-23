@@ -1,0 +1,27 @@
+{
+  "argv": [
+    "claude",
+    "--print",
+    "--resume",
+    "3100814a-c11f-4fd0-90c8-d7fbec5f4897",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--permission-mode",
+    "dontAsk",
+    "--append-system-prompt",
+    "Review the entire active conglobate implementation in src/, with tests/, policy/, Cargo.toml/Cargo.lock/build.rs and validation/rewrite-command-integration source as supporting evidence. Do NOT review reference/legacy or historical experiments as current code. DESIGN.md and SANDBOX-DESIGN.txt are the agreed requirements. ARCHITECTURE.md, REIMPLEMENTATION.md and preservation/MILESTONE-6-ADHERENCE.md explain evidence boundaries, not reasons to waive bugs. This is a fresh rewrite (publish=false), not a backward compatible public-library release. Preserve user preference for methods on meaningful owning types, RAII, sealed marker-trait typestate, immutable inputs and consuming transitions. Do not propose freestanding functions or remove typestate solely due to one caller. Commands are untrusted; supervisor, kernel, scoped BPF LSM and formatter are trusted. Dedicated disposable build VM is independently destroyed on supervisor crash. No synchronization sleeps. No application unsafe Rust. Unavailable confidential/Arm hardware coverage must remain explicit, not inferred from synthetic tests. Findings only, no source/docs/Git modifications. Read-only shell commands and ordinary rootless checks are allowed; NEVER sudo, mount, BPF load, network configuration or privileged tests on host. Do not execute ignored tests or VM harnesses during this review. Serialize cargo commands; CARGO_BUILD_JOBS=2, TMPDIR=/var/tmp/conglobate-rewrite-tmp. Do not download/install tools; report unavailable coverage tooling. Do not publish/push or message external services. Use the custom /review workflow and its reviewers/critics. Preserve file/line evidence and distinguish demonstrated bugs from speculation.",
+    "--tools",
+    "Read,Glob,Grep,Bash,Agent,Task,Skill",
+    "--allowedTools",
+    "Read",
+    "Glob",
+    "Grep",
+    "Agent",
+    "Task",
+    "Skill",
+    "Bash"
+  ],
+  "stdin": "Continue the same review; targeted reconciliation only, no full reviewer rerun.\nRead commit eb767f3 and the prior round-two ledger. Verify the restored typed\nbootstrap diagnostic, removed dead send_bootstrap_until wrapper, and component\nordered COPY subtree ranges (especially similarly prefixed siblings and root).\nEvidence: review-followup checks all pass, 199 tests and 54 doctests. No new VM\nresult is claimed. Hosted 39964805125 passed both jobs at 148ef66, not this head.\n\nPushback: tests-001 asks for ENOSYS on clone namespace flags. src/process/syscalls.rs\nuses EPERM for the allowed filter's rejection, ENOSYS only for clone3 fallback.\nDo not change production behavior merely to make the proposed test discriminating.\nOrdinary clone success cannot rule out CAP_SYS_ADMIN denial on namespace clone.\nPropose a concrete benign disposable-VM test of the unchanged filter with a\nnamespace positive control before installing it, or a justified alternative.\nRead the actual fixture and safe Rust library APIs before proposing implementation.\nNo privileged host operations or repo edits. Output updated dispositions for changed\nfindings and any grounded new issue. Distinguish reviewer accepted actions from\nparent acceptance. Read policy-alternative.md as discussion, not implemented policy.\n",
+  "permission_correction": "Allow Bash, including compound and env-prefixed commands; retain review constraints."
+}

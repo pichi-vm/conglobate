@@ -93,7 +93,11 @@ impl NetworkNamespace {
 
     /// Trusted fresh helper only. No image code or restoration authority.
     pub(crate) fn serve(deadline: std::time::Instant) -> io::Result<()> {
-        if fs::read_dir("/proc/self/task")?.count() != 1 {
+        if fs::read_dir("/proc/self/task")?
+            .collect::<Result<Vec<_>, _>>()?
+            .len()
+            != 1
+        {
             return Err(io::Error::other(
                 "network namespace creation requires one thread",
             ));

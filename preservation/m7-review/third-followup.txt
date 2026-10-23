@@ -1,0 +1,17 @@
+Continue the same review; targeted reconciliation only, no full reviewer rerun.
+Read commit eb767f3 and the prior round-two ledger. Verify the restored typed
+bootstrap diagnostic, removed dead send_bootstrap_until wrapper, and component
+ordered COPY subtree ranges (especially similarly prefixed siblings and root).
+Evidence: review-followup checks all pass, 199 tests and 54 doctests. No new VM
+result is claimed. Hosted 39964805125 passed both jobs at 148ef66, not this head.
+
+Pushback: tests-001 asks for ENOSYS on clone namespace flags. src/process/syscalls.rs
+uses EPERM for the allowed filter's rejection, ENOSYS only for clone3 fallback.
+Do not change production behavior merely to make the proposed test discriminating.
+Ordinary clone success cannot rule out CAP_SYS_ADMIN denial on namespace clone.
+Propose a concrete benign disposable-VM test of the unchanged filter with a
+namespace positive control before installing it, or a justified alternative.
+Read the actual fixture and safe Rust library APIs before proposing implementation.
+No privileged host operations or repo edits. Output updated dispositions for changed
+findings and any grounded new issue. Distinguish reviewer accepted actions from
+parent acceptance. Read policy-alternative.md as discussion, not implemented policy.

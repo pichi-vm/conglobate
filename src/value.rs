@@ -75,7 +75,17 @@ impl FromStr for FilesystemSize {
             .get()
             .checked_mul(factor)
             .ok_or(ValueError::Overflow)?;
-        if !(16 * 1024 * 1024..=Self::LOGICAL_DEVICE_BYTES).contains(&bytes) || bytes % 4096 != 0 {
+        Self::try_from(bytes)
+    }
+}
+
+impl TryFrom<u64> for FilesystemSize {
+    type Error = ValueError;
+
+    fn try_from(bytes: u64) -> Result<Self, Self::Error> {
+        if !(16 * 1024 * 1024..=Self::LOGICAL_DEVICE_BYTES).contains(&bytes)
+            || !bytes.is_multiple_of(4096)
+        {
             return Err(ValueError::Capacity);
         }
         Ok(Self(NonZeroU64::new(bytes).ok_or(ValueError::Capacity)?))

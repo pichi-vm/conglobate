@@ -547,3 +547,25 @@ Hosted run 39964805125 has now completed successfully for BOTH Rust and dependen
 jobs at 148ef66. New local commits still require hosted checks. The always-active
 labeling alternative is recorded in policy-alternative.md without claiming adoption
 or qualification. M7 remains at zero adherence passes.
+
+## Numeric capacity and thread-enumeration follow-up
+
+errors-api-005: FilesystemSize now implements TryFrom<u64>; its text parser and
+CBOR inventory validation share the same capacity/alignment invariant. The
+existing capacity test covers both inclusive endpoints, neighboring aligned
+values, unaligned bytes, zero and u64::MAX. No geometry limits changed.
+
+simplification-002, concrete error handling portion: NetworkNamespace::serve now
+collects directory entries fallibly before checking the task count, matching the
+other diagnostic checks. A read_dir entry error can no longer count as a task.
+This observation still does not prove lasting single-thread exclusivity; helper
+construction and lifecycle remain responsible for that invariant. Consolidating
+all diagnostic checks is a separate cleanup, not claimed complete here.
+
+The complete rootless suite passes (199 tests; numeric-size-tests.log). These
+changes do not establish new privileged VM or platform qualification.
+
+The first strict Clippy run rejected the moved modulo alignment expression
+(manual_is_multiple_of). The final implementation uses u64::is_multiple_of; the
+initial failure is preserved. The final full 199-test suite, strict Clippy and fmt
+all pass (numeric-size-fixed-checks.json and corresponding logs).

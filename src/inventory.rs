@@ -212,8 +212,7 @@ impl Formatter {
             ));
         }
         let filesystem = &self.filesystem;
-        format!("{}B", filesystem.size_bytes)
-            .parse::<crate::value::FilesystemSize>()
+        crate::value::FilesystemSize::try_from(filesystem.size_bytes)
             .map_err(InventoryError::invalid)?;
         crate::value::FilesystemLabel::try_from(filesystem.label.clone())
             .map_err(InventoryError::invalid)?;

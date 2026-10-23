@@ -33,6 +33,16 @@ fn context_relative_paths_do_not_gain_resolution_authority() {
 
 #[test]
 fn capacity_is_explicit_aligned_and_bounded() {
+    let minimum = 16 * 1024 * 1024;
+    let maximum = FilesystemSize::LOGICAL_DEVICE_BYTES;
+    for bytes in [minimum, minimum + 4096, maximum - 4096, maximum] {
+        let numeric = FilesystemSize::try_from(bytes).unwrap();
+        assert_eq!(numeric.bytes(), bytes);
+        assert_eq!(format!("{bytes}B").parse::<FilesystemSize>(), Ok(numeric));
+    }
+    for bytes in [0, minimum - 4096, minimum + 1, maximum + 4096, u64::MAX] {
+        assert!(FilesystemSize::try_from(bytes).is_err(), "{bytes}");
+    }
     assert_eq!(
         "4GiB".parse::<FilesystemSize>().unwrap().blocks(),
         1_048_576
