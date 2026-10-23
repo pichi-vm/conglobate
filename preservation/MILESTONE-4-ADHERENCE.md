@@ -2,7 +2,7 @@
 
 Scope: implementation at ed0fecd408562aed8bc083e8fbe412c4b80ec514,
 with exact source/specification/fixture hashes in m4-review/accepted-scope.json.
-Current streak: **1**. M4 is not accepted; M5 must not start yet.
+Current streak: **2**. M4 is not accepted; M5 must not start yet.
 These are self-reviews, not independent external reviews.
 
 ## Pass 1 — requirements through lifecycle, clean
@@ -59,3 +59,51 @@ Checked current source hashes for the earlier command-boundary inspection.
 R1–R4 are corrected. No new finding in this pass. This is one clean review,
 not milestone acceptance. The next pass must revisit the frozen scope in a
 different order and cover all five categories again.
+
+## Pass 2 — acceptance back to acquisition, clean
+
+The same 104-file frozen scope is byte-identical. Reviewed in reverse lifecycle
+order: FinalizedVolume/ExecutedVolume and CommandResult; finalization retries;
+helper cancellation, reap and record cleanup; completion reporting in helper
+dispatch; admission and execution cutoff; verified storage dependencies and
+namespace mapping. Reconciled these with the policy/command/acquisition reviews
+and normative M4 requirements rather than counting another test execution.
+
+1. Requirements: acceptance is one successful command plus its own fully finalized
+   volume, not shell exit or generic cleanup success. Helper completion follows
+   local view/namespace cleanup. The supervisor's finite command deadline still
+   governs receipt observation even though a reporting helper has its own bounded
+   send/wait operations. Default offline namespaces, explicit pipe diagnostics,
+   real image IDs through idmapping and scoped labeling match the current M4
+   boundary. Full pipeline and distro/platform claims remain excluded as in pass 1.
+2. Rust style: receipt fields and constructors remain private, and map_cleanup
+   provides diagnostic association rather than a constructor for ExecutedVolume.
+   Retry methods consume the failed owner. Mapping/volume/namespace states are
+   sealed; the cleanup enums encode actual resource ownership. FailureDiagnostics
+   shares immutable concrete errors with Arc and extends ordered history on
+   consuming transitions; it does not require shared mutable error state.
+3. Safety/error paths: Finalization cannot produce success on timeout, invalid
+   snapshot status, failed flush or busy unmount. ExecutionFailure preserves the
+   original command result through retries. Domain cancellation closes admission
+   channels and stops the subtree before helper reap and process-wide drain;
+   policy remains retained until quiescence. Low-level helper statuses are
+   diagnostic, not command receipts. SetupCutoff forwards one canonical absolute
+   monotonic cutoff conservatively; it does not mint a new helper budget.
+   Readonly layers authenticate through verity, using trusted planned parameters;
+   snapshot headers are read through that mapping. Chain teardown retains lower
+   layers on upper-layer failure. Mapped ID ranges exclude parent root and invalid
+   all-ones IDs. No ownership shortcut or new finding identified.
+4. Evidence: inspected integrated fixture assertions, not only PASS markers:
+   command exit 37, timeout/blocked output, setup/local-completion failures,
+   busy unmount and snapshot exhaustion stay rejected; successful command plus
+   successful retry alone yields a receipt. Reverified v155/v156 full provenance
+   hashes and passed verdicts, both explicitly not full platform qualification.
+   Existing unit/compile-fail/Clippy results apply to unchanged source. No repeat
+   test run is being counted as a review pass. Uninjected expiry boundary and
+   uninterruptible-I/O limitations remain explicitly recorded.
+5. Preservation: verified retired guardian originals against their manifest;
+   the full implementation scope and reference baseline are unchanged. No legacy
+   source, historical evidence or user changes were removed by this review.
+   Changes in this pass are ledger-only.
+
+No new finding. Consecutive clean streak: **2 of 3**. M5 remains gated.
