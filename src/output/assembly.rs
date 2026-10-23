@@ -49,8 +49,7 @@ impl AssembledImage {
         inventory: &crate::inventory::Inventory,
     ) -> Result<(), crate::pipeline::BuildError> {
         inventory.check_output(&self)?;
-        self.staged
-            .write_metadata(self.image.index().bytes(), inventory.bytes())?;
+        self.staged.write_inventory(inventory.bytes())?;
         self.staged.publish()?;
         Ok(())
     }

@@ -818,8 +818,8 @@
       "evidence": "All three AssembledImage constructions go through resolve_staging, which already writes index.json and oci-layout",
       "remaining_action": "Narrow write_metadata to write_inventory",
       "historical_status": "accept",
-      "current_status": "open",
-      "current_evidence": "StagedDirectory::write_metadata still present; inventory-only replacement not implemented."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "See preservation/m7-review/inventory-simplification/REVIEW.md: inventory-only publication and redundant hash API removal; 232 tests, 53 doctests, strict Clippy and formatting pass. Full M6 gate remains pending."
     },
     {
       "id": "simplification-024",
@@ -863,8 +863,8 @@
       "evidence": "Sole caller is the roundtrip test; preceding line already asserts bytes equality",
       "remaining_action": "Remove Inventory::sha256 and the redundant assert",
       "historical_status": "accept",
-      "current_status": "open",
-      "current_evidence": "Inventory::sha256 and equality assertion still present."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "See preservation/m7-review/inventory-simplification/REVIEW.md: inventory-only publication and redundant hash API removal; 232 tests, 53 doctests, strict Clippy and formatting pass. Full M6 gate remains pending."
     },
     {
       "id": "simplification-029",

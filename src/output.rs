@@ -162,15 +162,10 @@ impl StagedDirectory {
         pending.persist(path).map_err(|error| error.error)?;
         Ok(())
     }
-    /// Fixed layout entrypoints only; arbitrary paths cannot escape staging.
-    /// Serialization and structural validation belong to the output assembler.
-    pub fn write_metadata(&self, index: &[u8], inventory: &[u8]) -> io::Result<()> {
-        self.write_file(&self.temporary.path().join("index.json"), index)?;
-        self.write_file(&self.temporary.path().join("inventory.cbor"), inventory)?;
-        self.write_file(
-            &self.temporary.path().join("oci-layout"),
-            b"{\"imageLayoutVersion\":\"1.0.0\"}",
-        )
+    /// Add inventory without rewriting the already assembled image layout.
+    /// Serialization and structural validation belong to the coordinator.
+    pub(crate) fn write_inventory(&self, inventory: &[u8]) -> io::Result<()> {
+        self.write_file(&self.temporary.path().join("inventory.cbor"), inventory)
     }
     /// Atomic no-replacement filesystem operation, not a build-success receipt.
     /// Failure retains staging for explicit cleanup. No fallible operation is
@@ -273,7 +268,7 @@ mod tests {
         fs::create_dir(&parent).unwrap();
         let staged = StagedDirectory::create(&parent.join("output")).unwrap();
         let digest = staged.store_blob(b"{}").unwrap();
-        staged.write_metadata(b"index", b"inventory").unwrap();
+        staged.write_inventory(b"inventory").unwrap();
         let moved = root.path().join("moved");
         fs::rename(&parent, &moved).unwrap();
         fs::create_dir(&parent).unwrap();

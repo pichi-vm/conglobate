@@ -6,7 +6,6 @@ mod record;
 mod schema;
 use ciborium::Value;
 use schema::*;
-use sha2::{Digest as _, Sha256};
 
 #[derive(Debug, thiserror::Error)]
 pub enum InventoryError {
@@ -72,9 +71,6 @@ impl Inventory {
     }
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
-    }
-    pub fn sha256(&self) -> [u8; 32] {
-        Sha256::digest(&self.bytes).into()
     }
     pub fn version(&self) -> u32 {
         self.document.version
@@ -401,7 +397,6 @@ mod tests {
         let decoded = Inventory::decode(inventory.bytes()).unwrap();
         assert_eq!(decoded.version(), 2);
         assert_eq!(decoded.bytes(), inventory.bytes());
-        assert_eq!(decoded.sha256(), inventory.sha256());
         let value: Value = ciborium::from_reader(decoded.bytes()).unwrap();
         let mut wire = Wire(value);
         assert_eq!(
