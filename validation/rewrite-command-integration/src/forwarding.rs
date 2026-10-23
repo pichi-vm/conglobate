@@ -74,9 +74,17 @@ impl ForwardingProbe {
                 socket.send_to(b"reply", source)?;
                 socket.send_to(b"unsolicited", target)?;
             }
-            for (listener, expected) in [
-                (&tcp[0], if nat { "198.18.0.1" } else { "10.44.0.2" }),
-                (&tcp[1], if nat { "fd42:55::1" } else { "fd42:44::2" }),
+            for (listener, expected, incoming) in [
+                (
+                    &tcp[0],
+                    if nat { "198.18.0.1" } else { "10.44.0.2" },
+                    "10.44.0.2:45458",
+                ),
+                (
+                    &tcp[1],
+                    if nat { "fd42:55::1" } else { "fd42:44::2" },
+                    "[fd42:44::2]:45458",
+                ),
             ] {
                 let (mut stream, source) = listener.accept()?;
                 assert_eq!(source.ip(), expected.parse::<IpAddr>()?);
@@ -85,6 +93,18 @@ impl ForwardingProbe {
                 let mut bytes = [0; 3];
                 stream.read_exact(&mut bytes)?;
                 assert_eq!(&bytes, b"tcp");
+                // The client binds its listener before sending this request.
+                // An outbound established stream does not authorize a new
+                // inbound connection to a different port.
+                let incoming =
+                    TcpStream::connect_timeout(&incoming.parse()?, Duration::from_millis(250));
+                if nat {
+                    assert_eq!(incoming.unwrap_err().kind(), io::ErrorKind::TimedOut);
+                } else {
+                    let mut incoming = incoming?;
+                    incoming.set_write_timeout(Some(Duration::from_secs(3)))?;
+                    incoming.write_all(b"inbound")?;
+                }
                 stream.write_all(b"reply")?;
             }
         } else {
@@ -123,7 +143,12 @@ impl ForwardingProbe {
                     assert_eq!(&bytes[..result?], b"unsolicited");
                 }
             }
-            for target in ["198.18.0.2:45456", "[fd42:55::2]:45456"] {
+            for (target, incoming) in [
+                ("198.18.0.2:45456", "10.44.0.2:45458"),
+                ("[fd42:55::2]:45456", "[fd42:44::2]:45458"),
+            ] {
+                let incoming = Self::listener(incoming)?;
+                incoming.set_nonblocking(true)?;
                 let mut stream =
                     TcpStream::connect_timeout(&target.parse()?, Duration::from_secs(3))?;
                 stream.set_read_timeout(Some(Duration::from_secs(3)))?;
@@ -132,6 +157,16 @@ impl ForwardingProbe {
                 let mut bytes = [0; 5];
                 stream.read_exact(&mut bytes)?;
                 assert_eq!(&bytes, b"reply");
+                let received = incoming.accept();
+                if nat {
+                    assert_eq!(received.unwrap_err().kind(), io::ErrorKind::WouldBlock);
+                } else {
+                    let (mut received, _) = received?;
+                    received.set_read_timeout(Some(Duration::from_secs(3)))?;
+                    let mut bytes = [0; 7];
+                    received.read_exact(&mut bytes)?;
+                    assert_eq!(&bytes, b"inbound");
+                }
             }
         }
         Ok(())
@@ -292,6 +327,7 @@ impl ForwardingProbe {
             false,
         )?;
         println!("NETWORK_FORWARDED_WITHOUT_POLICY_POSITIVE_CONTROL_PASS");
+        println!("NETWORK_FORWARDED_UNSOLICITED_TCP_DENIAL_AND_POSITIVE_CONTROL_PASS");
         command.close()?;
         upstream.close()?;
         user.release()?;

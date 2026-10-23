@@ -3961,3 +3961,21 @@ rules rather than silently shrinking acceptance criteria.
   not registry/platform qualification. Composite partial-setup and cleanup-expiry
   coverage, remaining requirements audit and three complete M6 adherence passes
   remain. M6 stays at zero passes.
+
+### M6 composite network failures and initial adherence audit
+
+- v251 passes the complete network suite plus failure after namespace creation,
+  NAT installation collision preserving an existing foreign table, and repeated
+  expired teardown retries retaining their resource owner. The expiry probe is
+  terminal and explicitly relies on dedicated-VM disposal; it claims no cleanup.
+- v252 adds successful IPv4/IPv6 unsolicited TCP rejection while established
+  outbound traffic receives replies. Removing the policy permits the same
+  inbound connection and payload. Listener readiness is established by the
+  existing outbound request handshake; only the negative observation is timed.
+  Strict fixture Clippy passes. Both runs and sources/provenance are preserved.
+- Started preservation/MILESTONE-6-ADHERENCE.md with the requirements/evidence
+  map. Source review found R1: topology observation is not serialized with private
+  subnet assignment, so concurrent setups with different link names may choose
+  overlapping addresses. Fix requires an owned namespace-scoped reservation or
+  serialization guard, bounded/fail-fast acquisition and VM validation. No clean
+  pass has started; M6 remains zero and later milestones remain pending.

@@ -1,0 +1,1 @@
+v251 PASS: full network suite plus composite setup failure after namespace creation, NAT collision preserving foreign table, and expired teardown retries retaining resource owner. Expiry probe intentionally final: no successful cleanup claimed, dedicated VM disposes of residual resources. No complete M6/platform qualification claimed.

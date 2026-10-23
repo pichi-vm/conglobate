@@ -1,0 +1,1 @@
+v252 PASS: network suite including composite failures and IPv4/IPv6 unsolicited TCP rejection while replies work; after policy removal the same incoming connection and data succeed. Negative timing uses bounded connect timeout, readiness comes from an established request handshake, no synchronization sleep. No full M6/platform qualification.

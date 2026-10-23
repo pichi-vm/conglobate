@@ -72,6 +72,12 @@ impl Integration {
                 args[5].parse()?,
             );
         }
+        if args
+            .get(1)
+            .is_some_and(|arg| arg == "network-composite-failures")
+        {
+            return network::NetworkProbe::composite_failures();
+        }
         if args.get(1).is_some_and(|arg| arg == "network-probe") {
             return network::NetworkProbe::run();
         }
