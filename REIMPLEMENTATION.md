@@ -2909,3 +2909,16 @@ rules rather than silently shrinking acceptance criteria.
   and preservation reviewed; limits recorded in the M5 adherence ledger.
 - M5 accepted with 3/3 consecutive clean self-review passes. M6 starts next;
   no full builder, distro/boot or confidential-platform claim is inferred.
+
+### M6 integration audit and start
+
+- Inspected BuildRequest, CapturedBuild/ResolvedBuild, BuildPlan, local cache
+  resolution, COPY descriptions and transform/template descriptions. These feed
+  actual M4/M5 execution APIs but do not yet form a runnable builder.
+- M6-INTEGRATION.md records the complete integration order: real pass-through
+  CLI/output/inventory first, then bootstrap/layering/COPY, firmware/transforms,
+  enabled networking and the full regression matrix. No subset is acceptance.
+- Keep output ancestry separate from tool inputs and immutable source identities
+  separate from active resource ownership; reuse the existing lifecycle.
+- M6 has zero clean passes. The previous goal turn was progress (M5 pass 2);
+  this turn accepts M5 and establishes the concrete M6 source/API boundary.
