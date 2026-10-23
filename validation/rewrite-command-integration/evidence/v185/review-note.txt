@@ -1,0 +1,1 @@
+Terminal disposable VM test: after actual setup timeout, dropping FormatWaitFailure retains its snapshot mapping for VM disposal.

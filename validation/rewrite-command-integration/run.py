@@ -13,7 +13,8 @@ from cache_fixture import CacheFixture
 
 here = pathlib.Path(__file__).resolve().parent
 seed = pathlib.Path('/var/tmp/conglobate-cap-review-fix-normal-v1')
-formatter_failures = len(sys.argv) == 3 and sys.argv[2] == '--formatter-failures'
+formatter_mode = sys.argv[2] if len(sys.argv) == 3 else ''
+formatter_failures = formatter_mode in ['--formatter-failures', '--formatter-drop-running', '--formatter-drop-wait']
 supervisor_death = len(sys.argv) == 3 and sys.argv[2] == '--supervisor-death'
 out = pathlib.Path(sys.argv[1]).resolve()
 out.mkdir()
@@ -281,6 +282,10 @@ modprobe dm-zero
 modprobe dm-snapshot
 /idmap-probe formatter-failures
 """)
+    if formatter_mode.startswith('--formatter-drop-'):
+        script = root / 'fixture.sh'
+        script.write_text(script.read_text().replace('/idmap-probe formatter-failures',
+            'FORMATTER_DROP=' + formatter_mode.removeprefix('--formatter-drop-') + ' /idmap-probe formatter-failures'))
 paths = sorted(root.rglob('*'))
 (out / 'inputs.json').write_text(json.dumps({str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths if p.is_file() and not p.is_symlink()}, indent=2))
 archive = subprocess.run(['cpio', '--null', '-o', '--format=newc', '--owner=0:0'], input=b'\0'.join(str(p.relative_to(root)).encode() for p in paths) + b'\0', cwd=root, capture_output=True, check=True).stdout
@@ -291,7 +296,10 @@ command = [v.replace(str(seed), str(out)) for v in json.loads((seed / 'command.j
 with (out / 'serial.txt').open('wb') as log:
     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
 serial = (out / 'serial.txt').read_text()
-if formatter_failures:
+if formatter_mode.startswith('--formatter-drop-'):
+    stage = formatter_mode.removeprefix('--formatter-drop-').upper()
+    passed = f'FORMATTER_DROP_{stage}_RETAINS_STORAGE_PASS' in serial and 'IDMAP_PROBE_EXIT 0' in serial
+elif formatter_failures:
     passed = all(marker in serial for marker in ['FORMATTER_STALL_ENTERED',
         'FORMATTER_DEADLINE_CANCEL_REAP_PASS', 'FORMATTER_EXHAUSTED_SNAPSHOT_REJECTED_PASS',
         'FORMATTER_FAILURE_RESOURCES_RELEASED_PASS', 'IDMAP_PROBE_EXIT 0'])

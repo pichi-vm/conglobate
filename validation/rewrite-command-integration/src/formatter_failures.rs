@@ -54,16 +54,31 @@ impl FormatterFailures {
             .stage(&workspace)?;
             let budget = SetupBudget::begin();
             let deadline = budget.deadline();
-            let failure = runtime
+            let device = snapshot.id();
+            let formatting = runtime
                 .format(
                     snapshot,
                     Ext4Format::new("16MiB".parse()?, "failure-probe".to_owned().try_into()?),
                     &HelperProgram::current()?,
                     budget,
                 )
-                .map_err(|e| e.to_string())?
-                .wait()
-                .unwrap_err();
+                .map_err(|e| e.to_string())?;
+            if !exhausted && std::env::var("FORMATTER_DROP").as_deref() == Ok("running") {
+                drop(formatting);
+                assert!(
+                    Path::new(&format!(
+                        "/sys/dev/block/{}:{}",
+                        device.major(),
+                        device.minor()
+                    ))
+                    .exists()
+                );
+                println!("FORMATTER_DROP_RUNNING_RETAINS_STORAGE_PASS");
+                // Terminal VM-disposal test: do not let unrelated outer RAII
+                // cleanup obscure whether the formatter retained its own inputs.
+                std::process::exit(0);
+            }
+            let failure = formatting.wait().unwrap_err();
             let (runtime, snapshot) = match (exhausted, failure) {
                 (false, FormatFailure::Wait(failure)) => {
                     assert!(std::time::Instant::now() >= deadline);
@@ -75,6 +90,19 @@ impl FormatterFailures {
                             .and_then(|error| error.downcast_ref::<WaitError>()),
                         Some(WaitError::Deadline)
                     ));
+                    if std::env::var("FORMATTER_DROP").as_deref() == Ok("wait") {
+                        drop(failure);
+                        assert!(
+                            Path::new(&format!(
+                                "/sys/dev/block/{}:{}",
+                                device.major(),
+                                device.minor()
+                            ))
+                            .exists()
+                        );
+                        println!("FORMATTER_DROP_WAIT_RETAINS_STORAGE_PASS");
+                        std::process::exit(0);
+                    }
                     let (diagnostics, runtime, snapshot) =
                         failure.cancel().map_err(|e| e.to_string())?;
                     assert!(diagnostics.cleanup().is_empty());

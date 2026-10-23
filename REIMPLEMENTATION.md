@@ -2841,3 +2841,17 @@ rules rather than silently shrinking acceptance criteria.
 - Strict fixture Clippy passes; exact evidence retained. No production source
   changes. Initial listed formatter/metadata checks are now covered; full M5
   adherence reviews and any resulting fixes remain. Clean streak stays zero.
+
+
+### M5 adherence review: formatter input lifetime (R1, v183–v186)
+
+- Initial source review found that dropping unfinished Formatting or its wait
+  failure could release the runtime and request snapshot teardown after only
+  best-effort process reaping. Retain both inputs until an explicit successful
+  wait/cancel; abandoned owners retain them through VM disposal.
+- v183 targeted formatter regressions, v184/v185 terminal drop-retention tests,
+  and v186 full normal VM suite pass. 56 library tests, 49 doctests and strict
+  root/fixture Clippy pass; exact sources/evidence retained.
+- R1 addressed. Initial review coverage and remaining work are recorded in
+  preservation/MILESTONE-5-ADHERENCE.md. Full review remains incomplete and the
+  M5 clean streak stays at zero; no later milestone is advanced.

@@ -1,0 +1,1 @@
+Terminal disposable VM test: dropping a running formatter retains its snapshot mapping for VM disposal. No explicit cleanup or restart is claimed.

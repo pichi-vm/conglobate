@@ -1,0 +1,13 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ /idmap-probe formatter-failures
+FORMATTER_STALL_ENTERED
+FORMATTER_DEADLINE_CANCEL_REAP_PASS
+mke2fs: Input/output error while writing out and closing file system
+FORMATTER_EXHAUSTED_SNAPSHOT_REJECTED_PASS
+FORMATTER_FAILURE_RESOURCES_RELEASED_PASS
+IDMAP_PROBE_EXIT 0
+[   40.076377] sysrq: Resetting

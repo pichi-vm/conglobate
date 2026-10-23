@@ -1,0 +1,11 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ FORMATTER_DROP=wait
++ /idmap-probe formatter-failures
+FORMATTER_STALL_ENTERED
+FORMATTER_DROP_WAIT_RETAINS_STORAGE_PASS
+IDMAP_PROBE_EXIT 0
+[   38.641375] sysrq: Resetting

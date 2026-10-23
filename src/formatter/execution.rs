@@ -9,16 +9,19 @@ use crate::{
 };
 use std::{
     io,
+    mem::ManuallyDrop,
     path::Path,
     time::{Duration, Instant},
 };
 
 /// Retains both writable storage and runtime until the trusted formatter exits.
 /// No image command can obtain these resources while formatting is in flight.
+/// Abandoning an unfinished formatter retains inputs until VM disposal: the
+/// process destructor's best-effort termination does not prove it was reaped.
 #[derive(Debug)]
 pub struct Formatting<'origin, 'workspace> {
     process: Process<Running>,
-    inputs: Box<FormatInputs<'origin, 'workspace>>,
+    inputs: ManuallyDrop<Box<FormatInputs<'origin, 'workspace>>>,
     deadline: Instant,
 }
 #[derive(Debug)]
@@ -67,7 +70,10 @@ impl<'a, 'w> FormatWaitFailure<'a, 'w> {
             deadline,
         } = self.formatting;
         match process.terminate_until(self.cleanup_deadline) {
-            Ok(_) => Ok((self.source, inputs.runtime, inputs.snapshot)),
+            Ok(_) => {
+                let inputs = ManuallyDrop::into_inner(inputs);
+                Ok((self.source, inputs.runtime, inputs.snapshot))
+            }
             Err(error) => {
                 let (source, process) = error.into_parts();
                 Err(Self {
@@ -147,7 +153,7 @@ impl FormatterRuntime {
         match result {
             Ok(process) => Ok(Formatting {
                 process,
-                inputs,
+                inputs: ManuallyDrop::new(inputs),
                 deadline: budget.deadline(),
             }),
             Err(source) => Err(FormatLaunchFailure { source, inputs }),
@@ -176,6 +182,8 @@ impl<'a, 'w> Formatting<'a, 'w> {
                 }));
             }
         };
+        // Successful wait is the proof permitting resource destruction again.
+        let inputs = ManuallyDrop::into_inner(inputs);
         let result = (|| -> io::Result<()> {
             if Instant::now() >= deadline {
                 return Err(io::Error::new(

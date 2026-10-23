@@ -333,3 +333,23 @@ hashes; v182 is not represented as a full normal suite run. These results close
 the listed initial metadata and formatter cancellation/exhaustion checks. Full
 M5 design/style/ownership/evidence review, findings resolution and three clean
 passes remain before acceptance; milestone clean streak remains zero.
+
+
+## Initial adherence review finding R1 (v183–v186)
+
+Source review found that Formatting's ordinary input box could drop after
+Process's bounded best-effort destructor without explicit reaping proof. That
+could delete the captured runtime and request snapshot teardown while the process
+remained unresolved. Inputs now use safe ManuallyDrop retention until successful
+wait or cancellation, matching the command lifecycle's VM-disposal fallback.
+Launch failures still return inputs because no child was created; completion
+failures follow a successful reap and may return inputs normally.
+
+v183 revalidates timeout/cancel/reap and exhausted backing. v184 and v185 are
+terminal disposable-VM drop tests for running and timed-out formatter owners;
+the snapshot mapping remains present after the owner is dropped. v186 passes the
+full normal VM suite, including successful formatting and bootstrap metadata/seal
+checks. All 56 library tests, 49 doctests and root/fixture strict Clippy pass.
+Exact evidence is preserved. R1 is addressed; the initial review is non-clean.
+See preservation/MILESTONE-5-ADHERENCE.md for coverage and remaining review work.
+No clean adherence pass is claimed; M5 remains at zero.
