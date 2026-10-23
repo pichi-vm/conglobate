@@ -315,7 +315,7 @@ if pipeline_mode:
         if match:
             (out / ('pipeline-' + name.lower() + ('.cbor' if name == 'INVENTORY' else '.json'))).write_bytes(bytes.fromhex(match.group(1)))
     passed = all(marker in serial for marker in ['PIPELINE_CLI_PASSTHROUGH_INVENTORY_PASS',
-        'PIPELINE_CLI_FAILURE_NO_PUBLICATION_PASS', 'PIPELINE_CLI_TRANSFORM_PASS', 'IDMAP_PROBE_EXIT 0'])
+        'PIPELINE_CLI_FAILURE_NO_PUBLICATION_PASS', 'PIPELINE_FIRMWARE_DTB_CONTRACT_PASS', 'PIPELINE_CLI_TRANSFORM_PASS', 'IDMAP_PROBE_EXIT 0'])
 elif formatter_mode.startswith('--formatter-drop-'):
     stage = formatter_mode.removeprefix('--formatter-drop-').upper()
     passed = f'FORMATTER_DROP_{stage}_RETAINS_STORAGE_PASS' in serial and 'IDMAP_PROBE_EXIT 0' in serial

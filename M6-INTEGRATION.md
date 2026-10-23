@@ -299,3 +299,15 @@ rejection; v201 preserves the earlier pass-through and transform coverage.
 
 Bootstrap and firmware coordinators, enabled networking, the complete matrix and
 failure coverage, ORAS verification, and M6 adherence review remain outstanding.
+
+## Firmware permission for DTB edits
+
+Publication now enforces DESIGN.md section 10 through DtbContract. A changed DTB
+requires every known PMI target to accept one external measured DTB with sufficient
+Zero-section capacity, and rejects pre-signed SEV identities. Opaque or otherwise
+unsupported firmware can pass through when the DTB is unchanged. v202 covers the
+CLI boundary and host tests cover target/schema/capacity/ambiguity rejection.
+The earlier opaque-success transform fixtures were incorrect for this requirement;
+they are retained in historical evidence and replaced in maintained validation.
+Firmware execution/extraction must apply this same check to its resulting PMI/DTB
+pair before publication; that coordinator remains pending.

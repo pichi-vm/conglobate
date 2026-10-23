@@ -208,6 +208,22 @@ impl AssembledImage {
                 if let (pichi_artifact::Layer::Dtb(old), Some(bytes)) = (layer, dtb) {
                     let digest = staged.store_blob(bytes)?;
                     if digest.to_string() != old.digest || bytes.len() as u64 != old.size {
+                        let pmi = image
+                            .manifest()
+                            .layers
+                            .iter()
+                            .find_map(|layer| match layer {
+                                pichi_artifact::Layer::Pmi(descriptor) => Some(descriptor),
+                                _ => None,
+                            })
+                            .ok_or(CacheError::Invalid("changed DTB has no firmware contract"))?;
+                        let firmware_digest = pmi
+                            .digest
+                            .parse()
+                            .map_err(|_| CacheError::Invalid("invalid PMI digest"))?;
+                        cache
+                            .firmware_contract(&firmware_digest, pmi.size)?
+                            .check_size(bytes.len())?;
                         let descriptor = &mut manifest["layers"][position];
                         descriptor["digest"] = digest.to_string().into();
                         descriptor["size"] = (bytes.len() as u64).into();
@@ -278,9 +294,18 @@ mod tests {
     }
     impl Input {
         fn new(empty_config: bool) -> Self {
+            Self::with_firmware(
+                empty_config,
+                crate::firmware::tests::Fixture::image(
+                    ".pmi.vm",
+                    &crate::firmware::tests::Fixture::detached(),
+                    4096,
+                ),
+            )
+        }
+        fn with_firmware(empty_config: bool, pmi: Vec<u8>) -> Self {
             let directory = tempfile::tempdir().unwrap();
             let mut blobs = BTreeMap::new();
-            let pmi = b"fixture firmware bytes".to_vec();
             let dtb =
                 devtree::OwnedTree::new(devtree::OwnedNode::new("").with_child(
                     devtree::OwnedNode::new("chosen").with_property(
@@ -364,6 +389,31 @@ mod tests {
             let image = cache.resolve(self.pin).unwrap();
             (cache, image)
         }
+    }
+    #[test]
+    fn opaque_firmware_allows_unchanged_dtb_but_rejects_edits() {
+        let input = Input::with_firmware(true, b"opaque firmware".to_vec());
+        let (cache, image) = input.open();
+        let old: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
+        let bytes = &input.blobs[old["layers"][1]["digest"].as_str().unwrap()];
+        let parent = tempfile::tempdir().unwrap();
+        let unchanged = crate::recipe::TransformSelection::Authored(vec![])
+            .apply(Some(bytes), None)
+            .unwrap();
+        AssembledImage::transformed(&cache, &image, &parent.path().join("unchanged"), &unchanged)
+            .unwrap()
+            .discard()
+            .unwrap();
+        let changed = crate::recipe::TransformSelection::Builtin
+            .apply(Some(bytes), Some("new"))
+            .unwrap();
+        let failure =
+            AssembledImage::transformed(&cache, &image, &parent.path().join("changed"), &changed)
+                .unwrap_err();
+        let (error, staged) = failure.into_parts();
+        assert!(error.to_string().contains("firmware/DTB compatibility"));
+        staged.unwrap().discard().unwrap();
+        assert!(!parent.path().join("changed").exists());
     }
     #[test]
     fn transformed_output_replaces_only_dtb_and_is_self_contained() {

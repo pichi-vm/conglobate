@@ -395,6 +395,23 @@ impl PipelineProbe {
             );
             Self::verify(Path::new(&destination), &recipe, true)?;
         }
+        for (name, succeeds) in [("opaque-changed", false), ("opaque-unchanged", true)] {
+            let destination = format!("/work/{name}-output");
+            let result = Self::build(&destination, &format!("recipes/{name}.yml"))?;
+            assert_eq!(
+                result.status.success(),
+                succeeds,
+                "{}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+            assert_eq!(Path::new(&destination).exists(), succeeds);
+            if !succeeds {
+                assert!(
+                    String::from_utf8_lossy(&result.stderr).contains("firmware/DTB compatibility")
+                );
+            }
+        }
+        println!("PIPELINE_FIRMWARE_DTB_CONTRACT_PASS");
         for name in ["missing-property", "missing-dtb"] {
             let destination = format!("/work/{name}-output");
             let result = Self::build(&destination, &format!("recipes/{name}.yml"))?;

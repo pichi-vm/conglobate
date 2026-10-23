@@ -15,6 +15,7 @@ pub mod domain;
 pub mod execution;
 pub mod filesystem;
 pub mod formatter;
+pub mod firmware;
 pub mod image;
 pub mod input;
 pub mod inventory;

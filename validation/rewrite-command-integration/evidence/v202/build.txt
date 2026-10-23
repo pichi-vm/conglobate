@@ -1,0 +1,8 @@
+   Compiling scroll v0.13.0
+   Compiling plain v0.2.3
+   Compiling log v0.4.34
+   Compiling goblin v0.10.7
+   Compiling pmi v0.1.0 (https://github.com/pichi-vm/pmi?rev=364ee0be240fa44c9d7cef7692593f3b52e45b78#364ee0be)
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+   Compiling conglobate-command-integration v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.61s

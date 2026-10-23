@@ -3249,3 +3249,32 @@ rules rather than silently shrinking acceptance criteria.
   firmware CLI coordination, enabled NAT/DNS, complete output/failure matrix,
   runtime acquisition fault injection, ORAS interoperability and the three-pass
   gate. Full distro and platform qualification remains M7.
+
+### M6 firmware/DTB measurement contract correction
+
+- Previous goal turn progressed in e56536b. Reviewing firmware extraction against
+  DESIGN.md section 10 found an omitted existing-publication requirement: changed
+  DTBs were accepted with opaque PMI bytes. Earlier transform fixtures proved
+  editing/publication plumbing, not the required firmware measurement boundary.
+  M6 remains zero adherence passes; this finding is corrected before extending
+  firmware publication.
+- Added immutable DtbContract using safe goblin PE parsing and pinned independent
+  pmi target-schema types. Every .pmi target must be recognized (VM/SEV/TDX/CCA),
+  decode strictly, have exactly one external dt:dtb fill, and name an unambiguous
+  Zero section with enough reserved capacity. Duplicate CBOR keys/target names,
+  unknown contracts, malformed data and signed SEV identities reject the edit.
+  The strictest target capacity applies. VM register schema follows PE machine.
+- Output assembly gates changed DTB bytes before acceptance for both inherited
+  and derived images. The PMI is captured with its verified size/digest and is
+  not constrained by the small-metadata limit. Unchanged DTBs skip contract
+  parsing, preserving opaque/custom firmware behavior. No resealing is claimed.
+- Replaced misleading opaque-success fixtures with independently encoded minimal
+  structured PMI. Added real CLI rejection for opaque-plus-changed-DTB and success
+  with explicit unchanged transforms. v202 pipeline suite passes. Full host tests
+  pass (85 library tests, integration suites, 51 doctests); final additional
+  mixed-capacity and duplicate-CBOR assertions pass; root/fixture Clippy pass.
+  Evidence/source/dependency locks/exports/hashes are preserved under v202.
+- Firmware command execution/extraction, bootstrap coordinator, enabled NAT/DNS,
+  remaining matrix/fault coverage, ORAS and M6 reviews remain outstanding. This
+  is a correction to the actual publication boundary, not completion of firmware
+  execution or launch/platform qualification.
