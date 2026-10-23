@@ -921,3 +921,15 @@ The helper executes no image command in this probe. v101 retains intermediate
 Clippy findings; v102 passes all checks with an explicit StepCompletion result.
 Unfinished-step storage retention and two compile-time misuse cases are tested.
 Volume fault injection and full image-command integration remain outstanding.
+
+## Image commands on owned volumes
+
+v103 executes the shared native sandbox script on the Step-owned snapshot volume.
+v104 covers five outcomes: success, running-command timeout cancellation, shell
+exit 37, cancellation before admission, and expired admission deadline. It checks
+native stored UID 0 and exact SELinux label bytes for executed commands, and no
+command output for startup-cancel cases. Every outcome recovers the volume after
+descendant drain and policy disable, then exercises the existing unmount/remount
+checks. The helper receives root/namespace descriptors rather than reopening the
+historical source paths. Population remains fixture-only. Both runs are preserved;
+owned-volume supervisor-death and broader setup-failure coverage remain open.

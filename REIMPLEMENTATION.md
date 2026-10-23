@@ -2015,3 +2015,32 @@ rules rather than silently shrinking acceptance criteria.
   not prove those paths. Bootstrap needs a sealed two-volume storage aggregate.
   Full command integration, bounded setup/teardown orchestration and remaining M4
   fault/qualification work stay open. Zero clean adherence passes; no advancement.
+
+### M4 native commands on step-owned volumes (v103–v104)
+
+- Previous turn progressed in eba05e3. The owned-volume helper now executes real
+  image commands through transferred root/namespace descriptors, private runtime
+  mounts, namespace init, command privileges and syscall restrictions. Its script
+  is shared with the earlier native-command fixture, including SELinux allow/deny
+  cases, absence of supervisor/control paths, capability checks and child adoption.
+  Fixture-only population copies the existing test image into the mounted volume;
+  this is not production COPY or M5 formatting implementation.
+- v103 passes success, execution-timeout cancellation and shell failure (37).
+  v104 adds cancellation before admission and an expired admission deadline.
+  The latter cases verify no command-started or labelled file exists. Every case
+  drains descendants, disables policy, recovers the volume and runs subsequent
+  busy-unmount/retry/remount checks. For executed commands, native on-disk UID 0
+  and exact security.selinux bytes are verified from the supervisor root view.
+- The timeout waits on the helper pidfd with a finite deadline after observing
+  command readiness; no scheduling sleep is used. Completion marker publication
+  uses rename so observation cannot see a partially written status. Shell exit
+  37 is explicitly checked by helper and supervisor. All five v104 markers and
+  fixture exit 0 are present. Four host readiness tests and fixture Clippy pass;
+  production sources are unchanged from the prior tested commit. Both complete
+  VM runs, exact sources and hashes are archived and verified.
+- Still open: owned-volume supervisor-death/partial-setup fault qualification,
+  fixed setup/teardown orchestration around blocking operations, combined cleanup
+  diagnostics and production build orchestration. Historical path-based fixtures
+  remain for their independent failure/death coverage; the newly exercised path
+  obtains its command root only from the owned-volume transfer. No M4 adherence
+  pass claimed; streak remains zero and later milestones remain unadvanced.

@@ -45,17 +45,37 @@ impl Integration {
                 .attach(MountPoint::create(Path::new("/work"))?)
                 .map_err(|e| e.to_string())?;
             assert_eq!(view.root_metadata()?.uid(), 100000);
-            drop(setup);
             let channel = channel.await_admission_until(deadline)?;
-            fs::write("/work/volume-transfer-ready", "ready")?;
-            channel.wait_for_loss_until(deadline)?;
+            let mode = args.get(2).ok_or("volume command mode required")?;
+            let mut command = Command::new(std::env::current_exe()?);
+            command
+                .arg("native-namespaces")
+                .arg(Self::command_script(mode))
+                .stdin(setup.into_input()?);
+            let running = view.launch(command).map_err(|e| e.to_string())?;
+            let (view, status) = running
+                .wait_until(Instant::now() + Duration::from_secs(30))
+                .map_err(|e| e.to_string())?;
+            assert_eq!(
+                status.code(),
+                Some(if mode == "shell-failure" { 37 } else { 0 })
+            );
             view.close().map_err(|e| e.to_string())?;
+            fs::write(
+                "/work/volume-transfer-ready.tmp",
+                status.code().unwrap().to_string(),
+            )?;
+            fs::rename(
+                "/work/volume-transfer-ready.tmp",
+                "/work/volume-transfer-ready",
+            )?;
+            channel.wait_for_loss_until(Instant::now() + Duration::from_secs(5))?;
             scope.restore().map_err(|e| e.to_string())?;
             return Ok(());
         }
         if args
             .get(1)
-            .is_some_and(|a| a == "volume-probe" || a == "volume-supervisor")
+            .is_some_and(|a| a == "volume-probe" || a.starts_with("volume-supervisor"))
         {
             use conglobate::storage::{Created, Mapping, Unmounted, Volume, Workspace};
             use std::{collections::BTreeSet, num::NonZeroU64};
@@ -154,12 +174,27 @@ impl Integration {
                 );
             }
             let (volume, user, pin) = if scope.is_none() {
+                // Fixture-only population; production COPY remains separate.
+                assert!(
+                    Command::new("cp")
+                        .args(["-a", "/image-root/."])
+                        .arg(point)
+                        .status()?
+                        .success()
+                );
+                let mode = match args[1].as_str() {
+                    "volume-supervisor-timeout" => "timeout",
+                    "volume-supervisor-failure" => "shell-failure",
+                    "volume-supervisor-pre-admission" => "pre-admission",
+                    "volume-supervisor-admission-timeout" => "admission-timeout",
+                    _ => "success",
+                };
                 let reaper = ChildReaper::install()?;
                 let policy = PolicyFixture::prepare(&lease, user, pin.expect("init volume pin"))?;
                 let parent = Path::new("/work/cgroups");
                 let domain = RecordedDomain::create(&lease, parent)?;
                 let mut command = Command::new(std::env::current_exe()?);
-                command.arg("volume-receiver").env_clear();
+                command.arg("volume-receiver").arg(mode).env_clear();
                 let deadline = Instant::now() + Duration::from_secs(5);
                 let helper = domain
                     .launch(command, deadline)
@@ -168,12 +203,48 @@ impl Integration {
                     .map_err(|e| e.to_string())?
                     .with_volume(volume);
                 step.send_volume_until(deadline)?;
-                let step = step.admit_until(deadline).map_err(|e| e.to_string())?;
-                let ready = Path::new("/work/volume-transfer-ready");
-                Readiness::new(ready)?.wait_until(deadline, || step.supervision().peer_lost())?;
+                let step = match mode {
+                    "pre-admission" => step.cancel_until(deadline).map_err(|e| e.to_string())?,
+                    "admission-timeout" => {
+                        let failure = step.admit_until(Instant::now()).unwrap_err();
+                        let conglobate::step::StartFailure::Admission(failure) = failure else {
+                            return Err(failure.to_string().into());
+                        };
+                        let (error, step) = failure.into_parts();
+                        assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+                        step.cancel_until(deadline).map_err(|e| e.to_string())?
+                    }
+                    _ => {
+                        let step = step.admit_until(deadline).map_err(|e| e.to_string())?;
+                        let ready = Path::new("/work/volume-transfer-ready");
+                        if mode == "timeout" {
+                            let started = point.join("command-started");
+                            Readiness::new(&started)?
+                                .wait_until(deadline, || step.supervision().peer_lost())?;
+                            assert_eq!(
+                                step.supervision()
+                                    .wait_for_peer_exit_until(
+                                        Instant::now() + Duration::from_millis(100)
+                                    )
+                                    .unwrap_err()
+                                    .kind(),
+                                std::io::ErrorKind::TimedOut
+                            );
+                        } else {
+                            Readiness::new(ready)?
+                                .wait_until(deadline, || step.supervision().peer_lost())?;
+                            assert_eq!(
+                                fs::read_to_string(ready)?,
+                                if mode == "shell-failure" { "37" } else { "0" }
+                            );
+                            fs::remove_file(ready)?;
+                        }
+                        let deadline = Instant::now() + Duration::from_secs(5);
+                        step.cancel_until(deadline).map_err(|e| e.to_string())?
+                    }
+                };
+                let deadline = Instant::now() + Duration::from_secs(5);
                 let (_, _, policy, volume) = step
-                    .cancel_until(deadline)
-                    .map_err(|e| e.to_string())?
                     .reap_until(deadline)
                     .map_err(|e| e.to_string())?
                     .drain_until(deadline)
@@ -185,7 +256,29 @@ impl Integration {
                     .into_parts();
                 let (user, mut pins) = policy.close()?.into_parts();
                 assert_eq!(pins.len(), 1);
-                fs::remove_file(ready)?;
+                assert!(
+                    fs::read_to_string("/proc/thread-self/children")?
+                        .trim()
+                        .is_empty()
+                );
+                if matches!(mode, "pre-admission" | "admission-timeout") {
+                    assert!(!point.join("command-started").exists());
+                    assert!(!point.join("labelled").exists());
+                } else {
+                    assert_eq!(
+                        fs::read_to_string(point.join("command-started"))?,
+                        "image-write\n"
+                    );
+                    assert_eq!(fs::metadata(point.join("command-started"))?.uid(), 0);
+                    let mut label = [0u8; 128];
+                    let length = rustix::fs::getxattr(
+                        point.join("labelled"),
+                        "security.selinux",
+                        &mut label,
+                    )?;
+                    assert_eq!(&label[..length], b"system_u:object_r:etc_t:s0");
+                }
+                println!("OWNED_VOLUME_COMMAND_{}_PASS", mode.to_uppercase());
                 println!("OWNED_VOLUME_SUPERVISED_TRANSFER_PASS");
                 println!("STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS");
                 (volume, user, pins.pop())
@@ -1405,20 +1498,7 @@ impl Integration {
         Ok(mount)
     }
 
-    fn helper(mode: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let channel = Supervision::from_stdin()?
-            .exchange_until(Instant::now() + Duration::from_secs(5))?
-            .join_domain_until(Instant::now() + Duration::from_secs(5))?
-            .await_admission_until(Instant::now() + Duration::from_secs(5))?;
-        let namespace = PrivateMountNamespace::enter()?;
-        let userns = fs::File::open(fs::read_to_string("/work/userns-path")?)?;
-        let mount = Mount::<Detached>::clone_from(&fs::File::open("/work/origin")?, &namespace)?
-            .idmap(userns.try_clone()?)
-            .map_err(|e| e.to_string())?
-            .attach(MountPoint::create(Path::new("/work"))?)
-            .map_err(|e| e.to_string())?;
-        let mount = Self::root_launch_probe(mount, false)?;
-        let mount = Self::root_launch_probe(mount, true)?;
+    fn command_script(mode: &str) -> String {
         let checks = r#"
             test "$PPID" = 1
             test "$$" -ne 1
@@ -1547,6 +1627,24 @@ impl Integration {
                 "#
             }
         );
+        script
+    }
+
+    fn helper(mode: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let channel = Supervision::from_stdin()?
+            .exchange_until(Instant::now() + Duration::from_secs(5))?
+            .join_domain_until(Instant::now() + Duration::from_secs(5))?
+            .await_admission_until(Instant::now() + Duration::from_secs(5))?;
+        let namespace = PrivateMountNamespace::enter()?;
+        let userns = fs::File::open(fs::read_to_string("/work/userns-path")?)?;
+        let mount = Mount::<Detached>::clone_from(&fs::File::open("/work/origin")?, &namespace)?
+            .idmap(userns.try_clone()?)
+            .map_err(|e| e.to_string())?
+            .attach(MountPoint::create(Path::new("/work"))?)
+            .map_err(|e| e.to_string())?;
+        let mount = Self::root_launch_probe(mount, false)?;
+        let mount = Self::root_launch_probe(mount, true)?;
+        let script = Self::command_script(mode);
         let mut setup = Command::new(std::env::current_exe()?);
         setup.arg("native-namespaces").arg(&script).stdin(
             CommandSetup::new(userns, CommandDevices::create(100000, 100000)?)?.into_input()?,

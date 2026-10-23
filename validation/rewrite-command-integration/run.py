@@ -113,6 +113,10 @@ mount -t bpf bpf /work/pins
 chmod 700 /work/pins
 /idmap-probe volume-probe
 /idmap-probe volume-supervisor
+/idmap-probe volume-supervisor-timeout
+/idmap-probe volume-supervisor-failure
+/idmap-probe volume-supervisor-pre-admission
+/idmap-probe volume-supervisor-admission-timeout
 /idmap-probe loop-probe
 /idmap-probe mapping-probe
 /idmap-probe workspace-probe

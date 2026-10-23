@@ -1,0 +1,1 @@
+Owned-volume native commands pass success, execution timeout cancellation, shell exit 37, pre-admission cancellation and admission deadline failure. Exact stored labels and native ownership checked; no command output in startup-cancel cases. Existing cleanup/remount and sandbox suites pass. Not full M4 qualification.
