@@ -1,0 +1,12 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.29s
+     Running unittests src/lib.rs (target/debug/deps/conglobate-a27e453ef45e8d76)
+
+running 4 tests
+test copy::destination::tests::copies_committed_contents_and_preserves_nested_links ... ok
+test copy::destination::tests::rejects_conflicts_and_resolves_accounts_only_inside_root ... ok
+test copy::destination::tests::confines_absolute_links_and_replaces_nested_links_and_hardlinks ... ok
+test copy::destination::tests::bootstrap_paths_and_links_cross_the_virtual_mount_boundary ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 77 filtered out; finished in 0.03s
+

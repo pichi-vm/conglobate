@@ -227,3 +227,13 @@ bytes and UID/GID/mode on ext4 within the disposable VM; normal lifecycle tests
 still pass. The coordinator must now arrange these calls between command steps,
 route bootstrap tool/output destinations, and bound trusted work. COPY is not yet
 available as an end-to-end CLI build directive.
+
+## Bootstrap COPY routing
+
+BootstrapVolumes<Mounted>::copy presents tool / and output /mnt through pinned
+handles, including cross-root symlinks and /mnt/.. behavior. v193 validates the
+production APIs in a command/COPY/command sequence with remounts, persisted
+contents/ownership/mode and no context exposure. Its full normal VM suite passes.
+The earlier missing-ln fixture failure is retained as v192. Next use this sequence
+in the actual pipeline coordinator and finish trusted-work deadline handling;
+fixture orchestration is not CLI completion.

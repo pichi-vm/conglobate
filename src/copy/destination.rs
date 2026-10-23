@@ -33,6 +33,7 @@ impl From<rustix::io::Errno> for CopyError {
 #[derive(Debug)]
 pub(crate) struct CopyDestination<'a> {
     root: &'a File,
+    output: Option<&'a File>,
 }
 #[derive(Debug)]
 struct MetadataPolicy<'a> {
@@ -66,16 +67,31 @@ impl MetadataPolicy<'_> {
 }
 impl<'a> CopyDestination<'a> {
     pub(crate) fn new(root: &'a File) -> Self {
-        Self { root }
+        Self { root, output: None }
+    }
+    pub(crate) fn bootstrap(root: &'a File, output: &'a File) -> Self {
+        Self {
+            root,
+            output: Some(output),
+        }
+    }
+    fn location<'p>(&self, path: &'p Path) -> (&File, &'p Path) {
+        if let Some(output) = self.output
+            && let Ok(relative) = path.strip_prefix("mnt")
+        {
+            return (output, relative);
+        }
+        (self.root, path)
     }
     fn open(&self, path: &Path, flags: OFlags) -> io::Result<File> {
+        let (root, path) = self.location(path);
         let path = if path.as_os_str().is_empty() {
             Path::new(".")
         } else {
             path
         };
         Ok(fs::openat2(
-            self.root,
+            root,
             path,
             flags | OFlags::CLOEXEC,
             Mode::empty(),
@@ -117,7 +133,8 @@ impl<'a> CopyDestination<'a> {
                 if links > 40 {
                     return Err(CopyError::Invalid("too many destination symlinks"));
                 }
-                let target = fs::readlinkat(self.root, &resolved, Vec::new())?;
+                let (root, path) = self.location(&resolved);
+                let target = fs::readlinkat(root, path, Vec::new())?;
                 resolved.pop();
                 let bytes = target.as_bytes();
                 if bytes.ends_with(b"/") || bytes.ends_with(b"/.") {
@@ -134,7 +151,13 @@ impl<'a> CopyDestination<'a> {
     }
     fn directory(&self, path: &Path, policy: &MetadataPolicy<'_>) -> Result<File, CopyError> {
         let mut parent = self.open(Path::new(""), OFlags::RDONLY | OFlags::DIRECTORY)?;
+        let mut prefix = PathBuf::new();
         for name in path.iter() {
+            prefix.push(name);
+            if self.output.is_some() && prefix == Path::new("mnt") {
+                parent = self.open(&prefix, OFlags::RDONLY | OFlags::DIRECTORY)?;
+                continue;
+            }
             let created = match fs::mkdirat(&parent, name, Mode::from_raw_mode(0o700)) {
                 Ok(()) => true,
                 Err(rustix::io::Errno::EXIST) => false,
@@ -384,6 +407,15 @@ mod tests {
             }
         }
         fn copy(&self, source: &str, destination: &str, extra: &str) -> Result<(), CopyError> {
+            self.copy_layout(source, destination, extra, None)
+        }
+        fn copy_layout(
+            &self,
+            source: &str,
+            destination: &str,
+            extra: &str,
+            output: Option<&File>,
+        ) -> Result<(), CopyError> {
             let yaml = format!(
                 "carapace:\n  from: example.test/base:1\n  derive:\n    - copy:\n        from: {}\n        into: {}\n        owner: '{}'\n        group: '{}'\n{extra}",
                 serde_json::to_string(source).unwrap(),
@@ -395,8 +427,12 @@ mod tests {
             let Directive::Copy(directive) = &recipe.carapace().unwrap().directives()[0] else {
                 unreachable!()
             };
-            CopyDestination::new(&File::open(self.target.path()).unwrap())
-                .copy(&self.context, directive)
+            let root = File::open(self.target.path()).unwrap();
+            let writer = match output {
+                Some(output) => CopyDestination::bootstrap(&root, output),
+                None => CopyDestination::new(&root),
+            };
+            writer.copy(&self.context, directive)
         }
     }
     #[test]
@@ -459,6 +495,45 @@ mod tests {
             host::read(fixture.target.path().join("hard")).unwrap(),
             b"committed"
         );
+    }
+    #[test]
+    fn bootstrap_paths_and_links_cross_the_virtual_mount_boundary() {
+        let fixture = Fixture::new();
+        let output = tempfile::tempdir().unwrap();
+        let output_fd = File::open(output.path()).unwrap();
+        host::create_dir(fixture.target.path().join("mnt")).unwrap();
+        host::write(fixture.target.path().join("mnt/hidden"), "tool backing").unwrap();
+        host::create_dir(fixture.target.path().join("tool")).unwrap();
+        symlink("/mnt", fixture.target.path().join("export")).unwrap();
+        symlink("/tool", output.path().join("absolute-return")).unwrap();
+        symlink("../tool", output.path().join("relative-return")).unwrap();
+        for path in [
+            "/export/forward",
+            "/mnt/direct",
+            "/mnt/absolute-return/a",
+            "/mnt/relative-return/b",
+            "/mntish/c",
+        ] {
+            fixture
+                .copy_layout("dir/file", path, "", Some(&output_fd))
+                .unwrap();
+        }
+        for path in ["forward", "direct"] {
+            assert_eq!(host::read(output.path().join(path)).unwrap(), b"committed");
+        }
+        for path in ["tool/a", "tool/b", "mntish/c"] {
+            assert_eq!(
+                host::read(fixture.target.path().join(path)).unwrap(),
+                b"committed"
+            );
+        }
+        assert_eq!(
+            host::read_dir(fixture.target.path().join("mnt"))
+                .unwrap()
+                .count(),
+            1
+        );
+        assert!(!output.path().join("hidden").exists());
     }
     #[test]
     fn rejects_conflicts_and_resolves_accounts_only_inside_root() {

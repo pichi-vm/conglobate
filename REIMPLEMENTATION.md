@@ -3091,3 +3091,25 @@ rules rather than silently shrinking acceptance criteria.
 - This is a mounted-volume API, not yet complete CLI directive orchestration.
   Bootstrap /mnt routing, deadline integration, comprehensive COPY compatibility
   and emitted-image metadata qualification remain required. M6 zero passes.
+
+### M6 bootstrap COPY across tool and output roots
+
+- Previous turn progressed with Volume<Mounted>::copy. Added an immutable
+  two-root layout to the confined writer and BootstrapVolumes<Mounted>::copy,
+  exclusively borrowing both volumes. /mnt selects the output handle; image
+  symlinks may cross in either direction. Absolute targets restart at the tool
+  root, and /mnt/.. returns there. Tool backing contents beneath /mnt stay hidden.
+  The real reserved tool mountpoint is validated with the existing preparation API.
+- Host regressions verify forward aliases, absolute/relative return links,
+  mountpoint component boundaries and hidden backing contents. 81 library tests,
+  50 doctests, root/fixture strict Clippy pass.
+- Added actual command/COPY/command validation: command one creates cross-root
+  symlinks; trusted COPY remounts and writes through both; command two remounts,
+  verifies both contents plus UID/GID/mode and absent context. v192 stopped
+  before COPY because the minimal fixture lacked ln; retained its failed evidence,
+  added ln/stat to the tool fixture, and v193 passes the full normal VM suite.
+- Evidence, fixture sources/context, source archives and hashes retained in
+  validation/rewrite-command-integration/evidence/v192 and v193. These exercise
+  production storage/COPY/command APIs in sequence, not complete CLI recipe
+  orchestration. Trusted-work deadline integration and full stage coordinator
+  remain necessary. M6 stays at zero adherence passes.

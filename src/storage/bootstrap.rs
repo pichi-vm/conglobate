@@ -160,6 +160,17 @@ pub struct BootstrapUnmountFailure<'n, 'o, 'w> {
     unmounting: Unmounting<'n, 'o, 'w>,
 }
 impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Mounted> {
+    /// COPY sees the tool root at / and the output root at /mnt, including
+    /// symlinks that cross that boundary. Both volumes remain exclusively owned.
+    pub fn copy(
+        &mut self,
+        context: &crate::context::CapturedContext,
+        directive: &crate::recipe::Copy,
+    ) -> Result<(), crate::copy::CopyError> {
+        self.tool
+            .copy_with_output(&mut self.output, context, directive)
+    }
+
     pub(crate) fn tool(&self) -> &Volume<'n, 'o, 'w, Mounted> {
         &self.tool
     }

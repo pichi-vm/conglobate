@@ -295,6 +295,19 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
         crate::copy::CopyDestination::new(&self.resources.root).copy(context, directive)
     }
 
+    pub(crate) fn copy_with_output(
+        &mut self,
+        output: &mut Volume<'_, '_, '_, Mounted>,
+        context: &crate::context::CapturedContext,
+        directive: &crate::recipe::Copy,
+    ) -> Result<(), crate::copy::CopyError> {
+        self.scope.verify_current()?;
+        output.scope.verify_current()?;
+        self.prepare_output_mountpoint()?;
+        crate::copy::CopyDestination::bootstrap(&self.resources.root, &output.resources.root)
+            .copy(context, directive)
+    }
+
     pub fn root_metadata(&self) -> io::Result<Metadata> {
         self.resources.root.metadata()
     }
