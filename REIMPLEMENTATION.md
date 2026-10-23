@@ -2256,3 +2256,34 @@ rules rather than silently shrinking acceptance criteria.
   separately as post-run source. No adherence pass claimed; M4 streak remains zero.
   Production orchestration, primary command outcomes through cleanup failures and
   remaining M4 review are still outstanding. Later milestones remain pending.
+
+### M4 primary command outcome and cleanup association (v118–v120)
+
+- Previous turn progressed in c6688ef. The owned-volume fixture previously read
+  command status from a marker file while teardown returned the outer trusted
+  helper's exit status. These must not be conflated. Completion now travels on
+  the private supervision channel as exact CBOR [1,7,bstr(four-byte big-endian
+  Linux wait status)], with no ancillary descriptors. The helper reports before
+  its own mount cleanup. The fixture no longer publishes a status marker file.
+- RunningCommand::observe consumes the running owner and retains it alongside
+  Exited or ObservationFailed, using the original execution cutoff and rejecting
+  late observation. CommandResult consuming cleanup transitions retain that
+  primary outcome even when cleanup returns a failure/retry owner. This is a
+  diagnostic association, not a success receipt or proof of finalized storage.
+- v118 passes ordinary completion/timeout/cleanup retry. v119 failed to compile
+  a fixture &String pattern; exact source/logs are preserved, with no stale VM
+  run. v120 corrects the pattern and combines shell exit 37 with policy cleanup
+  failure and retry, proving 37 survives both transitions. Host tests preserve
+  nonzero status and timeout through cleanup, validate exit/signal transport and
+  reject nonterminal/reserved statuses, malformed lengths and extra descriptors.
+  Host tests, 44 compile-fail cases, both Clippy checks and v120 VM pass. The
+  initial Clippy items-after-tests finding is preserved in v118 and fixed by
+  moving the implementation before tests. Source/evidence hashes are verified.
+- Namespace init still normalizes shell signal termination to 128+signal. The
+  completion transport preserves the reported namespace-init result; it does not
+  recover original shell signal identity. Helper failure and command failure
+  remain distinct observations. Finalization reports must continue carrying the
+  primary outcome in the production orchestrator; fixture extraction currently
+  separates them before its independent busy-unmount tests. Intermediate setup
+  acquisition checks and full orchestrator integration remain outstanding.
+  M4 adherence streak remains zero; no later milestone is advanced.

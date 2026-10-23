@@ -1,0 +1,1 @@
+Completion travels over private supervision socket, not fixture status file. Command outcome remains paired with cleanup failure/retry. Normal VM suite passes. Clippy items-after-tests finding is preserved; no qualification claim.

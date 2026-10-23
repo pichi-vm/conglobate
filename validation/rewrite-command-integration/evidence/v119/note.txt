@@ -1,0 +1,1 @@
+Compile-only failure: fixture matched &String against string literals. No VM boot or stale binary. Fix uses mode.as_str() at this site.

@@ -98,7 +98,11 @@ impl Integration {
             let mut command = Command::new(std::env::current_exe()?);
             command
                 .arg("gated-namespaces")
-                .arg(Self::command_script(mode))
+                .arg(Self::command_script(if mode == "policy-cleanup" {
+                    "shell-failure"
+                } else {
+                    mode
+                }))
                 .stdin(setup.with_gate(endpoint).into_input()?);
             if mode == "descriptor-rejection" {
                 command.arg("--probe-extra-fd");
@@ -114,17 +118,16 @@ impl Integration {
                 .map_err(|e| e.to_string())?;
             assert_eq!(
                 status.code(),
-                Some(if mode == "shell-failure" { 37 } else { 0 })
+                Some(
+                    if matches!(mode.as_str(), "shell-failure" | "policy-cleanup") {
+                        37
+                    } else {
+                        0
+                    }
+                )
             );
+            channel.report_completion_until(status, deadline)?;
             view.close().map_err(|e| e.to_string())?;
-            fs::write(
-                "/work/volume-transfer-ready.tmp",
-                status.code().unwrap().to_string(),
-            )?;
-            fs::rename(
-                "/work/volume-transfer-ready.tmp",
-                "/work/volume-transfer-ready",
-            )?;
             channel.wait_for_loss_until(Instant::now() + Duration::from_secs(5))?;
             scope.restore().map_err(|e| e.to_string())?;
             return Ok(());
@@ -303,7 +306,6 @@ impl Integration {
                             .start(timeout.parse()?)
                             .map_err(|e| e.to_string())?;
                         let deadline = step.deadline();
-                        let ready = Path::new("/work/volume-transfer-ready");
                         if mode == "vm-death" {
                             let started = point.join("command-started");
                             Readiness::new(&started)?
@@ -320,41 +322,54 @@ impl Integration {
                             let started = point.join("command-started");
                             Readiness::new(&started)?
                                 .wait_until(deadline, || step.supervision().peer_lost())?;
-                            assert_eq!(
-                                step.supervision()
-                                    .wait_for_peer_exit_until(step.deadline())
-                                    .unwrap_err()
-                                    .kind(),
-                                std::io::ErrorKind::TimedOut
-                            );
-                        } else {
-                            Readiness::new(ready)?
-                                .wait_until(deadline, || step.supervision().peer_lost())?;
-                            assert_eq!(
-                                fs::read_to_string(ready)?,
-                                if mode == "shell-failure" { "37" } else { "0" }
-                            );
-                            fs::remove_file(ready)?;
                         }
-                        if mode == "policy-cleanup" {
+                        let observed = step.observe();
+                        match observed.outcome() {
+                            conglobate::step::CommandOutcome::Exited(status) => {
+                                assert_ne!(mode, "timeout");
+                                assert_eq!(
+                                    status.code(),
+                                    Some(if matches!(mode, "shell-failure" | "policy-cleanup") {
+                                        37
+                                    } else {
+                                        0
+                                    })
+                                );
+                            }
+                            conglobate::step::CommandOutcome::ObservationFailed(error) => {
+                                assert_eq!(mode, "timeout");
+                                assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+                            }
+                        }
+                        let cleaned = if mode == "policy-cleanup" {
                             let pins =
                                 fs::read_dir("/work/pins")?.collect::<Result<Vec<_>, _>>()?;
                             assert_eq!(pins.len(), 1);
                             let blocker = pins[0].path().join("cleanup-blocker");
                             fs::create_dir(&blocker)?;
-                            let failure = step.teardown(parent).unwrap_err();
+                            let failed = observed.teardown(parent);
+                            let failure = failed.cleanup().as_ref().unwrap_err();
                             assert_eq!(
                                 failure.diagnostics().operation().kind(),
                                 std::io::ErrorKind::DirectoryNotEmpty
                             );
                             assert_eq!(fs::read_dir(recovery)?.count(), 2);
                             fs::remove_dir(&blocker)?;
-                            let completion = failure.retry().map_err(|e| e.to_string())?;
+                            let completion =
+                                failed.map_cleanup(|result| result.unwrap_err().retry());
                             println!("BOUNDED_POLICY_CLEANUP_RETRY_PASS");
+                            println!("NONZERO_OUTCOME_THROUGH_CLEANUP_RETRY_PASS");
                             completion
                         } else {
-                            step.teardown(parent).map_err(|e| e.to_string())?
-                        }
+                            observed.teardown(parent)
+                        };
+                        let (outcome, cleanup) = cleaned.into_parts();
+                        assert_eq!(
+                            outcome.success(),
+                            !matches!(mode, "timeout" | "shell-failure" | "policy-cleanup")
+                        );
+                        println!("PRIMARY_OUTCOME_AFTER_CLEANUP_PASS");
+                        cleanup.map_err(|e| e.to_string())?
                     }
                 };
                 assert_eq!(fs::read_dir(recovery)?.count(), 0);

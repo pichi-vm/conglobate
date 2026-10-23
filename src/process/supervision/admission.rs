@@ -60,6 +60,30 @@ impl Supervision<Registered> {
     }
 }
 
+impl Supervision<Admitted> {
+    /// Trusted helper reports its reaped command status, before helper cleanup.
+    /// This does not certify descendant quiescence or successful finalization.
+    pub fn report_completion_until(
+        &self,
+        status: std::process::ExitStatus,
+        deadline: Instant,
+    ) -> io::Result<()> {
+        Packet::Completed(status).send(&self.socket.0, deadline)
+    }
+    pub(crate) fn completion_until(
+        &self,
+        deadline: Instant,
+    ) -> io::Result<std::process::ExitStatus> {
+        match Packet::receive(&self.socket.0, deadline)? {
+            Packet::Completed(status) => Ok(status),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "expected command completion",
+            )),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

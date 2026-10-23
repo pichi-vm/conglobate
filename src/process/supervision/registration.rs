@@ -18,6 +18,8 @@ use std::{
     fs::{self, File},
     io::{self, IoSlice, IoSliceMut, Write},
     mem::MaybeUninit,
+    os::unix::process::ExitStatusExt,
+    process::ExitStatus,
     time::Instant,
 };
 
@@ -112,9 +114,10 @@ pub(super) enum Packet {
     Admitted,
     Volume(OwnedFd, OwnedFd),
     Prepared,
+    Completed(ExitStatus),
 }
 impl Packet {
-    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4, Volume=5, Prepared=6.
+    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4, Volume=5, Prepared=6; Completed=[1,7,bstr(wait status)].
     pub(super) fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
         self.send_with(socket, &deadline)
     }
@@ -126,6 +129,17 @@ impl Packet {
             Self::Admitted => (4, vec![]),
             Self::Volume(root, namespace) => (5, vec![root.as_fd(), namespace.as_fd()]),
             Self::Prepared => (6, vec![]),
+            Self::Completed(_) => (7, vec![]),
+        };
+        // The status payload is a fixed four-byte Linux wait status, carried
+        // in a canonical CBOR byte string rather than a native-endian integer.
+        let bytes = match self {
+            Self::Completed(status) => {
+                let mut bytes = vec![0x83, 1, opcode, 0x44];
+                bytes.extend_from_slice(&status.into_raw().to_be_bytes());
+                bytes
+            }
+            _ => vec![0x82, 1, opcode],
         };
         loop {
             wait.ready(socket, PollFlags::OUT)?;
@@ -138,11 +152,11 @@ impl Packet {
             }
             match sendmsg(
                 &socket.0,
-                &[IoSlice::new(&[0x82, 1, opcode])],
+                &[IoSlice::new(&bytes)],
                 &mut ancillary,
                 SendFlags::DONTWAIT | SendFlags::NOSIGNAL,
             ) {
-                Ok(3) => return Ok(()),
+                Ok(count) if count == bytes.len() => return Ok(()),
                 Ok(_) => return Err(io::Error::other("incomplete registration packet")),
                 Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
                 Err(error) => return Err(error.into()),
@@ -155,7 +169,7 @@ impl Packet {
     fn receive_with(socket: &IdentitySocket, wait: &impl ExchangeWait) -> io::Result<Self> {
         loop {
             wait.ready(socket, PollFlags::IN)?;
-            let mut bytes = [0; 3];
+            let mut bytes = [0; 8];
             let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(2))];
             let mut ancillary = RecvAncillaryBuffer::new(&mut space);
             let result = match recvmsg(
@@ -174,11 +188,11 @@ impl Packet {
                     "registration peer closed",
                 ));
             }
-            if result.bytes != 3
-                || result
-                    .flags
-                    .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
-                || bytes[..2] != [0x82, 1]
+            if result
+                .flags
+                .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
+                || !((result.bytes == 3 && bytes[..2] == [0x82, 1] && bytes[2] != 7)
+                    || (result.bytes == 8 && bytes[..4] == [0x83, 1, 7, 0x44]))
             {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -201,6 +215,21 @@ impl Packet {
                 (3, 0) => Ok(Self::Admit),
                 (4, 0) => Ok(Self::Admitted),
                 (6, 0) => Ok(Self::Prepared),
+                (7, 0) => {
+                    let raw = i32::from_be_bytes(bytes[4..8].try_into().expect("four bytes"));
+                    let status = ExitStatus::from_raw(raw);
+                    // Accept only terminal Linux wait statuses, not stopped or
+                    // continued children, reserved bits or impossible signals.
+                    let valid = (raw & !0xff00 == 0)
+                        || (raw > 0 && raw & !0xff == 0 && (1..=64).contains(&(raw & 0x7f)));
+                    if !valid {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "nonterminal or invalid command status",
+                        ));
+                    }
+                    Ok(Self::Completed(status))
+                }
                 (5, 2) => {
                     let namespace = descriptors.pop().expect("namespace descriptor");
                     Ok(Self::Volume(
@@ -255,6 +284,53 @@ mod tests {
             )
             .unwrap();
         }
+    }
+    #[test]
+    fn completion_preserves_exit_and_signal_status() {
+        for raw in [0, 37 << 8, 255 << 8, 9, 11 | 0x80] {
+            let (a, b) = Fixture::pair();
+            Packet::Completed(ExitStatus::from_raw(raw))
+                .send(&a, Fixture::deadline())
+                .unwrap();
+            let Packet::Completed(status) = Packet::receive(&b, Fixture::deadline()).unwrap()
+            else {
+                panic!("expected completion");
+            };
+            assert_eq!(status.into_raw(), raw);
+        }
+    }
+    #[test]
+    fn completion_rejects_nonterminal_status_and_unexpected_rights() {
+        let file = File::open("/dev/null").unwrap();
+        for raw in [-1i32, 0xffff, 0x137f, 0x10000, 65, 0x80] {
+            let (a, b) = Fixture::pair();
+            Packet::Completed(ExitStatus::from_raw(raw))
+                .send(&a, Fixture::deadline())
+                .unwrap();
+            assert_eq!(
+                Packet::receive(&b, Fixture::deadline()).unwrap_err().kind(),
+                io::ErrorKind::InvalidData
+            );
+        }
+        for bytes in [
+            &[0x82, 1, 7][..],
+            &[0x83, 1, 7, 0x44, 0, 0, 0][..],
+            &[0x83, 1, 7, 0x44, 0, 0, 0, 0, 0][..],
+            &[0x83, 1, 7, 0x43, 0, 0, 0, 0][..],
+        ] {
+            let (a, b) = Fixture::pair();
+            Fixture::raw(&a, bytes, &[]);
+            assert_eq!(
+                Packet::receive(&b, Fixture::deadline()).unwrap_err().kind(),
+                io::ErrorKind::InvalidData
+            );
+        }
+        let (a, b) = Fixture::pair();
+        Fixture::raw(&a, &[0x83, 1, 7, 0x44, 0, 0, 0, 0], &[file.as_fd()]);
+        assert_eq!(
+            Packet::receive(&b, Fixture::deadline()).unwrap_err().kind(),
+            io::ErrorKind::InvalidData
+        );
     }
     #[test]
     fn registration_packets_require_exact_opcode_descriptor_pairs() {

@@ -14,6 +14,8 @@ use std::{
 };
 
 mod finalize;
+mod outcome;
+pub use outcome::{CommandOutcome, CommandResult};
 mod setup;
 pub use setup::{CommandStartFailure, PreparedStep, RunningCommand, SetupBudget};
 mod pins;
