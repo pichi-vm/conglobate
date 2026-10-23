@@ -1047,7 +1047,7 @@ The single-recipe design replaces version one's `execution.recipes` map with
 explicit `execution.recipe` and `execution.lock` path/content records, and
 replaces per-file network-step identifiers with `stage`. This requires a schema
 version change; the existing version-one implementation must not silently emit
-these fields as version one. Version-two integration remains implementation work.
+these fields as version one. Emit and validate the version-two schema explicitly.
 The transform record adds a
 required boolean `default_skipped`, indicating that the implicit default
 encountered no DTB or no bootargs property; an authored transform always records
@@ -1108,8 +1108,10 @@ records exact-attribute and cleanup-order regressions that must remain covered.
 Earlier FUSE worker tests remain comparative historical evidence.
 
 Required integration tests include trusted formatting directly on a zero-backed
-carapace layer; concurrent tool `/` and output `/mnt` mounts; LSM authorization
-of both and denial elsewhere; full tool-root package installation; direct scute
+carapace layer; concurrent tool `/` and output `/mnt` mounts; restricted labeling
+admission on both, missing-policy rejection, exact-attribute behavior, read-only
+denial and confinement of supervisor inodes/descriptors; full tool-root package
+installation; direct scute
 finalization without conversion; safe COPY/export; identity/FD lifetime; actual
 capability/syscall profiles on both architectures; independent build VMs;
 helper death, supervisor death followed by VM shutdown; blocked I/O and fixed deadlines; writeback
@@ -1145,7 +1147,7 @@ firmware signing/resealing contracts, and appliance transport and attestation.
 
 Sandbox policy is settled in SANDBOX-DESIGN.txt. Exact capability/syscall/ioctl
 profiles, fixed internal deadline values, trusted formatter/property schemas,
-multi-filesystem LSM lifecycle, identity allocation, and runtime mount mechanics
+both-root labeling admission, identity allocation, and runtime mount mechanics
 are implementation work constrained by
 that contract. Production integration and platform qualification are required;
 fully unprivileged storage assembly is outside the selected design.

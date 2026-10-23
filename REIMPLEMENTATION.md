@@ -4383,3 +4383,19 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   observations: preservation/m7-review/architecture-reconciliation-303f765.
   No production change or retirement. Full architecture adherence sequence still
   required; no dependent milestone advancement authorized by this correction.
+
+### Architecture requirements/evidence review: stale validation requirement
+
+- Found DESIGN section 12 still requesting scoped LSM authorization and denial
+  elsewhere, and section 13 still naming a multi-filesystem LSM lifecycle.
+  Corrected these to the fixed exception, both-root restricted admission and
+  inode/descriptor/read-only confinement. Historical scoped probe descriptions
+  remain historical evidence. Replaced stale version-two implementation-status
+  wording with the normative requirement to emit/validate version two.
+- Added architecture traceability anchors for inputs, stages, ownership,
+  formatting, labels, isolation, teardown, COPY/firmware, transformations,
+  networking, publication and distro/platform/preservation. Explicitly separate
+  current rootless/VM checks from historical fixtures and outstanding coverage.
+- Findings reset/retain M2 at 0/3; no implementation gate advanced. Review scope,
+  source observations and corrected hashes are preserved under
+  preservation/m7-review/architecture-traceability-9c412ef. No production change.

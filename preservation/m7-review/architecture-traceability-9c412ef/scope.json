@@ -1,0 +1,9 @@
+{
+  "baseline": "9c412ef",
+  "result": "findings; zero clean passes",
+  "corrected_scope_sha256": {
+    "DESIGN.md": "f936171ea259c3a924b6a3703dcec23d995bae56093e8bfd71faebd6e459973f",
+    "SANDBOX-DESIGN.txt": "9f4f5dfd65196dde338b54675d503400c72d5e7d62f24501f59db7a107e59455",
+    "ARCHITECTURE.md": "35ce5842925c33023224dc00b51d2dc9a7c7b0dffaa79c57a3dc1670d795cccd"
+  }
+}

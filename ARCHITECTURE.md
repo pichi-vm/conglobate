@@ -276,6 +276,29 @@ avoid mirroring every method signature. Runtime tests validate external effects.
 | Outputs | Paired firmware validation, final DTB, deterministic CBOR, inherited blobs, OCI/ORAS, atomic failure cases |
 | Platforms | amd64/arm64 and TDX/SEV-SNP/CCA evidence; unavailable environments remain outstanding |
 
+### Current requirements-to-tests mapping
+
+These are navigation anchors, not blanket passing claims. Source tests establish
+only their asserted property. Current VM evidence applies to native amd64 on the
+recorded ordinary VM kernel. Historical fixtures referencing removed policy APIs
+must be migrated before they count as current lifecycle regression coverage.
+
+| Contract | Source/test anchors | Evidence boundary or remaining work |
+| --- | --- | --- |
+| Committed local inputs, explicit paths and locked indexes | tests/contexts.rs, requests.rs, locks.rs, cache.rs; src/input.rs | Rootless parsing/object/cache checks; commands must still be checked for context exclusion |
+| Stage combinations, inheritance and variables | tests/plans.rs, recipes.rs, templates.rs; src/plan.rs | Planning assertions do not prove every privileged combination executes |
+| Sealed states and borrowed mount authority | src/storage/volume.rs, filesystem.rs, step.rs compile-fail examples; src/step/execution/storage.rs | Compile-time ownership plus trusted storage-derived handoff; partial-acquisition failures require VM coverage |
+| Format schema, geometry and inventory receipts | src/recipe/mod.rs, formatter/profile.rs, inventory/schema.rs; tests/distro/bootstrap-labeling/verify.py | Current minimal bootstrap verifies graph/receipt; exhaustive formatter failures remain to migrate |
+| Restricted labeling admission | src/isolation/labels.rs; tests/distro/labeling/verify_missing.py, labeling-fault/verify.py | Current missing-policy and differential second-root negatives; test-only fault policy is not production registration |
+| Persisted foreign labels and attribute boundaries | tests/distro/label-operations | Current set/read/remove/remount and exact-name negatives; target enforcing boot requires distro qualification |
+| Command isolation and descendants | tests/distro/confinement, descendants | Current representative FD/capability/path/namespace observations and FIFO child cleanup; not exhaustive syscall/platform coverage |
+| Error and timeout cleanup | tests/distro/failures; src/isolation/gate.rs tests | Current nonzero/timeout and gate boundaries; receiver start-send failure, helper/supervisor death, blocked I/O and writeback fault coverage remain |
+| Confined COPY and firmware extraction | src/copy/destination.rs tests; tests/copy_modes.rs, copy_patterns.rs; src/pipeline/firmware.rs | Rootless path/metadata semantics; composed current-lifecycle execution coverage remains to migrate |
+| DTB values, regex and firmware measurement compatibility | src/transform.rs, firmware.rs tests; tests/templates.rs | Pure transform/contract assertions; actual firmware generation and boot remain separate |
+| NAT, DNS and resolver restoration | src/network; validation/rewrite-command-integration/src/network.rs | Maintained rootless component tests; old privileged harness is historical until migrated and rerun |
+| Inventory and atomic self-contained publication | src/inventory.rs, output.rs, output/assembly.rs tests; tests/distro/bootstrap-labeling/verify.py | Current minimal emitted graph/canonical inventory; ORAS and full combination/failure reruns remain required |
+| Distro/platform qualification and preservation | tests/distro/{fedora,debian}, boot.py; REIMPLEMENTATION.md | Historical distro runs do not qualify changed lifecycle; Alpine/NixOS, arm64/confidential hardware and durable external-artifact recovery remain outstanding |
+
 ## Dedicated-VM lifecycle
 
 Conglobate is the sole build workflow in a disposable VM. An independent
