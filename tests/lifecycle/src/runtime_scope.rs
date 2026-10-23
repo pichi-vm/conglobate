@@ -6,6 +6,45 @@ use std::{fs, io, os::unix::fs::PermissionsExt, path::Path};
 #[derive(Debug)]
 pub(super) struct RuntimeScope;
 impl RuntimeScope {
+    fn enter_private_namespace() -> Result<(), Box<dyn std::error::Error>> {
+        nix::sched::unshare(nix::sched::CloneFlags::CLONE_NEWNS)?;
+        rustix::mount::mount_change(
+            "/",
+            rustix::mount::MountPropagationFlags::PRIVATE
+                | rustix::mount::MountPropagationFlags::REC,
+        )?;
+        Ok(())
+    }
+
+    pub(super) fn private_namespace() -> Result<(), Box<dyn std::error::Error>> {
+        Self::enter_private_namespace()?;
+        Self::run()?;
+        println!("RUNTIME_PRIVATE_NAMESPACE_PASS");
+        Ok(())
+    }
+
+    pub(super) fn changed_namespace() -> Result<(), Box<dyn std::error::Error>> {
+        let workspace = Workspace::create()?;
+        let parent = Path::new("/work/runtime-changed-namespace");
+        fs::create_dir(parent)?;
+        fs::set_permissions(parent, fs::Permissions::from_mode(0o700))?;
+        let runtime = Runtime::create(&workspace, parent).map_err(|e| e.to_string())?;
+        Self::enter_private_namespace()?;
+        let failure = runtime.close().unwrap_err();
+        assert!(failure.to_string().contains("namespace changed"));
+        assert_eq!(fs::read_dir(parent)?.count(), 1);
+        assert!(
+            failure
+                .cleanup()
+                .unwrap_err()
+                .to_string()
+                .contains("namespace changed")
+        );
+        println!("RUNTIME_CHANGED_NAMESPACE_REJECTED_PASS");
+        // No successful cleanup claim: guest shutdown disposes of both views.
+        Ok(())
+    }
+
     pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
         let workspace = Workspace::create()?;
         let parent = Path::new("/work/runtime-scope");

@@ -1,0 +1,38 @@
+[
+  {
+    "path": "/storage/conglobate-validation/control-mount-namespace-v1/runtime-private-namespace/initramfs.gz",
+    "sha256": "755f9596d9d9cf5dfebe1b1626eadc32989d3b3e02fdc11cd6b4552af0891e59",
+    "size": 83993735,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/control-mount-namespace-v1/runtime-private-namespace/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/control-mount-namespace-v1/runtime-changed-namespace/initramfs.gz",
+    "sha256": "740e53f06caf0bc0037ea0ddea432e00d10ac910cad29a84ae5143f8f48c7743",
+    "size": 83993714,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/control-mount-namespace-v1/runtime-changed-namespace/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/control-mount-namespace-v1/contained/initramfs.gz",
+    "sha256": "45684accc161f9f3389055031183430d9a92bf19958f115860d42742d92bbd06",
+    "size": 83993638,
+    "durably_archived": false
+  },
+  {
+    "path": "/storage/conglobate-validation/control-mount-namespace-v1/contained/vmlinuz",
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "size": 19016040,
+    "durably_archived": false
+  }
+]

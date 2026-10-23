@@ -3,7 +3,7 @@
 //! Build-owned control mounts. No command receives these paths or descriptors.
 use super::Workspace;
 use crate::{
-    anchor::{InitMountNamespace, RecoveryDirectory},
+    anchor::{ControlMountNamespace, RecoveryDirectory},
     step::{SandboxDirectories, SetupBudget},
 };
 use rustix::{fs, mount};
@@ -36,7 +36,7 @@ pub struct Runtime<'w> {
 }
 #[derive(Debug)]
 struct RuntimeMounts<'w> {
-    scope: InitMountNamespace,
+    scope: ControlMountNamespace,
     parent: File,
     name: std::ffi::OsString,
     workspace: &'w Workspace,
@@ -132,7 +132,7 @@ impl<'w> Runtime<'w> {
             retained: None,
             deadline: Instant::now() + Duration::from_secs(30),
         };
-        let scope = InitMountNamespace::capture().map_err(before)?;
+        let scope = ControlMountNamespace::capture().map_err(before)?;
         let parent = File::from(
             fs::open(
                 parent,

@@ -48,7 +48,7 @@ jobs:
       - name: Run lifecycle cases in disposable guests
         run: |
           mkdir -p "$RUNNER_TEMP/lifecycle-results"
-          for case in cache-storage contained runtime-scope clone-filter; do
+          for case in cache-storage contained runtime-scope runtime-private-namespace runtime-changed-namespace clone-filter; do
             stat /dev/kvm
             test -r /dev/kvm
             test -w /dev/kvm

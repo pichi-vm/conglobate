@@ -1,28 +1,21 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use rustix::{
-    event::{PollFd, PollFlags, Timespec, poll},
-    fd::OwnedFd,
-    process::{Pid, PidfdFlags, getpid, pidfd_open},
-};
 use std::{
-    fs::{self, File},
+    fs::File,
     io::{self, BufRead, BufReader},
     os::unix::fs::MetadataExt,
 };
 
-/// Observation of the deployment init's namespace, not a host-global identity
-/// proof. The deployment must keep init alive and in this namespace independently
-/// of builds. No arbitrary PID, signaling or namespace-entry authority escapes.
+/// Pins the namespace in which trusted control resources were acquired.
+/// Cleanup must not operate through paths from a different mount namespace.
 #[derive(Debug)]
-pub(crate) struct InitMountNamespace {
-    init: OwnedFd,
+pub(crate) struct ControlMountNamespace {
     mount: File,
 }
-impl InitMountNamespace {
+impl ControlMountNamespace {
     /// A descriptor may refer to a detached or foreign-namespace mount even
-    /// while this thread is in init's namespace. Require its pinned mount ID
+    /// while this thread is in the captured namespace. Require its pinned mount ID
     /// to be present in this namespace's actual kernel mount table.
     pub(crate) fn verify_attached(&self, file: &File) -> io::Result<()> {
         self.verify_current()?;
@@ -55,48 +48,18 @@ impl InitMountNamespace {
             }
         }
         Err(io::Error::other(
-            "control mount is not attached in the deployment init namespace",
+            "control mount is not attached in the captured namespace",
         ))
     }
     pub(crate) fn capture() -> io::Result<Self> {
-        if getpid() == Pid::INIT
-            || fs::read_link("/proc/self")?.to_str() != Some(&getpid().as_raw_nonzero().to_string())
-        {
-            return Err(io::Error::other(
-                "recovery requires an independent init and matching procfs PID view",
-            ));
-        }
-        let init = pidfd_open(Pid::INIT, PidfdFlags::empty())?;
         let scope = Self {
-            init,
-            mount: File::open("/proc/1/ns/mnt")?,
+            mount: File::open("/proc/thread-self/ns/mnt")?,
         };
         scope.verify_current()?;
         Ok(scope)
     }
     pub(crate) fn verify_current(&self) -> io::Result<()> {
-        if fs::read_link("/proc/self")?.to_str() != Some(&getpid().as_raw_nonzero().to_string()) {
-            return Err(io::Error::other("recovery procfs PID view changed"));
-        }
-        Self::same_namespace(
-            &File::open("/proc/1/ns/pid")?,
-            &File::open("/proc/thread-self/ns/pid")?,
-        )?;
-
-        Self::same_namespace(&self.mount, &File::open("/proc/1/ns/mnt")?)?;
-        Self::same_namespace(&self.mount, &File::open("/proc/thread-self/ns/mnt")?)?;
-        let mut observed = [PollFd::new(&self.init, PollFlags::IN)];
-        poll(
-            &mut observed,
-            Some(&Timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            }),
-        )?;
-        if !observed[0].revents().is_empty() {
-            return Err(io::Error::other("recovery init is no longer live"));
-        }
-        Ok(())
+        Self::same_namespace(&self.mount, &File::open("/proc/thread-self/ns/mnt")?)
     }
     fn same_namespace(left: &File, right: &File) -> io::Result<()> {
         let a = left.metadata()?;
@@ -106,7 +69,7 @@ impl InitMountNamespace {
             || (a.dev(), a.ino()) != (b.dev(), b.ino())
         {
             return Err(io::Error::other(
-                "recovery must use the deployment init's mount/PID namespace",
+                "control mount namespace changed since acquisition",
             ));
         }
         Ok(())

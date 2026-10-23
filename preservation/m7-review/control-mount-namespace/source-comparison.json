@@ -1,0 +1,17 @@
+[
+  {
+    "case": "runtime-private-namespace",
+    "checked": 152,
+    "mismatches": []
+  },
+  {
+    "case": "runtime-changed-namespace",
+    "checked": 152,
+    "mismatches": []
+  },
+  {
+    "case": "contained",
+    "checked": 152,
+    "mismatches": []
+  }
+]

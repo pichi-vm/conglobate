@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Protected runtime directory lease in the deployment init's mount namespace.
+//! Protected runtime directory lease in the acquisition mount namespace.
 use std::{fs::File, io, os::unix::fs::MetadataExt, path::Path, sync::Arc};
 
 mod namespace;
-pub(crate) use namespace::InitMountNamespace;
+pub(crate) use namespace::ControlMountNamespace;
 
 /// Exclusive cooperative lease on a root-only tmpfs recovery directory.
 /// The descriptor stays locked while any recovery owner derived from this
@@ -33,7 +33,7 @@ impl RecoveryDirectory {
     }
 
     pub fn open(path: &Path) -> io::Result<Self> {
-        let namespace = InitMountNamespace::capture()?;
+        let namespace = ControlMountNamespace::capture()?;
         let file = DirectoryLease::open_directory(path)?;
         namespace.verify_attached(&file)?;
         rustix::fs::flock(&file, rustix::fs::FlockOperation::NonBlockingLockExclusive)?;
@@ -49,7 +49,7 @@ impl RecoveryDirectory {
 #[derive(Debug)]
 struct DirectoryLease {
     _directory: File,
-    namespace: InitMountNamespace,
+    namespace: ControlMountNamespace,
 }
 
 impl DirectoryLease {

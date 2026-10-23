@@ -322,6 +322,10 @@ execution-environment controller shuts down the VM if conglobate crashes or exit
 unexpectedly; the binary has no pichi/VM transport dependency. The controller must
 not launch another build or permit abandoned resources to be reused in that VM.
 This contract replaces the separate guardian and cross-invocation recovery design.
+Control mounts are tied to the supervisor's acquisition mount namespace, not
+PID 1's namespace. Cleanup verifies that the current mount namespace still
+matches the pinned namespace descriptor. The environment owns crash shutdown;
+the binary does not monitor init to establish cleanup authority.
 
 The main conglobate process owns image storage, command containment and
 publication. A trusted setup helper establishes each command's isolation and

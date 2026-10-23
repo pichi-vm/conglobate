@@ -246,3 +246,8 @@ For mount compatibility diagnosis, --trace-mounts stages the trusted host strace
 executable and records selected mount/pidfd/statx syscalls in guest serial output.
 Tracing runs only inside the disposable guest. Treat an instrumented result as
 diagnostic evidence; repeat ordinary execution when qualifying a fix.
+
+`--case runtime-private-namespace` runs the runtime lifecycle checks in a fresh
+private supervisor mount namespace. `--case runtime-changed-namespace` verifies
+that changing namespaces after resource acquisition rejects cleanup and leaves
+resources for guest disposal. Neither case executes untrusted image commands.

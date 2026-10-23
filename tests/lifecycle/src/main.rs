@@ -44,6 +44,12 @@ impl Lifecycle {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::UnmappedAcl)
             }
             [mode] if mode == "workspace-mount" => workspace_mount::WorkspaceMount::run(),
+            [mode] if mode == "runtime-private-namespace" => {
+                runtime_scope::RuntimeScope::private_namespace()
+            }
+            [mode] if mode == "runtime-changed-namespace" => {
+                runtime_scope::RuntimeScope::changed_namespace()
+            }
             [mode] if mode == "runtime-scope" => runtime_scope::RuntimeScope::run(),
             [mode] if mode == "sandbox-delayed-teardown" => sandbox_failures::SandboxFailures::run(
                 sandbox_failures::FailurePoint::DelayedTeardown,
