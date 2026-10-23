@@ -6056,3 +6056,15 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   child/record/domain state. Evidence: lifecycle-reconciliation-current/.
 - No production edits or repeated rootless suite; prior source-matching checkpoint
   remains applicable. This is focused review, not full M4 adherence; M4 stays 0/3.
+
+### API surface current-source reconciliation
+
+- Reconciled api-surface-001 through 006. Corrected scope includes maintained and
+  historical validation harness src plus doctests; inventory has 199 source files
+  and 184 suggested names, with 37 externally spelled and 14 absent. These are
+  lexical name counts, not automatic semantic liveness or demotion decisions.
+- Public signatures/inferred errors, associated payloads and maintained callers
+  refute the blanket demotion proposals. Sibling firmware test fixture use remains
+  live. Requested recount is complete; no claim every export is necessary.
+- Evidence/scripts: api-surface-current/. Initial overbroad scans were stopped and
+  retained. No production edits or repeated tests; M4 remains at 0/3.

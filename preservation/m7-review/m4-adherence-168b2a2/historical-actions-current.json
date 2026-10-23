@@ -8,8 +8,8 @@
       "evidence": "UnmountRecovery reached only through UnmountFailure::cleanup(self); private_interfaces is allow-by-default",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Current UnmountFailure has private fields and private UnmountRecovery with consuming cleanup, not the cited public enum payload. See api-surface-current/REVIEW.md and reproducible lexical inventory."
     },
     {
       "id": "api-surface-002",
@@ -17,8 +17,8 @@
       "evidence": "E0446 reproduced: pub(crate) payload behind a public sealed trait's associated type does not compile",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Public sealed VolumeState exposes MountedResources as an associated type; payload fields remain private. Prior E0446 rationale still applies; no new compiler execution claimed. See api-surface-current/REVIEW.md and reproducible lexical inventory."
     },
     {
       "id": "api-surface-003",
@@ -26,8 +26,8 @@
       "evidence": "7 of 9 modules named by validation/rewrite-command-integration; my agent wrongly excluded it",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Maintained lifecycle consumers plus historical harness references and public BuildError payload types refute blanket module demotion. Historical harness compilation/migration is not inferred. See api-surface-current/REVIEW.md and reproducible lexical inventory."
     },
     {
       "id": "api-surface-004",
@@ -35,8 +35,8 @@
       "evidence": "16 of 22 sampled orphans live, mostly via inference through public signatures",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Maintained ExecutionOutcome matches and inferred public return/error types refute blanket orphan status. Fourteen candidate names no longer occur; no claim all other names are minimal. See api-surface-current/REVIEW.md and reproducible lexical inventory."
     },
     {
       "id": "api-surface-005",
@@ -44,8 +44,8 @@
       "evidence": "Sample: 8/20 live by name; TeardownCompletion/TeardownFailure are Ok/Err of a 5-call consumer API",
       "remaining_action": "Correctly-scoped recount incl. validation/*/src and inference positions",
       "historical_status": "open",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "recount completed; blanket demotion declined",
+      "current_evidence": "Requested recount completed across 199 source/harness files: 184 candidate names, 37 with external spelling, 14 absent. Manually inspected inferred Result errors and sealed associated types. Blanket demotion rejected; lexical counts do not establish per-item deadness. See api-surface-current/REVIEW.md and reproducible lexical inventory."
     },
     {
       "id": "api-surface-006",
@@ -53,8 +53,8 @@
       "evidence": "src/output/assembly.rs:437-439 uses firmware::tests::Fixture; narrowing breaks a real caller",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "historical disposition; current source not revalidated",
-      "current_evidence": "Original reconciliation-2 disposition retained verbatim. No current-source closure or milestone pass inferred; review changed scope before relying on this disposition."
+      "current_status": "revalidated rejection",
+      "current_evidence": "Current output/assembly.rs calls sibling firmware::tests::Fixture::image and detached; pub(crate) is justified. See api-surface-current/REVIEW.md and reproducible lexical inventory."
     },
     {
       "id": "concurrency-001",

@@ -1,0 +1,10 @@
+{
+  "src/lib.rs": "35d1b5ba736dd7a90d4540f8a315403fa2ccf2248b0c5e006687af1d551b0191",
+  "src/filesystem/attachment.rs": "b88daebd4b5f315017c2b05726e80ff23fda052836110d76e67916769a2e074c",
+  "src/storage/volume.rs": "914eb4deacb6921d8ed3e13b40ae303d7254ede958065d6c650f9e71f05cec3e",
+  "src/pipeline.rs": "3dd6633dde7f921f1a133f666c39a7c680725487ac70b5b0c00018e886c5285a",
+  "src/domain.rs": "f754b2b9f16d86d0239a647663a992c75bac10cce68b433298c9d3b9429ed5cb",
+  "src/output/assembly.rs": "eb41b2f13f581772691134b3af48563569223787e7a81a2a300e4879f8e89620",
+  "src/step/preparation/storage.rs": "4d134afd29f007b2a0f5d36ba3cf81989f0f6b25039bbe4bab0d24accea74890",
+  "tests/lifecycle/src/sandbox_failures.rs": "9bbb7653f3e2bfe22cb39691b7ff2276d21d8c485e50dfe7c0c26b71e5055457"
+}
