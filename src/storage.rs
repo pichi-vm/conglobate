@@ -44,6 +44,10 @@ pub struct Workspace {
     root: File,
 }
 impl Workspace {
+    pub(crate) fn staging_parent(&self) -> io::Result<File> {
+        self.root.try_clone()
+    }
+
     pub fn create() -> io::Result<Self> {
         let context = mount::fsopen("tmpfs", mount::FsOpenFlags::FSOPEN_CLOEXEC)?;
         mount::fsconfig_set_string(&context, "mode", "0700")?;

@@ -4,3 +4,5 @@
 //! Runtime staging and privileged execution are separate consuming transitions.
 mod runtime;
 pub use runtime::{CapturedFormatter, FormatterFile};
+mod staged;
+pub use staged::{FormatterCleanupFailure, FormatterRuntime, FormatterStageFailure};

@@ -69,3 +69,19 @@ https://man7.org/linux/man-pages/man8/mke2fs.8.html . The documented explicit bl
 count, root_owner, nodiscard, and lazy initialization controls match the existing
 architecture contract. Versioned profile/configuration and isolated execution
 remain to implement and validate in the disposable VM.
+
+## Runtime staging (v157)
+
+CapturedFormatter::stage consumes captured inputs into a FormatterRuntime on the
+same build-wide tmpfs. A detached mount makes the runtime read-only, nosuid and
+nodev while clearing inherited noexec for future trusted formatter execution.
+Files receive only 0555 or 0444 permissions; no source set-ID bits propagate.
+Writable source descriptors close before publication. Partial staging retains
+backing for explicit cleanup; failed removal retains its owner for retry.
+Closing the runtime drops its detached view before backing cleanup.
+
+v157 verifies captured bytes despite changed source, stripped permissions,
+EROFS on chmod through the read-only view, same device as workspace scratch and
+successful close. Full normal integration suite and root/fixture Clippy pass.
+This does not yet prove formatter execution or dependency completeness; those
+require the next captured-root execution integration. No M5 adherence pass.

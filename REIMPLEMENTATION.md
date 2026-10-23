@@ -2702,3 +2702,14 @@ rules rather than silently shrinking acceptance criteria.
 - Targeted capture tests and strict Clippy/format checks pass; logs preserved
   under preservation/m5/formatter-capture. Staging, actual formatter execution,
   dual-volume integration and sealing are still required. M5 clean streak zero.
+
+### M5 staged formatter runtime (v157)
+
+- Added consuming staging into a detached read-only/executable runtime view on
+  the existing build tmpfs. Mutable backing remains private, source set-ID bits
+  are stripped, and partial setup/removal failures retain cleanup ownership.
+- Disposable-VM checks verify captured-byte independence, EROFS write-permission
+  changes and shared tmpfs backing. Normal suite and root/fixture Clippy pass;
+  source/log hashes verified. No formatter execution or sealing claim yet.
+- M5 remains in progress, zero clean passes. M4's existing command lifecycle
+  regression suite continues to pass with this additive staging path.

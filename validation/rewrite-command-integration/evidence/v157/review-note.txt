@@ -1,0 +1,1 @@
+Normal suite passes including captured formatter read-only staging on build tmpfs, source-change independence, stripped set-ID permissions, EROFS chmod and explicit close. Actual formatter execution not yet implemented.

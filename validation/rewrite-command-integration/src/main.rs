@@ -1519,7 +1519,39 @@ impl Integration {
             use std::io::{Read, Seek, SeekFrom, Write};
             let before = fs::read_to_string("/proc/self/mountinfo")?;
             let workspace = conglobate::storage::Workspace::create()?;
+            let runtime_source = Path::new("/work/formatter-source");
+            fs::create_dir(runtime_source)?;
+            fs::write(runtime_source.join("tool"), b"captured formatter bytes")?;
+            fs::set_permissions(
+                runtime_source.join("tool"),
+                fs::Permissions::from_mode(0o4755),
+            )?;
+            let runtime_path = conglobate::path::ContextPath::try_from(Path::new("tool"))?;
+            let captured = conglobate::formatter::CapturedFormatter::capture(
+                runtime_source,
+                runtime_path.clone(),
+                [runtime_path.clone()],
+            )?;
+            fs::write(runtime_source.join("tool"), b"source changed")?;
+            let runtime = captured.stage(&workspace)?;
+            let mut staged_file = runtime.open(&runtime_path)?;
+            let mut captured_bytes = Vec::new();
+            staged_file.read_to_end(&mut captured_bytes)?;
+            assert_eq!(captured_bytes, b"captured formatter bytes");
+            assert_eq!(staged_file.metadata()?.mode() & 0o7777, 0o555);
+            assert_eq!(
+                staged_file
+                    .set_permissions(fs::Permissions::from_mode(0o600))
+                    .unwrap_err()
+                    .raw_os_error(),
+                Some(30)
+            );
             let mut first = workspace.scratch()?;
+            assert_eq!(staged_file.metadata()?.dev(), first.metadata()?.dev());
+            drop(staged_file);
+            runtime.close()?;
+            fs::remove_dir_all(runtime_source)?;
+            println!("FORMATTER_CAPTURED_READONLY_RUNTIME_PASS");
             let mut second = workspace.scratch()?;
             assert_eq!(first.metadata()?.nlink(), 0);
             assert_eq!(first.metadata()?.mode() & 0o777, 0o600);
