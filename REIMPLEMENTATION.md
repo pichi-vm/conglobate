@@ -39,7 +39,7 @@ but must not be claimed to validate the new policy implementation.
 | Milestone | Deliverables and success criteria | Status | Clean streak |
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
-| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: registration-free architecture revision | 3 |
+| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Reopened: architecture and traceability reconciliation | 0 |
 | 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete: revised context lifecycle | 3 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, environment-owned labeling exception, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Reopened: registration-free lifecycle | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Reopened: two-root lifecycle regression | 0 |
@@ -4371,3 +4371,15 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   Evidence: receiver-gate-static. Legacy command-integration still references
   removed registration APIs; its broader meaningful cases must be migrated before
   retirement. No adherence pass or milestone acceptance claimed.
+
+### Architecture adherence restart: documentation findings
+
+- Compared registration-free normative design, architecture ownership/transition
+  descriptions and current source boundaries. Found summary table still claiming
+  M2 3/3 despite its later reset; corrected to reopened 0/3. Historical passes
+  remain intact. Found proposed module/type names presented as current ownership;
+  replaced with actual source owners and clarified pipeline/error descriptions.
+- Review attempt stopped on findings, not counted as clean. Scope hashes and
+  observations: preservation/m7-review/architecture-reconciliation-303f765.
+  No production change or retirement. Full architecture adherence sequence still
+  required; no dependent milestone advancement authorized by this correction.

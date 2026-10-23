@@ -1,0 +1,16 @@
+{
+  "baseline": "303f765",
+  "result": "findings; clean streak remains zero",
+  "sha256": {
+    "ARCHITECTURE.md": "7ec5f208e5e7e6e2200d8064fdd24fbbe4e6d965e00101b62291e796ae497868",
+    "DESIGN.md": "b677edf77f93909219c49d15d9e4f0a469b18c9c3e60f1d6c75c4524a486aeb4",
+    "SANDBOX-DESIGN.txt": "9f4f5dfd65196dde338b54675d503400c72d5e7d62f24501f59db7a107e59455",
+    "src/lib.rs": "35d1b5ba736dd7a90d4540f8a315403fa2ccf2248b0c5e006687af1d551b0191",
+    "src/step.rs": "5a6afb43f65d52a0c2ef8eee1347f52296b9b02ad49617eba7e1401a346ccfcd",
+    "src/step/teardown.rs": "cee78b8b6e84b303cafdb017a01f90b902d6002d68ba4a9f25c7f810c54ae625",
+    "src/pipeline.rs": "4137f14fe61c8e1e3bc3dcee7ac8f1938160e7dc96b03c17978c92e076098799",
+    "src/pipeline/firmware.rs": "ab3aaff6841528b1a101fbf7e0dd4bbbe42195a30e39bf77424f26f2c753dfa1",
+    "src/isolation/receiver.rs": "759b4d1f0c954d23663cfd5c0c11cac6c97bd61f5c0b23d8b58c8417846f5371",
+    "src/isolation/labels.rs": "1f69590ba86f42f4d3eb4c21218476b8c56ce8fa11fc2a0d9552b0d5e52e214e"
+  }
+}

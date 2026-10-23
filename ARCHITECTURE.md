@@ -68,23 +68,27 @@ distinct protocol represented by `Joined`, including its acknowledgment and
 descriptor closure. Errors continue to retain
 resource owners, and unfinished steps cannot yield publication authority.
 
+The following table maps the architecture to current source owners. Proposed
+names from the original design are not additional implementation requirements.
+
 | Module | Owned or immutable domain types | Boundary |
 | --- | --- | --- |
-| request | BuildRequest, ContextPath, OutputDestination | Parse CLI without privileged effects; require recipe and lock paths |
-| context | CapturedContext, ContextFile, ContextReader | Exact committed objects, confined private materialization, no command access |
-| recipe | RecipeDocument, Recipe, Stage, Directive, CommandTimeout | Raw deserialization followed by validated immutable values |
-| plan | BuildPlan, StagePlan, InputSelection, ToolSelection | Resolve inheritance/references and requirements before command admission |
-| image | ResolvedImage, VerifiedCarapace, ImageComposition, FirmwarePair | Immutable component identities and retained ancestry; no raw mutable manifest API |
-| storage | Workspace, Volume<S>, Layer<S>, StorageLease | Tmpfs, verified cache-backed chain, device mapping and writable storage ownership |
-| filesystem | FilesystemSpec, Backend, FormatterIdentity, RootView | Validated formatter properties, supported kernel driver and idmapped view |
-| execution | Step<S>, StepOutcome, RecoveryLease | Own all authority passed to commands and completion/teardown order |
-| isolation | UserNamespace<Mapped>, AssignedRoots, LabelProbe | Mapped identity, private mounts and restricted labeling admission |
-| network | NetworkLease, ResolverInput | Disabled default, owned outbound NAT and confined temporary resolver injection |
-| copy | CopyPlan, ContextReader, RootWriter | Explicit selected context files; no context mount; confined handles |
-| firmware | FirmwareSelection, FirmwarePair, FirmwareContract | Extract both files after writers stop; validate before accepting replacement |
-| transform | TransformPlan, PropertyPath, TypedValue, TransformReceipt | Pure checked DTB operations and explicit default selection |
-| inventory | ExecutionReceipt, Inventory, EncodedInventory | Bind actual completed work, selected input paths and immutable outputs |
-| artifact | Artifact<S>, BlobStore, PublishedArtifact | Staging, content validation and atomic no-replacement publication |
+| request, path | BuildRequest, ContextPath, ContextDirectory | Parse CLI and relative locators without granting filesystem authority |
+| context, input | CapturedContext, Checkout<S>, ContextFile, CapturedBuild, ResolvedBuild | Exact committed objects, private read-only materialization and verified input resolution; no command access |
+| recipe, value | Recipe, Directive, FilesystemSpec, CommandTimeout | Raw deserialization followed by validated immutable values |
+| plan | BuildPlan, LockedInput, InputRole, StepId | Resolve inheritance/references and requirements before command admission |
+| cache, image | ResolvedImage, VerifiedChain, VerifiedScute, ImageReference, IndexDigest | Verified component identities and cache-backed chain inputs |
+| storage | Workspace, Scratch, Volume<S>, BootstrapVolumes<S>, VolumeView | Tmpfs, verified cache-backed chain, device mapping and writable storage ownership |
+| filesystem, formatter | Mount<S>, Ext4Format, CapturedFormatter, FormatterRuntime, FormatReceipt | Idmapped views and trusted, measured formatting with explicit cleanup |
+| step, domain, process | Step<S, R>, StepCompletion<R>, RecordedDomain, Supervision<S> | Retain authority through admission, cancellation, reaping and descendant drain |
+| execution, isolation | HelperProgram, HelperInvocation, UserNamespace<Mapped>, CommandReceiver, AssignedRoots, LabelProbe | Trusted helper entry, private mounts, mapped identity and restricted labeling admission |
+| network | CommandNetwork, CommandNetworking, ResolverInput, ResolverMount | Disabled default, owned outbound NAT and confined temporary resolver injection |
+| copy | CopySources, CopySource, CopyDestination | Explicit selected context files; exclusive confined writes; no context mount |
+| pipeline | Pipeline, BootstrapBuild, CarapaceBuild, FirmwareBuild, CompletedImage | Sequence stages, retain completed outputs and reject publication on failure |
+| firmware | DtbContract | Validate declared firmware contract; pipeline firmware owner extracts the declared pair after writers stop |
+| recipe::transform, transform | TransformSelection, TransformOperation, PropertyValue, TransformedDtb | Checked DTB operations and explicit default selection |
+| inventory | Inventory | Versioned deterministic encoding of actual completed work; decoding alone proves no execution or authenticity |
+| output | StagedDirectory, AssembledImage, PublicationFailure | Staging, component assembly and atomic no-replacement publication |
 
 Modules need not become separate crates. Traits represent actual replaceable
 behavior or state constraints; do not create a trait for every struct. External
@@ -146,10 +150,10 @@ appropriate single-threaded helper. Immutable plans may be freely shared.
 
 Every fallible consuming transition describes the external state on failure.
 Return the original typed owner only if its invariant remains known true.
-Otherwise return a RecoveryLease owning the remaining resources and primary plus
+Otherwise return a dedicated failure owner retaining remaining resources and primary plus
 cleanup diagnostics. Do not claim retryable mounted/unmounted state after an
 uncertain partial operation. No successful output token is available on failure. Quiescent means no remaining
-command authority, not command success. Step<Quiescent> retains a StepOutcome;
+command authority, not command success. Step<Quiescent> retains the observed command outcome;
 teardown produces storage ownership and the command outcome, not a successful
 build receipt. The enclosing execution/finalization owner checks command success
 and clean storage finalization before permitting the pipeline to continue.
@@ -186,22 +190,22 @@ the new lifecycle. Current gate status and outstanding work are in REIMPLEMENTAT
 
 ## Pipeline owners
 
-BuildPlan is immutable. A stage consumes ImageComposition and returns a new
-composition plus immutable execution receipts; references to inherited blobs
-need not copy their bytes. A coordinator sequences stage methods without owning
+BuildPlan is immutable. Stage owners retain verified inputs and produce an
+AssembledImage plus execution data for inventory; references to inherited blobs
+need not copy their bytes into workspace storage. A coordinator sequences stage methods without owning
 all low-level setup logic or mutating a shared manifest throughout the build.
 
-BootstrapSession owns a disposable tool layer and a new writable output layer
+BootstrapBuild coordinates storage owners for a disposable tool layer and a new writable output layer
 over dm-zero. Trusted formatting happens through the assigned output device.
 Each command gets / and /mnt views; restricted setup validates labeling on both
 using the environment exception. Mount and descriptor confinement isolate them
 from supervisor resources. COPY uses the same root layout. No rootfs file import/conversion.
 Successful teardown seals the output layer and discards tool changes.
 
-CarapaceSession derives output layers while preserving every inherited component.
-FirmwareSession owns one disposable tool root, with no special output /mnt. It
+CarapaceBuild derives output layers while preserving every inherited component.
+FirmwareBuild owns one disposable tool root, with no special output /mnt. It
 extracts declared paths only after quiescence and returns a validated pair.
-TransformPlan operates without a command sandbox. Missing vs empty sections,
+TransformSelection operates without a command sandbox. Missing vs empty sections,
 CARAPACE availability, regex no-match semantics and default selection follow the
 design. Recipe key order never controls execution.
 
