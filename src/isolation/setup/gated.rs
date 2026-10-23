@@ -59,7 +59,13 @@ impl GatedCommandSetup {
         Ok(Self { setup, gate })
     }
     pub fn enter(self) -> io::Result<(CommandNamespaces, GatedRootSetup)> {
-        let (scope, devices) = self.setup.enter()?;
+        self.enter_until(std::time::Instant::now() + std::time::Duration::from_secs(30))
+    }
+    pub fn enter_until(
+        self,
+        deadline: std::time::Instant,
+    ) -> io::Result<(CommandNamespaces, GatedRootSetup)> {
+        let (scope, devices) = self.setup.enter_until(deadline)?;
         Ok((
             scope,
             GatedRootSetup {

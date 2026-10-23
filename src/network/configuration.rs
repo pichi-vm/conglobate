@@ -232,22 +232,7 @@ impl LinkConfiguration {
         nix::sched::setns(&namespace, nix::sched::CloneFlags::CLONE_NEWNET)?;
         drop(namespace);
         self.apply(deadline)?;
-        let mut request = LinkMessage::default();
-        request.attributes.push(LinkAttribute::IfName("lo".into()));
-        let replies =
-            RouteRequest::new(RouteNetlinkMessage::GetLink(request), 0).execute(deadline)?;
-        let [RouteNetlinkMessage::NewLink(link)] = replies.as_slice() else {
-            return Err(io::Error::other("missing private loopback"));
-        };
-        if !link.header.flags.contains(LinkFlags::Loopback) {
-            return Err(io::Error::other("invalid private loopback"));
-        }
-        let mut up = LinkMessage::default();
-        up.header.index = link.header.index;
-        up.header.flags = LinkFlags::Up;
-        up.header.change_mask = LinkFlags::Up;
-        RouteRequest::new(RouteNetlinkMessage::NewLink(up), 0).execute(deadline)?;
-        Ok(())
+        super::Loopback::activate(deadline)
     }
 }
 

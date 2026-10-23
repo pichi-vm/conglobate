@@ -142,8 +142,14 @@ impl CommandSetup {
     /// is exit-only. The remaining device owner must be passed to root setup;
     /// this does not authorize image execution or certify complete isolation.
     pub fn enter(self) -> io::Result<(CommandNamespaces, CommandDevices)> {
+        self.enter_until(std::time::Instant::now() + std::time::Duration::from_secs(30))
+    }
+    pub fn enter_until(
+        self,
+        deadline: std::time::Instant,
+    ) -> io::Result<(CommandNamespaces, CommandDevices)> {
         Ok((
-            CommandNamespaces::enter_with_network(self.namespace, self.network)?,
+            CommandNamespaces::enter_with_network(self.namespace, self.network, deadline)?,
             self.devices,
         ))
     }

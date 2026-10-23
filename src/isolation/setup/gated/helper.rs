@@ -32,8 +32,7 @@ impl GatedCommandSetup {
         mut root_entry: Command,
         cutoff: SetupCutoff,
     ) -> Result<ExitStatus, HelperExecutionError> {
-        cutoff.deadline()?;
-        let (scope, root) = self.enter()?;
+        let (scope, root) = self.enter_until(cutoff.deadline()?)?;
         root_entry.env_clear().stdin(root.into_input()?);
         cutoff.deadline()?;
         let child = scope.spawn(root_entry)?;

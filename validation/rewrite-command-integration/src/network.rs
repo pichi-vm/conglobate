@@ -63,6 +63,38 @@ impl NetworkProbe {
         }
         Ok(())
     }
+    pub(crate) fn offline(gated: bool, original: u64) -> Result<(), Box<dyn std::error::Error>> {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        if gated {
+            let (_scope, _root) = GatedCommandSetup::from_input()?.enter_until(deadline)?;
+        } else {
+            let (_scope, _devices) = CommandSetup::from_input()?.enter_until(deadline)?;
+        }
+        assert_ne!(fs::metadata("/proc/self/ns/net")?.ino(), original);
+        let devices = fs::read_to_string("/proc/net/dev")?;
+        let names: Vec<_> = devices
+            .lines()
+            .skip(2)
+            .map(|line| line.split(':').next().unwrap().trim())
+            .collect();
+        assert_eq!(names, ["lo"]);
+        for bind in ["127.0.0.1:0", "[::1]:0"] {
+            let socket = std::net::UdpSocket::bind(bind)?;
+            socket.set_read_timeout(Some(Duration::from_secs(3)))?;
+            socket.send_to(b"offline-loopback", socket.local_addr()?)?;
+            let mut bytes = [0; 32];
+            let count = socket.recv(&mut bytes)?;
+            assert_eq!(&bytes[..count], b"offline-loopback");
+        }
+        for (bind, remote) in [
+            ("0.0.0.0:0", "198.51.100.42:7"),
+            ("[::]:0", "[2001:db8::42]:7"),
+        ] {
+            let socket = std::net::UdpSocket::bind(bind)?;
+            assert!(socket.connect(remote).is_err());
+        }
+        Ok(())
+    }
     fn entry_roundtrip(
         program: &HelperProgram,
         network: &NetworkNamespace,
@@ -118,6 +150,34 @@ impl NetworkProbe {
                 assert_eq!(&bytes[..count], b"private-network");
             }
             drop(gate);
+        }
+        if !traffic {
+            for gated in [false, true] {
+                let setup = CommandSetup::new(
+                    fs::File::open(parent.join(user.record().name()))?,
+                    CommandDevices::create(100000, 100000)?,
+                )?;
+                let (gate, endpoint) = ExecutionGate::pair()?;
+                let input = if gated {
+                    setup.with_gate(endpoint).into_input()?
+                } else {
+                    setup.into_input()?
+                };
+                let child = std::process::Command::new(std::env::current_exe()?)
+                    .arg("network-offline-probe")
+                    .arg(gated.to_string())
+                    .arg(fs::metadata("/proc/self/ns/net")?.ino().to_string())
+                    .stdin(input)
+                    .spawn()?;
+                assert!(
+                    Process::from(child)
+                        .wait_until(Instant::now() + Duration::from_secs(10))?
+                        .status()
+                        .success()
+                );
+                drop(gate);
+            }
+            println!("NETWORK_OFFLINE_LOOPBACK_WITHOUT_EXTERNAL_ROUTE_PASS");
         }
         user.release()?;
         drop(recovery);

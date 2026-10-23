@@ -17,3 +17,6 @@ pub(crate) use configuration::LinkConfiguration;
 pub use configuration::NetworkAddress;
 
 pub use veth::{ConfigurationCleanupFailure, ConfigurationFailure, ConfiguredVeth};
+
+mod loopback;
+pub(crate) use loopback::Loopback;

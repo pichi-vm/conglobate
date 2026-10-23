@@ -13,6 +13,7 @@ use std::{
     marker::PhantomData,
     process::Command,
     rc::Rc,
+    time::{Duration, Instant},
 };
 
 /// Namespace preparation in a fresh single-threaded trusted helper. The helper
@@ -40,12 +41,23 @@ pub struct CommandNamespaces {
 }
 impl CommandNamespaces {
     pub fn enter(user_namespace: File) -> io::Result<Self> {
-        Self::enter_with_network(user_namespace, None)
+        Self::enter_with_network(
+            user_namespace,
+            None,
+            Instant::now() + Duration::from_secs(30),
+        )
     }
     pub(super) fn enter_with_network(
         user_namespace: File,
         network: Option<File>,
+        deadline: Instant,
     ) -> io::Result<Self> {
+        if Instant::now() >= deadline {
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "namespace setup deadline expired",
+            ));
+        }
         if fs::read_dir("/proc/self/task")?
             .collect::<io::Result<Vec<_>>>()?
             .len()
@@ -90,6 +102,9 @@ impl CommandNamespaces {
                 | CloneFlags::CLONE_NEWIPC
                 | CloneFlags::CLONE_NEWUTS,
         )?;
+        if network_flags.contains(CloneFlags::CLONE_NEWNET) {
+            crate::network::Loopback::activate(deadline)?;
+        }
         rustix::mount::mount_change(
             "/",
             MountPropagationFlags::PRIVATE | MountPropagationFlags::REC,
@@ -104,5 +119,16 @@ impl CommandNamespaces {
     /// exit, never attempt to regain supervisor namespaces or continue a build.
     pub fn spawn(self, mut setup: Command) -> io::Result<Process<Running>> {
         setup.spawn().map(Process::from)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn expired_setup_fails_before_namespace_entry() {
+        let user = File::open("/proc/self/ns/user").unwrap();
+        let error = CommandNamespaces::enter_with_network(user, None, Instant::now()).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::TimedOut);
     }
 }

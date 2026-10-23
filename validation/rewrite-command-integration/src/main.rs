@@ -51,6 +51,12 @@ impl Integration {
             invocation.execute(&HelperProgram::current()?);
         }
         let args: Vec<_> = std::env::args().collect();
+        if args
+            .get(1)
+            .is_some_and(|arg| arg == "network-offline-probe")
+        {
+            return network::NetworkProbe::offline(args[2].parse()?, args[3].parse()?);
+        }
         if args.get(1).is_some_and(|arg| arg == "network-entry-probe") {
             return network::NetworkProbe::entry(
                 args[2].parse()?,

@@ -641,3 +641,25 @@ disposable firmware changes and failure after successful carapace derivation.
   the existing bounded setup before image execution and validate local-only
   communication. Required worker-timeout/partial-setup cases and ORAS/full M6
   reviews also remain. M6 is active at zero passes; M7/M8 remain required.
+
+### M6 offline loopback under the original setup deadline
+
+- Previous turn progressed in 7a02ad0. Extracted the existing native loopback
+  operation into one shared internal object. Offline command namespace entry now
+  activates loopback after creating its private network namespace and before
+  privilege restriction; attached networks use their existing configured loopback.
+- Regular/gated setup have explicit deadline entry methods. The production gated
+  helper passes its original SetupCutoff deadline through; no renewal or sleep is
+  introduced. Convenience entry APIs use a fixed internal 30-second ceiling.
+  Expired entry rejects before namespace mutation (covered by a host unit test).
+- Disposable VM v221 passes offline regular/gated entry with mapped UID zero:
+  IPv4/IPv6 local send/receive works, /proc/net/dev contains only lo, and external
+  IPv4/IPv6 UDP connect cannot select a route. Earlier attached-network descriptor,
+  namespace, address/route, collision and failed-helper cleanup cases still pass.
+- Host tests (94 library tests, integrations and 52 doctests), strict root/fixture
+  Clippy and focused VM checks pass; source/log provenance is in evidence/v221.
+  This is focused namespace evidence. Full offline regression v219 predates this
+  loopback change; final integration review must cover the updated complete path.
+- NAT/forwarding policy, DNS injection, supervisor-to-volume-helper integration,
+  enabled-command receipts and remaining failure/ORAS cases remain required.
+  M6 stays active at zero adherence passes; no M7/M8 advancement is claimed.
