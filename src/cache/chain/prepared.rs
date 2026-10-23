@@ -4,7 +4,7 @@ use super::{Cache, CacheError, DecodedBlob, VerifiedScute};
 use crate::storage::{Scratch, Workspace};
 use std::{
     fs::File,
-    io::{self, Read, Seek},
+    io::{self, Read, Write},
 };
 
 /// Owns data and generated verification metadata for future dm-verity assembly.
@@ -59,17 +59,19 @@ impl<'s> VerifiedScute {
             let mut source =
                 DecodedBlob::open(cache, &self.digest, self.blob_size, self.compressed)?;
             let mut data = workspace.scratch()?;
-            let limit = self
-                .extent
-                .size()
-                .checked_add(1)
-                .ok_or(CacheError::Invalid("decoded extent overflow"))?;
-            if io::copy(&mut (&mut source).take(limit), &mut data)? != self.extent.size() {
-                return Err(CacheError::Invalid("decoded scute size changed"));
-            }
+            // Capture only decoded bytes while the formatter authenticates the
+            // exact extent. Its synthetic final-block padding is not captured.
+            let root = self.extent.format(
+                MaterializingReader {
+                    source: &mut source,
+                    output: &mut data,
+                },
+                &mut hash,
+            )?;
+            // Also authenticate the encoded blob and force decoder completion;
+            // a matching verity root alone is not an OCI digest receipt.
             source.finish()?;
-            data.rewind()?;
-            if self.extent.format(&mut data, &mut hash)? != self.root {
+            if root != self.root {
                 return Err(CacheError::Invalid("prepared scute root mismatch"));
             }
             let padded = self
@@ -148,5 +150,92 @@ impl<'s, 'w> PreparedScute<'s, 'w> {
     }
     pub fn hash_size(&self) -> io::Result<u64> {
         Ok(self.files().1.metadata()?.len())
+    }
+}
+
+/// Couples decoded consumption to materialization without a second data read.
+/// A failed write fails the read too; no successful preparation can omit bytes.
+struct MaterializingReader<R, W> {
+    source: R,
+    output: W,
+}
+impl<R: Read, W: Write> Read for MaterializingReader<R, W> {
+    fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+        let count = self.source.read(bytes)?;
+        self.output.write_all(&bytes[..count])?;
+        Ok(count)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::chain::ScuteExtent;
+    use std::io::Cursor;
+
+    #[test]
+    fn materialization_preserves_exact_bytes_and_canonical_root() {
+        for size in [1, 4095, 4096, 4097] {
+            let bytes = vec![0x5a; size];
+            let extent = ScuteExtent::new(size as u64, &[0; 32], None).unwrap();
+            let mut output = Vec::new();
+            let actual = extent
+                .format(
+                    MaterializingReader {
+                        source: bytes.as_slice(),
+                        output: &mut output,
+                    },
+                    Cursor::new(Vec::new()),
+                )
+                .unwrap();
+            assert_eq!(actual, extent.root(bytes.as_slice()).unwrap());
+            assert_eq!(output, bytes); // no synthetic padding captured
+        }
+    }
+
+    #[test]
+    fn materialization_rejects_short_long_and_late_failed_sources() {
+        let extent = ScuteExtent::new(4096, &[0; 32], None).unwrap();
+        for size in [4095, 4097] {
+            let bytes = vec![0x5a; size];
+            assert!(
+                extent
+                    .root(MaterializingReader {
+                        source: bytes.as_slice(),
+                        output: Vec::new(),
+                    })
+                    .is_err()
+            );
+        }
+        struct LateFailure;
+        impl Read for LateFailure {
+            fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
+                Err(io::Error::from_raw_os_error(5))
+            }
+        }
+        let bytes = [0x5a; 4096];
+        let failure = extent
+            .root(MaterializingReader {
+                source: bytes.as_slice().chain(LateFailure),
+                output: Vec::new(),
+            })
+            .unwrap_err();
+        assert!(matches!(failure, crate::chain::ChainError::Io(e) if e.raw_os_error() == Some(5)));
+    }
+
+    #[test]
+    fn materialization_propagates_output_failure() {
+        // A fixed-size slice cannot accept the complete decoded extent.
+        let mut output = [0; 1];
+        let error = ScuteExtent::new(4096, &[0; 32], None)
+            .unwrap()
+            .root(MaterializingReader {
+                source: &[0x5a; 4096][..],
+                output: &mut output[..],
+            })
+            .unwrap_err();
+        assert!(
+            matches!(error, crate::chain::ChainError::Io(e) if e.kind() == io::ErrorKind::WriteZero)
+        );
     }
 }

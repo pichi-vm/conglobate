@@ -179,8 +179,8 @@
       "evidence": "data_blocks is rounded geometry, not exact decoded length",
       "remaining_action": "Proof a single pass preserves exact length, canonical padding, late decoder errors and authenticated reads",
       "historical_status": "open",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "resolved",
+      "current_evidence": "PreparedScute materializes decoded bytes while ScuteExtent::format produces the verity tree, eliminating reread. Exact extent, synthetic zero padding, trailing/late errors, encoded digest completion and root checks retained. 144 library + 13 cache tests, strict Clippy and native amd64 cache-storage VM pass. See materializing-cache/REVIEW.md; no full M4/platform pass claimed."
     },
     {
       "id": "performance-005",

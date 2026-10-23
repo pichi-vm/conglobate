@@ -9,11 +9,11 @@ This ledger describes required work, not claims about the current executor.
 User accepted externalizing networking. This supersedes earlier proposals and
 conglobate-owned NAT wording in the stored goal/history. No requirement is being
 removed: provisioning and ingress enforcement move to the trusted environment.
-The implementation still uses the old network path until the following batch
-lands. Architecture gate M2 restored at 3/3 after correcting and reviewing the
+The external-network implementation and targeted VM validation are committed
+(fa0d0e2 and 8353ef5). Architecture gate M2 restored at 3/3 after reviewing the
 bind-mounted namespace type-check assumption; M4–M6 remain 0/3.
 
-1. **External networking (current):** complete architecture adherence gate;
+1. **External networking (implemented; full milestone gates pending):** completed architecture adherence gate;
    capture/validate --network-namespace; reuse its pinned descriptor for enabled
    steps; retain isolated offline steps and resolver restoration; remove binary
    NAT/link/route allocation and obsolete helpers/dependencies after preserving
@@ -5950,3 +5950,15 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Evidence and source correspondence: m4-owner-batch/REVIEW.md. This targeted
   finding closure is not a complete adherence pass; M4 remains 0/3. No platform
   qualification or durable remote archive claim is added.
+
+### Single-pass materialized scute preparation
+
+- Closed performance-002: stream decoded bytes into RAM while generating verity
+  metadata; eliminate the materialized-file reread. Aligned immutable layers stay
+  cache-backed. Exact length, padding, decoder EOF, encoded digest, trusted root
+  and sync checks remain required before returning the prepared owner.
+- 144 library + 13 cache tests, strict all-target Clippy and native amd64
+  cache-storage VM pass. New tests include late read/write failures and extent
+  boundaries. Evidence: preservation/m7-review/materializing-cache/REVIEW.md.
+- Corrected stale execution-batch text about external networking. No complete
+  milestone adherence pass or broader platform qualification claimed; M4 0/3.
