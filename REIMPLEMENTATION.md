@@ -2757,3 +2757,17 @@ rules rather than silently shrinking acceptance criteria.
 - Source/log/artifact hashes verified. This is pair ownership coverage, not yet
   dual-root command execution. Transfer, /mnt attachment, aggregate preparation,
   two-target command coverage and direct sealing remain. M5 has zero clean passes.
+
+### M5 dual-view transfer and execution (v166–v172)
+
+- Bootstrap packets transfer both root views with one policy-bound user namespace.
+  Helper attachment retains partial ownership and unmounts output before tool.
+  A reserved mnt directory is created in the unmapped tool root before idmapping.
+- Preserved readiness failures, diagnostic correction, EOVERFLOW/EINVAL fixes and
+  missing fixture-utility failure. v171 passes two commands; v172 passes using
+  64GiB logical snapshots with 16MiB filesystems. Output UID/GID and foreign labels
+  on both filesystems persist across remounts; third-filesystem labeling fails.
+- 53 library tests, 47 doctests and root/fixture Clippy pass. Evidence hashes
+  verified. Preparation is still assembled by fixture code; verified tool chain,
+  aggregate production rollback, direct sealing and failure coverage remain.
+  M5 has zero clean adherence passes; later milestones do not advance.

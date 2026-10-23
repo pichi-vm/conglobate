@@ -17,6 +17,7 @@ use std::{fs::File, io, time::Instant};
 pub struct VolumeInput {
     root: File,
     namespace: File,
+    output: Option<File>,
 }
 impl Supervision<Registered> {
     /// Transfer a view through the already paired and registered control channel.
@@ -32,15 +33,44 @@ impl Supervision<Registered> {
             .send(&self.socket.0, deadline)
     }
 
+    pub(crate) fn send_bootstrap_until(
+        &self,
+        root: &VolumeView<'_>,
+        output: &VolumeView<'_>,
+        namespace: &UserNamespace<PinnedNamespace>,
+        deadline: Instant,
+    ) -> io::Result<()> {
+        Packet::Bootstrap(
+            root.descriptor()?.into(),
+            output.descriptor()?.into(),
+            namespace.descriptor()?.into(),
+        )
+        .send(&self.socket.0, deadline)
+    }
+
     /// Dedicated trusted helper, before awaiting admission. The volume packet
     /// cannot be mistaken for admission by the ordinary admission decoder.
     pub fn receive_volume_until(&self, deadline: Instant) -> io::Result<VolumeInput> {
-        let Packet::Volume(root, namespace) = Packet::receive(&self.socket.0, deadline)? else {
+        let (root, output, namespace) = match Packet::receive(&self.socket.0, deadline)? {
+            Packet::Volume(root, namespace) => (root, None, namespace),
+            Packet::Bootstrap(root, output, namespace) => {
+                (root, Some(File::from(output)), namespace)
+            }
+            _ => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "expected volume input",
+                ));
+            }
+        };
+        if let Some(output) = &output
+            && !output.metadata()?.is_dir()
+        {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "expected volume input",
+                "invalid output mount",
             ));
-        };
+        }
         let root = File::from(root);
         let namespace = File::from(namespace);
         if !root.metadata()?.is_dir()
@@ -51,7 +81,11 @@ impl Supervision<Registered> {
                 "invalid volume input objects",
             ));
         }
-        Ok(VolumeInput { root, namespace })
+        Ok(VolumeInput {
+            root,
+            namespace,
+            output,
+        })
     }
 }
 impl VolumeInput {
@@ -63,10 +97,20 @@ impl VolumeInput {
         scope: &PrivateMountNamespace,
         devices: CommandDevices,
     ) -> io::Result<(Mount<'_, Idmapped>, CommandSetup)> {
+        let output_namespace = self.namespace.try_clone()?;
         let setup = CommandSetup::new(self.namespace.try_clone()?, devices)?;
         let root = Mount::<Detached>::from_detached(self.root, scope)?
             .idmap(self.namespace)
             .map_err(|failure| failure.into_parts().0)?;
+        let root = match self.output {
+            Some(output) => {
+                let output = Mount::<Detached>::from_detached(output, scope)?
+                    .idmap(output_namespace)
+                    .map_err(|failure| failure.into_parts().0)?;
+                root.with_output(output)?
+            }
+            None => root,
+        };
         Ok((root, setup))
     }
 }

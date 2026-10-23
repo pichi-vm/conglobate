@@ -16,7 +16,8 @@ impl FormatterProbe {
         let workspace = Workspace::create()?;
         let mut scratch = workspace.scratch()?;
         scratch.set_len(32 * 1024 * 1024)?;
-        let sectors = NonZeroU64::new(32768).unwrap();
+        let sectors =
+            NonZeroU64::new(conglobate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap();
         let origin = Mapping::<Created>::create()?.zero(sectors)?;
         let snapshot = Mapping::<Created>::create()?
             .snapshot(
@@ -137,19 +138,20 @@ impl FormatterProbe {
             (tool, output) = failure.retry().map_err(|e| e.to_string())?.into_parts();
             assert!(Self::mount_paths()?.is_empty());
         }
-        tool.into_snapshot()
-            .close()
+        let tool = tool.into_snapshot();
+        let output = output.into_snapshot();
+        scope.restore().map_err(|e| e.to_string())?;
+        let (tool, output) = crate::bootstrap::BootstrapProbe::run(tool, output)?;
+        tool.close()
             .map_err(|e| e.to_string())?
             .detach()
             .map_err(|e| e.to_string())?;
         output
-            .into_snapshot()
             .close()
             .map_err(|e| e.to_string())?
             .detach()
             .map_err(|e| e.to_string())?;
         println!("BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS");
-        scope.restore().map_err(|e| e.to_string())?;
         origin.close()?;
         println!("CAPTURED_FORMATTER_EXECUTION_PASS");
         Ok(())

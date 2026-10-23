@@ -44,6 +44,13 @@ pub struct IdmappedResources {
     root: File,
     // Retain explicit identity ownership independently of kernel idmap references.
     _namespace: File,
+    output: Option<OutputView>,
+}
+
+#[derive(Debug)]
+struct OutputView {
+    root: File,
+    namespace: File,
 }
 
 /// Owns a detached mount tree. Closing its descriptor releases it without a
@@ -135,6 +142,7 @@ impl<'ns> Mount<'ns, Detached> {
                 resources: IdmappedResources {
                     root: self.resources.root,
                     _namespace: namespace,
+                    output: None,
                 },
                 _scope: self._scope,
                 _thread: PhantomData,
@@ -152,5 +160,53 @@ impl Mount<'_, Idmapped> {
     /// raw descriptor escape. This is not proof of command sandbox isolation.
     pub fn root_metadata(&self) -> io::Result<std::fs::Metadata> {
         self.resources.root.metadata()
+    }
+}
+
+impl<'ns> Mount<'ns, Idmapped> {
+    /// Retain both detached bootstrap views before attachment/admission. The
+    /// fixed mountpoint must be an ordinary directory; image symlinks cannot
+    /// redirect the supervisor's later unmount. Failure drops detached views.
+    pub(crate) fn with_output(self, output: Self) -> io::Result<Self> {
+        use rustix::fs::{Mode, OFlags, ResolveFlags};
+        use std::os::unix::fs::MetadataExt;
+        if self.resources.output.is_some() || output.resources.output.is_some() {
+            return Err(io::Error::other(
+                "nested bootstrap output views are unsupported",
+            ));
+        }
+        self._scope.verify_current()?;
+        output._scope.verify_current()?;
+        let left = self.resources._namespace.metadata()?;
+        let right = output.resources._namespace.metadata()?;
+        if (left.dev(), left.ino()) != (right.dev(), right.ino()) {
+            return Err(io::Error::other(
+                "bootstrap views require the same user namespace",
+            ));
+        }
+        let target = rustix::fs::openat2(
+            &self.resources.root,
+            "mnt",
+            OFlags::PATH | OFlags::DIRECTORY | OFlags::CLOEXEC,
+            Mode::empty(),
+            ResolveFlags::BENEATH | ResolveFlags::NO_SYMLINKS | ResolveFlags::NO_XDEV,
+        )?;
+        drop(target);
+        let IdmappedResources {
+            root,
+            _namespace,
+            output: _,
+        } = output.resources;
+        Ok(Self {
+            resources: IdmappedResources {
+                output: Some(OutputView {
+                    root,
+                    namespace: _namespace,
+                }),
+                ..self.resources
+            },
+            _scope: self._scope,
+            _thread: PhantomData,
+        })
     }
 }

@@ -104,11 +104,12 @@ pub(super) enum Packet {
     Admit,
     Admitted,
     Volume(OwnedFd, OwnedFd),
+    Bootstrap(OwnedFd, OwnedFd, OwnedFd),
     Prepared,
     Completed(ExitStatus),
 }
 impl Packet {
-    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4, Volume=5, Prepared=6; Completed=[1,7,bstr(wait status)].
+    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4, Volume=5, Prepared=6; Completed=[1,7,bstr(wait status)]; Bootstrap=8 (tool, output, namespace).
     pub(super) fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
         self.send_with(socket, &deadline)
     }
@@ -119,6 +120,9 @@ impl Packet {
             Self::Admit => (3, vec![]),
             Self::Admitted => (4, vec![]),
             Self::Volume(root, namespace) => (5, vec![root.as_fd(), namespace.as_fd()]),
+            Self::Bootstrap(root, output, namespace) => {
+                (8, vec![root.as_fd(), output.as_fd(), namespace.as_fd()])
+            }
             Self::Prepared => (6, vec![]),
             Self::Completed(_) => (7, vec![]),
         };
@@ -134,7 +138,7 @@ impl Packet {
         };
         loop {
             wait.ready(socket, PollFlags::OUT)?;
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(2))];
+            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(3))];
             let mut ancillary = SendAncillaryBuffer::new(&mut space);
             if !descriptors.is_empty()
                 && !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors))
@@ -161,7 +165,7 @@ impl Packet {
         loop {
             wait.ready(socket, PollFlags::IN)?;
             let mut bytes = [0; 8];
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(2))];
+            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(3))];
             let mut ancillary = RecvAncillaryBuffer::new(&mut space);
             let result = match recvmsg(
                 &socket.0,
@@ -221,6 +225,15 @@ impl Packet {
                     }
                     Ok(Self::Completed(status))
                 }
+                (8, 3) => {
+                    let namespace = descriptors.pop().expect("namespace descriptor");
+                    let output = descriptors.pop().expect("output descriptor");
+                    Ok(Self::Bootstrap(
+                        descriptors.pop().expect("tool descriptor"),
+                        output,
+                        namespace,
+                    ))
+                }
                 (5, 2) => {
                     let namespace = descriptors.pop().expect("namespace descriptor");
                     Ok(Self::Volume(
@@ -262,7 +275,7 @@ mod tests {
             Instant::now() + Duration::from_secs(2)
         }
         fn raw(socket: &IdentitySocket, bytes: &[u8], fds: &[BorrowedFd<'_>]) {
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(2))];
+            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(3))];
             let mut ancillary = SendAncillaryBuffer::new(&mut space);
             if !fds.is_empty() {
                 assert!(ancillary.push(SendAncillaryMessage::ScmRights(fds)));
@@ -337,6 +350,9 @@ mod tests {
             (&[0x82, 1, 5][..], 0),
             (&[0x82, 1, 5][..], 1),
             (&[0x82, 1, 6][..], 1),
+            (&[0x82, 1, 8][..], 0),
+            (&[0x82, 1, 8][..], 1),
+            (&[0x82, 1, 8][..], 2),
             (&[0x82, 1, 2, 0][..], 0),
         ] {
             let (a, b) = Fixture::pair();
@@ -367,6 +383,40 @@ mod tests {
             Packet::receive(&a, Fixture::deadline()).unwrap(),
             Packet::Joined
         ));
+    }
+    #[test]
+    fn bootstrap_packet_preserves_three_distinct_cloexec_descriptors() {
+        use std::os::unix::fs::MetadataExt;
+        let (a, b) = Fixture::pair();
+        let root = tempfile::tempdir().unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let root_inode = root.path().metadata().unwrap().ino();
+        let output_inode = output.path().metadata().unwrap().ino();
+        Packet::Bootstrap(
+            File::open(root.path()).unwrap().into(),
+            File::open(output.path()).unwrap().into(),
+            File::open("/proc/self/ns/user").unwrap().into(),
+        )
+        .send(&a, Fixture::deadline())
+        .unwrap();
+        let Packet::Bootstrap(root, output, namespace) =
+            Packet::receive(&b, Fixture::deadline()).unwrap()
+        else {
+            panic!("expected bootstrap packet");
+        };
+        for fd in [&root, &output, &namespace] {
+            assert!(
+                rustix::io::fcntl_getfd(fd)
+                    .unwrap()
+                    .contains(rustix::io::FdFlags::CLOEXEC)
+            );
+        }
+        assert_eq!(File::from(root).metadata().unwrap().ino(), root_inode);
+        assert_eq!(File::from(output).metadata().unwrap().ino(), output_inode);
+        assert_eq!(
+            rustix::fs::fstatfs(namespace).unwrap().f_type as u64,
+            0x6e73_6673
+        );
     }
     #[test]
     fn volume_descriptors_keep_order_and_are_cloexec() {

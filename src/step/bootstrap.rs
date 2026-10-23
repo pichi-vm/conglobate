@@ -151,3 +151,23 @@ impl<'n, 'o, 'w> TeardownCompletion<BootstrapVolumes<'n, 'o, 'w, Mounted>> {
         .run()
     }
 }
+
+impl Step<'_, Ready, BootstrapVolumes<'_, '_, '_, Mounted>> {
+    pub fn send_bootstrap_until(&self, deadline: Instant) -> std::io::Result<()> {
+        let volumes = &self.storage.0;
+        volumes.tool().prepare_output_mountpoint()?;
+        let namespace = self
+            .policy
+            .policy
+            .namespace_for_root(&volumes.tool().root_metadata()?)?;
+        self.policy
+            .policy
+            .namespace_for_root(&volumes.output().root_metadata()?)?;
+        self.resources.0.supervision().send_bootstrap_until(
+            &volumes.tool().view()?,
+            &volumes.output().view()?,
+            namespace,
+            deadline,
+        )
+    }
+}

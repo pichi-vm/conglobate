@@ -1,0 +1,1 @@
+Dual command admitted and executed; failed because minimal fixture tool image lacked chown. Teardown and pair finalization completed before outcome assertion. No full two-command success claimed.

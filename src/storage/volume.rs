@@ -392,3 +392,24 @@ impl Drop for MountLease {
         }
     }
 }
+
+impl Volume<'_, '_, '_, Mounted> {
+    /// Reserved bootstrap mountpoint, created through the original unmapped
+    /// filesystem so image UID/GID 0 remain UID/GID 0 on disk. Called before
+    /// any command admission; reject symlinks and preexisting submounts.
+    pub(crate) fn prepare_output_mountpoint(&self) -> io::Result<()> {
+        self.scope.verify_current()?;
+        match fs::mkdirat(&self.resources.root, "mnt", fs::Mode::from_raw_mode(0o755)) {
+            Ok(()) | Err(rustix::io::Errno::EXIST) => {}
+            Err(error) => return Err(error.into()),
+        }
+        let _directory = fs::openat2(
+            &self.resources.root,
+            "mnt",
+            fs::OFlags::PATH | fs::OFlags::DIRECTORY | fs::OFlags::CLOEXEC,
+            fs::Mode::empty(),
+            fs::ResolveFlags::BENEATH | fs::ResolveFlags::NO_SYMLINKS | fs::ResolveFlags::NO_XDEV,
+        )?;
+        Ok(())
+    }
+}

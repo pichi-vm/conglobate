@@ -57,6 +57,7 @@ pub struct AttachedResources {
 struct AttachmentBacking {
     point: MountPoint,
     _namespace: File,
+    output_namespace: Option<File>,
 }
 #[derive(Debug)]
 struct AttachmentLease {
@@ -64,16 +65,19 @@ struct AttachmentLease {
     backing: Option<AttachmentBacking>,
 }
 #[derive(Debug, thiserror::Error)]
-#[error("attaching mapped mount: {source}")]
-pub struct AttachmentFailure<'ns> {
-    source: io::Error,
-    mount: Mount<'ns, Idmapped>,
-    point: MountPoint,
-}
-impl<'ns> AttachmentFailure<'ns> {
-    pub fn into_parts(self) -> (io::Error, Mount<'ns, Idmapped>, MountPoint) {
-        (self.source, self.mount, self.point)
-    }
+pub enum AttachmentFailure<'ns> {
+    #[error("attaching mapped root: {source}")]
+    Root {
+        source: io::Error,
+        mount: Mount<'ns, Idmapped>,
+        point: MountPoint,
+    },
+    #[error("attaching bootstrap output: {source}")]
+    Output {
+        source: io::Error,
+        mount: Mount<'ns, Attached>,
+        output: Mount<'ns, Idmapped>,
+    },
 }
 #[derive(Debug, thiserror::Error)]
 pub enum UnmountFailure<'ns> {
@@ -110,27 +114,92 @@ impl<'ns> Mount<'ns, Idmapped> {
             point.directory.path(),
             MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
         ) {
-            return Err(AttachmentFailure {
+            return Err(AttachmentFailure::Root {
                 source: source.into(),
                 mount: self,
                 point,
             });
         }
-        let IdmappedResources { root, _namespace } = self.resources;
-        // All remaining work is infallible ownership transfer: no reopening gap.
-        Ok(Mount {
+        let IdmappedResources {
+            root,
+            _namespace,
+            output,
+        } = self.resources;
+        let mounted = Mount {
             resources: AttachedResources {
                 root,
                 lease: AttachmentLease {
-                    backing: Some(AttachmentBacking { point, _namespace }),
+                    backing: Some(AttachmentBacking {
+                        point,
+                        _namespace,
+                        output_namespace: None,
+                    }),
                 },
             },
             _scope: self._scope,
             _thread: PhantomData,
-        })
+        };
+        match output {
+            Some(output) => mounted.attach_output(Mount {
+                resources: IdmappedResources {
+                    root: output.root,
+                    _namespace: output.namespace,
+                    output: None,
+                },
+                _scope: self._scope,
+                _thread: PhantomData,
+            }),
+            None => Ok(mounted),
+        }
     }
 }
 impl<'ns> Mount<'ns, Attached> {
+    fn attach_output(
+        mut self,
+        output: Mount<'ns, Idmapped>,
+    ) -> Result<Self, AttachmentFailure<'ns>> {
+        let result = (|| -> io::Result<()> {
+            let target = rustix::fs::openat2(
+                &self.resources.root,
+                "mnt",
+                rustix::fs::OFlags::PATH
+                    | rustix::fs::OFlags::DIRECTORY
+                    | rustix::fs::OFlags::CLOEXEC,
+                rustix::fs::Mode::empty(),
+                rustix::fs::ResolveFlags::BENEATH
+                    | rustix::fs::ResolveFlags::NO_SYMLINKS
+                    | rustix::fs::ResolveFlags::NO_XDEV,
+            )?;
+            rustix::mount::move_mount(
+                &output.resources.root,
+                "",
+                &target,
+                "",
+                MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH | MoveMountFlags::MOVE_MOUNT_T_EMPTY_PATH,
+            )?;
+            Ok(())
+        })();
+        if let Err(source) = result {
+            return Err(AttachmentFailure::Output {
+                source,
+                mount: self,
+                output,
+            });
+        }
+        let IdmappedResources {
+            root,
+            _namespace,
+            output: _,
+        } = output.resources;
+        drop(root);
+        self.resources
+            .lease
+            .backing
+            .as_mut()
+            .expect("attached root")
+            .output_namespace = Some(_namespace);
+        Ok(self)
+    }
     pub fn root_metadata(&self) -> io::Result<fs::Metadata> {
         self.resources.root.metadata()
     }
@@ -147,7 +216,23 @@ impl AttachmentLease {
         mut self,
         scope: &'ns crate::isolation::PrivateMountNamespace,
     ) -> Result<(), UnmountFailure<'ns>> {
-        let backing = self.backing.as_ref().expect("live attachment lease");
+        let backing = self.backing.as_mut().expect("live attachment lease");
+        if backing.output_namespace.is_some() {
+            if let Err(source) = rustix::mount::unmount(
+                backing.point.directory.path().join("mnt"),
+                UnmountFlags::empty(),
+            ) {
+                return Err(UnmountFailure::Mounted {
+                    source: source.into(),
+                    recovery: UnmountRecovery {
+                        lease: self,
+                        scope,
+                        _thread: PhantomData,
+                    },
+                });
+            }
+            backing.output_namespace.take();
+        }
         if let Err(source) =
             rustix::mount::unmount(backing.point.directory.path(), UnmountFlags::empty())
         {

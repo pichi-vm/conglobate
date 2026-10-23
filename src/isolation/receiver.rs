@@ -128,6 +128,19 @@ impl<'ns> CommandReceiver<'ns> {
         let channel = match admitted {
             Ok(channel) => channel,
             Err(source) => {
+                // A failed restricted leaf may already have exited. Collect
+                // its direct setup parent before draining diagnostics so that
+                // process exit cannot discard the final explanatory message.
+                // The supervisor still bounds this entire helper's lifetime.
+                let running = match running.wait_until(setup_deadline) {
+                    Ok((mount, _)) => {
+                        if let Err(error) = diagnostics.finish() {
+                            eprintln!("startup diagnostic relay: {error}");
+                        }
+                        return Err(Box::new(ReceiverFailure::Before { source, mount }));
+                    }
+                    Err(failure) => failure.into_parts().1,
+                };
                 return Err(Box::new(ReceiverFailure::Startup {
                     source,
                     mount: running,

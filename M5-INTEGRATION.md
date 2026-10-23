@@ -161,3 +161,35 @@ doctests and root/fixture Clippy pass. Evidence and failed compile logs preserve
 
 Dual-view transfer, output attachment at /mnt, aggregate setup rollback, command
 execution with both LSM targets and direct sealing still remain. M5 streak zero.
+
+## Dual-view command execution (v166–v172)
+
+A dedicated bootstrap control packet carries tool/output detached views and the
+policy-bound user namespace together. The sender verifies both root identities
+against its policy; received descriptors are close-on-exec and opcode/arity are
+checked. The tool's reserved mnt directory is prepared in the original unmapped
+filesystem before transfer, preserving image UID/GID 0. Existing symlinks or
+non-directories at this reserved mountpoint fail rather than redirect attachment.
+The helper maps both views, attaches the tool first and then the output at mnt,
+retaining both owners on partial attachment failure. No command runs before this
+setup and the existing readiness/admission gates. Cleanup unmounts output before
+tool; the outer Step retains both backing volumes through descendant drain and
+policy/pin removal.
+
+Early runs failed before admission. v166/v167 exposed lost startup diagnostics;
+v168 preserves receiver diagnostics after the setup child is reaped and reveals
+EOVERFLOW from creating mnt through the idmapped view as host root. Preparing mnt
+in the original view fixes that; v169 exposes EINVAL attaching output beneath a
+still-detached tool view. Attaching tool first fixes that. v170 reaches commands
+and clean teardown but the minimal tool fixture lacks chown. v171 adds required
+fixture utilities and passes both commands. v172 repeats with the required 64GiB
+logical devices, while formatting only 16MiB filesystems. All failures preserved.
+
+The two commands write to tool and output independently, verify persistence after
+remount, preserve output UID/GID 123:456 and foreign SELinux labels on both roots,
+and reject labeling on a third tmpfs. Pair busy-unmount tests still pass. 53
+library tests, 47 doctests and strict root/fixture Clippy pass. These runs exercise
+production transfer, helper, Step, teardown and paired finalization, but the
+fixture still assembles preparation itself and populates its tool root by trusted
+copy. Production aggregate acquisition/rollback, a verified tool-carapace input,
+direct sealing and expanded failure qualification remain. M5 clean streak zero.

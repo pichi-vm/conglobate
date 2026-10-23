@@ -1,0 +1,1 @@
+Normal VM suite passed. Two dual-root commands preserve tool/output data and UID/GID across remounts; foreign SELinux labels persist on both and third tmpfs labels fail. Logical fixture capacity still 16MiB; tool populated by trusted fixture copy, not verified cache chain. Fixture Clippy found unnecessary drop of non-Drop reaper.

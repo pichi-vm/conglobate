@@ -62,6 +62,13 @@ pub struct BootstrapUnmountFailure<'n, 'o, 'w> {
     unmounting: Unmounting<'n, 'o, 'w>,
 }
 impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Mounted> {
+    pub(crate) fn tool(&self) -> &Volume<'n, 'o, 'w, Mounted> {
+        &self.tool
+    }
+    pub(crate) fn output(&self) -> &Volume<'n, 'o, 'w, Mounted> {
+        &self.output
+    }
+
     pub fn unmount(
         self,
     ) -> Result<BootstrapVolumes<'n, 'o, 'w, Unmounted>, Box<BootstrapUnmountFailure<'n, 'o, 'w>>>
