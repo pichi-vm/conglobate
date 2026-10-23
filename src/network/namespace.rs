@@ -82,7 +82,7 @@ impl NetworkNamespace {
         }
         Ok(Self(namespace))
     }
-    pub(super) fn descriptor(&self) -> &File {
+    pub(crate) fn descriptor(&self) -> &File {
         &self.0
     }
 

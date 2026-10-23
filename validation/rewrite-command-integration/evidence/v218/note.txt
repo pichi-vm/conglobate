@@ -1,0 +1,1 @@
+v218 focused network entry PASS: regular and gated setup transfer select the owned network before entering mapped user root; namespace descriptor is closed, namespace identity/UID map correct. Includes earlier namespace and link lifecycle checks. No enabled recipe, NAT, resolver mount or full M6 qualification claim.

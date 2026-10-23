@@ -22,25 +22,41 @@ impl CommandSetup {
 }
 impl GatedCommandSetup {
     pub fn into_input(self) -> io::Result<Stdio> {
+        let mut descriptors = vec![
+            self.setup.namespace.into(),
+            self.setup.devices.into_handle().into(),
+            self.gate.into_handle(),
+        ];
+        let opcode = if let Some(network) = self.setup.network {
+            descriptors.push(network.into());
+            5
+        } else {
+            2
+        };
         Packet {
-            opcode: 2,
-            descriptors: vec![
-                self.setup.namespace.into(),
-                self.setup.devices.into_handle().into(),
-                self.gate.into_handle(),
-            ],
+            opcode,
+            descriptors,
         }
         .send()
     }
     pub fn from_input() -> io::Result<Self> {
-        let mut packet = Packet::receive(2, 3)?;
+        let socket = io::stdin().as_fd().try_clone_to_owned()?;
+        let mut packet = Packet::receive_shapes(&socket, &[(2, 3), (5, 4)])?;
+        let network = if packet.opcode == 5 {
+            Some(File::from(packet.descriptors.pop().expect("network")))
+        } else {
+            None
+        };
         let gate = ExecutionEndpoint::from_handle(packet.descriptors.pop().expect("gate"))?;
         let devices =
             CommandDevices::from_handle(packet.descriptors.pop().expect("devices").into())?;
-        Ok(Self {
-            setup: CommandSetup::new(packet.descriptors.pop().expect("namespace").into(), devices)?,
-            gate,
-        })
+        let setup =
+            CommandSetup::new(packet.descriptors.pop().expect("namespace").into(), devices)?;
+        let setup = match network {
+            Some(network) => setup.with_network_handle(network)?,
+            None => setup,
+        };
+        Ok(Self { setup, gate })
     }
     pub fn enter(self) -> io::Result<(CommandNamespaces, GatedRootSetup)> {
         let (scope, devices) = self.setup.enter()?;
@@ -81,7 +97,7 @@ impl Packet {
     fn send(self) -> io::Result<Stdio> {
         let (sender, receiver) = UnixDatagram::pair()?;
         let descriptors: Vec<_> = self.descriptors.iter().map(AsFd::as_fd).collect();
-        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(3))];
+        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(4))];
         let mut ancillary = SendAncillaryBuffer::new(&mut space);
         if !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors)) {
             return Err(io::Error::other("gated setup capacity"));
@@ -102,8 +118,11 @@ impl Packet {
         Self::receive_from(&socket, opcode, count)
     }
     fn receive_from(socket: &impl AsFd, opcode: u8, count: usize) -> io::Result<Self> {
+        Self::receive_shapes(socket, &[(opcode, count)])
+    }
+    fn receive_shapes(socket: &impl AsFd, shapes: &[(u8, usize)]) -> io::Result<Self> {
         let mut bytes = [0; 4];
-        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(4))];
+        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(5))];
         let mut ancillary = RecvAncillaryBuffer::new(&mut space);
         let received = recvmsg(
             socket,
@@ -119,8 +138,8 @@ impl Packet {
             }
         }
         if received.bytes != 3
-            || bytes[..3] != [0x82, 1, opcode]
-            || descriptors.len() != count
+            || bytes[..2] != [0x82, 1]
+            || !shapes.contains(&(bytes[2], descriptors.len()))
             || received
                 .flags
                 .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
@@ -128,7 +147,7 @@ impl Packet {
             return Err(io::Error::other("invalid gated setup packet"));
         }
         Ok(Self {
-            opcode,
+            opcode: bytes[2],
             descriptors,
         })
     }

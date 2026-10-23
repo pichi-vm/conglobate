@@ -583,3 +583,30 @@ disposable firmware changes and failure after successful carapace derivation.
   enabled-command receipts, remaining negative/failure cases, ORAS and three
   complete M6 reviews remain outstanding. M6 stays at zero adherence passes;
   M7/M8 and the full objective remain active.
+
+### M6 command network entry transport
+
+- Previous turn progressed in 8a3dbc6. CommandSetup now accepts an owned network
+  namespace reference through a consuming constructor. Regular and gated setup
+  packets have separate exact opcode/descriptor shapes for attached networking;
+  root-entry packets remain network-descriptor-free. Receivers close rejected
+  rights, require queued messages, reject truncation/wrong counts, and install
+  received descriptors CLOEXEC. A transport test checks network identity/CLOEXEC.
+- CommandNamespaces joins the supplied network while initial-user-namespace
+  authority remains, rejects the current supervisor network, closes the handle,
+  and then enters the command user namespace. Offline entry still unshares NEWNET.
+  Neither path retains a namespace descriptor/restoration handle for image code.
+  This remains trusted setup, not command admission or complete network policy.
+- Focused disposable VM v218 passes both regular and gated transfers, selected
+  network identity, mapped UID zero with parent UID 100000, and absence of an open
+  network namespace descriptor after entry. Existing namespace creation/reaping,
+  veth collision, peer movement, teardown and deadline cases still pass.
+- Full normal offline regression VM v219 passes after these shared setup changes:
+  command isolation/lifecycle, cancellation and failure cleanup, bootstrap and
+  retained layering, firmware pair extraction, transforms and CLI publication.
+  Host suite (92 library tests plus integrations and 52 doctests), strict root and
+  fixture Clippy pass. Evidence/provenance are preserved under evidence/v218-v219.
+- Enabled recipes remain rejected: supervisor-to-volume-helper plumbing, complete
+  address/routing/NAT setup, resolver mounting/cleanup and actual network receipts
+  are still required before admission. These results do not count as a full M6
+  adherence pass. Remaining matrix/ORAS, three reviews, M7 and M8 remain required.

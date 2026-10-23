@@ -29,13 +29,32 @@ use std::{
 pub struct CommandSetup {
     namespace: File,
     devices: CommandDevices,
+    network: Option<File>,
 }
 impl CommandSetup {
     pub fn new(namespace: File, devices: CommandDevices) -> io::Result<Self> {
         if rustix::fs::fstatfs(&namespace)?.f_type as u64 != 0x6e73_6673 {
             return Err(io::Error::other("setup namespace requires nsfs"));
         }
-        Ok(Self { namespace, devices })
+        Ok(Self {
+            namespace,
+            devices,
+            network: None,
+        })
+    }
+    /// Select a supervisor-owned network namespace. The enclosing network
+    /// resource must remain owned until all command descendants are quiescent.
+    pub fn with_network(self, namespace: &crate::network::NetworkNamespace) -> io::Result<Self> {
+        self.with_network_handle(namespace.descriptor().try_clone()?)
+    }
+    fn with_network_handle(self, network: File) -> io::Result<Self> {
+        if rustix::fs::fstatfs(&network)?.f_type as u64 != 0x6e73_6673 {
+            return Err(io::Error::other("setup network namespace requires nsfs"));
+        }
+        Ok(Self {
+            network: Some(network),
+            ..self
+        })
     }
     pub fn namespace_metadata(&self) -> io::Result<Metadata> {
         self.namespace.metadata()
@@ -44,15 +63,21 @@ impl CommandSetup {
     pub fn into_input(self) -> io::Result<Stdio> {
         let (sender, receiver) = UnixDatagram::pair()?;
         let device = self.devices.into_handle();
-        let descriptors = [self.namespace.as_fd(), device.as_fd()];
-        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(2))];
+        let mut descriptors = vec![self.namespace.as_fd(), device.as_fd()];
+        let opcode = if let Some(network) = &self.network {
+            descriptors.push(network.as_fd());
+            4
+        } else {
+            1
+        };
+        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(3))];
         let mut ancillary = SendAncillaryBuffer::new(&mut space);
         if !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors)) {
             return Err(io::Error::other("setup transfer ancillary capacity"));
         }
         if sendmsg(
             &sender,
-            &[IoSlice::new(&[0x82, 1, 1])],
+            &[IoSlice::new(&[0x82, 1, opcode])],
             &mut ancillary,
             SendFlags::DONTWAIT | SendFlags::NOSIGNAL,
         )? != 3
@@ -68,7 +93,7 @@ impl CommandSetup {
     }
     fn receive(socket: &impl AsFd) -> io::Result<Self> {
         let mut bytes = [0; 4];
-        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(3))];
+        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(4))];
         let mut ancillary = RecvAncillaryBuffer::new(&mut space);
         let received = recvmsg(
             socket,
@@ -84,31 +109,43 @@ impl CommandSetup {
             }
         }
         if received.bytes != 3
-            || bytes[..3] != [0x82, 1, 1]
+            || bytes[..2] != [0x82, 1]
+            || !matches!((bytes[2], descriptors.len()), (1, 2) | (4, 3))
             || received
                 .flags
                 .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
-            || descriptors.len() != 2
         {
             return Err(io::Error::other("invalid setup transfer packet"));
         }
+        let network = if bytes[2] == 4 {
+            Some(File::from(descriptors.pop().expect("network")))
+        } else {
+            None
+        };
         let devices = CommandDevices::from_handle(
             descriptors.pop().expect("checked device descriptor").into(),
         )?;
-        Self::new(
+        let setup = Self::new(
             descriptors
                 .pop()
                 .expect("checked namespace descriptor")
                 .into(),
             devices,
-        )
+        )?;
+        match network {
+            Some(network) => setup.with_network_handle(network),
+            None => Ok(setup),
+        }
     }
 
     /// Enter only in a fresh trusted setup process. Partial namespace transition
     /// is exit-only. The remaining device owner must be passed to root setup;
     /// this does not authorize image execution or certify complete isolation.
     pub fn enter(self) -> io::Result<(CommandNamespaces, CommandDevices)> {
-        Ok((CommandNamespaces::enter(self.namespace)?, self.devices))
+        Ok((
+            CommandNamespaces::enter_with_network(self.namespace, self.network)?,
+            self.devices,
+        ))
     }
 }
 
@@ -178,11 +215,37 @@ mod tests {
         for count in [0, 1, 2, 3, 8] {
             Transfer::reject(&[0x82, 1, 1], count);
         }
+        for count in [0, 1, 2, 3, 4, 8] {
+            Transfer::reject(&[0x82, 1, 4], count);
+        }
         let transfer = Transfer::new();
         let namespace = File::open("/proc/self/ns/user").unwrap();
         let proc = File::open("/proc").unwrap();
         transfer.send(&[0x82, 1, 1], &[namespace.as_fd(), proc.as_fd()]);
         assert!(CommandSetup::receive(&transfer.receiver).is_err());
+    }
+    #[test]
+    fn network_transport_retains_identity_and_close_on_exec() {
+        let directory = tempfile::tempdir_in("/dev/shm").unwrap();
+        let user = File::open("/proc/self/ns/user").unwrap();
+        let network = File::open("/proc/self/ns/net").unwrap();
+        let devices = File::open(directory.path()).unwrap();
+        let transfer = Transfer::new();
+        transfer.send(
+            &[0x82, 1, 4],
+            &[user.as_fd(), devices.as_fd(), network.as_fd()],
+        );
+        let received = CommandSetup::receive(&transfer.receiver).unwrap();
+        let handle = received.network.unwrap();
+        assert_eq!(
+            handle.metadata().unwrap().ino(),
+            network.metadata().unwrap().ino()
+        );
+        assert!(
+            rustix::io::fcntl_getfd(&handle)
+                .unwrap()
+                .contains(rustix::io::FdFlags::CLOEXEC)
+        );
     }
     #[test]
     fn receiver_requires_a_queued_offer() {

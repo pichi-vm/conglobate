@@ -1,8 +1,14 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use conglobate::{
+    anchor::RecoveryDirectory,
     execution::HelperProgram,
+    isolation::{
+        CommandDevices, CommandSetup, ExecutionGate, GatedCommandSetup, IdRange, Mapped,
+        UserNamespace,
+    },
     network::{InterfaceName, NetworkNamespace, VethPair},
+    process::Process,
     step::SetupBudget,
 };
 use std::{
@@ -14,6 +20,72 @@ use std::{
 
 pub(crate) struct NetworkProbe;
 impl NetworkProbe {
+    pub(crate) fn entry(gated: bool, expected: u64) -> Result<(), Box<dyn std::error::Error>> {
+        if gated {
+            let (_scope, _root) = GatedCommandSetup::from_input()?.enter()?;
+        } else {
+            let (_scope, _devices) = CommandSetup::from_input()?.enter()?;
+        }
+        assert_eq!(fs::metadata("/proc/self/ns/net")?.ino(), expected);
+        assert_eq!(rustix::process::getuid().as_raw(), 0);
+        assert!(
+            fs::read_to_string("/proc/self/uid_map")?
+                .split_whitespace()
+                .eq(["0", "100000", "65536"])
+        );
+        for entry in fs::read_dir("/proc/self/fd")? {
+            if let Ok(target) = fs::read_link(entry?.path()) {
+                assert_ne!(target.to_string_lossy(), format!("net:[{expected}]"));
+            }
+        }
+        Ok(())
+    }
+    fn entry_roundtrip(
+        program: &HelperProgram,
+        network: &NetworkNamespace,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let parent = Path::new("/work/network-user-pin");
+        fs::create_dir(parent)?;
+        fs::set_permissions(parent, fs::Permissions::from_mode(0o700))?;
+        let recovery = RecoveryDirectory::open(parent)?;
+        let cutoff = SetupBudget::begin().cutoff()?;
+        let user = UserNamespace::<Mapped>::create(
+            program.namespace_creator(cutoff)?,
+            IdRange::new(100000, 65536)?,
+            IdRange::new(100000, 65536)?,
+            cutoff.deadline()?,
+        )?
+        .pin(&recovery)?;
+        for gated in [false, true] {
+            let setup = CommandSetup::new(
+                fs::File::open(parent.join(user.record().name()))?,
+                CommandDevices::create(100000, 100000)?,
+            )?
+            .with_network(network)?;
+            let (gate, endpoint) = ExecutionGate::pair()?;
+            let input = if gated {
+                setup.with_gate(endpoint).into_input()?
+            } else {
+                setup.into_input()?
+            };
+            let child = std::process::Command::new(std::env::current_exe()?)
+                .arg("network-entry-probe")
+                .arg(gated.to_string())
+                .arg(network.metadata()?.ino().to_string())
+                .stdin(input)
+                .spawn()?;
+            let status = Process::from(child)
+                .wait_until(Instant::now() + Duration::from_secs(10))?
+                .status();
+            assert!(status.success());
+            drop(gate);
+        }
+        user.release()?;
+        drop(recovery);
+        fs::remove_dir(parent)?;
+        println!("NETWORK_COMMAND_ENTRY_AND_DESCRIPTOR_CLOSURE_PASS");
+        Ok(())
+    }
     pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
         let original = fs::metadata("/proc/self/ns/net")?;
         let program = HelperProgram::current()?;
@@ -28,6 +100,7 @@ impl NetworkProbe {
                 .trim()
                 .is_empty()
         );
+        Self::entry_roundtrip(&program, &first)?;
         drop(first);
         drop(second);
         println!("NETWORK_NAMESPACE_CREATOR_REAPED_PASS");
