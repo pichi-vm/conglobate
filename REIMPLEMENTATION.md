@@ -2201,3 +2201,35 @@ rules rather than silently shrinking acceptance criteria.
   explicitly when defining that boundary. The current fixture still acknowledges
   admission early; do not claim setup/execution timing is resolved. Primary command
   outcomes versus cleanup diagnostics and M4 review also remain open; streak zero.
+
+### M4 restricted-leaf start gate (v115–v116)
+
+- Previous turn progressed in 66d2a4c. ExecutionGate has sealed Waiting/Ready
+  states: the parent cannot release execution before receiving readiness. The
+  restricted leaf sends readiness, waits for explicit start and closes its gate
+  before the final descriptor audit and image spawn. Messages are exact versioned
+  CBOR records over nonblocking seqpacket sockets with poll deadlines; unexpected
+  ancillary rights, wrong-phase packets, truncation, EOF and expiry fail closed.
+  Parent cancellation shuts its endpoint down; no sleep establishes readiness.
+- GatedCommandSetup and GatedRootSetup transfer namespace/device/gate ownership
+  through the trusted setup chain using bounded descriptor packets. The owned-
+  volume fixture now launches this chain before awaiting upstream admission.
+  Only after the fully restricted leaf reports ready does the outer helper accept
+  admission and release start. Startup handles are absent at the final audit.
+- v115 normal VM suite and v116 supervisor-death suite pass. Existing command,
+  label, descriptor-rejection and cleanup cases run through the gated path.
+  Host tests cover explicit release, cancellation after readiness, expiry, wrong
+  phase, malformed packets, unexpected rights and descriptor closure on rejection;
+  44 compile-fail cases pass. Both final Clippy checks pass. Initial rustix API
+  compile errors and source are retained under gate-compile-v1. v116 preserves a
+  redundant-reference Clippy finding; its post-run borrow-only correction and
+  final host checks are separately recorded from exact booted source. All hashes
+  verified; no full-sandbox or adherence claim.
+- Still needed: one production fixed setup budget across root/policy/helper
+  preparation (fixtures currently supply deadlines), the command execution clock
+  and primary outcome carried through teardown failures. The authorized start
+  boundary still includes final descriptor audit and process spawn/init validation;
+  document/account for that overhead rather than calling an earlier helper ACK
+  actual shell execution. Older ungated fixtures/API entrypoints remain for
+  independent coverage and require review before final orchestration. M4 streak
+  remains zero; later milestones remain unadvanced.

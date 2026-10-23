@@ -33,6 +33,45 @@ impl Integration {
             return Err("disposable guest required".into());
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "gated-namespaces") {
+            let script = args.get(2).ok_or("script required")?;
+            let (scope, root) = conglobate::isolation::GatedCommandSetup::from_input()?.enter()?;
+            let mut command = Command::new(std::env::current_exe()?);
+            command
+                .args(["gated-root", script])
+                .env_clear()
+                .stdin(root.into_input()?);
+            if args.get(3).is_some_and(|arg| arg == "--probe-extra-fd") {
+                command.arg("--probe-extra-fd");
+            }
+            let child = scope.spawn(command)?;
+            let status = child
+                .wait_until(Instant::now() + Duration::from_secs(30))?
+                .status();
+            use std::os::unix::process::ExitStatusExt;
+            std::process::exit(status.code().unwrap_or(128 + status.signal().unwrap_or(1)));
+        }
+        if args.get(1).is_some_and(|a| a == "gated-root") {
+            let script = args.get(2).ok_or("script required")?;
+            let (devices, gate) = conglobate::isolation::GatedRootSetup::from_input()?.into_parts();
+            let scope = PrivateMountNamespace::enter()?;
+            let root = CommandRoot::from_current_directory(scope, devices)?;
+            let filter = CommandSyscalls::compile()?;
+            let command =
+                root.enter()?
+                    .restrict(script, CommandPrivileges::filesystem(), filter)?;
+            let deadline = Instant::now() + Duration::from_secs(30);
+            if args.get(3).is_some_and(|arg| arg == "--probe-extra-fd") {
+                let extra = fs::File::open("/dev/null")?;
+                let error = command.start(gate, deadline).unwrap_err();
+                assert!(error.to_string().contains("would remain in command init"));
+                drop(extra);
+                println!("RESTRICTED_COMMAND_EXTRA_DESCRIPTOR_REJECTED_PASS");
+                return Ok(());
+            }
+            command.start(gate, deadline)?;
+            unreachable!();
+        }
         if args.get(1).is_some_and(|a| a == "volume-receiver") {
             let deadline = Instant::now() + Duration::from_secs(5);
             let channel = Supervision::from_stdin()?
@@ -55,16 +94,20 @@ impl Integration {
                 // Fixture fault injection: no Rust destructors run in this helper.
                 std::process::exit(73);
             }
-            let channel = channel.await_admission_until(deadline)?;
+            let (gate, endpoint) = conglobate::isolation::ExecutionGate::pair()?;
             let mut command = Command::new(std::env::current_exe()?);
             command
-                .arg("native-namespaces")
+                .arg("gated-namespaces")
                 .arg(Self::command_script(mode))
-                .stdin(setup.into_input()?);
+                .stdin(setup.with_gate(endpoint).into_input()?);
             if mode == "descriptor-rejection" {
                 command.arg("--probe-extra-fd");
             }
             let running = view.launch(command).map_err(|e| e.to_string())?;
+            let gate = gate.wait_ready_until(deadline)?;
+            println!("RESTRICTED_LEAF_READY_BEFORE_ADMISSION_PASS");
+            let channel = channel.await_admission_until(deadline)?;
+            gate.start_until(deadline)?;
             let (view, status) = running
                 .wait_until(Instant::now() + Duration::from_secs(30))
                 .map_err(|e| e.to_string())?;

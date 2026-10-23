@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+mod gated;
 use super::{CommandDevices, CommandNamespaces};
+pub use gated::{GatedCommandSetup, GatedRootSetup};
 use rustix::{
     fd::{AsFd, OwnedFd},
     net::{

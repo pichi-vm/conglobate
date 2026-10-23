@@ -998,3 +998,14 @@ and VM checks pass. The source review also identified that outer-helper admissio
 still precedes inner sandbox preparation. A leaf readiness/start handshake and
 correct setup-versus-execution clocks remain required; this test does not claim
 to resolve that timing boundary.
+
+## Restricted leaf readiness and explicit start
+
+v115 runs owned-volume commands through ExecutionGate: the restricted inner helper
+reports readiness, the outer helper then accepts admission, and explicit start
+releases image execution. The gate closes before the final descriptor audit.
+v116 passes the supervisor-death exercise on this path. Host tests cover malformed
+packets, unexpected descriptor rights, cancellation, expiry and no start before
+readiness. Exact VM sources and failures are preserved; the final redundant-borrow
+Clippy correction is recorded separately. Production setup budgeting and command
+outcome/timeout orchestration remain outstanding.

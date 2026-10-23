@@ -182,6 +182,17 @@ impl EnteredRoot {
 }
 
 impl RestrictedCommand {
+    /// Report completed isolation, wait for explicit start, close the gate and
+    /// audit descriptors before image execution. Error is exit-only.
+    pub fn start(
+        self,
+        gate: super::ExecutionEndpoint,
+        deadline: std::time::Instant,
+    ) -> io::Result<std::convert::Infallible> {
+        gate.ready_and_wait(deadline)?;
+        self.execute()
+    }
+
     /// The enclosing helper must have received start authorization and closed
     /// its startup handles. Reaudit immediately before spawning image code.
     pub fn execute(self) -> io::Result<std::convert::Infallible> {

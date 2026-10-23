@@ -3,12 +3,14 @@
 
 //! Trusted helper namespace setup; this alone is not a command sandbox.
 mod devices;
+mod gate;
 mod init;
 mod namespaces;
 mod setup;
+pub use gate::{ExecutionEndpoint, ExecutionGate, GateState, Ready, Waiting};
 mod user;
 pub use namespaces::CommandNamespaces;
-pub use setup::CommandSetup;
+pub use setup::{CommandSetup, GatedCommandSetup, GatedRootSetup};
 pub use user::{
     IdRange, Mapped, NamespaceViewFailure, PinnedNamespace, UserNamespace, UserNamespaceFailure,
     UserNamespaceReleaseFailure, UserNamespaceState,

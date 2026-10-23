@@ -1,0 +1,8 @@
+{
+  "validation/rewrite-command-integration/evidence/gate-compile-v1/compiler.txt": "afc6460708bb278b818fb5f423597d20be18cfaf5115437a19470a2541683b09",
+  "validation/rewrite-command-integration/evidence/gate-compile-v1/src/isolation.rs": "9439011cb31977a6272cf8024a3a1c0ad07255839e8cfe6651a97088e3ff1216",
+  "validation/rewrite-command-integration/evidence/gate-compile-v1/src/isolation/gate.rs": "c00277189971292a9fd87b5190b1a13ea4009128f079108141aa8f6d9a598163",
+  "validation/rewrite-command-integration/evidence/gate-compile-v1/src/isolation/setup.rs": "55725ac41fc9bf4744ac2d7b13698b3675f8240b7c7c9711de57ded159b73cd8",
+  "validation/rewrite-command-integration/evidence/gate-compile-v1/src/isolation/root.rs": "b653e7418dffb00e5790dd805cffcd91cabe8b9ab812b9dbc8a1075a0c2b2d87",
+  "validation/rewrite-command-integration/evidence/gate-compile-v1/src/isolation/setup/gated.rs": "40cd0abe4c8a3f4945553e6bc529db0564d56a10996e63acde2ef2e39b2361ae"
+}
