@@ -6112,3 +6112,7 @@ All 34 recorded source/design/test hashes verified. Completed failure-first requ
 ### M3 current adherence pass 3, restored at unchanged 87de85e scope
 
 Completed the third full consumer-oriented requirements/style/ownership/error/evidence review in `preservation/m7-review/m3-current/PASS-3.md`. All 34 source hashes match and src/tests/Cargo diff is empty. Formatting and all 53 doctests pass. No new finding; M3 restored to 3/3. This is a self-review gate only; M4–M8 and qualification remain incomplete. Previous turn completed pass 2; this turn completes pass 3 and returns the active queue to M4.
+
+### Current missing-policy VM admission check after 0291f04
+
+Fresh maintained native amd64 disposable-VM run rejected command admission with the environment label policy absent. Strengthened assessor requires trusted output-absence marker; all six checks pass and source archive matches current scoped files. Raw failure/status/source/provenance in `preservation/m7-review/m4-missing-policy-current/`. Runner exit 1 is expected negative behavior. Kernel/initramfs remain local, not remotely durable. No application changes or M4 full pass. Previous turn restored M3; this turn closes the current missing-policy evidence gap in the M4 queue.

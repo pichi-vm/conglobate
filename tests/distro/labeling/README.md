@@ -12,7 +12,8 @@ python3 tests/distro/labeling/verify_missing.py RUN_DIRECTORY
 ```
 
 The maintained assessor requires the trusted failure status, the specific label
-denial diagnostic, no command marker, and complete command/runtime cleanup.
+denial diagnostic, no command marker, complete command/runtime cleanup, and the
+trusted runner's assertion that no output directory exists.
 Missing evidence fails assessment. It can run against repository-preserved logs
 and status files without the large VM images. It rejects the original diagnostic/
 cleanup failure in `label-admission-off-v1`; it does not reclassify it as a pass.

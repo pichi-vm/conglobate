@@ -1,0 +1,7 @@
+# Current missing environment label policy negative
+
+Implementation base 0291f04; only assessor/README strengthened before launch. Disposable native amd64 KVM guest, Fedora kernel 7.2.10-200.fc44.x86_64, 8 GiB, maintained labeling recipe and --without-label-policy. Exact QEMU command, inputs, source archive and context bundle retained here. Full runner invocation uses tests/distro/run.py with cache /var/tmp/conglobate-fedora-input-v1, pin sha256:4b1b5a79839b8d115987aefb23dabe4282713396101b4c5416d17be974b2b2ab and module-root /; compiler environment CARGO_BUILD_JOBS=2, TMPDIR=/var/tmp/conglobate-rewrite-tmp, CARGO_TARGET_DIR=target/m7-stable. Run directory: /storage/conglobate-validation/m4-missing-policy-current-v1.
+
+Runner exit 1 is expected. Independent maintained verify_missing.py exits 0 with all six assertions true: build failure, no command admission marker, exact restricted-label denial, complete command/runtime cleanup diagnostics and trusted output-absence assertion. The command is a benign printf. This is admission failure evidence, not a label-write test inside an admitted command. Cleanup diagnostics are not an exhaustive enumeration of every kernel resource.
+
+Source comparison: 187 files checked, 0 differences. Large kernel/initramfs assets remain local with hashes; not remotely durable. Empty failed-build export backing remains local and is not treated as an artifact. No production source changed, no full M4 adherence pass awarded, no other architecture/confidential-VM qualification inferred.

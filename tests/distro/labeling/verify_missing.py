@@ -19,6 +19,7 @@ class MissingPolicyEvidence:
             'label_denial_diagnostic': 'restricted labeling validation: environment labeling support: Operation not permitted' in serial,
             'command_cleanup_complete': 'cleanup: complete' in serial,
             'runtime_cleanup_complete': 'runtime cleanup:' not in serial and 'runtime retained' not in serial,
+            'output_absent': '\nFAILED_BUILD_OUTPUT_ABSENT\n' in serial,
         }
         report = {'checks': checks, 'passed': all(checks.values()),
                   'full_sandbox_qualified': False}

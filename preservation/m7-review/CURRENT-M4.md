@@ -22,8 +22,8 @@ No full new adherence pass has been awarded.
    trusted cleanup-failure message; current positive/negative VM verifiers pass
    (cleanup-failure-protocol/). No full arbitrary-race/platform claim is added.
 4. **Label admission:** current two-root denial now passes (m4-second-root-current).
-   Missing-policy negative evidence exists in command-error-missing-label-v2;
-   compare affected source before using it for the next complete gate. Do not
+   Current missing-policy negative passes all six checks with no output
+   (m4-missing-policy-current); its source comparison is recorded alongside raw evidence. Do not
    confuse admission-probe success with enforcing target-distro boot validation.
 5. **Security coverage:** seeded-key-confinement proves populated supervisor key
    control before/after a command's empty key view. time-namespace-control adds
