@@ -10,7 +10,7 @@ pub enum CommandOutcome {
     #[error("command exited with {0}")]
     Exited(ExitStatus),
     #[error("command observation failed: {0}")]
-    ObservationFailed(io::Error),
+    ObservationFailed(#[source] io::Error),
 }
 impl CommandOutcome {
     pub fn success(&self) -> bool {

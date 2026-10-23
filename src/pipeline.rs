@@ -281,6 +281,33 @@ mod tests {
     use std::io;
 
     #[test]
+    fn standard_source_chain_reaches_command_io_causes() {
+        use crate::step::{CommandOutcome, ExecutionOutcome};
+        use std::error::Error;
+        let outcomes = [
+            ExecutionOutcome::SetupFailed(io::Error::from_raw_os_error(13)),
+            ExecutionOutcome::Command(CommandOutcome::ObservationFailed(
+                io::Error::from_raw_os_error(13),
+            )),
+        ];
+        for outcome in outcomes {
+            let error = BuildError::command(outcome, None).at_directive(2);
+            let mut current: &(dyn Error + 'static) = &error;
+            let mut code = None;
+            loop {
+                if let Some(cause) = current.downcast_ref::<io::Error>() {
+                    code = cause.raw_os_error();
+                }
+                match current.source() {
+                    Some(source) => current = source,
+                    None => break,
+                }
+            }
+            assert_eq!(code, Some(13), "command I/O source chain was truncated");
+        }
+    }
+
+    #[test]
     fn command_rejection_retains_exit_status_and_recovered_cleanup_history() {
         use crate::step::{CommandOutcome, ExecutionOutcome};
         use std::os::unix::process::ExitStatusExt;

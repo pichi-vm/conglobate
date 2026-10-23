@@ -5771,3 +5771,17 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   conglobate contains no DNS resolver service. VM systemd services are compatible
   with the environment contract; delegating per-step networking is a separate
   design decision. Final diagnostic taxonomy audit remains open; M4 stays 0/3.
+
+### Repair standard command error-source traversal
+
+- Previous turn committed concrete network cleanup histories and clarified that
+  resolver types only transport resolv.conf. Continued diagnostic API audit.
+- Found that command outcomes retained io::Error fields but omitted standard
+  Error::source links. Reproduced the gap with an indexed-build-error traversal
+  test, then linked setup/observation outcomes and StorageExecutionFailure to
+  their primary causes. Cleanup histories remain separately inspectable.
+- 147 library tests, strict Clippy and lifecycle compilation passed. Preserved
+  failing regression and corrected checks in command-source-chain/ under
+  preservation/m7-review/. No display, ownership or lifecycle behavior changed.
+- Broader diagnostic audit remains open; no new VM or full adherence pass.
+  M4 remains 0/3 and the goal remains active.

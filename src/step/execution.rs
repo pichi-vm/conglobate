@@ -16,9 +16,9 @@ pub use storage::ExecutionStorage;
 #[derive(Debug, thiserror::Error)]
 pub enum ExecutionOutcome {
     #[error("command setup: {0}")]
-    SetupFailed(io::Error),
+    SetupFailed(#[source] io::Error),
     #[error("command outcome: {0}")]
-    Command(CommandOutcome),
+    Command(#[source] CommandOutcome),
 }
 impl ExecutionOutcome {
     fn success(&self) -> bool {
@@ -75,7 +75,11 @@ impl<R: ExecutionStorage> fmt::Display for StorageExecutionFailure<'_, R> {
         }
     }
 }
-impl<R: ExecutionStorage> std::error::Error for StorageExecutionFailure<'_, R> {}
+impl<R: ExecutionStorage> std::error::Error for StorageExecutionFailure<'_, R> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.outcome)
+    }
+}
 type ExecutionResult<'l, R> = Result<ExecutedStorage<R>, Box<StorageExecutionFailure<'l, R>>>;
 type TeardownResult<'l, R> = Result<TeardownCompletion<R>, Box<TeardownFailure<'l, R>>>;
 
