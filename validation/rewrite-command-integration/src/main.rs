@@ -199,6 +199,7 @@ impl Integration {
                     "volume-supervisor-setup-detached" => "setup-detached-failure",
                     "volume-supervisor-setup-attached" => "setup-attached-exit",
                     "volume-supervisor-vm-death" => "vm-death",
+                    "volume-supervisor-policy-cleanup" => "policy-cleanup",
                     _ => "success",
                 };
                 let reaper = ChildReaper::install()?;
@@ -281,12 +282,29 @@ impl Integration {
                             );
                             fs::remove_file(ready)?;
                         }
-                        step.teardown(parent).map_err(|e| e.to_string())?
+                        if mode == "policy-cleanup" {
+                            let pins =
+                                fs::read_dir("/work/pins")?.collect::<Result<Vec<_>, _>>()?;
+                            assert_eq!(pins.len(), 1);
+                            let blocker = pins[0].path().join("cleanup-blocker");
+                            fs::create_dir(&blocker)?;
+                            let failure = step.teardown(parent).unwrap_err();
+                            assert_eq!(
+                                failure.diagnostics().operation().kind(),
+                                std::io::ErrorKind::DirectoryNotEmpty
+                            );
+                            assert_eq!(fs::read_dir(recovery)?.count(), 2);
+                            fs::remove_dir(&blocker)?;
+                            let completion = failure.retry().map_err(|e| e.to_string())?;
+                            println!("BOUNDED_POLICY_CLEANUP_RETRY_PASS");
+                            completion
+                        } else {
+                            step.teardown(parent).map_err(|e| e.to_string())?
+                        }
                     }
                 };
-                let (_, _, policy, volume) = step.into_parts();
-                let (user, mut pins) = policy.close()?.into_parts();
-                assert_eq!(pins.len(), 1);
+                assert_eq!(fs::read_dir(recovery)?.count(), 0);
+                assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
                 assert!(
                     fs::read_to_string("/proc/thread-self/children")?
                         .trim()
@@ -318,10 +336,36 @@ impl Integration {
                 println!("OWNED_VOLUME_COMMAND_{}_PASS", mode.to_uppercase());
                 println!("OWNED_VOLUME_SUPERVISED_TRANSFER_PASS");
                 println!("STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS");
-                (volume, user, pins.pop())
+                let holder = fs::File::open(point)?;
+                let failure = step.unmount().unwrap_err();
+                assert_eq!(
+                    failure.diagnostics().operation().kind(),
+                    std::io::ErrorKind::ResourceBusy
+                );
+                drop(holder);
+                let (_, _, volume) = failure.retry().map_err(|e| e.to_string())?.into_parts();
+                let volume = volume
+                    .mount_ext4(Path::new("/work"))
+                    .map_err(|e| e.to_string())?;
+                // Recreate fixture-only identities for the independent view tests.
+                let mut creator = Command::new(std::env::current_exe()?);
+                creator.arg("namespace-seed").env_clear();
+                let user = UserNamespace::<Mapped>::create(
+                    creator,
+                    IdRange::new(100000, 65536)?,
+                    IdRange::new(100000, 65536)?,
+                    Instant::now() + Duration::from_secs(5),
+                )?
+                .pin(&lease)?;
+                let pin = volume.pin(&lease)?;
+                println!("BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS");
+                (volume, user, Some(pin))
             } else {
                 (volume, user, pin)
             };
+            let paths = points()?;
+            assert_eq!(paths.len(), 1);
+            let point = paths.first().unwrap();
             let view = volume.view()?;
             let command_scope = PrivateMountNamespace::enter()?;
             assert!(volume.pin(&lease).is_err());

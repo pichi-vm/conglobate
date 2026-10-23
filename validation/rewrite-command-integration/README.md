@@ -976,3 +976,14 @@ Clippy layout finding, fixed in v111. Root tests, both Clippy checks and VM suit
 pass. Immediate expiry is tested without sleeping, and replacing the retry
 budget is a compile-time error. Pin release and filesystem finalization remain
 outside this coordinator and must join the overall budget before qualification.
+
+## One cutoff through policy, pins and volume finalization
+
+v112/v113 extend the fixed teardown deadline through policy cleanup, identity-pin
+release and clean flush/unmount. Mounted storage no longer escapes the coordinator;
+its completion converts to an unmounted volume under the same deadline. Every
+owned-volume fixture forces a busy unmount and successfully retries after closing
+the holder. v113 also blocks policy directory removal, checks retained identity
+pins, and retries after removing the blocker. Root tests, Clippy and VM suites
+pass. Source/evidence hashes are preserved. Setup budgeting and command-versus-
+cleanup outcome handling remain outstanding.

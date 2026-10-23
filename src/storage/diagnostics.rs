@@ -37,7 +37,7 @@ impl FailureDiagnostics {
     }
     // At an ownership boundary, share the concrete latest error rather than
     // embedding the child's formatted retry history into a new io::Error.
-    pub(super) fn latest_only(&self) -> Self {
+    pub(crate) fn latest_only(&self) -> Self {
         Self(Box::new(History {
             operation: Arc::clone(self.0.cleanup.last().unwrap_or(&self.0.operation)),
             cleanup: Vec::new(),

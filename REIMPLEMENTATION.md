@@ -2144,3 +2144,33 @@ rules rather than silently shrinking acceptance criteria.
   its own fixed budget, and primary command outcome must survive cleanup errors.
   Late kernel-return/failure coverage also needs review. M4 remains zero clean
   adherence passes; this is not full lifecycle-deadline qualification.
+
+### M4 complete single-volume teardown budget (v112–v113)
+
+- Previous turn progressed in cbd257d. The fixed teardown cutoff now survives
+  policy disablement, disabled-policy cleanup, filesystem pin release, namespace
+  pin release, volume flush and clean unmount. TeardownCompletion retains the
+  deadline and mounted storage privately. Its unmount conversion returns only a
+  FinalizedVolume containing Unmounted storage. A successful return is not a
+  sealed-image receipt or proof of command success.
+- Cleanup variants retain partially removed policy resources, individual mounted
+  pins versus unmounted targets, and the remaining pins. Filesystem pins release
+  before the namespace pin. Each operation is checked against the same cutoff;
+  late-returning operations cannot produce accepted completion. Finalization
+  failures retain exact volume cleanup state and deadline; retries cannot extend
+  it. No timing loops, watchdog process or forced unmount receipt is introduced.
+- v112 exercises all owned-volume cases through the complete budget, forcing a
+  busy unmount then releasing its holder and retrying. v113 additionally blocks
+  policy directory cleanup, verifies identity owners remain, removes the blocker
+  and retries. The fixture recreates separate identities only for its subsequent
+  independent view tests after production finalization has released the originals.
+- VM suites pass. Root tests (42 compile-fail), both Clippy checks and formatting
+  pass; compile-time tests prohibit extracting mounted storage and supplying a
+  replacement finalization cutoff. Both exact source/evidence sets are retained
+  with verified hashes. Deadline expiry after actual slow kernel operations and
+  more pin-failure boundaries still need review; this is not exhaustive faults.
+- Remaining M4 work includes setup budget orchestration, preserving primary
+  command outcome across cleanup failures, production orchestration and adherence
+  review. Bootstrap's two-volume aggregate is not implemented by this single-
+  volume result. Streak remains zero; no milestone advancement or whole-build
+  qualification is claimed.

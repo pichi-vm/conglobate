@@ -13,8 +13,11 @@ use std::{
     io, marker::PhantomData, mem::ManuallyDrop, path::Path, process::ExitStatus, time::Instant,
 };
 
+mod finalize;
+mod pins;
 mod teardown;
-pub use teardown::TeardownFailure;
+pub use finalize::{FinalizationFailure, FinalizedVolume};
+pub use teardown::{TeardownCompletion, TeardownFailure};
 
 mod private {
     pub trait Sealed {}

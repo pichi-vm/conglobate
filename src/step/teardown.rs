@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+use super::pins::{PinCleanup, PinFailure};
 use super::{
     Cancelling, Draining, Finishing, Quiescent, Ready, Reaping, Running, Step, StepCompletion,
     StepFailure, StepState, StepStorage,
 };
-use crate::storage::FailureDiagnostics;
+use crate::{policy::BoundCleanup, storage::FailureDiagnostics};
 use std::{
     io,
     path::{Path, PathBuf},
@@ -25,7 +26,10 @@ enum Phase<'a, R: StepStorage> {
     Draining(Step<'a, Draining, R>),
     Quiescent(Step<'a, Quiescent, R>),
     Finishing(Step<'a, Finishing, R>),
-    Complete(StepCompletion<R>),
+    Policy(StepCompletion<R>),
+    PolicyRetry(Released<R>, BoundCleanup),
+    Pins(Released<R>, PinCleanup),
+    Complete(Released<R>),
 }
 #[derive(Debug)]
 struct Teardown<'a, R: StepStorage> {
@@ -37,6 +41,39 @@ struct Teardown<'a, R: StepStorage> {
 struct TransitionFailure<'a, R: StepStorage> {
     source: io::Error,
     phase: Phase<'a, R>,
+}
+#[derive(Debug)]
+pub(super) struct Released<R: StepStorage> {
+    pub status: std::process::ExitStatus,
+    pub reaped: crate::process::ReapedChildren,
+    pub storage: R,
+}
+/// Policy and identity pins are gone. The original deadline still governs
+/// storage finalization; no mounted storage accessor escapes this owner.
+/// ```compile_fail
+/// use conglobate::{step::TeardownCompletion, storage::{Volume, Mounted}};
+/// fn cannot_extract_mounted_storage(completion: TeardownCompletion<Volume<'_, '_, '_, Mounted>>) {
+///     completion.into_parts();
+/// }
+/// ```
+#[derive(Debug)]
+pub struct TeardownCompletion<R: StepStorage> {
+    pub(super) released: Released<R>,
+    pub(super) deadline: Instant,
+}
+#[derive(Debug)]
+pub(super) struct Deadline;
+impl Deadline {
+    pub(super) fn check(deadline: Instant) -> io::Result<()> {
+        if Instant::now() >= deadline {
+            Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "fixed step teardown deadline expired",
+            ))
+        } else {
+            Ok(())
+        }
+    }
 }
 /// Retains the exact cleanup phase and original deadline. Retry never extends
 /// the budget or reopens command admission. Expiry rejects the build; unfinished
@@ -57,7 +94,7 @@ impl<'a, R: StepStorage> TeardownFailure<'a, R> {
     pub fn diagnostics(&self) -> &FailureDiagnostics {
         &self.diagnostics
     }
-    pub fn retry(self) -> Result<StepCompletion<R>, Box<Self>> {
+    pub fn retry(self) -> Result<TeardownCompletion<R>, Box<Self>> {
         self.teardown.run().map_err(|failure| {
             let Self {
                 diagnostics,
@@ -78,16 +115,6 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
             deadline: Instant::now() + TEARDOWN_TIMEOUT,
         }
     }
-    fn check(deadline: Instant) -> io::Result<()> {
-        if Instant::now() >= deadline {
-            Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "fixed step teardown deadline expired",
-            ))
-        } else {
-            Ok(())
-        }
-    }
     fn failed(self, source: io::Error) -> Box<TeardownFailure<'a, R>> {
         Box::new(TeardownFailure {
             diagnostics: source.into(),
@@ -106,8 +133,8 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
             })
         })
     }
-    fn run(self) -> Result<StepCompletion<R>, Box<TeardownFailure<'a, R>>> {
-        if let Err(source) = Self::check(self.deadline) {
+    fn run(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+        if let Err(source) = Deadline::check(self.deadline) {
             return Err(self.failed(source));
         }
         let Self {
@@ -141,12 +168,50 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
                 Phase::Quiescent,
             ),
             Phase::Finishing(step) => {
-                Self::transition(step.disable().map(Phase::Complete), Phase::Finishing)
+                Self::transition(step.disable().map(Phase::Policy), Phase::Finishing)
             }
-            Phase::Complete(completion) => return Ok(completion),
+            Phase::Policy(completion) => {
+                let (status, reaped, policy, storage) = completion.into_parts();
+                let released = Released {
+                    status,
+                    reaped,
+                    storage,
+                };
+                match policy.close() {
+                    Ok(identities) => Ok(Phase::Pins(released, identities.into())),
+                    Err(failure) => {
+                        let (source, cleanup) = failure.into_parts();
+                        Err(Box::new(TransitionFailure {
+                            source,
+                            phase: Phase::PolicyRetry(released, cleanup),
+                        }))
+                    }
+                }
+            }
+            Phase::PolicyRetry(released, cleanup) => match cleanup.retry() {
+                Ok(identities) => Ok(Phase::Pins(released, identities.into())),
+                Err(failure) => {
+                    let (source, cleanup) = failure.into_parts();
+                    Err(Box::new(TransitionFailure {
+                        source,
+                        phase: Phase::PolicyRetry(released, cleanup),
+                    }))
+                }
+            },
+            Phase::Pins(released, cleanup) => match cleanup.run(deadline) {
+                Ok(()) => Ok(Phase::Complete(released)),
+                Err(failure) => {
+                    let PinFailure { source, cleanup } = *failure;
+                    Err(Box::new(TransitionFailure {
+                        source,
+                        phase: Phase::Pins(released, cleanup),
+                    }))
+                }
+            },
+            Phase::Complete(released) => return Ok(TeardownCompletion { released, deadline }),
         };
         match next {
-            // At most seven transitions. No polling or timing retries happen here.
+            // A bounded number of ownership transitions. No polling or timing retries happen here.
             Ok(phase) => Self {
                 phase,
                 parent,
@@ -166,17 +231,26 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
     }
 }
 impl<'a, R: StepStorage> Step<'a, Ready, R> {
-    pub fn teardown(self, parent: &Path) -> Result<StepCompletion<R>, Box<TeardownFailure<'a, R>>> {
+    pub fn teardown(
+        self,
+        parent: &Path,
+    ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         Teardown::new(Phase::Ready(self), parent).run()
     }
 }
 impl<'a, R: StepStorage> Step<'a, Running, R> {
-    pub fn teardown(self, parent: &Path) -> Result<StepCompletion<R>, Box<TeardownFailure<'a, R>>> {
+    pub fn teardown(
+        self,
+        parent: &Path,
+    ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         Teardown::new(Phase::Running(self), parent).run()
     }
 }
 impl<'a, R: StepStorage> Step<'a, Cancelling, R> {
-    pub fn teardown(self, parent: &Path) -> Result<StepCompletion<R>, Box<TeardownFailure<'a, R>>> {
+    pub fn teardown(
+        self,
+        parent: &Path,
+    ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         Teardown::new(Phase::Cancelling(self), parent).run()
     }
 }
@@ -187,9 +261,9 @@ mod tests {
     fn fixed_budget_and_expiry_are_checked_without_sleeping() {
         assert_eq!(TEARDOWN_TIMEOUT, Duration::from_secs(30));
         assert_eq!(
-            Teardown::<()>::check(Instant::now()).unwrap_err().kind(),
+            Deadline::check(Instant::now()).unwrap_err().kind(),
             io::ErrorKind::TimedOut
         );
-        assert!(Teardown::<()>::check(Instant::now() + TEARDOWN_TIMEOUT).is_ok());
+        assert!(Deadline::check(Instant::now() + TEARDOWN_TIMEOUT).is_ok());
     }
 }

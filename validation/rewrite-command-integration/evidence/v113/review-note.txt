@@ -1,0 +1,1 @@
+Original teardown deadline now spans policy removal, filesystem/namespace pin release and clean volume flush/unmount. Policy directory blocker preserves owners for retry; busy volume finalization also retries under same cutoff. Only unmounted storage escapes. Root tests including 42 compile-fail, both Clippy checks and VM suite pass.
