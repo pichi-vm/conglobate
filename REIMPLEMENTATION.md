@@ -5401,3 +5401,18 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   passed. Evidence/review: preservation/m7-review/inherited-dtb/. No redundant
   mirror test added for the extraction, no VM run or full adherence pass claimed.
 - Historical action updated; M4 stays 0/3 and the original goal remains active.
+
+
+### Shared terminal stage rejection
+
+- Previous turn progressed with verified inherited DTB capture consolidation.
+  Implemented simplification-004: shared StageFailure recovery via a private
+  consuming discard hook for unmounted single/pair storage. All six failure
+  variants retain the previous cleanup ordering and always return BuildError.
+- Bootstrap attempts both tool/output disposal; firmware no longer depends on
+  CarapaceBuild's rejection helper. No successful receipt can emerge from retry.
+- 126 library tests passed. Strict all-target Clippy caught an impl-bound
+  visibility issue, corrected by moving the bound to the private method; final
+  check passed. Preserved both logs and focused review under stage-rejection/.
+- No new VM qualification or full clean pass. M4 remains 0/3 and current complete
+  CLI failure-path qualification is still required after these refactors.

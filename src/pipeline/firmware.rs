@@ -176,7 +176,7 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
                 root.as_ref(),
                 networking.as_ref(),
             )
-            .map_err(|failure| CarapaceBuild::reject(*failure))?;
+            .map_err(|failure| (*failure).reject())?;
         let (volume, _reaper) = completed.into_parts();
         let budget = SetupBudget::begin();
         let mut mounted = volume

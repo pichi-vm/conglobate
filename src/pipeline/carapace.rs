@@ -11,7 +11,7 @@ use crate::{
     process::ChildReaper,
     recipe::Directive,
     request::BuildRequest,
-    step::{CommandSandbox, StageFailure},
+    step::CommandSandbox,
     storage::{Created, Mapping, Mounted, Runtime, SealedScute, Unmounted, Volume, Workspace},
 };
 use std::{num::NonZeroU64, path::Path, sync::Arc};
@@ -117,54 +117,6 @@ impl<'a> CarapaceBuild<'a> {
     fn error(error: impl std::fmt::Display) -> BuildError {
         BuildError::Execution(error.to_string())
     }
-    fn discard(volume: Volume<'_, '_, '_, Unmounted>) -> Result<(), BuildError> {
-        volume
-            .into_snapshot()
-            .close()
-            .map_err(Self::error)?
-            .detach()
-            .map_err(Self::error)?;
-        Ok(())
-    }
-    pub(super) fn reject(failure: StageFailure<'_, Volume<'_, '_, '_, Mounted>>) -> BuildError {
-        let primary = failure.to_string();
-        let cleanup = match failure {
-            StageFailure::Before { storage, .. } => Self::discard(storage),
-            StageFailure::Preparation { failure, .. } => failure
-                .rollback()
-                .map_err(Self::error)
-                .and_then(|done| Self::discard(done.into_parts().1)),
-            StageFailure::Execution { failure, .. } => failure
-                .retry_cleanup()
-                .into_rejected_storage()
-                .map_err(Self::error)
-                .and_then(|(_, storage)| Self::discard(storage)),
-            StageFailure::NetworkSetup { failure, .. } => failure
-                .retry_cleanup()
-                .map_err(Self::error)
-                .and_then(|failure| {
-                    failure
-                        .retry_cleanup()
-                        .into_rejected_storage()
-                        .map_err(Self::error)
-                        .and_then(|(_, storage)| Self::discard(storage))
-                }),
-            StageFailure::NetworkExecution { failure, .. } => failure
-                .retry_cleanup()
-                .into_rejected_storage()
-                .map_err(Self::error)
-                .and_then(|(_, storage)| Self::discard(storage)),
-            StageFailure::Copy { failure, .. } => failure
-                .retry_cleanup()
-                .into_rejected_storage()
-                .map_err(Self::error)
-                .and_then(|(_, storage, _)| Self::discard(storage)),
-        };
-        match cleanup {
-            Ok(()) => Self::error(primary),
-            Err(error) => Self::error(format!("{primary}; cleanup: {error}")),
-        }
-    }
 }
 
 impl<'s, 'w> DerivedCarapace<'s, 'w> {
@@ -212,7 +164,7 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
                     None,
                     networking.as_ref(),
                 )
-                .map_err(|failure| CarapaceBuild::reject(*failure))?;
+                .map_err(|failure| (*failure).reject())?;
             let (volume, returned_reaper) = completed.into_parts();
             reaper = returned_reaper;
             let scute = Arc::new(

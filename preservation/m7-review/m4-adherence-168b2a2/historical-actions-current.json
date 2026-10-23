@@ -251,8 +251,8 @@
       "evidence": "Mount/retry/validate shape identical apart from discard vs discard_pair across the two coordinators",
       "remaining_action": "Hoist the StageFailure recovery walk behind a DirectiveStorage-keyed discard hook",
       "historical_status": "accept",
-      "current_status": "open",
-      "current_evidence": "BootstrapBuild and CarapaceBuild still contain parallel StageFailure recovery walks, reviewed segment G."
+      "current_status": "implemented after review baseline; integrated qualification pending",
+      "current_evidence": "StageFailure::reject shares recovery keyed by DirectiveStorage::Unmounted with private consuming DiscardStorage implementations. Both bootstrap roots attempted; success still returns rejection. 126 library tests and strict all-target Clippy pass; stage-rejection/REVIEW.md."
     },
     {
       "id": "simplification-005",

@@ -1,0 +1,20 @@
+    Checking conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+error: trait `pipeline::rejection::DiscardStorage` is more private than the item `pipeline::rejection::<impl step::directives::StageFailure<'_, R>>`
+  --> src/pipeline/rejection.rs:38:1
+   |
+38 | / impl<R: DirectiveStorage> StageFailure<'_, R>
+39 | | where
+40 | |     R::Unmounted: DiscardStorage,
+   | |_________________________________^ implementation `pipeline::rejection::<impl step::directives::StageFailure<'_, R>>` is reachable at visibility `pub`
+   |
+note: but trait `pipeline::rejection::DiscardStorage` is only usable at visibility `pub(in crate::pipeline)`
+  --> src/pipeline/rejection.rs:10:1
+   |
+10 | pub(super) trait DiscardStorage {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D private-bounds` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(private_bounds)]`
+
+error: could not compile `conglobate` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `conglobate` (lib test) due to 1 previous error

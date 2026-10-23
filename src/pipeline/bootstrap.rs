@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{BuildError, CompletedImage};
+use super::{BuildError, CompletedImage, rejection::DiscardStorage};
 use crate::{
     execution::HelperProgram,
     formatter::{Ext4Format, FormatterManifest},
@@ -11,7 +11,7 @@ use crate::{
     process::ChildReaper,
     recipe::Bootstrap,
     request::BuildRequest,
-    step::{CommandSandbox, SetupBudget, StageFailure},
+    step::{CommandSandbox, SetupBudget},
     storage::{BootstrapVolumes, Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
 };
 use std::{num::NonZeroU64, path::Path, sync::Arc};
@@ -128,10 +128,10 @@ impl<'a> BootstrapBuild<'a> {
                 None,
                 networking.as_ref(),
             )
-            .map_err(|failure| Self::reject(*failure))?;
+            .map_err(|failure| (*failure).reject())?;
         let (volumes, reaper) = completed.into_parts();
         let (tool, output) = volumes.into_parts();
-        Self::discard(tool)?;
+        tool.discard()?;
         let scute = Arc::new(
             output
                 .into_snapshot()
@@ -270,65 +270,5 @@ impl<'a> BootstrapBuild<'a> {
     }
     fn error(error: impl std::fmt::Display) -> BuildError {
         BuildError::Execution(error.to_string())
-    }
-    fn discard(volume: Volume<'_, '_, '_, Unmounted>) -> Result<(), BuildError> {
-        volume
-            .into_snapshot()
-            .close()
-            .map_err(Self::error)?
-            .detach()
-            .map_err(Self::error)?;
-        Ok(())
-    }
-    fn discard_pair(volumes: BootstrapVolumes<'_, '_, '_, Unmounted>) -> Result<(), BuildError> {
-        let (tool, output) = volumes.into_parts();
-        let tool = Self::discard(tool);
-        let output = Self::discard(output);
-        match (tool, output) {
-            (Ok(()), Ok(())) => Ok(()),
-            (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error),
-            (Err(tool), Err(output)) => Err(Self::error(format!(
-                "tool cleanup: {tool}; output cleanup: {output}"
-            ))),
-        }
-    }
-    fn reject(failure: StageFailure<'_, BootstrapVolumes<'_, '_, '_, Mounted>>) -> BuildError {
-        let primary = failure.to_string();
-        let cleanup = match failure {
-            StageFailure::Before { storage, .. } => Self::discard_pair(storage),
-            StageFailure::Preparation { failure, .. } => failure
-                .rollback()
-                .map_err(Self::error)
-                .and_then(|done| Self::discard_pair(done.into_parts().1)),
-            StageFailure::Execution { failure, .. } => failure
-                .retry_cleanup()
-                .into_rejected_storage()
-                .map_err(Self::error)
-                .and_then(|(_, storage)| Self::discard_pair(storage)),
-            StageFailure::NetworkSetup { failure, .. } => failure
-                .retry_cleanup()
-                .map_err(Self::error)
-                .and_then(|failure| {
-                    failure
-                        .retry_cleanup()
-                        .into_rejected_storage()
-                        .map_err(Self::error)
-                        .and_then(|(_, storage)| Self::discard_pair(storage))
-                }),
-            StageFailure::NetworkExecution { failure, .. } => failure
-                .retry_cleanup()
-                .into_rejected_storage()
-                .map_err(Self::error)
-                .and_then(|(_, storage)| Self::discard_pair(storage)),
-            StageFailure::Copy { failure, .. } => failure
-                .retry_cleanup()
-                .into_rejected_storage()
-                .map_err(Self::error)
-                .and_then(|(_, storage, _)| Self::discard_pair(storage)),
-        };
-        match cleanup {
-            Ok(()) => Self::error(primary),
-            Err(error) => Self::error(format!("{primary}; cleanup: {error}")),
-        }
     }
 }

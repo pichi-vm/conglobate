@@ -4,6 +4,7 @@
 mod bootstrap;
 mod carapace;
 mod firmware;
+mod rejection;
 use crate::{
     cache::{Cache, CacheError},
     input::{CapturedBuild, CheckedImage, InputError, ResolvedBuild},
@@ -41,6 +42,11 @@ pub enum BuildError {
     Execution(String),
     #[error("conglobate requires root")]
     RootRequired,
+}
+impl BuildError {
+    fn execution(error: impl std::fmt::Display) -> Self {
+        Self::Execution(error.to_string())
+    }
 }
 impl From<crate::storage::RuntimeScopeFailure<'_, BuildError>> for BuildError {
     fn from(failure: crate::storage::RuntimeScopeFailure<'_, BuildError>) -> Self {
