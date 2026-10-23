@@ -28,7 +28,7 @@ M4 implementation. Prior passes remain historical, not approvals of this revisio
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, scoped LSM, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Complete: single-volume lifecycle | 3 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Complete: direct-layer bootstrap | 3 |
 | 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Complete: pipeline and publication | 3 |
-| 7. Integrated qualification | Critical source/design/style review resolved; Fedora/Debian/Alpine/NixOS representative builds and boots; amd64/arm64 and TDX/SEV-SNP/CCA qualification with evidence; repository checks and CI green. Unavailable required environments remain outstanding, never passes. | Pending | 0 |
+| 7. Integrated qualification | Critical source/design/style review resolved; Fedora/Debian/Alpine/NixOS representative builds and boots; amd64/arm64 and TDX/SEV-SNP/CCA qualification with evidence; repository checks and CI green. Unavailable required environments remain outstanding, never passes. | In progress: qualification inventory | 0 |
 | 8. Retire references | Historical findings migrated to maintained tests/docs; remove legacy implementation and exploratory validation from active repo only after recoverability verified and replacement evidence accepted; final coherent docs/code, tests and three adherence passes. | Pending | 0 |
 
 ## Mandatory adherence gate
@@ -4062,3 +4062,14 @@ rules rather than silently shrinking acceptance criteria.
   self-reviews on preservation/m6-review/scope-v1.json.
 - M7 now begins with integrated critical review, distro builds/boots and CI/platform
   qualification. M8 preservation/retirement remains pending; full goal is active.
+
+### M7 qualification inventory
+
+- Added M7-QUALIFICATION.md with the complete review/distro/architecture/platform/CI
+  matrix, observed environment and concrete next actions. No qualification passes
+  inferred from installed tools or existing sibling mkosi output.
+- Located the user's Claude review command, sibling Fedora reference pipeline,
+  local artifact directory and preserved CI workflow. Active CI is absent; the
+  old privileged sudo/unshare lane must be replaced with disposable-VM execution.
+- No sibling source modifications, privileged host operations or publication.
+  M7 is active at 0/3; all original M7/M8 requirements remain outstanding.
