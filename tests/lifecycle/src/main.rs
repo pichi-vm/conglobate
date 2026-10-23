@@ -32,6 +32,11 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "sandbox-unmapped-default-group" => {
+                sandbox_failures::SandboxFailures::run(
+                    sandbox_failures::FailurePoint::UnmappedDefaultGroup,
+                )
+            }
             [mode] if mode == "sandbox-unmapped-owner" => sandbox_failures::SandboxFailures::run(
                 sandbox_failures::FailurePoint::UnmappedOwner,
             ),

@@ -5493,3 +5493,20 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   allocations remain the prototype range, explicitly outstanding. Default ACL
   and special-file behavior still need broader VM coverage; no complete clean
   adherence pass, distro boot, arm64 or confidential-hardware claim. M4 stays 0/3.
+
+### Default ACL group admission regression
+
+- Previous turn implemented the ownership gate. Added a maintained disposable-VM
+  case with a root-owned directory and an out-of-range named group in its default
+  ACL. The kernel accepts the fixture ACL; production preparation then rejects
+  image GID 65536 before receiver launch. Owned rollback releases mounts,
+  mapping and child processes. Native amd64 status 0 and poweroff verified.
+- Strict lifecycle Clippy passed. Production code is unchanged from d98dbb7.
+  Evidence and source comparison: preservation/m7-review/ownership-default-group-v1/.
+  Large VM assets remain locally retained and hashed, not remotely durable.
+- Focused error-path review confirms EmptyDrain retains namespace/volume owners
+  on drain failure, releases the namespace after successful drain, then unmounts
+  through the owned cleanup state machine. This is not a complete adherence pass.
+- Supported ID allocation remains open; asked whether the build environment
+  should configure the supported ranges rather than fixing them in the binary.
+  No answer is assumed and no allocation change was made. M4 remains 0/3.

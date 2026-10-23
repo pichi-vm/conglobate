@@ -159,6 +159,8 @@ exec sleep infinity
             markers = ['UNMAPPED_IMAGE_ID_REJECTED_BEFORE_RECEIVER',
                        'INHERITED_OWNER_DISK_VALUES_UNCHANGED',
                        'SANDBOX_UNMAPPED_OWNER_ROLLBACK_PASS']
+        elif self.args.case == 'sandbox-unmapped-default-group':
+            markers = ['UNMAPPED_IMAGE_ID_REJECTED_BEFORE_RECEIVER', 'SANDBOX_UNMAPPED_DEFAULT_GROUP_ROLLBACK_PASS']
         elif self.args.case == 'sandbox-unmapped-acl':
             markers = ['UNMAPPED_IMAGE_ID_REJECTED_BEFORE_RECEIVER', 'SANDBOX_UNMAPPED_ACL_ROLLBACK_PASS']
         elif self.args.case == 'runtime-scope':
@@ -244,7 +246,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['sandbox-unmapped-acl', 'sandbox-unmapped-owner', 'runtime-scope', 'sandbox-delayed-teardown', 'sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['sandbox-unmapped-default-group', 'sandbox-unmapped-acl', 'sandbox-unmapped-owner', 'runtime-scope', 'sandbox-delayed-teardown', 'sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':

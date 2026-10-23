@@ -216,6 +216,9 @@ unsupported ID before launching a receiver; rollback must release its resources.
 A supervisor-side remount checks that original disk IDs remain unchanged.
 `--case sandbox-unmapped-acl` instead uses an inode owned by root with a named
 access ACL user entry for ID 65536 and requires the same preparation rejection.
-Neither case executes an image command or qualifies the final supported ID range.
+`--case sandbox-unmapped-default-group` uses a root-owned directory with a
+default ACL naming group 65536, and requires a GID-specific rejection before
+receiver launch followed by complete rollback.
+These cases execute no image command and do not qualify the final supported ID range.
 The earlier overflow-ID characterization remains recoverable in
 preservation/m7-review/unmapped-owner-v1/, including its source snapshot.

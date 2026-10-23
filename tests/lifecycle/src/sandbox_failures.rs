@@ -19,6 +19,7 @@ pub(super) enum FailurePoint {
     AttachedExit,
     UnmappedOwner,
     UnmappedAcl,
+    UnmappedDefaultGroup,
     BusyExecution,
     HeldCleanup,
     MissingCleanup,
@@ -134,6 +135,7 @@ impl SandboxFailures {
                 | FailurePoint::AttachedExit
                 | FailurePoint::UnmappedOwner
                 | FailurePoint::UnmappedAcl
+                | FailurePoint::UnmappedDefaultGroup
                 | FailurePoint::BusyExecution
                 | FailurePoint::HeldCleanup
                 | FailurePoint::MissingCleanup
@@ -187,6 +189,7 @@ impl SandboxFailures {
                 | FailurePoint::AttachedExit
                 | FailurePoint::UnmappedOwner
                 | FailurePoint::UnmappedAcl
+                | FailurePoint::UnmappedDefaultGroup
                 | FailurePoint::BusyExecution
                 | FailurePoint::HeldCleanup
                 | FailurePoint::MissingCleanup
@@ -217,27 +220,45 @@ impl SandboxFailures {
                     std::os::unix::fs::chown(file, Some(id), Some(id))?;
                 }
             }
-            if matches!(point, FailurePoint::UnmappedAcl) {
+            if matches!(
+                point,
+                FailurePoint::UnmappedAcl | FailurePoint::UnmappedDefaultGroup
+            ) {
                 let path = entries[0].path().join("named-acl-owner");
-                let file = fs::File::create(path)?;
+                let (file, attribute, entries) =
+                    if matches!(point, FailurePoint::UnmappedDefaultGroup) {
+                        fs::create_dir(&path)?;
+                        (
+                            fs::File::open(path)?,
+                            "system.posix_acl_default",
+                            [
+                                (1u16, 7u16, u32::MAX),
+                                (4, 5, u32::MAX),
+                                (8, 4, 65536),
+                                (16, 7, u32::MAX),
+                                (32, 5, u32::MAX),
+                            ],
+                        )
+                    } else {
+                        (
+                            fs::File::create(path)?,
+                            "system.posix_acl_access",
+                            [
+                                (1u16, 7u16, u32::MAX),
+                                (2, 4, 65536),
+                                (4, 5, u32::MAX),
+                                (16, 7, u32::MAX),
+                                (32, 5, u32::MAX),
+                            ],
+                        )
+                    };
                 let mut acl = 2u32.to_le_bytes().to_vec();
-                for (tag, permissions, id) in [
-                    (1u16, 7u16, u32::MAX),
-                    (2, 4, 65536),
-                    (4, 5, u32::MAX),
-                    (16, 7, u32::MAX),
-                    (32, 5, u32::MAX),
-                ] {
+                for (tag, permissions, id) in entries {
                     acl.extend_from_slice(&tag.to_le_bytes());
                     acl.extend_from_slice(&permissions.to_le_bytes());
                     acl.extend_from_slice(&id.to_le_bytes());
                 }
-                rustix::fs::fsetxattr(
-                    &file,
-                    "system.posix_acl_access",
-                    &acl,
-                    rustix::fs::XattrFlags::empty(),
-                )?;
+                rustix::fs::fsetxattr(&file, attribute, &acl, rustix::fs::XattrFlags::empty())?;
             }
             if matches!(point, FailurePoint::BlockedDescendant) {
                 crate::blocked_descendant::BlockedDescendant::stage(&entries[0].path())?;
@@ -267,23 +288,26 @@ impl SandboxFailures {
             FailurePoint::Namespace
             | FailurePoint::Mount
             | FailurePoint::UnmappedOwner
-            | FailurePoint::UnmappedAcl => {
+            | FailurePoint::UnmappedAcl
+            | FailurePoint::UnmappedDefaultGroup => {
                 let failure = result.unwrap_err();
                 let kind = failure.diagnostics().operation().kind();
                 let errno = failure.diagnostics().operation().raw_os_error();
                 assert_ne!(kind, std::io::ErrorKind::TimedOut);
                 if matches!(
                     point,
-                    FailurePoint::UnmappedOwner | FailurePoint::UnmappedAcl
+                    FailurePoint::UnmappedOwner
+                        | FailurePoint::UnmappedAcl
+                        | FailurePoint::UnmappedDefaultGroup
                 ) {
                     assert_eq!(kind, std::io::ErrorKind::InvalidData);
-                    assert!(
-                        failure
-                            .diagnostics()
-                            .operation()
-                            .to_string()
-                            .contains("unmapped image UID 65536")
-                    );
+                    assert!(failure.diagnostics().operation().to_string().contains(
+                        if matches!(point, FailurePoint::UnmappedDefaultGroup) {
+                            "unmapped image GID 65536"
+                        } else {
+                            "unmapped image UID 65536"
+                        }
+                    ));
                     println!("UNMAPPED_IMAGE_ID_REJECTED_BEFORE_RECEIVER");
                 }
                 if matches!(point, FailurePoint::Mount) {
@@ -905,6 +929,8 @@ impl SandboxFailures {
                 FailurePoint::AttachedExit => "SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS",
                 FailurePoint::UnmappedOwner => "SANDBOX_UNMAPPED_OWNER_ROLLBACK_PASS",
                 FailurePoint::UnmappedAcl => "SANDBOX_UNMAPPED_ACL_ROLLBACK_PASS",
+                FailurePoint::UnmappedDefaultGroup =>
+                    "SANDBOX_UNMAPPED_DEFAULT_GROUP_ROLLBACK_PASS",
                 FailurePoint::BusyExecution => "SANDBOX_BUSY_EXECUTION_ROLLBACK_PASS",
                 FailurePoint::HeldCleanup => "SANDBOX_HELD_CLEANUP_ROLLBACK_PASS",
                 FailurePoint::MissingCleanup => "SANDBOX_MISSING_CLEANUP_ROLLBACK_PASS",
