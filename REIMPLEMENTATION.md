@@ -4073,3 +4073,19 @@ rules rather than silently shrinking acceptance criteria.
   old privileged sudo/unshare lane must be replaced with disposable-VM execution.
 - No sibling source modifications, privileged host operations or publication.
   M7 is active at 0/3; all original M7/M8 requirements remain outstanding.
+
+### M7 independent review launched
+
+- Started the user's custom Claude Code /review workflow against active source,
+  with supporting tests/designs and explicit trust/style constraints. Read-only;
+  no privileged host tests or source modifications permitted. Persistent session
+  and exact invocation are in preservation/m7-review; exec session 81989 remains
+  live at the latest poll. Continue that process, not a replacement run.
+- Some compound mechanical checks were denied by reviewer command permissions;
+  they remain unperformed, not passing. Parent formatting check passed (exit 0).
+- User reiterated that findings must be critically evaluated and negotiated to
+  source/test-grounded consensus. The disposition process is recorded in the
+  review README; no finding or review verdict is accepted yet.
+- Read-only Fedora cache inspection verified four component content identities.
+  The selected image is a direct manifest; fixture index preparation, chain
+  verification and conglobate distro build/boot are still required.
