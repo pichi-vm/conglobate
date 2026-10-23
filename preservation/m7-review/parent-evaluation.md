@@ -689,3 +689,31 @@ recipe error, not evidence of a labeling or sandbox failure. The second recipe
 omits -r: execution is already rooted at the intended filesystem. The entire
 failed source/input/context/console record is preserved in fedora-build-v1.
 Fresh v2 is running; no successful build, export or boot is claimed yet.
+
+## Real Fedora v2 build and boot
+
+The corrected Fedora recipe completed RPM/DNF installation and whole-root labeling
+in the command sandbox. getfattr reports system_u:object_r:etc_t:s0 on the marker.
+setfiles emits an audit-socket EPERM diagnostic but exits successfully; labeling
+and subsequent build/export succeed. Every exported blob digest was checked.
+
+The actual artifact then booted through isolated pichi/dillo to a Fedora console
+login. Guest logs show enforcing=1 and successful SELinux policy loading. This is
+evidence for the goal's separation of build-VM labeling from target-VM policy.
+Newer kernel permission classes absent from the distro policy are reported as
+allowed; this is not claimed as complete policy coverage for every kernel class.
+The explicit file-label/ownership enforcing-mode service is added for v3, still
+running; login evidence does not substitute for that service's assertions.
+
+The installed pichi load moves input blob paths despite its copy-oriented comment
+(calls BlobStore::put_blob_from_path, whose implementation renames). Its effect
+was contained to this generated test artifact. The original raw export is intact;
+the extracted artifact was restored and every digest rechecked. boot.py now feeds
+a disposable copy. No pichi source was changed, no default cache modified and no
+pichi dependency added to conglobate. The v2 boot runner source was recovered
+exactly from v3's pre-run source archive and preserved beside its logs.
+
+Source, context, input hashes, inventory, manifest entrypoint, build and boot logs
+and external artifact hashes are retained in fedora-build-v2. Boot harness probes
+run only inside the launched VM; no host mounts/BPF/device-mapper changes occur.
+M7 remains at zero; other distros/platforms and the remaining review still matter.

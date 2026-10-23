@@ -1,0 +1,263 @@
+[    0.140949] Non-volatile memory driver v1.3
+[    0.141315] ACPI: bus type drm_connector registered
+[    0.141912] virtio_blk virtio1: 1/0/0 default/read/poll queues
+[    0.142982] virtio_blk virtio1: [vda] 1075883 512-byte logical blocks (551 MB/525 MiB)
+[    0.144407] Alternate GPT is invalid, using primary GPT.
+[    0.144511]  vda: vda1 vda2 vda3 vda4 vda5 vda6 vda7 vda8
+[    0.145273] CAN device driver interface
+[    0.145557] usbcore: registered new interface driver usbserial_generic
+[    0.145682] usbserial: USB Serial support registered for generic
+[    0.145809] i8042: PNP: No PS/2 controller found.
+[    0.145970] mousedev: PS/2 mouse device common for all mice
+[    0.146134] device-mapper: core: CONFIG_IMA_DISABLE_HTABLE is disabled. Duplicate IMA measurements will not be recorded in the IMA log.
+[    0.146325] device-mapper: uevent: version 1.0.3
+[    0.146497] device-mapper: ioctl: 4.50.0-ioctl (2025-04-28) initialised: dm-devel@lists.linux.dev
+[    0.146790] hid: raw HID events driver (C) Jiri Kosina
+[    0.146955] usbcore: registered new interface driver usbhid
+[    0.147046] usbhid: USB HID core driver
+[    0.147228] drop_monitor: Initializing network drop monitor service
+[    0.147467] Initializing XFRM netlink socket
+[    0.147585] NET: Registered PF_INET6 protocol family
+[    0.147975] Segment Routing with IPv6
+[    0.148048] RPL Segment Routing with IPv6
+[    0.148130] In-situ OAM (IOAM) with IPv6
+[    0.148228] mip6: Mobile IPv6
+[    0.148305] NET: Registered PF_PACKET protocol family
+[    0.148410] can: controller area network core
+[    0.148513] NET: Registered PF_CAN protocol family
+[    0.149048] IPI shorthand broadcast: enabled
+[    0.153499] sched_clock: Marking stable (152002025, 826941)->(192268848, -39439882)
+[    0.153902] registered taskstats version 1
+[    0.154438] Loading compiled-in X.509 certificates
+[    0.155535] Loaded X.509 cert 'Fedora kernel signing key: 0701a158e6ff9847d443caaa368cb781290f624e'
+[    0.173952] Loaded X.509 cert 'Fedora IMA CA: a8a00c31663f853f9c6ff2564872e378af026b28'
+[    0.183654] Demotion targets for Node 0: null
+[    0.183822] page_owner is disabled
+[    0.184031] Key type .fscrypt registered
+[    0.184118] Key type fscrypt-provisioning registered
+[    0.184914] Btrfs loaded, zoned=yes, fsverity=yes
+[    0.185066] Key type big_key registered
+[    0.185303] Key type encrypted registered
+[    0.185383] ima: No TPM chip found, activating TPM-bypass!
+[    0.185483] Loading compiled-in module X.509 certificates
+[    0.186013] Loaded X.509 cert 'Fedora kernel signing key: 0701a158e6ff9847d443caaa368cb781290f624e'
+[    0.186310] ima: Allocated hash algorithm: sha256
+[    0.186562] ima: No architecture policies found
+[    0.186687] evm: Initialising EVM extended attributes:
+[    0.186778] evm: security.selinux
+[    0.186857] evm: security.SMACK64 (disabled)
+[    0.186952] evm: security.SMACK64EXEC (disabled)
+[    0.187042] evm: security.SMACK64TRANSMUTE (disabled)
+[    0.187131] evm: security.SMACK64MMAP (disabled)
+[    0.187224] evm: security.apparmor (disabled)
+[    0.187318] evm: security.ima
+[    0.187400] evm: security.capability
+[    0.187470] evm: HMAC attrs: 0x1
+[    0.191985] alg: No test for 842 (842-scomp)
+[    0.195321] alg: No test for mldsa87 (mldsa87-lib)
+[    0.195361] alg: No test for mldsa65 (mldsa65-lib)
+[    0.195560] alg: No test for mldsa44 (mldsa44-lib)
+[    0.227959] RAS: Correctable Errors collector initialized.
+[    0.228490] clk: Disabling unused clocks
+[    0.228585] PM: genpd: Disabling unused power domains
+[    0.231969] Freeing unused decrypted memory: 2028K
+[    0.232715] Freeing unused kernel image (initmem) memory: 5316K
+[    0.232883] Write protecting the kernel read-only data: 45056k
+[    0.233572] Freeing unused kernel image (text/rodata gap) memory: 1332K
+[    0.234036] Freeing unused kernel image (rodata/data gap) memory: 1812K
+[    0.294280] x86/mm: Checked W+X mappings: passed, no W+X pages found.
+[    0.294489] Run /init as init process
+[    0.298519] dm_verity: Unknown symbol decode_rs8 (err -2)
+[    0.298683] dm_verity: Unknown symbol init_rs_gfp (err -2)
+[    0.298851] dm_verity: Unknown symbol free_rs (err -2)
+[    0.310387] device-mapper: table: 252:1: adding target device (start sect 0 len 573112) caused an alignment inconsistency
+[    0.310768] device-mapper: table: 252:1: adding target device (start sect 0 len 573112) caused an alignment inconsistency
+[    0.331933] device-mapper: table: 252:2: adding target device dm-1 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.332226] device-mapper: table: 252:2: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.332439] device-mapper: table: 252:2: adding target device dm-1 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.332872] device-mapper: table: 252:2: adding target device dm-1 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.333109] device-mapper: table: 252:2: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.333296] device-mapper: table: 252:2: adding target device dm-1 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.333868] device-mapper: table: 252:3: adding target device (start sect 0 len 1008) caused an alignment inconsistency
+[    0.334192] device-mapper: table: 252:3: adding target device (start sect 0 len 1008) caused an alignment inconsistency
+[    0.340891] device-mapper: table: 252:4: adding target device dm-2 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.341150] device-mapper: table: 252:4: adding target device dm-3 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.341409] device-mapper: table: 252:4: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.341606] device-mapper: table: 252:4: adding target device dm-2 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.341873] device-mapper: table: 252:4: adding target device dm-3 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.342300] device-mapper: table: 252:4: adding target device dm-2 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.342549] device-mapper: table: 252:4: adding target device dm-3 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.342792] device-mapper: table: 252:4: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.342987] device-mapper: table: 252:4: adding target device dm-2 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.343239] device-mapper: table: 252:4: adding target device dm-3 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.343873] device-mapper: table: 252:5: adding target device (start sect 0 len 476888) caused an alignment inconsistency
+[    0.344205] device-mapper: table: 252:5: adding target device (start sect 0 len 476888) caused an alignment inconsistency
+[    0.361894] device-mapper: table: 252:6: adding target device dm-4 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.362161] device-mapper: table: 252:6: adding target device dm-5 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.362426] device-mapper: table: 252:6: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.362622] device-mapper: table: 252:6: adding target device dm-4 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.362884] device-mapper: table: 252:6: adding target device dm-5 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.363313] device-mapper: table: 252:6: adding target device dm-4 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.363589] device-mapper: table: 252:6: adding target device dm-5 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.363848] device-mapper: table: 252:6: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.364040] device-mapper: table: 252:6: adding target device dm-4 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.364296] device-mapper: table: 252:6: adding target device dm-5 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.365085] device-mapper: table: 252:7: adding target device (start sect 0 len 16336) caused an alignment inconsistency
+[    0.365612] device-mapper: table: 252:7: adding target device (start sect 0 len 16336) caused an alignment inconsistency
+[    0.372888] device-mapper: table: 252:8: adding target device dm-6 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.373152] device-mapper: table: 252:8: adding target device dm-7 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.373424] device-mapper: table: 252:8: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.373573] device-mapper: table: 252:8: adding target device dm-6 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.373759] device-mapper: table: 252:8: adding target device dm-7 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.374124] device-mapper: table: 252:8: adding target device dm-6 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.374318] device-mapper: table: 252:8: adding target device dm-7 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.374520] device-mapper: table: 252:8: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.374661] device-mapper: table: 252:8: adding target device dm-6 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.374851] device-mapper: table: 252:8: adding target device dm-7 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.375291] EXT4-fs (dm-8): couldn't mount as ext3 due to feature incompatibilities
+[    0.375572] EXT4-fs (dm-8): couldn't mount as ext2 due to feature incompatibilities
+[    0.416547] EXT4-fs (dm-8): mounted filesystem 144e56b8-2b34-48a2-af21-dbb0010e4bee ro with ordered data mode. Quota mode: none.
+[    0.463163] audit: type=1404 audit(1792766912.601:2): enforcing=1 old_enforcing=0 auid=4294967295 ses=4294967295 enabled=1 old-enabled=1 lsm=selinux res=1
+[    0.497470] SELinux:  Permission firmware_load in class system not defined in policy.
+[    0.497673] SELinux:  Permission kexec_image_load in class system not defined in policy.
+[    0.497784] SELinux:  Permission kexec_initramfs_load in class system not defined in policy.
+[    0.497929] SELinux:  Permission policy_load in class system not defined in policy.
+[    0.498058] SELinux:  Permission x509_certificate_load in class system not defined in policy.
+[    0.498270] SELinux:  Permission map_create_as in class bpf not defined in policy.
+[    0.498386] SELinux:  Permission prog_load_as in class bpf not defined in policy.
+[    0.498500] SELinux:  Permission allowed in class io_uring not defined in policy.
+[    0.498607] SELinux:  Class memfd_file not defined in policy.
+[    0.498702] SELinux: the above unknown classes and permissions will be allowed
+[    0.501954] SELinux:  policy capability network_peer_controls=1
+[    0.502062] SELinux:  policy capability open_perms=1
+[    0.502135] SELinux:  policy capability extended_socket_class=1
+[    0.502236] SELinux:  policy capability always_check_network=0
+[    0.502336] SELinux:  policy capability cgroup_seclabel=1
+[    0.502422] SELinux:  policy capability nnp_nosuid_transition=1
+[    0.502523] SELinux:  policy capability genfs_seclabel_symlinks=1
+[    0.502625] SELinux:  policy capability ioctl_skip_cloexec=0
+[    0.502722] SELinux:  policy capability userspace_initial_context=0
+[    0.502817] SELinux:  policy capability netlink_xperm=0
+[    0.502911] SELinux:  policy capability netif_wildcard=0
+[    0.502984] SELinux:  policy capability genfs_seclabel_wildcard=0
+[    0.503081] SELinux:  policy capability functionfs_seclabel=0
+[    0.503177] SELinux:  policy capability memfd_class=0
+[    0.503250] SELinux:  policy capability bpf_token_perms=0
+[    0.538739] audit: type=1403 audit(1792766912.676:3): auid=4294967295 ses=4294967295 lsm=selinux res=1
+[    0.539928] systemd[1]: Successfully loaded SELinux policy in 77.065ms.
+P+q6E616D65\[    0.909578] NET: Registered PF_VSOCK protocol family
+[    0.961436] fuse: init (API version 7.45)
+[    0.995896] systemd[1]: Relabeled /dev/, /dev/shm/, /run/ in 4.699ms.
+[6n[32766;32766H[6n[!p]104\[0m[?7h[1G[0J[    1.335924] systemd[1]: systemd 258.11-1.fc43 running in system mode (+PAM +AUDIT +SELINUX -APPARMOR +IMA +IPE +SMACK +SECCOMP -GCRYPT +GNUTLS +OPENSSL +ACL +BLKID +CURL +ELFUTILS +FIDO2 +IDN2 -IDN -IPTC +KMOD +LIBCRYPTSETUP +LIBCRYPTSETUP_PLUGINS +LIBFDISK +PCRE2 +PWQUALITY +P11KIT +QRENCODE +TPM2 +BZIP2 +LZ4 +XZ +ZLIB +ZSTD +BPF_FRAMEWORK +BTF +XKBCOMMON +UTMP +SYSVINIT +LIBARCHIVE)
+[    1.336393] systemd[1]: Detected virtualization kvm.
+[    1.336502] systemd[1]: Detected architecture x86-64.
+[    1.336929] systemd[1]: Detected first boot.
+[    1.340082] systemd[1]: Initializing machine ID from random generator.
+[    1.340552] systemd[1]: No hostname configured, using default hostname.
+[    1.340979] systemd[1]: Hostname set to <fedora>.
+]3008;start=bd61168e10c64c499910063c09fb03ee;user=root;hostname=fedora;machineid=bd3b3f2a55e84fc389167a565584450f;bootid=90f74955a9db461dbef88ddfc5d58030;pid=1;pidfdid=1;comm=systemd;type=boot\[    1.355406] systemd[1]: Neither libbpf.so.1 nor libbpf.so.0 are installed, cgroup BPF features disabled: libbpf.so.0: cannot open shared object file: No such file or directory
+[    1.444659] systemd[1]: Applying preset policy.
+[    1.713027] systemd[1]: Populated /etc with preset unit settings.
+[    1.839818] systemd[1]: Queued start job for default target multi-user.target.
+[    1.849149] systemd[1]: Created slice system-getty.slice - Slice /system/getty.
+[    1.850405] systemd[1]: Created slice system-modprobe.slice - Slice /system/modprobe.
+[    1.851541] systemd[1]: Created slice system-serial\x2dgetty.slice - Slice /system/serial-getty.
+[    1.852519] systemd[1]: Created slice user.slice - User and Session Slice.
+[    1.852869] systemd[1]: Started systemd-ask-password-console.path - Dispatch Password Requests to Console Directory Watch.
+[    1.853239] systemd[1]: Started systemd-ask-password-wall.path - Forward Password Requests to Wall Directory Watch.
+[    1.854085] systemd[1]: Set up automount proc-sys-fs-binfmt_misc.automount - Arbitrary Executable File Formats File System Automount Point.
+[    1.854381] systemd[1]: Expecting device dev-hvc0.device - /dev/hvc0...
+[    1.854547] systemd[1]: Reached target cryptsetup.target - Local Encrypted Volumes.
+[    1.854732] systemd[1]: Reached target imports.target - Image Downloads.
+[    1.854906] systemd[1]: Reached target integritysetup.target - Local Integrity Protected Volumes.
+[    1.855133] systemd[1]: Reached target network-online.target - Network is Online.
+[    1.855333] systemd[1]: Reached target paths.target - Path Units.
+[    1.855515] systemd[1]: Reached target remote-cryptsetup.target - Remote Encrypted Volumes.
+[    1.855706] systemd[1]: Reached target remote-fs.target - Remote File Systems.
+[    1.855913] systemd[1]: Reached target remote-integritysetup.target - Remote Integrity Protected Volumes.
+[    1.856124] systemd[1]: Reached target remote-veritysetup.target - Remote Verity Protected Volumes.
+[    1.856351] systemd[1]: Reached target slices.target - Slice Units.
+[    1.856528] systemd[1]: Reached target swap.target - Swaps.
+[    1.856677] systemd[1]: Reached target veritysetup.target - Local Verity Protected Volumes.
+[    1.858585] systemd[1]: Listening on systemd-ask-password.socket - Query the User Interactively for a Password.
+[    1.861246] systemd[1]: Listening on systemd-coredump.socket - Process Core Dump Socket.
+[    1.862776] systemd[1]: Listening on systemd-creds.socket - Credential Encryption/Decryption.
+[    1.864770] systemd[1]: Listening on systemd-factory-reset.socket - Factory Reset Management.
+[    1.865796] systemd[1]: Listening on systemd-journald-audit.socket - Journal Audit Socket.
+[    1.866606] systemd[1]: Listening on systemd-journald-dev-log.socket - Journal Socket (/dev/log).
+[    1.867387] systemd[1]: Listening on systemd-journald.socket - Journal Sockets.
+[    1.868265] systemd[1]: Listening on systemd-oomd.socket - Userspace Out-Of-Memory (OOM) Killer Socket.
+[    1.868528] systemd[1]: systemd-pcrextend.socket - TPM PCR Measurements skipped, unmet condition check ConditionSecurity=measured-uki
+[    1.868796] systemd[1]: systemd-pcrlock.socket - Make TPM PCR Policy skipped, unmet condition check ConditionSecurity=measured-uki
+[    1.870333] systemd[1]: Listening on systemd-udevd-control.socket - udev Control Socket.
+[    1.871000] systemd[1]: Listening on systemd-udevd-kernel.socket - udev Kernel Socket.
+[    1.871625] systemd[1]: Listening on systemd-udevd-varlink.socket - udev Varlink Socket.
+[    1.872272] systemd[1]: Listening on systemd-userdbd.socket - User Database Manager Socket.
+[    1.874871] systemd[1]: Mounting dev-hugepages.mount - Huge Pages File System...
+[    1.878993] systemd[1]: Mounting dev-mqueue.mount - POSIX Message Queue File System...
+[    1.882844] systemd[1]: Mounting sys-kernel-debug.mount - Kernel Debug File System...
+[    1.888652] systemd[1]: Mounting sys-kernel-tracing.mount - Kernel Trace File System...
+[    1.901349] systemd[1]: Mounting tmp.mount - Temporary Directory /tmp...
+[    1.901551] systemd[1]: fips-crypto-policy-overlay.service - Bind-mount FIPS crypto-policy in FIPS mode skipped, unmet condition check ConditionKernelCommandLine=fips=1
+[    1.909084] systemd[1]: Starting kmod-static-nodes.service - Create List of Static Device Nodes...
+[    1.909336] systemd[1]: modprobe@configfs.service - Load Kernel Module configfs skipped, unmet condition check ConditionKernelModuleLoaded=!configfs
+[    1.916948] systemd[1]: Mounting sys-kernel-config.mount - Kernel Configuration File System...
+[    1.917130] systemd[1]: modprobe@dm_mod.service - Load Kernel Module dm_mod skipped, unmet condition check ConditionKernelModuleLoaded=!dm_mod
+[    1.917374] systemd[1]: modprobe@drm.service - Load Kernel Module drm skipped, unmet condition check ConditionKernelModuleLoaded=!drm
+[    1.917589] systemd[1]: modprobe@efi_pstore.service - Load Kernel Module efi_pstore skipped, unmet condition check ConditionKernelModuleLoaded=!efi_pstore
+[    1.917819] systemd[1]: modprobe@fuse.service - Load Kernel Module fuse skipped, unmet condition check ConditionKernelModuleLoaded=!fuse
+[    1.921083] systemd[1]: Mounting sys-fs-fuse-connections.mount - FUSE Control File System...
+[    1.923910] systemd[1]: Starting modprobe@loop.service - Load Kernel Module loop...
+[    1.924133] systemd[1]: systemd-boot-clear-sysfail.service - Clear SysFail Entry If The Boot Is Successful skipped, unmet condition check ConditionPathExists=/sys/firmware/efi/efivars/LoaderEntrySysFail-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f
+[    1.924596] systemd[1]: systemd-hibernate-clear.service - Clear Stale Hibernate Storage Info skipped, unmet condition check ConditionPathExists=/sys/firmware/efi/efivars/HibernateLocation-8cf2644b-4b0b-428f-9387-6d876050dc67
+[    1.932460] systemd[1]: Starting systemd-journald.service - Journal Service...
+[    1.933221] systemd[1]: systemd-modules-load.service - Load Kernel Modules skipped, no trigger condition checks were met.
+[    1.937020] systemd[1]: Starting systemd-network-generator.service - Generate Network Units from Kernel Command Line...
+[    1.937247] systemd[1]: systemd-pcrmachine.service - TPM PCR Machine ID Measurement skipped, unmet condition check ConditionSecurity=measured-uki
+[    1.939715] loop: module loaded
+[    1.941693] systemd[1]: Starting systemd-remount-fs.service - Remount Root and Kernel File Systems...
+[    1.947569] systemd[1]: Starting systemd-sysctl.service - Apply Kernel Variables...
+[    1.947709] systemd[1]: systemd-tpm2-setup-early.service - Early TPM SRK Setup skipped, unmet condition check ConditionSecurity=measured-uki
+[    1.950992] systemd[1]: Starting systemd-udev-load-credentials.service - Load udev Rules from Credentials...
+[    1.959575] systemd[1]: Starting systemd-udev-trigger.service - Coldplug All udev Devices...
+[    1.973759] systemd[1]: Mounted dev-hugepages.mount - Huge Pages File System.
+[    1.975780] systemd[1]: Mounted dev-mqueue.mount - POSIX Message Queue File System.
+[    1.977905] systemd[1]: Mounted sys-kernel-debug.mount - Kernel Debug File System.
+[    1.978186] systemd[1]: Mounted sys-kernel-tracing.mount - Kernel Trace File System.
+[    1.978462] systemd[1]: Mounted tmp.mount - Temporary Directory /tmp.
+[    1.980469] systemd[1]: Finished kmod-static-nodes.service - Create List of Static Device Nodes.
+[    1.980930] systemd[1]: Mounted sys-kernel-config.mount - Kernel Configuration File System.
+[    1.981182] systemd[1]: Mounted sys-fs-fuse-connections.mount - FUSE Control File System.
+[    1.981570] systemd[1]: modprobe@loop.service: Deactivated successfully.
+[    1.983084] systemd[1]: Finished modprobe@loop.service - Load Kernel Module loop.
+[    1.983620] systemd[1]: Finished systemd-remount-fs.service - Remount Root and Kernel File Systems.
+[    1.985542] systemd[1]: Finished systemd-sysctl.service - Apply Kernel Variables.
+[    1.988988] systemd[1]: Finished systemd-network-generator.service - Generate Network Units from Kernel Command Line.
+[    1.989966] systemd[1]: Reached target network-pre.target - Preparation for Network.
+[    1.990687] systemd[1]: systemd-hwdb-update.service - Rebuild Hardware Database skipped, unmet condition check ConditionNeedsUpdate=/etc
+[    1.990941] systemd[1]: systemd-repart.service - Repartition Root Disk skipped, no trigger condition checks were met.
+[    1.994389] systemd[1]: Starting systemd-tmpfiles-setup-dev-early.service - Create Static Device Nodes in /dev gracefully...
+[    2.002674] systemd-journald[203]: Collecting audit messages is enabled.
+[    2.004564] systemd[1]: Finished systemd-udev-load-credentials.service - Load udev Rules from Credentials.
+[    2.006231] audit: type=1130 audit(1792766914.142:4): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=systemd-udev-load-credentials comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[    2.023891] systemd[1]: Started systemd-journald.service - Journal Service.
+[    2.024162] audit: type=1130 audit(1792766914.162:5): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=systemd-journald comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[    2.039155] audit: type=1334 audit(1792766914.177:6): prog-id=8 op=LOAD
+[    2.039494] audit: type=1334 audit(1792766914.177:7): prog-id=9 op=LOAD
+[    2.039763] audit: type=1334 audit(1792766914.177:8): prog-id=10 op=LOAD
+[    2.076117] audit: type=1130 audit(1792766914.214:9): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=systemd-userdbd comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[    2.114334] audit: type=1130 audit(1792766914.252:10): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=systemd-tmpfiles-setup-dev-early comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+[    2.608642] kvm_amd: TSC scaling supported
+[    2.608718] kvm_amd: Nested Virtualization enabled
+[    2.608783] kvm_amd: Nested Paging enabled
+[    2.608854] kvm_amd: LBR virtualization supported
+[    2.608916] kvm_amd: Virtual VMLOAD VMSAVE supported
+[    2.608976] kvm_amd: Virtual GIF supported
+[    2.609022] kvm_amd: Virtual NMI enabled
+[    3.003372] systemd-journald[203]: Received client request to flush runtime journal.
+[!p]104\[0m[?7h[1G[0J[6n[32766;32766H[6n[!p]104\[0m[?7h[1G[0J[6n[32766;32766H[6n[    3.606907] fbcon: Taking over console
+]3008;start=14309016a67843eaa83c5c80a91654cf;user=root;hostname=fedora;machineid=bd3b3f2a55e84fc389167a565584450f;bootid=90f74955a9db461dbef88ddfc5d58030;pid=307;pidfdid=4163;comm=(agetty);servicename=serial-getty@hvc0.service;invocationid=f496eaa4a3724aaf9bf97f0eb0753cbf;type=service\P+q6E616D65\
+Fedora Linux 43 (Forty Three)
+Kernel 7.2.11-100.fc43.x86_64 on x86_64 (hvc0)
+
+fedora login: 

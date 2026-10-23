@@ -13,6 +13,17 @@ carapace:
         dnf -y install attr policycoreutils selinux-policy-targeted
         rpm -q attr policycoreutils selinux-policy-targeted
         printf 'conglobate Fedora qualification\n' > /etc/conglobate-qualified
+    - copy:
+        from: qualification.service
+        into: /etc/systemd/system/conglobate-qualification.service
+    - copy:
+        from: qualification.sh
+        into: /usr/local/bin/conglobate-qualification
+        mode: "0755"
+    - run: |
+        sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
+        mkdir -p /etc/systemd/system/multi-user.target.wants
+        ln -s ../conglobate-qualification.service /etc/systemd/system/multi-user.target.wants/conglobate-qualification.service
     - timeout: 10m
       run: |
         test -f /etc/selinux/targeted/contexts/files/file_contexts

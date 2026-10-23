@@ -9,7 +9,7 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
 | Requirement | Current state | Acceptance evidence still required |
 | --- | --- | --- |
 | Source-grounded critical review | Initial Claude review and four reconciliation rounds completed; accepted fixes and unresolved dispositions preserved in preservation/m7-review | Final review, source-grounded disposition, fixes and agreement on disputed findings |
-| Fedora build and boot | Sibling fedora repo and its .build directory exist; existing recipe uses mkosi | New conglobate recipe runs package transactions, generates boot firmware, emits an image that boots with its own SELinux policy |
+| Fedora build and boot | Real conglobate DNF transaction and labeling passed; emitted artifact booted to login with enforcing=1 and policy load in guest log (Fedora v2) | Explicit boot-time file-label check pending in v3; inherited firmware used so far; complete representative bootstrap/firmware coverage still needed |
 | Debian build and boot | No sibling Debian image repo discovered | Maintained conglobate recipe, package/firmware build and boot evidence |
 | Alpine build and boot | No sibling Alpine image repo discovered | Maintained conglobate recipe, package/firmware build and boot evidence |
 | NixOS build and boot | No sibling NixOS image repo or host nix executable discovered | Maintained conglobate recipe, Nix build and boot evidence; host nix is not inherently required |

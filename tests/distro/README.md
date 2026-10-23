@@ -45,3 +45,14 @@ input hashes, console logs and verdicts remain under the run directory, includin
 failures. Workspaces remain RAM-backed. No host mount, device-mapper operation or
 BPF load is performed. The runtime constructor must move out of exploratory
 validation before M8; the runner currently covers a build, not the separate boot.
+
+`boot.py ARTIFACT NEW_OUTPUT_DIRECTORY` is an optional pichi/dillo interoperability
+check of the produced image. It uses an isolated cache and loads a disposable
+copy because the installed pichi loader consumes input blob paths. Neither tool
+is a conglobate runtime dependency, and this does not replace the ORAS CI checks.
+The default required marker comes from the Fedora recipe's oneshot service, which
+checks enforcing mode, the target file's expected SELinux label and root ownership.
+The harness terminates the VM after the marker; it does not claim guest shutdown.
+A different `--expect` marker narrows the claim accordingly (e.g. login alone does
+not execute the file-label assertions). Console logs and launcher identities are
+preserved. Waiting uses pipe readiness, not synchronization sleeps.

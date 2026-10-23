@@ -49,8 +49,10 @@ class DistroRun:
         runtime.executable(REPOSITORY / 'target/m7-stable/debug/conglobate', Path('usr/bin/conglobate'))
         shutil.copytree(self.arguments.cache, self.root / 'cache')
         context = self.root / 'context'
-        context.mkdir()
-        shutil.copy2(self.arguments.recipe, context / 'recipe.yaml')
+        shutil.copytree(self.arguments.recipe.resolve().parent, context)
+        selected = context / self.arguments.recipe.name
+        if selected.name != 'recipe.yaml':
+            shutil.copy2(selected, context / 'recipe.yaml')
         (context / 'images.lock').write_text(
             f'version: 1\nimages:\n  qualification.local/fedora:43:\n    index: {self.arguments.pin}\n')
         for command in [['init', '-q'], ['add', '.'],

@@ -1,0 +1,10 @@
+{
+  "pichi": {
+    "path": "/home/nathaniel/Projects/pichi-vm/pichi/target/release/pichi",
+    "sha256": "afe97e11f314704fd96f488cf74e2541ba7366f11c109eae85a02ba82147e0b0"
+  },
+  "dillo": {
+    "path": "/home/nathaniel/Projects/pichi-vm/dillo/target/release/dillo",
+    "sha256": "1eb59309ffb8b8dba5fc72fb12e7368f0c035999bdb98da6fe0cb789974e1a6c"
+  }
+}

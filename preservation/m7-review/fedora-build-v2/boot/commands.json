@@ -1,0 +1,16 @@
+[
+  [
+    "pichi",
+    "load",
+    "/var/tmp/conglobate-fedora-build-v2/artifact",
+    "--tag",
+    "conglobate-qualification:local"
+  ],
+  [
+    "pichi",
+    "run",
+    "--memory",
+    "2048",
+    "conglobate-qualification:local"
+  ]
+]
