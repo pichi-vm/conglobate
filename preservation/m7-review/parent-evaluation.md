@@ -717,3 +717,20 @@ Source, context, input hashes, inventory, manifest entrypoint, build and boot lo
 and external artifact hashes are retained in fedora-build-v2. Boot harness probes
 run only inside the launched VM; no host mounts/BPF/device-mapper changes occur.
 M7 remains at zero; other distros/platforms and the remaining review still matter.
+
+## Fedora v3 explicit enforcing-mode boot check passed
+
+Fresh v3 completed the package transaction, COPY of the boot-check files, command
+remounts, whole-root labeling, sealing and OCI export. Its inherited firmware then
+booted the changed root. The service checks getenforce == Enforcing, matchpathcon
+-V on /etc/conglobate-qualified and UID 0, prints installed policy packages and
+sestatus, and only then emits CONGLOBATE_FEDORA_ENFORCING_BOOT_PASS. The observed
+console contains that marker and reports the targeted policy in enforcing mode.
+
+The harness terminates the VM after observing the marker; no guest-shutdown claim.
+Loading a disposable copy leaves the original artifact intact; every original
+blob was rechecked afterward. Logs, source/context, inventory and all artifact
+identities are preserved in fedora-build-v3. This is the representative Fedora
+layering/SELinux workload on amd64, not blanket OS/security/confidential coverage.
+Other distro builds/boots, real bootstrap/firmware generation and review actions
+remain. M7 stays at zero. Hosted run 39972246944 succeeded at f54645f.

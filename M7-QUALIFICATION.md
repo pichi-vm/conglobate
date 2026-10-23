@@ -9,7 +9,7 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
 | Requirement | Current state | Acceptance evidence still required |
 | --- | --- | --- |
 | Source-grounded critical review | Initial Claude review and four reconciliation rounds completed; accepted fixes and unresolved dispositions preserved in preservation/m7-review | Final review, source-grounded disposition, fixes and agreement on disputed findings |
-| Fedora build and boot | Real conglobate DNF transaction and labeling passed; emitted artifact booted to login with enforcing=1 and policy load in guest log (Fedora v2) | Explicit boot-time file-label check pending in v3; inherited firmware used so far; complete representative bootstrap/firmware coverage still needed |
+| Fedora build and boot | Fedora v3 passed real DNF installation, root labeling and inherited-firmware boot; guest service verifies enforcing mode, expected label and UID 0 | This covers the representative layering/SELinux case on amd64; other distros, real bootstrap/firmware-generation workloads and platform coverage remain separate |
 | Debian build and boot | No sibling Debian image repo discovered | Maintained conglobate recipe, package/firmware build and boot evidence |
 | Alpine build and boot | No sibling Alpine image repo discovered | Maintained conglobate recipe, package/firmware build and boot evidence |
 | NixOS build and boot | No sibling NixOS image repo or host nix executable discovered | Maintained conglobate recipe, Nix build and boot evidence; host nix is not inherently required |

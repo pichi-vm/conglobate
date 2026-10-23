@@ -1,0 +1,41 @@
+{
+  "build_passed": true,
+  "enforcing_boot_marker_observed": true,
+  "expected_label_and_uid_verified_in_guest": true,
+  "full_distro_qualified": false,
+  "scope": "Fedora 43 real DNF transaction, whole-root labels, carapace extension and inherited-firmware boot on native amd64; no confidential/arm64 qualification.",
+  "external_artifacts": {
+    "/var/tmp/conglobate-fedora-build-v3/export.raw": "f2d014e39b3eb317fa33c274cd09cb7ed1f359bcbfe93bfdeade2070547f051a",
+    "/var/tmp/conglobate-fedora-build-v3/vmlinuz": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "/var/tmp/conglobate-fedora-build-v3/initramfs.gz": "af9cb718d58c7e475ed98de56090d13353b70c1cefc1804fc6e05a47706b8f91",
+    "/var/tmp/conglobate-fedora-build-v3/artifact/blobs/sha256/0edfae6c9e6e8f2a6d24cded237fb9a624d1f05aca417f7ae280f387aece20bc": "0edfae6c9e6e8f2a6d24cded237fb9a624d1f05aca417f7ae280f387aece20bc",
+    "/var/tmp/conglobate-fedora-build-v3/artifact/blobs/sha256/359e6459a815b9d11a212c0aa6832d5b6e655c2dfce22ce3d208d08d277c25ef": "359e6459a815b9d11a212c0aa6832d5b6e655c2dfce22ce3d208d08d277c25ef",
+    "/var/tmp/conglobate-fedora-build-v3/artifact/blobs/sha256/6d949a50e05744c9a682102cc7cecb4f11575e54f08f7c16f7b45cda289abd32": "6d949a50e05744c9a682102cc7cecb4f11575e54f08f7c16f7b45cda289abd32",
+    "/var/tmp/conglobate-fedora-build-v3/artifact/blobs/sha256/8f1dd69cd0a31f0d58229c622b1572482117aba3fe328320eceb0754a0f48f3f": "8f1dd69cd0a31f0d58229c622b1572482117aba3fe328320eceb0754a0f48f3f",
+    "/var/tmp/conglobate-fedora-build-v3/artifact/blobs/sha256/2b78ba8373a07bbabf02ee1c8395a11ab4ce5b1752f99b206b0f719ca7729fca": "2b78ba8373a07bbabf02ee1c8395a11ab4ce5b1752f99b206b0f719ca7729fca",
+    "/var/tmp/conglobate-fedora-build-v3/artifact/blobs/sha256/2f5e55ee571caa15a7f6b52a44a0523b6fcc8572a37759310d17b5b2ce956484": "2f5e55ee571caa15a7f6b52a44a0523b6fcc8572a37759310d17b5b2ce956484",
+    "/var/tmp/conglobate-fedora-build-v3/artifact/blobs/sha256/391318238f15b7d276e5b728116cbbd33f811a7c8d27b412543f3c59c65af5e2": "391318238f15b7d276e5b728116cbbd33f811a7c8d27b412543f3c59c65af5e2",
+    "/var/tmp/conglobate-fedora-build-v3/artifact/blobs/sha256/de429030c19218cde2c120c1ea9083308c63f53ffe1874c2e469863726e8719f": "de429030c19218cde2c120c1ea9083308c63f53ffe1874c2e469863726e8719f",
+    "/var/tmp/conglobate-fedora-build-v3/artifact/blobs/sha256/5c16ca75aa25d0284d6a8194e66a4f9325549cebea848e4a61b8b5d376c263fb": "5c16ca75aa25d0284d6a8194e66a4f9325549cebea848e4a61b8b5d376c263fb",
+    "/var/tmp/conglobate-fedora-build-v3/artifact/blobs/sha256/fab8fdcfb83d3e22e8a960f137379cb6d8d482d1338e087d241ced8e254b0c47": "fab8fdcfb83d3e22e8a960f137379cb6d8d482d1338e087d241ced8e254b0c47",
+    "/var/tmp/conglobate-fedora-build-v3/artifact/blobs/sha256/20759e984177e7d35056cbbac4111b6fb53710048119f744d55182efdb63a515": "20759e984177e7d35056cbbac4111b6fb53710048119f744d55182efdb63a515"
+  },
+  "files": {
+    "boot/commands.json": "2230b9e2b11649d29b485d84d47f9abd9f925af62f8ee165712d03ef79f19873",
+    "boot/console.log": "b94377bd690752e4a537425c2b0a7acf6861de9555c6b9176b42c4fa01e5cb1e",
+    "boot/load.log": "d29fc66fa51dfb06216a4a7f12a79b95cb30983552aa85df6dc4b717afe5c699",
+    "boot/runner.py": "a32ec8088ed228a3124446e8543d9b63c7b196cf7a7a164a9dafe44074bbf611",
+    "boot/tools.json": "ef855227c858ed63dea07d59f0199fafb72bac14cf819303635983570772adc1",
+    "boot/verdict.json": "53808ecf9bea8578f9a0ed7273669750e8632161b7aeb307dcb33231436be318",
+    "build.log": "732186322402325172940531d8d6d7cfac85dc902585b2bef6715ad6839dacfd",
+    "command.json": "33ce7ab58534c3d8e33053720718054edd698e2f9275a9e252be840fb46bf087",
+    "context.bundle": "d6333c087d026f322f90d6bcc4d44aeb8427f06fcc1daca5b72c1a7bf7df8338",
+    "index.json": "fd1c4e46822a4a22f468ed8c855af5ce8a89b62458bec33159d89d99b0db6b5a",
+    "inputs.json": "62f72d9e1fd62a857915dc2c56208bf10b59596faf95576357eb3d953032a187",
+    "inventory.cbor": "7b77d6e10f0b3088f92800c321638845ab7f8ba7952a92797fd6f38e68b179bb",
+    "oci-layout": "18f0797eab35a4597c1e9624aa4f15fd91f6254e5538c1e0d193b2a95dd4acc6",
+    "serial.txt": "58cb723ac8b8588f4129f693130392b8c11ba4b340525705acc5d86046751b1b",
+    "source.tar.gz": "06c712ebb2b259d24ff3b46a21b37c8b668e0e264b52b8fa173bbd30f0c247eb",
+    "verdict.json": "555a73f999ba1df892fd07357035bac32f9730129c7b2099bf6f91d78836339c"
+  }
+}
