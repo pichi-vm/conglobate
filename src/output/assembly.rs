@@ -310,8 +310,7 @@ impl AssembledImage {
         )?;
         let output_cache = Cache::open(staged.temporary.path())?;
         let output_image = output_cache.resolve(pin)?;
-        output_cache.verify_references(&output_image)?;
-        let chain = output_cache.verify_chain(&output_image)?;
+        let (_, chain) = output_cache.verify_content(&output_image)?;
         // The index is the layout entrypoint, not referenced by its own
         // manifest. Remove the temporary lookup blob after validation.
         std::fs::remove_file(staged.blob_path(&Digest::from_bytes_sha256(&index)))?;

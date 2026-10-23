@@ -154,8 +154,7 @@ impl CapturedBuild {
         let mut images = std::collections::BTreeMap::new();
         for input in self.plan.inputs() {
             let image = cache.resolve(input.index())?;
-            let receipts = cache.verify_references(&image)?;
-            let chain = cache.verify_chain(&image)?;
+            let (receipts, chain) = cache.verify_content(&image)?;
             if input.execution_required() && chain.is_none() {
                 return Err(InputError::MissingExecutionCarapace(
                     input.reference().as_ref().to_owned(),

@@ -647,3 +647,24 @@ authoritative disposition ledger. The 111-ID round-two JSON remains the baseline
 with subsequent per-ID fixes recorded here; no extra finding is invented.
 The 0x80 exit-signal mask bit is not exercised by the seven namespace tests.
 M7 remains at zero; full security/design/style/distro/platform acceptance is open.
+
+## performance-001: combine initial content and ancestry verification
+
+Cache::verify_content first verifies scute identities and ancestry, then checks
+the selected manifest's remaining descriptors. It reuses only an authenticated
+scute receipt matching both digest and blob size; config and all non-scute layers
+still receive independent full identity checks. Receipt order remains config then
+manifest layer order, irrespective of ancestry order. The fallback standalone
+verify_references and verify_chain APIs remain independently complete.
+
+Both input resolution and output validation now use this combined operation. No
+change is made to compressed decoded-length measurement, CheckedBlob finish checks,
+or PreparedScute's later exact-open-inode/root authentication. No cache receipt
+authorizes an unverified later read. The new regression compares combined versus
+standalone receipts and individually corrupts same-length config, PMI, DTB, plain
+and compressed scute bytes, requiring each verification to reject the change.
+
+200 rootless tests, 54 doctests, strict Clippy and fmt pass; logs/checks JSON are
+preserved as combined-verification-*. A new full VM run and focused source review
+are next; v262 predates this change and is not cited as its validation. No measured
+speedup is claimed. M7 remains at zero.

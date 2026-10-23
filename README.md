@@ -23,7 +23,7 @@ by default. For a native build there, set
 `export C_INCLUDE_PATH="/usr/include/$(gcc -dumpmachine)"` before running Cargo;
 the build script tracks changes to this include-path setting.
 
-The current review evidence includes 199 rootless tests and 54 doctests passing
+The current review evidence includes 200 rootless tests and 54 doctests passing
 with rustc/Cargo 1.94.0 and Clang 22.1.8. Earlier checks used rustc
 1.99.0-nightly (1a98b1e13, 2026-08-07) and Cargo 1.98.0. These are tested
 environments, not a minimum supported Rust version; that floor has not yet been

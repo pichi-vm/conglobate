@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{Cache, CacheError, ResolvedImage};
+use super::{BlobReceipt, Cache, CacheError, ResolvedImage};
 use crate::chain::ScuteExtent;
 use pichi_artifact::{Digest as ContentDigest, Layer, ScuteDescriptor};
 use sha2::{Digest, Sha256};
@@ -43,6 +43,15 @@ pub struct VerifiedChain {
     scutes: Vec<VerifiedScute>,
 }
 impl VerifiedChain {
+    pub(super) fn receipt(&self, digest: &ContentDigest, size: u64) -> Option<BlobReceipt> {
+        self.scutes
+            .iter()
+            .find(|scute| scute.digest == *digest && scute.blob_size == size)
+            .map(|scute| BlobReceipt {
+                digest: scute.digest.clone(),
+                size: scute.blob_size,
+            })
+    }
     pub fn root(&self) -> &[u8; 32] {
         &self.root
     }
