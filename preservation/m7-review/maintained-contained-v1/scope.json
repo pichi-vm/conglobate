@@ -1,0 +1,17 @@
+{
+  "baseline": "f0d8ed5",
+  "fixture": "tests/lifecycle/src/contained.rs",
+  "fixture_sha256": "7d1bd80a24abd393a9ef14352f13a3dd95522f07dcd4dc02bccd753babb1d795",
+  "production_changed": false,
+  "cases": [
+    "exec ENOENT before child creation",
+    "peer exit after identity exchange before cgroup join",
+    "pre-admission cancel with live child and adopted descendant drain"
+  ],
+  "not_covered": [
+    "mounted command sandbox",
+    "receiver post-admission start-gate send failure",
+    "supervisor death",
+    "publication"
+  ]
+}

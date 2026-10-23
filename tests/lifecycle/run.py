@@ -128,6 +128,9 @@ exec sleep infinity
         if self.args.case == 'domain-publication':
             markers = [f'DOMAIN_PUBLICATION_{mode}_ROLLBACK_PASS'
                        for mode in ('ABSENT', 'PRESENT', 'MALFORMED', 'MISMATCH')]
+        elif self.args.case == 'contained':
+            markers = ['CONTAINED_LAUNCH_FAILURE_CLEANUP_PASS', 'CONTAINED_JOIN_FAILURE_CLEANUP_PASS',
+                       'CONTAINED_PRE_ADMISSION_DESCENDANT_DRAIN_PASS']
         elif self.args.drop:
             markers += [f'FORMATTER_DROP_{self.args.drop.upper()}_RETAINS_STORAGE_PASS']
         else:
@@ -149,7 +152,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['formatter-failures', 'domain-publication'], default='formatter-failures')
+    parser.add_argument('--case', choices=['formatter-failures', 'domain-publication', 'contained'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':

@@ -4535,3 +4535,22 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - M4 remains 0/3. Remaining command/helper death, receiver gate failure, network,
   other partial-acquisition/writeback and broader integration cases still require
   migration and fresh runs; M5-M8 qualification/retirement gates remain intact.
+
+### Maintained contained-helper fault coverage
+
+- Added safe fixture exercising current RecordedDomain/ContainedHelper protocol:
+  missing executable before child creation, peer exit after identity exchange
+  before cgroup join, and pre-admission cancellation with a live descendant.
+  No production changes, policy pins, namespace-descriptor widening or registration.
+- Child pipe acknowledgment precedes helper datagram readiness. Supervisor then
+  cancels the domain, reaps direct helper, drains adopted descendants and finishes
+  the record; requires at least one descendant reaped and no remaining children,
+  child cgroups or protected records. No synchronization sleeps. These are trusted
+  owned fixture processes in the disposable VM, not escape attempts.
+- maintained-contained-v1 passes all three markers, trusted exit status and guest
+  poweroff. Strict fixture Clippy passes. Exact source snapshot, hashes and small
+  evidence preserved; large assets explicitly await durable recovery. This is
+  containment-component evidence, not mounted-sandbox/receiver/publication coverage.
+- M4 stays 0/3. Receiver post-admission gate-send failure, mounted partial-setup,
+  supervisor death, network and writeback fault coverage still need migration and
+  current runs. No implementation adherence pass is inferred from this test.

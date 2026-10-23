@@ -54,3 +54,13 @@ owner. Malformed/mismatched cases must reject cleanup while retaining domain and
 record; restoring the fixture's own correct record then permits rollback. Every
 case also checks no child cgroup remains. No command runs and no LSM registration
 is involved. These are in-process partial-setup tests, not recovery across builds.
+
+`--case contained` exercises production `RecordedDomain::launch` and contained
+helper cleanup with trusted fixture processes: missing executable, peer exit
+after identity exchange but before cgroup joining, and cancellation before
+command admission with a live descendant. The child acknowledges readiness over
+a pipe before the helper signals the supervisor over a private datagram socket.
+Cancellation must remove the cgroup, reap the direct helper, drain at least one
+adopted descendant and remove the protected record. Each case checks no remaining
+children, child cgroups or records. No sleeps establish readiness. This is
+containment-component coverage, not a mounted command-sandbox or publication test.

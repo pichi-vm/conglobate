@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
+mod contained;
 mod domain_publication;
 mod formatter_failures;
 use conglobate::execution::{HelperInvocation, HelperProgram};
@@ -23,6 +24,10 @@ impl Lifecycle {
         match args.as_slice() {
             [mode] if mode == "formatter-failures" => formatter_failures::FormatterFailures::run(),
             [mode] if mode == "domain-publication" => domain_publication::DomainPublication::run(),
+            [mode] if mode == "contained" => contained::Contained::run(),
+            [mode] if mode == "contained-helper" => contained::Contained::helper(false),
+            [mode] if mode == "contained-reject" => contained::Contained::helper(true),
+            [mode] if mode == "contained-child" => contained::Contained::child(),
             _ => Err("expected lifecycle case or trusted helper invocation".into()),
         }
     }
