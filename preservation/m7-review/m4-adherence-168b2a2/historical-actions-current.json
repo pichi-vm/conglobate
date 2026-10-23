@@ -53,8 +53,8 @@
       "evidence": "zstd defaults enable legacy (992K pre-1.0 decoders) and zdict_builder (184K); only stream::read::Decoder is used",
       "remaining_action": "default-features=false for zstd only; clap/regex/libbpf-rs defaults justified",
       "historical_status": "accept",
-      "current_status": "open",
-      "current_evidence": "Cargo.toml still has zstd = \"0.13\" with defaults enabled."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "zstd default features disabled. Root and lifecycle feature graphs retain only std; legacy, arrays and zdict_builder absent. 128 library and 13 cache tests pass, including corrupted/truncated/trailing-junk frames and concatenated streams. See preservation/m7-review/zstd-features/REVIEW.md."
     },
     {
       "id": "errors-api-002",

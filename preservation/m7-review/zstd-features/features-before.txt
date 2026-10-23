@@ -1,0 +1,25 @@
+zstd-sys v2.1.2+zstd.1.5.7
+└── zstd-safe v7.3.0
+    ├── zstd-safe feature "arrays"
+    │   └── zstd feature "arrays"
+    │       └── zstd feature "default"
+    │           └── conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    │               └── conglobate feature "default" (command-line)
+    ├── zstd-safe feature "legacy"
+    │   └── zstd feature "legacy"
+    │       └── zstd feature "default" (*)
+    ├── zstd-safe feature "std"
+    │   └── zstd v0.13.3
+    │       ├── zstd feature "arrays" (*)
+    │       ├── zstd feature "default" (*)
+    │       ├── zstd feature "legacy" (*)
+    │       └── zstd feature "zdict_builder"
+    │           └── zstd feature "default" (*)
+    └── zstd-safe feature "zdict_builder"
+        └── zstd feature "zdict_builder" (*)
+├── zstd-sys feature "legacy"
+│   └── zstd-safe feature "legacy" (*)
+├── zstd-sys feature "std"
+│   └── zstd-safe feature "std" (*)
+└── zstd-sys feature "zdict_builder"
+    └── zstd-safe feature "zdict_builder" (*)

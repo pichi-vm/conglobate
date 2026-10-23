@@ -336,7 +336,7 @@ impl<'l, R: PreparationStorage> StoragePreparationFailure<'l, R> {
                     Err((error.into(), Phase::Drain(record, reaper, assigned)))
                 }
             },
-            Phase::Record(record, assigned) => match record.finish(&parent) {
+            Phase::Record(record, assigned) => match record.finish(parent) {
                 Ok(()) => {
                     drop(ManuallyDrop::into_inner(assigned.namespace));
                     Ok(Phase::Unmount(assigned.volume))

@@ -5525,3 +5525,23 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Disposition ledger updated; logs/focused review are preserved under
   preservation/m7-review/borrowed-domain-path/. No new VM qualification or full
   adherence pass is claimed. M4 remains 0/3; the full goal remains active.
+
+### Remove unused Zstandard defaults
+
+- Previous turn resolved borrowed domain paths. Revalidated accepted dependency
+  finding dependencies-012 against source and feature graphs; disabled Zstandard
+  defaults. Only std remains enabled in root and lifecycle graphs, without a
+  lockfile/version change. Ordinary streaming decode/encode remains available;
+  unused legacy pre-1.0 decoders and dictionary training are excluded.
+- 128 library and 13 cache tests passed, including malformed/checksummed/
+  truncated/trailing-junk streams, concatenated frames and mixed scute chains.
+  All-target Clippy found a redundant borrow left by the preceding refactor;
+  corrected it and the check passed. Fixture-package Clippy did not cover that
+  dependency-crate lint. Preserved both outcomes under zstd-features/.
+- Root space was insufficient for sustained rebuilds. Checksum-verified the
+  build-cache copy onto /storage, removed only copied cache files and empty
+  source directories, and replaced target/m7-stable with a symlink to that copy.
+  Existing commands/harness paths still work. No validation or /var/tmp artifacts
+  were removed, and this is not a remote preservation claim.
+- Updated the historical action ledger. No VM/platform requalification or full
+  adherence pass; M4 remains 0/3. All larger goal requirements remain active.
