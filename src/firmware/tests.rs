@@ -9,16 +9,20 @@ impl Fixture {
         serde_json::json!({"version":1,"vm:vcpu":{},"cpu:profile":"x86-64-v2","actions":[{"type":"fill","gpa":8192,"section":".dtb","kind":"dt:dtb"}]})
     }
     pub(crate) fn image(target: &str, spec: &serde_json::Value, capacity: u32) -> Vec<u8> {
-        Self::sections(&[(target, spec)], &[(".dtb", capacity)])
+        Self::sections(0x8664, &[(target, spec)], &[(".dtb", capacity)])
     }
-    fn sections(targets: &[(&str, &serde_json::Value)], reserves: &[(&str, u32)]) -> Vec<u8> {
+    fn sections(
+        machine: u16,
+        targets: &[(&str, &serde_json::Value)],
+        reserves: &[(&str, u32)],
+    ) -> Vec<u8> {
         let count = targets.len() + reserves.len();
         let headers = (0x98 + 240 + count * 40).div_ceil(512) * 512;
         let mut out = Self(vec![0; headers]);
         out.0[..2].copy_from_slice(b"MZ");
         out.u32(0x3c, 0x80);
         out.0[0x80..0x84].copy_from_slice(b"PE\0\0");
-        out.u16(0x84, 0x8664);
+        out.u16(0x84, machine);
         out.u16(0x86, count as u16);
         out.u16(0x94, 240);
         out.u16(0x96, 0x22);
@@ -60,6 +64,55 @@ impl Fixture {
     }
 }
 #[test]
+fn vm_machine_selects_architecture_specific_cpu_validation() {
+    let x86 = Fixture::detached();
+    let mut arm = x86.clone();
+    arm["cpu:profile"] = "armv8.2-a".into();
+    for pstate in [4, 5] {
+        arm["vm:vcpu"] = serde_json::json!({"pstate": pstate, "pc": 8192});
+        let image = Fixture::sections(0xaa64, &[(".pmi.vm", &arm)], &[(".dtb", 4096)]);
+        let contract = DtbContract::from_pmi(&image).unwrap();
+        contract.check_size(4096).unwrap();
+        assert!(contract.check_size(4097).is_err());
+        // An x86 machine must not decode an ARM register map successfully.
+        assert!(DtbContract::from_pmi(&Fixture::image(".pmi.vm", &arm, 4096)).is_err());
+    }
+    for state in [
+        serde_json::json!({}),
+        serde_json::json!({"pstate": 0}),
+        serde_json::json!({"pstate": 9}),
+        serde_json::json!({"pstate": 5, "rax": 1}),
+    ] {
+        arm["vm:vcpu"] = state;
+        assert!(
+            DtbContract::from_pmi(&Fixture::sections(
+                0xaa64,
+                &[(".pmi.vm", &arm)],
+                &[(".dtb", 4096)],
+            ))
+            .is_err()
+        );
+    }
+    assert!(
+        DtbContract::from_pmi(&Fixture::sections(
+            0xaa64,
+            &[(".pmi.vm", &x86)],
+            &[(".dtb", 4096)],
+        ))
+        .is_err()
+    );
+    assert!(
+        DtbContract::from_pmi(&Fixture::sections(
+            0x14c,
+            &[(".pmi.vm", &x86)],
+            &[(".dtb", 4096)],
+        ))
+        .unwrap_err()
+        .to_string()
+        .contains("unsupported VM machine")
+    );
+}
+#[test]
 fn every_target_must_accept_external_dtb_and_capacity() {
     let vm = Fixture::detached();
     let mut tdx = vm.clone();
@@ -84,6 +137,7 @@ fn every_target_must_accept_external_dtb_and_capacity() {
     let mut smaller = tdx.clone();
     smaller["actions"][0]["section"] = ".small".into();
     let mixed = DtbContract::from_pmi(&Fixture::sections(
+        0x8664,
         &[(".pmi.vm", &vm), (".pmi.tdx", &smaller)],
         &[(".dtb", 4096), (".small", 128)],
     ))
@@ -96,7 +150,9 @@ fn every_target_must_accept_external_dtb_and_capacity() {
         vec![(".pmi.vm", &vm), (".pmi.tdx", &no_fill)],
         vec![(".pmi.tdx", &no_fill), (".pmi.vm", &vm)],
     ] {
-        assert!(DtbContract::from_pmi(&Fixture::sections(&targets, &[(".dtb", 4096)])).is_err());
+        assert!(
+            DtbContract::from_pmi(&Fixture::sections(0x8664, &targets, &[(".dtb", 4096)])).is_err()
+        );
     }
     let mut signed = tdx;
     signed["sev:id"] = serde_json::json!({"block":".id","auth":".auth"});
@@ -114,10 +170,15 @@ fn ambiguous_unknown_malformed_and_nonzero_fill_sections_fail() {
         vec![(".pmi.vm", &vm), (".pmi.vm", &vm)],
         vec![(".pmi.bad", &vm)],
     ] {
-        assert!(DtbContract::from_pmi(&Fixture::sections(&targets, &[(".dtb", 4096)])).is_err());
+        assert!(
+            DtbContract::from_pmi(&Fixture::sections(0x8664, &targets, &[(".dtb", 4096)])).is_err()
+        );
     }
     for sections in [vec![], vec![(".dtb", 4096), (".dtb", 4096)]] {
-        assert!(DtbContract::from_pmi(&Fixture::sections(&[(".pmi.vm", &vm)], &sections)).is_err());
+        assert!(
+            DtbContract::from_pmi(&Fixture::sections(0x8664, &[(".pmi.vm", &vm)], &sections))
+                .is_err()
+        );
     }
     let mut duplicate_fill = vm.clone();
     duplicate_fill["actions"]

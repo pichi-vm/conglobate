@@ -395,8 +395,8 @@
       "evidence": "Fixture hard-codes 0x8664; the 0xaa64 arm at src/firmware.rs:53 is never reached",
       "remaining_action": "Parameterise the fixture machine field to cover the aarch64 parser arm",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "PE fixture sections accept a machine parameter. New .pmi.vm test reaches 0xaa64 with both valid PSTATE modes, rejects missing/invalid/foreign CPU fields and machine/schema mismatches, and checks unsupported machine rejection. Structural parser coverage only, not ARM execution qualification. See parser-boundaries/REVIEW.md."
     },
     {
       "id": "tests-006",
@@ -404,8 +404,8 @@
       "evidence": "InterfaceName::try_from boundaries unpinned; input is supervisor-constructed, not untrusted",
       "remaining_action": "Boundary unit test (Low)",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "InterfaceName boundary test covers accepted single-byte/15-byte names, mixed allowed characters, and rejection of empty/16-byte names, separators, whitespace, NUL and non-ASCII. Wrapper policy coverage only. See parser-boundaries/REVIEW.md."
     },
     {
       "id": "unsafe-ffi-003",

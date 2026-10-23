@@ -486,3 +486,31 @@ impl ConnectedVeth {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn interface_names_preserve_allowed_bytes_and_enforce_length_boundary() {
+        for name in ["a", "0", "CgB_0-peer", "abcdefghijklmno"] {
+            assert_eq!(InterfaceName::try_from(name).unwrap().as_ref(), name);
+        }
+        for name in [
+            "",
+            "abcdefghijklmnop",
+            ".",
+            "a/b",
+            "a:b",
+            "a b",
+            "a\n",
+            "a\0b",
+            "é",
+        ] {
+            assert_eq!(
+                InterfaceName::try_from(name).unwrap_err().kind(),
+                io::ErrorKind::InvalidInput
+            );
+        }
+    }
+}

@@ -5579,3 +5579,18 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   cancellation-attached-v1/ under preservation/m7-review/.
 - Updated historical action dispositions. No all-branch/platform qualification
   or full adherence pass claimed. M4 remains 0/3; the full goal stays active.
+
+### Firmware architecture and interface-name parser coverage
+
+- Previous turn resolved cancellation/network cleanup findings. Implemented
+  accepted tests-004 by parameterizing the structural PE fixture's machine field
+  and exercising the ordinary-VM AArch64 decoder. Valid EL1 PSTATE modes pass;
+  invalid/missing/foreign CPU fields, machine/schema mismatches and unsupported
+  machine IDs fail. Existing x86 and detached-DTB capacity coverage remains.
+- Implemented accepted tests-006 with InterfaceName length and character-set
+  boundaries. Production behavior is unchanged. All 130 library tests and
+  strict all-target Clippy passed; source hashes, logs and focused review are in
+  preservation/m7-review/parser-boundaries/. Historical dispositions updated.
+- These are structural parser tests on the current host, not ARM execution,
+  distro boot or confidential-platform qualification. No complete adherence
+  pass; M4 remains 0/3 and the full original milestone scope remains active.
