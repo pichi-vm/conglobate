@@ -39,14 +39,23 @@ impl Integration {
                 .exchange_until(deadline)?
                 .join_domain_until(deadline)?;
             let input = channel.receive_volume_until(deadline)?;
+            let mode = args.get(2).ok_or("volume command mode required")?;
             let scope = PrivateMountNamespace::enter()?;
             let (view, setup) = input.prepare(&scope, CommandDevices::create(100000, 100000)?)?;
+            if mode == "setup-detached-failure" {
+                fs::write("/work/setup-failure-stage", "detached")?;
+                return Err("injected failure after detached root preparation".into());
+            }
             let view = view
                 .attach(MountPoint::create(Path::new("/work"))?)
                 .map_err(|e| e.to_string())?;
             assert_eq!(view.root_metadata()?.uid(), 100000);
+            if mode == "setup-attached-exit" {
+                fs::write("/work/setup-failure-stage", "attached")?;
+                // Fixture fault injection: no Rust destructors run in this helper.
+                std::process::exit(73);
+            }
             let channel = channel.await_admission_until(deadline)?;
-            let mode = args.get(2).ok_or("volume command mode required")?;
             let mut command = Command::new(std::env::current_exe()?);
             command
                 .arg("native-namespaces")
@@ -187,6 +196,9 @@ impl Integration {
                     "volume-supervisor-failure" => "shell-failure",
                     "volume-supervisor-pre-admission" => "pre-admission",
                     "volume-supervisor-admission-timeout" => "admission-timeout",
+                    "volume-supervisor-setup-detached" => "setup-detached-failure",
+                    "volume-supervisor-setup-attached" => "setup-attached-exit",
+                    "volume-supervisor-vm-death" => "vm-death",
                     _ => "success",
                 };
                 let reaper = ChildReaper::install()?;
@@ -205,6 +217,25 @@ impl Integration {
                 step.send_volume_until(deadline)?;
                 let step = match mode {
                     "pre-admission" => step.cancel_until(deadline).map_err(|e| e.to_string())?,
+                    "setup-detached-failure" | "setup-attached-exit" => {
+                        let failure = step.admit_until(deadline).unwrap_err();
+                        let conglobate::step::StartFailure::Admission(failure) = failure else {
+                            return Err(failure.to_string().into());
+                        };
+                        let (error, step) = failure.into_parts();
+                        assert_ne!(error.kind(), std::io::ErrorKind::TimedOut);
+                        assert_eq!(
+                            fs::read_to_string("/work/setup-failure-stage")?,
+                            if mode == "setup-detached-failure" {
+                                "detached"
+                            } else {
+                                "attached"
+                            }
+                        );
+                        fs::remove_file("/work/setup-failure-stage")?;
+                        step.cancel_until(Instant::now() + Duration::from_secs(5))
+                            .map_err(|e| e.to_string())?
+                    }
                     "admission-timeout" => {
                         let failure = step.admit_until(Instant::now()).unwrap_err();
                         let conglobate::step::StartFailure::Admission(failure) = failure else {
@@ -217,6 +248,18 @@ impl Integration {
                     _ => {
                         let step = step.admit_until(deadline).map_err(|e| e.to_string())?;
                         let ready = Path::new("/work/volume-transfer-ready");
+                        if mode == "vm-death" {
+                            let started = point.join("command-started");
+                            Readiness::new(&started)?
+                                .wait_until(deadline, || step.supervision().peer_lost())?;
+                            fs::write("/work/supervisor-ready", "running\n")?;
+                            step.supervision()
+                                .wait_for_loss_until(Instant::now() + Duration::from_secs(30))?;
+                            return Err(
+                                "owned volume command ended before supervisor-death exercise"
+                                    .into(),
+                            );
+                        }
                         if mode == "timeout" {
                             let started = point.join("command-started");
                             Readiness::new(&started)?
@@ -261,7 +304,13 @@ impl Integration {
                         .trim()
                         .is_empty()
                 );
-                if matches!(mode, "pre-admission" | "admission-timeout") {
+                if matches!(
+                    mode,
+                    "pre-admission"
+                        | "admission-timeout"
+                        | "setup-detached-failure"
+                        | "setup-attached-exit"
+                ) {
                     assert!(!point.join("command-started").exists());
                     assert!(!point.join("labelled").exists());
                 } else {

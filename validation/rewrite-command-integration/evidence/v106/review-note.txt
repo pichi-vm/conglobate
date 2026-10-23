@@ -1,0 +1,1 @@
+Owned-volume supervisor SIGKILL leaves live contained command and pinned filesystem. Independent VM controller unmounts original owned volume; command still performs scoped SELinux label checks through pinned filesystem. Controller powers VM off. This validates dedicated-VM disposal, not in-process recovery.

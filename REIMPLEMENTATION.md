@@ -2044,3 +2044,29 @@ rules rather than silently shrinking acceptance criteria.
   remain for their independent failure/death coverage; the newly exercised path
   obtains its command root only from the owned-volume transfer. No M4 adherence
   pass claimed; streak remains zero and later milestones remain unadvanced.
+
+### M4 owned-volume setup faults and supervisor death (v105–v106)
+
+- Previous turn progressed in 7d39125. v105 adds two benign fixture fault points:
+  error return after detached-root preparation, and helper process exit after
+  attachment without Rust destructors. Both fail admission before any command,
+  retain Step cleanup ownership, drain the domain and return the mounted volume.
+  No labelled/command-started output exists, and subsequent unmount/remount checks
+  succeed. These are particular setup boundaries, not exhaustive syscall faults.
+- v106 moves the independent-controller death exercise to the owned-volume
+  command path. After readiness the guest controller sends SIGKILL to conglobate,
+  confirms a live command domain, locates the production filesystem pin and
+  unmounts the original volume mount. The still-contained command changes and
+  reads its allowed SELinux label while an unassigned filesystem remains denied.
+  The controller observes the published check marker and shuts the VM down.
+  The log records all owned-volume/policy/pin markers and kernel Power down.
+  No guardian/recovery service or successful build receipt is introduced.
+- Normal suite v105 and owned-volume death suite v106 pass. Four host readiness
+  tests and fixture Clippy pass; production sources are unchanged. Exact
+  sources, failure-injection behavior, serial logs and hashes are preserved and
+  verified. Earlier path-based death evidence remains recoverable in its archives.
+- This closes the specific new-path death and two partial-setup evidence gaps,
+  not all M4 qualification. Remaining work includes fixed setup/teardown
+  orchestration around blocking operations, combined primary/cleanup diagnostics,
+  further fault review, and production stage orchestration. M4 has zero clean
+  adherence passes; no milestone advancement or whole-sandbox claim.

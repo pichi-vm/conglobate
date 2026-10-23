@@ -933,3 +933,17 @@ descendant drain and policy disable, then exercises the existing unmount/remount
 checks. The helper receives root/namespace descriptors rather than reopening the
 historical source paths. Population remains fixture-only. Both runs are preserved;
 owned-volume supervisor-death and broader setup-failure coverage remain open.
+
+## Owned-volume setup faults and supervisor death
+
+v105 adds detached setup error return and abrupt helper exit after attachment.
+Both fail admission, leave command output absent, and recover the volume through
+normal domain drain and policy cleanup. The full normal suite passes.
+
+v106 runs `--supervisor-death` against the owned-volume path. The independent VM
+controller kills conglobate, confirms a populated command domain, unmounts the
+original volume and observes continued scoped labeling through the surviving
+filesystem pin. It then powers off the VM. Serial evidence includes
+`OWNED_VOLUME_AFTER_SUPERVISOR_DEATH_PASS` and the kernel shutdown message.
+This proves these failure scenarios in the fixture, not exhaustive fault coverage
+or recovery for another build in the same VM. Prior death evidence is preserved.

@@ -117,6 +117,8 @@ chmod 700 /work/pins
 /idmap-probe volume-supervisor-failure
 /idmap-probe volume-supervisor-pre-admission
 /idmap-probe volume-supervisor-admission-timeout
+/idmap-probe volume-supervisor-setup-detached
+/idmap-probe volume-supervisor-setup-attached
 /idmap-probe loop-probe
 /idmap-probe mapping-probe
 /idmap-probe workspace-probe
@@ -182,7 +184,7 @@ if supervisor_death:
     fixture = root / 'fixture.sh'
     setup = fixture.read_text().split('/idmap-probe supervisor policy-off')[0]
     fixture.write_text(setup + r"""
-/idmap-probe supervisor vm-death &
+/idmap-probe volume-supervisor-vm-death &
 supervisor=$!
 /idmap-probe wait-marker /work/supervisor-ready
 test -e /work/supervisor-ready
@@ -201,16 +203,20 @@ done
 test "$populated" = 1
 # Verify the production filesystem pin remains attached after supervisor death.
 pin=
+volume=
 while read -r mount_id parent_id device mount_root mount_path rest; do
     case "$mount_path" in
-        /work/integration-records/filesystem-*) test -z "$pin"; pin="$mount_path";;
+        /work/volume-policy-records/filesystem-*) test -z "$pin"; pin="$mount_path";;
+        /work/conglobate-volume-*) test -z "$volume"; volume="$mount_path";;
     esac
 done < /proc/self/mountinfo
 test -n "$pin"
-umount /work/origin
+test -n "$volume"
+umount "$volume"
 touch "$pin/supervisor-gone"
 /idmap-probe wait-marker "$pin/death-policy-checked"
 test "$(cat "$pin/death-policy-checked")" = checked
+echo OWNED_VOLUME_AFTER_SUPERVISOR_DEATH_PASS
 echo FILESYSTEM_PIN_AFTER_SUPERVISOR_DEATH_PASS
 echo ACTIVE_POLICY_AFTER_SUPERVISOR_DEATH_PASS
 echo SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN
@@ -237,7 +243,7 @@ if supervisor_death:
     passed = all(marker in userspace for marker in [
         'SUPERVISOR_DEATH_OBSERVED_WITH_LIVE_DOMAIN', 'IDMAP_PROBE_EXIT 0',
         'VM_CONTROLLER_POWER_OFF', 'ACTIVE_POLICY_AFTER_SUPERVISOR_DEATH_PASS',
-        'FILESYSTEM_PIN_AFTER_SUPERVISOR_DEATH_PASS',
+        'FILESYSTEM_PIN_AFTER_SUPERVISOR_DEATH_PASS', 'OWNED_VOLUME_AFTER_SUPERVISOR_DEATH_PASS',
     ]) and 'Power down' in serial and 'INTEGRATED_COMMAND_' not in serial
 else:
     passed = all(marker in serial for marker in ['FOREIGN_CONTROL_MOUNT_DESCRIPTORS_REJECTED_PASS', 'PRODUCTION_STEP_CANCEL_BEFORE_ADMISSION_PASS', 'PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS', 'POLICY_PRIVATE_NAMESPACE_REJECTED_PASS', 'ADMISSION_TIMEOUT_CANCELS_WITHOUT_COMMAND_PASS', 'BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS', 'BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS', 'NATIVE_FILESYSTEM_PIN_RETAINS_UNMOUNTED_SOURCE_PASS', 'NATIVE_REAPER_TIMEOUT_AND_RELEASE_PASS', 'SCOPED_ROOT_TERMINATION_PASS', 'SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS', 'NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS', 'NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS', 'NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS', 'INTEGRATED_COMMAND_SHELL-FAILURE_PASS', 'NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS', 'NATIVE_NAMESPACE_INIT_ADOPTION_PASS', 'INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS', 'INTEGRATED_COMMAND_POLICY-OFF_PASS', 'NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS', 'NATIVE_PRIVILEGES_MISSING_CAP_REJECTED', 'NATIVE_PRIVILEGES_EXEC_PASS', 'INTEGRATED_COMMAND_SUCCESS_PASS', 'INTEGRATED_COMMAND_TIMEOUT_PASS', 'INTEGRATED_REMOUNT_PERSISTENCE_PASS', 'POLICY_FIXTURE_CLEANUP_PASS', 'IDMAP_PROBE_EXIT 0'])

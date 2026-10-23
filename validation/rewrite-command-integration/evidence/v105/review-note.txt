@@ -1,0 +1,1 @@
+Detached setup failure and attached helper exit without destructors both fail admission and recover owned volume after full cleanup. Normal VM suite and fixture checks pass. Supervisor-death conversion follows.
