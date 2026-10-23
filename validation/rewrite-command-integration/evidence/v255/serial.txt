@@ -1,0 +1,593 @@
++ export PATH=/usr/bin:/usr/sbin
++ PATH=/usr/bin:/usr/sbin
++ mkdir -p /work/origin /work/mapped /work/conglobate-mount-decoy
++ unshare --user --map-root-user /idmap-probe privileges
+NATIVE_PRIVILEGES_EXEC_PASS
++ unshare --user --map-root-user /idmap-probe syscalls
+NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS
+NATIVE_PRIVILEGES_EXEC_PASS
++ unshare --user --map-root-user setpriv --bounding-set=-chown /idmap-probe privileges
++ grep -q 'required capability is not available' /work/privileges-negative
++ grep -q NATIVE_PRIVILEGES_EXEC_PASS /work/privileges-negative
++ echo NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
+NATIVE_PRIVILEGES_MISSING_CAP_REJECTED
++ modprobe loop
++ modprobe ext4
++ truncate -s 64M /work/volume.ext4
++ mke2fs -q -t ext4 -F /work/volume.ext4
++ mount -o loop /work/volume.ext4 /work/origin
++ cp -a /image-root/. /work/origin/
++ /idmap-probe namespace-rejections
+POLICY_PRIVATE_NAMESPACE_REJECTED_PASS
+FOREIGN_CONTROL_MOUNT_DESCRIPTORS_REJECTED_PASS
+NATIVE_NAMESPACE_SETUP_REJECTIONS_PASS
++ modprobe dm-zero
++ modprobe dm-snapshot
++ /idmap-probe snapshot-probe
+SNAPSHOT_EXHAUSTION_REJECTS_VALID_USAGE_PASS
+OWNED_PERSISTENT_SNAPSHOT_REACTIVATION_PASS
++ modprobe dm-verity
++ /idmap-probe prepare-scutes
+VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+VERITY_CACHE_CORRUPTION_READ_REJECTED_PASS
+VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+CACHE_BACKED_SCUTE_PREPARATION_PASS
+OWNED_VERITY_READ_AND_CLEANUP_PASS
++ /idmap-probe assemble-chain
+WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS
+CHAIN_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+INVALID_SECOND_SCUTE_CLEANUP_PASS
+OWNED_TWO_SCUTE_CHAIN_PASS
++ mkdir /work/cgroups
++ mount -t cgroup2 cgroup2 /work/cgroups
++ mkdir /work/pins
++ mount -t bpf bpf /work/pins
++ chmod 700 /work/pins
++ /idmap-probe domain-publication-probe
+DOMAIN_PUBLICATION_ABSENT_ROLLBACK_PASS
+DOMAIN_PUBLICATION_PRESENT_ROLLBACK_PASS
+DOMAIN_PUBLICATION_MALFORMED_ROLLBACK_PASS
+DOMAIN_PUBLICATION_MISMATCH_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-sandbox
++ cat /work/command-diagnostics
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+SANDBOX_TWO_STEP_PIPELINE_PASS
+OWNED_RUNTIME_COMMAND_LIFECYCLE_PASS
+OWNED_RUNTIME_CLEANUP_REFUSAL_PASS
++ /idmap-probe volume-supervisor-sandbox-namespace-failure
+trusted command helper: No space left on device (os error 28)
+SANDBOX_NAMESPACE_FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-sandbox-mount-failure
+SANDBOX_MOUNT_FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-probe
+EXT4_TYPED_PROFILE_FORMAT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ BOOTSTRAP_COMMAND_FAILURE=nonzero
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_EXECUTION_NONZERO_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ BOOTSTRAP_COMMAND_FAILURE=timeout
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_EXECUTION_TIMEOUT_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ BOOTSTRAP_COMMAND_FAILURE=nonzero-busy
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_EXECUTION_NONZERO-BUSY_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ BOOTSTRAP_COMMAND_FAILURE=success-busy
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_EXECUTION_SUCCESS-BUSY_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ BOOTSTRAP_FAILURE=domain
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_PREPARATION_DOMAIN_ROLLBACK_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ BOOTSTRAP_FAILURE=policy
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_PREPARATION_POLICY_ROLLBACK_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ BOOTSTRAP_FAILURE=launch
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+BOOTSTRAP_PREPARATION_LAUNCH_ROLLBACK_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ /idmap-probe formatter-probe
+trusted command helper: No such file or directory (os error 2)
+CAPTURED_FORMATTER_MISSING_LOADER_REJECTED_PASS
+BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS
+setfattr: /dev/shm/outside: Operation not permitted
+getfattr: Removing leading '/' from absolute path names
+# file: tool-state
+security.selinux="foreign_u:object_r:foreign_t:s0"
+
+getfattr: Removing leading '/' from absolute path names
+# file: mnt/state
+security.selinux="foreign_u:object_r:foreign_t:s0"
+
+BOOTSTRAP_COPY_BETWEEN_COMMANDS_PASS
+RECIPE_DIRECTIVE_RUNNER_PASS
+COPY_MOUNTED_VOLUME_METADATA_PASS
+BOOTSTRAP_VERIFIED_TOOL_CHAIN_PASS
+BOOTSTRAP_DUAL_COMMAND_REMOUNT_PASS
+warning: templates not found in /usr/share/git-core/templates
+PIPELINE_CLI_CASE network-fail.yml -> /work/network-no-forwarding4-output
+PIPELINE_CLI_NETWORK_FORWARDING_PREFLIGHT_CLEANUP_PASS
+PIPELINE_CLI_CASE network-fail.yml -> /work/network-no-forwarding6-output
+PIPELINE_CLI_NETWORK_FORWARDING_PREFLIGHT_CLEANUP_PASS
+PIPELINE_CLI_CASE network-fail.yml -> /work/network-failed-command-output
+PIPELINE_CLI_NETWORK_NONZERO_NO_PUBLICATION_PASS
+PIPELINE_CLI_CASE network-pipeline.yml -> /work/network-pipeline-output
+PIPELINE_CLI_COMMAND_LOGS_STDERR_PASS
+CLI_NETWORK_INVENTORY_HEX a666696e7075747381a565696e646578a26664696765737458200f48402340355f595c1d3fc62d2fe68e370c2c6e5353646c074d87b500b9d4b369616c676f726974686d6673686132353665726f6c6573826f626f6f7473747261702d746f6f6c736e6669726d776172652d746f6f6c73686d616e6966657374a26664696765737458204681cea96b1509e00512fe0588ab046844b31a9ffed4cce7acf687e15de16d0969616c676f726974686d66736861323536697265666572656e6365746578616d706c652e746573742f746f6f6c733a316d63617261706163655f726f6f745820782662284ca983e6bf61a39c245bc44812151ede22fc1715be12c3bc0aed161c676275696c646572a3646e616d656a636f6e676c6f626174656776657273696f6e65302e322e306a65786563757461626c65a2666469676573745820b1f793bbf27341de85729301a63b97dc72a80f39be742e9358f9b8852157302369616c676f726974686d6673686132353667636f6e74657874a56474726565542eb39bb076065c2e6ecbe59b2bc2278c61b99ab566636f6d6d69745466a58d8ed38605d93789d0fa750b711a29a794636a7265706f7369746f7279742f776f726b2f6465726976652d636f6e746578746c7375626469726563746f7279606d6f626a6563745f666f726d61746473686131676f757470757473a563647462a26664696765737458204ee48e5ae650ede0b5a3548a1fd60e8aea0e71750ea43f8276ceafcd7cb091e069616c676f726974686d6673686132353663706d69a266646967657374582017182b5318c3aa1710c36670eb935b0f0d67a2e87fa3108d372bd6b56a1861a669616c676f726974686d667368613235366673637574657384a266646967657374a2666469676573745820703f8ba53cc777c43ee12da2725eb4a852f6185f9d55ef6eb0fe60d95e0f1b0a69616c676f726974686d66736861323536666f726967696e6870726f6475636564a266646967657374a2666469676573745820c023a1a3777240d791e64cbc74c08fcecdce64cdbc1b660fc9cc6d690158182569616c676f726974686d66736861323536666f726967696e6870726f6475636564a266646967657374a2666469676573745820afdafd1b15935b2906dd2cc725b7716b955e2e7459c76d897320ec68358f045369616c676f726974686d66736861323536666f726967696e6870726f6475636564a266646967657374a266646967657374582099ff3cd06fcca0b418bf3dde0aa8faeef7326fc44a6e51060997a93c03bf2ff569616c676f726974686d66736861323536666f726967696e6870726f6475636564686d616e6966657374a266646967657374582015ad647f5f58df7abb6404971e32051c35423107ceedf38f896b619996b39d7569616c676f726974686d667368613235366d63617261706163655f726f6f7458201e6836575966330d2901b2306a91b4c28089812ee82f289b671cd95f1c257b516776657273696f6e0269657865637574696f6ea6646c6f636ba264706174686b696d616765732e6c6f636b67636f6e74656e74a2666469676573745820629c45093e03b5b77deeae75fda8240cc7e1263c09b8474d5419d01251ab6e8a69616c676f726974686d6673686132353666726563697065a26470617468746e6574776f726b2d706970656c696e652e796d6c67636f6e74656e74a266646967657374582066d57f51ce545e59c53544b8c2a33c594661ecd3ba4031c71474d60474da1a0a69616c676f726974686d66736861323536697472616e73666f726da466646967657374a2666469676573745820f05a78223be13cafb99958cdfb5bf90c8714655ca4c86e2a9016049c251c751169616c676f726974686d6673686132353666736f75726365676275696c74696e6e7461726765745f70726573656e74f56f64656661756c745f736b6970706564f56a666f726d61747465727381a865737461676569626f6f7473747261706770726f66696c6572636f6e676c6f626174652d657874342d76316772756e74696d6589a264706174686f6574632f6d6b653266732e636f6e6666646967657374a26664696765737458208b1f194c87b3cb1541a18a86bd276e18830bd19e1033534e36ed4a9b83437a6b69616c676f726974686d66736861323536a26470617468781a6c696236342f6c642d6c696e75782d7838362d36342e736f2e3266646967657374a26664696765737458204e5d39355699e90fa29313d3100e82af4a23290028c58c364d6a249ef6a78e5e69616c676f726974686d66736861323536a26470617468736c696236342f6c6962626c6b69642e736f2e3166646967657374a26664696765737458208d8d9fbb517a06c2c7bbf31a2993b5f2fb3b7b172b9008c2b90010ad7c6770fc69616c676f726974686d66736861323536a264706174686f6c696236342f6c6962632e736f2e3666646967657374a2666469676573745820a5c5ad9d59d3c69eda93aa8f82930ba06cc4e893a113e66c85ad6e96243d53c869616c676f726974686d66736861323536a26470617468756c696236342f6c6962636f6d5f6572722e736f2e3266646967657374a2666469676573745820fd86ff884b7b6b441844d7f89afecbb7f53b7602c7f7515abc4c8bd5b8e8350069616c676f726974686d66736861323536a26470617468716c696236342f6c69626532702e736f2e3266646967657374a2666469676573745820cdaccbddaa54ac8fddc55fcbddd1a922c11e133ceddd3f547db5126ad9fa9c6569616c676f726974686d66736861323536a26470617468746c696236342f6c69626578743266732e736f2e3266646967657374a266646967657374582027fee6b5b46a3d33434ada260564b68a9eb327f841dbd0b60e0835b90b27416b69616c676f726974686d66736861323536a26470617468726c696236342f6c6962757569642e736f2e3166646967657374a266646967657374582095db9b48387eee50f11b15bf01f95a228382ccdbd8d4fb35ef3b122cfabf135269616c676f726974686d66736861323536a264706174686e7573722f62696e2f6d6b6532667366646967657374a266646967657374582023faf37790816bafce8c8e50a5c528dc7c11534399c5172d835395b7c15aa9a869616c676f726974686d6673686132353669617267756d656e747394622d71622d46622d746465787434622d546a636f6e676c6f62617465622d626434303936622d4963323536622d69653136333834622d6d6130622d45783f726f6f745f6f776e65723d303a302c6e6f646973636172642c6c617a795f697461626c655f696e69743d302c6c617a795f6a6f75726e616c5f696e69743d30622d4c68636c692d726f6f746b2f6465762f6f757470757464343039366a65786563757461626c65a264706174686e7573722f62696e2f6d6b6532667366646967657374a266646967657374582023faf37790816bafce8c8e50a5c528dc7c11534399c5172d835395b7c15aa9a869616c676f726974686d667368613235366a66696c6573797374656da464747970656465787434656c6162656c68636c692d726f6f746a73697a655f62797465731a01000000726c6f676963616c5f73697a655f62797465731b00000010000000006d636f6e66696775726174696f6ea26664696765737458208b1f194c87b3cb1541a18a86bd276e18830bd19e1033534e36ed4a9b83437a6b69616c676f726974686d667368613235366e70726f66696c655f646967657374a2666469676573745820ff5a370892f2817fb0c9899c808d106432f6efe9d768eecaaf78c7a72c81020669616c676f726974686d667368613235366c61726368697465637475726565616d6436346d6e6574776f726b5f737465707383a264737465700065737461676569626f6f747374726170a2647374657001657374616765686361726170616365a2647374657001657374616765686669726d77617265
+PIPELINE_CLI_NETWORK_ALL_STAGES_AND_INVENTORY_PASS
+PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS /work/network-pipeline-output
+PIPELINE_CLI_CASE network-pipeline.yml -> /work/network-missing-resolver-output
+PIPELINE_CLI_NETWORK_MISSING_RESOLVER_REJECTED_PASS
+PIPELINE_CLI_CASE build.yml -> /work/derived-output
+PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS /work/derived-output
+PIPELINE_CLI_CASE bootstrap.yml -> /work/bootstrap-output
+PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS /work/bootstrap-output
+PIPELINE_CLI_CASE bootstrap-fw-implicit.yml -> /work/bootstrap-fw-implicit-output
+PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS /work/bootstrap-fw-implicit-output
+PIPELINE_CLI_CASE bootstrap-fw-explicit.yml -> /work/bootstrap-fw-explicit-output
+PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS /work/bootstrap-fw-explicit-output
+PIPELINE_CLI_CASE bootstrap-fw-layered.yml -> /work/bootstrap-fw-layered-output
+PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS /work/bootstrap-fw-layered-output
+PIPELINE_CLI_CASE bootstrap-fw-layered-explicit.yml -> /work/bootstrap-fw-layered-explicit-output
+PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS /work/bootstrap-fw-layered-explicit-output
+PIPELINE_CLI_CASE bootstrap-fw-missing.yml -> /work/bootstrap-fw-missing-output
+PIPELINE_CLI_CASE bootstrap-missing-targets.yml -> /work/bootstrap-missing-targets-output
+PIPELINE_CLI_CASE bootstrap-layers.yml -> /work/bootstrap-layers-output
+PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS /work/bootstrap-layers-output
+PIPELINE_CLI_CASE bootstrap-layers-fail.yml -> /work/bootstrap-layers-fail-output
+PIPELINE_CLI_CASE bootstrap.yml -> /work/bootstrap-no-runtime-output
+PIPELINE_CLI_CASE bootstrap.yml -> /work/bootstrap-incomplete-runtime-output
+PIPELINE_CLI_CASE bootstrap-fail.yml -> /work/bootstrap-fail-output
+PIPELINE_CLI_CASE fail.yml -> /work/rejected-output
+PIPELINE_CLI_CASE firmware-only.yml -> /work/firmware-only-output
+PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS /work/firmware-only-output
+PIPELINE_CLI_CASE firmware-base.yml -> /work/firmware-base-output
+PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS /work/firmware-base-output
+PIPELINE_CLI_CASE composed-implicit.yml -> /work/composed-implicit-output
+PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS /work/composed-implicit-output
+PIPELINE_CLI_CASE composed-explicit.yml -> /work/composed-explicit-output
+PIPELINE_ORAS_SELF_CONTAINED_COPY_PASS /work/composed-explicit-output
+PIPELINE_CLI_CASE composed-missing.yml -> /work/composed-missing-output
+PIPELINE_CLI_CASE firmware-missing.yml -> /work/firmware-missing-output
+PIPELINE_CLI_FIRMWARE_PAIR_PASS
+PIPELINE_CLI_BOOTSTRAP_PASS
+PIPELINE_CLI_BOOTSTRAP_LAYERS_PASS
+PIPELINE_CLI_BOOTSTRAP_FIRMWARE_PASS
+PIPELINE_CLI_COMPOSED_FIRMWARE_PASS
+PIPELINE_CLI_DERIVE_PASS
+BOOTSTRAP_SEALED_METADATA_PASS
+PRODUCED_ROOT_PARENT_REJECTED_PASS
+BOOTSTRAP_OUTPUT_ASSEMBLY_PASS
+PRODUCED_SCUTE_OUTPUT_ASSEMBLY_PASS
+BOOTSTRAP_SEALED_CHAIN_REOPEN_PASS
+BOOTSTRAP_PAIR_BUSY_UNMOUNT_RETRY_PASS
+CAPTURED_FORMATTER_RECEIPT_PASS
+CAPTURED_FORMATTER_EXECUTION_PASS
++ /idmap-probe volume-supervisor
+EXT4_TYPED_PROFILE_FORMAT_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+PRIMARY_OUTCOME_AFTER_CLEANUP_PASS
+OWNED_VOLUME_COMMAND_SUCCESS_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-launch-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+PREPARATION_LAUNCH-FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-exchange-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+PREPARATION_EXCHANGE-FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-registration-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+PREPARATION_REGISTRATION-FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-execute-success
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+INTEGRATED_EXECUTION_EXECUTE-SUCCESS_PASS
++ /idmap-probe volume-supervisor-execute-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+INTEGRATED_EXECUTION_EXECUTE-SHELL-FAILURE_PASS
++ /idmap-probe volume-supervisor-execute-timeout
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+INTEGRATED_EXECUTION_EXECUTE-TIMEOUT_PASS
++ /idmap-probe volume-supervisor-execute-output-timeout
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                INTEGRATED_EXECUTION_EXECUTE-OUTPUT-TIMEOUT_PASS
++ /idmap-probe volume-supervisor-execute-setup
+EXT4_TYPED_PROFILE_FORMAT_PASS
+INTEGRATED_EXECUTION_EXECUTE-SETUP_PASS
++ /idmap-probe volume-supervisor-execute-finish
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+RESTRICTED_LEAF_READY_BEFORE_ADMISSION_PASS
+INTEGRATED_EXECUTION_EXECUTE-FINISH_PASS
++ /idmap-probe volume-supervisor-execute-exhaustion
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+[  237.008118] EXT4-fs error (device dm-1): ext4_put_super:1315: comm idmap-probe: Couldn't clean up the journal
+[  237.010951] EXT4-fs (dm-1): Remounting filesystem read-only
+INTEGRATED_EXECUTION_SNAPSHOT_EXHAUSTION_REJECTED_PASS
++ /idmap-probe volume-supervisor-domain-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+DOMAIN_CREATION_FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-install-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+POLICY_INSTALLATION_FAILURE_ROLLBACK_PASS
++ /idmap-probe volume-supervisor-timeout
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+PRIMARY_OUTCOME_AFTER_CLEANUP_PASS
+OWNED_VOLUME_COMMAND_TIMEOUT_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-failure
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+PRIMARY_OUTCOME_AFTER_CLEANUP_PASS
+OWNED_VOLUME_COMMAND_SHELL-FAILURE_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-pre-admission
+EXT4_TYPED_PROFILE_FORMAT_PASS
+OWNED_VOLUME_COMMAND_PRE-ADMISSION_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-admission-timeout
+EXT4_TYPED_PROFILE_FORMAT_PASS
+OWNED_VOLUME_COMMAND_ADMISSION-TIMEOUT_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-setup-detached
+EXT4_TYPED_PROFILE_FORMAT_PASS
+injected failure after detached root preparation
+OWNED_VOLUME_COMMAND_SETUP-DETACHED-FAILURE_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-setup-attached
+EXT4_TYPED_PROFILE_FORMAT_PASS
+OWNED_VOLUME_COMMAND_SETUP-ATTACHED-EXIT_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-policy-cleanup
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+BOUNDED_POLICY_CLEANUP_RETRY_PASS
+NONZERO_OUTCOME_THROUGH_CLEANUP_RETRY_PASS
+PRIMARY_OUTCOME_AFTER_CLEANUP_PASS
+OWNED_VOLUME_COMMAND_POLICY-CLEANUP_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-long-command
+EXT4_TYPED_PROFILE_FORMAT_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+COMMAND_EXCEEDS_OLD_HELPER_LIMIT_PASS
+PRIMARY_OUTCOME_AFTER_CLEANUP_PASS
+OWNED_VOLUME_COMMAND_LONG-COMMAND_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe volume-supervisor-descriptor-rejection
+EXT4_TYPED_PROFILE_FORMAT_PASS
+RESTRICTED_COMMAND_EXTRA_DESCRIPTOR_REJECTED_PASS
+RESTRICTED_LEAF_READY_BEFORE_ADMISSION_PASS
+PRIMARY_OUTCOME_AFTER_CLEANUP_PASS
+OWNED_VOLUME_COMMAND_DESCRIPTOR-REJECTION_PASS
+OWNED_VOLUME_SUPERVISED_TRANSFER_PASS
+STEP_RETAINS_VOLUME_THROUGH_QUIESCENCE_PASS
+PRIMARY_OUTCOME_THROUGH_FINALIZATION_RETRY_PASS
+BOUNDED_POLICY_PINS_AND_UNMOUNT_PASS
+OWNED_VOLUME_IDMAPPED_VIEW_PASS
+OWNED_VOLUME_POLICY_PIN_PASS
+VOLUME_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_VOLUME_MOUNT_RETRY_AND_REMOUNT_PASS
++ /idmap-probe loop-probe
+RAM_LOOP_DEFERRED_DETACH_AND_BACKING_RETURN_PASS
++ /idmap-probe mapping-probe
+MAPPING_CLEANUP_DIAGNOSTICS_RETAINED_PASS
+OWNED_DM_ZERO_BUSY_AND_SETUP_CLEANUP_PASS
++ /idmap-probe workspace-probe
+FORMATTER_CAPTURED_READONLY_RUNTIME_PASS
+DETACHED_CONTEXT_FAILED_SETUP_RETRY_PASS
+CONTEXT_CLEANUP_FAILURE_RETAINS_PARENT_PASS
+DETACHED_READONLY_CONTEXT_AND_READER_LIFETIME_PASS
+WORKSPACE_CONTEXT_PARENT_LIFETIME_PASS
+DETACHED_RAM_WORKSPACE_SCRATCH_PASS
++ /idmap-probe reaper-probe
+NATIVE_REAPER_TIMEOUT_AND_RELEASE_PASS
++ /idmap-probe filesystem-pin-probe
+NATIVE_FILESYSTEM_PIN_RETAINS_UNMOUNTED_SOURCE_PASS
++ rm /usr/bin/unshare
++ test '!' -e /usr/bin/nsenter
++ test '!' -e /usr/bin/bwrap
++ /idmap-probe supervisor pre-admission-cancel
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+registration peer closed
+BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+PRODUCTION_STEP_CANCEL_BEFORE_ADMISSION_PASS
++ /idmap-probe supervisor admission-timeout
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+registration peer closedBOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+ADMISSION_TIMEOUT_CANCELS_WITHOUT_COMMAND_PASS
++ /idmap-probe supervisor policy-off
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+SCOPED_ROOT_TERMINATION_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS
+setfattr: /label-policy-off: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+INTEGRATED_COMMAND_POLICY-OFF_PASS
++ rm /work/origin/command-started
++ /idmap-probe supervisor success
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+SCOPED_ROOT_TERMINATION_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+INTEGRATED_COMMAND_SUCCESS_PASS
++ rm /work/origin/command-started
++ /idmap-probe supervisor timeout
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+SCOPED_ROOT_TERMINATION_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+INTEGRATED_COMMAND_TIMEOUT_PASS
++ rm /work/origin/command-started
++ /idmap-probe supervisor shell-failure
+NATIVE_MAPPED_NAMESPACE_CREATOR_REAPED_PASS
+BOUND_POLICY_DESCRIPTOR_EXHAUSTION_RETRY_PASS
+BOUND_POLICY_MISMATCH_RETAINS_OWNERS_PASS
+PRODUCTION_STEP_OWNS_POLICY_AND_COMMAND_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+SCOPED_ROOT_TERMINATION_PASS
+SCOPED_ROOT_LAUNCH_FAILURE_AND_RETRY_PASS
+NATIVE_NAMESPACE_IDENTITIES_AND_CREDENTIALS_PASS
+getfattr: Removing leading '/' from absolute path names
+/labelled: security.selinux: No such attribute
+setfattr: /dev/shm/outside-policy: Operation not permitted
+setfattr: /labelled: Operation not permitted
+NATIVE_NAMESPACE_INIT_ADOPTION_PASS
+NATIVE_NAMESPACE_INIT_EXIT_STATUS_PASS
+command failed: exit status: 37
+BOUND_POLICY_CLEANUP_RETRY_RETAINS_IDENTITIES_PASS
+INTEGRATED_COMMAND_SHELL-FAILURE_PASS
++ umount /work/cgroups
++ umount /work/pins
++ umount /work/origin
++ e2fsck -fn /work/volume.ext4
+e2fsck 1.47.3 (8-Jul-2025)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/work/volume.ext4: 47/16384 files (2.1% non-contiguous), 16566/65536 blocks
++ mount -o loop,ro /work/volume.ext4 /work/origin
+++ getfattr --only-values -n security.selinux /work/origin/labelled
+getfattr: Removing leading '/' from absolute path names
++ test system_u:object_r:etc_t:s0 = system_u:object_r:etc_t:s0
++ echo INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS
+INTEGRATED_LABEL_REMOUNT_PERSISTENCE_PASS
++ test '!' -e /work/origin/dev/null
++ test '!' -e /work/origin/dev/fd
++ test '!' -e /work/origin/dev/pts
++ test '!' -e /work/origin/dev/shm
++ test '!' -e /work/origin/sys/must-be-read-only
+++ cat /work/origin/command-completed
++ test completed = completed
+++ cat /work/origin/command-privileges
++ test privileges-checked = privileges-checked
+++ stat -c %u /work/origin/command-started
++ test 0 = 0
++ umount /work/origin
++ echo INTEGRATED_REMOUNT_PERSISTENCE_PASS
+INTEGRATED_REMOUNT_PERSISTENCE_PASS
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-1lvmJP
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-1lvmJP
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-2i0zr1
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-2i0zr1
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-4XoGt4
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-4XoGt4
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-9L2Zwq
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-9L2Zwq
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-DZ57W6
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-DZ57W6
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-LvG6tZ
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-LvG6tZ
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-d22SHP
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-d22SHP
++ for point in /work/conglobate-mount-*
++ test -d /work/conglobate-mount-decoy
++ echo INTEGRATION_EMPTY_TARGET_REMAINS
+INTEGRATION_EMPTY_TARGET_REMAINS
++ rmdir /work/conglobate-mount-decoy
++ echo POLICY_FIXTURE_CLEANUP_PASS
+POLICY_FIXTURE_CLEANUP_PASS
+IDMAP_PROBE_EXIT 0
+[  273.745442] sysrq: Resetting
