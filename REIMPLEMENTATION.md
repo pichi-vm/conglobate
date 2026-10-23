@@ -2785,3 +2785,14 @@ rules rather than silently shrinking acceptance criteria.
   Preserved failed attempts and verified evidence hashes. Fixture preparation
   still awaits production aggregation/rollback; remaining failure tests and three
   adherence reviews are required. M5 remains active with zero clean passes.
+
+### M5 production pair mount acquisition (v176)
+
+- Added consuming paired mount acquisition with checks against the original
+  setup cutoff, preserving both owners across partial failures. Rollback reuses
+  paired unmount cleanup with the caller's fixed teardown cutoff.
+- Disposable VM passed invalid-second-filesystem rollback, busy-first-mount
+  recovery with original error preservation, expired setup, successful pair
+  acquisition, and the complete existing normal suite. Evidence v176 preserved.
+- Root/fixture Clippy and 48 doctests pass. Aggregate pair preparation and
+  execution acceptance remain outstanding; M5 has zero clean adherence passes.

@@ -25,6 +25,104 @@ impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Unmounted> {
         self.output.validate_snapshot()
     }
 }
+/// Failed pair acquisition retains both volumes, including a mounted tool root
+/// when acquiring the output failed. Rollback is explicit and cannot yield a
+/// partially mounted pair.
+#[derive(Debug, thiserror::Error)]
+#[error("bootstrap mount: {diagnostics}")]
+pub struct BootstrapMountFailure<'n, 'o, 'w> {
+    diagnostics: FailureDiagnostics,
+    pending: Pending<'n, 'o, 'w>,
+}
+impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Unmounted> {
+    /// Acquire both mounts under the caller's original setup cutoff. The
+    /// trusted attachment parent contains only mountpoints, never image data.
+    pub fn mount_ext4_until(
+        self,
+        parent: &std::path::Path,
+        deadline: std::time::Instant,
+    ) -> Result<BootstrapVolumes<'n, 'o, 'w, Mounted>, Box<BootstrapMountFailure<'n, 'o, 'w>>> {
+        if let Err(source) = BootstrapMountFailure::check(deadline) {
+            return Err(BootstrapMountFailure::new(source, Pending::Complete(self)));
+        }
+        let Self { tool, output } = self;
+        let tool = match tool.mount_ext4(parent) {
+            Ok(tool) => tool,
+            Err(failure) => {
+                let (source, tool) = failure.into_parts();
+                return Err(BootstrapMountFailure::new(
+                    source,
+                    Pending::Complete(Self { tool, output }),
+                ));
+            }
+        };
+        if let Err(source) = BootstrapMountFailure::check(deadline) {
+            return Err(BootstrapMountFailure::new(
+                source,
+                Pending::ToolReady { tool, output },
+            ));
+        }
+        let output = match output.mount_ext4(parent) {
+            Ok(output) => output,
+            Err(failure) => {
+                let (source, output) = failure.into_parts();
+                return Err(BootstrapMountFailure::new(
+                    source,
+                    Pending::ToolReady { tool, output },
+                ));
+            }
+        };
+        let pair = BootstrapVolumes { tool, output };
+        if let Err(source) = BootstrapMountFailure::check(deadline) {
+            return Err(BootstrapMountFailure::new(
+                source,
+                Pending::OutputReady(pair),
+            ));
+        }
+        Ok(pair)
+    }
+}
+impl<'n, 'o, 'w> BootstrapMountFailure<'n, 'o, 'w> {
+    fn new(source: io::Error, pending: Pending<'n, 'o, 'w>) -> Box<Self> {
+        Box::new(Self {
+            diagnostics: source.into(),
+            pending,
+        })
+    }
+    fn check(deadline: std::time::Instant) -> io::Result<()> {
+        if std::time::Instant::now() >= deadline {
+            Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "bootstrap mount deadline expired",
+            ))
+        } else {
+            Ok(())
+        }
+    }
+    pub fn diagnostics(&self) -> &FailureDiagnostics {
+        &self.diagnostics
+    }
+    /// Use the enclosing preparation's teardown cutoff. A failed rollback owns
+    /// that cutoff; subsequent retries cannot renew it. Original mount errors
+    /// remain primary even if cleanup also fails.
+    pub fn rollback_until(
+        self,
+        deadline: std::time::Instant,
+    ) -> Result<BootstrapVolumes<'n, 'o, 'w, Unmounted>, Box<BootstrapUnmountFailure<'n, 'o, 'w>>>
+    {
+        Unmounting {
+            pending: self.pending,
+            deadline: Some(deadline),
+        }
+        .run()
+        .map_err(|failure| {
+            Box::new(BootstrapUnmountFailure {
+                diagnostics: self.diagnostics.followed_by(failure.diagnostics),
+                unmounting: failure.unmounting,
+            })
+        })
+    }
+}
 #[derive(Debug)]
 enum Pending<'n, 'o, 'w> {
     OutputReady(BootstrapVolumes<'n, 'o, 'w, Mounted>),

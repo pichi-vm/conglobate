@@ -132,6 +132,6 @@ impl Seek for Scratch<'_> {
 }
 
 mod bootstrap;
-pub use bootstrap::{BootstrapUnmountFailure, BootstrapVolumes};
+pub use bootstrap::{BootstrapMountFailure, BootstrapUnmountFailure, BootstrapVolumes};
 mod sealed;
 pub use sealed::{ScuteReader, SealFailure, SealedScute};

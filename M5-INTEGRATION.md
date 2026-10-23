@@ -227,3 +227,22 @@ compile failures; post-v175 test-only source changes are identified separately.
 Production aggregate setup and rollback still need integration, as do remaining
 formatter/dual-volume failure tests and three complete adherence passes. No M5
 acceptance or distro/confidential-platform qualification is claimed.
+
+## Production pair mount acquisition and rollback (v176)
+
+BootstrapVolumes<Unmounted>::mount_ext4_until now consumes both volumes under
+one original setup cutoff. Failure before either mount, after mounting the tool,
+or after mounting both retains the complete ownership state. Explicit rollback
+uses the enclosing teardown cutoff; subsequent cleanup retries cannot renew it.
+The existing paired unmount state machine handles partial acquisition without a
+second cleanup implementation. No partially mounted pair can be extracted.
+
+The disposable VM exercised invalid ext4 output after successfully mounting the
+tool. An open tool-root handle forced EBUSY during rollback; the original EINVAL
+remained primary, and retry after closing the handle recovered both volumes and
+removed all mountpoints. An already-expired setup cutoff acquired no mounts.
+Successful acquisition/unmount of both valid volumes also passed, followed by
+the complete normal command suite, direct sealing and verified reopening.
+Root and fixture strict Clippy pass; all 48 doctests pass. Evidence is preserved
+under evidence/v176. Production namespace/pin/policy/domain acquisition for the
+pair and command acceptance remain to integrate. M5 clean streak remains zero.

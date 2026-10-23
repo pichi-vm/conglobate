@@ -107,6 +107,61 @@ impl FormatterProbe {
         let scope = PrivateMountNamespace::enter()?;
         let mut tool = Volume::<Unmounted>::new(snapshot, &scope);
         let mut output = Volume::<Unmounted>::new(output, &scope);
+        // Exercise production pair acquisition, including rollback after the
+        // first mount succeeds and the second filesystem is invalid.
+        let mut blank = workspace.scratch()?;
+        blank.set_len(8 * 1024 * 1024)?;
+        let blank = Mapping::<Created>::create()?
+            .snapshot(&origin, blank.attach().map_err(|e| e.to_string())?, sectors)
+            .map_err(|e| e.to_string())?;
+        let pair = BootstrapVolumes::new(tool, Volume::<Unmounted>::new(blank, &scope));
+        let failure = pair
+            .mount_ext4_until(Path::new("/work"), SetupBudget::begin().deadline())
+            .unwrap_err();
+        let original = failure.diagnostics().operation().raw_os_error();
+        assert_eq!(original, Some(22));
+        let paths = Self::mount_paths()?;
+        assert_eq!(paths.len(), 1);
+        let busy = fs::File::open(paths.first().unwrap())?;
+        let failure = failure
+            .rollback_until(SetupBudget::begin().deadline())
+            .unwrap_err();
+        assert_eq!(failure.diagnostics().operation().raw_os_error(), original);
+        assert_eq!(failure.diagnostics().latest().raw_os_error(), Some(16));
+        drop(busy);
+        let (recovered, blank) = failure.retry().map_err(|e| e.to_string())?.into_parts();
+        tool = recovered;
+        drop(
+            blank
+                .into_snapshot()
+                .close()
+                .map_err(|e| e.to_string())?
+                .detach()
+                .map_err(|e| e.to_string())?,
+        );
+        assert!(Self::mount_paths()?.is_empty());
+        let pair = BootstrapVolumes::new(tool, output);
+        let failure = pair
+            .mount_ext4_until(Path::new("/work"), std::time::Instant::now())
+            .unwrap_err();
+        assert_eq!(
+            failure.diagnostics().operation().kind(),
+            std::io::ErrorKind::TimedOut
+        );
+        assert!(Self::mount_paths()?.is_empty());
+        let pair = failure
+            .rollback_until(SetupBudget::begin().deadline())
+            .map_err(|e| e.to_string())?;
+        let pair = pair
+            .mount_ext4_until(Path::new("/work"), SetupBudget::begin().deadline())
+            .map_err(|e| e.to_string())?;
+        assert_eq!(Self::mount_paths()?.len(), 2);
+        (tool, output) = pair
+            .unmount_until(SetupBudget::begin().deadline())
+            .map_err(|e| e.to_string())?
+            .into_parts();
+        assert!(Self::mount_paths()?.is_empty());
+        println!("BOOTSTRAP_PAIR_MOUNT_ROLLBACK_PASS");
         for busy_output in [true, false] {
             let tool_mounted = tool
                 .mount_ext4(Path::new("/work"))
