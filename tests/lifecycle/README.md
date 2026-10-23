@@ -91,13 +91,19 @@ storage. The fixture requires no children, attachment directories or cgroups,
 then explicitly detaches the snapshot and closes the runtime. No recipe executes,
 so this does not exercise labeling admission or post-admission receiver failure.
 
-`--case network-composite` migrates the historical allocation-lock and composite
-network cleanup probes without changing assertions. It checks namespace lock
-exclusion, contention before mutation, partial setup rollback, nftables table-name
-collision preserving the pre-existing table, distinct simultaneous allocations,
-and fixed expired cleanup deadlines retaining ownership. The final case leaves
-resources for VM disposal intentionally. All networking is inside the disconnected
-guest; this does not validate actual recipe DNS/TCP or external outbound traffic.
+`--case external-network-input` checks the environment-owned namespace contract.
+The trusted guest fixture creates a namespace, captures it through the production
+NetworkNamespace type, deletes and recreates the pathname, and verifies that the
+captured descriptor still identifies the original namespace. Releasing captured
+handles must leave the replacement namespace intact for the environment to remove.
+It also rejects missing inputs and the supervisor namespace and checks no fixture
+children remain. This case does not validate command joining, routing, NAT or DNS;
+the maintained distro network fixtures cover those integration paths separately.
+
+The earlier `network-composite` allocation/teardown case is historical validation
+of the superseded conglobate-owned network design. It is not an accepted option
+in this maintained runner. Its preserved evidence does not qualify external
+network provisioning or the current binary.
 
 `--case sandbox-gate-failure` exercises the real mounted CommandReceiver after
 supervisor admission. A trusted fixture child receives the ordinary gated offer,

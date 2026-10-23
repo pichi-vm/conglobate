@@ -6164,3 +6164,12 @@ M3 hashing migration pass 3: complete consumer/evidence review clean on the same
 implementation. Streak restored to 3/3; see m3-sha2/PASS-3.md. M4–M6 remain 0/3.
 An outdated inventory NAT comment is queued for correction with networking test
 documentation; it makes no runtime or wire-format change.
+
+## External-network evidence wording correction
+
+Updated the lifecycle README to describe the actual external-network-input case
+and identify network-composite as historical. Corrected the inventory comment:
+completed enabled steps establish use of the supplied namespace, not independently
+verified NAT/firewall provisioning. Checked against the runner's accepted choices,
+NetworkProbe assertions and DESIGN sections 2/6/9. Comments/docs only; no runtime
+or inventory-format change and no new test execution claimed. M4/M6 remain open.

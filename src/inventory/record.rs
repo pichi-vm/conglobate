@@ -193,8 +193,9 @@ impl Inventory {
                     default_skipped: transformed.default_skipped(),
                 },
                 formatters: vec![],
-                // This document is constructed only after every authored stage
-                // succeeds. Its enabled directives therefore all ran under NAT.
+                // Constructed only after every authored stage succeeds: these
+                // directives used the supplied network namespace. NAT/firewall
+                // provisioning is the environment's contract, not verified here.
                 // Resolver bytes and environment paths remain excluded.
                 network_steps: captured
                     .plan()
