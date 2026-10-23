@@ -44,6 +44,10 @@ impl AllocationLease {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("network namespace creator failed: {0}")]
+struct NamespaceCreatorExit(std::process::ExitStatus);
+
 /// Failed setup retains the exact resources still requiring cleanup. It never
 /// yields an admissible network, even after cleanup succeeds.
 #[derive(Debug, thiserror::Error)]
@@ -66,27 +70,37 @@ enum Pending {
     PolicyRetry(Box<NatCloseFailure>),
 }
 impl NetworkSetupFailure {
-    fn new(error: impl std::fmt::Display, pending: Pending) -> Box<Self> {
+    fn new(error: impl Into<FailureDiagnostics>, pending: Pending) -> Box<Self> {
         Box::new(Self {
-            diagnostics: io::Error::other(error.to_string()).into(),
+            diagnostics: error.into(),
             pending,
             deadline: Instant::now() + Duration::from_secs(30),
         })
     }
-    fn before(error: impl std::fmt::Display) -> Box<Self> {
+    fn before(error: impl Into<FailureDiagnostics>) -> Box<Self> {
         Self::new(error, Pending::Complete)
     }
     fn namespace(failure: NetworkNamespaceFailure) -> Box<Self> {
-        let primary = failure.to_string();
-        let pending = match failure {
-            NetworkNamespaceFailure::Launch(LaunchFailure::Started { process, .. }) => {
-                Pending::Creator(process)
+        let (primary, pending) = match failure {
+            NetworkNamespaceFailure::Launch(LaunchFailure::Started { source, process }) => {
+                (source, Pending::Creator(process))
             }
-            NetworkNamespaceFailure::Capture { process, .. } => Pending::IdentifiedCreator(process),
+            NetworkNamespaceFailure::Launch(LaunchFailure::Before(source))
+            | NetworkNamespaceFailure::Input(source) => (source, Pending::Complete),
+            NetworkNamespaceFailure::Capture { source, process } => {
+                (source, Pending::IdentifiedCreator(process))
+            }
             NetworkNamespaceFailure::Reap(failure) => {
-                Pending::IdentifiedCreator(failure.into_parts().1)
+                let (source, process) = failure.into_parts();
+                (
+                    io::Error::other(source),
+                    Pending::IdentifiedCreator(process),
+                )
             }
-            _ => Pending::Complete,
+            NetworkNamespaceFailure::Exited(status) => (
+                io::Error::other(NamespaceCreatorExit(status)),
+                Pending::Complete,
+            ),
         };
         Self::new(primary, pending)
     }
@@ -191,9 +205,9 @@ impl CommandNetwork {
         ] {
             let value = std::fs::read_to_string(path).map_err(NetworkSetupFailure::before)?;
             if value.trim() != "1" {
-                return Err(NetworkSetupFailure::before(format!(
+                return Err(NetworkSetupFailure::before(io::Error::other(format!(
                     "network-enabled commands require environment forwarding: {path}=1"
-                )));
+                ))));
             }
         }
         let allocation = NetworkTopology::capture(budget.deadline())
@@ -210,22 +224,30 @@ impl CommandNetwork {
             allocation.peer_name().clone(),
             budget.deadline(),
         )
-        .map_err(|failure| NetworkSetupFailure::new(failure.to_string(), Pending::Veth(failure)))?;
+        .map_err(|failure| {
+            NetworkSetupFailure::new(
+                io::Error::other(failure.to_string()),
+                Pending::Veth(failure),
+            )
+        })?;
         let connection = pair
             .connect(namespace, budget.deadline())
             .map_err(|failure| {
-                NetworkSetupFailure::new(failure.to_string(), Pending::Connection(failure))
+                NetworkSetupFailure::new(
+                    io::Error::other(failure.to_string()),
+                    Pending::Connection(failure),
+                )
             })?;
         let connection = connection
             .configure(host, peer, program, cutoff)
             .map_err(|failure| {
                 NetworkSetupFailure::new(
-                    failure.to_string(),
+                    io::Error::other(failure.to_string()),
                     Pending::Configuration(ConfigurationCleanupFailure::Worker(failure)),
                 )
             })?;
         let policy = NatPolicy::install(connection, budget.deadline()).map_err(|failure| {
-            NetworkSetupFailure::new(failure.to_string(), Pending::Nat(failure))
+            NetworkSetupFailure::new(io::Error::other(failure.to_string()), Pending::Nat(failure))
         })?;
         let resolver = match ResolverSource::prepare(resolver, workspace) {
             Ok(resolver) => resolver,
@@ -234,5 +256,52 @@ impl CommandNetwork {
         // Resolver creation is synchronous; Step checks the shared setup budget
         // again before admission and retains this owner on expiry.
         Ok(Self::new(policy, resolver))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{NamespaceCreatorExit, NetworkNamespaceFailure, NetworkSetupFailure};
+    use crate::process::LaunchFailure;
+    use std::{io, os::unix::process::ExitStatusExt, process::ExitStatus};
+
+    #[test]
+    fn early_network_errors_retain_errno_without_resource_acquisition() {
+        for failure in [
+            NetworkSetupFailure::before(io::Error::from_raw_os_error(13)),
+            NetworkSetupFailure::namespace(NetworkNamespaceFailure::Input(
+                io::Error::from_raw_os_error(13),
+            )),
+            NetworkSetupFailure::namespace(NetworkNamespaceFailure::Launch(LaunchFailure::Before(
+                io::Error::from_raw_os_error(13),
+            ))),
+        ] {
+            assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(13));
+            assert!(failure.diagnostics().cleanup().is_empty());
+            failure.cleanup().unwrap();
+        }
+    }
+
+    #[test]
+    fn namespace_creator_exit_retains_status_as_typed_error_payload() {
+        for raw in [7 << 8, 9] {
+            let failure = NetworkSetupFailure::namespace(NetworkNamespaceFailure::Exited(
+                ExitStatus::from_raw(raw),
+            ));
+            let source = failure
+                .diagnostics()
+                .operation()
+                .get_ref()
+                .unwrap()
+                .downcast_ref::<NamespaceCreatorExit>()
+                .unwrap();
+            assert_eq!(source.0.into_raw(), raw);
+            assert!(
+                failure
+                    .to_string()
+                    .contains("network namespace creator failed")
+            );
+            failure.cleanup().unwrap();
+        }
     }
 }

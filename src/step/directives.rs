@@ -87,8 +87,12 @@ pub struct NetworkStageFailure<'l, R: DirectiveStorage> {
     domain_parent: &'l std::path::Path,
 }
 impl<'l, R: DirectiveStorage> NetworkStageFailure<'l, R> {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
+        self.network.diagnostics()
+    }
+
     pub fn retry_cleanup(self) -> Result<Box<StorageExecutionFailure<'l, R>>, Box<Self>> {
-        let primary = io::Error::other(self.network.to_string());
+        let primary = io::Error::other(self.network.diagnostics().clone());
         match self.network.cleanup() {
             Ok(()) => Ok(self.ready.reject_setup(primary, self.domain_parent)),
             Err(network) => Err(Box::new(Self {

@@ -5735,3 +5735,20 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Evidence: command-outcome-errors/ and command-error-missing-label-v1/v2 under
   preservation/m7-review/. Network setup and underlying string-only network errors
   remain open. No full adherence pass; M4 remains 0/3 and goal active.
+
+### Network setup diagnostic handoff
+
+- Previous turn committed typed command outcomes/recovery histories. Network
+  setup now preserves typed history through command teardown after successful
+  network cleanup, or returns indexed NetworkSetup history when cleanup remains
+  pending. Creator-before-command cleanup ordering is unchanged.
+- Initial network/namespace failures preserve I/O or typed process causes.
+  Removed the unused pipeline string adapter and replaced its remaining static
+  bootstrap messages with InvalidExecution(&'static str). Underlying link/NAT
+  cleanup string conversions and final diagnostic API audit remain open.
+- 145 library tests and strict Clippy passed. Maintained network-composite VM
+  case passed allocation contention/rollback/expiry-retention checks; all 156
+  compared source files match. Evidence: network-setup-errors/ and
+  network-error-composite-v1/ under preservation/m7-review/.
+- No outbound/DNS or full pipeline network-failure qualification claimed; large
+  VM assets remain local. No complete adherence pass; M4 remains 0/3.

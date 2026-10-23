@@ -43,7 +43,7 @@ pub enum BuildError {
     #[error("build path is not implemented yet: {0}")]
     Unsupported(&'static str),
     #[error("build execution: {0}")]
-    Execution(String),
+    InvalidExecution(&'static str),
     #[error("{0}; cleanup: complete")]
     Command(#[source] crate::step::ExecutionOutcome),
     /// Cleanup error history remains diagnostic even if a later retry succeeds.
@@ -59,6 +59,8 @@ pub enum BuildError {
         #[source]
         source: Box<BuildError>,
     },
+    #[error("command network setup: {0}")]
+    NetworkSetup(#[source] crate::storage::FailureDiagnostics),
     #[error("command preparation: {0}")]
     Preparation(#[source] crate::storage::FailureDiagnostics),
     #[error("COPY: {0}")]
@@ -134,9 +136,6 @@ impl BuildError {
                 cleanup: Box::new(cleanup),
             },
         }
-    }
-    fn execution(error: impl std::fmt::Display) -> Self {
-        Self::Execution(error.to_string())
     }
 }
 impl From<crate::storage::RuntimeScopeFailure<'_, BuildError>> for BuildError {

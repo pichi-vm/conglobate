@@ -48,9 +48,9 @@ impl<'a> BootstrapBuild<'a> {
         request: &BuildRequest,
         workspace: &Workspace,
     ) -> Result<CompletedImage, BuildError> {
-        let manifest = request
-            .formatter_runtime()
-            .ok_or_else(|| Self::error("bootstrap requires --formatter-runtime"))?;
+        let manifest = request.formatter_runtime().ok_or_else(|| {
+            BuildError::InvalidExecution("bootstrap requires --formatter-runtime")
+        })?;
         let captured = FormatterManifest::capture(manifest)?;
         Runtime::scoped(workspace, Path::new("/run"), |runtime| {
             match captured.stage(workspace) {
@@ -171,14 +171,14 @@ impl<'a> BootstrapBuild<'a> {
                 if let Some(active) = active {
                     active.close().map_err(BuildError::from)?;
                 }
-                let tools = self
-                    .build
-                    .images()
-                    .get(reference)
-                    .ok_or_else(|| Self::error("missing resolved firmware tools"))?;
+                let tools = self.build.images().get(reference).ok_or_else(|| {
+                    BuildError::InvalidExecution("missing resolved firmware tools")
+                })?;
                 tools
                     .chain()
-                    .ok_or_else(|| Self::error("firmware tools require a root volume"))?
+                    .ok_or_else(|| {
+                        BuildError::InvalidExecution("firmware tools require a root volume")
+                    })?
                     .assemble(self.build.cache(), workspace)
                     .map_err(BuildError::from)?
             } else {
@@ -264,9 +264,5 @@ impl<'a> BootstrapBuild<'a> {
         BuildError::Formatter(error.into())
             .with_cleanup(storage.map(|_| ()))
             .with_cleanup(runtime)
-    }
-
-    fn error(error: impl std::fmt::Display) -> BuildError {
-        BuildError::Execution(error.to_string())
     }
 }

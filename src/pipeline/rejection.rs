@@ -73,20 +73,12 @@ impl<R: DirectiveStorage> StageFailure<'_, R> {
                 Err(failure) => BuildError::Copy(failure.diagnostics().clone()).at_directive(index),
             },
             StageFailure::Execution { index, failure } => failure.reject_command(index),
-            StageFailure::NetworkSetup { index, failure } => {
-                let primary = BuildError::execution(format!("directive {index}: {failure}"));
-                let cleanup = failure
-                    .retry_cleanup()
-                    .map_err(BuildError::execution)
-                    .and_then(|failure| {
-                        failure
-                            .retry_cleanup()
-                            .into_rejected_storage()
-                            .map_err(BuildError::execution)
-                            .and_then(|(_, storage)| storage.discard())
-                    });
-                primary.with_cleanup(cleanup)
-            }
+            StageFailure::NetworkSetup { index, failure } => match failure.retry_cleanup() {
+                Ok(failure) => failure.reject_command(index),
+                Err(failure) => {
+                    BuildError::NetworkSetup(failure.diagnostics().clone()).at_directive(index)
+                }
+            },
             StageFailure::NetworkExecution { index, failure } => failure.reject_command(index),
         }
     }
