@@ -62,8 +62,8 @@
       "evidence": "main.rs prints and exits uniformly; exit taxonomy deferred in DESIGN.md",
       "remaining_action": "Owned diagnostic representation preserving failure ownership and both messages",
       "historical_status": "open",
-      "current_status": "open",
-      "current_evidence": "Pipeline typed diagnostic conversions implemented across runtime/formatter/storage/directive/command/network setup. Underlying network cleanup now retains typed histories, with context labels preserved through SetupCause. New resolver retry/history unit test and corrected current-source network-composite VM pass; initial context regression preserved. Final public taxonomy/source-chain/ownership audit remains open. See network-cleanup-errors/ and network-cleanup-history-v1/v2/ under preservation/m7-review/ plus preceding records. Source-chain audit found and repaired missing command outcome Error::source links, with failing-before/passing-after regression. See command-source-chain/REVIEW.md. Broader audit remains outstanding."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "Completed source-grounded audit of original Execution(String) finding and all three coordinator conversions. Typed primary causes, independent cleanup causes, histories and command outcomes remain inspectable. Terminal ownership disposal is explicit and requires dedicated VM disposal, not a cleanup receipt. Existing tests cover source traversal, exit status, errno, retry history and multiple simultaneous failures; current 150-test and Clippy results are in inventory-errors/. See pipeline-error-audit/REVIEW.md. Separate discovered carapace directive-index defect remains outstanding in that report; this is not a complete milestone adherence pass."
     },
     {
       "id": "errors-api-003",

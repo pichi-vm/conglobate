@@ -5799,3 +5799,17 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   VM qualification; no full adherence pass. M4–M6 remain reopened at 0/3.
 - Externally provided networking was researched in the preceding discussion;
   it remains a proposal, not an accepted replacement of per-step networking.
+
+### Pipeline error audit closed against the original finding
+
+- Previous turn made concrete progress with typed inventory errors (234a7dd).
+  Audited the separate original errors-api-002 against all three coordinators,
+  rejection/conversion boundaries, terminal ownership, diagnostics and tests.
+- Original string funnel is removed; independent cleanup causes and command
+  outcomes remain inspectable. Updated the finding to implemented with bounded
+  evidence in preservation/m7-review/pipeline-error-audit/REVIEW.md. No source
+  changes or repeated tests were needed for this audit.
+- Found a separate open diagnostic defect: carapace executes one-item directive
+  batches, resetting error positions to zero. Recorded source and required
+  regression in that report. Full adherence remains NEEDS WORK, M4–M6 at 0/3;
+  qualification and retirement remain incomplete.
