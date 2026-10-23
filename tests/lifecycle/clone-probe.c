@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -70,5 +71,22 @@ int main(int argc, char **argv) {
         failed |= !valid;
     }
     free(stack);
+    // CLONE_NEWTIME occupies the legacy clone signal byte, so exercise its
+    // supported unshare interface instead. Only this disposable process's
+    // namespace-for-children changes; no clocks or offsets are modified.
+    struct stat before, after;
+    if (stat("/proc/self/ns/time_for_children", &before) != 0)
+        return 6;
+    errno = 0;
+    const int result = unshare(CLONE_NEWTIME);
+    const int error = errno;
+    if (stat("/proc/self/ns/time_for_children", &after) != 0)
+        return 6;
+    const int same = before.st_dev == after.st_dev && before.st_ino == after.st_ino;
+    const int valid = filtered ? result == -1 && error == EPERM && same
+                               : result == 0 && !same;
+    printf("UNSHARE_PROBE %s time %s errno=%d\n", argv[1],
+           valid ? "PASS" : "FAIL", result == -1 ? error : 0);
+    failed |= !valid;
     return failed;
 }

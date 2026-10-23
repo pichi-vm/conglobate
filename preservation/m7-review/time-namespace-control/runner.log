@@ -1,0 +1,27 @@
+{
+  "checks": {
+    "NATIVE_CLONE_NAMESPACE_MASK_PASS": true,
+    "CLONE_PROBE control ordinary PASS errno=0": true,
+    "CLONE_PROBE control mount PASS errno=0": true,
+    "CLONE_PROBE control cgroup PASS errno=0": true,
+    "CLONE_PROBE control uts PASS errno=0": true,
+    "CLONE_PROBE control ipc PASS errno=0": true,
+    "CLONE_PROBE control user PASS errno=0": true,
+    "CLONE_PROBE control pid PASS errno=0": true,
+    "CLONE_PROBE control network PASS errno=0": true,
+    "CLONE_PROBE filtered ordinary PASS errno=0": true,
+    "CLONE_PROBE filtered mount PASS errno=1": true,
+    "CLONE_PROBE filtered cgroup PASS errno=1": true,
+    "CLONE_PROBE filtered uts PASS errno=1": true,
+    "CLONE_PROBE filtered ipc PASS errno=1": true,
+    "CLONE_PROBE filtered user PASS errno=1": true,
+    "CLONE_PROBE filtered pid PASS errno=1": true,
+    "CLONE_PROBE filtered network PASS errno=1": true,
+    "UNSHARE_PROBE control time PASS errno=0": true,
+    "UNSHARE_PROBE filtered time PASS errno=1": true,
+    "exit_zero": true,
+    "vm_powered_off": true
+  },
+  "passed": true,
+  "full_lifecycle_qualified": false
+}

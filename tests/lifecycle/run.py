@@ -170,6 +170,8 @@ exec sleep infinity
             markers += [f'CLONE_PROBE {arm} {case} PASS errno={1 if arm == "filtered" and case != "ordinary" else 0}'
                         for arm in ('control', 'filtered')
                         for case in ('ordinary', 'mount', 'cgroup', 'uts', 'ipc', 'user', 'pid', 'network')]
+            markers += [f'UNSHARE_PROBE {arm} time PASS errno={1 if arm == "filtered" else 0}'
+                        for arm in ('control', 'filtered')]
         elif self.args.case == 'domain-publication':
             markers = [f'DOMAIN_PUBLICATION_{mode}_ROLLBACK_PASS'
                        for mode in ('ABSENT', 'PRESENT', 'MALFORMED', 'MISMATCH')]

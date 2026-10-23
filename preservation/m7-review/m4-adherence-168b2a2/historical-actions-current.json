@@ -378,7 +378,7 @@
       "remaining_action": "Add a VM test with a POSITIVE CONTROL that separates seccomp from capability denial: attempt clone(CLONE_NEWNS/NEWNET/NEWIPC/NEWUTS/NEWPID/NEWCGROUP/NEWTIME) and require ENOSYS/seccomp errno, not EPERM; include a control clone() with no namespace flag that must SUCCEED.",
       "historical_status": "accept",
       "current_status": "partial qualification",
-      "current_evidence": "Maintained clone-probe provides privileged positive control and filtered EPERM for seven namespace flags; ordinary clone succeeds. CLONE_NEWTIME/arm64 remain uncovered; historical ENOSYS demand was withdrawn."
+      "current_evidence": "Native amd64 VM positive control covers seven legacy clone namespace flags plus CLONE_NEWTIME through unshare (the flag overlaps the legacy clone signal byte). Both arms retain CAP_SYS_ADMIN/no_new_privs; controls succeed, real command filter returns EPERM, ordinary clone succeeds. Time namespace identity changes only in control. See time-namespace-control/REVIEW.md. arm64 execution remains outstanding; historical ENOSYS demand withdrawn."
     },
     {
       "id": "tests-003",

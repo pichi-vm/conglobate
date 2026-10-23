@@ -5962,3 +5962,12 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   boundaries. Evidence: preservation/m7-review/materializing-cache/REVIEW.md.
 - Corrected stale execution-batch text about external networking. No complete
   milestone adherence pass or broader platform qualification claimed; M4 0/3.
+
+### Time namespace positive-control coverage
+
+- Maintained disposable-VM probe now tests unshare(CLONE_NEWTIME), requiring a
+  changed namespace-for-children identity in the privileged control and EPERM
+  with unchanged identity under CommandSyscalls. No clocks/offsets changed.
+- Native amd64 KVM passes all prior clone controls plus both new time checks.
+  Evidence: preservation/m7-review/time-namespace-control/REVIEW.md. tests-001
+  retains partial status for missing arm64 execution; no full M4 pass claimed.
