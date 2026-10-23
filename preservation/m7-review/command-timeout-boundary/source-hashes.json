@@ -1,0 +1,14 @@
+{
+  "src/step/setup.rs": "2ee61ed695019abd2c1ab6a33da7a30b5f1e833d5f4b129571cedd7da059ad65",
+  "src/step/cutoff.rs": "4c5cdf08cb64d0d6eafa1dbb70d330c3dc94c15bc06f1df78d11b3f5142d2f01",
+  "src/step/outcome.rs": "4d457c9363894425d46a03066327e7f7ba7f8bfae11f5756d41beed70307b79f",
+  "src/step/teardown.rs": "cee78b8b6e84b303cafdb017a01f90b902d6002d68ba4a9f25c7f810c54ae625",
+  "src/step/execution.rs": "0ea0cbe7dfbfe5da1fe6c3248660b241f58bdc0560e7547392b12041fa67fea4",
+  "src/execution/helper.rs": "65644ee6577e48d0259057a3c95218da9db179e173277fbeecf7dd28457f18b7",
+  "src/isolation/receiver.rs": "89067158071d34592746d16b3f2e7356973017a1162eeb2862bf5e6c1a252bd7",
+  "src/isolation/init.rs": "2b378396fda9585d6a006a47b2532385f4fbd0dcae072a9271ebcbac4f0211ab",
+  "src/isolation/root.rs": "ce150ca7f9005d1e1097b05c442cce24ecfd9730de4c307ffe6511d260a0d9c2",
+  "src/isolation/gate.rs": "31866194bfd26540c9b1e6973a625efa905399e284f3bbadafa7b22dc53e5991",
+  "src/process/supervision/admission.rs": "0698981df676b40ee11b4e116442714f0300d99148d7ee247ea29bf711057881",
+  "SANDBOX-DESIGN.txt": "9f4f5dfd65196dde338b54675d503400c72d5e7d62f24501f59db7a107e59455"
+}

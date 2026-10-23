@@ -5021,3 +5021,24 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   assets, other historical validations and durable external archival still need
   retirement work. No legacy removal, new distro build or milestone acceptance
   inferred. M4 remains 0/3; full objective and all remaining gates stay active.
+
+### M4 integrated review finding: command timer includes cleanup
+
+- Previous turn progressed with maintained runtime migration 9fb04a0. Began
+  integrated M4 review by tracing setup, outcome observation, receiver, namespace
+  init and teardown together against SANDBOX-DESIGN 7.6 and 10.2–10.4.
+- M4-T1: primary completion reaches the supervisor only after namespace-helper
+  exit, diagnostic drainage, resolver restoration and view cleanup. These charge
+  recipe execution time although the design assigns cleanup its own fixed budget.
+  Namespace-init exit itself may wait for descendants. This is a source-proven
+  timing-contract mismatch/false-rejection risk, not an observed unsafe publish.
+- Recorded exact source hashes, counterexample path, correction constraints and
+  required deterministic/VM regressions in
+  preservation/m7-review/command-timeout-boundary/FINDING.md. Earlier partial
+  reviews do not establish this timing requirement. Simply moving completion
+  earlier is unsafe because current teardown kills the receiver before it could
+  restore resolver state and loses the only local-cleanup acknowledgment.
+- Next work must separate shell-status observation from local-cleanup receipt,
+  retain fixed teardown ownership and command descriptor isolation, then test
+  actual composed behavior. No production change or new pass claimed. Integrated
+  review is interrupted; M4 remains 0/3 and all other gates remain outstanding.
