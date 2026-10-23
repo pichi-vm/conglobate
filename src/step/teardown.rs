@@ -15,7 +15,7 @@ use std::{
 /// One budget for the entire teardown, including retries. This is deliberately
 /// not a recipe or CLI option. Kernel operations may outlive this budget; their
 /// eventual return is checked before accepting completion.
-const TEARDOWN_TIMEOUT: Duration = Duration::from_secs(30);
+pub(super) const TEARDOWN_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug)]
 enum Phase<'a, R: StepStorage> {

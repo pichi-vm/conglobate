@@ -63,6 +63,12 @@ impl<'l> CommandSandbox<'l> {
             gid,
         }
     }
+    pub(crate) fn mount_parent(&self) -> &Path {
+        self.directories.mounts
+    }
+    pub(crate) fn domain_parent(&self) -> &Path {
+        self.directories.domains
+    }
     /// Construct immutable launch input before acquiring the command resources.
     pub fn receiver(&self, script: String, budget: &SetupBudget) -> io::Result<Command> {
         self.program.receiver(
@@ -92,7 +98,7 @@ impl<'l> CommandSandbox<'l> {
     > {
         self.prepare_storage::<BootstrapVolumes<'n, 'o, 'w, Mounted>>(volumes, reaper, budget)
     }
-    fn prepare_storage<R: PreparationStorage>(
+    pub(crate) fn prepare_storage<R: PreparationStorage>(
         &self,
         volume: R::Unmounted,
         reaper: ChildReaper,

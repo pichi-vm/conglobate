@@ -237,3 +237,17 @@ contents/ownership/mode and no context exposure. Its full normal VM suite passes
 The earlier missing-ln fixture failure is retained as v192. Next use this sequence
 in the actual pipeline coordinator and finish trusted-work deadline handling;
 fixture orchestration is not CLI completion.
+
+## Production directive sequencing
+
+CommandSandbox::directives now owns ordered RUN/COPY execution for both storage
+layouts, returning an unforgeable completed-directives receipt or owning failure.
+RUN uses its configured timeout and explicit CARAPACE; COPY shares fixed setup
+and teardown deadlines and validates flushed snapshots. Cleanup retries cannot
+promote a failed COPY to successful execution. Network-enabled recipes fail
+preflight until networking is integrated.
+
+v194 uses this runner, rather than hand-written fixture sequencing, for the mixed
+bootstrap recipe. The normal VM suite and host checks pass; a fixture-only Clippy
+correction is preserved separately. Next connect CLI image construction, seals,
+output provenance/inventory, and dedicated runner failure cases.

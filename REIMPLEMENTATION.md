@@ -3113,3 +3113,29 @@ rules rather than silently shrinking acceptance criteria.
   production storage/COPY/command APIs in sequence, not complete CLI recipe
   orchestration. Trusted-work deadline integration and full stage coordinator
   remain necessary. M6 stays at zero adherence passes.
+
+### M6 production directive runner
+
+- Previous turn progressed with bootstrap COPY routing. Added
+  CommandSandbox::directives for sealed single-volume and bootstrap layouts.
+  It executes validated directives in order, remounts each RUN/COPY, uses recipe
+  RUN timeouts, and supplies an explicit output-root CARAPACE as plain hex.
+  Enabled networking fails preflight until owned network integration exists.
+- CompletedDirectives has no public constructor. Preparation/execution failures
+  retain their existing lifecycle owners; COPY failure retains original error,
+  storage/reaper, unfinished cleanup and its original fixed teardown cutoff.
+  Cleanup retry can return only rejected storage, never an accepted stage.
+  COPY checks fixed setup/teardown budgets and snapshot health before acceptance;
+  synchronous kernel operations may return late, but late completion is rejected.
+- v194 full normal VM suite passes after replacing the hand-written positive
+  fixture sequence with the production runner over a parsed mixed RUN/COPY recipe.
+  Both commands verify CARAPACE; the second verifies remounted copied data and
+  metadata. Command failures retain prior dedicated lifecycle coverage; broader
+  directive-runner failure/CLI publication coverage remains necessary.
+- 81 library tests, 50 doctests and root strict Clippy pass. Fixture Clippy found
+  an unnecessary explicit drop of ChildReaper (no destructor). Removed it;
+  fixture strict Clippy then passes. Preserved original VM source, initial lint
+  error, corrected fixture and passing log under evidence/v194 with hashes.
+- This connects execution APIs into production recipe sequencing, not yet CLI
+  image-stage construction/sealing/inventory/publication. Those connections and
+  enabled networking remain required. M6 zero adherence passes; goal active.

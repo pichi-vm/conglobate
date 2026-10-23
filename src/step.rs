@@ -531,3 +531,6 @@ mod tests {
 
 mod bootstrap;
 pub use bootstrap::{BootstrapFinalizationFailure, FinalizedBootstrap};
+
+mod directives;
+pub use directives::{CompletedDirectives, CopyStageFailure, DirectiveStorage, StageFailure};

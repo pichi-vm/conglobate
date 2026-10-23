@@ -34,7 +34,7 @@ impl BootstrapProbe {
             Volume::<Unmounted>::in_init_namespace(output, &lease).map_err(|e| e.to_string())?;
         let parent = Path::new("/work/cgroups");
         let program = HelperProgram::current()?;
-        let mut reaper = ChildReaper::install()?;
+        let reaper = ChildReaper::install()?;
         // Trusted fixture setup makes a tool artifact; bootstrap execution then
         // consumes only the verified cache chain and a disposable overlay.
         let mounted_tool = tool
@@ -283,8 +283,8 @@ impl BootstrapProbe {
             println!("BOOTSTRAP_EXECUTION_{}_PASS", mode.to_uppercase());
             return Ok(None);
         }
+        let mut scripts = Vec::new();
         for index in 0..2 {
-            let budget = SetupBudget::begin();
             let script = if index == 0 {
                 r#"ln -s /mnt /export-root
                     ln -s / /mnt/tool-root
@@ -313,27 +313,44 @@ impl BootstrapProbe {
                     getfattr -n security.selinux /mnt/state
                     echo second >> /mnt/state"#
             };
-            let receiver = sandbox.receiver(script.into(), &budget)?;
-            let preparation = sandbox
-                .prepare_bootstrap(BootstrapVolumes::new(tool, output), reaper, &budget)
-                .map_err(|e| e.to_string())?;
-            let step = preparation
-                .launch(receiver, budget.deadline(), parent)
-                .map_err(|e| e.to_string())?;
-            let executed = step
-                .execute(budget, "5s".parse()?, parent)
-                .map_err(|e| e.to_string())?;
-            let (volumes, next_reaper) = executed.into_parts();
-            let volumes = if index == 0 {
-                Self::copy_between_steps(volumes)?
-            } else {
-                volumes
-            };
-            (tool, output) = volumes.into_parts();
-            reaper = next_reaper;
-            assert_eq!(fs::read_dir(records)?.count(), 0);
-            assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
+            scripts.push(format!(
+                "test \"$CARAPACE\" = {}\n{}",
+                hex::encode([42u8; 32]),
+                script
+            ));
         }
+        let commit = fs::read_to_string("/workspace-context-commit")?;
+        let context = conglobate::context::CapturedContext::capture(
+            Path::new("/workspace-context"),
+            &conglobate::request::CommitIdentity::try_from(commit.trim())?,
+            &conglobate::path::ContextDirectory::try_from(Path::new("."))?,
+        )?;
+        let document = serde_json::to_string(&serde_json::json!({
+            "carapace": { "from": "example.test/base:1", "derive": [
+                {"run": scripts[0], "timeout": "5s"},
+                {"copy": {"from": "input", "into": "/export-root/copied-between", "owner": "123", "group": "456", "mode": "0640"}},
+                {"copy": {"from": "input", "into": "/mnt/tool-root/tool-copied-between"}},
+                {"run": scripts[1], "timeout": "5s"}
+            ]}
+        }))?;
+        let recipe = conglobate::recipe::Recipe::try_from(
+            conglobate::document::YamlDocument::from(document.as_str()),
+        )?;
+        let completed = sandbox
+            .directives::<BootstrapVolumes<'_, '_, '_, conglobate::storage::Mounted>>(
+                BootstrapVolumes::new(tool, output),
+                reaper,
+                &context,
+                recipe.carapace().unwrap().directives(),
+                Some(&[42u8; 32]),
+            )
+            .map_err(|e| e.to_string())?;
+        let (volumes, _reaper) = completed.into_parts();
+        (tool, output) = volumes.into_parts();
+        assert_eq!(fs::read_dir(records)?.count(), 0);
+        assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
+        println!("BOOTSTRAP_COPY_BETWEEN_COMMANDS_PASS");
+        println!("RECIPE_DIRECTIVE_RUNNER_PASS");
         let mut output_mounted = output
             .mount_ext4(Path::new("/work"))
             .map_err(|e| e.to_string())?;
@@ -391,36 +408,6 @@ impl BootstrapProbe {
         fs::remove_dir(records)?;
         println!("BOOTSTRAP_DUAL_COMMAND_REMOUNT_PASS");
         Ok(Some(sealed))
-    }
-    fn copy_between_steps<'n, 'o, 'w>(
-        volumes: BootstrapVolumes<'n, 'o, 'w, Unmounted>,
-    ) -> Result<BootstrapVolumes<'n, 'o, 'w, Unmounted>, Box<dyn std::error::Error>> {
-        let commit = fs::read_to_string("/workspace-context-commit")?;
-        let context = conglobate::context::CapturedContext::capture(
-            Path::new("/workspace-context"),
-            &conglobate::request::CommitIdentity::try_from(commit.trim())?,
-            &conglobate::path::ContextDirectory::try_from(Path::new("."))?,
-        )?;
-        let recipe = conglobate::recipe::Recipe::try_from(
-            conglobate::document::YamlDocument::from(
-                "carapace:\n  from: example.test/base:1\n  derive:\n    - copy:\n        from: input\n        into: /export-root/copied-between\n        owner: '123'\n        group: '456'\n        mode: '0640'\n    - copy:\n        from: input\n        into: /mnt/tool-root/tool-copied-between\n",
-            ),
-        )?;
-        let budget = SetupBudget::begin();
-        let mut mounted = volumes
-            .mount_ext4_until(Path::new("/work"), budget.deadline())
-            .map_err(|e| e.to_string())?;
-        for directive in recipe.carapace().unwrap().directives() {
-            let conglobate::recipe::Directive::Copy(directive) = directive else {
-                unreachable!()
-            };
-            mounted.copy(&context, directive)?;
-        }
-        let volumes = mounted
-            .unmount_until(budget.deadline())
-            .map_err(|e| e.to_string())?;
-        println!("BOOTSTRAP_COPY_BETWEEN_COMMANDS_PASS");
-        Ok(volumes)
     }
     fn volume_path(device: u64) -> std::io::Result<std::path::PathBuf> {
         for entry in fs::read_dir("/work")? {
