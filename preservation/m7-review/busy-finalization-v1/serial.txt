@@ -1,0 +1,17 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe ext4
++ /lifecycle-tests sandbox-gate-failure
+restricted command startup failed: Broken pipe (os error 32)
+RECEIVER_CONTROL_HELD_DURING_GATE_FAILURE_CLEANUP_PASS
+
+thread 'main' (159) panicked at src/sandbox_failures.rs:344:21:
+assertion `left == right` failed
+  left: 0
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+runtime retained until VM disposal: /proc/self/fd/10/conglobate-runtime-vLZInZ
+LIFECYCLE_EXIT 101
+[    2.346823] sysrq: Power Off
+[    2.350370] reboot: Power down

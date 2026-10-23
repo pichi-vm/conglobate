@@ -1,0 +1,13 @@
+{
+  "baseline": "f0c6baf",
+  "production_changed": false,
+  "fault": "ordinary open directory on fixture-owned ext4 mount prevents unmount",
+  "passed": false,
+  "coverage": "actual failed command observation retained through EBUSY finalization and successful retry; mounted storage retained, then resources released",
+  "failed_attempt_reason": "incorrect fixture expected command-domain recovery record after completed process teardown",
+  "limitations": [
+    "not writeback-error propagation",
+    "not a whole-milestone adherence pass",
+    "large artifacts await durable archival"
+  ]
+}

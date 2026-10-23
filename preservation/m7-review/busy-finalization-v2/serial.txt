@@ -1,0 +1,12 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe ext4
++ /lifecycle-tests sandbox-gate-failure
+restricted command startup failed: Broken pipe (os error 32)
+RECEIVER_CONTROL_HELD_DURING_GATE_FAILURE_CLEANUP_PASS
+PRIMARY_OUTCOME_THROUGH_BUSY_FINALIZATION_RETRY_PASS
+SANDBOX_GATE_FAILURE_ROLLBACK_PASS
+LIFECYCLE_EXIT 0
+[    2.444662] sysrq: Power Off
+[    2.449459] reboot: Power down

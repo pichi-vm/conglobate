@@ -151,6 +151,7 @@ exec sleep infinity
                        'BLOCKED_IO_FIXED_DEADLINE_RETAINS_STORAGE_PASS']
         elif self.args.case == 'sandbox-gate-failure':
             markers = ['RECEIVER_CONTROL_HELD_DURING_GATE_FAILURE_CLEANUP_PASS',
+                       'PRIMARY_OUTCOME_THROUGH_BUSY_FINALIZATION_RETRY_PASS',
                        'SANDBOX_GATE_FAILURE_ROLLBACK_PASS']
         elif self.args.case.startswith('sandbox-'):
             markers = [self.args.case.upper().replace('-', '_') + '_ROLLBACK_PASS']

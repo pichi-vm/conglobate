@@ -4738,3 +4738,25 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   blocked-I/O/independent-fixture-disposal gaps, not an adherence pass. M4 stays 0/3;
   current writeback-error/finalization coverage and full source/design/style review
   remain to be completed before its three-pass gate. M5-M8 scope remains intact.
+
+### Maintained busy-finalization recovery regression
+
+- Previous goal turn answered the NAT question without implementation progress.
+  Revalidated current sources and resumed the outstanding M4 finalization gap.
+- Extended the actual receiver gate-failure fixture with an ordinary open
+  directory that causes EBUSY at finalization. Failure retains mounted storage
+  and snapshot; closing the holder permits retry under the original budget.
+  Both transitions preserve the actual failed command observation even though
+  trusted helper status is success. Final checks release all storage and leave
+  no command children, domains, recovery records or volume targets.
+- busy-finalization-v1 failed an incorrect fixture assumption: successful
+  process teardown has already removed the command-domain recovery record.
+  Source inspection confirms finish_record precedes TeardownCompletion; storage
+  is retained separately. Corrected that assertion, not production behavior.
+  Both failed v1 and passing v2 sources/status/serial evidence are preserved.
+- v2 passed in the disposable VM, including independent poweroff. Strict fixture
+  Clippy passes. No production changes, unsafe Rust, host mounts or sleeps.
+  Large VM artifacts remain external and require durable archival before M8.
+- This is concrete regression evidence, not an adherence pass. M4 stays 0/3;
+  actual writeback/snapshot-error propagation and complete source/design/style
+  review remain. The full M5-M8 scope and qualification gaps remain outstanding.

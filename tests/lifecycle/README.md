@@ -125,3 +125,11 @@ A global sync would wait on deliberately suspended storage: the first blocked-I/
 run demonstrated that observer bug and is preserved as a failure. No privileged
 host setup or synchronization sleeps are used. D-state observation checks the
 actual task state under a deadline, yielding between observations.
+
+The gate-failure case also holds an ordinary directory descriptor on the mounted
+ext4 volume during finalization. Unmount must return ResourceBusy, retaining the
+mount and snapshot independently of the already-retired command-domain record.
+Closing the holder permits retry under the original deadline. Both transitions
+must preserve the original failed command observation, despite successful helper
+exit. Final resource checks require no mounts, domains, records or children.
+This covers busy-unmount recovery, not filesystem writeback errors.

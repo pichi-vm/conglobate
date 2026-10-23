@@ -1,0 +1,18 @@
+{
+  "checks": {
+    "RECEIVER_CONTROL_HELD_DURING_GATE_FAILURE_CLEANUP_PASS": true,
+    "PRIMARY_OUTCOME_THROUGH_BUSY_FINALIZATION_RETRY_PASS": false,
+    "SANDBOX_GATE_FAILURE_ROLLBACK_PASS": false,
+    "exit_zero": false,
+    "vm_powered_off": true
+  },
+  "passed": false,
+  "full_lifecycle_qualified": false
+}
+Traceback (most recent call last):
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/tests/lifecycle/run.py", line 191, in <module>
+    LifecycleRun(args).run()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/tests/lifecycle/run.py", line 173, in run
+    raise RuntimeError('lifecycle fixture failed; evidence retained')
+RuntimeError: lifecycle fixture failed; evidence retained

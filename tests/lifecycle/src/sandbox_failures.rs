@@ -265,7 +265,9 @@ impl SandboxFailures {
                     eprintln!("blocked I/O cleanup: {failure}");
                     assert!(Path::new(&sysfs).exists());
                     assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
-                    assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                    // Process teardown already retired the domain record;
+                    // storage remains owned independently by finalization.
+                    assert_eq!(fs::read_dir(paths.recovery())?.count(), 0);
                     assert!(
                         fs::read_to_string(format!("/proc/{helper}/status"))?
                             .lines()
@@ -319,14 +321,47 @@ impl SandboxFailures {
                     command
                         .supervision()
                         .wait_for_peer_exit_until(Instant::now() + Duration::from_secs(10))?;
-                    let (outcome, completion) =
-                        command.observe().teardown(paths.domains()).into_parts();
-                    assert!(!outcome.success());
-                    let finalized = completion
-                        .map_err(|e| e.to_string())?
-                        .unmount()
-                        .map_err(|e| e.to_string())?;
-                    let (status, _, returned) = finalized.into_parts();
+                    let completion = command
+                        .observe()
+                        .teardown(paths.domains())
+                        .transpose()
+                        .map_err(|failure| failure.cleanup().to_string())?;
+                    assert!(matches!(
+                        completion.outcome(),
+                        conglobate::step::CommandOutcome::ObservationFailed(_)
+                    ));
+                    let primary = completion.outcome().to_string();
+                    let entries = fs::read_dir(paths.volumes())?.collect::<Result<Vec<_>, _>>()?;
+                    assert_eq!(entries.len(), 1);
+                    // An ordinary open directory makes this owned mount busy.
+                    // Keep the failure owner until the holder is explicitly closed.
+                    let holder = fs::File::open(entries[0].path())?;
+                    let failure = completion.unmount().unwrap_err();
+                    assert_eq!(failure.outcome().to_string(), primary);
+                    assert_eq!(
+                        failure.cleanup().diagnostics().operation().kind(),
+                        std::io::ErrorKind::ResourceBusy
+                    );
+                    assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
+                    // Process teardown already retired the domain record;
+                    // storage remains owned independently by finalization.
+                    assert_eq!(fs::read_dir(paths.recovery())?.count(), 0);
+                    assert!(
+                        Path::new(&format!(
+                            "/sys/dev/block/{}:{}",
+                            device.major(),
+                            device.minor()
+                        ))
+                        .exists()
+                    );
+                    drop(holder);
+                    let finalized = failure
+                        .retry()
+                        .map_err(|failure| failure.cleanup().to_string())?;
+                    assert_eq!(finalized.outcome().to_string(), primary);
+                    assert!(!finalized.outcome().success());
+                    let (status, _, returned) = finalized.into_parts().1.into_parts();
+                    println!("PRIMARY_OUTCOME_THROUGH_BUSY_FINALIZATION_RETRY_PASS");
                     assert!(status.success());
                     assert_eq!(
                         fs::read_to_string("/work/receiver-gate-cleaned")?,
