@@ -750,3 +750,42 @@ a disposable VM, preserving numeric UID/GID without mounting images on the host.
 The distro runner now emits the explicit trusted formatter manifest needed for
 bootstrap; its paths were checked against the existing guest, and Python syntax
 checks pass. Actual bootstrap execution of that change remains outstanding.
+
+## Debian seed prepared; first real build running
+
+A disconnected disposable VM formatted a sparse 64-GiB ext4 file, extracted the
+verified Debian archive, unmounted it and passed e2fsck. Observed passwd/shadow
+UID/GID/mode exactly match the archive; the future runner now requires that check
+in its verdict too. No host mount or privileged host filesystem operation occurred.
+External pichi import/save produced the initial carapace in an isolated cache;
+this is tool bootstrap outside conglobate, not a new binary dependency.
+
+The first cache-preparation attempt exposed the helper's assumption that even an
+inline OCI config must have a separate source blob. It failed without replacing
+existing data. The helper now decodes inline bytes and checks their declared size
+and digest before writing them. A fresh second directory succeeded and pins the
+new architecture index. Failed paths and import/source provenance are preserved.
+
+The Debian recipe runs real APT/dpkg installation and packages a supplied firmware
+pair from its committed context. This first case deliberately uses the known
+Fedora-built kernel/corium platform with Debian userspace; no Debian kernel build
+or arma-generation claim is made. Runtime source files remain separate from the
+booted artifact's root. The first build is running at
+/var/tmp/conglobate-debian-build-v1. No build or boot verdict is claimed yet.
+# Continuation: policy removal boundary and Debian boot observation
+
+Recorded the source-grounded policy removal boundary in `policy-alternative.md`.
+Policy registration can disappear independently of the cgroup containment
+handshake. No replacement policy or simplified lifecycle is claimed validated.
+
+The pending Debian build produced `build_passed: true` in
+`/var/tmp/conglobate-debian-build-v1/verdict.json`. Started its disposable boot
+check in `/var/tmp/conglobate-debian-boot-v1`, expecting
+`CONGLOBATE_DEBIAN_BOOT_PASS`. The console reaches Debian 13 login and starts
+the qualification service, but that service reports no matching dpkg records
+for systemd-sysv, udev, dbus and util-linux. The expected marker has not appeared.
+This is an unresolved qualification failure, despite successful build-time APT
+and dpkg checks. Investigate boot-time filesystem layout and package database
+persistence; do not weaken the sentinel or classify login alone as a pass.
+The boot runner was still live at this observation; preserve its final verdict
+when the existing deadline completes.

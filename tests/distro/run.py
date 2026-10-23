@@ -34,6 +34,8 @@ class DistroRun:
     def run(self):
         if platform.machine() != 'x86_64':
             raise RuntimeError('this runner currently qualifies only native amd64/KVM')
+        if bool(self.arguments.firmware_pmi) != bool(self.arguments.firmware_dtb):
+            raise RuntimeError('firmware PMI and DTB must be supplied together')
         self.output.mkdir()
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as snapshot:
             for name in ('src', 'policy', 'Cargo.toml', 'Cargo.lock', 'build.rs',
@@ -66,8 +68,13 @@ class DistroRun:
         selected = context / self.arguments.recipe.name
         if selected.name != 'recipe.yaml':
             shutil.copy2(selected, context / 'recipe.yaml')
+        if self.arguments.firmware_pmi:
+            firmware = context / 'firmware'
+            firmware.mkdir()
+            shutil.copy2(self.arguments.firmware_pmi, firmware / 'boot.pmi')
+            shutil.copy2(self.arguments.firmware_dtb, firmware / 'base.dtb')
         (context / 'images.lock').write_text(
-            f'version: 1\nimages:\n  qualification.local/fedora:43:\n    index: {self.arguments.pin}\n')
+            f'version: 1\nimages:\n  {self.arguments.reference}:\n    index: {self.arguments.pin}\n')
         for command in [['init', '-q'], ['add', '.'],
                         ['-c', 'user.name=Qualification', '-c', 'user.email=qualification@invalid',
                          'commit', '-qm', 'Pin qualification inputs']]:
@@ -173,4 +180,7 @@ if __name__ == '__main__':
     parser.add_argument('--cache', type=Path, required=True)
     parser.add_argument('--pin', required=True)
     parser.add_argument('--recipe', type=Path, required=True)
+    parser.add_argument('--reference', default='qualification.local/fedora:43')
+    parser.add_argument('--firmware-pmi', type=Path)
+    parser.add_argument('--firmware-dtb', type=Path)
     DistroRun(parser.parse_args()).run()

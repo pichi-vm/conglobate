@@ -1,0 +1,220 @@
+[    0.171929] Non-volatile memory driver v1.3
+[    0.172285] ACPI: bus type drm_connector registered
+[    0.172739] virtio_blk virtio1: 1/0/0 default/read/poll queues
+[    0.173903] virtio_blk virtio1: [vda] 393219 512-byte logical blocks (201 MB/192 MiB)
+[    0.175124] Alternate GPT is invalid, using primary GPT.
+[    0.175231]  vda: vda1 vda2 vda3 vda4 vda5 vda6 vda7 vda8 vda9 vda10
+[    0.176071] CAN device driver interface
+[    0.176350] usbcore: registered new interface driver usbserial_generic
+[    0.176474] usbserial: USB Serial support registered for generic
+[    0.176613] i8042: PNP: No PS/2 controller found.
+[    0.176747] mousedev: PS/2 mouse device common for all mice
+[    0.176913] device-mapper: core: CONFIG_IMA_DISABLE_HTABLE is disabled. Duplicate IMA measurements will not be recorded in the IMA log.
+[    0.177115] device-mapper: uevent: version 1.0.3
+[    0.177271] device-mapper: ioctl: 4.50.0-ioctl (2025-04-28) initialised: dm-devel@lists.linux.dev
+[    0.177545] hid: raw HID events driver (C) Jiri Kosina
+[    0.177694] usbcore: registered new interface driver usbhid
+[    0.177782] usbhid: USB HID core driver
+[    0.177980] drop_monitor: Initializing network drop monitor service
+[    0.178197] Initializing XFRM netlink socket
+[    0.178309] NET: Registered PF_INET6 protocol family
+[    0.178658] Segment Routing with IPv6
+[    0.178732] RPL Segment Routing with IPv6
+[    0.178811] In-situ OAM (IOAM) with IPv6
+[    0.178924] mip6: Mobile IPv6
+[    0.178998] NET: Registered PF_PACKET protocol family
+[    0.179098] can: controller area network core
+[    0.179204] NET: Registered PF_CAN protocol family
+[    0.179629] IPI shorthand broadcast: enabled
+[    0.184199] sched_clock: Marking stable (183002104, 817386)->(232045258, -48225768)
+[    0.184532] registered taskstats version 1
+[    0.185003] Loading compiled-in X.509 certificates
+[    0.186087] Loaded X.509 cert 'Fedora kernel signing key: 0701a158e6ff9847d443caaa368cb781290f624e'
+[    0.204446] Loaded X.509 cert 'Fedora IMA CA: a8a00c31663f853f9c6ff2564872e378af026b28'
+[    0.214127] Demotion targets for Node 0: null
+[    0.214282] page_owner is disabled
+[    0.214444] Key type .fscrypt registered
+[    0.214538] Key type fscrypt-provisioning registered
+[    0.215347] Btrfs loaded, zoned=yes, fsverity=yes
+[    0.215506] Key type big_key registered
+[    0.215736] Key type encrypted registered
+[    0.215837] ima: No TPM chip found, activating TPM-bypass!
+[    0.215928] Loading compiled-in module X.509 certificates
+[    0.216471] Loaded X.509 cert 'Fedora kernel signing key: 0701a158e6ff9847d443caaa368cb781290f624e'
+[    0.216731] ima: Allocated hash algorithm: sha256
+[    0.216969] ima: No architecture policies found
+[    0.217101] evm: Initialising EVM extended attributes:
+[    0.217178] evm: security.selinux
+[    0.217245] evm: security.SMACK64 (disabled)
+[    0.217337] evm: security.SMACK64EXEC (disabled)
+[    0.217413] evm: security.SMACK64TRANSMUTE (disabled)
+[    0.217504] evm: security.SMACK64MMAP (disabled)
+[    0.217587] evm: security.apparmor (disabled)
+[    0.217682] evm: security.ima
+[    0.217743] evm: security.capability
+[    0.217804] evm: HMAC attrs: 0x1
+[    0.221416] alg: No test for 842 (842-scomp)
+[    0.227297] alg: No test for mldsa87 (mldsa87-lib)
+[    0.227437] alg: No test for mldsa65 (mldsa65-lib)
+[    0.227554] alg: No test for mldsa44 (mldsa44-lib)
+[    0.255196] RAS: Correctable Errors collector initialized.
+[    0.255737] clk: Disabling unused clocks
+[    0.258301] PM: genpd: Disabling unused power domains
+[    0.264711] Freeing unused decrypted memory: 2028K
+[    0.269726] Freeing unused kernel image (initmem) memory: 5316K
+[    0.269922] Write protecting the kernel read-only data: 45056k
+[    0.270548] Freeing unused kernel image (text/rodata gap) memory: 1332K
+[    0.275201] Freeing unused kernel image (rodata/data gap) memory: 1812K
+[    0.413712] x86/mm: Checked W+X mappings: passed, no W+X pages found.
+[    0.413984] Run /init as init process
+[    0.420990] dm_verity: Unknown symbol decode_rs8 (err -2)
+[    0.421209] dm_verity: Unknown symbol init_rs_gfp (err -2)
+[    0.421352] dm_verity: Unknown symbol free_rs (err -2)
+[    0.428711] device-mapper: table: 252:1: adding target device (start sect 0 len 192888) caused an alignment inconsistency
+[    0.429136] device-mapper: table: 252:1: adding target device (start sect 0 len 192888) caused an alignment inconsistency
+[    0.437923] device-mapper: table: 252:2: adding target device dm-1 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.438328] device-mapper: table: 252:2: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.438514] device-mapper: table: 252:2: adding target device dm-1 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.438948] device-mapper: table: 252:2: adding target device dm-1 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.439197] device-mapper: table: 252:2: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.439377] device-mapper: table: 252:2: adding target device dm-1 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.439875] device-mapper: table: 252:3: adding target device (start sect 0 len 196624) caused an alignment inconsistency
+[    0.440203] device-mapper: table: 252:3: adding target device (start sect 0 len 196624) caused an alignment inconsistency
+[    0.448886] device-mapper: table: 252:4: adding target device dm-2 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.449148] device-mapper: table: 252:4: adding target device dm-3 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.449376] device-mapper: table: 252:4: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.449564] device-mapper: table: 252:4: adding target device dm-2 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.449791] device-mapper: table: 252:4: adding target device dm-3 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.450210] device-mapper: table: 252:4: adding target device dm-2 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.450456] device-mapper: table: 252:4: adding target device dm-3 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.450685] device-mapper: table: 252:4: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.450890] device-mapper: table: 252:4: adding target device dm-2 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.451130] device-mapper: table: 252:4: adding target device dm-3 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.451573] device-mapper: table: 252:5: adding target device (start sect 0 len 160) caused an alignment inconsistency
+[    0.451895] device-mapper: table: 252:5: adding target device (start sect 0 len 160) caused an alignment inconsistency
+[    0.453875] device-mapper: table: 252:6: adding target device dm-4 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.454108] device-mapper: table: 252:6: adding target device dm-5 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.454338] device-mapper: table: 252:6: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.454516] device-mapper: table: 252:6: adding target device dm-4 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.454764] device-mapper: table: 252:6: adding target device dm-5 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.455164] device-mapper: table: 252:6: adding target device dm-4 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.455401] device-mapper: table: 252:6: adding target device dm-5 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.455655] device-mapper: table: 252:6: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.455860] device-mapper: table: 252:6: adding target device dm-4 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.456099] device-mapper: table: 252:6: adding target device dm-5 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.456539] device-mapper: table: 252:7: adding target device (start sect 0 len 160) caused an alignment inconsistency
+[    0.456857] device-mapper: table: 252:7: adding target device (start sect 0 len 160) caused an alignment inconsistency
+[    0.458896] device-mapper: table: 252:8: adding target device dm-6 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.459141] device-mapper: table: 252:8: adding target device dm-7 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.459376] device-mapper: table: 252:8: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.459563] device-mapper: table: 252:8: adding target device dm-6 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.459793] device-mapper: table: 252:8: adding target device dm-7 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.460197] device-mapper: table: 252:8: adding target device dm-6 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.460453] device-mapper: table: 252:8: adding target device dm-7 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.460680] device-mapper: table: 252:8: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.460888] device-mapper: table: 252:8: adding target device dm-6 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.461148] device-mapper: table: 252:8: adding target device dm-7 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.461598] device-mapper: table: 252:9: adding target device (start sect 0 len 152) caused an alignment inconsistency
+[    0.461965] device-mapper: table: 252:9: adding target device (start sect 0 len 152) caused an alignment inconsistency
+[    0.464874] device-mapper: table: 252:10: adding target device dm-8 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.465134] device-mapper: table: 252:10: adding target device dm-9 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.465364] device-mapper: table: 252:10: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.465560] device-mapper: table: 252:10: adding target device dm-8 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.465795] device-mapper: table: 252:10: adding target device dm-9 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.466186] device-mapper: table: 252:10: adding target device dm-8 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.466426] device-mapper: table: 252:10: adding target device dm-9 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.466655] device-mapper: table: 252:10: adding target device (start sect 0 len 134217728) caused an alignment inconsistency
+[    0.466863] device-mapper: table: 252:10: adding target device dm-8 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.467099] device-mapper: table: 252:10: adding target device dm-9 caused an alignment inconsistency: physical_block_size=4096, logical_block_size=4096, alignment_offset=3072, start=0
+[    0.467519] EXT4-fs (dm-10): couldn't mount as ext3 due to feature incompatibilities
+[    0.467777] EXT4-fs (dm-10): couldn't mount as ext2 due to feature incompatibilities
+[    0.507770] EXT4-fs (dm-10): mounted filesystem 112af92b-497a-4028-bbeb-d096736756f8 ro with ordered data mode. Quota mode: none.
+[!p]104[?7h[    0.577212] systemd[1]: systemd 257.13-1~deb13u1 running in system mode (+PAM +AUDIT +SELINUX +APPARMOR +IMA +IPE +SMACK +SECCOMP +GCRYPT -GNUTLS +OPENSSL +ACL +BLKID +CURL +ELFUTILS +FIDO2 +IDN2 -IDN +IPTC +KMOD +LIBCRYPTSETUP +LIBCRYPTSETUP_PLUGINS +LIBFDISK +PCRE2 +PWQUALITY +P11KIT +QRENCODE +TPM2 +BZIP2 +LZ4 +XZ +ZLIB +ZSTD +BPF_FRAMEWORK +BTF -XKBCOMMON -UTMP +SYSVINIT +LIBARCHIVE)
+[    0.577701] systemd[1]: Detected virtualization kvm.
+[    0.577843] systemd[1]: Detected architecture x86-64.
+[    0.579163] systemd[1]: Hostname set to <debian>.
+[    0.580416] systemd[1]: Initializing machine ID from D-Bus machine ID.
+[    0.580587] systemd[1]: Installed transient /etc/machine-id file.
+[    0.586511] systemd[1]: Failed to open libbpf, cgroup BPF features disabled: Operation not supported
+[    0.726909] systemd[1]: Queued start job for default target multi-user.target.
+[    0.729099] systemd[1]: Created slice system-getty.slice - Slice /system/getty.
+[    0.729751] systemd[1]: Created slice system-modprobe.slice - Slice /system/modprobe.
+[    0.730401] systemd[1]: Created slice system-serial\x2dgetty.slice - Slice /system/serial-getty.
+[    0.730933] systemd[1]: Created slice user.slice - User and Session Slice.
+[    0.731146] systemd[1]: Started systemd-ask-password-console.path - Dispatch Password Requests to Console Directory Watch.
+[    0.731379] systemd[1]: Started systemd-ask-password-wall.path - Forward Password Requests to Wall Directory Watch.
+[    0.731750] systemd[1]: Set up automount proc-sys-fs-binfmt_misc.automount - Arbitrary Executable File Formats File System Automount Point.
+[    0.731989] systemd[1]: Expecting device dev-hvc0.device - /dev/hvc0...
+[    0.732135] systemd[1]: Reached target cryptsetup.target - Local Encrypted Volumes.
+[    0.732283] systemd[1]: Reached target integritysetup.target - Local Integrity Protected Volumes.
+[    0.732452] systemd[1]: Reached target paths.target - Path Units.
+[    0.732588] systemd[1]: Reached target remote-fs.target - Remote File Systems.
+[    0.732741] systemd[1]: Reached target slices.target - Slice Units.
+[    0.732891] systemd[1]: Reached target swap.target - Swaps.
+[    0.733016] systemd[1]: Reached target veritysetup.target - Local Verity Protected Volumes.
+[    0.733767] systemd[1]: Listening on systemd-creds.socket - Credential Encryption/Decryption.
+[    0.734048] systemd[1]: Listening on systemd-initctl.socket - initctl Compatibility Named Pipe.
+[    0.734323] systemd[1]: Listening on systemd-journald-dev-log.socket - Journal Socket (/dev/log).
+[    0.734593] systemd[1]: Listening on systemd-journald.socket - Journal Sockets.
+[    0.734757] systemd[1]: systemd-pcrextend.socket - TPM PCR Measurements skipped, unmet condition check ConditionSecurity=measured-uki
+[    0.734988] systemd[1]: systemd-pcrlock.socket - Make TPM PCR Policy skipped, unmet condition check ConditionSecurity=measured-uki
+[    0.735295] systemd[1]: Listening on systemd-udevd-control.socket - udev Control Socket.
+[    0.735510] systemd[1]: Listening on systemd-udevd-kernel.socket - udev Kernel Socket.
+[    0.737064] systemd[1]: Mounting dev-hugepages.mount - Huge Pages File System...
+[    0.738910] systemd[1]: Mounting dev-mqueue.mount - POSIX Message Queue File System...
+[    0.742652] systemd[1]: Mounting run-lock.mount - Legacy Locks Directory /run/lock...
+[    0.746914] systemd[1]: Mounting sys-kernel-debug.mount - Kernel Debug File System...
+[    0.751636] systemd[1]: Mounting sys-kernel-tracing.mount - Kernel Trace File System...
+[    0.757765] systemd[1]: Mounting tmp.mount - Temporary Directory /tmp...
+[    0.757959] systemd[1]: kmod-static-nodes.service - Create List of Static Device Nodes skipped, unmet condition check ConditionPathExists=/usr/bin/kmod
+[    0.765065] systemd[1]: Starting modprobe@configfs.service - Load Kernel Module configfs...
+[    0.777217] systemd[1]: Starting modprobe@drm.service - Load Kernel Module drm...
+[    0.786794] systemd[1]: Starting modprobe@efi_pstore.service - Load Kernel Module efi_pstore...
+[    0.799353] systemd[1]: Starting modprobe@fuse.service - Load Kernel Module fuse...
+[    0.799611] systemd[1]: systemd-hibernate-clear.service - Clear Stale Hibernate Storage Info skipped, unmet condition check ConditionPathExists=/sys/firmware/efi/efivars/HibernateLocation-8cf2644b-4b0b-428f-9387-6d876050dc67
+[    0.806125] (modprobe)[195]: modprobe@configfs.service: Unable to locate executable '/sbin/modprobe': No such file or directory
+[    0.814100] (modprobe)[196]: modprobe@drm.service: Unable to locate executable '/sbin/modprobe': No such file or directory
+[    0.816596] systemd[1]: Starting systemd-journald.service - Journal Service...
+[    0.818125] (modprobe)[197]: modprobe@efi_pstore.service: Unable to locate executable '/sbin/modprobe': No such file or directory
+[    0.822194] systemd[1]: Starting systemd-modules-load.service - Load Kernel Modules...
+[    0.822419] systemd[1]: systemd-pcrmachine.service - TPM PCR Machine ID Measurement skipped, unmet condition check ConditionSecurity=measured-uki
+[    0.827178] (modprobe)[198]: modprobe@fuse.service: Unable to locate executable '/sbin/modprobe': No such file or directory
+[    0.828961] systemd[1]: Starting systemd-remount-fs.service - Remount Root and Kernel File Systems...
+[    0.832961] systemd[1]: Starting systemd-tmpfiles-setup-dev-early.service - Create Static Device Nodes in /dev gracefully...
+[    0.836530] systemd[1]: systemd-tpm2-setup-early.service - Early TPM SRK Setup skipped, unmet condition check ConditionSecurity=measured-uki
+[    0.841960] systemd[1]: Starting systemd-udev-load-credentials.service - Load udev Rules from Credentials...
+[    0.848497] systemd[1]: Starting systemd-udev-trigger.service - Coldplug All udev Devices...
+[    0.886640] systemd[1]: Mounted dev-hugepages.mount - Huge Pages File System.
+[    0.887792] systemd[1]: Mounted dev-mqueue.mount - POSIX Message Queue File System.
+[    0.894693] systemd[1]: Mounted run-lock.mount - Legacy Locks Directory /run/lock.
+[    0.904109] systemd[1]: Mounted sys-kernel-debug.mount - Kernel Debug File System.
+[    0.904439] systemd[1]: Mounted sys-kernel-tracing.mount - Kernel Trace File System.
+[    0.907787] systemd[1]: Mounted tmp.mount - Temporary Directory /tmp.
+[    0.908331] systemd[1]: modprobe@configfs.service: Deactivated successfully.
+[    0.910130] systemd[1]: Finished modprobe@configfs.service - Load Kernel Module configfs.
+[    0.911674] systemd-journald[199]: Collecting audit messages is disabled.
+[    0.913781] systemd[1]: modprobe@drm.service: Deactivated successfully.
+[    0.914936] systemd[1]: Finished modprobe@drm.service - Load Kernel Module drm.
+[    0.918088] systemd[1]: modprobe@efi_pstore.service: Deactivated successfully.
+[    0.920658] systemd[1]: Finished modprobe@efi_pstore.service - Load Kernel Module efi_pstore.
+[    0.923951] systemd[1]: modprobe@fuse.service: Deactivated successfully.
+[    0.925256] systemd[1]: Finished modprobe@fuse.service - Load Kernel Module fuse.
+[    0.927085] systemd[1]: Finished systemd-modules-load.service - Load Kernel Modules.
+[    0.928708] systemd[1]: Finished systemd-remount-fs.service - Remount Root and Kernel File Systems.
+[    0.930952] systemd[1]: Finished systemd-tmpfiles-setup-dev-early.service - Create Static Device Nodes in /dev gracefully.
+[    0.933948] systemd[1]: Finished systemd-udev-load-credentials.service - Load udev Rules from Credentials.
+[    0.936507] systemd[1]: systemd-hwdb-update.service - Rebuild Hardware Database skipped, unmet condition check ConditionNeedsUpdate=/etc
+[    0.941014] systemd[1]: Starting systemd-sysctl.service - Apply Kernel Variables...
+[    0.941220] systemd[1]: systemd-sysusers.service - Create System Users skipped, no trigger condition checks were met.
+[    0.948427] systemd[1]: Starting systemd-tmpfiles-setup-dev.service - Create Static Device Nodes in /dev...
+[    0.956029] systemd[1]: Started systemd-journald.service - Journal Service.
+[    1.927913] systemd-journald[199]: Received client request to flush runtime journal.
+[    2.071968] conglobate-qualification[275]: dpkg-query: no packages found matching systemd-sysv
+[    2.072656] conglobate-qualification[275]: dpkg-query: no packages found matching udev
+[    2.073064] conglobate-qualification[275]: dpkg-query: no packages found matching dbus
+[    2.073615] conglobate-qualification[275]: dpkg-query: no packages found matching util-linux
+[!p]104[?7h[6n[32766;32766H[6n[!p]104[?7h[6n[32766;32766H[6n[    2.505384] fbcon: Taking over console
+
+Debian GNU/Linux 13 debian hvc0
+
+debian login: 

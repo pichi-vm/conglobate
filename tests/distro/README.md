@@ -62,3 +62,20 @@ names the trusted environment's mke2fs executable and loader/library files alrea
 copied into the VM. It enumerates dependencies only from the trusted host tool;
 it never runs ldd on a recipe/image executable. Formatter bytes are captured and
 measured by conglobate under the normal bootstrap contract.
+
+`seed.py` prepares an initial tool filesystem outside conglobate from an explicitly
+SHA-256-pinned complete rootfs tar archive. It rejects layered whiteouts and member
+path traversal, formats/extracts only in a disconnected disposable VM, checks
+passwd/shadow numeric ownership and modes, unmounts, and runs e2fsck. Its sparse
+64-GiB filesystem can then be converted into an initial carapace externally. This
+is initial seed preparation, not a conglobate bootstrap-stage pass. The Debian
+seed provenance records its OCI origin and external importer identity.
+
+The runner accepts `--reference` to name the pinned seed in the generated lock.
+For recipes that package an existing firmware pair, `--firmware-pmi` and
+`--firmware-dtb` copy both files into the committed context's `firmware/` directory.
+They become measured context inputs; the binary does not fetch or select firmware.
+The Debian recipe currently uses the known Fedora-built kernel/corium platform
+pair with Debian userspace, then the default DTB transformation binds its new root.
+That tests Debian APT/systemd and firmware-stage extraction, not Debian kernel
+packaging or new arma firmware generation.

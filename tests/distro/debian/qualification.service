@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+[Unit]
+Description=Conglobate Debian qualification
+After=local-fs.target systemd-tmpfiles-setup.service
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/conglobate-qualification
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

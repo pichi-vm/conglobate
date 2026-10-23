@@ -1,0 +1,1 @@
+First cache preparation at /var/tmp/conglobate-debian-input-v1 failed: inline OCI empty config e30= had no separate source blob. Helper now decodes inline data, verifies size and SHA-256, and writes it into the new cache. Second attempt /var/tmp/conglobate-debian-input-v2 succeeded.

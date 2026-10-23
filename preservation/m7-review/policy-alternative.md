@@ -40,3 +40,36 @@ Source analysis references from the discussion (not VM validation):
 Aya, bindeps and reproducibly precompiled objects were also discussed. None has
 been implemented or chosen by this note. Removing per-step registration and
 choosing how the environment builds/loads its policy are separate decisions.
+
+## Source-grounded removal boundary
+
+The subsequent user direction is to simplify conglobate by removing policy
+registration. The following is the migration boundary, not a claim that the
+replacement has passed validation or that the current executable implements it.
+
+* `src/policy.rs` and `src/policy/{object,installation,pins,bound}.rs` own the
+  scoped map ABI, loading, binding and attachment lifetime. An environment-owned
+  fixed exception removes these responsibilities from the binary.
+* `src/step/preparation.rs` couples `PolicyAssignment`, installation rollback,
+  bound-policy cleanup and identity release to storage rollback. Remove the
+  policy-only phases; retain mounted storage and child-reaper ownership on
+  every setup failure.
+* `src/step/pins.rs` combines filesystem identity pins with command user
+  namespace ownership. Filesystem pins used solely to prevent policy identity
+  reuse can disappear. The namespace handle needed for idmapped mounting and
+  command construction must survive independently of policy lifetime. Do not
+  remove namespace ownership just because it is presently called a pin.
+* `src/process/supervision/registration.rs` is a different registration:
+  `join_domain_until` writes the helper into cgroup2 before acknowledging and
+  closes the transferred descriptor. Preserve that containment handshake (and
+  rename its states around joining a domain). Its packet transport also serves
+  admission and volume handoff; deleting it wholesale would break isolation.
+* Preserve deadlines, cancellation, descendant draining, storage unmount and
+  fallible finalization. There is no longer a policy-disable ordering edge,
+  but commands must still be quiescent before storage finalization.
+
+Review the replacement against the original positive and negative VM cases,
+including bootstrap's two writable roots. Existing scoped-policy passes do
+not establish the behavior of the global exception. Environment validation
+must occur before recipe command admission; its exact mechanism remains to be
+designed and tested, rather than trusting a pathname or configuration flag.

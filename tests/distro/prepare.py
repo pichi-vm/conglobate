@@ -4,6 +4,8 @@
 """Prepare local distro fixtures without mounting filesystems or downloading data."""
 
 import argparse
+import base64
+import io
 import hashlib
 import json
 from pathlib import Path
@@ -59,7 +61,9 @@ class LocalImage:
                 continue
             hash_state = hashlib.sha256()
             count = 0
-            with self.source_blob(descriptor["digest"]).open("rb") as source:
+            source = (io.BytesIO(base64.b64decode(descriptor["data"], validate=True))
+                      if "data" in descriptor else self.source_blob(descriptor["digest"]).open("rb"))
+            with source:
                 with target.open("xb") as destination:
                     while block := source.read(1024 * 1024):
                         destination.write(block)
