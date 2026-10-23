@@ -1,0 +1,13 @@
+{
+  "baseline": "aae68a9",
+  "production_changed": false,
+  "fault": "suspend only fixture-owned dm snapshot in disposable VM with --noflush --nolockfs; real filesystem writer observed in task state D",
+  "coverage": "command observation deadline, fixed 30-second teardown failure, retained mounted storage/domain and immediate expired retry",
+  "failed_attempt": false,
+  "observer_correction": "flush only dedicated result device; global sync blocks on suspended filesystem",
+  "limitations": [
+    "trusted writer fixture, not an image-authored recipe",
+    "does not qualify actual appliance controller",
+    "not filesystem writeback-error propagation or successful finalization"
+  ]
+}

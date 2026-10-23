@@ -4711,3 +4711,30 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   this fixture, supervisor crash or blocked kernel I/O. M4 remains 0/3; this is
   a regression test plus mutation evidence, not a whole-milestone adherence pass.
   Previous turn's external IPv4 NAT validation was concrete progress.
+
+### Real blocked filesystem I/O and independent supervisor-death disposal
+
+- Rechecked M4 against current SANDBOX-DESIGN section 10: uninterruptible I/O and
+  independent VM shutdown are explicit requirements. Added maintained fixture
+  that formats/mounts its own ext4 snapshot, attaches an idmapped helper view,
+  suspends only that dm mapping inside the disposable VM, and releases a writer.
+  Actual D task state is required before testing failure; no sleep establishes it.
+- blocked-io-v2 passes: command observation times out, production fixed 30-second
+  teardown fails with populated domain, mount/snapshot/record remain owned, and
+  expired retry returns promptly without budget renewal. No accepted execution,
+  clean finalization or output is claimed. Independent guest init powers off.
+- blocked-supervisor-death-v1 passes: supervisor aborts with the writer still D;
+  independent init records exact status 134 and powers off without destructor
+  cleanup. This is current library/deployment-contract evidence, not qualification
+  of a separately packaged production appliance controller.
+- Preserved failed blocked-io-v1: fixture assertions passed, but init's global sync
+  waited on the deliberately suspended filesystem. Exact owned QEMU was explicitly
+  terminated and recorded as failed disposal. Corrected observer to fsync only
+  its separate result device. v2 demonstrates successful poweroff with blocked I/O.
+- Strict fixture Clippy and whitespace checks pass. Exact sources, source/VM input
+  hashes, status and serial evidence preserved; large artifacts await durable
+  archival. No production changes, unsafe Rust, policy registration or host mounts.
+- Prior receiver-gate regression turn was progress. These runs close the maintained
+  blocked-I/O/independent-fixture-disposal gaps, not an adherence pass. M4 stays 0/3;
+  current writeback-error/finalization coverage and full source/design/style review
+  remain to be completed before its three-pass gate. M5-M8 scope remains intact.

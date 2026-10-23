@@ -1,0 +1,6 @@
+{
+  "pid": 435725,
+  "fixture_assertions_completed": true,
+  "guest_init_stalled_after_status_at_global_sync": true,
+  "action": "SIGTERM exact owned QEMU command; not a passing VM-disposal result"
+}

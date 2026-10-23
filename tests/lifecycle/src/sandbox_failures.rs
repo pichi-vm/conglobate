@@ -18,6 +18,8 @@ pub(super) enum FailurePoint {
     Join,
     AttachedExit,
     Gate,
+    BlockedIo,
+    SupervisorDeath,
 }
 #[derive(Debug)]
 pub(super) struct SandboxFailures;
@@ -77,6 +79,8 @@ impl SandboxFailures {
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
                 | FailurePoint::Gate
+                | FailurePoint::BlockedIo
+                | FailurePoint::SupervisorDeath
         ) {
             let files = fs::read_to_string("/formatter-runtime-files")?
                 .lines()
@@ -119,6 +123,8 @@ impl SandboxFailures {
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
                 | FailurePoint::Gate
+                | FailurePoint::BlockedIo
+                | FailurePoint::SupervisorDeath
         ) {
             let mounted = volume
                 .mount_ext4(paths.volumes())
@@ -128,6 +134,7 @@ impl SandboxFailures {
             for name in ["dev", "proc", "sys"] {
                 fs::create_dir(entries[0].path().join(name))?;
             }
+            fs::write(entries[0].path().join("blocked-writer"), [])?;
             volume = mounted.unmount().map_err(|e| e.to_string())?;
         }
         let sandbox = CommandSandbox::new(
@@ -168,7 +175,9 @@ impl SandboxFailures {
             FailurePoint::Launch
             | FailurePoint::Join
             | FailurePoint::AttachedExit
-            | FailurePoint::Gate => {
+            | FailurePoint::Gate
+            | FailurePoint::BlockedIo
+            | FailurePoint::SupervisorDeath => {
                 let prepared = result.map_err(|e| e.to_string())?;
                 // Preparation has acquired the volume mount, namespace and domain.
                 assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
@@ -179,6 +188,11 @@ impl SandboxFailures {
                     let mut command = std::process::Command::new(std::env::current_exe()?);
                     command.arg(if matches!(point, FailurePoint::Join) {
                         "contained-reject"
+                    } else if matches!(
+                        point,
+                        FailurePoint::BlockedIo | FailurePoint::SupervisorDeath
+                    ) {
+                        "sandbox-blocked-helper"
                     } else if matches!(point, FailurePoint::Gate) {
                         "sandbox-gate-receiver"
                     } else {
@@ -187,7 +201,85 @@ impl SandboxFailures {
                     command
                 };
                 command.env_clear();
-                if matches!(point, FailurePoint::Gate) {
+                if matches!(
+                    point,
+                    FailurePoint::BlockedIo | FailurePoint::SupervisorDeath
+                ) {
+                    use std::{
+                        os::unix::net::UnixDatagram,
+                        time::{Duration, Instant},
+                    };
+                    fs::create_dir("/work/runtime-parent/receiver-view")?;
+                    let ready = UnixDatagram::bind("/work/runtime-parent/blocked-ready.sock")?;
+                    ready.set_read_timeout(Some(Duration::from_secs(10)))?;
+                    command.arg(budget.cutoff()?.to_argument());
+                    let step = prepared
+                        .launch(command, budget.deadline(), paths.domains())
+                        .map_err(|e| e.to_string())?;
+                    step.send_volume_until(budget.deadline())?;
+                    let command = budget
+                        .await_prepared(step)
+                        .map_err(|e| e.to_string())?
+                        .start("5s".parse()?)
+                        .map_err(|e| e.to_string())?;
+                    let mut packet = [0; 4];
+                    assert_eq!(ready.recv(&mut packet)?, 4);
+                    let helper = u32::from_ne_bytes(packet);
+                    let sysfs = format!("/sys/dev/block/{}:{}", device.major(), device.minor());
+                    let name = fs::read_to_string(Path::new(&sysfs).join("dm/name"))?;
+                    assert!(
+                        std::process::Command::new("/usr/bin/dmsetup")
+                            .args(["suspend", "--noflush", "--nolockfs", name.trim()])
+                            .status()?
+                            .success()
+                    );
+                    ready.send_to(b"go", "/work/runtime-parent/blocked-release.sock")?;
+                    let blocked_deadline = Instant::now() + Duration::from_secs(3);
+                    loop {
+                        let status = fs::read_to_string(format!("/proc/{helper}/status"))?;
+                        if status.lines().any(|line| line.starts_with("State:\tD")) {
+                            break;
+                        }
+                        assert!(
+                            Instant::now() < blocked_deadline,
+                            "fixture did not enter uninterruptible I/O"
+                        );
+                        std::thread::yield_now();
+                    }
+                    println!("FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS");
+                    if matches!(point, FailurePoint::SupervisorDeath) {
+                        println!("SUPERVISOR_ABRUPT_DEATH_INJECTED");
+                        std::process::abort();
+                    }
+                    let observed = command.observe();
+                    assert!(
+                        matches!(observed.outcome(), conglobate::step::CommandOutcome::ObservationFailed(error)
+                        if error.kind() == std::io::ErrorKind::TimedOut)
+                    );
+                    let started = Instant::now();
+                    let (outcome, cleanup) = observed.teardown(paths.domains()).into_parts();
+                    assert!(!outcome.success());
+                    let failure = cleanup.unwrap_err();
+                    assert!(started.elapsed() >= Duration::from_secs(30));
+                    assert!(started.elapsed() < Duration::from_secs(40));
+                    eprintln!("blocked I/O cleanup: {failure}");
+                    assert!(Path::new(&sysfs).exists());
+                    assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
+                    assert_eq!(fs::read_dir(paths.recovery())?.count(), 1);
+                    assert!(
+                        fs::read_to_string(format!("/proc/{helper}/status"))?
+                            .lines()
+                            .any(|line| line.starts_with("State:\tD"))
+                    );
+                    let retry_started = Instant::now();
+                    let failure = failure.retry().unwrap_err();
+                    assert!(retry_started.elapsed() < Duration::from_secs(1));
+                    assert!(failure.to_string().contains("deadline expired"));
+                    println!("BLOCKED_IO_FIXED_DEADLINE_RETAINS_STORAGE_PASS");
+                    // Terminal case: no clean finalization, resource reuse or output
+                    // is claimed. The independent guest init powers off this VM.
+                    std::process::exit(0);
+                } else if matches!(point, FailurePoint::Gate) {
                     use std::{
                         io::{BufRead, BufReader},
                         os::unix::net::{UnixDatagram, UnixStream},
@@ -325,6 +417,8 @@ impl SandboxFailures {
                 FailurePoint::Join => "SANDBOX_JOIN_FAILURE_ROLLBACK_PASS",
                 FailurePoint::AttachedExit => "SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS",
                 FailurePoint::Gate => "SANDBOX_GATE_FAILURE_ROLLBACK_PASS",
+                FailurePoint::BlockedIo | FailurePoint::SupervisorDeath =>
+                    unreachable!("terminal VM-disposal case"),
             }
         );
         Ok(())

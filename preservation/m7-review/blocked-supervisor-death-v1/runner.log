@@ -1,0 +1,10 @@
+{
+  "checks": {
+    "FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS": true,
+    "SUPERVISOR_ABRUPT_DEATH_INJECTED": true,
+    "supervisor_abort_status": true,
+    "vm_powered_off": true
+  },
+  "passed": true,
+  "full_lifecycle_qualified": false
+}

@@ -1,0 +1,10 @@
+{
+  "checks": {
+    "FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS": true,
+    "BLOCKED_IO_FIXED_DEADLINE_RETAINS_STORAGE_PASS": true,
+    "exit_zero": true,
+    "vm_powered_off": false
+  },
+  "passed": false,
+  "full_lifecycle_qualified": false
+}

@@ -20,6 +20,7 @@ from runtime import GuestRuntime
 
 
 class LifecycleRuntime(GuestRuntime):
+    TOOLS = GuestRuntime.TOOLS + ('dmsetup',)
     MODULES = ('loop', 'ext4', 'dm-zero', 'dm-snapshot', 'virtio_pci', 'virtio_blk',
                'veth', 'nf_tables', 'nft_chain_nat', 'nft_masq', 'nft_ct')
 
@@ -98,7 +99,7 @@ bash /fixture.sh
 status=$?
 echo "LIFECYCLE_EXIT $status"
 printf 'LIFECYCLE_EXIT %s\\n' "$status" > /dev/vda
-sync
+sync /dev/vda
 echo o > /proc/sysrq-trigger
 exec sleep infinity
 ''')
@@ -143,6 +144,11 @@ exec sleep infinity
                        'NETWORK_COMPOSITE_NAT_FAILURE_PRESERVES_FOREIGN_TABLE_PASS',
                        'NETWORK_PRODUCTION_ALLOCATION_RELEASE_AND_DISTINCT_LIVE_PREFIX_PASS',
                        'NETWORK_COMPOSITE_EXPIRED_TEARDOWN_RETRY_RETAINS_OWNER_PASS']
+        elif self.args.case == 'sandbox-supervisor-death':
+            markers = ['FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS', 'SUPERVISOR_ABRUPT_DEATH_INJECTED']
+        elif self.args.case == 'sandbox-blocked-io':
+            markers = ['FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS',
+                       'BLOCKED_IO_FIXED_DEADLINE_RETAINS_STORAGE_PASS']
         elif self.args.case == 'sandbox-gate-failure':
             markers = ['RECEIVER_CONTROL_HELD_DURING_GATE_FAILURE_CLEANUP_PASS',
                        'SANDBOX_GATE_FAILURE_ROLLBACK_PASS']
@@ -154,7 +160,10 @@ exec sleep infinity
             markers += ['FORMATTER_DEADLINE_CANCEL_REAP_PASS', 'FORMATTER_EXHAUSTED_SNAPSHOT_REJECTED_PASS',
                         'FORMATTER_FAILURE_RESOURCES_RELEASED_PASS']
         checks = {marker: f'\n{marker}\n' in serial for marker in markers}
-        checks['exit_zero'] = status.read_bytes().rstrip(b'\0') == b'LIFECYCLE_EXIT 0\n'
+        if self.args.case == 'sandbox-supervisor-death':
+            checks['supervisor_abort_status'] = status.read_bytes().rstrip(b'\0') == b'LIFECYCLE_EXIT 134\n'
+        else:
+            checks['exit_zero'] = status.read_bytes().rstrip(b'\0') == b'LIFECYCLE_EXIT 0\n'
         checks['vm_powered_off'] = 'Power down' in serial
         report = {'checks':checks, 'passed':all(checks.values()), 'full_lifecycle_qualified':False}
         (self.output / 'assessment.json').write_text(json.dumps(report, indent=2) + '\n')
@@ -169,7 +178,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure'], default='formatter-failures')
+    parser.add_argument('--case', choices=['formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':

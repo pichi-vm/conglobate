@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
+mod blocked_io;
 mod contained;
 mod domain_publication;
 mod formatter_failures;
@@ -25,6 +26,15 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "sandbox-supervisor-death" => sandbox_failures::SandboxFailures::run(
+                sandbox_failures::FailurePoint::SupervisorDeath,
+            ),
+            [mode] if mode == "sandbox-blocked-io" => {
+                sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::BlockedIo)
+            }
+            [mode, cutoff] if mode == "sandbox-blocked-helper" => {
+                blocked_io::BlockedIo::helper(cutoff)
+            }
             [mode] if mode == "sandbox-gate-failure" => {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Gate)
             }

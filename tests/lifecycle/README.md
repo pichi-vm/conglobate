@@ -110,3 +110,18 @@ and exit successfully. The supervisor still treats the absent command completion
 as failure and finalizes rejected storage. No image command or labeling executes.
 An isolated early-channel-close mutant fails the liveness assertion; no production
 API or descriptor access was widened for this test. No sleeps establish order.
+
+`--case sandbox-blocked-io` suspends only its owned snapshot in the disposable VM
+and releases a trusted filesystem writer. It observes task state D before waiting
+for command timeout, then requires the production fixed 30-second teardown to
+fail while retaining mounted storage and the populated domain. Retry must fail
+without renewing the budget. This terminal case claims no clean finalization.
+`--case sandbox-supervisor-death` aborts the owning library supervisor with the
+same blocked writer; independent guest init must record status 134 and power off.
+These test the disposal contract, not a specific production appliance controller.
+
+Guest init flushes only its separate result block device before forced poweroff.
+A global sync would wait on deliberately suspended storage: the first blocked-I/O
+run demonstrated that observer bug and is preserved as a failure. No privileged
+host setup or synchronization sleeps are used. D-state observation checks the
+actual task state under a deadline, yielding between observations.

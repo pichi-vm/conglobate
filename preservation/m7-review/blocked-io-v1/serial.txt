@@ -1,0 +1,10 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe ext4
++ /lifecycle-tests sandbox-blocked-io
+FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS
+blocked I/O cleanup: step teardown: command domain remains populated
+BLOCKED_IO_FIXED_DEADLINE_RETAINS_STORAGE_PASS
+LIFECYCLE_EXIT 0
+qemu-system-x86_64: terminating on signal 15 from pid 436810 (python3)
