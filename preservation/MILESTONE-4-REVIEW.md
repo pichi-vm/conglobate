@@ -184,3 +184,11 @@ move_mount; successful completion requires syncfs and normal unmount, with
 failures retaining state. Trusted parent/procfs/initial-superblock assumptions
 remain part of supervisor setup, not guarantees inferred from an arbitrary path.
 This inspection does not replace metadata qualification or full error-path review.
+
+### Command-boundary source/evidence matrix
+
+Recorded the namespace/root/descriptor/capability/seccomp/runtime/label-policy
+inspection in m4-review/command-boundary.md with source hashes. No contradiction
+found in that component. Runtime claims are tied to existing amd64 fixtures;
+full syscall-profile compatibility, dual-mount metadata and arm64/CC coverage
+are not inferred. This component review is not a full clean adherence pass.

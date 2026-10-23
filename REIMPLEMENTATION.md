@@ -2636,3 +2636,12 @@ rules rather than silently shrinking acceptance criteria.
   no new VM run is claimed for this removal.
 - Continued storage/mount source review; observations recorded in the M4 review.
   Three full clean adherence passes are still outstanding; M4 streak stays zero.
+
+### M4 command-boundary review component
+
+- Inspected namespace/root transitions, descriptor audit and diagnostic pipes,
+  capability finalization, native syscall filter, runtime mounts, admission,
+  PID-1 reaping and scoped label-policy binding. Recorded a requirement/source/
+  evidence matrix and source hashes under preservation/m4-review.
+- No contradiction found in that component; full M4 review remains incomplete.
+  No redundant runtime rerun or clean-pass claim. M4 streak remains zero.
