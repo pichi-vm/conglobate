@@ -1,0 +1,38 @@
+[
+  {
+    "run": 250,
+    "retained_files_checked": 64,
+    "mismatches": [],
+    "external_artifact_count": 6
+  },
+  {
+    "run": 251,
+    "retained_files_checked": 64,
+    "mismatches": [],
+    "external_artifact_count": 4
+  },
+  {
+    "run": 252,
+    "retained_files_checked": 65,
+    "mismatches": [],
+    "external_artifact_count": 4
+  },
+  {
+    "run": 253,
+    "retained_files_checked": 65,
+    "mismatches": [],
+    "external_artifact_count": 4
+  },
+  {
+    "run": 254,
+    "retained_files_checked": 69,
+    "mismatches": [],
+    "external_artifact_count": 4
+  },
+  {
+    "run": 255,
+    "retained_files_checked": 69,
+    "mismatches": [],
+    "external_artifact_count": 6
+  }
+]

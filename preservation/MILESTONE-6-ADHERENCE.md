@@ -1,7 +1,7 @@
 # Milestone 6 adherence review
 
-Status: **1/3** clean passes. First complete requirements-first self-review
-recorded below; M6 remains gated until two more consecutive clean passes. The complete scope is DESIGN.md, SANDBOX-DESIGN.txt,
+Status: **2/3** clean passes. Requirements-first and reverse-lifecycle/evidence
+self-reviews recorded below; M6 remains gated until one more clean pass. The complete scope is DESIGN.md, SANDBOX-DESIGN.txt,
 ARCHITECTURE.md, latest user decisions and the M6 row in REIMPLEMENTATION.md.
 Tests are evidence, not adherence passes. These are self-reviews unless stated.
 
@@ -220,3 +220,78 @@ self-review of M6, not independent security or confidential-platform qualificati
 Result: clean, streak **1/3**. This is a complete requirements/ownership review,
 not a count of repeated tests. Two further complete reviews of this frozen scope
 remain mandatory before M7 starts. Any substantive finding/change resets the streak.
+
+## Clean pass 2 — reverse lifecycle and evidence challenge
+
+Scope remains scope-v1.json: all 180 file hashes match. No implementation,
+contract or fixture changes occurred between the two passes. Reviewed backward
+from final acceptance rather than repeating pass 1's forward pipeline traversal.
+
+1. Publication requires CompletedImage, which is private to pipeline orchestration.
+   The final inventory check precedes metadata installation and no-replace rename.
+   Late destination collisions preserve the existing output; cache content is
+   verified on the copied stream, not inferred from an earlier receipt. Reviewed
+   output tests: delete the original cache before checking self-containment, assert
+   exact manifests/unrelated fields, reject missing references and incompatible
+   DTB changes, and ensure rejected destinations do not appear. The independent
+   fixture checks actual blob digests/sizes/count, manifest identity and inventory
+   fields; ORAS copies into another layout rather than merely inspecting JSON.
+2. Traced acceptance backward through each coordinator and its cleanup exits.
+   Bootstrap's formatter receipt is consumed into inventory only on the successful
+   path. Tool writes remain disposable; retained layer ownership transfers through
+   immutable sealed scutes. Alternate firmware tools cannot change output ancestry
+   or CARAPACE. Both firmware files must be captured, cleanup must succeed, and
+   transformations must satisfy the selected firmware contract. No stage failure
+   falls through into CompletedImage construction. R3 combines diagnostics without
+   weakening those conditions or introducing mutable success flags.
+3. Reviewed ExecutionStorage, StorageExecutionFailure, Teardown and finalization.
+   Cleanup retries retain the original ExecutionOutcome; only successful command
+   outcome plus finalized storage creates ExecutedStorage. Fully cleaned failed
+   commands expose rejected storage, not an accepted receipt. Policy/pins follow
+   cancellation, reaping and domain drain; network teardown runs before storage
+   finalization, retaining the original cutoff. Snapshot validation and post-work
+   deadline checks precede acceptance. Runtime close refuses nonempty recovery,
+   mount, cgroup or policy state, and never force-detaches unresolved resources.
+   Abandonment remains a rejected build requiring dedicated VM disposal.
+4. Checked COPY and firmware failure surfaces against that acceptance path.
+   Source bytes are captured Git entries; no later working-tree traversal occurs.
+   COPY leaf creation uses exclusive/no-follow handles and directory metadata is
+   applied after contents. Extraction rejects special files before reopening the
+   pinned regular inode. Root-confined symlinks cannot reach supervisor paths.
+   Any failed copy/extraction/unmount rejects publication. Built-in/authored DTB
+   branches preserve the agreed missing-property, absent-DTB, zero-match and
+   string-type behavior; changed bytes, not pre-edit bytes, bind final inventory.
+5. Network evidence distinguishes setup helpers from final image commands. The
+   actual CLI suite asserts enabled stages, resolver contents, expected reply,
+   inventory stage identifiers and absence of leftover links/NAT/runtime dirs.
+   Failure cases check command admission/non-admission, diagnostic and missing
+   output. Composite network tests separately cover failures after resource
+   acquisition, collision ownership and expired retries; expired cleanup is not
+   mislabeled as successful removal. Unsolicited TCP/UDP checks include positive
+   controls after policy removal. No host networking mutation is part of these
+   disposable-VM tests. Resolver omission from inventory is intentional.
+6. Rechecked input/output binding and Rust style across this reverse traversal:
+   supplied local cache and exact committed documents feed immutable plans; no
+   downloader or appliance reconstruction path was introduced. Inventory's private
+   schema, deterministic encoding and independent final-output comparison do not
+   grant decoded data execution authority. Ownership transitions remain consuming,
+   successful state markers sealed, and error enums retain cleanup obligations.
+   The lifecycle uses readiness/control protocols and finite deadlines rather than
+   synchronization sleeps. Safe-library interfaces and forbid-unsafe remain intact.
+7. Evidence freshness/integrity: compared v255 archived production source with
+   the frozen current scope. Only src/pipeline/firmware.rs and the two forwarding
+   documentation changes differ, exactly the subsequently compiled/tested R3
+   correction. Inspected passed verdicts v250–v255 and relevant fixture assertions,
+   not just success markers. Verified all 396 repository-retained files listed in
+   those provenance records without a mismatch (pass-2-evidence-integrity.json).
+   External kernel/initramfs/binary artifact paths are recorded separately; this
+   check does not claim their final durable preservation, which remains M8.
+8. Requirements/evidence boundary: all M6 pipeline/output requirements remain in
+   scope, including common inheritance, firmware-only and carapace-only outputs,
+   all-stage network, explicit empty transforms and unavailable CARAPACE. The
+   current host/VM evidence is not a distro-boot, Arm, confidential-hardware,
+   independent-review or CI qualification claim. Those M7 requirements and M8
+   recoverability/retirement are unchanged and remain outstanding.
+
+Result: clean, streak **2/3**. No new finding, implementation change or redundant
+runtime run. One complete clean adherence review remains before M6 acceptance.
