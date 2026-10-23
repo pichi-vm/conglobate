@@ -4507,3 +4507,8 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Runner still imports the historical rootless GuestRuntime constructor; migrate
   it before M8. Broad command/network faults and all implementation adherence
   gates remain outstanding. This run is evidence, not an adherence pass.
+
+- Follow-up drop-wait run 42448 completed exit 0. Required retained-storage
+  assertion, trusted status and VM poweroff pass; evidence preserved under
+  maintained-formatter-drop-wait-v1. This terminal path intentionally does not
+  claim resource release. Immediate running-owner drop case now being run.

@@ -1,0 +1,10 @@
+{
+  "checks": {
+    "FORMATTER_STALL_ENTERED": true,
+    "FORMATTER_DROP_WAIT_RETAINS_STORAGE_PASS": true,
+    "exit_zero": true,
+    "vm_powered_off": true
+  },
+  "passed": true,
+  "full_lifecycle_qualified": false
+}
