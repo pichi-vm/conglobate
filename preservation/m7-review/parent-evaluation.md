@@ -578,3 +578,33 @@ Debug-dumps retained resources into the user-facing error. The Cleanup enum,
 resource ownership, retry transitions and default absent source() are unchanged.
 Strict Clippy passes (execution-display-clippy.log). This presentation-only fix
 does not claim new lifecycle evidence.
+
+## Round three: fixes accepted, clone-test proposal still insufficient
+
+The terminal review independently accepts the typed diagnostic restoration,
+dead wrapper removal, and COPY range changes. It tested adversarial component
+ordering including non-UTF-8 names and found no range/full-scan mismatch. The
+source/test evidence is preserved in reconciliation-3, not counted as an adherence
+pass. Its updated counts describe its ledger, not all parent dispositions.
+
+The reviewer withdraws the ENOSYS request and agrees that the current unshare
+probe cannot exercise the clone argument mask. However, its proposed replacement
+still invokes unshare and cannot solve that problem: even with capability-positive
+controls it exercises the default-deny syscall rule, never clone's argument rule.
+We reject that proposed mechanism. Ordinary thread creation remains a useful
+positive compatibility check, not namespace-mask evidence.
+
+The existing NATIVE_SYSCALL_NAMESPACE_DENIAL_PASS marker states only namespace
+denial; its name does not specifically claim clone-mask coverage. Preserve the
+historical test and evidence. Explicitly record that clone's mask is unexercised
+rather than changing historical markers or treating the existing check as proof.
+A next candidate is a separate benign disposable-VM test executable that actually
+invokes clone without shared memory, creates only a short-lived child and waits
+for it. It needs the same namespace/capability baseline before and after installing
+the unchanged production filter. Application Rust remains forbid(unsafe_code).
+Legacy clone's low-byte exit-signal overlap with CLONE_NEWTIME needs separate
+handling; do not claim an ordinary legacy clone creates a time namespace. This
+is a test proposal, not implemented coverage.
+
+Hosted run 39968209040 at eb767f3 was cancelled when 0496311 was pushed; it is
+not reported as a failure or a pass. New run 39968905679 is pending.
