@@ -3,6 +3,7 @@
 //! Version-two inventory with strict schema and core deterministic CBOR.
 //! Decoding validates representation, not authenticity or successful execution.
 mod schema;
+mod record;
 use ciborium::Value;
 use schema::*;
 use sha2::{Digest as _, Sha256};

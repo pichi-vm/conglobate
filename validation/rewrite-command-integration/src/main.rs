@@ -6,6 +6,7 @@ mod finalization;
 mod formatter;
 mod formatter_failures;
 mod readiness;
+mod pipeline;
 mod sealed;
 use conglobate::{
     anchor::{FilesystemPin, RecoveryDirectory},
@@ -49,6 +50,9 @@ impl Integration {
             invocation.execute(&HelperProgram::current()?);
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|arg| arg == "pipeline-probe") {
+            return pipeline::PipelineProbe::run();
+        }
         if args.get(1).is_some_and(|arg| arg == "formatter-failures") {
             return formatter_failures::FormatterFailures::run();
         }

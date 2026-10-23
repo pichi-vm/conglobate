@@ -35,6 +35,16 @@ impl AssemblyFailure {
     }
 }
 impl AssembledImage {
+    pub(crate) fn publish_inventory(
+        self,
+        inventory: &crate::inventory::Inventory,
+    ) -> Result<(), crate::pipeline::BuildError> {
+        inventory.check_output(&self)?;
+        self.staged
+            .write_metadata(self.image.index().bytes(), inventory.bytes())?;
+        self.staged.publish()?;
+        Ok(())
+    }
     pub fn image(&self) -> &ResolvedImage {
         &self.image
     }

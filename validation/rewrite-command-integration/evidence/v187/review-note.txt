@@ -1,0 +1,2 @@
+Production sources unchanged between v187 and v188. v187 fixture source reconstructed by reversing only the documented artifact-export insertion; v188 source captured directly. DESIGN.md includes the transform-identity clarification made during v187. Neither run is full command/distro/hardware qualification.
+The copied pipeline-context .git directory is stored as git-metadata to avoid a nested Git repository; restore that directory name when reconstructing the fixture. All bytes retained.

@@ -1011,6 +1011,11 @@ The transform record adds a
 required boolean `default_skipped`, indicating that the implicit default
 encountered no DTB or no bootargs property; an authored transform always records
 false for this field. `target_present` records whether a DTB was supplied.
+For `authored`, the transform digest is the SHA-256 of the exact committed
+recipe bytes containing that section (also identified by `execution.recipe`).
+This binds the section without inventing a YAML reserialization. For `builtin`,
+it is the SHA-256 of the builder's exact built-in sequence bytes, including when
+the default is skipped. Changes to those bytes change the recorded identity.
 `source` is `builtin` or `authored`. Input roles are `bootstrap-tools`,
 `carapace-base`, and `firmware-tools`; scute origins are `inherited` or
 `produced`. The builder record hashes the running executable. Local repository

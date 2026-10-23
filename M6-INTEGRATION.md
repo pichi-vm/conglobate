@@ -137,3 +137,39 @@ including full formatter/network schema and negative wire corpus; all 66 library
 tests and strict all-target Clippy pass. The command fixture compiles with its
 updated dependency lock. Logs/source hashes are in preservation/m6/inventory-wire.
 No new VM run was needed for this unprivileged serialization change. M6 zero passes.
+
+## Production pass-through CLI connected
+
+The binary dispatches the existing trusted helper protocol before ordinary CLI
+parsing. Pipeline captures the requested commit, resolves the local cache,
+validates a currently implemented pass-through recipe, materializes the private
+read-only context on its owned tmpfs, assembles the image, constructs inventory
+from actual captured/resolved/output identities, and closes the private context
+before publication. Initial implemented transformations are authored empty with
+an inherited DTB, or implicit default skipped because there is no DTB. All other
+stage/directive/transform paths fail explicitly before publication; they remain
+required M6 work, not optional supported-subset behavior.
+
+A private PassThrough proof gates the no-execution path. A private CompletedImage
+pairs the assembled image with its checked inventory; decoded inventory cannot
+construct it. The inventory hashes /proc/self/exe, committed recipe/lock bytes,
+Git identities and supplied image indices/manifests, and records output scutes in
+verified chain order. The manifest/root/firmware/scute identities are checked
+against output before writing inventory and atomic publication. Authored transform
+identity binds exact recipe bytes; built-in identity binds the exact sequence.
+DESIGN.md now makes this wire identity choice explicit.
+
+The disposable-VM --pipeline mode invokes the production CLI, checks inventory
+with a separate minicbor field reader plus the strict decoder, validates all
+layout digests and exact referenced-blob membership, removes the source cache,
+and verifies output again. It also checks dirty-worktree independence, destination
+collision, unsupported commands and missing cache without publication. It does
+not execute image-authored commands or qualify distro boots. v187 passed; v188
+adds export of the exact final index, manifest and CBOR bytes for preservation.
+
+v188 passed and exported exact index/manifest/inventory bytes. The host verified
+the exported index's manifest digest/size. Both runs' source, context/cache fixture,
+logs, verdicts and external kernel/initramfs/binary hashes are preserved under
+validation/rewrite-command-integration/evidence/v187 and v188; the earlier fixture
+source reconstruction is explicitly identified. No full normal command-suite,
+ORAS, distro/boot or confidential-platform result is inferred from these runs.

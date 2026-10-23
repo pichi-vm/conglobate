@@ -10,11 +10,13 @@ import shutil
 import subprocess
 import sys
 from cache_fixture import CacheFixture
+from pipeline_fixture import PipelineFixture
 
 here = pathlib.Path(__file__).resolve().parent
 seed = pathlib.Path('/var/tmp/conglobate-cap-review-fix-normal-v1')
 formatter_mode = sys.argv[2] if len(sys.argv) == 3 else ''
 formatter_failures = formatter_mode in ['--formatter-failures', '--formatter-drop-running', '--formatter-drop-wait']
+pipeline_mode = formatter_mode == '--pipeline'
 supervisor_death = len(sys.argv) == 3 and sys.argv[2] == '--supervisor-death'
 out = pathlib.Path(sys.argv[1]).resolve()
 out.mkdir()
@@ -25,6 +27,10 @@ build_env.setdefault('TMPDIR', '/var/tmp/conglobate-rewrite-tmp')
 with (out / 'build.txt').open('wb') as build_log:
     subprocess.run(['cargo', 'build', '--locked', '--manifest-path', str(here / 'Cargo.toml')],
                    env=build_env, stdout=build_log, stderr=subprocess.STDOUT, check=True)
+if pipeline_mode:
+    with (out / 'pipeline-build.txt').open('wb') as build_log:
+        subprocess.run(['cargo', 'build', '--locked', '--manifest-path', str(here.parent.parent / 'Cargo.toml')],
+                       env=build_env, stdout=build_log, stderr=subprocess.STDOUT, check=True)
 root = out / 'root'
 shutil.copytree(seed / 'root', root, symlinks=True)
 for module in ['ext4', 'dm-zero', 'dm-snapshot', 'dm-verity']:
@@ -39,6 +45,10 @@ binary = here / 'target/debug/conglobate-command-integration'
 shutil.copy2(binary, root / 'idmap-probe')
 shutil.copy2(binary, root / 'usr/bin/formatter-stall')
 executables = [binary]
+if pipeline_mode:
+    production = here.parent.parent / 'target/debug/conglobate'
+    shutil.copy2(production, root / 'usr/bin/conglobate')
+    executables.append(production)
 for name in ['mke2fs', 'unshare', 'newuidmap', 'newgidmap', 'stat', 'e2fsck', 'rmdir', 'setpriv', 'getfattr', 'getfacl', 'getcap']:
     source = pathlib.Path(shutil.which(name))
     target = root / 'usr/bin' / name
@@ -81,6 +91,8 @@ subprocess.run(['git', '-C', str(context_fixture), '-c', 'user.name=Fixture',
     ['git', '-C', str(context_fixture), 'rev-parse', 'HEAD'], text=True))
 (root / 'conglobate-disposable-validation-vm').touch()
 CacheFixture(root / 'cache-fixture').create()
+if pipeline_mode:
+    PipelineFixture(root).create()
 image_root = root / 'image-root'
 (image_root / 'bin').mkdir(parents=True)
 for source, name in [('/usr/bin/bash', 'sh'), ('/usr/bin/setfattr', 'setfattr'), ('/usr/bin/getfattr', 'getfattr'), ('/usr/bin/mv', 'mv'), ('/usr/bin/chown', 'chown'), ('/usr/bin/cat', 'cat'), ('/usr/bin/touch', 'touch'), ('/usr/bin/chmod', 'chmod'), ('/usr/bin/setfacl', 'setfacl'), ('/usr/bin/getfacl', 'getfacl'), ('/usr/bin/setcap', 'setcap'), ('/usr/bin/getcap', 'getcap')]:
@@ -286,6 +298,8 @@ modprobe dm-snapshot
         script = root / 'fixture.sh'
         script.write_text(script.read_text().replace('/idmap-probe formatter-failures',
             'FORMATTER_DROP=' + formatter_mode.removeprefix('--formatter-drop-') + ' /idmap-probe formatter-failures'))
+if pipeline_mode:
+    (root / 'fixture.sh').write_text('#!/bin/bash\nset -eux\n/idmap-probe pipeline-probe\n')
 paths = sorted(root.rglob('*'))
 (out / 'inputs.json').write_text(json.dumps({str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths if p.is_file() and not p.is_symlink()}, indent=2))
 archive = subprocess.run(['cpio', '--null', '-o', '--format=newc', '--owner=0:0'], input=b'\0'.join(str(p.relative_to(root)).encode() for p in paths) + b'\0', cwd=root, capture_output=True, check=True).stdout
@@ -296,7 +310,14 @@ command = [v.replace(str(seed), str(out)) for v in json.loads((seed / 'command.j
 with (out / 'serial.txt').open('wb') as log:
     subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
 serial = (out / 'serial.txt').read_text()
-if formatter_mode.startswith('--formatter-drop-'):
+if pipeline_mode:
+    for name in ['INDEX', 'INVENTORY', 'MANIFEST']:
+        match = re.search(r'PIPELINE_' + name + r'_HEX ([0-9a-f]+)', serial)
+        if match:
+            (out / ('pipeline-' + name.lower() + ('.cbor' if name == 'INVENTORY' else '.json'))).write_bytes(bytes.fromhex(match.group(1)))
+    passed = all(marker in serial for marker in ['PIPELINE_CLI_PASSTHROUGH_INVENTORY_PASS',
+        'PIPELINE_CLI_FAILURE_NO_PUBLICATION_PASS', 'IDMAP_PROBE_EXIT 0'])
+elif formatter_mode.startswith('--formatter-drop-'):
     stage = formatter_mode.removeprefix('--formatter-drop-').upper()
     passed = f'FORMATTER_DROP_{stage}_RETAINS_STORAGE_PASS' in serial and 'IDMAP_PROBE_EXIT 0' in serial
 elif formatter_failures:

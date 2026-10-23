@@ -23,6 +23,7 @@ pub mod lock;
 pub mod output;
 pub mod path;
 pub mod plan;
+pub mod pipeline;
 pub mod policy;
 pub mod process;
 pub mod recipe;

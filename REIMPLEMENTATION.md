@@ -2961,3 +2961,26 @@ rules rather than silently shrinking acceptance criteria.
 - Next bind actual input/output identities and completed-stage receipts to this
   schema, validate against the staged manifest, and connect CLI publication.
   M6 remains active with zero adherence passes.
+
+### M6 pass-through CLI and inventory binding
+
+- Connected standalone helper dispatch and build CLI to committed context/local
+  cache, private read-only tmpfs checkout, inherited assembly, actual input/output
+  inventory and atomic publication after context cleanup.
+- Private PassThrough and CompletedImage types gate this path. Unsupported
+  bootstrap/directive/firmware/transform work fails explicitly; these remain
+  required implementation work. Inventory identities are cross-checked against
+  assembled output, with exact authored/default transform identity documented.
+- v187 disposable VM passes the actual CLI, independent inventory-field and blob
+  checks, source-cache removal, committed recipe versus modified worktree,
+  destination collision and failure-without-publication cases. v188 adds exact
+  output byte export to preserved evidence. No host mounts/policy operations.
+- 66 library tests, 49 doctests, root and fixture strict Clippy pass. Initial
+  non-exhaustive Git hash-kind compile error was corrected and retained in logs.
+  M6 remains zero adherence passes; remaining execution pipeline work is open.
+
+- v188 also passes, with exact index/manifest/CBOR artifacts preserved. Host
+  cross-check confirms exported index binds the exact manifest. Evidence v187/
+  v188 includes sources, contexts, cache fixtures, logs and boot artifact hashes;
+  initial pre-export fixture reconstruction is labeled. Remaining M6 work includes
+  stage execution, COPY, firmware/transforms, enabled networking and ORAS coverage.
