@@ -1,0 +1,24 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe ext4
++ /lifecycle-tests sandbox-writeback
+restricted command startup failed: Broken pipe (os error 32)
+RECEIVER_CONTROL_HELD_DURING_GATE_FAILURE_CLEANUP_PASS
+[    2.256692] EXT4-fs (dm-1): failed to convert unwritten extents to written extents -- potential data loss!  (inode 16, error -5)
+[    2.261581] EXT4-fs (dm-1): failed to convert unwritten extents to written extents -- potential data loss!  (inode 16, error -5)
+[    2.273612] EXT4-fs (dm-1): failed to convert unwritten extents to written extents -- potential data loss!  (inode 16, error -5)
+[    2.279121] EXT4-fs (dm-1): failed to convert unwritten extents to written extents -- potential data loss!  (inode 16, error -5)
+[    2.287748] EXT4-fs (dm-1): failed to convert unwritten extents to written extents -- potential data loss!  (inode 16, error -5)
+[    2.296712] EXT4-fs error (device dm-1): ext4_journal_check_start:86: comm lifecycle-tests: Detected aborted journal
+[    2.303307] EXT4-fs (dm-1): Remounting filesystem read-only
+fixture filesystem errors: write=Some(Os { code: 30, kind: ReadOnlyFilesystem, message: "Read-only file system" }), sync=Some(Os { code: 30, kind: ReadOnlyFilesystem, message: "Read-only file system" })
+
+thread 'main' (159) panicked at src/writeback.rs:27:9:
+assertion failed: write_error.iter().chain(sync_error.iter()).any(|error|
+        error.raw_os_error() == Some(5))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+runtime retained until VM disposal: /proc/self/fd/10/conglobate-runtime-yo39J1
+LIFECYCLE_EXIT 101
+[    2.405169] sysrq: Power Off
+[    2.409893] reboot: Power down

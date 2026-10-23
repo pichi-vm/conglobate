@@ -133,3 +133,12 @@ Closing the holder permits retry under the original deadline. Both transitions
 must preserve the original failed command observation, despite successful helper
 exit. Final resource checks require no mounts, domains, records or children.
 This covers busy-unmount recovery, not filesystem writeback errors.
+
+`--case sandbox-writeback` uses an 8 MiB writable snapshot beneath its 16 MiB
+ext4 volume. After actual command-observation failure and process teardown,
+trusted fixture filesystem writes exhaust the COW. The fixture requires EIO or
+EROFS plus an independent dm snapshot Invalid status. Production finalization
+and retry must fail with storage diagnostics and preserve the original command
+failure; no finalized storage is returned. Independent init disposes of the VM.
+Observed runs reject at syncfs after ext4 journal abort; they do not exercise
+the later post-unmount snapshot-validation branch or an image-authored writer.

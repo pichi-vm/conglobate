@@ -4760,3 +4760,26 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - This is concrete regression evidence, not an adherence pass. M4 stays 0/3;
   actual writeback/snapshot-error propagation and complete source/design/style
   review remain. The full M5-M8 scope and qualification gaps remain outstanding.
+
+### Real filesystem errors during finalization
+
+- Previous turn was progress: committed busy-finalization regression 01f6579.
+  Rechecked the remaining storage-error path against current sources.
+- Added maintained sandbox-writeback case: ordinary writes on fixture-owned
+  ext4 exhaust an 8 MiB COW beneath a 16 MiB filesystem. No raw corruption, host
+  mounts, external devices, unsafe Rust or synchronization sleeps are used.
+- v1 exposed an overly narrow fixture expectation (EIO only). Kernel reported
+  failed extent conversion, aborted its journal, and returned EROFS instead.
+  Require EIO or EROFS and independently require snapshot Invalid status.
+  Preserved v1 failure and v2/v3 passes, including exact source/VM inputs.
+- v3 checks concrete finalization diagnostics: initial failure and retry both
+  reject the storage, retain the snapshot device and preserve the original
+  failed command observation. Independent init records success and powers off.
+  Strict fixture Clippy and whitespace checks pass. No production changes.
+- Scope: trusted fixture writes after actual command teardown, not recipe writes.
+  Observed rejection is at syncfs (EROFS), not the post-unmount snapshot-health
+  branch. No accepted execution/storage receipt or clean teardown is claimed.
+- This closes real filesystem-error finalization evidence, not the entire M4
+  gate. M4 remains 0/3 pending full source/design/style review and any gaps that
+  review identifies. M5-M8 and external qualification remain outstanding.
+  All large artifacts remain recoverable in /var/tmp but not durably archived.

@@ -7,6 +7,7 @@ mod formatter_failures;
 mod gate_failure;
 mod network;
 mod sandbox_failures;
+mod writeback;
 use conglobate::execution::{HelperInvocation, HelperProgram};
 use std::{ffi::OsStr, path::Path};
 
@@ -26,6 +27,9 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "sandbox-writeback" => {
+                sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Writeback)
+            }
             [mode] if mode == "sandbox-supervisor-death" => sandbox_failures::SandboxFailures::run(
                 sandbox_failures::FailurePoint::SupervisorDeath,
             ),

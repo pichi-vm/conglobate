@@ -1,0 +1,14 @@
+{
+  "baseline": "01f6579",
+  "production_changed": false,
+  "fault": "ordinary filesystem writes exhaust fixture-owned 8 MiB COW beneath 16 MiB ext4 in disposable VM",
+  "passed": true,
+  "coverage": "real filesystem error and independent dm snapshot Invalid status; production finalization and retry reject storage and retain failed command outcome",
+  "failed_attempt_reason": null,
+  "limitations": [
+    "trusted fixture writes after command teardown, not an image-authored write recipe",
+    "observed rejection at syncfs; does not exercise post-unmount snapshot-validation branch",
+    "not a whole-milestone adherence pass",
+    "large artifacts await durable archival"
+  ]
+}

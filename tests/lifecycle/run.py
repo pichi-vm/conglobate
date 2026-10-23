@@ -149,6 +149,9 @@ exec sleep infinity
         elif self.args.case == 'sandbox-blocked-io':
             markers = ['FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS',
                        'BLOCKED_IO_FIXED_DEADLINE_RETAINS_STORAGE_PASS']
+        elif self.args.case == 'sandbox-writeback':
+            markers = ['FILESYSTEM_WRITEBACK_ERROR_OBSERVED_PASS',
+                       'INVALID_SNAPSHOT_FINALIZATION_RETRY_REJECTED_PASS']
         elif self.args.case == 'sandbox-gate-failure':
             markers = ['RECEIVER_CONTROL_HELD_DURING_GATE_FAILURE_CLEANUP_PASS',
                        'PRIMARY_OUTCOME_THROUGH_BUSY_FINALIZATION_RETRY_PASS',
@@ -179,7 +182,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['sandbox-writeback', 'formatter-failures', 'domain-publication', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'network-composite', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
     if platform.machine() != 'x86_64':

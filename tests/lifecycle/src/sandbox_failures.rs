@@ -18,6 +18,7 @@ pub(super) enum FailurePoint {
     Join,
     AttachedExit,
     Gate,
+    Writeback,
     BlockedIo,
     SupervisorDeath,
 }
@@ -63,7 +64,11 @@ impl SandboxFailures {
     pub(super) fn run(point: FailurePoint) -> Result<(), Box<dyn std::error::Error>> {
         let workspace = Workspace::create()?;
         let mut scratch = workspace.scratch()?;
-        scratch.set_len(32 * 1024 * 1024)?;
+        scratch.set_len(if matches!(point, FailurePoint::Writeback) {
+            8 * 1024 * 1024
+        } else {
+            32 * 1024 * 1024
+        })?;
         let sectors = NonZeroU64::new(32768).unwrap();
         let origin = Mapping::<Created>::create()?.zero(sectors)?;
         let snapshot = Mapping::<Created>::create()?
@@ -79,6 +84,7 @@ impl SandboxFailures {
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
                 | FailurePoint::Gate
+                | FailurePoint::Writeback
                 | FailurePoint::BlockedIo
                 | FailurePoint::SupervisorDeath
         ) {
@@ -123,6 +129,7 @@ impl SandboxFailures {
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
                 | FailurePoint::Gate
+                | FailurePoint::Writeback
                 | FailurePoint::BlockedIo
                 | FailurePoint::SupervisorDeath
         ) {
@@ -176,6 +183,7 @@ impl SandboxFailures {
             | FailurePoint::Join
             | FailurePoint::AttachedExit
             | FailurePoint::Gate
+            | FailurePoint::Writeback
             | FailurePoint::BlockedIo
             | FailurePoint::SupervisorDeath => {
                 let prepared = result.map_err(|e| e.to_string())?;
@@ -193,7 +201,7 @@ impl SandboxFailures {
                         FailurePoint::BlockedIo | FailurePoint::SupervisorDeath
                     ) {
                         "sandbox-blocked-helper"
-                    } else if matches!(point, FailurePoint::Gate) {
+                    } else if matches!(point, FailurePoint::Gate | FailurePoint::Writeback) {
                         "sandbox-gate-receiver"
                     } else {
                         "sandbox-attached-helper"
@@ -281,7 +289,7 @@ impl SandboxFailures {
                     // Terminal case: no clean finalization, resource reuse or output
                     // is claimed. The independent guest init powers off this VM.
                     std::process::exit(0);
-                } else if matches!(point, FailurePoint::Gate) {
+                } else if matches!(point, FailurePoint::Gate | FailurePoint::Writeback) {
                     use std::{
                         io::{BufRead, BufReader},
                         os::unix::net::{UnixDatagram, UnixStream},
@@ -333,6 +341,18 @@ impl SandboxFailures {
                     let primary = completion.outcome().to_string();
                     let entries = fs::read_dir(paths.volumes())?.collect::<Result<Vec<_>, _>>()?;
                     assert_eq!(entries.len(), 1);
+                    if matches!(point, FailurePoint::Writeback) {
+                        super::writeback::Writeback::reject(
+                            completion,
+                            &entries[0].path(),
+                            Path::new(&format!(
+                                "/sys/dev/block/{}:{}",
+                                device.major(),
+                                device.minor()
+                            )),
+                        )?;
+                        unreachable!("terminal invalid-storage fixture");
+                    }
                     // An ordinary open directory makes this owned mount busy.
                     // Keep the failure owner until the holder is explicitly closed.
                     let holder = fs::File::open(entries[0].path())?;
@@ -452,8 +472,9 @@ impl SandboxFailures {
                 FailurePoint::Join => "SANDBOX_JOIN_FAILURE_ROLLBACK_PASS",
                 FailurePoint::AttachedExit => "SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS",
                 FailurePoint::Gate => "SANDBOX_GATE_FAILURE_ROLLBACK_PASS",
-                FailurePoint::BlockedIo | FailurePoint::SupervisorDeath =>
-                    unreachable!("terminal VM-disposal case"),
+                FailurePoint::BlockedIo
+                | FailurePoint::SupervisorDeath
+                | FailurePoint::Writeback => unreachable!("terminal VM-disposal case"),
             }
         );
         Ok(())
