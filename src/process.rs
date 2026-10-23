@@ -9,6 +9,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod threads;
+pub(crate) use threads::ThreadSnapshot;
 mod diagnostics;
 pub(crate) use diagnostics::DiagnosticRelay;
 mod syscalls;

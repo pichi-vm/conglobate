@@ -51,11 +51,7 @@ impl CommandNamespaces {
                 "namespace setup deadline expired",
             ));
         }
-        if fs::read_dir("/proc/self/task")?
-            .collect::<io::Result<Vec<_>>>()?
-            .len()
-            != 1
-        {
+        if !crate::process::ThreadSnapshot::capture()?.is_single() {
             return Err(io::Error::other(
                 "command namespace entry requires one thread",
             ));

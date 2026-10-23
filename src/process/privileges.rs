@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use rustix::thread::{self, CapabilitySet, CapabilitySets};
-use std::{fs, io};
+use std::io;
 
 /// Immutable command capability policy. This candidate filesystem-build profile
 /// still requires distro qualification together with the syscall/LSM policies.
@@ -48,11 +48,7 @@ impl CommandPrivileges {
     }
 
     fn finalize(self) -> io::Result<()> {
-        if fs::read_dir("/proc/self/task")?
-            .collect::<Result<Vec<_>, _>>()?
-            .len()
-            != 1
-        {
+        if !crate::process::ThreadSnapshot::capture()?.is_single() {
             return Err(io::Error::other("privilege setup requires one thread"));
         }
         // Query the kernel, not cap_last_cap from a possibly image-owned procfs.

@@ -221,11 +221,7 @@ impl LinkConfiguration {
     /// Fresh trusted helper only; stdin is the owned namespace descriptor.
     pub(crate) fn serve(self, deadline: Instant) -> io::Result<()> {
         use std::os::fd::AsFd;
-        if std::fs::read_dir("/proc/self/task")?
-            .collect::<io::Result<Vec<_>>>()?
-            .len()
-            != 1
-        {
+        if !crate::process::ThreadSnapshot::capture()?.is_single() {
             return Err(io::Error::other("network setup requires one thread"));
         }
         let namespace = io::stdin().as_fd().try_clone_to_owned()?;

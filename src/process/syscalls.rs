@@ -6,7 +6,7 @@ use seccompiler::{
     BpfProgram, SeccompAction, SeccompCmpArgLen, SeccompCmpOp, SeccompCondition, SeccompFilter,
     SeccompRule,
 };
-use std::{collections::BTreeMap, fs, io};
+use std::{collections::BTreeMap, io};
 
 /// Compiled native-ABI command filter. Default-deny candidate derived from the
 /// preserved syscall validation, not a qualified distro compatibility contract.
@@ -106,11 +106,7 @@ impl CommandSyscalls {
     /// no_new_privs or the fallback filter installed: exit the helper, never
     /// execute a command after failure. Installation itself is not admission.
     pub fn apply(self) -> io::Result<()> {
-        if fs::read_dir("/proc/self/task")?
-            .collect::<Result<Vec<_>, _>>()?
-            .len()
-            != 1
-        {
+        if !crate::process::ThreadSnapshot::capture()?.is_single() {
             return Err(io::Error::other("syscall setup requires one thread"));
         }
         seccompiler::apply_filter(&self.fallback).map_err(io::Error::other)?;

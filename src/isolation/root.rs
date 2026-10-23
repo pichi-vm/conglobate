@@ -84,11 +84,7 @@ impl CommandRoot {
     /// a single-threaded helper, never the build supervisor. No destructor is
     /// asserted to undo a root transition or finalize the filesystem.
     pub fn enter(self) -> io::Result<EnteredRoot> {
-        if fs::read_dir("/proc/self/task")?
-            .collect::<Result<Vec<_>, _>>()?
-            .len()
-            != 1
-        {
+        if !crate::process::ThreadSnapshot::capture()?.is_single() {
             return Err(io::Error::other("root setup requires one thread"));
         }
         // The setup helper is a fresh child, not a process-group leader. A

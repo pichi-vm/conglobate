@@ -27,12 +27,7 @@ pub use devices::CommandDevices;
 use nix::sched::{CloneFlags, setns, unshare};
 pub use root::{CommandRoot, EnteredRoot, RestrictedCommand};
 use rustix::mount::MountPropagationFlags;
-use std::{
-    fs::{self, File},
-    io,
-    marker::PhantomData,
-    rc::Rc,
-};
+use std::{fs::File, io, marker::PhantomData, rc::Rc};
 
 #[derive(Debug)]
 struct NamespaceLease {
@@ -85,11 +80,8 @@ impl NamespaceFailure {
 }
 impl PrivateMountNamespace {
     pub fn enter() -> Result<Self, NamespaceFailure> {
-        let tasks = fs::read_dir("/proc/self/task")
-            .map_err(NamespaceFailure::Before)?
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(NamespaceFailure::Before)?;
-        if tasks.len() != 1 {
+        let tasks = crate::process::ThreadSnapshot::capture().map_err(NamespaceFailure::Before)?;
+        if !tasks.is_single() {
             return Err(NamespaceFailure::Before(io::Error::other(
                 "namespace setup requires a single-threaded helper",
             )));

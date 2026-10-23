@@ -5627,3 +5627,16 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   verity-annotations-bootstrap-v1/ under preservation/m7-review/. Historical
   action updated. No firmware-replacement VM or broader platform qualification
   claimed, and no complete adherence pass. M4 remains 0/3.
+
+### Shared thread-count diagnostics
+
+- The preceding link-local discussion did not produce new validation evidence;
+  resumed independent review work. Resolved simplification-002 by replacing ten
+  duplicated task enumerations with private immutable ThreadSnapshot. It is
+  explicitly diagnostic, not proof of lasting single-threaded execution.
+- Preserved contextual errors, PID checks, short-circuit ordering and namespace
+  failure classification. Full fallible iteration retains entry-error handling
+  without allocating a discarded Vec. No admission or teardown change.
+- 131 library tests, strict all-target Clippy and lifecycle harness compilation
+  passed. Focused source review and logs: preservation/m7-review/thread-diagnostics/.
+  No new VM qualification or complete adherence pass; M4 remains 0/3, goal active.

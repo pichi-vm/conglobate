@@ -15,7 +15,7 @@ use rustix::{
     },
 };
 use std::{
-    fs::{self, File},
+    fs::File,
     io::{self, IoSlice, IoSliceMut, Write},
     mem::MaybeUninit,
     os::unix::process::ExitStatusExt,
@@ -64,10 +64,7 @@ impl Supervision<Paired> {
     /// its own membership, closes the transferred control FD, then acknowledges.
     /// The task-count check diagnoses misuse; trusted startup must prevent races.
     pub fn join_domain_until(self, deadline: Instant) -> io::Result<Supervision<Joined>> {
-        if fs::read_dir("/proc/self/task")?
-            .collect::<Result<Vec<_>, _>>()?
-            .len()
-            != 1
+        if !crate::process::ThreadSnapshot::capture()?.is_single()
             || rustix::process::getpid() == rustix::process::Pid::INIT
         {
             return Err(io::Error::other(

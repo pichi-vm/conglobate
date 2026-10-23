@@ -147,11 +147,7 @@ impl UserNamespace<Mapped> {
     /// creates a user namespace, exchanges stable process identities, and waits
     /// for the parent to close its channel after taking namespace ownership.
     pub fn serve(deadline: Instant) -> io::Result<()> {
-        if fs::read_dir("/proc/self/task")?
-            .collect::<io::Result<Vec<_>>>()?
-            .len()
-            != 1
-        {
+        if !crate::process::ThreadSnapshot::capture()?.is_single() {
             return Err(io::Error::other("namespace creation requires one thread"));
         }
         let channel = Supervision::from_stdin()?;

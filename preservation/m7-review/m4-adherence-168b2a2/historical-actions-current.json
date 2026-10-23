@@ -233,8 +233,8 @@
       "evidence": "Same /proc/self/task guard at 10 sites; network/namespace.rs:96 uses .count() and silently counts Err entries",
       "remaining_action": "Shared DIAGNOSTIC helper only (not an owning proof of lasting exclusivity); fix the .count() Err-swallowing",
       "historical_status": "accept",
-      "current_status": "partly implemented",
-      "current_evidence": "NetworkNamespace::serve propagates read_dir entry errors. Shared diagnostic-helper consolidation remains unimplemented."
+      "current_status": "resolved",
+      "current_evidence": "All ten task-count guards use private immutable ThreadSnapshot. capture uses fallible full iteration, preserving directory and entry errors; callers retain contextual errors, PID checks, short-circuit order and NamespaceFailure::Before mapping. Observation is explicitly diagnostic, not enduring thread exclusivity. See preservation/m7-review/thread-diagnostics/."
     },
     {
       "id": "simplification-003",

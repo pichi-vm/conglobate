@@ -53,12 +53,7 @@ impl DrainFailure {
 }
 impl ChildReaper {
     pub fn install() -> io::Result<Self> {
-        if getpid().as_raw() == 1
-            || fs::read_dir("/proc/self/task")?
-                .collect::<io::Result<Vec<_>>>()?
-                .len()
-                != 1
-        {
+        if getpid().as_raw() == 1 || !crate::process::ThreadSnapshot::capture()?.is_single() {
             return Err(io::Error::other(
                 "subreaper requires a dedicated single-threaded non-init process",
             ));
