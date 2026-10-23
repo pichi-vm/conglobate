@@ -409,3 +409,26 @@ from now on. Rootless tests (197), strict production and fixture Clippy, and bot
 format checks pass; ordering-checks.json records the evidence. This confirms
 and fixes the bug independently; Claude's final disposition/consensus is still
 pending. No distro or confidential-platform qualification is inferred.
+
+
+## Lifecycle documentation and explicit capability contract
+
+The stale crate/CARAPACE comments and conceptual architecture state names are
+corrected. Step, policy and supervision docs describe actual transitions and
+failure retention; Volume and namespace docs explain destructor fallback. The
+primary APIs now describe error and caller obligations. ChildReaper wording is
+clarified without adding a destructor. Strict rustdoc and all 54 doctests pass.
+
+The syscall/capability test findings need calibrated dispositions: current VM
+fixture main.rs:2153-2205 applies the actual policies and checks thread creation,
+ordinary I/O, denied user namespace creation, all five capability sets and
+no_new_privs. This is real execution coverage, not zero testing. Its allowed-set
+expectation is derived from the policy, however, so a new independent rootless
+contract test now asserts that filesystem commands never receive SYS_ADMIN.
+This tests the explicit design prohibition, not a duplicated allowlist or BPF
+hash. The rootless suite is now 198 tests; strict Clippy and formatting pass.
+
+Critic verdicts marked rejected merely because a finding was fixed during the
+review must be recorded as fixed, not counted as original false positives.
+This applies to correctness-001 and the remediated documentation findings.
+The original review baseline and all failure/regression evidence remain retained.

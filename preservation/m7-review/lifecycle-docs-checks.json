@@ -1,0 +1,35 @@
+{
+  "checks": [
+    {
+      "log": "documentation-rustdoc.log",
+      "exit_code": 0,
+      "sha256": "c78f7184e0f0f2bbd5cd10b528bb2472f417a87c5bca6be72044cc545ba69355",
+      "passed_tests": 0
+    },
+    {
+      "log": "documentation-doctests.log",
+      "exit_code": 0,
+      "sha256": "6fc68dffbf284436e09af2bd5cedcc71a3f14a2318c35245edfab38e0d84c667",
+      "passed_tests": 54
+    },
+    {
+      "log": "lifecycle-docs-tests.log",
+      "exit_code": 0,
+      "sha256": "0946da7cc72981575568774758e1e4112ef8e1e0dcd32068a5d23978e43cb0a2",
+      "passed_tests": 198
+    },
+    {
+      "log": "lifecycle-docs-clippy.log",
+      "exit_code": 0,
+      "sha256": "3e1d72448843ca4c81f96797dbc23541c4cfe74b4777389ab39ab37a9eb012fa",
+      "passed_tests": 0
+    },
+    {
+      "log": "lifecycle-docs-fmt.log",
+      "exit_code": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed_tests": 0
+    }
+  ],
+  "scope": "Documentation and a rootless SYS_ADMIN exclusion contract test; no production execution behavior changed."
+}

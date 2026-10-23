@@ -47,6 +47,10 @@ impl Drop for ControlSocket {
 /// Mutual stable-identity observation between trusted supervisor/helper code.
 /// Pairing is not readiness, registration, containment or command admission.
 /// Neither side may expose this endpoint or its process identity to commands.
+/// Both endpoints progress Unpaired -> Paired through identity exchange, then
+/// Registered through helper registration/domain joining, and finally Admitted
+/// through the admission handshake. Each transition consumes the prior owner;
+/// paired peer observation alone never permits image-code execution.
 ///
 /// ```compile_fail
 /// use conglobate::process::{Supervision, Unpaired};

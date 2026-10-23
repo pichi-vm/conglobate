@@ -47,9 +47,20 @@ pub struct Pipeline {
     request: BuildRequest,
 }
 impl Pipeline {
+    /// Retain a parsed request without resolving inputs or acquiring resources.
     pub fn new(request: BuildRequest) -> Self {
         Self { request }
     }
+    /// Resolve local inputs, execute the recipe and publish its verified output.
+    /// The caller supplies the dedicated disposable-VM environment; this method
+    /// does not manage VM shutdown or turn the calling process into a sandbox.
+    ///
+    /// # Errors
+    /// Rejects non-root execution, invalid/unavailable inputs, unsupported work,
+    /// failed stage execution, cleanup, assembly, inventory or publication.
+    /// Ordinary errors do not authorize another build in the same VM. Some
+    /// failures retain unfinished kernel resources until environment disposal;
+    /// returning an error is not a successful teardown receipt.
     pub fn run(self) -> Result<(), BuildError> {
         if !rustix::process::geteuid().is_root() {
             return Err(BuildError::RootRequired);

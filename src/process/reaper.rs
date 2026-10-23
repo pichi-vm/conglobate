@@ -13,7 +13,8 @@ use std::{fs, io, marker::PhantomData, rc::Rc, time::Instant};
 /// Process-lifetime adoption in a dedicated, single-threaded supervisor. Install
 /// before spawning children, with normal SIGCHLD zombie semantics and exclusive
 /// wait ownership. Trusted code must not change these settings or fork this owner.
-/// Drop deliberately leaves subreaping enabled: disabling it cannot clean children.
+/// There is no destructor that disables subreaping: the process setting remains
+/// enabled, because clearing it cannot clean up already-adopted children.
 #[derive(Debug)]
 pub struct ChildReaper {
     process: Pid,

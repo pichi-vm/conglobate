@@ -113,3 +113,19 @@ impl CommandPrivileges {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn filesystem_commands_have_no_sys_admin_authority() {
+        // A design requirement independent of the chosen filesystem allowlist.
+        // VM tests separately verify application to all five capability sets.
+        assert!(
+            !CommandPrivileges::filesystem()
+                .allowed()
+                .contains(CapabilitySet::SYS_ADMIN)
+        );
+    }
+}

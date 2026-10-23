@@ -145,6 +145,13 @@ pub struct HelperInvocation {
     role: Role,
 }
 impl HelperInvocation {
+    /// Recognize the internal selector and decode its launch description.
+    /// Returns None for public CLI arguments. Parsing is not admission authority;
+    /// execution still validates the trusted helper's channels and environment.
+    ///
+    /// # Errors
+    /// Rejects a selected helper invocation with the wrong argument count,
+    /// non-UTF-8/invalid hexadecimal CBOR, or an invalid launch description.
     pub fn parse(arguments: &[OsString]) -> io::Result<Option<Self>> {
         if arguments.first().map(OsString::as_os_str) != Some(OsStr::new(SELECTOR)) {
             return Ok(None);

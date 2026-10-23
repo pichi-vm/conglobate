@@ -113,6 +113,24 @@ impl<'a> StepState<'a> for Finishing {
 /// Dropping an unfinished step retains pinned authorization through VM disposal;
 /// best-effort child destruction is never used as a quiescence receipt.
 ///
+/// Admission consumes Ready through `admit_until`, producing Running on success.
+/// Activation failure retains Ready; failed admission retains Cancelling.
+/// Cleanup follows these consuming transitions:
+///
+/// ```text
+/// Ready | Running | Cancelling
+///     --cancel_until--> Reaping --reap_until--> Draining
+///     --drain_until--> Quiescent --finish_record--> Finishing
+///     --disable--> StepCompletion
+/// ```
+///
+/// Failed cancellation retains Cancelling; subsequent transition failures
+/// retain their input state. `teardown` drives this sequence, closes the disabled
+/// policy and releases identity pins under one fixed deadline, including retries.
+/// Its TeardownCompletion still owns storage: explicit unmount/flush and sealing
+/// remain necessary before publication. Normal command exit uses this same
+/// cleanup sequence; it does not skip descendant cancellation or drain.
+///
 /// ```compile_fail
 /// use conglobate::step::{Step, Running};
 /// fn cannot_disable_while_running(step: Step<'_, Running>) {

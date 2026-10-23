@@ -42,6 +42,9 @@ struct NamespaceLease {
 /// Call before starting threads. The thread-count check diagnoses misuse; it
 /// cannot prevent unrelated code from racing to create another thread.
 /// No public raw namespace handle or arbitrary unshare flags are exposed.
+/// Drop attempts to restore the original namespace and only diagnoses failure.
+/// Use explicit restoration to handle errors. Irreversible command-root entry
+/// commits the guard, closing its restoration handle before command admission.
 ///
 /// ```compile_fail
 /// use conglobate::{filesystem::{Mount, Detached}, isolation::PrivateMountNamespace};

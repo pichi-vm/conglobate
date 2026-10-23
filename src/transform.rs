@@ -35,6 +35,14 @@ impl TransformedDtb {
     }
 }
 impl TransformSelection {
+    /// Apply selected property edits to an immutable DTB and record default skip.
+    /// A net-unchanged tree preserves the original bytes. Only the implicit
+    /// default may skip a missing DTB; authored edits still require one.
+    ///
+    /// # Errors
+    /// Rejects malformed DTBs, missing required properties/DTBs, non-string
+    /// regex inputs, unavailable template variables and invalid typed values.
+    /// A regex with no match succeeds without changing the property.
     pub fn apply(
         &self,
         dtb: Option<&[u8]>,

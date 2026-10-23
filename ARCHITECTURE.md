@@ -45,14 +45,34 @@ payloads contain state-specific RAII owners. Prefer resource guards implementing
 Drop and an outer typestate wrapper that can move its fields during conversion.
 No unsafe field extraction, transmute, or manually asserted state transition.
 
-- Volume<Unmounted> -> Volume<Mounted> -> Volume<Unmounted> controls mount ownership.
-- Layer<Writable> -> Layer<Finalized> -> Layer<Sealed> controls writable storage.
-  Unmounted alone does not prove flush success or absence of other writers.
-- Step<Prepared> -> Step<Running> -> Step<Quiescent> -> Step<Completed> controls
-  command admission and explicit teardown.
-- LabelPolicy<Prepared> -> LabelPolicy<Installed> -> LabelPolicy<Removed> controls
-  authorization. Step owns the installed policy; unrelated callers cannot remove it.
-- Artifact<Staged> -> Artifact<Validated> -> Artifact<Published> controls output.
+- `Volume<Unmounted> -> Volume<Mounted> -> Volume<Unmounted>` controls mount
+  ownership. An unmounted value alone does not prove flush success or absence
+  of other writers. Explicit snapshot closure and loop detachment return the
+  scratch owner; `Scratch::seal_snapshot` produces a `SealedScute` only after
+  validating the persistent snapshot extent and constructing its verity data.
+- `Step<Ready>::admit_until` produces `Step<Running>`. Activation failure retains
+  Ready; failed admission retains Cancelling. Ready, Running or Cancelling can
+  enter cleanup through `cancel_until`, producing Reaping; `reap_until` produces
+  Draining, `drain_until` produces Quiescent, `finish_record` produces Finishing,
+  and `disable` returns StepCompletion. Failed cancellation retains Cancelling;
+  later failures retain their input state. `teardown` also closes policy and
+  identity pins, yielding TeardownCompletion under the original fixed deadline.
+  Storage finalization and sealing still follow. A normal shell exit does not
+  bypass cancellation or descendant drain.
+- `LabelPolicy<Prepared> -> LabelPolicy<LoadedDisabled> ->
+  LabelPolicy<PinnedDisabled> -> LabelPolicy<BoundDisabled>` constructs and binds
+  disabled authorization. Step owns activation, retains the bound policy through
+  quiescence, and disables it before returning ownership. Policy closure returns
+  namespace/filesystem identity pins for separate cleanup; raw policy owners
+  expose no enable operation.
+- `Supervision<Unpaired> -> Supervision<Paired> -> Supervision<Registered> ->
+  Supervision<Admitted>` separates identity exchange, domain registration and
+  command admission. Peer observation alone is not admission authority.
+- `StagedDirectory` owns low-level output storage. `AssembledImage` binds the
+  component layout, and the private `CompletedImage` couples it to validated
+  inventory after the selected pipeline completes. Publication consumes that
+  owner only after private context cleanup. Raw staging publication by itself
+  is not a successful-build receipt.
 
 No public Clone on authority owners. Read-only descriptions and content IDs may
 be cloned. Public handles must not permit recovering unrestricted writable FDs.

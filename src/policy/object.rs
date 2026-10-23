@@ -27,6 +27,10 @@ impl PolicyState for LoadedDisabled {
 /// PinnedDisabled retains the complete disabled hook set. Neither authorizes
 /// commands. After binding identity owners, activation is controlled by Step;
 /// raw policy owners never expose an enable operation.
+/// The construction sequence is Prepared, LoadedDisabled, PinnedDisabled, then
+/// BoundDisabled. Step retains the bound owner while authorization is active and
+/// only returns it after quiescence and disablement; closing it then returns the
+/// identity pins for separate cleanup.
 #[derive(Debug)]
 pub struct LabelPolicy<S: PolicyState> {
     pub(super) resources: S::Resources,

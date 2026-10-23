@@ -36,6 +36,12 @@ impl PublicationFailure {
     }
 }
 impl StagedDirectory {
+    /// Create private staging beside a new destination, anchored to its parent.
+    /// This does not validate an image or publish the destination.
+    ///
+    /// # Errors
+    /// Rejects a nameless/existing destination, an inaccessible or non-directory
+    /// parent, and failures to create private sibling storage.
     pub fn create(destination: &Path) -> io::Result<Self> {
         let name = destination.file_name().ok_or_else(|| {
             io::Error::new(

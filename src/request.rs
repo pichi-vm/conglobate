@@ -78,6 +78,13 @@ pub struct BuildRequest {
     formatter_runtime: Option<PathBuf>,
 }
 impl BuildRequest {
+    /// Parse CLI arguments and validate commit syntax and context-relative paths.
+    /// This does not open the repository/cache or verify their contents.
+    ///
+    /// # Errors
+    /// Returns CLI diagnostics (including help/version requests), an invalid
+    /// commit identity, or a path-validation error. Callers should use the CLI
+    /// diagnostic's exit code to distinguish help/version from invalid input.
     pub fn parse_from<I, T>(arguments: I) -> Result<Self, RequestError>
     where
         I: IntoIterator<Item = T>,

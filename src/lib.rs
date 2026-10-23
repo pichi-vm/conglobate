@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Validated inputs and owned execution primitives for the replacement builder.
-//! Full pipeline assembly and publication remain under implementation.
+//! Standalone image builds from committed recipes and verified local artifacts.
+//! Owns input capture, isolated execution, layer sealing, firmware/DTB processing
+//! and OCI/inventory publication. Runtime qualification is tracked separately.
 #![forbid(unsafe_code)]
 
 pub mod anchor;

@@ -38,6 +38,11 @@ pub struct Cache {
     directory: File,
 }
 impl Cache {
+    /// Open existing directory authority without fetching or validating blobs.
+    /// Individual reads and chain verification establish content identities.
+    ///
+    /// # Errors
+    /// Returns an I/O error if the supplied directory cannot be opened.
     pub fn open(path: &Path) -> Result<Self, CacheError> {
         let fd = rustix::fs::open(
             path,

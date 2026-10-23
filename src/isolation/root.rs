@@ -137,7 +137,8 @@ impl EnteredRoot {
     /// Finalize restrictions and remain as the command PID namespace's init,
     /// reaping descendants while the image shell runs. Exits with the shell's
     /// outcome; PID namespace destruction and outer containment stop survivors.
-    /// A returned error is fatal: this helper must exit. No CARAPACE support yet.
+    /// A returned error is fatal: this helper must exit. The directive runner
+    /// supplies CARAPACE, when available, through an export in the script.
     pub fn execute(
         self,
         script: &str,

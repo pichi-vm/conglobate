@@ -22,6 +22,12 @@ pub struct Inventory {
     bytes: Vec<u8>,
 }
 impl Inventory {
+    /// Decode the canonical versioned wire schema and validate its structure.
+    /// This proves neither authenticity nor that the described build occurred.
+    ///
+    /// # Errors
+    /// Rejects malformed/trailing CBOR, noncanonical encoding, unsupported or
+    /// invalid schema values, inconsistent components and invalid ordering.
     pub fn decode(bytes: &[u8]) -> Result<Self, InventoryError> {
         let mut input = bytes;
         let value: Value = ciborium::from_reader(&mut input).map_err(InventoryError::invalid)?;

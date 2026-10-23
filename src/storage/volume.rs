@@ -43,6 +43,9 @@ pub struct MountedResources {
 /// Filesystem mount ownership coupled to its writable snapshot. Unmounted is
 /// not a sealing receipt or proof that no independent kernel consumer exists.
 /// Root views borrow this owner; no raw root or backing descriptors escape.
+/// Abandoning a mounted volume attempts a lazy detach as a destructor fallback;
+/// it neither proves flush completion nor returns an Unmounted value. Use the
+/// explicit fallible unmount and finalization path before sealing output.
 /// ```compile_fail
 /// use conglobate::storage::{Volume, Mounted};
 /// fn cannot_unmount_with_view(volume: Volume<'_, '_, '_, Mounted>) {
