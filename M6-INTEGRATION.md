@@ -251,3 +251,12 @@ v194 uses this runner, rather than hand-written fixture sequencing, for the mixe
 bootstrap recipe. The normal VM suite and host checks pass; a fixture-only Clippy
 correction is preserved separately. Next connect CLI image construction, seals,
 output provenance/inventory, and dedicated runner failure cases.
+
+## Produced-scute assembly
+
+AssembledImage::extend copies inherited references, streams a sealed scute into
+verified private blob storage, updates the manifest root, and revalidates the
+complete output chain. The constructor is an artifact proof, not a successful
+recipe receipt. v195 exercises real two-layer assembly and wrong-parent rejection;
+normal VM lifecycle tests remain green. Next bind stage execution/sealing to this
+constructor and final DTB/inventory publication in the coordinator.

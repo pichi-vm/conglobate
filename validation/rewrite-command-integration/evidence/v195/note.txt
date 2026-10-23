@@ -1,0 +1,1 @@
+v195 full normal disposable-VM suite plus produced-scute OCI assembly. A real child snapshot is sealed, appended through production assembly, and the resulting two-layer chain/root is verified from output. Wrong-parent staging is rejected and discarded. No completed recipe/CLI publication or platform qualification is inferred.

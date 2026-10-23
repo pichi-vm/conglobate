@@ -64,7 +64,7 @@ impl AssembledImage {
         image: &ResolvedImage,
         destination: &std::path::Path,
     ) -> Result<AssembledImage, AssemblyFailure> {
-        Self::assemble(cache, image, destination, None)
+        Self::assemble(cache, image, destination, None, None)
     }
     pub(crate) fn transformed(
         cache: &Cache,
@@ -72,13 +72,25 @@ impl AssembledImage {
         destination: &std::path::Path,
         dtb: &crate::transform::TransformedDtb,
     ) -> Result<Self, AssemblyFailure> {
-        Self::assemble(cache, image, destination, dtb.bytes())
+        Self::assemble(cache, image, destination, dtb.bytes(), None)
+    }
+    /// Append an already sealed scute to this base. This validates the artifact,
+    /// not command success; the coordinator still owns execution receipts and
+    /// must finalize firmware/DTB and inventory before publication.
+    pub fn extend(
+        cache: &Cache,
+        image: &ResolvedImage,
+        scute: &crate::storage::SealedScute<'_>,
+        destination: &std::path::Path,
+    ) -> Result<Self, AssemblyFailure> {
+        Self::assemble(cache, image, destination, None, Some(scute))
     }
     fn assemble(
         cache: &Cache,
         image: &ResolvedImage,
         destination: &std::path::Path,
         dtb: Option<&[u8]>,
+        scute: Option<&crate::storage::SealedScute<'_>>,
     ) -> Result<Self, AssemblyFailure> {
         let staged = StagedDirectory::create(destination).map_err(AssemblyFailure::Before)?;
         let assembled = (|| -> Result<_, CacheError> {
@@ -119,6 +131,23 @@ impl AssembledImage {
                     .parse()
                     .map_err(|_| CacheError::Invalid("invalid output layer digest"))?;
                 staged.copy_blob(cache, &digest, layer.size())?;
+            }
+            if let Some(scute) = scute {
+                if image.manifest().carapace_verity_hash().as_ref() != Some(scute.parent()) {
+                    return Err(CacheError::Invalid(
+                        "produced scute parent differs from output base",
+                    ));
+                }
+                staged.store_scute(scute)?;
+                manifest["layers"]
+                    .as_array_mut()
+                    .ok_or(CacheError::Invalid("missing manifest layers"))?
+                    .push(serde_json::to_value(pichi_artifact::Layer::Scute(
+                        scute.descriptor().clone(),
+                    ))?);
+                manifest["annotations"]["dev.pichi.carapace.verity.hash"] =
+                    hex::encode(scute.root()).into();
+                changed = true;
             }
             // Preserve unrelated fields, and preserve exact JSON bytes for no-op edits.
             let manifest = if changed {

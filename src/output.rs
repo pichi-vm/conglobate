@@ -10,7 +10,7 @@ use pichi_artifact::Digest;
 use std::{
     ffi::OsString,
     fs::{self, File},
-    io::{self, Write},
+    io::{self, Read, Write},
     os::{fd::AsRawFd, unix::fs::PermissionsExt},
     path::{Path, PathBuf},
 };
@@ -99,6 +99,49 @@ impl StagedDirectory {
         pending.persist(target).map_err(|error| error.error)?;
         Ok(receipt)
     }
+    /// Stream a sealed layer without buffering its contents in memory. Verify
+    /// the exact written bytes before giving them their digest name.
+    pub(crate) fn store_scute(
+        &self,
+        scute: &crate::storage::SealedScute<'_>,
+    ) -> Result<(), CacheError> {
+        let digest = scute
+            .descriptor()
+            .digest
+            .parse()
+            .map_err(|_| CacheError::Invalid("invalid produced scute digest"))?;
+        self.store_verified(scute.data_reader(), &digest, scute.descriptor().size)
+    }
+    fn store_verified(
+        &self,
+        mut reader: impl Read,
+        digest: &Digest,
+        size: u64,
+    ) -> Result<(), CacheError> {
+        use sha2::{Digest as _, Sha256};
+        let mut pending = tempfile::NamedTempFile::new_in(self.temporary.path())?;
+        let mut hash = Sha256::new();
+        let mut remaining = size;
+        let mut buffer = [0u8; 65536];
+        while remaining != 0 {
+            let count = remaining.min(buffer.len() as u64) as usize;
+            let count = reader.read(&mut buffer[..count])?;
+            if count == 0 {
+                return Err(CacheError::Invalid("truncated produced scute"));
+            }
+            pending.write_all(&buffer[..count])?;
+            hash.update(&buffer[..count]);
+            remaining -= count as u64;
+        }
+        if reader.read(&mut buffer[..1])? != 0 || hash.finalize().as_slice() != digest.as_bytes() {
+            return Err(CacheError::Invalid("produced scute content mismatch"));
+        }
+        pending.as_file().sync_all()?;
+        pending
+            .persist(self.blob_path(digest))
+            .map_err(|error| error.error)?;
+        Ok(())
+    }
     /// Store captured or newly produced small content, deriving its identity
     /// from these bytes. The coordinator supplies the matching descriptor.
     pub fn store_blob(&self, bytes: &[u8]) -> io::Result<Digest> {
@@ -156,6 +199,34 @@ impl StagedDirectory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn produced_stream_must_match_size_and_digest_before_installation() {
+        let parent = tempfile::tempdir().unwrap();
+        let staged = StagedDirectory::create(&parent.path().join("output")).unwrap();
+        let bytes = vec![37u8; 150_000];
+        let digest = Digest::from_bytes_sha256(&bytes);
+        for (input, size) in [
+            (&bytes[..bytes.len() - 1], bytes.len() as u64),
+            (&bytes[..], bytes.len() as u64 - 1),
+            (&bytes[..], bytes.len() as u64 + 1),
+        ] {
+            assert!(staged.store_verified(input, &digest, size).is_err());
+            assert!(!staged.blob_path(&digest).exists());
+        }
+        let wrong = Digest::from_bytes_sha256(b"wrong");
+        assert!(
+            staged
+                .store_verified(&bytes[..], &wrong, bytes.len() as u64)
+                .is_err()
+        );
+        assert!(!staged.blob_path(&wrong).exists());
+        staged
+            .store_verified(&bytes[..], &digest, bytes.len() as u64)
+            .unwrap();
+        assert_eq!(fs::read(staged.blob_path(&digest)).unwrap(), bytes);
+        assert_eq!(fs::read_dir(staged.temporary.path()).unwrap().count(), 1);
+        staged.discard().unwrap();
+    }
     #[test]
     fn late_collision_never_replaces_existing_output_and_retains_staging() {
         let parent = tempfile::tempdir().unwrap();

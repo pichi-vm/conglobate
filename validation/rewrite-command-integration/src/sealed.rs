@@ -89,14 +89,45 @@ impl SealProbe {
             .output()?;
         assert!(label.status.success());
         assert_eq!(label.stdout, b"foreign_u:object_r:foreign_t:s0");
-        mounted
+        let child = mounted
             .unmount()
             .map_err(|e| e.to_string())?
             .into_snapshot()
             .close()
             .map_err(|e| e.to_string())?
             .detach()
+            .map_err(|e| e.to_string())?
+            .seal_snapshot(*sealed.root())
             .map_err(|e| e.to_string())?;
+        let extended = conglobate::output::AssembledImage::extend(
+            &cache,
+            &image,
+            &child,
+            Path::new("/work/extended-output"),
+        )?;
+        let extended_chain = extended.chain().ok_or("missing extended chain")?;
+        assert_eq!(extended_chain.root(), child.root());
+        assert_eq!(extended_chain.scutes().len(), 2);
+        assert_eq!(extended_chain.scutes()[0].root(), sealed.root());
+        assert_eq!(extended_chain.scutes()[1].root(), child.root());
+        assert_eq!(
+            extended.image().manifest().layers[0],
+            image.manifest().layers[0]
+        );
+        assert!(!Path::new("/work/extended-output").exists());
+        extended.discard()?;
+        let failure = conglobate::output::AssembledImage::extend(
+            &cache,
+            &image,
+            sealed,
+            Path::new("/work/wrong-parent-output"),
+        )
+        .unwrap_err();
+        let (error, staged) = failure.into_parts();
+        assert!(error.to_string().contains("parent differs"));
+        staged.ok_or("missing rejected staging")?.discard()?;
+        assert!(!Path::new("/work/wrong-parent-output").exists());
+        println!("PRODUCED_SCUTE_OUTPUT_ASSEMBLY_PASS");
         scope.restore().map_err(|e| e.to_string())?;
         active.close().map_err(|e| e.to_string())?;
         println!("BOOTSTRAP_SEALED_CHAIN_REOPEN_PASS");

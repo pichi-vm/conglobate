@@ -3139,3 +3139,26 @@ rules rather than silently shrinking acceptance criteria.
 - This connects execution APIs into production recipe sequencing, not yet CLI
   image-stage construction/sealing/inventory/publication. Those connections and
   enabled networking remain required. M6 zero adherence passes; goal active.
+
+### M6 produced-scute output assembly
+
+- Previous turn progressed with production directive sequencing. Added
+  AssembledImage::extend to append a sealed scute while preserving inherited
+  config/components/unknown manifest fields and updating the declared root.
+  Requires the scute parent to match the selected base; final staging is reopened
+  and all referenced bytes and the full ancestry recomputed before acceptance.
+- Produced scutes stream through a 64KiB buffer into a private pending file.
+  Size/digest/EOF must match before installation under a content digest name.
+  New host regression covers truncation, trailing data, wrong digest, exact bytes
+  and cleanup of rejected pending files. No whole-scute memory buffer is added.
+- v195 full normal VM suite passes. It creates a real child snapshot over the
+  sealed bootstrap layer, seals it, assembles two layers, checks ordered roots,
+  inherited descriptor preservation and absence of premature publication. An
+  intentionally wrong parent is rejected and its staging explicitly discarded.
+- 82 library tests, 50 doctests, root and fixture strict Clippy pass. Evidence,
+  source archive, fixture context/cache and artifact hashes preserved in
+  validation/rewrite-command-integration/evidence/v195.
+- This artifact constructor proves content/ancestry, not command success. The
+  coordinator must bind CompletedDirectives, finalize DTB/firmware and inventory,
+  and publish only after cleanup. CLI stage integration remains open; M6 zero
+  adherence passes and goal active.
