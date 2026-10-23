@@ -5203,3 +5203,21 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - External VM assets are still not durably archived; approximately 621 MiB free
   after this validation. No existing evidence or user work was deleted. Further
   validation must respect this capacity while source reviews can continue.
+
+### M4 cumulative adherence attempt: lifecycle ownership segment
+
+- Previous turn progressed with observation-owned teardown cutoffs. Began a
+  cumulative M4 review at 168b2a2; source/ownership/error-path review covers
+  cancellation, helper reaping, descendant drainage, preparation rollback,
+  finalization and rejection-only retry. No new defect established in this
+  segment; the full pass is incomplete and M4 remains 0/3.
+- Preserved hashes of 18 reviewed source files and compared them against 11
+  executed source archives and assessments. Older domain/process/preparation
+  evidence matches those components; historical execution retry differs and is
+  explicitly not counted as current retry coverage. Latest deadline/blocked
+  descendant evidence matches every selected source file.
+- Cumulative review and remaining sections:
+  preservation/m7-review/m4-adherence-168b2a2/REVIEW.md. Continue that attempt
+  across remaining source scopes; subset segments are not separate passes.
+- No source changes, new VM runs, artifact deletions or qualification claims.
+  Full goal and all preservation obligations remain active.
