@@ -3,7 +3,7 @@
 use super::{ConfiguredVeth, FirewallCloseFailure, FirewallTable};
 use netlink_packet_core::{DefaultNla, NLM_F_APPEND, NLM_F_CREATE, NLM_F_EXCL};
 use netlink_packet_netfilter::nftables::*;
-use std::{io, time::Instant};
+use std::time::Instant;
 
 /// A scoped inet policy owning its configured interface pair and namespace.
 /// Forwarding readiness and command admission are separate gates. Only an
@@ -34,6 +34,10 @@ enum RejectedConnection {
     Cleanup(super::ConnectionFailure),
 }
 impl NatInstallFailure {
+    pub(crate) fn diagnostics(&self) -> &crate::storage::FailureDiagnostics {
+        &self.diagnostics
+    }
+
     /// Failed installation never admits commands. Cleanup retains the original
     /// deadline and cannot turn this rejection into a configured policy.
     pub fn cleanup(self) -> Result<(), Box<Self>> {
@@ -45,7 +49,7 @@ impl NatInstallFailure {
             Box::new(Self {
                 diagnostics: self
                     .diagnostics
-                    .followed_by(io::Error::other(failure.to_string()).into()),
+                    .followed_by(failure.diagnostics().latest_only()),
                 connection: RejectedConnection::Cleanup(failure),
                 deadline: self.deadline,
             })
@@ -59,6 +63,10 @@ pub struct NatCloseFailure {
     connection: ConfiguredVeth,
 }
 impl NatCloseFailure {
+    pub(crate) fn diagnostics(&self) -> &crate::storage::FailureDiagnostics {
+        self.failure.diagnostics()
+    }
+
     pub fn cleanup(self) -> Result<ConfiguredVeth, Box<Self>> {
         match self.failure.cleanup() {
             Ok(()) => Ok(self.connection),

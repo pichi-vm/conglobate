@@ -1,0 +1,21 @@
+{
+  "checks": {
+    "NETWORK_NAMESPACE_FLOCK_EXCLUSION_AND_RELEASE_PASS": true,
+    "NETWORK_PRODUCTION_ALLOCATION_CONTENTION_BEFORE_MUTATION_PASS": true,
+    "NETWORK_COMPOSITE_AFTER_NAMESPACE_FAILURE_CLEANUP_PASS": true,
+    "NETWORK_COMPOSITE_NAT_FAILURE_PRESERVES_FOREIGN_TABLE_PASS": false,
+    "NETWORK_PRODUCTION_ALLOCATION_RELEASE_AND_DISTINCT_LIVE_PREFIX_PASS": false,
+    "NETWORK_COMPOSITE_EXPIRED_TEARDOWN_RETRY_RETAINS_OWNER_PASS": false,
+    "exit_zero": false,
+    "vm_powered_off": true
+  },
+  "passed": false,
+  "full_lifecycle_qualified": false
+}
+Traceback (most recent call last):
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/tests/lifecycle/run.py", line 258, in <module>
+    LifecycleRun(args).run()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/nathaniel/Projects/pichi-vm/conglobate/tests/lifecycle/run.py", line 240, in run
+    raise RuntimeError('lifecycle fixture failed; evidence retained')
+RuntimeError: lifecycle fixture failed; evidence retained

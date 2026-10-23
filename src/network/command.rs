@@ -74,19 +74,16 @@ impl NetworkCleanupFailure {
 }
 #[derive(Debug)]
 struct TransitionFailure {
-    source: io::Error,
+    source: FailureDiagnostics,
     state: State,
 }
 impl TransitionFailure {
-    fn new(source: impl std::fmt::Display, state: State) -> Box<Self> {
-        Box::new(Self {
-            source: io::Error::other(source.to_string()),
-            state,
-        })
+    fn new(source: FailureDiagnostics, state: State) -> Box<Self> {
+        Box::new(Self { source, state })
     }
 }
 impl Cleanup {
-    fn failed(self, source: io::Error) -> Box<NetworkCleanupFailure> {
+    fn failed(self, source: impl Into<FailureDiagnostics>) -> Box<NetworkCleanupFailure> {
         Box::new(NetworkCleanupFailure {
             diagnostics: source.into(),
             cleanup: self,
@@ -104,42 +101,42 @@ impl Cleanup {
             State::Policy(policy, resolver) => match policy.close(deadline) {
                 Ok(connection) => Ok(State::Connection(connection, resolver)),
                 Err(failure) => Err(TransitionFailure::new(
-                    failure.to_string(),
+                    failure.diagnostics().latest_only(),
                     State::PolicyRetry(failure, resolver),
                 )),
             },
             State::PolicyRetry(failure, resolver) => match failure.cleanup() {
                 Ok(connection) => Ok(State::Connection(connection, resolver)),
                 Err(failure) => Err(TransitionFailure::new(
-                    failure.to_string(),
+                    failure.diagnostics().latest_only(),
                     State::PolicyRetry(failure, resolver),
                 )),
             },
             State::Connection(connection, resolver) => match connection.close_until(deadline) {
                 Ok(()) => Ok(State::Resolver(resolver)),
                 Err(failure) => Err(TransitionFailure::new(
-                    failure.to_string(),
+                    failure.diagnostics().latest_only(),
                     State::ConnectionRetry(failure, resolver),
                 )),
             },
             State::ConnectionRetry(failure, resolver) => match failure.cleanup() {
                 Ok(()) => Ok(State::Resolver(resolver)),
                 Err(failure) => Err(TransitionFailure::new(
-                    failure.to_string(),
+                    failure.diagnostics().latest_only(),
                     State::ConnectionRetry(failure, resolver),
                 )),
             },
             State::Resolver(resolver) => match resolver.close() {
                 Ok(()) => Ok(State::Complete),
                 Err(failure) => Err(TransitionFailure::new(
-                    failure.to_string(),
+                    failure.diagnostics().latest_only(),
                     State::ResolverRetry(failure),
                 )),
             },
             State::ResolverRetry(failure) => match failure.cleanup() {
                 Ok(()) => Ok(State::Complete),
                 Err(failure) => Err(TransitionFailure::new(
-                    failure.to_string(),
+                    failure.diagnostics().latest_only(),
                     State::ResolverRetry(failure),
                 )),
             },

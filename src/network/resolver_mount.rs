@@ -143,12 +143,18 @@ impl ResolverView {
 #[derive(Debug, thiserror::Error)]
 #[error("resolver source cleanup: {error}")]
 pub struct ResolverSourceFailure {
-    error: io::Error,
+    error: crate::storage::FailureDiagnostics,
     owner: ResolverSource,
 }
 impl ResolverSourceFailure {
+    pub(crate) fn diagnostics(&self) -> &crate::storage::FailureDiagnostics {
+        &self.error
+    }
     pub fn cleanup(self) -> Result<(), Self> {
-        self.owner.close()
+        self.owner.close().map_err(|failure| Self {
+            error: self.error.followed_by(failure.error),
+            owner: failure.owner,
+        })
     }
 }
 
@@ -174,5 +180,45 @@ impl ResolverMount<'_> {
                 | mount::MoveMountFlags::MOVE_MOUNT_T_EMPTY_PATH,
         )?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ResolverSource;
+    use std::fs;
+
+    #[test]
+    fn resolver_cleanup_preserves_each_failure_and_recovery_owner() {
+        let parent = tempfile::tempdir().unwrap();
+        let temporary = tempfile::NamedTempFile::new_in(parent.path()).unwrap();
+        let (file, path) = temporary.into_parts();
+        let original = path.to_path_buf();
+        let saved = parent.path().join("saved");
+        fs::rename(&original, &saved).unwrap();
+        fs::create_dir(&original).unwrap();
+        let source = ResolverSource {
+            path,
+            file,
+            _parent: fs::File::open(parent.path()).unwrap(),
+        };
+        let first = source.close().unwrap_err();
+        let code = first.diagnostics().operation().raw_os_error().unwrap();
+        assert_eq!(code, rustix::io::Errno::ISDIR.raw_os_error());
+        let second = first.cleanup().unwrap_err();
+        let third = second.cleanup().unwrap_err();
+        assert_eq!(third.diagnostics().operation().raw_os_error(), Some(code));
+        assert_eq!(third.diagnostics().cleanup().len(), 2);
+        assert!(
+            third
+                .diagnostics()
+                .cleanup()
+                .iter()
+                .all(|error| error.raw_os_error() == Some(code))
+        );
+        fs::remove_dir(&original).unwrap();
+        fs::rename(&saved, &original).unwrap();
+        third.cleanup().unwrap();
+        assert!(!original.exists());
     }
 }

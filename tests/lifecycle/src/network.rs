@@ -217,7 +217,19 @@ impl NetworkProbe {
         assert!(Path::new("/sys/class/net/cgb0h").exists());
         println!("NETWORK_PRODUCTION_ALLOCATION_RELEASE_AND_DISTINCT_LIVE_PREFIX_PASS");
         let mut failure = network.close(Instant::now()).unwrap_err();
-        for _ in 0..2 {
+        for attempt in 0..2 {
+            assert_eq!(
+                failure.diagnostics().operation().kind(),
+                std::io::ErrorKind::TimedOut
+            );
+            assert_eq!(failure.diagnostics().cleanup().len(), attempt);
+            assert!(
+                failure
+                    .diagnostics()
+                    .cleanup()
+                    .iter()
+                    .all(|error| error.kind() == std::io::ErrorKind::TimedOut)
+            );
             assert!(
                 failure
                     .diagnostics()

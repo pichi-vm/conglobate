@@ -48,6 +48,19 @@ impl AllocationLease {
 #[error("network namespace creator failed: {0}")]
 struct NamespaceCreatorExit(std::process::ExitStatus);
 
+/// Operation context with a concrete source chain; no recovery authority.
+#[derive(Debug, thiserror::Error)]
+enum SetupCause {
+    #[error("veth: {0}")]
+    Veth(#[source] FailureDiagnostics),
+    #[error("network connection: {0}")]
+    Connection(#[source] FailureDiagnostics),
+    #[error("network configuration: {0}")]
+    Configuration(#[source] FailureDiagnostics),
+    #[error("NAT installation: {0}")]
+    Nat(#[source] FailureDiagnostics),
+}
+
 /// Failed setup retains the exact resources still requiring cleanup. It never
 /// yields an admissible network, even after cleanup succeeds.
 #[derive(Debug, thiserror::Error)]
@@ -116,48 +129,79 @@ impl NetworkSetupFailure {
                 .map(|_| ())
                 .map_err(|failure| {
                     let (error, process) = failure.into_parts();
-                    (error.to_string(), Pending::Creator(process))
+                    (
+                        FailureDiagnostics::from(io::Error::other(error)),
+                        Pending::Creator(process),
+                    )
                 }),
             Pending::IdentifiedCreator(process) => process
                 .terminate_until(self.deadline)
                 .map(|_| ())
                 .map_err(|failure| {
                     let (error, process) = failure.into_parts();
-                    (error.to_string(), Pending::IdentifiedCreator(process))
+                    (
+                        FailureDiagnostics::from(io::Error::other(error)),
+                        Pending::IdentifiedCreator(process),
+                    )
                 }),
             Pending::Veth(failure) => failure
                 .cleanup()
-                .map_err(|failure| (failure.to_string(), Pending::Veth(failure))),
-            Pending::Connection(failure) => failure
-                .cleanup()
-                .map_err(|failure| (failure.to_string(), Pending::Connection(failure))),
+                .map_err(|failure| (failure.diagnostics().latest_only(), Pending::Veth(failure))),
+            Pending::Connection(failure) => failure.cleanup().map_err(|failure| {
+                (
+                    failure.diagnostics().latest_only(),
+                    Pending::Connection(failure),
+                )
+            }),
             Pending::Configuration(failure) => match failure {
-                ConfigurationCleanupFailure::Worker(failure) => failure
-                    .cleanup()
-                    .map_err(|failure| (failure.to_string(), Pending::Configuration(failure))),
-                ConfigurationCleanupFailure::Network(failure) => failure
-                    .cleanup()
-                    .map_err(|failure| (failure.to_string(), Pending::Connection(failure))),
+                ConfigurationCleanupFailure::Worker(failure) => {
+                    failure.cleanup().map_err(|failure| {
+                        (
+                            failure.diagnostics().latest_only(),
+                            Pending::Configuration(failure),
+                        )
+                    })
+                }
+                ConfigurationCleanupFailure::Network(failure) => {
+                    failure.cleanup().map_err(|failure| {
+                        (
+                            failure.diagnostics().latest_only(),
+                            Pending::Connection(failure),
+                        )
+                    })
+                }
             },
             Pending::Nat(failure) => failure
                 .cleanup()
-                .map_err(|failure| (failure.to_string(), Pending::Nat(failure))),
+                .map_err(|failure| (failure.diagnostics().latest_only(), Pending::Nat(failure))),
             Pending::Policy(policy) => match policy.close(self.deadline) {
-                Ok(connection) => connection
-                    .close_until(self.deadline)
-                    .map_err(|failure| (failure.to_string(), Pending::Connection(failure))),
-                Err(failure) => Err((failure.to_string(), Pending::PolicyRetry(failure))),
+                Ok(connection) => connection.close_until(self.deadline).map_err(|failure| {
+                    (
+                        failure.diagnostics().latest_only(),
+                        Pending::Connection(failure),
+                    )
+                }),
+                Err(failure) => Err((
+                    failure.diagnostics().latest_only(),
+                    Pending::PolicyRetry(failure),
+                )),
             },
             Pending::PolicyRetry(failure) => match failure.cleanup() {
-                Ok(connection) => connection
-                    .close_until(self.deadline)
-                    .map_err(|failure| (failure.to_string(), Pending::Connection(failure))),
-                Err(failure) => Err((failure.to_string(), Pending::PolicyRetry(failure))),
+                Ok(connection) => connection.close_until(self.deadline).map_err(|failure| {
+                    (
+                        failure.diagnostics().latest_only(),
+                        Pending::Connection(failure),
+                    )
+                }),
+                Err(failure) => Err((
+                    failure.diagnostics().latest_only(),
+                    Pending::PolicyRetry(failure),
+                )),
             },
         };
         result.map_err(|(error, pending)| {
             Box::new(Self {
-                diagnostics: self.diagnostics.followed_by(io::Error::other(error).into()),
+                diagnostics: self.diagnostics.followed_by(error),
                 pending,
                 deadline: self.deadline,
             })
@@ -226,7 +270,7 @@ impl CommandNetwork {
         )
         .map_err(|failure| {
             NetworkSetupFailure::new(
-                io::Error::other(failure.to_string()),
+                io::Error::other(SetupCause::Veth(failure.diagnostics().clone())),
                 Pending::Veth(failure),
             )
         })?;
@@ -234,7 +278,7 @@ impl CommandNetwork {
             .connect(namespace, budget.deadline())
             .map_err(|failure| {
                 NetworkSetupFailure::new(
-                    io::Error::other(failure.to_string()),
+                    io::Error::other(SetupCause::Connection(failure.diagnostics().clone())),
                     Pending::Connection(failure),
                 )
             })?;
@@ -242,12 +286,15 @@ impl CommandNetwork {
             .configure(host, peer, program, cutoff)
             .map_err(|failure| {
                 NetworkSetupFailure::new(
-                    io::Error::other(failure.to_string()),
+                    io::Error::other(SetupCause::Configuration(failure.diagnostics().clone())),
                     Pending::Configuration(ConfigurationCleanupFailure::Worker(failure)),
                 )
             })?;
         let policy = NatPolicy::install(connection, budget.deadline()).map_err(|failure| {
-            NetworkSetupFailure::new(io::Error::other(failure.to_string()), Pending::Nat(failure))
+            NetworkSetupFailure::new(
+                io::Error::other(SetupCause::Nat(failure.diagnostics().clone())),
+                Pending::Nat(failure),
+            )
         })?;
         let resolver = match ResolverSource::prepare(resolver, workspace) {
             Ok(resolver) => resolver,

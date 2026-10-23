@@ -5752,3 +5752,22 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   network-error-composite-v1/ under preservation/m7-review/.
 - No outbound/DNS or full pipeline network-failure qualification claimed; large
   VM assets remain local. No complete adherence pass; M4 remains 0/3.
+
+### Concrete network cleanup histories
+
+- Replaced setup/NAT/command-network string conversions with typed child
+  histories, using the newest error at retry boundaries. Firewall and resolver
+  cleanup preserve their original cause across failed retries. Resource owners,
+  deadlines and teardown ordering are unchanged.
+- 146 library tests and strict Clippy passed. New local resolver-file cleanup
+  coverage proves errno/history preservation and successful owned retry. The
+  maintained VM fixture now checks timeout kind/history length across retries.
+- First VM run caught lost NAT-installation context. Preserved the failure and
+  restored operation labels with typed SetupCause sources; unchanged assertion
+  and all network-composite checks passed in v2. All 156 compared files match v2;
+  v1 differs only at the recorded context fix. Evidence: network-cleanup-errors/
+  and network-cleanup-history-v1/v2 under preservation/m7-review/.
+- Clarified for the user that resolver types handle resolv.conf bytes/mounts;
+  conglobate contains no DNS resolver service. VM systemd services are compatible
+  with the environment contract; delegating per-step networking is a separate
+  design decision. Final diagnostic taxonomy audit remains open; M4 stays 0/3.

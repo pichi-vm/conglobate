@@ -65,6 +65,10 @@ pub struct VethFailure {
     deadline: Instant,
 }
 impl VethFailure {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
+        &self.diagnostics
+    }
+
     fn before(error: io::Error) -> Self {
         Self {
             diagnostics: error.into(),
@@ -350,6 +354,10 @@ pub struct ConnectionFailure {
     namespace: NetworkNamespace,
 }
 impl ConnectionFailure {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
+        self.failure.diagnostics()
+    }
+
     pub fn cleanup(self) -> Result<(), Self> {
         self.failure.cleanup().map_err(|failure| Self {
             failure,
@@ -391,7 +399,19 @@ pub enum ConfigurationCleanupFailure {
     #[error("network resource cleanup: {0}")]
     Network(ConnectionFailure),
 }
+impl ConfigurationCleanupFailure {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
+        match self {
+            Self::Worker(failure) => failure.diagnostics(),
+            Self::Network(failure) => failure.diagnostics(),
+        }
+    }
+}
 impl ConfigurationFailure {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
+        &self.diagnostics
+    }
+
     fn new(
         connection: ConnectedVeth,
         error: io::Error,

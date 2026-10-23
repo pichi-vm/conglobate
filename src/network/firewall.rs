@@ -18,13 +18,20 @@ pub struct FirewallTable {
 #[derive(Debug, thiserror::Error)]
 #[error("firewall table teardown: {source}")]
 pub struct FirewallCloseFailure {
-    source: io::Error,
+    source: crate::storage::FailureDiagnostics,
     table: FirewallTable,
     deadline: Instant,
 }
 impl FirewallCloseFailure {
+    pub(crate) fn diagnostics(&self) -> &crate::storage::FailureDiagnostics {
+        &self.source
+    }
     pub fn cleanup(self) -> Result<(), Self> {
-        self.table.close(self.deadline)
+        self.table.close(self.deadline).map_err(|failure| Self {
+            source: self.source.followed_by(failure.source),
+            table: failure.table,
+            deadline: failure.deadline,
+        })
     }
 }
 impl FirewallTable {
@@ -69,7 +76,7 @@ impl FirewallTable {
         match self.socket.transact(vec![(request, 0)], deadline) {
             Ok(()) => Ok(()),
             Err(source) => Err(FirewallCloseFailure {
-                source,
+                source: source.into(),
                 table: self,
                 deadline,
             }),

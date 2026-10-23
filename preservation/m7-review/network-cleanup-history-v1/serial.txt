@@ -1,0 +1,16 @@
++ modprobe veth
++ modprobe nf_tables
++ modprobe nft_chain_nat
++ modprobe nft_masq
++ modprobe nft_ct
++ /lifecycle-tests network-composite
+NETWORK_NAMESPACE_FLOCK_EXCLUSION_AND_RELEASE_PASS
+NETWORK_PRODUCTION_ALLOCATION_CONTENTION_BEFORE_MUTATION_PASS
+NETWORK_COMPOSITE_AFTER_NAMESPACE_FAILURE_CLEANUP_PASS
+
+thread 'main' (160) panicked at src/network.rs:179:9:
+assertion failed: failure.to_string().contains("NAT installation")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+LIFECYCLE_EXIT 101
+[    1.861087] sysrq: Power Off
+[    1.865089] reboot: Power down
