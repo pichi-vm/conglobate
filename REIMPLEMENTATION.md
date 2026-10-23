@@ -2475,3 +2475,22 @@ rules rather than silently shrinking acceptance criteria.
   suite. v134 passes supervisor-death regression through the aggregate launch
   owner. All three startup failure variants retain their primary error across
   policy and unmount cleanup retries. Evidence/source hashes are verified.
+
+### M4 integrated command execution and acceptance (v135)
+
+- Step::execute now owns volume transfer, leaf readiness, admission under the
+  shared setup cutoff, command observation under the recipe timeout, teardown
+  and storage finalization. Failed setup/admission is explicitly cleaned up;
+  cleanup failure retains the exact owner and primary outcome for retry.
+- ExecutedVolume is privately constructed only when the command succeeds and
+  its own storage finalization succeeds. It is not a layer/image seal.
+  Public generic diagnostic mapping cannot manufacture this receipt.
+- v135 passes the normal VM suite plus integrated exit 0, exit 37, timeout and
+  helper-setup failure cases. Every integrated case forces EBUSY unmount, rejects
+  early storage extraction, then retries. Only exit 0 is accepted; all other
+  primary failures survive successful cleanup. Host tests (47 compile-fail),
+  root/fixture Clippy, formatting and evidence hashes pass.
+- Full earlier acquisition, public build entrypoint, API visibility review and
+  the three M4 adherence passes remain outstanding. No milestone advancement
+  is claimed. The next integration boundary is namespace/mount/policy/domain
+  acquisition before CommandPreparation.

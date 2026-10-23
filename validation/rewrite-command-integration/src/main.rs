@@ -252,6 +252,10 @@ impl Integration {
                     "volume-supervisor-registration-failure" => "registration-failure",
                     "volume-supervisor-launch-failure" => "launch-failure",
                     "volume-supervisor-exchange-failure" => "exchange-failure",
+                    "volume-supervisor-execute-success" => "execute-success",
+                    "volume-supervisor-execute-failure" => "execute-shell-failure",
+                    "volume-supervisor-execute-timeout" => "execute-timeout",
+                    "volume-supervisor-execute-setup" => "execute-setup",
                     "volume-supervisor-timeout" => "timeout",
                     "volume-supervisor-failure" => "shell-failure",
                     "volume-supervisor-pre-admission" => "pre-admission",
@@ -358,12 +362,19 @@ impl Integration {
                 }
                 let command = if matches!(
                     mode,
-                    "setup-detached-failure" | "setup-attached-exit" | "descriptor-rejection"
+                    "setup-detached-failure"
+                        | "setup-attached-exit"
+                        | "descriptor-rejection"
+                        | "execute-setup"
                 ) {
                     let mut command = Command::new(std::env::current_exe()?);
                     command
                         .arg("volume-receiver")
-                        .arg(mode)
+                        .arg(if mode == "execute-setup" {
+                            "setup-attached-exit"
+                        } else {
+                            mode
+                        })
                         .arg(setup_budget.cutoff()?.to_argument())
                         .env_clear();
                     command
@@ -372,7 +383,7 @@ impl Integration {
                         Self::command_script(if mode == "policy-cleanup" {
                             "shell-failure"
                         } else {
-                            mode
+                            mode.strip_prefix("execute-").unwrap_or(mode)
                         }),
                         setup_budget.cutoff()?,
                         100000,
@@ -385,6 +396,78 @@ impl Integration {
                     conglobate::step::CommandPreparation::new(policy, volume, domain, reaper)
                         .launch(command, deadline, parent)
                         .map_err(|e| e.to_string())?;
+                if mode.starts_with("execute-") {
+                    use conglobate::step::{CommandOutcome, ExecutionOutcome};
+                    // Force finalization failure, then prove that receipt creation
+                    // requires both this command's outcome and this volume's cleanup.
+                    let holder = fs::File::open(point)?;
+                    let timeout = if mode == "execute-timeout" {
+                        "200ms"
+                    } else {
+                        "5s"
+                    };
+                    let failure = step
+                        .execute(setup_budget, timeout.parse()?, parent)
+                        .unwrap_err();
+                    assert_eq!(
+                        failure.cleanup_error().unwrap().latest().kind(),
+                        std::io::ErrorKind::ResourceBusy
+                    );
+                    let failure = failure.into_rejected_volume().unwrap_err();
+                    assert_eq!(fs::read_dir(recovery)?.count(), 0);
+                    assert_eq!(fs::read_dir("/work/pins")?.count(), 0);
+                    assert!(
+                        fs::read_to_string("/proc/thread-self/children")?
+                            .trim()
+                            .is_empty()
+                    );
+                    drop(holder);
+                    let volume = match failure.retry_cleanup() {
+                        Ok(receipt) => {
+                            assert_eq!(mode, "execute-success");
+                            receipt.into_volume()
+                        }
+                        Err(failure) => {
+                            assert_ne!(mode, "execute-success");
+                            assert!(failure.cleanup_error().is_none());
+                            match (mode, failure.outcome()) {
+                                (
+                                    "execute-shell-failure",
+                                    ExecutionOutcome::Command(CommandOutcome::Exited(status)),
+                                ) => assert_eq!(status.code(), Some(37)),
+                                (
+                                    "execute-timeout",
+                                    ExecutionOutcome::Command(CommandOutcome::ObservationFailed(
+                                        error,
+                                    )),
+                                ) => assert_eq!(error.kind(), std::io::ErrorKind::TimedOut),
+                                ("execute-setup", ExecutionOutcome::SetupFailed(_)) => {}
+                                _ => return Err("unexpected integrated execution outcome".into()),
+                            }
+                            let (outcome, volume) =
+                                failure.into_rejected_volume().map_err(|e| e.to_string())?;
+                            assert!(!matches!(outcome,
+                                ExecutionOutcome::Command(CommandOutcome::Exited(status)) if status.success()));
+                            volume
+                        }
+                    };
+                    assert!(points()?.is_empty());
+                    volume
+                        .into_snapshot()
+                        .close()
+                        .map_err(|e| e.to_string())?
+                        .detach()
+                        .map_err(|e| e.to_string())?;
+                    origin.close()?;
+                    drop(lease);
+                    fs::remove_dir(recovery)?;
+                    fs::remove_file(node)?;
+                    if mode == "execute-setup" {
+                        fs::remove_file("/work/setup-failure-stage")?;
+                    }
+                    println!("INTEGRATED_EXECUTION_{}_PASS", mode.to_uppercase());
+                    return Ok(());
+                }
                 step.send_volume_until(deadline)?;
                 let step = match mode {
                     "pre-admission" => {

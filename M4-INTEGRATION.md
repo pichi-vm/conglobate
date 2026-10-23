@@ -177,3 +177,28 @@ I4 therefore remains open, as do production orchestration and receipt gating.
   suite. v134 passes supervisor-death regression through the aggregate launch
   owner. All three startup failure variants retain their primary error across
   policy and unmount cleanup retries. Evidence/source hashes are verified.
+
+### Integrated command execution and acceptance (v135)
+
+Step<Ready, Volume<Mounted>>::execute now owns the post-launch protocol:
+assigned-volume transfer, restricted-leaf readiness, bounded admission,
+completion observation, teardown and storage finalization. Setup/admission
+errors go through the same teardown owners, rather than escaping through a
+fixture string conversion. ExecutionFailure retains the primary setup/command
+outcome and a typed cleanup owner. Retry preserves the original teardown
+deadline; fully cleaned-up rejected storage remains distinguishable from success.
+
+ExecutedVolume is an opaque receipt created only inside this execution path
+after successful command completion and finalization of the same assigned
+volume. It cannot be constructed from an arbitrary CommandResult::map_cleanup
+combination or an unrelated unmounted volume. It is not a layer seal.
+The v135 VM suite tests exit 0, exit 37, timeout and pre-readiness helper failure,
+each combined with a forced EBUSY unmount and subsequent retry. Only exit 0
+produces the receipt. Rejected commands retain their failure even after all
+cleanup succeeds; storage cannot escape before finalization.
+
+This implements the I6 acceptance rule for the integrated path. A full low-level
+API visibility review remains required; the public CLI/build coordinator and
+earlier acquisition aggregate are still absent. Other fixture cases remain
+deliberately decomposed for fault injection and inspection. M4 has no clean
+adherence pass yet.

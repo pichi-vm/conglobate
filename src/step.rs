@@ -13,6 +13,8 @@ use std::{
     io, marker::PhantomData, mem::ManuallyDrop, path::Path, process::ExitStatus, time::Instant,
 };
 
+mod execution;
+pub use execution::{ExecutedVolume, ExecutionFailure, ExecutionOutcome};
 mod preparation;
 pub use preparation::{CommandPreparation, PreparationFailure, RolledBackPreparation};
 mod finalize;
