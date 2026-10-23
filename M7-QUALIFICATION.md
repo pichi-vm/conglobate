@@ -16,7 +16,7 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
 | amd64 | Local x86_64 QEMU/KVM integration evidence exists | Representative distro qualification and complete repository checks |
 | arm64 | qemu-system-aarch64 installed | Native build/execution profile and boot coverage; executable availability proves no qualification |
 | Intel TDX, AMD SEV-SNP, Arm CCA | Hardware access has not been established | Separate evidence for each platform; missing access remains outstanding |
-| CI | Rootless workflow authored for Rust 1.94.0; not yet run on GitHub | Dependency gates, portable disposable-VM integration and green actual workflow results |
+| CI | Rootless and dependency workflows authored for Rust 1.94.0; not yet run on GitHub | Portable disposable-VM integration, commit-message checks and green actual workflow results |
 | Final M7 adherence | Not started | Three complete consecutive clean passes after required work |
 
 ## Initial environment/source inspection

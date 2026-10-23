@@ -44,9 +44,12 @@ workspace storage inside conglobate is separately required to be RAM-backed.
 
 Serialize Cargo checks and use `CARGO_BUILD_JOBS=2` in constrained development
 environments. The rootless workflow uses Rust 1.94.0 and runs formatting, Clippy,
-tests and doctests. Hosted execution is still pending. Dependency advisory
-checks and license/source checks are separate from compilation; their results
-and current configuration corrections are recorded in the M7 review evidence.
+tests and doctests. A separate job runs pinned cargo-deny and cargo-audit tools
+for dependency policy and known advisories. Hosted execution is still pending.
+Local license/source checks pass for amd64 and arm64 dependency graphs; this is
+not arm64 execution qualification. Advisory matching depends on package source
+identities: a clean audit does not certify pinned Git revisions against ordinary
+crates.io advisories. Exact results are recorded in the M7 review evidence.
 
 ## Runtime trust boundary
 

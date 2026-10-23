@@ -432,3 +432,14 @@ Critic verdicts marked rejected merely because a finding was fixed during the
 review must be recorded as fixed, not counted as original false positives.
 This applies to correctness-001 and the remediated documentation findings.
 The original review baseline and all failure/regression evidence remain retained.
+
+
+## Applied dependency policy correction
+
+The live deny.toml now includes BSD-2-Clause, BlueOak-1.0.0 and the specific
+rustix Git URL, matching the previously tested proposal. Cargo.toml points to
+the documented safe mount_setattr pin rationale. Separate amd64 and arm64
+license/source/bans checks pass with cargo-deny 0.19.9; duplicate-package warnings
+remain visible. Pinned cargo-deny/cargo-audit CI steps are authored, not yet run
+on GitHub. These graph checks do not qualify arm64 execution. Advisory matching
+limitations remain documented; no dependency vulnerability-free claim is made.
