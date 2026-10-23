@@ -1,0 +1,1 @@
+Single fixed 30-second coordinator covers cancellation through policy disable with one retained deadline across retries. All owned-volume fixture outcomes use it. Deadline unit and no-extension compile-fail tests pass; root/fixture Clippy and VM pass. Filesystem finalization and setup orchestration remain outside this boundary.

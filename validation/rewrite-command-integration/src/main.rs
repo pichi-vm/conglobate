@@ -216,7 +216,7 @@ impl Integration {
                     .with_volume(volume);
                 step.send_volume_until(deadline)?;
                 let step = match mode {
-                    "pre-admission" => step.cancel_until(deadline).map_err(|e| e.to_string())?,
+                    "pre-admission" => step.teardown(parent).map_err(|e| e.to_string())?,
                     "setup-detached-failure" | "setup-attached-exit" => {
                         let failure = step.admit_until(deadline).unwrap_err();
                         let conglobate::step::StartFailure::Admission(failure) = failure else {
@@ -233,8 +233,7 @@ impl Integration {
                             }
                         );
                         fs::remove_file("/work/setup-failure-stage")?;
-                        step.cancel_until(Instant::now() + Duration::from_secs(5))
-                            .map_err(|e| e.to_string())?
+                        step.teardown(parent).map_err(|e| e.to_string())?
                     }
                     "admission-timeout" => {
                         let failure = step.admit_until(Instant::now()).unwrap_err();
@@ -243,7 +242,7 @@ impl Integration {
                         };
                         let (error, step) = failure.into_parts();
                         assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
-                        step.cancel_until(deadline).map_err(|e| e.to_string())?
+                        step.teardown(parent).map_err(|e| e.to_string())?
                     }
                     _ => {
                         let step = step.admit_until(deadline).map_err(|e| e.to_string())?;
@@ -282,21 +281,10 @@ impl Integration {
                             );
                             fs::remove_file(ready)?;
                         }
-                        let deadline = Instant::now() + Duration::from_secs(5);
-                        step.cancel_until(deadline).map_err(|e| e.to_string())?
+                        step.teardown(parent).map_err(|e| e.to_string())?
                     }
                 };
-                let deadline = Instant::now() + Duration::from_secs(5);
-                let (_, _, policy, volume) = step
-                    .reap_until(deadline)
-                    .map_err(|e| e.to_string())?
-                    .drain_until(deadline)
-                    .map_err(|e| e.to_string())?
-                    .finish_record(parent)
-                    .map_err(|e| e.to_string())?
-                    .disable()
-                    .map_err(|e| e.to_string())?
-                    .into_parts();
+                let (_, _, policy, volume) = step.into_parts();
                 let (user, mut pins) = policy.close()?.into_parts();
                 assert_eq!(pins.len(), 1);
                 assert!(

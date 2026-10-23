@@ -43,7 +43,7 @@ impl FailureDiagnostics {
             cleanup: Vec::new(),
         }))
     }
-    pub(super) fn followed_by(mut self, next: Self) -> Self {
+    pub(crate) fn followed_by(mut self, next: Self) -> Self {
         self.0.cleanup.push(next.0.operation);
         self.0.cleanup.extend(next.0.cleanup);
         self

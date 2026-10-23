@@ -966,3 +966,13 @@ complete cleanup. A host test verifies shared concrete error identity across
 ownership boundaries. Root tests, Clippy and the normal VM suite pass; evidence
 is archived. Command-error versus teardown-error orchestration remains separate
 outstanding work.
+
+## Fixed-budget step teardown
+
+v110/v111 route all owned-volume command outcomes through `Step::teardown`.
+Cancellation through policy disablement shares one fixed 30-second deadline;
+failed retries retain that deadline and their cleanup phase. v110 preserves a
+Clippy layout finding, fixed in v111. Root tests, both Clippy checks and VM suite
+pass. Immediate expiry is tested without sleeping, and replacing the retry
+budget is a compile-time error. Pin release and filesystem finalization remain
+outside this coordinator and must join the overall budget before qualification.

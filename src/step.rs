@@ -13,6 +13,9 @@ use std::{
     io, marker::PhantomData, mem::ManuallyDrop, path::Path, process::ExitStatus, time::Instant,
 };
 
+mod teardown;
+pub use teardown::TeardownFailure;
+
 mod private {
     pub trait Sealed {}
     pub trait Storage {}

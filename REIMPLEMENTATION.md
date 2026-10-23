@@ -2118,3 +2118,29 @@ rules rather than silently shrinking acceptance criteria.
   reaping of uninterruptible kernel I/O. Follow that distinction in the next
   implementation. M4 remains zero clean adherence passes, with review and other
   qualification requirements outstanding.
+
+### M4 fixed-budget step teardown (v110–v111)
+
+- Previous turn progressed in 3d45779. Step::teardown now coordinates cancellation,
+  helper reaping, descendant drain, record cleanup and policy disablement with a
+  single 30-second internal budget. Ready, Running and Cancelling entrypoints
+  consume their owners. Internal recovery variants contain the exact typestate;
+  failure exposes diagnostics and retry only, with no deadline-extension input.
+  Retry retains both phase and original cutoff and appends failed-attempt errors.
+- The coordinator checks expiry before every transition and before accepting a
+  completion, including after synchronous record/policy operations. It performs
+  no polling retry loops or sleeps. This bounds waiting/acceptance, not the duration
+  of a kernel syscall already blocked in uninterruptible I/O. Expiry fails the
+  build and preserves outstanding guards/storage under the VM-disposal contract.
+- Owned-volume success, timeout, shell failure, pre-admission cancellation,
+  admission timeout and both setup fault cases use the coordinator in v110/v111.
+  Normal VM suite passes. v110 preserves a Clippy large-transition-error finding;
+  v111 boxes that internal carrier. Host tests (40 compile-fail), both Clippy
+  checks and VM pass. A host check tests immediate expiry without sleeping;
+  compile-fail coverage prevents passing a replacement deadline to retry.
+- Boundary remains incomplete: this coordinator stops at policy disablement.
+  Pin release and filesystem flush/unmount/finalization still need to carry the
+  same overall teardown budget, rather than starting fresh budgets. Setup needs
+  its own fixed budget, and primary command outcome must survive cleanup errors.
+  Late kernel-return/failure coverage also needs review. M4 remains zero clean
+  adherence passes; this is not full lifecycle-deadline qualification.
