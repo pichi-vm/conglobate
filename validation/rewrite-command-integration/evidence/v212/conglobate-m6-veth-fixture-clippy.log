@@ -1,0 +1,11 @@
+    Updating crates.io index
+     Locking 2 packages to latest Rust 1.99.0-nightly compatible versions
+      Adding netlink-packet-core v0.9.0
+      Adding netlink-packet-route v0.33.0
+    Checking log v0.4.34
+    Checking netlink-packet-core v0.9.0
+    Checking goblin v0.10.7
+    Checking netlink-packet-route v0.33.0
+    Checking conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Checking conglobate-command-integration v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/validation/rewrite-command-integration)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.70s

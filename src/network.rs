@@ -4,3 +4,7 @@
 //! ownership gates; capturing configuration does not enable a command network.
 mod resolver;
 pub use resolver::ResolverInput;
+
+mod route;
+mod veth;
+pub use veth::{InterfaceName, VethFailure, VethPair};

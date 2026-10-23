@@ -3530,3 +3530,35 @@ rules rather than silently shrinking acceptance criteria.
   wrapper choice. Do not take library documentation as validation of the topology.
 - Enabled network commands remain rejected. M6 is still active at zero clean
   adherence passes; remaining M6 implementation/qualification and M7/M8 are required.
+
+### M6 bounded route requests and owned virtual interfaces
+
+- Previous turn was a requested status report, not implementation progress. This
+  turn implements native safe route netlink using pinned MIT packet codecs and
+  existing rustix owned sockets. Each request has its own nonblocking socket,
+  original absolute deadline, kernel-sender/sequence/framing validation and an
+  explicit ACK. No synchronization sleeps or external networking commands.
+- VethPair owns a protected control marker and pinned network namespace. Creation
+  is exclusive; interfaces initially remain DOWN with no configured addresses.
+  Cleanup checks creation-time locally administered MAC identifiers derived from
+  the unique marker, never interface names alone. The two endpoints have distinct
+  addresses. Only the trusted network controller may change their identifiers;
+  these identifiers are resource tracking, not secrets or authentication against
+  another privileged administrator.
+- Failed acquisition is opaque and exposes cleanup only. Cleanup retains the
+  original deadline and resource owner on failure. Abandonment retains the marker
+  and links for dedicated-VM disposal rather than claiming successful teardown.
+- Disposable VM v212-v215 preserved failures: IfAlias supplied during creation was
+  absent from kernel replies. v214 diagnostics established that both aliases were
+  absent although reciprocal peer indices were correct. v215 repeats v214 after
+  an edit script failed before changing sources. v216 passes with explicit MAC
+  identifiers: creation, initially DOWN interfaces, duplicate-name rejection
+  without deleting the original pair, explicit removal of both links/marker, and
+  expired-setup rollback. No host networking was modified.
+- Full host tests and strict root/fixture Clippy checks cover the new code. Raw
+  failed and successful logs/source provenance are retained under evidence/v212
+  through v216. This is focused backend evidence, not a full M6 adherence pass.
+- Still required: command network namespace handoff, routing and NAT, resolver
+  mounting/scaffolding/cleanup, enabled-command admission/receipts, complete failure
+  coverage and ORAS. Namespace-mismatch cleanup and abandoned-owner recovery also
+  need runtime validation. M6 remains active with zero clean adherence passes.

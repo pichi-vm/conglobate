@@ -1,0 +1,1 @@
+v212 FAILED: kernel veth creation did not preserve the peer ownership alias. Production acquisition rejected the mismatch. No passing resource lifecycle or sandbox claim. Preserved source and logs before corrective change.

@@ -17,6 +17,7 @@ seed = pathlib.Path('/var/tmp/conglobate-cap-review-fix-normal-v1')
 formatter_mode = sys.argv[2] if len(sys.argv) == 3 else ''
 formatter_failures = formatter_mode in ['--formatter-failures', '--formatter-drop-running', '--formatter-drop-wait']
 pipeline_mode = formatter_mode == '--pipeline'
+network_mode = formatter_mode == '--network'
 supervisor_death = len(sys.argv) == 3 and sys.argv[2] == '--supervisor-death'
 out = pathlib.Path(sys.argv[1]).resolve()
 out.mkdir()
@@ -32,7 +33,7 @@ with (out / 'pipeline-build.txt').open('wb') as build_log:
                        env=build_env, stdout=build_log, stderr=subprocess.STDOUT, check=True)
 root = out / 'root'
 shutil.copytree(seed / 'root', root, symlinks=True)
-for module in ['ext4', 'dm-zero', 'dm-snapshot', 'dm-verity']:
+for module in ['ext4', 'dm-zero', 'dm-snapshot', 'dm-verity', 'veth']:
     for line in subprocess.check_output(['modprobe', '--show-depends', '--set-version', '7.2.10-200.fc44.x86_64', module], text=True).splitlines():
         if line.startswith('insmod '):
             source = pathlib.Path(line.split()[1])
@@ -299,6 +300,8 @@ modprobe dm-snapshot
             'FORMATTER_DROP=' + formatter_mode.removeprefix('--formatter-drop-') + ' /idmap-probe formatter-failures'))
 if pipeline_mode:
     (root / 'fixture.sh').write_text('#!/bin/bash\nset -eux\n/idmap-probe pipeline-probe\n')
+if network_mode:
+    (root / 'fixture.sh').write_text('#!/bin/bash\nset -eux\nmodprobe veth\n/idmap-probe network-probe\n')
 paths = sorted(root.rglob('*'))
 (out / 'inputs.json').write_text(json.dumps({str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths if p.is_file() and not p.is_symlink()}, indent=2))
 archive = subprocess.run(['cpio', '--null', '-o', '--format=newc', '--owner=0:0'], input=b'\0'.join(str(p.relative_to(root)).encode() for p in paths) + b'\0', cwd=root, capture_output=True, check=True).stdout
@@ -316,6 +319,8 @@ if pipeline_mode:
             (out / ('pipeline-' + name.lower() + ('.cbor' if name == 'INVENTORY' else '.json'))).write_bytes(bytes.fromhex(match.group(1)))
     passed = all(marker in serial for marker in ['PIPELINE_CLI_PASSTHROUGH_INVENTORY_PASS',
         'PIPELINE_CLI_FAILURE_NO_PUBLICATION_PASS', 'PIPELINE_FIRMWARE_DTB_CONTRACT_PASS', 'PIPELINE_CLI_TRANSFORM_PASS', 'IDMAP_PROBE_EXIT 0'])
+elif network_mode:
+    passed = all(marker in serial for marker in ['NETWORK_EXCLUSIVE_COLLISION_PRESERVES_OWNER_PASS', 'NETWORK_PAIR_EXPLICIT_TEARDOWN_PASS', 'NETWORK_EXPIRED_SETUP_ROLLBACK_PASS', 'IDMAP_PROBE_EXIT 0'])
 elif formatter_mode.startswith('--formatter-drop-'):
     stage = formatter_mode.removeprefix('--formatter-drop-').upper()
     passed = f'FORMATTER_DROP_{stage}_RETAINS_STORAGE_PASS' in serial and 'IDMAP_PROBE_EXIT 0' in serial

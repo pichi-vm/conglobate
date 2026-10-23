@@ -5,6 +5,7 @@ mod bootstrap;
 mod finalization;
 mod formatter;
 mod formatter_failures;
+mod network;
 mod pipeline;
 mod readiness;
 mod sealed;
@@ -50,6 +51,9 @@ impl Integration {
             invocation.execute(&HelperProgram::current()?);
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|arg| arg == "network-probe") {
+            return network::NetworkProbe::run();
+        }
         if args.get(1).is_some_and(|arg| arg == "pipeline-probe") {
             return pipeline::PipelineProbe::run();
         }

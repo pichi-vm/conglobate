@@ -1,0 +1,1 @@
+v213 FAILED: pair identity validation rejected the returned link metadata. Exact alias/peer cause remains to be diagnosed. No passing resource lifecycle or sandbox claim. Preserved source and logs before corrective change.
