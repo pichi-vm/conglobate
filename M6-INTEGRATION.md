@@ -207,3 +207,12 @@ uses the existing Go-style matcher and does not descend through matched symlinks
 The next boundary is confined destination writing on an inactive mounted volume,
 including image account lookup, owner/mode application and directory merge rules.
 The selector is not yet connected to CLI directive execution.
+
+## COPY permissions
+
+CopyMode now evaluates octal/symbolic descriptions. An executed comparison against
+BuildKit's mode library covers 3,514,368 outputs and revealed behaviors the legacy
+evaluator missed (original-mode X and ordered permission copies). Digest vectors
+are maintained Rust tests; generator/reference provenance remains preserved.
+Destination writing and owner/group lookup still need implementation and VM
+validation before COPY is connected to the coordinator.

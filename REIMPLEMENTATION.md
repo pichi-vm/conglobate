@@ -3045,3 +3045,24 @@ rules rather than silently shrinking acceptance criteria.
 - Destination writing, metadata application and pipeline execution are still
   required; source selection alone is not a working COPY directive. M6 remains
   zero adherence passes. No privileged test was needed for immutable-tree work.
+
+### M6 COPY permission execution and reference comparison
+
+- Previous turn progressed with immutable source selection. While preparing
+  destination metadata, source comparison found the old evaluator incorrectly
+  used evolving modes for X and combined sequential class-copy operations.
+  Added CopyMode::apply over validated descriptions, with original-mode X,
+  ordered class copies, zero umask and scoped special-bit handling.
+- Executed tonistiigi/dchapes-mode at 73d941a28323f67dc09aefc69afd2770dc9dfc8b
+  using checksum-verified Go 1.27.3. Compared 429 expressions, files/directories,
+  and all 4096 starting permission patterns: 3,514,368 outputs agree. Preserved
+  deterministic digest vectors in tests/data/copy-mode-reference.json for normal
+  Rust regression tests without a runtime Go dependency.
+- Preserved reference source/license, generator, commit, toolchain checksum,
+  logs and source snapshot in preservation/m6/copy-mode. First Go run failed
+  because /tmp quota was exhausted; established /var/tmp TMPDIR fixed it.
+- All 77 library tests and strict all-target Clippy pass. This turn completed
+  permission calculation, not the originally planned destination writer.
+  Confined destination access, account lookup, metadata syscalls and pipeline
+  integration remain required. No privileged filesystem behavior or complete
+  COPY compatibility is claimed. M6 remains zero adherence passes.
