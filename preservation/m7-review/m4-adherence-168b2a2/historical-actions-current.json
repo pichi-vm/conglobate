@@ -944,8 +944,8 @@
       "evidence": "serde-saphyr Options::default() budget preserved: depth 64, alias ratio, scalar caps",
       "remaining_action": "none",
       "historical_status": "reject",
-      "current_status": "partially addressed; scalar budget coverage outstanding",
-      "current_evidence": "Depth and flat alias-ratio controls/rejections now run through YamlDocument; no recursive expansion or scalar-boundary execution claim. Exact parser defaults inspected. See yaml-formatter-current/REVIEW.md and parser-capability-current/."
+      "current_status": "addressed: depth, alias ratio and scalar boundary regression coverage",
+      "current_evidence": "YamlDocument now accepts a fixed flat scalar of exactly 64 MiB and rejects 64 MiB + 1 with the typed ScalarBytes budget error. Existing depth and flat alias-ratio tests also pass. No recursive expansion or general resource-exhaustion claim. See yaml-scalar-boundary/; initial compile/assertion/format failures retained. Production parser policy unchanged."
     },
     {
       "id": "tests-009",

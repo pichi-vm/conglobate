@@ -6173,3 +6173,12 @@ completed enabled steps establish use of the supplied namespace, not independent
 verified NAT/firewall provisioning. Checked against the runner's accepted choices,
 NetworkProbe assertions and DESIGN sections 2/6/9. Comments/docs only; no runtime
 or inventory-format change and no new test execution claimed. M4/M6 remain open.
+
+## YAML scalar boundary coverage
+
+Closed tests-008's remaining scalar coverage gap with a fixed flat 64 MiB
+success case and a one-byte-over typed-error assertion through YamlDocument.
+Three wrapper tests, strict all-target Clippy and final formatting pass; initial
+fixture compile/assertion/format failures remain in yaml-scalar-boundary/.
+Only cfg(test) code changed; no production policy/ownership behavior changed or
+defect was found. No new adherence pass or broader resource-security claim.

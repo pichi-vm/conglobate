@@ -1,0 +1,11 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.84s
+     Running unittests src/lib.rs (target/m7-stable/debug/deps/conglobate-e98d00463b4fb4d9)
+
+running 3 tests
+test document::tests::decoding_retains_the_alias_ratio_budget ... ok
+test document::tests::decoding_retains_the_parser_depth_budget ... ok
+test document::tests::decoding_retains_the_scalar_byte_budget ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 149 filtered out; finished in 3.06s
+

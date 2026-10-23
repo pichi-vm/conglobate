@@ -31,6 +31,35 @@ mod tests {
     use super::*;
 
     #[test]
+    fn decoding_retains_the_scalar_byte_budget() {
+        // Fixed, flat input: exercise the production default without recursive
+        // expansion or a test-only parser configuration. Drop the decoded copy
+        // before testing rejection to bound peak fixture storage.
+        const LIMIT: usize = 64 * 1024 * 1024;
+        let mut text = "x".repeat(LIMIT);
+        let decoded = YamlDocument::from(text.as_str())
+            .decode::<String>()
+            .unwrap();
+        assert_eq!(decoded, text);
+        drop(decoded);
+        text.push('x');
+        let error = YamlDocument::from(text.as_str())
+            .decode::<String>()
+            .unwrap_err();
+        let mut cause = &error;
+        while let serde_saphyr::Error::WithSnippet { error, .. } = cause {
+            cause = error;
+        }
+        assert!(
+            matches!(cause, serde_saphyr::Error::Budget {
+                breach: serde_saphyr::budget::BudgetBreach::ScalarBytes { total_scalar_bytes },
+                ..
+            } if *total_scalar_bytes == LIMIT + 1),
+            "{error}"
+        );
+    }
+
+    #[test]
     fn decoding_retains_the_alias_ratio_budget() {
         // Flat scalar references keep both input and possible output tiny.
         // This exercises ratio enforcement without recursive expansion.

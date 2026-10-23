@@ -1,0 +1,19 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+error[E0433]: failed to resolve: could not find `BudgetBreach` in `serde_saphyr`
+  --> src/document.rs:49:39
+   |
+49 |                 breach: serde_saphyr::BudgetBreach::ScalarBytes { total_scalar_bytes },
+   |                                       ^^^^^^^^^^^^ could not find `BudgetBreach` in `serde_saphyr`
+   |
+help: consider importing this enum
+   |
+31 +     use serde_saphyr::budget::BudgetBreach;
+   |
+help: if you import `BudgetBreach`, refer to it directly
+   |
+49 -                 breach: serde_saphyr::BudgetBreach::ScalarBytes { total_scalar_bytes },
+49 +                 breach: BudgetBreach::ScalarBytes { total_scalar_bytes },
+   |
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `conglobate` (lib test) due to 1 previous error
