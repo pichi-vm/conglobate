@@ -2933,3 +2933,16 @@ rules rather than silently shrinking acceptance criteria.
 - Three output tests, 12 cache tests and strict all-target Clippy pass. Preserved
   source/log hashes under preservation/m6/output-storage. No privileged host
   operations. M6 remains active with zero adherence passes.
+
+### M6 inherited artifact assembly
+
+- Added immutable AssembledImage from fresh staging, preserving exact base
+  manifest/configuration/all layer bytes, materializing canonical empty config,
+  and verifying staged content and chain before returning the owner.
+- Output ancestry selection still belongs to the upcoming coordinator; inventory
+  and publication are not exposed by this assembled owner yet.
+- Five output tests and strict all-target Clippy pass. Exact-manifest/extensions,
+  source-cache removal, empty/real config and missing-reference cleanup tested.
+  Preserved initial compile failure and passing evidence; no host privileged work.
+- Next connect version-two inventory and the actual pass-through CLI path. M6
+  remains active, zero adherence passes; later stage/qualification work remains.

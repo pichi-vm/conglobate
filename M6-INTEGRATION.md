@@ -95,3 +95,23 @@ and parent rename with exact output bytes); all 12 cache tests pass including
 writer failure propagation. Strict all-target Clippy passes. Source/log hashes
 are in preservation/m6/output-storage. Tests use ordinary temporary directories,
 no host mounts or policy loading. M6 remains at zero adherence passes.
+
+## Inherited artifact assembly
+
+AssembledImage::inherit creates fresh staging and copies the selected manifest's
+configuration and every layer through verified streams. It preserves exact
+manifest JSON bytes, including fields the shared typed view does not expose.
+Canonical inline empty configuration is materialized as a blob. The output index
+selects only the host manifest. Reopening staging through Cache verifies the
+manifest, all referenced bytes and the carapace chain before returning an
+immutable assembled owner. No mutable staging handle or publication method
+escapes this owner; inventory validation/publication remains to connect.
+
+Two new cases pass: both real and inline-empty configuration remain self-contained
+with PMI/DTB after deleting the source cache, including exact manifest extensions
+and no unreferenced index blob; a missing reference retains private staging for
+explicit cleanup and never creates the output destination. The firmware bytes
+are benign opaque fixtures: these tests prove transfer/content identity, not PMI
+or DTB semantic validation. All five output tests and strict all-target Clippy
+pass. Initial constructor-refactor compile failure and corrected logs/source are
+preserved under preservation/m6/inherited-assembly. M6 remains zero clean passes.

@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Private output storage and atomic filesystem publication. These low-level
 //! owners do not prove a successful build or validate inventory/manifest relations.
+mod assembly;
+pub use assembly::{AssembledImage, AssemblyFailure};
+
 use crate::cache::{BlobReceipt, Cache, CacheError};
 use pichi_artifact::Digest;
 use std::{

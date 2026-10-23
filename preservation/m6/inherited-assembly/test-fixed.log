@@ -1,0 +1,13 @@
+   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.55s
+     Running unittests src/lib.rs (target/debug/deps/conglobate-20c7801ebfb4cfc0)
+
+running 5 tests
+test output::tests::late_collision_never_replaces_existing_output_and_retains_staging ... ok
+test output::tests::cache_mutation_does_not_install_invalid_blob ... ok
+test output::assembly::tests::missing_reference_retains_only_private_staging_for_cleanup ... ok
+test output::tests::publication_uses_pinned_parent_and_includes_exact_bytes ... ok
+test output::assembly::tests::inheritance_preserves_all_selected_content_and_exact_manifest_without_source_cache ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 56 filtered out; finished in 0.07s
+
