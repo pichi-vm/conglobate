@@ -134,7 +134,9 @@ No unsafe field extraction, transmute, or manually asserted state transition.
   is not a successful-build receipt.
 
 No public Clone on authority owners. Read-only descriptions and content IDs may
-be cloned. Public handles must not permit recovering unrestricted writable FDs.
+be cloned. Public handles must not permit recovering unrestricted writable FDs. Private
+fields and crate-private descriptor access enforce that API boundary; internal
+trusted code still requires authority and lifetime review.
 Borrowed root views cannot outlive their owner or overlap consuming unmount.
 A process holding a descriptor is not represented by a Rust borrow: Step must
 retain actual kernel/process leases until quiescence is independently established.
@@ -153,10 +155,13 @@ Return the original typed owner only if its invariant remains known true.
 Otherwise return a dedicated failure owner retaining remaining resources and primary plus
 cleanup diagnostics. Do not claim retryable mounted/unmounted state after an
 uncertain partial operation. No successful output token is available on failure. Quiescent means no remaining
-command authority, not command success. Step<Quiescent> retains the observed command outcome;
-teardown produces storage ownership and the command outcome, not a successful
-build receipt. The enclosing execution/finalization owner checks command success
-and clean storage finalization before permitting the pipeline to continue.
+command authority, not command success. Step<Quiescent> retains the drained
+helper; its later completion carries the trusted helper status and storage.
+The recipe command outcome is separate: CommandResult preserves CommandOutcome
+through cleanup, and the execution owner carries it through finalization.
+Successful helper exit or cleanup cannot substitute for successful command
+execution. The enclosing execution owner checks that outcome and clean storage
+finalization before permitting the pipeline to continue.
 An exit-zero shell with surviving descendants still requires containment cleanup;
 a timed-out, cancelled or failed command never becomes successful through cleanup.
 

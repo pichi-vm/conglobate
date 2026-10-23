@@ -138,7 +138,8 @@ rules rather than silently shrinking acceptance criteria.
 - API feasibility probe: safe state-specific resource ownership and recoverable
   transition error pass; invalid borrow/state clients fail E0505/E0599.
 
-- M2 accepted after initial findings/fixes and three clean adherence passes:
+- Historical M2 acceptance (superseded by the current reopened gate in the
+  milestone table): accepted after initial findings/fixes and three clean passes:
   preservation/MILESTONE-2-ADHERENCE.md. Architecture scope is accepted, not kernel
   implementation qualification. The safe idmapping dependency and actual recovery
   protocol are explicit M4 gates. M3 may begin.
@@ -4413,3 +4414,22 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   source. Also reconcile no-VM integration wording with disposable-VM privileged
   qualification. Leave reviewed documents frozen until terminal synthesis.
 - Findings mean no clean pass; M2 remains 0/3. No dependent milestone advanced.
+
+### Full architecture findings corrected; consensus pending
+
+- Full Claude architecture review (81625) terminated exit 0. It verified current
+  type names, state flows, filesystem schema and test anchors, but found the
+  no-VM deployment wording contradicts the dedicated-VM safety premise. Fixed
+  DESIGN 1.1 to distinguish code dependencies from deployment and rootless from
+  privileged tests. Added an in-place superseded marker to historical M2 acceptance.
+- Corrected parent's substantive finding: Step carries helper status; the recipe
+  outcome is independently preserved through CommandResult/ExecutionOutcome and
+  checked after finalization. Cleanup/helper success is not command success.
+- Challenged reviewer F3: crate-private descriptor access is a valid compile-time
+  API boundary, and the original text states an obligation, not a guarantee about
+  arbitrary internal trusted code. Added mechanism clarification; requested a
+  concrete public escape or retraction. Descriptor source citation was incorrect.
+- Original full review preserved with compressed stream and result. Focused
+  consensus invocation 82339 running; prompt records exact dispositions and
+  source references. No clean pass counted while findings reconciliation remains.
+  M2 stays 0/3; M4-M8 are not accepted by this architectural review.

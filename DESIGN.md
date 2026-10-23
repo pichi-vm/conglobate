@@ -111,8 +111,9 @@ the carapace root.
    subdirectory, and a read-only image cache, it produces an
    importable artifact. The supervisor runs as root for storage assembly. Commands never
    receive that initial-namespace root authority in the target design.
-   Conglobate does not require a VM, virtiofs, GPT
-   transport, PID 1, or a particular hypervisor.
+   Conglobate has no code dependency on VM management, virtiofs, GPT
+   transport, PID 1, or a particular hypervisor. Its supported deployment is the
+   dedicated disposable VM with independent shutdown specified in section 9.
 2. **The official build appliance** wraps that same binary in a bootable pichi
    image. Its wrapper initializes the guest, exposes the supplied inputs,
    invokes conglobate, exports results and optional attestation evidence, and
@@ -122,8 +123,9 @@ the carapace root.
    retrieves/imports the result. It does not interpret private intermediate
    files to reconstruct the output image itself.
 
-The primary conglobate integration tests run without VM infrastructure.
-Appliance boot tests verify the wrapper and transport separately.
+Rootless input, planning and pure-operation tests run without VM infrastructure.
+Privileged lifecycle tests run in disposable VMs under the independent shutdown
+contract. Appliance boot tests verify the wrapper and transport separately.
 
 A build has the following lifecycle:
 
