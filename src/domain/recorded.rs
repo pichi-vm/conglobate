@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+mod setup;
 use super::{CommandDomain, DomainCreateFailure, DomainRecord, DomainRegistration};
 use crate::anchor::RecoveryDirectory;
+pub use setup::{DomainCreationCleanupFailure, DomainCreationRollback};
 use std::{io, path::Path, time::Instant};
 
 /// Owns a domain and its published identity under a borrowed recovery lease.

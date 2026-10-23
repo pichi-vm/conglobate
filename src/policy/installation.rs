@@ -45,6 +45,10 @@ pub struct InstallationFailure {
     failed: Failed,
 }
 impl PolicyInstallation {
+    pub(crate) fn into_identities(self) -> PolicyIdentities {
+        self.identities
+    }
+
     pub fn new(
         namespace: UserNamespace<PinnedNamespace>,
         filesystems: Vec<FilesystemPin>,

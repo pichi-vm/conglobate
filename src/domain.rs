@@ -14,8 +14,8 @@ pub use helper::{
 };
 mod recorded;
 pub use recorded::{
-    DomainCancellation, DomainRecordCleanup, RecordCleanupFailure, RecordDomainFailure,
-    RecordedCancelFailure, RecordedDomain,
+    DomainCancellation, DomainCreationCleanupFailure, DomainCreationRollback, DomainRecordCleanup,
+    RecordCleanupFailure, RecordDomainFailure, RecordedCancelFailure, RecordedDomain,
 };
 mod registration;
 pub use registration::DomainRegistration;
@@ -70,6 +70,17 @@ impl DomainFailure {
         (self.source, self.domain)
     }
 }
+#[derive(Debug, thiserror::Error)]
+#[error("domain target cleanup: {source}")]
+pub struct DomainTargetFailure {
+    source: io::Error,
+    target: DomainTarget,
+}
+impl DomainTargetFailure {
+    pub fn into_parts(self) -> (io::Error, DomainTarget) {
+        (self.source, self.target)
+    }
+}
 impl DomainTarget {
     fn open_parent(parent: &Path) -> io::Result<File> {
         let parent = File::from(rustix::fs::open(
@@ -97,12 +108,12 @@ impl DomainTarget {
     }
     /// Only for a fresh setup failure before registration. Errors retain the
     /// target. Never recursively delete cgroup control files or child domains.
-    pub fn remove(self) -> Result<(), DomainCreateFailure> {
+    pub fn remove(self) -> Result<(), DomainTargetFailure> {
         let result = self
             .lease
             .verify_current()
             .and_then(|()| fs::remove_dir(self.path()));
-        result.map_err(|source| DomainCreateFailure::Created {
+        result.map_err(|source| DomainTargetFailure {
             source,
             target: self,
         })

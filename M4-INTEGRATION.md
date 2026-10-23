@@ -235,3 +235,35 @@ No full M4 adherence pass is claimed.
 - v137 supervisor-death regression passes through production policy installation.
   Its source/artifact hashes and independent-controller shutdown evidence are
   preserved; this does not constitute a full adherence or qualification pass.
+
+### Domain acquisition and publication rollback (v138–v140)
+
+CommandPreparation::create now owns domain creation/publication before installing
+policy. A creation failure retains the not-yet-installed identity set, mounted
+volume and reaper. Rollback handles an absent domain, a created-but-incomplete
+target, or a fully created domain whose record publication failed, then drains
+children and releases identities/storage through the existing fixed deadline.
+
+DomainCreationRollback reconciles the live owned domain against the retained
+lease before deleting a publication record. No record means cancel the owned
+unpublished domain. An exact record means cancel then remove that record.
+Malformed or mismatched records fail with the domain retained; retry can proceed
+after the trusted caller corrects the record. DomainTarget::remove now returns
+a specific error retaining its target, eliminating an impossible before-create
+variant during cleanup.
+
+v138/v139 are preserved fixture compile failures (borrowed error propagation,
+then missing direct test dependency); no VM ran those sources. v140 exercises
+the publication-return boundary with actual domains and absent, matching,
+malformed and canonical-but-mismatched records. The error at that boundary is
+explicit fixture injection, not evidence that a real fsync failed. It also
+exercises an unavailable domain parent through full preparation rollback,
+preserving ENOENT across EBUSY unmount/retry.
+
+Namespace creation/pinning and filesystem mount/pinning still precede the
+preparation owner. Low-level API visibility, remaining fault coverage and
+complete adherence review remain open; M4 has zero clean passes.
+
+- v140 completes the normal suite; v141 passes supervisor-death regression
+  through aggregate domain acquisition. Host tests/Clippy and archived hashes
+  pass. These results do not constitute a full M4 adherence pass.

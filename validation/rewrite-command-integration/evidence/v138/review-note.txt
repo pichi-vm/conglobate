@@ -1,0 +1,1 @@
+Fixture compilation rejected propagation of a cleanup owner borrowing the local lease through a static error return. No VM ran. Corrected fixture-only diagnostic conversion; production retains typed cleanup ownership.

@@ -40,6 +40,84 @@ impl Integration {
             invocation.execute(&HelperProgram::current()?);
         }
         let args: Vec<_> = std::env::args().collect();
+        if args.get(1).is_some_and(|a| a == "domain-publication-probe") {
+            use conglobate::domain::{CommandDomain, RecordDomainFailure};
+            let directory = Path::new("/work/domain-publication-records");
+            fs::create_dir(directory)?;
+            fs::set_permissions(directory, fs::Permissions::from_mode(0o700))?;
+            let lease = RecoveryDirectory::open(directory)?;
+            let parent = Path::new("/work/cgroups");
+            for mode in ["absent", "present", "malformed", "mismatch"] {
+                let domain = CommandDomain::create(&lease, parent)?;
+                let record = if mode == "absent" {
+                    None
+                } else {
+                    Some(lease.save_domain(&domain)?)
+                };
+                if matches!(mode, "malformed" | "mismatch") {
+                    let record = record.as_ref().unwrap();
+                    let bytes = record.to_cbor();
+                    let replacement = if mode == "malformed" {
+                        vec![0xff]
+                    } else {
+                        let mut d = minicbor::Decoder::new(&bytes);
+                        assert_eq!(d.array()?, Some(6));
+                        let version = d.u8()?;
+                        let name = d.str()?;
+                        let values = [d.u64()?, d.u64()?, d.u64()?, d.u64()? ^ 1];
+                        let mut e = minicbor::Encoder::new(Vec::new());
+                        e.array(6)?.u8(version)?.str(name)?;
+                        for value in values {
+                            e.u64(value)?;
+                        }
+                        e.into_writer()
+                    };
+                    fs::write(
+                        directory.join(format!("{}.cbor", record.name())),
+                        replacement,
+                    )?;
+                }
+                // Benign fault at the publication return boundary: preserve the
+                // actual created domain and whichever record state was reached.
+                let failure = RecordDomainFailure::Publication {
+                    source: std::io::Error::from_raw_os_error(5),
+                    domain,
+                };
+                let (source, rollback) = failure.into_rollback(&lease);
+                assert_eq!(source.raw_os_error(), Some(5));
+                let deadline = Instant::now() + Duration::from_secs(5);
+                let rollback = if matches!(mode, "malformed" | "mismatch") {
+                    let failure = rollback.retry_until(parent, deadline).unwrap_err();
+                    let (error, rollback) = failure.into_parts();
+                    assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
+                    let record = record.as_ref().unwrap();
+                    assert!(parent.join(record.name()).exists());
+                    let retained = fs::read(directory.join(format!("{}.cbor", record.name())))?;
+                    assert_ne!(retained, record.to_cbor());
+                    if mode == "malformed" {
+                        assert_eq!(retained, [0xff]);
+                    }
+                    fs::write(
+                        directory.join(format!("{}.cbor", record.name())),
+                        record.to_cbor(),
+                    )?;
+                    rollback
+                } else {
+                    rollback
+                };
+                rollback
+                    .retry_until(parent, deadline)
+                    .map_err(|e| e.to_string())?;
+                assert_eq!(fs::read_dir(directory)?.count(), 0);
+                if let Some(record) = record {
+                    assert!(!parent.join(record.name()).exists());
+                }
+                println!("DOMAIN_PUBLICATION_{}_ROLLBACK_PASS", mode.to_uppercase());
+            }
+            drop(lease);
+            fs::remove_dir(directory)?;
+            return Ok(());
+        }
         if args.get(1).is_some_and(|a| a == "reject-registration") {
             let channel = Supervision::from_stdin()?
                 .exchange_until(Instant::now() + Duration::from_secs(5))?;
@@ -256,6 +334,7 @@ impl Integration {
                     "volume-supervisor-execute-failure" => "execute-shell-failure",
                     "volume-supervisor-execute-timeout" => "execute-timeout",
                     "volume-supervisor-execute-setup" => "execute-setup",
+                    "volume-supervisor-domain-failure" => "domain-failure",
                     "volume-supervisor-install-failure" => "install-failure",
                     "volume-supervisor-timeout" => "timeout",
                     "volume-supervisor-failure" => "shell-failure",
@@ -291,10 +370,10 @@ impl Integration {
                 };
                 let reaper = ChildReaper::install()?;
                 let parent = Path::new("/work/cgroups");
-                let domain = RecordedDomain::create(&lease, parent)?;
                 let pin = pin.expect("init volume pin");
                 let preparation = if mode == "success" {
                     // Keep the independent malformed-bind probes in this fixture case.
+                    let domain = RecordedDomain::create(&lease, parent)?;
                     conglobate::step::CommandPreparation::new(
                         PolicyFixture::prepare(&lease, user, pin)?,
                         volume,
@@ -309,18 +388,26 @@ impl Integration {
                     };
                     let installation =
                         conglobate::policy::PolicyInstallation::new(user, vec![pin], pin_parent);
-                    let result = conglobate::step::CommandPreparation::install(
+                    let domain_parent = if mode == "domain-failure" {
+                        Path::new("/nonexistent-cgroup-parent")
+                    } else {
+                        parent
+                    };
+                    let result = conglobate::step::CommandPreparation::create(
                         installation,
                         volume,
-                        domain,
                         reaper,
+                        &lease,
+                        domain_parent,
                         &setup_budget,
-                        parent,
                     );
-                    if mode == "install-failure" {
+                    if matches!(mode, "install-failure" | "domain-failure") {
                         let failure = result.unwrap_err();
                         assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(2));
-                        assert_eq!(fs::read_dir(recovery)?.count(), 3);
+                        assert_eq!(
+                            fs::read_dir(recovery)?.count(),
+                            if mode == "domain-failure" { 2 } else { 3 }
+                        );
                         let holder = fs::File::open(point)?;
                         let failure = failure.rollback().unwrap_err();
                         assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(2));
@@ -346,7 +433,11 @@ impl Integration {
                         drop(lease);
                         fs::remove_dir(recovery)?;
                         fs::remove_file(node)?;
-                        println!("POLICY_INSTALLATION_FAILURE_ROLLBACK_PASS");
+                        if mode == "domain-failure" {
+                            println!("DOMAIN_CREATION_FAILURE_ROLLBACK_PASS");
+                        } else {
+                            println!("POLICY_INSTALLATION_FAILURE_ROLLBACK_PASS");
+                        }
                         return Ok(());
                     }
                     result.map_err(|e| e.to_string())?

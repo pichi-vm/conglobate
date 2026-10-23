@@ -1,0 +1,7 @@
+{
+  "build.txt": "b080c255fb9ea51570eed750972b8ff5cedc8ec8ba69993660720dfb71b845ef",
+  "review-note.txt": "922371e72e9944ccc3add0ad39b9288d3ee7ac924d640c2fa2892d3db7cd8a45",
+  "source/validation/rewrite-command-integration/Cargo.toml": "76b92115cab984959f4b3b4a7f3b52181f2e9e7e7e1aaa2db2b443f94edc9761",
+  "source/validation/rewrite-command-integration/Cargo.lock": "befdc0d55008cede2d49c2823c2e5c72eabf21ea58df51378eecd2df5cdca2a6",
+  "source/validation/rewrite-command-integration/src/main.rs": "6982904c78aa7a8e218bbf9bc06fa1fdaccdda4393f1b279c4be804c9dd3d2fd"
+}

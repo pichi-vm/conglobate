@@ -3,7 +3,10 @@
 //! Ownership across helper launch, before the ready Step exists.
 use super::{Ready, Retained, Step, pins::PinCleanup, teardown::Deadline};
 use crate::{
-    domain::{DomainCancellation, DomainRecordCleanup, HelperLaunchFailure, RecordedDomain},
+    domain::{
+        DomainCancellation, DomainCreateFailure, DomainCreationRollback, DomainRecordCleanup,
+        HelperLaunchFailure, RecordDomainFailure, RecordedDomain,
+    },
     policy::{BoundCleanup, BoundDisabled, InstallationFailure, LabelPolicy, PolicyInstallation},
     process::{ChildReaper, Identified, LaunchFailure, Process, Running},
     storage::{FailureDiagnostics, Mounted, Unmounted, Volume, VolumeUnmountFailure},
@@ -18,6 +21,7 @@ use std::{
 
 #[derive(Debug)]
 enum PolicyAssignment {
+    Uninstalled(ManuallyDrop<Box<PolicyInstallation>>),
     Bound(Box<ManuallyDrop<LabelPolicy<BoundDisabled>>>),
     Failed(ManuallyDrop<Box<InstallationFailure>>),
 }
@@ -36,6 +40,45 @@ pub struct CommandPreparation<'l, 'n, 'o, 'w> {
     reaper: ChildReaper,
 }
 impl<'l, 'n, 'o, 'w> CommandPreparation<'l, 'n, 'o, 'w> {
+    /// Acquire and publish containment before installing policy. Every failure
+    /// retains the supplied identity pins, mounted storage and child reaper.
+    pub fn create(
+        installation: PolicyInstallation,
+        volume: Volume<'n, 'o, 'w, Mounted>,
+        reaper: ChildReaper,
+        recovery: &'l crate::anchor::RecoveryDirectory,
+        domain_parent: &Path,
+        budget: &super::SetupBudget,
+    ) -> Result<Self, Box<PreparationFailure<'l, 'n, 'o, 'w>>> {
+        let domain = budget
+            .check()
+            .map_err(|error| RecordDomainFailure::Create(DomainCreateFailure::Before(error)))
+            .and_then(|()| RecordedDomain::create(recovery, domain_parent));
+        match domain {
+            Ok(domain) => {
+                Self::install(installation, volume, domain, reaper, budget, domain_parent)
+            }
+            Err(failure) => {
+                let (source, rollback) = failure.into_rollback(recovery);
+                Err(Box::new(PreparationFailure {
+                    diagnostics: source.into(),
+                    phase: Phase::DomainSetup(
+                        rollback,
+                        reaper,
+                        Assigned {
+                            policy: PolicyAssignment::Uninstalled(ManuallyDrop::new(Box::new(
+                                installation,
+                            ))),
+                            volume: Retained::new(volume),
+                        },
+                    ),
+                    parent: domain_parent.to_owned(),
+                    deadline: Instant::now() + Duration::from_secs(30),
+                }))
+            }
+        }
+    }
+
     pub fn install(
         installation: PolicyInstallation,
         volume: Volume<'n, 'o, 'w, Mounted>,
@@ -126,6 +169,12 @@ impl<'l, 'n, 'o, 'w> CommandPreparation<'l, 'n, 'o, 'w> {
 }
 #[derive(Debug)]
 enum Phase<'l, 'n, 'o, 'w> {
+    DomainSetup(
+        DomainCreationRollback<'l>,
+        ChildReaper,
+        Assigned<'n, 'o, 'w>,
+    ),
+    EmptyDrain(ChildReaper, Assigned<'n, 'o, 'w>),
     Running(
         Process<Running>,
         DomainCancellation<'l>,
@@ -204,6 +253,22 @@ impl<'l, 'n, 'o, 'w> PreparationFailure<'l, 'n, 'o, 'w> {
         } = self;
         let next: Result<Phase<'l, 'n, 'o, 'w>, (FailureDiagnostics, Phase<'l, 'n, 'o, 'w>)> =
             match phase {
+                Phase::DomainSetup(rollback, reaper, assigned) => {
+                    match rollback.retry_until(&parent, deadline) {
+                        Ok(()) => Ok(Phase::EmptyDrain(reaper, assigned)),
+                        Err(failure) => {
+                            let (error, rollback) = failure.into_parts();
+                            Err((error.into(), Phase::DomainSetup(rollback, reaper, assigned)))
+                        }
+                    }
+                }
+                Phase::EmptyDrain(reaper, assigned) => match reaper.drain_until(deadline) {
+                    Ok(_) => Ok(Phase::Policy(assigned)),
+                    Err(failure) => {
+                        let (error, reaper) = failure.into_parts();
+                        Err((error.into(), Phase::EmptyDrain(reaper, assigned)))
+                    }
+                },
                 Phase::Running(process, domain, reaper, assigned) => {
                     match process.terminate_until(deadline) {
                         Ok(_) => Ok(Phase::Domain(domain, reaper, assigned)),
@@ -250,6 +315,12 @@ impl<'l, 'n, 'o, 'w> PreparationFailure<'l, 'n, 'o, 'w> {
                     }
                 },
                 Phase::Policy(assigned) => match assigned.policy {
+                    PolicyAssignment::Uninstalled(installation) => Ok(Phase::Pins(
+                        ManuallyDrop::into_inner(installation)
+                            .into_identities()
+                            .into(),
+                        assigned.volume,
+                    )),
                     PolicyAssignment::Bound(policy) => {
                         match ManuallyDrop::into_inner(*policy).close() {
                             Ok(identities) => Ok(Phase::Pins(identities.into(), assigned.volume)),

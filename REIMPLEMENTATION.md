@@ -2518,3 +2518,25 @@ rules rather than silently shrinking acceptance criteria.
 - v137 supervisor-death regression passes through production policy installation.
   Its source/artifact hashes and independent-controller shutdown evidence are
   preserved; this does not constitute a full adherence or qualification pass.
+
+### M4 domain acquisition integration (v138–v140)
+
+- CommandPreparation::create acquires/publishes the command domain before policy
+  installation and retains all supplied identities, storage and reaper on error.
+  DomainCreationRollback reconciles absent/exact records under the retained lease;
+  malformed or mismatched records cannot authorize cleanup. Cleanup uses the
+  existing preparation deadline and never restarts setup.
+- DomainTarget cleanup now has a specific owning error type. No cleanup branch
+  needs to assume an impossible before-creation error means successful removal.
+- v138/v139 fixture compile failures are preserved. v140 tests explicit errors
+  at the publication-return boundary with real domain/record state, including
+  rejection and retry of malformed/mismatched records, plus missing-domain-parent
+  preparation rollback and retained ENOENT through forced unmount failure.
+  The fixture now directly declares the already-cached minicbor dependency;
+  its lock update was performed offline without dependency version changes.
+- Namespace and filesystem mount/pin acquisition remain outside this aggregate.
+  No full M4 adherence pass or milestone advancement is claimed.
+
+- v140 completes the normal suite; v141 passes supervisor-death regression
+  through aggregate domain acquisition. Host tests/Clippy and archived hashes
+  pass. These results do not constitute a full M4 adherence pass.
