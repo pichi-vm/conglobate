@@ -2946,3 +2946,18 @@ rules rather than silently shrinking acceptance criteria.
   Preserved initial compile failure and passing evidence; no host privileged work.
 - Next connect version-two inventory and the actual pass-through CLI path. M6
   remains active, zero adherence passes; later stage/qualification work remains.
+
+### M6 version-two inventory wire format
+
+- Added immutable Inventory and private typed version-two records, deterministic
+  CBOR encoder and strict decoder. Schema covers formatter receipts, one selected
+  recipe and lock, ordered network steps, typed digest bytes and transform status.
+- Rejects unknown/duplicate/noncanonical/trailing data and invalid identities,
+  ordering, formatter metadata and output combinations. No public mutable wire
+  record or execution-success claim is exposed by decoding.
+- Five focused inventory tests, all 66 library tests, strict all-target Clippy
+  and command-fixture compilation pass. Added safe ciborium/serde_bytes libraries
+  and updated both root and active fixture locks offline. Evidence preserved.
+- Next bind actual input/output identities and completed-stage receipts to this
+  schema, validate against the staged manifest, and connect CLI publication.
+  M6 remains active with zero adherence passes.

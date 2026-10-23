@@ -18,6 +18,7 @@ pub mod formatter;
 pub mod image;
 pub mod input;
 pub mod isolation;
+pub mod inventory;
 pub mod lock;
 pub mod output;
 pub mod path;

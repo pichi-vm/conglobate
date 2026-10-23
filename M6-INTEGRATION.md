@@ -115,3 +115,25 @@ are benign opaque fixtures: these tests prove transfer/content identity, not PMI
 or DTB semantic validation. All five output tests and strict all-target Clippy
 pass. Initial constructor-refactor compile failure and corrected logs/source are
 preserved under preservation/m6/inherited-assembly. M6 remains zero clean passes.
+
+## Version-two inventory wire implementation
+
+Inventory is an immutable validated document with its exact canonical CBOR bytes
+and digest. Private typed records include single recipe/lock paths, formatter
+receipts, pipeline network identifiers and transform skip status. Ciborium and
+serde_bytes provide safe serialization; a consuming value normalizer orders map
+keys by encoded bytes and rejects duplicate keys, tags and floats. Strict decode
+checks both canonical wire bytes and typed-schema roundtrip, rejecting unknown
+fields, unsupported versions, nonminimal/indefinite encoding, trailing data,
+optional nulls and alternative representations. Enum/byte-array types and
+cross-field validation constrain roles, identities, paths, roots, output pairs,
+formatter geometry/runtime order and network-step order.
+
+This validates inventory representation, not authenticity or actual execution.
+The private record constructor is not yet connected to completed stage receipts
+or AssembledImage. Manifest/inventory cross-checks and the CLI remain next.
+No attestation or resolver measurement was added. Five inventory tests pass,
+including full formatter/network schema and negative wire corpus; all 66 library
+tests and strict all-target Clippy pass. The command fixture compiles with its
+updated dependency lock. Logs/source hashes are in preservation/m6/inventory-wire.
+No new VM run was needed for this unprivileged serialization change. M6 zero passes.
