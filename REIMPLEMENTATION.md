@@ -5545,3 +5545,19 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
   were removed, and this is not a remote preservation claim.
 - Updated the historical action ledger. No VM/platform requalification or full
   adherence pass; M4 remains 0/3. All larger goal requirements remain active.
+
+### COPY/cache finding reconciliation
+
+- Previous turn resolved Zstandard defaults. Rechecked current source against
+  six historical actions. Fixed ownership-001 by moving a consumed COPY path
+  candidate, and ownership-007 by reserving the exact receipt count including
+  only a present config. Selection, ordering and authentication are unchanged.
+- Corrected stale dispositions for performance-005/006 (ordered COPY ranges,
+  already in eb767f3), performance-001 (initial scute receipt reuse, b17e4a6), and
+  simplification-006 (unused Step bootstrap-send wrapper removed in eb767f3).
+  The live transport method remains; fresh preparation authentication still
+  checks the newly opened cache inode. Historical validation source untouched.
+- 128 library tests, 13 cache tests and strict all-target Clippy passed. Focused
+  review, source hashes and logs: preservation/m7-review/copy-cache-dispositions/.
+  No benchmark, fresh privileged validation or complete adherence pass claimed.
+  M4 remains 0/3, and the supported-ID allocation question remains pending.

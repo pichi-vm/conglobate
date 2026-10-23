@@ -106,7 +106,8 @@ impl Cache {
     ) -> Result<Vec<BlobReceipt>, CacheError> {
         let manifest = image.manifest();
         let config = &manifest.config;
-        let mut receipts = Vec::new();
+        let mut receipts =
+            Vec::with_capacity(manifest.layers.len() + usize::from(!config.is_empty()));
         if !config.is_empty() {
             let digest = config
                 .digest

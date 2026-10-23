@@ -103,7 +103,7 @@ impl<'a> SourceTree<'a> {
                         {
                             continue;
                         }
-                        path.clone()
+                        path
                     } else {
                         self.resolve(&path)?
                     };

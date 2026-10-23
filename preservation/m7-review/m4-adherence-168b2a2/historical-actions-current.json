@@ -134,8 +134,8 @@
       "evidence": "Borrow from entries.get ends at the matches! bool; path dead after the let",
       "remaining_action": "Move instead of clone (Low)",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "COPY wildcard traversal now moves its consumed path candidate instead of cloning; the earlier entries.get borrow ends before this move. Current COPY tests pass. See preservation/m7-review/copy-cache-dispositions/REVIEW.md."
     },
     {
       "id": "ownership-007",
@@ -143,8 +143,8 @@
       "evidence": "Final length is manifest.layers.len()+1, known before the loop",
       "remaining_action": "Vec::with_capacity",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented after review baseline",
+      "current_evidence": "Reference receipt vector preallocates exactly layer count plus one only for a nonempty config. Receipt ordering and validation unchanged; cache tests pass. See preservation/m7-review/copy-cache-dispositions/REVIEW.md."
     },
     {
       "id": "ownership-008",
@@ -170,8 +170,8 @@
       "evidence": "CheckedBlob::finish recomputes the same SHA-256 over the same bytes verify_references already hashed",
       "remaining_action": "Dedupe the initial identity-only scan ONLY. Preserve exact-inode authentication at preparation, receipts for every non-scute component, and independently usable public verification ops.",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented before review baseline; revalidated",
+      "current_evidence": "b17e4a6 introduced combined initial verification: only scute receipts with matching digest/size are reused; config and other layer receipts still verified. Public standalone verification remains; VerifiedScute::prepare authenticates its newly opened inode/root. Combined receipt/tampering unit test and cache regressions pass. This is not fresh privileged preparation qualification. See preservation/m7-review/copy-cache-dispositions/REVIEW.md."
     },
     {
       "id": "performance-002",
@@ -188,8 +188,8 @@
       "evidence": "entries is a BTreeMap; descendants() scans all of it and re-runs loop-invariant is_directory()",
       "remaining_action": "BTreeMap::range + hoist is_directory(); preserve direct-children filter",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented before review baseline; revalidated",
+      "current_evidence": "eb767f3 introduced a BTreeMap range for descendants and hoisted is_directory. Current code and tests preserve component boundaries, nested links, empty-root and file-selection semantics. See preservation/m7-review/copy-cache-dispositions/REVIEW.md."
     },
     {
       "id": "performance-006",
@@ -197,8 +197,8 @@
       "evidence": "Full key-set scan per candidate per wildcard component",
       "remaining_action": "BTreeMap::range; keep the depth filter (a prefix range yields all descendants)",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented before review baseline; revalidated",
+      "current_evidence": "eb767f3 introduced ordered subtree ranges for wildcard walking. Current code retains the direct-child parent filter and wildcard symlink-leaf behavior; existing component/depth tests pass. See preservation/m7-review/copy-cache-dispositions/REVIEW.md."
     },
     {
       "id": "security-003",
@@ -269,8 +269,8 @@
       "evidence": "send_bootstrap_until still present at src/step/bootstrap.rs:24 with zero callers; duplicates ExecutionStorage::send's bootstrap branch",
       "remaining_action": "Delete it",
       "historical_status": "accept",
-      "current_status": "pending revalidation",
-      "current_evidence": "Not dispositioned by this M4 lifecycle review; retain original action and inspect current source/tests before closing."
+      "current_status": "implemented before review baseline; revalidated",
+      "current_evidence": "eb767f3 removed the unused Step::send_bootstrap_until wrapper in src/step/bootstrap.rs. The distinct live Supervision transport method and its ExecutionStorage caller remain. Historical validation source remains preserved. See preservation/m7-review/copy-cache-dispositions/REVIEW.md."
     },
     {
       "id": "simplification-008",
