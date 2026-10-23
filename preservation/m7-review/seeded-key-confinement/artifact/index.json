@@ -1,0 +1,1 @@
+{"manifests":[{"artifactType":"application/vnd.pichi.artifact.v1+json","digest":"sha256:40ab4d6ae2390aab02ee15d1cefe61242fcd78ee7f7365068efa8a7c8db7a2ca","mediaType":"application/vnd.oci.image.manifest.v1+json","platform":{"architecture":"amd64","os":"pichi"},"size":3369}],"mediaType":"application/vnd.oci.image.index.v1+json","schemaVersion":2}

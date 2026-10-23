@@ -207,7 +207,7 @@
       "remaining_action": "VM test on the qualified kernel: positive ordinary /proc use + negative global disclosure",
       "historical_status": "open",
       "current_status": "partial qualification",
-      "current_evidence": "Segment B records zero/absent kallsyms, empty/absent keys and unavailable sched_debug on tested kernel. No seeded-key or sched_debug-present coverage."
+      "current_evidence": "Native amd64 confinement VM passes ordinary proc use, zero/absent kallsyms, empty/absent command keys and unavailable sched_debug. A benign supervisor user-key sentinel is visible before and after the full build, proving a populated external key control persists while command view is empty. See seeded-key-confinement/REVIEW.md. sched_debug-present kernel and arm64 coverage remain outstanding."
     },
     {
       "id": "security-004",

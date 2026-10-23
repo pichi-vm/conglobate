@@ -33,7 +33,36 @@ impl CommandProbe {
                 .status
                 .success()
         );
+        // Benign VM-owned sentinel, retained in root's user keyring after this
+        // control exits. Never inspect or print unrelated key payloads.
+        let seeded = Command::new("/context/probe-runtime/loader")
+            .args([
+                "--library-path",
+                "/context/probe-runtime/lib",
+                "/context/probe-runtime/keyctl",
+                "add",
+                "user",
+                "conglobate-validation-sentinel",
+                "owned-fixture",
+                "@u",
+            ])
+            .env_clear()
+            .env("LC_ALL", "C")
+            .output()?;
+        assert!(seeded.status.success(), "fixture key creation failed");
+        Self::key_control()?;
+        println!("COMMAND_KEY_SENTINEL_SEEDED_PASS");
         println!("COMMAND_SYSCALL_CONTROL_PASS");
+        Ok(())
+    }
+    fn key_control() -> Result<(), Box<dyn std::error::Error>> {
+        assert!(std::path::Path::new("/conglobate-disposable-validation-vm").is_file());
+        assert!(
+            fs::read_to_string("/proc/keys")?
+                .lines()
+                .any(|line| line.contains("conglobate-validation-sentinel")),
+            "supervisor fixture key must remain visible"
+        );
         Ok(())
     }
     fn proc_visibility() -> Result<(), Box<dyn std::error::Error>> {
@@ -89,6 +118,11 @@ impl CommandProbe {
     fn run() -> Result<(), Box<dyn std::error::Error>> {
         if std::env::args().nth(1).as_deref() == Some("control") {
             return Self::control();
+        }
+        if std::env::args().nth(1).as_deref() == Some("key-control-after") {
+            Self::key_control()?;
+            println!("COMMAND_KEY_SENTINEL_RETAINED_PASS");
+            return Ok(());
         }
         let map = fs::read_to_string("/proc/self/uid_map")?;
         let fields: Vec<_> = map.split_whitespace().collect();

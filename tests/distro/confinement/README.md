@@ -14,6 +14,10 @@ The command steps check:
 - EPERM from no-op unshare, a zero-length process_vm_readv targeting self,
   netlink socket creation, and a keyctl read. These operations succeed in an
   unrestricted control process inside the same disposable VM.
+- A benign supervisor-owned user-key sentinel is visible in `/proc/keys` before
+  and after the build, while the command's `/proc/keys` is empty or inaccessible.
+  The sentinel is created only inside the disposable VM and dies with that VM;
+  the probe never reads unrelated key payloads or prints key metadata.
 - Ordinary Unix sockets and child-process execution remain usable.
 
 The safe Rust probe and host keyctl executable/library runtime are committed

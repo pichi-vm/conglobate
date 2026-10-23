@@ -64,6 +64,9 @@ class DistroRun:
         policy_startup = '' if self.arguments.without_label_policy else label_environment.startup()
         probe_control = ('/context/probe-runtime/loader --library-path /context/probe-runtime/lib '
                          '/context/probe-runtime/command-probe control' if self.arguments.command_probe else ':')
+        probe_after = ('/context/probe-runtime/loader --library-path /context/probe-runtime/lib '
+                       '/context/probe-runtime/command-probe key-control-after'
+                       if self.arguments.command_probe else ':')
         fault_observation = ''
         if self.arguments.label_fault_second_filesystem:
             label_environment.stage_second_filesystem_fault()
@@ -218,6 +221,7 @@ else
     echo FAILED_BUILD_OUTPUT_ABSENT
     exit "$status"
 fi
+{probe_after}
 # Only the trusted VM supervisor sees this export device. The build workspace
 # remains RAM-backed; commands receive neither the device nor an export path.
 tar -C /work/output -cf /dev/vda .

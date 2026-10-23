@@ -5971,3 +5971,13 @@ Claude consensus and hashed design scope. M4–M6 remain reopened at zero.
 - Native amd64 KVM passes all prior clone controls plus both new time checks.
   Evidence: preservation/m7-review/time-namespace-control/REVIEW.md. tests-001
   retains partial status for missing arm64 execution; no full M4 pass claimed.
+
+### Populated supervisor-key visibility control
+
+- Maintained confinement fixture seeds a benign VM-root user key and requires
+  its /proc/keys visibility before and after the full build. Command view remains
+  empty/inaccessible, with the existing capability/descriptor/proc/descendant
+  checks also passing. No host probing or unrelated key payload access.
+- Native amd64 VM build/export and every confinement verifier check passed.
+  Evidence: preservation/m7-review/seeded-key-confinement/REVIEW.md. security-003
+  remains partial for sched_debug-present/arm64 coverage; M4 stays 0/3.
