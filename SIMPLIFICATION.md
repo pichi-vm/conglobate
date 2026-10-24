@@ -18,7 +18,7 @@ assertions and records lost doctest coverage explicitly. No code changes yet.
 S2 private binary/modules and test-only fixture: complete (3/3).
 S3 error propagation and terminal cleanup: complete (3/3).
 S4 lifecycle/assigned-volume consolidation: complete (3/3).
-S5 docs, focused regressions, native architecture CI and measured reduction: pending.
+S5 documentation/regression reviews: complete (3/3); hosted CI is the final acceptance gate.
 
 Target about half the production code if justified by actual simplification.
 Do not count moving code into another crate or deleting required checks as a
@@ -117,4 +117,19 @@ lines, 15.20% fewer physical lines. Test-only methods outside test modules remai
 counted conservatively. The hoped-for half was not reached. Remaining code owns
 actual protocol, filesystem/OCI/Git/DTB validation and sandbox checks; deleting
 those to meet the target would change the agreed scope. Script and JSON counts
-are retained with the evidence. Final CI and S5 reviews remain pending.
+are retained with the evidence.
+
+
+S5 clean adherence passes:
+1. Scope/requirements: full-pipeline and network artifact reports verify the
+   changed ownership paths without repeating four historical distro boots.
+   Local tests stay in disposable guests; confidential hardware remains deferred.
+2. Evidence/test packaging: binary and opt-in fixture targets, shared source
+   formatting traversal, updated distro commands and terminal-case markers agree.
+   Failed/preliminary runs are retained and not presented as passing evidence.
+3. Documentation/change audit: DESIGN, ARCHITECTURE and lifecycle descriptions
+   describe terminal failure rather than reuse. The size audit uses identical
+   extraction on both revisions and reports the unmet half-size aspiration.
+   Changes are committed on local main and pushed only to rewrite-qualification.
+   3/3. Final acceptance requires both hosted workflows for the pushed head green;
+   QUALIFICATION.md links those authoritative, commit-identified CI receipts.

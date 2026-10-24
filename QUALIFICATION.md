@@ -18,12 +18,13 @@ workloads, kernels, distributions or deployment environments are safe.
 | Guest lifecycle CI | Cache integrity, containment, runtime scope, private/changed namespace handling, clone restriction and PTY compatibility pass on amd64/KVM and Arm64/TCG |
 | Confidential computing | Deferred by user decision; no Intel TDX, AMD SEV-SNP or Arm CCA hardware qualification claimed |
 
-The accepted production source is 5d1f358. Hosted rootless/dependency checks are
+The pre-simplification production source was 5d1f358. Its hosted rootless/dependency checks are
 [run 40052820789](https://github.com/pichi-vm/conglobate/actions/runs/40052820789);
 seven lifecycle cases on each architecture are
 [run 40052820734](https://github.com/pichi-vm/conglobate/actions/runs/40052820734).
-Later retirement changes update documentation and test packaging, not production
-Rust; the branch's final CI run is recorded with final acceptance.
+Later retirement changes updated documentation and test packaging. The binary
+simplification is recorded separately below; prior results retain their original
+source identities.
 
 Arm64 Rust checks execute natively on ubuntu-24.04-arm. Its guest cases use a real
 Arm64 Linux kernel under explicitly recorded TCG because hosted KVM is absent.
@@ -52,3 +53,28 @@ Their historical paths refer to the full verified worktree/external archives in
 ARCHIVE.md. Failures are preserved alongside successes, including Nix PTY,
 parent-death-signal, nested-filter, unsigned-local-copy and Arm EFI packaging
 failures. Maintained recipes and regression fixtures are under `tests/`.
+
+## Binary simplification
+
+Production source 56c04b9 removes the public library, reusable failure-storage
+APIs and redundant lifecycle/storage/network wrappers. See SIMPLIFICATION.md
+for the complete review ledger and evidence/simplification for selected receipts.
+Rootless validation has 213 passing tests and Clippy with warnings denied.
+Focused disposable-VM runs cover failed close with a live reader, runtime cleanup,
+formatter timeout/exhaustion, launch rejection, held/missing cleanup acknowledgment,
+busy finalization, writeback failure and fixed teardown expiry. The full pipeline
+and DNS/resolver/offline-step artifact verifiers pass. These are new build/lifecycle
+results, not new distro boots or confidential-computing qualification.
+
+The binary no longer runs library doctests. Former compiler-negative examples are
+retired explicitly; fixture compilation does not replace their assertions.
+The 17 removed rootless tests constructed the retired error/retry representations;
+actual failure-path fixtures now assert terminal rejection and retained resources.
+
+Final hosted acceptance requires both workflows for the pushed review-branch head:
+[Rootless checks](https://github.com/pichi-vm/conglobate/actions/workflows/checks.yml?query=branch%3Arewrite-qualification)
+and [Disposable VM lifecycle](https://github.com/pichi-vm/conglobate/actions/workflows/lifecycle.yml?query=branch%3Arewrite-qualification).
+These include native amd64/Arm64 checks and amd64 guest ORAS interoperability.
+The hosted records identify the exact commit and conclusion; local observations
+alone do not satisfy this gate. Documentation-only descendants do not change the
+production source identity above.
