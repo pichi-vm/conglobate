@@ -1,0 +1,10 @@
+{
+  "passed": false,
+  "production_revision": "0556f30",
+  "fixture_errors": [
+    "awk unavailable in seed",
+    "missing runtime mount directories in bootstrapped root"
+  ],
+  "publication_absent": true,
+  "production_change_required": false
+}

@@ -6289,3 +6289,18 @@ Only all-target compilation and formatting checks were performed during this
 structural work. No runtime qualification or adherence pass is claimed; earlier
 VM results do not qualify this refactor. Broad validation remains deferred until
 the workflow/ownership simplification is coherent, per the user's direction.
+
+## Consolidated workflow verification at 0556f30
+
+After connecting the complete workflow, ran one consolidated validation batch:
+227 Rust tests/46 doctests, strict all-target Clippy and formatting pass. New
+maintained offline pipeline fixture exercises bootstrap, three carapace steps,
+explicit alternate firmware tools, DTB transformation, inventory and publication.
+The initial fixture failed for missing awk/runtime directories; corrected only
+the fixture and retained the failed run. The successful output has exactly two
+produced scutes (bootstrap + carapace), expected PMI/DTB, canonical inventory,
+verified self-contained blob graph and final root bound in /chosen/bootargs.
+Evidence: preservation/m7-review/linear-pipeline-validation. Production source
+matches 0556f30 in both guest archives. No milestone adherence pass or full distro,
+platform, failure-path or boot qualification is claimed. Large assets are still
+local, not durable retirement archives.

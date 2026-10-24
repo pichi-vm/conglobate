@@ -1,0 +1,20 @@
+{
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/linear-pipeline-0556f30-v1/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "durably_archived": false
+  },
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/linear-pipeline-0556f30-v1/initramfs.gz",
+    "size": 252863656,
+    "sha256": "270f59a4bedfab1d3b50bc58e9842737e56017ce93454870e84ffb65114ef330",
+    "durably_archived": false
+  },
+  "export.raw": {
+    "path": "/storage/conglobate-validation/linear-pipeline-0556f30-v1/export.raw",
+    "size": 2147483648,
+    "sha256": "a7c744c13cc101ed66c29f672f92455547889cc586ce6d44fe76ae824958ea51",
+    "durably_archived": false
+  }
+}

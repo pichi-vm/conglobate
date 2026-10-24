@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: Apache-2.0
+# Offline composition regression, not a bootable distro recipe.
+bootstrap:
+  from: qualification.local/fedora:43
+  filesystem: {type: ext4, size: 64MiB}
+  derive:
+    - run: |
+        mkdir -p /mnt/bin /mnt/etc /mnt/dev /mnt/proc /mnt/sys /mnt/tmp /mnt/run
+        cp -L /bin/sh /mnt/bin/sh
+        cp -L /bin/rm /mnt/bin/rm
+        libraries=$(ldd /bin/sh /bin/rm)
+        for library in $libraries; do
+          case "$library" in
+            /*:) ;; # ldd's executable heading
+            /*) cp -L --parents "$library" /mnt ;;
+          esac
+        done
+        printf 'bootstrap\n' > /mnt/etc/stage
+        printf 'tool-only\n' > /tool-only
+        printf 'PIPELINE_BOOTSTRAP_PASS\n'
+carapace:
+  derive:
+    - run: |
+        read -r stage < /etc/stage
+        test "$stage" = bootstrap
+        test ! -e /tool-only
+        test ! -e /context
+        printf 'temporary\n' > /temporary
+        printf 'carapace\n' > /etc/stage
+        printf 'PIPELINE_CARAPACE_FIRST_PASS\n'
+    - copy: {from: message.txt, into: /etc/context-message}
+    - run: |
+        read -r stage < /etc/stage
+        test "$stage" = carapace
+        read -r message < /etc/context-message
+        test "$message" = 'committed pipeline input'
+        test -f /temporary
+        /bin/rm /temporary
+        test ! -e /temporary
+        printf 'PIPELINE_CARAPACE_LAST_PASS\n'
+firmware:
+  from: qualification.local/fedora:43
+  derive:
+    - run: |
+        test -n "$CARAPACE"
+        test ! -e /etc/context-message
+        test ! -e /tool-only
+        printf 'PIPELINE_FIRMWARE_TOOLS_PASS\n'
+    - copy: {from: firmware/boot.pmi, into: /output.pmi}
+    - copy: {from: firmware/base.dtb, into: /output.dtb}
+  into: {pmi: /output.pmi, dtb: /output.dtb}
