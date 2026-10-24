@@ -57,13 +57,13 @@ after identity exchange but before cgroup joining, and cancellation before
 command admission with a live descendant. The child acknowledges readiness over
 a pipe before the helper signals the supervisor over a private datagram socket.
 Cancellation must remove the cgroup, reap the direct helper, drain at least one
-adopted descendant and remove the protected record. Each case checks no remaining
-children, child cgroups or records. No sleeps establish readiness. This is
+adopted descendant. Each case checks no remaining children or child cgroups
+and verifies the protected lease directory stays empty; no records are written. No sleeps establish readiness. This is
 containment-component coverage, not a mounted command-sandbox or publication test.
 
 The contained case also aborts a trusted helper after descendant readiness. A
-pidfd observes helper death before the fixture checks that its populated cgroup
-and protected record remain owned. Explicit cancellation and drain must collect
+pidfd observes helper death before the fixture checks that its cgroup remains
+populated and its protected lease directory remains empty. Explicit cancellation and drain must collect
 the descendant, report SIGABRT for the helper and release those resources. This
 exercises abrupt helper loss without Rust destructor execution.
 
@@ -130,10 +130,11 @@ actual task state under a deadline, yielding between observations.
 
 The gate-failure case also holds an ordinary directory descriptor on the mounted
 ext4 volume during finalization. Unmount must return ResourceBusy, retaining the
-mount and snapshot independently of the already-retired command-domain record.
+mount and snapshot independently of the already-drained command domain.
 Closing the holder permits retry under the original deadline. Both transitions
 must preserve the original failed command observation, despite successful helper
-exit. Final resource checks require no mounts, domains, records or children.
+exit. Final resource checks require no mounts, domains or children and an empty
+protected lease directory.
 This covers busy-unmount recovery, not filesystem writeback errors.
 
 `--case sandbox-writeback` uses an 8 MiB writable snapshot beneath its 16 MiB
