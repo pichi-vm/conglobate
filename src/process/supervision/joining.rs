@@ -246,6 +246,8 @@ impl Packet {
                     Ok(Self::CleanupFailed(message.to_owned()))
                 }
                 (11, 0) => {
+                    // Framing above excludes opcode 11 from the three-byte form.
+                    // This arm therefore has exactly eight bytes and no rights.
                     let raw = i32::from_be_bytes(bytes[4..8].try_into().expect("four bytes"));
                     let status = ExitStatus::from_raw(raw);
                     // Accept only terminal Linux wait statuses, not stopped or

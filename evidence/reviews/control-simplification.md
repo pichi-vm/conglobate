@@ -85,9 +85,9 @@ inventory/blob-graph verification. These are build checks, not new distro boots.
 Source-size audit uses the same script on baseline and current source, excluding
 all unit-test modules and fixture roots. The broader test-module matcher corrects
 the prior baseline of 16,070 to 16,057 code lines (13 diagnostic-test lines were
-previously included). Current: 15,319 code lines, 738 fewer (4.60%). Physical
-source falls from 17,721 to 16,907. This conservative measure still includes
-individually gated test helpers, so the 738-line reduction is not all production
+previously included). Current: 15,315 code lines, 742 fewer (4.62%). Physical
+source falls from 17,721 to 16,904. This conservative measure still includes
+individually gated test helpers, so the 742-line reduction is not all production
 runtime code. The transport-test cleanup is reported separately above; no logic
 was moved to another crate. Script, filtered sources and JSON are retained with
 the evidence.
@@ -111,3 +111,25 @@ The independent Claude implementation review and any follow-up are retained in
 this evidence directory alongside the source-grounded planning consensus. This
 document's three adherence passes are self-reviews, not claims that Claude
 performed those passes.
+
+
+## Independent implementation review
+
+Claude found no trust or functionality regression and concluded the agreed plan
+is satisfied. Its source audit independently traced containment, restriction,
+START timing, separate status corroboration, terminal retention and descriptor
+checks. The reviewer ran no tests; validation results above are our evidence.
+
+We accepted the stale supervision-comment finding and migrated the remaining
+rootless START tests from a test-only wrapper to `start_reporting_until`, removing
+the wrapper. A suggested status-frame defect was withdrawn by the reviewer after
+tracing the length guard; we added a comment explaining that precondition.
+The claim that ARCHITECTURE still named `Step<Cancelling>` was stale: that document
+had already been updated. Ready/Running deliberately remain distinct markers:
+they share cleanup resources but gate different execution/teardown operations;
+`RunningCommand` additionally owns `ExecutionGate<Started>`.
+
+The new START-rejection VM test satisfies the reviewer's topology concern.
+Mismatched cleanup status is covered rootlessly, not by an additional VM fixture;
+the receiver is trusted and the actual error path still requires cancellation.
+No additional runtime feature or security exception was introduced for review.

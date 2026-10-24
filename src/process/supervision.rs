@@ -46,8 +46,7 @@ impl Drop for ControlSocket {
 /// Pairing is not readiness, domain joining, containment or command admission.
 /// Neither side may expose this endpoint or its process identity to commands.
 /// Both endpoints progress Unpaired -> Paired through identity exchange, then
-/// Joined through domain joining
-/// through the admission handshake. Each transition consumes the prior owner;
+/// Joined through domain joining. Each transition consumes the prior owner;
 /// paired peer observation alone never permits image-code execution.
 ///
 #[derive(Debug)]

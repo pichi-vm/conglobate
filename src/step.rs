@@ -81,7 +81,7 @@ impl<'a> StepState<'a> for Running {
     }
 }
 /// Owns assigned storage until the contained helper and every descendant stop.
-/// Preparation/admission have distinct states. Cleanup is a private linear
+/// Preparation and execution have distinct states. Cleanup is a private linear
 /// sequence, not an externally recoverable state machine.
 #[derive(Debug)]
 pub(crate) struct Step<'lease, S: StepState<'lease>, R: StepStorage = ()> {
@@ -113,9 +113,9 @@ impl<'lease> Step<'lease, Ready> {
         }
     }
 
-    /// The helper must be trusted, contained and blocked on admission. The step
+    /// The helper must be trusted, contained and blocked before execution. The step
     /// owns its mapped namespace and assigned storage. Install the reaper
-    /// before spawning it. No other process may admit commands to this scope.
+    /// before spawning it. Only the supervisor may release the init execution gate.
     pub(crate) fn new(
         namespace: UserNamespace<Mapped>,
         helper: ContainedHelper,

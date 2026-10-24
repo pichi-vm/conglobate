@@ -174,10 +174,6 @@ impl ExecutionGate<Started> {
     }
 }
 impl ExecutionGate<Ready> {
-    #[cfg(test)]
-    pub(crate) fn start_until(self, deadline: Instant) -> io::Result<()> {
-        self.socket.0.send(2, deadline)
-    }
     /// Retain a status-only observation channel after authorizing start.
     pub(crate) fn start_reporting_until(
         self,
@@ -303,7 +299,7 @@ mod tests {
         let worker = std::thread::spawn(move || child.ready_and_wait(Fixture::deadline()));
         let parent = parent.wait_ready_until(Fixture::deadline()).unwrap();
         assert!(!worker.is_finished());
-        parent.start_until(Fixture::deadline()).unwrap();
+        let _running = parent.start_reporting_until(Fixture::deadline()).unwrap();
         worker.join().unwrap().unwrap();
     }
     #[test]
@@ -339,7 +335,10 @@ mod tests {
         net::shutdown(&child.0.0, net::Shutdown::Both).unwrap();
         drop(child);
         assert_eq!(
-            parent.start_until(Fixture::deadline()).unwrap_err().kind(),
+            parent
+                .start_reporting_until(Fixture::deadline())
+                .unwrap_err()
+                .kind(),
             io::ErrorKind::BrokenPipe
         );
     }
@@ -349,7 +348,10 @@ mod tests {
         child.0.send(1, Fixture::deadline()).unwrap();
         let parent = parent.wait_ready_until(Fixture::deadline()).unwrap();
         assert_eq!(
-            parent.start_until(Instant::now()).unwrap_err().kind(),
+            parent
+                .start_reporting_until(Instant::now())
+                .unwrap_err()
+                .kind(),
             io::ErrorKind::TimedOut
         );
         assert_eq!(
