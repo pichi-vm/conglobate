@@ -4,7 +4,7 @@
 use super::{Idmapped, IdmappedResources, Mount, MountState, private};
 use rustix::mount::{MoveMountFlags, UnmountFlags};
 use std::{
-    fs::{self, File},
+    fs::File,
     io,
     marker::PhantomData,
     os::{fd::AsRawFd, unix::fs::MetadataExt},
@@ -105,27 +105,13 @@ pub(crate) enum AttachmentFailure<'ns> {
         output: Mount<'ns, Idmapped>,
     },
 }
-#[derive(Debug, thiserror::Error)]
-#[error("unmount failed: {source}")]
-pub(crate) struct UnmountFailure<'ns> {
-    source: io::Error,
-    recovery: UnmountRecovery<'ns>,
-}
-#[derive(Debug)]
-struct UnmountRecovery<'ns> {
-    scope: &'ns crate::isolation::PrivateMountNamespace,
-    lease: AttachmentLease,
-    _thread: PhantomData<std::rc::Rc<()>>,
-}
-impl UnmountFailure<'_> {
-    pub(crate) fn cleanup(self) -> Result<(), Self> {
-        self.recovery.lease.close(self.recovery.scope)
-    }
-}
 impl<'ns> Mount<'ns, Idmapped> {
     /// Attach in the trusted builder's private mount namespace. No command may
     /// run until its separate containment and recovery protocol is established.
-    pub(crate) fn attach(self, point: MountPoint) -> Result<Mount<'ns, Attached>, AttachmentFailure<'ns>> {
+    pub(crate) fn attach(
+        self,
+        point: MountPoint,
+    ) -> Result<Mount<'ns, Attached>, AttachmentFailure<'ns>> {
         if let Err(source) = self._scope.verify_current() {
             return Err(AttachmentFailure::Root {
                 source,
@@ -226,49 +212,35 @@ impl<'ns> Mount<'ns, Attached> {
             .output_namespace = Some(_namespace);
         Ok(self)
     }
-    pub(crate) fn root_metadata(&self) -> io::Result<fs::Metadata> {
+    #[cfg(feature = "test-fixtures")]
+    pub(crate) fn root_metadata(&self) -> io::Result<std::fs::Metadata> {
         self.resources.root.metadata()
     }
     /// Cleanly remove this view. This is not filesystem sealing or proof that
     /// another mount/command cannot still write the underlying filesystem.
-    pub(crate) fn close(self) -> Result<(), UnmountFailure<'ns>> {
+    pub(crate) fn close(self) -> io::Result<()> {
         let AttachedResources { root, lease } = self.resources;
         drop(root);
         lease.close(self._scope)
     }
 }
 impl AttachmentLease {
-    fn close<'ns>(
-        mut self,
-        scope: &'ns crate::isolation::PrivateMountNamespace,
-    ) -> Result<(), UnmountFailure<'ns>> {
-        let backing = self.backing.as_mut().expect("live attachment lease");
-        if backing.output_namespace.is_some() {
-            if let Err(source) =
-                rustix::mount::unmount(backing.point.path().join("mnt"), UnmountFlags::empty())
-            {
-                return Err(UnmountFailure {
-                    source: source.into(),
-                    recovery: UnmountRecovery {
-                        lease: self,
-                        scope,
-                        _thread: PhantomData,
-                    },
-                });
+    fn close(mut self, scope: &crate::isolation::PrivateMountNamespace) -> io::Result<()> {
+        let result = (|| -> io::Result<()> {
+            scope.verify_current()?;
+            let backing = self.backing.as_mut().expect("live attachment lease");
+            if backing.output_namespace.is_some() {
+                rustix::mount::unmount(backing.point.path().join("mnt"), UnmountFlags::empty())?;
+                backing.output_namespace.take();
             }
-            backing.output_namespace.take();
+            rustix::mount::unmount(backing.point.path(), UnmountFlags::empty())?;
+            Ok(())
+        })();
+        if let Err(error) = result {
+            std::mem::forget(self);
+            return Err(error);
         }
-        if let Err(source) = rustix::mount::unmount(backing.point.path(), UnmountFlags::empty()) {
-            return Err(UnmountFailure {
-                source: source.into(),
-                recovery: UnmountRecovery {
-                    lease: self,
-                    scope,
-                    _thread: PhantomData,
-                },
-            });
-        }
-        drop(self.backing.take().expect("live attachment lease"));
+        self.backing.take();
         Ok(())
     }
 }
@@ -292,12 +264,6 @@ impl Drop for AttachmentLease {
 /// explicitly unmounted until that child is reaped. Descendant containment and
 /// storage lifetime remain the enclosing step's responsibility.
 ///
-/// ```compile_fail
-/// use conglobate::filesystem::{Mount, InUse};
-/// fn cannot_unmount_running_setup(mount: Mount<'_, InUse>) {
-///     mount.close();
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct InUse;
 impl private::Sealed for InUse {}
@@ -308,17 +274,6 @@ impl MountState for InUse {
 pub(crate) struct InUseResources {
     process: crate::process::Process<crate::process::Running>,
     attached: AttachedResources,
-}
-#[derive(Debug, thiserror::Error)]
-#[error("mounted-root setup launch: {source}")]
-pub(crate) struct RootLaunchFailure<'ns> {
-    source: io::Error,
-    mount: Mount<'ns, Attached>,
-}
-impl<'ns> RootLaunchFailure<'ns> {
-    pub(crate) fn into_parts(self) -> (io::Error, Mount<'ns, Attached>) {
-        (self.source, self.mount)
-    }
 }
 #[derive(Debug, thiserror::Error)]
 #[error("mounted-root setup wait: {source}")]
@@ -336,10 +291,7 @@ impl<'ns> Mount<'ns, Attached> {
     /// kernel carries cwd through subsequent namespace cloning; root entry must
     /// capture it afterward. No generated pathname or raw descriptor escapes.
     /// Image commands must not run until the child completes its sandbox setup.
-    pub(crate) fn launch(
-        self,
-        mut setup: std::process::Command,
-    ) -> Result<Mount<'ns, InUse>, RootLaunchFailure<'ns>> {
+    pub(crate) fn launch(self, mut setup: std::process::Command) -> io::Result<Mount<'ns, InUse>> {
         let point = &self
             .resources
             .lease
@@ -348,15 +300,7 @@ impl<'ns> Mount<'ns, Attached> {
             .expect("attached mount")
             .point;
         setup.current_dir(point.path());
-        let child = match setup.spawn() {
-            Ok(child) => child,
-            Err(source) => {
-                return Err(RootLaunchFailure {
-                    source,
-                    mount: self,
-                });
-            }
-        };
+        let child = setup.spawn()?;
         Ok(Mount {
             resources: InUseResources {
                 process: child.into(),
@@ -388,14 +332,6 @@ impl<'ns> Mount<'ns, InUse> {
         deadline: std::time::Instant,
     ) -> Result<(Mount<'ns, Attached>, std::process::ExitStatus), RootWaitFailure<'ns>> {
         self.finish(|process| process.wait_until(deadline))
-    }
-    /// Terminate and reap this direct setup child. This does not cancel the
-    /// entire command cgroup or prove descendant quiescence.
-    pub(crate) fn terminate_until(
-        self,
-        deadline: std::time::Instant,
-    ) -> Result<(Mount<'ns, Attached>, std::process::ExitStatus), RootWaitFailure<'ns>> {
-        self.finish(|process| process.terminate_until(deadline))
     }
     fn finish(
         self,

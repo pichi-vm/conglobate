@@ -13,11 +13,7 @@ pub(crate) struct DomainCreationCleanupFailure {
     source: io::Error,
     rollback: DomainCreationRollback,
 }
-impl DomainCreationCleanupFailure {
-    pub(crate) fn into_parts(self) -> (io::Error, DomainCreationRollback) {
-        (self.source, self.rollback)
-    }
-}
+impl DomainCreationCleanupFailure {}
 impl DomainCreateFailure {
     pub(crate) fn into_rollback(self) -> (io::Error, DomainCreationRollback) {
         match self {
@@ -32,7 +28,10 @@ impl DomainCreateFailure {
     }
 }
 impl DomainCreationRollback {
-    pub(crate) fn retry_until(self, deadline: Instant) -> Result<(), Box<DomainCreationCleanupFailure>> {
+    pub(crate) fn retry_until(
+        self,
+        deadline: Instant,
+    ) -> Result<(), Box<DomainCreationCleanupFailure>> {
         if Instant::now() >= deadline {
             return Err(Box::new(DomainCreationCleanupFailure {
                 source: io::Error::new(io::ErrorKind::TimedOut, "domain cleanup deadline expired"),

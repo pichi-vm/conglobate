@@ -1,6 +1,5 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::BuildError;
 use crate::{
     execution::HelperProgram,
     input::ResolvedBuild,
@@ -26,24 +25,18 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
         stage: &Firmware,
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
-    ) -> Result<crate::firmware::ExtractedFirmware<'w>, BuildError> {
+    ) -> anyhow::Result<crate::firmware::ExtractedFirmware<'w>> {
         let Self {
             active,
             root,
             reaper,
         } = self;
-        let snapshot = Mapping::<Created>::create()?
-            .snapshot(
-                &active,
-                workspace
-                    .snapshot_store()?
-                    .attach()
-                    .map_err(BuildError::from)?,
-                NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap(),
-            )
-            .map_err(BuildError::from)?;
-        let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())
-            .map_err(BuildError::from)?;
+        let snapshot = Mapping::<Created>::create()?.snapshot(
+            &active,
+            workspace.snapshot_store()?.attach()?,
+            NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap(),
+        )?;
+        let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())?;
         let paths = runtime.paths()?;
         let mappings = build.captured().execution_mappings()?;
         let sandbox = CommandSandbox::new(
@@ -56,41 +49,30 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
             .captured()
             .networking()
             .map(|resolver| crate::network::CommandNetworking::new(resolver, workspace));
-        let completed = sandbox
-            .directives_with_network::<Volume<'_, '_, '_, Mounted>>(
-                volume,
-                reaper,
-                build.captured().context(),
-                stage.directives(),
-                root.as_ref(),
-                networking.as_ref(),
-            )
-            .map_err(|failure| (*failure).reject())?;
+        let completed = sandbox.directives_with_network::<Volume<'_, '_, '_, Mounted>>(
+            volume,
+            reaper,
+            build.captured().context(),
+            stage.directives(),
+            root.as_ref(),
+            networking.as_ref(),
+        )?;
         let (volume, _reaper) = completed.into_parts();
         let budget = SetupBudget::begin();
-        let mut mounted = volume
-            .mount_ext4(paths.volumes())
-            .map_err(BuildError::from)?;
+        let mut mounted = volume.mount_ext4(paths.volumes())?;
         let captured = mounted.extract_firmware(stage, workspace, &budget);
         let cleanup_budget = SetupBudget::begin();
-        let cleanup = (|| -> Result<(), BuildError> {
-            mounted
-                .unmount()
-                .map_err(BuildError::from)?
-                .into_snapshot()
-                .close()
-                .map_err(BuildError::from)?
-                .detach()
-                .map_err(BuildError::from)?;
+        let cleanup = (|| -> anyhow::Result<()> {
+            mounted.unmount()?.into_snapshot().close()?.detach()?;
             Ok(())
         })()
-        .and_then(|()| active.close().map_err(BuildError::from))
-        .and_then(|()| cleanup_budget.check().map_err(BuildError::from));
-        let captured = match (captured.map_err(BuildError::from), cleanup) {
+        .and_then(|()| active.close().map_err(anyhow::Error::from))
+        .and_then(|()| cleanup_budget.check().map_err(anyhow::Error::from));
+        let captured = match (captured.map_err(anyhow::Error::from), cleanup) {
             (Ok(captured), Ok(())) => captured,
             (Err(error), Ok(())) | (Ok(_), Err(error)) => return Err(error),
             (Err(error), Err(cleanup)) => {
-                return Err(error.with_cleanup(Err(cleanup)));
+                return Err(error.context(format!("cleanup also failed: {cleanup:#}")));
             }
         };
         Ok(captured)

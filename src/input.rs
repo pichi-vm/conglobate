@@ -146,7 +146,6 @@ impl CapturedBuild {
 pub(crate) struct CheckedImage {
     image: crate::cache::ResolvedImage,
     chain: Option<crate::cache::VerifiedChain>,
-    receipts: Vec<crate::cache::BlobReceipt>,
 }
 impl CheckedImage {
     /// Capture the selected DTB with a fresh digest/size check. Earlier input
@@ -178,9 +177,6 @@ impl CheckedImage {
     pub(crate) fn chain(&self) -> Option<&crate::cache::VerifiedChain> {
         self.chain.as_ref()
     }
-    pub(crate) fn receipts(&self) -> &[crate::cache::BlobReceipt] {
-        &self.receipts
-    }
 }
 #[derive(Debug)]
 pub(crate) struct ResolvedBuild {
@@ -208,20 +204,13 @@ impl CapturedBuild {
         let mut images = std::collections::BTreeMap::new();
         for input in self.plan.inputs() {
             let image = cache.resolve(input.index())?;
-            let (receipts, chain) = cache.verify_content(&image)?;
+            let chain = cache.verify_content(&image)?;
             if input.execution_required() && chain.is_none() {
                 return Err(InputError::MissingExecutionCarapace(
                     input.reference().as_ref().to_owned(),
                 ));
             }
-            images.insert(
-                input.reference().clone(),
-                CheckedImage {
-                    image,
-                    chain,
-                    receipts,
-                },
-            );
+            images.insert(input.reference().clone(), CheckedImage { image, chain });
         }
         let recipe = self.plan.recipe();
         if recipe.firmware().is_none()

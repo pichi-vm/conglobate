@@ -19,6 +19,10 @@ pub(crate) struct CommandPrivileges {
 pub(crate) struct PrivilegeFailure(#[from] io::Error);
 
 impl CommandPrivileges {
+    #[cfg(test)]
+    pub(crate) fn allowed(&self) -> CapabilitySet {
+        self.allowed
+    }
     pub(crate) fn filesystem() -> Self {
         Self {
             allowed: CapabilitySet::CHOWN
@@ -32,10 +36,6 @@ impl CommandPrivileges {
                 | CapabilitySet::SETFCAP
                 | CapabilitySet::NET_BIND_SERVICE,
         }
-    }
-
-    pub(crate) fn allowed(&self) -> CapabilitySet {
-        self.allowed
     }
 
     /// Apply to the current single-threaded trusted setup process, after its

@@ -45,7 +45,7 @@ impl SetupCutoff {
     }
     /// Hex-encoded deterministic CBOR [version, monotonic nanoseconds] for a
     /// trusted helper argv. Re-forward these bytes; do not export a new budget.
-    pub(crate) fn to_argument(&self) -> String {
+    pub(crate) fn to_argument(self) -> String {
         let mut encoder = minicbor::Encoder::new(Vec::new());
         encoder
             .array(2)

@@ -1,6 +1,6 @@
 # Maintained privileged lifecycle fixtures
 
-This separate safe-Rust binary exercises production library owners in disposable
+This separate safe-Rust binary exercises the binary's private production owners in disposable
 VMs. It is not a runtime dependency. Do not run privileged cases on the host.
 The entrypoint refuses to proceed without the guest marker, including on trusted
 helper re-exec. The marker is an accidental-use guard, not a security boundary.
@@ -8,15 +8,16 @@ helper re-exec. The marker is an accidental-use guard, not a security boundary.
 Initial migration: `formatter-failures`, copied without assertion changes from
 `validation/rewrite-command-integration/src/formatter_failures.rs` at 5ee7018.
 It tests formatter deadline cancellation/reaping, exhausted writable-snapshot
-rejection and explicit resource release. `FORMATTER_DROP=running` and `wait`
-are terminal VM-disposal cases that check retained storage on abandonment.
+rejection and explicit resource release. `FORMATTER_DROP=running`
+is a terminal VM-disposal case that checks retained storage on abandonment.
+A failed wait now performs its own bounded cancellation and cleanup.
 The stalled formatter parks; synchronization does not use sleeps.
 
 Compile with ordinary user privileges:
 
 ```
 CARGO_BUILD_JOBS=2 TMPDIR=/var/tmp/conglobate-rewrite-tmp \
-  cargo +stable check --manifest-path tests/lifecycle/Cargo.toml --locked
+  cargo +stable check --locked --features test-fixtures --bin conglobate-lifecycle-tests
 ```
 
 Compilation is not validation. Run the maintained disposable-VM runner with a
@@ -27,7 +28,7 @@ python3 tests/lifecycle/run.py /var/tmp/NEW-LIFECYCLE-RUN \
   --kernel /path/to/vmlinuz --kernel-release RELEASE --module-root /
 ```
 
-Use separate new directories with `--drop running` or `--drop wait` for the
+Use separate new directories with `--drop running` for the
 terminal retention cases. The runner stages trusted host formatter tools and
 the fixture, builds a disconnected native amd64/KVM guest, and preserves source,
 input hashes, kernel identity, serial, raw status and assessment. Success requires
@@ -112,7 +113,7 @@ and releases a trusted filesystem writer. It observes task state D before waitin
 for command timeout, then requires the production fixed 30-second teardown to
 fail while retaining mounted storage and the populated domain. Retry must fail
 without renewing the budget. This terminal case claims no clean finalization.
-`--case sandbox-supervisor-death` aborts the owning library supervisor with the
+`--case sandbox-supervisor-death` aborts the owning supervisor with the
 same blocked writer; independent guest init must record status 134 and power off.
 These test the disposal contract, not a specific production appliance controller.
 
@@ -125,17 +126,16 @@ actual task state under a deadline, yielding between observations.
 The gate-failure case also holds an ordinary directory descriptor on the mounted
 ext4 volume during finalization. Unmount must return ResourceBusy, retaining the
 mount and snapshot independently of the already-drained command domain.
-Closing the holder permits retry under the original deadline. Both transitions
-must preserve the original failed command observation, despite successful helper
-exit. Final resource checks require no mounts, domains or children and an empty
-protected lease directory.
-This covers busy-unmount recovery, not filesystem writeback errors.
+Closing the holder does not turn the failed build into success. The original
+failed command observation and ResourceBusy cause remain inspectable, and the
+mounted storage stays retained until VM disposal. This covers terminal busy
+unmount, not filesystem writeback errors.
 
 `--case sandbox-writeback` uses an 8 MiB writable snapshot beneath its 16 MiB
 ext4 volume. After actual command-observation failure and process teardown,
 trusted fixture filesystem writes exhaust the COW. The fixture requires EIO or
 EROFS plus an independent dm snapshot Invalid status. Production finalization
-and retry must fail with storage diagnostics and preserve the original command
+must fail with storage diagnostics and preserve the original command
 failure; no finalized storage is returned. Independent init disposes of the VM.
 Observed runs reject at syncfs after ext4 journal abort; they do not exercise
 the later post-unmount snapshot-validation branch or an image-authored writer.
@@ -150,10 +150,10 @@ storage-component evidence, not a filesystem, full-chain or boot qualification.
 
 `--case sandbox-busy-execution` tests the high-level execution acceptance API.
 A trusted fixture helper reports successful completion; a held directory makes
-finalization fail with EBUSY. After releasing the holder, retry must return a
-failure owner with the original cleanup error and only rejected storage for
-disposal. Final resource checks require complete release. No image code or
-labeling executes in this focused test.
+finalization fail with EBUSY. Releasing the holder does not return accepted or
+reusable storage. The test requires the original successful command observation,
+the cleanup error and a retained mount, then disposes of the VM. No image code
+or labeling executes in this focused test.
 
 `--case clone-filter` compiles the preserved benign C clone fixture and executes
 it only inside the disconnected disposable VM. The Rust driver applies the
@@ -174,14 +174,15 @@ protocol, never by sleeping. This is a lifecycle test with simulated shell statu
 
 `--case sandbox-missing-cleanup` has the helper report shell success and exit
 without sending a cleanup acknowledgment. Production `Step::execute` must return
-failure; cleanup retry retains diagnostics and recovers only rejected storage.
-Both cases check all resources and child processes are released before poweroff.
+failure after attempting cancellation and descendant drain. Missing protocol
+confirmation never produces finalized storage, even when the helper exited.
+The held-cleanup case checks full release; missing cleanup is terminal and retains
+the mount for VM disposal.
 
 `--case sandbox-cleanup-timeout` reports simulated shell success and parks the
 trusted receiver with its view still attached. With a one-second command budget,
 production execution must instead fail at the fixed 30-second cleanup deadline,
-retain the successful primary outcome and resource owners, and refuse storage
-recovery after an immediate retry. The fixture retains its failure owner and
+retain the successful primary outcome and resource owners. The fixture
 requires independent VM poweroff; it does not claim clean teardown or resource
 reuse. A parked helper is not a kernel uninterruptible-I/O test.
 
@@ -192,8 +193,7 @@ write; the trusted parent confirms its stopped state, suspends only the owned
 snapshot, resumes the child, and confirms D state. The parent then signals the
 shell's exit trap. Shell success must arrive within the execution budget while
 the child remains blocked. Cleanup must fail at the fixed 30-second cutoff,
-retain storage and recovery records, and reject an immediate retry without
-extending the deadline. The independent guest init powers off the VM. No device
+retain storage without extending the deadline. No recovery records are written. The independent guest init powers off the VM. No device
 or control authority is passed to the command, no synchronization sleeps are
 used, and no successful cleanup, artifact publication or full sandbox
 qualification is claimed. This test supplements the pre-completion
@@ -201,8 +201,8 @@ qualification is claimed. This test supplements the pre-completion
 
 `--case sandbox-delayed-teardown` observes simulated shell success from a trusted
 receiver parked before cleanup. It deliberately holds the observed owner until
-its cleanup deadline expires, then requires both teardown and retry to fail in
-under one second with storage and recovery records retained. Waiting for the
+its cleanup deadline expires, then requires teardown to fail in under one second
+with storage retained and no recovery records. Waiting for the
 deadline is the assertion target, not synchronization. Independent VM disposal
 ends this terminal case. This tests the split observation/teardown API rather
 than an image command or successful finalization.
@@ -210,7 +210,9 @@ than an image command or successful finalization.
 `--case sandbox-unmapped-owner` creates ordinary ext4 files with UID/GID 65535
 and 65536 before production sandbox preparation. Preparation must reject the
 unsupported ID before launching a receiver; rollback must release its resources.
-A supervisor-side remount checks that original disk IDs remain unchanged.
+The failed preparation returns no volume for remount/reuse. The ID admission
+check and resource-release assertions remain; the old recovery-remount assertion
+belongs to the archived implementation.
 `--case sandbox-unmapped-acl` instead uses an inode owned by root with a named
 access ACL user entry for ID 65536 and requires the same preparation rejection.
 `--case sandbox-unmapped-default-group` uses a root-owned directory with a

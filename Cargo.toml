@@ -20,6 +20,12 @@ path = "src/fixture.rs"
 required-features = ["test-fixtures"]
 test = false
 
+[[bin]]
+name = "command-probe"
+path = "tests/lifecycle/src/bin/command-probe.rs"
+required-features = ["test-fixtures"]
+test = false
+
 [dependencies]
 anyhow = "1"
 netlink-packet-core = "=0.9.0"

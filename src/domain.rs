@@ -4,16 +4,10 @@
 //! Fresh private cgroup-v2 domains. Containment and reaping are separate gates.
 mod drain;
 mod events;
-pub(crate) use drain::{DescendantDrain, DescendantDrainFailure, DrainedHelper};
-mod helper;
-pub(crate) use helper::{
-    AdmissionFailure, ContainedHelper, HelperCancelFailure, HelperCancellation,
-    HelperLaunchFailure, HelperReapFailure, HelperReaping, ReapedHelper,
-};
+pub(crate) mod helper;
+pub(crate) use helper::{ContainedHelper, HelperCancellation, ReapedHelper};
 mod cancellation;
-pub(crate) use cancellation::{
-    DomainCancelFailure, DomainCancellation, DomainCreationCleanupFailure, DomainCreationRollback,
-};
+pub(crate) use cancellation::DomainCancellation;
 mod joining;
 pub(crate) use joining::DomainJoin;
 

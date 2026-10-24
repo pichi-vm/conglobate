@@ -14,7 +14,6 @@ pub(crate) enum Stage {
     Bootstrap,
     Carapace,
     Firmware,
-    Transform,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum InputRole {
@@ -60,18 +59,15 @@ impl LockedInput {
 #[derive(Debug)]
 pub(crate) struct BuildPlan {
     recipe: Recipe,
-    stages: Vec<Stage>,
     inputs: Vec<LockedInput>,
     network_steps: Vec<StepId>,
 }
 impl BuildPlan {
     pub(crate) fn new(recipe: Recipe, lock: &ImageLock) -> Result<Self, LockError> {
         let mut inputs = BTreeMap::<&ImageReference, LockedInput>::new();
-        let mut stages = Vec::new();
         let mut network_steps = Vec::new();
         let mut declarations = Vec::new();
         if let Some(bootstrap) = recipe.bootstrap() {
-            stages.push(Stage::Bootstrap);
             declarations.push((Stage::Bootstrap, bootstrap.directives()));
             inputs.insert(
                 bootstrap.from(),
@@ -84,7 +80,6 @@ impl BuildPlan {
             );
         }
         if let Some(carapace) = recipe.carapace() {
-            stages.push(Stage::Carapace);
             declarations.push((Stage::Carapace, carapace.directives()));
             if let Some(reference) = carapace.from() {
                 let execution_required = !carapace.directives().is_empty()
@@ -100,7 +95,6 @@ impl BuildPlan {
             }
         }
         if let Some(firmware) = recipe.firmware() {
-            stages.push(Stage::Firmware);
             declarations.push((Stage::Firmware, firmware.directives()));
             if let Some(reference) = firmware.from() {
                 let input = inputs.entry(reference).or_insert(LockedInput {
@@ -120,12 +114,10 @@ impl BuildPlan {
                 }
             }
         }
-        // The implicit transform still executes its applicability check.
-        stages.push(Stage::Transform);
+
         let inputs = inputs.into_values().collect();
         Ok(Self {
             recipe,
-            stages,
             inputs,
             network_steps,
         })
@@ -140,9 +132,6 @@ impl BuildPlan {
     }
     pub(crate) fn recipe(&self) -> &Recipe {
         &self.recipe
-    }
-    pub(crate) fn stages(&self) -> &[Stage] {
-        &self.stages
     }
     pub(crate) fn inputs(&self) -> &[LockedInput] {
         &self.inputs

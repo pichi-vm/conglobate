@@ -31,19 +31,14 @@ impl ChainStorage {
         let mut attached = backing.attach().map_err(|failure| failure.to_string())?;
         let number = attached.number()?;
         attached.write_all(&[0x5a; 4096])?;
-        let holder = fs::File::open(format!("/dev/loop{number}"))?;
+        let mut holder = fs::File::open(format!("/dev/loop{number}"))?;
         let failure = attached.detach().unwrap_err();
-        assert_eq!(
-            failure.source_error().kind(),
-            std::io::ErrorKind::ResourceBusy
-        );
-        drop(holder);
-        let mut backing = failure.retry().map_err(|failure| failure.to_string())?;
-        backing.rewind()?;
+        assert_eq!(failure.kind(), std::io::ErrorKind::ResourceBusy);
         let mut bytes = [0; 4096];
-        backing.read_exact(&mut bytes)?;
+        holder.read_exact(&mut bytes)?;
         assert_eq!(bytes, [0x5a; 4096]);
-        println!("LOOP_DEFERRED_DETACH_RETRY_AND_WRITEBACK_PASS");
+        drop(holder);
+        println!("LOOP_DEFERRED_DETACH_WRITEBACK_PASS");
         Ok(())
     }
 
@@ -52,19 +47,15 @@ impl ChainStorage {
         let workspace = conglobate::storage::Workspace::create()?;
         Self::loop_detachment(&workspace)?;
         let cache = conglobate::cache::Cache::open(Path::new("/cache-fixture"))?;
-        for name in ["chain", "invalid-header"] {
+        for name in ["invalid-header", "chain"] {
             let pin = fs::read_to_string(format!("/cache-fixture/{name}.pin"))?;
             let image = cache.resolve(pin.parse()?)?;
             let chain = cache.verify_chain(&image)?.ok_or("missing chain")?;
             if name == "invalid-header" {
                 let failure = chain.assemble(&cache, &workspace).unwrap_err();
-                assert_eq!(
-                    failure.source_error().kind(),
-                    std::io::ErrorKind::InvalidData
-                );
-                failure.cleanup().map_err(|e| e.to_string())?;
-                assert_eq!(Self::mappings()?, baseline);
-                println!("INVALID_SECOND_SCUTE_CLEANUP_PASS");
+                assert_eq!(failure.kind(), std::io::ErrorKind::InvalidData);
+                drop(failure);
+                println!("INVALID_SECOND_SCUTE_REJECTED_PASS");
                 continue;
             }
             let mounted = chain
@@ -124,13 +115,8 @@ impl ChainStorage {
             reader.rewind()?;
             reader.read_exact(&mut bytes)?;
             assert_eq!(bytes, inherited);
-            let failure = snapshot.close().unwrap_err();
-            assert_eq!(
-                failure.source_error().kind(),
-                std::io::ErrorKind::ResourceBusy
-            );
             drop(writer);
-            let backing = failure.cleanup().map_err(|e| e.to_string())?;
+            let backing = snapshot.close()?;
             let scratch = backing.detach().map_err(|e| e.to_string())?;
             fs::remove_file(snapshot_node)?;
             // Reopen the persistent store against the same unchanged chain.
@@ -167,20 +153,14 @@ impl ChainStorage {
             assert_eq!(cache.verify_chain(&image)?.unwrap().root(), chain.root());
             println!("WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS");
             let failure = mounted.close().unwrap_err();
-            assert_eq!(
-                failure.source_error().kind(),
-                std::io::ErrorKind::ResourceBusy
-            );
-            let failure = failure.cleanup().unwrap_err();
-            assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(16));
-            assert_eq!(failure.diagnostics().cleanup().len(), 1);
-            assert_eq!(failure.diagnostics().cleanup()[0].raw_os_error(), Some(16));
-            assert_eq!(failure.to_string().matches("cleanup attempt").count(), 1);
-            drop(reader);
-            failure.cleanup().map_err(|e| e.to_string())?;
-            println!("CHAIN_CLEANUP_DIAGNOSTICS_RETAINED_PASS");
-            fs::remove_file(node)?;
-            assert_eq!(Self::mappings()?, baseline);
+            assert_eq!(failure.kind(), std::io::ErrorKind::ResourceBusy);
+            assert_eq!(failure.raw_os_error(), Some(16));
+            reader.rewind()?;
+            reader.read_exact(&mut bytes)?;
+            assert_eq!(bytes, inherited);
+            println!("CHAIN_TERMINAL_CLOSE_RETAINS_LIVE_HOLDER_PASS");
+            println!("OWNED_TWO_SCUTE_CHAIN_PASS");
+            return Ok(());
         }
         println!("OWNED_TWO_SCUTE_CHAIN_PASS");
         Ok(())

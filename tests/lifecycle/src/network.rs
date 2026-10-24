@@ -62,7 +62,12 @@ impl NetworkProbe {
     }
 
     fn ip(arguments: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
-        assert!(std::process::Command::new("ip").args(arguments).status()?.success());
+        assert!(
+            std::process::Command::new("ip")
+                .args(arguments)
+                .status()?
+                .success()
+        );
         Ok(())
     }
     pub(super) fn external_input() -> Result<(), Box<dyn std::error::Error>> {
@@ -83,7 +88,11 @@ impl NetworkProbe {
         Self::ip(&["netns", "delete", "supplied"])?;
         assert!(NetworkNamespace::open(Path::new("/proc/self/ns/net")).is_err());
         assert!(NetworkNamespace::open(Path::new("/missing-network-namespace")).is_err());
-        assert!(fs::read_to_string("/proc/thread-self/children")?.trim().is_empty());
+        assert!(
+            fs::read_to_string("/proc/thread-self/children")?
+                .trim()
+                .is_empty()
+        );
         println!("EXTERNAL_NETWORK_PIN_REPLACEMENT_AND_RELEASE_PASS");
         Ok(())
     }

@@ -136,6 +136,7 @@ impl<'s, 'w> PreparedScute<'s, 'w> {
             Source::Produced { scute, .. } => scute.root(),
         }
     }
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn is_cache_backed(&self) -> bool {
         matches!(
             &self.source,
@@ -145,9 +146,11 @@ impl<'s, 'w> PreparedScute<'s, 'w> {
             }
         )
     }
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn data_size(&self) -> io::Result<u64> {
         Ok(self.files().0.metadata()?.len())
     }
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn hash_size(&self) -> io::Result<u64> {
         Ok(self.files().1.metadata()?.len())
     }

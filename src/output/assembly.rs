@@ -16,24 +16,6 @@ pub(crate) struct AssembledImage {
     image: ResolvedImage,
     chain: Option<VerifiedChain>,
 }
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum AssemblyFailure {
-    #[error("output staging: {0}")]
-    Before(std::io::Error),
-    #[error("output assembly: {source}")]
-    Staged {
-        source: CacheError,
-        staged: StagedDirectory,
-    },
-}
-impl AssemblyFailure {
-    pub(crate) fn into_parts(self) -> (CacheError, Option<StagedDirectory>) {
-        match self {
-            Self::Before(source) => (source.into(), None),
-            Self::Staged { source, staged } => (source, Some(staged)),
-        }
-    }
-}
 impl AssembledImage {
     fn verity_annotations() -> serde_json::Value {
         serde_json::json!({
@@ -47,7 +29,7 @@ impl AssembledImage {
     pub(crate) fn publish_inventory(
         self,
         inventory: &crate::inventory::Inventory,
-    ) -> Result<(), crate::pipeline::BuildError> {
+    ) -> anyhow::Result<()> {
         inventory.check_output(&self)?;
         self.staged.write_inventory(inventory.bytes())?;
         self.staged.publish()?;
@@ -59,29 +41,19 @@ impl AssembledImage {
     pub(crate) fn chain(&self) -> Option<&VerifiedChain> {
         self.chain.as_ref()
     }
+    #[cfg(test)]
     pub(crate) fn discard(self) -> std::io::Result<()> {
         self.staged.discard()
     }
 }
 impl AssembledImage {
-    /// Append an already sealed scute to this base. This validates the artifact,
-    /// not command success; the coordinator still owns execution receipts and
-    /// must finalize firmware/DTB and inventory before publication.
-    pub(crate) fn extend(
-        cache: &Cache,
-        image: &ResolvedImage,
-        scute: &crate::storage::SealedScute<'_>,
-        destination: &std::path::Path,
-    ) -> Result<Self, AssemblyFailure> {
-        Self::assemble(cache, image, destination, None, &[scute])
-    }
     pub(crate) fn derived(
         cache: &Cache,
         image: &ResolvedImage,
         scutes: &[std::sync::Arc<crate::storage::SealedScute<'_>>],
         destination: &std::path::Path,
         dtb: &crate::transform::TransformedDtb,
-    ) -> Result<Self, AssemblyFailure> {
+    ) -> anyhow::Result<Self> {
         Self::assemble(
             cache,
             image,
@@ -98,8 +70,8 @@ impl AssembledImage {
         pair: &crate::firmware::FinalizedFirmware<'_>,
         scutes: &[std::sync::Arc<crate::storage::SealedScute<'_>>],
         destination: &std::path::Path,
-    ) -> Result<Self, AssemblyFailure> {
-        let staged = StagedDirectory::create(destination).map_err(AssemblyFailure::Before)?;
+    ) -> anyhow::Result<Self> {
+        let staged = StagedDirectory::create(destination)?;
         let result = (|| -> Result<_, CacheError> {
             let mut manifest = if let Some(base) = base {
                 let config = &base.manifest().config;
@@ -192,21 +164,19 @@ impl AssembledImage {
                 image,
                 chain,
             }),
-            Err(source) => Err(AssemblyFailure::Staged { source, staged }),
+            Err(source) => {
+                let error = anyhow::Error::new(source);
+                Err(match staged.discard() {
+                    Ok(()) => error,
+                    Err(cleanup) => error.context(format!("output staging cleanup: {cleanup}")),
+                })
+            }
         }
-    }
-    /// Assemble a new root carapace with no inherited tool components.
-    /// Command/formatter success and final firmware remain coordinator obligations.
-    pub(crate) fn bootstrap(
-        scute: &crate::storage::SealedScute<'_>,
-        destination: &std::path::Path,
-    ) -> Result<Self, AssemblyFailure> {
-        Self::assemble_bootstrap(&[scute], destination)
     }
     pub(crate) fn bootstrap_layers(
         scutes: &[std::sync::Arc<crate::storage::SealedScute<'_>>],
         destination: &std::path::Path,
-    ) -> Result<Self, AssemblyFailure> {
+    ) -> anyhow::Result<Self> {
         Self::assemble_bootstrap(
             &scutes.iter().map(AsRef::as_ref).collect::<Vec<_>>(),
             destination,
@@ -215,8 +185,8 @@ impl AssembledImage {
     fn assemble_bootstrap(
         scutes: &[&crate::storage::SealedScute<'_>],
         destination: &std::path::Path,
-    ) -> Result<Self, AssemblyFailure> {
-        let staged = StagedDirectory::create(destination).map_err(AssemblyFailure::Before)?;
+    ) -> anyhow::Result<Self> {
+        let staged = StagedDirectory::create(destination)?;
         let result = (|| -> Result<_, CacheError> {
             if scutes.is_empty() {
                 return Err(CacheError::Invalid("missing bootstrap root scute"));
@@ -257,7 +227,13 @@ impl AssembledImage {
                 image,
                 chain,
             }),
-            Err(source) => Err(AssemblyFailure::Staged { source, staged }),
+            Err(source) => {
+                let error = anyhow::Error::new(source);
+                Err(match staged.discard() {
+                    Ok(()) => error,
+                    Err(cleanup) => error.context(format!("output staging cleanup: {cleanup}")),
+                })
+            }
         }
     }
     fn resolve_staging(
@@ -289,7 +265,7 @@ impl AssembledImage {
         )?;
         let output_cache = Cache::open(staged.temporary.path())?;
         let output_image = output_cache.resolve(pin)?;
-        let (_, chain) = output_cache.verify_content(&output_image)?;
+        let chain = output_cache.verify_content(&output_image)?;
         // The index is the layout entrypoint, not referenced by its own
         // manifest. Remove the temporary lookup blob after validation.
         std::fs::remove_file(staged.blob_path(&Digest::from_bytes_sha256(&index)))?;
@@ -301,8 +277,8 @@ impl AssembledImage {
         destination: &std::path::Path,
         dtb: Option<&[u8]>,
         scutes: &[&crate::storage::SealedScute<'_>],
-    ) -> Result<Self, AssemblyFailure> {
-        let staged = StagedDirectory::create(destination).map_err(AssemblyFailure::Before)?;
+    ) -> anyhow::Result<Self> {
+        let staged = StagedDirectory::create(destination)?;
         let assembled = (|| -> Result<_, CacheError> {
             let config = &image.manifest().config;
             if config.is_empty() {
@@ -391,7 +367,13 @@ impl AssembledImage {
                 image,
                 chain,
             }),
-            Err(source) => Err(AssemblyFailure::Staged { source, staged }),
+            Err(source) => {
+                let error = anyhow::Error::new(source);
+                Err(match staged.discard() {
+                    Ok(()) => error,
+                    Err(cleanup) => error.context(format!("output staging cleanup: {cleanup}")),
+                })
+            }
         }
     }
 }
@@ -537,9 +519,7 @@ mod tests {
             &changed,
         )
         .unwrap_err();
-        let (error, staged) = failure.into_parts();
-        assert!(error.to_string().contains("firmware/DTB compatibility"));
-        staged.unwrap().discard().unwrap();
+        assert!(failure.to_string().contains("firmware/DTB compatibility"));
         assert!(!parent.path().join("changed").exists());
     }
     #[test]
@@ -677,11 +657,9 @@ mod tests {
                 None,
             )
             .unwrap();
-        let (_, staged) = AssembledImage::derived(&cache, &image, &[], &destination, &unchanged)
-            .unwrap_err()
-            .into_parts();
+        let _error =
+            AssembledImage::derived(&cache, &image, &[], &destination, &unchanged).unwrap_err();
         assert!(!destination.exists());
-        staged.unwrap().discard().unwrap();
         assert_eq!(fs::read_dir(parent.path()).unwrap().count(), 0);
     }
 }

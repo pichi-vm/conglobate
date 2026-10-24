@@ -4,36 +4,24 @@
 //! Protected command lifetime. Trusted helper construction and sandbox readiness
 //! remain prerequisites; this owner couples command admission to its own drain.
 use crate::{
-    domain::{ContainedHelper, DescendantDrain, DrainedHelper, HelperCancellation, HelperReaping},
+    domain::{ContainedHelper, HelperCancellation},
     isolation::{Mapped, UserNamespace},
     process::{Admitted, ChildReaper, ReapedChildren, Supervision},
 };
 use std::{io, marker::PhantomData, mem::ManuallyDrop, process::ExitStatus, time::Instant};
 
-mod execution;
-pub(crate) use execution::{
-    ExecutedBootstrap, ExecutedStorage, ExecutedVolume, ExecutionFailure, ExecutionOutcome,
-    ExecutionStorage, StorageExecutionFailure,
-};
+pub(crate) mod execution;
 mod preparation;
-pub(crate) use preparation::{
-    BootstrapPreparation, BootstrapPreparationFailure, CommandPreparation, CommandSandbox,
-    PreparationFailure, PreparationStorage, SandboxDirectories, StorageLayout, StoragePreparation,
-    StoragePreparationFailure, StorageRollback,
-};
+pub(crate) use preparation::{CommandSandbox, SandboxDirectories};
 mod finalize;
-mod outcome;
-pub(crate) use outcome::{CommandOutcome, CommandResult, ObservedCommand};
+pub(crate) mod outcome;
+pub(crate) use outcome::CommandOutcome;
 mod cutoff;
 mod setup;
 pub(crate) use cutoff::SetupCutoff;
-pub(crate) use setup::{CommandStartFailure, PreparedStep, RunningCommand, SetupBudget};
+pub(crate) use setup::{CommandStartFailure, RunningCommand, SetupBudget};
 mod teardown;
-pub(crate) use finalize::{
-    BootstrapFinalizationFailure, FinalizationFailure, FinalizedBootstrap, FinalizedStorage,
-    FinalizedVolume, StorageFinalizationFailure,
-};
-pub(crate) use teardown::{TeardownCompletion, TeardownFailure};
+pub(crate) use teardown::TeardownCompletion;
 
 mod private {
     pub(crate) trait Sealed {}
@@ -63,6 +51,10 @@ impl<R: StepStorage> Retained<R> {
 
 pub(crate) trait StepState<'lease>: private::Sealed + std::fmt::Debug {
     type Resources: std::fmt::Debug;
+    fn cleanup(
+        resources: Self::Resources,
+        deadline: Instant,
+    ) -> io::Result<(ExitStatus, ReapedChildren)>;
 }
 #[derive(Debug)]
 pub(crate) struct Ready;
@@ -70,80 +62,45 @@ pub(crate) struct Ready;
 pub(crate) struct Running;
 #[derive(Debug)]
 pub(crate) struct Cancelling;
-#[derive(Debug)]
-pub(crate) struct Reaping;
-#[derive(Debug)]
-pub(crate) struct Draining;
-#[derive(Debug)]
-pub(crate) struct Quiescent;
 impl private::Sealed for Ready {}
 impl private::Sealed for Running {}
 impl private::Sealed for Cancelling {}
-impl private::Sealed for Reaping {}
-impl private::Sealed for Draining {}
-impl private::Sealed for Quiescent {}
 impl<'a> StepState<'a> for Ready {
     type Resources = (ContainedHelper, ChildReaper);
+    fn cleanup(
+        (helper, reaper): Self::Resources,
+        deadline: Instant,
+    ) -> io::Result<(ExitStatus, ReapedChildren)> {
+        helper.finish_until(reaper, deadline)
+    }
 }
 impl<'a> StepState<'a> for Running {
     type Resources = (ContainedHelper<Admitted>, ChildReaper);
+    fn cleanup(
+        (helper, reaper): Self::Resources,
+        deadline: Instant,
+    ) -> io::Result<(ExitStatus, ReapedChildren)> {
+        helper.finish_until(reaper, deadline)
+    }
 }
 impl<'a> StepState<'a> for Cancelling {
     type Resources = (HelperCancellation, ChildReaper);
-}
-impl<'a> StepState<'a> for Reaping {
-    type Resources = (HelperReaping, ChildReaper);
-}
-impl<'a> StepState<'a> for Draining {
-    type Resources = DescendantDrain;
-}
-impl<'a> StepState<'a> for Quiescent {
-    type Resources = DrainedHelper;
+    fn cleanup(
+        (helper, reaper): Self::Resources,
+        deadline: Instant,
+    ) -> io::Result<(ExitStatus, ReapedChildren)> {
+        helper.finish_until(reaper, deadline)
+    }
 }
 
-/// No namespace or storage handle escapes before this command's quiescence.
-/// Dropping an unfinished step retains namespace and storage through VM disposal;
-/// best-effort child destruction is never used as a quiescence receipt.
-///
-/// Admission consumes Ready through `admit_until`, producing Running on success.
-/// Failed admission retains Cancelling.
-/// Cleanup follows these consuming transitions:
-///
-/// ```text
-/// Ready | Running | Cancelling
-///     --cancel_until--> Reaping --reap_until--> Draining
-///     --drain_until--> Quiescent --finish--> completion
-///     --finish--> StepCompletion
-/// ```
-///
-/// Failed cancellation retains Cancelling; subsequent transition failures
-/// retain their input state. `teardown` drives this sequence and releases the namespace descriptor under one fixed deadline, including retries.
-/// Its TeardownCompletion still owns storage: explicit unmount/flush and sealing
-/// remain necessary before publication. Normal command exit uses this same
-/// cleanup sequence; it does not skip descendant cancellation or drain.
-///
-/// ```compile_fail
-/// use conglobate::step::{Step, Running};
-/// fn cannot_finish_while_running(step: Step<'_, Running>) {
-///     step.finish();
-/// }
-/// ```
-/// ```compile_fail
-/// use conglobate::step::{Step, Reaping};
-/// fn cannot_skip_descendant_drain(step: Step<'_, Reaping>) {
-///     step.finish();
-/// }
-/// ```
-/// ```compile_fail
-/// use conglobate::step::{Step, Cancelling};
-/// fn cannot_reopen_admission(step: Step<'_, Cancelling>) {
-///     step.admit_until(std::time::Instant::now());
-/// }
-/// ```
+/// Owns assigned storage until the contained helper and every descendant stop.
+/// Preparation/admission have distinct states. Cleanup is a private linear
+/// sequence, not an externally recoverable state machine.
 #[derive(Debug)]
 pub(crate) struct Step<'lease, S: StepState<'lease>, R: StepStorage = ()> {
     storage: Retained<R>,
     namespace: ManuallyDrop<UserNamespace<Mapped>>,
+    network: ManuallyDrop<Option<crate::network::CommandNetwork>>,
     resources: S::Resources,
     _lease: PhantomData<&'lease ()>,
 }
@@ -164,6 +121,7 @@ impl<'lease> Step<'lease, Ready> {
         Step {
             storage: Retained::new(storage),
             namespace: self.namespace,
+            network: self.network,
             resources: self.resources,
             _lease: PhantomData,
         }
@@ -180,38 +138,8 @@ impl<'lease> Step<'lease, Ready> {
         Self {
             storage: Retained::new(()),
             namespace: ManuallyDrop::new(namespace),
+            network: ManuallyDrop::new(None),
             resources: (helper, reaper),
-            _lease: PhantomData,
-        }
-    }
-    /// ```compile_fail
-    /// use conglobate::{step::{Step, Ready}, storage::{Volume, Mounted}};
-    /// fn cannot_unmount_after_assignment(step: Step<'_, Ready>, volume: Volume<'_, '_, '_, Mounted>) {
-    ///     let step = step.with_volume(volume);
-    ///     volume.unmount();
-    ///     drop(step);
-    /// }
-    /// ```
-    /// ```compile_fail
-    /// use conglobate::{step::{Step, Running}, storage::{Volume, Mounted}};
-    /// fn cannot_release_running_volume(step: Step<'_, Running, Volume<'_, '_, '_, Mounted>>) {
-    ///     step.finish();
-    /// }
-    /// ```
-    /// Consume the mounted owner before admission. No storage accessor exists
-    /// on active or cleanup states; only successful finish returns it.
-    pub(crate) fn with_volume<'ns, 'origin, 'workspace>(
-        self,
-        volume: crate::storage::Volume<'ns, 'origin, 'workspace, crate::storage::Mounted>,
-    ) -> Step<
-        'lease,
-        Ready,
-        crate::storage::Volume<'ns, 'origin, 'workspace, crate::storage::Mounted>,
-    > {
-        Step {
-            storage: Retained::new(volume),
-            namespace: self.namespace,
-            resources: self.resources,
             _lease: PhantomData,
         }
     }
@@ -226,6 +154,7 @@ impl<'lease, R: StepStorage> Step<'lease, Ready, R> {
             Ok(helper) => Ok(Step {
                 storage: self.storage,
                 namespace: self.namespace,
+                network: self.network,
                 resources: (helper, reaper),
                 _lease: PhantomData,
             }),
@@ -236,6 +165,7 @@ impl<'lease, R: StepStorage> Step<'lease, Ready, R> {
                     step: Step {
                         storage: self.storage,
                         namespace: self.namespace,
+                        network: self.network,
                         resources: (helper, reaper),
                         _lease: PhantomData,
                     },
@@ -245,165 +175,15 @@ impl<'lease, R: StepStorage> Step<'lease, Ready, R> {
     }
 }
 
-impl<'lease, R: StepStorage> Step<'lease, Reaping, R> {
-    fn after_cancellation(
-        storage: Retained<R>,
-        namespace: ManuallyDrop<UserNamespace<Mapped>>,
-        reaper: ChildReaper,
-        result: Result<HelperReaping, Box<crate::domain::HelperCancelFailure>>,
-    ) -> Result<Self, Box<StepFailure<'lease, Cancelling, R>>> {
-        match result {
-            Ok(helper) => Ok(Step {
-                storage,
-                namespace,
-                resources: (helper, reaper),
-                _lease: PhantomData,
-            }),
-            Err(failure) => {
-                let (source, helper) = failure.into_parts();
-                Err(Box::new(StepFailure {
-                    source,
-                    step: Step {
-                        storage,
-                        namespace,
-                        resources: (helper, reaper),
-                        _lease: PhantomData,
-                    },
-                }))
-            }
-        }
-    }
-}
-impl<'lease, R: StepStorage> Step<'lease, Ready, R> {
-    pub(crate) fn cancel_until(
-        self,
-        deadline: Instant,
-    ) -> Result<Step<'lease, Reaping, R>, Box<StepFailure<'lease, Cancelling, R>>> {
-        let (helper, reaper) = self.resources;
-        Step::after_cancellation(
-            self.storage,
-            self.namespace,
-            reaper,
-            helper.cancel_until(deadline),
-        )
-    }
-}
-impl<'lease, R: StepStorage> Step<'lease, Running, R> {
-    pub(crate) fn cancel_until(
-        self,
-        deadline: Instant,
-    ) -> Result<Step<'lease, Reaping, R>, Box<StepFailure<'lease, Cancelling, R>>> {
-        let (helper, reaper) = self.resources;
-        Step::after_cancellation(
-            self.storage,
-            self.namespace,
-            reaper,
-            helper.cancel_until(deadline),
-        )
-    }
-}
-impl<'lease, R: StepStorage> Step<'lease, Cancelling, R> {
-    pub(crate) fn cancel_until(
-        self,
-        deadline: Instant,
-    ) -> Result<Step<'lease, Reaping, R>, Box<StepFailure<'lease, Cancelling, R>>> {
-        let (helper, reaper) = self.resources;
-        Step::after_cancellation(
-            self.storage,
-            self.namespace,
-            reaper,
-            helper.retry_until(deadline),
-        )
-    }
-}
 impl<R: StepStorage> Step<'_, Running, R> {
     pub(crate) fn supervision(&self) -> &Supervision<Admitted> {
         self.resources.0.supervision()
     }
 }
-impl<'lease, R: StepStorage> Step<'lease, Reaping, R> {
-    pub(crate) fn reap_until(
-        self,
-        deadline: Instant,
-    ) -> Result<Step<'lease, Draining, R>, Box<StepFailure<'lease, Reaping, R>>> {
-        let (helper, reaper) = self.resources;
-        match helper.reap_until(deadline) {
-            Ok(helper) => Ok(Step {
-                storage: self.storage,
-                namespace: self.namespace,
-                resources: helper.with_reaper(reaper),
-                _lease: PhantomData,
-            }),
-            Err(failure) => {
-                let (source, helper) = failure.into_parts();
-                Err(Box::new(StepFailure {
-                    source: io::Error::other(source),
-                    step: Step {
-                        storage: self.storage,
-                        namespace: self.namespace,
-                        resources: (helper, reaper),
-                        _lease: PhantomData,
-                    },
-                }))
-            }
-        }
-    }
-}
-impl<'lease, R: StepStorage> Step<'lease, Draining, R> {
-    pub(crate) fn drain_until(
-        self,
-        deadline: Instant,
-    ) -> Result<Step<'lease, Quiescent, R>, Box<StepFailure<'lease, Draining, R>>> {
-        match self.resources.drain_until(deadline) {
-            Ok(resources) => Ok(Step {
-                storage: self.storage,
-                namespace: self.namespace,
-                resources,
-                _lease: PhantomData,
-            }),
-            Err(failure) => {
-                let (source, resources) = failure.into_parts();
-                Err(Box::new(StepFailure {
-                    source,
-                    step: Step {
-                        storage: self.storage,
-                        namespace: self.namespace,
-                        resources,
-                        _lease: PhantomData,
-                    },
-                }))
-            }
-        }
-    }
-}
-/// Command descendants are quiescent. Storage still requires clean finalization.
-#[derive(Debug)]
-pub(crate) struct StepCompletion<R: StepStorage> {
-    status: ExitStatus,
-    reaped: ReapedChildren,
-    namespace: UserNamespace<Mapped>,
-    storage: R,
-}
-impl<R: StepStorage> StepCompletion<R> {
-    pub(crate) fn into_parts(self) -> (ExitStatus, ReapedChildren, UserNamespace<Mapped>, R) {
-        (self.status, self.reaped, self.namespace, self.storage)
-    }
-}
-impl<R: StepStorage> Step<'_, Quiescent, R> {
-    pub(crate) fn finish(self) -> StepCompletion<R> {
-        let (status, reaped) = self.resources.finish();
-        StepCompletion {
-            status,
-            reaped,
-            namespace: ManuallyDrop::into_inner(self.namespace),
-            storage: self.storage.release(),
-        }
-    }
-}
-
 impl Step<'_, Ready, crate::storage::Volume<'_, '_, '_, crate::storage::Mounted>> {
     /// Send only the owned volume, using this step’s owned mapped namespace.
     /// Failure leaves the entire step owned and available for cancellation.
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn send_volume_until(&self, deadline: Instant) -> io::Result<()> {
         let volume = &self.storage.0;
         let namespace = &self.namespace;
@@ -444,7 +224,14 @@ mod tests {
 mod bootstrap;
 
 mod directives;
-pub(crate) use directives::{CompletedDirectives, CopyStageFailure, DirectiveStorage, StageFailure};
 
-mod network;
-pub(crate) use network::{NetworkEligibleStorage, NetworkFinalizationFailure, NetworkedStorage};
+impl<R: StepStorage> Step<'_, Ready, R> {
+    pub(crate) fn with_network(mut self, network: crate::network::CommandNetwork) -> Self {
+        assert!(self.network.is_none(), "command network already assigned");
+        *self.network = Some(network);
+        self
+    }
+}
+
+mod storage;
+pub(crate) use storage::CommandStorage;

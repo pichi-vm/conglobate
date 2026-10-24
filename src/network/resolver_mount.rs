@@ -11,7 +11,6 @@ use rustix::{
 use std::{
     fs::File,
     io::{self, Write},
-    marker::PhantomData,
     os::fd::AsRawFd,
 };
 
@@ -31,7 +30,7 @@ impl ResolverSource {
     /// Trusted setup transport only. The enclosing step retains this source
     /// until the receiving helper and all descendants have stopped.
     pub(crate) fn view(&self) -> io::Result<ResolverView> {
-        ResolverView::from_handle(self.mount()?.tree)
+        ResolverView::from_handle(self.mount()?)
     }
     pub(crate) fn prepare(input: &ResolverInput, workspace: &Workspace) -> io::Result<Self> {
         let parent = workspace.staging_parent()?;
@@ -53,7 +52,7 @@ impl ResolverSource {
             _parent: parent,
         })
     }
-    pub(crate) fn mount(&self) -> io::Result<ResolverMount<'_>> {
+    pub(crate) fn mount(&self) -> io::Result<File> {
         let tree = mount::open_tree(
             &self.file,
             "",
@@ -74,26 +73,16 @@ impl ResolverSource {
                 MountPropagationFlags::PRIVATE,
             ),
         )?;
-        Ok(ResolverMount {
-            tree: tree.into(),
-            _source: PhantomData,
-        })
+        Ok(tree.into())
     }
-    /// Explicit cleanup retains its owner on failure. Existing attached views
-    /// keep only the read-only inode, with no source pathname exposed to them.
-    pub(crate) fn close(self) -> Result<(), ResolverSourceFailure> {
-        let result = fs::unlinkat(
+    /// Existing attached views retain their read-only inode after unlinking.
+    pub(crate) fn close(self) -> io::Result<()> {
+        fs::unlinkat(
             &self._parent,
             self.path.file_name().expect("generated temporary filename"),
             fs::AtFlags::empty(),
-        );
-        match result {
-            Ok(()) => Ok(()),
-            Err(error) => Err(ResolverSourceFailure {
-                error: error.into(),
-                owner: self,
-            }),
-        }
+        )?;
+        Ok(())
     }
 }
 
@@ -122,9 +111,6 @@ impl ResolverView {
     pub(crate) fn into_handle(self) -> File {
         self.tree
     }
-    pub(crate) fn handle(&self) -> &File {
-        &self.tree
-    }
     pub(crate) fn install(self, root: File) -> io::Result<()> {
         let target = ResolverTarget::existing(root).map_err(io::Error::other)?;
         mount::move_mount(
@@ -140,56 +126,13 @@ impl ResolverView {
         target.release().map_err(io::Error::other)
     }
 }
-#[derive(Debug, thiserror::Error)]
-#[error("resolver source cleanup: {error}")]
-pub(crate) struct ResolverSourceFailure {
-    error: crate::storage::FailureDiagnostics,
-    owner: ResolverSource,
-}
-impl ResolverSourceFailure {
-    pub(crate) fn diagnostics(&self) -> &crate::storage::FailureDiagnostics {
-        &self.error
-    }
-    pub(crate) fn cleanup(self) -> Result<(), Self> {
-        self.owner.close().map_err(|failure| Self {
-            error: self.error.followed_by(failure.error),
-            owner: failure.owner,
-        })
-    }
-}
-
-/// A detached mount, already read-only before it can be attached. Borrowing the
-/// source ensures its name survives move_mount. No writable descriptor escapes.
-#[derive(Debug)]
-pub(crate) struct ResolverMount<'source> {
-    tree: File,
-    _source: PhantomData<&'source ResolverSource>,
-}
-impl ResolverMount<'_> {
-    /// Dedicated helper only, before command admission. The target must have
-    /// been selected in this helper's current private mount namespace. The
-    /// caller retains its scaffold owner until commands and mounts are gone.
-    /// Any setup failure is exit-only; namespace disposal removes the mount.
-    pub(crate) fn attach(self, target: &ResolverTarget) -> io::Result<()> {
-        mount::move_mount(
-            &self.tree,
-            "",
-            target.mount_target()?,
-            "",
-            mount::MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH
-                | mount::MoveMountFlags::MOVE_MOUNT_T_EMPTY_PATH,
-        )?;
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::ResolverSource;
     use std::fs;
 
     #[test]
-    fn resolver_cleanup_preserves_each_failure_and_recovery_owner() {
+    fn resolver_cleanup_preserves_io_error_and_does_not_remove_a_directory() {
         let parent = tempfile::tempdir().unwrap();
         let temporary = tempfile::NamedTempFile::new_in(parent.path()).unwrap();
         let (file, path) = temporary.into_parts();
@@ -202,23 +145,12 @@ mod tests {
             file,
             _parent: fs::File::open(parent.path()).unwrap(),
         };
-        let first = source.close().unwrap_err();
-        let code = first.diagnostics().operation().raw_os_error().unwrap();
-        assert_eq!(code, rustix::io::Errno::ISDIR.raw_os_error());
-        let second = first.cleanup().unwrap_err();
-        let third = second.cleanup().unwrap_err();
-        assert_eq!(third.diagnostics().operation().raw_os_error(), Some(code));
-        assert_eq!(third.diagnostics().cleanup().len(), 2);
-        assert!(
-            third
-                .diagnostics()
-                .cleanup()
-                .iter()
-                .all(|error| error.raw_os_error() == Some(code))
+        let error = source.close().unwrap_err();
+        assert_eq!(
+            error.raw_os_error(),
+            Some(rustix::io::Errno::ISDIR.raw_os_error())
         );
-        fs::remove_dir(&original).unwrap();
-        fs::rename(&saved, &original).unwrap();
-        third.cleanup().unwrap();
-        assert!(!original.exists());
+        assert!(original.is_dir());
+        assert!(saved.is_file());
     }
 }

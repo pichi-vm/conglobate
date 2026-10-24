@@ -11,6 +11,7 @@ impl CommandDomain {
         self.target.lease.verify_current()?;
         Ok(DomainJoin { domain: self })
     }
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn name(&self) -> &std::ffi::OsStr {
         &self.target.name
     }

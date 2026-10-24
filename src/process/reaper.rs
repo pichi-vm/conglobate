@@ -28,6 +28,7 @@ pub(crate) struct ReapedChildren {
     reaper: ChildReaper,
 }
 impl ReapedChildren {
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn collected(&self) -> u64 {
         self.reaper.collected
     }

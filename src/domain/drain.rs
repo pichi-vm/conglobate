@@ -8,12 +8,6 @@ use std::{io, process::ExitStatus, time::Instant};
 /// Installation must precede helper creation. Other individually owned children
 /// must already be reaped; this cannot enforce that process-wide prerequisite.
 ///
-/// ```compile_fail
-/// use conglobate::domain::DescendantDrain;
-/// fn cannot_finish_before_draining(owner: DescendantDrain) {
-///     owner.finish();
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct DescendantDrain {
     helper: ReapedHelper,
@@ -46,7 +40,10 @@ impl ReapedHelper {
     }
 }
 impl DescendantDrain {
-    pub(crate) fn drain_until(self, deadline: Instant) -> Result<DrainedHelper, DescendantDrainFailure> {
+    pub(crate) fn drain_until(
+        self,
+        deadline: Instant,
+    ) -> Result<DrainedHelper, DescendantDrainFailure> {
         let Self { helper, reaper } = self;
         match reaper.drain_until(deadline) {
             Ok(children) => Ok(DrainedHelper { helper, children }),

@@ -3,7 +3,6 @@
 use super::*;
 use crate::isolation::{CommandNamespaces, ExecutionEndpoint};
 mod helper;
-pub(crate) use helper::{GatedRestrictedCommand, HelperExecutionError, RootPreparationError};
 
 #[derive(Debug)]
 pub(crate) struct GatedCommandSetup {

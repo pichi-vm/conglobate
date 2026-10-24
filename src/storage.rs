@@ -3,29 +3,25 @@
 
 //! Supervisor-owned mutable RAM storage. Immutable layers remain cache-backed.
 mod runtime;
-pub(crate) use runtime::{Runtime, RuntimeFailure, RuntimePaths, RuntimeScopeFailure};
-mod diagnostics;
-pub(crate) use diagnostics::FailureDiagnostics;
+pub(crate) use runtime::Runtime;
 mod chain;
 mod ownership;
 mod volume;
-pub(crate) use volume::{
-    Mounted, Unmounted, Volume, VolumeMountFailure, VolumeState, VolumeUnmountFailure, VolumeView,
-};
+pub(crate) use volume::{Mounted, Unmounted, Volume, VolumeState, VolumeView};
 mod loop_device;
 mod loopback;
-pub(crate) use chain::{ReadOnlyChain, ReadOnlyChainFailure};
+pub(crate) use chain::ReadOnlyChain;
 mod verity;
-pub(crate) use loopback::{LoopAttachFailure, LoopAttachment, LoopDetachFailure};
-pub(crate) use verity::{VerityFailure, VerityMapping};
+pub(crate) use loopback::LoopAttachment;
+pub(crate) use verity::VerityMapping;
 mod snapshot;
-pub(crate) use snapshot::{SnapshotMapping, SnapshotMappingFailure, SnapshotOrigin, SnapshotUsage};
+pub(crate) use snapshot::{SnapshotMapping, SnapshotOrigin, SnapshotUsage};
 mod mapping;
-pub(crate) use mapping::{Active, Created, Mapping, MappingFailure, MappingState};
+pub(crate) use mapping::{Active, Created, Mapping};
 
 use rustix::{fs, mount};
 use std::{
-    fs::{File, Metadata},
+    fs::File,
     io::{self, Read, Seek, SeekFrom, Write},
 };
 
@@ -34,15 +30,6 @@ use std::{
 /// Capacity/swap policy belongs to the environment; errors never fall back to disk.
 ///
 /// Scratch leases cannot outlive this owner or overlap its destruction.
-/// ```compile_fail
-/// use conglobate::storage::Workspace;
-/// fn retain_scratch_after_workspace() {
-///     let workspace = Workspace::create().unwrap();
-///     let mut scratch = workspace.scratch().unwrap();
-///     drop(workspace);
-///     std::io::Write::write_all(&mut scratch, b"late write").unwrap();
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct Workspace {
     root: File,
@@ -107,9 +94,6 @@ impl Scratch<'_> {
     pub(crate) fn set_len(&mut self, length: u64) -> io::Result<()> {
         self.file.set_len(length)
     }
-    pub(crate) fn metadata(&self) -> io::Result<Metadata> {
-        self.file.metadata()
-    }
     pub(crate) fn sync_all(&self) -> io::Result<()> {
         self.file.sync_all()
     }
@@ -134,6 +118,6 @@ impl Seek for Scratch<'_> {
 }
 
 mod bootstrap;
-pub(crate) use bootstrap::{BootstrapMountFailure, BootstrapUnmountFailure, BootstrapVolumes};
+pub(crate) use bootstrap::BootstrapVolumes;
 mod sealed;
-pub(crate) use sealed::{ScuteReader, SealFailure, SealedScute};
+pub(crate) use sealed::{ScuteReader, SealedScute};

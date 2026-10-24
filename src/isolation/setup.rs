@@ -3,10 +3,7 @@
 
 mod gated;
 use super::{CommandDevices, CommandNamespaces};
-pub(crate) use gated::{
-    GatedCommandSetup, GatedRestrictedCommand, GatedRootSetup, HelperExecutionError,
-    RootPreparationError,
-};
+pub(crate) use gated::{GatedCommandSetup, GatedRootSetup};
 use rustix::{
     fd::{AsFd, OwnedFd},
     net::{
@@ -15,7 +12,7 @@ use rustix::{
     },
 };
 use std::{
-    fs::{File, Metadata},
+    fs::File,
     io::{self, IoSlice, IoSliceMut},
     mem::MaybeUninit,
     os::unix::net::UnixDatagram,
@@ -33,89 +30,7 @@ pub(crate) struct CommandSetup {
     resolver: Option<crate::network::ResolverView>,
 }
 impl CommandSetup {
-    pub(crate) fn new(namespace: File, devices: CommandDevices) -> io::Result<Self> {
-        if rustix::fs::fstatfs(&namespace)?.f_type as u64 != 0x6e73_6673 {
-            return Err(io::Error::other("setup namespace requires nsfs"));
-        }
-        Ok(Self {
-            namespace,
-            devices,
-            network: None,
-            resolver: None,
-        })
-    }
-    /// Select a supervisor-owned network namespace. The enclosing network
-    /// resource must remain owned until all command descendants are quiescent.
-    pub(crate) fn with_network(self, namespace: &crate::network::NetworkNamespace) -> io::Result<Self> {
-        self.with_network_handle(namespace.descriptor().try_clone()?)
-    }
-    /// Source and image scaffolding remain owned outside this helper through
-    /// command quiescence. Only configured-network steps accept DNS injection.
-    pub(crate) fn with_resolver(self, source: &crate::network::ResolverSource) -> io::Result<Self> {
-        self.with_resolver_view(source.view()?)
-    }
-    pub(crate) fn with_resolver_view(
-        self,
-        resolver: crate::network::ResolverView,
-    ) -> io::Result<Self> {
-        if self.network.is_none() {
-            return Err(io::Error::other(
-                "resolver injection requires configured networking",
-            ));
-        }
-        Ok(Self {
-            resolver: Some(resolver),
-            ..self
-        })
-    }
-    pub(crate) fn with_network_handle(self, network: File) -> io::Result<Self> {
-        if rustix::fs::fstatfs(&network)?.f_type as u64 != 0x6e73_6673 {
-            return Err(io::Error::other("setup network namespace requires nsfs"));
-        }
-        Ok(Self {
-            network: Some(network),
-            ..self
-        })
-    }
-    pub(crate) fn namespace_metadata(&self) -> io::Result<Metadata> {
-        self.namespace.metadata()
-    }
-
-    pub(crate) fn into_input(self) -> io::Result<Stdio> {
-        let (sender, receiver) = UnixDatagram::pair()?;
-        let device = self.devices.into_handle();
-        let mut descriptors = vec![self.namespace.as_fd(), device.as_fd()];
-        let mut opcode = if let Some(network) = &self.network {
-            descriptors.push(network.as_fd());
-            4
-        } else {
-            1
-        };
-        if let Some(resolver) = &self.resolver {
-            descriptors.push(resolver.handle().as_fd());
-            opcode = 6;
-        }
-        let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(4))];
-        let mut ancillary = SendAncillaryBuffer::new(&mut space);
-        if !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors)) {
-            return Err(io::Error::other("setup transfer ancillary capacity"));
-        }
-        if sendmsg(
-            &sender,
-            &[IoSlice::new(&[0x82, 1, opcode])],
-            &mut ancillary,
-            SendFlags::DONTWAIT | SendFlags::NOSIGNAL,
-        )? != 3
-        {
-            return Err(io::Error::other("incomplete setup transfer"));
-        }
-        Ok(Stdio::from(OwnedFd::from(receiver)))
-    }
-
-    pub(crate) fn from_input() -> io::Result<Self> {
-        let socket = io::stdin().as_fd().try_clone_to_owned()?;
-        Self::receive(&socket)
-    }
+    #[cfg(test)]
     fn receive(socket: &impl AsFd) -> io::Result<Self> {
         let mut bytes = [0; 4];
         let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(5))];
@@ -172,6 +87,40 @@ impl CommandSetup {
             Some(resolver) => setup.with_resolver_view(resolver),
             None => Ok(setup),
         }
+    }
+    pub(crate) fn new(namespace: File, devices: CommandDevices) -> io::Result<Self> {
+        if rustix::fs::fstatfs(&namespace)?.f_type as u64 != 0x6e73_6673 {
+            return Err(io::Error::other("setup namespace requires nsfs"));
+        }
+        Ok(Self {
+            namespace,
+            devices,
+            network: None,
+            resolver: None,
+        })
+    }
+    pub(crate) fn with_resolver_view(
+        self,
+        resolver: crate::network::ResolverView,
+    ) -> io::Result<Self> {
+        if self.network.is_none() {
+            return Err(io::Error::other(
+                "resolver injection requires configured networking",
+            ));
+        }
+        Ok(Self {
+            resolver: Some(resolver),
+            ..self
+        })
+    }
+    pub(crate) fn with_network_handle(self, network: File) -> io::Result<Self> {
+        if rustix::fs::fstatfs(&network)?.f_type as u64 != 0x6e73_6673 {
+            return Err(io::Error::other("setup network namespace requires nsfs"));
+        }
+        Ok(Self {
+            network: Some(network),
+            ..self
+        })
     }
 
     /// Enter only in a fresh trusted setup process. Partial namespace transition
@@ -349,7 +298,7 @@ mod tests {
         let transfer = Transfer::new();
         transfer.send(&[0x82, 1, 1], &[namespace.as_fd(), devices.as_fd()]);
         let received = CommandSetup::receive(&transfer.receiver).unwrap();
-        assert_eq!(received.namespace_metadata().unwrap().ino(), expected);
+        assert_eq!(received.namespace.metadata().unwrap().ino(), expected);
         assert!(
             rustix::io::fcntl_getfd(&received.namespace)
                 .unwrap()

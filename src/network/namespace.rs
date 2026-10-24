@@ -44,6 +44,7 @@ impl NetworkNamespace {
     }
 
     /// Read-only identity for lifecycle diagnostics, not an execution handle.
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn metadata(&self) -> io::Result<fs::Metadata> {
         self.0.metadata()
     }

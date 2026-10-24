@@ -1,7 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
 extern crate self as conglobate;
-include!("modules.rs");
+mod anchor;
+mod cache;
+mod chain;
+mod context;
+mod copy;
+mod document;
+mod domain;
+mod execution;
+mod filesystem;
+mod firmware;
+mod formatter;
+mod image;
+mod input;
+mod inventory;
+mod isolation;
+mod lock;
+mod network;
+mod output;
+mod path;
+mod pipeline;
+mod plan;
+mod process;
+mod recipe;
+mod request;
+mod step;
+mod storage;
+mod template;
+mod transform;
+mod value;
+
 #[path = "../tests/lifecycle/src/main.rs"]
 mod fixture;
-fn main() { fixture::main(); }
+fn main() {
+    fixture::main();
+}

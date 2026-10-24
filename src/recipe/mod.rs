@@ -11,7 +11,9 @@ use serde::{Deserialize, Deserializer};
 mod transform;
 pub(crate) use transform::DEFAULT_TRANSFORM;
 use transform::TransformDocument;
-pub(crate) use transform::{PropertyValue, TransformAction, TransformOperation, TransformSelection};
+pub(crate) use transform::{
+    PropertyValue, TransformAction, TransformOperation, TransformSelection,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum RecipeError {

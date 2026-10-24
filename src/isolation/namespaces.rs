@@ -29,12 +29,6 @@ use std::{
 /// Any error after entry is exit-only. Never call from the build supervisor.
 /// Do not create other children or threads between entry and spawning init.
 ///
-/// ```compile_fail
-/// use conglobate::isolation::CommandNamespaces;
-/// fn cannot_spawn_from_another_thread(scope: CommandNamespaces) {
-///     std::thread::spawn(move || scope.spawn(std::process::Command::new("/unused")));
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct CommandNamespaces {
     _thread: PhantomData<Rc<()>>,

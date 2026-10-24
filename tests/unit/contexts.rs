@@ -510,13 +510,6 @@ fn captured_bytes_modes_and_links_survive_source_changes() {
         .read(&ContextPath::try_from(Path::new("link")).unwrap())
         .unwrap();
     assert_eq!(plain.bytes(), b"original");
-    assert!(!plain.executable());
-    assert!(
-        captured
-            .read(&ContextPath::try_from(Path::new("dir/executable")).unwrap())
-            .unwrap()
-            .executable()
-    );
     assert!(
         captured
             .read(&ContextPath::try_from(Path::new("escape")).unwrap())

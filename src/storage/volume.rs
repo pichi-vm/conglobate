@@ -1,14 +1,10 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use super::SnapshotMapping;
-use crate::{
-    anchor::RecoveryDirectory,
-    filesystem::{Detached, Mount},
-    isolation::PrivateMountNamespace,
-};
+use crate::anchor::RecoveryDirectory;
 use rustix::{fs, mount};
 use std::{
-    fs::{File, Metadata},
+    fs::File,
     io,
     marker::PhantomData,
     os::{fd::AsRawFd, unix::fs::PermissionsExt},
@@ -46,51 +42,16 @@ pub(crate) struct MountedResources {
 /// Abandoning a mounted volume attempts a lazy detach as a destructor fallback;
 /// it neither proves flush completion nor returns an Unmounted value. Use the
 /// explicit fallible unmount and finalization path before sealing output.
-/// ```compile_fail
-/// use conglobate::storage::{Volume, Mounted};
-/// fn cannot_unmount_with_view(volume: Volume<'_, '_, '_, Mounted>) {
-///     let view = volume.view().unwrap();
-///     let unmounted = volume.unmount().unwrap();
-///     drop(view);
-/// }
-/// ```
-/// ```compile_fail
-/// use conglobate::storage::{Volume, Mounted};
-/// fn cannot_release_mounted_snapshot(volume: Volume<'_, '_, '_, Mounted>) {
-///     volume.into_snapshot();
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct Volume<'ns, 'origin, 'workspace, S: VolumeState> {
     // Mount resources must drop before the underlying snapshot.
     resources: S::Resources,
     snapshot: SnapshotMapping<'origin, 'workspace>,
-    scope: Scope<'ns>,
+    scope: &'ns RecoveryDirectory,
     _thread: PhantomData<Rc<()>>,
-}
-#[derive(Debug)]
-enum Scope<'ns> {
-    Private(&'ns PrivateMountNamespace),
-    Init(&'ns RecoveryDirectory),
-}
-impl Scope<'_> {
-    fn verify_current(&self) -> io::Result<()> {
-        match self {
-            Self::Private(scope) => scope.verify_current(),
-            Self::Init(scope) => scope.verify_current(),
-        }
-    }
 }
 /// Nonrecursive detached view cloned in the volume's namespace. Assignment to
 /// a private command namespace preserves the borrow of its mounted volume.
-/// ```compile_fail
-/// use conglobate::{storage::{Volume, Mounted}, isolation::PrivateMountNamespace};
-/// fn converted_view_retains_volume(volume: Volume<'_, '_, '_, Mounted>, scope: &PrivateMountNamespace) {
-///     let view = volume.view().unwrap().in_namespace(scope).unwrap();
-///     let unmounted = volume.unmount().unwrap();
-///     drop(view);
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct VolumeView<'volume> {
     root: File,
@@ -101,68 +62,8 @@ impl<'volume> VolumeView<'volume> {
     pub(crate) fn descriptor(&self) -> io::Result<File> {
         self.root.try_clone()
     }
-    pub(crate) fn in_namespace<'ns>(
-        self,
-        scope: &'ns PrivateMountNamespace,
-    ) -> io::Result<Mount<'ns, Detached>>
-    where
-        'volume: 'ns,
-    {
-        Mount::from_detached(self.root, scope)
-    }
-}
-#[derive(Debug, thiserror::Error)]
-#[error("volume mount: {source}")]
-pub(crate) struct VolumeMountFailure<'ns, 'a, 'w> {
-    source: io::Error,
-    volume: Volume<'ns, 'a, 'w, Unmounted>,
-}
-impl<'ns, 'a, 'w> VolumeMountFailure<'ns, 'a, 'w> {
-    pub(crate) fn into_parts(self) -> (io::Error, Volume<'ns, 'a, 'w, Unmounted>) {
-        (self.source, self.volume)
-    }
-}
-#[derive(Debug, thiserror::Error)]
-#[error("volume unmount: {source}")]
-pub(crate) struct VolumeUnmountFailure<'ns, 'a, 'w> {
-    source: super::FailureDiagnostics,
-    pending: UnmountPending<'ns, 'a, 'w>,
-}
-#[derive(Debug)]
-enum UnmountPending<'ns, 'a, 'w> {
-    Flush(Volume<'ns, 'a, 'w, Mounted>),
-    Mounted(MountLease, Volume<'ns, 'a, 'w, Unmounted>),
-    Target(Point, Volume<'ns, 'a, 'w, Unmounted>),
-}
-impl<'ns, 'a, 'w> VolumeUnmountFailure<'ns, 'a, 'w> {
-    /// Most recent failure. `diagnostics()` also retains the original operation.
-    pub(crate) fn source_error(&self) -> &io::Error {
-        self.source.latest()
-    }
-    pub(crate) fn retry(self) -> Result<Volume<'ns, 'a, 'w, Unmounted>, Self> {
-        match self.pending {
-            UnmountPending::Flush(volume) => volume.unmount(),
-            UnmountPending::Mounted(lease, volume) => volume.release_mount(lease),
-            UnmountPending::Target(point, volume) => volume.release_point(point),
-        }
-        .map_err(|Self { source, pending }| Self {
-            source: self.source.followed_by(source),
-            pending,
-        })
-    }
-    pub(crate) fn diagnostics(&self) -> &super::FailureDiagnostics {
-        &self.source
-    }
 }
 impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
-    pub(crate) fn new(snapshot: SnapshotMapping<'a, 'w>, scope: &'ns PrivateMountNamespace) -> Self {
-        Self {
-            resources: (),
-            snapshot,
-            scope: Scope::Private(scope),
-            _thread: PhantomData,
-        }
-    }
     pub(crate) fn into_snapshot(self) -> SnapshotMapping<'a, 'w> {
         self.snapshot
     }
@@ -175,25 +76,20 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
     pub(crate) fn in_init_namespace(
         snapshot: SnapshotMapping<'a, 'w>,
         scope: &'ns RecoveryDirectory,
-    ) -> Result<Self, VolumeMountFailure<'ns, 'a, 'w>> {
+    ) -> io::Result<Self> {
         let volume = Self {
             resources: (),
             snapshot,
-            scope: Scope::Init(scope),
+            scope,
             _thread: PhantomData,
         };
-        match volume.scope.verify_current() {
-            Ok(()) => Ok(volume),
-            Err(source) => Err(VolumeMountFailure { source, volume }),
-        }
+        volume.scope.verify_current()?;
+        Ok(volume)
     }
     /// Initial backend is ext4, with fixed nodev/nosuid mount policy. The parent
     /// must be trusted tmpfs in this volume's mount namespace; it stores only the
     /// empty attachment directory, not image data. No recipe mount options pass through.
-    pub(crate) fn mount_ext4(
-        self,
-        parent: &Path,
-    ) -> Result<Volume<'ns, 'a, 'w, Mounted>, VolumeMountFailure<'ns, 'a, 'w>> {
+    pub(crate) fn mount_ext4(self, parent: &Path) -> io::Result<Volume<'ns, 'a, 'w, Mounted>> {
         let attempt = (|| -> io::Result<MountedResources> {
             self.scope.verify_current()?;
             let point = Point::create(parent)?;
@@ -230,65 +126,17 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
                 lease: MountLease { point: Some(point) },
             })
         })();
-        match attempt {
-            Ok(resources) => Ok(Volume {
-                resources,
-                snapshot: self.snapshot,
-                scope: self.scope,
-                _thread: PhantomData,
-            }),
-            Err(source) => Err(VolumeMountFailure {
-                source,
-                volume: self,
-            }),
-        }
-    }
-    fn release_mount(
-        self,
-        mut lease: MountLease,
-    ) -> Result<Self, VolumeUnmountFailure<'ns, 'a, 'w>> {
-        if let Err(source) = self.scope.verify_current() {
-            return Err(VolumeUnmountFailure {
-                source: source.into(),
-                pending: UnmountPending::Mounted(lease, self),
-            });
-        }
-        let point = lease.point.as_ref().expect("attached mount point");
-        if let Err(source) = mount::unmount(point.path(), mount::UnmountFlags::NOFOLLOW) {
-            return Err(VolumeUnmountFailure {
-                source: source.into(),
-                pending: UnmountPending::Mounted(lease, self),
-            });
-        }
-        self.release_point(lease.point.take().expect("unmounted mount point"))
-    }
-    fn release_point(self, point: Point) -> Result<Self, VolumeUnmountFailure<'ns, 'a, 'w>> {
-        if let Err(source) = self.scope.verify_current() {
-            return Err(VolumeUnmountFailure {
-                source: source.into(),
-                pending: UnmountPending::Target(point, self),
-            });
-        }
-        match point.remove() {
-            Ok(()) => Ok(self),
-            Err(source) => Err(VolumeUnmountFailure {
-                source: source.into(),
-                pending: UnmountPending::Target(point, self),
-            }),
-        }
+        Ok(Volume {
+            resources: attempt?,
+            snapshot: self.snapshot,
+            scope: self.scope,
+            _thread: PhantomData,
+        })
     }
 }
 impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
     /// Copy while exclusively borrowing this volume. Outstanding root views
     /// prevent this borrow, so no command may concurrently use the filesystem.
-    /// ```compile_fail
-    /// use conglobate::{storage::{Volume, Mounted}, context::CapturedContext, recipe::Copy};
-    /// fn no_copy_with_command_view(mut volume: Volume<'_, '_, '_, Mounted>, context: &CapturedContext, directive: &Copy) {
-    ///     let view = volume.view().unwrap();
-    ///     volume.copy(context, directive).unwrap();
-    ///     drop(view);
-    /// }
-    /// ```
     pub(crate) fn copy(
         &mut self,
         context: &crate::context::CapturedContext,
@@ -325,9 +173,6 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
         crate::isolation::RuntimeTargets::resolve(&self.resources.root).map(|_| ())
     }
 
-    pub(crate) fn root_metadata(&self) -> io::Result<Metadata> {
-        self.resources.root.metadata()
-    }
     pub(crate) fn view(&self) -> io::Result<VolumeView<'_>> {
         self.scope.verify_current()?;
         let root = mount::open_tree(
@@ -343,30 +188,37 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
             _thread: PhantomData,
         })
     }
-    pub(crate) fn unmount(
-        self,
-    ) -> Result<Volume<'ns, 'a, 'w, Unmounted>, VolumeUnmountFailure<'ns, 'a, 'w>> {
-        if let Err(source) = self.scope.verify_current() {
-            return Err(VolumeUnmountFailure {
-                source: source.into(),
-                pending: UnmountPending::Flush(self),
-            });
+    pub(crate) fn unmount(self) -> io::Result<Volume<'ns, 'a, 'w, Unmounted>> {
+        if let Err(error) = self
+            .scope
+            .verify_current()
+            .and_then(|()| fs::syncfs(&self.resources.root).map_err(Into::into))
+        {
+            std::mem::forget(self);
+            return Err(error);
         }
-        if let Err(source) = fs::syncfs(&self.resources.root) {
-            return Err(VolumeUnmountFailure {
-                source: source.into(),
-                pending: UnmountPending::Flush(self),
-            });
-        }
-        let MountedResources { root, lease } = self.resources;
+        let MountedResources { root, mut lease } = self.resources;
         drop(root);
-        Volume {
+        let volume = Volume {
             resources: (),
             snapshot: self.snapshot,
             scope: self.scope,
             _thread: PhantomData,
+        };
+        let point = lease.point.as_ref().expect("attached mount");
+        let result = volume
+            .scope
+            .verify_current()
+            .and_then(|()| {
+                mount::unmount(point.path(), mount::UnmountFlags::NOFOLLOW).map_err(Into::into)
+            })
+            .and_then(|()| point.remove());
+        if let Err(error) = result {
+            std::mem::forget((lease, volume));
+            return Err(error);
         }
-        .release_mount(lease)
+        lease.point.take();
+        Ok(volume)
     }
 }
 

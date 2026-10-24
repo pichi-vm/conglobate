@@ -13,8 +13,10 @@ pub(crate) enum InventoryError {
     Invalid(String),
     #[error("inventory: read builder executable: {0}")]
     Executable(#[source] std::io::Error),
+    #[cfg(test)]
     #[error("inventory: decode CBOR: {0}")]
     Decode(#[source] ciborium::de::Error<std::io::Error>),
+    #[cfg(test)]
     #[error("inventory: decode schema: {0}")]
     DecodeSchema(#[source] ciborium::value::Error),
     #[error("inventory: encode schema: {0}")]
@@ -39,6 +41,7 @@ impl Inventory {
     /// # Errors
     /// Rejects malformed/trailing CBOR, noncanonical encoding, unsupported or
     /// invalid schema values, inconsistent components and invalid ordering.
+    #[cfg(test)]
     pub(crate) fn decode(bytes: &[u8]) -> Result<Self, InventoryError> {
         let mut input = bytes;
         let value: Value = ciborium::from_reader(&mut input).map_err(InventoryError::Decode)?;
@@ -72,6 +75,7 @@ impl Inventory {
     pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
     }
+    #[cfg(test)]
     pub(crate) fn version(&self) -> u32 {
         self.document.version
     }

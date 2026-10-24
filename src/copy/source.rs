@@ -31,11 +31,12 @@ pub(crate) struct CopySource<'a> {
     tree: SourceTree<'a>,
 }
 impl CopySource<'_> {
-    pub(crate) fn selected(&self) -> &Path {
-        &self.selected
-    }
+    #[cfg(test)]
     pub(crate) fn resolved(&self) -> &Path {
         &self.resolved
+    }
+    pub(crate) fn selected(&self) -> &Path {
+        &self.selected
     }
     /// None denotes the context root directory, which has no Git entry of its own.
     pub(crate) fn entry(&self) -> Option<&ContextEntry> {

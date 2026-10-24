@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use conglobate::process::{
-    Identified, IdentityReceiver, IdentitySender, LaunchFailure, Process, Running, WaitError,
+    Identified, IdentityReceiver, LaunchFailure, Process, Running, WaitError,
+    identity::IdentitySender,
 };
 use std::{
     io,
@@ -24,7 +25,11 @@ impl Fixture {
     fn helper(hold: bool) -> Command {
         let mut command = Command::new(std::env::current_exe().unwrap());
         command
-            .args(["--exact", "tests::identities::trusted_child_identity_fixture", "--nocapture"])
+            .args([
+                "--exact",
+                "tests::identities::trusted_child_identity_fixture",
+                "--nocapture",
+            ])
             .env_clear()
             .env("CONGLOBATE_TEST_IDENTITY_CHILD", "1")
             .stdout(Stdio::null())
@@ -61,7 +66,11 @@ fn trusted_child_identity_fixture() {
 fn fresh_child_hands_off_its_identity_before_parent_reaping() {
     let (receiver, sender) = IdentityReceiver::pair().unwrap();
     let child: Process<Running> = Command::new(std::env::current_exe().unwrap())
-        .args(["--exact", "tests::identities::trusted_child_identity_fixture", "--nocapture"])
+        .args([
+            "--exact",
+            "tests::identities::trusted_child_identity_fixture",
+            "--nocapture",
+        ])
         .env_clear()
         .env("CONGLOBATE_TEST_IDENTITY_CHILD", "1")
         .stdin(Stdio::from(sender))

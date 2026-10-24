@@ -16,18 +16,16 @@ pub(crate) use diagnostics::DiagnosticRelay;
 mod syscalls;
 pub(crate) use syscalls::CommandSyscalls;
 mod privileges;
-pub(crate) use privileges::{CommandPrivileges, PrivilegeFailure};
+pub(crate) use privileges::CommandPrivileges;
 mod reaper;
-pub(crate) use reaper::{ChildReaper, DrainFailure, ReapedChildren};
-mod supervision;
-pub(crate) use supervision::{
-    Admitted, Joined, ObservedState, Paired, Supervision, SupervisionChild, SupervisionState,
-    Unpaired, VolumeInput,
-};
+pub(crate) use reaper::{ChildReaper, ReapedChildren};
+pub(crate) mod supervision;
+pub(crate) use supervision::{Admitted, Joined, ObservedState, Paired, Supervision};
 mod observation;
 pub(crate) use observation::ProcessObservation;
-mod identity;
-pub(crate) use identity::{IdentityReceiver, IdentitySender};
+pub(crate) mod identity;
+#[cfg(test)]
+pub(crate) use identity::IdentityReceiver;
 mod launch;
 pub(crate) use launch::LaunchFailure;
 
@@ -43,13 +41,6 @@ pub(crate) struct Running;
 /// A trusted helper whose own pidfd was received over its private channel.
 /// This state does not establish containment or authorize recipe execution.
 ///
-/// ```compile_fail
-/// use conglobate::process::{Identified, Process};
-/// use std::process::Child;
-/// fn cannot_assert_identity(child: Child) -> Process<Identified> {
-///     child.into()
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct Identified;
 #[derive(Debug)]
@@ -150,6 +141,7 @@ pub(crate) struct WaitFailure<S: LiveState = Running> {
     process: Process<S>,
 }
 impl<S: LiveState> WaitFailure<S> {
+    #[cfg(test)]
     pub(crate) fn error(&self) -> &WaitError {
         &self.error
     }
@@ -222,7 +214,10 @@ impl<S: LiveState> Process<S> {
         }
     }
 
-    pub(crate) fn wait_until(mut self, deadline: Instant) -> Result<Process<Reaped>, WaitFailure<S>> {
+    pub(crate) fn wait_until(
+        mut self,
+        deadline: Instant,
+    ) -> Result<Process<Reaped>, WaitFailure<S>> {
         loop {
             match self
                 .resources
@@ -262,7 +257,10 @@ impl<S: LiveState> Process<S> {
 
     /// Request termination, then collect status under the caller's teardown
     /// deadline. An error retains the child owner; it is never a reaped token.
-    pub(crate) fn terminate_until(mut self, deadline: Instant) -> Result<Process<Reaped>, WaitFailure<S>> {
+    pub(crate) fn terminate_until(
+        mut self,
+        deadline: Instant,
+    ) -> Result<Process<Reaped>, WaitFailure<S>> {
         let child = self.resources.child.as_mut().expect("live child");
         match child.try_wait() {
             Ok(Some(status)) => {

@@ -3,7 +3,7 @@
 
 //! Read-only content access. A receipt verifies a read, never future cache bytes.
 mod chain;
-pub(crate) use chain::{PreparedScute, VerifiedChain, VerifiedScute};
+pub(crate) use chain::{PreparedScute, VerifiedChain};
 mod resolve;
 pub(crate) use resolve::{HostArchitecture, ResolvedImage};
 
@@ -112,7 +112,7 @@ impl Cache {
     }
     /// Verify one complete read without retaining an unverified future read handle.
     /// Mounting layers requires independent dm-verity verification at use time.
-    pub(crate) fn verify(&self, digest: &ContentDigest, size: u64) -> Result<BlobReceipt, CacheError> {
+    pub(crate) fn verify(&self, digest: &ContentDigest, size: u64) -> Result<(), CacheError> {
         self.copy_verified(digest, size, &mut io::sink())
     }
     /// Copy and verify the same byte stream. On error the destination may hold
@@ -123,7 +123,7 @@ impl Cache {
         digest: &ContentDigest,
         size: u64,
         destination: &mut impl Write,
-    ) -> Result<BlobReceipt, CacheError> {
+    ) -> Result<(), CacheError> {
         let mut file = self.blob(digest)?;
         if file.metadata()?.len() != size {
             return Err(CacheError::Invalid("blob size mismatch"));
@@ -144,10 +144,7 @@ impl Cache {
         if file.read(&mut buffer[..1])? != 0 || hash.finalize().as_slice() != digest.as_bytes() {
             return Err(CacheError::Invalid("blob content mismatch"));
         }
-        Ok(BlobReceipt {
-            digest: digest.clone(),
-            size,
-        })
+        Ok(())
     }
 }
 
@@ -162,18 +159,5 @@ impl VerifiedMetadata {
     }
     pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
-    }
-}
-#[derive(Debug)]
-pub(crate) struct BlobReceipt {
-    digest: ContentDigest,
-    size: u64,
-}
-impl BlobReceipt {
-    pub(crate) fn digest(&self) -> &ContentDigest {
-        &self.digest
-    }
-    pub(crate) fn size(&self) -> u64 {
-        self.size
     }
 }

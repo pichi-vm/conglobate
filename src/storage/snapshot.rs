@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{Active, Created, LoopAttachment, Mapping, MappingFailure};
+use super::{Active, Created, LoopAttachment, Mapping};
 use std::{
     io,
     num::{NonZeroU32, NonZeroU64},
@@ -8,24 +8,6 @@ use std::{
 
 /// Read-only origin authority borrowed from its owner. Conversion preserves the
 /// owner's lifetime without exposing an assembled chain's individual mappings.
-/// ```compile_fail
-/// use conglobate::storage::{ReadOnlyChain, Mapping, Created, LoopAttachment};
-/// fn cannot_close_origin(chain: ReadOnlyChain<'_, '_>, backing: LoopAttachment<'_>) {
-///     let snapshot = Mapping::<Created>::create().unwrap()
-///         .snapshot(&chain, backing, std::num::NonZeroU64::new(8192).unwrap()).unwrap();
-///     chain.close().unwrap();
-///     snapshot.close().unwrap();
-/// }
-/// ```
-/// ```compile_fail
-/// use conglobate::storage::{ReadOnlyChain, Mapping, Created, LoopAttachment};
-/// fn failure_also_retains_origin(chain: ReadOnlyChain<'_, '_>, backing: LoopAttachment<'_>) {
-///     let failure = Mapping::<Created>::create().unwrap()
-///         .snapshot(&chain, backing, std::num::NonZeroU64::new(8192).unwrap()).unwrap_err();
-///     chain.close().unwrap();
-///     failure.cleanup().unwrap();
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct SnapshotOrigin<'owner> {
     mapping: &'owner Mapping<Active>,
@@ -41,59 +23,11 @@ impl<'a> From<&'a Mapping<Active>> for SnapshotOrigin<'a> {
 /// borrow prevents explicit origin release while the snapshot owner is live.
 /// Kernel consumers must still be quiesced before explicit close. Drop only
 /// requests deferred mapping removal, not successful finalization or sealing.
-/// ```compile_fail
-/// use conglobate::storage::{Mapping, Created, LoopAttachment};
-/// use std::num::NonZeroU64;
-/// fn cannot_write_backing(mut cow: LoopAttachment<'_>, origin: Mapping<conglobate::storage::Active>) {
-///     let snapshot = Mapping::<Created>::create().unwrap()
-///         .snapshot(&origin, cow, NonZeroU64::new(8192).unwrap()).unwrap();
-///     std::io::Write::write_all(&mut cow, b"invalid concurrent writer").unwrap();
-///     snapshot.close().unwrap();
-/// }
-/// ```
-/// ```compile_fail
-/// use conglobate::storage::{Mapping, Created, Active, LoopAttachment};
-/// use std::num::NonZeroU64;
-/// fn cannot_share_store(mut cow: LoopAttachment<'_>, origin: Mapping<Active>) {
-///     let sectors = NonZeroU64::new(8192).unwrap();
-///     let first = Mapping::<Created>::create().unwrap()
-///         .snapshot(&origin, cow, sectors).unwrap();
-///     let second = Mapping::<Created>::create().unwrap()
-///         .snapshot(&origin, cow, sectors).unwrap();
-///     first.close().unwrap();
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct SnapshotMapping<'lease, 'workspace> {
     mapping: Mapping<Active>,
-    origin: SnapshotOrigin<'lease>,
+    _origin: SnapshotOrigin<'lease>,
     backing: LoopAttachment<'workspace>,
-}
-#[derive(Debug, thiserror::Error)]
-#[error("snapshot mapping: {failure}")]
-pub(crate) struct SnapshotMappingFailure<'lease, 'workspace> {
-    failure: MappingFailure,
-    origin: SnapshotOrigin<'lease>,
-    backing: LoopAttachment<'workspace>,
-}
-impl<'a, 'w> SnapshotMappingFailure<'a, 'w> {
-    /// Most recent failure. `diagnostics()` also retains the original operation.
-    pub(crate) fn source_error(&self) -> &io::Error {
-        self.failure.source_error()
-    }
-    pub(crate) fn diagnostics(&self) -> &super::FailureDiagnostics {
-        self.failure.diagnostics()
-    }
-    pub(crate) fn cleanup(self) -> Result<LoopAttachment<'w>, Self> {
-        match self.failure.cleanup() {
-            Ok(()) => Ok(self.backing),
-            Err(failure) => Err(Self {
-                failure,
-                origin: self.origin,
-                backing: self.backing,
-            }),
-        }
-    }
 }
 impl Mapping<Created> {
     pub(crate) fn snapshot<'a, 'w>(
@@ -101,20 +35,9 @@ impl Mapping<Created> {
         origin: impl Into<SnapshotOrigin<'a>>,
         backing: LoopAttachment<'w>,
         sectors: NonZeroU64,
-    ) -> Result<SnapshotMapping<'a, 'w>, SnapshotMappingFailure<'a, 'w>> {
+    ) -> io::Result<SnapshotMapping<'a, 'w>> {
         let origin = origin.into();
-        // Device identity is obtained from a retained block FD. Metadata failure
-        // must keep even the newly created empty mapping for explicit cleanup.
-        let cow = match backing.id() {
-            Ok(id) => id,
-            Err(source) => {
-                return Err(SnapshotMappingFailure {
-                    failure: self.failed(source),
-                    origin,
-                    backing,
-                });
-            }
-        };
+        let cow = backing.id()?;
         let target = devmap_snapshot::Snapshot::from(devmap_snapshot::Parameters {
             origin: origin.mapping.id(),
             cow,
@@ -125,18 +48,12 @@ impl Mapping<Created> {
                 .expect("valid snapshot chunk size"),
             discard: devmap_snapshot::Discard::Disabled,
         });
-        match self.activate(sectors, &target, false) {
-            Ok(mapping) => Ok(SnapshotMapping {
-                mapping,
-                origin,
-                backing,
-            }),
-            Err(failure) => Err(SnapshotMappingFailure {
-                failure,
-                origin,
-                backing,
-            }),
-        }
+        let mapping = self.activate(sectors, &target, false)?;
+        Ok(SnapshotMapping {
+            mapping,
+            _origin: origin,
+            backing,
+        })
     }
 }
 impl<'a, 'w> SnapshotMapping<'a, 'w> {
@@ -152,19 +69,11 @@ impl<'a, 'w> SnapshotMapping<'a, 'w> {
     pub(crate) fn id(&self) -> devmap_linux::DevId {
         self.mapping.id()
     }
-    pub(crate) fn close(self) -> Result<LoopAttachment<'w>, SnapshotMappingFailure<'a, 'w>> {
-        match self.mapping.close() {
-            Ok(()) => Ok(self.backing),
-            Err(failure) => Err(SnapshotMappingFailure {
-                failure,
-                origin: self.origin,
-                backing: self.backing,
-            }),
-        }
+    pub(crate) fn close(self) -> io::Result<LoopAttachment<'w>> {
+        self.mapping.close()?;
+        Ok(self.backing)
     }
 }
-
-/// Validated counters from one snapshot status observation, in 512-byte sectors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct SnapshotUsage {
     allocated: u64,
@@ -172,6 +81,7 @@ pub(crate) struct SnapshotUsage {
     metadata: u64,
 }
 impl SnapshotUsage {
+    #[cfg(test)]
     pub(crate) fn allocated_sectors(self) -> u64 {
         self.allocated
     }

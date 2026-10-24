@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use devmap_linux::{Control, DevId, Status, Table, targets::Zero};
+use devmap_linux::{Control, DevId, Table, targets::Zero};
 use std::{
     fs::File,
     io::{self, Read},
@@ -24,13 +24,6 @@ impl MappingState for Active {}
 /// Owns a newly created mapping, never adopts/removes a preexisting name. Kernel
 /// device numbers are not leases; this owner must remain until consumers stop.
 /// No public raw control handle or arbitrary table-loading interface is exposed.
-/// ```compile_fail
-/// use conglobate::storage::{Mapping, Active};
-/// use std::num::NonZeroU64;
-/// fn cannot_reload(active: Mapping<Active>, sectors: NonZeroU64) {
-///     active.zero(sectors);
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct Mapping<S: MappingState> {
     lease: MappingLease,
@@ -41,29 +34,6 @@ struct MappingLease {
     control: Control,
     // Drop ownership slot, not an activation-state flag.
     id: Option<DevId>,
-}
-/// Cleanup-only failure. A failed activation never returns an Active mapping;
-/// a failed removal retains the resource and can only retry cleanup.
-#[derive(Debug, thiserror::Error)]
-#[error("device mapping operation: {source}")]
-pub(crate) struct MappingFailure {
-    source: super::FailureDiagnostics,
-    lease: MappingLease,
-}
-impl MappingFailure {
-    /// Most recent failure. `diagnostics()` also retains the original operation.
-    pub(crate) fn source_error(&self) -> &io::Error {
-        self.source.latest()
-    }
-    pub(crate) fn cleanup(self) -> Result<(), Self> {
-        self.lease.close().map_err(|Self { source, lease }| Self {
-            source: self.source.followed_by(source),
-            lease,
-        })
-    }
-    pub(crate) fn diagnostics(&self) -> &super::FailureDiagnostics {
-        &self.source
-    }
 }
 impl Mapping<Created> {
     pub(crate) fn create() -> io::Result<Self> {
@@ -81,7 +51,7 @@ impl Mapping<Created> {
             _state: PhantomData,
         })
     }
-    pub(crate) fn zero(self, sectors: NonZeroU64) -> Result<Mapping<Active>, MappingFailure> {
+    pub(crate) fn zero(self, sectors: NonZeroU64) -> io::Result<Mapping<Active>> {
         self.activate(sectors, &Zero, true)
     }
     pub(super) fn activate<T: devmap_linux::targets::Target>(
@@ -89,7 +59,7 @@ impl Mapping<Created> {
         sectors: NonZeroU64,
         target: &T,
         read_only: bool,
-    ) -> Result<Mapping<Active>, MappingFailure> {
+    ) -> io::Result<Mapping<Active>> {
         let loaded = (|| -> io::Result<()> {
             sectors.get().checked_mul(512).ok_or_else(|| {
                 io::Error::new(io::ErrorKind::InvalidInput, "mapping byte extent overflows")
@@ -103,16 +73,11 @@ impl Mapping<Created> {
             self.lease.control.load(self.lease.id(), table, read_only)?;
             self.lease.control.suspend(self.lease.id(), false)
         })();
-        match loaded {
-            Ok(()) => Ok(Mapping {
-                lease: self.lease,
-                _state: PhantomData,
-            }),
-            Err(source) => Err(MappingFailure {
-                source: source.into(),
-                lease: self.lease,
-            }),
-        }
+        loaded?;
+        Ok(Mapping {
+            lease: self.lease,
+            _state: PhantomData,
+        })
     }
 }
 impl Mapping<Active> {
@@ -154,22 +119,13 @@ impl Mapping<Active> {
     }
 }
 impl<S: MappingState> Mapping<S> {
-    pub(super) fn failed(self, source: io::Error) -> MappingFailure {
-        MappingFailure {
-            source: source.into(),
-            lease: self.lease,
-        }
-    }
     /// Diagnostic identity; copying it does not retain the mapping's lifetime.
     pub(crate) fn id(&self) -> DevId {
         self.lease.id()
     }
-    pub(crate) fn status(&self) -> io::Result<Status> {
-        self.lease.control.status(self.lease.id())
-    }
-    /// Immediate removal only. Busy consumers cause a recoverable failure,
+    /// Immediate removal only. Busy consumers cause a terminal failure,
     /// never a successful cleanup receipt or unbounded polling loop.
-    pub(crate) fn close(self) -> Result<(), MappingFailure> {
+    pub(crate) fn close(self) -> io::Result<()> {
         self.lease.close()
     }
 }
@@ -177,17 +133,10 @@ impl MappingLease {
     fn id(&self) -> DevId {
         self.id.expect("live mapping lease")
     }
-    fn close(mut self) -> Result<(), MappingFailure> {
-        match self.control.remove(self.id(), false) {
-            Ok(()) => {
-                self.id.take();
-                Ok(())
-            }
-            Err(source) => Err(MappingFailure {
-                source: source.into(),
-                lease: self,
-            }),
-        }
+    fn close(mut self) -> io::Result<()> {
+        self.control.remove(self.id(), false)?;
+        self.id.take();
+        Ok(())
     }
 }
 impl Drop for MappingLease {

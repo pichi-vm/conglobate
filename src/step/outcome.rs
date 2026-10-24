@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{RunningCommand, StepStorage, TeardownCompletion, TeardownFailure};
+use super::{RunningCommand, StepStorage, TeardownCompletion};
 use std::{io, process::ExitStatus, time::Instant};
 
 /// Command observation is independent of the trusted helper's eventual exit
@@ -25,9 +25,11 @@ pub(crate) struct CommandResult<T> {
     cleanup: T,
 }
 impl<T> CommandResult<T> {
+    #[cfg(any(test, feature = "test-fixtures"))]
     pub(crate) fn outcome(&self) -> &CommandOutcome {
         &self.outcome
     }
+    #[cfg(any(test, feature = "test-fixtures"))]
     pub(crate) fn cleanup(&self) -> &T {
         &self.cleanup
     }
@@ -35,7 +37,7 @@ impl<T> CommandResult<T> {
         (self.outcome, self.cleanup)
     }
     /// Consuming cleanup transitions preserve the original command outcome,
-    /// including when the transition returns a retryable failure owner.
+    /// including when the transition reports a cleanup error.
     pub(crate) fn map_cleanup<U>(self, transition: impl FnOnce(T) -> U) -> CommandResult<U> {
         CommandResult {
             outcome: self.outcome,
@@ -46,6 +48,7 @@ impl<T> CommandResult<T> {
 impl<T, E> CommandResult<Result<T, E>> {
     /// Branch on cleanup success without separating either branch from the
     /// original command outcome. `?` can propagate the complete failure owner.
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn transpose(self) -> Result<CommandResult<T>, CommandResult<E>> {
         match self.cleanup {
             Ok(cleanup) => Ok(CommandResult {
@@ -85,26 +88,19 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
 /// Observed command with its original, already-running cleanup budget.
 /// Keeping this owner before teardown cannot renew the deadline or restore
 /// command observation authority. Dropping it retains unfinished resources.
-/// ```compile_fail
-/// use conglobate::step::ObservedCommand;
-/// fn cannot_observe_again(command: ObservedCommand<'_, ()>) {
-///     command.observe();
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct ObservedCommand<'a, R: StepStorage> {
     command: RunningCommand<'a, R>,
     deadline: Instant,
 }
 impl<R: StepStorage> ObservedCommand<'_, R> {
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn teardown_deadline(&self) -> Instant {
         self.deadline
     }
 }
 impl<'a, R: StepStorage> CommandResult<ObservedCommand<'a, R>> {
-    pub(crate) fn teardown(
-        self,
-    ) -> CommandResult<Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>>> {
+    pub(crate) fn teardown(self) -> CommandResult<io::Result<TeardownCompletion<R>>> {
         match self.outcome {
             CommandOutcome::Exited(_) => self
                 .map_cleanup(|observed| observed.command.teardown_after_command(observed.deadline)),
@@ -120,7 +116,7 @@ mod tests {
     use std::os::unix::process::ExitStatusExt;
 
     #[test]
-    fn cleanup_failure_and_retry_preserve_nonzero_primary_status() {
+    fn cleanup_transitions_preserve_nonzero_primary_status() {
         let result = CommandResult {
             outcome: CommandOutcome::Exited(ExitStatus::from_raw(37 << 8)),
             cleanup: (),

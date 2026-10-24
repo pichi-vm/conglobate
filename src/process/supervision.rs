@@ -9,9 +9,8 @@ use rustix::{
 };
 use std::{io, process::Stdio, time::Instant};
 
-mod volume;
-pub(crate) use volume::VolumeInput;
 mod admission;
+mod volume;
 pub(crate) use admission::Admitted;
 mod joining;
 pub(crate) use joining::Joined;
@@ -52,12 +51,6 @@ impl Drop for ControlSocket {
 /// through the admission handshake. Each transition consumes the prior owner;
 /// paired peer observation alone never permits image-code execution.
 ///
-/// ```compile_fail
-/// use conglobate::process::{Supervision, Unpaired};
-/// fn cannot_observe_before_exchange(channel: Supervision<Unpaired>) {
-///     channel.peer_lost();
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct Supervision<S: SupervisionState> {
     socket: ControlSocket,
@@ -127,6 +120,7 @@ impl<S: ObservedState> Supervision<S> {
     /// expected channel completion to avoid killing a helper during its normal
     /// exit. A timeout still requires cancellation; success does not reap it or
     /// establish descendant quiescence.
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn wait_for_peer_exit_until(&self, deadline: Instant) -> io::Result<()> {
         self.peer.wait_until(deadline)
     }

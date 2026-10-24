@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{BlobReceipt, Cache, CacheError, VerifiedChain, VerifiedMetadata};
+use super::{Cache, CacheError, VerifiedChain, VerifiedMetadata};
 use crate::image::IndexDigest;
 use pichi_artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
 use serde::Deserialize;
@@ -64,15 +64,11 @@ impl HostArchitecture {
 /// Captured, verified metadata only. This does not prove scute chain integrity.
 #[derive(Debug)]
 pub(crate) struct ResolvedImage {
-    index: VerifiedMetadata,
     manifest_bytes: VerifiedMetadata,
     manifest: Manifest,
     architecture: HostArchitecture,
 }
 impl ResolvedImage {
-    pub(crate) fn index(&self) -> &VerifiedMetadata {
-        &self.index
-    }
     pub(crate) fn manifest_bytes(&self) -> &VerifiedMetadata {
         &self.manifest_bytes
     }
@@ -86,7 +82,8 @@ impl ResolvedImage {
 impl Cache {
     /// Check every non-inline content descriptor in the selected manifest.
     /// This is content identity verification, not scute-chain verification.
-    pub(crate) fn verify_references(&self, image: &ResolvedImage) -> Result<Vec<BlobReceipt>, CacheError> {
+    #[cfg(test)]
+    pub(crate) fn verify_references(&self, image: &ResolvedImage) -> Result<(), CacheError> {
         self.verify_references_with_chain(image, None)
     }
     /// Combine initial identity and ancestry checks. This never authorizes a
@@ -94,45 +91,42 @@ impl Cache {
     pub(crate) fn verify_content(
         &self,
         image: &ResolvedImage,
-    ) -> Result<(Vec<BlobReceipt>, Option<VerifiedChain>), CacheError> {
+    ) -> Result<Option<VerifiedChain>, CacheError> {
         let chain = self.verify_chain(image)?;
-        let receipts = self.verify_references_with_chain(image, chain.as_ref())?;
-        Ok((receipts, chain))
+        self.verify_references_with_chain(image, chain.as_ref())?;
+        Ok(chain)
     }
     fn verify_references_with_chain(
         &self,
         image: &ResolvedImage,
         chain: Option<&VerifiedChain>,
-    ) -> Result<Vec<BlobReceipt>, CacheError> {
+    ) -> Result<(), CacheError> {
         let manifest = image.manifest();
         let config = &manifest.config;
-        let mut receipts =
-            Vec::with_capacity(manifest.layers.len() + usize::from(!config.is_empty()));
         if !config.is_empty() {
             let digest = config
                 .digest
                 .parse()
                 .map_err(|_| CacheError::Invalid("invalid config digest"))?;
-            receipts.push(self.verify(&digest, config.size)?);
+            self.verify(&digest, config.size)?;
         }
         for layer in &manifest.layers {
             let digest = layer
                 .digest_str()
                 .parse()
                 .map_err(|_| CacheError::Invalid("invalid layer digest"))?;
-            let receipt = match layer {
-                pichi_artifact::Layer::Scute(_) | pichi_artifact::Layer::ScuteZstd(_) => {
-                    chain.and_then(|chain| chain.receipt(&digest, layer.size()))
-                }
-                _ => None,
-            };
-            receipts.push(match receipt {
-                Some(receipt) => receipt,
-                None => self.verify(&digest, layer.size())?,
-            });
+            let verified = matches!(
+                layer,
+                pichi_artifact::Layer::Scute(_) | pichi_artifact::Layer::ScuteZstd(_)
+            ) && chain
+                .is_some_and(|chain| chain.contains_verified(&digest, layer.size()));
+            if !verified {
+                self.verify(&digest, layer.size())?;
+            }
         }
-        Ok(receipts)
+        Ok(())
     }
+
     pub(crate) fn resolve(&self, pin: IndexDigest) -> Result<ResolvedImage, CacheError> {
         let architecture = HostArchitecture::current()?;
         let index = self.metadata(&Digest::Sha256(*pin.bytes()), None)?;
@@ -173,7 +167,6 @@ impl Cache {
             return Err(CacheError::Invalid("invalid manifest envelope"));
         }
         Ok(ResolvedImage {
-            index,
             manifest_bytes,
             manifest,
             architecture,
@@ -273,10 +266,6 @@ mod tests {
             }
             let bytes = manifest.to_bytes().unwrap();
             let image = ResolvedImage {
-                index: VerifiedMetadata {
-                    digest: Digest::from_bytes_sha256(b"index"),
-                    bytes: b"index".to_vec(),
-                },
                 manifest_bytes: VerifiedMetadata {
                     digest: Digest::from_bytes_sha256(&bytes),
                     bytes,
@@ -293,17 +282,12 @@ mod tests {
     }
 
     #[test]
-    fn combined_verification_retains_every_receipt_and_rejects_changed_content() {
+    fn combined_verification_rejects_each_changed_blob() {
         let fixture = ContentFixture::new();
         let cache = Cache::open(fixture.directory.path()).unwrap();
-        let (receipts, chain) = cache.verify_content(&fixture.image).unwrap();
+        let chain = cache.verify_content(&fixture.image).unwrap();
         assert_eq!(chain.unwrap().scutes().len(), 2);
-        let separate = cache.verify_references(&fixture.image).unwrap();
-        assert_eq!(receipts.len(), fixture.blobs.len());
-        for (combined, standalone) in receipts.iter().zip(&separate) {
-            assert_eq!(combined.digest(), standalone.digest());
-            assert_eq!(combined.size(), standalone.size());
-        }
+        cache.verify_references(&fixture.image).unwrap();
         for (digest, bytes) in &fixture.blobs {
             let path = fixture
                 .directory

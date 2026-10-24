@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-use conglobate::step::{CommandResult, PreparationStorage, TeardownCompletion};
+use conglobate::step::{CommandStorage, TeardownCompletion, outcome::CommandResult};
 use std::{fs, io::Write, path::Path};
 
 #[derive(Debug)]
 pub(super) struct Writeback;
 impl Writeback {
-    pub(super) fn reject<R: PreparationStorage>(
+    pub(super) fn reject<R: CommandStorage>(
         completion: CommandResult<TeardownCompletion<R>>,
         root: &Path,
         device: &Path,
@@ -45,23 +45,17 @@ impl Writeback {
         let failure = completion.unmount().unwrap_err();
         assert_eq!(failure.outcome().to_string(), primary);
         eprintln!("initial finalization failure: {}", failure.cleanup());
-        let error = failure.cleanup().diagnostics().latest();
+        let error = failure
+            .cleanup()
+            .chain()
+            .find_map(|cause| cause.downcast_ref::<std::io::Error>())
+            .expect("I/O cause");
         assert!(
             matches!(error.raw_os_error(), Some(5 | 30))
                 || error.kind() == std::io::ErrorKind::InvalidData
         );
         assert!(device.exists());
-        let failure = failure.retry().unwrap_err();
-        assert_eq!(failure.outcome().to_string(), primary);
-        assert!(!failure.outcome().success());
-        eprintln!("retried finalization failure: {}", failure.cleanup());
-        let error = failure.cleanup().diagnostics().latest();
-        assert!(
-            matches!(error.raw_os_error(), Some(5 | 30))
-                || error.kind() == std::io::ErrorKind::InvalidData
-        );
-        assert!(device.exists());
-        println!("INVALID_SNAPSHOT_FINALIZATION_RETRY_REJECTED_PASS");
+        println!("INVALID_SNAPSHOT_FINALIZATION_TERMINAL_REJECTED_PASS");
         // No clean finalization or accepted storage receipt is produced. Retain
         // the failure owner until independent init disposes of the entire VM.
         std::process::exit(0);

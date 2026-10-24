@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{
-    ChildLease, Identified, IdentityReceiver, Paired, Pinned, Process, Running, Supervision,
-};
+#[cfg(test)]
+use super::IdentityReceiver;
+use super::{ChildLease, Identified, Paired, Pinned, Process, Running, Supervision};
 use std::{
     io,
     process::{Command, Stdio},
@@ -87,6 +87,7 @@ impl Process<Identified> {
     /// reaping. This operation does not configure those process-wide settings,
     /// establish a command sandbox, register containment or grant admission.
     /// The deadline bounds exchange/acceptance, not the kernel's spawn operation.
+    #[cfg(test)]
     pub(crate) fn launch(mut command: Command, deadline: Instant) -> Result<Self, LaunchFailure> {
         if Instant::now() >= deadline {
             return Err(LaunchFailure::Before(io::Error::new(
@@ -119,6 +120,7 @@ impl Process<Identified> {
         })
     }
 
+    #[cfg(test)]
     pub(crate) fn has_exited(&self) -> io::Result<bool> {
         self.resources.termination.observation.has_exited()
     }

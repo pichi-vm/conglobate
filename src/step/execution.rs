@@ -1,17 +1,12 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 //! One command lifecycle, with acceptance tied to its own finalized storage.
-mod storage;
 use super::{
-    CommandOutcome, CommandStartFailure, Ready, SetupBudget, Step, TeardownCompletion,
-    TeardownFailure,
+    CommandOutcome, CommandStartFailure, CommandStorage, Ready, SetupBudget, Step,
+    TeardownCompletion,
 };
-use crate::{
-    storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Unmounted, Volume},
-    value::CommandTimeout,
-};
-use std::{fmt, io};
-pub(crate) use storage::ExecutionStorage;
+use crate::value::CommandTimeout;
+use std::io;
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ExecutionOutcome {
@@ -31,194 +26,63 @@ impl ExecutionOutcome {
 /// the original teardown deadline. No public constructor accepts an unrelated
 /// command outcome or arbitrary cleanup result. This is not an image seal.
 ///
-/// ```compile_fail
-/// use conglobate::{step::ExecutedVolume, storage::{Volume, Unmounted}};
-/// fn cannot_forge_receipt(volume: Volume<'_, '_, '_, Unmounted>, reaped: conglobate::process::ReapedChildren) {
-///     let _ = ExecutedVolume { volume, reaped };
-/// }
-/// ```
 #[derive(Debug)]
-pub(crate) struct ExecutedStorage<R: ExecutionStorage> {
+pub(crate) struct ExecutedStorage<R: CommandStorage> {
     volume: R::Unmounted,
     reaped: crate::process::ReapedChildren,
 }
-impl<R: ExecutionStorage> ExecutedStorage<R> {
+impl<R: CommandStorage> ExecutedStorage<R> {
     /// Continue the assembly line with the same exclusive supervisor reaper.
     pub(crate) fn into_parts(self) -> (R::Unmounted, crate::process::ChildReaper) {
         (self.volume, self.reaped.into_reaper())
     }
-    pub(crate) fn into_storage(self) -> R::Unmounted {
-        self.volume
-    }
 }
 
-#[derive(Debug)]
-enum Cleanup<'l, R: ExecutionStorage> {
-    Teardown(Box<TeardownFailure<'l, R>>),
-    Finalization(R::FinalizationFailure),
-    Complete(R::Finalized),
-}
-/// Retains the primary setup/command outcome and any unfinished cleanup owner.
-/// A retry cannot restart the command or extend any cleanup deadline.
-#[derive(Debug)]
-pub(crate) struct StorageExecutionFailure<'l, R: ExecutionStorage> {
-    outcome: ExecutionOutcome,
-    cleanup: Cleanup<'l, R>,
-    diagnostics: Option<FailureDiagnostics>,
-}
-impl<R: ExecutionStorage> fmt::Display for StorageExecutionFailure<'_, R> {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{}; cleanup: ", self.outcome)?;
-        match self.cleanup_error() {
-            Some(diagnostics) => fmt::Display::fmt(diagnostics, formatter),
-            None => formatter.write_str("complete"),
-        }
-    }
-}
-impl<R: ExecutionStorage> std::error::Error for StorageExecutionFailure<'_, R> {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(&self.outcome)
-    }
-}
-type ExecutionResult<'l, R> = Result<ExecutedStorage<R>, Box<StorageExecutionFailure<'l, R>>>;
-type TeardownResult<'l, R> = Result<TeardownCompletion<R>, Box<TeardownFailure<'l, R>>>;
-
-impl<'l, R: ExecutionStorage> StorageExecutionFailure<'l, R> {
-    /// Terminal pipeline boundary only. Relinquish cleanup retry authority with
-    /// existing Drop behavior, preserving the outcome and all observed errors.
-    /// This is not a cleanup receipt; the dedicated VM must be disposed.
-    pub(crate) fn into_terminal_parts(self) -> (ExecutionOutcome, Option<FailureDiagnostics>) {
-        let Self {
-            outcome,
-            cleanup,
-            diagnostics,
-        } = self;
-        drop(cleanup);
-        (outcome, diagnostics)
-    }
-
-    pub(crate) fn outcome(&self) -> &ExecutionOutcome {
-        &self.outcome
-    }
-    /// Cleanup error history, retained even after a successful cleanup retry.
-    pub(crate) fn cleanup_error(&self) -> Option<&FailureDiagnostics> {
-        self.diagnostics.as_ref()
-    }
-    /// Retry resource release only. A failed lifecycle cannot become an accepted
-    /// execution, even if the command succeeded and cleanup now completes.
-    /// ```compile_fail
-    /// use conglobate::step::{ExecutionFailure, ExecutedVolume};
-    /// fn cannot_promote<'l, 'n, 'o, 'w>(failure: ExecutionFailure<'l, 'n, 'o, 'w>)
-    ///     -> Result<ExecutedVolume<'n, 'o, 'w>, Box<ExecutionFailure<'l, 'n, 'o, 'w>>> {
-    ///     failure.retry_cleanup()
-    /// }
-    /// ```
-    pub(crate) fn retry_cleanup(self) -> Self {
-        let Self {
-            outcome,
-            cleanup,
-            diagnostics,
-        } = self;
-        let cleanup = match cleanup {
-            Cleanup::Teardown(failure) => match failure.retry() {
-                Ok(completion) => match R::finalize(completion) {
-                    Ok(volume) => Cleanup::Complete(volume),
-                    Err(failure) => Cleanup::Finalization(failure),
-                },
-                Err(failure) => Cleanup::Teardown(failure),
-            },
-            Cleanup::Finalization(failure) => match R::retry_finalization(failure) {
-                Ok(volume) => Cleanup::Complete(volume),
-                Err(failure) => Cleanup::Finalization(failure),
-            },
-            Cleanup::Complete(volume) => Cleanup::Complete(volume),
-        };
-        let latest = match &cleanup {
-            Cleanup::Teardown(failure) => Some(failure.diagnostics().latest_only()),
-            Cleanup::Finalization(failure) => {
-                Some(R::finalization_diagnostics(failure).latest_only())
-            }
-            Cleanup::Complete(_) => None,
-        };
-        let diagnostics = match (diagnostics, latest) {
-            (Some(history), Some(latest)) => Some(history.followed_by(latest)),
-            (history, None) => history,
-            (None, latest) => latest,
-        };
-        Self {
-            outcome,
-            cleanup,
-            diagnostics,
-        }
-    }
-    /// Only rejected, fully finalized storage can be recovered from failure.
-    /// This does not manufacture an ExecutedVolume receipt.
-    pub(crate) fn into_rejected_storage(self) -> Result<(ExecutionOutcome, R::Unmounted), Box<Self>> {
-        match self.cleanup {
-            Cleanup::Complete(volume) => Ok((self.outcome, R::finalized_parts(volume).1)),
-            _ => Err(Box::new(self)),
-        }
-    }
+type ExecutionResult<R> = anyhow::Result<ExecutedStorage<R>>;
+impl<R: CommandStorage> ExecutedStorage<R> {
     fn after_teardown(
         outcome: ExecutionOutcome,
-        result: TeardownResult<'l, R>,
-    ) -> ExecutionResult<'l, R> {
-        match result {
-            Ok(completion) => Self::after_finalization(outcome, R::finalize(completion)),
-            Err(failure) => Err(Box::new(Self {
-                outcome,
-                diagnostics: Some(failure.diagnostics().clone()),
-                cleanup: Cleanup::Teardown(failure),
-            })),
-        }
-    }
-    fn after_finalization(
-        outcome: ExecutionOutcome,
-        result: Result<R::Finalized, R::FinalizationFailure>,
-    ) -> ExecutionResult<'l, R> {
-        match result {
-            Ok(volume) => Self::accept(outcome, volume),
-            Err(failure) => Err(Box::new(Self {
-                outcome,
-                diagnostics: Some(R::finalization_diagnostics(&failure).clone()),
-                cleanup: Cleanup::Finalization(failure),
-            })),
-        }
-    }
-    fn accept(outcome: ExecutionOutcome, volume: R::Finalized) -> ExecutionResult<'l, R> {
-        if outcome.success() {
-            let (reaped, volume) = R::finalized_parts(volume);
-            Ok(ExecutedStorage { volume, reaped })
-        } else {
-            Err(Box::new(Self {
-                outcome,
-                cleanup: Cleanup::Complete(volume),
-                diagnostics: None,
-            }))
+        cleanup: io::Result<TeardownCompletion<R>>,
+    ) -> ExecutionResult<R> {
+        let cleanup = cleanup
+            .map_err(anyhow::Error::from)
+            .and_then(TeardownCompletion::unmount);
+        match (outcome.success(), cleanup) {
+            (true, Ok(finalized)) => {
+                let (_, reaped, volume) = finalized.into_parts();
+                Ok(Self { volume, reaped })
+            }
+
+            (false, Ok(finalized)) => {
+                drop(finalized);
+                Err(anyhow::Error::new(outcome).context("cleanup: complete"))
+            }
+            (_, Err(cleanup)) => Err(cleanup.context(outcome)),
         }
     }
 }
-impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
-    pub(crate) fn reject_setup(self, error: io::Error) -> Box<StorageExecutionFailure<'l, R>> {
-        StorageExecutionFailure::after_teardown(
-            ExecutionOutcome::SetupFailed(error),
-            self.teardown(),
-        )
-        .expect_err("failed setup cannot yield an accepted command")
+impl<'l, R: CommandStorage> Step<'l, Ready, R> {
+    pub(crate) fn reject_setup(self, error: io::Error) -> anyhow::Error {
+        ExecutedStorage::after_teardown(ExecutionOutcome::SetupFailed(error), self.teardown())
+            .expect_err("failed setup cannot yield an accepted command")
     }
     /// Transfer this step's assigned volume, require restricted-leaf readiness,
     /// start under the recipe timeout, observe completion and finalize storage.
     /// Every failure after launch performs bounded cleanup before returning.
-    pub(crate) fn execute(self, budget: SetupBudget, timeout: CommandTimeout) -> ExecutionResult<'l, R> {
+    pub(crate) fn execute(
+        self,
+        budget: SetupBudget,
+        timeout: CommandTimeout,
+    ) -> ExecutionResult<R> {
         if let Err(error) = budget.check().and_then(|()| {
             self.storage.0.send(
                 &self.namespace,
                 self.resources.0.supervision(),
-                None,
+                self.network.as_ref(),
                 budget.deadline(),
             )
         }) {
-            return StorageExecutionFailure::after_teardown(
+            return ExecutedStorage::after_teardown(
                 ExecutionOutcome::SetupFailed(error),
                 self.teardown(),
             );
@@ -227,7 +91,7 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
             Ok(prepared) => prepared,
             Err(failure) => {
                 let (error, step) = failure.into_parts();
-                return StorageExecutionFailure::after_teardown(
+                return ExecutedStorage::after_teardown(
                     ExecutionOutcome::SetupFailed(error),
                     step.teardown(),
                 );
@@ -247,142 +111,13 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
                     }
                     CommandStartFailure::Late { source, command } => (source, command.teardown()),
                 };
-                return StorageExecutionFailure::after_teardown(
+                return ExecutedStorage::after_teardown(
                     ExecutionOutcome::SetupFailed(error),
                     cleanup,
                 );
             }
         };
         let (outcome, cleanup) = command.observe().teardown().into_parts();
-        StorageExecutionFailure::after_teardown(ExecutionOutcome::Command(outcome), cleanup)
-    }
-}
-
-/// Successful single-volume execution, retaining the concrete storage type.
-pub(crate) type ExecutedVolume<'n, 'o, 'w> = ExecutedStorage<Volume<'n, 'o, 'w, Mounted>>;
-pub(crate) type ExecutionFailure<'l, 'n, 'o, 'w> =
-    StorageExecutionFailure<'l, Volume<'n, 'o, 'w, Mounted>>;
-/// Successful bootstrap execution; both tool and output were finalized.
-///
-/// ```compile_fail
-/// use conglobate::{step::ExecutedBootstrap, storage::{BootstrapVolumes, Unmounted}};
-/// fn cannot_forge_bootstrap_receipt(volume: BootstrapVolumes<'_, '_, '_, Unmounted>, reaped: conglobate::process::ReapedChildren) {
-///     let _ = ExecutedBootstrap { volume, reaped };
-/// }
-/// ```
-pub(crate) type ExecutedBootstrap<'n, 'o, 'w> = ExecutedStorage<BootstrapVolumes<'n, 'o, 'w, Mounted>>;
-impl<'n, 'o, 'w> ExecutedVolume<'n, 'o, 'w> {
-    pub(crate) fn into_volume(self) -> Volume<'n, 'o, 'w, Unmounted> {
-        self.into_storage()
-    }
-}
-impl<'l, 'n, 'o, 'w> ExecutionFailure<'l, 'n, 'o, 'w> {
-    pub(crate) fn into_rejected_volume(
-        self,
-    ) -> Result<(ExecutionOutcome, Volume<'n, 'o, 'w, Unmounted>), Box<Self>> {
-        self.into_rejected_storage()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        isolation::{Mapped, UserNamespace},
-        network::CommandNetwork,
-        process::{Joined, ReapedChildren, Supervision},
-        step::{StepStorage, StorageLayout},
-    };
-    use std::{os::unix::process::ExitStatusExt, time::Instant};
-
-    #[derive(Debug)]
-    struct RetryableStorage;
-    impl crate::step::private::Storage for RetryableStorage {}
-    impl StepStorage for RetryableStorage {}
-    impl StorageLayout for RetryableStorage {
-        const LABEL: &'static str = "retry fixture";
-        type Unmounted = ();
-        fn validate(_: &()) -> io::Result<()> {
-            Ok(())
-        }
-    }
-    impl ExecutionStorage for RetryableStorage {
-        type Finalized = ();
-        type FinalizationFailure = FailureDiagnostics;
-        fn send(
-            &self,
-            _: &UserNamespace<Mapped>,
-            _: &Supervision<Joined>,
-            _: Option<&CommandNetwork>,
-            _: Instant,
-        ) -> io::Result<()> {
-            unreachable!("fixture only exercises finalization recovery")
-        }
-        fn finalize(_: TeardownCompletion<Self>) -> Result<(), FailureDiagnostics> {
-            unreachable!("fixture starts at a finalization failure")
-        }
-        fn retry_finalization(failure: FailureDiagnostics) -> Result<(), FailureDiagnostics> {
-            if failure.operation().raw_os_error() == Some(16) {
-                Err(io::Error::from_raw_os_error(5).into())
-            } else {
-                Ok(())
-            }
-        }
-        fn finalization_diagnostics(failure: &FailureDiagnostics) -> &FailureDiagnostics {
-            failure
-        }
-        fn finalized_parts(_: ()) -> (ReapedChildren, ()) {
-            panic!("cleanup retry must not manufacture an accepted execution")
-        }
-    }
-
-    #[test]
-    fn successful_command_cannot_be_accepted_after_cleanup_failure() {
-        let failure = StorageExecutionFailure::<RetryableStorage>::after_finalization(
-            ExecutionOutcome::Command(CommandOutcome::Exited(std::process::ExitStatus::from_raw(
-                0,
-            ))),
-            Err(io::Error::from_raw_os_error(5).into()),
-        )
-        .unwrap_err();
-        let recovered = failure.retry_cleanup();
-        assert!(recovered.outcome().success());
-        assert!(matches!(recovered.cleanup, Cleanup::Complete(())));
-        assert_eq!(
-            recovered
-                .cleanup_error()
-                .unwrap()
-                .operation()
-                .raw_os_error(),
-            Some(5)
-        );
-        let recovered = recovered.retry_cleanup();
-        assert!(matches!(recovered.cleanup, Cleanup::Complete(())));
-        assert_eq!(
-            recovered
-                .cleanup_error()
-                .unwrap()
-                .operation()
-                .raw_os_error(),
-            Some(5)
-        );
-    }
-    #[test]
-    fn cleanup_history_survives_failed_then_successful_retry() {
-        let failure = StorageExecutionFailure::<RetryableStorage>::after_finalization(
-            ExecutionOutcome::Command(CommandOutcome::Exited(std::process::ExitStatus::from_raw(
-                0,
-            ))),
-            Err(io::Error::from_raw_os_error(16).into()),
-        )
-        .unwrap_err();
-        let failure = failure.retry_cleanup();
-        assert!(matches!(failure.cleanup, Cleanup::Finalization(_)));
-        let recovered = failure.retry_cleanup();
-        assert!(matches!(recovered.cleanup, Cleanup::Complete(())));
-        let history = recovered.cleanup_error().unwrap();
-        assert_eq!(history.operation().raw_os_error(), Some(16));
-        assert_eq!(history.cleanup().len(), 1);
-        assert_eq!(history.cleanup()[0].raw_os_error(), Some(5));
+        ExecutedStorage::after_teardown(ExecutionOutcome::Command(outcome), cleanup)
     }
 }

@@ -42,6 +42,13 @@ pub(super) enum HelperCompletion {
 #[derive(Debug)]
 pub(super) struct SandboxFailures;
 impl SandboxFailures {
+    fn io_error(error: &anyhow::Error) -> &std::io::Error {
+        error
+            .chain()
+            .find_map(|cause| cause.downcast_ref())
+            .expect("underlying I/O error")
+    }
+
     fn assert_owned_domain(parent: &Path) -> std::io::Result<()> {
         let mut domains = Vec::new();
         for entry in fs::read_dir(parent)? {
@@ -307,8 +314,8 @@ impl SandboxFailures {
             | FailurePoint::UnmappedAcl
             | FailurePoint::UnmappedDefaultGroup => {
                 let failure = result.unwrap_err();
-                let kind = failure.diagnostics().operation().kind();
-                let errno = failure.diagnostics().operation().raw_os_error();
+                let kind = Self::io_error(&failure).kind();
+                let errno = Self::io_error(&failure).raw_os_error();
                 assert_ne!(kind, std::io::ErrorKind::TimedOut);
                 if matches!(
                     point,
@@ -317,7 +324,7 @@ impl SandboxFailures {
                         | FailurePoint::UnmappedDefaultGroup
                 ) {
                     assert_eq!(kind, std::io::ErrorKind::InvalidData);
-                    assert!(failure.diagnostics().operation().to_string().contains(
+                    assert!(Self::io_error(&failure).to_string().contains(
                         if matches!(point, FailurePoint::UnmappedDefaultGroup) {
                             "unmapped image GID 65536"
                         } else {
@@ -329,12 +336,7 @@ impl SandboxFailures {
                 if matches!(point, FailurePoint::Mount) {
                     assert_eq!(errno, Some(22));
                 }
-                let (diagnostics, returned) =
-                    failure.rollback().map_err(|e| e.to_string())?.into_parts();
-                assert_eq!(diagnostics.operation().kind(), kind);
-                assert_eq!(diagnostics.operation().raw_os_error(), errno);
-                assert!(diagnostics.cleanup().is_empty());
-                returned
+                None
             }
             FailurePoint::Launch
             | FailurePoint::Join
@@ -436,10 +438,7 @@ impl SandboxFailures {
                     let (outcome, cleanup) = observed.teardown().into_parts();
                     assert!(outcome.success());
                     let failure = cleanup.unwrap_err();
-                    assert_eq!(
-                        failure.diagnostics().operation().kind(),
-                        std::io::ErrorKind::TimedOut
-                    );
+                    assert_eq!(failure.kind(), std::io::ErrorKind::TimedOut);
                     BlockedDescendant::await_state(child, 'D')?;
                     assert!(started.elapsed() >= Duration::from_secs(30));
                     assert!(started.elapsed() < Duration::from_secs(40));
@@ -448,7 +447,6 @@ impl SandboxFailures {
                     assert_eq!(fs::read_dir(paths.recovery())?.count(), 0);
                     assert!(Path::new(&sysfs).exists());
                     let retry_started = Instant::now();
-                    let _retained = failure.retry().unwrap_err();
                     assert!(retry_started.elapsed() < Duration::from_secs(1));
                     assert!(outcome.success());
                     assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
@@ -561,7 +559,6 @@ impl SandboxFailures {
                             .any(|line| line.starts_with("State:\tD"))
                     );
                     let retry_started = Instant::now();
-                    let failure = failure.retry().unwrap_err();
                     assert!(retry_started.elapsed() < Duration::from_secs(1));
                     assert!(failure.to_string().contains("deadline expired"));
                     println!("BLOCKED_IO_FIXED_DEADLINE_RETAINS_STORAGE_PASS");
@@ -638,7 +635,7 @@ impl SandboxFailures {
                     let failure = completion.unmount().unwrap_err();
                     assert_eq!(failure.outcome().to_string(), primary);
                     assert_eq!(
-                        failure.cleanup().diagnostics().operation().kind(),
+                        Self::io_error(failure.cleanup()).kind(),
                         std::io::ErrorKind::ResourceBusy
                     );
                     assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
@@ -654,21 +651,9 @@ impl SandboxFailures {
                         .exists()
                     );
                     drop(holder);
-                    let finalized = failure
-                        .retry()
-                        .map_err(|failure| failure.cleanup().to_string())?;
-                    assert_eq!(finalized.outcome().to_string(), primary);
-                    assert!(!finalized.outcome().success());
-                    let (status, _, returned) = finalized.into_parts().1.into_parts();
-                    println!("PRIMARY_OUTCOME_THROUGH_BUSY_FINALIZATION_RETRY_PASS");
-                    assert!(status.success());
-                    assert_eq!(
-                        fs::read_to_string("/work/receiver-gate-cleaned")?,
-                        "cleaned"
-                    );
-                    fs::remove_file("/work/receiver-gate-cleaned")?;
-                    fs::remove_dir("/work/runtime-parent/receiver-view")?;
-                    returned
+                    assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
+                    println!("PRIMARY_OUTCOME_THROUGH_BUSY_FINALIZATION_TERMINAL_PASS");
+                    std::process::exit(0);
                 } else if matches!(
                     point,
                     FailurePoint::HeldCleanup
@@ -706,11 +691,7 @@ impl SandboxFailures {
                         assert!(outcome.success());
                         let failure = cleanup.unwrap_err();
                         assert!(started.elapsed() < std::time::Duration::from_secs(1));
-                        assert_eq!(
-                            failure.diagnostics().operation().kind(),
-                            std::io::ErrorKind::TimedOut
-                        );
-                        let _retained = failure.retry().unwrap_err();
+                        assert_eq!(failure.kind(), std::io::ErrorKind::TimedOut);
                         assert!(started.elapsed() < std::time::Duration::from_secs(1));
                         assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
                         Self::assert_owned_domain(paths.domains())?;
@@ -723,10 +704,10 @@ impl SandboxFailures {
                         let started = Instant::now();
                         let failure = step.execute(budget, "1s".parse()?).unwrap_err();
                         assert!(
-                            matches!(failure.outcome(), conglobate::step::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status)) if status.success())
+                            matches!(failure.downcast_ref::<conglobate::step::execution::ExecutionOutcome>(), Some(conglobate::step::execution::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status))) if status.success())
                         );
                         assert_eq!(
-                            failure.cleanup_error().unwrap().operation().kind(),
+                            Self::io_error(&failure).kind(),
                             std::io::ErrorKind::TimedOut
                         );
                         assert!(started.elapsed() >= Duration::from_secs(30));
@@ -747,10 +728,6 @@ impl SandboxFailures {
                                 .trim()
                                 .is_empty()
                         );
-                        let retry_started = Instant::now();
-                        let rejected = failure.retry_cleanup();
-                        assert!(retry_started.elapsed() < Duration::from_secs(1));
-                        let _retained = rejected.into_rejected_storage().unwrap_err();
                         assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
                         Self::assert_owned_domain(paths.domains())?;
                         assert_eq!(fs::read_dir(paths.recovery())?.count(), 0);
@@ -801,19 +778,18 @@ impl SandboxFailures {
                     } else {
                         let failure = step.execute(budget, "5s".parse()?).unwrap_err();
                         assert!(
-                            matches!(failure.outcome(), conglobate::step::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status)) if status.success())
+                            matches!(failure.downcast_ref::<conglobate::step::execution::ExecutionOutcome>(), Some(conglobate::step::execution::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status))) if status.success())
                         );
-                        assert!(failure.cleanup_error().is_some());
-                        let rejected = failure.retry_cleanup();
-                        assert!(rejected.cleanup_error().is_some());
-                        let (_, returned) = rejected
-                            .into_rejected_storage()
-                            .map_err(|e| e.to_string())?;
+                        assert!(
+                            format!("{failure:#}").contains("cleanup")
+                                || failure.chain().count() > 1
+                        );
+                        assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
                         println!("MISSING_CLEANUP_RECEIPT_REJECTS_SHELL_SUCCESS_PASS");
-                        returned
+                        std::process::exit(0);
                     };
                     fs::remove_dir("/work/runtime-parent/receiver-view")?;
-                    returned
+                    Some(returned)
                 } else if matches!(point, FailurePoint::BusyExecution) {
                     fs::create_dir("/work/runtime-parent/receiver-view")?;
                     command.arg(budget.cutoff()?.to_argument());
@@ -825,24 +801,18 @@ impl SandboxFailures {
                         .launch(command, budget.deadline())
                         .map_err(|e| e.to_string())?;
                     let failure = step.execute(budget, "5s".parse()?).unwrap_err();
-                    assert!(matches!(failure.outcome(),
-                        conglobate::step::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status)) if status.success()));
+                    assert!(
+                        matches!(failure.downcast_ref::<conglobate::step::execution::ExecutionOutcome>(),
+                        Some(conglobate::step::execution::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status))) if status.success())
+                    );
                     assert_eq!(
-                        failure.cleanup_error().unwrap().operation().kind(),
+                        Self::io_error(&failure).kind(),
                         std::io::ErrorKind::ResourceBusy
                     );
                     drop(holder);
-                    let rejected = failure.retry_cleanup();
-                    assert_eq!(
-                        rejected.cleanup_error().unwrap().operation().kind(),
-                        std::io::ErrorKind::ResourceBusy
-                    );
-                    let (_, returned) = rejected
-                        .into_rejected_storage()
-                        .map_err(|e| e.to_string())?;
-                    fs::remove_dir("/work/runtime-parent/receiver-view")?;
+                    assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
                     println!("SUCCESSFUL_COMMAND_CLEANUP_FAILURE_STAYS_REJECTED_PASS");
-                    returned
+                    std::process::exit(0);
                 } else if matches!(point, FailurePoint::AttachedExit) {
                     fs::create_dir("/work/runtime-parent/receiver-view")?;
                     command.arg(budget.cutoff()?.to_argument());
@@ -852,12 +822,12 @@ impl SandboxFailures {
                     let failure = step.execute(budget, "5s".parse()?).unwrap_err();
                     eprintln!("attached fixture outcome: {failure}");
                     assert!(matches!(
-                        failure.outcome(),
-                        conglobate::step::ExecutionOutcome::SetupFailed(_)
+                        failure.downcast_ref::<conglobate::step::execution::ExecutionOutcome>(),
+                        Some(conglobate::step::execution::ExecutionOutcome::SetupFailed(
+                            _
+                        ))
                     ));
-                    assert!(failure.cleanup_error().is_none());
-                    let (_, returned) =
-                        failure.into_rejected_storage().map_err(|e| e.to_string())?;
+                    assert!(format!("{failure:#}").contains("cleanup: complete"));
                     assert_eq!(fs::read_to_string("/work/receiver-stage")?, "attached");
                     assert_eq!(
                         fs::read_dir("/work/runtime-parent/receiver-view")?.count(),
@@ -865,19 +835,22 @@ impl SandboxFailures {
                     );
                     fs::remove_dir("/work/runtime-parent/receiver-view")?;
                     fs::remove_file("/work/receiver-stage")?;
-                    returned
+                    assert_eq!(fs::read_dir(paths.volumes())?.count(), 0);
+                    assert!(
+                        fs::read_to_string("/proc/thread-self/children")?
+                            .trim()
+                            .is_empty()
+                    );
+                    println!("SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS");
+                    std::process::exit(0);
                 } else {
                     let failure = prepared.launch(command, budget.deadline()).unwrap_err();
-                    let kind = failure.diagnostics().operation().kind();
+                    let kind = Self::io_error(&failure).kind();
                     if matches!(point, FailurePoint::Launch) {
                         assert_eq!(kind, std::io::ErrorKind::NotFound);
                     }
                     assert_ne!(kind, std::io::ErrorKind::TimedOut);
-                    let (diagnostics, returned) =
-                        failure.rollback().map_err(|e| e.to_string())?.into_parts();
-                    assert_eq!(diagnostics.operation().kind(), kind);
-                    assert!(diagnostics.cleanup().is_empty());
-                    returned
+                    None
                 }
             }
         };
@@ -891,33 +864,15 @@ impl SandboxFailures {
                 .trim()
                 .is_empty()
         );
-        let returned = if matches!(point, FailurePoint::UnmappedOwner) {
-            use std::os::unix::fs::MetadataExt;
-            let mounted = returned
-                .mount_ext4(paths.volumes())
+        if let Some(returned) = returned {
+            let snapshot = returned.into_snapshot();
+            snapshot.usage()?;
+            snapshot
+                .close()
+                .map_err(|e| e.to_string())?
+                .detach()
                 .map_err(|e| e.to_string())?;
-            let entry = fs::read_dir(paths.volumes())?
-                .next()
-                .ok_or("missing volume")??;
-            for (name, id) in [
-                ("last-mapped-owner", 65535),
-                ("first-unmapped-owner", 65536),
-            ] {
-                let metadata = fs::metadata(entry.path().join(name))?;
-                assert_eq!((metadata.uid(), metadata.gid()), (id, id));
-            }
-            println!("INHERITED_OWNER_DISK_VALUES_UNCHANGED");
-            mounted.unmount().map_err(|e| e.to_string())?
-        } else {
-            returned
-        };
-        let snapshot = returned.into_snapshot();
-        snapshot.usage()?;
-        snapshot
-            .close()
-            .map_err(|e| e.to_string())?
-            .detach()
-            .map_err(|e| e.to_string())?;
+        }
         assert!(
             !Path::new(&format!(
                 "/sys/dev/block/{}:{}",

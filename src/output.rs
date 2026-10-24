@@ -3,9 +3,9 @@
 //! Private output storage and atomic filesystem publication. These low-level
 //! owners do not prove a successful build or validate inventory/manifest relations.
 mod assembly;
-pub(crate) use assembly::{AssembledImage, AssemblyFailure};
+pub(crate) use assembly::AssembledImage;
 
-use crate::cache::{BlobReceipt, Cache, CacheError};
+use crate::cache::{Cache, CacheError};
 use pichi_artifact::Digest;
 use std::{
     ffi::OsString,
@@ -23,17 +23,6 @@ pub(crate) struct StagedDirectory {
     temporary: tempfile::TempDir,
     parent: File,
     destination: OsString,
-}
-#[derive(Debug, thiserror::Error)]
-#[error("output publication: {source}")]
-pub(crate) struct PublicationFailure {
-    source: io::Error,
-    staged: StagedDirectory,
-}
-impl PublicationFailure {
-    pub(crate) fn into_parts(self) -> (io::Error, StagedDirectory) {
-        (self.source, self.staged)
-    }
 }
 impl StagedDirectory {
     /// Create private staging beside a new destination, anchored to its parent.
@@ -95,15 +84,15 @@ impl StagedDirectory {
         cache: &Cache,
         digest: &Digest,
         size: u64,
-    ) -> Result<BlobReceipt, CacheError> {
+    ) -> Result<(), CacheError> {
         let target = self.blob_path(digest);
         let mut pending = tempfile::NamedTempFile::new_in(self.temporary.path())?;
-        let receipt = cache.copy_verified(digest, size, pending.as_file_mut())?;
+        cache.copy_verified(digest, size, pending.as_file_mut())?;
         pending.as_file().sync_all()?;
         // The directory is supervisor-private; replacing the same digest here
         // replaces only already-verified staging data, never published content.
         pending.persist(target).map_err(|error| error.error)?;
-        Ok(receipt)
+        Ok(())
     }
     /// Stream a sealed layer without buffering its contents in memory. Verify
     /// the exact written bytes before giving them their digest name.
@@ -168,9 +157,9 @@ impl StagedDirectory {
         self.write_file(&self.temporary.path().join("inventory.cbor"), inventory)
     }
     /// Atomic no-replacement filesystem operation, not a build-success receipt.
-    /// Failure retains staging for explicit cleanup. No fallible operation is
+    /// Failure discards private staging. No fallible operation is
     /// performed after rename, so Err never means the destination was published.
-    pub(crate) fn publish(self) -> Result<(), PublicationFailure> {
+    pub(crate) fn publish(self) -> io::Result<()> {
         let result = rustix::fs::renameat_with(
             &self.parent,
             self.temporary
@@ -186,10 +175,7 @@ impl StagedDirectory {
                 let _ = self.temporary.keep();
                 Ok(())
             }
-            Err(error) => Err(PublicationFailure {
-                source: error.into(),
-                staged: self,
-            }),
+            Err(error) => Err(error.into()),
         }
     }
     pub(crate) fn discard(self) -> io::Result<()> {
@@ -229,17 +215,16 @@ mod tests {
         staged.discard().unwrap();
     }
     #[test]
-    fn late_collision_never_replaces_existing_output_and_retains_staging() {
+    fn late_collision_preserves_existing_output_and_cleans_staging() {
         let parent = tempfile::tempdir().unwrap();
         let destination = parent.path().join("output");
         let staged = StagedDirectory::create(&destination).unwrap();
         staged.store_blob(b"payload").unwrap();
         fs::create_dir(&destination).unwrap();
         fs::write(destination.join("sentinel"), b"existing").unwrap();
-        let (error, staged) = staged.publish().unwrap_err().into_parts();
+        let error = staged.publish().unwrap_err();
         assert_eq!(error.kind(), io::ErrorKind::AlreadyExists);
         assert_eq!(fs::read(destination.join("sentinel")).unwrap(), b"existing");
-        staged.discard().unwrap();
         assert_eq!(fs::read_dir(parent.path()).unwrap().count(), 1);
     }
     #[test]

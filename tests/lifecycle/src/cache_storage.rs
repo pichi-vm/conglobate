@@ -42,26 +42,8 @@ impl CacheStorage {
             let actual_size = scute.extent().size() as usize;
             assert!(data[..actual_size].iter().all(|byte| *byte == 42));
             assert!(data[actual_size..].iter().all(|byte| *byte == 0));
-            let failure = verified.close().unwrap_err();
-            assert_eq!(
-                failure.source_error().kind(),
-                std::io::ErrorKind::ResourceBusy
-            );
-            let failure = failure.cleanup().unwrap_err();
-            let failure = failure.cleanup().unwrap_err();
-            assert_eq!(failure.diagnostics().operation().raw_os_error(), Some(16));
-            assert_eq!(failure.diagnostics().cleanup().len(), 2);
-            assert!(
-                failure
-                    .diagnostics()
-                    .cleanup()
-                    .iter()
-                    .all(|error| error.raw_os_error() == Some(16))
-            );
-            assert_eq!(failure.to_string().matches("cleanup attempt").count(), 2);
             drop(holder);
-            failure.cleanup().map_err(|e| e.to_string())?;
-            println!("VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS");
+            verified.close()?;
             fs::remove_file(node)?;
             if name == "aligned" {
                 // Fresh mapping: corrupt after activation but before its first
@@ -101,6 +83,29 @@ impl CacheStorage {
                 assert!(scute.prepare(&cache, &workspace).is_err());
             }
         }
+        // Failed close is terminal: a held descriptor must keep the mapping valid.
+        let pin = fs::read_to_string("/cache-fixture/compressed.pin")?;
+        let image = cache.resolve(pin.parse()?)?;
+        let chain = cache.verify_chain(&image)?.unwrap();
+        let verified = chain.scutes()[0].prepare(&cache, &workspace)?.activate()?;
+        let id = verified.id();
+        let node = Path::new("/dev/conglobate-terminal-verity");
+        rustix::fs::mknodat(
+            rustix::fs::CWD,
+            node,
+            rustix::fs::FileType::BlockDevice,
+            rustix::fs::Mode::RUSR,
+            rustix::fs::makedev(id.major(), id.minor()),
+        )?;
+        let mut holder = fs::File::open(node)?;
+        assert_eq!(
+            verified.close().unwrap_err().kind(),
+            std::io::ErrorKind::ResourceBusy
+        );
+        let mut byte = [0];
+        holder.read_exact(&mut byte)?;
+        assert_eq!(byte, [42]);
+        println!("VERITY_TERMINAL_CLOSE_RETAINS_LIVE_HOLDER_PASS");
         println!("CACHE_BACKED_SCUTE_PREPARATION_PASS");
         println!("OWNED_VERITY_READ_AND_CLEANUP_PASS");
         Ok(())

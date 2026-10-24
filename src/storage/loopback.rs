@@ -14,53 +14,15 @@ pub(crate) struct LoopAttachment<'workspace> {
     device: LoopDevice<Writable>,
     backing: Scratch<'workspace>,
 }
-#[derive(Debug, thiserror::Error)]
-#[error("loop attachment: {source}")]
-pub(crate) struct LoopAttachFailure<'workspace> {
-    source: io::Error,
-    backing: Scratch<'workspace>,
-}
-impl<'w> LoopAttachFailure<'w> {
-    pub(crate) fn into_parts(self) -> (io::Error, Scratch<'w>) {
-        (self.source, self.backing)
-    }
-}
-#[derive(Debug, thiserror::Error)]
-#[error("loop detachment: {source}")]
-pub(crate) struct LoopDetachFailure<'workspace> {
-    source: io::Error,
-    attachment: LoopAttachment<'workspace>,
-}
-impl<'w> LoopDetachFailure<'w> {
-    /// Terminal pipeline conversion: abandon retry authority, preserving the
-    /// exact I/O cause. Drop/autoclear is not a successful detachment receipt.
-    pub(crate) fn into_terminal_error(self) -> io::Error {
-        let Self { source, attachment } = self;
-        drop(attachment);
-        source
-    }
-
-    pub(crate) fn source_error(&self) -> &io::Error {
-        &self.source
-    }
-    pub(crate) fn retry(self) -> Result<Scratch<'w>, Self> {
-        self.attachment.detach()
-    }
-}
 impl<'w> Scratch<'w> {
     /// One attempt. Another claimant can win after get_free; kernel EBUSY is
     /// reported with the backing intact. No blocking advisory lock/retry loop.
-    pub(crate) fn attach(self) -> Result<LoopAttachment<'w>, LoopAttachFailure<'w>> {
-        match LoopDevice::<Writable>::attach(&self.file) {
-            Ok(device) => Ok(LoopAttachment {
-                device,
-                backing: self,
-            }),
-            Err(source) => Err(LoopAttachFailure {
-                source,
-                backing: self,
-            }),
-        }
+    pub(crate) fn attach(self) -> io::Result<LoopAttachment<'w>> {
+        let device = LoopDevice::<Writable>::attach(&self.file)?;
+        Ok(LoopAttachment {
+            device,
+            backing: self,
+        })
     }
 }
 impl<'w> LoopAttachment<'w> {
@@ -68,20 +30,18 @@ impl<'w> LoopAttachment<'w> {
         self.device.id()
     }
     /// Diagnostic node number, not a lifetime lease or command authority.
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn number(&self) -> io::Result<u32> {
         self.device.number()
     }
     /// Flush and confirm unbound state before returning writable file authority.
     /// clear() alone can mean deferred detachment, so it is not sufficient.
-    pub(crate) fn detach(self) -> Result<Scratch<'w>, LoopDetachFailure<'w>> {
-        let Self { device, backing } = self;
-        match device.close() {
-            Ok(()) => Ok(backing),
-            Err((source, device)) => Err(LoopDetachFailure {
-                source,
-                attachment: Self { device, backing },
-            }),
-        }
+    pub(crate) fn detach(self) -> io::Result<Scratch<'w>> {
+        self.device.close().map_err(|(source, device)| {
+            drop(device);
+            source
+        })?;
+        Ok(self.backing)
     }
 }
 impl Read for LoopAttachment<'_> {

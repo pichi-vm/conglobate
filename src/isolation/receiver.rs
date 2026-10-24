@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::{CommandSetup, ExecutionGate};
 use crate::{
-    filesystem::{Attached, InUse, Mount, RootLaunchFailure, RootWaitFailure},
+    filesystem::{Attached, InUse, Mount, RootWaitFailure},
     process::{Admitted, Joined, Supervision},
     step::SetupCutoff,
 };
@@ -30,7 +30,7 @@ pub(crate) enum ReceiverFailure<'ns> {
         mount: Mount<'ns, Attached>,
     },
     #[error("receiver launch: {0}")]
-    Launch(RootLaunchFailure<'ns>),
+    Launch(io::Error),
     #[error("receiver startup: {source}")]
     Startup {
         source: io::Error,
@@ -53,7 +53,7 @@ pub(crate) enum ReceiverFailure<'ns> {
     #[error("receiver setup failed: {source}; view cleanup: {cleanup}")]
     Cleanup {
         source: io::Error,
-        cleanup: crate::filesystem::UnmountFailure<'ns>,
+        cleanup: io::Error,
     },
 }
 /// Direct command helper reaped. The caller must close this view and finish

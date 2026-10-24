@@ -14,14 +14,10 @@ use std::{
 #[derive(Debug)]
 pub(crate) struct ContextFile<'a> {
     bytes: &'a [u8],
-    executable: bool,
 }
 impl ContextFile<'_> {
     pub(crate) fn bytes(&self) -> &[u8] {
         self.bytes
-    }
-    pub(crate) fn executable(&self) -> bool {
-        self.executable
     }
     pub(crate) fn text(&self) -> Result<&str, ContextError> {
         std::str::from_utf8(self.bytes)
@@ -78,10 +74,7 @@ impl CapturedContext {
             }
         }
         match self.entries.get(&resolved) {
-            Some(ContextEntry::File { bytes, executable }) => Ok(ContextFile {
-                bytes,
-                executable: *executable,
-            }),
+            Some(ContextEntry::File { bytes, .. }) => Ok(ContextFile { bytes }),
             _ => Err(ContextError::Invalid(
                 "selected context path is not a regular file",
             )),

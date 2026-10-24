@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{BuildError, rejection::DiscardStorage};
+use super::rejection::DiscardStorage;
 use crate::{
     execution::HelperProgram,
     formatter::{Ext4Format, FormatterManifest},
@@ -11,6 +11,7 @@ use crate::{
     step::{CommandSandbox, SetupBudget},
     storage::{BootstrapVolumes, Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
 };
+use anyhow::anyhow;
 use std::{num::NonZeroU64, sync::Arc};
 
 #[derive(Debug)]
@@ -20,19 +21,17 @@ pub(super) struct BootstrapBuild<'a> {
     tools: &'a CheckedImage,
 }
 impl<'a> BootstrapBuild<'a> {
-    pub(super) fn new(build: &'a ResolvedBuild) -> Result<Self, BuildError> {
+    pub(super) fn new(build: &'a ResolvedBuild) -> anyhow::Result<Self> {
         let recipe = build.captured().plan().recipe();
         let stage = recipe
             .bootstrap()
-            .ok_or(BuildError::Unsupported("missing bootstrap stage"))?;
+            .ok_or(anyhow!("missing bootstrap stage"))?;
         let tools = build
             .images()
             .get(stage.from())
-            .ok_or(BuildError::Unsupported("missing bootstrap tools"))?;
+            .ok_or(anyhow!("missing bootstrap tools"))?;
         if tools.chain().is_none() {
-            return Err(BuildError::Unsupported(
-                "bootstrap tools require a root volume",
-            ));
+            return Err(anyhow!("bootstrap tools require a root volume",));
         }
         Ok(Self {
             build,
@@ -45,64 +44,43 @@ impl<'a> BootstrapBuild<'a> {
         request: &BuildRequest,
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
-    ) -> Result<Bootstrapped<'w>, BuildError> {
-        let manifest = request.formatter_runtime().ok_or_else(|| {
-            BuildError::InvalidExecution("bootstrap requires --formatter-runtime")
-        })?;
+    ) -> anyhow::Result<Bootstrapped<'w>> {
+        let manifest = request
+            .formatter_runtime()
+            .ok_or_else(|| anyhow!("bootstrap requires --formatter-runtime"))?;
         let captured = FormatterManifest::capture(manifest)?;
-        match captured.stage(workspace) {
-            Ok(formatter) => self.produce(workspace, runtime, formatter),
-            Err(failure) => {
-                let (primary, cleanup) = failure.cleanup_with_source();
-                Err(BuildError::FormatterStaging(primary)
-                    .with_cleanup(cleanup.map_err(BuildError::from)))
-            }
-        }
+        self.produce(workspace, runtime, captured.stage(workspace)?)
     }
+
     fn produce<'w>(
         &self,
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
         formatter: crate::formatter::FormatterRuntime,
-    ) -> Result<Bootstrapped<'w>, BuildError> {
+    ) -> anyhow::Result<Bootstrapped<'w>> {
         let sectors =
             NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap();
-        let origin = Mapping::<Created>::create()?
-            .zero(sectors)
-            .map_err(BuildError::from)?;
-        let output = Mapping::<Created>::create()?
-            .snapshot(
-                &origin,
-                workspace
-                    .snapshot_store()?
-                    .attach()
-                    .map_err(BuildError::from)?,
-                sectors,
-            )
-            .map_err(BuildError::from)?;
+        let origin = Mapping::<Created>::create()?.zero(sectors)?;
+        let output = Mapping::<Created>::create()?.snapshot(
+            &origin,
+            workspace.snapshot_store()?.attach()?,
+            sectors,
+        )?;
         let formatted = self.format(formatter, output)?;
         let (formatter, output, receipt) = formatted.into_recorded_parts();
-        formatter.close().map_err(BuildError::from)?;
+        formatter.close()?;
         let active = self
             .tools
             .chain()
             .expect("validated tools")
-            .assemble(self.build.cache(), workspace)
-            .map_err(BuildError::from)?;
-        let tool = Mapping::<Created>::create()?
-            .snapshot(
-                &active,
-                workspace
-                    .snapshot_store()?
-                    .attach()
-                    .map_err(BuildError::from)?,
-                sectors,
-            )
-            .map_err(BuildError::from)?;
-        let tool = Volume::<Unmounted>::in_init_namespace(tool, runtime.recovery())
-            .map_err(BuildError::from)?;
-        let output = Volume::<Unmounted>::in_init_namespace(output, runtime.recovery())
-            .map_err(BuildError::from)?;
+            .assemble(self.build.cache(), workspace)?;
+        let tool = Mapping::<Created>::create()?.snapshot(
+            &active,
+            workspace.snapshot_store()?.attach()?,
+            sectors,
+        )?;
+        let tool = Volume::<Unmounted>::in_init_namespace(tool, runtime.recovery())?;
+        let output = Volume::<Unmounted>::in_init_namespace(output, runtime.recovery())?;
         let paths = runtime.paths()?;
         let mappings = self.build.captured().execution_mappings()?;
         let sandbox = CommandSandbox::new(
@@ -116,31 +94,26 @@ impl<'a> BootstrapBuild<'a> {
             .captured()
             .networking()
             .map(|resolver| crate::network::CommandNetworking::new(resolver, workspace));
-        let completed = sandbox
-            .directives_with_network::<BootstrapVolumes<'_, '_, '_, Mounted>>(
-                BootstrapVolumes::new(tool, output),
-                ChildReaper::install()?,
-                self.build.captured().context(),
-                self.stage.directives(),
-                None,
-                networking.as_ref(),
-            )
-            .map_err(|failure| (*failure).reject())?;
+        let completed = sandbox.directives_with_network::<BootstrapVolumes<'_, '_, '_, Mounted>>(
+            BootstrapVolumes::new(tool, output),
+            ChildReaper::install()?,
+            self.build.captured().context(),
+            self.stage.directives(),
+            None,
+            networking.as_ref(),
+        )?;
         let (volumes, reaper) = completed.into_parts();
         let (tool, output) = volumes.into_parts();
         tool.discard()?;
         let scute = Arc::new(
             output
                 .into_snapshot()
-                .close()
-                .map_err(BuildError::from)?
-                .detach()
-                .map_err(BuildError::from)?
-                .seal_snapshot([0; 32])
-                .map_err(BuildError::from)?,
+                .close()?
+                .detach()?
+                .seal_snapshot([0; 32])?,
         );
-        active.close().map_err(BuildError::from)?;
-        origin.close().map_err(BuildError::from)?;
+        active.close()?;
+        origin.close()?;
         Ok(Bootstrapped {
             scute,
             reaper,
@@ -151,47 +124,16 @@ impl<'a> BootstrapBuild<'a> {
         &self,
         formatter: crate::formatter::FormatterRuntime,
         snapshot: crate::storage::SnapshotMapping<'o, 'w>,
-    ) -> Result<crate::formatter::FormattedSnapshot<'o, 'w>, BuildError> {
+    ) -> anyhow::Result<crate::formatter::FormattedSnapshot<'o, 'w>> {
         let helper = HelperProgram::current()?;
-        let running = match formatter.format(
-            snapshot,
-            Ext4Format::from(self.stage.filesystem()),
-            &helper,
-            SetupBudget::begin(),
-        ) {
-            Ok(running) => running,
-            Err(failure) => {
-                let (error, formatter, snapshot) = failure.into_parts();
-                return Err(Self::reject_format(error, formatter, snapshot));
-            }
-        };
-        match running.wait() {
-            Ok(done) => Ok(done),
-            Err(crate::formatter::FormatFailure::Completion(failure)) => {
-                let (error, formatter, snapshot) = failure.into_parts();
-                Err(Self::reject_format(error, formatter, snapshot))
-            }
-            Err(crate::formatter::FormatFailure::Wait(failure)) => match failure.cancel() {
-                Ok((error, formatter, snapshot)) => {
-                    Err(Self::reject_format(error, formatter, snapshot))
-                }
-                Err(failure) => Err(BuildError::FormatterWait(failure.diagnostics().clone())),
-            },
-        }
-    }
-    fn reject_format(
-        error: impl Into<crate::storage::FailureDiagnostics>,
-        formatter: crate::formatter::FormatterRuntime,
-        snapshot: crate::storage::SnapshotMapping<'_, '_>,
-    ) -> BuildError {
-        let storage = snapshot
-            .close()
-            .map_err(BuildError::from)
-            .and_then(|closed| closed.detach().map_err(BuildError::from));
-        let runtime = formatter.close().map_err(BuildError::from);
-        BuildError::Formatter(error.into())
-            .with_cleanup(storage.map(|_| ()))
-            .with_cleanup(runtime)
+        formatter
+            .format(
+                snapshot,
+                Ext4Format::from(self.stage.filesystem()),
+                &helper,
+                SetupBudget::begin(),
+            )?
+            .wait()
     }
 }
 

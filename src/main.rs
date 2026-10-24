@@ -2,7 +2,36 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
 extern crate self as conglobate;
-include!("modules.rs");
+mod anchor;
+mod cache;
+mod chain;
+mod context;
+mod copy;
+mod document;
+mod domain;
+mod execution;
+mod filesystem;
+mod firmware;
+mod formatter;
+mod image;
+mod input;
+mod inventory;
+mod isolation;
+mod lock;
+mod network;
+mod output;
+mod path;
+mod pipeline;
+mod plan;
+mod process;
+mod recipe;
+mod request;
+mod step;
+mod storage;
+mod template;
+mod transform;
+mod value;
+
 #[cfg(test)]
 mod tests;
 use crate::{
@@ -16,13 +45,13 @@ fn main() -> std::process::ExitCode {
         Ok(Some(invocation)) => match HelperProgram::current() {
             Ok(program) => invocation.execute(&program),
             Err(error) => {
-                eprintln!("conglobate: {error}");
+                eprintln!("conglobate: {error:#}");
                 return std::process::ExitCode::FAILURE;
             }
         },
         Ok(None) => {}
         Err(error) => {
-            eprintln!("conglobate: {error}");
+            eprintln!("conglobate: {error:#}");
             return std::process::ExitCode::FAILURE;
         }
     }
@@ -38,14 +67,14 @@ fn main() -> std::process::ExitCode {
             };
         }
         Err(error) => {
-            eprintln!("conglobate: {error}");
+            eprintln!("conglobate: {error:#}");
             return std::process::ExitCode::FAILURE;
         }
     };
     match Pipeline::new(request).run() {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("conglobate: {error}");
+            eprintln!("conglobate: {error:#}");
             std::process::ExitCode::FAILURE
         }
     }

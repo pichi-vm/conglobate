@@ -1,6 +1,5 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::BuildError;
 use crate::{
     execution::HelperProgram,
     input::ResolvedBuild,
@@ -26,7 +25,7 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
         directives: &[Directive],
-    ) -> Result<Self, BuildError> {
+    ) -> anyhow::Result<Self> {
         if directives.is_empty() {
             return Ok(self);
         }
@@ -44,43 +43,33 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
             mappings.gid(),
         );
         let scratch = workspace.snapshot_store()?;
-        let snapshot = Mapping::<Created>::create()?
-            .snapshot(
-                &active,
-                scratch.attach().map_err(BuildError::from)?,
-                NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap(),
-            )
-            .map_err(BuildError::from)?;
-        let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())
-            .map_err(BuildError::from)?;
+        let snapshot = Mapping::<Created>::create()?.snapshot(
+            &active,
+            scratch.attach()?,
+            NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap(),
+        )?;
+        let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())?;
         let networking = build
             .captured()
             .networking()
             .map(|resolver| crate::network::CommandNetworking::new(resolver, workspace));
-        let completed = sandbox
-            .directives_with_network::<Volume<'_, '_, '_, Mounted>>(
-                volume,
-                reaper,
-                build.captured().context(),
-                directives,
-                None,
-                networking.as_ref(),
-            )
-            .map_err(|failure| (*failure).reject())?;
+        let completed = sandbox.directives_with_network::<Volume<'_, '_, '_, Mounted>>(
+            volume,
+            reaper,
+            build.captured().context(),
+            directives,
+            None,
+            networking.as_ref(),
+        )?;
         let (volume, reaper) = completed.into_parts();
         let scute = Arc::new(
             volume
                 .into_snapshot()
-                .close()
-                .map_err(BuildError::from)?
-                .detach()
-                .map_err(BuildError::from)?
-                .seal_snapshot(*active.root())
-                .map_err(BuildError::from)?,
+                .close()?
+                .detach()?
+                .seal_snapshot(*active.root())?,
         );
-        let active = active
-            .extend(Arc::clone(&scute))
-            .map_err(BuildError::from)?;
+        let active = active.extend(Arc::clone(&scute))?;
         produced.push(scute);
         Ok(DerivedCarapace {
             active,

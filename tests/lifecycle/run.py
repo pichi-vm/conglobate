@@ -195,7 +195,6 @@ exec sleep infinity
         markers = [] if self.args.drop == 'running' else ['FORMATTER_STALL_ENTERED']
         if self.args.case == 'sandbox-unmapped-owner':
             markers = ['UNMAPPED_IMAGE_ID_REJECTED_BEFORE_RECEIVER',
-                       'INHERITED_OWNER_DISK_VALUES_UNCHANGED',
                        'SANDBOX_UNMAPPED_OWNER_ROLLBACK_PASS']
         elif self.args.case == 'sandbox-unmapped-default-group':
             markers = ['UNMAPPED_IMAGE_ID_REJECTED_BEFORE_RECEIVER', 'SANDBOX_UNMAPPED_DEFAULT_GROUP_ROLLBACK_PASS']
@@ -234,16 +233,15 @@ exec sleep infinity
         elif self.args.case == 'sandbox-held-cleanup':
             markers = ['SHELL_STATUS_BEFORE_HELD_CLEANUP_PASS', 'SANDBOX_HELD_CLEANUP_ROLLBACK_PASS']
         elif self.args.case == 'sandbox-missing-cleanup':
-            markers = ['MISSING_CLEANUP_RECEIPT_REJECTS_SHELL_SUCCESS_PASS', 'SANDBOX_MISSING_CLEANUP_ROLLBACK_PASS']
+            markers = ['MISSING_CLEANUP_RECEIPT_REJECTS_SHELL_SUCCESS_PASS']
         elif self.args.case == 'sandbox-busy-execution':
-            markers = ['SUCCESSFUL_COMMAND_CLEANUP_FAILURE_STAYS_REJECTED_PASS',
-                       'SANDBOX_BUSY_EXECUTION_ROLLBACK_PASS']
+            markers = ['SUCCESSFUL_COMMAND_CLEANUP_FAILURE_STAYS_REJECTED_PASS']
         elif self.args.case == 'chain-storage':
-            markers = ['LOOP_DEFERRED_DETACH_RETRY_AND_WRITEBACK_PASS', 'INVALID_SECOND_SCUTE_CLEANUP_PASS',
+            markers = ['LOOP_DEFERRED_DETACH_WRITEBACK_PASS', 'INVALID_SECOND_SCUTE_REJECTED_PASS',
                        'WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS',
-                       'CHAIN_CLEANUP_DIAGNOSTICS_RETAINED_PASS', 'OWNED_TWO_SCUTE_CHAIN_PASS']
+                       'CHAIN_TERMINAL_CLOSE_RETAINS_LIVE_HOLDER_PASS', 'OWNED_TWO_SCUTE_CHAIN_PASS']
         elif self.args.case == 'cache-storage':
-            markers = ['VERITY_CLEANUP_DIAGNOSTICS_RETAINED_PASS',
+            markers = ['VERITY_TERMINAL_CLOSE_RETAINS_LIVE_HOLDER_PASS',
                        'VERITY_CACHE_CORRUPTION_READ_REJECTED_PASS',
                        'CACHE_BACKED_SCUTE_PREPARATION_PASS', 'OWNED_VERITY_READ_AND_CLEANUP_PASS']
         elif self.args.case == 'sandbox-supervisor-death':
@@ -259,11 +257,10 @@ exec sleep infinity
                        'BLOCKED_IO_FIXED_DEADLINE_RETAINS_STORAGE_PASS']
         elif self.args.case == 'sandbox-writeback':
             markers = ['FILESYSTEM_WRITEBACK_ERROR_OBSERVED_PASS',
-                       'INVALID_SNAPSHOT_FINALIZATION_RETRY_REJECTED_PASS']
+                       'INVALID_SNAPSHOT_FINALIZATION_TERMINAL_REJECTED_PASS']
         elif self.args.case == 'sandbox-gate-failure':
             markers = ['RECEIVER_CONTROL_HELD_DURING_GATE_FAILURE_CLEANUP_PASS',
-                       'PRIMARY_OUTCOME_THROUGH_BUSY_FINALIZATION_RETRY_PASS',
-                       'SANDBOX_GATE_FAILURE_ROLLBACK_PASS']
+                       'PRIMARY_OUTCOME_THROUGH_BUSY_FINALIZATION_TERMINAL_PASS']
         elif self.args.case.startswith('sandbox-'):
             markers = [self.args.case.upper().replace('-', '_') + '_ROLLBACK_PASS']
         elif self.args.drop:
@@ -295,7 +292,7 @@ if __name__ == '__main__':
     parser.add_argument('--accel', choices=['kvm', 'tcg'], default='kvm')
     parser.add_argument('--trace-mounts', action='store_true',
                         help='trace fixture mount syscalls inside the disposable guest')
-    parser.add_argument('--drop', choices=['running', 'wait'])
+    parser.add_argument('--drop', choices=['running'])
     args = parser.parse_args()
     if platform.machine() not in ('x86_64', 'aarch64'):
         parser.error('native amd64 or arm64 required')

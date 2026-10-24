@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Completed stage data. No live command, mounted volume or runtime authority.
-use super::{BuildError, CompletedImage};
+use anyhow::anyhow;
+// Completed stage data. No live command, mounted volume or runtime authority.
+use super::CompletedImage;
 use crate::{
     firmware::ExtractedFirmware,
     formatter::FormatReceipt,
@@ -21,23 +22,19 @@ pub(super) struct StageOutput<'b, 'w> {
     pub(super) formatter: Option<FormatReceipt>,
 }
 impl<'b, 'w> StageOutput<'b, 'w> {
-    pub(super) fn inherited(build: &'b ResolvedBuild) -> Result<Self, BuildError> {
+    pub(super) fn inherited(build: &'b ResolvedBuild) -> anyhow::Result<Self> {
         let recipe = build.captured().plan().recipe();
         if recipe.bootstrap().is_some() || recipe.firmware().is_some() {
-            return Err(BuildError::InvalidExecution(
-                "pass-through requires no build stages",
-            ));
+            return Err(anyhow!("pass-through requires no build stages",));
         }
         let stage = recipe
             .carapace()
             .filter(|stage| stage.directives().is_empty())
-            .ok_or(BuildError::InvalidExecution(
-                "pass-through requires an empty carapace stage",
-            ))?;
+            .ok_or(anyhow!("pass-through requires an empty carapace stage",))?;
         let base = stage
             .from()
             .and_then(|name| build.images().get(name))
-            .ok_or(BuildError::InvalidExecution("missing resolved output base"))?;
+            .ok_or(anyhow!("missing resolved output base"))?;
         Ok(Self {
             base: Some(base),
             produced: Vec::new(),
@@ -50,7 +47,7 @@ impl<'b, 'w> StageOutput<'b, 'w> {
         self,
         request: &BuildRequest,
         build: &ResolvedBuild,
-    ) -> Result<CompletedImage, BuildError> {
+    ) -> anyhow::Result<CompletedImage> {
         let Self {
             base,
             produced,

@@ -31,7 +31,7 @@ cargo build --locked
 cargo fmt --all -- --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
-cargo test --locked --doc
+cargo check --locked --features test-fixtures --bin conglobate-lifecycle-tests
 ```
 
 Use `--offline` as well when all locked dependencies are already cached. The

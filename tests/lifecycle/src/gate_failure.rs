@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use conglobate::{
     filesystem::MountPoint,
-    isolation::{CommandDevices, CommandReceiver, PrivateMountNamespace, ReceiverFailure},
+    isolation::{
+        CommandDevices, CommandReceiver, PrivateMountNamespace, receiver::ReceiverFailure,
+    },
     process::Supervision,
     step::SetupCutoff,
 };

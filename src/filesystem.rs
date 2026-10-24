@@ -7,15 +7,11 @@ use rustix::{
     fd::AsFd,
     mount::{
         MountAttr, MountAttrFlags, MountAttrParamFlags, MountPropagationFlags, MountSetAttrFlags,
-        OpenTreeFlags,
     },
 };
 use std::{fs::File, io, marker::PhantomData, rc::Rc};
 mod attachment;
-pub(crate) use attachment::{
-    Attached, AttachedResources, AttachmentFailure, InUse, InUseResources, MountPoint,
-    RootLaunchFailure, RootWaitFailure, UnmountFailure,
-};
+pub(crate) use attachment::{Attached, InUse, MountPoint, RootWaitFailure};
 
 mod private {
     pub(crate) trait Sealed {}
@@ -57,13 +53,6 @@ struct OutputView {
 /// pathname-based unmount. No descriptor or writable root escapes this owner.
 /// It is thread-affine to preserve the future namespace attachment boundary.
 ///
-/// ```compile_fail
-/// use conglobate::filesystem::{Mount, Idmapped};
-/// use std::fs::File;
-/// fn cannot_remap(mount: Mount<Idmapped>, namespace: File) {
-///     mount.idmap(namespace);
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct Mount<'ns, S: MountState> {
     resources: S::Resources,
@@ -82,9 +71,6 @@ pub(crate) struct IdmapFailure<'ns> {
     namespace: File,
 }
 impl<'ns> IdmapFailure<'ns> {
-    pub(crate) fn source_error(&self) -> &io::Error {
-        &self.source
-    }
     pub(crate) fn into_parts(self) -> (io::Error, Mount<'ns, Detached>, File) {
         (self.source, self.mount, self.namespace)
     }
@@ -97,27 +83,6 @@ impl<'ns> Mount<'ns, Detached> {
         scope.verify_current()?;
         Ok(Self {
             resources: DetachedResources { root },
-            _scope: scope,
-            _thread: PhantomData,
-        })
-    }
-    /// Clone only this filesystem view, never recursively include submounts.
-    /// The source descriptor pins the selected root during acquisition. The
-    /// detached result independently pins its superblock after source closure.
-    pub(crate) fn clone_from(
-        root: &File,
-        scope: &'ns crate::isolation::PrivateMountNamespace,
-    ) -> io::Result<Self> {
-        scope.verify_current()?;
-        let tree = rustix::mount::open_tree(
-            root,
-            "",
-            OpenTreeFlags::AT_EMPTY_PATH
-                | OpenTreeFlags::OPEN_TREE_CLONE
-                | OpenTreeFlags::OPEN_TREE_CLOEXEC,
-        )?;
-        Ok(Self {
-            resources: DetachedResources { root: tree.into() },
             _scope: scope,
             _thread: PhantomData,
         })
@@ -155,13 +120,7 @@ impl<'ns> Mount<'ns, Detached> {
         }
     }
 }
-impl Mount<'_, Idmapped> {
-    /// Metadata of the selected root in the mapped view; no path traversal or
-    /// raw descriptor escape. This is not proof of command sandbox isolation.
-    pub(crate) fn root_metadata(&self) -> io::Result<std::fs::Metadata> {
-        self.resources.root.metadata()
-    }
-}
+impl Mount<'_, Idmapped> {}
 
 impl<'ns> Mount<'ns, Idmapped> {
     /// Retain both detached bootstrap views before attachment/admission. The

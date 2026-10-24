@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 mod setup;
 use super::{CommandDomain, DomainFailure};
-pub(crate) use setup::{DomainCreationCleanupFailure, DomainCreationRollback};
 use std::time::Instant;
 
 /// Consuming cancellation closes admission; failure never returns join authority.

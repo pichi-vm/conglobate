@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use conglobate::process::{Process, Running, Supervision, Unpaired};
+use conglobate::process::{Process, Running, Supervision, supervision::Unpaired};
 use std::{
     process::{Command, Stdio},
     time::{Duration, Instant},
@@ -21,7 +21,11 @@ impl Fixture {
     fn command(mode: &str) -> Command {
         let mut command = Command::new(std::env::current_exe().unwrap());
         command
-            .args(["--exact", "tests::supervision::trusted_supervision_fixture", "--nocapture"])
+            .args([
+                "--exact",
+                "tests::supervision::trusted_supervision_fixture",
+                "--nocapture",
+            ])
             .env_clear()
             .env("CONGLOBATE_SUPERVISION_FIXTURE", mode)
             .stdout(Stdio::null())

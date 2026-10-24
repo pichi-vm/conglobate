@@ -69,6 +69,7 @@ impl<A: Access> LoopDevice<A> {
     pub(super) fn id(&self) -> io::Result<devmap_linux::DevId> {
         self.device.as_ref().metadata()?.try_into()
     }
+    #[cfg(feature = "test-fixtures")]
     pub(super) fn number(&self) -> io::Result<u32> {
         Ok(self.device.status()?.number)
     }

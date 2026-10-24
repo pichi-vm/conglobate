@@ -1,16 +1,16 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{
-    Assigned, BootstrapPreparation, BootstrapPreparationFailure, CommandPreparation, Phase,
-    PreparationFailure, PreparationStorage, StoragePreparation, StoragePreparationFailure,
-};
+use super::{Assigned, CommandStorage, StoragePreparation};
+#[cfg(feature = "test-fixtures")]
+use super::{BootstrapPreparation, CommandPreparation};
+#[cfg(feature = "test-fixtures")]
+use crate::storage::{BootstrapVolumes, Mounted, Unmounted, Volume};
 use crate::{
     anchor::RecoveryDirectory,
     execution::HelperProgram,
-    isolation::{IdRange, Mapped, UserNamespace, UserNamespaceFailure},
-    process::{ChildReaper, LaunchFailure},
+    isolation::{IdRange, Mapped, UserNamespace},
+    process::ChildReaper,
     step::{Retained, SetupBudget},
-    storage::{BootstrapVolumes, Mounted, Unmounted, Volume},
 };
 use std::{io, mem::ManuallyDrop, path::Path, process::Command};
 
@@ -23,7 +23,11 @@ pub(crate) struct SandboxDirectories<'l> {
     domains: &'l Path,
 }
 impl<'l> SandboxDirectories<'l> {
-    pub(crate) fn new(recovery: &'l RecoveryDirectory, mounts: &'l Path, domains: &'l Path) -> Self {
+    pub(crate) fn new(
+        recovery: &'l RecoveryDirectory,
+        mounts: &'l Path,
+        domains: &'l Path,
+    ) -> Self {
         Self {
             recovery,
             mounts,
@@ -74,88 +78,38 @@ impl<'l> CommandSandbox<'l> {
             self.directories.mounts,
         )
     }
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn prepare<'n, 'o, 'w>(
         &self,
         volume: Volume<'n, 'o, 'w, Unmounted>,
         reaper: ChildReaper,
         budget: &SetupBudget,
-    ) -> Result<CommandPreparation<'n, 'o, 'w>, Box<PreparationFailure<'n, 'o, 'w>>> {
+    ) -> anyhow::Result<CommandPreparation<'n, 'o, 'w>> {
         self.prepare_storage::<Volume<'n, 'o, 'w, Mounted>>(volume, reaper, budget)
     }
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn prepare_bootstrap<'n, 'o, 'w>(
         &self,
         volumes: BootstrapVolumes<'n, 'o, 'w, Unmounted>,
         reaper: ChildReaper,
         budget: &SetupBudget,
-    ) -> Result<BootstrapPreparation<'n, 'o, 'w>, Box<BootstrapPreparationFailure<'n, 'o, 'w>>>
-    {
+    ) -> anyhow::Result<BootstrapPreparation<'n, 'o, 'w>> {
         self.prepare_storage::<BootstrapVolumes<'n, 'o, 'w, Mounted>>(volumes, reaper, budget)
     }
-    pub(crate) fn prepare_storage<R: PreparationStorage>(
+    pub(crate) fn prepare_storage<R: CommandStorage>(
         &self,
         volume: R::Unmounted,
         reaper: ChildReaper,
         budget: &SetupBudget,
-    ) -> Result<StoragePreparation<R>, Box<StoragePreparationFailure<R>>> {
-        let directories = &self.directories;
-        let creator = match budget
-            .cutoff()
-            .and_then(|cutoff| self.program.namespace_creator(cutoff))
-        {
-            Ok(creator) => creator,
-            Err(error) => {
-                return Err(StoragePreparationFailure::early(
-                    error,
-                    Phase::EarlyDrain(reaper, volume),
-                ));
-            }
-        };
+    ) -> anyhow::Result<StoragePreparation<R>> {
+        let creator = self.program.namespace_creator(budget.cutoff()?)?;
         let namespace =
             match UserNamespace::<Mapped>::create(creator, self.uid, self.gid, budget.deadline()) {
                 Ok(namespace) => namespace,
-                Err(failure) => {
-                    let (source, phase) = match failure {
-                        UserNamespaceFailure::Launch(LaunchFailure::Before(source)) => {
-                            (source, Phase::EarlyDrain(reaper, volume))
-                        }
-                        UserNamespaceFailure::Launch(LaunchFailure::Started {
-                            source,
-                            process,
-                        }) => (source, Phase::EarlyRunning(process, reaper, volume)),
-                        UserNamespaceFailure::Mapping { source, process } => {
-                            (source, Phase::EarlyIdentified(process, reaper, volume))
-                        }
-                        UserNamespaceFailure::Reap(failure) => {
-                            let (source, process) = failure.into_parts();
-                            (
-                                io::Error::other(source),
-                                Phase::EarlyIdentified(process, reaper, volume),
-                            )
-                        }
-                        failure @ UserNamespaceFailure::Exited(_) => {
-                            (io::Error::other(failure), Phase::EarlyDrain(reaper, volume))
-                        }
-                    };
-                    return Err(StoragePreparationFailure::early(source, phase));
-                }
+                Err(failure) => return Err(failure.reject(reaper)),
             };
-        if let Err(error) = budget.check() {
-            drop(namespace);
-            return Err(StoragePreparationFailure::early(
-                error,
-                Phase::EarlyDrain(reaper, volume),
-            ));
-        }
-        let volume = match R::mount(volume, directories.mounts, budget.deadline()) {
-            Ok(volume) => volume,
-            Err((source, failure)) => {
-                drop(namespace);
-                return Err(StoragePreparationFailure::early(
-                    source,
-                    Phase::MountDrain(reaper, failure),
-                ));
-            }
-        };
+        budget.check()?;
+        let volume = R::mount(volume, self.directories.mounts, budget.deadline())?;
         if let Err(source) = budget
             .check()
             .and_then(|_| volume.validate_command_root())
@@ -165,17 +119,18 @@ impl<'l> CommandSandbox<'l> {
                 namespace: ManuallyDrop::new(namespace),
                 volume: Retained::new(volume),
             };
-            return Err(StoragePreparationFailure::early(
-                source,
-                Phase::EmptyDrain(reaper, assigned),
+            return Err(assigned.reject(
+                reaper,
+                source.into(),
+                std::time::Instant::now() + std::time::Duration::from_secs(30),
             ));
         }
         StoragePreparation::create(
             namespace,
             volume,
             reaper,
-            directories.recovery,
-            directories.domains,
+            self.directories.recovery,
+            self.directories.domains,
             budget,
         )
     }

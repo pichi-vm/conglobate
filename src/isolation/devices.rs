@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(test)]
 use rustix::net::{
     RecvAncillaryBuffer, RecvAncillaryMessage, RecvFlags, ReturnFlags, SendAncillaryBuffer,
     SendAncillaryMessage, SendFlags, recvmsg, sendmsg,
@@ -12,10 +13,13 @@ use rustix::{
 };
 use std::{
     fs::File,
-    io::{self, IoSlice, IoSliceMut},
+    io::{self},
+};
+#[cfg(test)]
+use std::{
+    io::{IoSlice, IoSliceMut},
     mem::MaybeUninit,
     os::{fd::AsFd, unix::net::UnixDatagram},
-    process::Stdio,
 };
 
 /// A fresh detached tmpfs containing only approved private device inodes.
@@ -27,6 +31,66 @@ pub(crate) struct CommandDevices {
     root: File,
 }
 impl CommandDevices {
+    #[cfg(test)]
+    fn receive(socket: &impl AsFd) -> io::Result<Self> {
+        let mut bytes = [0u8; 4];
+        let mut storage = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(2))];
+        let mut ancillary = RecvAncillaryBuffer::new(&mut storage);
+        let received = recvmsg(
+            socket,
+            &mut [IoSliceMut::new(&mut bytes)],
+            &mut ancillary,
+            RecvFlags::CMSG_CLOEXEC | RecvFlags::DONTWAIT,
+        )?;
+        let mut descriptors = Vec::new();
+        for item in ancillary.drain() {
+            match item {
+                RecvAncillaryMessage::ScmRights(rights) => descriptors.extend(rights),
+                _ => {
+                    return Err(io::Error::other(
+                        "unexpected device transfer ancillary message",
+                    ));
+                }
+            }
+        }
+        if received.bytes != 3
+            || bytes[..3] != [0x82, 1, 0]
+            || received
+                .flags
+                .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
+            || descriptors.len() != 1
+        {
+            return Err(io::Error::other("invalid device transfer packet"));
+        }
+        let root: File = descriptors
+            .pop()
+            .expect("checked single device descriptor")
+            .into();
+        Self::from_handle(root)
+    }
+    #[cfg(test)]
+    fn into_channel(self) -> io::Result<UnixDatagram> {
+        // Queue the original mount FD, not a reopened directory: fsmount's
+        // ownership must survive until attachment. A socket is also valid stdin
+        // for language-runtime standard-stream sanitization (unlike O_PATH).
+        let (sender, receiver) = UnixDatagram::pair()?;
+        let descriptors = [self.root.as_fd()];
+        let mut storage = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
+        let mut ancillary = SendAncillaryBuffer::new(&mut storage);
+        if !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors)) {
+            return Err(io::Error::other("device transfer ancillary capacity"));
+        }
+        let sent = sendmsg(
+            &sender,
+            &[IoSlice::new(&[0x82, 1, 0])],
+            &mut ancillary,
+            SendFlags::DONTWAIT | SendFlags::NOSIGNAL,
+        )?;
+        if sent != 3 {
+            return Err(io::Error::other("incomplete device transfer"));
+        }
+        Ok(receiver)
+    }
     pub(super) fn into_handle(self) -> File {
         self.root
     }
@@ -99,83 +163,6 @@ impl CommandDevices {
             fs::symlinkat(target, &root, name)?;
         }
         Ok(Self { root })
-    }
-
-    /// Transfer to the trusted setup helper through its reserved stdin slot.
-    /// The final image shell replaces this slot with trusted null input.
-    pub(crate) fn into_input(self) -> io::Result<Stdio> {
-        Ok(Stdio::from(std::os::fd::OwnedFd::from(
-            self.into_channel()?,
-        )))
-    }
-
-    fn into_channel(self) -> io::Result<UnixDatagram> {
-        // Queue the original mount FD, not a reopened directory: fsmount's
-        // ownership must survive until attachment. A socket is also valid stdin
-        // for language-runtime standard-stream sanitization (unlike O_PATH).
-        let (sender, receiver) = UnixDatagram::pair()?;
-        let descriptors = [self.root.as_fd()];
-        let mut storage = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
-        let mut ancillary = SendAncillaryBuffer::new(&mut storage);
-        if !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors)) {
-            return Err(io::Error::other("device transfer ancillary capacity"));
-        }
-        let sent = sendmsg(
-            &sender,
-            &[IoSlice::new(&[0x82, 1, 0])],
-            &mut ancillary,
-            SendFlags::DONTWAIT | SendFlags::NOSIGNAL,
-        )?;
-        if sent != 3 {
-            return Err(io::Error::other("incomplete device transfer"));
-        }
-        Ok(receiver)
-    }
-
-    /// Receive only on the trusted helper launch channel, never a recipe stream.
-    /// Descriptor duplication is close-on-exec. The sender is responsible for
-    /// supplying the private tree created above; a tmpfs check is not identity
-    /// authentication for an untrusted sender.
-    pub(crate) fn from_input() -> io::Result<Self> {
-        let socket = io::stdin().as_fd().try_clone_to_owned()?;
-        Self::receive(&socket)
-    }
-
-    fn receive(socket: &impl AsFd) -> io::Result<Self> {
-        let mut bytes = [0u8; 4];
-        let mut storage = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(2))];
-        let mut ancillary = RecvAncillaryBuffer::new(&mut storage);
-        let received = recvmsg(
-            socket,
-            &mut [IoSliceMut::new(&mut bytes)],
-            &mut ancillary,
-            RecvFlags::CMSG_CLOEXEC | RecvFlags::DONTWAIT,
-        )?;
-        let mut descriptors = Vec::new();
-        for item in ancillary.drain() {
-            match item {
-                RecvAncillaryMessage::ScmRights(rights) => descriptors.extend(rights),
-                _ => {
-                    return Err(io::Error::other(
-                        "unexpected device transfer ancillary message",
-                    ));
-                }
-            }
-        }
-        if received.bytes != 3
-            || bytes[..3] != [0x82, 1, 0]
-            || received
-                .flags
-                .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
-            || descriptors.len() != 1
-        {
-            return Err(io::Error::other("invalid device transfer packet"));
-        }
-        let root: File = descriptors
-            .pop()
-            .expect("checked single device descriptor")
-            .into();
-        Self::from_handle(root)
     }
 
     pub(super) fn attach(self, target: &File) -> io::Result<()> {

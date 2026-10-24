@@ -197,11 +197,6 @@ impl Inventory {
                                 crate::plan::Stage::Bootstrap => Stage::Bootstrap,
                                 crate::plan::Stage::Carapace => Stage::Carapace,
                                 crate::plan::Stage::Firmware => Stage::Firmware,
-                                crate::plan::Stage::Transform => {
-                                    return Err(InventoryError::invalid(
-                                        "transform cannot execute network commands",
-                                    ));
-                                }
                             },
                             step: u64::try_from(step.index()).map_err(|_| {
                                 InventoryError::invalid("network step index overflow")

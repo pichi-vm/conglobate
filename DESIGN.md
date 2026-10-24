@@ -848,8 +848,10 @@ crashes or exits unexpectedly. It must not start another build or reuse abandone
 kernel resources in that VM. This is an environment contract, not a pichi library
 or transport dependency. The binary does not implement VM lifecycle management.
 A separate in-guest guardian and cross-invocation recovery are not required.
-Normal step failures and teardown remain conglobate's responsibility; abrupt
-supervisor death invalidates the build and is handled by VM disposal.
+Normal step failures and bounded teardown remain conglobate's responsibility.
+An incomplete cleanup is terminal: return an error, publish nothing and require
+VM disposal. No recovery/reuse API or retry of a failed build is required.
+Abrupt supervisor death also invalidates the build and is handled by VM disposal.
 
 The root supervisor owns verified inputs, cache handles, loop/device-mapper
 assembly, writable snapshots, inventory, and publication. Immutable carapace

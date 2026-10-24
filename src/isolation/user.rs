@@ -111,6 +111,55 @@ pub(crate) enum UserNamespaceFailure {
     #[error("namespace creator failed: {0}")]
     Exited(ExitStatus),
 }
+impl UserNamespaceFailure {
+    pub(crate) fn reject(self, reaper: crate::process::ChildReaper) -> anyhow::Error {
+        let deadline = Instant::now() + std::time::Duration::from_secs(30);
+        let (error, cleanup) = match self {
+            Self::Launch(LaunchFailure::Before(source)) => (anyhow::Error::new(source), Ok(())),
+            Self::Launch(LaunchFailure::Started { source, process }) => (
+                anyhow::Error::new(source),
+                process.terminate_until(deadline).map(|_| ()).map_err(|f| {
+                    let (error, process) = f.into_parts();
+                    std::mem::forget(process);
+                    anyhow::Error::new(error)
+                }),
+            ),
+            Self::Mapping { source, process } => (
+                anyhow::Error::new(source),
+                process.terminate_until(deadline).map(|_| ()).map_err(|f| {
+                    let (error, process) = f.into_parts();
+                    std::mem::forget(process);
+                    anyhow::Error::new(error)
+                }),
+            ),
+            Self::Reap(failure) => {
+                let (source, process) = failure.into_parts();
+                (
+                    anyhow::Error::new(source),
+                    process.terminate_until(deadline).map(|_| ()).map_err(|f| {
+                        let (error, process) = f.into_parts();
+                        std::mem::forget(process);
+                        anyhow::Error::new(error)
+                    }),
+                )
+            }
+            Self::Exited(status) => (
+                anyhow::anyhow!("namespace creator failed: {status}"),
+                Ok(()),
+            ),
+        };
+        if let Err(cleanup) = cleanup {
+            return error.context(format!("namespace helper cleanup: {cleanup:#}"));
+        }
+        match reaper.drain_until(deadline) {
+            Ok(_) => error,
+            Err(failure) => {
+                let (cleanup, _) = failure.into_parts();
+                error.context(format!("namespace helper drain: {cleanup}"))
+            }
+        }
+    }
+}
 impl UserNamespace<Mapped> {
     /// Launch only the trusted helper below, in the supervisor's matching procfs
     /// PID view with exclusive child wait ownership and normal SIGCHLD semantics.

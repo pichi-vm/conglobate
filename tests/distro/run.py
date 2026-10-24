@@ -80,7 +80,7 @@ class DistroRun:
         if self.arguments.network_fixture or service:
             with (self.output / 'network-fixture-build.log').open('wb') as log:
                 subprocess.run(['cargo', '+stable', 'build', '--locked', '--offline',
-                                '--manifest-path', 'tests/lifecycle/Cargo.toml'], cwd=REPOSITORY,
+                                '--features', 'test-fixtures', '--bin', 'conglobate-lifecycle-tests'], cwd=REPOSITORY,
                                env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             runtime.executable(REPOSITORY / 'target/m7-stable/debug/conglobate-lifecycle-tests',
                                Path('network-fixture'))
@@ -128,7 +128,7 @@ echo NETWORK_ENVIRONMENT_RETAINED_PASS"""
         if self.arguments.command_probe:
             with (self.output / 'command-probe-build.log').open('wb') as log:
                 subprocess.run(['cargo', '+stable', 'build', '--locked', '--offline',
-                                '--manifest-path', 'tests/lifecycle/Cargo.toml', '--bin', 'command-probe'],
+                                '--features', 'test-fixtures', '--bin', 'command-probe'],
                                cwd=REPOSITORY, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             probe = context / 'probe-runtime'
             (probe / 'lib').mkdir(parents=True)

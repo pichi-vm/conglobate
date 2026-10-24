@@ -4,20 +4,22 @@
 //! One-shot identity handoff between trusted processes before command admission.
 //! A private socketpair is the authority; no pathname or numeric PID is accepted.
 use super::ProcessObservation;
+#[cfg(test)]
+use rustix::net::{AddressFamily, SocketFlags, socketpair};
 use rustix::{
     event::{PollFd, PollFlags, Timespec, poll},
     fd::{AsFd, OwnedFd},
     net::{
-        AddressFamily, RecvAncillaryBuffer, RecvAncillaryMessage, RecvFlags, ReturnFlags,
-        SendAncillaryBuffer, SendAncillaryMessage, SendFlags, SocketFlags, SocketType, recvmsg,
-        sendmsg, socketpair,
+        RecvAncillaryBuffer, RecvAncillaryMessage, RecvFlags, ReturnFlags, SendAncillaryBuffer,
+        SendAncillaryMessage, SendFlags, SocketType, recvmsg, sendmsg,
     },
     process::{PidfdFlags, getpid, pidfd_open},
 };
+#[cfg(test)]
+use std::process::Stdio;
 use std::{
     io::{self, IoSlice, IoSliceMut},
     mem::MaybeUninit,
-    process::Stdio,
     time::Instant,
 };
 
@@ -33,7 +35,9 @@ impl ExchangeWait for Instant {
 }
 /// Parent half of a private one-shot trusted helper identity exchange.
 #[derive(Debug)]
+#[cfg(test)]
 pub(crate) struct IdentityReceiver(IdentitySocket);
+#[cfg(test)]
 impl Drop for IdentityReceiver {
     fn drop(&mut self) {
         // Another trusted spawn can briefly inherit CLOEXEC descriptors before
@@ -44,9 +48,12 @@ impl Drop for IdentityReceiver {
 }
 /// Child half. Pass only to the trusted helper, never to a build command.
 #[derive(Debug)]
+#[cfg(test)]
 pub(crate) struct IdentitySender(IdentitySocket);
 
+#[cfg(test)]
 impl IdentityReceiver {
+    #[cfg(test)]
     pub(crate) fn pair() -> io::Result<(Self, IdentitySender)> {
         let (parent, child) = socketpair(
             AddressFamily::UNIX,
@@ -63,26 +70,31 @@ impl IdentityReceiver {
     /// Receive exactly one identity from the trusted peer. Failure closes the
     /// channel; the caller must cancel/reap its separately owned helper.
     /// This is neither helper readiness nor permission to admit build commands.
+    #[cfg(test)]
     pub(crate) fn receive_until(self, deadline: Instant) -> io::Result<ProcessObservation> {
         self.0.receive_until(deadline)
     }
 }
 
+#[cfg(test)]
 impl IdentitySender {
     /// Move the dedicated helper's inherited stdin socket into close-on-exec
     /// ownership, replacing stdin with /dev/null. Call at trusted helper startup
     /// before any concurrent stdin access. The helper must not admit
     /// commands until the later supervision and containment protocol completes.
+    #[cfg(test)]
     pub(crate) fn from_stdin() -> io::Result<Self> {
         IdentitySocket::from_stdin().map(Self)
     }
 
     /// Pin this process while it is necessarily alive, then transfer that
     /// identity. No parent-side PID lookup or SIGCHLD disposition assumption.
+    #[cfg(test)]
     pub(crate) fn send_current_until(self, deadline: Instant) -> io::Result<()> {
         self.0.send_current_until(deadline)
     }
 }
+#[cfg(test)]
 impl From<IdentitySender> for Stdio {
     fn from(sender: IdentitySender) -> Self {
         sender.0.0.into()
@@ -101,6 +113,7 @@ impl IdentitySocket {
         Ok(Self(socket))
     }
 
+    #[cfg(test)]
     pub(super) fn send_current_until(&self, deadline: Instant) -> io::Result<()> {
         self.send_current_with(&deadline)
     }
@@ -128,6 +141,7 @@ impl IdentitySocket {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn receive_until(&self, deadline: Instant) -> io::Result<ProcessObservation> {
         self.receive_with(&deadline)
     }

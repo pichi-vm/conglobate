@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{BlobReceipt, Cache, CacheError, ResolvedImage};
+use super::{Cache, CacheError, ResolvedImage};
 use crate::chain::ScuteExtent;
 use pichi_artifact::{Digest as ContentDigest, Layer, ScuteDescriptor};
 use sha2::{Digest, Sha256};
@@ -28,9 +28,11 @@ impl VerifiedScute {
     pub(crate) fn root(&self) -> &[u8; 32] {
         &self.root
     }
+    #[cfg(any(test, feature = "test-fixtures"))]
     pub(crate) fn extent(&self) -> &ScuteExtent {
         &self.extent
     }
+    #[cfg(test)]
     pub(crate) fn compressed(&self) -> bool {
         self.compressed
     }
@@ -43,14 +45,10 @@ pub(crate) struct VerifiedChain {
     scutes: Vec<VerifiedScute>,
 }
 impl VerifiedChain {
-    pub(super) fn receipt(&self, digest: &ContentDigest, size: u64) -> Option<BlobReceipt> {
+    pub(super) fn contains_verified(&self, digest: &ContentDigest, size: u64) -> bool {
         self.scutes
             .iter()
-            .find(|scute| scute.digest == *digest && scute.blob_size == size)
-            .map(|scute| BlobReceipt {
-                digest: scute.digest.clone(),
-                size: scute.blob_size,
-            })
+            .any(|scute| scute.digest == *digest && scute.blob_size == size)
     }
     pub(crate) fn root(&self) -> &[u8; 32] {
         &self.root
@@ -60,7 +58,10 @@ impl VerifiedChain {
     }
 }
 impl Cache {
-    pub(crate) fn verify_chain(&self, image: &ResolvedImage) -> Result<Option<VerifiedChain>, CacheError> {
+    pub(crate) fn verify_chain(
+        &self,
+        image: &ResolvedImage,
+    ) -> Result<Option<VerifiedChain>, CacheError> {
         let manifest = image.manifest();
         let mut layers = manifest
             .layers

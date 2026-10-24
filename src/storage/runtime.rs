@@ -20,15 +20,6 @@ use std::{
 
 /// Control resources borrow the one RAM workspace. Explicit close is required
 /// before publication. Abandonment retains mounts until dedicated VM disposal.
-/// ```compile_fail
-/// use conglobate::storage::Runtime;
-/// fn cannot_close_runtime_with_sandbox(runtime: Runtime<'_>) {
-///     let paths = runtime.paths().unwrap();
-///     let sandbox = paths.sandbox();
-///     runtime.close().unwrap();
-///     drop(sandbox);
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct Runtime<'w> {
     recovery: RecoveryDirectory,
@@ -43,124 +34,48 @@ struct RuntimeMounts<'w> {
     backing: std::ffi::OsString,
     attached: Vec<PathBuf>,
 }
-#[derive(Debug, thiserror::Error)]
-#[error("build runtime: {source}")]
-pub(crate) struct RuntimeFailure<'w> {
-    source: io::Error,
-    retained: Option<RuntimeMounts<'w>>,
-    deadline: Instant,
-}
-/// A scoped operation failed, or its runtime could not be closed. Cleanup
-/// failures retain the runtime owner; successful operation output never escapes
-/// alongside a failed close.
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum RuntimeScopeFailure<'w, E> {
-    #[error("{0}")]
-    Create(RuntimeFailure<'w>),
-    #[error("{0}")]
-    Operation(E),
-    #[error("{0}")]
-    Cleanup(RuntimeFailure<'w>),
-    #[error("{operation}; runtime cleanup: {cleanup}")]
-    Both {
-        operation: E,
-        cleanup: RuntimeFailure<'w>,
-    },
-}
-impl RuntimeFailure<'_> {
-    /// Terminal pipeline boundary only: relinquish retry authority and preserve
-    /// the I/O cause. Dropping retained owners does not unmount their resources;
-    /// the dedicated VM must be disposed after this conversion.
-    pub(crate) fn into_terminal_error(self) -> io::Error {
-        let Self {
-            source, retained, ..
-        } = self;
-        drop(retained);
-        source
-    }
-
-    pub(crate) fn cleanup(self) -> Result<(), Self> {
-        let Self {
-            source,
-            retained,
-            deadline,
-        } = self;
-        if let Some(mut mounts) = retained
-            && let Err(cleanup) = mounts.close(deadline)
-        {
-            return Err(Self {
-                source: io::Error::other(format!("{source}; cleanup: {cleanup}")),
-                retained: Some(mounts),
-                deadline,
-            });
-        }
-        Ok(())
-    }
-}
 impl<'w> Runtime<'w> {
     /// Run trusted stage orchestration and require explicit runtime close on
     /// either returned outcome. Panic/crash still requires dedicated VM disposal.
     /// Returned output cannot borrow the runtime being closed.
-    /// ```compile_fail
-    /// use conglobate::storage::{Runtime, Workspace};
-    /// fn cannot_escape(workspace: &Workspace) {
-    ///     let paths = Runtime::scoped(workspace, std::path::Path::new("/run"),
-    ///         |runtime| runtime.paths());
-    /// }
-    /// ```
-    pub(crate) fn scoped<T, E>(
+    pub(crate) fn scoped<T>(
         workspace: &'w Workspace,
         parent: &Path,
-        operation: impl FnOnce(&Self) -> Result<T, E>,
-    ) -> Result<T, RuntimeScopeFailure<'w, E>> {
-        let runtime = Self::create(workspace, parent).map_err(RuntimeScopeFailure::Create)?;
+        operation: impl FnOnce(&Self) -> anyhow::Result<T>,
+    ) -> anyhow::Result<T> {
+        let runtime = Self::create(workspace, parent)?;
         let result = operation(&runtime);
         match (result, runtime.close()) {
             (Ok(output), Ok(())) => Ok(output),
-            (Err(error), Ok(())) => Err(RuntimeScopeFailure::Operation(error)),
-            (Ok(_), Err(error)) => Err(RuntimeScopeFailure::Cleanup(error)),
-            (Err(operation), Err(cleanup)) => Err(RuntimeScopeFailure::Both { operation, cleanup }),
+            (Err(error), Ok(())) => Err(error),
+            (Ok(_), Err(error)) => Err(error.into()),
+            (Err(error), Err(cleanup)) => Err(error.context(format!("runtime cleanup: {cleanup}"))),
         }
     }
     /// The deployment parent must be a real root-owned directory, not writable
     /// by group/other. Only an empty private attachment point is created there;
     /// mutable control data lives on the existing workspace tmpfs.
-    pub(crate) fn create(workspace: &'w Workspace, parent: &Path) -> Result<Self, RuntimeFailure<'w>> {
+    pub(crate) fn create(workspace: &'w Workspace, parent: &Path) -> anyhow::Result<Self> {
         let budget = SetupBudget::begin();
-        let before = |source| RuntimeFailure {
-            source,
-            retained: None,
-            deadline: Instant::now() + Duration::from_secs(30),
-        };
-        let scope = ControlMountNamespace::capture().map_err(before)?;
-        let parent = File::from(
-            fs::open(
-                parent,
-                fs::OFlags::RDONLY
-                    | fs::OFlags::DIRECTORY
-                    | fs::OFlags::CLOEXEC
-                    | fs::OFlags::NOFOLLOW,
-                fs::Mode::empty(),
-            )
-            .map_err(|e| before(e.into()))?,
-        );
-        let metadata = parent.metadata().map_err(before)?;
+        let scope = ControlMountNamespace::capture()?;
+        let parent = File::from(fs::open(
+            parent,
+            fs::OFlags::RDONLY | fs::OFlags::DIRECTORY | fs::OFlags::CLOEXEC | fs::OFlags::NOFOLLOW,
+            fs::Mode::empty(),
+        )?);
+        let metadata = parent.metadata()?;
         if metadata.uid() != 0 || metadata.mode() & 0o022 != 0 {
-            return Err(before(io::Error::other(
-                "runtime parent must be root-owned and protected",
-            )));
+            return Err(io::Error::other("runtime parent must be root-owned and protected").into());
         }
-        budget.check().map_err(before)?;
+        budget.check()?;
         let target = tempfile::Builder::new()
             .prefix("conglobate-runtime-")
             .permissions(std::fs::Permissions::from_mode(0o700))
-            .tempdir_in(format!("/proc/self/fd/{}", parent.as_raw_fd()))
-            .map_err(before)?;
+            .tempdir_in(format!("/proc/self/fd/{}", parent.as_raw_fd()))?;
         let backing = tempfile::Builder::new()
             .prefix("runtime-")
             .permissions(std::fs::Permissions::from_mode(0o700))
-            .tempdir_in(format!("/proc/self/fd/{}", workspace.root.as_raw_fd()))
-            .map_err(before)?;
+            .tempdir_in(format!("/proc/self/fd/{}", workspace.root.as_raw_fd()))?;
         // Both directories are exclusively acquired before retaining either.
         // A collision/failure must never authorize cleanup of an existing entry.
         let name = target
@@ -221,11 +136,17 @@ impl<'w> Runtime<'w> {
         })();
         match acquired {
             Ok(recovery) => Ok(Self { recovery, mounts }),
-            Err(source) => Err(RuntimeFailure {
-                source,
-                retained: Some(mounts),
-                deadline: Instant::now() + Duration::from_secs(30),
-            }),
+            Err(source) => {
+                let cleanup = mounts.close(Instant::now() + Duration::from_secs(30));
+                match cleanup {
+                    Ok(()) => Err(source.into()),
+                    Err(cleanup) => {
+                        std::mem::forget(mounts);
+                        Err(anyhow::Error::new(source)
+                            .context(format!("runtime setup cleanup: {cleanup}")))
+                    }
+                }
+            }
         }
     }
     pub(crate) fn recovery(&self) -> &RecoveryDirectory {
@@ -237,27 +158,28 @@ impl<'w> Runtime<'w> {
             runtime: self,
             volumes: root.join("volumes"),
             domains: root.join("cgroups").join(&self.mounts.name),
+            #[cfg(feature = "test-fixtures")]
             recovery: root.join("recovery"),
         })
     }
-    pub(crate) fn close(self) -> Result<(), RuntimeFailure<'w>> {
+    pub(crate) fn close(self) -> io::Result<()> {
         let Self {
             recovery,
             mut mounts,
         } = self;
         drop(recovery);
-        let deadline = Instant::now() + Duration::from_secs(30);
-        mounts.close(deadline).map_err(|source| RuntimeFailure {
-            source,
-            retained: Some(mounts),
-            deadline,
-        })
+        if let Err(error) = mounts.close(Instant::now() + Duration::from_secs(30)) {
+            std::mem::forget(mounts);
+            return Err(error);
+        }
+        Ok(())
     }
 }
 /// Borrowed by SandboxDirectories along with the runtime recovery lease.
 #[derive(Debug)]
 pub(crate) struct RuntimePaths<'r, 'w> {
     runtime: &'r Runtime<'w>,
+    #[cfg(feature = "test-fixtures")]
     recovery: PathBuf,
     volumes: PathBuf,
     domains: PathBuf,
@@ -266,9 +188,11 @@ impl RuntimePaths<'_, '_> {
     pub(crate) fn sandbox(&self) -> SandboxDirectories<'_> {
         SandboxDirectories::new(self.runtime.recovery(), &self.volumes, &self.domains)
     }
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn domains(&self) -> &Path {
         &self.domains
     }
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn recovery(&self) -> &Path {
         &self.recovery
     }
@@ -347,77 +271,5 @@ impl Drop for RuntimeMounts<'_> {
                 self.path().display()
             );
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{RuntimeFailure, RuntimeScopeFailure};
-    use crate::pipeline::BuildError;
-    use std::{error::Error, io, time::Instant};
-
-    #[test]
-    fn terminal_runtime_diagnostics_preserve_io_causes_and_phase() {
-        for creation in [false, true] {
-            let failure = RuntimeFailure {
-                source: io::Error::from_raw_os_error(13),
-                retained: None,
-                deadline: Instant::now(),
-            };
-            let scope = if creation {
-                RuntimeScopeFailure::Create(failure)
-            } else {
-                RuntimeScopeFailure::Cleanup(failure)
-            };
-            let terminal = BuildError::from(scope);
-            let source = terminal
-                .source()
-                .unwrap()
-                .downcast_ref::<io::Error>()
-                .unwrap();
-            assert_eq!(source.raw_os_error(), Some(13));
-            assert_eq!(source.kind(), io::ErrorKind::PermissionDenied);
-            assert_eq!(matches!(terminal, BuildError::RuntimeCreate(_)), creation);
-            assert_eq!(matches!(terminal, BuildError::RuntimeCleanup(_)), !creation);
-        }
-    }
-
-    #[test]
-    fn terminal_runtime_failure_retains_both_typed_causes() {
-        let operation = BuildError::Io(io::Error::from_raw_os_error(2));
-        let failure = RuntimeScopeFailure::Both {
-            operation,
-            cleanup: RuntimeFailure {
-                source: io::Error::from_raw_os_error(16),
-                retained: None,
-                deadline: Instant::now(),
-            },
-        };
-        let terminal = BuildError::from(failure);
-        let message = terminal.to_string();
-        let BuildError::OperationAndCleanup { operation, cleanup } = terminal else {
-            panic!("both failures must remain independently inspectable");
-        };
-        let BuildError::Io(operation) = *operation else {
-            panic!("operation type was erased");
-        };
-        let BuildError::RuntimeCleanup(cleanup) = *cleanup else {
-            panic!("cleanup phase was erased");
-        };
-        assert_eq!(operation.raw_os_error(), Some(2));
-        assert_eq!(cleanup.raw_os_error(), Some(16));
-        assert!(message.contains(&operation.to_string()));
-        assert!(message.contains(&cleanup.to_string()));
-    }
-
-    #[test]
-    fn successful_runtime_cleanup_preserves_operation_variant() {
-        let terminal = BuildError::from(RuntimeScopeFailure::Operation(BuildError::Io(
-            io::Error::from_raw_os_error(2),
-        )));
-        let BuildError::Io(source) = terminal else {
-            panic!("successful cleanup must not wrap the operation error");
-        };
-        assert_eq!(source.raw_os_error(), Some(2));
     }
 }

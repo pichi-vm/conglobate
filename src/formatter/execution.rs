@@ -5,7 +5,7 @@ use crate::{
     execution::HelperProgram,
     process::{Process, Running},
     step::SetupBudget,
-    storage::{FailureDiagnostics, SnapshotMapping},
+    storage::SnapshotMapping,
 };
 use std::{
     io,
@@ -30,63 +30,20 @@ struct FormatInputs<'origin, 'workspace> {
     snapshot: SnapshotMapping<'origin, 'workspace>,
     format: Ext4Format,
 }
-#[derive(Debug, thiserror::Error)]
-#[error("formatter launch: {source}")]
-pub(crate) struct FormatLaunchFailure<'origin, 'workspace> {
-    source: io::Error,
-    inputs: Box<FormatInputs<'origin, 'workspace>>,
-}
-impl<'a, 'w> FormatLaunchFailure<'a, 'w> {
-    pub(crate) fn into_parts(self) -> (io::Error, FormatterRuntime, SnapshotMapping<'a, 'w>) {
-        (self.source, self.inputs.runtime, self.inputs.snapshot)
-    }
-}
-#[derive(Debug, thiserror::Error)]
-#[error("formatter wait: {source}")]
-pub(crate) struct FormatWaitFailure<'origin, 'workspace> {
-    source: FailureDiagnostics,
-    formatting: Formatting<'origin, 'workspace>,
-    cleanup_deadline: Instant,
-}
-impl<'a, 'w> FormatWaitFailure<'a, 'w> {
-    /// Cancels the direct trusted executable, retaining all owners if it cannot
-    /// be reaped. The original formatting deadline is never renewed.
-    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
-        &self.source
-    }
-    pub(crate) fn cancel(
-        self,
-    ) -> Result<
-        (
-            FailureDiagnostics,
-            FormatterRuntime,
-            SnapshotMapping<'a, 'w>,
-        ),
-        Self,
-    > {
-        let Formatting {
-            process,
-            inputs,
-            deadline,
-        } = self.formatting;
-        match process.terminate_until(self.cleanup_deadline) {
-            Ok(_) => {
-                let inputs = ManuallyDrop::into_inner(inputs);
-                Ok((self.source, inputs.runtime, inputs.snapshot))
-            }
-            Err(error) => {
-                let (source, process) = error.into_parts();
-                Err(Self {
-                    source: self.source.followed_by(io::Error::other(source).into()),
-                    cleanup_deadline: self.cleanup_deadline,
-                    formatting: Formatting {
-                        process,
-                        inputs,
-                        deadline,
-                    },
-                })
-            }
-        }
+impl FormatInputs<'_, '_> {
+    fn reject(self, error: anyhow::Error) -> anyhow::Error {
+        let storage = self
+            .snapshot
+            .close()
+            .and_then(|attached| attached.detach())
+            .map(|_| ());
+        let runtime = self.runtime.close();
+        [storage, runtime]
+            .into_iter()
+            .fold(error, |error, result| match result {
+                Ok(()) => error,
+                Err(cleanup) => error.context(format!("formatter cleanup: {cleanup}")),
+            })
     }
 }
 /// Trusted child succeeded and was reaped; current snapshot health was checked.
@@ -95,24 +52,6 @@ impl<'a, 'w> FormatWaitFailure<'a, 'w> {
 pub(crate) struct FormattedSnapshot<'origin, 'workspace> {
     inputs: Box<FormatInputs<'origin, 'workspace>>,
 }
-#[derive(Debug, thiserror::Error)]
-#[error("formatter completion: {source}")]
-pub(crate) struct FormatCompletionFailure<'origin, 'workspace> {
-    source: io::Error,
-    inputs: Box<FormatInputs<'origin, 'workspace>>,
-}
-impl<'a, 'w> FormatCompletionFailure<'a, 'w> {
-    pub(crate) fn into_parts(self) -> (io::Error, FormatterRuntime, SnapshotMapping<'a, 'w>) {
-        (self.source, self.inputs.runtime, self.inputs.snapshot)
-    }
-}
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum FormatFailure<'origin, 'workspace> {
-    #[error(transparent)]
-    Wait(FormatWaitFailure<'origin, 'workspace>),
-    #[error(transparent)]
-    Completion(FormatCompletionFailure<'origin, 'workspace>),
-}
 impl FormatterRuntime {
     pub(crate) fn format<'a, 'w>(
         self,
@@ -120,7 +59,7 @@ impl FormatterRuntime {
         format: Ext4Format,
         program: &HelperProgram,
         budget: SetupBudget,
-    ) -> Result<Formatting<'a, 'w>, FormatLaunchFailure<'a, 'w>> {
+    ) -> anyhow::Result<Formatting<'a, 'w>> {
         let inputs = Box::new(FormatInputs {
             runtime: self,
             snapshot,
@@ -156,12 +95,12 @@ impl FormatterRuntime {
                 inputs: ManuallyDrop::new(inputs),
                 deadline: budget.deadline(),
             }),
-            Err(source) => Err(FormatLaunchFailure { source, inputs }),
+            Err(source) => Err(inputs.reject(source.into())),
         }
     }
 }
 impl<'a, 'w> Formatting<'a, 'w> {
-    pub(crate) fn wait(self) -> Result<FormattedSnapshot<'a, 'w>, FormatFailure<'a, 'w>> {
+    pub(crate) fn wait(self) -> anyhow::Result<FormattedSnapshot<'a, 'w>> {
         let Self {
             process,
             inputs,
@@ -171,15 +110,17 @@ impl<'a, 'w> Formatting<'a, 'w> {
             Ok(reaped) => reaped,
             Err(error) => {
                 let (source, process) = error.into_parts();
-                return Err(FormatFailure::Wait(FormatWaitFailure {
-                    cleanup_deadline: Instant::now() + Duration::from_secs(30),
-                    source: io::Error::other(source).into(),
-                    formatting: Self {
-                        process,
-                        inputs,
-                        deadline,
-                    },
-                }));
+                let error = anyhow::Error::new(source);
+                let cleanup = process.terminate_until(Instant::now() + Duration::from_secs(30));
+                return Err(match cleanup {
+                    Ok(_) => ManuallyDrop::into_inner(inputs).reject(error),
+                    Err(failure) => {
+                        let (cleanup, process) = failure.into_parts();
+                        std::mem::forget(process);
+                        // inputs is ManuallyDrop: unresolved child retains both roots.
+                        error.context(format!("formatter cancellation: {cleanup}"))
+                    }
+                });
             }
         };
         // Successful wait is the proof permitting resource destruction again.
@@ -202,10 +143,7 @@ impl<'a, 'w> Formatting<'a, 'w> {
         })();
         match result {
             Ok(()) => Ok(FormattedSnapshot { inputs }),
-            Err(source) => Err(FormatFailure::Completion(FormatCompletionFailure {
-                source,
-                inputs,
-            })),
+            Err(source) => Err(inputs.reject(source.into())),
         }
     }
 }
@@ -213,10 +151,6 @@ impl<'a, 'w> Formatting<'a, 'w> {
 /// It does not certify later commands, sealing, or output publication. There is
 /// no constructor from a recipe, captured runtime, or decoded inventory.
 ///
-/// ```compile_fail
-/// use conglobate::formatter::FormatReceipt;
-/// let receipt = FormatReceipt::default();
-/// ```
 #[derive(Debug)]
 pub(crate) struct FormatReceipt {
     format: Ext4Format,
@@ -237,7 +171,9 @@ impl FormatReceipt {
 impl<'a, 'w> FormattedSnapshot<'a, 'w> {
     /// Consume successful execution while retaining its exact input identities.
     /// Resource owners remain separate so the coordinator must still close them.
-    pub(crate) fn into_recorded_parts(self) -> (FormatterRuntime, SnapshotMapping<'a, 'w>, FormatReceipt) {
+    pub(crate) fn into_recorded_parts(
+        self,
+    ) -> (FormatterRuntime, SnapshotMapping<'a, 'w>, FormatReceipt) {
         let captured = self.inputs.runtime.captured();
         let receipt = FormatReceipt {
             executable: captured.executable().clone(),
@@ -249,6 +185,7 @@ impl<'a, 'w> FormattedSnapshot<'a, 'w> {
         };
         (self.inputs.runtime, self.inputs.snapshot, receipt)
     }
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn into_parts(self) -> (FormatterRuntime, SnapshotMapping<'a, 'w>) {
         (self.inputs.runtime, self.inputs.snapshot)
     }

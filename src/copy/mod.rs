@@ -9,7 +9,7 @@ mod pattern;
 pub(crate) use pattern::{PatternError, SourcePattern};
 
 mod source;
-pub(crate) use source::{CopySource, CopySources, SelectionError};
+pub(crate) use source::{CopySources, SelectionError};
 
 mod destination;
 pub(crate) use destination::CopyDestination;

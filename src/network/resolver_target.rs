@@ -1,6 +1,5 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use crate::storage::FailureDiagnostics;
 use rustix::fs::{self, AtFlags, Mode, OFlags, ResolveFlags};
 use std::{
     collections::VecDeque,
@@ -22,26 +21,9 @@ pub(crate) struct ResolverTarget {
     root: File,
     target: File,
     namespace: File,
+    #[cfg(test)]
     path: PathBuf,
     scaffold: ResolverScaffold,
-}
-#[derive(Debug, thiserror::Error)]
-#[error("resolver target: {diagnostics}")]
-pub(crate) struct ResolverTargetFailure {
-    diagnostics: FailureDiagnostics,
-    scaffold: ResolverScaffold,
-}
-impl ResolverTargetFailure {
-    pub(crate) fn cleanup(self) -> Result<(), Self> {
-        let Self {
-            diagnostics,
-            scaffold,
-        } = self;
-        scaffold.release().map_err(|failure| Self {
-            diagnostics: diagnostics.followed_by(failure.diagnostics),
-            scaffold: failure.scaffold,
-        })
-    }
 }
 #[derive(Debug, Default)]
 struct ResolverScaffold {
@@ -87,14 +69,9 @@ impl CreatedEntry {
     }
 }
 impl ResolverScaffold {
-    fn release(mut self) -> Result<(), ResolverTargetFailure> {
+    fn release(mut self) -> io::Result<()> {
         while let Some(entry) = self.entries.last() {
-            if let Err(source) = entry.remove() {
-                return Err(ResolverTargetFailure {
-                    diagnostics: source.into(),
-                    scaffold: self,
-                });
-            }
+            entry.remove()?;
             self.entries.pop();
         }
         Ok(())
@@ -148,38 +125,40 @@ impl ResolverScaffold {
     }
 }
 impl ResolverTarget {
-    pub(crate) fn resolve(root: File) -> Result<Self, ResolverTargetFailure> {
+    pub(crate) fn resolve(root: File) -> anyhow::Result<Self> {
         Self::select(root, true)
     }
     /// Command setup never creates image paths. Its enclosing owner must have
     /// prepared and retained any scaffolding before handing off the root.
-    pub(crate) fn existing(root: File) -> Result<Self, ResolverTargetFailure> {
+    pub(crate) fn existing(root: File) -> anyhow::Result<Self> {
         Self::select(root, false)
     }
-    fn select(root: File, create: bool) -> Result<Self, ResolverTargetFailure> {
+    fn select(root: File, create: bool) -> anyhow::Result<Self> {
         let mut scaffold = ResolverScaffold::default();
-        let namespace =
-            File::open("/proc/self/ns/mnt").map_err(|source| ResolverTargetFailure {
-                diagnostics: source.into(),
-                scaffold: ResolverScaffold::default(),
-            })?;
+        let namespace = File::open("/proc/self/ns/mnt")?;
         match Self::walk(&root, &mut scaffold, create) {
-            Ok((target, path)) => Ok(Self {
+            Ok((target, _path)) => Ok(Self {
                 root,
                 target,
                 namespace,
-                path,
+                #[cfg(test)]
+                path: _path,
                 scaffold,
             }),
-            Err(source) => Err(ResolverTargetFailure {
-                diagnostics: source.into(),
-                scaffold,
-            }),
+            Err(source) => {
+                let error = anyhow::Error::new(source);
+                Err(match scaffold.release() {
+                    Ok(()) => error,
+                    Err(cleanup) => error.context(format!("resolver scaffold cleanup: {cleanup}")),
+                })
+            }
         }
     }
+    #[cfg(test)]
     pub(crate) fn path(&self) -> &Path {
         &self.path
     }
+    #[cfg(test)]
     pub(crate) fn metadata(&self) -> io::Result<std::fs::Metadata> {
         self.target.metadata()
     }
@@ -193,7 +172,7 @@ impl ResolverTarget {
         }
         Ok(&self.target)
     }
-    pub(crate) fn release(self) -> Result<(), ResolverTargetFailure> {
+    pub(crate) fn release(self) -> io::Result<()> {
         let Self {
             root,
             target,
@@ -350,17 +329,11 @@ mod tests {
     #[test]
     fn existing_selection_never_creates_scaffolding() {
         let root = tempfile::tempdir().unwrap();
-        ResolverTarget::existing(File::open(root.path()).unwrap())
-            .unwrap_err()
-            .cleanup()
-            .unwrap();
+        ResolverTarget::existing(File::open(root.path()).unwrap()).unwrap_err();
         assert_eq!(stdfs::read_dir(root.path()).unwrap().count(), 0);
         stdfs::create_dir(root.path().join("etc")).unwrap();
         symlink("/run/resolver", root.path().join("etc/resolv.conf")).unwrap();
-        ResolverTarget::existing(File::open(root.path()).unwrap())
-            .unwrap_err()
-            .cleanup()
-            .unwrap();
+        ResolverTarget::existing(File::open(root.path()).unwrap()).unwrap_err();
         assert!(!root.path().join("run").exists());
     }
     #[test]
@@ -399,7 +372,7 @@ mod tests {
         );
     }
     #[test]
-    fn cleanup_refuses_replacement_and_can_retry_after_original_is_restored() {
+    fn cleanup_refuses_replacement_without_removing_either_file() {
         let root = tempfile::tempdir().unwrap();
         stdfs::create_dir(root.path().join("etc")).unwrap();
         let selected = ResolverTarget::resolve(File::open(root.path()).unwrap()).unwrap();
@@ -407,33 +380,28 @@ mod tests {
         let saved = root.path().join("saved");
         stdfs::rename(&path, &saved).unwrap();
         stdfs::write(&path, b"replacement").unwrap();
-        let failure = selected.release().unwrap_err();
+        let error = selected.release().unwrap_err();
+        assert!(error.to_string().contains("replaced"));
         assert_eq!(stdfs::read(&path).unwrap(), b"replacement");
-        stdfs::remove_file(&path).unwrap();
-        stdfs::rename(saved, &path).unwrap();
-        failure.cleanup().unwrap();
-        assert!(!path.exists());
+        assert!(saved.is_file());
         assert!(root.path().join("etc").is_dir());
     }
     #[test]
-    fn cleanup_preserves_additions_and_partial_path_failure_remains_owned() {
+    fn cleanup_preserves_additions_and_cleans_partial_path_failure() {
         let root = tempfile::tempdir().unwrap();
         let selected = ResolverTarget::resolve(File::open(root.path()).unwrap()).unwrap();
         stdfs::write(root.path().join("etc/keep"), b"keep").unwrap();
-        let failure = selected.release().unwrap_err();
+        let _error = selected.release().unwrap_err();
         assert_eq!(stdfs::read(root.path().join("etc/keep")).unwrap(), b"keep");
         stdfs::remove_file(root.path().join("etc/keep")).unwrap();
-        failure.cleanup().unwrap();
-        assert!(!root.path().join("etc").exists());
-        stdfs::create_dir(root.path().join("etc")).unwrap();
+        assert!(root.path().join("etc").is_dir());
         symlink(
             "/run/../etc/resolv.conf",
             root.path().join("etc/resolv.conf"),
         )
         .unwrap();
         let failure = ResolverTarget::resolve(File::open(root.path()).unwrap()).unwrap_err();
-        assert!(root.path().join("run").is_dir());
-        failure.cleanup().unwrap();
+        assert!(failure.to_string().contains("symlink"));
         assert!(!root.path().join("run").exists());
     }
     #[test]
@@ -455,7 +423,6 @@ mod tests {
                 let failure =
                     ResolverTarget::resolve(File::open(root.path()).unwrap()).unwrap_err();
                 assert!(failure.to_string().contains("runtime mount"));
-                failure.cleanup().unwrap();
                 assert!(!root.path().join(destination).join("resolver").exists());
             }
         }
@@ -487,10 +454,7 @@ mod tests {
             stdfs::create_dir(root.path().join("etc")).unwrap();
             stdfs::write(root.path().join("regular"), b"original").unwrap();
             symlink(link, root.path().join("etc/resolv.conf")).unwrap();
-            ResolverTarget::resolve(File::open(root.path()).unwrap())
-                .unwrap_err()
-                .cleanup()
-                .unwrap();
+            ResolverTarget::resolve(File::open(root.path()).unwrap()).unwrap_err();
             assert_eq!(
                 stdfs::read(root.path().join("regular")).unwrap(),
                 b"original"
@@ -518,10 +482,7 @@ mod tests {
                 }
                 _ => Some(UnixListener::bind(&path).unwrap()),
             };
-            ResolverTarget::resolve(File::open(root.path()).unwrap())
-                .unwrap_err()
-                .cleanup()
-                .unwrap();
+            ResolverTarget::resolve(File::open(root.path()).unwrap()).unwrap_err();
             assert!(path.symlink_metadata().is_ok());
         }
     }

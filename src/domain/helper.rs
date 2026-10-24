@@ -14,12 +14,6 @@ use std::{
 /// Owns a contained trusted helper, supervision channel and cgroup.
 /// This does not configure a command sandbox or authorize recipe execution.
 ///
-/// ```compile_fail
-/// use conglobate::{domain::ContainedHelper, process::Admitted};
-/// fn cannot_admit_twice(helper: ContainedHelper<Admitted>) {
-///     helper.admit_until(std::time::Instant::now());
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct ContainedHelper<S: ObservedState = Joined> {
     domain: CommandDomain,
@@ -40,7 +34,59 @@ pub(crate) enum HelperLaunchFailure {
         domain: DomainCancellation,
     },
 }
-/// Admission is closed. Retains both the domain and helper wait owner for retry.
+impl HelperLaunchFailure {
+    pub(crate) fn cancel(self, deadline: Instant) -> (io::Error, anyhow::Result<()>) {
+        let (source, domain, terminated) = match self {
+            Self::Launch {
+                source: LaunchFailure::Before(source),
+                domain,
+            } => (source, domain, Ok(())),
+            Self::Launch {
+                source: LaunchFailure::Started { source, process },
+                domain,
+            } => {
+                let result = process
+                    .terminate_until(deadline)
+                    .map(|_| ())
+                    .map_err(|failure| {
+                        let (error, process) = failure.into_parts();
+                        std::mem::forget(process);
+                        anyhow::Error::new(error)
+                    });
+                (source, domain, result)
+            }
+            Self::Join {
+                source,
+                process,
+                domain,
+            } => {
+                let result = process
+                    .terminate_until(deadline)
+                    .map(|_| ())
+                    .map_err(|failure| {
+                        let (error, process) = failure.into_parts();
+                        std::mem::forget(process);
+                        anyhow::Error::new(error)
+                    });
+                (source, domain, result)
+            }
+        };
+        // Always request cgroup cancellation, even when direct-child reaping failed.
+        let cancelled = domain.retry_until(deadline).map_err(|failure| {
+            let (error, domain) = failure.into_parts();
+            std::mem::forget(domain);
+            error
+        });
+        let cleanup = match (terminated, cancelled) {
+            (Ok(()), Ok(())) => Ok(()),
+            (Err(cleanup), Ok(())) => Err(cleanup.context("helper cleanup")),
+            (Ok(()), Err(cleanup)) => Err(anyhow::Error::new(cleanup).context("domain cleanup")),
+            (Err(child), Err(domain)) => Err(child.context(format!("domain cleanup: {domain}"))),
+        };
+        (source, cleanup)
+    }
+}
+/// Admission is closed. Retains the domain and helper for bounded cancellation.
 #[derive(Debug)]
 pub(crate) struct HelperCancellation {
     domain: DomainCancellation,
@@ -59,12 +105,6 @@ impl HelperCancelFailure {
 }
 /// The domain was removed, but its helper status has not been collected.
 ///
-/// ```compile_fail
-/// use conglobate::domain::HelperReaping;
-/// fn cannot_finish_before_reaping(owner: HelperReaping) {
-///     owner.finish();
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct HelperReaping {
     process: Process<Identified>,
@@ -133,8 +173,26 @@ impl<S: ObservedState> ContainedHelper<S> {
     pub(crate) fn supervision(&self) -> &Supervision<S> {
         &self.channel
     }
+    pub(crate) fn finish_until(
+        self,
+        reaper: crate::process::ChildReaper,
+        deadline: Instant,
+    ) -> io::Result<(ExitStatus, crate::process::ReapedChildren)> {
+        let Self {
+            domain,
+            process,
+            channel,
+        } = self;
+        drop(channel);
+        HelperCancellation {
+            domain: domain.cancellation(),
+            process,
+        }
+        .finish_until(reaper, deadline)
+    }
     /// Consumes domain-join authority and closes the channel before requesting
     /// subtree cancellation. Failures retain cleanup-only ownership.
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn cancel_until(
         self,
         deadline: Instant,
@@ -153,7 +211,40 @@ impl<S: ObservedState> ContainedHelper<S> {
     }
 }
 impl HelperCancellation {
-    pub(crate) fn retry_until(self, deadline: Instant) -> Result<HelperReaping, Box<HelperCancelFailure>> {
+    pub(crate) fn finish_until(
+        self,
+        reaper: crate::process::ChildReaper,
+        deadline: Instant,
+    ) -> io::Result<(ExitStatus, crate::process::ReapedChildren)> {
+        let helper = self.retry_until(deadline).map_err(|failure| {
+            let (error, owner) = failure.into_parts();
+            std::mem::forget(owner);
+            error
+        })?;
+        let helper = helper.reap_until(deadline).map_err(|failure| {
+            let (error, owner) = failure.into_parts();
+            std::mem::forget(owner);
+            match error {
+                WaitError::Io(error) => error,
+                WaitError::Deadline => {
+                    io::Error::new(io::ErrorKind::TimedOut, "helper reap deadline expired")
+                }
+            }
+        })?;
+        let done = helper
+            .with_reaper(reaper)
+            .drain_until(deadline)
+            .map_err(|failure| {
+                let (error, _) = failure.into_parts();
+                error
+            })?;
+        Ok(done.finish())
+    }
+
+    pub(crate) fn retry_until(
+        self,
+        deadline: Instant,
+    ) -> Result<HelperReaping, Box<HelperCancelFailure>> {
         let Self { domain, process } = self;
         match domain.retry_until(deadline) {
             Ok(()) => Ok(HelperReaping { process }),
@@ -168,7 +259,10 @@ impl HelperCancellation {
     }
 }
 impl HelperReaping {
-    pub(crate) fn reap_until(self, deadline: Instant) -> Result<ReapedHelper, Box<HelperReapFailure>> {
+    pub(crate) fn reap_until(
+        self,
+        deadline: Instant,
+    ) -> Result<ReapedHelper, Box<HelperReapFailure>> {
         let Self { process } = self;
         match process.wait_until(deadline) {
             Ok(process) => Ok(ReapedHelper {

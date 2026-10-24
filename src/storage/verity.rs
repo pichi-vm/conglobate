@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use super::{
-    Active, Created, Mapping, MappingFailure,
+    Active, Created, Mapping,
     loop_device::{LoopDevice, ReadOnly},
 };
 use crate::cache::PreparedScute;
@@ -10,23 +10,6 @@ use std::{io, num::NonZeroU64};
 /// Read-time verified data, with its loop devices and backing retained. No raw
 /// control or writable backing handle escapes. Drop requests deferred mapping
 /// removal and loop autoclear; only close confirms successful release.
-/// ```compile_fail
-/// use conglobate::cache::PreparedScute;
-/// fn cannot_reuse_prepared(prepared: PreparedScute<'_, '_>) {
-///     let active = prepared.activate().unwrap();
-///     println!("{:?}", prepared.root());
-///     active.close().unwrap();
-/// }
-/// ```
-/// ```compile_fail
-/// use conglobate::{cache::{Cache, VerifiedScute}, storage::Workspace};
-/// fn cannot_release_workspace(cache: &Cache, scute: &VerifiedScute) {
-///     let workspace = Workspace::create().unwrap();
-///     let active = scute.prepare(cache, &workspace).unwrap().activate().unwrap();
-///     drop(workspace);
-///     active.close().unwrap();
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct VerityMapping<'s, 'w> {
     mapping: Mapping<Active>,
@@ -40,100 +23,30 @@ struct Inputs<'s, 'w> {
     prepared: PreparedScute<'s, 'w>,
 }
 
-/// Error phases own exactly the resources still requiring cleanup. They never
-/// authorize reuse of an incompletely activated or incompletely removed mapping.
-#[derive(Debug)]
-enum Cleanup<'s, 'w> {
-    Mapping(MappingFailure, Inputs<'s, 'w>),
-    Inputs(Inputs<'s, 'w>),
-    Data(LoopDevice<ReadOnly>, PreparedScute<'s, 'w>),
-    Prepared(PreparedScute<'s, 'w>),
-}
-
-#[derive(Debug, thiserror::Error)]
-#[error("verity mapping: {source}")]
-pub(crate) struct VerityFailure<'s, 'w> {
-    source: super::FailureDiagnostics,
-    cleanup: Cleanup<'s, 'w>,
-}
-impl VerityFailure<'_, '_> {
-    pub(crate) fn source_error(&self) -> &io::Error {
-        self.source.latest()
-    }
-    pub(crate) fn cleanup(self) -> Result<(), Self> {
-        self.cleanup
-            .close()
-            .map_err(|Self { source, cleanup }| Self {
-                source: self.source.followed_by(source),
-                cleanup,
-            })
-    }
-    pub(crate) fn diagnostics(&self) -> &super::FailureDiagnostics {
-        &self.source
-    }
-}
-
 impl<'s, 'w> PreparedScute<'s, 'w> {
-    pub(crate) fn activate(self) -> Result<VerityMapping<'s, 'w>, VerityFailure<'s, 'w>> {
-        let data = match LoopDevice::<ReadOnly>::attach(self.files().0) {
-            Ok(data) => data,
-            Err(source) => {
-                return Err(VerityFailure {
-                    source: source.into(),
-                    cleanup: Cleanup::Prepared(self),
-                });
-            }
-        };
-        let hash = match LoopDevice::<ReadOnly>::attach(self.files().1) {
-            Ok(hash) => hash,
-            Err(source) => {
-                return Err(VerityFailure {
-                    source: source.into(),
-                    cleanup: Cleanup::Data(data, self),
-                });
-            }
-        };
+    pub(crate) fn activate(self) -> io::Result<VerityMapping<'s, 'w>> {
         let inputs = Inputs {
-            hash,
-            data,
+            data: LoopDevice::<ReadOnly>::attach(self.files().0)?,
+            hash: LoopDevice::<ReadOnly>::attach(self.files().1)?,
             prepared: self,
         };
-        let mapping = match Mapping::<Created>::create() {
-            Ok(mapping) => mapping,
-            Err(source) => {
-                return Err(VerityFailure {
-                    source: source.into(),
-                    cleanup: Cleanup::Inputs(inputs),
-                });
-            }
-        };
-        // Parameters originate in the authenticated plan, not a mutable header.
-        let target = (|| -> io::Result<_> {
-            Ok(inputs
-                .prepared
-                .header()
-                .builder(
-                    inputs.data.id()?,
-                    inputs.hash.id()?,
-                    inputs.prepared.root().to_vec().into_boxed_slice(),
-                )?
-                .build())
-        })();
-        let active = match target {
-            Ok(target) => mapping.activate(
-                NonZeroU64::new(target.data_sectors()).expect("validated nonempty extent"),
-                &target,
-                true,
-            ),
-            Err(source) => Err(mapping.failed(source)),
-        };
-        match active {
-            Ok(mapping) => Ok(VerityMapping { mapping, inputs }),
-            Err(failure) => Err(Cleanup::mapping(failure, inputs)),
-        }
+        let target = inputs
+            .prepared
+            .header()
+            .builder(
+                inputs.data.id()?,
+                inputs.hash.id()?,
+                inputs.prepared.root().to_vec().into_boxed_slice(),
+            )?
+            .build();
+        let mapping = Mapping::<Created>::create()?.activate(
+            NonZeroU64::new(target.data_sectors()).expect("validated nonempty extent"),
+            &target,
+            true,
+        )?;
+        Ok(VerityMapping { mapping, inputs })
     }
 }
-
 impl<'s, 'w> VerityMapping<'s, 'w> {
     pub(super) fn snapshot_header(&self) -> io::Result<devmap_snapshot::Header> {
         use std::os::unix::fs::FileExt;
@@ -154,53 +67,16 @@ impl<'s, 'w> VerityMapping<'s, 'w> {
     pub(crate) fn id(&self) -> devmap_linux::DevId {
         self.mapping.id()
     }
-    pub(crate) fn close(self) -> Result<(), VerityFailure<'s, 'w>> {
-        match self.mapping.close() {
-            Ok(()) => Cleanup::Inputs(self.inputs).close(),
-            Err(failure) => Err(Cleanup::mapping(failure, self.inputs)),
-        }
-    }
-}
-
-impl<'s, 'w> Cleanup<'s, 'w> {
-    fn mapping(failure: MappingFailure, inputs: Inputs<'s, 'w>) -> VerityFailure<'s, 'w> {
-        VerityFailure {
-            source: failure.diagnostics().latest_only(),
-            cleanup: Self::Mapping(failure, inputs),
-        }
-    }
-    fn close(self) -> Result<(), VerityFailure<'s, 'w>> {
-        match self {
-            Self::Mapping(failure, inputs) => match failure.cleanup() {
-                Ok(()) => Self::Inputs(inputs).close(),
-                Err(failure) => Err(Self::mapping(failure, inputs)),
-            },
-            Self::Inputs(Inputs {
-                hash,
-                data,
-                prepared,
-            }) => match hash.close() {
-                Ok(()) => Self::Data(data, prepared).close(),
-                Err((source, hash)) => Err(VerityFailure {
-                    source: source.into(),
-                    cleanup: Self::Inputs(Inputs {
-                        hash,
-                        data,
-                        prepared,
-                    }),
-                }),
-            },
-            Self::Data(data, prepared) => match data.close() {
-                Ok(()) => Self::Prepared(prepared).close(),
-                Err((source, data)) => Err(VerityFailure {
-                    source: source.into(),
-                    cleanup: Self::Data(data, prepared),
-                }),
-            },
-            Self::Prepared(prepared) => {
-                drop(prepared);
-                Ok(())
-            }
-        }
+    pub(crate) fn close(self) -> io::Result<()> {
+        self.mapping.close()?;
+        self.inputs.hash.close().map_err(|(error, device)| {
+            drop(device);
+            error
+        })?;
+        self.inputs.data.close().map_err(|(error, device)| {
+            drop(device);
+            error
+        })?;
+        Ok(())
     }
 }

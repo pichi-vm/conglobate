@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::{GatedCommandSetup, GatedRootSetup};
 use crate::{
-    isolation::{
-        CommandRoot, ExecutionEndpoint, NamespaceFailure, PrivateMountNamespace, RestrictedCommand,
-    },
+    isolation::{CommandRoot, ExecutionEndpoint, PrivateMountNamespace, RestrictedCommand},
     process::{CommandPrivileges, CommandSyscalls, WaitFailure},
     step::SetupCutoff,
 };
@@ -39,13 +37,6 @@ impl GatedCommandSetup {
         Ok(child.wait_under_supervisor()?.status())
     }
 }
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum RootPreparationError {
-    #[error("root-entry mount namespace: {0}")]
-    Namespace(#[from] NamespaceFailure),
-    #[error("restricted root preparation: {0}")]
-    Restrict(#[from] io::Error),
-}
 /// Restricted leaf retaining only its start endpoint. Its construction and
 /// start are exit-only on failure, in the dedicated trusted PID-1 helper.
 #[derive(Debug)]
@@ -62,7 +53,7 @@ impl GatedRootSetup {
         self,
         script: &str,
         cutoff: SetupCutoff,
-    ) -> Result<GatedRestrictedCommand, RootPreparationError> {
+    ) -> io::Result<GatedRestrictedCommand> {
         cutoff.deadline()?;
         let (devices, gate) = self.into_parts();
         let scope = PrivateMountNamespace::enter()?;

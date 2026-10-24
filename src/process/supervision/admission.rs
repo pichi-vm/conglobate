@@ -43,7 +43,10 @@ impl Supervision<Joined> {
     /// Dedicated trusted helper only. Wait after domain joining and before running
     /// any image command. EOF, malformed input or timeout closes the channel;
     /// none authorize execution. The supervisor separately cancels and reaps.
-    pub(crate) fn await_admission_until(self, deadline: Instant) -> io::Result<Supervision<Admitted>> {
+    pub(crate) fn await_admission_until(
+        self,
+        deadline: Instant,
+    ) -> io::Result<Supervision<Admitted>> {
         if !matches!(Packet::receive(&self.socket.0, deadline)?, Packet::Admit) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,

@@ -19,14 +19,6 @@ use std::{
 /// PID/user/network isolation, containment and restricted labeling admission
 /// must be established by the enclosing step. No raw root handle is returned to callers.
 ///
-/// ```compile_fail
-/// use conglobate::isolation::{CommandRoot, CommandDevices, PrivateMountNamespace};
-/// fn cannot_restore_with_selected_root(scope: PrivateMountNamespace, devices: CommandDevices) {
-///     let root = CommandRoot::from_current_directory(scope, devices).unwrap();
-///     scope.restore();
-///     drop(root);
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct CommandRoot {
     scope: PrivateMountNamespace,
@@ -48,13 +40,6 @@ pub(crate) struct EnteredRoot {
 /// Trusted command prepared in its final root with capabilities and syscalls
 /// restricted. No image code has run. A start handshake may occur before
 /// execute, but every extra descriptor must be closed before that call.
-/// ```compile_fail
-/// use conglobate::isolation::RestrictedCommand;
-/// fn cannot_run_twice(command: RestrictedCommand) {
-///     command.execute();
-///     command.execute();
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct RestrictedCommand {
     command: Command,
@@ -175,13 +160,6 @@ impl RestrictedCommand {
         let reporter = gate.ready_for_reporting(deadline)?;
         self.check_descriptors(Some(&reporter))?;
         super::init::NamespaceInit::spawn(self.command, Some(reporter))?.execute()
-    }
-
-    /// The enclosing helper must have received start authorization and closed
-    /// its startup handles. Reaudit immediately before spawning image code.
-    pub(crate) fn execute(self) -> io::Result<std::convert::Infallible> {
-        self.check_descriptors(None)?;
-        super::init::NamespaceInit::spawn(self.command, None)?.execute()
     }
 
     fn check_descriptors(&self, reporter: Option<&super::CompletionEndpoint>) -> io::Result<()> {

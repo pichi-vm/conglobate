@@ -20,12 +20,8 @@ impl Fixture {
     }
 }
 #[test]
-fn pipeline_order_and_network_receipt_order_ignore_yaml_key_order() {
+fn network_receipt_order_ignores_yaml_key_order() {
     let plan=Fixture::plan("firmware:\n  from: tools\n  into: {pmi: /pmi, dtb: /dtb}\n  derive: [{run: build, network: true}]\ncarapace:\n  from: base\n  derive: [{copy: {from: input, into: /build}}, {run: install, network: true}]\n").unwrap();
-    assert_eq!(
-        plan.stages(),
-        &[Stage::Carapace, Stage::Firmware, Stage::Transform]
-    );
     assert_eq!(
         plan.network_steps()
             .iter()

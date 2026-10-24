@@ -1,9 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{
-    Ready, Running, StartFailure, Step, StepFailure, StepStorage, TeardownCompletion,
-    TeardownFailure,
-};
+use super::{Ready, Running, StartFailure, Step, StepFailure, StepStorage, TeardownCompletion};
 use crate::{
     process::{Admitted, Supervision},
     value::CommandTimeout,
@@ -132,14 +129,11 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
     pub(super) fn teardown_after_command(
         self,
         deadline: Instant,
-    ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+    ) -> io::Result<TeardownCompletion<R>> {
         self.step.teardown_after_command(deadline)
     }
 
-    pub(super) fn teardown_until(
-        self,
-        deadline: Instant,
-    ) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+    pub(super) fn teardown_until(self, deadline: Instant) -> io::Result<TeardownCompletion<R>> {
         self.step.teardown_until(deadline)
     }
 
@@ -149,7 +143,7 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
     pub(crate) fn supervision(&self) -> &Supervision<Admitted> {
         self.step.supervision()
     }
-    pub(crate) fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+    pub(crate) fn teardown(self) -> io::Result<TeardownCompletion<R>> {
         self.step.teardown()
     }
 }

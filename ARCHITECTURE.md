@@ -1,7 +1,9 @@
 # Implementation architecture
 
 DESIGN.md and SANDBOX-DESIGN.txt define the contract. This document maps that
-contract to the implementation. BUILD-FLOW.sh shows the same linear sequence;
+contract to the private modules of a binary utility. There is no library target.
+The opt-in VM fixtures compile the same modules as a separate test binary.
+BUILD-FLOW.sh shows the same linear sequence;
 it is explanatory notation, not an executable security boundary.
 
 ## Inputs and workflow
@@ -39,11 +41,17 @@ consuming transitions express what each operation may do. Important examples:
 
 - `Volume<Unmounted>` and `Volume<Mounted>` retain mapping/mount ownership.
   `VolumeView` borrows a root from storage actually retained by the step.
-- `Step<Ready>`, `Step<Running>`, `Step<Cancelling>`, `Step<Reaping>`,
-  `Step<Draining>` and `Step<Quiescent>` constrain command lifecycle operations.
+- `Step<Ready>`, `Step<Running>` and `Step<Cancelling>` constrain admission.
+  Cancellation, reaping and descendant draining form one private cleanup sequence.
+- `CommandStorage` shares preparation, transfer, COPY and finalization between
+  single-root commands and bootstrap's paired roots. Networking is owned directly
+  by the step, without another storage wrapper or state machine.
 - Formatter capture, staging, execution and completion own distinct resources.
-- Failure values retain the resources required for explicit cleanup/retry and
-  preserve both operation and cleanup diagnostics.
+- I/O operations use `io::Result` and direct propagation. The pipeline uses
+  `anyhow` for stage/directive context and combined operation/cleanup diagnostics.
+  No failed build returns reusable storage or a recovery object. Private process
+  transition errors may carry a child to the immediate cancellation path; these
+  never escape as a build recovery API.
 
 RAII provides ordinary scoped cleanup; destructors cannot prove quiescence or
 successful writeback. Explicit fallible completion performs those checks.
@@ -56,7 +64,9 @@ Immutable aligned scutes stay cache-backed. RAM-backed copies are used where
 compression or padding requires materialization; writable layers and filesystem
 workspaces are always RAM-backed. Cache identity checks and authenticated reads
 remain distinct protections. Device-mapper and loop owners retain descriptor and
-mount-namespace identity through partial setup, teardown and retry.
+mount-namespace identity through partial setup and explicit teardown. Unresolved
+live resources remain retained until VM disposal. Deferred device removal is a
+destructor fallback, never evidence of successful close or permission to seal.
 
 The carapace format uses a 64 GiB dm-zero origin. Bootstrap's configured ext4
 capacity is a filesystem capacity within that geometry, not a format change.
@@ -66,8 +76,8 @@ unused snapshot capacity, uses ecosystem wire types and seals the scute directly
 there is no image-to-carapace import/conversion step.
 
 Scute wire parsing belongs to devmap-snapshot. Conglobate owns activation and
-fallible cleanup using devmap/lodown: a read-only file with deferred removal alone
-cannot represent its partial-setup/cleanup failures. It does not duplicate the
+fallible cleanup using devmap/lodown. A read-only file with deferred removal alone
+cannot prove successful finalization. It does not duplicate the
 wire codec. The pinned rustix revision supplies the safe borrowed-descriptor
 mount_setattr API (upstream PR 1630); the pin is intentional, not a mutable branch.
 

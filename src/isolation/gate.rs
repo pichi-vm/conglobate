@@ -43,12 +43,6 @@ impl Drop for Control {
     }
 }
 /// Trusted parent only. Readiness is distinct from authorization to start.
-/// ```compile_fail
-/// use conglobate::isolation::{ExecutionGate, Waiting};
-/// fn cannot_start_before_ready(gate: ExecutionGate<Waiting>) {
-///     gate.start_until(std::time::Instant::now());
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct ExecutionGate<S: GateState> {
     socket: Control,
@@ -154,8 +148,7 @@ impl CompletionPacket {
     }
 }
 impl ExecutionGate<Started> {
-    /// Observe shell status only. This is not helper exit, descendant quiescence,
-    /// resolver cleanup, or permission to finalize/publish storage.
+    #[cfg(test)]
     pub(crate) fn completion_until(self, deadline: Instant) -> io::Result<ExitStatus> {
         self.completion(Some(deadline))
     }
@@ -205,17 +198,20 @@ impl ExecutionGate<Started> {
     }
 }
 impl ExecutionGate<Ready> {
+    #[cfg(test)]
+    pub(crate) fn start_until(self, deadline: Instant) -> io::Result<()> {
+        self.socket.0.send(2, deadline)
+    }
     /// Retain a status-only observation channel after authorizing start.
-    pub(crate) fn start_reporting_until(self, deadline: Instant) -> io::Result<ExecutionGate<Started>> {
+    pub(crate) fn start_reporting_until(
+        self,
+        deadline: Instant,
+    ) -> io::Result<ExecutionGate<Started>> {
         self.socket.0.send(2, deadline)?;
         Ok(ExecutionGate {
             socket: self.socket,
             state: PhantomData,
         })
-    }
-
-    pub(crate) fn start_until(self, deadline: Instant) -> io::Result<()> {
-        self.socket.0.send(2, deadline)
     }
 }
 impl ExecutionEndpoint {

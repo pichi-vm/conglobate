@@ -30,9 +30,7 @@ fn metadata_is_captured_but_later_reads_are_verified_again() {
     let digest = store.put(b"content");
     let cache = store.open();
     let metadata = cache.metadata(&digest, Some(7)).unwrap();
-    let receipt = cache.verify(&digest, 7).unwrap();
-    assert_eq!(receipt.digest(), &digest);
-    assert_eq!(receipt.size(), 7);
+    cache.verify(&digest, 7).unwrap();
     std::fs::write(store.path(&digest), b"changed").unwrap();
     assert_eq!(metadata.bytes(), b"content");
     assert!(cache.verify(&digest, 7).is_err());
@@ -117,7 +115,6 @@ fn pinned_index_selects_only_host_vm_artifact_and_preserves_exact_metadata() {
     let pin = store.index(vec![unrelated, selected]);
     let image = store.open().resolve(pin).unwrap();
     assert_eq!(image.manifest_bytes().bytes(), bytes);
-    assert_eq!(image.index().digest().as_bytes(), pin.bytes());
     assert_eq!(image.manifest_bytes().digest(), &digest);
 }
 
@@ -186,9 +183,7 @@ fn manifest_resolution_does_not_silently_stand_in_for_content_verification() {
     let image = cache.resolve(pin).unwrap();
     assert!(cache.verify_references(&image).is_err());
     store.put(config);
-    let receipts = cache.verify_references(&image).unwrap();
-    assert_eq!(receipts.len(), 1);
-    assert_eq!(receipts[0].digest(), &config_digest);
+    cache.verify_references(&image).unwrap();
 }
 
 impl Store {

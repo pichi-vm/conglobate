@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use conglobate::{
     execution::HelperProgram,
-    formatter::{CapturedFormatter, Ext4Format, FormatFailure},
+    formatter::{CapturedFormatter, Ext4Format},
     path::ContextPath,
     process::WaitError,
     step::SetupBudget,
@@ -79,66 +79,33 @@ impl FormatterFailures {
                 std::process::exit(0);
             }
             let failure = formatting.wait().unwrap_err();
-            let (runtime, snapshot) = match (exhausted, failure) {
-                (false, FormatFailure::Wait(failure)) => {
-                    assert!(std::time::Instant::now() >= deadline);
-                    assert!(matches!(
-                        failure
-                            .diagnostics()
-                            .operation()
-                            .get_ref()
-                            .and_then(|error| error.downcast_ref::<WaitError>()),
-                        Some(WaitError::Deadline)
-                    ));
-                    if std::env::var("FORMATTER_DROP").as_deref() == Ok("wait") {
-                        drop(failure);
-                        assert!(
-                            Path::new(&format!(
-                                "/sys/dev/block/{}:{}",
-                                device.major(),
-                                device.minor()
-                            ))
-                            .exists()
-                        );
-                        println!("FORMATTER_DROP_WAIT_RETAINS_STORAGE_PASS");
-                        std::process::exit(0);
-                    }
-                    let (diagnostics, runtime, snapshot) =
-                        failure.cancel().map_err(|e| e.to_string())?;
-                    assert!(diagnostics.cleanup().is_empty());
-                    assert!(
-                        fs::read_to_string("/proc/thread-self/children")?
-                            .trim()
-                            .is_empty()
-                    );
-                    snapshot.usage()?;
-                    println!("FORMATTER_DEADLINE_CANCEL_REAP_PASS");
-                    (runtime, snapshot)
-                }
-                (true, FormatFailure::Completion(failure)) => {
-                    let (_, runtime, snapshot) = failure.into_parts();
-                    assert_eq!(
-                        snapshot.usage().unwrap_err().kind(),
-                        std::io::ErrorKind::InvalidData
-                    );
-                    assert!(
-                        fs::read_to_string("/proc/thread-self/children")?
-                            .trim()
-                            .is_empty()
-                    );
-                    println!("FORMATTER_EXHAUSTED_SNAPSHOT_REJECTED_PASS");
-                    (runtime, snapshot)
-                }
-                (_, failure) => {
-                    return Err(format!("unexpected formatter failure: {failure}").into());
-                }
-            };
-            runtime.close()?;
-            snapshot
-                .close()
-                .map_err(|e| e.to_string())?
-                .detach()
-                .map_err(|e| e.to_string())?;
+            assert!(
+                fs::read_to_string("/proc/thread-self/children")?
+                    .trim()
+                    .is_empty()
+            );
+            if exhausted {
+                assert!(
+                    format!("{failure:#}").contains("formatter")
+                        || format!("{failure:#}").contains("snapshot")
+                );
+                println!("FORMATTER_EXHAUSTED_SNAPSHOT_REJECTED_PASS");
+            } else {
+                assert!(std::time::Instant::now() >= deadline);
+                assert!(matches!(
+                    failure.downcast_ref::<WaitError>(),
+                    Some(WaitError::Deadline)
+                ));
+                println!("FORMATTER_DEADLINE_CANCEL_REAP_PASS");
+            }
+            assert!(
+                !Path::new(&format!(
+                    "/sys/dev/block/{}:{}",
+                    device.major(),
+                    device.minor()
+                ))
+                .exists()
+            );
         }
         origin.close()?;
         println!("FORMATTER_FAILURE_RESOURCES_RELEASED_PASS");

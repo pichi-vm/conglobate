@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use conglobate::{
     anchor::RecoveryDirectory,
-    domain::{HelperLaunchFailure, CommandDomain},
+    domain::{CommandDomain, helper::HelperLaunchFailure},
     process::{ChildReaper, LaunchFailure, Supervision},
 };
 use std::{

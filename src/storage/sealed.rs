@@ -14,13 +14,6 @@ use std::{
 /// Immutable local scute bytes and generated verity tree. No writable scratch
 /// authority escapes. This proves sealing, not command success or publication.
 ///
-/// ```compile_fail
-/// use conglobate::storage::SealedScute;
-/// use std::io::Write;
-/// fn cannot_write_sealed_layer(scute: &SealedScute<'_>) {
-///     scute.data_reader().write_all(b"changed");
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct SealedScute<'workspace> {
     data: Scratch<'workspace>,
@@ -91,61 +84,41 @@ impl Seek for ScuteReader<'_> {
         Ok(self.position)
     }
 }
-#[derive(Debug, thiserror::Error)]
-#[error("snapshot sealing: {source}")]
-pub(crate) struct SealFailure<'workspace> {
-    source: ChainError,
-    data: Scratch<'workspace>,
-}
-impl<'w> SealFailure<'w> {
-    pub(crate) fn into_parts(self) -> (ChainError, Scratch<'w>) {
-        (self.source, self.data)
-    }
-}
 impl<'w> Scratch<'w> {
     /// Seal a detached persistent snapshot store. LoopAttachment::detach must
     /// have confirmed unbound state before returning this writable authority.
     /// Only unused trailing capacity is removed; no filesystem image is copied
     /// or converted. Caller separately owns command/finalization success proofs.
-    pub(crate) fn seal_snapshot(mut self, parent: [u8; 32]) -> Result<SealedScute<'w>, SealFailure<'w>> {
-        let result = (|| -> Result<_, ChainError> {
-            let capacity = self.file.metadata()?.len();
-            let extent = SnapshotExtent::read(&mut self.file, capacity)?;
-            self.file.set_len(extent.bytes)?;
-            self.file.sync_all()?;
-            self.file.rewind()?;
-            let mut hash = self._workspace.scratch()?;
-            let mut input = MeasuredRead {
-                input: &mut self.file,
-                digest: Sha256::new(),
-            };
-            let root = ScuteExtent::new(extent.bytes, &parent, Some(extent.bytes / 4096))?
-                .format(&mut input, &mut hash)?;
-            let digest = format!("sha256:{}", hex::encode(input.digest.finalize()));
-            hash.sync_all()?;
-            Ok((
-                hash,
-                root,
-                ScuteDescriptor {
-                    digest,
-                    size: extent.bytes,
-                    annotations: ScuteAnnotations {
-                        data_blocks: Some(extent.bytes / 4096),
-                        salt: hex::encode(parent),
-                    },
-                },
-            ))
-        })();
-        match result {
-            Ok((hash, root, descriptor)) => Ok(SealedScute {
-                data: self,
-                hash,
-                root,
-                descriptor,
-                parent,
-            }),
-            Err(source) => Err(SealFailure { source, data: self }),
-        }
+    pub(crate) fn seal_snapshot(mut self, parent: [u8; 32]) -> Result<SealedScute<'w>, ChainError> {
+        let capacity = self.file.metadata()?.len();
+        let extent = SnapshotExtent::read(&mut self.file, capacity)?;
+        self.file.set_len(extent.bytes)?;
+        self.file.sync_all()?;
+        self.file.rewind()?;
+        let mut hash = self._workspace.scratch()?;
+        let mut input = MeasuredRead {
+            input: &mut self.file,
+            digest: Sha256::new(),
+        };
+        let root = ScuteExtent::new(extent.bytes, &parent, Some(extent.bytes / 4096))?
+            .format(&mut input, &mut hash)?;
+        let digest = format!("sha256:{}", hex::encode(input.digest.finalize()));
+        hash.sync_all()?;
+        let descriptor = ScuteDescriptor {
+            digest,
+            size: extent.bytes,
+            annotations: ScuteAnnotations {
+                data_blocks: Some(extent.bytes / 4096),
+                salt: hex::encode(parent),
+            },
+        };
+        Ok(SealedScute {
+            data: self,
+            hash,
+            root,
+            descriptor,
+            parent,
+        })
     }
 }
 #[derive(Debug)]

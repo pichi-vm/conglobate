@@ -5,29 +5,22 @@
 mod devices;
 mod labels;
 pub(crate) use labels::AssignedRoots;
-mod receiver;
-pub(crate) use receiver::{CommandReceiver, ReceiverCompletion, ReceiverFailure};
+pub(crate) mod receiver;
+pub(crate) use receiver::CommandReceiver;
 mod gate;
 mod init;
 mod namespaces;
 mod setup;
-pub(crate) use gate::{
-    CompletionEndpoint, ExecutionEndpoint, ExecutionGate, GateState, Ready, Started, Waiting,
-};
+pub(crate) use gate::{CompletionEndpoint, ExecutionEndpoint, ExecutionGate, Started};
 mod user;
 pub(crate) use namespaces::CommandNamespaces;
-pub(crate) use setup::{
-    CommandSetup, GatedCommandSetup, GatedRestrictedCommand, GatedRootSetup, HelperExecutionError,
-    RootPreparationError,
-};
-pub(crate) use user::{
-    IdMappings, IdRange, Mapped, UserNamespace, UserNamespaceFailure, UserNamespaceState,
-};
+pub(crate) use setup::{CommandSetup, GatedCommandSetup, GatedRootSetup};
+pub(crate) use user::{IdMappings, IdRange, Mapped, UserNamespace};
 mod root;
 mod runtime;
 pub(crate) use devices::CommandDevices;
 use nix::sched::{CloneFlags, setns, unshare};
-pub(crate) use root::{CommandRoot, EnteredRoot, RestrictedCommand};
+pub(crate) use root::{CommandRoot, RestrictedCommand};
 use rustix::mount::MountPropagationFlags;
 use std::{fs::File, io, marker::PhantomData, rc::Rc};
 
@@ -44,54 +37,23 @@ struct NamespaceLease {
 /// Use explicit restoration to handle errors. Irreversible command-root entry
 /// commits the guard, closing its restoration handle before command admission.
 ///
-/// ```compile_fail
-/// use conglobate::{filesystem::{Mount, Detached}, isolation::PrivateMountNamespace};
-/// use std::fs::File;
-/// fn cannot_restore_with_live_mount(scope: PrivateMountNamespace, root: File) {
-///     let mount = Mount::<Detached>::clone_from(&root, &scope).unwrap();
-///     scope.restore();
-///     drop(mount);
-/// }
-/// ```
 #[derive(Debug)]
 pub(crate) struct PrivateMountNamespace {
     lease: NamespaceLease,
     current: File,
 }
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum NamespaceFailure {
-    #[error("namespace setup before transition: {0}")]
-    Before(io::Error),
-    #[error("namespace operation after transition: {source}")]
-    Entered {
-        source: io::Error,
-        recovery: NamespaceRecovery,
-    },
-}
-#[derive(Debug)]
-pub(crate) struct NamespaceRecovery {
-    lease: NamespaceLease,
-}
-impl NamespaceFailure {
-    pub(crate) fn restore(self) -> Result<(), Self> {
-        match self {
-            Self::Entered { recovery, .. } => recovery.lease.restore(),
-            error => Err(error),
-        }
-    }
-}
 impl PrivateMountNamespace {
-    pub(crate) fn enter() -> Result<Self, NamespaceFailure> {
-        let tasks = crate::process::ThreadSnapshot::capture().map_err(NamespaceFailure::Before)?;
+    pub(crate) fn enter() -> io::Result<Self> {
+        let tasks = crate::process::ThreadSnapshot::capture()?;
         if !tasks.is_single() {
-            return Err(NamespaceFailure::Before(io::Error::other(
+            return Err(io::Error::other(
                 "namespace setup requires a single-threaded helper",
-            )));
+            ));
         }
-        let original = File::open("/proc/thread-self/ns/mnt").map_err(NamespaceFailure::Before)?;
+        let original = File::open("/proc/thread-self/ns/mnt")?;
         // NEWNS also unshares fs_struct, not the descriptor table. Never expose
         // caller-selected flags or use CLONE_FILES through this safe interface.
-        unshare(CloneFlags::CLONE_NEWNS).map_err(|e| NamespaceFailure::Before(e.into()))?;
+        unshare(CloneFlags::CLONE_NEWNS)?;
         let lease = NamespaceLease {
             original: Some(original),
             _thread: PhantomData,
@@ -100,18 +62,12 @@ impl PrivateMountNamespace {
             "/",
             MountPropagationFlags::PRIVATE | MountPropagationFlags::REC,
         ) {
-            return Err(NamespaceFailure::Entered {
-                source: source.into(),
-                recovery: NamespaceRecovery { lease },
-            });
+            return Err(source.into());
         }
         let current = match File::open("/proc/thread-self/ns/mnt") {
             Ok(current) => current,
             Err(source) => {
-                return Err(NamespaceFailure::Entered {
-                    source,
-                    recovery: NamespaceRecovery { lease },
-                });
+                return Err(source);
             }
         };
         Ok(Self { lease, current })
@@ -136,20 +92,17 @@ impl PrivateMountNamespace {
 
     /// Restore the original namespace. Attached resources must be cleaned up
     /// before restoration. The helper may not admit commands on this basis alone.
-    pub(crate) fn restore(self) -> Result<(), NamespaceFailure> {
+    pub(crate) fn restore(self) -> io::Result<()> {
         self.lease.restore()
     }
 }
 impl NamespaceLease {
-    fn restore(mut self) -> Result<(), NamespaceFailure> {
+    fn restore(mut self) -> io::Result<()> {
         if let Err(source) = setns(
             self.original.as_ref().expect("live namespace lease"),
             CloneFlags::CLONE_NEWNS,
         ) {
-            return Err(NamespaceFailure::Entered {
-                source: source.into(),
-                recovery: NamespaceRecovery { lease: self },
-            });
+            return Err(source.into());
         }
         self.original.take();
         Ok(())
