@@ -10,7 +10,9 @@ local storage at:
   failures, source/context snapshots and user work. Only `.git` and the root
   `target` build cache are excluded. Every entry was compared to its original;
   regular-file content hashes and symlink targets matched.
-- `reference.bundle`: complete committed history and refs, verified by Git.
+- `reference.bundle`: complete committed history and refs at the preservation
+  snapshot, verified by Git. `final-history.bundle` supplements it with the
+  retirement commits; `final-ci/` holds final workflow and bundle receipts.
 - `external.tar.zst`: original external validation references, all maintained
   validation run directories and the independent initial preservation archive.
   All 140,118 entries were verified against the originals; no baseline input
