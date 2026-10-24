@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 #[derive(Debug, thiserror::Error)]
 #[error("COPY mode must be unsigned octal permissions or symbolic permission clauses")]
-pub struct ModeError;
+pub(crate) struct ModeError;
 
 #[derive(Debug)]
 enum Permissions {
@@ -42,7 +42,7 @@ enum Permission {
 }
 
 #[derive(Debug)]
-pub struct CopyMode(Permissions);
+pub(crate) struct CopyMode(Permissions);
 impl FromStr for CopyMode {
     type Err = ModeError;
     fn from_str(source: &str) -> Result<Self, Self::Err> {
@@ -115,7 +115,7 @@ impl FromStr for Clause {
 }
 impl CopyMode {
     /// Apply parsed COPY permissions with BuildKit's zero-umask semantics.
-    pub fn apply(&self, original: u32, directory: bool) -> u32 {
+    pub(crate) fn apply(&self, original: u32, directory: bool) -> u32 {
         match &self.0 {
             Permissions::Octal(mode) => *mode,
             Permissions::Symbolic(clauses) => {

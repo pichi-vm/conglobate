@@ -19,7 +19,7 @@ use std::{
 /// Abandoning an unfinished formatter retains inputs until VM disposal: the
 /// process destructor's best-effort termination does not prove it was reaped.
 #[derive(Debug)]
-pub struct Formatting<'origin, 'workspace> {
+pub(crate) struct Formatting<'origin, 'workspace> {
     process: Process<Running>,
     inputs: ManuallyDrop<Box<FormatInputs<'origin, 'workspace>>>,
     deadline: Instant,
@@ -32,18 +32,18 @@ struct FormatInputs<'origin, 'workspace> {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("formatter launch: {source}")]
-pub struct FormatLaunchFailure<'origin, 'workspace> {
+pub(crate) struct FormatLaunchFailure<'origin, 'workspace> {
     source: io::Error,
     inputs: Box<FormatInputs<'origin, 'workspace>>,
 }
 impl<'a, 'w> FormatLaunchFailure<'a, 'w> {
-    pub fn into_parts(self) -> (io::Error, FormatterRuntime, SnapshotMapping<'a, 'w>) {
+    pub(crate) fn into_parts(self) -> (io::Error, FormatterRuntime, SnapshotMapping<'a, 'w>) {
         (self.source, self.inputs.runtime, self.inputs.snapshot)
     }
 }
 #[derive(Debug, thiserror::Error)]
 #[error("formatter wait: {source}")]
-pub struct FormatWaitFailure<'origin, 'workspace> {
+pub(crate) struct FormatWaitFailure<'origin, 'workspace> {
     source: FailureDiagnostics,
     formatting: Formatting<'origin, 'workspace>,
     cleanup_deadline: Instant,
@@ -51,10 +51,10 @@ pub struct FormatWaitFailure<'origin, 'workspace> {
 impl<'a, 'w> FormatWaitFailure<'a, 'w> {
     /// Cancels the direct trusted executable, retaining all owners if it cannot
     /// be reaped. The original formatting deadline is never renewed.
-    pub fn diagnostics(&self) -> &FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
         &self.source
     }
-    pub fn cancel(
+    pub(crate) fn cancel(
         self,
     ) -> Result<
         (
@@ -92,29 +92,29 @@ impl<'a, 'w> FormatWaitFailure<'a, 'w> {
 /// Trusted child succeeded and was reaped; current snapshot health was checked.
 /// This is not clean volume finalization, an inventory receipt or a sealed layer.
 #[derive(Debug)]
-pub struct FormattedSnapshot<'origin, 'workspace> {
+pub(crate) struct FormattedSnapshot<'origin, 'workspace> {
     inputs: Box<FormatInputs<'origin, 'workspace>>,
 }
 #[derive(Debug, thiserror::Error)]
 #[error("formatter completion: {source}")]
-pub struct FormatCompletionFailure<'origin, 'workspace> {
+pub(crate) struct FormatCompletionFailure<'origin, 'workspace> {
     source: io::Error,
     inputs: Box<FormatInputs<'origin, 'workspace>>,
 }
 impl<'a, 'w> FormatCompletionFailure<'a, 'w> {
-    pub fn into_parts(self) -> (io::Error, FormatterRuntime, SnapshotMapping<'a, 'w>) {
+    pub(crate) fn into_parts(self) -> (io::Error, FormatterRuntime, SnapshotMapping<'a, 'w>) {
         (self.source, self.inputs.runtime, self.inputs.snapshot)
     }
 }
 #[derive(Debug, thiserror::Error)]
-pub enum FormatFailure<'origin, 'workspace> {
+pub(crate) enum FormatFailure<'origin, 'workspace> {
     #[error(transparent)]
     Wait(FormatWaitFailure<'origin, 'workspace>),
     #[error(transparent)]
     Completion(FormatCompletionFailure<'origin, 'workspace>),
 }
 impl FormatterRuntime {
-    pub fn format<'a, 'w>(
+    pub(crate) fn format<'a, 'w>(
         self,
         snapshot: SnapshotMapping<'a, 'w>,
         format: Ext4Format,
@@ -161,7 +161,7 @@ impl FormatterRuntime {
     }
 }
 impl<'a, 'w> Formatting<'a, 'w> {
-    pub fn wait(self) -> Result<FormattedSnapshot<'a, 'w>, FormatFailure<'a, 'w>> {
+    pub(crate) fn wait(self) -> Result<FormattedSnapshot<'a, 'w>, FormatFailure<'a, 'w>> {
         let Self {
             process,
             inputs,
@@ -218,26 +218,26 @@ impl<'a, 'w> Formatting<'a, 'w> {
 /// let receipt = FormatReceipt::default();
 /// ```
 #[derive(Debug)]
-pub struct FormatReceipt {
+pub(crate) struct FormatReceipt {
     format: Ext4Format,
     executable: crate::path::ContextPath,
     runtime: Vec<(crate::path::ContextPath, [u8; 32])>,
 }
 impl FormatReceipt {
-    pub fn format(&self) -> &Ext4Format {
+    pub(crate) fn format(&self) -> &Ext4Format {
         &self.format
     }
-    pub fn executable(&self) -> &crate::path::ContextPath {
+    pub(crate) fn executable(&self) -> &crate::path::ContextPath {
         &self.executable
     }
-    pub fn runtime(&self) -> &[(crate::path::ContextPath, [u8; 32])] {
+    pub(crate) fn runtime(&self) -> &[(crate::path::ContextPath, [u8; 32])] {
         &self.runtime
     }
 }
 impl<'a, 'w> FormattedSnapshot<'a, 'w> {
     /// Consume successful execution while retaining its exact input identities.
     /// Resource owners remain separate so the coordinator must still close them.
-    pub fn into_recorded_parts(self) -> (FormatterRuntime, SnapshotMapping<'a, 'w>, FormatReceipt) {
+    pub(crate) fn into_recorded_parts(self) -> (FormatterRuntime, SnapshotMapping<'a, 'w>, FormatReceipt) {
         let captured = self.inputs.runtime.captured();
         let receipt = FormatReceipt {
             executable: captured.executable().clone(),
@@ -249,7 +249,7 @@ impl<'a, 'w> FormattedSnapshot<'a, 'w> {
         };
         (self.inputs.runtime, self.inputs.snapshot, receipt)
     }
-    pub fn into_parts(self) -> (FormatterRuntime, SnapshotMapping<'a, 'w>) {
+    pub(crate) fn into_parts(self) -> (FormatterRuntime, SnapshotMapping<'a, 'w>) {
         (self.inputs.runtime, self.inputs.snapshot)
     }
 }

@@ -4,7 +4,7 @@
 //! Parsed, single-pass transformation templates. Shell commands do not use these.
 #[derive(Debug, thiserror::Error)]
 #[error("invalid transformation template: {0}")]
-pub struct TemplateError(&'static str);
+pub(crate) struct TemplateError(&'static str);
 
 #[derive(Debug)]
 enum Part {
@@ -14,16 +14,16 @@ enum Part {
 }
 
 #[derive(Debug)]
-pub struct Template {
+pub(crate) struct Template {
     parts: Vec<Part>,
 }
 
 impl Template {
-    pub fn set(source: &str) -> Result<Self, TemplateError> {
+    pub(crate) fn set(source: &str) -> Result<Self, TemplateError> {
         Self::parse(source, false)
     }
 
-    pub fn replacement(source: &str) -> Result<Self, TemplateError> {
+    pub(crate) fn replacement(source: &str) -> Result<Self, TemplateError> {
         Self::parse(source, true)
     }
 
@@ -78,7 +78,7 @@ impl Template {
 
     /// Evaluation is deferred until a set executes or an actual match expands.
     /// Unmatched or unknown regex captures expand to empty, as in regex::Captures.
-    pub fn expand(
+    pub(crate) fn expand(
         &self,
         carapace: Option<&str>,
         captures: Option<&regex::Captures<'_>>,

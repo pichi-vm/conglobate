@@ -11,10 +11,10 @@ use crate::{
     value::CommandTimeout,
 };
 use std::{fmt, io};
-pub use storage::ExecutionStorage;
+pub(crate) use storage::ExecutionStorage;
 
 #[derive(Debug, thiserror::Error)]
-pub enum ExecutionOutcome {
+pub(crate) enum ExecutionOutcome {
     #[error("command setup: {0}")]
     SetupFailed(#[source] io::Error),
     #[error("command outcome: {0}")]
@@ -38,16 +38,16 @@ impl ExecutionOutcome {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct ExecutedStorage<R: ExecutionStorage> {
+pub(crate) struct ExecutedStorage<R: ExecutionStorage> {
     volume: R::Unmounted,
     reaped: crate::process::ReapedChildren,
 }
 impl<R: ExecutionStorage> ExecutedStorage<R> {
     /// Continue the assembly line with the same exclusive supervisor reaper.
-    pub fn into_parts(self) -> (R::Unmounted, crate::process::ChildReaper) {
+    pub(crate) fn into_parts(self) -> (R::Unmounted, crate::process::ChildReaper) {
         (self.volume, self.reaped.into_reaper())
     }
-    pub fn into_storage(self) -> R::Unmounted {
+    pub(crate) fn into_storage(self) -> R::Unmounted {
         self.volume
     }
 }
@@ -61,7 +61,7 @@ enum Cleanup<'l, R: ExecutionStorage> {
 /// Retains the primary setup/command outcome and any unfinished cleanup owner.
 /// A retry cannot restart the command or extend any cleanup deadline.
 #[derive(Debug)]
-pub struct StorageExecutionFailure<'l, R: ExecutionStorage> {
+pub(crate) struct StorageExecutionFailure<'l, R: ExecutionStorage> {
     outcome: ExecutionOutcome,
     cleanup: Cleanup<'l, R>,
     diagnostics: Option<FailureDiagnostics>,
@@ -97,11 +97,11 @@ impl<'l, R: ExecutionStorage> StorageExecutionFailure<'l, R> {
         (outcome, diagnostics)
     }
 
-    pub fn outcome(&self) -> &ExecutionOutcome {
+    pub(crate) fn outcome(&self) -> &ExecutionOutcome {
         &self.outcome
     }
     /// Cleanup error history, retained even after a successful cleanup retry.
-    pub fn cleanup_error(&self) -> Option<&FailureDiagnostics> {
+    pub(crate) fn cleanup_error(&self) -> Option<&FailureDiagnostics> {
         self.diagnostics.as_ref()
     }
     /// Retry resource release only. A failed lifecycle cannot become an accepted
@@ -113,7 +113,7 @@ impl<'l, R: ExecutionStorage> StorageExecutionFailure<'l, R> {
     ///     failure.retry_cleanup()
     /// }
     /// ```
-    pub fn retry_cleanup(self) -> Self {
+    pub(crate) fn retry_cleanup(self) -> Self {
         let Self {
             outcome,
             cleanup,
@@ -153,7 +153,7 @@ impl<'l, R: ExecutionStorage> StorageExecutionFailure<'l, R> {
     }
     /// Only rejected, fully finalized storage can be recovered from failure.
     /// This does not manufacture an ExecutedVolume receipt.
-    pub fn into_rejected_storage(self) -> Result<(ExecutionOutcome, R::Unmounted), Box<Self>> {
+    pub(crate) fn into_rejected_storage(self) -> Result<(ExecutionOutcome, R::Unmounted), Box<Self>> {
         match self.cleanup {
             Cleanup::Complete(volume) => Ok((self.outcome, R::finalized_parts(volume).1)),
             _ => Err(Box::new(self)),
@@ -209,7 +209,7 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
     /// Transfer this step's assigned volume, require restricted-leaf readiness,
     /// start under the recipe timeout, observe completion and finalize storage.
     /// Every failure after launch performs bounded cleanup before returning.
-    pub fn execute(self, budget: SetupBudget, timeout: CommandTimeout) -> ExecutionResult<'l, R> {
+    pub(crate) fn execute(self, budget: SetupBudget, timeout: CommandTimeout) -> ExecutionResult<'l, R> {
         if let Err(error) = budget.check().and_then(|()| {
             self.storage.0.send(
                 &self.namespace,
@@ -259,8 +259,8 @@ impl<'l, R: ExecutionStorage> Step<'l, Ready, R> {
 }
 
 /// Successful single-volume execution, retaining the concrete storage type.
-pub type ExecutedVolume<'n, 'o, 'w> = ExecutedStorage<Volume<'n, 'o, 'w, Mounted>>;
-pub type ExecutionFailure<'l, 'n, 'o, 'w> =
+pub(crate) type ExecutedVolume<'n, 'o, 'w> = ExecutedStorage<Volume<'n, 'o, 'w, Mounted>>;
+pub(crate) type ExecutionFailure<'l, 'n, 'o, 'w> =
     StorageExecutionFailure<'l, Volume<'n, 'o, 'w, Mounted>>;
 /// Successful bootstrap execution; both tool and output were finalized.
 ///
@@ -270,14 +270,14 @@ pub type ExecutionFailure<'l, 'n, 'o, 'w> =
 ///     let _ = ExecutedBootstrap { volume, reaped };
 /// }
 /// ```
-pub type ExecutedBootstrap<'n, 'o, 'w> = ExecutedStorage<BootstrapVolumes<'n, 'o, 'w, Mounted>>;
+pub(crate) type ExecutedBootstrap<'n, 'o, 'w> = ExecutedStorage<BootstrapVolumes<'n, 'o, 'w, Mounted>>;
 impl<'n, 'o, 'w> ExecutedVolume<'n, 'o, 'w> {
-    pub fn into_volume(self) -> Volume<'n, 'o, 'w, Unmounted> {
+    pub(crate) fn into_volume(self) -> Volume<'n, 'o, 'w, Unmounted> {
         self.into_storage()
     }
 }
 impl<'l, 'n, 'o, 'w> ExecutionFailure<'l, 'n, 'o, 'w> {
-    pub fn into_rejected_volume(
+    pub(crate) fn into_rejected_volume(
         self,
     ) -> Result<(ExecutionOutcome, Volume<'n, 'o, 'w, Unmounted>), Box<Self>> {
         self.into_rejected_storage()

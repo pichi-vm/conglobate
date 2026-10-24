@@ -7,14 +7,14 @@ use std::{io, time::Instant};
 /// The trusted helper received the supervisor's explicit admission message.
 /// This is a protocol state, not independent proof of sandbox configuration.
 #[derive(Debug)]
-pub struct Admitted;
+pub(crate) struct Admitted;
 impl private::Sealed for Admitted {}
 impl SupervisionState for Admitted {
     type Resources = ProcessObservation;
 }
 impl Supervision<Joined> {
     /// Trusted helper only, after its restricted leaf reports readiness.
-    pub fn report_prepared_until(&self, deadline: Instant) -> io::Result<()> {
+    pub(crate) fn report_prepared_until(&self, deadline: Instant) -> io::Result<()> {
         Packet::Prepared.send(&self.socket.0, deadline)
     }
     pub(crate) fn wait_prepared_until(&self, deadline: Instant) -> io::Result<()> {
@@ -43,7 +43,7 @@ impl Supervision<Joined> {
     /// Dedicated trusted helper only. Wait after domain joining and before running
     /// any image command. EOF, malformed input or timeout closes the channel;
     /// none authorize execution. The supervisor separately cancels and reaps.
-    pub fn await_admission_until(self, deadline: Instant) -> io::Result<Supervision<Admitted>> {
+    pub(crate) fn await_admission_until(self, deadline: Instant) -> io::Result<Supervision<Admitted>> {
         if !matches!(Packet::receive(&self.socket.0, deadline)?, Packet::Admit) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -60,7 +60,7 @@ impl Supervision<Joined> {
 
 impl Supervision<Admitted> {
     /// Trusted receiver only, after local mounts/resolver/diagnostics are closed.
-    pub fn report_cleanup_until(&self, deadline: Instant) -> io::Result<()> {
+    pub(crate) fn report_cleanup_until(&self, deadline: Instant) -> io::Result<()> {
         Packet::Cleaned.send(&self.socket.0, deadline)
     }
     /// Send a bounded failure while the trusted channel is still live. This is
@@ -87,7 +87,7 @@ impl Supervision<Admitted> {
 
     /// Trusted helper reports its reaped command status, before helper cleanup.
     /// This does not certify descendant quiescence or successful finalization.
-    pub fn report_completion_until(
+    pub(crate) fn report_completion_until(
         &self,
         status: std::process::ExitStatus,
         deadline: Instant,

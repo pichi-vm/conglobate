@@ -18,7 +18,7 @@ use std::{
 /// Commands must be quiescent before resolution and cleanup. Abandonment never
 /// removes image paths; a failed build must discard its writable layer.
 #[derive(Debug)]
-pub struct ResolverTarget {
+pub(crate) struct ResolverTarget {
     root: File,
     target: File,
     namespace: File,
@@ -27,12 +27,12 @@ pub struct ResolverTarget {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("resolver target: {diagnostics}")]
-pub struct ResolverTargetFailure {
+pub(crate) struct ResolverTargetFailure {
     diagnostics: FailureDiagnostics,
     scaffold: ResolverScaffold,
 }
 impl ResolverTargetFailure {
-    pub fn cleanup(self) -> Result<(), Self> {
+    pub(crate) fn cleanup(self) -> Result<(), Self> {
         let Self {
             diagnostics,
             scaffold,
@@ -148,7 +148,7 @@ impl ResolverScaffold {
     }
 }
 impl ResolverTarget {
-    pub fn resolve(root: File) -> Result<Self, ResolverTargetFailure> {
+    pub(crate) fn resolve(root: File) -> Result<Self, ResolverTargetFailure> {
         Self::select(root, true)
     }
     /// Command setup never creates image paths. Its enclosing owner must have
@@ -177,10 +177,10 @@ impl ResolverTarget {
             }),
         }
     }
-    pub fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         &self.path
     }
-    pub fn metadata(&self) -> io::Result<std::fs::Metadata> {
+    pub(crate) fn metadata(&self) -> io::Result<std::fs::Metadata> {
         self.target.metadata()
     }
     pub(super) fn mount_target(&self) -> io::Result<&File> {
@@ -193,7 +193,7 @@ impl ResolverTarget {
         }
         Ok(&self.target)
     }
-    pub fn release(self) -> Result<(), ResolverTargetFailure> {
+    pub(crate) fn release(self) -> Result<(), ResolverTargetFailure> {
         let Self {
             root,
             target,

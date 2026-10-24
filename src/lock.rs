@@ -10,7 +10,7 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 
 #[derive(Debug, thiserror::Error)]
-pub enum LockError {
+pub(crate) enum LockError {
     #[error("invalid lock YAML: {0}")]
     Document(#[from] serde_saphyr::Error),
     #[error("unsupported lock version {0}")]
@@ -35,7 +35,7 @@ struct ImageDocument {
 }
 
 #[derive(Debug)]
-pub struct ImageLock {
+pub(crate) struct ImageLock {
     images: BTreeMap<ImageReference, IndexDigest>,
 }
 
@@ -56,7 +56,7 @@ impl TryFrom<YamlDocument<'_>> for ImageLock {
 }
 
 impl ImageLock {
-    pub fn resolve(&self, reference: &ImageReference) -> Result<IndexDigest, LockError> {
+    pub(crate) fn resolve(&self, reference: &ImageReference) -> Result<IndexDigest, LockError> {
         self.images
             .get(reference)
             .copied()

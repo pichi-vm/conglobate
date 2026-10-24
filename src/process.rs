@@ -14,32 +14,32 @@ pub(crate) use threads::ThreadSnapshot;
 mod diagnostics;
 pub(crate) use diagnostics::DiagnosticRelay;
 mod syscalls;
-pub use syscalls::CommandSyscalls;
+pub(crate) use syscalls::CommandSyscalls;
 mod privileges;
-pub use privileges::{CommandPrivileges, PrivilegeFailure};
+pub(crate) use privileges::{CommandPrivileges, PrivilegeFailure};
 mod reaper;
-pub use reaper::{ChildReaper, DrainFailure, ReapedChildren};
+pub(crate) use reaper::{ChildReaper, DrainFailure, ReapedChildren};
 mod supervision;
-pub use supervision::{
+pub(crate) use supervision::{
     Admitted, Joined, ObservedState, Paired, Supervision, SupervisionChild, SupervisionState,
     Unpaired, VolumeInput,
 };
 mod observation;
-pub use observation::ProcessObservation;
+pub(crate) use observation::ProcessObservation;
 mod identity;
-pub use identity::{IdentityReceiver, IdentitySender};
+pub(crate) use identity::{IdentityReceiver, IdentitySender};
 mod launch;
-pub use launch::LaunchFailure;
+pub(crate) use launch::LaunchFailure;
 
 mod private {
-    pub trait Sealed {}
+    pub(crate) trait Sealed {}
 }
-pub trait ProcessState: private::Sealed + std::fmt::Debug {
+pub(crate) trait ProcessState: private::Sealed + std::fmt::Debug {
     type Resources: std::fmt::Debug;
 }
 #[derive(Debug)]
 /// Status has not yet been collected by this owner; not proof of OS liveness.
-pub struct Running;
+pub(crate) struct Running;
 /// A trusted helper whose own pidfd was received over its private channel.
 /// This state does not establish containment or authorize recipe execution.
 ///
@@ -51,9 +51,9 @@ pub struct Running;
 /// }
 /// ```
 #[derive(Debug)]
-pub struct Identified;
+pub(crate) struct Identified;
 #[derive(Debug)]
-pub struct Reaped;
+pub(crate) struct Reaped;
 impl private::Sealed for Running {}
 impl private::Sealed for Identified {}
 impl private::Sealed for Reaped {}
@@ -63,7 +63,7 @@ impl ProcessState for Running {
 impl ProcessState for Identified {
     type Resources = ChildLease<Pinned>;
 }
-pub trait LiveState: ProcessState<Resources = ChildLease<Self::Identity>> {
+pub(crate) trait LiveState: ProcessState<Resources = ChildLease<Self::Identity>> {
     type Identity: Termination;
 }
 impl LiveState for Running {
@@ -79,27 +79,27 @@ impl ProcessState for Reaped {
 /// A reaped state means wait collected this child's status, not that the child
 /// succeeded or that all processes it could have created are gone.
 #[derive(Debug)]
-pub struct Process<S: ProcessState> {
+pub(crate) struct Process<S: ProcessState> {
     resources: S::Resources,
 }
 #[derive(Debug)]
-pub struct ChildLease<I: Termination> {
+pub(crate) struct ChildLease<I: Termination> {
     child: Option<Child>,
     termination: I,
 }
 /// Sealed termination authority carried by a live process's state payload.
-pub trait Termination: private::Sealed + std::fmt::Debug {
+pub(crate) trait Termination: private::Sealed + std::fmt::Debug {
     #[doc(hidden)]
     fn kill(&self, child: &mut Child) -> io::Result<()>;
     #[doc(hidden)]
     fn wait_until(&self, child: &Child, deadline: Instant) -> io::Result<()>;
 }
 #[derive(Debug)]
-pub struct WaitOwned {
+pub(crate) struct WaitOwned {
     _private: (),
 }
 #[derive(Debug)]
-pub struct Pinned {
+pub(crate) struct Pinned {
     observation: ProcessObservation,
 }
 impl private::Sealed for WaitOwned {}
@@ -137,7 +137,7 @@ impl Termination for Pinned {
     }
 }
 #[derive(Debug, thiserror::Error)]
-pub enum WaitError {
+pub(crate) enum WaitError {
     #[error("child wait deadline expired")]
     Deadline,
     #[error("child process operation: {0}")]
@@ -145,15 +145,15 @@ pub enum WaitError {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("{error}")]
-pub struct WaitFailure<S: LiveState = Running> {
+pub(crate) struct WaitFailure<S: LiveState = Running> {
     error: WaitError,
     process: Process<S>,
 }
 impl<S: LiveState> WaitFailure<S> {
-    pub fn error(&self) -> &WaitError {
+    pub(crate) fn error(&self) -> &WaitError {
         &self.error
     }
-    pub fn into_parts(self) -> (WaitError, Process<S>) {
+    pub(crate) fn into_parts(self) -> (WaitError, Process<S>) {
         (self.error, self.process)
     }
 }
@@ -202,7 +202,7 @@ impl Process<Identified> {
 
 impl<S: LiveState> Process<S> {
     /// Diagnostic PID only. Identified helpers are signaled through their pidfd.
-    pub fn id(&self) -> u32 {
+    pub(crate) fn id(&self) -> u32 {
         self.resources.child.as_ref().expect("live child").id()
     }
 
@@ -222,7 +222,7 @@ impl<S: LiveState> Process<S> {
         }
     }
 
-    pub fn wait_until(mut self, deadline: Instant) -> Result<Process<Reaped>, WaitFailure<S>> {
+    pub(crate) fn wait_until(mut self, deadline: Instant) -> Result<Process<Reaped>, WaitFailure<S>> {
         loop {
             match self
                 .resources
@@ -262,7 +262,7 @@ impl<S: LiveState> Process<S> {
 
     /// Request termination, then collect status under the caller's teardown
     /// deadline. An error retains the child owner; it is never a reaped token.
-    pub fn terminate_until(mut self, deadline: Instant) -> Result<Process<Reaped>, WaitFailure<S>> {
+    pub(crate) fn terminate_until(mut self, deadline: Instant) -> Result<Process<Reaped>, WaitFailure<S>> {
         let child = self.resources.child.as_mut().expect("live child");
         match child.try_wait() {
             Ok(Some(status)) => {
@@ -287,7 +287,7 @@ impl<S: LiveState> Process<S> {
     }
 }
 impl Process<Reaped> {
-    pub fn status(&self) -> ExitStatus {
+    pub(crate) fn status(&self) -> ExitStatus {
         self.resources
     }
 }

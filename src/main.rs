@@ -1,7 +1,11 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
-use conglobate::{
+extern crate self as conglobate;
+include!("modules.rs");
+#[cfg(test)]
+mod tests;
+use crate::{
     execution::{HelperInvocation, HelperProgram},
     pipeline::Pipeline,
     request::BuildRequest,

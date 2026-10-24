@@ -21,7 +21,7 @@ use output::StageOutput;
 /// build. Runtime resource ownership ends here; unfinished mounts remain until
 /// disposal of the dedicated VM. Lower-level failures retain retry authority.
 #[derive(Debug, thiserror::Error)]
-pub enum BuildError {
+pub(crate) enum BuildError {
     #[error(transparent)]
     Input(#[from] InputError),
     #[error(transparent)]
@@ -152,12 +152,12 @@ impl From<crate::storage::RuntimeScopeFailure<'_, BuildError>> for BuildError {
     }
 }
 #[derive(Debug)]
-pub struct Pipeline {
+pub(crate) struct Pipeline {
     request: BuildRequest,
 }
 impl Pipeline {
     /// Retain a parsed request without resolving inputs or acquiring resources.
-    pub fn new(request: BuildRequest) -> Self {
+    pub(crate) fn new(request: BuildRequest) -> Self {
         Self { request }
     }
     /// Resolve local inputs, execute the recipe and publish its verified output.
@@ -170,7 +170,7 @@ impl Pipeline {
     /// Ordinary errors do not authorize another build in the same VM. Some
     /// failures retain unfinished kernel resources until environment disposal;
     /// returning an error is not a successful teardown receipt.
-    pub fn run(self) -> Result<(), BuildError> {
+    pub(crate) fn run(self) -> Result<(), BuildError> {
         if !rustix::process::geteuid().is_root() {
             return Err(BuildError::RootRequired);
         }

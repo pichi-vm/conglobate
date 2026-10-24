@@ -13,7 +13,7 @@ use std::{
 };
 
 #[derive(Debug, thiserror::Error)]
-pub enum RequestError {
+pub(crate) enum RequestError {
     #[error(transparent)]
     Cli(#[from] clap::Error),
     #[error(transparent)]
@@ -61,7 +61,7 @@ struct BuildArguments {
     formatter_runtime: Option<PathBuf>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CommitIdentity(Vec<u8>);
+pub(crate) struct CommitIdentity(Vec<u8>);
 impl TryFrom<&str> for CommitIdentity {
     type Error = RequestError;
     fn try_from(text: &str) -> Result<Self, Self::Error> {
@@ -72,12 +72,12 @@ impl TryFrom<&str> for CommitIdentity {
     }
 }
 impl CommitIdentity {
-    pub fn bytes(&self) -> &[u8] {
+    pub(crate) fn bytes(&self) -> &[u8] {
         &self.0
     }
 }
 #[derive(Debug)]
-pub struct BuildRequest {
+pub(crate) struct BuildRequest {
     id_mappings: Option<IdMappings>,
     repository: PathBuf,
     commit: CommitIdentity,
@@ -98,7 +98,7 @@ impl BuildRequest {
     /// Returns CLI diagnostics (including help/version requests), an invalid
     /// commit identity, or a path-validation error. Callers should use the CLI
     /// diagnostic's exit code to distinguish help/version from invalid input.
-    pub fn parse_from<I, T>(arguments: I) -> Result<Self, RequestError>
+    pub(crate) fn parse_from<I, T>(arguments: I) -> Result<Self, RequestError>
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,
@@ -121,37 +121,37 @@ impl BuildRequest {
             formatter_runtime: raw.formatter_runtime,
         })
     }
-    pub fn id_mappings(&self) -> Option<IdMappings> {
+    pub(crate) fn id_mappings(&self) -> Option<IdMappings> {
         self.id_mappings
     }
-    pub fn repository(&self) -> &Path {
+    pub(crate) fn repository(&self) -> &Path {
         &self.repository
     }
-    pub fn commit(&self) -> &CommitIdentity {
+    pub(crate) fn commit(&self) -> &CommitIdentity {
         &self.commit
     }
-    pub fn context(&self) -> &ContextDirectory {
+    pub(crate) fn context(&self) -> &ContextDirectory {
         &self.context
     }
-    pub fn recipe(&self) -> &ContextPath {
+    pub(crate) fn recipe(&self) -> &ContextPath {
         &self.recipe
     }
-    pub fn lock(&self) -> &ContextPath {
+    pub(crate) fn lock(&self) -> &ContextPath {
         &self.lock
     }
-    pub fn cache(&self) -> &Path {
+    pub(crate) fn cache(&self) -> &Path {
         &self.cache
     }
-    pub fn output(&self) -> &Path {
+    pub(crate) fn output(&self) -> &Path {
         &self.output
     }
-    pub fn formatter_runtime(&self) -> Option<&Path> {
+    pub(crate) fn formatter_runtime(&self) -> Option<&Path> {
         self.formatter_runtime.as_deref()
     }
-    pub fn network_namespace(&self) -> Option<&Path> {
+    pub(crate) fn network_namespace(&self) -> Option<&Path> {
         self.network_namespace.as_deref()
     }
-    pub fn resolv_conf(&self) -> Option<&Path> {
+    pub(crate) fn resolv_conf(&self) -> Option<&Path> {
         self.resolv_conf.as_deref()
     }
 }

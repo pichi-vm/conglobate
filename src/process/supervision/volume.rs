@@ -13,7 +13,7 @@ use std::{fs::File, io, time::Instant};
 /// user namespace; neither descriptor may reach image commands. This is not
 /// admission or proof that the sender's volume is safe to release.
 #[derive(Debug)]
-pub struct VolumeInput {
+pub(crate) struct VolumeInput {
     root: File,
     namespace: File,
     output: Option<File>,
@@ -77,7 +77,7 @@ impl Supervision<Joined> {
 
     /// Dedicated trusted helper, before awaiting admission. The volume packet
     /// cannot be mistaken for admission by the ordinary admission decoder.
-    pub fn receive_volume_until(&self, deadline: Instant) -> io::Result<VolumeInput> {
+    pub(crate) fn receive_volume_until(&self, deadline: Instant) -> io::Result<VolumeInput> {
         let (root, output, namespace, network) = match Packet::receive(&self.socket.0, deadline)? {
             Packet::Volume(root, namespace) => (root, None, namespace, None),
             Packet::Bootstrap(root, output, namespace) => {
@@ -147,7 +147,7 @@ impl VolumeInput {
     /// Construct the helper's idmapped root and next namespace-entry input.
     /// On failure all still-detached mount descriptors close; no attached mount
     /// or started command exists. The supervisor retains independent backing.
-    pub fn prepare(
+    pub(crate) fn prepare(
         self,
         scope: &PrivateMountNamespace,
         devices: CommandDevices,

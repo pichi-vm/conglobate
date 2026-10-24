@@ -3,7 +3,7 @@
 
 mod gated;
 use super::{CommandDevices, CommandNamespaces};
-pub use gated::{
+pub(crate) use gated::{
     GatedCommandSetup, GatedRestrictedCommand, GatedRootSetup, HelperExecutionError,
     RootPreparationError,
 };
@@ -26,14 +26,14 @@ use std::{
 /// and optional read-only resolver view. No descriptor reaches image commands. This is not
 /// an authenticated input format for an untrusted sender or command stream.
 #[derive(Debug)]
-pub struct CommandSetup {
+pub(crate) struct CommandSetup {
     namespace: File,
     devices: CommandDevices,
     network: Option<File>,
     resolver: Option<crate::network::ResolverView>,
 }
 impl CommandSetup {
-    pub fn new(namespace: File, devices: CommandDevices) -> io::Result<Self> {
+    pub(crate) fn new(namespace: File, devices: CommandDevices) -> io::Result<Self> {
         if rustix::fs::fstatfs(&namespace)?.f_type as u64 != 0x6e73_6673 {
             return Err(io::Error::other("setup namespace requires nsfs"));
         }
@@ -46,12 +46,12 @@ impl CommandSetup {
     }
     /// Select a supervisor-owned network namespace. The enclosing network
     /// resource must remain owned until all command descendants are quiescent.
-    pub fn with_network(self, namespace: &crate::network::NetworkNamespace) -> io::Result<Self> {
+    pub(crate) fn with_network(self, namespace: &crate::network::NetworkNamespace) -> io::Result<Self> {
         self.with_network_handle(namespace.descriptor().try_clone()?)
     }
     /// Source and image scaffolding remain owned outside this helper through
     /// command quiescence. Only configured-network steps accept DNS injection.
-    pub fn with_resolver(self, source: &crate::network::ResolverSource) -> io::Result<Self> {
+    pub(crate) fn with_resolver(self, source: &crate::network::ResolverSource) -> io::Result<Self> {
         self.with_resolver_view(source.view()?)
     }
     pub(crate) fn with_resolver_view(
@@ -77,11 +77,11 @@ impl CommandSetup {
             ..self
         })
     }
-    pub fn namespace_metadata(&self) -> io::Result<Metadata> {
+    pub(crate) fn namespace_metadata(&self) -> io::Result<Metadata> {
         self.namespace.metadata()
     }
 
-    pub fn into_input(self) -> io::Result<Stdio> {
+    pub(crate) fn into_input(self) -> io::Result<Stdio> {
         let (sender, receiver) = UnixDatagram::pair()?;
         let device = self.devices.into_handle();
         let mut descriptors = vec![self.namespace.as_fd(), device.as_fd()];
@@ -112,7 +112,7 @@ impl CommandSetup {
         Ok(Stdio::from(OwnedFd::from(receiver)))
     }
 
-    pub fn from_input() -> io::Result<Self> {
+    pub(crate) fn from_input() -> io::Result<Self> {
         let socket = io::stdin().as_fd().try_clone_to_owned()?;
         Self::receive(&socket)
     }
@@ -178,7 +178,7 @@ impl CommandSetup {
     /// is exit-only. The remaining device owner must be passed to root setup;
     /// this does not authorize image execution or certify complete isolation.
     /// The caller supplies its existing setup deadline; entry never renews it.
-    pub fn enter_until(
+    pub(crate) fn enter_until(
         self,
         deadline: std::time::Instant,
     ) -> io::Result<(CommandNamespaces, CommandDevices)> {

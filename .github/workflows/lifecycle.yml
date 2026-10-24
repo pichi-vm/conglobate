@@ -61,7 +61,7 @@ jobs:
           sudo chmod a+r "$kernel"
           printf 'GUEST_KERNEL=%s\nGUEST_RELEASE=%s\n' "$kernel" "${kernel#/boot/vmlinuz-}" >> "$GITHUB_ENV"
       - name: Fetch locked build dependencies
-        run: cargo fetch --locked --manifest-path tests/lifecycle/Cargo.toml
+        run: cargo fetch --locked
       - name: Run lifecycle cases in disposable guests
         run: |
           mkdir -p "$RUNNER_TEMP/lifecycle-results"

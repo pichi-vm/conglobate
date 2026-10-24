@@ -14,15 +14,15 @@ use std::{
 /// Contiguous mapping from namespace ID zero to nonzero parent IDs. The caller
 /// allocates disjoint ranges; neither zero nor the invalid all-ones ID is mapped.
 #[derive(Debug, Clone, Copy)]
-pub struct IdRange {
+pub(crate) struct IdRange {
     first: u32,
     count: u32,
 }
 impl IdRange {
-    pub fn parent_start(self) -> u32 {
+    pub(crate) fn parent_start(self) -> u32 {
         self.first
     }
-    pub fn count(self) -> u32 {
+    pub(crate) fn count(self) -> u32 {
         self.count
     }
     pub(crate) fn contains_image_id(self, id: u32) -> bool {
@@ -31,7 +31,7 @@ impl IdRange {
     pub(crate) fn first(self) -> u32 {
         self.first
     }
-    pub fn new(first: u32, count: u32) -> io::Result<Self> {
+    pub(crate) fn new(first: u32, count: u32) -> io::Result<Self> {
         if first == 0 || count == 0 || first.checked_add(count).is_none() {
             return Err(io::Error::other("invalid mapped ID range"));
         }
@@ -62,18 +62,18 @@ impl std::str::FromStr for IdRange {
 
 /// Environment-allocated parent identities; both namespaces start at image ID 0.
 #[derive(Debug, Clone, Copy)]
-pub struct IdMappings {
+pub(crate) struct IdMappings {
     uid: IdRange,
     gid: IdRange,
 }
 impl IdMappings {
-    pub fn new(uid: IdRange, gid: IdRange) -> Self {
+    pub(crate) fn new(uid: IdRange, gid: IdRange) -> Self {
         Self { uid, gid }
     }
-    pub fn uid(self) -> IdRange {
+    pub(crate) fn uid(self) -> IdRange {
         self.uid
     }
-    pub fn gid(self) -> IdRange {
+    pub(crate) fn gid(self) -> IdRange {
         self.gid
     }
 }
@@ -82,23 +82,23 @@ impl IdMappings {
 /// Retain this owner through command setup and descendant quiescence. Mounts
 /// and running tasks also retain their kernel namespace references.
 #[derive(Debug)]
-pub struct UserNamespace<S: UserNamespaceState> {
+pub(crate) struct UserNamespace<S: UserNamespaceState> {
     resources: S::Resources,
 }
 mod private {
-    pub trait Sealed {}
+    pub(crate) trait Sealed {}
 }
-pub trait UserNamespaceState: private::Sealed + std::fmt::Debug {
+pub(crate) trait UserNamespaceState: private::Sealed + std::fmt::Debug {
     type Resources: std::fmt::Debug;
 }
 #[derive(Debug)]
-pub struct Mapped;
+pub(crate) struct Mapped;
 impl private::Sealed for Mapped {}
 impl UserNamespaceState for Mapped {
     type Resources = File;
 }
 #[derive(Debug, thiserror::Error)]
-pub enum UserNamespaceFailure {
+pub(crate) enum UserNamespaceFailure {
     #[error("namespace creator launch: {0}")]
     Launch(#[from] LaunchFailure),
     #[error("namespace mapping: {source}")]
@@ -116,7 +116,7 @@ impl UserNamespace<Mapped> {
     /// PID view with exclusive child wait ownership and normal SIGCHLD semantics.
     /// Mapping errors retain the child for cancellation/reaping. No image code
     /// runs in this helper; the supervisor supplies both ID ranges.
-    pub fn create(
+    pub(crate) fn create(
         setup: Command,
         uid: IdRange,
         gid: IdRange,
@@ -188,7 +188,7 @@ impl UserNamespace<Mapped> {
     /// Dedicated trusted creator entrypoint, before spawning threads. It only
     /// creates a user namespace, exchanges stable process identities, and waits
     /// for the parent to close its channel after taking namespace ownership.
-    pub fn serve(deadline: Instant) -> io::Result<()> {
+    pub(crate) fn serve(deadline: Instant) -> io::Result<()> {
         if !crate::process::ThreadSnapshot::capture()?.is_single() {
             return Err(io::Error::other("namespace creation requires one thread"));
         }

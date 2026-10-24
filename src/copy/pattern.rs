@@ -11,7 +11,7 @@ use std::{
 
 #[derive(Debug, thiserror::Error)]
 #[error("invalid COPY source or filename pattern")]
-pub struct PatternError;
+pub(crate) struct PatternError;
 
 #[derive(Debug)]
 enum Token {
@@ -24,7 +24,7 @@ enum Token {
     },
 }
 #[derive(Debug)]
-pub struct SourcePattern {
+pub(crate) struct SourcePattern {
     source: String,
     tokens: Vec<Token>,
 }
@@ -53,12 +53,12 @@ impl FromStr for SourcePattern {
     }
 }
 impl SourcePattern {
-    pub fn source(&self) -> &str {
+    pub(crate) fn source(&self) -> &str {
         &self.source
     }
     /// Match an already context-relative candidate name. This grants no filesystem
     /// access and performs no traversal or symlink resolution.
-    pub fn matches(&self, name: &OsStr) -> bool {
+    pub(crate) fn matches(&self, name: &OsStr) -> bool {
         let bytes = name.as_bytes();
         let mut reachable = vec![false; bytes.len() + 1];
         reachable[0] = true;

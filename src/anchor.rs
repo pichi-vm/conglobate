@@ -12,7 +12,7 @@ pub(crate) use namespace::ControlMountNamespace;
 /// owner lives. This does not prevent privileged callers bypassing the protocol,
 /// namespace disappearance, or replacement of the directory by its parent owner.
 #[derive(Debug)]
-pub struct RecoveryDirectory {
+pub(crate) struct RecoveryDirectory {
     lease: Arc<DirectoryLease>,
 }
 /// Internal shared lock ownership; no descriptor or early unlock escapes.
@@ -32,7 +32,7 @@ impl RecoveryDirectory {
         Ok(RecoveryLease(Arc::clone(&self.lease)))
     }
 
-    pub fn open(path: &Path) -> io::Result<Self> {
+    pub(crate) fn open(path: &Path) -> io::Result<Self> {
         let namespace = ControlMountNamespace::capture()?;
         let file = DirectoryLease::open_directory(path)?;
         namespace.verify_attached(&file)?;

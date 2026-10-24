@@ -8,7 +8,7 @@ impl StepStorage for BootstrapVolumes<'_, '_, '_, Mounted> {}
 impl<'l> Step<'l, Ready> {
     /// Consume both mounted owners before commands are admitted. Neither can
     /// be extracted until descendant drain, namespace cleanup and finalization.
-    pub fn with_bootstrap<'n, 'o, 'w>(
+    pub(crate) fn with_bootstrap<'n, 'o, 'w>(
         self,
         volumes: BootstrapVolumes<'n, 'o, 'w, Mounted>,
     ) -> Step<'l, Ready, BootstrapVolumes<'n, 'o, 'w, Mounted>> {

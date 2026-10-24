@@ -28,9 +28,9 @@ const MAX_ARGUMENT: usize = 128 * 1024;
 /// parsing. It is launched before entering the image root; no executable is
 /// copied into that root. The deployment owns this executable and its libraries.
 #[derive(Debug)]
-pub struct HelperProgram(PathBuf);
+pub(crate) struct HelperProgram(PathBuf);
 impl HelperProgram {
-    pub fn current() -> io::Result<Self> {
+    pub(crate) fn current() -> io::Result<Self> {
         std::env::current_exe().map(Self)
     }
     fn command(&self, invocation: HelperInvocation) -> io::Result<Command> {
@@ -64,13 +64,13 @@ impl HelperProgram {
             },
         })
     }
-    pub fn namespace_creator(&self, cutoff: SetupCutoff) -> io::Result<Command> {
+    pub(crate) fn namespace_creator(&self, cutoff: SetupCutoff) -> io::Result<Command> {
         self.command(HelperInvocation {
             cutoff,
             role: Role::Seed,
         })
     }
-    pub fn receiver(
+    pub(crate) fn receiver(
         &self,
         script: String,
         cutoff: SetupCutoff,
@@ -122,7 +122,7 @@ impl Role {
 /// fixture fault. Possession is not authorization: only the supervisor launches
 /// these roles and supplies their private startup descriptors/containment.
 #[derive(Debug)]
-pub struct HelperInvocation {
+pub(crate) struct HelperInvocation {
     cutoff: SetupCutoff,
     role: Role,
 }
@@ -134,7 +134,7 @@ impl HelperInvocation {
     /// # Errors
     /// Rejects a selected helper invocation with the wrong argument count,
     /// non-UTF-8/invalid hexadecimal CBOR, or an invalid launch description.
-    pub fn parse(arguments: &[OsString]) -> io::Result<Option<Self>> {
+    pub(crate) fn parse(arguments: &[OsString]) -> io::Result<Option<Self>> {
         if arguments.first().map(OsString::as_os_str) != Some(OsStr::new(SELECTOR)) {
             return Ok(None);
         }
@@ -262,7 +262,7 @@ impl HelperInvocation {
     }
     /// Must be called in the dedicated helper process. Every path exits; no
     /// caller can continue supervisor work after partial namespace/root entry.
-    pub fn execute(self, program: &HelperProgram) -> ! {
+    pub(crate) fn execute(self, program: &HelperProgram) -> ! {
         let result = self.run(program);
         match result {
             Ok(status) => {

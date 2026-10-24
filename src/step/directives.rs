@@ -16,7 +16,7 @@ use crate::{
 use std::{io, time::Instant};
 
 /// Sealed layouts supporting trusted COPY between finalized commands.
-pub trait DirectiveStorage:
+pub(crate) trait DirectiveStorage:
     ExecutionStorage + super::PreparationStorage + super::NetworkEligibleStorage
 {
     #[doc(hidden)]
@@ -33,17 +33,17 @@ impl DirectiveStorage for BootstrapVolumes<'_, '_, '_, Mounted> {
     }
 }
 #[derive(Debug)]
-pub struct CompletedDirectives<R: DirectiveStorage> {
+pub(crate) struct CompletedDirectives<R: DirectiveStorage> {
     storage: R::Unmounted,
     reaper: ChildReaper,
 }
 impl<R: DirectiveStorage> CompletedDirectives<R> {
-    pub fn into_parts(self) -> (R::Unmounted, ChildReaper) {
+    pub(crate) fn into_parts(self) -> (R::Unmounted, ChildReaper) {
         (self.storage, self.reaper)
     }
 }
 #[derive(Debug, thiserror::Error)]
-pub enum StageFailure<'l, R: DirectiveStorage> {
+pub(crate) enum StageFailure<'l, R: DirectiveStorage> {
     #[error("directive {index}: {source}")]
     Before {
         index: usize,
@@ -80,18 +80,18 @@ enum CopyCleanup<R: DirectiveStorage> {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("COPY: {diagnostics}")]
-pub struct CopyStageFailure<R: DirectiveStorage> {
+pub(crate) struct CopyStageFailure<R: DirectiveStorage> {
     diagnostics: FailureDiagnostics,
     cleanup: CopyCleanup<R>,
     deadline: Instant,
     reaper: ChildReaper,
 }
 impl<R: DirectiveStorage> CopyStageFailure<R> {
-    pub fn diagnostics(&self) -> &FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
         &self.diagnostics
     }
     /// Retry only cleanup under its original cutoff. The failed COPY remains failed.
-    pub fn retry_cleanup(mut self) -> Self {
+    pub(crate) fn retry_cleanup(mut self) -> Self {
         if matches!(self.cleanup, CopyCleanup::Complete(_)) {
             return self;
         }
@@ -118,7 +118,7 @@ impl<R: DirectiveStorage> CopyStageFailure<R> {
         }
         self
     }
-    pub fn into_rejected_storage(
+    pub(crate) fn into_rejected_storage(
         self,
     ) -> Result<(FailureDiagnostics, R::Unmounted, ChildReaper), Box<Self>> {
         match self.cleanup {
@@ -129,7 +129,7 @@ impl<R: DirectiveStorage> CopyStageFailure<R> {
 }
 impl<'l> CommandSandbox<'l> {
     /// Offline execution entrypoint; enabled steps require captured networking.
-    pub fn directives<R: DirectiveStorage>(
+    pub(crate) fn directives<R: DirectiveStorage>(
         &self,
         storage: R::Unmounted,
         reaper: ChildReaper,
@@ -142,7 +142,7 @@ impl<'l> CommandSandbox<'l> {
     /// Execute in authored order. Each RUN gets fresh mounts and its recipe
     /// timeout; each COPY runs exclusively between quiescent commands.
     /// Network-enabled steps require the captured build environment.
-    pub fn directives_with_network<R: DirectiveStorage>(
+    pub(crate) fn directives_with_network<R: DirectiveStorage>(
         &self,
         mut storage: R::Unmounted,
         mut reaper: ChildReaper,

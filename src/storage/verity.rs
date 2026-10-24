@@ -28,7 +28,7 @@ use std::{io, num::NonZeroU64};
 /// }
 /// ```
 #[derive(Debug)]
-pub struct VerityMapping<'s, 'w> {
+pub(crate) struct VerityMapping<'s, 'w> {
     mapping: Mapping<Active>,
     inputs: Inputs<'s, 'w>,
 }
@@ -52,15 +52,15 @@ enum Cleanup<'s, 'w> {
 
 #[derive(Debug, thiserror::Error)]
 #[error("verity mapping: {source}")]
-pub struct VerityFailure<'s, 'w> {
+pub(crate) struct VerityFailure<'s, 'w> {
     source: super::FailureDiagnostics,
     cleanup: Cleanup<'s, 'w>,
 }
 impl VerityFailure<'_, '_> {
-    pub fn source_error(&self) -> &io::Error {
+    pub(crate) fn source_error(&self) -> &io::Error {
         self.source.latest()
     }
-    pub fn cleanup(self) -> Result<(), Self> {
+    pub(crate) fn cleanup(self) -> Result<(), Self> {
         self.cleanup
             .close()
             .map_err(|Self { source, cleanup }| Self {
@@ -68,13 +68,13 @@ impl VerityFailure<'_, '_> {
                 cleanup,
             })
     }
-    pub fn diagnostics(&self) -> &super::FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &super::FailureDiagnostics {
         &self.source
     }
 }
 
 impl<'s, 'w> PreparedScute<'s, 'w> {
-    pub fn activate(self) -> Result<VerityMapping<'s, 'w>, VerityFailure<'s, 'w>> {
+    pub(crate) fn activate(self) -> Result<VerityMapping<'s, 'w>, VerityFailure<'s, 'w>> {
         let data = match LoopDevice::<ReadOnly>::attach(self.files().0) {
             Ok(data) => data,
             Err(source) => {
@@ -151,10 +151,10 @@ impl<'s, 'w> VerityMapping<'s, 'w> {
         Ok(header)
     }
     /// Diagnostic identity, not an independent lifetime lease.
-    pub fn id(&self) -> devmap_linux::DevId {
+    pub(crate) fn id(&self) -> devmap_linux::DevId {
         self.mapping.id()
     }
-    pub fn close(self) -> Result<(), VerityFailure<'s, 'w>> {
+    pub(crate) fn close(self) -> Result<(), VerityFailure<'s, 'w>> {
         match self.mapping.close() {
             Ok(()) => Cleanup::Inputs(self.inputs).close(),
             Err(failure) => Err(Cleanup::mapping(failure, self.inputs)),

@@ -13,12 +13,12 @@ use std::{collections::BTreeMap, io};
 /// No policy file or recipe can add authority. Other ABIs are rejected by the
 /// generated architecture guard (x32 numbers also miss the native allowlist).
 #[derive(Debug)]
-pub struct CommandSyscalls {
+pub(crate) struct CommandSyscalls {
     fallback: BpfProgram,
     allowed: BpfProgram,
 }
 impl CommandSyscalls {
-    pub fn compile() -> io::Result<Self> {
+    pub(crate) fn compile() -> io::Result<Self> {
         if !cfg!(any(target_arch = "x86_64", target_arch = "aarch64")) {
             return Err(io::Error::other(
                 "command syscall policy supports amd64/arm64 only",
@@ -112,7 +112,7 @@ impl CommandSyscalls {
     /// privilege finalization, mounts and descriptor setup. Failure can leave
     /// no_new_privs or the fallback filter installed: exit the helper, never
     /// execute a command after failure. Installation itself is not admission.
-    pub fn apply(self) -> io::Result<()> {
+    pub(crate) fn apply(self) -> io::Result<()> {
         if !crate::process::ThreadSnapshot::capture()?.is_single() {
             return Err(io::Error::other("syscall setup requires one thread"));
         }

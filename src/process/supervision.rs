@@ -10,22 +10,22 @@ use rustix::{
 use std::{io, process::Stdio, time::Instant};
 
 mod volume;
-pub use volume::VolumeInput;
+pub(crate) use volume::VolumeInput;
 mod admission;
-pub use admission::Admitted;
+pub(crate) use admission::Admitted;
 mod joining;
-pub use joining::Joined;
+pub(crate) use joining::Joined;
 
 mod private {
-    pub trait Sealed {}
+    pub(crate) trait Sealed {}
 }
-pub trait SupervisionState: private::Sealed + std::fmt::Debug {
+pub(crate) trait SupervisionState: private::Sealed + std::fmt::Debug {
     type Resources: std::fmt::Debug;
 }
 #[derive(Debug)]
-pub struct Unpaired;
+pub(crate) struct Unpaired;
 #[derive(Debug)]
-pub struct Paired;
+pub(crate) struct Paired;
 impl private::Sealed for Unpaired {}
 impl private::Sealed for Paired {}
 impl SupervisionState for Unpaired {
@@ -59,20 +59,20 @@ impl Drop for ControlSocket {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct Supervision<S: SupervisionState> {
+pub(crate) struct Supervision<S: SupervisionState> {
     socket: ControlSocket,
     peer: S::Resources,
 }
 /// Startup endpoint transferred exclusively to a trusted helper's stdin.
 #[derive(Debug)]
-pub struct SupervisionChild(OwnedFd);
+pub(crate) struct SupervisionChild(OwnedFd);
 impl From<SupervisionChild> for Stdio {
     fn from(child: SupervisionChild) -> Self {
         child.0.into()
     }
 }
 impl Supervision<Unpaired> {
-    pub fn pair() -> io::Result<(Self, SupervisionChild)> {
+    pub(crate) fn pair() -> io::Result<(Self, SupervisionChild)> {
         let (parent, child) = socketpair(
             AddressFamily::UNIX,
             SocketType::SEQPACKET,
@@ -89,7 +89,7 @@ impl Supervision<Unpaired> {
     }
     /// Dedicated trusted helper startup only, before concurrent stdin access.
     /// Moves stdin to a CLOEXEC descriptor and replaces stdin with /dev/null.
-    pub fn from_stdin() -> io::Result<Self> {
+    pub(crate) fn from_stdin() -> io::Result<Self> {
         Ok(Self {
             socket: ControlSocket(IdentitySocket::from_stdin()?),
             peer: (),
@@ -97,7 +97,7 @@ impl Supervision<Unpaired> {
     }
     /// Both peers send their own pidfd, then receive the other under one deadline.
     /// Error closes/cancels the channel; separately owned children still need reaping.
-    pub fn exchange_until(self, deadline: Instant) -> io::Result<Supervision<Paired>> {
+    pub(crate) fn exchange_until(self, deadline: Instant) -> io::Result<Supervision<Paired>> {
         self.exchange_with(&deadline)
     }
     pub(super) fn exchange_with(
@@ -112,7 +112,7 @@ impl Supervision<Unpaired> {
         })
     }
 }
-pub trait ObservedState: SupervisionState<Resources = ProcessObservation> {}
+pub(crate) trait ObservedState: SupervisionState<Resources = ProcessObservation> {}
 impl ObservedState for Paired {}
 impl ObservedState for Joined {}
 impl ObservedState for Admitted {}
@@ -127,13 +127,13 @@ impl<S: ObservedState> Supervision<S> {
     /// expected channel completion to avoid killing a helper during its normal
     /// exit. A timeout still requires cancellation; success does not reap it or
     /// establish descendant quiescence.
-    pub fn wait_for_peer_exit_until(&self, deadline: Instant) -> io::Result<()> {
+    pub(crate) fn wait_for_peer_exit_until(&self, deadline: Instant) -> io::Result<()> {
         self.peer.wait_until(deadline)
     }
 
     /// Wait on both the stable process identity and the private channel. Timeout
     /// is not evidence of liveness; no resource cleanup or reaping happens here.
-    pub fn wait_for_loss_until(&self, deadline: Instant) -> io::Result<()> {
+    pub(crate) fn wait_for_loss_until(&self, deadline: Instant) -> io::Result<()> {
         loop {
             if self.peer_lost()? {
                 return Ok(());
@@ -167,7 +167,7 @@ impl<S: ObservedState> Supervision<S> {
     /// never that descendants are quiescent. Errors must also fail the build.
     /// Outside an explicit domain-join exchange, no messages are accepted. Invalid
     /// traffic remains queued so subsequent observations cannot report healthy.
-    pub fn peer_lost(&self) -> io::Result<bool> {
+    pub(crate) fn peer_lost(&self) -> io::Result<bool> {
         if self.peer.has_exited()? {
             return Ok(true);
         }

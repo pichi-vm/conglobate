@@ -30,7 +30,7 @@ use std::{
 /// }
 /// ```
 #[derive(Debug)]
-pub struct Runtime<'w> {
+pub(crate) struct Runtime<'w> {
     recovery: RecoveryDirectory,
     mounts: RuntimeMounts<'w>,
 }
@@ -45,7 +45,7 @@ struct RuntimeMounts<'w> {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("build runtime: {source}")]
-pub struct RuntimeFailure<'w> {
+pub(crate) struct RuntimeFailure<'w> {
     source: io::Error,
     retained: Option<RuntimeMounts<'w>>,
     deadline: Instant,
@@ -54,7 +54,7 @@ pub struct RuntimeFailure<'w> {
 /// failures retain the runtime owner; successful operation output never escapes
 /// alongside a failed close.
 #[derive(Debug, thiserror::Error)]
-pub enum RuntimeScopeFailure<'w, E> {
+pub(crate) enum RuntimeScopeFailure<'w, E> {
     #[error("{0}")]
     Create(RuntimeFailure<'w>),
     #[error("{0}")]
@@ -79,7 +79,7 @@ impl RuntimeFailure<'_> {
         source
     }
 
-    pub fn cleanup(self) -> Result<(), Self> {
+    pub(crate) fn cleanup(self) -> Result<(), Self> {
         let Self {
             source,
             retained,
@@ -108,7 +108,7 @@ impl<'w> Runtime<'w> {
     ///         |runtime| runtime.paths());
     /// }
     /// ```
-    pub fn scoped<T, E>(
+    pub(crate) fn scoped<T, E>(
         workspace: &'w Workspace,
         parent: &Path,
         operation: impl FnOnce(&Self) -> Result<T, E>,
@@ -125,7 +125,7 @@ impl<'w> Runtime<'w> {
     /// The deployment parent must be a real root-owned directory, not writable
     /// by group/other. Only an empty private attachment point is created there;
     /// mutable control data lives on the existing workspace tmpfs.
-    pub fn create(workspace: &'w Workspace, parent: &Path) -> Result<Self, RuntimeFailure<'w>> {
+    pub(crate) fn create(workspace: &'w Workspace, parent: &Path) -> Result<Self, RuntimeFailure<'w>> {
         let budget = SetupBudget::begin();
         let before = |source| RuntimeFailure {
             source,
@@ -228,10 +228,10 @@ impl<'w> Runtime<'w> {
             }),
         }
     }
-    pub fn recovery(&self) -> &RecoveryDirectory {
+    pub(crate) fn recovery(&self) -> &RecoveryDirectory {
         &self.recovery
     }
-    pub fn paths(&self) -> io::Result<RuntimePaths<'_, 'w>> {
+    pub(crate) fn paths(&self) -> io::Result<RuntimePaths<'_, 'w>> {
         let root = std::fs::canonicalize(self.mounts.path())?;
         Ok(RuntimePaths {
             runtime: self,
@@ -240,7 +240,7 @@ impl<'w> Runtime<'w> {
             recovery: root.join("recovery"),
         })
     }
-    pub fn close(self) -> Result<(), RuntimeFailure<'w>> {
+    pub(crate) fn close(self) -> Result<(), RuntimeFailure<'w>> {
         let Self {
             recovery,
             mut mounts,
@@ -256,23 +256,23 @@ impl<'w> Runtime<'w> {
 }
 /// Borrowed by SandboxDirectories along with the runtime recovery lease.
 #[derive(Debug)]
-pub struct RuntimePaths<'r, 'w> {
+pub(crate) struct RuntimePaths<'r, 'w> {
     runtime: &'r Runtime<'w>,
     recovery: PathBuf,
     volumes: PathBuf,
     domains: PathBuf,
 }
 impl RuntimePaths<'_, '_> {
-    pub fn sandbox(&self) -> SandboxDirectories<'_> {
+    pub(crate) fn sandbox(&self) -> SandboxDirectories<'_> {
         SandboxDirectories::new(self.runtime.recovery(), &self.volumes, &self.domains)
     }
-    pub fn domains(&self) -> &Path {
+    pub(crate) fn domains(&self) -> &Path {
         &self.domains
     }
-    pub fn recovery(&self) -> &Path {
+    pub(crate) fn recovery(&self) -> &Path {
         &self.recovery
     }
-    pub fn volumes(&self) -> &Path {
+    pub(crate) fn volumes(&self) -> &Path {
         &self.volumes
     }
 }

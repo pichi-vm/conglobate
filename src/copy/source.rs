@@ -12,7 +12,7 @@ use std::{
 };
 
 #[derive(Debug, thiserror::Error)]
-pub enum SelectionError {
+pub(crate) enum SelectionError {
     #[error("COPY source matched no entries: {0}")]
     NoMatch(String),
     #[error("COPY source is missing or traverses a non-directory: {0:?}")]
@@ -25,27 +25,27 @@ pub enum SelectionError {
 /// A selected name and its resolved immutable object. Directory descendants are
 /// returned without following nested symlinks; a writer must preserve those links.
 #[derive(Debug)]
-pub struct CopySource<'a> {
+pub(crate) struct CopySource<'a> {
     selected: PathBuf,
     resolved: PathBuf,
     tree: SourceTree<'a>,
 }
 impl CopySource<'_> {
-    pub fn selected(&self) -> &Path {
+    pub(crate) fn selected(&self) -> &Path {
         &self.selected
     }
-    pub fn resolved(&self) -> &Path {
+    pub(crate) fn resolved(&self) -> &Path {
         &self.resolved
     }
     /// None denotes the context root directory, which has no Git entry of its own.
-    pub fn entry(&self) -> Option<&ContextEntry> {
+    pub(crate) fn entry(&self) -> Option<&ContextEntry> {
         self.tree.entries.get(&self.resolved)
     }
-    pub fn is_directory(&self) -> bool {
+    pub(crate) fn is_directory(&self) -> bool {
         self.resolved.as_os_str().is_empty()
             || matches!(self.entry(), Some(ContextEntry::Directory))
     }
-    pub fn descendants(&self) -> impl Iterator<Item = (&Path, &ContextEntry)> {
+    pub(crate) fn descendants(&self) -> impl Iterator<Item = (&Path, &ContextEntry)> {
         let directory = self.is_directory();
         self.tree
             .entries
@@ -58,11 +58,11 @@ impl CopySource<'_> {
     }
 }
 #[derive(Debug)]
-pub struct CopySources<'a> {
+pub(crate) struct CopySources<'a> {
     entries: Vec<CopySource<'a>>,
 }
 impl<'a> CopySources<'a> {
-    pub fn select(
+    pub(crate) fn select(
         context: &'a CapturedContext,
         patterns: &[SourcePattern],
     ) -> Result<Self, SelectionError> {
@@ -71,7 +71,7 @@ impl<'a> CopySources<'a> {
         }
         .select(patterns)
     }
-    pub fn entries(&self) -> &[CopySource<'a>] {
+    pub(crate) fn entries(&self) -> &[CopySource<'a>] {
         &self.entries
     }
 }

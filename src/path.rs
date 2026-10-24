@@ -8,7 +8,7 @@ use std::{
 };
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
-pub enum PathError {
+pub(crate) enum PathError {
     #[error("context path must be relative")]
     Absolute,
     #[error("context path escapes the selected context")]
@@ -21,21 +21,21 @@ pub enum PathError {
 
 /// A normalized relative file locator. This does not prove symlink confinement.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct RelativePath<K: PathKind> {
+pub(crate) struct RelativePath<K: PathKind> {
     path: PathBuf,
     kind: PhantomData<K>,
 }
 
 mod private {
-    pub trait Sealed {}
+    pub(crate) trait Sealed {}
 }
-pub trait PathKind: private::Sealed {
+pub(crate) trait PathKind: private::Sealed {
     const ALLOW_ROOT: bool;
 }
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct FilePath;
+pub(crate) struct FilePath;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct DirectoryPath;
+pub(crate) struct DirectoryPath;
 impl private::Sealed for FilePath {}
 impl private::Sealed for DirectoryPath {}
 impl PathKind for FilePath {
@@ -44,8 +44,8 @@ impl PathKind for FilePath {
 impl PathKind for DirectoryPath {
     const ALLOW_ROOT: bool = true;
 }
-pub type ContextPath = RelativePath<FilePath>;
-pub type ContextDirectory = RelativePath<DirectoryPath>;
+pub(crate) type ContextPath = RelativePath<FilePath>;
+pub(crate) type ContextDirectory = RelativePath<DirectoryPath>;
 
 impl<K: PathKind> TryFrom<&Path> for RelativePath<K> {
     type Error = PathError;

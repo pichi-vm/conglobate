@@ -41,29 +41,29 @@ impl Backing {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("formatter runtime cleanup: {source}")]
-pub struct FormatterCleanupFailure {
+pub(crate) struct FormatterCleanupFailure {
     source: io::Error,
     backing: Backing,
 }
 impl FormatterCleanupFailure {
-    pub fn source_error(&self) -> &io::Error {
+    pub(crate) fn source_error(&self) -> &io::Error {
         &self.source
     }
-    pub fn retry(self) -> Result<(), Self> {
+    pub(crate) fn retry(self) -> Result<(), Self> {
         self.backing.close()
     }
 }
 #[derive(Debug, thiserror::Error)]
 #[error("formatter staging: {source}")]
-pub struct FormatterStageFailure {
+pub(crate) struct FormatterStageFailure {
     source: io::Error,
     backing: Option<Backing>,
 }
 impl FormatterStageFailure {
-    pub fn source_error(&self) -> &io::Error {
+    pub(crate) fn source_error(&self) -> &io::Error {
         &self.source
     }
-    pub fn cleanup(self) -> Result<(), FormatterCleanupFailure> {
+    pub(crate) fn cleanup(self) -> Result<(), FormatterCleanupFailure> {
         self.cleanup_with_source().1
     }
     /// Preserve the operation cause while consuming the staging owner for one
@@ -82,13 +82,13 @@ impl FormatterStageFailure {
 /// The detached root closes before backing deletion. No mutable backing handle
 /// escapes; successful staging is not a formatter execution receipt.
 #[derive(Debug)]
-pub struct FormatterRuntime {
+pub(crate) struct FormatterRuntime {
     pub(super) root: File,
     backing: Backing,
     captured: CapturedFormatter,
 }
 impl CapturedFormatter {
-    pub fn stage(self, workspace: &Workspace) -> Result<FormatterRuntime, FormatterStageFailure> {
+    pub(crate) fn stage(self, workspace: &Workspace) -> Result<FormatterRuntime, FormatterStageFailure> {
         let backing = (|| -> io::Result<Backing> {
             let parent = workspace.staging_parent()?;
             let directory = tempfile::Builder::new()
@@ -169,12 +169,12 @@ impl CapturedFormatter {
     }
 }
 impl FormatterRuntime {
-    pub fn captured(&self) -> &CapturedFormatter {
+    pub(crate) fn captured(&self) -> &CapturedFormatter {
         &self.captured
     }
     /// Open measured runtime content through the read-only view. Returned files
     /// cannot regain the writable backing mount, including via chmod/truncate.
-    pub fn open(&self, path: &RelativePath<FilePath>) -> io::Result<File> {
+    pub(crate) fn open(&self, path: &RelativePath<FilePath>) -> io::Result<File> {
         Ok(rustix::fs::openat2(
             &self.root,
             path.as_ref(),
@@ -184,7 +184,7 @@ impl FormatterRuntime {
         )?
         .into())
     }
-    pub fn close(self) -> Result<(), FormatterCleanupFailure> {
+    pub(crate) fn close(self) -> Result<(), FormatterCleanupFailure> {
         let Self {
             root,
             backing,

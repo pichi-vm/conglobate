@@ -11,7 +11,7 @@ use std::{
 /// No writable handles escape. A successful preparation authenticates this read;
 /// cache-backed bytes still require dm-verity on every subsequent kernel read.
 #[derive(Debug)]
-pub struct PreparedScute<'scute, 'workspace> {
+pub(crate) struct PreparedScute<'scute, 'workspace> {
     source: Source<'scute, 'workspace>,
 }
 
@@ -35,7 +35,7 @@ enum Data<'workspace> {
 }
 
 impl<'s> VerifiedScute {
-    pub fn prepare<'w>(
+    pub(crate) fn prepare<'w>(
         &'s self,
         cache: &Cache,
         workspace: &'w Workspace,
@@ -130,13 +130,13 @@ impl<'s, 'w> PreparedScute<'s, 'w> {
             Source::Produced { header, .. } => **header,
         }
     }
-    pub fn root(&self) -> &[u8; 32] {
+    pub(crate) fn root(&self) -> &[u8; 32] {
         match &self.source {
             Source::Cached { scute, .. } => scute.root(),
             Source::Produced { scute, .. } => scute.root(),
         }
     }
-    pub fn is_cache_backed(&self) -> bool {
+    pub(crate) fn is_cache_backed(&self) -> bool {
         matches!(
             &self.source,
             Source::Cached {
@@ -145,10 +145,10 @@ impl<'s, 'w> PreparedScute<'s, 'w> {
             }
         )
     }
-    pub fn data_size(&self) -> io::Result<u64> {
+    pub(crate) fn data_size(&self) -> io::Result<u64> {
         Ok(self.files().0.metadata()?.len())
     }
-    pub fn hash_size(&self) -> io::Result<u64> {
+    pub(crate) fn hash_size(&self) -> io::Result<u64> {
         Ok(self.files().1.metadata()?.len())
     }
 }

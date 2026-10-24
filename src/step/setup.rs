@@ -17,24 +17,24 @@ const SETUP_TIMEOUT: Duration = Duration::from_secs(30);
 /// Start before step preparation. All setup operations share this cutoff; it is
 /// neither configurable nor renewed when helper readiness is received.
 #[derive(Debug)]
-pub struct SetupBudget {
+pub(crate) struct SetupBudget {
     deadline: Instant,
 }
 impl SetupBudget {
-    pub fn begin() -> Self {
+    pub(crate) fn begin() -> Self {
         Self {
             deadline: Instant::now() + SETUP_TIMEOUT,
         }
     }
     /// Export a conservative absolute cutoff for trusted helpers in this VM.
-    pub fn cutoff(&self) -> io::Result<super::SetupCutoff> {
+    pub(crate) fn cutoff(&self) -> io::Result<super::SetupCutoff> {
         self.check()?;
         super::SetupCutoff::from_deadline(self.deadline)
     }
-    pub fn deadline(&self) -> Instant {
+    pub(crate) fn deadline(&self) -> Instant {
         self.deadline
     }
-    pub fn check(&self) -> io::Result<()> {
+    pub(crate) fn check(&self) -> io::Result<()> {
         if Instant::now() >= self.deadline {
             Err(io::Error::new(
                 io::ErrorKind::TimedOut,
@@ -44,7 +44,7 @@ impl SetupBudget {
             Ok(())
         }
     }
-    pub fn await_prepared<'a, R: StepStorage>(
+    pub(crate) fn await_prepared<'a, R: StepStorage>(
         self,
         step: Step<'a, Ready, R>,
     ) -> Result<PreparedStep<'a, R>, Box<StepFailure<'a, Ready, R>>> {
@@ -66,17 +66,17 @@ impl SetupBudget {
 /// The trusted leaf has finished isolation and is blocked on the start gate.
 /// No execution budget has been consumed yet.
 #[derive(Debug)]
-pub struct PreparedStep<'a, R: StepStorage> {
+pub(crate) struct PreparedStep<'a, R: StepStorage> {
     step: Step<'a, Ready, R>,
     budget: SetupBudget,
 }
 #[derive(Debug)]
-pub struct RunningCommand<'a, R: StepStorage> {
+pub(crate) struct RunningCommand<'a, R: StepStorage> {
     step: Step<'a, Running, R>,
     deadline: Instant,
 }
 #[derive(Debug, thiserror::Error)]
-pub enum CommandStartFailure<'a, R: StepStorage> {
+pub(crate) enum CommandStartFailure<'a, R: StepStorage> {
     #[error("before start: {0}")]
     Ready(Box<StepFailure<'a, Ready, R>>),
     #[error("command admission: {0}")]
@@ -90,7 +90,7 @@ pub enum CommandStartFailure<'a, R: StepStorage> {
 impl<'a, R: StepStorage> PreparedStep<'a, R> {
     /// Count final admission/launch overhead as execution time, after all slow
     /// sandbox setup. A delayed acknowledgment never extends either cutoff.
-    pub fn start(
+    pub(crate) fn start(
         self,
         timeout: CommandTimeout,
     ) -> Result<RunningCommand<'a, R>, Box<CommandStartFailure<'a, R>>> {
@@ -143,13 +143,13 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
         self.step.teardown_until(deadline)
     }
 
-    pub fn deadline(&self) -> Instant {
+    pub(crate) fn deadline(&self) -> Instant {
         self.deadline
     }
-    pub fn supervision(&self) -> &Supervision<Admitted> {
+    pub(crate) fn supervision(&self) -> &Supervision<Admitted> {
         self.step.supervision()
     }
-    pub fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+    pub(crate) fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         self.step.teardown()
     }
 }

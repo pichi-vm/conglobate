@@ -3,14 +3,14 @@
 
 //! Validated COPY descriptions; filesystem execution is a separate authority.
 mod mode;
-pub use mode::{CopyMode, ModeError};
+pub(crate) use mode::{CopyMode, ModeError};
 
 mod pattern;
-pub use pattern::{PatternError, SourcePattern};
+pub(crate) use pattern::{PatternError, SourcePattern};
 
 mod source;
-pub use source::{CopySource, CopySources, SelectionError};
+pub(crate) use source::{CopySource, CopySources, SelectionError};
 
 mod destination;
 pub(crate) use destination::CopyDestination;
-pub use destination::CopyError;
+pub(crate) use destination::CopyError;

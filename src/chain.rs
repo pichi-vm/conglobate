@@ -10,7 +10,7 @@ use std::{
 };
 
 #[derive(Debug, thiserror::Error)]
-pub enum ChainError {
+pub(crate) enum ChainError {
     #[error("scute I/O: {0}")]
     Io(#[from] io::Error),
     #[error("invalid scute: {0}")]
@@ -20,7 +20,7 @@ pub enum ChainError {
 /// Describes a known decoded extent. Compression must be measured before this
 /// value is constructed; verity never receives an unknown input length.
 #[derive(Debug)]
-pub struct ScuteExtent {
+pub(crate) struct ScuteExtent {
     size: u64,
     parent: [u8; 32],
     header: Header,
@@ -29,7 +29,7 @@ impl ScuteExtent {
     pub(crate) fn header(&self) -> Header {
         self.header
     }
-    pub fn new(size: u64, salt: &[u8], declared_blocks: Option<u64>) -> Result<Self, ChainError> {
+    pub(crate) fn new(size: u64, salt: &[u8], declared_blocks: Option<u64>) -> Result<Self, ChainError> {
         let blocks = size.div_ceil(4096);
         if size == 0 || declared_blocks.is_some_and(|count| count != blocks) {
             return Err(ChainError::Invalid("empty scute or mismatched block count"));
@@ -61,20 +61,20 @@ impl ScuteExtent {
             header,
         })
     }
-    pub fn parent(&self) -> &[u8; 32] {
+    pub(crate) fn parent(&self) -> &[u8; 32] {
         &self.parent
     }
-    pub fn size(&self) -> u64 {
+    pub(crate) fn size(&self) -> u64 {
         self.size
     }
     /// Hash exactly the decoded bytes, with canonical zero block padding.
     /// EOF is mandatory; trailing bytes and late decoder errors fail.
-    pub fn root(&self, input: impl Read) -> Result<[u8; 32], ChainError> {
+    pub(crate) fn root(&self, input: impl Read) -> Result<[u8; 32], ChainError> {
         self.format(input, DiscardTree::default())
     }
     /// Emit the verity header/tree for this exact decoded extent. The caller
     /// must compare the returned root with its trusted root before using it.
-    pub fn format(
+    pub(crate) fn format(
         &self,
         mut input: impl Read,
         output: impl Write + Seek,

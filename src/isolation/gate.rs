@@ -18,16 +18,16 @@ use std::{
 };
 
 mod private {
-    pub trait Sealed {}
+    pub(crate) trait Sealed {}
 }
-pub trait GateState: private::Sealed + std::fmt::Debug {}
+pub(crate) trait GateState: private::Sealed + std::fmt::Debug {}
 #[derive(Debug)]
-pub struct Waiting;
+pub(crate) struct Waiting;
 #[derive(Debug)]
-pub struct Ready;
+pub(crate) struct Ready;
 /// Start was sent; only a terminal shell-status report can be received.
 #[derive(Debug)]
-pub struct Started;
+pub(crate) struct Started;
 impl private::Sealed for Waiting {}
 impl private::Sealed for Ready {}
 impl private::Sealed for Started {}
@@ -50,17 +50,17 @@ impl Drop for Control {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct ExecutionGate<S: GateState> {
+pub(crate) struct ExecutionGate<S: GateState> {
     socket: Control,
     state: PhantomData<S>,
 }
 /// Passed only between trusted setup helpers; converts to an init-only reporter.
 #[derive(Debug)]
-pub struct ExecutionEndpoint(Socket);
+pub(crate) struct ExecutionEndpoint(Socket);
 #[derive(Debug)]
 struct Socket(OwnedFd);
 impl ExecutionGate<Waiting> {
-    pub fn pair() -> io::Result<(Self, ExecutionEndpoint)> {
+    pub(crate) fn pair() -> io::Result<(Self, ExecutionEndpoint)> {
         let (parent, child) = net::socketpair(
             AddressFamily::UNIX,
             SocketType::SEQPACKET,
@@ -75,7 +75,7 @@ impl ExecutionGate<Waiting> {
             ExecutionEndpoint(Socket(child)),
         ))
     }
-    pub fn wait_ready_until(self, deadline: Instant) -> io::Result<ExecutionGate<Ready>> {
+    pub(crate) fn wait_ready_until(self, deadline: Instant) -> io::Result<ExecutionGate<Ready>> {
         self.socket.0.receive(1, deadline)?;
         Ok(ExecutionGate {
             socket: self.socket,
@@ -86,7 +86,7 @@ impl ExecutionGate<Waiting> {
 /// Status-only endpoint for resident init. It conveys no filesystem or
 /// cancellation authority. Image children must not inherit it across exec.
 #[derive(Debug)]
-pub struct CompletionEndpoint(Socket);
+pub(crate) struct CompletionEndpoint(Socket);
 impl CompletionEndpoint {
     pub(super) fn owns_descriptor(&self, fd: i32) -> bool {
         use std::os::fd::AsRawFd;
@@ -104,7 +104,7 @@ impl CompletionEndpoint {
 
     /// Send once without waiting for peer cleanup. A full/broken channel fails;
     /// it never extends command time with a new relative timeout.
-    pub fn report(self, status: ExitStatus) -> io::Result<()> {
+    pub(crate) fn report(self, status: ExitStatus) -> io::Result<()> {
         let packet = CompletionPacket::new(status)?;
         loop {
             match net::send(
@@ -156,7 +156,7 @@ impl CompletionPacket {
 impl ExecutionGate<Started> {
     /// Observe shell status only. This is not helper exit, descendant quiescence,
     /// resolver cleanup, or permission to finalize/publish storage.
-    pub fn completion_until(self, deadline: Instant) -> io::Result<ExitStatus> {
+    pub(crate) fn completion_until(self, deadline: Instant) -> io::Result<ExitStatus> {
         self.completion(Some(deadline))
     }
     /// Trusted contained receiver only. Its supervisor owns the execution timer
@@ -206,7 +206,7 @@ impl ExecutionGate<Started> {
 }
 impl ExecutionGate<Ready> {
     /// Retain a status-only observation channel after authorizing start.
-    pub fn start_reporting_until(self, deadline: Instant) -> io::Result<ExecutionGate<Started>> {
+    pub(crate) fn start_reporting_until(self, deadline: Instant) -> io::Result<ExecutionGate<Started>> {
         self.socket.0.send(2, deadline)?;
         Ok(ExecutionGate {
             socket: self.socket,
@@ -214,14 +214,14 @@ impl ExecutionGate<Ready> {
         })
     }
 
-    pub fn start_until(self, deadline: Instant) -> io::Result<()> {
+    pub(crate) fn start_until(self, deadline: Instant) -> io::Result<()> {
         self.socket.0.send(2, deadline)
     }
 }
 impl ExecutionEndpoint {
     /// Complete startup and retain only the ability to report shell status.
     /// The caller is trusted resident init, not the image shell.
-    pub fn ready_for_reporting(self, deadline: Instant) -> io::Result<CompletionEndpoint> {
+    pub(crate) fn ready_for_reporting(self, deadline: Instant) -> io::Result<CompletionEndpoint> {
         self.0.send(1, deadline)?;
         self.0.receive(2, deadline)?;
         Ok(CompletionEndpoint(self.0))

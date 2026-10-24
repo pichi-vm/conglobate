@@ -38,12 +38,12 @@ pub(super) enum TransformDocument {
     },
 }
 #[derive(Debug)]
-pub enum TransformSelection {
+pub(crate) enum TransformSelection {
     Builtin,
     Authored(Vec<TransformOperation>),
 }
 #[derive(Debug)]
-pub enum PropertyValue {
+pub(crate) enum PropertyValue {
     String(Template),
     Strings(Vec<Template>),
     U32(u32),
@@ -53,7 +53,7 @@ pub enum PropertyValue {
     Bytes(Vec<u8>),
 }
 #[derive(Debug)]
-pub enum TransformAction {
+pub(crate) enum TransformAction {
     Set(PropertyValue),
     Remove,
     Regex {
@@ -62,19 +62,19 @@ pub enum TransformAction {
     },
 }
 #[derive(Debug)]
-pub struct TransformOperation {
+pub(crate) struct TransformOperation {
     property: String,
     exists: Option<String>,
     action: TransformAction,
 }
 impl TransformOperation {
-    pub fn property(&self) -> &str {
+    pub(crate) fn property(&self) -> &str {
         &self.property
     }
-    pub fn exists(&self) -> Option<&str> {
+    pub(crate) fn exists(&self) -> Option<&str> {
         self.exists.as_deref()
     }
-    pub fn action(&self) -> &TransformAction {
+    pub(crate) fn action(&self) -> &TransformAction {
         &self.action
     }
     fn property_path(path: &str) -> Result<(), RecipeError> {

@@ -3,12 +3,12 @@
 //! Firmware permission to substitute a final measured external DTB.
 mod output;
 use ciborium::Value;
-pub use output::{ExtractedFirmware, ExtractionError, FinalizedFirmware};
+pub(crate) use output::{ExtractedFirmware, ExtractionError, FinalizedFirmware};
 use std::collections::BTreeSet;
 
 #[derive(Debug, thiserror::Error)]
 #[error("firmware/DTB compatibility: {0}")]
-pub struct FirmwareError(String);
+pub(crate) struct FirmwareError(String);
 impl FirmwareError {
     fn invalid(error: impl std::fmt::Display) -> Self {
         Self(error.to_string())
@@ -18,11 +18,11 @@ impl FirmwareError {
 /// already-signed launch identity. This is not validation of executable firmware
 /// or a signing operation. Unchanged DTBs do not need this permission.
 #[derive(Debug)]
-pub struct DtbContract {
+pub(crate) struct DtbContract {
     capacity: u32,
 }
 impl DtbContract {
-    pub fn from_pmi(bytes: &[u8]) -> Result<Self, FirmwareError> {
+    pub(crate) fn from_pmi(bytes: &[u8]) -> Result<Self, FirmwareError> {
         let pe = goblin::pe::PE::parse(bytes).map_err(FirmwareError::invalid)?;
         let mut targets = BTreeSet::new();
         let mut capacity = u32::MAX;
@@ -116,7 +116,7 @@ impl DtbContract {
         }
         Ok(Self { capacity })
     }
-    pub fn check_size(&self, bytes: usize) -> Result<(), FirmwareError> {
+    pub(crate) fn check_size(&self, bytes: usize) -> Result<(), FirmwareError> {
         if bytes > self.capacity as usize {
             Err(FirmwareError::invalid(
                 "transformed DTB exceeds firmware reserved capacity",

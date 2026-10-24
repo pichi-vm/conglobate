@@ -7,17 +7,17 @@ use std::io;
 /// State denotes both volumes; partial finalization exists only in its owning
 /// failure, never as an independently extractable output.
 #[derive(Debug)]
-pub struct BootstrapVolumes<'ns, 'origin, 'workspace, S: VolumeState> {
+pub(crate) struct BootstrapVolumes<'ns, 'origin, 'workspace, S: VolumeState> {
     tool: Volume<'ns, 'origin, 'workspace, S>,
     output: Volume<'ns, 'origin, 'workspace, S>,
 }
 impl<'n, 'o, 'w, S: VolumeState> BootstrapVolumes<'n, 'o, 'w, S> {
-    pub fn new(tool: Volume<'n, 'o, 'w, S>, output: Volume<'n, 'o, 'w, S>) -> Self {
+    pub(crate) fn new(tool: Volume<'n, 'o, 'w, S>, output: Volume<'n, 'o, 'w, S>) -> Self {
         Self { tool, output }
     }
 }
 impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Unmounted> {
-    pub fn into_parts(self) -> (Volume<'n, 'o, 'w, Unmounted>, Volume<'n, 'o, 'w, Unmounted>) {
+    pub(crate) fn into_parts(self) -> (Volume<'n, 'o, 'w, Unmounted>, Volume<'n, 'o, 'w, Unmounted>) {
         (self.tool, self.output)
     }
     pub(crate) fn validate_snapshots(&self) -> io::Result<()> {
@@ -30,14 +30,14 @@ impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Unmounted> {
 /// partially mounted pair.
 #[derive(Debug, thiserror::Error)]
 #[error("bootstrap mount: {diagnostics}")]
-pub struct BootstrapMountFailure<'n, 'o, 'w> {
+pub(crate) struct BootstrapMountFailure<'n, 'o, 'w> {
     diagnostics: FailureDiagnostics,
     pending: Pending<'n, 'o, 'w>,
 }
 impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Unmounted> {
     /// Acquire both mounts under the caller's original setup cutoff. The
     /// trusted attachment parent contains only mountpoints, never image data.
-    pub fn mount_ext4_until(
+    pub(crate) fn mount_ext4_until(
         self,
         parent: &std::path::Path,
         deadline: std::time::Instant,
@@ -99,13 +99,13 @@ impl<'n, 'o, 'w> BootstrapMountFailure<'n, 'o, 'w> {
             Ok(())
         }
     }
-    pub fn diagnostics(&self) -> &FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
         &self.diagnostics
     }
     /// Use the enclosing preparation's teardown cutoff. A failed rollback owns
     /// that cutoff; subsequent retries cannot renew it. Original mount errors
     /// remain primary even if cleanup also fails.
-    pub fn rollback_until(
+    pub(crate) fn rollback_until(
         self,
         deadline: std::time::Instant,
     ) -> Result<BootstrapVolumes<'n, 'o, 'w, Unmounted>, Box<BootstrapUnmountFailure<'n, 'o, 'w>>>
@@ -155,14 +155,14 @@ struct Unmounting<'n, 'o, 'w> {
 /// ```
 #[derive(Debug, thiserror::Error)]
 #[error("bootstrap volumes unmount: {diagnostics}")]
-pub struct BootstrapUnmountFailure<'n, 'o, 'w> {
+pub(crate) struct BootstrapUnmountFailure<'n, 'o, 'w> {
     diagnostics: FailureDiagnostics,
     unmounting: Unmounting<'n, 'o, 'w>,
 }
 impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Mounted> {
     /// COPY sees the tool root at / and the output root at /mnt, including
     /// symlinks that cross that boundary. Both volumes remain exclusively owned.
-    pub fn copy(
+    pub(crate) fn copy(
         &mut self,
         context: &crate::context::CapturedContext,
         directive: &crate::recipe::Copy,
@@ -178,7 +178,7 @@ impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Mounted> {
         &self.output
     }
 
-    pub fn unmount(
+    pub(crate) fn unmount(
         self,
     ) -> Result<BootstrapVolumes<'n, 'o, 'w, Unmounted>, Box<BootstrapUnmountFailure<'n, 'o, 'w>>>
     {
@@ -190,7 +190,7 @@ impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Mounted> {
     }
     /// Keep the supplied cutoff through both unmounts and all retries. Used by
     /// step finalization with its existing teardown deadline, never a new budget.
-    pub fn unmount_until(
+    pub(crate) fn unmount_until(
         self,
         deadline: std::time::Instant,
     ) -> Result<BootstrapVolumes<'n, 'o, 'w, Unmounted>, Box<BootstrapUnmountFailure<'n, 'o, 'w>>>
@@ -203,10 +203,10 @@ impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Mounted> {
     }
 }
 impl<'n, 'o, 'w> BootstrapUnmountFailure<'n, 'o, 'w> {
-    pub fn diagnostics(&self) -> &FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
         &self.diagnostics
     }
-    pub fn retry(self) -> Result<BootstrapVolumes<'n, 'o, 'w, Unmounted>, Box<Self>> {
+    pub(crate) fn retry(self) -> Result<BootstrapVolumes<'n, 'o, 'w, Unmounted>, Box<Self>> {
         self.unmounting.run().map_err(|failure| {
             Box::new(Self {
                 diagnostics: self.diagnostics.followed_by(failure.diagnostics),

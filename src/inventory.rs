@@ -8,7 +8,7 @@ use ciborium::Value;
 use schema::*;
 
 #[derive(Debug, thiserror::Error)]
-pub enum InventoryError {
+pub(crate) enum InventoryError {
     #[error("inventory: {0}")]
     Invalid(String),
     #[error("inventory: read builder executable: {0}")]
@@ -28,7 +28,7 @@ impl InventoryError {
     }
 }
 #[derive(Debug)]
-pub struct Inventory {
+pub(crate) struct Inventory {
     document: Document,
     bytes: Vec<u8>,
 }
@@ -39,7 +39,7 @@ impl Inventory {
     /// # Errors
     /// Rejects malformed/trailing CBOR, noncanonical encoding, unsupported or
     /// invalid schema values, inconsistent components and invalid ordering.
-    pub fn decode(bytes: &[u8]) -> Result<Self, InventoryError> {
+    pub(crate) fn decode(bytes: &[u8]) -> Result<Self, InventoryError> {
         let mut input = bytes;
         let value: Value = ciborium::from_reader(&mut input).map_err(InventoryError::Decode)?;
         if !input.is_empty() {
@@ -69,10 +69,10 @@ impl Inventory {
         let bytes = CanonicalValue::new(value)?.encode()?;
         Ok(Self { document, bytes })
     }
-    pub fn bytes(&self) -> &[u8] {
+    pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
     }
-    pub fn version(&self) -> u32 {
+    pub(crate) fn version(&self) -> u32 {
         self.document.version
     }
 }

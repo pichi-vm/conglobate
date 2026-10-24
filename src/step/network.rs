@@ -14,7 +14,7 @@ use std::{io, marker::PhantomData, time::Instant};
 
 /// Storage layouts that may receive one command network. This marker is sealed
 /// by StepStorage; NetworkedStorage does not implement it, preventing nesting.
-pub trait NetworkEligibleStorage: ExecutionStorage {}
+pub(crate) trait NetworkEligibleStorage: ExecutionStorage {}
 impl NetworkEligibleStorage for Volume<'_, '_, '_, Mounted> {}
 impl NetworkEligibleStorage for BootstrapVolumes<'_, '_, '_, Mounted> {}
 
@@ -30,7 +30,7 @@ impl NetworkEligibleStorage for BootstrapVolumes<'_, '_, '_, Mounted> {}
 /// }
 /// ```
 #[derive(Debug)]
-pub struct NetworkedStorage<R: NetworkEligibleStorage> {
+pub(crate) struct NetworkedStorage<R: NetworkEligibleStorage> {
     storage: R,
     network: CommandNetwork,
 }
@@ -46,7 +46,7 @@ impl<R: NetworkEligibleStorage> StorageLayout for NetworkedStorage<R> {
 impl<'l, R: NetworkEligibleStorage> Step<'l, Ready, R> {
     /// Consume network ownership while the registered helper is blocked on its
     /// volume input. Failed setup and teardown retain it with the assigned root.
-    pub fn with_network(self, network: CommandNetwork) -> Step<'l, Ready, NetworkedStorage<R>> {
+    pub(crate) fn with_network(self, network: CommandNetwork) -> Step<'l, Ready, NetworkedStorage<R>> {
         Step {
             storage: Retained::new(NetworkedStorage {
                 storage: self.storage.release(),
@@ -60,7 +60,7 @@ impl<'l, R: NetworkEligibleStorage> Step<'l, Ready, R> {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("networked storage finalization: {pending:?}")]
-pub struct NetworkFinalizationFailure<R: NetworkEligibleStorage> {
+pub(crate) struct NetworkFinalizationFailure<R: NetworkEligibleStorage> {
     pending: Pending<R>,
 }
 #[derive(Debug)]

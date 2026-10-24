@@ -7,7 +7,7 @@ use std::{io, time::Instant};
 /// Per-step handle to environment networking and privately staged resolver bytes.
 /// Retained until descendant quiescence. Closing never changes the external network.
 #[derive(Debug)]
-pub struct CommandNetwork {
+pub(crate) struct CommandNetwork {
     namespace: NetworkNamespace,
     resolver: ResolverSource,
 }
@@ -18,13 +18,13 @@ impl CommandNetwork {
             resolver,
         }
     }
-    pub fn namespace(&self) -> &NetworkNamespace {
+    pub(crate) fn namespace(&self) -> &NetworkNamespace {
         &self.namespace
     }
     pub(crate) fn resolver_view(&self) -> io::Result<ResolverView> {
         self.resolver.view()
     }
-    pub fn close(self, deadline: Instant) -> Result<(), Box<NetworkCleanupFailure>> {
+    pub(crate) fn close(self, deadline: Instant) -> Result<(), Box<NetworkCleanupFailure>> {
         Cleanup {
             namespace: self.namespace,
             resolver: Resolver::Source(self.resolver),
@@ -46,15 +46,15 @@ struct Cleanup {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("command network cleanup: {diagnostics}")]
-pub struct NetworkCleanupFailure {
+pub(crate) struct NetworkCleanupFailure {
     diagnostics: FailureDiagnostics,
     cleanup: Cleanup,
 }
 impl NetworkCleanupFailure {
-    pub fn diagnostics(&self) -> &FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
         &self.diagnostics
     }
-    pub fn retry(self) -> Result<(), Box<Self>> {
+    pub(crate) fn retry(self) -> Result<(), Box<Self>> {
         self.cleanup.run().map_err(|failure| {
             Box::new(Self {
                 diagnostics: self

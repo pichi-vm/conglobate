@@ -17,15 +17,15 @@ use std::{
 };
 
 mod private {
-    pub trait Sealed {}
+    pub(crate) trait Sealed {}
 }
-pub trait VolumeState: private::Sealed + std::fmt::Debug {
+pub(crate) trait VolumeState: private::Sealed + std::fmt::Debug {
     type Resources: std::fmt::Debug;
 }
 #[derive(Debug)]
-pub struct Unmounted;
+pub(crate) struct Unmounted;
 #[derive(Debug)]
-pub struct Mounted;
+pub(crate) struct Mounted;
 impl private::Sealed for Unmounted {}
 impl private::Sealed for Mounted {}
 impl VolumeState for Unmounted {
@@ -35,7 +35,7 @@ impl VolumeState for Mounted {
     type Resources = MountedResources;
 }
 #[derive(Debug)]
-pub struct MountedResources {
+pub(crate) struct MountedResources {
     root: File,
     lease: MountLease,
 }
@@ -61,7 +61,7 @@ pub struct MountedResources {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct Volume<'ns, 'origin, 'workspace, S: VolumeState> {
+pub(crate) struct Volume<'ns, 'origin, 'workspace, S: VolumeState> {
     // Mount resources must drop before the underlying snapshot.
     resources: S::Resources,
     snapshot: SnapshotMapping<'origin, 'workspace>,
@@ -92,7 +92,7 @@ impl Scope<'_> {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct VolumeView<'volume> {
+pub(crate) struct VolumeView<'volume> {
     root: File,
     _volume: PhantomData<&'volume ()>,
     _thread: PhantomData<Rc<()>>,
@@ -101,7 +101,7 @@ impl<'volume> VolumeView<'volume> {
     pub(crate) fn descriptor(&self) -> io::Result<File> {
         self.root.try_clone()
     }
-    pub fn in_namespace<'ns>(
+    pub(crate) fn in_namespace<'ns>(
         self,
         scope: &'ns PrivateMountNamespace,
     ) -> io::Result<Mount<'ns, Detached>>
@@ -113,18 +113,18 @@ impl<'volume> VolumeView<'volume> {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("volume mount: {source}")]
-pub struct VolumeMountFailure<'ns, 'a, 'w> {
+pub(crate) struct VolumeMountFailure<'ns, 'a, 'w> {
     source: io::Error,
     volume: Volume<'ns, 'a, 'w, Unmounted>,
 }
 impl<'ns, 'a, 'w> VolumeMountFailure<'ns, 'a, 'w> {
-    pub fn into_parts(self) -> (io::Error, Volume<'ns, 'a, 'w, Unmounted>) {
+    pub(crate) fn into_parts(self) -> (io::Error, Volume<'ns, 'a, 'w, Unmounted>) {
         (self.source, self.volume)
     }
 }
 #[derive(Debug, thiserror::Error)]
 #[error("volume unmount: {source}")]
-pub struct VolumeUnmountFailure<'ns, 'a, 'w> {
+pub(crate) struct VolumeUnmountFailure<'ns, 'a, 'w> {
     source: super::FailureDiagnostics,
     pending: UnmountPending<'ns, 'a, 'w>,
 }
@@ -136,10 +136,10 @@ enum UnmountPending<'ns, 'a, 'w> {
 }
 impl<'ns, 'a, 'w> VolumeUnmountFailure<'ns, 'a, 'w> {
     /// Most recent failure. `diagnostics()` also retains the original operation.
-    pub fn source_error(&self) -> &io::Error {
+    pub(crate) fn source_error(&self) -> &io::Error {
         self.source.latest()
     }
-    pub fn retry(self) -> Result<Volume<'ns, 'a, 'w, Unmounted>, Self> {
+    pub(crate) fn retry(self) -> Result<Volume<'ns, 'a, 'w, Unmounted>, Self> {
         match self.pending {
             UnmountPending::Flush(volume) => volume.unmount(),
             UnmountPending::Mounted(lease, volume) => volume.release_mount(lease),
@@ -150,12 +150,12 @@ impl<'ns, 'a, 'w> VolumeUnmountFailure<'ns, 'a, 'w> {
             pending,
         })
     }
-    pub fn diagnostics(&self) -> &super::FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &super::FailureDiagnostics {
         &self.source
     }
 }
 impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
-    pub fn new(snapshot: SnapshotMapping<'a, 'w>, scope: &'ns PrivateMountNamespace) -> Self {
+    pub(crate) fn new(snapshot: SnapshotMapping<'a, 'w>, scope: &'ns PrivateMountNamespace) -> Self {
         Self {
             resources: (),
             snapshot,
@@ -163,7 +163,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
             _thread: PhantomData,
         }
     }
-    pub fn into_snapshot(self) -> SnapshotMapping<'a, 'w> {
+    pub(crate) fn into_snapshot(self) -> SnapshotMapping<'a, 'w> {
         self.snapshot
     }
     /// Observe snapshot health after all filesystem writes have been flushed.
@@ -172,7 +172,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
     }
     /// Mount under supervisor ownership in the verified init namespace.
     /// Command execution still requires its own private namespace and view.
-    pub fn in_init_namespace(
+    pub(crate) fn in_init_namespace(
         snapshot: SnapshotMapping<'a, 'w>,
         scope: &'ns RecoveryDirectory,
     ) -> Result<Self, VolumeMountFailure<'ns, 'a, 'w>> {
@@ -190,7 +190,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
     /// Initial backend is ext4, with fixed nodev/nosuid mount policy. The parent
     /// must be trusted tmpfs in this volume's mount namespace; it stores only the
     /// empty attachment directory, not image data. No recipe mount options pass through.
-    pub fn mount_ext4(
+    pub(crate) fn mount_ext4(
         self,
         parent: &Path,
     ) -> Result<Volume<'ns, 'a, 'w, Mounted>, VolumeMountFailure<'ns, 'a, 'w>> {
@@ -289,7 +289,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
     ///     drop(view);
     /// }
     /// ```
-    pub fn copy(
+    pub(crate) fn copy(
         &mut self,
         context: &crate::context::CapturedContext,
         directive: &crate::recipe::Copy,
@@ -325,10 +325,10 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
         crate::isolation::RuntimeTargets::resolve(&self.resources.root).map(|_| ())
     }
 
-    pub fn root_metadata(&self) -> io::Result<Metadata> {
+    pub(crate) fn root_metadata(&self) -> io::Result<Metadata> {
         self.resources.root.metadata()
     }
-    pub fn view(&self) -> io::Result<VolumeView<'_>> {
+    pub(crate) fn view(&self) -> io::Result<VolumeView<'_>> {
         self.scope.verify_current()?;
         let root = mount::open_tree(
             &self.resources.root,
@@ -343,7 +343,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
             _thread: PhantomData,
         })
     }
-    pub fn unmount(
+    pub(crate) fn unmount(
         self,
     ) -> Result<Volume<'ns, 'a, 'w, Unmounted>, VolumeUnmountFailure<'ns, 'a, 'w>> {
         if let Err(source) = self.scope.verify_current() {
@@ -439,7 +439,7 @@ impl Drop for MountLease {
 impl Volume<'_, '_, '_, Mounted> {
     /// Capture declared output files under an exclusive borrow. The coordinator
     /// separately proves command success and quiescence before this operation.
-    pub fn extract_firmware<'w>(
+    pub(crate) fn extract_firmware<'w>(
         &mut self,
         firmware: &crate::recipe::Firmware,
         workspace: &'w super::Workspace,

@@ -11,10 +11,10 @@ use std::{
     io::{self, BufReader, Read},
 };
 mod prepared;
-pub use prepared::PreparedScute;
+pub(crate) use prepared::PreparedScute;
 
 #[derive(Debug)]
-pub struct VerifiedScute {
+pub(crate) struct VerifiedScute {
     digest: ContentDigest,
     root: [u8; 32],
     extent: ScuteExtent,
@@ -22,23 +22,23 @@ pub struct VerifiedScute {
     blob_size: u64,
 }
 impl VerifiedScute {
-    pub fn digest(&self) -> &ContentDigest {
+    pub(crate) fn digest(&self) -> &ContentDigest {
         &self.digest
     }
-    pub fn root(&self) -> &[u8; 32] {
+    pub(crate) fn root(&self) -> &[u8; 32] {
         &self.root
     }
-    pub fn extent(&self) -> &ScuteExtent {
+    pub(crate) fn extent(&self) -> &ScuteExtent {
         &self.extent
     }
-    pub fn compressed(&self) -> bool {
+    pub(crate) fn compressed(&self) -> bool {
         self.compressed
     }
 }
 /// Content and ancestry verified during these reads. Mount-time dm-verity is
 /// still required because the cache itself can change afterward.
 #[derive(Debug)]
-pub struct VerifiedChain {
+pub(crate) struct VerifiedChain {
     root: [u8; 32],
     scutes: Vec<VerifiedScute>,
 }
@@ -52,15 +52,15 @@ impl VerifiedChain {
                 size: scute.blob_size,
             })
     }
-    pub fn root(&self) -> &[u8; 32] {
+    pub(crate) fn root(&self) -> &[u8; 32] {
         &self.root
     }
-    pub fn scutes(&self) -> &[VerifiedScute] {
+    pub(crate) fn scutes(&self) -> &[VerifiedScute] {
         &self.scutes
     }
 }
 impl Cache {
-    pub fn verify_chain(&self, image: &ResolvedImage) -> Result<Option<VerifiedChain>, CacheError> {
+    pub(crate) fn verify_chain(&self, image: &ResolvedImage) -> Result<Option<VerifiedChain>, CacheError> {
         let manifest = image.manifest();
         let mut layers = manifest
             .layers

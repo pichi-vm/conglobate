@@ -6,7 +6,7 @@ use std::{fmt, io, sync::Arc};
 /// Errors retain their concrete payloads and OS error codes. Access is read-only;
 /// retry transitions consume and extend the history while retaining resources.
 #[derive(Debug, Clone)]
-pub struct FailureDiagnostics(Box<History>);
+pub(crate) struct FailureDiagnostics(Box<History>);
 #[derive(Debug, Clone)]
 struct History {
     operation: Arc<io::Error>,
@@ -26,13 +26,13 @@ impl From<rustix::io::Errno> for FailureDiagnostics {
     }
 }
 impl FailureDiagnostics {
-    pub fn operation(&self) -> &io::Error {
+    pub(crate) fn operation(&self) -> &io::Error {
         &self.0.operation
     }
-    pub fn cleanup(&self) -> &[Arc<io::Error>] {
+    pub(crate) fn cleanup(&self) -> &[Arc<io::Error>] {
         &self.0.cleanup
     }
-    pub fn latest(&self) -> &io::Error {
+    pub(crate) fn latest(&self) -> &io::Error {
         self.0.cleanup.last().unwrap_or(&self.0.operation)
     }
     // At an ownership boundary, share the concrete latest error rather than

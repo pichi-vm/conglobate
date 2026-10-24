@@ -17,7 +17,7 @@ use std::{
 };
 
 #[derive(Debug, thiserror::Error)]
-pub enum CopyError {
+pub(crate) enum CopyError {
     #[error(transparent)]
     Selection(#[from] SelectionError),
     #[error("COPY filesystem: {0}")]

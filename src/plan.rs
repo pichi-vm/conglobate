@@ -10,62 +10,62 @@ use crate::{
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Stage {
+pub(crate) enum Stage {
     Bootstrap,
     Carapace,
     Firmware,
     Transform,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum InputRole {
+pub(crate) enum InputRole {
     BootstrapTools,
     CarapaceBase,
     FirmwareTools,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct StepId {
+pub(crate) struct StepId {
     stage: Stage,
     index: usize,
 }
 impl StepId {
-    pub fn stage(self) -> Stage {
+    pub(crate) fn stage(self) -> Stage {
         self.stage
     }
-    pub fn index(self) -> usize {
+    pub(crate) fn index(self) -> usize {
         self.index
     }
 }
 #[derive(Debug)]
-pub struct LockedInput {
+pub(crate) struct LockedInput {
     reference: ImageReference,
     index: IndexDigest,
     roles: BTreeSet<InputRole>,
     execution_required: bool,
 }
 impl LockedInput {
-    pub fn reference(&self) -> &ImageReference {
+    pub(crate) fn reference(&self) -> &ImageReference {
         &self.reference
     }
-    pub fn index(&self) -> IndexDigest {
+    pub(crate) fn index(&self) -> IndexDigest {
         self.index
     }
-    pub fn roles(&self) -> &BTreeSet<InputRole> {
+    pub(crate) fn roles(&self) -> &BTreeSet<InputRole> {
         &self.roles
     }
     /// Requires a filesystem-bearing image, not merely an image with firmware.
-    pub fn execution_required(&self) -> bool {
+    pub(crate) fn execution_required(&self) -> bool {
         self.execution_required
     }
 }
 #[derive(Debug)]
-pub struct BuildPlan {
+pub(crate) struct BuildPlan {
     recipe: Recipe,
     stages: Vec<Stage>,
     inputs: Vec<LockedInput>,
     network_steps: Vec<StepId>,
 }
 impl BuildPlan {
-    pub fn new(recipe: Recipe, lock: &ImageLock) -> Result<Self, LockError> {
+    pub(crate) fn new(recipe: Recipe, lock: &ImageLock) -> Result<Self, LockError> {
         let mut inputs = BTreeMap::<&ImageReference, LockedInput>::new();
         let mut stages = Vec::new();
         let mut network_steps = Vec::new();
@@ -130,7 +130,7 @@ impl BuildPlan {
             network_steps,
         })
     }
-    pub fn execution_required(&self) -> bool {
+    pub(crate) fn execution_required(&self) -> bool {
         self.recipe.bootstrap().is_some()
             || self.recipe.firmware().is_some()
             || self
@@ -138,16 +138,16 @@ impl BuildPlan {
                 .carapace()
                 .is_some_and(|stage| !stage.directives().is_empty())
     }
-    pub fn recipe(&self) -> &Recipe {
+    pub(crate) fn recipe(&self) -> &Recipe {
         &self.recipe
     }
-    pub fn stages(&self) -> &[Stage] {
+    pub(crate) fn stages(&self) -> &[Stage] {
         &self.stages
     }
-    pub fn inputs(&self) -> &[LockedInput] {
+    pub(crate) fn inputs(&self) -> &[LockedInput] {
         &self.inputs
     }
-    pub fn network_steps(&self) -> &[StepId] {
+    pub(crate) fn network_steps(&self) -> &[StepId] {
         &self.network_steps
     }
 }

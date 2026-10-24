@@ -12,21 +12,21 @@ use rustix::{
 };
 use std::{fs::File, io, marker::PhantomData, rc::Rc};
 mod attachment;
-pub use attachment::{
+pub(crate) use attachment::{
     Attached, AttachedResources, AttachmentFailure, InUse, InUseResources, MountPoint,
     RootLaunchFailure, RootWaitFailure, UnmountFailure,
 };
 
 mod private {
-    pub trait Sealed {}
+    pub(crate) trait Sealed {}
 }
-pub trait MountState: private::Sealed + std::fmt::Debug {
+pub(crate) trait MountState: private::Sealed + std::fmt::Debug {
     type Resources: std::fmt::Debug;
 }
 #[derive(Debug)]
-pub struct Detached;
+pub(crate) struct Detached;
 #[derive(Debug)]
-pub struct Idmapped;
+pub(crate) struct Idmapped;
 impl private::Sealed for Detached {}
 impl private::Sealed for Idmapped {}
 impl MountState for Detached {
@@ -36,11 +36,11 @@ impl MountState for Idmapped {
     type Resources = IdmappedResources;
 }
 #[derive(Debug)]
-pub struct DetachedResources {
+pub(crate) struct DetachedResources {
     root: File,
 }
 #[derive(Debug)]
-pub struct IdmappedResources {
+pub(crate) struct IdmappedResources {
     root: File,
     // Retain explicit identity ownership independently of kernel idmap references.
     _namespace: File,
@@ -65,7 +65,7 @@ struct OutputView {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct Mount<'ns, S: MountState> {
+pub(crate) struct Mount<'ns, S: MountState> {
     resources: S::Resources,
     _scope: &'ns crate::isolation::PrivateMountNamespace,
     _thread: PhantomData<Rc<()>>,
@@ -76,16 +76,16 @@ pub struct Mount<'ns, S: MountState> {
 /// both descriptors, releasing the detached tree without an attached mount.
 #[derive(Debug, thiserror::Error)]
 #[error("idmapping detached mount: {source}")]
-pub struct IdmapFailure<'ns> {
+pub(crate) struct IdmapFailure<'ns> {
     source: io::Error,
     mount: Mount<'ns, Detached>,
     namespace: File,
 }
 impl<'ns> IdmapFailure<'ns> {
-    pub fn source_error(&self) -> &io::Error {
+    pub(crate) fn source_error(&self) -> &io::Error {
         &self.source
     }
-    pub fn into_parts(self) -> (io::Error, Mount<'ns, Detached>, File) {
+    pub(crate) fn into_parts(self) -> (io::Error, Mount<'ns, Detached>, File) {
         (self.source, self.mount, self.namespace)
     }
 }
@@ -104,7 +104,7 @@ impl<'ns> Mount<'ns, Detached> {
     /// Clone only this filesystem view, never recursively include submounts.
     /// The source descriptor pins the selected root during acquisition. The
     /// detached result independently pins its superblock after source closure.
-    pub fn clone_from(
+    pub(crate) fn clone_from(
         root: &File,
         scope: &'ns crate::isolation::PrivateMountNamespace,
     ) -> io::Result<Self> {
@@ -125,7 +125,7 @@ impl<'ns> Mount<'ns, Detached> {
 
     /// Map filesystem IDs through the supplied user namespace, keeping device
     /// access and set-ID/file-capability elevation disabled on the view.
-    pub fn idmap(self, namespace: File) -> Result<Mount<'ns, Idmapped>, IdmapFailure<'ns>> {
+    pub(crate) fn idmap(self, namespace: File) -> Result<Mount<'ns, Idmapped>, IdmapFailure<'ns>> {
         let attributes = MountAttr::new(
             MountAttrFlags::MOUNT_ATTR_NOSUID | MountAttrFlags::MOUNT_ATTR_NODEV,
             MountAttrFlags::empty(),
@@ -158,7 +158,7 @@ impl<'ns> Mount<'ns, Detached> {
 impl Mount<'_, Idmapped> {
     /// Metadata of the selected root in the mapped view; no path traversal or
     /// raw descriptor escape. This is not proof of command sandbox isolation.
-    pub fn root_metadata(&self) -> io::Result<std::fs::Metadata> {
+    pub(crate) fn root_metadata(&self) -> io::Result<std::fs::Metadata> {
         self.resources.root.metadata()
     }
 }

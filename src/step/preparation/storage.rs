@@ -11,7 +11,7 @@ use std::{fmt::Debug, io, path::Path, time::Instant};
 
 /// Sealed mounted storage layouts sharing the command preparation lifecycle.
 /// Cleanup preserves the concrete unmounted layout and its owning retry error.
-pub trait StorageLayout: StepStorage + Sized {
+pub(crate) trait StorageLayout: StepStorage + Sized {
     /// Identifies the concrete layout in cleanup diagnostics.
     const LABEL: &'static str;
     type Unmounted: Debug;
@@ -19,7 +19,7 @@ pub trait StorageLayout: StepStorage + Sized {
     #[doc(hidden)]
     fn validate(storage: &Self::Unmounted) -> io::Result<()>;
 }
-pub trait PreparationStorage: StorageLayout {
+pub(crate) trait PreparationStorage: StorageLayout {
     type MountFailure: Debug;
     #[doc(hidden)]
     fn mount(

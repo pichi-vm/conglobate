@@ -11,13 +11,13 @@ use pichi_artifact::Digest;
 /// were verified from the output storage. No mutable staging authority escapes.
 /// This is not a successful recipe execution or an inventory/publication receipt.
 #[derive(Debug)]
-pub struct AssembledImage {
+pub(crate) struct AssembledImage {
     staged: StagedDirectory,
     image: ResolvedImage,
     chain: Option<VerifiedChain>,
 }
 #[derive(Debug, thiserror::Error)]
-pub enum AssemblyFailure {
+pub(crate) enum AssemblyFailure {
     #[error("output staging: {0}")]
     Before(std::io::Error),
     #[error("output assembly: {source}")]
@@ -27,7 +27,7 @@ pub enum AssemblyFailure {
     },
 }
 impl AssemblyFailure {
-    pub fn into_parts(self) -> (CacheError, Option<StagedDirectory>) {
+    pub(crate) fn into_parts(self) -> (CacheError, Option<StagedDirectory>) {
         match self {
             Self::Before(source) => (source.into(), None),
             Self::Staged { source, staged } => (source, Some(staged)),
@@ -53,13 +53,13 @@ impl AssembledImage {
         self.staged.publish()?;
         Ok(())
     }
-    pub fn image(&self) -> &ResolvedImage {
+    pub(crate) fn image(&self) -> &ResolvedImage {
         &self.image
     }
-    pub fn chain(&self) -> Option<&VerifiedChain> {
+    pub(crate) fn chain(&self) -> Option<&VerifiedChain> {
         self.chain.as_ref()
     }
-    pub fn discard(self) -> std::io::Result<()> {
+    pub(crate) fn discard(self) -> std::io::Result<()> {
         self.staged.discard()
     }
 }
@@ -67,7 +67,7 @@ impl AssembledImage {
     /// Append an already sealed scute to this base. This validates the artifact,
     /// not command success; the coordinator still owns execution receipts and
     /// must finalize firmware/DTB and inventory before publication.
-    pub fn extend(
+    pub(crate) fn extend(
         cache: &Cache,
         image: &ResolvedImage,
         scute: &crate::storage::SealedScute<'_>,
@@ -197,7 +197,7 @@ impl AssembledImage {
     }
     /// Assemble a new root carapace with no inherited tool components.
     /// Command/formatter success and final firmware remain coordinator obligations.
-    pub fn bootstrap(
+    pub(crate) fn bootstrap(
         scute: &crate::storage::SealedScute<'_>,
         destination: &std::path::Path,
     ) -> Result<Self, AssemblyFailure> {

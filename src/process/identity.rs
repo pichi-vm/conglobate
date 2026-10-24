@@ -33,7 +33,7 @@ impl ExchangeWait for Instant {
 }
 /// Parent half of a private one-shot trusted helper identity exchange.
 #[derive(Debug)]
-pub struct IdentityReceiver(IdentitySocket);
+pub(crate) struct IdentityReceiver(IdentitySocket);
 impl Drop for IdentityReceiver {
     fn drop(&mut self) {
         // Another trusted spawn can briefly inherit CLOEXEC descriptors before
@@ -44,10 +44,10 @@ impl Drop for IdentityReceiver {
 }
 /// Child half. Pass only to the trusted helper, never to a build command.
 #[derive(Debug)]
-pub struct IdentitySender(IdentitySocket);
+pub(crate) struct IdentitySender(IdentitySocket);
 
 impl IdentityReceiver {
-    pub fn pair() -> io::Result<(Self, IdentitySender)> {
+    pub(crate) fn pair() -> io::Result<(Self, IdentitySender)> {
         let (parent, child) = socketpair(
             AddressFamily::UNIX,
             SocketType::SEQPACKET,
@@ -63,7 +63,7 @@ impl IdentityReceiver {
     /// Receive exactly one identity from the trusted peer. Failure closes the
     /// channel; the caller must cancel/reap its separately owned helper.
     /// This is neither helper readiness nor permission to admit build commands.
-    pub fn receive_until(self, deadline: Instant) -> io::Result<ProcessObservation> {
+    pub(crate) fn receive_until(self, deadline: Instant) -> io::Result<ProcessObservation> {
         self.0.receive_until(deadline)
     }
 }
@@ -73,13 +73,13 @@ impl IdentitySender {
     /// ownership, replacing stdin with /dev/null. Call at trusted helper startup
     /// before any concurrent stdin access. The helper must not admit
     /// commands until the later supervision and containment protocol completes.
-    pub fn from_stdin() -> io::Result<Self> {
+    pub(crate) fn from_stdin() -> io::Result<Self> {
         IdentitySocket::from_stdin().map(Self)
     }
 
     /// Pin this process while it is necessarily alive, then transfer that
     /// identity. No parent-side PID lookup or SIGCHLD disposition assumption.
-    pub fn send_current_until(self, deadline: Instant) -> io::Result<()> {
+    pub(crate) fn send_current_until(self, deadline: Instant) -> io::Result<()> {
         self.0.send_current_until(deadline)
     }
 }

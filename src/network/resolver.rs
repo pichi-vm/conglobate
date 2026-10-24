@@ -14,7 +14,7 @@ use std::{
 /// deliberately excluded from inventory, and Debug never renders its contents.
 /// Resolver syntax and reachable DNS service are supplied by the environment;
 /// conglobate does not rewrite stubs or infer servers/search domains.
-pub struct ResolverInput {
+pub(crate) struct ResolverInput {
     bytes: Box<[u8]>,
 }
 impl fmt::Debug for ResolverInput {
@@ -25,7 +25,7 @@ impl fmt::Debug for ResolverInput {
     }
 }
 impl ResolverInput {
-    pub fn capture(path: &Path) -> io::Result<Self> {
+    pub(crate) fn capture(path: &Path) -> io::Result<Self> {
         // Pin without activating devices or blocking on a FIFO. Reopening the
         // validated inode via proc prevents source-path replacement between the
         // type check and read from redirecting capture to a different object.
@@ -63,7 +63,7 @@ impl ResolverInput {
             bytes: bytes.into_boxed_slice(),
         })
     }
-    pub fn bytes(&self) -> &[u8] {
+    pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
     }
 }

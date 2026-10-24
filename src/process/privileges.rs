@@ -8,7 +8,7 @@ use std::io;
 /// still requires distro qualification together with the syscall/LSM policies.
 /// It is not sandbox admission authority and cannot establish namespace isolation.
 #[derive(Debug)]
-pub struct CommandPrivileges {
+pub(crate) struct CommandPrivileges {
     allowed: CapabilitySet,
 }
 
@@ -16,10 +16,10 @@ pub struct CommandPrivileges {
 /// helper must exit on failure; retrying command execution is not permitted.
 #[derive(Debug, thiserror::Error)]
 #[error("command privilege finalization failed; helper must exit: {0}")]
-pub struct PrivilegeFailure(#[from] io::Error);
+pub(crate) struct PrivilegeFailure(#[from] io::Error);
 
 impl CommandPrivileges {
-    pub fn filesystem() -> Self {
+    pub(crate) fn filesystem() -> Self {
         Self {
             allowed: CapabilitySet::CHOWN
                 | CapabilitySet::DAC_OVERRIDE
@@ -34,7 +34,7 @@ impl CommandPrivileges {
         }
     }
 
-    pub fn allowed(&self) -> CapabilitySet {
+    pub(crate) fn allowed(&self) -> CapabilitySet {
         self.allowed
     }
 
@@ -43,7 +43,7 @@ impl CommandPrivileges {
     /// The caller must prevent concurrent thread creation and must immediately
     /// abort the helper on error. No descriptor, syscall or LSM isolation is
     /// established here. Do not call from the build supervisor.
-    pub fn apply(self) -> Result<(), PrivilegeFailure> {
+    pub(crate) fn apply(self) -> Result<(), PrivilegeFailure> {
         self.finalize().map_err(PrivilegeFailure)
     }
 

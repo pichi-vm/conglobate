@@ -3,7 +3,7 @@
 
 //! Immutable committed objects, captured without checkout filters or hooks.
 mod read;
-pub use read::ContextFile;
+pub(crate) use read::ContextFile;
 
 use crate::{path::ContextDirectory, request::CommitIdentity};
 use gix::{ObjectId, object::tree::EntryKind};
@@ -15,7 +15,7 @@ use std::{
 };
 
 #[derive(Debug, thiserror::Error)]
-pub enum ContextError {
+pub(crate) enum ContextError {
     #[error("context I/O: {0}")]
     Io(#[from] std::io::Error),
     #[error("Git input: {0}")]
@@ -70,20 +70,20 @@ impl ObjectReader {
 }
 
 #[derive(Debug)]
-pub enum ContextEntry {
+pub(crate) enum ContextEntry {
     Directory,
     File { executable: bool, bytes: Vec<u8> },
     Symlink(Vec<u8>),
 }
 
 #[derive(Debug)]
-pub struct CapturedContext {
+pub(crate) struct CapturedContext {
     commit: ObjectId,
     subtree: ObjectId,
     entries: BTreeMap<PathBuf, ContextEntry>,
 }
 impl CapturedContext {
-    pub fn capture(
+    pub(crate) fn capture(
         repository: &Path,
         commit: &CommitIdentity,
         context: &ContextDirectory,
@@ -169,16 +169,16 @@ impl CapturedContext {
             entries,
         })
     }
-    pub fn commit(&self) -> ObjectId {
+    pub(crate) fn commit(&self) -> ObjectId {
         self.commit
     }
-    pub fn subtree(&self) -> ObjectId {
+    pub(crate) fn subtree(&self) -> ObjectId {
         self.subtree
     }
-    pub fn object_format(&self) -> gix::hash::Kind {
+    pub(crate) fn object_format(&self) -> gix::hash::Kind {
         self.commit.kind()
     }
-    pub fn entries(&self) -> &BTreeMap<PathBuf, ContextEntry> {
+    pub(crate) fn entries(&self) -> &BTreeMap<PathBuf, ContextEntry> {
         &self.entries
     }
 }

@@ -9,13 +9,13 @@ use std::{
 };
 
 mod private {
-    pub trait Sealed {}
+    pub(crate) trait Sealed {}
 }
-pub trait MappingState: private::Sealed + std::fmt::Debug {}
+pub(crate) trait MappingState: private::Sealed + std::fmt::Debug {}
 #[derive(Debug)]
-pub struct Created;
+pub(crate) struct Created;
 #[derive(Debug)]
-pub struct Active;
+pub(crate) struct Active;
 impl private::Sealed for Created {}
 impl private::Sealed for Active {}
 impl MappingState for Created {}
@@ -32,7 +32,7 @@ impl MappingState for Active {}
 /// }
 /// ```
 #[derive(Debug)]
-pub struct Mapping<S: MappingState> {
+pub(crate) struct Mapping<S: MappingState> {
     lease: MappingLease,
     _state: PhantomData<S>,
 }
@@ -46,27 +46,27 @@ struct MappingLease {
 /// a failed removal retains the resource and can only retry cleanup.
 #[derive(Debug, thiserror::Error)]
 #[error("device mapping operation: {source}")]
-pub struct MappingFailure {
+pub(crate) struct MappingFailure {
     source: super::FailureDiagnostics,
     lease: MappingLease,
 }
 impl MappingFailure {
     /// Most recent failure. `diagnostics()` also retains the original operation.
-    pub fn source_error(&self) -> &io::Error {
+    pub(crate) fn source_error(&self) -> &io::Error {
         self.source.latest()
     }
-    pub fn cleanup(self) -> Result<(), Self> {
+    pub(crate) fn cleanup(self) -> Result<(), Self> {
         self.lease.close().map_err(|Self { source, lease }| Self {
             source: self.source.followed_by(source),
             lease,
         })
     }
-    pub fn diagnostics(&self) -> &super::FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &super::FailureDiagnostics {
         &self.source
     }
 }
 impl Mapping<Created> {
-    pub fn create() -> io::Result<Self> {
+    pub(crate) fn create() -> io::Result<Self> {
         let control = Control::open()?;
         let mut nonce = [0; 16];
         File::open("/dev/urandom")?.read_exact(&mut nonce)?;
@@ -81,7 +81,7 @@ impl Mapping<Created> {
             _state: PhantomData,
         })
     }
-    pub fn zero(self, sectors: NonZeroU64) -> Result<Mapping<Active>, MappingFailure> {
+    pub(crate) fn zero(self, sectors: NonZeroU64) -> Result<Mapping<Active>, MappingFailure> {
         self.activate(sectors, &Zero, true)
     }
     pub(super) fn activate<T: devmap_linux::targets::Target>(
@@ -161,15 +161,15 @@ impl<S: MappingState> Mapping<S> {
         }
     }
     /// Diagnostic identity; copying it does not retain the mapping's lifetime.
-    pub fn id(&self) -> DevId {
+    pub(crate) fn id(&self) -> DevId {
         self.lease.id()
     }
-    pub fn status(&self) -> io::Result<Status> {
+    pub(crate) fn status(&self) -> io::Result<Status> {
         self.lease.control.status(self.lease.id())
     }
     /// Immediate removal only. Busy consumers cause a recoverable failure,
     /// never a successful cleanup receipt or unbounded polling loop.
-    pub fn close(self) -> Result<(), MappingFailure> {
+    pub(crate) fn close(self) -> Result<(), MappingFailure> {
         self.lease.close()
     }
 }

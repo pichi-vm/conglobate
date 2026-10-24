@@ -14,7 +14,7 @@ use crate::{
 use sha2::{Digest, Sha256};
 
 #[derive(Debug, thiserror::Error)]
-pub enum InputError {
+pub(crate) enum InputError {
     #[error("executing stages require --uid-map and --gid-map")]
     IdMappingsRequired,
     #[error("an authored transform requires an inherited or generated DTB")]
@@ -41,7 +41,7 @@ pub enum InputError {
 
 /// Selected context-relative name and digest of the exact resolved file bytes.
 #[derive(Debug)]
-pub struct SelectedDocument {
+pub(crate) struct SelectedDocument {
     path: ContextPath,
     sha256: [u8; 32],
 }
@@ -52,10 +52,10 @@ impl SelectedDocument {
             sha256: Sha256::digest(file.bytes()).into(),
         }
     }
-    pub fn path(&self) -> &ContextPath {
+    pub(crate) fn path(&self) -> &ContextPath {
         &self.path
     }
-    pub fn sha256(&self) -> &[u8; 32] {
+    pub(crate) fn sha256(&self) -> &[u8; 32] {
         &self.sha256
     }
 }
@@ -63,7 +63,7 @@ impl SelectedDocument {
 /// Owns all committed bytes used to derive the plan. This is not an executable
 /// build: cache verification and execution preparation are separate gates.
 #[derive(Debug)]
-pub struct CapturedBuild {
+pub(crate) struct CapturedBuild {
     id_mappings: Option<crate::isolation::IdMappings>,
     context: CapturedContext,
     recipe: SelectedDocument,
@@ -116,26 +116,26 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
     }
 }
 impl CapturedBuild {
-    pub fn id_mappings(&self) -> Option<crate::isolation::IdMappings> {
+    pub(crate) fn id_mappings(&self) -> Option<crate::isolation::IdMappings> {
         self.id_mappings
     }
     pub(crate) fn execution_mappings(&self) -> Result<crate::isolation::IdMappings, InputError> {
         self.id_mappings.ok_or(InputError::IdMappingsRequired)
     }
 
-    pub fn context(&self) -> &CapturedContext {
+    pub(crate) fn context(&self) -> &CapturedContext {
         &self.context
     }
-    pub fn recipe_document(&self) -> &SelectedDocument {
+    pub(crate) fn recipe_document(&self) -> &SelectedDocument {
         &self.recipe
     }
-    pub fn lock_document(&self) -> &SelectedDocument {
+    pub(crate) fn lock_document(&self) -> &SelectedDocument {
         &self.lock
     }
-    pub fn networking(&self) -> Option<&crate::network::NetworkInput> {
+    pub(crate) fn networking(&self) -> Option<&crate::network::NetworkInput> {
         self.networking.as_ref()
     }
-    pub fn plan(&self) -> &BuildPlan {
+    pub(crate) fn plan(&self) -> &BuildPlan {
         &self.plan
     }
 }
@@ -143,7 +143,7 @@ impl CapturedBuild {
 /// One locked image and its verified chain (if present). Receipts describe reads,
 /// not a promise that a subsequent cache read will return unchanged bytes.
 #[derive(Debug)]
-pub struct CheckedImage {
+pub(crate) struct CheckedImage {
     image: crate::cache::ResolvedImage,
     chain: Option<crate::cache::VerifiedChain>,
     receipts: Vec<crate::cache::BlobReceipt>,
@@ -172,30 +172,30 @@ impl CheckedImage {
             })
             .transpose()
     }
-    pub fn image(&self) -> &crate::cache::ResolvedImage {
+    pub(crate) fn image(&self) -> &crate::cache::ResolvedImage {
         &self.image
     }
-    pub fn chain(&self) -> Option<&crate::cache::VerifiedChain> {
+    pub(crate) fn chain(&self) -> Option<&crate::cache::VerifiedChain> {
         self.chain.as_ref()
     }
-    pub fn receipts(&self) -> &[crate::cache::BlobReceipt] {
+    pub(crate) fn receipts(&self) -> &[crate::cache::BlobReceipt] {
         &self.receipts
     }
 }
 #[derive(Debug)]
-pub struct ResolvedBuild {
+pub(crate) struct ResolvedBuild {
     captured: CapturedBuild,
     cache: crate::cache::Cache,
     images: std::collections::BTreeMap<crate::image::ImageReference, CheckedImage>,
 }
 impl ResolvedBuild {
-    pub fn captured(&self) -> &CapturedBuild {
+    pub(crate) fn captured(&self) -> &CapturedBuild {
         &self.captured
     }
-    pub fn cache(&self) -> &crate::cache::Cache {
+    pub(crate) fn cache(&self) -> &crate::cache::Cache {
         &self.cache
     }
-    pub fn images(
+    pub(crate) fn images(
         &self,
     ) -> &std::collections::BTreeMap<crate::image::ImageReference, CheckedImage> {
         &self.images
@@ -204,7 +204,7 @@ impl ResolvedBuild {
 impl CapturedBuild {
     /// Consume the captured planning phase after resolving all locked inputs.
     /// No privileged setup or output publication occurs here.
-    pub fn resolve(self, cache: crate::cache::Cache) -> Result<ResolvedBuild, InputError> {
+    pub(crate) fn resolve(self, cache: crate::cache::Cache) -> Result<ResolvedBuild, InputError> {
         let mut images = std::collections::BTreeMap::new();
         for input in self.plan.inputs() {
             let image = cache.resolve(input.index())?;

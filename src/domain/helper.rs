@@ -21,13 +21,13 @@ use std::{
 /// }
 /// ```
 #[derive(Debug)]
-pub struct ContainedHelper<S: ObservedState = Joined> {
+pub(crate) struct ContainedHelper<S: ObservedState = Joined> {
     domain: CommandDomain,
     process: Process<Identified>,
     channel: Supervision<S>,
 }
 #[derive(Debug, thiserror::Error)]
-pub enum HelperLaunchFailure {
+pub(crate) enum HelperLaunchFailure {
     #[error("contained helper launch: {source}")]
     Launch {
         source: LaunchFailure,
@@ -42,18 +42,18 @@ pub enum HelperLaunchFailure {
 }
 /// Admission is closed. Retains both the domain and helper wait owner for retry.
 #[derive(Debug)]
-pub struct HelperCancellation {
+pub(crate) struct HelperCancellation {
     domain: DomainCancellation,
     process: Process<Identified>,
 }
 #[derive(Debug, thiserror::Error)]
 #[error("contained helper domain cancellation: {source}")]
-pub struct HelperCancelFailure {
+pub(crate) struct HelperCancelFailure {
     source: io::Error,
     cancellation: HelperCancellation,
 }
 impl HelperCancelFailure {
-    pub fn into_parts(self) -> (io::Error, HelperCancellation) {
+    pub(crate) fn into_parts(self) -> (io::Error, HelperCancellation) {
         (self.source, self.cancellation)
     }
 }
@@ -66,31 +66,31 @@ impl HelperCancelFailure {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct HelperReaping {
+pub(crate) struct HelperReaping {
     process: Process<Identified>,
 }
 #[derive(Debug, thiserror::Error)]
 #[error("contained helper reaping: {source}")]
-pub struct HelperReapFailure {
+pub(crate) struct HelperReapFailure {
     source: WaitError,
     reaping: HelperReaping,
 }
 impl HelperReapFailure {
-    pub fn into_parts(self) -> (WaitError, HelperReaping) {
+    pub(crate) fn into_parts(self) -> (WaitError, HelperReaping) {
         (self.source, self.reaping)
     }
 }
 /// The joined helper was reaped after domain cancellation. Adopted descendants
 /// still require a separate drain.
 #[derive(Debug)]
-pub struct ReapedHelper {
+pub(crate) struct ReapedHelper {
     status: ExitStatus,
 }
 impl CommandDomain {
     /// Trusted helper only. Startup errors retain all created resources and
     /// restrict domain ownership to cancellation. The caller must explicitly
     /// terminate/reap any started child and cancel its possibly populated domain.
-    pub fn launch(
+    pub(crate) fn launch(
         self,
         command: Command,
         deadline: Instant,
@@ -130,12 +130,12 @@ impl CommandDomain {
     }
 }
 impl<S: ObservedState> ContainedHelper<S> {
-    pub fn supervision(&self) -> &Supervision<S> {
+    pub(crate) fn supervision(&self) -> &Supervision<S> {
         &self.channel
     }
     /// Consumes domain-join authority and closes the channel before requesting
     /// subtree cancellation. Failures retain cleanup-only ownership.
-    pub fn cancel_until(
+    pub(crate) fn cancel_until(
         self,
         deadline: Instant,
     ) -> Result<HelperReaping, Box<HelperCancelFailure>> {
@@ -153,7 +153,7 @@ impl<S: ObservedState> ContainedHelper<S> {
     }
 }
 impl HelperCancellation {
-    pub fn retry_until(self, deadline: Instant) -> Result<HelperReaping, Box<HelperCancelFailure>> {
+    pub(crate) fn retry_until(self, deadline: Instant) -> Result<HelperReaping, Box<HelperCancelFailure>> {
         let Self { domain, process } = self;
         match domain.retry_until(deadline) {
             Ok(()) => Ok(HelperReaping { process }),
@@ -168,7 +168,7 @@ impl HelperCancellation {
     }
 }
 impl HelperReaping {
-    pub fn reap_until(self, deadline: Instant) -> Result<ReapedHelper, Box<HelperReapFailure>> {
+    pub(crate) fn reap_until(self, deadline: Instant) -> Result<ReapedHelper, Box<HelperReapFailure>> {
         let Self { process } = self;
         match process.wait_until(deadline) {
             Ok(process) => Ok(ReapedHelper {
@@ -185,19 +185,19 @@ impl HelperReaping {
     }
 }
 impl ReapedHelper {
-    pub fn finish(self) -> ExitStatus {
+    pub(crate) fn finish(self) -> ExitStatus {
         self.status
     }
 }
 
 #[derive(Debug, thiserror::Error)]
 #[error("command admission handshake: {source}")]
-pub struct AdmissionFailure {
+pub(crate) struct AdmissionFailure {
     source: io::Error,
     cancellation: HelperCancellation,
 }
 impl AdmissionFailure {
-    pub fn into_parts(self) -> (io::Error, HelperCancellation) {
+    pub(crate) fn into_parts(self) -> (io::Error, HelperCancellation) {
         (self.source, self.cancellation)
     }
 }
@@ -207,7 +207,7 @@ impl ContainedHelper<Joined> {
     /// never authorizes image commands. Failure permits cancellation only.
     /// A failed acknowledgment may follow successful delivery: never assume
     /// admission failure proves that image execution did not start.
-    pub fn admit_until(
+    pub(crate) fn admit_until(
         self,
         deadline: Instant,
     ) -> Result<ContainedHelper<Admitted>, Box<AdmissionFailure>> {

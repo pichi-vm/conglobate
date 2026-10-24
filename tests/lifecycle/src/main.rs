@@ -163,7 +163,7 @@ impl Lifecycle {
         }
     }
 }
-fn main() {
+pub(crate) fn main() {
     if let Err(error) = Lifecycle::run() {
         eprintln!("lifecycle fixture: {error}");
         std::process::exit(1);

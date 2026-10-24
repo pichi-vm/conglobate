@@ -11,14 +11,14 @@ use std::{io, time::Instant};
 /// wait owner. No signaling, namespace entry or raw descriptor authority is
 /// exposed. Exit observation is not a descendant-quiescence receipt.
 #[derive(Debug)]
-pub struct ProcessObservation {
+pub(crate) struct ProcessObservation {
     pub(super) identity: OwnedFd,
 }
 impl ProcessObservation {
     /// Wait for thread-group exit through the stable pidfd. Channel closure is
     /// not exit. This borrows observation only: the wait owner must still reap
     /// the process, and its descendants must still be cancelled and drained.
-    pub fn wait_until(&self, deadline: Instant) -> io::Result<()> {
+    pub(crate) fn wait_until(&self, deadline: Instant) -> io::Result<()> {
         loop {
             if self.has_exited()? {
                 return Ok(());
@@ -48,7 +48,7 @@ impl ProcessObservation {
     /// Sample whether the entire thread group has exited, without waiting or
     /// collecting its status. Remains true after the wait owner reaps it.
     /// Syscall errors remain errors, never evidence of exit or liveness.
-    pub fn has_exited(&self) -> io::Result<bool> {
+    pub(crate) fn has_exited(&self) -> io::Result<bool> {
         let mut fds = [PollFd::new(&self.identity, PollFlags::IN)];
         poll(
             &mut fds,

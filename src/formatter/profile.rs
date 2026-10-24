@@ -10,7 +10,7 @@ use std::{ffi::OsString, path::Path};
 /// Immutable formatter invocation derived from validated recipe properties.
 /// This describes intended work; only the execution owner can issue a receipt.
 #[derive(Debug)]
-pub struct Ext4Format {
+pub(crate) struct Ext4Format {
     size: FilesystemSize,
     label: FilesystemLabel,
 }
@@ -20,8 +20,8 @@ impl From<&FilesystemSpec> for Ext4Format {
     }
 }
 impl Ext4Format {
-    pub const PROFILE: &'static str = "conglobate-ext4-v1";
-    pub const CONFIGURATION_PATH: &'static str = "etc/mke2fs.conf";
+    pub(crate) const PROFILE: &'static str = "conglobate-ext4-v1";
+    pub(crate) const CONFIGURATION_PATH: &'static str = "etc/mke2fs.conf";
     const OPTIONS: &'static [&'static str] = &[
         "-q",
         "-F",
@@ -40,24 +40,24 @@ impl Ext4Format {
         "-E",
         "root_owner=0:0,nodiscard,lazy_itable_init=0,lazy_journal_init=0",
     ];
-    pub fn new(size: FilesystemSize, label: FilesystemLabel) -> Self {
+    pub(crate) fn new(size: FilesystemSize, label: FilesystemLabel) -> Self {
         Self { size, label }
     }
-    pub fn size(&self) -> FilesystemSize {
+    pub(crate) fn size(&self) -> FilesystemSize {
         self.size
     }
-    pub fn label(&self) -> &FilesystemLabel {
+    pub(crate) fn label(&self) -> &FilesystemLabel {
         &self.label
     }
-    pub fn configuration() -> &'static [u8] {
+    pub(crate) fn configuration() -> &'static [u8] {
         include_bytes!("ext4.conf")
     }
-    pub fn configuration_digest() -> [u8; 32] {
+    pub(crate) fn configuration_digest() -> [u8; 32] {
         Sha256::digest(Self::configuration()).into()
     }
     /// Versioned deterministic CBOR captures configuration and fixed arguments;
     /// recipe-specific label/capacity and the device locator are recorded separately.
-    pub fn profile_bytes() -> Vec<u8> {
+    pub(crate) fn profile_bytes() -> Vec<u8> {
         let mut e = minicbor::Encoder::new(Vec::new());
         e.array(4)
             .expect("Vec writer")
@@ -74,12 +74,12 @@ impl Ext4Format {
         }
         e.into_writer()
     }
-    pub fn profile_digest() -> [u8; 32] {
+    pub(crate) fn profile_digest() -> [u8; 32] {
         Sha256::digest(Self::profile_bytes()).into()
     }
     /// The trusted execution owner supplies its device locator. Never use a
     /// recipe path here. Each label is a single argument, not shell text.
-    pub fn arguments(&self, device: &Path) -> Vec<OsString> {
+    pub(crate) fn arguments(&self, device: &Path) -> Vec<OsString> {
         let mut args: Vec<_> = Self::OPTIONS.iter().map(OsString::from).collect();
         args.extend([
             "-L".into(),

@@ -7,19 +7,19 @@ use serde_bytes::ByteBuf;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Document {
-    pub version: u32,
-    pub builder: Builder,
-    pub context: Context,
-    pub inputs: Vec<Input>,
-    pub execution: Execution,
-    pub outputs: Outputs,
+    pub(crate) version: u32,
+    pub(crate) builder: Builder,
+    pub(crate) context: Context,
+    pub(crate) inputs: Vec<Input>,
+    pub(crate) execution: Execution,
+    pub(crate) outputs: Outputs,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Digest {
-    pub algorithm: Algorithm,
+    pub(crate) algorithm: Algorithm,
     #[serde(with = "serde_bytes")]
-    pub digest: [u8; 32],
+    pub(crate) digest: [u8; 32],
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) enum Algorithm {
@@ -29,18 +29,18 @@ pub(super) enum Algorithm {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Builder {
-    pub name: String,
-    pub version: String,
-    pub executable: Digest,
+    pub(crate) name: String,
+    pub(crate) version: String,
+    pub(crate) executable: Digest,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Context {
-    pub repository: String,
-    pub object_format: ObjectFormat,
-    pub commit: ByteBuf,
-    pub subdirectory: String,
-    pub tree: ByteBuf,
+    pub(crate) repository: String,
+    pub(crate) object_format: ObjectFormat,
+    pub(crate) commit: ByteBuf,
+    pub(crate) subdirectory: String,
+    pub(crate) tree: ByteBuf,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -58,12 +58,12 @@ pub(super) enum Role {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Input {
-    pub roles: Vec<Role>,
-    pub reference: String,
-    pub index: Digest,
-    pub manifest: Digest,
+    pub(crate) roles: Vec<Role>,
+    pub(crate) reference: String,
+    pub(crate) index: Digest,
+    pub(crate) manifest: Digest,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub carapace_root: Option<ByteBuf>,
+    pub(crate) carapace_root: Option<ByteBuf>,
 }
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
@@ -75,8 +75,8 @@ pub(super) enum Stage {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct NetworkStep {
-    pub stage: Stage,
-    pub step: u64,
+    pub(crate) stage: Stage,
+    pub(crate) step: u64,
 }
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -87,16 +87,16 @@ pub(super) enum TransformSource {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Transform {
-    pub source: TransformSource,
-    pub digest: Digest,
-    pub target_present: bool,
-    pub default_skipped: bool,
+    pub(crate) source: TransformSource,
+    pub(crate) digest: Digest,
+    pub(crate) target_present: bool,
+    pub(crate) default_skipped: bool,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct SelectedDocument {
-    pub path: String,
-    pub content: Digest,
+    pub(crate) path: String,
+    pub(crate) content: Digest,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -108,28 +108,28 @@ pub(super) enum Architecture {
 #[serde(deny_unknown_fields)]
 pub(super) struct Execution {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id_mappings: Option<IdMappings>,
-    pub architecture: Architecture,
-    pub recipe: SelectedDocument,
-    pub lock: SelectedDocument,
-    pub transform: Transform,
-    pub formatters: Vec<Formatter>,
-    pub network_steps: Vec<NetworkStep>,
+    pub(crate) id_mappings: Option<IdMappings>,
+    pub(crate) architecture: Architecture,
+    pub(crate) recipe: SelectedDocument,
+    pub(crate) lock: SelectedDocument,
+    pub(crate) transform: Transform,
+    pub(crate) formatters: Vec<Formatter>,
+    pub(crate) network_steps: Vec<NetworkStep>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct RuntimeFile {
-    pub path: String,
-    pub digest: Digest,
+    pub(crate) path: String,
+    pub(crate) digest: Digest,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Filesystem {
     #[serde(rename = "type")]
-    pub kind: FilesystemType,
-    pub size_bytes: u64,
-    pub logical_size_bytes: u64,
-    pub label: String,
+    pub(crate) kind: FilesystemType,
+    pub(crate) size_bytes: u64,
+    pub(crate) logical_size_bytes: u64,
+    pub(crate) label: String,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) enum FilesystemType {
@@ -139,14 +139,14 @@ pub(super) enum FilesystemType {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Formatter {
-    pub stage: Stage,
-    pub profile: String,
-    pub profile_digest: Digest,
-    pub executable: RuntimeFile,
-    pub runtime: Vec<RuntimeFile>,
-    pub configuration: Digest,
-    pub arguments: Vec<String>,
-    pub filesystem: Filesystem,
+    pub(crate) stage: Stage,
+    pub(crate) profile: String,
+    pub(crate) profile_digest: Digest,
+    pub(crate) executable: RuntimeFile,
+    pub(crate) runtime: Vec<RuntimeFile>,
+    pub(crate) configuration: Digest,
+    pub(crate) arguments: Vec<String>,
+    pub(crate) filesystem: Filesystem,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -157,33 +157,33 @@ pub(super) enum Origin {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Scute {
-    pub digest: Digest,
-    pub origin: Origin,
+    pub(crate) digest: Digest,
+    pub(crate) origin: Origin,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Outputs {
-    pub manifest: Digest,
+    pub(crate) manifest: Digest,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub carapace_root: Option<ByteBuf>,
-    pub scutes: Vec<Scute>,
+    pub(crate) carapace_root: Option<ByteBuf>,
+    pub(crate) scutes: Vec<Scute>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub pmi: Option<Digest>,
+    pub(crate) pmi: Option<Digest>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub dtb: Option<Digest>,
+    pub(crate) dtb: Option<Digest>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct IdMappings {
-    pub uid: IdRange,
-    pub gid: IdRange,
+    pub(crate) uid: IdRange,
+    pub(crate) gid: IdRange,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct IdRange {
-    pub parent_start: u32,
-    pub count: u32,
+    pub(crate) parent_start: u32,
+    pub(crate) count: u32,
 }
 impl From<crate::isolation::IdRange> for IdRange {
     fn from(range: crate::isolation::IdRange) -> Self {

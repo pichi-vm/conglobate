@@ -14,7 +14,7 @@ use std::{fmt::Debug, io, time::Instant};
 
 /// Sealed storage layouts whose transfer and finalization participate in the
 /// same command acceptance protocol. Finalization verifies every snapshot.
-pub trait ExecutionStorage: StorageLayout {
+pub(crate) trait ExecutionStorage: StorageLayout {
     type Finalized: Debug;
     type FinalizationFailure: Debug;
     #[doc(hidden)]

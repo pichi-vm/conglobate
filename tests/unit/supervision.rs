@@ -21,7 +21,7 @@ impl Fixture {
     fn command(mode: &str) -> Command {
         let mut command = Command::new(std::env::current_exe().unwrap());
         command
-            .args(["--exact", "trusted_supervision_fixture", "--nocapture"])
+            .args(["--exact", "tests::supervision::trusted_supervision_fixture", "--nocapture"])
             .env_clear()
             .env("CONGLOBATE_SUPERVISION_FIXTURE", mode)
             .stdout(Stdio::null())

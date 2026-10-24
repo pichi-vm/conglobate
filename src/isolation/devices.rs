@@ -23,7 +23,7 @@ use std::{
 /// command user namespace. The owner IDs are that command's allocated mapped
 /// root IDs. No supervisor /dev inode is reused.
 #[derive(Debug)]
-pub struct CommandDevices {
+pub(crate) struct CommandDevices {
     root: File,
 }
 impl CommandDevices {
@@ -38,7 +38,7 @@ impl CommandDevices {
         }
         Ok(Self { root })
     }
-    pub fn create(uid: u32, gid: u32) -> io::Result<Self> {
+    pub(crate) fn create(uid: u32, gid: u32) -> io::Result<Self> {
         if uid == u32::MAX || gid == u32::MAX {
             return Err(io::Error::other("invalid runtime device owner"));
         }
@@ -103,7 +103,7 @@ impl CommandDevices {
 
     /// Transfer to the trusted setup helper through its reserved stdin slot.
     /// The final image shell replaces this slot with trusted null input.
-    pub fn into_input(self) -> io::Result<Stdio> {
+    pub(crate) fn into_input(self) -> io::Result<Stdio> {
         Ok(Stdio::from(std::os::fd::OwnedFd::from(
             self.into_channel()?,
         )))
@@ -136,7 +136,7 @@ impl CommandDevices {
     /// Descriptor duplication is close-on-exec. The sender is responsible for
     /// supplying the private tree created above; a tmpfs check is not identity
     /// authentication for an untrusted sender.
-    pub fn from_input() -> io::Result<Self> {
+    pub(crate) fn from_input() -> io::Result<Self> {
         let socket = io::stdin().as_fd().try_clone_to_owned()?;
         Self::receive(&socket)
     }

@@ -16,7 +16,7 @@ use std::{fs, io, marker::PhantomData, rc::Rc, time::Instant};
 /// There is no destructor that disables subreaping: the process setting remains
 /// enabled, because clearing it cannot clean up already-adopted children.
 #[derive(Debug)]
-pub struct ChildReaper {
+pub(crate) struct ChildReaper {
     process: Pid,
     collected: u64,
     _thread: PhantomData<Rc<()>>,
@@ -24,16 +24,16 @@ pub struct ChildReaper {
 /// Diagnostic count followed by an ECHILD observation, not a sandbox completion
 /// receipt. Admission must be closed and containment independently quiescent.
 #[derive(Debug)]
-pub struct ReapedChildren {
+pub(crate) struct ReapedChildren {
     reaper: ChildReaper,
 }
 impl ReapedChildren {
-    pub fn collected(&self) -> u64 {
+    pub(crate) fn collected(&self) -> u64 {
         self.reaper.collected
     }
     /// Resume exclusive reaping for the next step without reinstalling the
     /// process-wide subreaper setting. Counts begin anew for that step.
-    pub fn into_reaper(self) -> ChildReaper {
+    pub(crate) fn into_reaper(self) -> ChildReaper {
         ChildReaper {
             collected: 0,
             ..self.reaper
@@ -42,17 +42,17 @@ impl ReapedChildren {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("supervisor child drain: {source}")]
-pub struct DrainFailure {
+pub(crate) struct DrainFailure {
     source: io::Error,
     reaper: ChildReaper,
 }
 impl DrainFailure {
-    pub fn into_parts(self) -> (io::Error, ChildReaper) {
+    pub(crate) fn into_parts(self) -> (io::Error, ChildReaper) {
         (self.source, self.reaper)
     }
 }
 impl ChildReaper {
-    pub fn install() -> io::Result<Self> {
+    pub(crate) fn install() -> io::Result<Self> {
         if getpid().as_raw() == 1 || !crate::process::ThreadSnapshot::capture()?.is_single() {
             return Err(io::Error::other(
                 "subreaper requires a dedicated single-threaded non-init process",
@@ -79,7 +79,7 @@ impl ChildReaper {
     /// This process-wide wait includes clone children (__WALL); it must never
     /// race another waiter. Timeout/errors retain cumulative count and ownership.
     /// No signaling is performed: containment cancellation is a separate gate.
-    pub fn drain_until(mut self, deadline: Instant) -> Result<ReapedChildren, DrainFailure> {
+    pub(crate) fn drain_until(mut self, deadline: Instant) -> Result<ReapedChildren, DrainFailure> {
         if let Err(source) = self.drain(deadline) {
             return Err(DrainFailure {
                 source,

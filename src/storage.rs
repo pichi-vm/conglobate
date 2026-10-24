@@ -3,25 +3,25 @@
 
 //! Supervisor-owned mutable RAM storage. Immutable layers remain cache-backed.
 mod runtime;
-pub use runtime::{Runtime, RuntimeFailure, RuntimePaths, RuntimeScopeFailure};
+pub(crate) use runtime::{Runtime, RuntimeFailure, RuntimePaths, RuntimeScopeFailure};
 mod diagnostics;
-pub use diagnostics::FailureDiagnostics;
+pub(crate) use diagnostics::FailureDiagnostics;
 mod chain;
 mod ownership;
 mod volume;
-pub use volume::{
+pub(crate) use volume::{
     Mounted, Unmounted, Volume, VolumeMountFailure, VolumeState, VolumeUnmountFailure, VolumeView,
 };
 mod loop_device;
 mod loopback;
-pub use chain::{ReadOnlyChain, ReadOnlyChainFailure};
+pub(crate) use chain::{ReadOnlyChain, ReadOnlyChainFailure};
 mod verity;
-pub use loopback::{LoopAttachFailure, LoopAttachment, LoopDetachFailure};
-pub use verity::{VerityFailure, VerityMapping};
+pub(crate) use loopback::{LoopAttachFailure, LoopAttachment, LoopDetachFailure};
+pub(crate) use verity::{VerityFailure, VerityMapping};
 mod snapshot;
-pub use snapshot::{SnapshotMapping, SnapshotMappingFailure, SnapshotOrigin, SnapshotUsage};
+pub(crate) use snapshot::{SnapshotMapping, SnapshotMappingFailure, SnapshotOrigin, SnapshotUsage};
 mod mapping;
-pub use mapping::{Active, Created, Mapping, MappingFailure, MappingState};
+pub(crate) use mapping::{Active, Created, Mapping, MappingFailure, MappingState};
 
 use rustix::{fs, mount};
 use std::{
@@ -44,7 +44,7 @@ use std::{
 /// }
 /// ```
 #[derive(Debug)]
-pub struct Workspace {
+pub(crate) struct Workspace {
     root: File,
 }
 impl Workspace {
@@ -52,7 +52,7 @@ impl Workspace {
         self.root.try_clone()
     }
 
-    pub fn create() -> io::Result<Self> {
+    pub(crate) fn create() -> io::Result<Self> {
         let context = mount::fsopen("tmpfs", mount::FsOpenFlags::FSOPEN_CLOEXEC)?;
         mount::fsconfig_set_string(&context, "mode", "0700")?;
         mount::fsconfig_set_string(&context, "uid", "0")?;
@@ -69,7 +69,7 @@ impl Workspace {
     }
     /// Sparse capacity for the full logical device, with 256 exception entries
     /// per metadata chunk plus the header and terminal metadata chunk.
-    pub fn snapshot_store(&self) -> io::Result<Scratch<'_>> {
+    pub(crate) fn snapshot_store(&self) -> io::Result<Scratch<'_>> {
         let chunks = crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 4096;
         let mut scratch = self.scratch()?;
         scratch.set_len((chunks + chunks.div_ceil(256) + 2) * 4096)?;
@@ -78,7 +78,7 @@ impl Workspace {
     /// New anonymous scratch storage, removed on last close. Neither names nor
     /// raw descriptors escape; future kernel consumers must retain an owner, not
     /// merely claim this Rust borrow represents a device's kernel lifetime.
-    pub fn scratch(&self) -> io::Result<Scratch<'_>> {
+    pub(crate) fn scratch(&self) -> io::Result<Scratch<'_>> {
         let file = fs::openat(
             &self.root,
             ".",
@@ -96,7 +96,7 @@ impl Workspace {
 /// layer or output receipt; dropping it discards its contents. No Clone or raw
 /// file accessor permits escaping its workspace lease.
 #[derive(Debug)]
-pub struct Scratch<'workspace> {
+pub(crate) struct Scratch<'workspace> {
     file: File,
     _workspace: &'workspace Workspace,
 }
@@ -104,13 +104,13 @@ impl Scratch<'_> {
     pub(crate) fn file(&self) -> &File {
         &self.file
     }
-    pub fn set_len(&mut self, length: u64) -> io::Result<()> {
+    pub(crate) fn set_len(&mut self, length: u64) -> io::Result<()> {
         self.file.set_len(length)
     }
-    pub fn metadata(&self) -> io::Result<Metadata> {
+    pub(crate) fn metadata(&self) -> io::Result<Metadata> {
         self.file.metadata()
     }
-    pub fn sync_all(&self) -> io::Result<()> {
+    pub(crate) fn sync_all(&self) -> io::Result<()> {
         self.file.sync_all()
     }
 }
@@ -134,6 +134,6 @@ impl Seek for Scratch<'_> {
 }
 
 mod bootstrap;
-pub use bootstrap::{BootstrapMountFailure, BootstrapUnmountFailure, BootstrapVolumes};
+pub(crate) use bootstrap::{BootstrapMountFailure, BootstrapUnmountFailure, BootstrapVolumes};
 mod sealed;
-pub use sealed::{ScuteReader, SealFailure, SealedScute};
+pub(crate) use sealed::{ScuteReader, SealFailure, SealedScute};

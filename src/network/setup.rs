@@ -6,7 +6,7 @@ use std::io;
 
 /// Captured environment inputs. No namespace path is reopened during execution.
 #[derive(Debug)]
-pub struct NetworkInput {
+pub(crate) struct NetworkInput {
     namespace: NetworkNamespace,
     resolver: ResolverInput,
 }
@@ -21,12 +21,12 @@ impl NetworkInput {
 
 /// Captured build environment used only for explicitly enabled RUN directives.
 #[derive(Debug)]
-pub struct CommandNetworking<'a> {
+pub(crate) struct CommandNetworking<'a> {
     input: &'a NetworkInput,
     workspace: &'a Workspace,
 }
 impl<'a> CommandNetworking<'a> {
-    pub fn new(input: &'a NetworkInput, workspace: &'a Workspace) -> Self {
+    pub(crate) fn new(input: &'a NetworkInput, workspace: &'a Workspace) -> Self {
         Self { input, workspace }
     }
     pub(crate) fn prepare(&self, budget: &SetupBudget) -> io::Result<CommandNetwork> {

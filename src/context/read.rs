@@ -12,25 +12,25 @@ use std::{
 
 /// A read borrow pins the captured bytes for its entire lifetime.
 #[derive(Debug)]
-pub struct ContextFile<'a> {
+pub(crate) struct ContextFile<'a> {
     bytes: &'a [u8],
     executable: bool,
 }
 impl ContextFile<'_> {
-    pub fn bytes(&self) -> &[u8] {
+    pub(crate) fn bytes(&self) -> &[u8] {
         self.bytes
     }
-    pub fn executable(&self) -> bool {
+    pub(crate) fn executable(&self) -> bool {
         self.executable
     }
-    pub fn text(&self) -> Result<&str, ContextError> {
+    pub(crate) fn text(&self) -> Result<&str, ContextError> {
         std::str::from_utf8(self.bytes)
             .map_err(|_| ContextError::Invalid("selected file is not UTF-8"))
     }
 }
 impl CapturedContext {
     /// Resolve links against captured objects, never the caller's filesystem.
-    pub fn read(&self, path: &ContextPath) -> Result<ContextFile<'_>, ContextError> {
+    pub(crate) fn read(&self, path: &ContextPath) -> Result<ContextFile<'_>, ContextError> {
         let mut pending: VecDeque<OsString> = path.as_ref().iter().map(OsString::from).collect();
         let mut resolved = PathBuf::new();
         let mut followed = 0;

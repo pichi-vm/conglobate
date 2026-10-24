@@ -26,7 +26,7 @@ use std::{
 /// Trusted helper acknowledged self-placement in a command domain. This is not
 /// sandbox readiness, persisted recovery ownership or permission to run a recipe.
 #[derive(Debug)]
-pub struct Joined;
+pub(crate) struct Joined;
 impl private::Sealed for Joined {}
 impl SupervisionState for Joined {
     type Resources = ProcessObservation;
@@ -36,7 +36,7 @@ impl Supervision<Paired> {
     /// Supervisor side. Domain ownership stays with the caller on every outcome.
     /// A verified persisted-domain joining capability is required. Retain
     /// the separate child wait owner. Errors cancel the channel; they do not remove the domain or reap.
-    pub fn join_helper_until(
+    pub(crate) fn join_helper_until(
         self,
         domain: DomainJoin<'_>,
         deadline: Instant,
@@ -63,7 +63,7 @@ impl Supervision<Paired> {
     /// Helper side, before creating any threads or descendants. The helper writes
     /// its own membership, closes the transferred control FD, then acknowledges.
     /// The task-count check diagnoses misuse; trusted startup must prevent races.
-    pub fn join_domain_until(self, deadline: Instant) -> io::Result<Supervision<Joined>> {
+    pub(crate) fn join_domain_until(self, deadline: Instant) -> io::Result<Supervision<Joined>> {
         if !crate::process::ThreadSnapshot::capture()?.is_single()
             || rustix::process::getpid() == rustix::process::Pid::INIT
         {

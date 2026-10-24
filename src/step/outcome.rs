@@ -6,37 +6,37 @@ use std::{io, process::ExitStatus, time::Instant};
 /// Command observation is independent of the trusted helper's eventual exit
 /// status and of cleanup. An observation error (including timeout) is not success.
 #[derive(Debug, thiserror::Error)]
-pub enum CommandOutcome {
+pub(crate) enum CommandOutcome {
     #[error("command exited with {0}")]
     Exited(ExitStatus),
     #[error("command observation failed: {0}")]
     ObservationFailed(#[source] io::Error),
 }
 impl CommandOutcome {
-    pub fn success(&self) -> bool {
+    pub(crate) fn success(&self) -> bool {
         matches!(self, Self::Exited(status) if status.success())
     }
 }
 /// A primary outcome with its still-owned cleanup resources. This is a
 /// diagnostic association, not a proof of successful image construction.
 #[derive(Debug)]
-pub struct CommandResult<T> {
+pub(crate) struct CommandResult<T> {
     outcome: CommandOutcome,
     cleanup: T,
 }
 impl<T> CommandResult<T> {
-    pub fn outcome(&self) -> &CommandOutcome {
+    pub(crate) fn outcome(&self) -> &CommandOutcome {
         &self.outcome
     }
-    pub fn cleanup(&self) -> &T {
+    pub(crate) fn cleanup(&self) -> &T {
         &self.cleanup
     }
-    pub fn into_parts(self) -> (CommandOutcome, T) {
+    pub(crate) fn into_parts(self) -> (CommandOutcome, T) {
         (self.outcome, self.cleanup)
     }
     /// Consuming cleanup transitions preserve the original command outcome,
     /// including when the transition returns a retryable failure owner.
-    pub fn map_cleanup<U>(self, transition: impl FnOnce(T) -> U) -> CommandResult<U> {
+    pub(crate) fn map_cleanup<U>(self, transition: impl FnOnce(T) -> U) -> CommandResult<U> {
         CommandResult {
             outcome: self.outcome,
             cleanup: transition(self.cleanup),
@@ -46,7 +46,7 @@ impl<T> CommandResult<T> {
 impl<T, E> CommandResult<Result<T, E>> {
     /// Branch on cleanup success without separating either branch from the
     /// original command outcome. `?` can propagate the complete failure owner.
-    pub fn transpose(self) -> Result<CommandResult<T>, CommandResult<E>> {
+    pub(crate) fn transpose(self) -> Result<CommandResult<T>, CommandResult<E>> {
         match self.cleanup {
             Ok(cleanup) => Ok(CommandResult {
                 outcome: self.outcome,
@@ -62,7 +62,7 @@ impl<T, E> CommandResult<Result<T, E>> {
 impl<'a, R: StepStorage> RunningCommand<'a, R> {
     /// Wait for the trusted helper's report under the original execution cutoff.
     /// Even on timeout or protocol failure, retain the command for full teardown.
-    pub fn observe(self) -> CommandResult<ObservedCommand<'a, R>> {
+    pub(crate) fn observe(self) -> CommandResult<ObservedCommand<'a, R>> {
         let outcome = match self.supervision().completion_until(self.deadline()) {
             Ok(_) if Instant::now() >= self.deadline() => {
                 CommandOutcome::ObservationFailed(io::Error::new(
@@ -92,17 +92,17 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct ObservedCommand<'a, R: StepStorage> {
+pub(crate) struct ObservedCommand<'a, R: StepStorage> {
     command: RunningCommand<'a, R>,
     deadline: Instant,
 }
 impl<R: StepStorage> ObservedCommand<'_, R> {
-    pub fn teardown_deadline(&self) -> Instant {
+    pub(crate) fn teardown_deadline(&self) -> Instant {
         self.deadline
     }
 }
 impl<'a, R: StepStorage> CommandResult<ObservedCommand<'a, R>> {
-    pub fn teardown(
+    pub(crate) fn teardown(
         self,
     ) -> CommandResult<Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>>> {
         match self.outcome {

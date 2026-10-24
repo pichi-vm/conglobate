@@ -3,9 +3,9 @@
 
 //! Read-only content access. A receipt verifies a read, never future cache bytes.
 mod chain;
-pub use chain::{PreparedScute, VerifiedChain, VerifiedScute};
+pub(crate) use chain::{PreparedScute, VerifiedChain, VerifiedScute};
 mod resolve;
-pub use resolve::{HostArchitecture, ResolvedImage};
+pub(crate) use resolve::{HostArchitecture, ResolvedImage};
 
 use pichi_artifact::Digest as ContentDigest;
 use rustix::fs::{Mode, OFlags, ResolveFlags};
@@ -17,7 +17,7 @@ use std::{
 };
 
 #[derive(Debug, thiserror::Error)]
-pub enum CacheError {
+pub(crate) enum CacheError {
     #[error(transparent)]
     Chain(#[from] crate::chain::ChainError),
     #[error("invalid OCI JSON: {0}")]
@@ -34,7 +34,7 @@ pub enum CacheError {
 
 /// Pins directory authority; no method creates, downloads or modifies content.
 #[derive(Debug)]
-pub struct Cache {
+pub(crate) struct Cache {
     directory: File,
 }
 impl Cache {
@@ -43,7 +43,7 @@ impl Cache {
     ///
     /// # Errors
     /// Returns an I/O error if the supplied directory cannot be opened.
-    pub fn open(path: &Path) -> Result<Self, CacheError> {
+    pub(crate) fn open(path: &Path) -> Result<Self, CacheError> {
         let fd = rustix::fs::open(
             path,
             OFlags::RDONLY | OFlags::DIRECTORY | OFlags::CLOEXEC,
@@ -71,7 +71,7 @@ impl Cache {
         Ok(file)
     }
     /// Capture small metadata exactly once. Large immutable layers stay cache-backed.
-    pub fn metadata(
+    pub(crate) fn metadata(
         &self,
         digest: &ContentDigest,
         expected_size: Option<u64>,
@@ -112,13 +112,13 @@ impl Cache {
     }
     /// Verify one complete read without retaining an unverified future read handle.
     /// Mounting layers requires independent dm-verity verification at use time.
-    pub fn verify(&self, digest: &ContentDigest, size: u64) -> Result<BlobReceipt, CacheError> {
+    pub(crate) fn verify(&self, digest: &ContentDigest, size: u64) -> Result<BlobReceipt, CacheError> {
         self.copy_verified(digest, size, &mut io::sink())
     }
     /// Copy and verify the same byte stream. On error the destination may hold
     /// partial or invalid bytes; callers must keep it private and discard it.
     /// A prior receipt never authorizes a later unverified cache read.
-    pub fn copy_verified(
+    pub(crate) fn copy_verified(
         &self,
         digest: &ContentDigest,
         size: u64,
@@ -152,28 +152,28 @@ impl Cache {
 }
 
 #[derive(Debug)]
-pub struct VerifiedMetadata {
+pub(crate) struct VerifiedMetadata {
     digest: ContentDigest,
     bytes: Vec<u8>,
 }
 impl VerifiedMetadata {
-    pub fn digest(&self) -> &ContentDigest {
+    pub(crate) fn digest(&self) -> &ContentDigest {
         &self.digest
     }
-    pub fn bytes(&self) -> &[u8] {
+    pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
     }
 }
 #[derive(Debug)]
-pub struct BlobReceipt {
+pub(crate) struct BlobReceipt {
     digest: ContentDigest,
     size: u64,
 }
 impl BlobReceipt {
-    pub fn digest(&self) -> &ContentDigest {
+    pub(crate) fn digest(&self) -> &ContentDigest {
         &self.digest
     }
-    pub fn size(&self) -> u64 {
+    pub(crate) fn size(&self) -> u64 {
         self.size
     }
 }

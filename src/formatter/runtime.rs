@@ -15,19 +15,19 @@ use std::{
 /// capture; the captured runtime materializes ordinary files at requested paths.
 /// Set-ID bits are deliberately not part of the trusted runtime permissions.
 #[derive(Debug)]
-pub struct FormatterFile {
+pub(crate) struct FormatterFile {
     bytes: Box<[u8]>,
     digest: [u8; 32],
     executable: bool,
 }
 impl FormatterFile {
-    pub fn digest(&self) -> &[u8; 32] {
+    pub(crate) fn digest(&self) -> &[u8; 32] {
         &self.digest
     }
-    pub fn bytes(&self) -> &[u8] {
+    pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
     }
-    pub fn executable(&self) -> bool {
+    pub(crate) fn executable(&self) -> bool {
         self.executable
     }
     fn capture(root: &File, path: &RelativePath<FilePath>) -> io::Result<Self> {
@@ -72,12 +72,12 @@ impl FormatterFile {
 /// paths. Missing dependencies must fail inside the eventual captured root;
 /// execution must never fall back to the original host filesystem.
 #[derive(Debug)]
-pub struct CapturedFormatter {
+pub(crate) struct CapturedFormatter {
     executable: RelativePath<FilePath>,
     files: BTreeMap<RelativePath<FilePath>, FormatterFile>,
 }
 impl CapturedFormatter {
-    pub fn capture(
+    pub(crate) fn capture(
         root: &Path,
         executable: RelativePath<FilePath>,
         paths: impl IntoIterator<Item = RelativePath<FilePath>>,
@@ -128,7 +128,7 @@ impl CapturedFormatter {
     }
     /// Add the builder-owned configuration, rejecting a supplied host config.
     /// The captured root must never choose ambient mke2fs defaults.
-    pub fn with_ext4_configuration(mut self) -> io::Result<Self> {
+    pub(crate) fn with_ext4_configuration(mut self) -> io::Result<Self> {
         let path = RelativePath::try_from(Path::new(super::Ext4Format::CONFIGURATION_PATH))
             .expect("fixed configuration path");
         if self.files.keys().any(|existing| {
@@ -150,10 +150,10 @@ impl CapturedFormatter {
         );
         Ok(self)
     }
-    pub fn executable(&self) -> &RelativePath<FilePath> {
+    pub(crate) fn executable(&self) -> &RelativePath<FilePath> {
         &self.executable
     }
-    pub fn files(
+    pub(crate) fn files(
         &self,
     ) -> impl ExactSizeIterator<Item = (&RelativePath<FilePath>, &FormatterFile)> {
         self.files.iter()

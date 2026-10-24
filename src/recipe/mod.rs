@@ -11,10 +11,10 @@ use serde::{Deserialize, Deserializer};
 mod transform;
 pub(crate) use transform::DEFAULT_TRANSFORM;
 use transform::TransformDocument;
-pub use transform::{PropertyValue, TransformAction, TransformOperation, TransformSelection};
+pub(crate) use transform::{PropertyValue, TransformAction, TransformOperation, TransformSelection};
 
 #[derive(Debug, thiserror::Error)]
-pub enum RecipeError {
+pub(crate) enum RecipeError {
     #[error(transparent)]
     Pattern(#[from] crate::copy::PatternError),
     #[error(transparent)]
@@ -160,7 +160,7 @@ enum SourcesDocument {
 }
 
 #[derive(Debug)]
-pub struct FilesystemSpec {
+pub(crate) struct FilesystemSpec {
     size: FilesystemSize,
     label: FilesystemLabel,
 }
@@ -184,33 +184,33 @@ impl TryFrom<FilesystemDocument> for FilesystemSpec {
     }
 }
 impl FilesystemSpec {
-    pub fn size(&self) -> FilesystemSize {
+    pub(crate) fn size(&self) -> FilesystemSize {
         self.size
     }
-    pub fn label(&self) -> &FilesystemLabel {
+    pub(crate) fn label(&self) -> &FilesystemLabel {
         &self.label
     }
 }
 
 #[derive(Debug)]
-pub struct Run {
+pub(crate) struct Run {
     command: String,
     network: bool,
     timeout: CommandTimeout,
 }
 impl Run {
-    pub fn command(&self) -> &str {
+    pub(crate) fn command(&self) -> &str {
         &self.command
     }
-    pub fn network(&self) -> bool {
+    pub(crate) fn network(&self) -> bool {
         self.network
     }
-    pub fn timeout(&self) -> CommandTimeout {
+    pub(crate) fn timeout(&self) -> CommandTimeout {
         self.timeout
     }
 }
 #[derive(Debug)]
-pub struct Copy {
+pub(crate) struct Copy {
     sources: Vec<crate::copy::SourcePattern>,
     destination: ImagePath,
     owner: Option<String>,
@@ -218,24 +218,24 @@ pub struct Copy {
     mode: Option<crate::copy::CopyMode>,
 }
 impl Copy {
-    pub fn sources(&self) -> &[crate::copy::SourcePattern] {
+    pub(crate) fn sources(&self) -> &[crate::copy::SourcePattern] {
         &self.sources
     }
-    pub fn destination(&self) -> &str {
+    pub(crate) fn destination(&self) -> &str {
         self.destination.as_ref()
     }
-    pub fn owner(&self) -> Option<&str> {
+    pub(crate) fn owner(&self) -> Option<&str> {
         self.owner.as_deref()
     }
-    pub fn group(&self) -> Option<&str> {
+    pub(crate) fn group(&self) -> Option<&str> {
         self.group.as_deref()
     }
-    pub fn mode(&self) -> Option<&crate::copy::CopyMode> {
+    pub(crate) fn mode(&self) -> Option<&crate::copy::CopyMode> {
         self.mode.as_ref()
     }
 }
 #[derive(Debug)]
-pub enum Directive {
+pub(crate) enum Directive {
     Run(Run),
     Copy(Copy),
 }
@@ -323,74 +323,74 @@ impl AsRef<str> for ImagePath {
     }
 }
 #[derive(Debug)]
-pub struct Bootstrap {
+pub(crate) struct Bootstrap {
     from: ImageReference,
     filesystem: FilesystemSpec,
     directives: Vec<Directive>,
 }
 #[derive(Debug)]
-pub struct Carapace {
+pub(crate) struct Carapace {
     from: Option<ImageReference>,
     directives: Vec<Directive>,
 }
 #[derive(Debug)]
-pub struct Firmware {
+pub(crate) struct Firmware {
     from: Option<ImageReference>,
     directives: Vec<Directive>,
     pmi: ImagePath,
     dtb: ImagePath,
 }
 impl Bootstrap {
-    pub fn from(&self) -> &ImageReference {
+    pub(crate) fn from(&self) -> &ImageReference {
         &self.from
     }
-    pub fn filesystem(&self) -> &FilesystemSpec {
+    pub(crate) fn filesystem(&self) -> &FilesystemSpec {
         &self.filesystem
     }
-    pub fn directives(&self) -> &[Directive] {
+    pub(crate) fn directives(&self) -> &[Directive] {
         &self.directives
     }
 }
 impl Carapace {
-    pub fn from(&self) -> Option<&ImageReference> {
+    pub(crate) fn from(&self) -> Option<&ImageReference> {
         self.from.as_ref()
     }
-    pub fn directives(&self) -> &[Directive] {
+    pub(crate) fn directives(&self) -> &[Directive] {
         &self.directives
     }
 }
 impl Firmware {
-    pub fn from(&self) -> Option<&ImageReference> {
+    pub(crate) fn from(&self) -> Option<&ImageReference> {
         self.from.as_ref()
     }
-    pub fn directives(&self) -> &[Directive] {
+    pub(crate) fn directives(&self) -> &[Directive] {
         &self.directives
     }
-    pub fn pmi(&self) -> &str {
+    pub(crate) fn pmi(&self) -> &str {
         self.pmi.as_ref()
     }
-    pub fn dtb(&self) -> &str {
+    pub(crate) fn dtb(&self) -> &str {
         self.dtb.as_ref()
     }
 }
 #[derive(Debug)]
-pub struct Recipe {
+pub(crate) struct Recipe {
     bootstrap: Option<Bootstrap>,
     carapace: Option<Carapace>,
     firmware: Option<Firmware>,
     transform: TransformSelection,
 }
 impl Recipe {
-    pub fn bootstrap(&self) -> Option<&Bootstrap> {
+    pub(crate) fn bootstrap(&self) -> Option<&Bootstrap> {
         self.bootstrap.as_ref()
     }
-    pub fn carapace(&self) -> Option<&Carapace> {
+    pub(crate) fn carapace(&self) -> Option<&Carapace> {
         self.carapace.as_ref()
     }
-    pub fn firmware(&self) -> Option<&Firmware> {
+    pub(crate) fn firmware(&self) -> Option<&Firmware> {
         self.firmware.as_ref()
     }
-    pub fn transform(&self) -> &TransformSelection {
+    pub(crate) fn transform(&self) -> &TransformSelection {
         &self.transform
     }
 }

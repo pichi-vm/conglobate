@@ -5,7 +5,7 @@ use crate::recipe::{PropertyValue, TransformAction, TransformOperation, Transfor
 use devtree::{OwnedNode, OwnedProperty, OwnedTree, Tree};
 
 #[derive(Debug, thiserror::Error)]
-pub enum TransformError {
+pub(crate) enum TransformError {
     #[error("invalid DTB: {0}")]
     Dtb(#[from] devtree::Error),
     #[error("transform requires a DTB")]
@@ -22,15 +22,15 @@ pub enum TransformError {
 
 /// Successful transformation, including the observed default-skip disposition.
 #[derive(Debug)]
-pub struct TransformedDtb {
+pub(crate) struct TransformedDtb {
     bytes: Option<Vec<u8>>,
     default_skipped: bool,
 }
 impl TransformedDtb {
-    pub fn bytes(&self) -> Option<&[u8]> {
+    pub(crate) fn bytes(&self) -> Option<&[u8]> {
         self.bytes.as_deref()
     }
-    pub fn default_skipped(&self) -> bool {
+    pub(crate) fn default_skipped(&self) -> bool {
         self.default_skipped
     }
 }
@@ -43,7 +43,7 @@ impl TransformSelection {
     /// Rejects malformed DTBs, missing required properties/DTBs, non-string
     /// regex inputs, unavailable template variables and invalid typed values.
     /// A regex with no match succeeds without changing the property.
-    pub fn apply(
+    pub(crate) fn apply(
         &self,
         dtb: Option<&[u8]>,
         carapace: Option<&str>,

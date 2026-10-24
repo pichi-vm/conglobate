@@ -27,7 +27,7 @@ use std::{
 /// }
 /// ```
 #[derive(Debug)]
-pub struct SnapshotOrigin<'owner> {
+pub(crate) struct SnapshotOrigin<'owner> {
     mapping: &'owner Mapping<Active>,
 }
 impl<'a> From<&'a Mapping<Active>> for SnapshotOrigin<'a> {
@@ -64,27 +64,27 @@ impl<'a> From<&'a Mapping<Active>> for SnapshotOrigin<'a> {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct SnapshotMapping<'lease, 'workspace> {
+pub(crate) struct SnapshotMapping<'lease, 'workspace> {
     mapping: Mapping<Active>,
     origin: SnapshotOrigin<'lease>,
     backing: LoopAttachment<'workspace>,
 }
 #[derive(Debug, thiserror::Error)]
 #[error("snapshot mapping: {failure}")]
-pub struct SnapshotMappingFailure<'lease, 'workspace> {
+pub(crate) struct SnapshotMappingFailure<'lease, 'workspace> {
     failure: MappingFailure,
     origin: SnapshotOrigin<'lease>,
     backing: LoopAttachment<'workspace>,
 }
 impl<'a, 'w> SnapshotMappingFailure<'a, 'w> {
     /// Most recent failure. `diagnostics()` also retains the original operation.
-    pub fn source_error(&self) -> &io::Error {
+    pub(crate) fn source_error(&self) -> &io::Error {
         self.failure.source_error()
     }
-    pub fn diagnostics(&self) -> &super::FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &super::FailureDiagnostics {
         self.failure.diagnostics()
     }
-    pub fn cleanup(self) -> Result<LoopAttachment<'w>, Self> {
+    pub(crate) fn cleanup(self) -> Result<LoopAttachment<'w>, Self> {
         match self.failure.cleanup() {
             Ok(()) => Ok(self.backing),
             Err(failure) => Err(Self {
@@ -96,7 +96,7 @@ impl<'a, 'w> SnapshotMappingFailure<'a, 'w> {
     }
 }
 impl Mapping<Created> {
-    pub fn snapshot<'a, 'w>(
+    pub(crate) fn snapshot<'a, 'w>(
         self,
         origin: impl Into<SnapshotOrigin<'a>>,
         backing: LoopAttachment<'w>,
@@ -145,14 +145,14 @@ impl<'a, 'w> SnapshotMapping<'a, 'w> {
     }
     /// Current kernel health only. A successful query is not proof of stopped
     /// writers, final metadata flush, future validity or a sealed output layer.
-    pub fn usage(&self) -> io::Result<SnapshotUsage> {
+    pub(crate) fn usage(&self) -> io::Result<SnapshotUsage> {
         self.mapping.snapshot_info()?.try_into()
     }
 
-    pub fn id(&self) -> devmap_linux::DevId {
+    pub(crate) fn id(&self) -> devmap_linux::DevId {
         self.mapping.id()
     }
-    pub fn close(self) -> Result<LoopAttachment<'w>, SnapshotMappingFailure<'a, 'w>> {
+    pub(crate) fn close(self) -> Result<LoopAttachment<'w>, SnapshotMappingFailure<'a, 'w>> {
         match self.mapping.close() {
             Ok(()) => Ok(self.backing),
             Err(failure) => Err(SnapshotMappingFailure {
@@ -166,13 +166,13 @@ impl<'a, 'w> SnapshotMapping<'a, 'w> {
 
 /// Validated counters from one snapshot status observation, in 512-byte sectors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SnapshotUsage {
+pub(crate) struct SnapshotUsage {
     allocated: u64,
     total: u64,
     metadata: u64,
 }
 impl SnapshotUsage {
-    pub fn allocated_sectors(self) -> u64 {
+    pub(crate) fn allocated_sectors(self) -> u64 {
         self.allocated
     }
 }

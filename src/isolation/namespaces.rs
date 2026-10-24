@@ -36,7 +36,7 @@ use std::{
 /// }
 /// ```
 #[derive(Debug)]
-pub struct CommandNamespaces {
+pub(crate) struct CommandNamespaces {
     _thread: PhantomData<Rc<()>>,
 }
 impl CommandNamespaces {
@@ -106,7 +106,7 @@ impl CommandNamespaces {
     /// Spawn exactly the next trusted setup child, which becomes PID 1. The
     /// returned process owns termination/reaping; this helper must then wait and
     /// exit, never attempt to regain supervisor namespaces or continue a build.
-    pub fn spawn(self, mut setup: Command) -> io::Result<Process<Running>> {
+    pub(crate) fn spawn(self, mut setup: Command) -> io::Result<Process<Running>> {
         setup.spawn().map(Process::from)
     }
 }

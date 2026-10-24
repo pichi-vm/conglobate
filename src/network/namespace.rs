@@ -9,10 +9,10 @@ use std::{
 /// Pinned environment-owned network namespace, captured before command user
 /// namespaces exist. Descriptor release does not tear down external networking.
 #[derive(Debug)]
-pub struct NetworkNamespace(File);
+pub(crate) struct NetworkNamespace(File);
 impl NetworkNamespace {
     /// Pin an environment-owned namespace. No network configuration is changed.
-    pub fn open(path: &std::path::Path) -> io::Result<Self> {
+    pub(crate) fn open(path: &std::path::Path) -> io::Result<Self> {
         let file: File = rustix::fs::open(
             path,
             rustix::fs::OFlags::RDONLY | rustix::fs::OFlags::CLOEXEC | rustix::fs::OFlags::NONBLOCK,
@@ -44,7 +44,7 @@ impl NetworkNamespace {
     }
 
     /// Read-only identity for lifecycle diagnostics, not an execution handle.
-    pub fn metadata(&self) -> io::Result<fs::Metadata> {
+    pub(crate) fn metadata(&self) -> io::Result<fs::Metadata> {
         self.0.metadata()
     }
 }

@@ -55,7 +55,7 @@ class LifecycleRun:
         self.output.mkdir()
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as archive:
             for name in ('src', 'Cargo.toml', 'Cargo.lock', 'tests/lifecycle/src',
-                         'tests/lifecycle/Cargo.toml', 'tests/lifecycle/Cargo.lock',
+                         
                          'tests/distro/label_environment.py', 'tests/environment',
                          'tests/lifecycle/run.py', 'tests/lifecycle/cache_fixture.py', 'tests/lifecycle/clone-probe.c', 'tests/vm_runtime.py'):
                 archive.add(REPO / name, arcname=name)
@@ -68,7 +68,7 @@ class LifecycleRun:
         env['CARGO_TARGET_DIR'] = str(target)
         with (self.output / 'build.log').open('wb') as log:
             subprocess.run(['cargo', f'+{toolchain}', 'build', '--locked', '--offline',
-                            '--manifest-path', str(REPO / 'tests/lifecycle/Cargo.toml')],
+                            '--features', 'test-fixtures', '--bin', 'conglobate-lifecycle-tests'],
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
         runtime = LifecycleRuntime(self.root, self.args.module_root.resolve(), self.args.kernel_release)
         runtime.create()

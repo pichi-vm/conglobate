@@ -3,7 +3,7 @@
 //! Private output storage and atomic filesystem publication. These low-level
 //! owners do not prove a successful build or validate inventory/manifest relations.
 mod assembly;
-pub use assembly::{AssembledImage, AssemblyFailure};
+pub(crate) use assembly::{AssembledImage, AssemblyFailure};
 
 use crate::cache::{BlobReceipt, Cache, CacheError};
 use pichi_artifact::Digest;
@@ -19,19 +19,19 @@ use std::{
 /// parent descriptor. No unverified cache stream reaches the published name.
 /// The build coordinator must validate the complete layout before publication.
 #[derive(Debug)]
-pub struct StagedDirectory {
+pub(crate) struct StagedDirectory {
     temporary: tempfile::TempDir,
     parent: File,
     destination: OsString,
 }
 #[derive(Debug, thiserror::Error)]
 #[error("output publication: {source}")]
-pub struct PublicationFailure {
+pub(crate) struct PublicationFailure {
     source: io::Error,
     staged: StagedDirectory,
 }
 impl PublicationFailure {
-    pub fn into_parts(self) -> (io::Error, StagedDirectory) {
+    pub(crate) fn into_parts(self) -> (io::Error, StagedDirectory) {
         (self.source, self.staged)
     }
 }
@@ -42,7 +42,7 @@ impl StagedDirectory {
     /// # Errors
     /// Rejects a nameless/existing destination, an inaccessible or non-directory
     /// parent, and failures to create private sibling storage.
-    pub fn create(destination: &Path) -> io::Result<Self> {
+    pub(crate) fn create(destination: &Path) -> io::Result<Self> {
         let name = destination.file_name().ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -90,7 +90,7 @@ impl StagedDirectory {
     }
     /// Copy the exact stream being verified to a private temporary file. Failed
     /// verification or writes remove that file, leaving no digest-named blob.
-    pub fn copy_blob(
+    pub(crate) fn copy_blob(
         &self,
         cache: &Cache,
         digest: &Digest,
@@ -150,7 +150,7 @@ impl StagedDirectory {
     }
     /// Store captured or newly produced small content, deriving its identity
     /// from these bytes. The coordinator supplies the matching descriptor.
-    pub fn store_blob(&self, bytes: &[u8]) -> io::Result<Digest> {
+    pub(crate) fn store_blob(&self, bytes: &[u8]) -> io::Result<Digest> {
         let digest = Digest::from_bytes_sha256(bytes);
         self.write_file(&self.blob_path(&digest), bytes)?;
         Ok(digest)
@@ -170,7 +170,7 @@ impl StagedDirectory {
     /// Atomic no-replacement filesystem operation, not a build-success receipt.
     /// Failure retains staging for explicit cleanup. No fallible operation is
     /// performed after rename, so Err never means the destination was published.
-    pub fn publish(self) -> Result<(), PublicationFailure> {
+    pub(crate) fn publish(self) -> Result<(), PublicationFailure> {
         let result = rustix::fs::renameat_with(
             &self.parent,
             self.temporary
@@ -192,7 +192,7 @@ impl StagedDirectory {
             }),
         }
     }
-    pub fn discard(self) -> io::Result<()> {
+    pub(crate) fn discard(self) -> io::Result<()> {
         self.temporary.close()
     }
 }

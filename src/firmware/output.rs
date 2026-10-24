@@ -17,7 +17,7 @@ use std::{
 };
 
 #[derive(Debug, thiserror::Error)]
-pub enum ExtractionError {
+pub(crate) enum ExtractionError {
     #[error("firmware extraction: {0}")]
     Io(#[from] io::Error),
     #[error(transparent)]
@@ -27,13 +27,13 @@ pub enum ExtractionError {
 }
 /// Both declared files have been captured. No output filesystem authority escapes.
 #[derive(Debug)]
-pub struct ExtractedFirmware<'w> {
+pub(crate) struct ExtractedFirmware<'w> {
     pmi: FirmwareFile<'w>,
     dtb: FirmwareFile<'w>,
 }
 /// Final DTB bytes and their compatible firmware. This is not command success.
 #[derive(Debug)]
-pub struct FinalizedFirmware<'w> {
+pub(crate) struct FinalizedFirmware<'w> {
     pmi: FirmwareFile<'w>,
     dtb: TransformedDtb,
 }
@@ -58,7 +58,7 @@ impl<'w> ExtractedFirmware<'w> {
             dtb: FirmwareFile::capture(dtb, workspace, budget)?,
         })
     }
-    pub fn finalize(
+    pub(crate) fn finalize(
         self,
         transform: &TransformSelection,
         carapace: Option<&str>,
@@ -73,16 +73,16 @@ impl<'w> ExtractedFirmware<'w> {
     }
 }
 impl FinalizedFirmware<'_> {
-    pub fn pmi_descriptor(&self) -> pichi_artifact::PmiDescriptor {
+    pub(crate) fn pmi_descriptor(&self) -> pichi_artifact::PmiDescriptor {
         pichi_artifact::PmiDescriptor {
             digest: self.pmi.digest.to_string(),
             size: self.pmi.size,
         }
     }
-    pub fn pmi_reader(&self) -> impl Read + '_ {
+    pub(crate) fn pmi_reader(&self) -> impl Read + '_ {
         self.pmi.reader()
     }
-    pub fn dtb(&self) -> &TransformedDtb {
+    pub(crate) fn dtb(&self) -> &TransformedDtb {
         &self.dtb
     }
 }

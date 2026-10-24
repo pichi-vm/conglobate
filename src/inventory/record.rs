@@ -292,7 +292,7 @@ impl TryFrom<crate::formatter::FormatReceipt> for Formatter {
 impl Inventory {
     /// Attach actual formatter execution evidence before final publication.
     /// Consumes the receipt; decoded inventory cannot mint an execution receipt.
-    pub fn with_formatter(
+    pub(crate) fn with_formatter(
         self,
         receipt: crate::formatter::FormatReceipt,
     ) -> Result<Self, InventoryError> {

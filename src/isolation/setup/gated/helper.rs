@@ -15,7 +15,7 @@ use std::{
 };
 
 #[derive(Debug, thiserror::Error)]
-pub enum HelperExecutionError {
+pub(crate) enum HelperExecutionError {
     #[error("namespace helper setup: {0}")]
     Setup(#[from] io::Error),
     #[error("namespace child wait: {0}")]
@@ -27,7 +27,7 @@ impl GatedCommandSetup {
     /// entry as PID 1, then wait. The supervisor enforces command timeout by
     /// cancelling the domain; this helper imposes no shorter execution limit.
     /// The caller must exit on return, including on setup failure.
-    pub fn execute(
+    pub(crate) fn execute(
         self,
         mut root_entry: Command,
         cutoff: SetupCutoff,
@@ -40,7 +40,7 @@ impl GatedCommandSetup {
     }
 }
 #[derive(Debug, thiserror::Error)]
-pub enum RootPreparationError {
+pub(crate) enum RootPreparationError {
     #[error("root-entry mount namespace: {0}")]
     Namespace(#[from] NamespaceFailure),
     #[error("restricted root preparation: {0}")]
@@ -49,7 +49,7 @@ pub enum RootPreparationError {
 /// Restricted leaf retaining only its start endpoint. Its construction and
 /// start are exit-only on failure, in the dedicated trusted PID-1 helper.
 #[derive(Debug)]
-pub struct GatedRestrictedCommand {
+pub(crate) struct GatedRestrictedCommand {
     command: RestrictedCommand,
     gate: ExecutionEndpoint,
     cutoff: SetupCutoff,
@@ -58,7 +58,7 @@ impl GatedRootSetup {
     /// Select the assigned cwd, install private runtime mounts, pivot root,
     /// restrict privileges/syscalls, and retain the explicit start handshake.
     /// No image command executes during this transition.
-    pub fn restrict(
+    pub(crate) fn restrict(
         self,
         script: &str,
         cutoff: SetupCutoff,
@@ -80,7 +80,7 @@ impl GatedRootSetup {
     }
 }
 impl GatedRestrictedCommand {
-    pub fn start(self) -> io::Result<Infallible> {
+    pub(crate) fn start(self) -> io::Result<Infallible> {
         self.command.start(self.gate, self.cutoff.deadline()?)
     }
 }

@@ -6,28 +6,28 @@ mod devices;
 mod labels;
 pub(crate) use labels::AssignedRoots;
 mod receiver;
-pub use receiver::{CommandReceiver, ReceiverCompletion, ReceiverFailure};
+pub(crate) use receiver::{CommandReceiver, ReceiverCompletion, ReceiverFailure};
 mod gate;
 mod init;
 mod namespaces;
 mod setup;
-pub use gate::{
+pub(crate) use gate::{
     CompletionEndpoint, ExecutionEndpoint, ExecutionGate, GateState, Ready, Started, Waiting,
 };
 mod user;
-pub use namespaces::CommandNamespaces;
-pub use setup::{
+pub(crate) use namespaces::CommandNamespaces;
+pub(crate) use setup::{
     CommandSetup, GatedCommandSetup, GatedRestrictedCommand, GatedRootSetup, HelperExecutionError,
     RootPreparationError,
 };
-pub use user::{
+pub(crate) use user::{
     IdMappings, IdRange, Mapped, UserNamespace, UserNamespaceFailure, UserNamespaceState,
 };
 mod root;
 mod runtime;
-pub use devices::CommandDevices;
+pub(crate) use devices::CommandDevices;
 use nix::sched::{CloneFlags, setns, unshare};
-pub use root::{CommandRoot, EnteredRoot, RestrictedCommand};
+pub(crate) use root::{CommandRoot, EnteredRoot, RestrictedCommand};
 use rustix::mount::MountPropagationFlags;
 use std::{fs::File, io, marker::PhantomData, rc::Rc};
 
@@ -54,12 +54,12 @@ struct NamespaceLease {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct PrivateMountNamespace {
+pub(crate) struct PrivateMountNamespace {
     lease: NamespaceLease,
     current: File,
 }
 #[derive(Debug, thiserror::Error)]
-pub enum NamespaceFailure {
+pub(crate) enum NamespaceFailure {
     #[error("namespace setup before transition: {0}")]
     Before(io::Error),
     #[error("namespace operation after transition: {source}")]
@@ -69,11 +69,11 @@ pub enum NamespaceFailure {
     },
 }
 #[derive(Debug)]
-pub struct NamespaceRecovery {
+pub(crate) struct NamespaceRecovery {
     lease: NamespaceLease,
 }
 impl NamespaceFailure {
-    pub fn restore(self) -> Result<(), Self> {
+    pub(crate) fn restore(self) -> Result<(), Self> {
         match self {
             Self::Entered { recovery, .. } => recovery.lease.restore(),
             error => Err(error),
@@ -81,7 +81,7 @@ impl NamespaceFailure {
     }
 }
 impl PrivateMountNamespace {
-    pub fn enter() -> Result<Self, NamespaceFailure> {
+    pub(crate) fn enter() -> Result<Self, NamespaceFailure> {
         let tasks = crate::process::ThreadSnapshot::capture().map_err(NamespaceFailure::Before)?;
         if !tasks.is_single() {
             return Err(NamespaceFailure::Before(io::Error::other(
@@ -136,7 +136,7 @@ impl PrivateMountNamespace {
 
     /// Restore the original namespace. Attached resources must be cleaned up
     /// before restoration. The helper may not admit commands on this basis alone.
-    pub fn restore(self) -> Result<(), NamespaceFailure> {
+    pub(crate) fn restore(self) -> Result<(), NamespaceFailure> {
         self.lease.restore()
     }
 }

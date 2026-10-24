@@ -13,7 +13,7 @@ use crate::{
     process::{ChildReaper, Identified, LaunchFailure, Process, Running},
     storage::{BootstrapVolumes, FailureDiagnostics, Mounted, Volume},
 };
-pub use sandbox::{CommandSandbox, SandboxDirectories};
+pub(crate) use sandbox::{CommandSandbox, SandboxDirectories};
 use std::{
     io,
     mem::ManuallyDrop,
@@ -21,7 +21,7 @@ use std::{
     process::Command,
     time::{Duration, Instant},
 };
-pub use storage::{PreparationStorage, StorageLayout};
+pub(crate) use storage::{PreparationStorage, StorageLayout};
 
 #[derive(Debug)]
 struct Assigned<R: PreparationStorage> {
@@ -31,7 +31,7 @@ struct Assigned<R: PreparationStorage> {
 /// Namespace ownership and mounted storage stay together even if
 /// helper startup fails before cgroup joining. The reaper must already be installed.
 #[derive(Debug)]
-pub struct StoragePreparation<R: PreparationStorage> {
+pub(crate) struct StoragePreparation<R: PreparationStorage> {
     namespace: ManuallyDrop<UserNamespace<Mapped>>,
     volume: Retained<R>,
     domain: CommandDomain,
@@ -40,7 +40,7 @@ pub struct StoragePreparation<R: PreparationStorage> {
 impl<R: PreparationStorage> StoragePreparation<R> {
     /// Acquire and publish containment before launching a helper. Every failure
     /// retains the supplied namespace, mounted storage and child reaper.
-    pub fn create(
+    pub(crate) fn create(
         namespace: UserNamespace<Mapped>,
         volume: R,
         reaper: ChildReaper,
@@ -72,7 +72,7 @@ impl<R: PreparationStorage> StoragePreparation<R> {
         }
     }
 
-    pub fn new(
+    pub(crate) fn new(
         namespace: UserNamespace<Mapped>,
         volume: R,
         domain: CommandDomain,
@@ -85,7 +85,7 @@ impl<R: PreparationStorage> StoragePreparation<R> {
             reaper,
         }
     }
-    pub fn launch<'l>(
+    pub(crate) fn launch<'l>(
         self,
         command: Command,
         setup_deadline: Instant,
@@ -170,19 +170,19 @@ enum Phase<R: PreparationStorage> {
 /// ```
 #[derive(Debug, thiserror::Error)]
 #[error("command preparation: {diagnostics}")]
-pub struct StoragePreparationFailure<R: PreparationStorage> {
+pub(crate) struct StoragePreparationFailure<R: PreparationStorage> {
     diagnostics: FailureDiagnostics,
     phase: Phase<R>,
     deadline: Instant,
 }
 /// Failed setup was completely rolled back. This is never a successful step.
 #[derive(Debug)]
-pub struct StorageRollback<R: PreparationStorage> {
+pub(crate) struct StorageRollback<R: PreparationStorage> {
     diagnostics: FailureDiagnostics,
     volume: R::Unmounted,
 }
 impl<R: PreparationStorage> StorageRollback<R> {
-    pub fn into_parts(self) -> (FailureDiagnostics, R::Unmounted) {
+    pub(crate) fn into_parts(self) -> (FailureDiagnostics, R::Unmounted) {
         (self.diagnostics, self.volume)
     }
 }
@@ -195,10 +195,10 @@ impl<R: PreparationStorage> StoragePreparationFailure<R> {
         })
     }
 
-    pub fn diagnostics(&self) -> &FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
         &self.diagnostics
     }
-    pub fn rollback(self) -> Result<StorageRollback<R>, Box<Self>> {
+    pub(crate) fn rollback(self) -> Result<StorageRollback<R>, Box<Self>> {
         if let Err(error) = Deadline::check(self.deadline) {
             return Err(Box::new(Self {
                 diagnostics: self.diagnostics.followed_by(error.into()),
@@ -344,10 +344,10 @@ impl<R: PreparationStorage> StoragePreparationFailure<R> {
 }
 
 /// Single-volume preparation uses the shared storage lifecycle.
-pub type CommandPreparation<'n, 'o, 'w> = StoragePreparation<Volume<'n, 'o, 'w, Mounted>>;
-pub type PreparationFailure<'n, 'o, 'w> = StoragePreparationFailure<Volume<'n, 'o, 'w, Mounted>>;
+pub(crate) type CommandPreparation<'n, 'o, 'w> = StoragePreparation<Volume<'n, 'o, 'w, Mounted>>;
+pub(crate) type PreparationFailure<'n, 'o, 'w> = StoragePreparationFailure<Volume<'n, 'o, 'w, Mounted>>;
 /// Bootstrap preparation retains both roots through the same namespace/process rollback.
-pub type BootstrapPreparation<'n, 'o, 'w> =
+pub(crate) type BootstrapPreparation<'n, 'o, 'w> =
     StoragePreparation<BootstrapVolumes<'n, 'o, 'w, Mounted>>;
-pub type BootstrapPreparationFailure<'n, 'o, 'w> =
+pub(crate) type BootstrapPreparationFailure<'n, 'o, 'w> =
     StoragePreparationFailure<BootstrapVolumes<'n, 'o, 'w, Mounted>>;

@@ -32,19 +32,19 @@ struct Platform {
     variant: Option<String>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HostArchitecture {
+pub(crate) enum HostArchitecture {
     Amd64,
     Arm64,
 }
 impl HostArchitecture {
-    pub fn current() -> Result<Self, CacheError> {
+    pub(crate) fn current() -> Result<Self, CacheError> {
         match std::env::consts::ARCH {
             "x86_64" => Ok(Self::Amd64),
             "aarch64" => Ok(Self::Arm64),
             _ => Err(CacheError::Invalid("unsupported host architecture")),
         }
     }
-    pub fn oci_name(self) -> &'static str {
+    pub(crate) fn oci_name(self) -> &'static str {
         match self {
             Self::Amd64 => "amd64",
             Self::Arm64 => "arm64",
@@ -63,30 +63,30 @@ impl HostArchitecture {
 
 /// Captured, verified metadata only. This does not prove scute chain integrity.
 #[derive(Debug)]
-pub struct ResolvedImage {
+pub(crate) struct ResolvedImage {
     index: VerifiedMetadata,
     manifest_bytes: VerifiedMetadata,
     manifest: Manifest,
     architecture: HostArchitecture,
 }
 impl ResolvedImage {
-    pub fn index(&self) -> &VerifiedMetadata {
+    pub(crate) fn index(&self) -> &VerifiedMetadata {
         &self.index
     }
-    pub fn manifest_bytes(&self) -> &VerifiedMetadata {
+    pub(crate) fn manifest_bytes(&self) -> &VerifiedMetadata {
         &self.manifest_bytes
     }
-    pub fn manifest(&self) -> &Manifest {
+    pub(crate) fn manifest(&self) -> &Manifest {
         &self.manifest
     }
-    pub fn architecture(&self) -> HostArchitecture {
+    pub(crate) fn architecture(&self) -> HostArchitecture {
         self.architecture
     }
 }
 impl Cache {
     /// Check every non-inline content descriptor in the selected manifest.
     /// This is content identity verification, not scute-chain verification.
-    pub fn verify_references(&self, image: &ResolvedImage) -> Result<Vec<BlobReceipt>, CacheError> {
+    pub(crate) fn verify_references(&self, image: &ResolvedImage) -> Result<Vec<BlobReceipt>, CacheError> {
         self.verify_references_with_chain(image, None)
     }
     /// Combine initial identity and ancestry checks. This never authorizes a
@@ -133,7 +133,7 @@ impl Cache {
         }
         Ok(receipts)
     }
-    pub fn resolve(&self, pin: IndexDigest) -> Result<ResolvedImage, CacheError> {
+    pub(crate) fn resolve(&self, pin: IndexDigest) -> Result<ResolvedImage, CacheError> {
         let architecture = HostArchitecture::current()?;
         let index = self.metadata(&Digest::Sha256(*pin.bytes()), None)?;
         let parsed: Index = serde_json::from_slice(index.bytes())?;

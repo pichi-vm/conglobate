@@ -7,7 +7,21 @@ repository = "https://github.com/pichi-vm/conglobate"
 publish = false
 description = "Standalone image builder with isolated command execution"
 
+[features]
+test-fixtures = ["nix/uio", "nix/term", "rustix/pty", "rustix/termios"]
+
+[[bin]]
+name = "conglobate"
+path = "src/main.rs"
+
+[[bin]]
+name = "conglobate-lifecycle-tests"
+path = "src/fixture.rs"
+required-features = ["test-fixtures"]
+test = false
+
 [dependencies]
+anyhow = "1"
 netlink-packet-core = "=0.9.0"
 netlink-packet-route = "=0.33.0"
 goblin = { version = "0.10", default-features = false, features = ["std", "pe32", "pe64"] }

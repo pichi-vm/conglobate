@@ -38,9 +38,9 @@ struct TransitionFailure<'a, R: StepStorage> {
 }
 #[derive(Debug)]
 pub(super) struct Released<R: StepStorage> {
-    pub status: std::process::ExitStatus,
-    pub reaped: crate::process::ReapedChildren,
-    pub storage: R,
+    pub(crate) status: std::process::ExitStatus,
+    pub(crate) reaped: crate::process::ReapedChildren,
+    pub(crate) storage: R,
 }
 /// Command descendants are drained and namespace attachments are released. The original deadline still governs
 /// storage finalization; no mounted storage accessor escapes this owner.
@@ -51,7 +51,7 @@ pub(super) struct Released<R: StepStorage> {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct TeardownCompletion<R: StepStorage> {
+pub(crate) struct TeardownCompletion<R: StepStorage> {
     pub(super) released: Released<R>,
     pub(super) deadline: Instant,
 }
@@ -80,15 +80,15 @@ impl Deadline {
 /// ```
 #[derive(Debug, thiserror::Error)]
 #[error("step teardown: {diagnostics}")]
-pub struct TeardownFailure<'a, R: StepStorage> {
+pub(crate) struct TeardownFailure<'a, R: StepStorage> {
     diagnostics: FailureDiagnostics,
     teardown: Teardown<'a, R>,
 }
 impl<'a, R: StepStorage> TeardownFailure<'a, R> {
-    pub fn diagnostics(&self) -> &FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
         &self.diagnostics
     }
-    pub fn retry(self) -> Result<TeardownCompletion<R>, Box<Self>> {
+    pub(crate) fn retry(self) -> Result<TeardownCompletion<R>, Box<Self>> {
         self.teardown.run().map_err(|failure| {
             let Self {
                 diagnostics,
@@ -181,7 +181,7 @@ impl<'a, R: StepStorage> Teardown<'a, R> {
     }
 }
 impl<'a, R: StepStorage> Step<'a, Ready, R> {
-    pub fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+    pub(crate) fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         Teardown::new(Phase::Ready(self)).run()
     }
 }
@@ -193,7 +193,7 @@ impl<'a, R: StepStorage> Step<'a, Running, R> {
         Teardown::until(Phase::AwaitingCleanup(self), deadline).run()
     }
 
-    pub fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+    pub(crate) fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         self.teardown_until(Instant::now() + TEARDOWN_TIMEOUT)
     }
     pub(super) fn teardown_until(
@@ -204,7 +204,7 @@ impl<'a, R: StepStorage> Step<'a, Running, R> {
     }
 }
 impl<'a, R: StepStorage> Step<'a, Cancelling, R> {
-    pub fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
+    pub(crate) fn teardown(self) -> Result<TeardownCompletion<R>, Box<TeardownFailure<'a, R>>> {
         Teardown::new(Phase::Cancelling(self)).run()
     }
 }

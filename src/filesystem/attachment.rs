@@ -16,12 +16,12 @@ use std::{
 /// outlive cancellation. The supervisor retains the underlying directory and
 /// must prevent mutation of its parent until this helper is quiescent.
 #[derive(Debug)]
-pub struct MountPoint {
+pub(crate) struct MountPoint {
     parent: File,
     name: std::ffi::OsString,
 }
 impl MountPoint {
-    pub fn open(path: &Path) -> io::Result<Self> {
+    pub(crate) fn open(path: &Path) -> io::Result<Self> {
         let name = path.file_name().ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -68,13 +68,13 @@ impl MountPoint {
 }
 
 #[derive(Debug)]
-pub struct Attached;
+pub(crate) struct Attached;
 impl private::Sealed for Attached {}
 impl MountState for Attached {
     type Resources = AttachedResources;
 }
 #[derive(Debug)]
-pub struct AttachedResources {
+pub(crate) struct AttachedResources {
     // Drop this pin before the lease attempts a normal unmount.
     root: File,
     lease: AttachmentLease,
@@ -91,7 +91,7 @@ struct AttachmentLease {
     backing: Option<AttachmentBacking>,
 }
 #[derive(Debug, thiserror::Error)]
-pub enum AttachmentFailure<'ns> {
+pub(crate) enum AttachmentFailure<'ns> {
     #[error("attaching mapped root: {source}")]
     Root {
         source: io::Error,
@@ -107,7 +107,7 @@ pub enum AttachmentFailure<'ns> {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("unmount failed: {source}")]
-pub struct UnmountFailure<'ns> {
+pub(crate) struct UnmountFailure<'ns> {
     source: io::Error,
     recovery: UnmountRecovery<'ns>,
 }
@@ -118,14 +118,14 @@ struct UnmountRecovery<'ns> {
     _thread: PhantomData<std::rc::Rc<()>>,
 }
 impl UnmountFailure<'_> {
-    pub fn cleanup(self) -> Result<(), Self> {
+    pub(crate) fn cleanup(self) -> Result<(), Self> {
         self.recovery.lease.close(self.recovery.scope)
     }
 }
 impl<'ns> Mount<'ns, Idmapped> {
     /// Attach in the trusted builder's private mount namespace. No command may
     /// run until its separate containment and recovery protocol is established.
-    pub fn attach(self, point: MountPoint) -> Result<Mount<'ns, Attached>, AttachmentFailure<'ns>> {
+    pub(crate) fn attach(self, point: MountPoint) -> Result<Mount<'ns, Attached>, AttachmentFailure<'ns>> {
         if let Err(source) = self._scope.verify_current() {
             return Err(AttachmentFailure::Root {
                 source,
@@ -226,12 +226,12 @@ impl<'ns> Mount<'ns, Attached> {
             .output_namespace = Some(_namespace);
         Ok(self)
     }
-    pub fn root_metadata(&self) -> io::Result<fs::Metadata> {
+    pub(crate) fn root_metadata(&self) -> io::Result<fs::Metadata> {
         self.resources.root.metadata()
     }
     /// Cleanly remove this view. This is not filesystem sealing or proof that
     /// another mount/command cannot still write the underlying filesystem.
-    pub fn close(self) -> Result<(), UnmountFailure<'ns>> {
+    pub(crate) fn close(self) -> Result<(), UnmountFailure<'ns>> {
         let AttachedResources { root, lease } = self.resources;
         drop(root);
         lease.close(self._scope)
@@ -299,35 +299,35 @@ impl Drop for AttachmentLease {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct InUse;
+pub(crate) struct InUse;
 impl private::Sealed for InUse {}
 impl MountState for InUse {
     type Resources = InUseResources;
 }
 #[derive(Debug)]
-pub struct InUseResources {
+pub(crate) struct InUseResources {
     process: crate::process::Process<crate::process::Running>,
     attached: AttachedResources,
 }
 #[derive(Debug, thiserror::Error)]
 #[error("mounted-root setup launch: {source}")]
-pub struct RootLaunchFailure<'ns> {
+pub(crate) struct RootLaunchFailure<'ns> {
     source: io::Error,
     mount: Mount<'ns, Attached>,
 }
 impl<'ns> RootLaunchFailure<'ns> {
-    pub fn into_parts(self) -> (io::Error, Mount<'ns, Attached>) {
+    pub(crate) fn into_parts(self) -> (io::Error, Mount<'ns, Attached>) {
         (self.source, self.mount)
     }
 }
 #[derive(Debug, thiserror::Error)]
 #[error("mounted-root setup wait: {source}")]
-pub struct RootWaitFailure<'ns> {
+pub(crate) struct RootWaitFailure<'ns> {
     source: crate::process::WaitError,
     mount: Mount<'ns, InUse>,
 }
 impl<'ns> RootWaitFailure<'ns> {
-    pub fn into_parts(self) -> (crate::process::WaitError, Mount<'ns, InUse>) {
+    pub(crate) fn into_parts(self) -> (crate::process::WaitError, Mount<'ns, InUse>) {
         (self.source, self.mount)
     }
 }
@@ -336,7 +336,7 @@ impl<'ns> Mount<'ns, Attached> {
     /// kernel carries cwd through subsequent namespace cloning; root entry must
     /// capture it afterward. No generated pathname or raw descriptor escapes.
     /// Image commands must not run until the child completes its sandbox setup.
-    pub fn launch(
+    pub(crate) fn launch(
         self,
         mut setup: std::process::Command,
     ) -> Result<Mount<'ns, InUse>, RootLaunchFailure<'ns>> {
@@ -383,7 +383,7 @@ impl<'ns> Mount<'ns, InUse> {
     /// Collect the direct setup child's status. This is not proof of descendant
     /// quiescence or successful filesystem finalization. Failure retains both
     /// mount and process ownership; callers can retry or request cancellation.
-    pub fn wait_until(
+    pub(crate) fn wait_until(
         self,
         deadline: std::time::Instant,
     ) -> Result<(Mount<'ns, Attached>, std::process::ExitStatus), RootWaitFailure<'ns>> {
@@ -391,7 +391,7 @@ impl<'ns> Mount<'ns, InUse> {
     }
     /// Terminate and reap this direct setup child. This does not cancel the
     /// entire command cgroup or prove descendant quiescence.
-    pub fn terminate_until(
+    pub(crate) fn terminate_until(
         self,
         deadline: std::time::Instant,
     ) -> Result<(Mount<'ns, Attached>, std::process::ExitStatus), RootWaitFailure<'ns>> {

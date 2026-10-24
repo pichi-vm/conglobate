@@ -10,24 +10,24 @@ use std::io::{self, Read, Seek, SeekFrom, Write};
 /// access or raw FD escapes while attached. Device closes before backing on Drop;
 /// autoclear retains the kernel backing reference until remaining holders close.
 #[derive(Debug)]
-pub struct LoopAttachment<'workspace> {
+pub(crate) struct LoopAttachment<'workspace> {
     device: LoopDevice<Writable>,
     backing: Scratch<'workspace>,
 }
 #[derive(Debug, thiserror::Error)]
 #[error("loop attachment: {source}")]
-pub struct LoopAttachFailure<'workspace> {
+pub(crate) struct LoopAttachFailure<'workspace> {
     source: io::Error,
     backing: Scratch<'workspace>,
 }
 impl<'w> LoopAttachFailure<'w> {
-    pub fn into_parts(self) -> (io::Error, Scratch<'w>) {
+    pub(crate) fn into_parts(self) -> (io::Error, Scratch<'w>) {
         (self.source, self.backing)
     }
 }
 #[derive(Debug, thiserror::Error)]
 #[error("loop detachment: {source}")]
-pub struct LoopDetachFailure<'workspace> {
+pub(crate) struct LoopDetachFailure<'workspace> {
     source: io::Error,
     attachment: LoopAttachment<'workspace>,
 }
@@ -40,17 +40,17 @@ impl<'w> LoopDetachFailure<'w> {
         source
     }
 
-    pub fn source_error(&self) -> &io::Error {
+    pub(crate) fn source_error(&self) -> &io::Error {
         &self.source
     }
-    pub fn retry(self) -> Result<Scratch<'w>, Self> {
+    pub(crate) fn retry(self) -> Result<Scratch<'w>, Self> {
         self.attachment.detach()
     }
 }
 impl<'w> Scratch<'w> {
     /// One attempt. Another claimant can win after get_free; kernel EBUSY is
     /// reported with the backing intact. No blocking advisory lock/retry loop.
-    pub fn attach(self) -> Result<LoopAttachment<'w>, LoopAttachFailure<'w>> {
+    pub(crate) fn attach(self) -> Result<LoopAttachment<'w>, LoopAttachFailure<'w>> {
         match LoopDevice::<Writable>::attach(&self.file) {
             Ok(device) => Ok(LoopAttachment {
                 device,
@@ -64,16 +64,16 @@ impl<'w> Scratch<'w> {
     }
 }
 impl<'w> LoopAttachment<'w> {
-    pub fn id(&self) -> io::Result<devmap_linux::DevId> {
+    pub(crate) fn id(&self) -> io::Result<devmap_linux::DevId> {
         self.device.id()
     }
     /// Diagnostic node number, not a lifetime lease or command authority.
-    pub fn number(&self) -> io::Result<u32> {
+    pub(crate) fn number(&self) -> io::Result<u32> {
         self.device.number()
     }
     /// Flush and confirm unbound state before returning writable file authority.
     /// clear() alone can mean deferred detachment, so it is not sufficient.
-    pub fn detach(self) -> Result<Scratch<'w>, LoopDetachFailure<'w>> {
+    pub(crate) fn detach(self) -> Result<Scratch<'w>, LoopDetachFailure<'w>> {
         let Self { device, backing } = self;
         match device.close() {
             Ok(()) => Ok(backing),

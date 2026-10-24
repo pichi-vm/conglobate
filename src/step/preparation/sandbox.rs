@@ -17,13 +17,13 @@ use std::{io, mem::ManuallyDrop, path::Path, process::Command};
 /// Deployment-owned paths. Each acquisition validates its protected filesystem
 /// and mount namespace; these paths are never taken from a command recipe.
 #[derive(Debug)]
-pub struct SandboxDirectories<'l> {
+pub(crate) struct SandboxDirectories<'l> {
     recovery: &'l RecoveryDirectory,
     mounts: &'l Path,
     domains: &'l Path,
 }
 impl<'l> SandboxDirectories<'l> {
-    pub fn new(recovery: &'l RecoveryDirectory, mounts: &'l Path, domains: &'l Path) -> Self {
+    pub(crate) fn new(recovery: &'l RecoveryDirectory, mounts: &'l Path, domains: &'l Path) -> Self {
         Self {
             recovery,
             mounts,
@@ -34,14 +34,14 @@ impl<'l> SandboxDirectories<'l> {
 /// Immutable per-step identity allocation and trusted setup program. The caller
 /// supplies disjoint UID/GID ranges; all commands still run as mapped root.
 #[derive(Debug)]
-pub struct CommandSandbox<'l> {
+pub(crate) struct CommandSandbox<'l> {
     program: HelperProgram,
     directories: SandboxDirectories<'l>,
     uid: IdRange,
     gid: IdRange,
 }
 impl<'l> CommandSandbox<'l> {
-    pub fn new(
+    pub(crate) fn new(
         program: HelperProgram,
         directories: SandboxDirectories<'l>,
         uid: IdRange,
@@ -65,7 +65,7 @@ impl<'l> CommandSandbox<'l> {
         self.directories.mounts
     }
     /// Construct immutable launch input before acquiring the command resources.
-    pub fn receiver(&self, script: String, budget: &SetupBudget) -> io::Result<Command> {
+    pub(crate) fn receiver(&self, script: String, budget: &SetupBudget) -> io::Result<Command> {
         self.program.receiver(
             script,
             budget.cutoff()?,
@@ -74,7 +74,7 @@ impl<'l> CommandSandbox<'l> {
             self.directories.mounts,
         )
     }
-    pub fn prepare<'n, 'o, 'w>(
+    pub(crate) fn prepare<'n, 'o, 'w>(
         &self,
         volume: Volume<'n, 'o, 'w, Unmounted>,
         reaper: ChildReaper,
@@ -82,7 +82,7 @@ impl<'l> CommandSandbox<'l> {
     ) -> Result<CommandPreparation<'n, 'o, 'w>, Box<PreparationFailure<'n, 'o, 'w>>> {
         self.prepare_storage::<Volume<'n, 'o, 'w, Mounted>>(volume, reaper, budget)
     }
-    pub fn prepare_bootstrap<'n, 'o, 'w>(
+    pub(crate) fn prepare_bootstrap<'n, 'o, 'w>(
         &self,
         volumes: BootstrapVolumes<'n, 'o, 'w, Unmounted>,
         reaper: ChildReaper,

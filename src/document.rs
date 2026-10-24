@@ -5,7 +5,7 @@
 use serde::de::DeserializeOwned;
 
 #[derive(Debug)]
-pub struct YamlDocument<'a> {
+pub(crate) struct YamlDocument<'a> {
     text: &'a str,
 }
 

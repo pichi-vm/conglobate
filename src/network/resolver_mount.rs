@@ -21,7 +21,7 @@ use std::{
 /// There is no writable descriptor after construction. Drop removes the name;
 /// retained views keep their inode alive until their namespace is destroyed.
 #[derive(Debug)]
-pub struct ResolverSource {
+pub(crate) struct ResolverSource {
     // Remove the name while the proc-fd parent path still exists.
     path: tempfile::TempPath,
     file: File,
@@ -33,7 +33,7 @@ impl ResolverSource {
     pub(crate) fn view(&self) -> io::Result<ResolverView> {
         ResolverView::from_handle(self.mount()?.tree)
     }
-    pub fn prepare(input: &ResolverInput, workspace: &Workspace) -> io::Result<Self> {
+    pub(crate) fn prepare(input: &ResolverInput, workspace: &Workspace) -> io::Result<Self> {
         let parent = workspace.staging_parent()?;
         let directory = format!("/proc/self/fd/{}", parent.as_raw_fd());
         let mut backing = tempfile::Builder::new()
@@ -53,7 +53,7 @@ impl ResolverSource {
             _parent: parent,
         })
     }
-    pub fn mount(&self) -> io::Result<ResolverMount<'_>> {
+    pub(crate) fn mount(&self) -> io::Result<ResolverMount<'_>> {
         let tree = mount::open_tree(
             &self.file,
             "",
@@ -81,7 +81,7 @@ impl ResolverSource {
     }
     /// Explicit cleanup retains its owner on failure. Existing attached views
     /// keep only the read-only inode, with no source pathname exposed to them.
-    pub fn close(self) -> Result<(), ResolverSourceFailure> {
+    pub(crate) fn close(self) -> Result<(), ResolverSourceFailure> {
         let result = fs::unlinkat(
             &self._parent,
             self.path.file_name().expect("generated temporary filename"),
@@ -142,7 +142,7 @@ impl ResolverView {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("resolver source cleanup: {error}")]
-pub struct ResolverSourceFailure {
+pub(crate) struct ResolverSourceFailure {
     error: crate::storage::FailureDiagnostics,
     owner: ResolverSource,
 }
@@ -150,7 +150,7 @@ impl ResolverSourceFailure {
     pub(crate) fn diagnostics(&self) -> &crate::storage::FailureDiagnostics {
         &self.error
     }
-    pub fn cleanup(self) -> Result<(), Self> {
+    pub(crate) fn cleanup(self) -> Result<(), Self> {
         self.owner.close().map_err(|failure| Self {
             error: self.error.followed_by(failure.error),
             owner: failure.owner,
@@ -161,7 +161,7 @@ impl ResolverSourceFailure {
 /// A detached mount, already read-only before it can be attached. Borrowing the
 /// source ensures its name survives move_mount. No writable descriptor escapes.
 #[derive(Debug)]
-pub struct ResolverMount<'source> {
+pub(crate) struct ResolverMount<'source> {
     tree: File,
     _source: PhantomData<&'source ResolverSource>,
 }
@@ -170,7 +170,7 @@ impl ResolverMount<'_> {
     /// been selected in this helper's current private mount namespace. The
     /// caller retains its scaffold owner until commands and mounts are gone.
     /// Any setup failure is exit-only; namespace disposal removes the mount.
-    pub fn attach(self, target: &ResolverTarget) -> io::Result<()> {
+    pub(crate) fn attach(self, target: &ResolverTarget) -> io::Result<()> {
         mount::move_mount(
             &self.tree,
             "",

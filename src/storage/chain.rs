@@ -27,7 +27,7 @@ const ORIGIN_SECTORS: u64 = 64 * 1024 * 1024 * 1024 / 512;
 /// }
 /// ```
 #[derive(Debug)]
-pub struct ReadOnlyChain<'s, 'w> {
+pub(crate) struct ReadOnlyChain<'s, 'w> {
     stack: Stack<'s, 'w>,
     root: [u8; 32],
 }
@@ -62,15 +62,15 @@ enum Cleanup<'s, 'w> {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("read-only chain: {source}")]
-pub struct ReadOnlyChainFailure<'s, 'w> {
+pub(crate) struct ReadOnlyChainFailure<'s, 'w> {
     source: super::FailureDiagnostics,
     cleanup: Box<Cleanup<'s, 'w>>,
 }
 impl ReadOnlyChainFailure<'_, '_> {
-    pub fn source_error(&self) -> &io::Error {
+    pub(crate) fn source_error(&self) -> &io::Error {
         self.source.latest()
     }
-    pub fn cleanup(self) -> Result<(), Self> {
+    pub(crate) fn cleanup(self) -> Result<(), Self> {
         self.cleanup
             .close()
             .map_err(|Self { source, cleanup }| Self {
@@ -78,12 +78,12 @@ impl ReadOnlyChainFailure<'_, '_> {
                 cleanup,
             })
     }
-    pub fn diagnostics(&self) -> &super::FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &super::FailureDiagnostics {
         &self.source
     }
 }
 impl VerifiedChain {
-    pub fn assemble<'s, 'w>(
+    pub(crate) fn assemble<'s, 'w>(
         &'s self,
         cache: &Cache,
         workspace: &'w Workspace,
@@ -115,7 +115,7 @@ impl VerifiedChain {
 impl<'s, 'w> ReadOnlyChain<'s, 'w> {
     /// Activate a newly produced zero-parent root directly, retaining its RAM
     /// backing. No temporary cache artifact or filesystem-image import is needed.
-    pub fn from_root(
+    pub(crate) fn from_root(
         scute: std::sync::Arc<super::SealedScute<'w>>,
     ) -> Result<Self, ReadOnlyChainFailure<'s, 'w>> {
         if scute.parent() != &[0; 32] {
@@ -140,7 +140,7 @@ impl<'s, 'w> ReadOnlyChain<'s, 'w> {
 
     /// Consume the previous read-only chain and retain the immutable produced
     /// layer directly in RAM. Inherited layers keep their original cache backing.
-    pub fn extend(
+    pub(crate) fn extend(
         self,
         scute: std::sync::Arc<super::SealedScute<'w>>,
     ) -> Result<Self, ReadOnlyChainFailure<'s, 'w>> {
@@ -160,14 +160,14 @@ impl<'s, 'w> ReadOnlyChain<'s, 'w> {
         })
     }
 
-    pub fn root(&self) -> &[u8; 32] {
+    pub(crate) fn root(&self) -> &[u8; 32] {
         &self.root
     }
     /// Diagnostic identity, not an independent lifetime lease.
-    pub fn id(&self) -> devmap_linux::DevId {
+    pub(crate) fn id(&self) -> devmap_linux::DevId {
         self.stack.id()
     }
-    pub fn close(self) -> Result<(), ReadOnlyChainFailure<'s, 'w>> {
+    pub(crate) fn close(self) -> Result<(), ReadOnlyChainFailure<'s, 'w>> {
         self.stack.close()
     }
 }

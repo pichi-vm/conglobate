@@ -5,7 +5,7 @@
 use std::str::FromStr;
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
-pub enum IdentityError {
+pub(crate) enum IdentityError {
     #[error("image reference must be nonempty and contain no whitespace or NUL")]
     Reference,
     #[error("expected sha256: followed by 64 hexadecimal digits")]
@@ -13,7 +13,7 @@ pub enum IdentityError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ImageReference(String);
+pub(crate) struct ImageReference(String);
 
 impl FromStr for ImageReference {
     type Err = IdentityError;
@@ -32,10 +32,10 @@ impl AsRef<str> for ImageReference {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct IndexDigest([u8; 32]);
+pub(crate) struct IndexDigest([u8; 32]);
 
 impl IndexDigest {
-    pub fn bytes(&self) -> &[u8; 32] {
+    pub(crate) fn bytes(&self) -> &[u8; 32] {
         &self.0
     }
 }

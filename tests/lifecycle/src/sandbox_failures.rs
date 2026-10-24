@@ -277,7 +277,7 @@ impl SandboxFailures {
                 rustix::fs::fsetxattr(&file, attribute, &acl, rustix::fs::XattrFlags::empty())?;
             }
             if matches!(point, FailurePoint::BlockedDescendant) {
-                crate::blocked_descendant::BlockedDescendant::stage(&entries[0].path())?;
+                crate::fixture::blocked_descendant::BlockedDescendant::stage(&entries[0].path())?;
             }
             volume = mounted.unmount().map_err(|e| e.to_string())?;
         }
@@ -355,7 +355,7 @@ impl SandboxFailures {
                 Self::assert_owned_domain(paths.domains())?;
                 assert_eq!(fs::read_dir(paths.recovery())?.count(), 0);
                 if matches!(point, FailurePoint::BlockedDescendant) {
-                    use crate::blocked_descendant::BlockedDescendant;
+                    use crate::fixture::blocked_descendant::BlockedDescendant;
                     use std::{
                         io::{BufRead, BufReader},
                         os::fd::OwnedFd,

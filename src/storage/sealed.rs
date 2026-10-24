@@ -22,7 +22,7 @@ use std::{
 /// }
 /// ```
 #[derive(Debug)]
-pub struct SealedScute<'workspace> {
+pub(crate) struct SealedScute<'workspace> {
     data: Scratch<'workspace>,
     hash: Scratch<'workspace>,
     descriptor: ScuteDescriptor,
@@ -33,16 +33,16 @@ impl SealedScute<'_> {
     pub(crate) fn files(&self) -> (&File, &File) {
         (self.data.file(), self.hash.file())
     }
-    pub fn descriptor(&self) -> &ScuteDescriptor {
+    pub(crate) fn descriptor(&self) -> &ScuteDescriptor {
         &self.descriptor
     }
-    pub fn root(&self) -> &[u8; 32] {
+    pub(crate) fn root(&self) -> &[u8; 32] {
         &self.root
     }
-    pub fn parent(&self) -> &[u8; 32] {
+    pub(crate) fn parent(&self) -> &[u8; 32] {
         &self.parent
     }
-    pub fn data_reader(&self) -> ScuteReader<'_> {
+    pub(crate) fn data_reader(&self) -> ScuteReader<'_> {
         ScuteReader {
             file: self.data.file(),
             position: 0,
@@ -52,7 +52,7 @@ impl SealedScute<'_> {
 }
 /// Read/seek-only view; neither a raw file descriptor nor write access escapes.
 #[derive(Debug)]
-pub struct ScuteReader<'a> {
+pub(crate) struct ScuteReader<'a> {
     file: &'a File,
     position: u64,
     length: u64,
@@ -93,12 +93,12 @@ impl Seek for ScuteReader<'_> {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("snapshot sealing: {source}")]
-pub struct SealFailure<'workspace> {
+pub(crate) struct SealFailure<'workspace> {
     source: ChainError,
     data: Scratch<'workspace>,
 }
 impl<'w> SealFailure<'w> {
-    pub fn into_parts(self) -> (ChainError, Scratch<'w>) {
+    pub(crate) fn into_parts(self) -> (ChainError, Scratch<'w>) {
         (self.source, self.data)
     }
 }
@@ -107,7 +107,7 @@ impl<'w> Scratch<'w> {
     /// have confirmed unbound state before returning this writable authority.
     /// Only unused trailing capacity is removed; no filesystem image is copied
     /// or converted. Caller separately owns command/finalization success proofs.
-    pub fn seal_snapshot(mut self, parent: [u8; 32]) -> Result<SealedScute<'w>, SealFailure<'w>> {
+    pub(crate) fn seal_snapshot(mut self, parent: [u8; 32]) -> Result<SealedScute<'w>, SealFailure<'w>> {
         let result = (|| -> Result<_, ChainError> {
             let capacity = self.file.metadata()?.len();
             let extent = SnapshotExtent::read(&mut self.file, capacity)?;

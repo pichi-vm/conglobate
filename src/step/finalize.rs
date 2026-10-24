@@ -27,13 +27,13 @@ struct Finalization<R: PreparationStorage> {
 /// within the original teardown budget. The status is the outer trusted helper's exit status, not the
 /// command outcome. This is not a sealed-image receipt.
 #[derive(Debug)]
-pub struct FinalizedStorage<R: PreparationStorage> {
+pub(crate) struct FinalizedStorage<R: PreparationStorage> {
     volume: R::Unmounted,
     status: ExitStatus,
     reaped: ReapedChildren,
 }
 impl<R: PreparationStorage> FinalizedStorage<R> {
-    pub fn into_parts(self) -> (ExitStatus, ReapedChildren, R::Unmounted) {
+    pub(crate) fn into_parts(self) -> (ExitStatus, ReapedChildren, R::Unmounted) {
         (self.status, self.reaped, self.volume)
     }
 }
@@ -46,15 +46,15 @@ impl<R: PreparationStorage> FinalizedStorage<R> {
 /// ```
 #[derive(Debug, thiserror::Error)]
 #[error("{} storage finalization: {diagnostics}", R::LABEL)]
-pub struct StorageFinalizationFailure<R: PreparationStorage> {
+pub(crate) struct StorageFinalizationFailure<R: PreparationStorage> {
     diagnostics: FailureDiagnostics,
     finalization: Finalization<R>,
 }
 impl<R: PreparationStorage> StorageFinalizationFailure<R> {
-    pub fn diagnostics(&self) -> &FailureDiagnostics {
+    pub(crate) fn diagnostics(&self) -> &FailureDiagnostics {
         &self.diagnostics
     }
-    pub fn retry(self) -> Result<FinalizedStorage<R>, Box<Self>> {
+    pub(crate) fn retry(self) -> Result<FinalizedStorage<R>, Box<Self>> {
         self.finalization.run().map_err(|failure| {
             let Self {
                 diagnostics,
@@ -128,7 +128,7 @@ impl<R: PreparationStorage> Finalization<R> {
 }
 impl<R: PreparationStorage> TeardownCompletion<R> {
     /// Continue with the existing deadline; no new finalization budget is minted.
-    pub fn unmount(self) -> Result<FinalizedStorage<R>, Box<StorageFinalizationFailure<R>>> {
+    pub(crate) fn unmount(self) -> Result<FinalizedStorage<R>, Box<StorageFinalizationFailure<R>>> {
         Finalization {
             pending: Pending::Mounted(self.released.storage),
             deadline: self.deadline,
@@ -139,13 +139,13 @@ impl<R: PreparationStorage> TeardownCompletion<R> {
     }
 }
 impl TeardownCompletion<()> {
-    pub fn into_parts(self) -> (ExitStatus, ReapedChildren) {
+    pub(crate) fn into_parts(self) -> (ExitStatus, ReapedChildren) {
         (self.released.status, self.released.reaped)
     }
 }
 
 impl<R: PreparationStorage> super::CommandResult<TeardownCompletion<R>> {
-    pub fn unmount(
+    pub(crate) fn unmount(
         self,
     ) -> Result<
         super::CommandResult<FinalizedStorage<R>>,
@@ -157,17 +157,17 @@ impl<R: PreparationStorage> super::CommandResult<TeardownCompletion<R>> {
 }
 impl<R: PreparationStorage> super::CommandResult<Box<StorageFinalizationFailure<R>>> {
     /// Preserve both primary outcome and the existing finalization deadline.
-    pub fn retry(self) -> Result<super::CommandResult<FinalizedStorage<R>>, Self> {
+    pub(crate) fn retry(self) -> Result<super::CommandResult<FinalizedStorage<R>>, Self> {
         self.map_cleanup(|failure| failure.retry()).transpose()
     }
 }
 
 /// Finalized storage for a single command root.
-pub type FinalizedVolume<'n, 'o, 'w> = FinalizedStorage<Volume<'n, 'o, 'w, Mounted>>;
+pub(crate) type FinalizedVolume<'n, 'o, 'w> = FinalizedStorage<Volume<'n, 'o, 'w, Mounted>>;
 /// Failed finalization retaining a single command root.
-pub type FinalizationFailure<'n, 'o, 'w> = StorageFinalizationFailure<Volume<'n, 'o, 'w, Mounted>>;
+pub(crate) type FinalizationFailure<'n, 'o, 'w> = StorageFinalizationFailure<Volume<'n, 'o, 'w, Mounted>>;
 /// Both bootstrap filesystems were flushed, unmounted and snapshot-validated.
-pub type FinalizedBootstrap<'n, 'o, 'w> = FinalizedStorage<BootstrapVolumes<'n, 'o, 'w, Mounted>>;
+pub(crate) type FinalizedBootstrap<'n, 'o, 'w> = FinalizedStorage<BootstrapVolumes<'n, 'o, 'w, Mounted>>;
 /// Failed finalization retaining both bootstrap filesystem owners.
-pub type BootstrapFinalizationFailure<'n, 'o, 'w> =
+pub(crate) type BootstrapFinalizationFailure<'n, 'o, 'w> =
     StorageFinalizationFailure<BootstrapVolumes<'n, 'o, 'w, Mounted>>;

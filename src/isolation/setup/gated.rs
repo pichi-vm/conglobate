@@ -3,25 +3,25 @@
 use super::*;
 use crate::isolation::{CommandNamespaces, ExecutionEndpoint};
 mod helper;
-pub use helper::{GatedRestrictedCommand, HelperExecutionError, RootPreparationError};
+pub(crate) use helper::{GatedRestrictedCommand, HelperExecutionError, RootPreparationError};
 
 #[derive(Debug)]
-pub struct GatedCommandSetup {
+pub(crate) struct GatedCommandSetup {
     setup: CommandSetup,
     gate: ExecutionEndpoint,
 }
 #[derive(Debug)]
-pub struct GatedRootSetup {
+pub(crate) struct GatedRootSetup {
     devices: CommandDevices,
     gate: ExecutionEndpoint,
 }
 impl CommandSetup {
-    pub fn with_gate(self, gate: ExecutionEndpoint) -> GatedCommandSetup {
+    pub(crate) fn with_gate(self, gate: ExecutionEndpoint) -> GatedCommandSetup {
         GatedCommandSetup { setup: self, gate }
     }
 }
 impl GatedCommandSetup {
-    pub fn into_input(self) -> io::Result<Stdio> {
+    pub(crate) fn into_input(self) -> io::Result<Stdio> {
         let mut descriptors = vec![
             self.setup.namespace.into(),
             self.setup.devices.into_handle().into(),
@@ -43,7 +43,7 @@ impl GatedCommandSetup {
         }
         .send()
     }
-    pub fn from_input() -> io::Result<Self> {
+    pub(crate) fn from_input() -> io::Result<Self> {
         let socket = io::stdin().as_fd().try_clone_to_owned()?;
         let mut packet = Packet::receive_shapes(&socket, &[(2, 3), (5, 4), (7, 5)])?;
         let resolver = if packet.opcode == 7 {
@@ -74,7 +74,7 @@ impl GatedCommandSetup {
         Ok(Self { setup, gate })
     }
     /// Enter using the existing setup deadline, without starting a new budget.
-    pub fn enter_until(
+    pub(crate) fn enter_until(
         self,
         deadline: std::time::Instant,
     ) -> io::Result<(CommandNamespaces, GatedRootSetup)> {
@@ -89,21 +89,21 @@ impl GatedCommandSetup {
     }
 }
 impl GatedRootSetup {
-    pub fn into_input(self) -> io::Result<Stdio> {
+    pub(crate) fn into_input(self) -> io::Result<Stdio> {
         Packet {
             opcode: 3,
             descriptors: vec![self.devices.into_handle().into(), self.gate.into_handle()],
         }
         .send()
     }
-    pub fn from_input() -> io::Result<Self> {
+    pub(crate) fn from_input() -> io::Result<Self> {
         let mut packet = Packet::receive(3, 2)?;
         let gate = ExecutionEndpoint::from_handle(packet.descriptors.pop().expect("gate"))?;
         let devices =
             CommandDevices::from_handle(packet.descriptors.pop().expect("devices").into())?;
         Ok(Self { devices, gate })
     }
-    pub fn into_parts(self) -> (CommandDevices, ExecutionEndpoint) {
+    pub(crate) fn into_parts(self) -> (CommandDevices, ExecutionEndpoint) {
         (self.devices, self.gate)
     }
 }

@@ -9,7 +9,7 @@ use std::{
 /// Helpers must remain in the same time namespace. This is a private launch
 /// value, not a portable timestamp or an authenticated authorization token.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SetupCutoff(u64);
+pub(crate) struct SetupCutoff(u64);
 impl SetupCutoff {
     fn now() -> io::Result<u64> {
         let stamp = rustix::time::clock_gettime(rustix::time::ClockId::Monotonic);
@@ -31,7 +31,7 @@ impl SetupCutoff {
             io::Error::other("setup cutoff overflow")
         })?))
     }
-    pub fn deadline(&self) -> io::Result<Instant> {
+    pub(crate) fn deadline(&self) -> io::Result<Instant> {
         // Sample the destination Instant first for the same conservative reason.
         let instant = Instant::now();
         let remaining = self
@@ -45,7 +45,7 @@ impl SetupCutoff {
     }
     /// Hex-encoded deterministic CBOR [version, monotonic nanoseconds] for a
     /// trusted helper argv. Re-forward these bytes; do not export a new budget.
-    pub fn to_argument(&self) -> String {
+    pub(crate) fn to_argument(&self) -> String {
         let mut encoder = minicbor::Encoder::new(Vec::new());
         encoder
             .array(2)
@@ -56,7 +56,7 @@ impl SetupCutoff {
             .expect("Vec writer");
         hex::encode(encoder.into_writer())
     }
-    pub fn from_argument(text: &str) -> io::Result<Self> {
+    pub(crate) fn from_argument(text: &str) -> io::Result<Self> {
         if text.len() > 24 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,

@@ -4,22 +4,22 @@ use std::{io, time::Instant};
 
 /// A failed create owns at most one empty cgroup directory; no helper was admitted.
 #[derive(Debug)]
-pub struct DomainCreationRollback {
+pub(crate) struct DomainCreationRollback {
     target: Option<DomainTarget>,
 }
 #[derive(Debug, thiserror::Error)]
 #[error("domain creation cleanup: {source}")]
-pub struct DomainCreationCleanupFailure {
+pub(crate) struct DomainCreationCleanupFailure {
     source: io::Error,
     rollback: DomainCreationRollback,
 }
 impl DomainCreationCleanupFailure {
-    pub fn into_parts(self) -> (io::Error, DomainCreationRollback) {
+    pub(crate) fn into_parts(self) -> (io::Error, DomainCreationRollback) {
         (self.source, self.rollback)
     }
 }
 impl DomainCreateFailure {
-    pub fn into_rollback(self) -> (io::Error, DomainCreationRollback) {
+    pub(crate) fn into_rollback(self) -> (io::Error, DomainCreationRollback) {
         match self {
             Self::Before(source) => (source, DomainCreationRollback { target: None }),
             Self::Created { source, target } => (
@@ -32,7 +32,7 @@ impl DomainCreateFailure {
     }
 }
 impl DomainCreationRollback {
-    pub fn retry_until(self, deadline: Instant) -> Result<(), Box<DomainCreationCleanupFailure>> {
+    pub(crate) fn retry_until(self, deadline: Instant) -> Result<(), Box<DomainCreationCleanupFailure>> {
         if Instant::now() >= deadline {
             return Err(Box::new(DomainCreationCleanupFailure {
                 source: io::Error::new(io::ErrorKind::TimedOut, "domain cleanup deadline expired"),

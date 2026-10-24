@@ -17,13 +17,13 @@ use std::{
 /// The supervisor retains the volume, mapped namespace and cancellation authority. Errors
 /// are exit-only in this helper; returned resources remain owned for teardown.
 #[derive(Debug)]
-pub struct CommandReceiver<'ns> {
+pub(crate) struct CommandReceiver<'ns> {
     channel: Supervision<Joined>,
     mount: Mount<'ns, Attached>,
     setup: CommandSetup,
 }
 #[derive(Debug, thiserror::Error)]
-pub enum ReceiverFailure<'ns> {
+pub(crate) enum ReceiverFailure<'ns> {
     #[error("receiver preparation: {source}")]
     Before {
         source: io::Error,
@@ -61,18 +61,18 @@ pub enum ReceiverFailure<'ns> {
 /// has already been reported. Descendant quiescence
 /// is still the supervisor's responsibility; this is not build success.
 #[derive(Debug)]
-pub struct ReceiverCompletion<'ns> {
+pub(crate) struct ReceiverCompletion<'ns> {
     channel: Supervision<Admitted>,
     mount: Mount<'ns, Attached>,
     status: ExitStatus,
 }
 impl<'ns> ReceiverCompletion<'ns> {
-    pub fn into_parts(self) -> (Supervision<Admitted>, Mount<'ns, Attached>, ExitStatus) {
+    pub(crate) fn into_parts(self) -> (Supervision<Admitted>, Mount<'ns, Attached>, ExitStatus) {
         (self.channel, self.mount, self.status)
     }
 }
 impl<'ns> CommandReceiver<'ns> {
-    pub fn new(
+    pub(crate) fn new(
         channel: Supervision<Joined>,
         mount: Mount<'ns, Attached>,
         setup: CommandSetup,
@@ -83,7 +83,7 @@ impl<'ns> CommandReceiver<'ns> {
             setup,
         }
     }
-    pub fn execute(
+    pub(crate) fn execute(
         self,
         mut namespace_entry: Command,
         cutoff: SetupCutoff,

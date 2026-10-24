@@ -28,7 +28,7 @@ use std::{
 /// }
 /// ```
 #[derive(Debug)]
-pub struct CommandRoot {
+pub(crate) struct CommandRoot {
     scope: PrivateMountNamespace,
     root: File,
     devices: CommandDevices,
@@ -40,7 +40,7 @@ pub struct CommandRoot {
 /// Failure after entering is exit-only; there is no restoration of trusted
 /// supervisor authority. The enclosing process owns namespace teardown.
 #[derive(Debug)]
-pub struct EnteredRoot {
+pub(crate) struct EnteredRoot {
     input: File,
     _thread: PhantomData<Rc<()>>,
 }
@@ -56,7 +56,7 @@ pub struct EnteredRoot {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct RestrictedCommand {
+pub(crate) struct RestrictedCommand {
     command: Command,
     _thread: PhantomData<Rc<()>>,
 }
@@ -65,7 +65,7 @@ impl CommandRoot {
     /// Capture the cwd assigned by the mounted-root launcher after entering
     /// scope. The kernel retargets cwd across namespace cloning, unlike a file
     /// descriptor opened in a previous mount namespace.
-    pub fn from_current_directory(
+    pub(crate) fn from_current_directory(
         scope: PrivateMountNamespace,
         devices: CommandDevices,
     ) -> io::Result<Self> {
@@ -83,7 +83,7 @@ impl CommandRoot {
     /// namespace/cwd/root transitions may already have happened. Call only from
     /// a single-threaded helper, never the build supervisor. No destructor is
     /// asserted to undo a root transition or finalize the filesystem.
-    pub fn enter(self) -> io::Result<EnteredRoot> {
+    pub(crate) fn enter(self) -> io::Result<EnteredRoot> {
         if !crate::process::ThreadSnapshot::capture()?.is_single() {
             return Err(io::Error::other("root setup requires one thread"));
         }
@@ -133,7 +133,7 @@ impl EnteredRoot {
     /// Finish trusted isolation before the execution clock starts. This does
     /// not grant command admission; the enclosing helper owns the start gate.
     /// Errors remain exit-only because privilege changes cannot be rolled back.
-    pub fn restrict(
+    pub(crate) fn restrict(
         self,
         script: &str,
         privileges: CommandPrivileges,
@@ -167,7 +167,7 @@ impl EnteredRoot {
 impl RestrictedCommand {
     /// Report completed isolation, await start, and retain a status-only endpoint
     /// in non-dumpable init. Audit descriptors before image exec; error is exit-only.
-    pub fn start(
+    pub(crate) fn start(
         self,
         gate: super::ExecutionEndpoint,
         deadline: std::time::Instant,
@@ -179,7 +179,7 @@ impl RestrictedCommand {
 
     /// The enclosing helper must have received start authorization and closed
     /// its startup handles. Reaudit immediately before spawning image code.
-    pub fn execute(self) -> io::Result<std::convert::Infallible> {
+    pub(crate) fn execute(self) -> io::Result<std::convert::Infallible> {
         self.check_descriptors(None)?;
         super::init::NamespaceInit::spawn(self.command, None)?.execute()
     }

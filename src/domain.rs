@@ -4,18 +4,18 @@
 //! Fresh private cgroup-v2 domains. Containment and reaping are separate gates.
 mod drain;
 mod events;
-pub use drain::{DescendantDrain, DescendantDrainFailure, DrainedHelper};
+pub(crate) use drain::{DescendantDrain, DescendantDrainFailure, DrainedHelper};
 mod helper;
-pub use helper::{
+pub(crate) use helper::{
     AdmissionFailure, ContainedHelper, HelperCancelFailure, HelperCancellation,
     HelperLaunchFailure, HelperReapFailure, HelperReaping, ReapedHelper,
 };
 mod cancellation;
-pub use cancellation::{
+pub(crate) use cancellation::{
     DomainCancelFailure, DomainCancellation, DomainCreationCleanupFailure, DomainCreationRollback,
 };
 mod joining;
-pub use joining::DomainJoin;
+pub(crate) use joining::DomainJoin;
 
 use crate::anchor::{RecoveryDirectory, RecoveryLease};
 use std::{
@@ -34,18 +34,18 @@ use std::{
 /// or control paths. Drop closes descriptors but leaves the kernel domain for
 /// recovery; it is not a cancellation or quiescence receipt.
 #[derive(Debug)]
-pub struct CommandDomain {
+pub(crate) struct CommandDomain {
     root: File,
     target: DomainTarget,
 }
 #[derive(Debug)]
-pub struct DomainTarget {
+pub(crate) struct DomainTarget {
     parent: File,
     name: std::ffi::OsString,
     lease: RecoveryLease,
 }
 #[derive(Debug, thiserror::Error)]
-pub enum DomainCreateFailure {
+pub(crate) enum DomainCreateFailure {
     #[error("domain before directory creation: {0}")]
     Before(io::Error),
     #[error("domain setup: {source}")]
@@ -56,23 +56,23 @@ pub enum DomainCreateFailure {
 }
 #[derive(Debug, thiserror::Error)]
 #[error("domain cancellation: {source}")]
-pub struct DomainFailure {
+pub(crate) struct DomainFailure {
     source: io::Error,
     domain: CommandDomain,
 }
 impl DomainFailure {
-    pub fn into_parts(self) -> (io::Error, CommandDomain) {
+    pub(crate) fn into_parts(self) -> (io::Error, CommandDomain) {
         (self.source, self.domain)
     }
 }
 #[derive(Debug, thiserror::Error)]
 #[error("domain target cleanup: {source}")]
-pub struct DomainTargetFailure {
+pub(crate) struct DomainTargetFailure {
     source: io::Error,
     target: DomainTarget,
 }
 impl DomainTargetFailure {
-    pub fn into_parts(self) -> (io::Error, DomainTarget) {
+    pub(crate) fn into_parts(self) -> (io::Error, DomainTarget) {
         (self.source, self.target)
     }
 }
@@ -103,7 +103,7 @@ impl DomainTarget {
     }
     /// Only for a fresh setup failure before domain joining. Errors retain the
     /// target. Never recursively delete cgroup control files or child domains.
-    pub fn remove(self) -> Result<(), DomainTargetFailure> {
+    pub(crate) fn remove(self) -> Result<(), DomainTargetFailure> {
         let result = self
             .lease
             .verify_current()
@@ -127,7 +127,7 @@ impl CommandDomain {
 
     /// Create only; no API accepts an arbitrary existing cgroup to kill.
     /// Caller must serialize this protected parent. This primitive neither mounts cgroupfs nor sets limits.
-    pub fn create(
+    pub(crate) fn create(
         recovery: &RecoveryDirectory,
         parent: &Path,
     ) -> Result<Self, DomainCreateFailure> {
@@ -188,7 +188,7 @@ impl CommandDomain {
     /// Cancel the complete subtree, then remove this directory after observing
     /// populated=0. Call only after stopping admission. Success is not proof of
     /// reaping, policy removal, filesystem cleanup or command success.
-    pub fn cancel_until(self, deadline: Instant) -> Result<(), DomainFailure> {
+    pub(crate) fn cancel_until(self, deadline: Instant) -> Result<(), DomainFailure> {
         match self.cancel(deadline) {
             Ok(()) => Ok(()),
             Err(source) => Err(DomainFailure {
