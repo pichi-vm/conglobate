@@ -20,7 +20,6 @@ conglobate's seccomp, user namespace, capability, filesystem or lifecycle limits
 Use run.py with `--memory 16384` and both firmware inputs. Success requires the
 CONGLOBATE_NIXOS_SYSTEMD_BOOT_PASS marker from boot.py, not merely a built closure.
 
-The native amd64 build and systemd boot passed in nixos-build-v6. The marker
-checks activation and persisted numeric ownership. Earlier failed attempts
-remain preserved; nested Nix sandbox/filter settings and local unsigned-output
-copy are intentional recipe choices, not conglobate confinement exceptions.
+The marker checks activation and persisted numeric ownership. Nested Nix
+sandbox/filter settings and local unsigned-output copy are intentional recipe
+choices, not conglobate confinement exceptions.

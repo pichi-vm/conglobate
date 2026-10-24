@@ -6,9 +6,7 @@ bootstrap, carapace layering, firmware replacement and DTB transformation, and
 produces a self-contained OCI image layout with a CBOR input/output inventory.
 See [DESIGN.md](DESIGN.md) for the CLI, schemas and inheritance rules.
 
-The standalone rewrite is implemented and qualified in the environments recorded
-in [QUALIFICATION.md](QUALIFICATION.md). Fedora, Debian, Alpine and NixOS example
-recipes live under `tests/distro`. Confidential-computing qualification and
+Fedora, Debian, Alpine and NixOS example recipes live under `tests/distro`. Confidential-computing qualification and
 appliance attestation are deferred; passing tests are not a universal security
 or operating-system compatibility claim.
 
@@ -18,7 +16,7 @@ Build on Linux with Rust/Cargo and a C build toolchain for native dependencies
 such as zstd. The binary does not compile or load BPF, depend on libbpf/libelf,
 or require Clang's BPF target or special Linux-header include paths. The trusted
 execution environment supplies the fixed labeling exception described in
-[SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt). Disposable-VM fixture tools build their
+[sandbox design](DESIGN.md#14-sandbox-lifecycle). Disposable-VM fixture tools build their
 own environment policy separately and have additional compiler prerequisites.
 
 CI builds and tests with Rust 1.94.0 on native amd64 and Arm64. This is the tested
@@ -65,8 +63,8 @@ its detached workspace. Ubuntu's GA 6.8 kernel rejects this operation. Hosted
 lifecycle tests use Ubuntu HWE kernels; the recorded kernel and feature checks
 are the supported evidence, rather than a generic minimum-version promise.
 
-[SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt) specifies the boundary and teardown
-requirements. [ARCHITECTURE.md](ARCHITECTURE.md) explains Rust ownership and
+[sandbox design](DESIGN.md#14-sandbox-lifecycle) specifies the boundary and teardown
+requirements. [Rust architecture](DESIGN.md#15-rust-architecture) explains Rust ownership and
 typestate. Privileged integration tests must run inside disposable VMs, never
 directly on the development host. The maintained harness builds a
 fresh guest from trusted local tools and explicit kernel/module inputs. CI
@@ -84,14 +82,32 @@ relay or configure the external network, and requires no particular service mana
 Artifact preparation, appliance construction and attestation also belong to the
 surrounding environment.
 
-## Implementation and evidence
+## Implementation style
 
 Application Rust forbids unsafe code. Prefer methods on meaningful owning types,
 RAII, sealed marker-trait states, immutable validated inputs and consuming
 transitions. Cleanup failures must preserve resource ownership rather than claim
-successful finalization. See [REIMPLEMENTATION.md](REIMPLEMENTATION.md) for the
-milestones and required adherence gates.
+successful finalization. [Rust architecture](DESIGN.md#15-rust-architecture) describes the module
+boundaries and ownership model. Maintained regression fixtures live under `tests/`.
 
-The old implementation and exploratory validation are preserved outside the
-active tree in verified archives; see [ARCHIVE.md](ARCHIVE.md) for recovery.
-Selected acceptance records remain in `evidence/`.
+See [tests/README.md](tests/README.md) for disposable-VM harness setup and
+fixture-specific instructions.
+
+## Contributing
+
+### Commit messages
+
+Commits follow Conventional Commits and standard git formatting. The gitlint
+configuration is in `.gitlint`; CI checks the current commit message. The
+rootless workflow also checks Rust formatting, Clippy, tests and doctests on
+amd64 and Arm64.
+
+- Subject: `type(scope): summary` — lowercase, imperative, no trailing period,
+  at most 50 characters. Types: `feat`, `fix`, `docs`, `style`, `refactor`,
+  `perf`, `test`, `build`, `ci`, `chore`, `revert`, `spec`.
+- One blank line, then a body wrapped at 72 characters explaining what changed
+  and why (not how — the diff shows how).
+- Write each message to stand on its own: describe the change and its rationale
+  for a reader with no knowledge of the project's history or how the work was
+  produced. Do not reference internal process, prior iterations, or review
+  back-and-forth. (gitlint cannot check this — it is a review responsibility.)

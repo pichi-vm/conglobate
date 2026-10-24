@@ -1,14 +1,10 @@
 # Conglobate image build design
 
 Status: implemented standalone-binary contract. Requirements use “must”
-or direct statements of behavior. The final sandbox contract and ordered
-implementation outline are in [SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt).
+or direct statements of behavior. The [sandbox lifecycle](#14-sandbox-lifecycle) and
+[Rust architecture](#15-rust-architecture) are specified below.
 Deferred ecosystem work is collected in [Remaining decisions](#13-remaining-decisions).
-QUALIFICATION.md records the demonstrated environments and remaining platform limits.
-
-[BUILD-FLOW.sh](BUILD-FLOW.sh) sketches the linear control flow and
-resource ownership. It is explanatory shell notation, not executable sandbox code
-or a substitute for the implementation and its tests.
+[Validation scope](#12-validation-scope) describes maintained coverage and platform limits.
 
 Conglobate builds images from committed source and immutable image inputs. It
 can create a new carapace using a tool carapace, extend an existing image, build
@@ -21,9 +17,7 @@ importable image and an inventory binding its supplied inputs to its outputs.
 Hardware qualification is deferred by user decision; ordinary-VM evidence must
 not be represented as confidential-platform qualification. Backend selection
 must preserve command isolation and image metadata semantics on all three
-platforms. See [the preserved platform review](ARCHIVE.md)
-for candidate constraints and the distinction between source analysis and
-hardware validation.
+platforms. Ordinary-VM tests do not establish confidential-hardware compatibility.
 
 **Build commands are untrusted. The build kernel, supervisor, environment-provided BPF LSM
 labeling exception and formatting tools are trusted.** Running without host root does not
@@ -60,10 +54,9 @@ Future attestation must bind the trusted execution environment, including the
 kernel, environment-provided labeling policy, formatter identities and effective configuration, to that inventory; measuring conglobate alone is
 insufficient.
 
-This is the agreed target model, not a claim about the existing executor.
-The kernel-mount/LSM prototype demonstrates selected ext4 compatibility and
-isolation properties. Full bootstrap integration and platform qualification
-remain required; historical FUSE experiments are not the current backend.
+The implementation uses kernel ext4 mounts and an environment-provided labeling
+exception. Confidential-hardware qualification remains deferred; tests do not
+prove absence of sandbox vulnerabilities.
 
 The sections follow a build from input selection through execution and output
 verification. Read the architecture and input sections first, then the pipeline
@@ -105,8 +98,10 @@ the carapace root.
 - [Privileged execution and resource ownership](#9-privileged-execution-and-resource-ownership)
 - [Firmware measurement boundary](#10-firmware-measurement-boundary)
 - [Artifact and inventory](#11-artifact-and-inventory)
-- [Validation and implementation sequence](#12-validation-and-implementation-sequence)
+- [Validation scope](#12-validation-scope)
 - [Remaining decisions](#13-remaining-decisions)
+- [Sandbox lifecycle](#14-sandbox-lifecycle)
+- [Rust architecture](#15-rust-architecture)
 
 ## 1. Architecture and scope
 
@@ -553,8 +548,8 @@ output scute and package its carapace. Discard the tool writable layer. No tool
 scutes or firmware components are inherited; deliberate file copies can still
 contribute output bytes. Bootstrap has no image-file `into` export. The output
 becomes the implicit input of the `carapace` section, or passes forward when it is omitted.
-The dual-mount snapshot-chain integration and both-root label admission are
-covered by the retained pipeline and lifecycle evidence; see QUALIFICATION.md.
+Maintained pipeline and lifecycle tests exercise dual-mount snapshot chains
+and label admission on both roots.
 
 ### 6.2 Carapace
 
@@ -838,7 +833,7 @@ ancestor nodes, but there are no explicit whole-node creation/removal operations
 
 ## 9. Privileged execution and resource ownership
 
-[SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt) is the authoritative sandbox contract.
+[Section 14](#14-sandbox-lifecycle) specifies the detailed sandbox contract.
 It specifies the ordered setup, execution, teardown, finalization, and validation
 requirements. This section summarizes its relationship to the build pipeline.
 
@@ -871,7 +866,7 @@ The trusted environment loads and retains a fixed BPF LSM exception for exactly
 subjects and filesystems. The VM has SELinux disabled; foreign labels belong to
 the target OS and confer no authority in the build environment. Before recipe
 admission, verify required behavior under restricted command credentials; missing
-support fails without a capability fallback. See SANDBOX-DESIGN.txt section 4.
+support fails without a capability fallback. See the labeling requirements in section 14.4.
 
 Label mutation is not constrained by ordinary file write-mode checks. Integrity
 therefore depends on inode/descriptor reachability and read-only views, alongside
@@ -913,9 +908,8 @@ changes (including clearing inherited flags). Named pipes (FIFOs) are supported
 filesystem objects; permitting FIFO mode does not permit character or block
 device creation. Document failures explicitly.
 
-This contract requires containment of untrusted commands. It is not a claim
-that the legacy executor already meets it or that prototype checks prove
-absence of sandbox vulnerabilities.
+This contract requires containment of untrusted commands. Passing compatibility
+and isolation tests does not prove absence of sandbox vulnerabilities.
 
 ## 10. Firmware measurement boundary
 
@@ -1134,11 +1128,9 @@ An inventory records an execution claim. It does not establish that recipes
 are benign, that network dependencies are reproducible, or that the author
 intended the pinned inputs without a separate authenticity policy.
 
-## 12. Qualification and retained evidence
+## 12. Validation scope
 
-The implementation follows the ordered sandbox contract. QUALIFICATION.md and
-REIMPLEMENTATION.md record completion, three-pass adherence gates, actual test
-environments and limits. Maintained tests cover committed inputs, locks, typed
+The implementation follows the ordered sandbox contract. Maintained tests cover committed inputs, locks, typed
 DTB operations, pipeline combinations, metadata, deterministic inventory,
 publication and disposable-VM lifecycle failures. Distro recipes exercise Fedora
 DNF/SELinux, Debian APT/systemd, Alpine APK/OpenRC and NixOS closure construction.
@@ -1149,10 +1141,11 @@ tests explicitly record TCG when KVM is unavailable. This does not propose TCG a
 the production sandbox. Confidential-computing hardware qualification is deferred
 by user decision; appliance transport and attestation remain separate work.
 
-Historical FUSE/UML/kernel-mount experiments, superseded implementations, original
-reviews and raw failures/successes are recoverable through ARCHIVE.md. They are
-historical evidence, not alternative active designs. The binary remains standalone
-and does not create VMs; privileged tests run only inside disposable VMs.
+The binary remains standalone and does not create VMs; privileged tests run only
+inside disposable VMs. Distro recipes do not imply support for every distribution
+and architecture combination. The supported labeling environment disables build-VM
+SELinux; an enforcing build VM requires separate qualification. Boot checks stop
+at their success markers and do not qualify guest-initiated shutdown.
 
 ## 13. Remaining decisions
 
@@ -1168,7 +1161,7 @@ Remaining ecosystem decisions are authentication of the intended Git identity,
 creation/override of components beyond carapace and firmware, additional
 firmware signing/resealing contracts, and appliance transport and attestation.
 
-Sandbox policy is settled in SANDBOX-DESIGN.txt. Exact capability/syscall/ioctl
+Sandbox policy is specified in section 14. Exact capability/syscall/ioctl
 profiles, fixed internal deadline values, trusted formatter/property schemas,
 both-root labeling admission, identity allocation, and runtime mount mechanics
 are implemented under
@@ -1181,3 +1174,645 @@ output-cache mutation, firmware discard, partial PMI/DTB replacement,
 transform-default inclusion, regex match-count options, whole-node operations,
 and execution of `platform` section. Caller working-tree policy is outside this
 interface.
+
+## 14. Sandbox lifecycle
+
+The build proceeds in this order; each failure aborts publication:
+
+1. Validate the request, capture committed context, parse the recipe and lock,
+   and resolve and verify every required local image input.
+2. Capture external network inputs if needed. Allocate the protected RAM
+   workspace and execution runtime only when stages require execution.
+3. Execute bootstrap, carapace and firmware in order, passing stage outputs
+   forward. Bootstrap formats a new snapshot over dm-zero; carapace produces
+   one scute for all its directives; firmware replaces the PMI/DTB pair.
+4. For each directive, mount assigned roots. COPY uses captured context bytes;
+   RUN constructs a fresh sandbox, executes within its timeout, and stops and
+   reaps all descendants. Remove temporary mounts, flush and unmount before
+   sealing stage output or releasing storage.
+5. Close the execution runtime. Transform the DTB, assemble the complete OCI
+   layout, write deterministic CBOR inventory, and verify staged output.
+6. Finish fallible workspace/context cleanup, then atomically publish without
+   replacing an existing destination.
+
+On failure, stop and reap commands before releasing their dependencies. Preserve
+both operation and cleanup errors. If quiescence or cleanup cannot be established,
+reject publication and retain resources until the environment destroys the VM.
+RAII owns resources; destructors cannot certify successful finalization.
+
+### 14.1 Trust model and scope
+
+1. Conglobate is a standalone Linux binary running as initial-namespace
+   root. It verifies inputs, interprets recipes, assembles storage, owns
+   execution and cleanup, finalizes images, and emits inventory. It does
+   not depend on pichi code, a VM transport, a particular init system, or
+   an attestation service. Appliance integration is outside this binary.
+
+1. Deployment is a dedicated disposable VM with conglobate as its only
+   major workflow. An independent environment controller shuts down the VM
+   on conglobate crash or unexpected exit. No new build or resource reuse
+   is allowed in an abandoned VM. The binary does not manage that controller
+   or require pichi code. A separate guardian and recovery across invocations
+   are not required. Qualify shutdown behavior in the execution environment.
+
+1. Build commands are untrusted, including namespace root. Trust the build
+   kernel, supervisor, environment-provided BPF LSM labeling exception and trusted formatting tools.
+   Native filesystem drivers execute inside the trusted kernel. There is
+   no userspace filesystem worker in the selected design. A filesystem
+   driver vulnerability can compromise that shared kernel.
+   Verification of an image's identity is not proof its filesystem is safe
+   to parse. Include hostile filesystem inputs in the kernel threat model.
+
+1. The root supervisor owns block devices, mounts, formatting and
+   publication. Commands run in separate mapped user/mount/PID/IPC/UTS/net
+   namespaces and receive only assigned filesystem views. They must not
+   alter supervisor state, inputs, inventory, control interfaces, output
+   staging or other builds. Never expose backing block devices to commands.
+   Attestation must identify the kernel, policy, formatter and dependencies,
+   not merely the conglobate executable.
+
+1. The design must work inside confidential VMs on Intel TDX, AMD SEV-SNP,
+   and Arm CCA, without nested virtualization. Use native command
+   execution, Linux namespaces, idmapped kernel mounts and environment-provided BPF LSM labeling exception. UML and
+   nested KVM are not the baseline; software CPU emulation is not the
+   baseline either. Hardware qualification on all three platforms is
+   deferred by user decision. Ordinary VM/Arm64 CI tests do not establish it.
+
+1. Conglobate forbids unsafe Rust and uses safe library interfaces for
+   privileged operations. This does not assert that dependencies contain
+   no unsafe internals. Experimental Python/C harnesses are not production
+   implementation templates. Bubblewrap in a prototype does not select
+   an external runtime for production. Compare established implementations
+   and audit the licenses of the exact dependencies actually distributed.
+
+### 14.2 Resolve and verify all supplied inputs before execution
+
+1. Accept a local Git repository, full commit identity, context subdirectory,
+   read-only image cache, explicit context-relative --recipe and --lock paths,
+   and new output destination. Neither path has a default filename or
+   special directory. Require committed files resolved within the selected
+   context; reject absolute paths, escapes and missing/non-file inputs.
+   Record selected paths and exact content identities in inventory. Capture verified committed bytes from the environment-prepared local
+   repository; do not clone or create another checkout. Keep captured input
+   private and immutable; commands never receive the context. Use the Git, lock, and host-architecture rules in
+   DESIGN.md. Working-tree policy for callers is outside this interface.
+
+1. Resolve recipe references only through the committed, architecture-aware
+   lock, pinning the top-level multi-architecture index and verifying its
+   referenced content. Missing artifacts or blobs are errors. Conglobate
+   does not fetch Git content, resolve tags remotely, or download extra
+   image artifacts. Recipe commands explicitly granted networking may
+   download packages; this is distinct from input resolution.
+
+1. Parse one YAML recipe mapping and validate all stage sections before
+   execution. The fixed order is bootstrap, carapace, firmware, transform;
+   platform remains unsupported. Key order never determines execution.
+   Reject duplicate/unknown keys, invalid types and null stage values.
+   Omission retains pass-through/default behavior; explicit {} and []
+   express empty sections subject to their input requirements.
+   Check supported filesystem/backend and runtime prerequisites, required
+   image components, finite command timeouts, variable availability when
+   evaluated, and DNS configuration for network-enabled commands. Reject
+   unsupported behavior rather than silently weakening the sandbox.
+
+1. Require and capture --network-namespace when any step enables networking
+   as specified in section 14.8. Read --resolv-conf PATH once if networking is needed and retain the
+   selected bytes privately. The argument is mandatory if any run step
+   has network: true. An unreadable or invalid selected file is an error;
+   there is no implicit host-file or public-resolver fallback. Resolver
+   configuration and its digest are deliberately OMITTED from inventory.
+   The environment supplies resolvers reachable from the command network;
+   a supervisor-loopback address does not become reachable by copying it.
+
+### 14.3 Assemble storage and the build workspace
+
+1. Keep immutable carapace layers cache-backed. Verify the chain and use
+   verified reads; do not copy every immutable layer into tmpfs. Merely
+   hashing a mutable cache file once is insufficient. Later mutation must
+   produce verification failure, never silently change accepted inputs.
+   Decoding or format-required materialization may need temporary storage;
+   that is not permission to replace cache-backed layers with blanket RAM
+   copies. Retain required handles until every consumer is finished.
+
+1. The supervisor assembles verified carapace layers over the required
+   dm-zero base and creates writable snapshot storage above them. It owns
+   loop/device-mapper resources, names, handles, leases, and recovery.
+   Mount namespaces do not namespace these kernel objects. Concurrent
+   builds must not collide or remove each other's resources.
+
+1. Use one private build-wide tmpfs for mutable snapshots and scratch:
+   disposable tool roots, newly generated
+   output-layer storage, runtime state, resolver bytes, and intermediate outputs.
+   Use ordinary tmpfs behavior, with no disk fallback. The environment
+   configures capacity and resource limits; do not add per-step memory,
+   swap, or tmpfs-size policy to recipes. Allocation/write failures fail
+   the build. Final artifact destination storage is separate.
+
+1. Mount assigned filesystems with trusted kernel drivers. Only one writer
+   implementation may own a writable backing volume at a time. Retain the
+   mounts and device handles through command quiescence and clean
+   filesystem finalization. Raw block access is supervisor-only, including formatting.
+
+1. Bootstrap starts a new writable snapshot layer directly over dm-zero.
+   Format through its block-device view: formatting and population write
+   into this layer from the outset. No temporary rootfs image, image import,
+   or image-to-scute conversion is part of bootstrap. After clean teardown,
+   seal/hash the resulting scute and package the new carapace.
+
+### 14.4 Mount filesystems under the environment-provided labeling exception
+
+1. Use kernel filesystems supporting the required idmapped-mount and metadata
+   semantics. Ext4 is validated initially; qualify additional filesystems
+   separately. Fail explicitly if the selected driver, trusted formatter,
+   idmapping, BPF LSM, BTF or required hooks are unavailable. No fallback to
+   command CAP_SYS_ADMIN, a different filesystem or an unreviewed backend.
+
+1. The supervisor mounts the filesystem and creates an idmapped view for
+   the command namespace. Keep the superblock supervisor-owned; it does
+   not need to belong to the command user namespace. Map image IDs to
+   unprivileged outer IDs while preserving the correct IDs on disk. Cover
+   all supported image IDs; reject unmapped IDs. The environment reserves and
+   supplies contiguous parent ranges using --uid-map PARENT_START:COUNT
+   and --gid-map PARENT_START:COUNT. Both start at image ID zero and are
+   required for execution; there is no built-in range or allocator. Exclude
+   parent root and invalid IDs; keep these ranges disjoint from environment
+   service accounts and other workloads. Record the effective pair in the
+   inventory and use it consistently across all executing stages. Retain normal
+   kernel ownership, mode and ACL permission checking. Use nosuid,nodev;
+   storing file capabilities/setuid bits must not grant build-host privilege.
+
+1. The trusted environment loads a fixed BPF LSM exception before
+   conglobate starts. It delegates the generic capability check for exactly
+   security.selinux through inode_xattr_skipcap. There are no per-command
+   registrations, subject/filesystem maps, target guards or activation
+   transitions. Conglobate does not compile, load, attach, update or remove
+   this policy. The environment retains it for the lifetime of the VM.
+
+1. Match the complete attribute name, including termination; truncated
+   prefix matches are forbidden. Preserve earlier LSM results. Other
+   security attributes retain normal checks. The build VM must have SELinux
+   disabled; image label strings belong to the target OS's independent
+   policy and must not confer authority in the build environment. The
+   exception is not a grant of CAP_SYS_ADMIN or SELinux administration.
+
+1. Ordinary file write-mode denial is not a labeling integrity boundary:
+   security.* attribute checks can bypass that DAC check. Commands must
+   not reach mutable supervisor/cache/context/control inodes or their
+   descriptors. Assigned read-only views must reject label mutation.
+   Keep bpffs, policy controls and privileged handles inaccessible.
+   The same fixed exception supports both bootstrap writable roots.
+   Enforce this boundary through private mount construction, pivot_root
+   and old-root detachment, confined runtime mount targets, private proc
+   and non-dumpable trusted helpers, and closure/audit of all non-stdio
+   descriptors before image code. Command stdout/stderr are pipes relayed
+   by trusted setup, not direct handles to supervisor output files;
+   stdin is the assigned null device. Read-only mounts protect supplied
+   immutable views. Seccomp and capability restrictions prevent commands
+   from obtaining new mounts or joining outside namespaces. Validate this
+   combined boundary again with the global exception active.
+
+1. Validate the required labeling behavior before admitting recipe commands
+   under the restricted command credentials. Missing or incompatible
+   environment support fails the build, with no capability fallback.
+   Do not infer support from a familiar pin pathname or a successful
+   supervisor-root write. This is a behavioral admission prerequisite,
+   not dynamic policy installation. Its production implementation and
+   failure tests must accompany the lifecycle migration.
+   Complete the cgroup-join acknowledgment before launching the restricted
+   leaf. Probe in that contained leaf after capabilities and seccomp are
+   applied, before reporting readiness or receiving command admission.
+   Check both assigned filesystems in bootstrap using anonymous inodes;
+   close all probe handles before readiness and the final descriptor audit.
+
+1. Retain namespace handles needed for idmapped views and command setup,
+   process containment, mounted volumes and explicit fallible cleanup.
+   Remove identity pins and rollback states used solely for policy
+   registration. Stop/reap all descendants before storage finalization;
+   cgroup joining and admission handshakes remain necessary. Failure to
+   prove quiescence rejects publication and requires VM disposal. There
+   is no policy revocation step and no numeric policy-identity reuse race.
+   Supervisor death still must not expose privileged handles or permit
+   storage reuse before the independently triggered VM shutdown.
+
+### 14.5 Execute the assembly pipeline without changing its inheritance rules
+
+1. The bootstrap section selects a tool carapace and declares the output filesystem
+   type, logical size and supported typed properties. Trusted formatting
+   tools create that filesystem on the new zero-backed writable carapace
+   layer before commands start. Never pass arbitrary recipe-provided shell
+   commands or formatter arguments to privileged tooling. Validate properties
+   against the selected backend and record effective configuration and tool
+   identity as build inputs (with an explicit inventory schema revision).
+
+   Commands see the disposable writable tool carapace at / and the fresh
+   output filesystem at /mnt. They can install tools into / and populate
+   /mnt, for example using dnf --installroot=/mnt. COPY destinations follow
+   this same sandbox layout. Constrain /mnt setup against the pinned root;
+   it is a reserved output mount during bootstrap. Tool modifications persist
+   between its steps but are discarded at stage completion. No tool layers
+   or firmware components are inherited. Deliberately copied tool files can
+   contribute output bytes. Stop writers and cleanly unmount both views;
+   seal the output layer directly, without import or image conversion.
+
+1. The carapace section extends bootstrap output, or its explicit from image when
+   bootstrap is absent. from is forbidden when bootstrap supplied the
+   input. Preserve all inherited image components, not just the scutes.
+   Empty/omitted stages and firmware-only images follow DESIGN.md.
+
+1. The firmware section produces a replacement PMI/DTB pair together, commonly
+   using arma. It may use a different tool carapace from the output base.
+   Commands use a disposable tool root at /, without a special /mnt
+   output mount. into names the PMI and DTB paths inside that root;
+   extract them through confined handles only after all writers stop.
+   Omission propagates inherited firmware. Do not add a firmware-discard
+   operation or permit replacement of only half of the pair.
+
+1. The transform section edits DTB properties in the supervisor with safe libraries.
+   It does not require a command sandbox. An authored sequence replaces
+   the built-in sequence completely; transform: [] disables it. No default
+   inclusion operation. Regex replaces all matches, leaves zero matches
+   unchanged, and fails on a non-string. Missing reads fail unless guarded
+   by property-exists; set can create nodes; remove of an absent property
+   fails. Missing DTB fails for authored transforms, but skips the implicit
+   default. The implicit corium edit tolerates absent bootargs and edits
+   existing corium= arguments, without assuming every firmware is Linux.
+   See DESIGN.md for exact typed operations and default syntax.
+
+1. Expose $CARAPACE consistently after carapace production/selection as the
+   output carapace root, not the firmware tool root. Referencing it when
+   unavailable fails. Expand string values with the documented dollar
+   escaping. The platform section remains unimplemented; do not add it
+   as part of this sandbox redesign.
+
+### 14.6 Keep COPY and output extraction controlled
+
+1. Commands never receive a context mount. COPY selects committed files
+   using the existing Docker-compatible semantics. Copy into a filesystem
+   through its kernel mount, while command writers are stopped. Use
+   scoped handles and root-confined path resolution; symlinks and metadata
+   must not redirect supervisor operations outside the target.
+
+1. COPY is a supervisor-owned operation, not an image-authored script with
+   context access. Use a controlled mount session without command writers,
+   root-confined path resolution and narrowly scoped handles. Complete it
+   before the next run. Apply the same rules to disposable tool roots and
+   bootstrap output roots; do not expose the captured context to commands.
+
+1. Extract declared firmware outputs only after commands and
+   descendants have stopped. Validate types, bounds, paths, and formats.
+   Do not execute image-provided cleanup or validation helpers with
+   supervisor authority. COPY into a persistent layer is persistent data;
+   deleting it in a later layer does not erase the earlier layer.
+
+### 14.7 Start a fresh command sandbox for every run step
+
+1. Remount assigned filesystems for every command step.
+   Create a fresh command sandbox; complete teardown before advancing.
+   Persistent image changes survive through the writable storage, not
+   through surviving processes or long-lived filesystem mounts. The externally
+   owned enabled network namespace is intentionally shared across steps.
+
+1. Execute as UID/GID 0 inside the mapped command user namespace, with
+   private mount, PID, IPC and UTS namespaces, a separate network namespace
+   selected according to section 14.8, and private mount
+   propagation. Pivot to the assigned image root and detach the old root.
+   No initial-user-namespace root authority, context, backing device,
+   /dev/fuse, cache, supervisor executable, or outside-root descriptors
+   may reach commands. Namespace root supplies filesystem-build semantics,
+   not unrestricted host-root capabilities.
+
+1. Use a tested capability allowlist and syscall/ioctl restrictions, with
+   no_new_privs. CAP_SYS_ADMIN MUST be absent from all five command
+   capability sets, including the bounding set. Preserve supported chown,
+   ACL, mode, credential, file-capability and label operations through
+   idmapping and the environment-provided labeling exception. Block namespace creation/join and
+   mount APIs; a new user namespace would grant new scoped capabilities.
+   Restrict devices, ioctls, keyrings, process inspection and descriptor
+   access. Validate the actual profile on amd64 and arm64; the prototype
+   allowlist is not a production compatibility contract.
+
+1. Supply private /proc for the command PID namespace, minimal private /dev
+   with approved devices, private devpts and /dev/shm, and empty read-only
+   /sys. Never bind the supervisor's device tree or its device-node inodes.
+   Constrain runtime mount targets against the pinned image root before
+   executing commands. Do not hide COPY inputs under an automatic /tmp
+   mount or silently change cross-step /run persistence. Temporary runtime
+   injection must leave no supplied resolver data or scaffolding in output.
+
+1. Run /bin/sh -eu -c, cwd /, null stdin, and explicit diagnostic output.
+   Clear the caller environment; supply only the documented PATH, HOME,
+   LANG, and applicable CARAPACE. No automatic credential/proxy forwarding.
+   Namespace init must reap descendants. No process may outlive the step,
+   including a daemon whose shell already exited successfully.
+   Resident init reports shell status before namespace-exit cleanup through
+   an owned status-only channel directly to the supervisor. The receiver
+   independently reports the namespace helper exit after local cleanup;
+   the supervisor cross-checks it against the normalized shell status.
+   Keep init non-dumpable and this endpoint
+   close-on-exec; no image command may inherit or obtain it through procfs.
+   It grants no storage/control authority and is not a cleanup receipt.
+
+1. Every run has a finite positive timeout. Default: 5 minutes. Recipes
+   may override it with duration strings, for example timeout: 30m.
+   Reject zero, infinite, invalid, or overflowing durations. The timer
+   covers command execution only, from release to execute through command
+   completion; remaining descendant cleanup belongs to teardown. It does
+   not include setup, environment validation, mounts, or teardown. Timeout fails
+   the build and starts cancellation; partial results are not accepted.
+
+### 14.8 Networking and DNS
+
+1. Networking defaults to disabled. Offline commands receive a fresh
+   disconnected network namespace. Enabled commands join the externally
+   supplied --network-namespace PATH, captured once as an owned descriptor
+   before command execution. Reject missing/non-nsfs input and the supervisor's
+   own network namespace. Reject wrong namespace types through setns(CLONE_NEWNET)
+   in trusted setup before admitting commands. The environment supplies initial-user-namespace
+   ownership; conglobate does not introspect it. Capture precedes command
+   user-namespace creation and restricted capabilities exclude network
+   administration. Join during trusted setup; no handle or administration
+   authority reaches command code.
+
+1. The environment owns the enabled build namespace and its interfaces,
+   addresses, routes, NAT, firewall policy and lifetime. It provides outbound
+   NAT with replies allowed, no unsolicited inbound connections or inbound
+   forwarding, and access to all reachable destinations including private
+   networks. Conglobate neither provisions nor tears down these resources
+   and does not require supervisor-namespace forwarding sysctls. The
+   environment dedicates the namespace to this build. Sequential enabled
+   steps reuse it; connection tracking and other network state can persist,
+   but no command processes may survive a step. No unrelated services or
+   concurrent builds share the namespace. Systemd is an optional environment
+   implementation, not a dependency of the binary.
+
+1. Namespace separation isolates loopback and abstract Unix sockets, not
+   services listening on routable supervisor addresses. This design does
+   not promise to block access to every address belonging to the build VM.
+   Supervisor controls and attestation endpoints must not listen on the
+   command-reachable network. The surrounding environment owns upstream
+   connectivity and externally reachable services.
+
+1. Mount the captured --resolv-conf contents read-only at /etc/resolv.conf
+   for network-enabled commands. Follow existing symlinks only within the
+   command root, including targets under /run. Reject escaping paths,
+   loops, and incompatible target types. Use confined temporary mount
+   scaffolding where needed; preserve existing image files/symlinks and
+   remove created placeholders after unmount. Failure to restore the
+   promised output state fails the build. Qualify dangling targets and
+   concurrent rename/replacement cases before shipping this behavior.
+
+1. Do not persist the supplied resolver file into output layers or infer
+   a DNS relay. Conglobate starts no DNS server. The environment supplies
+   a usable resolver file and routes. Supplying resolv.conf does not supply
+   NSS modules, nsswitch policy, credentials, proxies, or /etc/hosts entries;
+   image authors supply their own required userspace configuration.
+   Offline steps receive no injected environment resolver configuration.
+
+### 14.9 Filesystem compatibility contract
+
+1. Preserve correct target UID/GID values, permissions, ordinary extended
+   attributes, ACL access and inheritance, file capabilities, and SELinux
+   labels. The target OS policy is independent of the build VM policy.
+   Labels are image metadata; commands must not administer the build VM's
+   SELinux policy. Successful xattr readback alone is insufficient: check
+   access decisions and the bytes/behavior after independent target boot.
+
+1. The tested foreign-label path uses a build kernel with SELinux disabled.
+   SELinux in the build VM is not a requirement; isolation remains one.
+   Do not equate permissive mode with disabled/absent SELinux. An enforcing
+   deployment must separately demonstrate the required foreign-label
+   behavior without weakening command containment.
+
+1. Initially unsupported: access to trusted.* xattrs, persistent device-node
+   creation, and changing immutable/append-only flags, including clearing
+   inherited flags. Inherited flags can block edits or deletion. Fail with
+   useful diagnostics; do not silently fake success or discard metadata.
+   Temporary sandbox /dev is distinct from persistent image device nodes.
+   Named pipes are supported: restrict mknod/mknodat by mode to FIFO only;
+   character and block device creation remain denied.
+   Untouched inherited bytes remain inherited; this is not a promise to
+   copy inaccessible metadata through file-level operations.
+
+1. Retain the explicit initial restrictions above until separately reviewed;
+   native driver support alone does not broaden command authority. Qualify
+   each formatter, driver, idmap and metadata combination, including the
+   target image's boot behavior.
+
+### 14.10 Own execution, failure, and cleanup end to end
+
+1. Conglobate owns setup helpers, command containment, namespace init and
+   descendants. Helpers prepare isolation and launch untrusted commands;
+   they are not independent recovery supervisors. Retain cancellation
+   authority outside the command sandbox. Do not rely solely on process
+   groups, launcher exit or numeric PID paths. The environment handles
+   abrupt conglobate death by shutting down the dedicated VM.
+
+1. Setup and teardown have finite FIXED INTERNAL DEADLINES, chosen and
+   tested as implementation constants. They are not recipe or CLI knobs
+   and do not consume command timeout. Exceeding either fails the build.
+   Start teardown's budget when command completion or observation failure
+   is observed. Retain that cutoff across delayed cleanup calls and retries;
+   neither may start a fresh budget.
+   Cancellation or an environment deadline may end work earlier. A fixed
+   deadline bounds waiting/acceptance; it cannot guarantee the kernel can
+   immediately reap a task stuck in uninterruptible I/O.
+
+1. On normal completion, stop/reap all descendants, then remove
+   runtime/resolver mounts, release borrowed network handles without modifying
+   the external network, flush and cleanly unmount assigned
+   filesystems, and release references before sealing or the next step.
+   Detect and propagate storage/writeback errors. Preserve primary failure
+   and cleanup diagnostics independently; process exit is not durability.
+
+1. Command error, timeout, filesystem error, helper death,
+   cancellation or setup/teardown deadline rejects the build. Quiesce
+   commands before mount teardown. Do not accept a forced/lazy unmount
+   as clean finalization. Retain recovery ownership if cleanup cannot finish.
+   Never silently resume a failed command on remounted storage.
+
+1. Incomplete cleanup must not authorize publication or unsafe identity/
+   resource reuse. Keep ownership while the process remains alive, report
+   failure and require VM disposal if teardown cannot complete. Validate
+   normal completion, partial setup, timeout, helper death, blocked I/O,
+   supervisor death with independent VM shutdown, and output rejection.
+   Shared-host recovery and concurrent builds inside one VM are out of scope.
+
+### 14.11 Finalize and publish
+
+1. After writers are gone and filesystems are cleanly finalized, seal
+   and hash writable output layers using the carapace APIs; firmware
+   extraction and DTB transformation follow the pipeline contract. Hash
+   the finalized bytes that will be published, not subsequently mutable
+   transport copies. Do not treat a clean process exit alone as evidence
+   that filesystem writes succeeded.
+
+1. Emit a self-contained OCI image-layout artifact and deterministic CBOR
+   inventory binding the verified context, lock, image inputs, recipes,
+   effective build behavior, and final outputs. Include every referenced
+   output blob, including inherited ones. Resolver contents/digest are an
+   explicit inventory exclusion; network-step permission is recorded.
+   Network acquisition is not claimed to be reproducible or exhaustive
+   input accounting. Version any schema change explicitly; do not add
+   fields silently to the strict existing inventory wire format.
+
+1. Require a new output directory. Stage the complete artifact, verify its
+   identities, and publish atomically without replacement. Failures emit
+   diagnostics, not a successful artifact. Cache mutation/import and
+   attestation belong to external integrations. The appliance may attest
+   the exact inventory bytes and trusted execution environment later.
+
+### 14.12 Validation requirements
+
+1. Before accepting production output, qualify the actual integrated
+   kernel/device contract, dual-mount bootstrap, full tool-root launch, trusted COPY
+   and export, capability/seccomp policy on both architectures, ID reuse,
+   keyring/FD closure, helper death, supervisor death with VM shutdown,
+   fixed deadlines, blocked I/O, independent build VMs, clean/error
+   finalization, and publication ordering.
+   Include benign owned-object positive/negative containment tests and
+   malformed-input/parser tests; passing them is not proof of absence
+   of vulnerabilities. Do not substitute historical markers for new runs.
+
+1. Validate outbound NAT, reply-only inbound behavior, all-reachable/private
+   destinations, supplied DNS (including image NSS), resolver symlinks and
+   missing targets, absence of persistent injection, and network cleanup
+   under failures in the final kernel-mount topology.
+
+1. Build Fedora, Debian, Alpine, and NixOS images through representative
+   bootstrap, layering, and firmware workloads. Exercise package installs/
+   upgrades, ownership and ACL changes, initramfs/kernel tooling, relabeling,
+   cleanup, and image boot. Fedora must boot with functional SELinux under
+   its own policy. Report accepted filesystem limitations where workloads
+   encounter them; do not silently broaden the support claim.
+
+1. Deferred qualification (user decision): run the composed design in
+   Intel TDX, AMD SEV-SNP, and Arm CCA deployment
+   environments. Measure startup/step costs and compatibility, with no
+   nested-virtualization assumption. Appliance transport and attestation
+   qualification are separate from the standalone binary's tests.
+
+## 15. Rust architecture
+
+The binary has private modules and no library target. Opt-in VM fixtures compile
+the same modules into a separate test binary.
+
+### Inputs and workflow
+
+The environment supplies committed Git objects, a read-only local image cache,
+reserved UID/GID ranges, optional network namespace and resolver file, trusted
+formatter files, the fixed labeling exception and independent VM disposal.
+Conglobate performs no artifact downloads, Git clone/checkout, network setup,
+policy registration or attestation. It has no dependency on the pichi binary.
+
+`BuildRequest`, `CapturedBuild`, `ResolvedBuild` and `BuildPlan` progressively
+validate and capture inputs. Git object identities and the consumed context are
+verified; COPY uses captured bytes without exposing a context mount. Locked
+multi-architecture indexes select only the host architecture. Image components
+and verified chain roots remain separate from live device mappings.
+
+`Pipeline::execute` sequences bootstrap, carapace and firmware directly. It owns
+one RAM workspace and execution runtime, borrowed by stages. Bootstrap formats
+its new writable snapshot over dm-zero and uses separate tool/output mounts.
+Carapace directives share one writable snapshot and produce one scute for the
+whole stage. Firmware uses disposable tools and extracts the PMI/DTB pair.
+Tool inputs contribute inventory provenance, not accidental output ancestry.
+
+`StageOutput` holds results without command/mount authority. Runtime cleanup
+precedes DTB transformation, image assembly, deterministic CBOR inventory and
+publication. Pass-through builds use the same finalization without allocating
+an execution runtime. Publication is a no-replacement atomic rename after all
+fallible checks; no successful image is exposed after a failed build.
+
+### Ownership and Rust states
+
+Application Rust forbids unsafe code. Methods belong to types that own their
+invariants. Private fields, sealed marker traits, immutable validated values and
+consuming transitions express what each operation may do. Important examples:
+
+- `Volume<Unmounted>` and `Volume<Mounted>` retain mapping/mount ownership.
+  `VolumeView` borrows a root from storage actually retained by the step.
+- `Step<Ready>` and `Step<Running>` constrain execution. The supervisor owns
+  the direct init gate; failed start retains the entire ready step for cancellation.
+  Cancellation, reaping and descendant draining form one private cleanup sequence
+  in `ContainedHelper`, using the original teardown deadline.
+- `CommandStorage` shares preparation, transfer, COPY and finalization between
+  single-root commands and bootstrap's paired roots. Networking is owned directly
+  by the step, without another storage wrapper or state machine.
+- Formatter capture, staging, execution and completion own distinct resources.
+- I/O operations use `io::Result` and direct propagation. The pipeline uses
+  `anyhow` for stage/directive context and combined operation/cleanup diagnostics.
+  No failed build returns reusable storage or a recovery object. Private process
+  transition errors may carry a child to the immediate cancellation path; these
+  never escape as a build recovery API.
+
+RAII provides ordinary scoped cleanup; destructors cannot prove quiescence or
+successful writeback. Explicit fallible completion performs those checks.
+Terminal failure retains diagnostic truth and requires VM disposal when cleanup
+cannot finish. There is no guardian process or persisted recovery state machine.
+
+### Storage
+
+Immutable aligned scutes stay cache-backed. RAM-backed copies are used where
+compression or padding requires materialization; writable layers and filesystem
+workspaces are always RAM-backed. Cache identity checks and authenticated reads
+remain distinct protections. Device-mapper and loop owners retain descriptor and
+mount-namespace identity through partial setup and explicit teardown. Unresolved
+live resources remain retained until VM disposal. Deferred device removal is a
+destructor fallback, never evidence of successful close or permission to seal.
+
+The carapace format uses a 64 GiB dm-zero origin. Bootstrap's configured ext4
+capacity is a filesystem capacity within that geometry, not a format change.
+The initial backend accepts aligned 16 MiB–64 GiB capacities and typed ext4
+properties. Trusted mke2fs uses 4096-byte filesystem blocks. Finalization trims
+unused snapshot capacity, uses ecosystem wire types and seals the scute directly;
+there is no image-to-carapace import/conversion step.
+
+Scute wire parsing belongs to devmap-snapshot. Conglobate owns activation and
+fallible cleanup using devmap/lodown. A read-only file with deferred removal alone
+cannot prove successful finalization. It does not duplicate the
+wire codec. The pinned rustix revision supplies the safe borrowed-descriptor
+mount_setattr API (upstream PR 1630); the pin is intentional, not a mutable branch.
+
+### Command boundary
+
+The supervisor and kernel are trusted. Commands receive mapped namespace-root
+credentials, private mount/PID/user and other isolation, private proc/dev/devpts,
+restricted capabilities and a native-ABI seccomp allowlist. They never receive
+SYS_ADMIN, backing devices, the context, supervisor resources or host terminal
+handles. Command stdout/stderr are pipes relayed by trusted code; stdin is null.
+PTY queries/unlock/raw-mode settings and caller-local parent-death signals support
+Nix builders. Terminal injection/control and namespace/mount creation stay denied.
+
+The environment's fixed BPF LSM exception permits exactly security.selinux
+labeling without making the target filesystem's policy the build VM's policy.
+Conglobate probes labeling under the actual command restrictions before admission,
+including both bootstrap roots. It neither loads nor revokes the exception.
+Ordinary ownership, ACL, mount and filesystem checks still apply.
+
+Each command reconstructs mounts/isolation and has a finite recipe timeout
+(default five minutes). Setup and teardown use separate fixed internal deadlines.
+Descriptor handshakes establish readiness; sleeps are not synchronization.
+The supervisor sends init's gate endpoint over the receiver's existing control
+channel. Init reports READY directly; the supervisor establishes the execution
+deadline before sending START and receives raw shell status directly. The
+receiver retains its mount/resolver/diagnostic cleanup duties and independently
+reports the namespace helper's exit status after cleanup. The supervisor checks
+that exit against init's normalized shell status. Neither status alone certifies
+quiescence, unmount or writeback. A missing or inconsistent cleanup report still
+triggers cancellation and drain, but cannot authorize storage finalization.
+
+`DescriptorPacket` shares only single-call nonblocking descriptor transport;
+protocol owners retain framing, descriptor shape/type checks and wait policy.
+Queued datagrams never gain retries. `Deadline` converts an existing absolute
+cutoff to a poll duration without renewing it; cross-process conversion remains
+in `SetupCutoff`.
+Cgroup containment, process identity, cancellation, reaping and descendant drain
+precede releasing mounts or sealing storage. Independent environment shutdown
+handles supervisor death; another build must never reuse that abandoned VM.
+
+Networking is offline by default. Enabled commands join an environment-supplied,
+validated and pinned namespace and receive captured read-only resolver bytes.
+The environment owns outbound NAT, ingress policy, DNS and namespace lifetime.
+Resolver mounts follow symlinks only within the command root and restore prior
+image state. Conglobate implements no NAT allocator, resolver service or networkd
+integration.

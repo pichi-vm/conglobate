@@ -34,6 +34,5 @@ SETGID, SETUID, NET_BIND_SERVICE, SYS_CHROOT and SETFCAP profile; SYS_ADMIN is
 absent. The test ignores only proc-FD entries already closed after enumeration;
 any live descriptor beyond 0/1/2 fails. It does not attempt an escape or prove
 complete syscall filtering, ACL/label fidelity, fault handling, cross-architecture
-behavior, or confidential-VM qualification. Historical broader tests and failed fixture attempts (confinement-v1/v2)
-remain recoverable through ARCHIVE.md. Current qualification is summarized in
-QUALIFICATION.md.
+behavior, or confidential-VM qualification. See DESIGN.md section 12 for
+validation scope and platform limits.
