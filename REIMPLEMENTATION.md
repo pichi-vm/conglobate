@@ -6315,3 +6315,16 @@ live at capture. These are configured-case results, not full qualification.
 No additional testing was launched while the architecture identity-range
 question awaits the user's answer. No gate advances. Large assets remain local
 with hashes; durable M8 archival is still required.
+
+## CI complete; architecture decision pending
+
+Both CI workflows at d5e77e6 are green: lifecycle 40043887757 and rootless
+40043887779 (including dependency policy and advisories). Final metadata/logs
+are preserved in linear-workflow-ci; prior live observations remain historical.
+The image UID/GID contract has remained unanswered across three goal turns.
+Architecture review cannot claim clean adherence while SANDBOX-DESIGN 4.2's
+supported range is unresolved. The user was asked whether to keep/document the
+initial 0–65535 limit or let the environment configure the mapping range. No
+answer has been inferred; current code is unchanged. Independent CI verification
+and preservation are complete. Dependent milestone advancement awaits that
+answer under the mandatory three-clean-pass rule. The full goal scope remains.

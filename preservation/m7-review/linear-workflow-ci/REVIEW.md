@@ -17,3 +17,10 @@ These are passing configured cases, not full lifecycle, distro, architecture or
 confidential-platform qualification. The independent full CLI composition result
 is under linear-pipeline-validation. No new tests were started to obtain these
 logs. Architecture's UID/GID-range question remains unanswered; no gate advances.
+
+Final observation: rootless run 40043887779 completed successfully, including
+both architecture dependency-policy checks and advisory checking. Raw final
+workflow metadata/logs are rootless-final.json and rootless.log. Both workflows
+are green at d5e77e6. The earlier live observation is retained as history. Later
+local commits contain review/evidence changes only; do not call them separately
+CI-qualified revisions.
