@@ -91,7 +91,7 @@ but must not be claimed to validate the new policy implementation.
 | Milestone | Deliverables and success criteria | Status | Clean streak |
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
-| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Reopened: linear workflow and stage-level sealing | 0 |
+| 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: linear workflow, stage-level sealing and environment ID maps | 3 |
 | 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Reopened: committed-byte capture without materialized checkout | 0 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, environment-owned labeling exception, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Reopened: registration-free lifecycle | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Reopened: two-root lifecycle regression | 0 |
@@ -6350,3 +6350,17 @@ Large local assets are hashed but are not a durable M8 archive. This is a focuse
 regression, not distro boot/platform/full sandbox qualification or a complete
 milestone adherence pass. The prior unanswered-decision block is resolved;
 M2/M3 and other reopened gates remain at zero pending complete adherence reviews.
+
+
+## Linear architecture gate restored at 83265df
+
+Three consecutive self-review passes in
+preservation/m7-review/linear-architecture-final/RESTART-{1,2,3}.md are clean.
+The first sequence found stale maintained-test claims about persistent command
+records; corrected them against contained.rs/gate_failure.rs and reset the streak.
+No production change was needed. Reviews cover requirements, Rust style/state,
+error ownership, evidence boundaries and preservation. M2 is now 3/3. M3 remains
+0/3 for committed-byte capture and environment input validation; review it next.
+M4–M8 remain outstanding. These are source/evidence reviews, not repeated tests
+or independent security approval. Earlier reopening statements are historical;
+the milestone table and this latest entry give the current gate status.
