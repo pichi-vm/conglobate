@@ -15,6 +15,13 @@ objects directly without a redundant filesystem checkout. M3 is reopened at 0/3
 for removal of context materialization; source verification remains required.
 BUILD-FLOW.sh expresses this direction; it does not claim implementation parity.
 
+Current workflow changes: Pipeline sequences stages directly; one scute is sealed
+per nonempty carapace stage. StageOutput handles common finalization only after
+runtime cleanup, including pass-through without a workspace/runtime. Source
+review and focused compilation are proceeding before broad validation resumes.
+These changes keep affected adherence streaks at zero; old runtime evidence is
+not evidence of current layer counts or full workflow behavior.
+
 
 User accepted externalizing networking. This supersedes earlier proposals and
 conglobate-owned NAT wording in the stored goal/history. No requirement is being

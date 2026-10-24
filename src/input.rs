@@ -59,7 +59,7 @@ impl SelectedDocument {
 }
 
 /// Owns all committed bytes used to derive the plan. This is not an executable
-/// build: cache verification and private materialization are separate gates.
+/// build: cache verification and execution preparation are separate gates.
 #[derive(Debug)]
 pub struct CapturedBuild {
     context: CapturedContext,

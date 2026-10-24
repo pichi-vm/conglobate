@@ -12,7 +12,11 @@ they do not prove that external state cannot change or that destructors run.
 [`BUILD-FLOW.sh`](BUILD-FLOW.sh) is the explanatory sequence. The environment
 prepares Git, networking, labeling policy and VM shutdown. `Pipeline` owns the
 build workspace, one execution runtime and the sole publication point. Stages
-borrow that runtime. A pass-through build needs no command runtime.
+borrow that runtime. A pass-through build needs neither workspace tmpfs nor
+command runtime. Verified root identities do not require live mappings: assemble
+the output chain only for carapace directives or implicit firmware tools. An
+explicit firmware tool image does not require mapping an otherwise unchanged
+output base. Finalization uses verified/sealed root identities directly.
 
 `Pipeline::execute` now sequences bootstrap, carapace and firmware. Bootstrap
 returns a sealed scute, formatter receipt and process-reaping owner; carapace

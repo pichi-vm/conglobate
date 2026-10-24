@@ -89,10 +89,11 @@ capture_external_network_inputs_if_needed
 # Pin --network-namespace; capture --resolv-conf once. Both required for enabled
 # steps. Environment owns interfaces, NAT, routes, firewall, DNS and teardown.
 
-create_one_protected_tmpfs_workspace
+create_one_protected_tmpfs_workspace_if_execution_is_needed
 # Proposed simplification: ordinary protected, private-propagation mount in the
 # supervisor's namespace. Rust owns its descriptor, attachment and cleanup.
 # Immutable image layers stay cache-backed; do not copy them into the workspace.
+# A pass-through/transform-only build uses no tmpfs or block mappings.
 
 # No Git clone, fetch or checkout in conglobate.
 retain_verified_context_bytes
@@ -117,6 +118,7 @@ for stage in bootstrap carapace firmware; do
             seal_output_snapshot_as_carapace
             discard_disposable_tool_root
             # Tool image supplies tools, not inherited output layers/firmware.
+            # Do not remap the sealed output unless a later stage needs its files.
             ;;
         carapace)
             select_current_verified_chain

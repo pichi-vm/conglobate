@@ -176,23 +176,22 @@ impl Pipeline {
         }
         let build =
             CapturedBuild::try_from(&self.request)?.resolve(Cache::open(self.request.cache())?)?;
-        let workspace = Workspace::create()?;
         let recipe = build.captured().plan().recipe();
         let inherited = recipe.bootstrap().is_none()
             && recipe.firmware().is_none()
             && recipe
                 .carapace()
                 .is_none_or(|stage| stage.directives().is_empty());
-        let stages = if inherited {
-            StageOutput::inherited(&build)?
+        let output = if inherited {
+            StageOutput::inherited(&build)?.assemble(&self.request, &build)?
         } else {
-            Runtime::scoped(&workspace, std::path::Path::new("/run"), |runtime| {
+            let workspace = Workspace::create()?;
+            let stages = Runtime::scoped(&workspace, std::path::Path::new("/run"), |runtime| {
                 self.execute(&build, &workspace, runtime)
             })
-            .map_err(BuildError::from)?
+            .map_err(BuildError::from)?;
+            stages.assemble(&self.request, &build)?
         };
-        let output = stages.assemble(&self.request, &build)?;
-        drop(workspace);
         output.publish()?;
         Ok(())
     }
@@ -208,6 +207,16 @@ impl Pipeline {
             .carapace()
             .and_then(|stage| stage.from())
             .and_then(|name| build.images().get(name));
+        let directives = recipe
+            .carapace()
+            .map(|stage| stage.directives())
+            .unwrap_or(&[]);
+        // Output identities do not require live block mappings. Assemble the
+        // output chain only when a stage will actually use its filesystem.
+        let needs_chain = !directives.is_empty()
+            || recipe
+                .firmware()
+                .is_some_and(|stage| stage.from().is_none());
         let (active, produced, reaper, receipt) = if recipe.bootstrap().is_some() {
             let bootstrap::Bootstrapped {
                 scute,
@@ -218,11 +227,18 @@ impl Pipeline {
                 workspace,
                 runtime,
             )?;
-            let active = crate::storage::ReadOnlyChain::from_root(std::sync::Arc::clone(&scute))
-                .map_err(BuildError::from)?;
-            (Some(active), vec![scute], reaper, Some(receipt))
+            let active = if needs_chain {
+                Some(
+                    crate::storage::ReadOnlyChain::from_root(std::sync::Arc::clone(&scute))
+                        .map_err(BuildError::from)?,
+                )
+            } else {
+                None
+            };
+            (active, vec![scute], reaper, Some(receipt))
         } else {
             let active = base
+                .filter(|_| needs_chain)
                 .and_then(|image| image.chain())
                 .map(|chain| chain.assemble(build.cache(), workspace))
                 .transpose()
@@ -235,10 +251,6 @@ impl Pipeline {
             )
         };
 
-        let directives = recipe
-            .carapace()
-            .map(|stage| stage.directives())
-            .unwrap_or(&[]);
         let (active, produced, reaper) = if directives.is_empty() {
             (active, produced, reaper)
         } else {
@@ -252,7 +264,10 @@ impl Pipeline {
             .derive(build, workspace, runtime, directives)?;
             (Some(derived.active), derived.scutes, derived.reaper)
         };
-        let root = active.as_ref().map(|chain| *chain.root());
+        let root = produced.last().map(|scute| *scute.root()).or_else(|| {
+            base.and_then(|image| image.chain())
+                .map(|chain| *chain.root())
+        });
 
         let pair = if let Some(stage) = recipe.firmware() {
             let tools = if let Some(reference) = stage.from() {
