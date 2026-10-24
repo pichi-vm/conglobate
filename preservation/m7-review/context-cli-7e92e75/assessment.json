@@ -1,0 +1,12 @@
+{
+  "production_revision": "7e92e753c381e29788c8a10467f79366e700aa96",
+  "fixture": "new tests/distro/context files in archived source",
+  "cli_build_and_export_pass": true,
+  "inventory_commit_matches": true,
+  "inventory_recipe_digest_matches": true,
+  "inventory_output_manifest_matches": true,
+  "network_steps": [],
+  "boot_qualified": false,
+  "post_runtime_refactor_tested": false,
+  "source_archive_sha256": "e2235fbe7afe81f2034e93c85d05939fc54f686769c31f41232cea843afc645c"
+}

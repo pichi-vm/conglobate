@@ -1,0 +1,20 @@
+{
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/context-cli-7e92e75-v1/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+    "durably_archived": false
+  },
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/context-cli-7e92e75-v1/initramfs.gz",
+    "size": 200540509,
+    "sha256": "9f2d49979ddf47b2a646b1b8e67c5632cb17dfb8ceedf2640e64dc25a9fc50b2",
+    "durably_archived": false
+  },
+  "export.raw": {
+    "path": "/storage/conglobate-validation/context-cli-7e92e75-v1/export.raw",
+    "size": 2147483648,
+    "sha256": "610de1cc7b2be6dd6a646a6f1bad8e903979cfa1594a58cb43887bb871ec517f",
+    "durably_archived": false
+  }
+}

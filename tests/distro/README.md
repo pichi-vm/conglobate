@@ -1,5 +1,11 @@
 # Distro qualification inputs
 
+`context/recipe.yaml` is a small offline CLI regression using the Fedora seed.
+The runner commits `message.txt` with the recipe; COPY installs it into the image,
+and a command checks its bytes and the absence of context mounts. The runner then
+requires successful publication/export and verifies exported blob digests. This
+checks the committed-context pipeline, not distro boot or full qualification.
+
 `prepare.py` copies an existing local artifact manifest and its components into
 a new OCI image-layout directory, verifies their SHA-256 digests and sizes, and
 creates a pinned architecture index for conglobate's lock file. It never downloads
