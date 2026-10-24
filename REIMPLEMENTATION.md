@@ -6216,3 +6216,26 @@ passed. runtime-scope booted but Runtime::create returned EINVAL on Ubuntu
 6.8.0-147-generic. Source archives match 5d95d69 (157 selected files each).
 Preserved hosted-lifecycle-retry/ evidence and added opt-in guest mount syscall
 tracing for diagnosis. No production correction or passing runtime-scope claim.
+
+## Workflow-first simplification (2026-10-23)
+
+Latest user direction: prioritize a complete, simple workflow over repeated
+isolated validation. BUILD-FLOW.sh now orders context capture before recipe
+validation, identifies per-directive carapace sealing, and separates environment,
+build-session and command ownership. ARCHITECTURE.md records the remaining
+nested stage orchestration as unfinished work, not the desired architecture.
+Pipeline now owns the single execution Runtime scope; stage coordinators borrow
+it. Pass-through avoids a command runtime. Next: replace the nested bootstrap /
+firmware coordinators with sequential stage results and common finalization.
+Only focused compilation is required for this intermediate refactor; broad
+qualification follows coherent workflow completion. No adherence pass claimed;
+M2/M3 and affected implementation gates remain at zero.
+
+The already-running pre-refactor CLI regression completed successfully on
+7e92e75 with the new offline context fixture: committed COPY bytes were checked
+inside a command, context paths were absent, publication/export succeeded, and
+exported blob hashes were verified. Inventory commit, recipe digest, output
+manifest and absence of network steps were independently checked. Evidence:
+preservation/m7-review/context-cli-7e92e75. This does not qualify the runtime
+ownership refactor, distro boot, other architectures or confidential platforms.
+Large guest assets remain local and are not durable M8 archives.

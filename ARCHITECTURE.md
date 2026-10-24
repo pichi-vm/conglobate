@@ -7,6 +7,31 @@ they do not prove that external state cannot change or that destructors run.
 
 ## Ownership and modules
 
+### Linear workflow simplification
+
+[`BUILD-FLOW.sh`](BUILD-FLOW.sh) is the explanatory sequence. The environment
+prepares Git, networking, labeling policy and VM shutdown. `Pipeline` owns the
+build workspace, one execution runtime and the sole publication point. Stages
+borrow that runtime. A pass-through build needs no command runtime.
+
+The current stage coordinators still duplicate orchestration: `BootstrapBuild`
+executes subsequent carapace/firmware work, and `FirmwareBuild` executes preceding
+carapace work. They also assemble outputs and inventory independently. This is
+unfinished simplification, not the target architecture. Replace this dispatch
+with sequential stage methods returning owned results to `Pipeline`; centralize
+transformation, assembly and inventory after stages complete. Keep tool inputs
+distinct from inherited output components, and keep formatter receipts with the
+produced result. Do not introduce a generic workflow engine or persisted state.
+
+Carapace produces one retained scute per directive; bootstrap and firmware share
+their disposable writable tool root across directives. Commands are still
+remounted and isolated per step. Completed command cleanup precedes sealing;
+runtime cleanup precedes publication. Failure to establish quiescence rejects
+the build and leaves VM disposal to the environment.
+
+Finish this complete structure before another broad qualification round.
+Focused compilation checks during refactoring do not advance adherence gates.
+
 ### Registration-free lifecycle revision (2026-10-23)
 
 This architecture incorporates the fixed environment-owned labeling policy.
@@ -80,7 +105,7 @@ names from the original design are not additional implementation requirements.
 | cache, image | ResolvedImage, VerifiedChain, VerifiedScute, ImageReference, IndexDigest | Verified component identities and cache-backed chain inputs |
 | storage | Workspace, Scratch, Volume<S>, BootstrapVolumes<S>, VolumeView | Tmpfs, verified cache-backed chain, device mapping and writable storage ownership |
 | filesystem, formatter | Mount<S>, Ext4Format, CapturedFormatter, FormatterRuntime, FormatReceipt | Idmapped views and trusted, measured formatting with explicit cleanup |
-| step, domain, process | Step<S, R>, StepCompletion<R>, RecordedDomain, Supervision<S> | Retain authority through admission, cancellation, reaping and descendant drain |
+| step, domain, process | Step<S, R>, StepCompletion<R>, CommandDomain, Supervision<S> | Retain authority through admission, cancellation, reaping and descendant drain |
 | execution, isolation | HelperProgram, HelperInvocation, UserNamespace<Mapped>, CommandReceiver, AssignedRoots, LabelProbe | Trusted helper entry, private mounts, mapped identity and restricted labeling admission |
 | network | NetworkInput, NetworkNamespace, CommandNetwork, CommandNetworking, ResolverInput, ResolverMount | Disabled default; captured external namespace handle and confined temporary resolver injection; environment owns NAT |
 | copy | CopySources, CopySource, CopyDestination | Explicit selected context files; exclusive confined writes; no context mount |

@@ -14,7 +14,7 @@ use crate::{
     step::CommandSandbox,
     storage::{Created, Mapping, Mounted, Runtime, SealedScute, Unmounted, Volume, Workspace},
 };
-use std::{num::NonZeroU64, path::Path, sync::Arc};
+use std::{num::NonZeroU64, sync::Arc};
 
 /// Validated execution selection; output ancestry is distinct from tool inputs.
 #[derive(Debug)]
@@ -55,16 +55,7 @@ impl<'a> CarapaceBuild<'a> {
             directives: stage.directives(),
         })
     }
-    pub(super) fn execute(
-        &self,
-        request: &BuildRequest,
-        workspace: &Workspace,
-    ) -> Result<CompletedImage, BuildError> {
-        Runtime::scoped(workspace, Path::new("/run"), |runtime| {
-            self.derive(request, workspace, runtime)
-        })
-        .map_err(BuildError::from)
-    }
+
     pub(super) fn run_layers<'w>(
         &self,
         workspace: &'w Workspace,
@@ -81,7 +72,7 @@ impl<'a> CarapaceBuild<'a> {
         }
         .derive(self.build, workspace, runtime, self.directives)
     }
-    fn derive(
+    pub(super) fn execute(
         &self,
         request: &BuildRequest,
         workspace: &Workspace,

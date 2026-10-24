@@ -14,7 +14,7 @@ use crate::{
     step::{CommandSandbox, SetupBudget},
     storage::{BootstrapVolumes, Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
 };
-use std::{num::NonZeroU64, path::Path, sync::Arc};
+use std::{num::NonZeroU64, sync::Arc};
 
 #[derive(Debug)]
 pub(super) struct BootstrapBuild<'a> {
@@ -47,22 +47,20 @@ impl<'a> BootstrapBuild<'a> {
         &self,
         request: &BuildRequest,
         workspace: &Workspace,
+        runtime: &Runtime<'_>,
     ) -> Result<CompletedImage, BuildError> {
         let manifest = request.formatter_runtime().ok_or_else(|| {
             BuildError::InvalidExecution("bootstrap requires --formatter-runtime")
         })?;
         let captured = FormatterManifest::capture(manifest)?;
-        Runtime::scoped(workspace, Path::new("/run"), |runtime| {
-            match captured.stage(workspace) {
-                Ok(formatter) => self.produce(request, workspace, runtime, formatter),
-                Err(failure) => {
-                    let (primary, cleanup) = failure.cleanup_with_source();
-                    Err(BuildError::FormatterStaging(primary)
-                        .with_cleanup(cleanup.map_err(BuildError::from)))
-                }
+        match captured.stage(workspace) {
+            Ok(formatter) => self.produce(request, workspace, runtime, formatter),
+            Err(failure) => {
+                let (primary, cleanup) = failure.cleanup_with_source();
+                Err(BuildError::FormatterStaging(primary)
+                    .with_cleanup(cleanup.map_err(BuildError::from)))
             }
-        })
-        .map_err(BuildError::from)
+        }
     }
     fn produce(
         &self,

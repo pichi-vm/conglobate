@@ -12,7 +12,7 @@ use crate::{
     inventory::{Inventory, InventoryError},
     output::{AssembledImage, AssemblyFailure, PublicationFailure},
     request::BuildRequest,
-    storage::Workspace,
+    storage::{Runtime, Workspace},
 };
 
 /// Terminal build diagnostics, not cleanup receipts or authority to retry a
@@ -175,24 +175,38 @@ impl Pipeline {
         let build =
             CapturedBuild::try_from(&self.request)?.resolve(Cache::open(self.request.cache())?)?;
         let workspace = Workspace::create()?;
-        let output = if build.captured().plan().recipe().bootstrap().is_some() {
-            bootstrap::BootstrapBuild::new(&build)?.execute(&self.request, &workspace)?
-        } else if build.captured().plan().recipe().firmware().is_some() {
-            firmware::FirmwareBuild::new(&build)?.execute(&self.request, &workspace)?
-        } else if build
-            .captured()
-            .plan()
-            .recipe()
-            .carapace()
-            .is_some_and(|stage| !stage.directives().is_empty())
-        {
-            carapace::CarapaceBuild::new(&build)?.execute(&self.request, &workspace)?
-        } else {
+        let recipe = build.captured().plan().recipe();
+        let inherited = recipe.bootstrap().is_none()
+            && recipe.firmware().is_none()
+            && recipe
+                .carapace()
+                .is_none_or(|stage| stage.directives().is_empty());
+        let output = if inherited {
             InheritedBuild::new(&build)?.assemble(&self.request)?
+        } else {
+            Runtime::scoped(&workspace, std::path::Path::new("/run"), |runtime| {
+                self.execute(&build, &workspace, runtime)
+            })
+            .map_err(BuildError::from)?
         };
         drop(workspace);
         output.publish()?;
         Ok(())
+    }
+    fn execute(
+        &self,
+        build: &ResolvedBuild,
+        workspace: &Workspace,
+        runtime: &Runtime<'_>,
+    ) -> Result<CompletedImage, BuildError> {
+        let recipe = build.captured().plan().recipe();
+        if recipe.bootstrap().is_some() {
+            bootstrap::BootstrapBuild::new(build)?.execute(&self.request, workspace, runtime)
+        } else if recipe.firmware().is_some() {
+            firmware::FirmwareBuild::new(build)?.execute(&self.request, workspace, runtime)
+        } else {
+            carapace::CarapaceBuild::new(build)?.execute(&self.request, workspace, runtime)
+        }
     }
 }
 /// Selected inherited-image path with no command/COPY/firmware work.

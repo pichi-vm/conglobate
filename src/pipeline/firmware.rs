@@ -13,7 +13,7 @@ use crate::{
     step::{CommandSandbox, SetupBudget},
     storage::{Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
 };
-use std::{num::NonZeroU64, path::Path};
+use std::num::NonZeroU64;
 
 #[derive(Debug)]
 pub(super) struct FirmwareBuild<'a> {
@@ -52,17 +52,8 @@ impl<'a> FirmwareBuild<'a> {
             base,
         })
     }
+
     pub(super) fn execute(
-        &self,
-        request: &BuildRequest,
-        workspace: &Workspace,
-    ) -> Result<CompletedImage, BuildError> {
-        Runtime::scoped(workspace, Path::new("/run"), |runtime| {
-            self.produce(request, workspace, runtime)
-        })
-        .map_err(BuildError::from)
-    }
-    fn produce(
         &self,
         request: &BuildRequest,
         workspace: &Workspace,
