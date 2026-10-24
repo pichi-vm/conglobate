@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 //! Version-three inventory with strict schema and core deterministic CBOR.
 //! Decoding validates representation, not authenticity or successful execution.
 mod record;

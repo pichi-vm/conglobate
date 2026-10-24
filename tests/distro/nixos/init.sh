@@ -1,5 +1,7 @@
 #!/bin/sh
+# SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
+
 # Produced-OS init: these mounts happen at boot, never in a build command.
 set -eu
 read -r system < /nixos-system

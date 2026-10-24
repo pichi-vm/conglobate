@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 // Terminal stage rejection: cleanup can recover storage only for discard.
 use crate::storage::{BootstrapVolumes, Unmounted, Volume};
 

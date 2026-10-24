@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use super::{GatedCommandSetup, GatedRootSetup};
 use crate::{
     isolation::{CommandRoot, ExecutionEndpoint, PrivateMountNamespace, RestrictedCommand},

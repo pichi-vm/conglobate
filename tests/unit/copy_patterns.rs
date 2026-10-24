@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use conglobate::{copy::SourcePattern, document::YamlDocument, recipe::Recipe};
 use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
 
