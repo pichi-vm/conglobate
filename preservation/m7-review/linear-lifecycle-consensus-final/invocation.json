@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "claude",
+    "--print",
+    "--resume",
+    "3100814a-c11f-4fd0-90c8-d7fbec5f4897",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--permission-mode",
+    "dontAsk",
+    "--append-system-prompt",
+    "Read-only source-grounded review synthesis. No edits, tests, agents, network, installs or privileged commands. Latest user requests avoiding overvalidation. Summarize existing evidence and concrete findings, distinguish incomplete review from approval.",
+    "--tools",
+    "",
+    "--max-turns",
+    "1"
+  ],
+  "stdin": "Your targeted consensus source reads completed but max-turns stopped you before the answer. No more tools or review. Give your final brief agreement/disagreement now on the preceding proposed disposition: incomplete external review is not a self-review gate veto, deleted NAT modules and ThreadSnapshot concern resolved, M4 closure on explicitly recorded self-reviews without claiming Claude approval, M7/M8 still open. Do not repeat the report."
+}

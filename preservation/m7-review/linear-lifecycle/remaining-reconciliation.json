@@ -6,8 +6,8 @@
     {
       "id": "dependencies-013",
       "prior_status": "local checks current; hosted qualification outstanding",
-      "next_action": "Reconcile hosted lifecycle qualification separately; no claim of complete M7 qualification.",
-      "current_evidence": "Rootless checks run 40046122488 passed at 416ca11; see ci-rootless-final.json and ci-rootless-final.log."
+      "next_action": "Hosted retry resolved; retain M7 distro/platform qualification boundaries.",
+      "current_evidence": "Hosted rootless 40049514957 and lifecycle 40049515059 both pass at 9a70e50. Installation timeout 40046122549 and its correction remain preserved."
     },
     {
       "id": "security-003",
@@ -27,8 +27,8 @@
     {
       "id": "tests-003",
       "prior_status": "hosted cache-storage passes; workflow retry pending KVM permission correction",
-      "next_action": "Observe hosted retry after focused dependency fix; no lifecycle pass claimed.",
-      "current_evidence": "Run 40046122549 timed out downloading hardware firmware during apt installation. No tests ran. Full log/status preserved; workflow now selects the HWE image directly."
+      "next_action": "Hosted retry resolved; retain M7 distro/platform qualification boundaries.",
+      "current_evidence": "Hosted rootless 40049514957 and lifecycle 40049515059 both pass at 9a70e50. Installation timeout 40046122549 and its correction remain preserved."
     }
   ]
 }

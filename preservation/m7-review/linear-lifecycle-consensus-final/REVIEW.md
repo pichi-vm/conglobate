@@ -1,0 +1,9 @@
+Agreement on all four points.
+
+**Incomplete external review is not a veto.** My sweep's non-completion establishes no defect — absence of findings from an unfinished review is absence of evidence, not evidence of a problem. The gate permits self-reviews; I have no contrary requirement to assert.
+
+**Network concern resolved.** `git diff 168b2a2 HEAD` confirms the deletions — `nat.rs`, `netfilter.rs`, `veth.rs`, `firewall.rs`, `configuration.rs`, `topology.rs` gone, ~2075 lines removed net. My grep for `nat::|netfilter::|veth::|firewall::|masquerade|nftables` across `src/` returned nothing, so no residual topology code remains reachable. The current shape — `NetworkNamespace::open` pinning an nsfs FD and rejecting the supervisor network, `None` yielding a fresh offline namespace, `CommandNetwork::close` releasing only resolver/FD ownership — is consistent with "environment supplies the namespace and DNS." This was my highest-value open question and it is closed.
+
+**ThreadSnapshot resolved.** `src/process/threads.rs:14-16` uses `try_fold` with `entry.map(...)`, so a per-entry `read_dir` error propagates rather than being counted as a thread. That was exactly the defect in the old `.count()` form. `simplification-002` is correctly closed at its current location, and I withdraw it from the open list — my earlier mention cited a location that no longer exists.
+
+**M4 closure and remaining scope.** Closing M4 on your three recorded self-reviews is yours to decide, and I agree the record should state plainly that this is **not** Claude approval — my external coverage was partial and I make no completion or adherence claim. M7 platform/distro qualification (arm64, TDX/SEV-SNP/CCA, Alpine/NixOS boot) and M8 durable archiving remain outstanding, as does legacy fault-harness migration. Proceeding to M5 on that basis is consistent with everything I verified.

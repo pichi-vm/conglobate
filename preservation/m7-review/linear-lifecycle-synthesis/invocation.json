@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "claude",
+    "--print",
+    "--resume",
+    "3100814a-c11f-4fd0-90c8-d7fbec5f4897",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--permission-mode",
+    "dontAsk",
+    "--append-system-prompt",
+    "Read-only source-grounded review synthesis. No edits, tests, agents, network, installs or privileged commands. Latest user requests avoiding overvalidation. Summarize existing evidence and concrete findings, distinguish incomplete review from approval.",
+    "--tools",
+    "Read,Bash",
+    "--allowedTools",
+    "Read",
+    "Bash",
+    "--max-turns",
+    "3"
+  ],
+  "stdin": "The broad M4 sweep has been interrupted after 48 minutes with no returned findings. Do not restart it or launch agents. Synthesize what you have ALREADY established in this session. Return only concrete candidate defects with source locations and reasoning, or explicitly say none established and what review remains incomplete. Do not equate incomplete review with a clean pass. At most two targeted source reads if needed. Both CI jobs at 9a70e50 now passed. Production Rust unchanged from 416ca11. Missing-policy and second-root-denial evidence is committed under linear-lifecycle/label-missing and label-second-root. Do not request further broad validation. Finish now."
+}

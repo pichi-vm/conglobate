@@ -4,7 +4,20 @@ Status: active. No milestone may advance until its three-pass gate is clean.
 The target is the latest DESIGN.md, SANDBOX-DESIGN.txt and user decisions.
 This ledger describes required work, not claims about the current executor.
 
-## Current execution batches
+## Current status (supersedes historical execution notes below)
+
+M1–M3 are complete. M4's three focused self-reviews are recorded in
+`preservation/m7-review/linear-lifecycle/ADHERENCE.md`; external review disposition
+is recorded beside them. Existing source-matched evidence is reused rather than
+rerun. Both hosted jobs pass at 9a70e50. M5 direct-layer bootstrap is next, then
+M6 pipeline/output, M7 qualification and M8 retirement. No goal completion claim.
+
+User direction: do not overvalidate. Run tests only for changed behavior or a
+concrete unresolved defect. The three-pass gate is source/evidence review, not
+three new test campaigns. Do not restart broad reviews to close focused changes.
+
+## Historical execution notes
+
 
 Latest user direction: simplify to linear build-session orchestration. Remove
 persisted cgroup recovery records; retain descriptor-based containment, bounded
@@ -93,7 +106,7 @@ but must not be claimed to validate the new policy implementation.
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
 | 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: linear workflow, stage-level sealing and environment ID maps | 3 |
 | 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete: committed-byte capture and execution-input preflight | 3 |
-| 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, environment-owned labeling exception, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Reopened: registration-free lifecycle | 0 |
+| 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, environment-owned labeling exception, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Complete: linear lifecycle; current evidence and self-review gate | 3 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Reopened: two-root lifecycle regression | 0 |
 | 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Reopened: replacement lifecycle integration | 0 |
 | 7. Integrated qualification | Critical source/design/style review resolved; Fedora/Debian/Alpine/NixOS representative builds and boots; amd64/arm64 and TDX/SEV-SNP/CCA qualification with evidence; repository checks and CI green. Unavailable required environments remain outstanding, never passes. | In progress: qualification inventory | 0 |
