@@ -513,7 +513,8 @@ Historical experiments are evidence, not competing specifications.
          its own policy. Report accepted filesystem limitations where workloads
          encounter them; do not silently broaden the support claim.
 
-   12.6. Run the composed design in Intel TDX, AMD SEV-SNP, and Arm CCA deployment
+   12.6. Deferred qualification (user decision): run the composed design in
+         Intel TDX, AMD SEV-SNP, and Arm CCA deployment
          environments. Measure startup/step costs and compatibility, with no
          nested-virtualization assumption. Appliance transport and attestation
          qualification are separate from the standalone binary's tests.

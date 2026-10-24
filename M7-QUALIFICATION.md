@@ -17,11 +17,12 @@ remain evidence at their recorded source versions, not fresh current-source runs
 
 | Requirement | Current state | Acceptance evidence still required |
 | --- | --- | --- |
-| Source-grounded critical review | Initial Claude review and four reconciliation rounds completed; accepted fixes and unresolved dispositions preserved in preservation/m7-review | Final review, source-grounded disposition, fixes and agreement on disputed findings |
+| Source-grounded critical review | Original findings dispositioned; bounded linear-lifecycle consensus closes stale source concerns; M4–M6 three-pass reviews complete | Final M7 adherence against assembled qualification evidence |
 | Fedora build and boot | Fedora v3 passed real DNF installation, root labeling and inherited-firmware boot; guest service verifies enforcing mode, expected label and UID 0 | This covers the representative layering/SELinux case on amd64; other distros, real bootstrap/firmware-generation workloads and platform coverage remain separate |
 | Debian build and boot | Native amd64/KVM representative APT build and boot passed; `preservation/m7-review/debian-build-v2` preserves sentinel, package records and artifact hashes; v1 volatile-/var failure retained | Debian kernel generation and broader architecture/confidential coverage remain outstanding; this case packages the known Fedora-built kernel/corium pair |
 | Alpine build and boot | Native amd64 bootstrap/APK/OpenRC build and boot passed; evidence in preservation/m7-review/alpine-build-v2 | Alpine kernel generation and other architectures/platforms remain outstanding |
-| NixOS build and boot | No sibling NixOS image repo or host nix executable discovered | Maintained conglobate recipe, Nix build and boot evidence; host nix is not inherently required |
+| NixOS build and boot | Maintained closure recipe executing; PTY/death-signal compatibility gaps fixed | Successful closure build and systemd boot marker still required |
+| Firmware generation | New initramfs and arma PMI/DTB generation plus native amd64 boot passed; preservation/m7-review/firmware-build-v1 | Kernel compilation is not claimed |
 | amd64 | Local x86_64 QEMU/KVM integration evidence exists | Representative distro qualification and complete repository checks |
 | arm64 | Native ubuntu-24.04-arm CI added | Native rootless checks and lifecycle guest results pending; TCG acceleration, if needed, is explicitly recorded |
 | Intel TDX, AMD SEV-SNP, Arm CCA | Deferred by explicit user direction | Not part of this implementation gate; no confidential-platform qualification claimed |

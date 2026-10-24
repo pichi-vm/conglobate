@@ -1,0 +1,16 @@
+[
+  [
+    "pichi",
+    "load",
+    "/storage/conglobate-validation/firmware-boot-v1/load-input",
+    "--tag",
+    "conglobate-qualification:local"
+  ],
+  [
+    "pichi",
+    "run",
+    "--memory",
+    "2048",
+    "conglobate-qualification:local"
+  ]
+]

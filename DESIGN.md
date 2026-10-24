@@ -18,7 +18,8 @@ importable image and an inventory binding its supplied inputs to its outputs.
 ## Trust model — required for attested builds
 
 **The sandbox must work inside confidential VMs on Intel, AMD, and Arm.**
-Ordinary-VM validation alone does not satisfy this requirement. Backend selection
+Hardware qualification is deferred by user decision; ordinary-VM evidence must
+not be represented as confidential-platform qualification. Backend selection
 must preserve command isolation and image metadata semantics on all three
 platforms. See [the platform review](validation/sandbox/CONFIDENTIAL-PLATFORM-REVIEW.txt)
 for candidate constraints and the distinction between source analysis and

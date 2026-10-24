@@ -1,0 +1,1 @@
+New arma-generated PMI/DTB and constructed initramfs booted successfully on native amd64. Exact local arma/corium source and binary inputs are in context.bundle. Large output blobs remain at the paths and hashes in local-assets.json; final archival remains pending. No kernel compilation, Arm64 or confidential-platform qualification claimed.

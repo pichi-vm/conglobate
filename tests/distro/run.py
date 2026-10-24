@@ -265,7 +265,7 @@ exec sleep infinity
         result = self.output / 'status.raw'
         with result.open('wb') as stream:
             stream.truncate(4096)
-        command = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-m', '8192',
+        command = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-m', str(self.arguments.memory),
             '-smp', '2', '-nodefaults', '-no-reboot', '-display', 'none', '-serial', 'stdio',
             '-monitor', 'none', '-kernel', str(self.output / 'vmlinuz'),
             '-initrd', str(self.output / 'initramfs.gz'),
@@ -309,6 +309,7 @@ if __name__ == '__main__':
     parser.add_argument('--cache', type=Path, required=True)
     parser.add_argument('--pin', required=True)
     parser.add_argument('--recipe', type=Path, required=True)
+    parser.add_argument('--memory', type=int, default=8192, help='Disposable VM memory in MiB')
     parser.add_argument('--reference', default='qualification.local/fedora:43')
     parser.add_argument('--firmware-pmi', type=Path)
     parser.add_argument('--firmware-dtb', type=Path)

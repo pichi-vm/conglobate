@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+carapace:
+  from: qualification.local/fedora:43
+  derive:
+    - copy: {from: qualification.sh, into: /usr/local/bin/conglobate-qualification, mode: "0755"}
+    - copy: {from: qualification.service, into: /etc/systemd/system/conglobate-qualification.service}
+    - run: |
+        mkdir -p /etc/systemd/system/multi-user.target.wants
+        ln -s ../conglobate-qualification.service /etc/systemd/system/multi-user.target.wants/conglobate-qualification.service
+firmware:
+  from: qualification.local/fedora:43
+  derive:
+    - network: true
+      timeout: 10m
+      run: dnf -y install tar cpio findutils
+    - copy: {from: arma, into: /arma, mode: "0755"}
+    - copy: {from: vmlinuz, into: /vmlinuz}
+    - copy: {from: kernel.config, into: /kernel.config}
+    - copy: {from: initrd-files.tar, into: /initrd-files.tar}
+    - run: |
+        mkdir /initrd
+        tar -xf /initrd-files.tar -C /initrd
+        (cd /initrd; find . -print0 | cpio --null --create --format=newc --quiet) > /initrd.cpio
+        /arma build --kernel /vmlinuz --config /kernel.config --initrd /initrd.cpio --cmdline "corium=$CARAPACE console=hvc0 systemd.volatile=state systemd.unit=multi-user.target" --dtb /base.dtb /boot.pmi
+  into: {pmi: /boot.pmi, dtb: /base.dtb}
