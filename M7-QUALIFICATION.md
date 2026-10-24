@@ -23,8 +23,8 @@ remain evidence at their recorded source versions, not fresh current-source runs
 | Alpine build and boot | Native amd64 bootstrap/APK/OpenRC build and boot passed; evidence in preservation/m7-review/alpine-build-v2 | Alpine kernel generation and other architectures/platforms remain outstanding |
 | NixOS build and boot | No sibling NixOS image repo or host nix executable discovered | Maintained conglobate recipe, Nix build and boot evidence; host nix is not inherently required |
 | amd64 | Local x86_64 QEMU/KVM integration evidence exists | Representative distro qualification and complete repository checks |
-| arm64 | qemu-system-aarch64 installed | Native build/execution profile and boot coverage; executable availability proves no qualification |
-| Intel TDX, AMD SEV-SNP, Arm CCA | Hardware access has not been established | Separate evidence for each platform; missing access remains outstanding |
+| arm64 | Native ubuntu-24.04-arm CI added | Native rootless checks and lifecycle guest results pending; TCG acceleration, if needed, is explicitly recorded |
+| Intel TDX, AMD SEV-SNP, Arm CCA | Deferred by explicit user direction | Not part of this implementation gate; no confidential-platform qualification claimed |
 | CI | Rootless and disposable-VM lifecycle jobs pass at 9a70e50 | Later source changes require appropriate checks; broader platform qualification remains separate |
 | Final M7 adherence | Not started | Three complete consecutive clean passes after required work |
 

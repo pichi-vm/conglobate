@@ -2,6 +2,7 @@
 """Small synthetic scute data; not filesystem or boot qualification."""
 import hashlib
 import json
+import platform
 import subprocess
 import struct
 
@@ -47,7 +48,7 @@ class CacheFixture:
         descriptor = {'mediaType': 'application/vnd.oci.image.manifest.v1+json',
                       'artifactType': 'application/vnd.pichi.artifact.v1+json',
                       'digest': self.blob(manifest), 'size': len(manifest),
-                      'platform': {'os': 'pichi', 'architecture': 'amd64'}}
+                      'platform': {'os': 'pichi', 'architecture': {'x86_64': 'amd64', 'aarch64': 'arm64'}[platform.machine()]}}
         index = json.dumps({'schemaVersion': 2,
                             'mediaType': 'application/vnd.oci.image.index.v1+json',
                             'manifests': [descriptor]}).encode()

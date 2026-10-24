@@ -9,6 +9,7 @@ mod contained;
 mod formatter_failures;
 mod gate_failure;
 mod network;
+mod pty_filter;
 mod runtime_scope;
 mod sandbox_failures;
 mod workspace_mount;
@@ -86,6 +87,7 @@ impl Lifecycle {
                     sandbox_failures::HelperCompletion::Missing,
                 )
             }
+            [mode] if mode == "pty-filter" => pty_filter::PtyFilter::run(),
             [mode] if mode == "clone-filter" => clone_filter::CloneFilter::run(),
             [mode] if mode == "sandbox-busy-execution" => sandbox_failures::SandboxFailures::run(
                 sandbox_failures::FailurePoint::BusyExecution,

@@ -1,0 +1,9 @@
+{
+  "checks": {
+    "PRIVATE_PTY_FILTER_PASS": false,
+    "exit_zero": false,
+    "vm_powered_off": true
+  },
+  "passed": false,
+  "full_lifecycle_qualified": false
+}

@@ -71,12 +71,17 @@ impl CommandSyscalls {
         );
         // Terminal/filesystem queries and descriptor-local flags (including
         // FIONBIO for ordinary nonblocking pipes), not filesystem mutations.
+        // Nix's build logger needs TIOCGPTN, TIOCSPTLCK and TCSETS/TCSETS2. These act
+        // on private devpts terminals: command stdio is null/pipes, the old
+        // controlling terminal is severed, and no host terminal FD is inherited.
+        // TIOCSTI, TIOCCONS and controlling-terminal operations remain denied.
         rules.insert(
             i64::from(sys::__NR_ioctl),
             Self::equal_rules(
                 1,
                 &[
-                    0x5401, 0x802c542a, 0x540f, 0x5413, 0x541b, 0x5421, 0x5451, 0x5450, 0x80086601,
+                    0x5401, 0x5402, 0x80045430, 0x40045431, 0x802c542a, 0x402c542b, 0x540f, 0x5413,
+                    0x541b, 0x5421, 0x5451, 0x5450, 0x80086601,
                 ],
             )?,
         );

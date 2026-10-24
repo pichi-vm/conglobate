@@ -104,7 +104,7 @@ class LifecycleRun:
         setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\nmodprobe dm-verity\nmodprobe ext4\n'
                  if self.args.case in ('formatter-failures', 'cache-storage', 'chain-storage') or self.args.case.startswith('sandbox-') else
                  'mkdir /work/cgroups\nmount -t cgroup2 cgroup2 /work/cgroups\n')
-        if self.args.case == 'clone-filter':
+        if self.args.case in ('clone-filter', 'pty-filter'):
             setup = ''
         if self.args.case == 'external-network-input':
             setup = ''
@@ -141,23 +141,32 @@ exec sleep infinity
             input=b'\0'.join(str(p.relative_to(self.root)).encode() for p in paths) + b'\0',
             cwd=self.root, capture_output=True, check=True).stdout
         (self.output / 'initramfs.gz').write_bytes(gzip.compress(packed, compresslevel=1, mtime=0))
-        shutil.copy2(self.args.kernel, self.output / 'vmlinuz')
+        kernel = self.args.kernel.read_bytes()
+        if platform.machine() == 'aarch64' and kernel.startswith(b'\x1f\x8b'):
+            kernel = gzip.decompress(kernel)
+        (self.output / 'vmlinuz').write_bytes(kernel)
         status = self.output / 'status.raw'
         with status.open('wb') as stream:
             stream.truncate(4096)
-        command = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-m', '4096',
+        machine = platform.machine()
+        arm = machine == 'aarch64'
+        command = ['qemu-system-aarch64' if arm else 'qemu-system-x86_64',
+            '-accel', self.args.accel, '-cpu', 'host' if self.args.accel == 'kvm' else 'max', '-m', '4096',
             '-smp', '2', '-nodefaults', '-no-reboot', '-display', 'none', '-serial', 'stdio',
             '-monitor', 'none', '-kernel', str(self.output / 'vmlinuz'),
             '-initrd', str(self.output / 'initramfs.gz'),
-            '-append', 'console=ttyS0 rdinit=/init selinux=0 panic=-1 quiet' +
+            '-append', ('console=ttyAMA0' if arm else 'console=ttyS0') + ' rdinit=/init selinux=0 panic=-1 quiet' +
                        (' lsm=capability,bpf' if self.args.case == 'sandbox-blocked-descendant' else ''),
-            '-drive', f'file={status},format=raw,if=virtio']
+            '-drive', f'file={status},format=raw,if=none,id=status',
+            '-device', 'virtio-blk-pci,drive=status']
+        if arm:
+            command += ['-machine', 'virt,gic-version=3']
         (self.output / 'command.json').write_text(json.dumps(command, indent=2) + '\n')
         (self.output / 'runtime.json').write_text(json.dumps({'kernel_sha256':self.digest(self.output/'vmlinuz'),
             'kernel_release':self.args.kernel_release, 'drop':self.args.drop, 'case':self.args.case,
-            'architecture':'native amd64 ordinary VM', 'network_attached':False}, indent=2) + '\n')
+            'architecture':machine, 'acceleration':self.args.accel, 'network_attached':False}, indent=2) + '\n')
         with (self.output / 'serial.txt').open('wb') as log:
-            subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=180, check=True)
+            subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=600 if self.args.accel == 'tcg' else 180, check=True)
         serial = (self.output / 'serial.txt').read_text(errors='replace')
         # Immediate abandonment need not schedule the child before VM disposal.
         markers = [] if self.args.drop == 'running' else ['FORMATTER_STALL_ENTERED']
@@ -180,6 +189,8 @@ exec sleep infinity
         elif self.args.case == 'runtime-scope':
             markers = ['RUNTIME_SCOPE_SUCCESS_CLOSED_PASS', 'RUNTIME_SCOPE_OPERATION_ERROR_CLOSED_PASS',
                        'RUNTIME_SCOPE_CLEANUP_FAILURE_OWNERS_RETAINED_PASS']
+        elif self.args.case == 'pty-filter':
+            markers = ['PRIVATE_PTY_FILTER_PASS']
         elif self.args.case == 'clone-filter':
             markers = ['NATIVE_CLONE_NAMESPACE_MASK_PASS']
             markers += [f'CLONE_PROBE {arm} {case} PASS errno={1 if arm == "filtered" and case != "ordinary" else 0}'
@@ -254,13 +265,14 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['runtime-private-namespace', 'runtime-changed-namespace', 'workspace-mount', 'sandbox-unmapped-default-group', 'sandbox-unmapped-acl', 'sandbox-unmapped-owner', 'runtime-scope', 'sandbox-delayed-teardown', 'sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'external-network-input', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['runtime-private-namespace', 'runtime-changed-namespace', 'workspace-mount', 'sandbox-unmapped-default-group', 'sandbox-unmapped-acl', 'sandbox-unmapped-owner', 'runtime-scope', 'sandbox-delayed-teardown', 'sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'pty-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'external-network-input', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--accel', choices=['kvm', 'tcg'], default='kvm')
     parser.add_argument('--trace-mounts', action='store_true',
                         help='trace fixture mount syscalls inside the disposable guest')
     parser.add_argument('--drop', choices=['running', 'wait'])
     args = parser.parse_args()
-    if platform.machine() != 'x86_64':
-        parser.error('native amd64/KVM required')
+    if platform.machine() not in ('x86_64', 'aarch64'):
+        parser.error('native amd64 or arm64 required')
     if '/' in args.kernel_release or args.kernel_release in ('', '.', '..'):
         parser.error('invalid kernel release')
     if args.drop and args.case != 'formatter-failures':

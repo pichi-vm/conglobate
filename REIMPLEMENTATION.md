@@ -6,6 +6,12 @@ This ledger describes required work, not claims about the current executor.
 
 ## Current status (supersedes historical execution notes below)
 
+User scope correction: confidential-computing qualification is deferred. Native
+Arm64 CI runners are available and are being added to maintained checks. TCG
+may run functional guest fixtures when hosted KVM is absent; this does not make
+TCG a production sandbox. Historical requirements below are superseded here.
+
+
 M1–M3 are complete. M4's three focused self-reviews are recorded in
 `preservation/m7-review/linear-lifecycle/ADHERENCE.md`; external review disposition
 is recorded beside them. Existing source-matched evidence is reused rather than
