@@ -16,10 +16,12 @@ borrow that runtime. A pass-through build needs no command runtime.
 
 `Pipeline::execute` now sequences bootstrap, carapace and firmware. Bootstrap
 returns a sealed scute, formatter receipt and process-reaping owner; carapace
-returns its extended chain; firmware returns its validated pair. None orchestrates
-another stage. Output assembly and inventory creation for executed builds live
-in `Pipeline`; the inherited-only path still avoids execution resources. Tool
-inputs remain distinct from output ancestry. There is no generic workflow engine
+returns its extended chain; firmware returns captured PMI/DTB files. None
+orchestrates another stage. `StageOutput` holds these results without command or
+mount authority. The runtime closes before `StageOutput::assemble` transforms
+the DTB, validates firmware compatibility, assembles the image and constructs
+inventory. Pass-through uses the same finalization without execution resources.
+Tool inputs remain distinct from output ancestry. There is no generic workflow engine
 or persisted build state.
 
 Carapace produces one retained scute for the entire nonempty stage. All directives
@@ -109,7 +111,7 @@ names from the original design are not additional implementation requirements.
 | execution, isolation | HelperProgram, HelperInvocation, UserNamespace<Mapped>, CommandReceiver, AssignedRoots, LabelProbe | Trusted helper entry, private mounts, mapped identity and restricted labeling admission |
 | network | NetworkInput, NetworkNamespace, CommandNetwork, CommandNetworking, ResolverInput, ResolverMount | Disabled default; captured external namespace handle and confined temporary resolver injection; environment owns NAT |
 | copy | CopySources, CopySource, CopyDestination | Explicit selected context files; exclusive confined writes; no context mount |
-| pipeline | Pipeline, BootstrapBuild, Bootstrapped, DerivedCarapace, FirmwareTools, CompletedImage | Sequence stages, retain completed outputs and reject publication on failure |
+| pipeline | Pipeline, BootstrapBuild, Bootstrapped, DerivedCarapace, FirmwareTools, StageOutput, CompletedImage | Sequence stages, retain completed outputs and reject publication on failure |
 | firmware | DtbContract | Validate declared firmware contract; pipeline firmware owner extracts the declared pair after writers stop |
 | recipe::transform, transform | TransformSelection, TransformOperation, PropertyValue, TransformedDtb | Checked DTB operations and explicit default selection |
 | inventory | Inventory | Versioned deterministic encoding of actual completed work; decoding alone proves no execution or authenticity |
@@ -234,7 +236,8 @@ Successful teardown seals the output layer and discards tool changes.
 
 DerivedCarapace derives the stage output layer while preserving every inherited component.
 FirmwareTools owns one disposable tool root, with no special output /mnt. It
-extracts declared paths only after quiescence and returns a validated pair.
+extracts declared paths only after quiescence and returns captured files. The
+shared output finalizer applies transforms and checks firmware compatibility.
 TransformSelection operates without a command sandbox. Missing vs empty sections,
 CARAPACE availability, regex no-match semantics and default selection follow the
 design. Recipe key order never controls execution.

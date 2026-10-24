@@ -1,10 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use super::{Inventory, InventoryError, schema::*};
-use crate::{
-    output::AssembledImage, pipeline::InheritedBuild, recipe::DEFAULT_TRANSFORM,
-    request::BuildRequest,
-};
+use crate::{output::AssembledImage, recipe::DEFAULT_TRANSFORM, request::BuildRequest};
 use sha2::{Digest as _, Sha256};
 use std::{fs::File, io::Read, path::Path};
 impl Digest {
@@ -98,14 +95,6 @@ impl Outputs {
     }
 }
 impl Inventory {
-    pub(crate) fn inherited(
-        request: &BuildRequest,
-        completed: &InheritedBuild<'_>,
-        output: &AssembledImage,
-        transformed: &crate::transform::TransformedDtb,
-    ) -> Result<Self, InventoryError> {
-        Self::from_build(request, completed.build(), output, transformed, &[])
-    }
     pub(crate) fn from_build(
         request: &BuildRequest,
         build: &crate::input::ResolvedBuild,

@@ -146,6 +146,10 @@ for stage in bootstrap carapace firmware; do
     # Sealed output remains owned by the session for subsequent stages/export.
 done
 
+close_build_runtime
+# No further commands or mounted stage filesystems are needed. Retain only
+# sealed scutes, captured firmware and formatter receipts in the workspace.
+
 apply_dtb_transforms_or_implicit_default
 # Typed property operations, variable expansion and regex edits belong in Rust.
 # An authored transform sequence replaces defaults; empty disables them.
@@ -158,7 +162,7 @@ write_deterministic_cbor_inventory
 # Network configuration is not inventoried. Attestation belongs to the appliance.
 verify_staged_output_and_inventory
 
-close_build_runtime_and_release_workspace
+release_workspace
 release_captured_context
 # Explicitly check cleanup before publication. RAII handles ordinary ownership;
 # destructors must not manufacture a successful quiescence/unmount receipt.

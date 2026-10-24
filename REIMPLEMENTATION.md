@@ -6264,3 +6264,21 @@ invalidate previous layer-count assumptions in historical evidence. Qualificatio
 must demonstrate a multi-command/COPY stage adds exactly one scute, empty-stage
 pass-through, failure preventing publication, correct bootstrap/carapace/firmware
 composition and retained per-step isolation. No adherence streak advances.
+
+## Common output finalization (2026-10-23)
+
+StageOutput now owns the sealed scutes, captured firmware pair and optional
+formatter receipt, plus the selected immutable output base. No live command or
+mount authority escapes stage execution. Runtime::scoped closes the execution
+runtime before StageOutput::assemble applies DTB transformations/firmware
+compatibility checks, creates the OCI artifact and constructs/checks inventory.
+Pass-through uses this same finalization without creating a command runtime.
+Removed InheritedBuild, its inventory wrapper and the redundant transformed-only
+assembly wrapper; existing assembly tests use the common zero-new-layer path.
+This preserves the one-scute-per-carapace-stage decision. Former code remains
+recoverable at 1be367d. No validation assets were removed.
+
+Only all-target compilation and formatting checks were performed during this
+structural work. No runtime qualification or adherence pass is claimed; earlier
+VM results do not qualify this refactor. Broad validation remains deferred until
+the workflow/ownership simplification is coherent, per the user's direction.

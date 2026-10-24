@@ -5,15 +5,17 @@ mod bootstrap;
 mod carapace;
 mod failures;
 mod firmware;
+mod output;
 mod rejection;
 use crate::{
     cache::{Cache, CacheError},
-    input::{CapturedBuild, CheckedImage, InputError, ResolvedBuild},
+    input::{CapturedBuild, InputError, ResolvedBuild},
     inventory::{Inventory, InventoryError},
     output::{AssembledImage, AssemblyFailure, PublicationFailure},
     request::BuildRequest,
     storage::{Runtime, Workspace},
 };
+use output::StageOutput;
 
 /// Terminal build diagnostics, not cleanup receipts or authority to retry a
 /// build. Runtime resource ownership ends here; unfinished mounts remain until
@@ -181,24 +183,25 @@ impl Pipeline {
             && recipe
                 .carapace()
                 .is_none_or(|stage| stage.directives().is_empty());
-        let output = if inherited {
-            InheritedBuild::new(&build)?.assemble(&self.request)?
+        let stages = if inherited {
+            StageOutput::inherited(&build)?
         } else {
             Runtime::scoped(&workspace, std::path::Path::new("/run"), |runtime| {
                 self.execute(&build, &workspace, runtime)
             })
             .map_err(BuildError::from)?
         };
+        let output = stages.assemble(&self.request, &build)?;
         drop(workspace);
         output.publish()?;
         Ok(())
     }
-    fn execute(
+    fn execute<'b, 'w>(
         &self,
-        build: &ResolvedBuild,
-        workspace: &Workspace,
+        build: &'b ResolvedBuild,
+        workspace: &'w Workspace,
         runtime: &Runtime<'_>,
-    ) -> Result<CompletedImage, BuildError> {
+    ) -> Result<StageOutput<'b, 'w>, BuildError> {
         let recipe = build.captured().plan().recipe();
         // Output ancestry is independent of the firmware's selected tool image.
         let base = recipe
@@ -283,103 +286,12 @@ impl Pipeline {
             None
         };
 
-        // Stage execution is complete. Transform, assemble and inventory once.
-        let inherited_dtb = if pair.is_none() {
-            base.map(|base| base.inherited_dtb(build.cache()))
-                .transpose()?
-                .flatten()
-        } else {
-            None
-        };
-        let transformed;
-        let dtb = if let Some(pair) = &pair {
-            pair.dtb()
-        } else {
-            let root = root.map(hex::encode);
-            transformed = recipe.transform().apply(
-                inherited_dtb.as_ref().map(|source| source.bytes()),
-                root.as_deref(),
-            )?;
-            &transformed
-        };
-        let image = if let Some(pair) = &pair {
-            AssembledImage::firmware(
-                build.cache(),
-                base.map(|base| base.image()),
-                pair,
-                &produced,
-                self.request.output(),
-            )?
-        } else if let Some(base) = base {
-            AssembledImage::derived(
-                build.cache(),
-                base.image(),
-                &produced,
-                self.request.output(),
-                dtb,
-            )?
-        } else {
-            AssembledImage::bootstrap_layers(&produced, self.request.output())?
-        };
-        let inventory = Inventory::from_build(&self.request, build, &image, dtb, &produced)?;
-        let inventory = match receipt {
-            Some(receipt) => inventory.with_formatter(receipt)?,
-            None => inventory,
-        };
-        inventory.check_output(&image)?;
-        Ok(CompletedImage { image, inventory })
-    }
-}
-/// Selected inherited-image path with no command/COPY/firmware work.
-/// DTB transformations still execute before inventory and publication.
-#[derive(Debug)]
-pub(crate) struct InheritedBuild<'a> {
-    build: &'a ResolvedBuild,
-    base: &'a CheckedImage,
-}
-impl<'a> InheritedBuild<'a> {
-    pub(crate) fn new(build: &'a ResolvedBuild) -> Result<Self, BuildError> {
-        let recipe = build.captured().plan().recipe();
-        if recipe.bootstrap().is_some() {
-            return Err(BuildError::Unsupported("bootstrap coordinator"));
-        }
-        if recipe.firmware().is_some() {
-            return Err(BuildError::Unsupported("firmware coordinator"));
-        }
-        let stage = recipe
-            .carapace()
-            .ok_or(BuildError::Unsupported("missing output base"))?;
-        if !stage.directives().is_empty() {
-            return Err(BuildError::Unsupported("carapace directives"));
-        }
-        let base = stage
-            .from()
-            .and_then(|name| build.images().get(name))
-            .ok_or(BuildError::Unsupported("missing resolved output base"))?;
-        Ok(Self { build, base })
-    }
-    pub(crate) fn build(&self) -> &ResolvedBuild {
-        self.build
-    }
-    pub(crate) fn assemble(&self, request: &BuildRequest) -> Result<CompletedImage, BuildError> {
-        let source = self.base.inherited_dtb(self.build.cache())?;
-        let root = self.base.chain().map(|chain| hex::encode(chain.root()));
-        let transformed = self
-            .build
-            .captured()
-            .plan()
-            .recipe()
-            .transform()
-            .apply(source.as_ref().map(|s| s.bytes()), root.as_deref())?;
-        let image = AssembledImage::transformed(
-            self.build.cache(),
-            self.base.image(),
-            request.output(),
-            &transformed,
-        )?;
-        let inventory = Inventory::inherited(request, self, &image, &transformed)?;
-        inventory.check_output(&image)?;
-        Ok(CompletedImage { image, inventory })
+        Ok(StageOutput {
+            base,
+            produced,
+            firmware: pair,
+            formatter: receipt,
+        })
     }
 }
 /// Created only after the selected recipe path completed and inventory binds

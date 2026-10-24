@@ -27,7 +27,7 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
         stage: &Firmware,
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
-    ) -> Result<crate::firmware::FinalizedFirmware<'w>, BuildError> {
+    ) -> Result<crate::firmware::ExtractedFirmware<'w>, BuildError> {
         let Self {
             active,
             root,
@@ -93,12 +93,6 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
                 return Err(error.with_cleanup(Err(cleanup)));
             }
         };
-        let root = root.map(hex::encode);
-        captured
-            .finalize(
-                build.captured().plan().recipe().transform(),
-                root.as_deref(),
-            )
-            .map_err(BuildError::from)
+        Ok(captured)
     }
 }

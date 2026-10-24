@@ -64,14 +64,6 @@ impl AssembledImage {
     }
 }
 impl AssembledImage {
-    pub(crate) fn transformed(
-        cache: &Cache,
-        image: &ResolvedImage,
-        destination: &std::path::Path,
-        dtb: &crate::transform::TransformedDtb,
-    ) -> Result<Self, AssemblyFailure> {
-        Self::assemble(cache, image, destination, dtb.bytes(), &[])
-    }
     /// Append an already sealed scute to this base. This validates the artifact,
     /// not command success; the coordinator still owns execution receipts and
     /// must finalize firmware/DTB and inventory before publication.
@@ -524,16 +516,27 @@ mod tests {
         let unchanged = crate::recipe::TransformSelection::Authored(vec![])
             .apply(Some(bytes), None)
             .unwrap();
-        AssembledImage::transformed(&cache, &image, &parent.path().join("unchanged"), &unchanged)
-            .unwrap()
-            .discard()
-            .unwrap();
+        AssembledImage::derived(
+            &cache,
+            &image,
+            &[],
+            &parent.path().join("unchanged"),
+            &unchanged,
+        )
+        .unwrap()
+        .discard()
+        .unwrap();
         let changed = crate::recipe::TransformSelection::Builtin
             .apply(Some(bytes), Some("new"))
             .unwrap();
-        let failure =
-            AssembledImage::transformed(&cache, &image, &parent.path().join("changed"), &changed)
-                .unwrap_err();
+        let failure = AssembledImage::derived(
+            &cache,
+            &image,
+            &[],
+            &parent.path().join("changed"),
+            &changed,
+        )
+        .unwrap_err();
         let (error, staged) = failure.into_parts();
         assert!(error.to_string().contains("firmware/DTB compatibility"));
         staged.unwrap().discard().unwrap();
@@ -550,7 +553,7 @@ mod tests {
             .unwrap();
         let parent = tempfile::tempdir().unwrap();
         let assembled =
-            AssembledImage::transformed(&cache, &image, &parent.path().join("output"), &result)
+            AssembledImage::derived(&cache, &image, &[], &parent.path().join("output"), &result)
                 .unwrap();
         let new: serde_json::Value =
             serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
@@ -591,7 +594,7 @@ mod tests {
                 )
                 .unwrap();
             let assembled =
-                AssembledImage::transformed(&cache, &image, &destination, &unchanged).unwrap();
+                AssembledImage::derived(&cache, &image, &[], &destination, &unchanged).unwrap();
             assert!(!destination.exists());
             assert!(assembled.chain().is_none());
             assert_eq!(assembled.image().manifest_bytes().bytes(), input.manifest);
@@ -637,9 +640,14 @@ mod tests {
         )
         .unwrap();
         let parent = tempfile::tempdir().unwrap();
-        let assembled =
-            AssembledImage::transformed(&cache, &image, &parent.path().join("output"), &unchanged)
-                .unwrap();
+        let assembled = AssembledImage::derived(
+            &cache,
+            &image,
+            &[],
+            &parent.path().join("output"),
+            &unchanged,
+        )
+        .unwrap();
         assert_eq!(assembled.image().manifest_bytes().bytes(), input.manifest);
         Cache::open(assembled.staged.temporary.path())
             .unwrap()
@@ -669,7 +677,7 @@ mod tests {
                 None,
             )
             .unwrap();
-        let (_, staged) = AssembledImage::transformed(&cache, &image, &destination, &unchanged)
+        let (_, staged) = AssembledImage::derived(&cache, &image, &[], &destination, &unchanged)
             .unwrap_err()
             .into_parts();
         assert!(!destination.exists());
