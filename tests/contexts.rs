@@ -573,3 +573,65 @@ fn captured_reads_reject_trailing_symlink_separators() {
     assert!(captured.read(&path).is_err());
     assert!(captured.read(&dotpath).is_err());
 }
+
+#[test]
+fn executing_stage_variants_require_environment_maps_before_cache_access() {
+    use conglobate::{
+        input::{CapturedBuild, InputError},
+        request::BuildRequest,
+    };
+    let repo = Repository::new("sha1");
+    repo.write(
+        "lock",
+        format!(
+            "version: 1\nimages:\n  tools: {{index: sha256:{}}}\n",
+            "11".repeat(32),
+        )
+        .as_bytes(),
+    );
+    let cache = repo.0.path().join("missing-cache");
+    let output = repo.0.path().join("unpublished-output");
+    for recipe in [
+        "bootstrap: {from: tools, filesystem: {type: ext4, size: 16MiB}}",
+        "carapace: {from: tools, derive: [{run: 'true'}]}",
+        "carapace: {from: tools, derive: [{copy: {from: input, into: /input}}]}",
+        "firmware: {from: tools, into: {pmi: /pmi, dtb: /dtb}}",
+        "carapace: {from: tools}\nfirmware: {into: {pmi: /pmi, dtb: /dtb}}",
+    ] {
+        repo.write("recipe", recipe.as_bytes());
+        repo.write("input", b"committed bytes");
+        let commit = repo.commit();
+        let identity = hex::encode(commit.bytes());
+        let mut args = vec![
+            "conglobate",
+            "build",
+            "--repository",
+            repo.0.path().to_str().unwrap(),
+            "--commit",
+            &identity,
+            "--recipe",
+            "recipe",
+            "--lock",
+            "lock",
+            "--cache",
+            cache.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ];
+        let request = BuildRequest::parse_from(&args).unwrap();
+        assert!(
+            matches!(
+                CapturedBuild::try_from(&request),
+                Err(InputError::IdMappingsRequired)
+            ),
+            "{recipe}"
+        );
+        args.extend(["--uid-map", "200000:131072", "--gid-map", "400000:65536"]);
+        let captured = CapturedBuild::try_from(&BuildRequest::parse_from(&args).unwrap()).unwrap();
+        let maps = captured.id_mappings().unwrap();
+        assert_eq!(maps.uid().count(), 131072);
+        assert_eq!(maps.gid().count(), 65536);
+        assert!(!cache.exists());
+        assert!(!output.exists());
+    }
+}
