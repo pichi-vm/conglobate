@@ -6,7 +6,8 @@
     {
       "id": "dependencies-013",
       "prior_status": "local checks current; hosted qualification outstanding",
-      "next_action": "Current qualification CI running; record terminal outcome, preserving earlier run evidence."
+      "next_action": "Reconcile hosted lifecycle qualification separately; no claim of complete M7 qualification.",
+      "current_evidence": "Rootless checks run 40046122488 passed at 416ca11; see ci-rootless-final.json and ci-rootless-final.log."
     },
     {
       "id": "security-003",
@@ -26,7 +27,8 @@
     {
       "id": "tests-003",
       "prior_status": "hosted cache-storage passes; workflow retry pending KVM permission correction",
-      "next_action": "Current qualification CI running; record terminal outcome, preserving earlier run evidence."
+      "next_action": "Record terminal hosted outcome and inspect failure logs if needed; preserve prior green workflow evidence.",
+      "current_evidence": "Hosted lifecycle run 40046122549 is still installing trusted guest inputs; no current test result. The 19 native local lifecycle cases passed at the same production source."
     }
   ]
 }
