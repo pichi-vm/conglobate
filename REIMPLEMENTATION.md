@@ -92,7 +92,7 @@ but must not be claimed to validate the new policy implementation.
 | --- | --- | --- | --- |
 | 1. Preserve and separate | Preserve full working-tree implementation, uncommitted changes, tests and all validation sources/evidence; verify archive hashes; record Git baseline and external-artifact dependencies; keep recoverable originals before moving old code outside the new active build. | Complete | 3 |
 | 2. Architecture contract | Define owning modules/types, sealed state traits, consuming transitions, fallible finalization and recovery, confined filesystem authority, typed formatter properties, inventory migration, and requirements-to-tests traceability. Identify external qualification requirements without claiming access. | Complete: linear workflow, stage-level sealing and environment ID maps | 3 |
-| 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Reopened: committed-byte capture without materialized checkout | 0 |
+| 3. Inputs and planning | New safe Rust crate; required context-relative recipe/lock paths; exact committed context and local verified image references; one recipe mapping, immutable plan, complete stage validation/inheritance; meaningful positive/negative tests. | Complete: committed-byte capture and execution-input preflight | 3 |
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, environment-owned labeling exception, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Reopened: registration-free lifecycle | 0 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Reopened: two-root lifecycle regression | 0 |
 | 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Reopened: replacement lifecycle integration | 0 |
@@ -6364,3 +6364,14 @@ error ownership, evidence boundaries and preservation. M2 is now 3/3. M3 remains
 M4–M8 remain outstanding. These are source/evidence reviews, not repeated tests
 or independent security approval. Earlier reopening statements are historical;
 the milestone table and this latest entry give the current gate status.
+
+
+## M3 input gate restored at 28a108b
+
+Added missing preflight coverage for bootstrap, COPY-only carapace and firmware
+without run directives, including implicit tools and separate ID-range counts.
+48 focused input tests and all-target strict Clippy pass. Three consecutive full
+self-reviews are recorded in preservation/m7-review/linear-input-adherence/PASS-*.md;
+M3 is 3/3. No production behavior change or privileged retest was needed. M4 is
+next: review current lifecycle findings and qualify missing failure paths in
+maintained disposable-VM fixtures. M4–M8 remain outstanding; no goal completion.
