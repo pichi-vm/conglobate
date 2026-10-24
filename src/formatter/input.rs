@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use super::FormatterRuntime;
 #[cfg(test)]
 use rustix::net::{SendAncillaryBuffer, SendAncillaryMessage, SendFlags};

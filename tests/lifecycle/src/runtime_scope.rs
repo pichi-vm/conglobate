@@ -1,4 +1,6 @@
+// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 //! Benign owned-file cleanup barriers, executed only in the disposable VM.
 use conglobate::storage::{Runtime, Workspace};
 use std::{fs, io, os::unix::fs::PermissionsExt, path::Path};

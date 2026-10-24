@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use super::{Active, Created, Mapping, VerityMapping, Workspace};
 use crate::cache::{Cache, VerifiedChain};
 use std::{io, num::NonZeroU64};

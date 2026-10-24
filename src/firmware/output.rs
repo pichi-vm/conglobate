@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 //! Immutable firmware captured from a quiescent tool filesystem.
 use super::{DtbContract, FirmwareError};
 use crate::{

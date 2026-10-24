@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use conglobate::chain::ScuteExtent;
 use sha2::{Digest, Sha256};
 

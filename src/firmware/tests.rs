@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use super::*;
 /// Independent small PE/CBOR encoder; fixtures are structural, not bootable.
 #[derive(Debug)]

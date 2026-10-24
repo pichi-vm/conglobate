@@ -1,4 +1,6 @@
+// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use conglobate::network::NetworkNamespace;
 use std::{
     fs,

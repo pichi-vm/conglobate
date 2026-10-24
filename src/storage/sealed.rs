@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use super::Scratch;
 use crate::chain::{ChainError, ScuteExtent};
 use devmap_snapshot::{Exception, Header};

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use devmap_linux::{Control, DevId, Table, targets::Zero};
 use std::{
     fs::File,

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use anyhow::anyhow;
 // Completed stage data. No live command, mounted volume or runtime authority.
 use super::CompletedImage;

@@ -1,4 +1,6 @@
+// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use conglobate::{pipeline::Pipeline, request::BuildRequest};
 use std::{fs, path::Path, process::Command};
 
