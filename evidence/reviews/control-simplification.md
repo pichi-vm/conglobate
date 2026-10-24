@@ -92,4 +92,22 @@ runtime code. The transport-test cleanup is reported separately above; no logic
 was moved to another crate. Script, filtered sources and JSON are retained with
 the evidence.
 
-External implementation review and hosted CI acceptance follow below.
+Hosted CI passed for implementation commit `ecca738`: [rootless/dependency
+checks](https://github.com/pichi-vm/conglobate/actions/runs/40097885754) and
+[disposable VM lifecycle](https://github.com/pichi-vm/conglobate/actions/runs/40097885750).
+Both amd64 and arm64 passed, including the four added gate/cleanup cases. ORAS
+interoperability passed on amd64. Job receipts are saved with the local evidence.
+
+Two intermediate unit runs failed. One unchanged resolver-path test returned
+EAGAIN; the error was not suppressed or changed into success. A separate gate
+test assumed dropping a socket immediately closes every inherited copy, which
+is false while another parallel test spawns before exec. That test now explicitly
+shuts down the peer before checking rejection, without sleeps. The completed
+suite passes all 210 tests. Failed logs are retained as `unit-resolver-eagain.log`
+and `unit-start-close-race.log`. Ancillary truncation coverage includes a 32-FD
+offer rejected by the production formatter decoder, with every right released.
+
+The independent Claude implementation review and any follow-up are retained in
+this evidence directory alongside the source-grounded planning consensus. This
+document's three adherence passes are self-reviews, not claims that Claude
+performed those passes.

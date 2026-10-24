@@ -141,3 +141,12 @@ Capture ORAS output to keep terminal controls off the marker line. Three focused
 adherence passes confirmed (1) the copy and exact blob assertions are unchanged,
 (2) stdout/stderr remain available and nonzero status still fails, and (3) no
 production code or qualification criteria changed. Final CI remains the gate.
+
+
+## Control-path follow-up
+
+The responsibility review led to a direct supervisor/init gate, shared descriptor
+and deadline mechanics, production-decoder tests, and linear terminal helper
+cleanup. The trust model and process topology remain intact. See
+[evidence/reviews/control-simplification.md](evidence/reviews/control-simplification.md)
+for the corrected source count, three adherence passes and local/hosted evidence.
