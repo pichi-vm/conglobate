@@ -161,7 +161,9 @@ No unsafe field extraction, transmute, or manually asserted state transition.
 - `StagedDirectory` owns low-level output storage. `AssembledImage` binds the
   component layout, and the private `CompletedImage` couples it to validated
   inventory after the selected pipeline completes. Publication consumes that
-  owner only after private context cleanup. Raw staging publication by itself
+  owner only after runtime cleanup and release of workspace-backed outputs into
+  the staged artifact. Captured context is immutable input data, not a mounted
+  checkout requiring teardown. Raw staging publication by itself
   is not a successful-build receipt.
 
 No public Clone on authority owners. Read-only descriptions and content IDs may
@@ -297,7 +299,7 @@ remain the boundary protecting supervisor resources from label mutation.
 The rustix Git revision `8bda151df87574f56f1e4c0b59f2d1df5d61609e`
 provides the safe `mount_setattr` interface with a lifetime-bound `MountAttr`.
 The locked registry rustix 1.1.5 does not expose this interface. Conglobate uses
-it for idmapped filesystem views and restricted mounts of the context, resolver,
+it for idmapped filesystem views and restricted mounts of the resolver,
 formatter runtime and command runtime. This pin keeps application code free of
 unsafe syscall wrappers; it is not a claim that every upstream change has been
 audited. Cargo.lock fixes the exact source identity, and deny.toml explicitly
@@ -322,6 +324,7 @@ avoid mirroring every method signature. Runtime tests validate external effects.
 | Filesystem fidelity | UID/GID, ACL access/defaults, file capabilities, SELinux labels and target enforcing boot |
 | Network | Disabled default, externally supplied build namespace/NAT, explicit resolver including confined symlinks and cleanup |
 | Outputs | Paired firmware validation, final DTB, deterministic CBOR, inherited blobs, OCI/ORAS, atomic failure cases |
+| Stage-level layering | Multiple run/COPY steps share one writable carapace snapshot; exactly one new scute after success, none for an empty stage, none publishable after failure |
 | Platforms | amd64/arm64 and TDX/SEV-SNP/CCA evidence; unavailable environments remain outstanding |
 
 ### Current requirements-to-tests mapping
@@ -345,6 +348,7 @@ must be migrated before they count as current lifecycle regression coverage.
 | DTB values, regex and firmware measurement compatibility | src/transform.rs, firmware.rs tests; tests/templates.rs | Pure transform/contract assertions; actual firmware generation and boot remain separate |
 | External network inputs, DNS and resolver restoration | src/network; tests/lifecycle/src/network.rs; tests/distro/network | Current namespace-input, DNS/restoration and wrong-type VM evidence in preservation/m7-review/external-network; ingress/IPv6 and full failure qualification remain outstanding |
 | Inventory and atomic self-contained publication | src/inventory.rs, output.rs, output/assembly.rs tests; tests/distro/bootstrap-labeling/verify.py | Current minimal emitted graph/canonical inventory; ORAS and full combination/failure reruns remain required |
+| Sequential pipeline and one scute per carapace stage | src/pipeline.rs, pipeline/output.rs, pipeline/carapace.rs; tests/distro/pipeline/verify.py | 0556f30 full CLI composition checks two produced scutes, alternate firmware tools and final DTB root binding; empty-stage/failure combinations remain outstanding |
 | Distro/platform qualification and preservation | tests/distro/{fedora,debian}, boot.py; REIMPLEMENTATION.md | Historical distro runs do not qualify changed lifecycle; Alpine/NixOS, arm64/confidential hardware and durable external-artifact recovery remain outstanding |
 
 ## Dedicated-VM lifecycle
