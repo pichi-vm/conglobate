@@ -17,6 +17,7 @@ pub(super) enum FailurePoint {
     Launch,
     Join,
     AttachedExit,
+    StartGate,
     UnmappedOwner,
     UnmappedAcl,
     UnmappedDefaultGroup,
@@ -98,8 +99,9 @@ impl SandboxFailures {
         assert_eq!(view.root_metadata()?.uid(), 100000);
         if !matches!(completion, HelperCompletion::None) {
             use std::os::unix::process::ExitStatusExt;
-            channel.report_prepared_until(deadline)?;
-            let channel = channel.await_admission_until(deadline)?;
+            let reporter = channel
+                .receive_gate_until(deadline)?
+                .ready_for_reporting(deadline)?;
             let release = if matches!(completion, HelperCompletion::Held) {
                 Some(std::os::unix::net::UnixDatagram::bind(
                     "/work/runtime-parent/cleanup-release.sock",
@@ -107,7 +109,7 @@ impl SandboxFailures {
             } else {
                 None
             };
-            channel.report_completion_until(std::process::ExitStatus::from_raw(0), deadline)?;
+            reporter.report(std::process::ExitStatus::from_raw(0))?;
             if matches!(completion, HelperCompletion::Never) {
                 loop {
                     std::thread::park();
@@ -124,7 +126,7 @@ impl SandboxFailures {
             drop(_setup);
             scope.restore().map_err(|e| e.to_string())?;
             if !matches!(completion, HelperCompletion::Missing) {
-                channel.report_cleanup_until(deadline)?;
+                channel.report_cleanup_until(std::process::ExitStatus::from_raw(0), deadline)?;
             }
             return Ok(());
         }
@@ -156,6 +158,7 @@ impl SandboxFailures {
             FailurePoint::Launch
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
+                | FailurePoint::StartGate
                 | FailurePoint::UnmappedOwner
                 | FailurePoint::UnmappedAcl
                 | FailurePoint::UnmappedDefaultGroup
@@ -210,6 +213,7 @@ impl SandboxFailures {
             FailurePoint::Launch
                 | FailurePoint::Join
                 | FailurePoint::AttachedExit
+                | FailurePoint::StartGate
                 | FailurePoint::UnmappedOwner
                 | FailurePoint::UnmappedAcl
                 | FailurePoint::UnmappedDefaultGroup
@@ -341,6 +345,7 @@ impl SandboxFailures {
             FailurePoint::Launch
             | FailurePoint::Join
             | FailurePoint::AttachedExit
+            | FailurePoint::StartGate
             | FailurePoint::BusyExecution
             | FailurePoint::HeldCleanup
             | FailurePoint::MissingCleanup
@@ -467,6 +472,8 @@ impl SandboxFailures {
                         FailurePoint::BlockedIo | FailurePoint::SupervisorDeath
                     ) {
                         "sandbox-blocked-helper"
+                    } else if matches!(point, FailurePoint::StartGate) {
+                        "sandbox-start-reject-receiver"
                     } else if matches!(point, FailurePoint::Gate | FailurePoint::Writeback) {
                         "sandbox-gate-receiver"
                     } else if matches!(point, FailurePoint::HeldCleanup) {
@@ -592,7 +599,7 @@ impl SandboxFailures {
                         line.clear();
                         assert_ne!(diagnostics.read_line(&mut line)?, 0);
                         eprint!("{line}");
-                        if line.starts_with("restricted command startup failed:") {
+                        if line.starts_with("restricted command completion held:") {
                             break;
                         }
                     }
@@ -813,7 +820,7 @@ impl SandboxFailures {
                     assert_eq!(fs::read_dir(paths.volumes())?.count(), 1);
                     println!("SUCCESSFUL_COMMAND_CLEANUP_FAILURE_STAYS_REJECTED_PASS");
                     std::process::exit(0);
-                } else if matches!(point, FailurePoint::AttachedExit) {
+                } else if matches!(point, FailurePoint::AttachedExit | FailurePoint::StartGate) {
                     fs::create_dir("/work/runtime-parent/receiver-view")?;
                     command.arg(budget.cutoff()?.to_argument());
                     let step = prepared
@@ -828,20 +835,37 @@ impl SandboxFailures {
                         ))
                     ));
                     assert!(format!("{failure:#}").contains("cleanup: complete"));
-                    assert_eq!(fs::read_to_string("/work/receiver-stage")?, "attached");
+                    if matches!(point, FailurePoint::AttachedExit) {
+                        assert_eq!(fs::read_to_string("/work/receiver-stage")?, "attached");
+                        fs::remove_file("/work/receiver-stage")?;
+                    } else {
+                        assert_eq!(
+                            Self::io_error(&failure).kind(),
+                            std::io::ErrorKind::BrokenPipe
+                        );
+                    }
                     assert_eq!(
                         fs::read_dir("/work/runtime-parent/receiver-view")?.count(),
                         0
                     );
                     fs::remove_dir("/work/runtime-parent/receiver-view")?;
-                    fs::remove_file("/work/receiver-stage")?;
                     assert_eq!(fs::read_dir(paths.volumes())?.count(), 0);
                     assert!(
                         fs::read_to_string("/proc/thread-self/children")?
                             .trim()
                             .is_empty()
                     );
-                    println!("SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS");
+                    for entry in fs::read_dir(paths.domains())? {
+                        assert!(!entry?.file_type()?.is_dir());
+                    }
+                    println!(
+                        "{}",
+                        if matches!(point, FailurePoint::StartGate) {
+                            "SANDBOX_START_REJECT_ROLLBACK_PASS"
+                        } else {
+                            "SANDBOX_ATTACHED_EXIT_ROLLBACK_PASS"
+                        }
+                    );
                     std::process::exit(0);
                 } else {
                     let failure = prepared.launch(command, budget.deadline()).unwrap_err();
@@ -902,6 +926,7 @@ impl SandboxFailures {
                 FailurePoint::BusyExecution => "SANDBOX_BUSY_EXECUTION_ROLLBACK_PASS",
                 FailurePoint::HeldCleanup => "SANDBOX_HELD_CLEANUP_ROLLBACK_PASS",
                 FailurePoint::MissingCleanup => "SANDBOX_MISSING_CLEANUP_ROLLBACK_PASS",
+                FailurePoint::StartGate => "SANDBOX_START_REJECT_ROLLBACK_PASS",
                 FailurePoint::Gate => "SANDBOX_GATE_FAILURE_ROLLBACK_PASS",
                 FailurePoint::CleanupTimeout
                 | FailurePoint::DelayedTeardown

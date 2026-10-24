@@ -6,22 +6,21 @@ use crate::{
     domain::DomainJoin,
     process::identity::{ExchangeWait, IdentitySocket},
 };
+#[cfg(test)]
+use rustix::net::{SendAncillaryBuffer, SendAncillaryMessage, SendFlags, sendmsg};
 use rustix::{
     event::PollFlags,
     fd::{AsFd, OwnedFd},
-    net::{
-        RecvAncillaryBuffer, RecvAncillaryMessage, RecvFlags, ReturnFlags, SendAncillaryBuffer,
-        SendAncillaryMessage, SendFlags, recvmsg, sendmsg,
-    },
 };
 use std::{
     fs::File,
-    io::{self, IoSlice, IoSliceMut, Write},
-    mem::MaybeUninit,
+    io::{self, Write},
     os::unix::process::ExitStatusExt,
     process::ExitStatus,
     time::Instant,
 };
+#[cfg(test)]
+use std::{io::IoSlice, mem::MaybeUninit};
 
 /// Trusted helper acknowledged self-placement in a command domain. This is not
 /// sandbox readiness, persisted recovery ownership or permission to run a recipe.
@@ -98,31 +97,27 @@ impl Supervision<Paired> {
 pub(super) enum Packet {
     Offer(OwnedFd),
     Joined,
-    Admit,
-    Admitted,
+    Gate(OwnedFd),
     Volume(OwnedFd, OwnedFd),
     Bootstrap(OwnedFd, OwnedFd, OwnedFd),
     VolumeNetwork(OwnedFd, OwnedFd, OwnedFd, OwnedFd, OwnedFd),
     BootstrapNetwork(OwnedFd, OwnedFd, OwnedFd, OwnedFd, OwnedFd, OwnedFd),
-    Prepared,
-    Completed(ExitStatus),
-    Cleaned,
+    Cleaned(ExitStatus),
     CleanupFailed(String),
 }
 impl Packet {
-    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Admit=3, Admitted=4, Volume=5, Prepared=6; Completed=[1,7,bstr(wait status)]; Bootstrap=8 (tool, output, namespace).
+    // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Volume=5; Cleaned=[1,11,bstr(wait status)]; Bootstrap=8 (tool, output, namespace).
     // VolumeNetwork=9 (root, user, network, resolver, raw cleanup root);
     // BootstrapNetwork=10 adds output immediately after root; Cleaned=11.
-    // CleanupFailed=[1,12,text], at most 1024 UTF-8 bytes, no descriptors.
+    // CleanupFailed=[1,12,text], at most 1024 UTF-8 bytes, no descriptors. Gate=13 transfers the init endpoint.
     pub(super) fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
         self.send_with(socket, &deadline)
     }
     fn send_with(self, socket: &IdentitySocket, wait: &impl ExchangeWait) -> io::Result<()> {
         let (opcode, descriptors) = match &self {
             Self::Offer(fd) => (1, vec![fd.as_fd()]),
+            Self::Gate(fd) => (13, vec![fd.as_fd()]),
             Self::Joined => (2, vec![]),
-            Self::Admit => (3, vec![]),
-            Self::Admitted => (4, vec![]),
             Self::Volume(root, namespace) => (5, vec![root.as_fd(), namespace.as_fd()]),
             Self::Bootstrap(root, output, namespace) => {
                 (8, vec![root.as_fd(), output.as_fd(), namespace.as_fd()])
@@ -148,10 +143,8 @@ impl Packet {
                     raw.as_fd(),
                 ],
             ),
-            Self::Prepared => (6, vec![]),
-            Self::Cleaned => (11, vec![]),
             Self::CleanupFailed(_) => (12, vec![]),
-            Self::Completed(_) => (7, vec![]),
+            Self::Cleaned(_) => (11, vec![]),
         };
         // The status payload is a fixed four-byte Linux wait status, carried
         // in a canonical CBOR byte string rather than a native-endian integer.
@@ -172,7 +165,7 @@ impl Packet {
                     .expect("Vec writer");
                 encoded.into_writer()
             }
-            Self::Completed(status) => {
+            Self::Cleaned(status) => {
                 let mut bytes = vec![0x83, 1, opcode, 0x44];
                 bytes.extend_from_slice(&status.into_raw().to_be_bytes());
                 bytes
@@ -181,23 +174,17 @@ impl Packet {
         };
         loop {
             wait.ready(socket, PollFlags::OUT)?;
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(7))];
-            let mut ancillary = SendAncillaryBuffer::new(&mut space);
-            if !descriptors.is_empty()
-                && !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors))
-            {
-                return Err(io::Error::other("joining ancillary buffer too small"));
-            }
-            match sendmsg(
-                &socket.0,
-                &[IoSlice::new(&bytes)],
-                &mut ancillary,
-                SendFlags::DONTWAIT | SendFlags::NOSIGNAL,
-            ) {
-                Ok(count) if count == bytes.len() => return Ok(()),
-                Ok(_) => return Err(io::Error::other("incomplete joining packet")),
-                Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
-                Err(error) => return Err(error.into()),
+            match crate::packet::DescriptorPacket::send_now(&socket.0, &bytes, &descriptors) {
+                Ok(()) => return Ok(()),
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                    ) =>
+                {
+                    continue;
+                }
+                Err(error) => return Err(error),
             }
         }
     }
@@ -208,17 +195,17 @@ impl Packet {
         loop {
             wait.ready(socket, PollFlags::IN)?;
             let mut bytes = [0; 1030];
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(7))];
-            let mut ancillary = RecvAncillaryBuffer::new(&mut space);
-            let result = match recvmsg(
-                &socket.0,
-                &mut [IoSliceMut::new(&mut bytes)],
-                &mut ancillary,
-                RecvFlags::DONTWAIT | RecvFlags::CMSG_CLOEXEC,
-            ) {
+            let result = match crate::packet::DescriptorPacket::receive_now(&socket.0, &mut bytes) {
                 Ok(result) => result,
-                Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
-                Err(error) => return Err(error.into()),
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                    ) =>
+                {
+                    continue;
+                }
+                Err(error) => return Err(error),
             };
             if result.bytes == 0 {
                 return Err(io::Error::new(
@@ -226,35 +213,20 @@ impl Packet {
                     "joining peer closed",
                 ));
             }
-            if result
-                .flags
-                .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
-                || !((result.bytes == 3 && bytes[..2] == [0x82, 1] && bytes[2] != 7)
-                    || (result.bytes == 8 && bytes[..4] == [0x83, 1, 7, 0x44])
-                    || (result.bytes >= 5 && bytes[..3] == [0x83, 1, 12]))
+            if !((result.bytes == 3 && bytes[..2] == [0x82, 1] && bytes[2] != 11)
+                || (result.bytes == 8 && bytes[..4] == [0x83, 1, 11, 0x44])
+                || (result.bytes >= 5 && bytes[..3] == [0x83, 1, 12]))
             {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "invalid joining packet",
                 ));
             }
-            let mut descriptors = Vec::new();
-            for message in ancillary.drain() {
-                let RecvAncillaryMessage::ScmRights(rights) = message else {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "unexpected joining control",
-                    ));
-                };
-                descriptors.extend(rights);
-            }
+            let mut descriptors = result.descriptors;
             return match (bytes[2], descriptors.len()) {
                 (1, 1) => Ok(Self::Offer(descriptors.pop().expect("one descriptor"))),
+                (13, 1) => Ok(Self::Gate(descriptors.pop().expect("gate"))),
                 (2, 0) => Ok(Self::Joined),
-                (3, 0) => Ok(Self::Admit),
-                (4, 0) => Ok(Self::Admitted),
-                (6, 0) => Ok(Self::Prepared),
-                (11, 0) => Ok(Self::Cleaned),
                 (12, 0) => {
                     let mut decoder = minicbor::Decoder::new(&bytes[3..result.bytes]);
                     let message = decoder.str().map_err(|_| {
@@ -273,7 +245,7 @@ impl Packet {
                     }
                     Ok(Self::CleanupFailed(message.to_owned()))
                 }
-                (7, 0) => {
+                (11, 0) => {
                     let raw = i32::from_be_bytes(bytes[4..8].try_into().expect("four bytes"));
                     let status = ExitStatus::from_raw(raw);
                     // Accept only terminal Linux wait statuses, not stopped or
@@ -286,7 +258,7 @@ impl Packet {
                             "nonterminal or invalid command status",
                         ));
                     }
-                    Ok(Self::Completed(status))
+                    Ok(Self::Cleaned(status))
                 }
                 (9, 5) => {
                     let raw = descriptors.pop().expect("raw cleanup root");
@@ -423,11 +395,10 @@ mod tests {
     fn completion_preserves_exit_and_signal_status() {
         for raw in [0, 37 << 8, 255 << 8, 9, 11 | 0x80] {
             let (a, b) = Fixture::pair();
-            Packet::Completed(ExitStatus::from_raw(raw))
+            Packet::Cleaned(ExitStatus::from_raw(raw))
                 .send(&a, Fixture::deadline())
                 .unwrap();
-            let Packet::Completed(status) = Packet::receive(&b, Fixture::deadline()).unwrap()
-            else {
+            let Packet::Cleaned(status) = Packet::receive(&b, Fixture::deadline()).unwrap() else {
                 panic!("expected completion");
             };
             assert_eq!(status.into_raw(), raw);
@@ -438,7 +409,7 @@ mod tests {
         let file = File::open("/dev/null").unwrap();
         for raw in [-1i32, 0xffff, 0x137f, 0x10000, 65, 0x80] {
             let (a, b) = Fixture::pair();
-            Packet::Completed(ExitStatus::from_raw(raw))
+            Packet::Cleaned(ExitStatus::from_raw(raw))
                 .send(&a, Fixture::deadline())
                 .unwrap();
             assert_eq!(

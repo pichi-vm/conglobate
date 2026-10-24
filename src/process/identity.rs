@@ -6,22 +6,17 @@
 use super::ProcessObservation;
 #[cfg(test)]
 use rustix::net::{AddressFamily, SocketFlags, socketpair};
+#[cfg(test)]
+use rustix::net::{SendAncillaryBuffer, SendAncillaryMessage, SendFlags, sendmsg};
 use rustix::{
-    event::{PollFd, PollFlags, Timespec, poll},
+    event::{PollFd, PollFlags, poll},
     fd::{AsFd, OwnedFd},
-    net::{
-        RecvAncillaryBuffer, RecvAncillaryMessage, RecvFlags, ReturnFlags, SendAncillaryBuffer,
-        SendAncillaryMessage, SendFlags, SocketType, recvmsg, sendmsg,
-    },
+    net::SocketType,
     process::{PidfdFlags, getpid, pidfd_open},
 };
+use std::{io, time::Instant};
 #[cfg(test)]
-use std::process::Stdio;
-use std::{
-    io::{self, IoSlice, IoSliceMut},
-    mem::MaybeUninit,
-    time::Instant,
-};
+use std::{io::IoSlice, mem::MaybeUninit};
 
 #[derive(Debug)]
 pub(super) struct IdentitySocket(pub(super) OwnedFd);
@@ -31,73 +26,6 @@ pub(super) trait ExchangeWait {
 impl ExchangeWait for Instant {
     fn ready(&self, socket: &IdentitySocket, interest: PollFlags) -> io::Result<()> {
         socket.ready(interest, *self)
-    }
-}
-/// Parent half of a private one-shot trusted helper identity exchange.
-#[derive(Debug)]
-#[cfg(test)]
-pub(crate) struct IdentityReceiver(IdentitySocket);
-#[cfg(test)]
-impl Drop for IdentityReceiver {
-    fn drop(&mut self) {
-        // Another trusted spawn can briefly inherit CLOEXEC descriptors before
-        // exec. Cancel the endpoint itself instead of waiting for every such
-        // copy to close. This is normal-drop cancellation, not crash recovery.
-        let _ = rustix::net::shutdown(&self.0.0, rustix::net::Shutdown::Both);
-    }
-}
-/// Child half. Pass only to the trusted helper, never to a build command.
-#[derive(Debug)]
-#[cfg(test)]
-pub(crate) struct IdentitySender(IdentitySocket);
-
-#[cfg(test)]
-impl IdentityReceiver {
-    #[cfg(test)]
-    pub(crate) fn pair() -> io::Result<(Self, IdentitySender)> {
-        let (parent, child) = socketpair(
-            AddressFamily::UNIX,
-            SocketType::SEQPACKET,
-            SocketFlags::CLOEXEC | SocketFlags::NONBLOCK,
-            None,
-        )?;
-        Ok((
-            Self(IdentitySocket(parent)),
-            IdentitySender(IdentitySocket(child)),
-        ))
-    }
-
-    /// Receive exactly one identity from the trusted peer. Failure closes the
-    /// channel; the caller must cancel/reap its separately owned helper.
-    /// This is neither helper readiness nor permission to admit build commands.
-    #[cfg(test)]
-    pub(crate) fn receive_until(self, deadline: Instant) -> io::Result<ProcessObservation> {
-        self.0.receive_until(deadline)
-    }
-}
-
-#[cfg(test)]
-impl IdentitySender {
-    /// Move the dedicated helper's inherited stdin socket into close-on-exec
-    /// ownership, replacing stdin with /dev/null. Call at trusted helper startup
-    /// before any concurrent stdin access. The helper must not admit
-    /// commands until the later supervision and containment protocol completes.
-    #[cfg(test)]
-    pub(crate) fn from_stdin() -> io::Result<Self> {
-        IdentitySocket::from_stdin().map(Self)
-    }
-
-    /// Pin this process while it is necessarily alive, then transfer that
-    /// identity. No parent-side PID lookup or SIGCHLD disposition assumption.
-    #[cfg(test)]
-    pub(crate) fn send_current_until(self, deadline: Instant) -> io::Result<()> {
-        self.0.send_current_until(deadline)
-    }
-}
-#[cfg(test)]
-impl From<IdentitySender> for Stdio {
-    fn from(sender: IdentitySender) -> Self {
-        sender.0.0.into()
     }
 }
 impl IdentitySocket {
@@ -122,21 +50,21 @@ impl IdentitySocket {
         loop {
             wait.ready(self, PollFlags::OUT)?;
             let descriptors = [identity.as_fd()];
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
-            let mut ancillary = SendAncillaryBuffer::new(&mut space);
-            if !ancillary.push(SendAncillaryMessage::ScmRights(&descriptors)) {
-                return Err(io::Error::other("identity ancillary buffer too small"));
-            }
-            match sendmsg(
+            match crate::packet::DescriptorPacket::send_now(
                 &self.0,
-                &[IoSlice::new(&IdentitySocket::OFFER)],
-                &mut ancillary,
-                SendFlags::DONTWAIT | SendFlags::NOSIGNAL,
+                &IdentitySocket::OFFER,
+                &descriptors,
             ) {
-                Ok(3) => return Ok(()),
-                Ok(_) => return Err(io::Error::other("incomplete identity offer")),
-                Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
-                Err(error) => return Err(error.into()),
+                Ok(()) => return Ok(()),
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                    ) =>
+                {
+                    continue;
+                }
+                Err(error) => return Err(error),
             }
         }
     }
@@ -149,17 +77,17 @@ impl IdentitySocket {
         loop {
             wait.ready(self, PollFlags::IN)?;
             let mut bytes = [0; 3];
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
-            let mut ancillary = RecvAncillaryBuffer::new(&mut space);
-            let result = match recvmsg(
-                &self.0,
-                &mut [IoSliceMut::new(&mut bytes)],
-                &mut ancillary,
-                RecvFlags::DONTWAIT | RecvFlags::CMSG_CLOEXEC,
-            ) {
+            let result = match crate::packet::DescriptorPacket::receive_now(&self.0, &mut bytes) {
                 Ok(result) => result,
-                Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
-                Err(error) => return Err(error.into()),
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                    ) =>
+                {
+                    continue;
+                }
+                Err(error) => return Err(error),
             };
             if result.bytes == 0 {
                 return Err(io::Error::new(
@@ -169,41 +97,16 @@ impl IdentitySocket {
             }
             if result.bytes != bytes.len()
                 || bytes != IdentitySocket::OFFER
-                || result
-                    .flags
-                    .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
+                || result.descriptors.len() != 1
             {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "invalid identity offer",
                 ));
             }
-            let mut identity = None;
-            for message in ancillary.drain() {
-                match message {
-                    RecvAncillaryMessage::ScmRights(descriptors) => {
-                        for descriptor in descriptors {
-                            if identity.replace(descriptor).is_some() {
-                                return Err(io::Error::new(
-                                    io::ErrorKind::InvalidData,
-                                    "extra identity descriptor",
-                                ));
-                            }
-                        }
-                    }
-                    _ => {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "unexpected identity control message",
-                        ));
-                    }
-                }
-            }
-            return identity
-                .map(|identity| ProcessObservation { identity })
-                .ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::InvalidData, "missing identity descriptor")
-                });
+            return Ok(ProcessObservation {
+                identity: result.descriptors.into_iter().next().expect("one identity"),
+            });
         }
     }
 
@@ -213,20 +116,8 @@ impl IdentitySocket {
 
     pub(super) fn ready(&self, interest: PollFlags, deadline: Instant) -> io::Result<()> {
         loop {
-            let remaining = deadline.saturating_duration_since(Instant::now());
-            if remaining.is_zero() {
-                return Err(io::Error::new(
-                    io::ErrorKind::TimedOut,
-                    "identity exchange deadline expired",
-                ));
-            }
-            let timeout = Timespec {
-                tv_sec: remaining
-                    .as_secs()
-                    .try_into()
-                    .map_err(|_| io::Error::other("identity deadline too distant"))?,
-                tv_nsec: remaining.subsec_nanos().into(),
-            };
+            let timeout = crate::deadline::Deadline::at(deadline)
+                .remaining("identity exchange deadline expired")?;
             let mut fds = [PollFd::new(&self.0, interest)];
             match poll(&mut fds, Some(&timeout)) {
                 Ok(0) | Err(rustix::io::Errno::INTR) => continue,
@@ -245,8 +136,18 @@ mod tests {
     #[derive(Debug)]
     struct Fixture;
     impl Fixture {
+        fn pair() -> (IdentitySocket, IdentitySocket) {
+            let (a, b) = socketpair(
+                AddressFamily::UNIX,
+                SocketType::SEQPACKET,
+                SocketFlags::CLOEXEC | SocketFlags::NONBLOCK,
+                None,
+            )
+            .unwrap();
+            (IdentitySocket(a), IdentitySocket(b))
+        }
         fn invalid_offer(bytes: &[u8], descriptor_count: usize) {
-            let (receiver, sender) = IdentityReceiver::pair().unwrap();
+            let (receiver, sender) = Self::pair();
             let identity = pidfd_open(getpid(), PidfdFlags::empty()).unwrap();
             let descriptors = vec![identity.as_fd(); descriptor_count];
             let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(8))];
@@ -255,7 +156,7 @@ mod tests {
                 assert!(ancillary.push(SendAncillaryMessage::ScmRights(&descriptors)));
             }
             sendmsg(
-                &sender.0.0,
+                &sender.0,
                 &[IoSlice::new(bytes)],
                 &mut ancillary,
                 SendFlags::NOSIGNAL,
@@ -287,21 +188,8 @@ mod tests {
     }
 
     #[test]
-    fn receiver_cancellation_survives_a_duplicate_endpoint() {
-        let (receiver, sender) = IdentityReceiver::pair().unwrap();
-        let duplicate = receiver.0.0.try_clone().unwrap();
-        drop(receiver);
-        assert!(
-            sender
-                .send_current_until(Instant::now() + Duration::from_secs(1))
-                .is_err()
-        );
-        drop(duplicate);
-    }
-
-    #[test]
     fn transferred_identity_is_close_on_exec_and_observes_live_sender() {
-        let (receiver, sender) = IdentityReceiver::pair().unwrap();
+        let (receiver, sender) = Fixture::pair();
         let deadline = Instant::now() + Duration::from_secs(1);
         sender.send_current_until(deadline).unwrap();
         let observation = receiver.receive_until(deadline).unwrap();

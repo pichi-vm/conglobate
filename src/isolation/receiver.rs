@@ -1,16 +1,14 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{CommandSetup, ExecutionGate};
+use super::{CommandSetup, ExecutionEndpoint};
 use crate::{
     filesystem::{Attached, InUse, Mount, RootWaitFailure},
-    process::{Admitted, Joined, Supervision},
+    process::{Joined, Supervision},
     step::SetupCutoff,
 };
 use std::{
     io,
-    os::unix::process::ExitStatusExt,
     process::{Command, ExitStatus, Stdio},
-    time::Instant,
 };
 
 /// Outer trusted helper, already contained and in its private mount namespace.
@@ -21,6 +19,7 @@ pub(crate) struct CommandReceiver<'ns> {
     channel: Supervision<Joined>,
     mount: Mount<'ns, Attached>,
     setup: CommandSetup,
+    endpoint: ExecutionEndpoint,
 }
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ReceiverFailure<'ns> {
@@ -38,36 +37,24 @@ pub(crate) enum ReceiverFailure<'ns> {
     },
     #[error("receiver command wait: {0}")]
     Wait(RootWaitFailure<'ns>),
-    #[error("receiver namespace completion: {source}")]
-    Completion {
-        source: io::Error,
-        mount: Mount<'ns, Attached>,
-    },
     #[error("receiver diagnostic relay: {source}")]
     Diagnostics {
         source: io::Error,
         mount: Mount<'ns, Attached>,
     },
-    #[error("receiver setup failed after clean view teardown: {0}")]
-    Cleaned(io::Error),
-    #[error("receiver setup failed: {source}; view cleanup: {cleanup}")]
-    Cleanup {
-        source: io::Error,
-        cleanup: io::Error,
-    },
 }
 /// Direct command helper reaped. The caller must close this view and finish
 /// local namespace cleanup before reporting cleanup completion. Shell status
-/// has already been reported. Descendant quiescence
+/// travels directly from init to the supervisor. Descendant quiescence
 /// is still the supervisor's responsibility; this is not build success.
 #[derive(Debug)]
 pub(crate) struct ReceiverCompletion<'ns> {
-    channel: Supervision<Admitted>,
+    channel: Supervision<Joined>,
     mount: Mount<'ns, Attached>,
     status: ExitStatus,
 }
 impl<'ns> ReceiverCompletion<'ns> {
-    pub(crate) fn into_parts(self) -> (Supervision<Admitted>, Mount<'ns, Attached>, ExitStatus) {
+    pub(crate) fn into_parts(self) -> (Supervision<Joined>, Mount<'ns, Attached>, ExitStatus) {
         (self.channel, self.mount, self.status)
     }
 }
@@ -76,11 +63,13 @@ impl<'ns> CommandReceiver<'ns> {
         channel: Supervision<Joined>,
         mount: Mount<'ns, Attached>,
         setup: CommandSetup,
+        endpoint: ExecutionEndpoint,
     ) -> Self {
         Self {
             channel,
             mount,
             setup,
+            endpoint,
         }
     }
     pub(crate) fn execute(
@@ -88,25 +77,13 @@ impl<'ns> CommandReceiver<'ns> {
         mut namespace_entry: Command,
         cutoff: SetupCutoff,
     ) -> Result<ReceiverCompletion<'ns>, Box<ReceiverFailure<'ns>>> {
-        let setup_deadline = match cutoff.deadline() {
-            Ok(deadline) => deadline,
-            Err(source) => {
-                return Err(Box::new(ReceiverFailure::Before {
-                    source,
-                    mount: self.mount,
-                }));
-            }
-        };
-        let (gate, endpoint) = match ExecutionGate::pair() {
-            Ok(pair) => pair,
-            Err(source) => {
-                return Err(Box::new(ReceiverFailure::Before {
-                    source,
-                    mount: self.mount,
-                }));
-            }
-        };
-        let input = match self.setup.with_gate(endpoint).into_input() {
+        if let Err(source) = cutoff.deadline() {
+            return Err(Box::new(ReceiverFailure::Before {
+                source,
+                mount: self.mount,
+            }));
+        }
+        let input = match self.setup.with_gate(self.endpoint).into_input() {
             Ok(input) => input,
             Err(source) => {
                 return Err(Box::new(ReceiverFailure::Before {
@@ -133,110 +110,14 @@ impl<'ns> CommandReceiver<'ns> {
                 }));
             }
         };
-        let startup = ReceiverStartup {
-            mount: running,
-            diagnostics,
-            deadline: setup_deadline,
-        };
-        // Channels remain outside consuming admission operations until those
-        // operations need them. In particular a start-gate failure must not
-        // close an admitted supervisor channel before bounded local cleanup.
-        let gate = match gate.wait_ready_until(setup_deadline) {
-            Ok(gate) => gate,
-            Err(source) => return Err(startup.failure(source)),
-        };
-        if let Err(source) = self.channel.report_prepared_until(setup_deadline) {
-            drop(gate);
-            return Err(startup.failure(source));
-        }
-        let channel = match self.channel.await_admission_until(setup_deadline) {
-            Ok(channel) => channel,
-            Err(source) => {
-                drop(gate);
-                return Err(startup.failure(source));
-            }
-        };
-        let gate = match gate.start_reporting_until(setup_deadline) {
-            Ok(gate) => gate,
-            Err(source) => return Err(startup.failure(source)),
-        };
-        startup.finish(channel, gate)
-    }
-}
-
-/// The receiver's launched namespace child and its diagnostic readers. Failure
-/// consumes this owner under the original setup deadline; success waits under
-/// the supervisor's independent recipe deadline. The caller retains its control
-/// channel while local failure cleanup runs whenever the protocol permits it.
-#[derive(Debug)]
-struct ReceiverStartup<'ns> {
-    mount: Mount<'ns, InUse>,
-    diagnostics: crate::process::DiagnosticRelay,
-    deadline: Instant,
-}
-impl<'ns> ReceiverStartup<'ns> {
-    fn failure(self, source: io::Error) -> Box<ReceiverFailure<'ns>> {
-        eprintln!("restricted command startup failed: {source}");
-        let (mount, _) = match self.mount.wait_until(self.deadline) {
-            Ok(completion) => completion,
-            Err(failure) => {
-                return Box::new(ReceiverFailure::Startup {
-                    source,
-                    mount: failure.into_parts().1,
-                });
-            }
-        };
-        if let Err(error) = self.diagnostics.finish() {
-            eprintln!("startup diagnostic relay: {error}");
-        }
-        Box::new(match mount.close() {
-            Ok(()) => ReceiverFailure::Cleaned(source),
-            Err(cleanup) => ReceiverFailure::Cleanup { source, cleanup },
-        })
-    }
-
-    fn finish(
-        self,
-        channel: Supervision<Admitted>,
-        gate: ExecutionGate<super::Started>,
-    ) -> Result<ReceiverCompletion<'ns>, Box<ReceiverFailure<'ns>>> {
-        let status = match gate.completion_under_supervisor() {
-            Ok(status) => status,
-            Err(source) => {
-                return Err(Box::new(ReceiverFailure::Startup {
-                    source,
-                    mount: self.mount,
-                }));
-            }
-        };
-        if let Err(source) = channel
-            .report_completion_until(status, Instant::now() + std::time::Duration::from_secs(30))
-        {
-            return Err(Box::new(ReceiverFailure::Startup {
-                source,
-                mount: self.mount,
-            }));
-        }
-        let (mount, helper_status) = self
-            .mount
+        let (mount, status) = running
             .wait_under_supervisor()
             .map_err(|error| Box::new(ReceiverFailure::Wait(error)))?;
-        if let Err(source) = self.diagnostics.finish() {
+        if let Err(source) = diagnostics.finish() {
             return Err(Box::new(ReceiverFailure::Diagnostics { source, mount }));
         }
-        let expected = status
-            .code()
-            .unwrap_or_else(|| 128 + status.signal().unwrap_or(1));
-        if helper_status.code() != Some(expected) {
-            return Err(Box::new(ReceiverFailure::Completion {
-                source: io::Error::other(
-                    "namespace helper did not finish with the reported shell outcome",
-                ),
-                mount,
-            }));
-        }
         Ok(ReceiverCompletion {
-            channel,
+            channel: self.channel,
             mount,
             status,
         })

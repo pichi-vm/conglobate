@@ -34,6 +34,16 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "sandbox-start-reject" => {
+                sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::StartGate)
+            }
+            [mode, cutoff] if mode == "sandbox-start-reject-receiver" => {
+                gate_failure::GateFailure::receiver(cutoff, true)
+            }
+            [mode] if mode == "sandbox-start-reject-child" => {
+                gate_failure::GateFailure::child(true)
+            }
+
             [mode] if mode == "sandbox-unmapped-default-group" => {
                 sandbox_failures::SandboxFailures::run(
                     sandbox_failures::FailurePoint::UnmappedDefaultGroup,
@@ -118,9 +128,9 @@ impl Lifecycle {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::Gate)
             }
             [mode, cutoff] if mode == "sandbox-gate-receiver" => {
-                gate_failure::GateFailure::receiver(cutoff)
+                gate_failure::GateFailure::receiver(cutoff, false)
             }
-            [mode] if mode == "sandbox-gate-child" => gate_failure::GateFailure::child(),
+            [mode] if mode == "sandbox-gate-child" => gate_failure::GateFailure::child(false),
             [mode, interface, port] if mode == "network-capture" => {
                 network::NetworkProbe::capture(interface, port)
             }

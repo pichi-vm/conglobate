@@ -5,7 +5,7 @@ use netlink_packet_core::{
 };
 use netlink_packet_route::RouteNetlinkMessage;
 use rustix::{
-    event::{PollFd, PollFlags, Timespec},
+    event::{PollFd, PollFlags},
     net::{self, netlink::SocketAddrNetlink},
 };
 use std::{io, os::fd::OwnedFd, time::Instant};
@@ -76,13 +76,8 @@ impl RouteRequest {
     }
     pub(super) fn ready(socket: &OwnedFd, flags: PollFlags, deadline: Instant) -> io::Result<()> {
         loop {
-            let remaining = deadline
-                .checked_duration_since(Instant::now())
-                .filter(|duration| !duration.is_zero())
-                .ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::TimedOut, "route request deadline expired")
-                })?;
-            let timeout = Timespec::try_from(remaining).map_err(io::Error::other)?;
+            let timeout = crate::deadline::Deadline::at(deadline)
+                .remaining("route request deadline expired")?;
             let mut fds = [PollFd::new(socket, flags)];
             match rustix::event::poll(&mut fds, Some(&timeout)) {
                 Ok(0) => continue,

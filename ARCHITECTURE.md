@@ -41,8 +41,10 @@ consuming transitions express what each operation may do. Important examples:
 
 - `Volume<Unmounted>` and `Volume<Mounted>` retain mapping/mount ownership.
   `VolumeView` borrows a root from storage actually retained by the step.
-- `Step<Ready>`, `Step<Running>` and `Step<Cancelling>` constrain admission.
-  Cancellation, reaping and descendant draining form one private cleanup sequence.
+- `Step<Ready>` and `Step<Running>` constrain execution. The supervisor owns
+  the direct init gate; failed start retains the entire ready step for cancellation.
+  Cancellation, reaping and descendant draining form one private cleanup sequence
+  in `ContainedHelper`, using the original teardown deadline.
 - `CommandStorage` shares preparation, transfer, COPY and finalization between
   single-root commands and bootstrap's paired roots. Networking is owned directly
   by the step, without another storage wrapper or state machine.
@@ -100,6 +102,20 @@ Ordinary ownership, ACL, mount and filesystem checks still apply.
 Each command reconstructs mounts/isolation and has a finite recipe timeout
 (default five minutes). Setup and teardown use separate fixed internal deadlines.
 Descriptor handshakes establish readiness; sleeps are not synchronization.
+The supervisor sends init's gate endpoint over the receiver's existing control
+channel. Init reports READY directly; the supervisor establishes the execution
+deadline before sending START and receives raw shell status directly. The
+receiver retains its mount/resolver/diagnostic cleanup duties and independently
+reports the namespace helper's exit status after cleanup. The supervisor checks
+that exit against init's normalized shell status. Neither status alone certifies
+quiescence, unmount or writeback. A missing or inconsistent cleanup report still
+triggers cancellation and drain, but cannot authorize storage finalization.
+
+`DescriptorPacket` shares only single-call nonblocking descriptor transport;
+protocol owners retain framing, descriptor shape/type checks and wait policy.
+Queued datagrams never gain retries. `Deadline` converts an existing absolute
+cutoff to a poll duration without renewing it; cross-process conversion remains
+in `SetupCutoff`.
 Cgroup containment, process identity, cancellation, reaping and descendant drain
 precede releasing mounts or sealing storage. Independent environment shutdown
 handles supervisor death; another build must never reuse that abandoned VM.

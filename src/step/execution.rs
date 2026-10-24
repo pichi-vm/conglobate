@@ -105,10 +105,6 @@ impl<'l, R: CommandStorage> Step<'l, Ready, R> {
                         let (error, step) = failure.into_parts();
                         (error, step.teardown())
                     }
-                    CommandStartFailure::Admission(failure) => {
-                        let (error, step) = failure.into_parts();
-                        (error, step.teardown())
-                    }
                     CommandStartFailure::Late { source, command } => (source, command.teardown()),
                 };
                 return ExecutedStorage::after_teardown(

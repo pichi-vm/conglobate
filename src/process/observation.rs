@@ -23,20 +23,8 @@ impl ProcessObservation {
             if self.has_exited()? {
                 return Ok(());
             }
-            let remaining = deadline.saturating_duration_since(Instant::now());
-            if remaining.is_zero() {
-                return Err(io::Error::new(
-                    io::ErrorKind::TimedOut,
-                    "process exit deadline expired",
-                ));
-            }
-            let timeout = Timespec {
-                tv_sec: remaining
-                    .as_secs()
-                    .try_into()
-                    .map_err(|_| io::Error::other("process exit deadline too distant"))?,
-                tv_nsec: remaining.subsec_nanos().into(),
-            };
+            let timeout = crate::deadline::Deadline::at(deadline)
+                .remaining("process exit deadline expired")?;
             let mut descriptors = [PollFd::new(&self.identity, PollFlags::IN)];
             match poll(&mut descriptors, Some(&timeout)) {
                 Ok(_) | Err(rustix::io::Errno::INTR) => {}

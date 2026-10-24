@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{Ready, Running, StartFailure, Step, StepFailure, StepStorage, TeardownCompletion};
+use super::{Ready, Running, Step, StepFailure, StepStorage, TeardownCompletion};
 use crate::{
-    process::{Admitted, Supervision},
+    isolation::{ExecutionGate, GateReady, Started},
     value::CommandTimeout,
 };
 use std::{
@@ -45,17 +45,23 @@ impl SetupBudget {
         self,
         step: Step<'a, Ready, R>,
     ) -> Result<PreparedStep<'a, R>, Box<StepFailure<'a, Ready, R>>> {
-        let result = self
-            .check()
-            .and_then(|()| {
-                step.resources
-                    .0
-                    .supervision()
-                    .wait_prepared_until(self.deadline)
-            })
-            .and_then(|()| self.check());
+        let result = (|| {
+            self.check()?;
+            let (gate, endpoint) = ExecutionGate::pair()?;
+            step.resources
+                .0
+                .supervision()
+                .send_gate_until(endpoint, self.deadline)?;
+            let gate = gate.wait_ready_until(self.deadline)?;
+            self.check()?;
+            Ok(gate)
+        })();
         match result {
-            Ok(()) => Ok(PreparedStep { step, budget: self }),
+            Ok(gate) => Ok(PreparedStep {
+                step,
+                budget: self,
+                gate,
+            }),
             Err(source) => Err(Box::new(StepFailure { source, step })),
         }
     }
@@ -66,18 +72,18 @@ impl SetupBudget {
 pub(crate) struct PreparedStep<'a, R: StepStorage> {
     step: Step<'a, Ready, R>,
     budget: SetupBudget,
+    gate: ExecutionGate<GateReady>,
 }
 #[derive(Debug)]
 pub(crate) struct RunningCommand<'a, R: StepStorage> {
-    step: Step<'a, Running, R>,
-    deadline: Instant,
+    pub(super) step: Step<'a, Running, R>,
+    pub(super) deadline: Instant,
+    pub(super) gate: ExecutionGate<Started>,
 }
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum CommandStartFailure<'a, R: StepStorage> {
     #[error("before start: {0}")]
     Ready(Box<StepFailure<'a, Ready, R>>),
-    #[error("command admission: {0}")]
-    Admission(StartFailure<'a, R>),
     #[error("start completed after its deadline: {source}")]
     Late {
         source: io::Error,
@@ -111,11 +117,22 @@ impl<'a, R: StepStorage> PreparedStep<'a, R> {
             ))));
         };
         let admission = self.budget.deadline.min(deadline);
-        let step = self
-            .step
-            .admit_until(admission)
-            .map_err(|error| Box::new(CommandStartFailure::Admission(error)))?;
-        let command = RunningCommand { step, deadline };
+        let gate = match self.gate.start_reporting_until(admission) {
+            Ok(gate) => gate,
+            Err(source) => {
+                return Err(Box::new(CommandStartFailure::Ready(Box::new(
+                    StepFailure {
+                        source,
+                        step: self.step,
+                    },
+                ))));
+            }
+        };
+        let command = RunningCommand {
+            step: self.step.running(),
+            deadline,
+            gate,
+        };
         if Instant::now() >= admission {
             return Err(Box::new(CommandStartFailure::Late {
                 source: io::Error::new(io::ErrorKind::TimedOut, "command start deadline expired"),
@@ -126,21 +143,12 @@ impl<'a, R: StepStorage> PreparedStep<'a, R> {
     }
 }
 impl<'a, R: StepStorage> RunningCommand<'a, R> {
-    pub(super) fn teardown_after_command(
-        self,
-        deadline: Instant,
-    ) -> io::Result<TeardownCompletion<R>> {
-        self.step.teardown_after_command(deadline)
-    }
-
-    pub(super) fn teardown_until(self, deadline: Instant) -> io::Result<TeardownCompletion<R>> {
-        self.step.teardown_until(deadline)
-    }
-
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn deadline(&self) -> Instant {
         self.deadline
     }
-    pub(crate) fn supervision(&self) -> &Supervision<Admitted> {
+    #[cfg(feature = "test-fixtures")]
+    pub(crate) fn supervision(&self) -> &crate::process::Supervision<crate::process::Joined> {
         self.step.supervision()
     }
     pub(crate) fn teardown(self) -> io::Result<TeardownCompletion<R>> {

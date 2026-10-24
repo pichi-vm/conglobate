@@ -4,9 +4,9 @@
 //! Protected command lifetime. Trusted helper construction and sandbox readiness
 //! remain prerequisites; this owner couples command admission to its own drain.
 use crate::{
-    domain::{ContainedHelper, HelperCancellation},
+    domain::ContainedHelper,
     isolation::{Mapped, UserNamespace},
-    process::{Admitted, ChildReaper, ReapedChildren, Supervision},
+    process::{ChildReaper, Joined, ReapedChildren, Supervision},
 };
 use std::{io, marker::PhantomData, mem::ManuallyDrop, process::ExitStatus, time::Instant};
 
@@ -60,11 +60,8 @@ pub(crate) trait StepState<'lease>: private::Sealed + std::fmt::Debug {
 pub(crate) struct Ready;
 #[derive(Debug)]
 pub(crate) struct Running;
-#[derive(Debug)]
-pub(crate) struct Cancelling;
 impl private::Sealed for Ready {}
 impl private::Sealed for Running {}
-impl private::Sealed for Cancelling {}
 impl<'a> StepState<'a> for Ready {
     type Resources = (ContainedHelper, ChildReaper);
     fn cleanup(
@@ -75,7 +72,7 @@ impl<'a> StepState<'a> for Ready {
     }
 }
 impl<'a> StepState<'a> for Running {
-    type Resources = (ContainedHelper<Admitted>, ChildReaper);
+    type Resources = (ContainedHelper, ChildReaper);
     fn cleanup(
         (helper, reaper): Self::Resources,
         deadline: Instant,
@@ -83,16 +80,6 @@ impl<'a> StepState<'a> for Running {
         helper.finish_until(reaper, deadline)
     }
 }
-impl<'a> StepState<'a> for Cancelling {
-    type Resources = (HelperCancellation, ChildReaper);
-    fn cleanup(
-        (helper, reaper): Self::Resources,
-        deadline: Instant,
-    ) -> io::Result<(ExitStatus, ReapedChildren)> {
-        helper.finish_until(reaper, deadline)
-    }
-}
-
 /// Owns assigned storage until the contained helper and every descendant stop.
 /// Preparation/admission have distinct states. Cleanup is a private linear
 /// sequence, not an externally recoverable state machine.
@@ -115,7 +102,6 @@ impl<'lease, S: StepState<'lease>, R: StepStorage> StepFailure<'lease, S, R> {
         (self.source, self.step)
     }
 }
-pub(crate) type StartFailure<'lease, R = ()> = Box<StepFailure<'lease, Cancelling, R>>;
 impl<'lease> Step<'lease, Ready> {
     fn with_storage<R: StepStorage>(self, storage: R) -> Step<'lease, Ready, R> {
         Step {
@@ -145,38 +131,19 @@ impl<'lease> Step<'lease, Ready> {
     }
 }
 impl<'lease, R: StepStorage> Step<'lease, Ready, R> {
-    pub(crate) fn admit_until(
-        self,
-        deadline: Instant,
-    ) -> Result<Step<'lease, Running, R>, StartFailure<'lease, R>> {
-        let (helper, reaper) = self.resources;
-        match helper.admit_until(deadline) {
-            Ok(helper) => Ok(Step {
-                storage: self.storage,
-                namespace: self.namespace,
-                network: self.network,
-                resources: (helper, reaper),
-                _lease: PhantomData,
-            }),
-            Err(failure) => {
-                let (source, helper) = failure.into_parts();
-                Err(Box::new(StepFailure {
-                    source,
-                    step: Step {
-                        storage: self.storage,
-                        namespace: self.namespace,
-                        network: self.network,
-                        resources: (helper, reaper),
-                        _lease: PhantomData,
-                    },
-                }))
-            }
+    fn running(self) -> Step<'lease, Running, R> {
+        Step {
+            storage: self.storage,
+            namespace: self.namespace,
+            network: self.network,
+            resources: self.resources,
+            _lease: PhantomData,
         }
     }
 }
 
 impl<R: StepStorage> Step<'_, Running, R> {
-    pub(crate) fn supervision(&self) -> &Supervision<Admitted> {
+    pub(crate) fn supervision(&self) -> &Supervision<Joined> {
         self.resources.0.supervision()
     }
 }

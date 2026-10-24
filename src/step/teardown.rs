@@ -60,9 +60,10 @@ impl<'a, R: StepStorage> Step<'a, Running, R> {
     pub(super) fn teardown_after_command(
         self,
         deadline: Instant,
+        status: std::process::ExitStatus,
     ) -> io::Result<TeardownCompletion<R>> {
         // A missing cleanup acknowledgment must not prevent cancellation/drain.
-        let acknowledged = self.supervision().cleanup_until(deadline);
+        let acknowledged = self.supervision().cleanup_until(status, deadline);
         let cleaned = self.teardown_until(deadline);
         match (acknowledged, cleaned) {
             (Ok(()), result) => result,

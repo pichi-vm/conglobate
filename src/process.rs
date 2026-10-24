@@ -20,12 +20,10 @@ pub(crate) use privileges::CommandPrivileges;
 mod reaper;
 pub(crate) use reaper::{ChildReaper, ReapedChildren};
 pub(crate) mod supervision;
-pub(crate) use supervision::{Admitted, Joined, ObservedState, Paired, Supervision};
+pub(crate) use supervision::{Joined, Paired, Supervision};
 mod observation;
 pub(crate) use observation::ProcessObservation;
 pub(crate) mod identity;
-#[cfg(test)]
-pub(crate) use identity::IdentityReceiver;
 mod launch;
 pub(crate) use launch::LaunchFailure;
 

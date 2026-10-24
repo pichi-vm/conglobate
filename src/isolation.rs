@@ -11,7 +11,9 @@ mod gate;
 mod init;
 mod namespaces;
 mod setup;
-pub(crate) use gate::{CompletionEndpoint, ExecutionEndpoint, ExecutionGate, Started};
+pub(crate) use gate::{
+    CompletionEndpoint, ExecutionEndpoint, ExecutionGate, Ready as GateReady, Started,
+};
 mod user;
 pub(crate) use namespaces::CommandNamespaces;
 pub(crate) use setup::{CommandSetup, GatedCommandSetup, GatedRootSetup};

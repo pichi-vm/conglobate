@@ -1,20 +1,12 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use rustix::{
-    event::{PollFd, PollFlags, Timespec, poll},
+    event::{PollFd, PollFlags, poll},
     fd::OwnedFd,
-    net::{
-        self, AddressFamily, RecvAncillaryBuffer, RecvFlags, ReturnFlags, SendFlags, SocketFlags,
-        SocketType,
-    },
+    net::{self, AddressFamily, SendFlags, SocketFlags, SocketType},
 };
 use std::{
-    io::{self, IoSliceMut},
-    marker::PhantomData,
-    mem::MaybeUninit,
-    os::unix::process::ExitStatusExt,
-    process::ExitStatus,
-    time::Instant,
+    io, marker::PhantomData, os::unix::process::ExitStatusExt, process::ExitStatus, time::Instant,
 };
 
 mod private {
@@ -148,46 +140,30 @@ impl CompletionPacket {
     }
 }
 impl ExecutionGate<Started> {
-    #[cfg(test)]
     pub(crate) fn completion_until(self, deadline: Instant) -> io::Result<ExitStatus> {
-        self.completion(Some(deadline))
-    }
-    /// Trusted contained receiver only. Its supervisor owns the execution timer
-    /// and cancels the entire domain if this wait cannot finish.
-    pub(super) fn completion_under_supervisor(self) -> io::Result<ExitStatus> {
-        self.completion(None)
-    }
-    fn completion(self, deadline: Option<Instant>) -> io::Result<ExitStatus> {
         loop {
-            match deadline {
-                Some(deadline) => self.socket.0.wait(PollFlags::IN, deadline)?,
-                None => self.socket.0.wait_under_supervisor()?,
-            }
+            self.socket.0.wait(PollFlags::IN, deadline)?;
             let mut bytes = [0; 9];
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
-            let mut ancillary = RecvAncillaryBuffer::new(&mut space);
-            let received = match net::recvmsg(
-                &self.socket.0.0,
-                &mut [IoSliceMut::new(&mut bytes)],
-                &mut ancillary,
-                RecvFlags::DONTWAIT | RecvFlags::CMSG_CLOEXEC,
-            ) {
-                Ok(value) => value,
-                Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
-                Err(error) => return Err(error.into()),
-            };
+            let received =
+                match crate::packet::DescriptorPacket::receive_now(&self.socket.0.0, &mut bytes) {
+                    Ok(received) => received,
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                        ) =>
+                    {
+                        continue;
+                    }
+                    Err(error) => return Err(error),
+                };
             if received.bytes == 0 {
                 return Err(io::Error::new(
                     io::ErrorKind::UnexpectedEof,
                     "command status peer closed",
                 ));
             }
-            if received.bytes != 8
-                || received
-                    .flags
-                    .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
-                || ancillary.drain().next().is_some()
-            {
+            if received.bytes != 8 || !received.descriptors.is_empty() {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "invalid command status packet",
@@ -223,10 +199,10 @@ impl ExecutionEndpoint {
         Ok(CompletionEndpoint(self.0))
     }
 
-    pub(super) fn into_handle(self) -> OwnedFd {
+    pub(crate) fn into_handle(self) -> OwnedFd {
         self.0.0
     }
-    pub(super) fn from_handle(fd: OwnedFd) -> io::Result<Self> {
+    pub(crate) fn from_handle(fd: OwnedFd) -> io::Result<Self> {
         if net::sockopt::socket_type(&fd)? != SocketType::SEQPACKET {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -242,32 +218,10 @@ impl ExecutionEndpoint {
     }
 }
 impl Socket {
-    fn wait_under_supervisor(&self) -> io::Result<()> {
-        loop {
-            let mut fds = [PollFd::new(&self.0, PollFlags::IN)];
-            match poll(&mut fds, None) {
-                Ok(_) if fds[0].revents().contains(PollFlags::IN) => return Ok(()),
-                Ok(_) => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::BrokenPipe,
-                        "command status peer lost",
-                    ));
-                }
-                Err(rustix::io::Errno::INTR) => continue,
-                Err(error) => return Err(error.into()),
-            }
-        }
-    }
-
     fn wait(&self, interest: PollFlags, deadline: Instant) -> io::Result<()> {
         loop {
-            let remaining = deadline
-                .checked_duration_since(Instant::now())
-                .filter(|duration| !duration.is_zero())
-                .ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::TimedOut, "execution gate deadline expired")
-                })?;
-            let timeout = Timespec::try_from(remaining).map_err(io::Error::other)?;
+            let timeout = crate::deadline::Deadline::at(deadline)
+                .remaining("execution gate deadline expired")?;
             let mut fds = [PollFd::new(&self.0, interest)];
             match poll(&mut fds, Some(&timeout)) {
                 Ok(0) => continue,
@@ -302,17 +256,17 @@ impl Socket {
         loop {
             self.wait(PollFlags::IN, deadline)?;
             let mut bytes = [0; 4];
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(1))];
-            let mut ancillary = RecvAncillaryBuffer::new(&mut space);
-            let received = match net::recvmsg(
-                &self.0,
-                &mut [IoSliceMut::new(&mut bytes)],
-                &mut ancillary,
-                RecvFlags::DONTWAIT | RecvFlags::CMSG_CLOEXEC,
-            ) {
+            let received = match crate::packet::DescriptorPacket::receive_now(&self.0, &mut bytes) {
                 Ok(received) => received,
-                Err(rustix::io::Errno::AGAIN | rustix::io::Errno::INTR) => continue,
-                Err(error) => return Err(error.into()),
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                    ) =>
+                {
+                    continue;
+                }
+                Err(error) => return Err(error),
             };
             if received.bytes == 0 {
                 return Err(io::Error::new(
@@ -322,10 +276,7 @@ impl Socket {
             }
             if received.bytes != 3
                 || bytes[..3] != [0x82, 1, opcode]
-                || received
-                    .flags
-                    .intersects(ReturnFlags::TRUNC | ReturnFlags::CTRUNC)
-                || ancillary.drain().next().is_some()
+                || !received.descriptors.is_empty()
             {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -339,7 +290,7 @@ impl Socket {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
+    use std::{mem::MaybeUninit, time::Duration};
     struct Fixture;
     impl Fixture {
         fn deadline() -> Instant {
@@ -383,6 +334,9 @@ mod tests {
         let (parent, child) = ExecutionGate::pair().unwrap();
         child.0.send(1, Fixture::deadline()).unwrap();
         let parent = parent.wait_ready_until(Fixture::deadline()).unwrap();
+        // Other parallel tests spawn children that can briefly inherit CLOEXEC
+        // handles before exec. Shutdown models peer loss independent of copies.
+        net::shutdown(&child.0.0, net::Shutdown::Both).unwrap();
         drop(child);
         assert_eq!(
             parent.start_until(Fixture::deadline()).unwrap_err().kind(),

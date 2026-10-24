@@ -3,16 +3,15 @@
 
 use super::{ProcessObservation, identity::IdentitySocket};
 use rustix::{
-    event::{PollFd, PollFlags, Timespec, poll},
+    event::{PollFd, PollFlags, poll},
     fd::OwnedFd,
     net::{AddressFamily, RecvFlags, SocketFlags, SocketType, recv, socketpair},
 };
 use std::{io, process::Stdio, time::Instant};
 
-mod admission;
-mod volume;
-pub(crate) use admission::Admitted;
+mod control;
 mod joining;
+mod volume;
 pub(crate) use joining::Joined;
 
 mod private {
@@ -47,7 +46,7 @@ impl Drop for ControlSocket {
 /// Pairing is not readiness, domain joining, containment or command admission.
 /// Neither side may expose this endpoint or its process identity to commands.
 /// Both endpoints progress Unpaired -> Paired through identity exchange, then
-/// Joined through domain joining, and finally Admitted
+/// Joined through domain joining
 /// through the admission handshake. Each transition consumes the prior owner;
 /// paired peer observation alone never permits image-code execution.
 ///
@@ -108,7 +107,6 @@ impl Supervision<Unpaired> {
 pub(crate) trait ObservedState: SupervisionState<Resources = ProcessObservation> {}
 impl ObservedState for Paired {}
 impl ObservedState for Joined {}
-impl ObservedState for Admitted {}
 impl<S: ObservedState> Supervision<S> {
     pub(super) fn duplicate_observation(&self) -> io::Result<ProcessObservation> {
         Ok(ProcessObservation {
@@ -132,20 +130,8 @@ impl<S: ObservedState> Supervision<S> {
             if self.peer_lost()? {
                 return Ok(());
             }
-            let remaining = deadline.saturating_duration_since(Instant::now());
-            if remaining.is_zero() {
-                return Err(io::Error::new(
-                    io::ErrorKind::TimedOut,
-                    "supervision wait deadline expired",
-                ));
-            }
-            let timeout = Timespec {
-                tv_sec: remaining
-                    .as_secs()
-                    .try_into()
-                    .map_err(|_| io::Error::other("supervision deadline too distant"))?,
-                tv_nsec: remaining.subsec_nanos().into(),
-            };
+            let timeout = crate::deadline::Deadline::at(deadline)
+                .remaining("supervision wait deadline expired")?;
             let mut descriptors = [
                 PollFd::new(&self.socket.0.0, PollFlags::IN),
                 PollFd::new(&self.peer.identity, PollFlags::IN),

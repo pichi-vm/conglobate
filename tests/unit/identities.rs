@@ -1,9 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use conglobate::process::{
-    Identified, IdentityReceiver, LaunchFailure, Process, Running, WaitError,
-    identity::IdentitySender,
-};
+use conglobate::process::{Identified, LaunchFailure, Process, Supervision, WaitError};
 use std::{
     io,
     process::{Command, Stdio},
@@ -49,9 +46,9 @@ fn trusted_child_identity_fixture() {
     if std::env::var_os("CONGLOBATE_TEST_NO_IDENTITY").is_some() {
         Fixture::hold_until_terminated();
     }
-    IdentitySender::from_stdin()
+    let _channel = Supervision::from_stdin()
         .unwrap()
-        .send_current_until(Fixture::deadline())
+        .exchange_until(Fixture::deadline())
         .unwrap();
     assert_eq!(
         std::io::Read::read(&mut io::stdin(), &mut [0u8; 1]).unwrap(),
@@ -64,22 +61,9 @@ fn trusted_child_identity_fixture() {
 
 #[test]
 fn fresh_child_hands_off_its_identity_before_parent_reaping() {
-    let (receiver, sender) = IdentityReceiver::pair().unwrap();
-    let child: Process<Running> = Command::new(std::env::current_exe().unwrap())
-        .args([
-            "--exact",
-            "tests::identities::trusted_child_identity_fixture",
-            "--nocapture",
-        ])
-        .env_clear()
-        .env("CONGLOBATE_TEST_IDENTITY_CHILD", "1")
-        .stdin(Stdio::from(sender))
-        .stdout(Stdio::null())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .unwrap()
-        .into();
-    let identity = receiver.receive_until(Fixture::deadline()).unwrap();
+    let (child, channel) =
+        Process::<Identified>::launch_supervised(Fixture::helper(false), Fixture::deadline())
+            .unwrap();
     assert!(
         child
             .wait_until(Fixture::deadline())
@@ -87,37 +71,38 @@ fn fresh_child_hands_off_its_identity_before_parent_reaping() {
             .status()
             .success()
     );
-    assert!(identity.has_exited().unwrap());
+    assert!(channel.peer_lost().unwrap());
 }
 
 #[test]
 fn an_unresponsive_peer_is_bounded_by_the_deadline() {
-    let (receiver, _sender) = IdentityReceiver::pair().unwrap();
-    let error = receiver
-        .receive_until(Instant::now() + Duration::from_millis(20))
-        .unwrap_err();
-    assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+    let (receiver, _sender) = Supervision::pair().unwrap();
+    assert_eq!(
+        receiver
+            .exchange_until(Instant::now() + Duration::from_millis(20))
+            .unwrap_err()
+            .kind(),
+        io::ErrorKind::TimedOut
+    );
 }
 
 #[test]
-fn peer_loss_is_an_error_in_both_directions() {
-    let (receiver, sender) = IdentityReceiver::pair().unwrap();
+fn peer_loss_rejects_production_identity_exchange() {
+    let (receiver, sender) = Supervision::pair().unwrap();
     drop(sender);
-    assert_eq!(
-        receiver
-            .receive_until(Fixture::deadline())
-            .unwrap_err()
-            .kind(),
-        io::ErrorKind::UnexpectedEof
-    );
-    let (receiver, sender) = IdentityReceiver::pair().unwrap();
+    assert!(receiver.exchange_until(Fixture::deadline()).is_err());
+    let (receiver, sender) = Supervision::pair().unwrap();
     drop(receiver);
-    assert!(sender.send_current_until(Fixture::deadline()).is_err());
+    let mut command = Fixture::helper(false);
+    command.stdin(Stdio::from(sender));
+    assert!(!command.status().unwrap().success());
 }
 
 #[test]
 fn identified_launch_preserves_identity_on_wait_timeout() {
-    let child = Process::<Identified>::launch(Fixture::helper(true), Fixture::deadline()).unwrap();
+    let (child, _channel) =
+        Process::<Identified>::launch_supervised(Fixture::helper(true), Fixture::deadline())
+            .unwrap();
     assert!(!child.has_exited().unwrap());
     let failure = child.wait_until(Instant::now()).unwrap_err();
     assert!(matches!(failure.error(), WaitError::Deadline));
@@ -134,7 +119,9 @@ fn identified_launch_preserves_identity_on_wait_timeout() {
 
 #[test]
 fn identified_launch_collects_normal_completion() {
-    let child = Process::<Identified>::launch(Fixture::helper(false), Fixture::deadline()).unwrap();
+    let (child, _channel) =
+        Process::<Identified>::launch_supervised(Fixture::helper(false), Fixture::deadline())
+            .unwrap();
     assert!(
         child
             .wait_until(Fixture::deadline())
@@ -147,22 +134,28 @@ fn identified_launch_collects_normal_completion() {
 #[test]
 fn launch_failure_retains_started_children_but_not_spawn_failures() {
     assert!(matches!(
-        Process::<Identified>::launch(Fixture::helper(true), Instant::now()),
+        Process::<Identified>::launch_supervised(Fixture::helper(true), Instant::now()),
         Err(LaunchFailure::Before(error)) if error.kind() == io::ErrorKind::TimedOut
     ));
     assert!(matches!(
-        Process::<Identified>::launch(
+        Process::<Identified>::launch_supervised(
             Command::new("/no-such-conglobate-helper"),
             Fixture::deadline()
         ),
         Err(LaunchFailure::Before(_))
     ));
     let failure =
-        Process::<Identified>::launch(Command::new("/bin/true"), Fixture::deadline()).unwrap_err();
+        Process::<Identified>::launch_supervised(Command::new("/bin/true"), Fixture::deadline())
+            .unwrap_err();
     let LaunchFailure::Started { source, process } = failure else {
         panic!("expected started child")
     };
-    assert_eq!(source.kind(), io::ErrorKind::UnexpectedEof);
+    // The production exchange sends first: a peer exiting without reading may
+    // reset the socket instead of producing EOF. Both retain the child owner.
+    assert!(matches!(
+        source.kind(),
+        io::ErrorKind::UnexpectedEof | io::ErrorKind::ConnectionReset | io::ErrorKind::BrokenPipe
+    ));
     assert!(
         process
             .wait_until(Fixture::deadline())
@@ -173,9 +166,11 @@ fn launch_failure_retains_started_children_but_not_spawn_failures() {
 
     let mut command = Fixture::helper(false);
     command.env("CONGLOBATE_TEST_NO_IDENTITY", "1");
-    let failure =
-        Process::<Identified>::launch(command, Instant::now() + Duration::from_millis(30))
-            .unwrap_err();
+    let failure = Process::<Identified>::launch_supervised(
+        command,
+        Instant::now() + Duration::from_millis(30),
+    )
+    .unwrap_err();
     let LaunchFailure::Started { source, process } = failure else {
         panic!("expected started child")
     };
@@ -191,7 +186,9 @@ fn launch_failure_retains_started_children_but_not_spawn_failures() {
 
 #[test]
 fn dropping_identified_helper_requests_termination_and_reaps() {
-    let child = Process::<Identified>::launch(Fixture::helper(true), Fixture::deadline()).unwrap();
+    let (child, _channel) =
+        Process::<Identified>::launch_supervised(Fixture::helper(true), Fixture::deadline())
+            .unwrap();
     // Independent test-only witness, acquired while this wait-owned child is
     // alive. Production identity acquisition uses only the helper handoff.
     let witness = rustix::process::pidfd_open(

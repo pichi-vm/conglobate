@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::DomainEvents;
-use rustix::event::{PollFd, PollFlags, Timespec, poll};
+use rustix::event::{PollFd, PollFlags, poll};
 use std::{
     fs::File,
     io::{self, Read, Seek},
@@ -29,20 +29,8 @@ impl DomainWatch {
             if !DomainEvents::try_from(text.as_str())?.populated {
                 return Ok(());
             }
-            let remaining = deadline.saturating_duration_since(Instant::now());
-            if remaining.is_zero() {
-                return Err(io::Error::new(
-                    io::ErrorKind::TimedOut,
-                    "command domain remains populated",
-                ));
-            }
-            let timeout = Timespec {
-                tv_sec: remaining
-                    .as_secs()
-                    .try_into()
-                    .map_err(|_| io::Error::other("domain deadline too distant"))?,
-                tv_nsec: remaining.subsec_nanos().into(),
-            };
+            let timeout = crate::deadline::Deadline::at(deadline)
+                .remaining("command domain remains populated")?;
             // Ordinary IN is always ready on kernfs. Changed event counters
             // report PRI | ERR; ERR is therefore not an I/O failure here.
             let mut descriptors = [PollFd::new(&self.0, PollFlags::PRI)];

@@ -65,7 +65,7 @@ jobs:
       - name: Run lifecycle cases in disposable guests
         run: |
           mkdir -p "$RUNNER_TEMP/lifecycle-results"
-          for case in cache-storage contained runtime-scope runtime-private-namespace runtime-changed-namespace clone-filter pty-filter; do
+          for case in cache-storage contained runtime-scope runtime-private-namespace runtime-changed-namespace clone-filter pty-filter sandbox-gate-failure sandbox-start-reject sandbox-held-cleanup sandbox-missing-cleanup; do
             python3 tests/lifecycle/run.py "$RUNNER_TEMP/lifecycle-results/$case" \
               --kernel "$GUEST_KERNEL" --kernel-release "$GUEST_RELEASE" \
               --module-root / --case "$case" --accel "$GUEST_ACCEL" \

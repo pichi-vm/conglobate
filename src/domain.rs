@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Fresh private cgroup-v2 domains. Containment and reaping are separate gates.
-mod drain;
 mod events;
 pub(crate) mod helper;
-pub(crate) use helper::{ContainedHelper, HelperCancellation, ReapedHelper};
+pub(crate) use helper::ContainedHelper;
 mod cancellation;
 pub(crate) use cancellation::DomainCancellation;
 mod joining;

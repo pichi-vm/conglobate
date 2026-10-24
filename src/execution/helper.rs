@@ -356,7 +356,8 @@ impl HelperInvocation {
                 })?;
                 // Borrowed mount errors become helper diagnostics immediately
                 // before guaranteed process exit. Parent ownership is separate.
-                let completion = CommandReceiver::new(channel, view, setup)
+                let endpoint = channel.receive_gate_until(deadline)?;
+                let completion = CommandReceiver::new(channel, view, setup, endpoint)
                     .execute(entry, self.cutoff)
                     .map_err(|e| e.to_string())?;
                 let (channel, view, status) = completion.into_parts();
@@ -382,7 +383,7 @@ impl HelperInvocation {
                     channel.wait_for_loss_until(deadline)?;
                     return Err(error);
                 }
-                channel.report_cleanup_until(Instant::now() + Duration::from_secs(30))?;
+                channel.report_cleanup_until(status, Instant::now() + Duration::from_secs(30))?;
                 channel.wait_for_loss_until(Instant::now() + Duration::from_secs(30))?;
                 Ok(status)
             }

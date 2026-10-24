@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{RunningCommand, StepStorage, TeardownCompletion};
+use super::{Running, RunningCommand, Step, StepStorage, TeardownCompletion};
 use std::{io, process::ExitStatus, time::Instant};
 
 /// Command observation is independent of the trusted helper's eventual exit
@@ -66,8 +66,13 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
     /// Wait for the trusted helper's report under the original execution cutoff.
     /// Even on timeout or protocol failure, retain the command for full teardown.
     pub(crate) fn observe(self) -> CommandResult<ObservedCommand<'a, R>> {
-        let outcome = match self.supervision().completion_until(self.deadline()) {
-            Ok(_) if Instant::now() >= self.deadline() => {
+        let RunningCommand {
+            step,
+            deadline,
+            gate,
+        } = self;
+        let outcome = match gate.completion_until(deadline) {
+            Ok(_) if Instant::now() >= deadline => {
                 CommandOutcome::ObservationFailed(io::Error::new(
                     io::ErrorKind::TimedOut,
                     "command completion observed after execution deadline",
@@ -79,7 +84,7 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
         CommandResult {
             outcome,
             cleanup: ObservedCommand {
-                command: self,
+                command: step,
                 deadline: Instant::now() + super::teardown::TEARDOWN_TIMEOUT,
             },
         }
@@ -90,7 +95,7 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
 /// command observation authority. Dropping it retains unfinished resources.
 #[derive(Debug)]
 pub(crate) struct ObservedCommand<'a, R: StepStorage> {
-    command: RunningCommand<'a, R>,
+    command: Step<'a, Running, R>,
     deadline: Instant,
 }
 impl<R: StepStorage> ObservedCommand<'_, R> {
@@ -102,8 +107,11 @@ impl<R: StepStorage> ObservedCommand<'_, R> {
 impl<'a, R: StepStorage> CommandResult<ObservedCommand<'a, R>> {
     pub(crate) fn teardown(self) -> CommandResult<io::Result<TeardownCompletion<R>>> {
         match self.outcome {
-            CommandOutcome::Exited(_) => self
-                .map_cleanup(|observed| observed.command.teardown_after_command(observed.deadline)),
+            CommandOutcome::Exited(status) => self.map_cleanup(|observed| {
+                observed
+                    .command
+                    .teardown_after_command(observed.deadline, status)
+            }),
             CommandOutcome::ObservationFailed(_) => {
                 self.map_cleanup(|observed| observed.command.teardown_until(observed.deadline))
             }

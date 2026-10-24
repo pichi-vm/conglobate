@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use conglobate::{
     filesystem::MountPoint,
-    isolation::{
-        CommandDevices, CommandReceiver, PrivateMountNamespace, receiver::ReceiverFailure,
-    },
+    isolation::{CommandDevices, CommandReceiver, PrivateMountNamespace},
     process::Supervision,
     step::SetupCutoff,
 };
@@ -12,7 +10,10 @@ use std::{fs, io, os::unix::net::UnixDatagram, path::Path, process::Command, tim
 #[derive(Debug)]
 pub(super) struct GateFailure;
 impl GateFailure {
-    pub(super) fn receiver(cutoff: &std::ffi::OsStr) -> Result<(), Box<dyn std::error::Error>> {
+    pub(super) fn receiver(
+        cutoff: &std::ffi::OsStr,
+        reject_start: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let cutoff = SetupCutoff::from_argument(cutoff.to_str().ok_or("non-UTF8 cutoff")?)?;
         let deadline = cutoff.deadline()?;
         let channel = Supervision::from_stdin()?
@@ -29,14 +30,18 @@ impl GateFailure {
             ))?)
             .map_err(|e| e.to_string())?;
         let mut child = Command::new(std::env::current_exe()?);
-        child.arg("sandbox-gate-child");
-        let failure = CommandReceiver::new(channel, view, setup)
+        child.arg(if reject_start {
+            "sandbox-start-reject-child"
+        } else {
+            "sandbox-gate-child"
+        });
+        let endpoint = channel.receive_gate_until(deadline)?;
+        let completion = CommandReceiver::new(channel, view, setup, endpoint)
             .execute(child, cutoff)
-            .unwrap_err();
-        match *failure {
-            ReceiverFailure::Cleaned(error) => assert_eq!(error.kind(), io::ErrorKind::BrokenPipe),
-            other => return Err(format!("expected clean start-gate failure: {other}").into()),
-        }
+            .map_err(|e| e.to_string())?;
+        let (_channel, view, status) = completion.into_parts();
+        assert!(status.success());
+        view.close().map_err(|e| e.to_string())?;
         assert!(
             fs::read_to_string("/proc/thread-self/children")?
                 .trim()
@@ -51,7 +56,7 @@ impl GateFailure {
         Ok(())
     }
 
-    pub(super) fn child() -> Result<(), Box<dyn std::error::Error>> {
+    pub(super) fn child(reject_start: bool) -> Result<(), Box<dyn std::error::Error>> {
         use rustix::net::{
             self, RecvAncillaryBuffer, RecvAncillaryMessage, RecvFlags, ReturnFlags, SendFlags,
         };
@@ -84,12 +89,41 @@ impl GateFailure {
         assert_eq!(descriptors.len(), 3);
         let gate = descriptors.pop().unwrap();
         drop(descriptors);
+        if reject_start {
+            // Deterministically reject START after READY. The supervisor must
+            // cancel and drain this blocked fixture before releasing its root.
+            net::shutdown(&gate, net::Shutdown::Read)?;
+            assert_eq!(net::send(&gate, &[0x82, 1, 1], SendFlags::NOSIGNAL)?, 3);
+            loop {
+                std::thread::park();
+            }
+        }
         let release = UnixDatagram::bind("/work/runtime-parent/gate-release.sock")?;
         release.set_read_timeout(Some(Duration::from_secs(10)))?;
-        // Shut down reception before readiness. The receiver can read Ready,
-        // but its later Start send must fail, irrespective of scheduling.
-        net::shutdown(&gate, net::Shutdown::Read)?;
+        // Admit the fixture, then hold its completion channel while the receiver
+        // owns the mount. Releasing it exits without a status report.
         assert_eq!(net::send(&gate, &[0x82, 1, 1], SendFlags::NOSIGNAL)?, 3);
+        let mut start = [0; 3];
+        loop {
+            let mut fds = [rustix::event::PollFd::new(
+                &gate,
+                rustix::event::PollFlags::IN,
+            )];
+            rustix::event::poll(
+                &mut fds,
+                Some(&rustix::event::Timespec {
+                    tv_sec: 10,
+                    tv_nsec: 0,
+                }),
+            )?;
+            match net::recv(&gate, &mut start, RecvFlags::DONTWAIT) {
+                Ok((3, _)) => break,
+                Err(rustix::io::Errno::INTR | rustix::io::Errno::AGAIN) => continue,
+                other => return Err(format!("unexpected gate start: {other:?}").into()),
+            }
+        }
+        assert_eq!(start, [0x82, 1, 2]);
+        eprintln!("restricted command completion held:");
         let mut command = [0; 4];
         assert_eq!(release.recv(&mut command)?, 4);
         assert_eq!(&command, b"exit");

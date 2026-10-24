@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-#[cfg(test)]
-use super::IdentityReceiver;
 use super::{ChildLease, Identified, Paired, Pinned, Process, Running, Supervision};
 use std::{
     io,
@@ -77,47 +75,6 @@ impl Process<Identified> {
             },
             channel,
         ))
-    }
-
-    /// Launch trusted helper code implementing IdentitySender startup. This
-    /// replaces stdin with the private identity channel; all other command
-    /// configuration belongs to the trusted caller. Never pass recipe commands.
-    ///
-    /// Child cleanup requires normal SIGCHLD zombie semantics and exclusive
-    /// reaping. This operation does not configure those process-wide settings,
-    /// establish a command sandbox, register containment or grant admission.
-    /// The deadline bounds exchange/acceptance, not the kernel's spawn operation.
-    #[cfg(test)]
-    pub(crate) fn launch(mut command: Command, deadline: Instant) -> Result<Self, LaunchFailure> {
-        if Instant::now() >= deadline {
-            return Err(LaunchFailure::Before(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "helper setup deadline expired",
-            )));
-        }
-        let (receiver, sender) = IdentityReceiver::pair().map_err(LaunchFailure::Before)?;
-        command.stdin(Stdio::from(sender));
-        let child = command.spawn().map_err(LaunchFailure::Before)?;
-        // Command retains its configured stdio. Close the parent's copy of the
-        // child's endpoint so EOF reflects actual helper loss during exchange.
-        drop(command);
-        let mut pending: Process<Running> = child.into();
-        let observation = match receiver.receive_until(deadline) {
-            Ok(observation) => observation,
-            Err(source) => {
-                return Err(LaunchFailure::Started {
-                    source,
-                    process: pending,
-                });
-            }
-        };
-        let child = pending.resources.child.take().expect("owned pending child");
-        Ok(Self {
-            resources: ChildLease {
-                child: Some(child),
-                termination: Pinned { observation },
-            },
-        })
     }
 
     #[cfg(test)]

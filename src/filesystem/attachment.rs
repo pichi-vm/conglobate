@@ -281,11 +281,6 @@ pub(crate) struct RootWaitFailure<'ns> {
     source: crate::process::WaitError,
     mount: Mount<'ns, InUse>,
 }
-impl<'ns> RootWaitFailure<'ns> {
-    pub(crate) fn into_parts(self) -> (crate::process::WaitError, Mount<'ns, InUse>) {
-        (self.source, self.mount)
-    }
-}
 impl<'ns> Mount<'ns, Attached> {
     /// Launch trusted setup with its cwd set to this owned image view. The
     /// kernel carries cwd through subsequent namespace cloning; root entry must
@@ -321,29 +316,8 @@ impl<'ns> Mount<'ns, InUse> {
     pub(crate) fn wait_under_supervisor(
         self,
     ) -> Result<(Mount<'ns, Attached>, std::process::ExitStatus), RootWaitFailure<'ns>> {
-        self.finish(|process| process.wait_under_supervisor())
-    }
-
-    /// Collect the direct setup child's status. This is not proof of descendant
-    /// quiescence or successful filesystem finalization. Failure retains both
-    /// mount and process ownership; callers can retry or request cancellation.
-    pub(crate) fn wait_until(
-        self,
-        deadline: std::time::Instant,
-    ) -> Result<(Mount<'ns, Attached>, std::process::ExitStatus), RootWaitFailure<'ns>> {
-        self.finish(|process| process.wait_until(deadline))
-    }
-    fn finish(
-        self,
-        wait: impl FnOnce(
-            crate::process::Process<crate::process::Running>,
-        ) -> Result<
-            crate::process::Process<crate::process::Reaped>,
-            crate::process::WaitFailure,
-        >,
-    ) -> Result<(Mount<'ns, Attached>, std::process::ExitStatus), RootWaitFailure<'ns>> {
         let InUseResources { process, attached } = self.resources;
-        match wait(process) {
+        match process.wait_under_supervisor() {
             Ok(process) => Ok((
                 Mount {
                     resources: attached,

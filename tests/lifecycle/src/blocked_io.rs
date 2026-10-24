@@ -31,8 +31,9 @@ impl BlockedIo {
             .open("/work/runtime-parent/receiver-view/blocked-writer")?;
         let release = UnixDatagram::bind("/work/runtime-parent/blocked-release.sock")?;
         release.set_read_timeout(Some(Duration::from_secs(10)))?;
-        channel.report_prepared_until(deadline)?;
-        let _channel = channel.await_admission_until(deadline)?;
+        let _reporter = channel
+            .receive_gate_until(deadline)?
+            .ready_for_reporting(deadline)?;
         release.send_to(
             &std::process::id().to_ne_bytes(),
             "/work/runtime-parent/blocked-ready.sock",

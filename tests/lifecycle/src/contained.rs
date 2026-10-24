@@ -120,7 +120,7 @@ impl Contained {
                 (failure, _) => return Err(format!("unexpected launch failure: {failure}").into()),
             };
             cancellation
-                .retry_until(Self::deadline())
+                .finish_until(Self::deadline())
                 .map_err(|e| e.to_string())?;
             let drained = reaper
                 .drain_until(Self::deadline())
@@ -161,15 +161,7 @@ impl Contained {
                 );
                 assert_eq!(fs::read_dir(directory)?.count(), 0);
             }
-            let (status, children) = helper
-                .cancel_until(Self::deadline())
-                .map_err(|e| e.to_string())?
-                .reap_until(Self::deadline())
-                .map_err(|e| e.to_string())?
-                .with_reaper(reaper)
-                .drain_until(Self::deadline())
-                .map_err(|e| e.to_string())?
-                .finish();
+            let (status, children) = helper.finish_until(reaper, Self::deadline())?;
             if abrupt {
                 assert_eq!(status.signal(), Some(6));
             }
