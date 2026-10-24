@@ -37,3 +37,24 @@ unchanged behavior. They are source reviews, not three test campaigns.
 M4 remains 3/3 after this bounded correction. M7 remains active. User explicitly
 deferred confidential-computing qualification; Arm64 CI is now part of the
 remaining gate. No legacy/evidence retirement has occurred.
+
+## Follow-up: Nix child death signal
+
+Nix v3 passes PTY setup, then fails on PR_SET_PDEATHSIG. Add only that prctl
+selector: it asks the kernel to signal the caller when its parent dies, not to
+signal the parent or alter any other process. Fixture v4 sets and clears it
+under the command filter and retains PTY/negative-ioctl assertions; it passes.
+Nix v4 then reaches its own seccomp installation, correctly denied. The recipe
+now disables Nix's nested filter; conglobate does not grant seccomp authority.
+
+Three focused clean self-review passes for this further M4 correction:
+1. Trace prctl selector 1 and caller-local semantics against namespace/PID
+   containment; no control over supervisor and no capability addition. Methods,
+   ownership, sealed states and safe Rust remain unchanged. Clean.
+2. Trace failure/cleanup from real Nix command errors: no output is published,
+   existing quiescence/storage teardown remains in force. The new setting cannot
+   replace cgroup containment or weaken admission. Earlier lifecycle evidence
+   applies to unchanged paths. Clean.
+3. Inspect v4 positive set/clear, PTY transfer and denied window mutation,
+   actual Nix v3/v4 failures and the restricted diff. No full NixOS success or
+   architecture qualification inferred. Preservation remains intact. Clean.

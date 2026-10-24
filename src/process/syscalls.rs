@@ -65,9 +65,11 @@ impl CommandSyscalls {
         rules.insert(i64::from(sys::__NR_socketpair), Self::equal_rules(0, &[1])?);
         // Limited prctl queries/names/credential operations. No PR_SET_SECCOMP,
         // PR_SET_MM, namespace controls, or unrestricted prctl pass-through.
+        // PR_SET_PDEATHSIG affects only the caller when its parent dies; Nix
+        // uses it for builder cleanup. It grants no authority over the parent.
         rules.insert(
             i64::from(sys::__NR_prctl),
-            Self::equal_rules(0, &[3, 7, 8, 15, 16, 21, 23, 24, 27, 28, 38, 39, 47])?,
+            Self::equal_rules(0, &[1, 3, 7, 8, 15, 16, 21, 23, 24, 27, 28, 38, 39, 47])?,
         );
         // Terminal/filesystem queries and descriptor-local flags (including
         // FIONBIO for ordinary nonblocking pipes), not filesystem mutations.

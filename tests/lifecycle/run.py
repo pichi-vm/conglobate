@@ -142,8 +142,26 @@ exec sleep infinity
             cwd=self.root, capture_output=True, check=True).stdout
         (self.output / 'initramfs.gz').write_bytes(gzip.compress(packed, compresslevel=1, mtime=0))
         kernel = self.args.kernel.read_bytes()
-        if platform.machine() == 'aarch64' and kernel.startswith(b'\x1f\x8b'):
-            kernel = gzip.decompress(kernel)
+        if platform.machine() == 'aarch64':
+            # Linux drivers/firmware/efi/libstub/zboot-header.S: explicit payload
+            # bounds and compression name; Ubuntu's QEMU lacks zstd EFI support.
+            if kernel[4:8] == b'zimg':
+                offset = int.from_bytes(kernel[8:12], 'little')
+                size = int.from_bytes(kernel[12:16], 'little')
+                compression = kernel[24:56].split(b'\0', 1)[0]
+                if offset < 64 or size == 0 or offset + size > len(kernel):
+                    raise RuntimeError('invalid trusted EFI zboot payload bounds')
+                payload = kernel[offset:offset + size]
+                if compression == b'zstd':
+                    kernel = subprocess.check_output(['zstd', '-d', '-c'], input=payload)
+                elif compression == b'gzip':
+                    kernel = gzip.decompress(payload)
+                else:
+                    raise RuntimeError(f'unsupported trusted EFI compression: {compression!r}')
+            elif kernel.startswith(b'\x1f\x8b'):
+                kernel = gzip.decompress(kernel)
+            if kernel[56:60] != b'ARM\x64':
+                raise RuntimeError('expected a decompressed Arm64 Image')
         (self.output / 'vmlinuz').write_bytes(kernel)
         status = self.output / 'status.raw'
         with status.open('wb') as stream:

@@ -23,6 +23,8 @@ impl PtyFilter {
         fs::remove_file("/dev/ptmx")?;
         std::os::unix::fs::symlink("pts/ptmx", "/dev/ptmx")?;
         CommandSyscalls::compile()?.apply()?;
+        nix::sys::prctl::set_pdeathsig(nix::sys::signal::Signal::SIGTERM)?;
+        nix::sys::prctl::set_pdeathsig(None)?;
         let master = pty::openpt(pty::OpenptFlags::RDWR | pty::OpenptFlags::NOCTTY)?;
         let name = pty::ptsname(&master, Vec::new())?;
         pty::unlockpt(&master)?;
