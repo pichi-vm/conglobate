@@ -564,10 +564,18 @@ When bootstrap supplies the input, `from` is forbidden. Otherwise it is
 required. Selecting a base image inherits all its components. The existing
 scutes pass through and new scutes chain onto the preceding root.
 
-The retained model is one new scute per directive. Each directive executes
-against a writable snapshot of the preceding filesystem state. Temporary mounts
-and processes must be quiesced before the scute is finalized. No directives
-means no new scutes. Skipping empty deltas is not part of the initial model.
+The retained model is one new scute per nonempty carapace stage. All `run` and
+`copy` directives modify the same writable snapshot of the input carapace.
+Each command retains separate isolation, timeout and network selection; stop
+and reap its descendants, flush and unmount before proceeding to the next step.
+Seal the shared snapshot only after every directive succeeds. A failed stage
+produces no publishable layer. No directives means no new scute; skipping empty
+block deltas is not part of the initial model.
+
+This does not provide Docker-style intermediate layer caching. Files created
+and deleted within the stage are not retained as separate historical layers,
+but filesystem metadata and freed blocks may still contribute to its block
+delta. Sealing is not filesystem compaction.
 
 ### 6.3 Firmware
 

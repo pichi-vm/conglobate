@@ -6239,3 +6239,28 @@ manifest and absence of network steps were independently checked. Evidence:
 preservation/m7-review/context-cli-7e92e75. This does not qualify the runtime
 ownership refactor, distro boot, other architectures or confidential platforms.
 Large guest assets remain local and are not durable M8 archives.
+
+## Sequential stages and stage-scoped carapace sealing (2026-10-23)
+
+User decision: one scute per carapace stage, replacing one scute per directive.
+All directives share one writable snapshot; per-command isolation, remount,
+timeout, networking and complete cleanup remain in CommandSandbox's existing
+directive executor. Empty stages pass through; failed stages cannot seal or
+publish. Deleted temporary files need not survive in historical intermediate
+layers, but no filesystem compaction or zero block-delta guarantee is implied.
+DESIGN.md, ARCHITECTURE.md and BUILD-FLOW.sh now state this contract.
+
+Pipeline now sequences bootstrap, carapace and firmware directly. Bootstrap
+returns Bootstrapped (sealed scute, formatter receipt, reaper); DerivedCarapace
+returns the extended chain; FirmwareTools returns the firmware pair. Removed
+CarapaceBuild and FirmwareBuild coordinators and their duplicated whole-build
+assembly. Executed paths share output assembly/inventory code, and runtime
+cleanup still occurs before the sole publication point. The inherited-only path
+continues to avoid a command runtime. Prior source remains recoverable at
+c96a782; exploratory evidence is untouched.
+
+Compilation passes; no new VM or broad test suite was launched. These changes
+invalidate previous layer-count assumptions in historical evidence. Qualification
+must demonstrate a multi-command/COPY stage adds exactly one scute, empty-stage
+pass-through, failure preventing publication, correct bootstrap/carapace/firmware
+composition and retained per-step isolation. No adherence streak advances.

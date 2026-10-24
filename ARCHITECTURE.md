@@ -14,20 +14,20 @@ prepares Git, networking, labeling policy and VM shutdown. `Pipeline` owns the
 build workspace, one execution runtime and the sole publication point. Stages
 borrow that runtime. A pass-through build needs no command runtime.
 
-The current stage coordinators still duplicate orchestration: `BootstrapBuild`
-executes subsequent carapace/firmware work, and `FirmwareBuild` executes preceding
-carapace work. They also assemble outputs and inventory independently. This is
-unfinished simplification, not the target architecture. Replace this dispatch
-with sequential stage methods returning owned results to `Pipeline`; centralize
-transformation, assembly and inventory after stages complete. Keep tool inputs
-distinct from inherited output components, and keep formatter receipts with the
-produced result. Do not introduce a generic workflow engine or persisted state.
+`Pipeline::execute` now sequences bootstrap, carapace and firmware. Bootstrap
+returns a sealed scute, formatter receipt and process-reaping owner; carapace
+returns its extended chain; firmware returns its validated pair. None orchestrates
+another stage. Output assembly and inventory creation for executed builds live
+in `Pipeline`; the inherited-only path still avoids execution resources. Tool
+inputs remain distinct from output ancestry. There is no generic workflow engine
+or persisted build state.
 
-Carapace produces one retained scute per directive; bootstrap and firmware share
-their disposable writable tool root across directives. Commands are still
-remounted and isolated per step. Completed command cleanup precedes sealing;
-runtime cleanup precedes publication. Failure to establish quiescence rejects
-the build and leaves VM disposal to the environment.
+Carapace produces one retained scute for the entire nonempty stage. All directives
+share its writable snapshot, as bootstrap and firmware share their disposable
+writable roots across directives. Command mounts and isolation are recreated per
+step. Completed command cleanup precedes sealing; runtime cleanup precedes
+publication. Failure to establish quiescence rejects the build and leaves VM
+disposal to the environment.
 
 Finish this complete structure before another broad qualification round.
 Focused compilation checks during refactoring do not advance adherence gates.
@@ -109,7 +109,7 @@ names from the original design are not additional implementation requirements.
 | execution, isolation | HelperProgram, HelperInvocation, UserNamespace<Mapped>, CommandReceiver, AssignedRoots, LabelProbe | Trusted helper entry, private mounts, mapped identity and restricted labeling admission |
 | network | NetworkInput, NetworkNamespace, CommandNetwork, CommandNetworking, ResolverInput, ResolverMount | Disabled default; captured external namespace handle and confined temporary resolver injection; environment owns NAT |
 | copy | CopySources, CopySource, CopyDestination | Explicit selected context files; exclusive confined writes; no context mount |
-| pipeline | Pipeline, BootstrapBuild, CarapaceBuild, FirmwareBuild, CompletedImage | Sequence stages, retain completed outputs and reject publication on failure |
+| pipeline | Pipeline, BootstrapBuild, Bootstrapped, DerivedCarapace, FirmwareTools, CompletedImage | Sequence stages, retain completed outputs and reject publication on failure |
 | firmware | DtbContract | Validate declared firmware contract; pipeline firmware owner extracts the declared pair after writers stop |
 | recipe::transform, transform | TransformSelection, TransformOperation, PropertyValue, TransformedDtb | Checked DTB operations and explicit default selection |
 | inventory | Inventory | Versioned deterministic encoding of actual completed work; decoding alone proves no execution or authenticity |
@@ -232,8 +232,8 @@ using the environment exception. Mount and descriptor confinement isolate them
 from supervisor resources. COPY uses the same root layout. No rootfs file import/conversion.
 Successful teardown seals the output layer and discards tool changes.
 
-CarapaceBuild derives output layers while preserving every inherited component.
-FirmwareBuild owns one disposable tool root, with no special output /mnt. It
+DerivedCarapace derives the stage output layer while preserving every inherited component.
+FirmwareTools owns one disposable tool root, with no special output /mnt. It
 extracts declared paths only after quiescence and returns a validated pair.
 TransformSelection operates without a command sandbox. Missing vs empty sections,
 CARAPACE availability, regex no-match semantics and default selection follow the

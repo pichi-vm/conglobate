@@ -1,115 +1,16 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{BuildError, CompletedImage, carapace::CarapaceBuild};
+use super::BuildError;
 use crate::{
     execution::HelperProgram,
-    input::{CheckedImage, ResolvedBuild},
-    inventory::Inventory,
+    input::ResolvedBuild,
     isolation::IdRange,
-    output::AssembledImage,
     process::ChildReaper,
     recipe::Firmware,
-    request::BuildRequest,
     step::{CommandSandbox, SetupBudget},
     storage::{Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
 };
 use std::num::NonZeroU64;
-
-#[derive(Debug)]
-pub(super) struct FirmwareBuild<'a> {
-    build: &'a ResolvedBuild,
-    stage: &'a Firmware,
-    tools: &'a CheckedImage,
-    base: Option<&'a CheckedImage>,
-}
-impl<'a> FirmwareBuild<'a> {
-    pub(super) fn new(build: &'a ResolvedBuild) -> Result<Self, BuildError> {
-        let recipe = build.captured().plan().recipe();
-        if recipe.bootstrap().is_some() {
-            return Err(BuildError::Unsupported("bootstrap coordinator"));
-        }
-        let stage = recipe
-            .firmware()
-            .ok_or(BuildError::Unsupported("missing firmware stage"))?;
-        let base = recipe
-            .carapace()
-            .and_then(|s| s.from())
-            .and_then(|name| build.images().get(name));
-        let tools = stage
-            .from()
-            .and_then(|name| build.images().get(name))
-            .or(base)
-            .ok_or(BuildError::Unsupported("missing firmware tools"))?;
-        if tools.chain().is_none() {
-            return Err(BuildError::Unsupported(
-                "firmware tools require root volume",
-            ));
-        }
-        Ok(Self {
-            build,
-            stage,
-            tools,
-            base,
-        })
-    }
-
-    pub(super) fn execute(
-        &self,
-        request: &BuildRequest,
-        workspace: &Workspace,
-        runtime: &Runtime<'_>,
-    ) -> Result<CompletedImage, BuildError> {
-        let (active, produced, root, reaper) = if self
-            .build
-            .captured()
-            .plan()
-            .recipe()
-            .carapace()
-            .is_some_and(|stage| !stage.directives().is_empty())
-        {
-            let derived = CarapaceBuild::new(self.build)?.run_layers(workspace, runtime)?;
-            let root = Some(*derived.active.root());
-            let tools = if self.stage.from().is_some() {
-                derived.active.close().map_err(BuildError::from)?;
-                self.tools
-                    .chain()
-                    .expect("validated tools")
-                    .assemble(self.build.cache(), workspace)
-                    .map_err(BuildError::from)?
-            } else {
-                derived.active
-            };
-            (tools, derived.scutes, root, derived.reaper)
-        } else {
-            (
-                self.tools
-                    .chain()
-                    .expect("validated tools")
-                    .assemble(self.build.cache(), workspace)
-                    .map_err(BuildError::from)?,
-                Vec::new(),
-                self.base.and_then(|base| base.chain()).map(|c| *c.root()),
-                ChildReaper::install()?,
-            )
-        };
-        let pair = FirmwareTools {
-            active,
-            root,
-            reaper,
-        }
-        .run(self.build, self.stage, workspace, runtime)?;
-        let image = AssembledImage::firmware(
-            self.build.cache(),
-            self.base.map(|b| b.image()),
-            &pair,
-            &produced,
-            request.output(),
-        )?;
-        let inventory = Inventory::from_build(request, self.build, &image, pair.dtb(), &produced)?;
-        inventory.check_output(&image)?;
-        Ok(CompletedImage { image, inventory })
-    }
-}
 
 /// A disposable tool chain plus the separately selected output-root identity.
 /// Consuming execution cannot turn firmware writes into retained scutes.

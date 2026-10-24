@@ -200,13 +200,134 @@ impl Pipeline {
         runtime: &Runtime<'_>,
     ) -> Result<CompletedImage, BuildError> {
         let recipe = build.captured().plan().recipe();
-        if recipe.bootstrap().is_some() {
-            bootstrap::BootstrapBuild::new(build)?.execute(&self.request, workspace, runtime)
-        } else if recipe.firmware().is_some() {
-            firmware::FirmwareBuild::new(build)?.execute(&self.request, workspace, runtime)
+        // Output ancestry is independent of the firmware's selected tool image.
+        let base = recipe
+            .carapace()
+            .and_then(|stage| stage.from())
+            .and_then(|name| build.images().get(name));
+        let (active, produced, reaper, receipt) = if recipe.bootstrap().is_some() {
+            let bootstrap::Bootstrapped {
+                scute,
+                reaper,
+                receipt,
+            } = bootstrap::BootstrapBuild::new(build)?.execute(
+                &self.request,
+                workspace,
+                runtime,
+            )?;
+            let active = crate::storage::ReadOnlyChain::from_root(std::sync::Arc::clone(&scute))
+                .map_err(BuildError::from)?;
+            (Some(active), vec![scute], reaper, Some(receipt))
         } else {
-            carapace::CarapaceBuild::new(build)?.execute(&self.request, workspace, runtime)
-        }
+            let active = base
+                .and_then(|image| image.chain())
+                .map(|chain| chain.assemble(build.cache(), workspace))
+                .transpose()
+                .map_err(BuildError::from)?;
+            (
+                active,
+                Vec::new(),
+                crate::process::ChildReaper::install()?,
+                None,
+            )
+        };
+
+        let directives = recipe
+            .carapace()
+            .map(|stage| stage.directives())
+            .unwrap_or(&[]);
+        let (active, produced, reaper) = if directives.is_empty() {
+            (active, produced, reaper)
+        } else {
+            let derived = carapace::DerivedCarapace {
+                active: active.ok_or(BuildError::InvalidExecution(
+                    "carapace requires a root volume",
+                ))?,
+                scutes: produced,
+                reaper,
+            }
+            .derive(build, workspace, runtime, directives)?;
+            (Some(derived.active), derived.scutes, derived.reaper)
+        };
+        let root = active.as_ref().map(|chain| *chain.root());
+
+        let pair = if let Some(stage) = recipe.firmware() {
+            let tools = if let Some(reference) = stage.from() {
+                if let Some(active) = active {
+                    active.close().map_err(BuildError::from)?;
+                }
+                build
+                    .images()
+                    .get(reference)
+                    .and_then(|image| image.chain())
+                    .ok_or(BuildError::InvalidExecution(
+                        "firmware tools require a root volume",
+                    ))?
+                    .assemble(build.cache(), workspace)
+                    .map_err(BuildError::from)?
+            } else {
+                active.ok_or(BuildError::InvalidExecution("missing firmware tools"))?
+            };
+            Some(
+                firmware::FirmwareTools {
+                    active: tools,
+                    root,
+                    reaper,
+                }
+                .run(build, stage, workspace, runtime)?,
+            )
+        } else {
+            if let Some(active) = active {
+                active.close().map_err(BuildError::from)?;
+            }
+            None
+        };
+
+        // Stage execution is complete. Transform, assemble and inventory once.
+        let inherited_dtb = if pair.is_none() {
+            base.map(|base| base.inherited_dtb(build.cache()))
+                .transpose()?
+                .flatten()
+        } else {
+            None
+        };
+        let transformed;
+        let dtb = if let Some(pair) = &pair {
+            pair.dtb()
+        } else {
+            let root = root.map(hex::encode);
+            transformed = recipe.transform().apply(
+                inherited_dtb.as_ref().map(|source| source.bytes()),
+                root.as_deref(),
+            )?;
+            &transformed
+        };
+        let image = if let Some(pair) = &pair {
+            AssembledImage::firmware(
+                build.cache(),
+                base.map(|base| base.image()),
+                pair,
+                &produced,
+                self.request.output(),
+            )?
+        } else if let Some(base) = base {
+            AssembledImage::derived(
+                build.cache(),
+                base.image(),
+                &produced,
+                self.request.output(),
+                dtb,
+            )?
+        } else {
+            AssembledImage::bootstrap_layers(&produced, self.request.output())?
+        };
+        let inventory = Inventory::from_build(&self.request, build, &image, dtb, &produced)?;
+        let inventory = match receipt {
+            Some(receipt) => inventory.with_formatter(receipt)?,
+            None => inventory,
+        };
+        inventory.check_output(&image)?;
+        Ok(CompletedImage { image, inventory })
     }
 }
 /// Selected inherited-image path with no command/COPY/firmware work.

@@ -1,13 +1,11 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::{BuildError, CompletedImage, rejection::DiscardStorage};
+use super::{BuildError, rejection::DiscardStorage};
 use crate::{
     execution::HelperProgram,
     formatter::{Ext4Format, FormatterManifest},
     input::{CheckedImage, ResolvedBuild},
-    inventory::Inventory,
     isolation::IdRange,
-    output::AssembledImage,
     process::ChildReaper,
     recipe::Bootstrap,
     request::BuildRequest,
@@ -43,18 +41,18 @@ impl<'a> BootstrapBuild<'a> {
             tools,
         })
     }
-    pub(super) fn execute(
+    pub(super) fn execute<'w>(
         &self,
         request: &BuildRequest,
-        workspace: &Workspace,
+        workspace: &'w Workspace,
         runtime: &Runtime<'_>,
-    ) -> Result<CompletedImage, BuildError> {
+    ) -> Result<Bootstrapped<'w>, BuildError> {
         let manifest = request.formatter_runtime().ok_or_else(|| {
             BuildError::InvalidExecution("bootstrap requires --formatter-runtime")
         })?;
         let captured = FormatterManifest::capture(manifest)?;
         match captured.stage(workspace) {
-            Ok(formatter) => self.produce(request, workspace, runtime, formatter),
+            Ok(formatter) => self.produce(workspace, runtime, formatter),
             Err(failure) => {
                 let (primary, cleanup) = failure.cleanup_with_source();
                 Err(BuildError::FormatterStaging(primary)
@@ -62,13 +60,12 @@ impl<'a> BootstrapBuild<'a> {
             }
         }
     }
-    fn produce(
+    fn produce<'w>(
         &self,
-        request: &BuildRequest,
-        workspace: &Workspace,
+        workspace: &'w Workspace,
         runtime: &Runtime<'_>,
         formatter: crate::formatter::FormatterRuntime,
-    ) -> Result<CompletedImage, BuildError> {
+    ) -> Result<Bootstrapped<'w>, BuildError> {
         let sectors =
             NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap();
         let origin = Mapping::<Created>::create()?
@@ -144,78 +141,11 @@ impl<'a> BootstrapBuild<'a> {
         );
         active.close().map_err(BuildError::from)?;
         origin.close().map_err(BuildError::from)?;
-        let produced = vec![scute];
-        let recipe = self.build.captured().plan().recipe();
-        let directives = recipe
-            .carapace()
-            .map(|stage| stage.directives())
-            .unwrap_or(&[]);
-        let (active, produced, reaper, root) = if directives.is_empty() {
-            let root = *produced[0].root();
-            (None, produced, reaper, root)
-        } else {
-            let derived = super::carapace::DerivedCarapace {
-                active: crate::storage::ReadOnlyChain::from_root(Arc::clone(&produced[0]))
-                    .map_err(BuildError::from)?,
-                scutes: produced,
-                reaper,
-            }
-            .derive(self.build, workspace, runtime, directives)?;
-            let root = *derived.active.root();
-            (Some(derived.active), derived.scutes, derived.reaper, root)
-        };
-        let (image, inventory) = if let Some(stage) = recipe.firmware() {
-            let tools = if let Some(reference) = stage.from() {
-                if let Some(active) = active {
-                    active.close().map_err(BuildError::from)?;
-                }
-                let tools = self.build.images().get(reference).ok_or_else(|| {
-                    BuildError::InvalidExecution("missing resolved firmware tools")
-                })?;
-                tools
-                    .chain()
-                    .ok_or_else(|| {
-                        BuildError::InvalidExecution("firmware tools require a root volume")
-                    })?
-                    .assemble(self.build.cache(), workspace)
-                    .map_err(BuildError::from)?
-            } else {
-                match active {
-                    Some(active) => active,
-                    None => crate::storage::ReadOnlyChain::from_root(Arc::clone(&produced[0]))
-                        .map_err(BuildError::from)?,
-                }
-            };
-            let pair = super::firmware::FirmwareTools {
-                active: tools,
-                root: Some(root),
-                reaper,
-            }
-            .run(self.build, stage, workspace, runtime)?;
-            let image = AssembledImage::firmware(
-                self.build.cache(),
-                None,
-                &pair,
-                &produced,
-                request.output(),
-            )?;
-            let inventory =
-                Inventory::from_build(request, self.build, &image, pair.dtb(), &produced)?;
-            (image, inventory)
-        } else {
-            if let Some(active) = active {
-                active.close().map_err(BuildError::from)?;
-            }
-            let root = hex::encode(root);
-            let transformed = recipe.transform().apply(None, Some(&root))?;
-            let image = AssembledImage::bootstrap_layers(&produced, request.output())?;
-            let inventory =
-                Inventory::from_build(request, self.build, &image, &transformed, &produced)?;
-            (image, inventory)
-        };
-        let inventory = inventory.with_formatter(receipt)?;
-        inventory.check_output(&image)?;
-        Ok(CompletedImage { image, inventory })
+        Ok(Bootstrapped {
+            scute,
+            reaper,
+            receipt,
+        })
     }
     fn format<'o, 'w>(
         &self,
@@ -263,4 +193,12 @@ impl<'a> BootstrapBuild<'a> {
             .with_cleanup(storage.map(|_| ()))
             .with_cleanup(runtime)
     }
+}
+
+/// Bootstrap output only: tools have been discarded, and no later stage ran.
+#[derive(Debug)]
+pub(super) struct Bootstrapped<'w> {
+    pub(super) scute: Arc<crate::storage::SealedScute<'w>>,
+    pub(super) reaper: ChildReaper,
+    pub(super) receipt: crate::formatter::FormatReceipt,
 }

@@ -32,9 +32,6 @@ abort_build() {
 run_steps() {
     while recipe_has_next_step; do
         read_next_step
-        if stage_is_carapace; then
-            create_writable_snapshot_over_current_chain
-        fi
         case "$step_kind" in
             copy)
                 mount_stage_volumes
@@ -72,11 +69,6 @@ run_steps() {
                 # Successful exit alone is not proof of filesystem durability.
                 ;;
         esac
-        if stage_is_carapace; then
-            seal_snapshot_and_extend_current_chain
-            # One retained scute per directive, including COPY. Bootstrap and
-            # firmware instead keep their writable snapshots across directives.
-        fi
     done
 }
 
@@ -128,7 +120,13 @@ for stage in bootstrap carapace firmware; do
             ;;
         carapace)
             select_current_verified_chain
+            if stage_has_no_steps; then
+                continue                 # Pass through without a new scute.
+            fi
+            create_writable_snapshot_over_current_chain
             run_steps
+            seal_snapshot_and_extend_current_chain
+            # One scute for the whole stage, not one per command/COPY step.
             # Inherit other base-image components; bootstrap output supplies the
             # implicit base when present. Explicit from then is forbidden.
             ;;

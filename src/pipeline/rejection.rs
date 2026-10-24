@@ -48,14 +48,6 @@ impl<R: DirectiveStorage> StageFailure<'_, R> {
             | Self::Execution { index, .. }
             | Self::NetworkExecution { index, .. } => *index,
         };
-        self.reject_at(index)
-    }
-
-    /// Reject a one-directive batch at its position in the containing stage.
-    pub(super) fn reject_at(self, index: usize) -> BuildError
-    where
-        R::Unmounted: DiscardStorage,
-    {
         match self {
             StageFailure::Before {
                 source, storage, ..
