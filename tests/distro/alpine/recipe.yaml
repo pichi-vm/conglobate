@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: Apache-2.0
+bootstrap:
+  from: qualification.local/fedora:43
+  filesystem: {type: ext4, size: 1GiB, properties: {label: alpine-root}}
+  derive:
+    - network: true
+      timeout: 10m
+      run: dnf -y install tar gzip
+    - copy: {from: alpine-minirootfs.tar.gz, into: /alpine-minirootfs.tar.gz}
+    - run: |
+        echo 'c5ca053cfe1d85c5b96dff8b9bc57045f7f184a30ffb6b65776409ca90388677  /alpine-minirootfs.tar.gz' | sha256sum -c -
+        tar --numeric-owner -xzf /alpine-minirootfs.tar.gz -C /mnt
+carapace:
+  derive:
+    - network: true
+      timeout: 10m
+      run: |
+        apk update
+        apk add alpine-base
+        apk info -e alpine-base openrc
+        printf 'conglobate Alpine qualification\n' > /etc/conglobate-qualified
+        printf 'alpine\n' > /etc/hostname
+        # The immutable corium root needs volatile writable state at boot.
+        printf 'tmpfs /var tmpfs defaults 0 0\ntmpfs /tmp tmpfs defaults,mode=1777 0 0\n' > /etc/fstab
+        rc-update add devfs sysinit
+        rc-update add procfs sysinit
+        rc-update add sysfs sysinit
+        rc-update add mdev sysinit
+        rc-update add hostname boot
+        rc-update add bootmisc boot
+        rc-update add localmount boot
+        rc-update add local default
+    - copy:
+        from: qualification.start
+        into: /etc/local.d/conglobate-qualification.start
+        mode: "0755"
+firmware:
+  from: qualification.local/fedora:43
+  derive:
+    - copy: {from: firmware/boot.pmi, into: /qualification-boot.pmi}
+    - copy: {from: firmware/base.dtb, into: /qualification-base.dtb}
+  into: {pmi: /qualification-boot.pmi, dtb: /qualification-base.dtb}

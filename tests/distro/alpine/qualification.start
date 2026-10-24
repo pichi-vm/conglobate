@@ -1,0 +1,8 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+set -eu
+case "$(cat /etc/alpine-release)" in 3.24.*) ;; *) exit 1 ;; esac
+test "$(cat /etc/conglobate-qualified)" = 'conglobate Alpine qualification'
+test "$(stat -c '%u:%g' /etc/conglobate-qualified)" = 0:0
+apk info -e alpine-base openrc
+printf 'CONGLOBATE_ALPINE_OPENRC_BOOT_PASS\n' > /dev/console

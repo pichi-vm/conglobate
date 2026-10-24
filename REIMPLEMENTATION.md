@@ -6425,3 +6425,13 @@ the HWE kernel image directly rather than its hardware/headers meta-package;
 the image retains its matching modules dependency. Workflow YAML and all shell
 blocks parse, and git diff --check passes. A hosted retry is required; no new
 production code change or milestone pass is claimed.
+
+## Focused integration closure and Alpine progress
+
+M4–M6 restored to three clean self-review passes using existing source-matched
+results; no repeated lifecycle campaign. Bounded Claude consensus withdrew stale
+network/thread-count concerns; its interrupted broad review is not counted as
+approval. Both CI jobs pass at 9a70e50. Added a real Alpine bootstrap/APK/OpenRC
+recipe; v1 lacked tar in Fedora tools, v2 installs it and builds/boots successfully.
+Evidence is preserved under alpine-build-v1/v2. NixOS, remaining kernel/platform
+qualification and durable retirement remain outstanding; the goal is not complete.

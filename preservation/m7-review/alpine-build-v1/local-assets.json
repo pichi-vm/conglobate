@@ -1,0 +1,17 @@
+[
+  {
+    "path": "/storage/conglobate-validation/alpine-build-v1/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+  },
+  {
+    "path": "/storage/conglobate-validation/alpine-build-v1/initramfs.gz",
+    "size": 260332942,
+    "sha256": "d7925974a0d825028ec121d85d6c21b36cb02578da31ba2dae9256541966282a"
+  },
+  {
+    "path": "/storage/conglobate-validation/alpine-build-v1/export.raw",
+    "size": 2147483648,
+    "sha256": "a7c744c13cc101ed66c29f672f92455547889cc586ce6d44fe76ae824958ea51"
+  }
+]

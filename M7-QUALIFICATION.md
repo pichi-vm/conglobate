@@ -1,8 +1,17 @@
 # M7 integrated qualification
 
-M6 is accepted with three clean self-reviews on
-preservation/m6-review/scope-v1.json. M7 is active with zero adherence passes.
-The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
+M4–M6 are accepted at three focused self-review passes; current records are
+`preservation/m7-review/linear-lifecycle/ADHERENCE.md`,
+`linear-bootstrap-adherence.md` and `linear-pipeline-adherence.md`. M7 remains
+active with no qualification gate passes. Reuse existing evidence; rerun only for
+changed behavior or a concrete unresolved finding. The long external M4 sweep
+was interrupted, its limited synthesis and source-grounded consensus preserved;
+it is not independent approval of the entire implementation.
+
+Hosted rootless and lifecycle CI both pass at 9a70e50 (40049514957 and
+40049515059). Alpine bootstrap/APK/OpenRC build and boot now pass on native amd64;
+its maintained recipe is in `tests/distro/alpine`. Earlier distro runs below
+remain evidence at their recorded source versions, not fresh current-source runs.
 
 ## Required outcomes and current evidence
 
@@ -11,12 +20,12 @@ The full goal and DESIGN.md/SANDBOX-DESIGN.txt remain authoritative.
 | Source-grounded critical review | Initial Claude review and four reconciliation rounds completed; accepted fixes and unresolved dispositions preserved in preservation/m7-review | Final review, source-grounded disposition, fixes and agreement on disputed findings |
 | Fedora build and boot | Fedora v3 passed real DNF installation, root labeling and inherited-firmware boot; guest service verifies enforcing mode, expected label and UID 0 | This covers the representative layering/SELinux case on amd64; other distros, real bootstrap/firmware-generation workloads and platform coverage remain separate |
 | Debian build and boot | Native amd64/KVM representative APT build and boot passed; `preservation/m7-review/debian-build-v2` preserves sentinel, package records and artifact hashes; v1 volatile-/var failure retained | Debian kernel generation and broader architecture/confidential coverage remain outstanding; this case packages the known Fedora-built kernel/corium pair |
-| Alpine build and boot | No sibling Alpine image repo discovered | Maintained conglobate recipe, package/firmware build and boot evidence |
+| Alpine build and boot | Native amd64 bootstrap/APK/OpenRC build and boot passed; evidence in preservation/m7-review/alpine-build-v2 | Alpine kernel generation and other architectures/platforms remain outstanding |
 | NixOS build and boot | No sibling NixOS image repo or host nix executable discovered | Maintained conglobate recipe, Nix build and boot evidence; host nix is not inherently required |
 | amd64 | Local x86_64 QEMU/KVM integration evidence exists | Representative distro qualification and complete repository checks |
 | arm64 | qemu-system-aarch64 installed | Native build/execution profile and boot coverage; executable availability proves no qualification |
 | Intel TDX, AMD SEV-SNP, Arm CCA | Hardware access has not been established | Separate evidence for each platform; missing access remains outstanding |
-| CI | Rootless and dependency jobs pass on GitHub (run 39964805125, 148ef66) | Portable disposable-VM integration, commit-message checks and green actual workflow results |
+| CI | Rootless and disposable-VM lifecycle jobs pass at 9a70e50 | Later source changes require appropriate checks; broader platform qualification remains separate |
 | Final M7 adherence | Not started | Three complete consecutive clean passes after required work |
 
 ## Initial environment/source inspection
