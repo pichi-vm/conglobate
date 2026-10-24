@@ -1,0 +1,22 @@
+{
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/linear-label-second-root-416ca11/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+  },
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/linear-label-second-root-416ca11/initramfs.gz",
+    "size": 200622933,
+    "sha256": "f42808cee906213969fae634374a0efeb7e2ca8217c6aae78d97c0529cd04192"
+  },
+  "export.raw": {
+    "path": "/storage/conglobate-validation/linear-label-second-root-416ca11/export.raw",
+    "size": 2147483648,
+    "sha256": "a7c744c13cc101ed66c29f672f92455547889cc586ce6d44fe76ae824958ea51"
+  },
+  "context.bundle": {
+    "path": "/storage/conglobate-validation/linear-label-second-root-416ca11/context.bundle",
+    "size": 2910,
+    "sha256": "b23121a391d11dd0a449dcbee405388b11a137cfa374c66ef48b6d4e90dede10"
+  }
+}

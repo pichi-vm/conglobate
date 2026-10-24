@@ -6394,3 +6394,11 @@ A focused Claude source review is active in linear-lifecycle-claude; no findings
 are accepted without source/test evaluation and consensus. M4 remains 0/3 pending
 complete review; later milestones and the overall goal remain incomplete. Large
 assets have local hashes but are not durable M8 preservation.
+
+The two additional negative labeling cases also pass: absent environment policy
+rejects admission, and a trusted fault that denies only the output filesystem
+rejects bootstrap after the tool-root probe succeeds. Both leave output absent
+and report command/runtime cleanup complete. Source archives match current
+production source. Evidence: linear-lifecycle/label-missing and
+linear-lifecycle/label-second-root plus their verification logs. These are
+negative test successes, not successful builds or complete sandbox qualification.

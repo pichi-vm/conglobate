@@ -53,3 +53,10 @@ carapace scute were additionally verified for confinement/network outputs.
 Rootless CI 40046122488 is green at 416ca11; hosted lifecycle CI remains pending
 at this observation. Claude's focused M4 review is running separately; findings
 must be source-checked and discussed before any milestone gate is advanced.
+
+Negative labeling coverage is refreshed as well. Missing policy rejects command
+admission; the second-filesystem fault permits the tool probe but denies the
+bootstrap output probe. Both assessors pass, require no recipe command admission,
+complete cleanup and absent output. Guest source snapshots match current src and
+Cargo inputs. The intentionally rejected builds have nonzero runner status;
+the verification logs document the expected negative outcomes.
