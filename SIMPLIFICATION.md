@@ -133,3 +133,11 @@ S5 clean adherence passes:
    Changes are committed on local main and pushed only to rewrite-qualification.
    3/3. Final acceptance requires both hosted workflows for the pushed head green;
    QUALIFICATION.md links those authoritative, commit-identified CI receipts.
+
+Hosted CI follow-up: both native Rust jobs, dependency policy, and Arm64 lifecycle
+passed at 811404d. The amd64 ORAS guest also exited successfully and verified all
+blobs, but terminal escape codes prefixed its marker and failed the harness.
+Capture ORAS output to keep terminal controls off the marker line. Three focused
+adherence passes confirmed (1) the copy and exact blob assertions are unchanged,
+(2) stdout/stderr remain available and nonzero status still fails, and (3) no
+production code or qualification criteria changed. Final CI remains the gate.

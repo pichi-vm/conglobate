@@ -72,18 +72,19 @@ impl OciCopy {
         let digest = index["manifests"][0]["digest"]
             .as_str()
             .ok_or("missing manifest digest")?;
-        assert!(
-            Command::new("/usr/bin/oras")
-                .args([
-                    "cp",
-                    "--from-oci-layout",
-                    "--to-oci-layout",
-                    &format!("/work/oci-output@{digest}"),
-                    "/work/oras-copy:verified"
-                ])
-                .status()?
-                .success()
-        );
+        // Capture output so ORAS cannot leave terminal controls on the marker line.
+        let copy = Command::new("/usr/bin/oras")
+            .args([
+                "cp",
+                "--from-oci-layout",
+                "--to-oci-layout",
+                &format!("/work/oci-output@{digest}"),
+                "/work/oras-copy:verified",
+            ])
+            .output()?;
+        println!("{}", String::from_utf8_lossy(&copy.stdout));
+        eprintln!("{}", String::from_utf8_lossy(&copy.stderr));
+        assert!(copy.status.success());
         let copied = Path::new("/work/oras-copy");
         let index: serde_json::Value =
             serde_json::from_slice(&fs::read(copied.join("index.json"))?)?;
