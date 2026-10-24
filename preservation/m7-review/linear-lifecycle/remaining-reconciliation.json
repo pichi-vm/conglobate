@@ -27,8 +27,8 @@
     {
       "id": "tests-003",
       "prior_status": "hosted cache-storage passes; workflow retry pending KVM permission correction",
-      "next_action": "Record terminal hosted outcome and inspect failure logs if needed; preserve prior green workflow evidence.",
-      "current_evidence": "Hosted lifecycle run 40046122549 is still installing trusted guest inputs; no current test result. The 19 native local lifecycle cases passed at the same production source."
+      "next_action": "Observe hosted retry after focused dependency fix; no lifecycle pass claimed.",
+      "current_evidence": "Run 40046122549 timed out downloading hardware firmware during apt installation. No tests ran. Full log/status preserved; workflow now selects the HWE image directly."
     }
   ]
 }

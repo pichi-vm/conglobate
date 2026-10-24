@@ -6402,3 +6402,13 @@ and report command/runtime cleanup complete. Source archives match current
 production source. Evidence: linear-lifecycle/label-missing and
 linear-lifecycle/label-second-root plus their verification logs. These are
 negative test successes, not successful builds or complete sandbox qualification.
+
+## Hosted lifecycle installation timeout and focused correction
+
+Run 40046122549 at 416ca11 timed out downloading physical-hardware firmware;
+no lifecycle test ran. Full terminal log/status and Ubuntu package metadata are
+preserved under linear-lifecycle/ci-lifecycle-final.* and CI-TIMEOUT.md. Select
+the HWE kernel image directly rather than its hardware/headers meta-package;
+the image retains its matching modules dependency. Workflow YAML and all shell
+blocks parse, and git diff --check passes. A hosted retry is required; no new
+production code change or milestone pass is claimed.
