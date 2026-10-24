@@ -1,0 +1,1 @@
+Launcher supplied a malformed index digest (extra f2 near the end). Input validation correctly rejected it before execution/publication. Corrected only the invocation and reran in linear-confinement-416ca11-v2. No production change. Large assets remain at /storage/conglobate-validation/linear-confinement-416ca11; not a durable retirement archive.

@@ -6375,3 +6375,22 @@ self-reviews are recorded in preservation/m7-review/linear-input-adherence/PASS-
 M3 is 3/3. No production behavior change or privileged retest was needed. M4 is
 next: review current lifecycle findings and qualify missing failure paths in
 maintained disposable-VM fixtures. M4–M8 remain outstanding; no goal completion.
+
+
+## M4 current-source validation batch at 416ca11
+
+Nineteen maintained native-amd64 VM lifecycle cases pass: namespace/mount/launch/
+join/attached-exit/gate failures, writeback rejection, blocked I/O, supervisor abort,
+busy/held/missing/timed-out cleanup, delayed teardown, unmapped owner/access-ACL/
+default-group IDs, external namespace pin replacement, and chained storage.
+Each guest production source snapshot matches current source. Whole CLI confinement,
+network DNS/resolver/offline composition and two-root foreign SELinux label operations
+also pass with environment-supplied mappings. Evidence and limitations are in
+preservation/m7-review/linear-lifecycle. The mistyped-pin confinement launch was
+preserved as a failure; correcting its invocation needed no code change.
+
+Rootless CI 40046122488 passed at 416ca11. Lifecycle CI 40046122549 remains running.
+A focused Claude source review is active in linear-lifecycle-claude; no findings
+are accepted without source/test evaluation and consensus. M4 remains 0/3 pending
+complete review; later milestones and the overall goal remain incomplete. Large
+assets have local hashes but are not durable M8 preservation.

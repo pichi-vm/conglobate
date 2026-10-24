@@ -1,0 +1,12 @@
+{
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/linear-lifecycle-416ca11/sandbox-mount-failure/initramfs.gz",
+    "size": 84085907,
+    "sha256": "73f7fff5a765fcc52ec6355658d17268a337f7345a189ebaf36f1ac7e8f44103"
+  },
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/linear-lifecycle-416ca11/sandbox-mount-failure/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+  }
+}

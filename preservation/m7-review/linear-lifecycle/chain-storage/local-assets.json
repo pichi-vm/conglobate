@@ -1,0 +1,12 @@
+{
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/linear-lifecycle-416ca11/chain-storage/initramfs.gz",
+    "size": 84090413,
+    "sha256": "a7c705f7f79f8c3ae6cc15d7b2a12b327ee17a916eb49cb056a87c5dba218432"
+  },
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/linear-lifecycle-416ca11/chain-storage/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+  }
+}

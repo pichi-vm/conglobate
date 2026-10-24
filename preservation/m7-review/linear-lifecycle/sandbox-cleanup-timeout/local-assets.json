@@ -1,0 +1,12 @@
+{
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/linear-lifecycle-416ca11/sandbox-cleanup-timeout/initramfs.gz",
+    "size": 84085865,
+    "sha256": "b0c773205e367ac9849e8699db7cd360e8c88556f603395520e3bf389d13742a"
+  },
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/linear-lifecycle-416ca11/sandbox-cleanup-timeout/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/linear-labels-416ca11/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+  },
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/linear-labels-416ca11/initramfs.gz",
+    "size": 331424897,
+    "sha256": "15577a8dcd0787cae5266f2e49b95a0084f99f546494f8be25dbb8b6a7595802"
+  },
+  "export.raw": {
+    "path": "/storage/conglobate-validation/linear-labels-416ca11/export.raw",
+    "size": 2147483648,
+    "sha256": "cb43644b580c6bc831f7270cbd68fdea46d5386221d99e9778fc059c931ed19e"
+  },
+  "status.raw": {
+    "path": "/storage/conglobate-validation/linear-labels-416ca11/status.raw",
+    "size": 4096,
+    "sha256": "a59c78e4cacff64d2514eaf4711a6d27e0fc203572acac551afaa4453bdb67f9"
+  },
+  "context.bundle": {
+    "path": "/storage/conglobate-validation/linear-labels-416ca11/context.bundle",
+    "size": 2543,
+    "sha256": "65232c2ed51aa07b569b02af2abf2c3dc0ea011b458b7e45ca83e14ac603c310"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/linear-lifecycle-416ca11/sandbox-unmapped-acl/initramfs.gz",
+    "size": 84085875,
+    "sha256": "d7d0cd40c3b540828c589b6e2786928c0d3cf441977d60a52c47fd10e47d407e"
+  },
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/linear-lifecycle-416ca11/sandbox-unmapped-acl/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+  }
+}

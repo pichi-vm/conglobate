@@ -1,0 +1,12 @@
+{
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/linear-lifecycle-416ca11/sandbox-writeback/initramfs.gz",
+    "size": 84085864,
+    "sha256": "70cee3b941401b69fea363280fc67077e98a5adb4f9fbce2b31ac0e8c1eeb6ba"
+  },
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/linear-lifecycle-416ca11/sandbox-writeback/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+  }
+}

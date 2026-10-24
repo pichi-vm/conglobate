@@ -1,0 +1,27 @@
+{
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/linear-confinement-416ca11-v2/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+  },
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/linear-confinement-416ca11-v2/initramfs.gz",
+    "size": 209352303,
+    "sha256": "32dde2ba57430209326b38db6bd2b7c63d4e7935adf785382360cd5c0617d749"
+  },
+  "export.raw": {
+    "path": "/storage/conglobate-validation/linear-confinement-416ca11-v2/export.raw",
+    "size": 2147483648,
+    "sha256": "44f68f85c6caa0526e80bf1d7d0fbbcdcfa6504f5f5df1590e9753db194a526f"
+  },
+  "status.raw": {
+    "path": "/storage/conglobate-validation/linear-confinement-416ca11-v2/status.raw",
+    "size": 4096,
+    "sha256": "a59c78e4cacff64d2514eaf4711a6d27e0fc203572acac551afaa4453bdb67f9"
+  },
+  "context.bundle": {
+    "path": "/storage/conglobate-validation/linear-confinement-416ca11-v2/context.bundle",
+    "size": 3784590,
+    "sha256": "3ee35c53d39244c833acaed35ad2ebe52a77c1ab082546b2fd3dafdf7f6f8ab9"
+  }
+}

@@ -1,0 +1,12 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe dm-verity
++ modprobe ext4
++ /lifecycle-tests sandbox-supervisor-death
+FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS
+SUPERVISOR_ABRUPT_DEATH_INJECTED
+/fixture.sh: line 8:   161 Aborted                    /lifecycle-tests sandbox-supervisor-death
+LIFECYCLE_EXIT 134
+[    2.326732] sysrq: Power Off
+[    2.329298] reboot: Power down

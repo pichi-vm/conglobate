@@ -1,0 +1,8 @@
+{
+  "kernel_sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508",
+  "kernel_release": "7.2.10-200.fc44.x86_64",
+  "drop": null,
+  "case": "chain-storage",
+  "architecture": "native amd64 ordinary VM",
+  "network_attached": false
+}

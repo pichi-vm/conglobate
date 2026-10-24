@@ -1,0 +1,14 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe dm-verity
++ modprobe ext4
++ /lifecycle-tests sandbox-missing-cleanup
+attached fixture: joined
+attached fixture: received volume
+attached fixture: prepared view
+MISSING_CLEANUP_RECEIPT_REJECTS_SHELL_SUCCESS_PASS
+SANDBOX_MISSING_CLEANUP_ROLLBACK_PASS
+LIFECYCLE_EXIT 0
+[    2.428668] sysrq: Power Off
+[    2.433395] reboot: Power down

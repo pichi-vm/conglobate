@@ -1,0 +1,11 @@
++ modprobe loop
++ modprobe dm-zero
++ modprobe dm-snapshot
++ modprobe dm-verity
++ modprobe ext4
++ /lifecycle-tests sandbox-namespace-failure
+trusted command helper: No space left on device (os error 28)
+SANDBOX_NAMESPACE_FAILURE_ROLLBACK_PASS
+LIFECYCLE_EXIT 0
+[    1.878616] sysrq: Power Off
+[    1.882255] reboot: Power down
