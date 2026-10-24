@@ -44,8 +44,8 @@ Historical experiments are evidence, not competing specifications.
         and Arm CCA, without nested virtualization. Use native command
         execution, Linux namespaces, idmapped kernel mounts and environment-provided BPF LSM labeling exception. UML and
         nested KVM are not the baseline; software CPU emulation is not the
-        baseline either. Actual qualification on all three platforms remains
-        required. Ordinary x86 VM tests do not establish it.
+        baseline either. Hardware qualification on all three platforms is
+        deferred by user decision. Ordinary VM/Arm64 CI tests do not establish it.
 
    1.5. Conglobate forbids unsafe Rust and uses safe library interfaces for
         privileged operations. This does not assert that dependencies contain

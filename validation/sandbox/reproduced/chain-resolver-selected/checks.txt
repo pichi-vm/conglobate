@@ -1,1 +1,0 @@
-All current chain-resolver markers checked against completed run, including six strict rejection markers and descriptor install. Safe-Rust helper clippy with warnings denied passed.

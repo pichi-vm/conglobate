@@ -1,1 +1,0 @@
-Packaging gzip failed with Disk quota exceeded. No guest started; no runtime result.

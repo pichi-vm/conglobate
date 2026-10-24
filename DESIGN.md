@@ -553,8 +553,8 @@ output scute and package its carapace. Discard the tool writable layer. No tool
 scutes or firmware components are inherited; deliberate file copies can still
 contribute output bytes. Bootstrap has no image-file `into` export. The output
 becomes the implicit input of the `carapace` section, or passes forward when it is omitted.
-The exact dual-mount flow on the actual snapshot chain remains an integration
-validation gate, separate from the passing kernel-ext4 mechanism tests.
+The dual-mount snapshot-chain integration and both-root label admission are
+covered by the retained pipeline and lifecycle evidence; see QUALIFICATION.md.
 
 ### 6.2 Carapace
 

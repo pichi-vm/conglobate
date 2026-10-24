@@ -1,1 +1,0 @@
-Compile-only failure: older fixture Step::<Ready>::new call still treated infallible assembly as Result. No VM boot; corrected that caller.

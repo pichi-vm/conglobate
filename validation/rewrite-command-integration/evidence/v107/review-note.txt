@@ -1,1 +1,0 @@
-Mapping and volume cleanup history assertions pass in VM. Host tests pass; root Clippy flags enlarged volume error size. Exact pre-fix source retained before boxing diagnostic history.

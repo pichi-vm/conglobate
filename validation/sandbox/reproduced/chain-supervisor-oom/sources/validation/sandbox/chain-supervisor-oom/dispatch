@@ -1,6 +1,0 @@
-#!/bin/bash
-set -eu
-# Trusted launcher, still outside the worker user namespace. All descendants
-# inherit workers membership; they cannot write these cgroup control paths.
-printf '%s\n' "$$" >/sys/fs/cgroup/chain-fixture/workers/cgroup.procs
-exec unshare "$@"

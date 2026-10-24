@@ -1,7 +1,0 @@
-#!/bin/bash
-set -eu
-mode=$1
-root=/work/$mode
-mount --make-rprivate /
-mount --bind "$root" "$root"
-exec python3 /invoke.py "$root" "$mode"

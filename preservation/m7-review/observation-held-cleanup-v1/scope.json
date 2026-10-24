@@ -1,6 +1,0 @@
-{
-  "review": "../observation-cutoff/REVIEW.md",
-  "platform": "native amd64 ordinary disposable VM",
-  "full_milestone_pass": false,
-  "large_assets_durably_archived": false
-}

@@ -1,9 +1,0 @@
-{
-  "review_pid": 3623751,
-  "interrupted_pid": 3864268,
-  "command": [
-    "sleep",
-    "540"
-  ],
-  "reason": "All thirteen review agents have returned; interrupt only the redundant parent wait timer, not Claude or a reviewer. The enclosing Bash continues to echo waited."
-}

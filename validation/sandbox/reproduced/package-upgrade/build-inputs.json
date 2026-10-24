@@ -1,7 +1,0 @@
-{
-  "/tmp/conglobate-rpm-upgrade-tools/root/usr/bin/rpmbuild": "fa0425340eeceaa79ebec328699b0e5ec66f52c5fa460251362943487a43da80",
-  "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/package-upgrade/fixture.spec": "882345e9c3f16ef23875f2bb3212358f0358659c24cb6f7bb88a707c17f9d96a",
-  "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/package-upgrade/build.py": "534c0fe2a2df8e9ae77901ac25581bb7b3d0ed8ae3248bba1f0c0ba4385d1758",
-  "/tmp/conglobate-upgrade-rpms/version-1.rpm": "2f076e770403d9361174ca4b1b0b2bfdd49ab629b6ed137c7b034eaf1d27e38a",
-  "/tmp/conglobate-upgrade-rpms/version-2.rpm": "3641d99d486e7eaacb32db2e14127283f3f06ea903034cacf114891f62f8d170"
-}

@@ -1,7 +1,0 @@
-#!/bin/bash
-set -eux
-export PATH=/usr/bin:/usr/sbin
-modprobe loop
-modprobe dm-zero
-modprobe dm-snapshot
-FORMATTER_DROP=running /idmap-probe formatter-failures

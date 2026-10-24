@@ -1,9 +1,0 @@
-{
-  "kernel_sha256": "f1ca869d420a061d7fff57b2f51a675c6270cea4b5aee3c3fda0bf5b33769293",
-  "kernel_release": "7.0.0-38-generic",
-  "drop": null,
-  "case": "runtime-private-namespace",
-  "architecture": "aarch64",
-  "acceleration": "tcg",
-  "network_attached": false
-}

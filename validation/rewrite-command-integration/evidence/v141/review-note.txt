@@ -1,1 +1,0 @@
-Supervisor-death suite passes through CommandPreparation::create, production policy installation and helper launch. Independent VM controller verifies retained live domain/policy/filesystem before shutdown. Full M4 remains unqualified.

@@ -1,1 +1,0 @@
-Initial receiver compilation rejected thiserror #[from] on errors owning non-static borrowed mount resources. Explicit error variants now preserve those owners without exposing them as static Error sources. No VM ran this failed version.

@@ -1,9 +1,0 @@
-{
-  "source": "target/m7-stable",
-  "destination": "/storage/conglobate-validation/build-target",
-  "copy": "rsync -aH",
-  "verification": "rsync -aHnci: exit 0, empty differences log before source removal",
-  "cutover": "rsync --remove-source-files after checksum comparison; removed only verified empty directories; original target path now a symlink",
-  "scope": "Regenerable build cache only; no /var/tmp validation artifacts removed; source files and validation evidence untouched",
-  "remote_durability": false
-}

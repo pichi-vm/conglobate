@@ -1,7 +1,0 @@
-	linux-vdso.so.1 (0x00007f6c865d7000)
-	libfuse3.so.4 => /var/tmp/conglobate-placement-fixed-v2/libfuse3.so.4 (0x00007f6c85c00000)
-	libacl.so.1 => /lib64/libacl.so.1 (0x00007f6c865b0000)
-	libblkid.so.1 => /lib64/libblkid.so.1 (0x00007f6c86573000)
-	libuuid.so.1 => /lib64/libuuid.so.1 (0x00007f6c8656a000)
-	libc.so.6 => /lib64/libc.so.6 (0x00007f6c85a07000)
-	/lib64/ld-linux-x86-64.so.2 (0x00007f6c865d9000)

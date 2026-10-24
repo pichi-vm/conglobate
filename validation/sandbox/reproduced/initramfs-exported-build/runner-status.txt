@@ -1,1 +1,0 @@
-Guest completed exit0 with generation/export/remount checks, but host harness rejected dracut[E] from kernel RPM posttrans. This run is not a clean overall pass.

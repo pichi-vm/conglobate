@@ -1,5 +1,0 @@
-#!/bin/bash
-set -eu
-mount --make-rprivate /
-mount --bind "$1" /work
-exec /publication-helper --publish

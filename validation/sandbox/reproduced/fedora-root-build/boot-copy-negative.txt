@@ -1,1 +1,0 @@
-EDQUOT while verifying/copying compressed root export. Second VM never started. Partial rootfs.gz removed; firmware files retained.

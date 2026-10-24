@@ -1,9 +1,0 @@
-#!/bin/sh
-set -eu
-export PATH=/bin
-busybox mount -t proc proc /proc
-echo READY
-echo HOSTFS_BOUNDARY_OK
-busybox sleep 30 &
-echo COMPLETE
-busybox poweroff -f

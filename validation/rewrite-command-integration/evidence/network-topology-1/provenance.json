@@ -1,9 +1,0 @@
-{
-  "base_commit": "3dcadb1884bbebd6d2bea1d409565906e5efd95d",
-  "source_sha256": {
-    "src/network.rs": "aaa5fe2207e3c6a64589454b94d4d0d44257e92e70f2bb9cf2741d7d3fdcfaf9",
-    "src/network/route.rs": "c9f2944b690d8cfb62371bf0c9c67b7990579b247d4d2519581b9c7130caa27f",
-    "src/network/topology.rs": "3c0156a24f2d322ea3c3f70898b3af5a88ec767ab71980e87c490e28b69e58b1",
-    "Cargo.lock": "23ee145028f330696fa7d83159593985f9771544cbf10c16a619e3648a87174f"
-  }
-}

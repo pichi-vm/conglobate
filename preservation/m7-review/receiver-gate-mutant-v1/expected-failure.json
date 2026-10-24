@@ -1,6 +1,0 @@
-{
-  "expected_assertion": "assertion failed: !command.supervision().peer_lost()?",
-  "detected": true,
-  "normal_worktree_receiver_sha256": "89067158071d34592746d16b3f2e7356973017a1162eeb2862bf5e6c1a252bd7",
-  "isolated_source": "/var/tmp/conglobate-gate-mutant-source-v1"
-}

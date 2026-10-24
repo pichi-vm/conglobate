@@ -1,3 +1,0 @@
-nameserver 172.27.0.2
-search build.test
-options timeout:1 attempts:1

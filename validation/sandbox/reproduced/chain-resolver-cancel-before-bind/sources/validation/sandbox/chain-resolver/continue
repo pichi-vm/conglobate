@@ -1,5 +1,0 @@
-#!/bin/bash
-set -eu
-mount -t proc -o nosuid,nodev,noexec proc /work/view/proc
-mount -t tmpfs -o nosuid,noexec tmpfs /work/view/dev
-exec /entry-helper /work/view /command --restricted

@@ -1,5 +1,0 @@
-import socket,time
-s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
-s.bind('\0conglobate-trusted-canary');s.listen()
-open('/canary-ready','w').close()
-time.sleep(120)

@@ -1,7 +1,0 @@
-make: Entering directory '/tmp/conglobate-clean-pair-v2/worker-build/misc'
-	CC /tmp/conglobate-clean-pair-v2/worker-source/misc/fuse2fs.c
-	CC /tmp/conglobate-clean-pair-v2/worker-source/misc/../debugfs/journal.c
-	CC /tmp/conglobate-clean-pair-v2/worker-source/misc/../e2fsck/recovery.c
-	CC /tmp/conglobate-clean-pair-v2/worker-source/misc/../e2fsck/revoke.c
-	LD fuse2fs
-make: Leaving directory '/tmp/conglobate-clean-pair-v2/worker-build/misc'

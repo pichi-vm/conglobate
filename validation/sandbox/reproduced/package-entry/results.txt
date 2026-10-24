@@ -1,404 +1,0 @@
-Disabled
-PACKAGE_INSTALL_BEGIN
-Updating and loading repositories:
-Repositories loaded.
-[1mPackage                       [0m [1mArch  [0m [1mVersion                [0m [1mReposito[0m [1m     Size[0m
-Installing:
-[32m acl                          [0m x86_64 0:2.4.0-1.fc44          @command 222.8 KiB
-[32m alternatives                 [0m x86_64 0:1.33-5.fc44           @command  62.1 KiB
-[32m attr                         [0m x86_64 0:2.6.0-1.fc44          @command 178.2 KiB
-[32m audit-libs                   [0m i686   0:4.2.1-1.fc44          @command 400.3 KiB
-[32m audit-libs                   [0m x86_64 0:4.2.1-1.fc44          @command 390.5 KiB
-[32m bash                         [0m x86_64 0:5.3.9-3.fc44          @command   8.5 MiB
-[32m bzip2-libs                   [0m x86_64 0:1.0.8-23.fc44         @command  80.5 KiB
-[32m ca-certificates              [0m noarch 0:2026.2.90_v9.0.317-1. @command   2.7 MiB
-[32m coreutils                    [0m x86_64 0:9.10-5.fc44           @command   5.7 MiB
-[32m coreutils-common             [0m x86_64 0:9.10-5.fc44           @command  10.7 MiB
-[32m crypto-policies              [0m noarch 0:20251128-3.git19878fe @command 132.6 KiB
-[32m crypto-policies-scripts      [0m noarch 0:20251128-3.git19878fe @command 392.7 KiB
-[32m expat                        [0m x86_64 0:2.8.5-1.fc44          @command 342.2 KiB
-[32m fedora-gpg-keys              [0m noarch 0:44-2                  @command 257.6 KiB
-[32m fedora-release               [0m noarch 0:44-18                 @command   0.0   B
-[32m fedora-release-common        [0m noarch 0:44-18                 @command  20.6 KiB
-[32m fedora-release-identity-basic[0m noarch 0:44-18                 @command 629.0   B
-[32m fedora-repos                 [0m noarch 0:44-2                  @command   4.9 KiB
-[32m filesystem                   [0m x86_64 0:3.18-52.fc44          @command 112.0   B
-[32m findutils                    [0m x86_64 1:4.10.0-7.fc44         @command   1.9 MiB
-[32m gdbm-libs                    [0m x86_64 1:1.23-11.fc44          @command 129.6 KiB
-[32m glibc                        [0m i686   0:2.43-9.fc44           @command   5.7 MiB
-[32m glibc                        [0m x86_64 0:2.43-9.fc44           @command   6.9 MiB
-[32m glibc-common                 [0m x86_64 0:2.43-9.fc44           @command   1.0 MiB
-[32m glibc-gconv-extra            [0m i686   0:2.43-9.fc44           @command   6.7 MiB
-[32m glibc-gconv-extra            [0m x86_64 0:2.43-9.fc44           @command   7.4 MiB
-[32m glibc-minimal-langpack       [0m x86_64 0:2.43-9.fc44           @command   0.0   B
-[32m gmp                          [0m x86_64 1:6.3.0-5.fc44          @command 815.2 KiB
-[32m gnulib-l10n                  [0m noarch 0:20241231-2.fc44       @command 655.0 KiB
-[32m grep                         [0m x86_64 0:3.12-3.fc44           @command   1.0 MiB
-[32m libacl                       [0m x86_64 0:2.4.0-1.fc44          @command  39.9 KiB
-[32m libattr                      [0m x86_64 0:2.6.0-1.fc44          @command  24.3 KiB
-[32m libcap                       [0m i686   0:2.78-1.fc44           @command 193.1 KiB
-[32m libcap                       [0m x86_64 0:2.78-1.fc44           @command 212.1 KiB
-[32m libcap-ng                    [0m i686   0:0.9.6-1.fc44          @command  67.3 KiB
-[32m libcap-ng                    [0m x86_64 0:0.9.6-1.fc44          @command  68.8 KiB
-[32m libeconf                     [0m i686   0:0.7.9-3.fc44          @command  64.0 KiB
-[32m libeconf                     [0m x86_64 0:0.7.9-3.fc44          @command  64.8 KiB
-[32m libffi                       [0m x86_64 0:3.5.2-2.fc44          @command  87.7 KiB
-[32m libgcc                       [0m i686   0:16.2.1-2.fc44         @command 293.7 KiB
-[32m libgcc                       [0m x86_64 0:16.2.1-2.fc44         @command 270.6 KiB
-[32m libselinux                   [0m x86_64 0:3.11-2.fc44           @command 205.2 KiB
-[32m libsepol                     [0m x86_64 0:3.11-1.fc44           @command 862.1 KiB
-[32m libtasn1                     [0m x86_64 0:4.21.0-1.fc44         @command 180.6 KiB
-[32m libuuid                      [0m x86_64 0:2.41.5-1.fc44         @command  37.2 KiB
-[32m libzstd                      [0m x86_64 0:1.5.7-5.fc44          @command 956.1 KiB
-[32m mpdecimal                    [0m x86_64 0:4.0.1-3.fc44          @command 217.1 KiB
-[32m ncurses-base                 [0m noarch 0:6.6-1.fc44            @command 329.7 KiB
-[32m ncurses-libs                 [0m x86_64 0:6.6-1.fc44            @command 968.9 KiB
-[32m openssl-libs                 [0m x86_64 1:3.5.9-1.fc44          @command   9.2 MiB
-[32m p11-kit                      [0m x86_64 0:0.26.5-1.fc44         @command   2.6 MiB
-[32m p11-kit-trust                [0m x86_64 0:0.26.5-1.fc44         @command 478.3 KiB
-[32m pam-libs                     [0m i686   0:1.7.2-2.fc44          @command 128.2 KiB
-[32m pam-libs                     [0m x86_64 0:1.7.2-2.fc44          @command 130.5 KiB
-[32m pcre2                        [0m x86_64 0:10.47-1.fc44.1        @command 718.6 KiB
-[32m pcre2-syntax                 [0m noarch 0:10.47-1.fc44.1        @command 281.9 KiB
-[32m pkcs11-provider              [0m x86_64 0:1.1-3.fc44            @command 476.3 KiB
-[32m python-pip-wheel             [0m noarch 0:26.0.1-3.fc44         @command   1.2 MiB
-[32m python-unversioned-command   [0m noarch 0:3.14.8-1.fc44         @command  23.0   B
-[32m python3                      [0m x86_64 0:3.14.8-1.fc44         @command  28.7 KiB
-[32m python3-libs                 [0m x86_64 0:3.14.8-1.fc44         @command  44.1 MiB
-[32m readline                     [0m x86_64 0:8.3-4.fc44            @command 519.5 KiB
-[32m sed                          [0m x86_64 0:4.9-7.fc44            @command 857.2 KiB
-[32m setup                        [0m noarch 0:2.15.0-28.fc44        @command 724.9 KiB
-[32m sqlite-libs                  [0m x86_64 0:3.51.2-2.fc44         @command   1.6 MiB
-[32m systemd-libs                 [0m x86_64 0:259.9-1.fc44          @command   2.4 MiB
-[32m tzdata                       [0m noarch 0:2026e-1.fc44          @command   1.3 MiB
-[32m xz-libs                      [0m x86_64 1:5.8.2-2.fc44          @command 217.7 KiB
-[32m zlib-ng-compat               [0m x86_64 0:2.3.3-3.fc44          @command 165.6 KiB
-
-Transaction Summary:
- Installing:        69 packages
-
-Total size of inbound packages is 39 MiB. Need to download 0 B.
-After this operation, 134 MiB extra will be used (install 134 MiB, remove 0 B).
-Running transaction
-[?25l[ 1/71] Verify package files              0% |   0.0   B/s |   0.0   B |  00m00s[0J[ 1/71] Verify package files             71% | 490.0   B/s |  49.0   B |  00m00s[0J[ 1/71] Verify package files            100% | 490.0   B/s |  69.0   B |  00m00s[0J[ 1/71] Verify package files            100% | 490.0   B/s |  69.0   B |  00m00s
->>> Running %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[ 1/71] Verify package files            100% | 490.0   B/s |  69.0   B |  00m00s
->>> Running %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
->>> Finished %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
->>> [33m[RPM] /rpms/acl-2.4.0-1.fc44.x86_64.rpm: Header OpenPGP V4 RSA/SHA256 signature, key ID dbfcf71c6d9f90a6: NOKEY[0m[4A[0J[ 1/71] Verify package files            100% | 490.0   B/s |  69.0   B |  00m00s
->>> Running %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
->>> Finished %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
->>> [33m[RPM] /rpms/acl-2.4.0-1.fc44.x86_64.rpm: Header OpenPGP V4 RSA/SHA256 signature, key ID dbfcf71c6d9f90a6: NOKEY[0m
->>> Running %pretrans scriptlet: crypto-policies-0:20251128-3.git19878fe.fc44.noarch[6A[0J[ 1/71] Verify package files            100% | 490.0   B/s |  69.0   B |  00m00s
->>> Running %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
->>> Finished %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
->>> [33m[RPM] /rpms/acl-2.4.0-1.fc44.x86_64.rpm: Header OpenPGP V4 RSA/SHA256 signature, key ID dbfcf71c6d9f90a6: NOKEY[0m[4A[0J[ 1/71] Verify package files            100% | 490.0   B/s |  69.0   B |  00m00s
->>> Running %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
->>> Finished %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
->>> [33m[RPM] /rpms/acl-2.4.0-1.fc44.x86_64.rpm: Header OpenPGP V4 RSA/SHA256 signature, key ID dbfcf71c6d9f90a6: NOKEY[0m
->>> Running %pretrans scriptlet: ca-certificates-0:2026.2.90_v9.0.317-1.fc44.noarch[6A[0J[ 1/71] Verify package files            100% | 490.0   B/s |  69.0   B |  00m00s
->>> Running %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
->>> Finished %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
->>> [33m[RPM] /rpms/acl-2.4.0-1.fc44.x86_64.rpm: Header OpenPGP V4 RSA/SHA256 signature, key ID dbfcf71c6d9f90a6: NOKEY[0m[4A[0J[ 1/71] Verify package files            100% | 231.0   B/s |  69.0   B |  00m00s
->>> Running %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
->>> Finished %pretrans scriptlet: filesystem-0:3.18-52.fc44.x86_64
->>> [33m[RPM] /rpms/acl-2.4.0-1.fc44.x86_64.rpm: Header OpenPGP V4 RSA/SHA256 signature, key ID dbfcf71c6d9f90a6: NOKEY[0m
-[ 2/71] Prepare transaction               0% |   1.0   B/s |   0.0   B |  01m09s[0J[ 2/71] Prepare transaction              26% |   1.0   B/s |  18.0   B |  00m51s[0J[ 2/71] Prepare transaction              79% |   1.0   B/s |  55.0   B |  00m14s[0J[ 2/71] Prepare transaction             100% |  72.0   B/s |  69.0   B |  00m00s[0J[ 2/71] Prepare transaction             100% |  70.0   B/s |  69.0   B |  00m01s
-[ 3/71] Installing libgcc-0:16.2.1-2.fc 100% |  16.6 MiB/s | 272.3 KiB |  00m00s[0J[ 3/71] Installing libgcc-0:16.2.1-2.fc 100% |   8.9 MiB/s | 272.3 KiB |  00m00s
-[ 4/71] Installing tzdata-0:2026e-1.fc4  11% |   4.7 MiB/s | 186.5 KiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  24% |   4.7 MiB/s | 379.3 KiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  36% |   4.7 MiB/s | 566.2 KiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  49% |   4.7 MiB/s | 765.6 KiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  53% |   4.7 MiB/s | 827.8 KiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  57% |   4.7 MiB/s | 901.3 KiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  62% |   4.7 MiB/s | 981.3 KiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  66% |   4.7 MiB/s |   1.0 MiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  70% |   4.7 MiB/s |   1.1 MiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  74% |   1.2 MiB/s |   1.1 MiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  79% |   1.2 MiB/s |   1.2 MiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  83% |   1.2 MiB/s |   1.3 MiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  90% |   1.2 MiB/s |   1.4 MiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4  97% |   1.2 MiB/s |   1.5 MiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4 100% | 294.0 KiB/s |   1.5 MiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4 100% | 294.0 KiB/s |   1.5 MiB |  00m00s[0J[ 4/71] Installing tzdata-0:2026e-1.fc4 100% | 675.5 KiB/s |   1.5 MiB |  00m02s
-[ 5/71] Installing pcre2-syntax-0:10.47 100% |  12.1 MiB/s | 284.3 KiB |  00m00s[0J[ 5/71] Installing pcre2-syntax-0:10.47 100% |   8.7 MiB/s | 284.3 KiB |  00m00s
-[ 6/71] Installing ncurses-base-0:6.6-1  18% |   1.7 MiB/s |  67.2 KiB |  00m00s[0J[ 6/71] Installing ncurses-base-0:6.6-1  99% |   1.7 MiB/s | 353.6 KiB |  00m00s[0J[ 6/71] Installing ncurses-base-0:6.6-1 100% |   1.7 MiB/s | 355.3 KiB |  00m00s[0J[ 6/71] Installing ncurses-base-0:6.6-1 100% |   1.5 MiB/s | 355.3 KiB |  00m00s
-[ 7/71] Installing gnulib-l10n-0:202412   4% |   5.0 MiB/s |  30.5 KiB |  00m00s[0J[ 7/71] Installing gnulib-l10n-0:202412 100% |   5.0 MiB/s | 661.9 KiB |  00m00s[0J[ 7/71] Installing gnulib-l10n-0:202412 100% |   5.0 MiB/s | 661.9 KiB |  00m00s[0J[ 7/71] Installing gnulib-l10n-0:202412 100% |   4.7 MiB/s | 661.9 KiB |  00m00s
-[ 8/71] Installing coreutils-common-0:9  36% |  44.0 MiB/s |   3.9 MiB |  00m00s[0J[ 8/71] Installing coreutils-common-0:9  72% |  44.0 MiB/s |   7.8 MiB |  00m00s[0J[ 8/71] Installing coreutils-common-0:9  99% |  44.0 MiB/s |  10.6 MiB |  00m00s[0J[ 8/71] Installing coreutils-common-0:9 100% |  44.0 MiB/s |  10.7 MiB |  00m00s[0J[ 8/71] Installing coreutils-common-0:9 100% |  44.0 MiB/s |  10.7 MiB |  00m00s[0J[ 8/71] Installing coreutils-common-0:9 100% |  20.3 MiB/s |  10.7 MiB |  00m01s
-[ 9/71] Installing fedora-release-ident 100% | 868.2 KiB/s | 888.0   B |  00m00s[0J[ 9/71] Installing fedora-release-ident 100% |  78.8 KiB/s | 888.0   B |  00m00s
-[10/71] Installing fedora-gpg-keys-0:44  31% |   1.5 MiB/s | 111.7 KiB |  00m00s[0J[10/71] Installing fedora-gpg-keys-0:44  61% |   1.5 MiB/s | 217.9 KiB |  00m00s[0J[10/71] Installing fedora-gpg-keys-0:44  92% |   1.5 MiB/s | 329.1 KiB |  00m00s[0J[10/71] Installing fedora-gpg-keys-0:44 100% |   1.5 MiB/s | 355.3 KiB |  00m00s[0J[10/71] Installing fedora-gpg-keys-0:44 100% |   1.5 MiB/s | 355.3 KiB |  00m00s[0J[10/71] Installing fedora-gpg-keys-0:44 100% | 596.2 KiB/s | 355.3 KiB |  00m01s
-[11/71] Installing fedora-repos-0:44-2. 100% |   1.4 MiB/s |   5.7 KiB |  00m00s[0J[11/71] Installing fedora-repos-0:44-2. 100% | 379.4 KiB/s |   5.7 KiB |  00m00s
-[12/71] Installing fedora-release-commo 100% | 732.7 KiB/s |  24.9 KiB |  00m00s[0J[12/71] Installing fedora-release-commo 100% | 530.0 KiB/s |  24.9 KiB |  00m00s
-[13/71] Installing fedora-release-0:44- 100% |   0.0   B/s | 124.0   B |  00m00s[0J[13/71] Installing fedora-release-0:44- 100% |  13.6 KiB/s | 124.0   B |  00m00s
->>> Running sysusers scriptlet: setup-0:2.15.0-28.fc44.noarch[1A[0J[13/71] Installing fedora-release-0:44- 100% |  13.6 KiB/s | 124.0   B |  00m00s
->>> Running sysusers scriptlet: setup-0:2.15.0-28.fc44.noarch
->>> Finished sysusers scriptlet: setup-0:2.15.0-28.fc44.noarch
->>> [33mScriptlet output:[0m
->>> [33mCreating group 'adm' with GID 4.[0m
->>> [33mCreating group 'audio' with GID 63.[0m
->>> [33mCreating group 'cdrom' with GID 11.[0m
->>> [33mCreating group 'clock' with GID 103.[0m
->>> [33mCreating group 'dialout' with GID 18.[0m
->>> [33mCreating group 'disk' with GID 6.[0m
->>> [33mCreating group 'floppy' with GID 19.[0m
->>> [33mCreating group 'ftp' with GID 50.[0m
->>> [33mCreating group 'games' with GID 20.[0m
->>> [33mCreating group 'input' with GID 104.[0m
->>> [33mCreating group 'kmem' with GID 9.[0m
->>> [33mCreating group 'kvm' with GID 36.[0m
->>> [33mCreating group 'lock' with GID 54.[0m
->>> [33mCreating group 'lp' with GID 7.[0m
->>> [33mCreating group 'mail' with GID 12.[0m
->>> [33mCreating group 'man' with GID 15.[0m
->>> [33mCreating group 'mem' with GID 8.[0m
->>> [33mCreating group 'nobody' with GID 65534.[0m
->>> [33mCreating group 'render' with GID 105.[0m
->>> [33mCreating group 'root' with GID 0.[0m
->>> [33mCreating group 'sgx' with GID 106.[0m
->>> [33mCreating group 'sys' with GID 3.[0m
->>> [33mCreating group 'tape' with GID 33.[0m
->>> [33mCreating group 'tty' with GID 5.[0m
->>> [33mCreating group 'users' with GID 100.[0m
->>> [33mCreating group 'utmp' with GID 22.[0m
->>> [33mCreating group 'video' with GID 39.[0m
->>> [33mCreating group 'wheel' with GID 10.[0m
->>> [33mCreating user 'adm' (adm) with UID 3 and GID 4.[0m
->>> [33mCreating group 'bin' with GID 1.[0m
->>> [33mCreating user 'bin' (bin) with UID 1 and GID 1.[0m
->>> [33mCreating group 'daemon' with GID 2.[0m
->>> [33mCreating user 'daemon' (daemon) with UID 2 and GID 2.[0m
->>> [33mCreating user 'ftp' (FTP User) with UID 14 and GID 50.[0m
->>> [33mCreating user 'games' (games) with UID 12 and GID 100.[0m
->>> [33mCreating user 'halt' (halt) with UID 7 and GID 0.[0m
->>> [33mCreating user 'lp' (lp) with UID 4 and GID 7.[0m
->>> [33mCreating user 'mail' (mail) with UID 8 and GID 12.[0m
->>> [33mCreating user 'nobody' (Kernel Overflow User) with UID 65534 and GID 65534.[0m
->>> [33mCreating user 'operator' (operator) with UID 11 and GID 0.[0m
->>> [33mCreating user 'root' (Super User) with UID 0 and GID 0.[0m
->>> [33mCreating user 'shutdown' (shutdown) with UID 6 and GID 0.[0m
->>> [33mCreating user 'sync' (sync) with UID 5 and GID 0.[0m
->>> [33m[0m[47A[0J[13/71] Installing fedora-release-0:44- 100% |   1.3 KiB/s | 124.0   B |  00m00s
->>> Running sysusers scriptlet: setup-0:2.15.0-28.fc44.noarch
->>> Finished sysusers scriptlet: setup-0:2.15.0-28.fc44.noarch
->>> [33mScriptlet output:[0m
->>> [33mCreating group 'adm' with GID 4.[0m
->>> [33mCreating group 'audio' with GID 63.[0m
->>> [33mCreating group 'cdrom' with GID 11.[0m
->>> [33mCreating group 'clock' with GID 103.[0m
->>> [33mCreating group 'dialout' with GID 18.[0m
->>> [33mCreating group 'disk' with GID 6.[0m
->>> [33mCreating group 'floppy' with GID 19.[0m
->>> [33mCreating group 'ftp' with GID 50.[0m
->>> [33mCreating group 'games' with GID 20.[0m
->>> [33mCreating group 'input' with GID 104.[0m
->>> [33mCreating group 'kmem' with GID 9.[0m
->>> [33mCreating group 'kvm' with GID 36.[0m
->>> [33mCreating group 'lock' with GID 54.[0m
->>> [33mCreating group 'lp' with GID 7.[0m
->>> [33mCreating group 'mail' with GID 12.[0m
->>> [33mCreating group 'man' with GID 15.[0m
->>> [33mCreating group 'mem' with GID 8.[0m
->>> [33mCreating group 'nobody' with GID 65534.[0m
->>> [33mCreating group 'render' with GID 105.[0m
->>> [33mCreating group 'root' with GID 0.[0m
->>> [33mCreating group 'sgx' with GID 106.[0m
->>> [33mCreating group 'sys' with GID 3.[0m
->>> [33mCreating group 'tape' with GID 33.[0m
->>> [33mCreating group 'tty' with GID 5.[0m
->>> [33mCreating group 'users' with GID 100.[0m
->>> [33mCreating group 'utmp' with GID 22.[0m
->>> [33mCreating group 'video' with GID 39.[0m
->>> [33mCreating group 'wheel' with GID 10.[0m
->>> [33mCreating user 'adm' (adm) with UID 3 and GID 4.[0m
->>> [33mCreating group 'bin' with GID 1.[0m
->>> [33mCreating user 'bin' (bin) with UID 1 and GID 1.[0m
->>> [33mCreating group 'daemon' with GID 2.[0m
->>> [33mCreating user 'daemon' (daemon) with UID 2 and GID 2.[0m
->>> [33mCreating user 'ftp' (FTP User) with UID 14 and GID 50.[0m
->>> [33mCreating user 'games' (games) with UID 12 and GID 100.[0m
->>> [33mCreating user 'halt' (halt) with UID 7 and GID 0.[0m
->>> [33mCreating user 'lp' (lp) with UID 4 and GID 7.[0m
->>> [33mCreating user 'mail' (mail) with UID 8 and GID 12.[0m
->>> [33mCreating user 'nobody' (Kernel Overflow User) with UID 65534 and GID 65534.[0m
->>> [33mCreating user 'operator' (operator) with UID 11 and GID 0.[0m
->>> [33mCreating user 'root' (Super User) with UID 0 and GID 0.[0m
->>> [33mCreating user 'shutdown' (shutdown) with UID 6 and GID 0.[0m
->>> [33mCreating user 'sync' (sync) with UID 5 and GID 0.[0m
->>> [33m[0m
-[14/71] Installing setup-0:2.15.0-28.fc   0% |   0.0   B/s |   0.0   B |  00m00s[0J[14/71] Installing setup-0:2.15.0-28.fc 100% |   6.8 MiB/s | 730.6 KiB |  00m00s[0J[14/71] Installing setup-0:2.15.0-28.fc 100% |   6.8 MiB/s | 730.6 KiB |  00m00s[0J[14/71] Installing setup-0:2.15.0-28.fc 100% |   6.8 MiB/s | 730.6 KiB |  00m00s
->>> Running %post scriptlet: setup-0:2.15.0-28.fc44.noarch[1A[0J[14/71] Installing setup-0:2.15.0-28.fc 100% |   6.8 MiB/s | 730.6 KiB |  00m00s[0J[14/71] Installing setup-0:2.15.0-28.fc 100% |   5.3 MiB/s | 730.6 KiB |  00m00s
-[15/71] Installing filesystem-0:3.18-52   8% | 250.7 KiB/s |  17.8 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  15% | 250.7 KiB/s |  33.1 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  22% | 250.7 KiB/s |  48.4 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  29% | 250.7 KiB/s |  63.7 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  37% | 250.7 KiB/s |  78.9 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  44% | 250.7 KiB/s |  93.8 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  50% | 250.7 KiB/s | 107.6 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  57% | 250.7 KiB/s | 121.3 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  63% | 250.7 KiB/s | 134.8 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  69% | 150.5 KiB/s | 148.2 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  76% | 150.5 KiB/s | 161.9 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  82% | 150.5 KiB/s | 175.1 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  88% | 150.5 KiB/s | 187.9 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52  93% | 150.5 KiB/s | 200.0 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52 100% |  63.6 KiB/s | 212.8 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52 100% |  63.6 KiB/s | 212.8 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52 100% |  63.6 KiB/s | 212.8 KiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[15/71] Installing filesystem-0:3.18-52 100% |  63.6 KiB/s | 212.8 KiB |  00m00s[0J[15/71] Installing filesystem-0:3.18-52 100% |  97.9 KiB/s | 212.8 KiB |  00m02s
-[16/71] Installing bash-0:5.3.9-3.fc44.   0% |   0.0   B/s |   0.0   B |  00m00s[0J[16/71] Installing bash-0:5.3.9-3.fc44.  71% |  59.1 MiB/s |   6.0 MiB |  00m00s[0J[16/71] Installing bash-0:5.3.9-3.fc44. 100% |  59.1 MiB/s |   8.5 MiB |  00m00s[0J[16/71] Installing bash-0:5.3.9-3.fc44. 100% |  59.1 MiB/s |   8.5 MiB |  00m00s[0J[16/71] Installing bash-0:5.3.9-3.fc44. 100% |  59.1 MiB/s |   8.5 MiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[16/71] Installing bash-0:5.3.9-3.fc44. 100% |  59.1 MiB/s |   8.5 MiB |  00m00s[0J[16/71] Installing bash-0:5.3.9-3.fc44. 100% |  59.1 MiB/s |   8.5 MiB |  00m00s
->>> Running %post scriptlet: bash-0:5.3.9-3.fc44.x86_64[1A[0J[16/71] Installing bash-0:5.3.9-3.fc44. 100% |  59.1 MiB/s |   8.5 MiB |  00m00s[0J[16/71] Installing bash-0:5.3.9-3.fc44. 100% |  28.7 MiB/s |   8.5 MiB |  00m00s
-[17/71] Installing glibc-common-0:2.43- 100% |  14.4 MiB/s |   1.0 MiB |  00m00s[0J[17/71] Installing glibc-common-0:2.43- 100% |  14.4 MiB/s |   1.0 MiB |  00m00s[0J[17/71] Installing glibc-common-0:2.43- 100% |  14.4 MiB/s |   1.0 MiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[17/71] Installing glibc-common-0:2.43- 100% |  14.4 MiB/s |   1.0 MiB |  00m00s[0J[17/71] Installing glibc-common-0:2.43- 100% |   9.3 MiB/s |   1.0 MiB |  00m00s
-[18/71] Installing glibc-minimal-langpa 100% |   0.0   B/s | 124.0   B |  00m00s[0J[18/71] Installing glibc-minimal-langpa 100% |   9.4 KiB/s | 124.0   B |  00m00s
->>> Running %pre scriptlet: glibc-0:2.43-9.fc44.x86_64[1A[0J[18/71] Installing glibc-minimal-langpa 100% |   9.4 KiB/s | 124.0   B |  00m00s[0J[18/71] Installing glibc-minimal-langpa 100% |   6.4 KiB/s | 124.0   B |  00m00s
-[19/71] Installing glibc-0:2.43-9.fc44.  14% |  24.5 MiB/s |   1.0 MiB |  00m00s[0J[19/71] Installing glibc-0:2.43-9.fc44. 100% |  24.5 MiB/s |   6.9 MiB |  00m00s[0J[19/71] Installing glibc-0:2.43-9.fc44. 100% |  24.5 MiB/s |   6.9 MiB |  00m00s[0J[19/71] Installing glibc-0:2.43-9.fc44. 100% |  24.5 MiB/s |   6.9 MiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[19/71] Installing glibc-0:2.43-9.fc44. 100% |  24.5 MiB/s |   6.9 MiB |  00m00s[0J[19/71] Installing glibc-0:2.43-9.fc44. 100% |  24.5 MiB/s |   6.9 MiB |  00m00s
->>> Running %post scriptlet: glibc-0:2.43-9.fc44.x86_64[1A[0J[19/71] Installing glibc-0:2.43-9.fc44. 100% |  24.5 MiB/s |   6.9 MiB |  00m00s[0J[19/71] Installing glibc-0:2.43-9.fc44. 100% |  26.4 MiB/s |   6.9 MiB |  00m00s
-[20/71] Installing ncurses-libs-0:6.6-1   7% |   3.8 MiB/s |  74.6 KiB |  00m00s[0J[20/71] Installing ncurses-libs-0:6.6-1 100% |   3.8 MiB/s | 975.4 KiB |  00m00s[0J[20/71] Installing ncurses-libs-0:6.6-1 100% |  13.6 MiB/s | 975.4 KiB |  00m00s
-[21/71] Installing glibc-gconv-extra-0:   0% | 265.6 KiB/s |  13.0 KiB |  00m28s[0J[21/71] Installing glibc-gconv-extra-0:   0% | 265.6 KiB/s |  37.0 KiB |  00m28s[0J[21/71] Installing glibc-gconv-extra-0:   0% | 265.6 KiB/s |  61.6 KiB |  00m28s[0J[21/71] Installing glibc-gconv-extra-0:  30% | 265.6 KiB/s |   2.3 MiB |  00m20s[0J[21/71] Installing glibc-gconv-extra-0:  76% | 265.6 KiB/s |   5.7 MiB |  00m06s[0J[21/71] Installing glibc-gconv-extra-0: 100% | 265.6 KiB/s |   7.5 MiB |  00m00s[0J[21/71] Installing glibc-gconv-extra-0: 100% | 265.6 KiB/s |   7.5 MiB |  00m00s[0J[21/71] Installing glibc-gconv-extra-0: 100% | 265.6 KiB/s |   7.5 MiB |  00m00s
->>> Running %post scriptlet: glibc-gconv-extra-0:2.43-9.fc44.x86_64[1A[0J[21/71] Installing glibc-gconv-extra-0: 100% | 265.6 KiB/s |   7.5 MiB |  00m00s[0J[21/71] Installing glibc-gconv-extra-0: 100% |   8.5 MiB/s |   7.5 MiB |  00m01s
-[22/71] Installing libacl-0:2.4.0-1.fc4 100% |   7.9 MiB/s |  40.7 KiB |  00m00s[0J[22/71] Installing libacl-0:2.4.0-1.fc4 100% |   2.3 MiB/s |  40.7 KiB |  00m00s
-[23/71] Installing libffi-0:3.5.2-2.fc4 100% |   7.9 MiB/s |  89.1 KiB |  00m00s[0J[23/71] Installing libffi-0:3.5.2-2.fc4 100% |   4.0 MiB/s |  89.1 KiB |  00m00s
-[24/71] Installing libattr-0:2.6.0-1.fc 100% |   3.5 MiB/s |  25.2 KiB |  00m00s[0J[24/71] Installing libattr-0:2.6.0-1.fc 100% |   1.3 MiB/s |  25.2 KiB |  00m00s
-[25/71] Installing libtasn1-0:4.21.0-1.   0% |   0.0   B/s |   0.0   B |  00m00s[0J[25/71] Installing libtasn1-0:4.21.0-1. 100% |   9.4 MiB/s | 182.4 KiB |  00m00s[0J[25/71] Installing libtasn1-0:4.21.0-1. 100% |   6.1 MiB/s | 182.4 KiB |  00m00s
-[26/71] Installing p11-kit-0:0.26.5-1.f  81% |  29.7 MiB/s |   2.1 MiB |  00m00s[0J[26/71] Installing p11-kit-0:0.26.5-1.f 100% |  29.7 MiB/s |   2.6 MiB |  00m00s[0J[26/71] Installing p11-kit-0:0.26.5-1.f 100% |  29.7 MiB/s |   2.6 MiB |  00m00s[0J[26/71] Installing p11-kit-0:0.26.5-1.f 100% |  29.7 MiB/s |   2.6 MiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[26/71] Installing p11-kit-0:0.26.5-1.f 100% |  29.7 MiB/s |   2.6 MiB |  00m00s[0J[26/71] Installing p11-kit-0:0.26.5-1.f 100% |   8.6 MiB/s |   2.6 MiB |  00m00s
-[27/71] Installing pcre2-0:10.47-1.fc44 100% |  46.9 MiB/s | 720.0 KiB |  00m00s[0J[27/71] Installing pcre2-0:10.47-1.fc44 100% |  26.0 MiB/s | 720.0 KiB |  00m00s
-[28/71] Installing zlib-ng-compat-0:2.3 100% |  27.1 MiB/s | 166.5 KiB |  00m00s[0J[28/71] Installing zlib-ng-compat-0:2.3 100% |  27.1 MiB/s | 166.5 KiB |  00m00s
->>> Running %pre scriptlet: crypto-policies-0:20251128-3.git19878fe.fc44.noarch[1A[0J[28/71] Installing zlib-ng-compat-0:2.3 100% |  27.1 MiB/s | 166.5 KiB |  00m00s[0J[28/71] Installing zlib-ng-compat-0:2.3 100% |   3.7 MiB/s | 166.5 KiB |  00m00s
-[29/71] Installing crypto-policies-0:20   0% |   0.0   B/s |   0.0   B |  00m00s[0J[29/71] Installing crypto-policies-0:20  73% |   1.1 MiB/s | 115.7 KiB |  00m00s[0J[29/71] Installing crypto-policies-0:20 100% |   1.1 MiB/s | 157.7 KiB |  00m00s[0J[29/71] Installing crypto-policies-0:20 100% |   1.1 MiB/s | 157.7 KiB |  00m00s[0J[29/71] Installing crypto-policies-0:20 100% |   1.1 MiB/s | 157.7 KiB |  00m00s
->>> Running %post scriptlet: crypto-policies-0:20251128-3.git19878fe.fc44.noarch[1A[0J[29/71] Installing crypto-policies-0:20 100% |   1.1 MiB/s | 157.7 KiB |  00m00s[0J[29/71] Installing crypto-policies-0:20 100% | 613.5 KiB/s | 157.7 KiB |  00m00s
-[30/71] Installing grep-0:3.12-3.fc44.x  77% |  11.8 MiB/s | 800.1 KiB |  00m00s[0J[30/71] Installing grep-0:3.12-3.fc44.x 100% |  11.8 MiB/s |   1.0 MiB |  00m00s[0J[30/71] Installing grep-0:3.12-3.fc44.x 100% |  11.8 MiB/s |   1.0 MiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[30/71] Installing grep-0:3.12-3.fc44.x 100% |  11.8 MiB/s |   1.0 MiB |  00m00s[0J[30/71] Installing grep-0:3.12-3.fc44.x 100% |   5.4 MiB/s |   1.0 MiB |  00m00s
-[31/71] Installing readline-0:8.3-4.fc4   0% |   0.0   B/s |   0.0   B |  00m00s[0J[31/71] Installing readline-0:8.3-4.fc4 100% |  22.1 MiB/s | 521.6 KiB |  00m00s[0J[31/71] Installing readline-0:8.3-4.fc4 100% |  15.4 MiB/s | 521.6 KiB |  00m00s
-[32/71] Installing alternatives-0:1.33- 100% |   5.6 MiB/s |  63.6 KiB |  00m00s[0J[32/71] Installing alternatives-0:1.33- 100% |   5.6 MiB/s |  63.6 KiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[32/71] Installing alternatives-0:1.33- 100% |   5.6 MiB/s |  63.6 KiB |  00m00s[0J[32/71] Installing alternatives-0:1.33- 100% |   1.5 MiB/s |  63.6 KiB |  00m00s
-[33/71] Installing p11-kit-trust-0:0.26 100% |  22.3 MiB/s | 480.1 KiB |  00m00s[0J[33/71] Installing p11-kit-trust-0:0.26 100% |  22.3 MiB/s | 480.1 KiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[33/71] Installing p11-kit-trust-0:0.26 100% |  22.3 MiB/s | 480.1 KiB |  00m00s[0J[33/71] Installing p11-kit-trust-0:0.26 100% |  22.3 MiB/s | 480.1 KiB |  00m00s
->>> Running %post scriptlet: p11-kit-trust-0:0.26.5-1.fc44.x86_64[1A[0J[33/71] Installing p11-kit-trust-0:0.26 100% |  22.3 MiB/s | 480.1 KiB |  00m00s[0J[33/71] Installing p11-kit-trust-0:0.26 100% |   6.8 MiB/s | 480.1 KiB |  00m00s
-[34/71] Installing bzip2-libs-0:1.0.8-2   0% |   0.0   B/s |   0.0   B |  00m00s[0J[34/71] Installing bzip2-libs-0:1.0.8-2 100% |   6.6 MiB/s |  81.6 KiB |  00m00s[0J[34/71] Installing bzip2-libs-0:1.0.8-2 100% |   3.5 MiB/s |  81.6 KiB |  00m00s
-[35/71] Installing expat-0:2.8.5-1.fc44 100% |  16.0 MiB/s | 344.3 KiB |  00m00s[0J[35/71] Installing expat-0:2.8.5-1.fc44 100% |  16.0 MiB/s | 344.3 KiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[35/71] Installing expat-0:2.8.5-1.fc44 100% |  16.0 MiB/s | 344.3 KiB |  00m00s[0J[35/71] Installing expat-0:2.8.5-1.fc44 100% |   6.6 MiB/s | 344.3 KiB |  00m00s
-[36/71] Installing gdbm-libs-1:1.23-11. 100% |   9.9 MiB/s | 131.3 KiB |  00m00s[0J[36/71] Installing gdbm-libs-1:1.23-11. 100% |   5.1 MiB/s | 131.3 KiB |  00m00s
-[37/71] Installing gmp-1:6.3.0-5.fc44.x   0% | 467.8 KiB/s | 478.0   B |  00m01s[0J[37/71] Installing gmp-1:6.3.0-5.fc44.x 100% | 467.8 KiB/s | 817.5 KiB |  00m00s[0J[37/71] Installing gmp-1:6.3.0-5.fc44.x 100% |  21.0 MiB/s | 817.5 KiB |  00m00s
-[38/71] Installing libcap-ng-0:0.9.6-1. 100% |   4.9 MiB/s |  70.6 KiB |  00m00s[0J[38/71] Installing libcap-ng-0:0.9.6-1. 100% |   2.7 MiB/s |  70.6 KiB |  00m00s
-[39/71] Installing audit-libs-0:4.2.1-1 100% |  17.4 MiB/s | 393.1 KiB |  00m00s[0J[39/71] Installing audit-libs-0:4.2.1-1 100% |  11.0 MiB/s | 393.1 KiB |  00m00s
-[40/71] Installing libeconf-0:0.7.9-3.f  79% |  25.8 MiB/s |  52.7 KiB |  00m00s[0J[40/71] Installing libeconf-0:0.7.9-3.f 100% |  25.8 MiB/s |  66.4 KiB |  00m00s[0J[40/71] Installing libeconf-0:0.7.9-3.f 100% |   2.3 MiB/s |  66.4 KiB |  00m00s
-[41/71] Installing pam-libs-0:1.7.2-2.f 100% |   8.1 MiB/s | 132.7 KiB |  00m00s[0J[41/71] Installing pam-libs-0:1.7.2-2.f 100% |   4.3 MiB/s | 132.7 KiB |  00m00s
-[42/71] Installing libcap-0:2.78-1.fc44 100% |   4.6 MiB/s | 217.2 KiB |  00m00s[0J[42/71] Installing libcap-0:2.78-1.fc44 100% |   4.6 MiB/s | 217.2 KiB |  00m00s[0J[42/71] Installing libcap-0:2.78-1.fc44 100% |   4.6 MiB/s | 217.2 KiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[42/71] Installing libcap-0:2.78-1.fc44 100% |   4.6 MiB/s | 217.2 KiB |  00m00s[0J[42/71] Installing libcap-0:2.78-1.fc44 100% |   2.8 MiB/s | 217.2 KiB |  00m00s
-[43/71] Installing libsepol-0:3.11-1.fc 100% |  52.7 MiB/s | 863.0 KiB |  00m00s[0J[43/71] Installing libsepol-0:3.11-1.fc 100% |  30.1 MiB/s | 863.0 KiB |  00m00s
-[44/71] Installing libselinux-0:3.11-2. 100% |  20.2 MiB/s | 206.5 KiB |  00m00s[0J[44/71] Installing libselinux-0:3.11-2. 100% |   8.1 MiB/s | 206.5 KiB |  00m00s
-[45/71] Installing findutils-1:4.10.0-7  27% |  34.9 MiB/s | 535.7 KiB |  00m00s[0J[45/71] Installing findutils-1:4.10.0-7 100% |  34.9 MiB/s |   1.9 MiB |  00m00s[0J[45/71] Installing findutils-1:4.10.0-7 100% |  34.9 MiB/s |   1.9 MiB |  00m00s[0J[45/71] Installing findutils-1:4.10.0-7 100% |  34.9 MiB/s |   1.9 MiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[45/71] Installing findutils-1:4.10.0-7 100% |  34.9 MiB/s |   1.9 MiB |  00m00s[0J[45/71] Installing findutils-1:4.10.0-7 100% |  10.3 MiB/s |   1.9 MiB |  00m00s
-[46/71] Installing sed-0:4.9-7.fc44.x86  92% |  12.1 MiB/s | 796.2 KiB |  00m00s[0J[46/71] Installing sed-0:4.9-7.fc44.x86 100% |  12.1 MiB/s | 865.4 KiB |  00m00s[0J[46/71] Installing sed-0:4.9-7.fc44.x86 100% |  12.1 MiB/s | 865.4 KiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[46/71] Installing sed-0:4.9-7.fc44.x86 100% |  12.1 MiB/s | 865.4 KiB |  00m00s[0J[46/71] Installing sed-0:4.9-7.fc44.x86 100% |   5.3 MiB/s | 865.4 KiB |  00m00s
-[47/71] Installing libuuid-0:2.41.5-1.f  99% |   7.5 MiB/s |  38.2 KiB |  00m00s[0J[47/71] Installing libuuid-0:2.41.5-1.f 100% |   7.5 MiB/s |  38.3 KiB |  00m00s[0J[47/71] Installing libuuid-0:2.41.5-1.f 100% |   1.6 MiB/s |  38.3 KiB |  00m00s
-[48/71] Installing libzstd-0:1.5.7-5.fc 100% |  58.4 MiB/s | 957.4 KiB |  00m00s[0J[48/71] Installing libzstd-0:1.5.7-5.fc 100% |  33.4 MiB/s | 957.4 KiB |  00m00s
-[49/71] Installing mpdecimal-0:4.0.1-3. 100% |  14.2 MiB/s | 218.6 KiB |  00m00s[0J[49/71] Installing mpdecimal-0:4.0.1-3. 100% |   7.9 MiB/s | 218.6 KiB |  00m00s
-[50/71] Installing sqlite-libs-0:3.51.2 100% |  69.2 MiB/s |   1.6 MiB |  00m00s[0J[50/71] Installing sqlite-libs-0:3.51.2 100% |  41.9 MiB/s |   1.6 MiB |  00m00s
-[51/71] Installing systemd-libs-0:259.9   0% |   0.0   B/s |   0.0   B |  00m00s[0J[51/71] Installing systemd-libs-0:259.9 100% |  49.0 MiB/s |   2.5 MiB |  00m00s[0J[51/71] Installing systemd-libs-0:259.9 100% |  37.7 MiB/s |   2.5 MiB |  00m00s
-[52/71] Installing openssl-libs-1:3.5.9  29% |  77.5 MiB/s |   2.7 MiB |  00m00s[0J[52/71] Installing openssl-libs-1:3.5.9 100% |  77.5 MiB/s |   9.2 MiB |  00m00s[0J[52/71] Installing openssl-libs-1:3.5.9 100% |  64.9 MiB/s |   9.2 MiB |  00m00s
-[53/71] Installing coreutils-0:9.10-5.f   0% |   0.0   B/s |   0.0   B |  00m00s[0J[53/71] Installing coreutils-0:9.10-5.f  99% |  56.0 MiB/s |   5.7 MiB |  00m00s[0J[53/71] Installing coreutils-0:9.10-5.f  99% |  56.0 MiB/s |   5.7 MiB |  00m00s[0J[53/71] Installing coreutils-0:9.10-5.f 100% |  56.0 MiB/s |   5.7 MiB |  00m00s[0J[53/71] Installing coreutils-0:9.10-5.f 100% |  56.0 MiB/s |   5.7 MiB |  00m00s[0J[53/71] Installing coreutils-0:9.10-5.f 100% |  56.0 MiB/s |   5.7 MiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[53/71] Installing coreutils-0:9.10-5.f 100% |  56.0 MiB/s |   5.7 MiB |  00m00s[0J[53/71] Installing coreutils-0:9.10-5.f 100% |  56.0 MiB/s |   5.7 MiB |  00m00s
->>> Running %pre scriptlet: ca-certificates-0:2026.2.90_v9.0.317-1.fc44.noarch[1A[0J[53/71] Installing coreutils-0:9.10-5.f 100% |  56.0 MiB/s |   5.7 MiB |  00m00s[0J[53/71] Installing coreutils-0:9.10-5.f 100% |  14.1 MiB/s |   5.7 MiB |  00m00s
-[54/71] Installing ca-certificates-0:20  99% |  50.8 MiB/s |   2.5 MiB |  00m00s[0J[54/71] Installing ca-certificates-0:20 100% |  50.8 MiB/s |   2.5 MiB |  00m00s[0J[54/71] Installing ca-certificates-0:20 100% |  50.8 MiB/s |   2.5 MiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[54/71] Installing ca-certificates-0:20 100% |  50.8 MiB/s |   2.5 MiB |  00m00s[0J[54/71] Installing ca-certificates-0:20 100% |  50.8 MiB/s |   2.5 MiB |  00m00s
->>> Running %post scriptlet: ca-certificates-0:2026.2.90_v9.0.317-1.fc44.noarch[1A[0J[54/71] Installing ca-certificates-0:20 100% | 664.6 KiB/s |   2.5 MiB |  00m00s[0J[54/71] Installing ca-certificates-0:20 100% | 663.4 KiB/s |   2.5 MiB |  00m04s
-[55/71] Installing python-pip-wheel-0:2   0% |   0.0   B/s |   0.0   B |  00m00s[0J[55/71] Installing python-pip-wheel-0:2 100% |  61.2 MiB/s |   1.2 MiB |  00m00s[0J[55/71] Installing python-pip-wheel-0:2 100% |  37.1 MiB/s |   1.2 MiB |  00m00s
-[56/71] Installing xz-libs-1:5.8.2-2.fc 100% |  23.7 MiB/s | 218.8 KiB |  00m00s[0J[56/71] Installing xz-libs-1:5.8.2-2.fc 100% |   7.4 MiB/s | 218.8 KiB |  00m00s
-[57/71] Installing python3-libs-0:3.14.   0% |   1.9 MiB/s |  72.1 KiB |  00m23s[0J[57/71] Installing python3-libs-0:3.14.  14% |   1.9 MiB/s |   6.5 MiB |  00m20s[0J[57/71] Installing python3-libs-0:3.14.  22% |   1.9 MiB/s |  10.2 MiB |  00m18s[0J[57/71] Installing python3-libs-0:3.14.  31% |   1.9 MiB/s |  14.1 MiB |  00m16s[0J[57/71] Installing python3-libs-0:3.14.  39% |   1.9 MiB/s |  17.6 MiB |  00m14s[0J[57/71] Installing python3-libs-0:3.14.  44% |   1.9 MiB/s |  19.8 MiB |  00m13s[0J[57/71] Installing python3-libs-0:3.14.  47% |   1.9 MiB/s |  21.3 MiB |  00m12s[0J[57/71] Installing python3-libs-0:3.14.  51% |   1.9 MiB/s |  22.9 MiB |  00m11s[0J[57/71] Installing python3-libs-0:3.14.  53% |   1.9 MiB/s |  23.7 MiB |  00m11s[0J[57/71] Installing python3-libs-0:3.14.  55% |   1.9 MiB/s |  24.5 MiB |  00m10s[0J[57/71] Installing python3-libs-0:3.14.  59% |  25.2 MiB/s |  26.5 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14.  70% |  25.2 MiB/s |  31.3 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14.  75% |  25.2 MiB/s |  33.6 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14.  81% |  25.2 MiB/s |  36.1 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14.  85% |  25.2 MiB/s |  38.1 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14.  88% |  25.2 MiB/s |  39.5 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14.  92% |  25.2 MiB/s |  41.1 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14.  95% |  25.2 MiB/s |  42.3 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14.  96% |  25.2 MiB/s |  43.0 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14.  97% |  25.2 MiB/s |  43.4 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14.  99% |  17.4 MiB/s |  44.1 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14. 100% | 261.9 KiB/s |  44.5 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14. 100% | 261.9 KiB/s |  44.5 MiB |  00m00s[0J[57/71] Installing python3-libs-0:3.14. 100% |  12.6 MiB/s |  44.5 MiB |  00m04s
-[58/71] Installing python3-0:3.14.8-1.f 100% |   2.3 MiB/s |  30.4 KiB |  00m00s[0J[58/71] Installing python3-0:3.14.8-1.f 100% |   2.3 MiB/s |  30.4 KiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[58/71] Installing python3-0:3.14.8-1.f 100% |   2.3 MiB/s |  30.4 KiB |  00m00s[0J[58/71] Installing python3-0:3.14.8-1.f 100% | 498.7 KiB/s |  30.4 KiB |  00m00s
-[59/71] Installing libgcc-0:16.2.1-2.fc   0% |   0.0   B/s |   0.0   B |  00m00s[0J[59/71] Installing libgcc-0:16.2.1-2.fc 100% |  26.2 MiB/s | 295.4 KiB |  00m00s[0J[59/71] Installing libgcc-0:16.2.1-2.fc 100% |  12.5 MiB/s | 295.4 KiB |  00m00s
-[60/71] Installing crypto-policies-scri 100% |   3.8 MiB/s | 407.0 KiB |  00m00s[0J[60/71] Installing crypto-policies-scri 100% |   3.8 MiB/s | 407.0 KiB |  00m00s[0J[60/71] Installing crypto-policies-scri 100% |   3.8 MiB/s | 407.0 KiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[60/71] Installing crypto-policies-scri 100% |   3.8 MiB/s | 407.0 KiB |  00m00s[0J[60/71] Installing crypto-policies-scri 100% |   2.8 MiB/s | 407.0 KiB |  00m00s
-[61/71] Installing python-unversioned-c 100% | 138.3 KiB/s | 424.0   B |  00m00s[0J[61/71] Installing python-unversioned-c 100% | 138.3 KiB/s | 424.0   B |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[61/71] Installing python-unversioned-c 100% | 138.3 KiB/s | 424.0   B |  00m00s[0J[61/71] Installing python-unversioned-c 100% |  14.8 KiB/s | 424.0   B |  00m00s
-[62/71] Installing pkcs11-provider-0:1. 100% |  24.6 MiB/s | 477.9 KiB |  00m00s[0J[62/71] Installing pkcs11-provider-0:1. 100% |  14.6 MiB/s | 477.9 KiB |  00m00s
-[63/71] Installing attr-0:2.6.0-1.fc44.   8% |   0.0   B/s |  15.4 KiB |  00m00s[0J[63/71] Installing attr-0:2.6.0-1.fc44. 100% |   3.1 MiB/s | 182.6 KiB |  00m00s[0J[63/71] Installing attr-0:2.6.0-1.fc44. 100% |   3.1 MiB/s | 182.6 KiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[63/71] Installing attr-0:2.6.0-1.fc44. 100% |   3.1 MiB/s | 182.6 KiB |  00m00s[0J[63/71] Installing attr-0:2.6.0-1.fc44. 100% |   2.0 MiB/s | 182.6 KiB |  00m00s
-[64/71] Installing acl-0:2.4.0-1.fc44.x  73% |  13.6 MiB/s | 167.4 KiB |  00m00s[0J[64/71] Installing acl-0:2.4.0-1.fc44.x 100% |  13.6 MiB/s | 226.7 KiB |  00m00s[0J[64/71] Installing acl-0:2.4.0-1.fc44.x 100% |  13.6 MiB/s | 226.7 KiB |  00m00s
->>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[64/71] Installing acl-0:2.4.0-1.fc44.x 100% |  13.6 MiB/s | 226.7 KiB |  00m00s[0J[64/71] Installing acl-0:2.4.0-1.fc44.x 100% |  13.6 MiB/s | 226.7 KiB |  00m00s
->>> Running %pre scriptlet: glibc-0:2.43-9.fc44.i686[1A[0J[64/71] Installing acl-0:2.4.0-1.fc44.x 100% |  13.6 MiB/s | 226.7 KiB |  00m00s[0J[64/71] Installing acl-0:2.4.0-1.fc44.x 100% |   2.5 MiB/s | 226.7 KiB |  00m00s
-[65/71] Installing glibc-0:2.43-9.fc44.  15% |  34.9 MiB/s | 928.6 KiB |  00m00s[0J[65/71] Installing glibc-0:2.43-9.fc44. 100% |  34.9 MiB/s |   5.7 MiB |  00m00s[0J[65/71] Installing glibc-0:2.43-9.fc44. 100% |  34.9 MiB/s |   5.7 MiB |  00m00s[0J[65/71] Installing glibc-0:2.43-9.fc44. 100% |  34.9 MiB/s |   5.7 MiB |  00m00s
->>> Running %post scriptlet: glibc-0:2.43-9.fc44.i686[1A[0J[65/71] Installing glibc-0:2.43-9.fc44. 100% |  34.9 MiB/s |   5.7 MiB |  00m00s[0J[65/71] Installing glibc-0:2.43-9.fc44. 100% |  18.2 MiB/s |   5.7 MiB |  00m00s
-[66/71] Installing glibc-gconv-extra-0:   0% |   0.0   B/s |   0.0   B |  00m00s[0J[66/71] Installing glibc-gconv-extra-0:   0% | 299.8 KiB/s |  30.3 KiB |  00m23s[0J[66/71] Installing glibc-gconv-extra-0:   0% | 299.8 KiB/s |  58.3 KiB |  00m23s[0J[66/71] Installing glibc-gconv-extra-0:  30% | 299.8 KiB/s |   2.1 MiB |  00m16s[0J[66/71] Installing glibc-gconv-extra-0:  76% | 299.8 KiB/s |   5.2 MiB |  00m05s[0J[66/71] Installing glibc-gconv-extra-0: 100% | 299.8 KiB/s |   6.8 MiB |  00m00s[0J[66/71] Installing glibc-gconv-extra-0: 100% | 299.8 KiB/s |   6.8 MiB |  00m00s[0J[66/71] Installing glibc-gconv-extra-0: 100% | 299.8 KiB/s |   6.8 MiB |  00m00s
->>> Running %post scriptlet: glibc-gconv-extra-0:2.43-9.fc44.i686[1A[0J[66/71] Installing glibc-gconv-extra-0: 100% | 299.8 KiB/s |   6.8 MiB |  00m00s[0J[66/71] Installing glibc-gconv-extra-0: 100% |   8.2 MiB/s |   6.8 MiB |  00m01s
-[67/71] Installing libcap-ng-0:0.9.6-1. 100% |   7.5 MiB/s |  69.1 KiB |  00m00s[0J[67/71] Installing libcap-ng-0:0.9.6-1. 100% |   2.7 MiB/s |  69.1 KiB |  00m00s
-[68/71] Installing audit-libs-0:4.2.1-1  24% |  23.9 MiB/s |  97.8 KiB |  00m00s[0J[68/71] Installing audit-libs-0:4.2.1-1 100% |  23.9 MiB/s | 402.8 KiB |  00m00s[0J[68/71] Installing audit-libs-0:4.2.1-1 100% |  11.9 MiB/s | 402.8 KiB |  00m00s
-[69/71] Installing libeconf-0:0.7.9-3.f 100% |  12.8 MiB/s |  65.7 KiB |  00m00s[0J[69/71] Installing libeconf-0:0.7.9-3.f 100% |   3.2 MiB/s |  65.7 KiB |  00m00s
-[70/71] Installing pam-libs-0:1.7.2-2.f 100% |   9.8 MiB/s | 130.6 KiB |  00m00s[0J[70/71] Installing pam-libs-0:1.7.2-2.f 100% |   3.9 MiB/s | 130.6 KiB |  00m00s
-[71/71] Installing libcap-0:2.78-1.fc44 100% |   6.9 MiB/s | 198.3 KiB |  00m00s[0J[71/71] Installing libcap-0:2.78-1.fc44 100% |   6.9 MiB/s | 198.3 KiB |  00m00s[0J[71/71] Installing libcap-0:2.78-1.fc44 100% |   6.9 MiB/s | 198.3 KiB |  00m00s
->>> Running %posttrans scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[71/71] Installing libcap-0:2.78-1.fc44 100% |   6.9 MiB/s | 198.3 KiB |  00m00s[0J[71/71] Installing libcap-0:2.78-1.fc44 100% |   6.9 MiB/s | 198.3 KiB |  00m00s
->>> Running %posttrans scriptlet: ca-certificates-0:2026.2.90_v9.0.317-1.fc44.noarch[2A[0J[71/71] Installing libcap-0:2.78-1.fc44 100% |  44.4 KiB/s | 198.3 KiB |  00m00s[0J[71/71] Installing libcap-0:2.78-1.fc44 100% |  44.4 KiB/s | 198.3 KiB |  00m00s
->>> Running %posttrans scriptlet: crypto-policies-scripts-0:20251128-3.git19878fe.fc44.noarch[2A[0J[71/71] Installing libcap-0:2.78-1.fc44 100% |  44.4 KiB/s | 198.3 KiB |  00m00s[0J[71/71] Installing libcap-0:2.78-1.fc44 100% |  44.4 KiB/s | 198.3 KiB |  00m00s
->>> Running %triggerin scriptlet: glibc-common-0:2.43-9.fc44.x86_64[1A[0J[71/71] Installing libcap-0:2.78-1.fc44 100% |  44.4 KiB/s | 198.3 KiB |  00m00s[0J[71/71] Installing libcap-0:2.78-1.fc44 100% |  38.0 KiB/s | 198.3 KiB |  00m05s
-]9;4;0;0\[?25hWarning: skipped OpenPGP checks for 69 packages from repository: @commandline
-Complete!
-PACKAGE_INSTALL_PASS
-SANDBOX_BEGIN
-         0     100000      65536
-666 0:0 1:3
-44 36 0:26 / / rw,nosuid,nodev,relatime - fuse.ext4 /work/image rw,user_id=0,group_id=0,default_permissions,allow_other
-45 44 0:28 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw
-46 44 0:29 / /dev rw,nosuid,noexec,relatime - tmpfs tmpfs rw,uid=100000,gid=100000,inode64
-47 46 0:25 /runtime/null /dev/null rw,relatime - tmpfs tmpfs rw,mode=755,inode64
-48 46 0:25 /runtime/zero /dev/zero rw,relatime - tmpfs tmpfs rw,mode=755,inode64
-49 46 0:25 /runtime/random /dev/random rw,relatime - tmpfs tmpfs rw,mode=755,inode64
-50 46 0:25 /runtime/urandom /dev/urandom rw,relatime - tmpfs tmpfs rw,mode=755,inode64
-DAEMON_PID_INACCESSIBLE_PASS
-/dev/null
-pipe:[1734]
-pipe:[1734]
-VISIBILITY_PASS
-/test-caps cap_net_bind_service=ep
-getfattr: Removing leading '/' from absolute path names
-# file: test-owned
-security.selinux="system_u:object_r:conglobate_target_only_t:s0"
-
-mknod: /test-device: Operation not permitted
-MKNOD_EXPECTED_DENIAL
-ATTACK_BLOCKED worker kill/pidfd/ptrace
-ATTACK_BLOCKED inherited descriptors
-ATTACK_BLOCKED outside paths and absolute symlink
-ATTACK_BLOCKED abstract Unix control socket
-ATTACK_BLOCKED fresh proc mount cannot reveal ancestor PIDs
-ATTACK_BLOCKED retained cwd chroot escape stays within pivot root
-ADVERSARIAL_RESULT PASS
-ANCESTOR_MODES 0o40555 0o40755
-ACL_DENIAL 1234 PermissionError(13, 'Permission denied')
-ACL_RESULT 1234 False True
-CHILD_STATUS 256
-ACL_DENIAL 1235 PermissionError(13, 'Permission denied')
-ACL_RESULT 1235 False False
-CHILD_STATUS 0
-ACL_ENFORCEMENT_PROBE_END
-getfacl: Removing leading '/' from absolute path names
-INHERITED_ACL # file: semantics/inherited
-# owner: 0
-# group: 0
-user::rw-
-group::r--
-other::r--
-
-
-ACL_INHERITANCE_PROBE_END
-ID_RANGE_BOUNDARY_PASS
-SPARSE_MMAP_FSYNC_LOCK_LINK_RENAME_PASS
-RUNTIME_DEVICE_MUTATED
-SANDBOX_PASS
-DETACHED_DESCENDANT_TERMINATION_PASS
-BUILDER_DEVICE_UNCHANGED_PASS
-DESCENDANT_TERMINATION_PASS
-DAEMON_SURVIVED_PASS
-WORKER_PASS
-FUSE2FS (image): Warning: fuse2fs does not support using the journal.
-There may be file system corruption or data loss if
-the file system is not gracefully unmounted.
-FUSE2FS (image): mounted filesystem 0a828553-91f8-4e99-a57b-bc5fa593ebb7.
-FUSE2FS (image): unmounting filesystem 0a828553-91f8-4e99-a57b-bc5fa593ebb7.
-e2fsck 1.47.3 (8-Jul-2025)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-/work/image: 8618/131072 files (0.2% non-contiguous), 67388/524288 blocks
-1000:1000
-getfacl: Removing leading '/' from absolute path names
-# file: work/raw/test-owned
-# owner: 1000
-# group: 1000
-user::rw-
-user:1234:rw-
-group::r--
-mask::rw-
-other::r--
-
-getfattr: Removing leading '/' from absolute path names
-# file: work/raw/test-owned
-security.selinux="system_u:object_r:conglobate_target_only_t:s0"
-
-/work/raw/test-caps cap_net_bind_service=ep
-0: cap_net_bind_service=ep
-INSTALLED_SHELL_PASS
-0 4194304 snapshot 372176/4194304 1464
-/work/origin: OK
-/crash-worker: line 10:  2029 Killed                     fuse2fs -f -o acl,allow_other /work/failure /work/view > /work/fuse.log 2>&1
-DAEMON_FAILURE_DETECTED_PASS
-touch: cannot touch '/work/view/after': Transport endpoint is not connected
-DEAD_DAEMON_IO_FAILURE_PASS
-FAILED_MOUNT_CLEANUP_PASS
-VALIDATION_PASS
-GUEST_EXIT 0
-[   35.266785] sysrq: Resetting

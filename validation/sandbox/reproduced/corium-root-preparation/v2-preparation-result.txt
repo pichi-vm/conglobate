@@ -1,7 +1,0 @@
-Preparation failed before QEMU: conglobate import helper returned exit1 while
-creating the scute. The first runner used capture_output with check=True and did
-not retain CalledProcessError.stderr, so the exact helper diagnostic is unknown.
-Immediately afterward quota reported51174MiB used of51174MiB and partial data/hash
-files remained. This is evidence of concurrent quota exhaustion, not a recovered
-helper errno. Partial-file identities were recorded before their removal.
-The runner now saves importer stdout/stderr before checking its return code.

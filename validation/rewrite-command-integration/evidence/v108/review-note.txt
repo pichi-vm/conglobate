@@ -1,1 +1,0 @@
-Boxed read-only FailureDiagnostics preserves original mapping/unmount errors and ordered cleanup errors with OS codes. Busy mapping retry and repeated wrong-namespace unmount retries preserve history, then release resources successfully. Root tests, both Clippy checks and normal VM suite pass. Outer verity/chain wrapper propagation remains open.

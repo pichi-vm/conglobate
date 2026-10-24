@@ -1,1 +1,0 @@
-v238 FAILED: first restricted-command lifecycle attempt returned EBUSY during helper preparation before command admission. Network teardown completed while storage remained rejected. Preserve before replacing duplicate raw-view descriptors with a separate detached clone for resolver scaffolding.

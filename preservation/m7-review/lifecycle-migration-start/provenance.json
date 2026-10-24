@@ -1,8 +1,0 @@
-{
-  "source_baseline": "5ee70187175831ec4933dd8ecb40c65de47dc50f",
-  "copied_source": "validation/rewrite-command-integration/src/formatter_failures.rs",
-  "sha256": "527118ff00485ab8c806cd7d7b3aee695b87177cf345193c6b983bc97f8b8e81",
-  "destination": "tests/lifecycle/src/formatter_failures.rs",
-  "unchanged_copy": true,
-  "vm_validation": "pending"
-}

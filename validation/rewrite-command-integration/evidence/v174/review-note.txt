@@ -1,1 +1,0 @@
-Normal suite passed including direct sealing of actual detached COW and reopening via Cache verification, dm-verity chain, writable inspection snapshot and ext4 mount. Output data/UID/GID/foreign SELinux label preserved; tool-state absent. Tool input still populated fixture snapshot at this revision.

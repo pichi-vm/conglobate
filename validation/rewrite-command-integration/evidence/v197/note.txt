@@ -1,1 +1,0 @@
-v197 failed runtime integration: the new bpffs mount root retained its default permissions, so the existing policy pin parent validation rejected it. Failure preserved before correction. No runtime acceptance claimed.

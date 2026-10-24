@@ -1,1 +1,0 @@
-Passed writable snapshot over verified two-scute origin: inheritance, private modifications, unchanged origin/cache, busy cleanup retention, persistent store detach/reattach, and complete chain cleanup. No layer sealing or filesystem qualification claimed.

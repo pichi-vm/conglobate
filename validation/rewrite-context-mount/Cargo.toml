@@ -1,9 +1,0 @@
-[package]
-name = "rewrite-context-mount-probe"
-version = "0.1.0"
-edition = "2024"
-publish = false
-
-[dependencies]
-rustix = { version = "1", features = ["fs", "mount", "process"] }
-conglobate = { path = "../.." }

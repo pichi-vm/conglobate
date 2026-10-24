@@ -1,7 +1,0 @@
-{
-  "compression-run.init": "3a8d961f2ee1da3a529524acb473624eb312a88e245e445f01da9e64c3e76efe",
-  "compression-run.log": "f86e4a02613ba9ce9056392c5c71ac444350007df5e2008d2d59d3f0a3b27cb9",
-  "compression-run.json": "2c012934e577cd9da68de5f9b168e93734266b87dd030910457f3ab489875eb9",
-  "result.json": "2c012934e577cd9da68de5f9b168e93734266b87dd030910457f3ab489875eb9",
-  "zstd_probe.py": "740a6d0c84f3fae2a6b1320adbbb15dedebe1bc2b5480ce0c59c443a1e8b7b34"
-}

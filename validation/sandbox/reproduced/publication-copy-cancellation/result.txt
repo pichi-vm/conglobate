@@ -1,9 +1,0 @@
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.13s
-     Running tests/artifacts.rs (target/debug/deps/artifacts-b37809472c3ca2c2)
-
-running 1 test
-cancelled during publication: observed 45056/134217728 copied bytes; no output or sibling staging remains
-test cancellation_during_publication_copy_removes_sibling_staging ... ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 8.99s
-

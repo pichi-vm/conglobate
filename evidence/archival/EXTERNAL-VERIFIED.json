@@ -1,0 +1,8 @@
+{
+  "archive": "/storage/conglobate-validation/final-preservation/external.tar.zst",
+  "sha256": "f904e1b5d0292dacfe500782884bcbbf26fb795d04eea0b304ffa6a599916fda",
+  "entries": 140118,
+  "roots": 864,
+  "special_entries_not_opened": [],
+  "missing_since_baseline": []
+}

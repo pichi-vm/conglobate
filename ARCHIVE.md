@@ -13,7 +13,8 @@ local storage at:
 - `reference.bundle`: complete committed history and refs, verified by Git.
 - `external.tar.zst`: original external validation references, all maintained
   validation run directories and the independent initial preservation archive.
-  Full content verification is in progress; retirement waits for its receipt.
+  All 140,118 entries were verified against the originals; no baseline input
+  disappeared.
 - `worktree-manifest.json`, `external-roots.json`, `external-unavailable.json`,
   verification receipts and preservation scripts describe the exact scope.
   No path recorded as present at the initial baseline has disappeared. Entries
@@ -21,6 +22,9 @@ local storage at:
 
 The worktree archive SHA-256 is
 `dd4bebf04972a977fd55c50aa2f68c31aefda51d235204903b4ca97ff14be7f3`.
+The external archive SHA-256 is
+`f904e1b5d0292dacfe500782884bcbbf26fb795d04eea0b304ffa6a599916fda`.
+Verification receipts are also retained in `evidence/archival/`.
 These are local durable copies, not a claim of remote backup. Keep this directory
 when reclaiming temporary validation data. Selected compact acceptance evidence
 is retained in this repository under `evidence/`.

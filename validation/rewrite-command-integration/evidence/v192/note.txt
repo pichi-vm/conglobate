@@ -1,1 +1,0 @@
-Bootstrap command/COPY/command routing validation. v192 failed before COPY because ln was absent from fixture; v193 adds ln/stat. No whole recipe or full platform qualification inferred. Source snapshot and local fixture context are preserved.

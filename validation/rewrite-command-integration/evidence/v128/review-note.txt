@@ -1,1 +1,0 @@
-VM rejected a fixture assertion: descriptor exhaustion occurs during filesystem identity verification before config-handle acquisition. Production binding retained owners. Preserve failure; correct test to assert actual errno and retry without claiming exact map-dup failure injection.

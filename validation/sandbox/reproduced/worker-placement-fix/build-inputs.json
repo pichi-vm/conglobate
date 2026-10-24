@@ -1,8 +1,0 @@
-{
-  "/var/tmp/conglobate-placement-fixed-v2/worker-source/misc/fuse2fs.c": "d166244a277e71c065d61557381f7a9df26434f82dc2fccd58bd7d27123efc47",
-  "/tmp/conglobate-acl-protocol-v4/worker-source/misc/fuse2fs.c": "dd5a7f4aa1335b9e0e92fc018798e6c93dcf189a9c823224a189249b5e3fa238",
-  "/var/tmp/conglobate-placement-fixed-v2/acl-patched": "2d551ece9318787712214c9f692b9a28363130e36dbaed6d8d834314ed545d70",
-  "/var/tmp/conglobate-placement-fixed-v2/libfuse3.so.4": "1f3bd0c39abfdcc5c2432e7f84221c01b5baf26b5ec5726f8f16a79cdd2ff7ea",
-  "/var/tmp/conglobate-placement-fixed-v2/placement.patch": "69845ed441891dd26c9ef6d09ab7c1150feeacea179e0532f30fa50230eccafe",
-  "/home/nathaniel/Projects/pichi-vm/conglobate/validation/sandbox/worker-placement-fix/build.py": "744dfb2592d60d52e2e507de7a5849869599ffebf14ca30dacf56918416d3a68"
-}

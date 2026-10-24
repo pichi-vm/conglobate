@@ -1,3 +1,0 @@
-Could this be a zero-length partition?
-e2fsck 1.47.3 (8-Jul-2025)
-e2fsck: Attempt to read block from filesystem resulted in short read while trying to open /image

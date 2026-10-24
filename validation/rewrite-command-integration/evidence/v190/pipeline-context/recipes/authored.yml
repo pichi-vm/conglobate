@@ -1,4 +1,0 @@
-carapace:
-  from: example.test/firmware:1
-transform:
-  - {op: set, property: /chosen/bootargs, type: string, data: 'authored ${CARAPACE}'}

@@ -1,7 +1,0 @@
-STOCK_LIBRARY_REJECTED
-/tmp/conglobate-acl-protocol-v4/acl-patched: /usr/lib64/libfuse3.so.4: version `FUSE_PROBE_1.0' not found (required by /tmp/conglobate-acl-protocol-v4/acl-patched)
-PAIRED_LIBRARY_ACCEPTED
-fusermount3 version: 3.18.3
-FUSE library version 3.18.3
-using FUSE kernel interface version 7.45
-fuse2fs 1.47.3 (8-Jul-2025)

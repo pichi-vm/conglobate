@@ -1,2 +1,0 @@
-REJECTED_BEFORE_OUTPUT RPM set differs
-REJECTED_BEFORE_OUTPUT RPM digest mismatch

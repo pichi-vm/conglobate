@@ -1,7 +1,0 @@
-{
-  "baseline": "255b750 plus pending gate regression fixture and earlier startup diagnostic",
-  "change": "drop admitted supervision channel before ReceiverStartup::failure",
-  "worktree_modified": false,
-  "original_receiver_sha256": "89067158071d34592746d16b3f2e7356973017a1162eeb2862bf5e6c1a252bd7",
-  "mutant_receiver_sha256": "45be2069e41e30f99c0e83063a95e5fe99970cd6292ec936e00da83e067481af"
-}

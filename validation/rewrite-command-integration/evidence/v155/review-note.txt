@@ -1,1 +1,0 @@
-Normal integration suite passes after guardian retirement and explicit policy-directory ownership on post-creation setup expiry. Exact expiry boundary source-reviewed, not independently fault-injected. No clean adherence pass.

@@ -1,2 +1,0 @@
-Before fix: cargo test --locked --test copy image_path_preserves_trailing_directory_requirements -- --exact exited101; unwrap_err received Ok ending in /file when the input was the slash-terminated path /file/. This records the observed failure, not a captured raw log.
-After fix: cargo test --locked --test copy:3 passed,3 root-required ignored. cargo test --locked --lib:12 passed. Disposable root guest:6 passed,0 failed,0 ignored.

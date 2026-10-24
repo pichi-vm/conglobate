@@ -1,3 +1,0 @@
-RESTRICTED_FEDORA43_TO44_DISTRO_SYNC_PASS
-FEDORA_DISTRO_UPGRADE_KERNEL_REMOUNT_PASS
-Runner exit0. Locked-download two-package control also passed (15306 bytes).

@@ -1,1 +1,0 @@
-v1: host C compilation failed before VM execution: /tmp/ccDmyX0F.s: Disk quota exceeded. Incomplete runtime remains at /var/tmp/conglobate-global-label-v1. v2 used TMPDIR=/var/tmp/conglobate-rewrite-tmp. No policy was loaded on the host.

@@ -1,1 +1,0 @@
-Build failed before VM launch: resolver fixture used tempfile, which is not a fixture dependency. No runtime validation claimed.

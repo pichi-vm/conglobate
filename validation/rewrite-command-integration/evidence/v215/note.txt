@@ -1,1 +1,0 @@
-v214 FAILED: diagnostic replies prove neither endpoint retains IfAlias supplied during creation; reciprocal peer indices are correct. No passing resource lifecycle or sandbox claim. Preserved source and logs before corrective change.

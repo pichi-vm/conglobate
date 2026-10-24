@@ -1,7 +1,0 @@
-{
-  "rootless_tests": 204,
-  "doctests": 51,
-  "strict_root_and_fixture_clippy": true,
-  "M4_T1_implemented": true,
-  "M4_T1_all_regressions_complete": false
-}

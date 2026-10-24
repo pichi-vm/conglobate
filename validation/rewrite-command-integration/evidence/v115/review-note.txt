@@ -1,1 +1,0 @@
-Restricted leaf gate passes actual mount/user/PID/root/capability/seccomp pipeline. Outer helper acknowledges admission only after leaf readiness, then sends start. Gate FD closes before final descriptor audit. Normal VM suite and root tests pass; follow-up host negative tests are archived separately.

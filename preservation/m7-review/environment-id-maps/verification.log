@@ -1,9 +1,0 @@
-{
-  "full_pipeline_passed": true,
-  "one_carapace_scute": true,
-  "bootstrap_and_firmware_tools_not_inherited": true,
-  "root_bound_in_dtb": true,
-  "inventory_and_blob_graph_verified": true,
-  "boot_qualified": false,
-  "full_sandbox_qualified": false
-}

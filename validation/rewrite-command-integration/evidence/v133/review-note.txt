@@ -1,1 +1,0 @@
-Normal VM suite passes with CommandPreparation on ordinary launch and rollback tests for all three startup failure variants: before spawn, identity exchange, registration. Each rollback preserves the primary error through policy cleanup failure and EBUSY unmount retries. No full M4 adherence claim.

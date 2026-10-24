@@ -1,1 +1,0 @@
-Failed dual-view readiness; fixture now performs teardown before reporting failure. Child startup diagnostics were still lost when receiver exited. Sources preserved before adding receiver diagnostic drain after reaped setup child.

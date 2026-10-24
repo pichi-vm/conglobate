@@ -1,5 +1,0 @@
-+ /lifecycle-tests external-network-input
-EXTERNAL_NETWORK_PIN_REPLACEMENT_AND_RELEASE_PASS
-LIFECYCLE_EXIT 0
-[    2.147768] sysrq: Power Off
-[    2.149975] reboot: Power down

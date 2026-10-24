@@ -1,1 +1,0 @@
-Failed fixture: timeout command assumed /bin/sleep existed in minimal tool root. It exited 127; exact outcome assertion rejected this instead of passing timeout coverage. Nonzero command acceptance rejection passed. Replace test payload with shell builtins bounded by 100ms recipe timeout.

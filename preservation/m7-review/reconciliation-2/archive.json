@@ -1,7 +1,0 @@
-{
-  "raw_sha256": "93a87918c69790f21b3c1d544bfc46a15f25ab3892bf5e3d04a8bc5769143306",
-  "gzip_sha256": "79eaaf58f3f5b5f1926f4a0ca93ebda1345bb2f434eb23c1a35dd43d72ed6e66",
-  "exit_code": 0,
-  "unique_findings": 111,
-  "status": "Reviewer dispositions; final parent reconciliation remains open, including proposed seccomp test errno."
-}

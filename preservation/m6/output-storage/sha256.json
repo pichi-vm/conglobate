@@ -1,9 +1,0 @@
-{
-  "preservation/m6/output-storage/cache-test.log": "eb85a0502e32a51d740474a047923de1e7a5643d7e9a926f3ca2fc56d56d3724",
-  "preservation/m6/output-storage/clippy.log": "1852d377e7be0fdc5e2c6bfa60194b552e3e38ea47872def2922a3f985fcdbb9",
-  "preservation/m6/output-storage/output-test.log": "44ed848782a9e06ea960bbccaff29ed5efa28c167b36c315574bf0305e8ecfba",
-  "preservation/m6/output-storage/source/src/cache/mod.rs": "220fa814637d59fd779e470317aa24e093c816802ba21de3ad75e33adbab1ec6",
-  "preservation/m6/output-storage/source/src/lib.rs": "f08f439f54780075ad317310aea534fcc51daa66f3e8abdbd5ce4703a2875511",
-  "preservation/m6/output-storage/source/src/output.rs": "2d408e8d0880f7d566039e73bf64afb6d35a6b411a58f55a74154deba99824e8",
-  "preservation/m6/output-storage/source/tests/cache.rs": "5b7156287130bdcfa0e42b073840d5850cff50d1d6ad74661dce31f949e9e34e"
-}

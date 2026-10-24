@@ -1,6 +1,0 @@
-    Checking zstd-sys v2.1.2+zstd.1.5.7
-    Checking zstd-safe v7.3.0
-    Checking zstd v0.13.3
-    Checking conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
-    Checking conglobate-lifecycle-tests v0.0.0 (/home/nathaniel/Projects/pichi-vm/conglobate/tests/lifecycle)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.06s

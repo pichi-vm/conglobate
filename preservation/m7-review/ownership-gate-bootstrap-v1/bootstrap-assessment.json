@@ -1,9 +1,0 @@
-{
-  "two_root_steps_passed": true,
-  "export_graph_verified": true,
-  "formatter_receipt_verified": true,
-  "tool_components_not_inherited": true,
-  "inventory_canonical": true,
-  "bootable_distro_qualified": false,
-  "full_sandbox_qualified": false
-}

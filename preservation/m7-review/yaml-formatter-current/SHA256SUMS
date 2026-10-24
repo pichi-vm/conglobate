@@ -1,7 +1,0 @@
-9eb143ba9ceab5cd7c94947884a24afc7fcf890dca895bd8244d561b089a858a  src/document.rs
-11eccdb9211baa2226b899d87dad95c9daaea21a11b759f4ffb9c9dfade34c5d  src/inventory.rs
-ae833dba484ec844208313a0e3124345ccce75e83df984ef2c5c733612dac8e2  src/inventory/record.rs
-a14fbddc0cc11cabecaedf787b121a93301fb270155de84ba7f8ab344c3cad53  /home/nathaniel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-saphyr-2.0.0/src/de/budget.rs
-d206893832e08c8cc8cec91299de9d1dbe14809aab7096158050a4e7eebdfdfa  preservation/m7-review/yaml-formatter-current/tests.log
-bfb0aaa2bab85cb58cdb8624b581d840cb56454d41dcd306eaea2cc41d9825e8  preservation/m7-review/yaml-formatter-current/clippy.log
-7448bfe34b013a545361ca9c442a0fc40792e3a30e87a3738a9c5e8a7746c76a  preservation/m7-review/yaml-formatter-current/REVIEW.md

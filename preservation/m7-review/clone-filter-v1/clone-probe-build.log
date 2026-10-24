@@ -1,4 +1,0 @@
-/home/nathaniel/Projects/pichi-vm/conglobate/tests/lifecycle/clone-probe.c:74:1: fatal error: error writing to /tmp/ccgOwO6Q.s: Disk quota exceeded
-   74 | }
-      | ^
-compilation terminated.

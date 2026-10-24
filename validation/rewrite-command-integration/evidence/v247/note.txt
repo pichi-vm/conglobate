@@ -1,1 +1,0 @@
-v247 PASS: full normal command and CLI pipeline regression after shared network lifecycle/descriptor refactoring. Production source differs from VM build only in added compile-fail documentation and explanatory comments. Full host tests and strict root/fixture Clippy passed; initial fixture lint failure retained. Not full sandbox/platform qualification.

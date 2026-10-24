@@ -38,8 +38,8 @@ This is fixture preparation, not distro qualification. Conglobate must still
 verify the carapace chain, execute a real distro recipe, and produce an image
 that boots. The Fedora preparation recorded in
 `preservation/m7-review/fedora-input-preparation.json` has only passed component
-integrity and output nonreplacement checks. See `M7-QUALIFICATION.md` for the
-remaining build, boot, SELinux and platform requirements.
+integrity and output nonreplacement checks. See `QUALIFICATION.md` for the subsequent successful builds/boots and
+current coverage limits. Historical paths are recoverable through ARCHIVE.md.
 
 The initial real Fedora recipe is `fedora/recipe.yaml`. It uses the existing
 local Fedora carapace, runs RPM/DNF, installs SELinux tooling and targeted policy,
@@ -59,8 +59,8 @@ which commands cannot access. The host extracts it with Python's data-only tar
 filter and checks all blob digests. Source snapshots, committed context bundle,
 input hashes, console logs and verdicts remain under the run directory, including
 failures. Workspaces remain RAM-backed. No host mount, device-mapper operation or
-BPF load is performed. The runtime constructor must move out of exploratory
-validation before M8; the runner currently covers a build, not the separate boot.
+BPF load is performed. The shared runtime constructor is maintained in tests/vm_runtime.py; this
+runner covers a build, with boot checked separately.
 
 `boot.py ARTIFACT NEW_OUTPUT_DIRECTORY` is an optional pichi/dillo interoperability
 check of the produced image. It uses an isolated cache and loads a disposable

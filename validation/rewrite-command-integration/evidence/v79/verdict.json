@@ -1,6 +1,0 @@
-{
-  "passed": false,
-  "booted": false,
-  "reason": "fixture lifetime error E0515; build aborted before VM",
-  "full_sandbox_qualified": false
-}

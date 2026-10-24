@@ -1,1 +1,0 @@
-Existing thirteen-case post-completion arbitration matrix passes with the new optional Building state. This run uses the unchanged default Prepared startup mode. Exact sources, inputs, command and log retained. See ../../build-admission/README.txt for the two live-build composition cases.

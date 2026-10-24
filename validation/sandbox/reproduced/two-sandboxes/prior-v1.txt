@@ -1,8 +1,0 @@
-TOPOLOGY_BEGIN
-Traceback (most recent call last):
-  File [35m"/topology.py"[0m, line [35m101[0m, in [35m<module>[0m
-    with socket.socket(fam,socket.SOCK_STREAM) as s:[31ms.connect[0m[1;31m(addr)[0m
-                                                    [31m~~~~~~~~~[0m[1;31m^^^^^^[0m
-[1;35mOSError[0m: [35m[Errno 101] Network is unreachable[0m
-GUEST_EXIT 1
-[    1.109834] sysrq: Resetting

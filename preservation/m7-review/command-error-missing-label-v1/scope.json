@@ -1,7 +1,0 @@
-{
-  "result": "Invocation failure: malformed image digest, not missing-policy validation",
-  "baseline": "870ac1e plus typed command rejection",
-  "coverage": "No sandbox coverage claimed",
-  "large_assets_location": "/storage/conglobate-validation/command-error-missing-label-v1",
-  "durably_archived": false
-}

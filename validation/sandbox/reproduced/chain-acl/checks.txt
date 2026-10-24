@@ -1,2 +1,0 @@
-Packaged worker/library hashes match acl-protocol-v5 pair.
-Retained local source hashes verified.

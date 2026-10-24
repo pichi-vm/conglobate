@@ -1,1 +1,0 @@
-Failed during first dual-view helper readiness with registration peer closed. Formatter and paired-storage checks reached. Diagnostic teardown will be improved in fixture before rerun; no dual-command success claimed.

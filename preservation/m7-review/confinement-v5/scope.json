@@ -1,6 +1,0 @@
-{
-  "passed": false,
-  "reason": "keyctl supports is not a denial oracle; it reports success when capability query is denied",
-  "baseline": "e760e03",
-  "production_changed": false
-}

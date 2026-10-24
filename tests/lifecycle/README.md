@@ -40,16 +40,10 @@ shared with the distro and seed runners. The original runner and
 all historical results remain unchanged. Large run artifacts must be durably
 archived before deletion; a temporary run path is not sufficient preservation.
 
-The original harness and evidence remain intact. It currently fails to compile
-against removed policy/pin APIs. Remaining command/network/bootstrap/publication
-cases need explicit migration; none is considered retired or covered merely
-because this subset compiles. Networking tests must use retained namespace
-ownership without recreating policy-specific pins. Future tests must preserve
-actual production ownership boundaries, not widen descriptor APIs for convenience.
-
-The retired domain-record publication probe and parser tests are preserved under
-`preservation/pre-domain-record-removal/`. The current implementation uses owned
-cgroup descriptors without serialized recovery records.
+Historical harnesses and results are recoverable through ARCHIVE.md. Maintained
+cases use the current production ownership boundaries. Archived tests referring
+to removed registration or serialized recovery APIs are historical evidence,
+not current runtime contracts.
 
 `--case contained` exercises production `CommandDomain::launch` and contained
 helper cleanup with trusted fixture processes: missing executable, peer exit
@@ -167,8 +161,8 @@ current production `CommandSyscalls` filter between control and filtered arms.
 Both retain namespace authority and set no_new_privs; each child does nothing
 and is reaped. Ordinary clone must succeed in both arms. All seven tested legacy
 namespace flags must succeed before filtering and return EPERM afterward. The
-runner checks every case plus status and poweroff. This is filter-only amd64
-coverage, not command capability-drop composition or Arm qualification. The
+runner checks every case plus status and poweroff. This is filter-only coverage on both CI architectures, not command
+capability-drop composition. The
 legacy CLONE_NEWTIME bit overlaps the exit-signal byte and is not covered.
 
 `--case sandbox-held-cleanup` uses a trusted attached helper to report shell
@@ -228,20 +222,25 @@ preservation/m7-review/unmapped-owner-v1/, including its source snapshot.
 
 ## Hosted lifecycle CI
 
-The Disposable VM lifecycle workflow builds the maintained fixture with pinned
-Rust 1.94.0 and an installed Ubuntu generic kernel. It runs cache-storage,
-contained, runtime-scope and clone-filter in separate native amd64 KVM guests.
-The job requires accessible KVM; missing virtualization is a failure, not a skip.
-Package installation and KVM permissions are CI host preparation; privileged
-filesystem, namespace and policy assertions execute only in the guest. No
-recipe-supplied programs are run directly on the runner host.
+The workflow builds with pinned Rust 1.94.0 on native amd64 and Arm64 runners.
+It runs cache-storage, contained, runtime-scope, runtime-private-namespace,
+runtime-changed-namespace, clone-filter and pty-filter. amd64 requires KVM;
+Arm64 uses KVM if available, otherwise explicitly recorded TCG. TCG is a CI
+fixture, not a production sandbox design or confidential-hardware claim.
+Privileged assertions run only inside disposable guests.
 
-The runner honors RUSTUP_TOOLCHAIN (default stable), CARGO_BUILD_JOBS and TMPDIR.
-It builds offline from the locked fixture dependencies after the workflow fetch.
-CI uploads raw logs/status, assessments, input records, source archive and guest
-kernel/initramfs even after failure. Artifact retention is 14 days, not a durable
-M8 archive. This job covers lifecycle components, not full distro builds/boots,
-arm64, confidential VMs, or the environment-loaded labeling policy.
+The runner honors RUSTUP_TOOLCHAIN (default stable) and CARGO_BUILD_JOBS and
+builds offline from locked dependencies after the workflow fetch. CI retains
+logs, status, assessments and input/source records for 14 days; durable acceptance
+evidence is recorded separately. This workflow does not run full distro builds
+or qualify confidential VMs.
+
+`--case oci-copy --oras /path/to/oras` preserves the original third-party OCI
+interoperability assertion: a committed pass-through build publishes a synthetic
+scute chain, ORAS copies its manifest/config/layer graph, and the fixture compares
+the exact blob set and every byte. Inventory stays outside the OCI graph. amd64
+CI uses checksum-pinned ORAS 1.3.5. This case runs as root in the disposable guest;
+it does not require unprivileged user namespaces on the runner host.
 
 For mount compatibility diagnosis, --trace-mounts stages the trusted host strace
 executable and records selected mount/pidfd/statx syscalls in guest serial output.

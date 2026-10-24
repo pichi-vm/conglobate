@@ -1,1 +1,0 @@
-Normal VM suite passes with domain creation inside CommandPreparation. Publication-boundary tests use real domains plus absent/exact/malformed/mismatched records and explicitly injected return errors; mismatches retain domain until correction. Missing parent preserves ENOENT through busy unmount retry. Full M4 remains unqualified.

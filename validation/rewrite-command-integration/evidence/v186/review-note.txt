@@ -1,1 +1,0 @@
-Full normal VM suite passes after R1 formatter input retention fix, including successful formatting, bootstrap command acceptance, metadata persistence and sealed-chain reopening. M5 review remains non-clean pending completion.

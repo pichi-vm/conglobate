@@ -1,9 +1,0 @@
-{
-  "run": "/tmp/conglobate-file-attributes-v1",
-  "retained": "validation/sandbox/reproduced/file-attributes",
-  "removed_generated": [
-    "root",
-    "initramfs.gz",
-    "vmlinuz"
-  ]
-}

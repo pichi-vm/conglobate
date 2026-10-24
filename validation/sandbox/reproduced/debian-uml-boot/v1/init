@@ -1,9 +1,0 @@
-#!/bin/sh
-set -eu
-/bin/busybox mount -t proc proc /proc
-echo UML_BOOT_READY
-/bin/busybox uname -a
-/bin/busybox cat /proc/uptime
-/bin/busybox cat /proc/self/status
-echo UML_BOOT_COMPLETE
-/bin/busybox poweroff -f

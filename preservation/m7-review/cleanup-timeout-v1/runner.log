@@ -1,9 +1,0 @@
-{
-  "checks": {
-    "CLEANUP_DEADLINE_PRESERVES_SHELL_SUCCESS_AND_RETAINS_OWNERS_PASS": true,
-    "exit_zero": true,
-    "vm_powered_off": true
-  },
-  "passed": true,
-  "full_lifecycle_qualified": false
-}

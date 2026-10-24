@@ -1,1 +1,0 @@
-Normal suite passed with deadline-aware paired unmounts: both busy-output and busy-tool failures retain both volumes, preserve original error and permit retry before original cutoff. This does not test dual-volume command execution or Step pair finalization through a real command.

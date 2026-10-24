@@ -1,1 +1,0 @@
-EXPORT_VALIDATION_PASS: roundtrip; magic/truncation/trailing/digest/zero-size/oversize rejection

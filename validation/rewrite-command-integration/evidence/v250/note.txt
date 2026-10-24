@@ -1,1 +1,0 @@
-v250: full regression with CLI forwarding/nonzero rejection, readable exit-code diagnostics and ORAS 1.3.5 self-contained OCI copying. Inspect verdict/serial for result. Independent ORAS checks all successful pipeline outputs and exact referenced blob bytes; guest has no external NIC. Not full M6 or platform qualification.

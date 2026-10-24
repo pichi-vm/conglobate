@@ -1,7 +1,0 @@
-linux-vdso.so.1 (0x00007fa2e43f7000)
-	libfuse3.so.4 => /lib64/libfuse3.so.4 (0x00007fa2e3a00000)
-	libacl.so.1 => /lib64/libacl.so.1 (0x00007fa2e43d0000)
-	libblkid.so.1 => /lib64/libblkid.so.1 (0x00007fa2e4393000)
-	libuuid.so.1 => /lib64/libuuid.so.1 (0x00007fa2e438a000)
-	libc.so.6 => /lib64/libc.so.6 (0x00007fa2e3807000)
-	/lib64/ld-linux-x86-64.so.2 (0x00007fa2e43f9000)

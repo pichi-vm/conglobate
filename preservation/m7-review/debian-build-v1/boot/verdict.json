@@ -1,6 +1,0 @@
-{
-  "marker_observed": false,
-  "expected_marker": "CONGLOBATE_DEBIAN_BOOT_PASS",
-  "reason": "boot deadline expired",
-  "confidential_platform_qualified": false
-}

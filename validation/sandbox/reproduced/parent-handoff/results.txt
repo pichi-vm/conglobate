@@ -1,8 +1,0 @@
-Error: "original parent is dead or its handle is invalid"
-SAFE_PARENT_HANDOFF_PASS before-arm
-SAFE_PARENT_HANDOFF_PASS after-arm
-SAFE_PARENT_HANDOFF_PASS after-check
-SAFE_PARENT_HANDOFF_PASS live-control
-SAFE_PARENT_HANDOFF_MATRIX_PASS
-GUEST_EXIT 0
-[    1.017450] sysrq: Resetting

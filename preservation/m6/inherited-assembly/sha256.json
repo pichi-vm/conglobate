@@ -1,8 +1,0 @@
-{
-  "preservation/m6/inherited-assembly/clippy-final.log": "84a915fe16f7045e5519cd2d499f5faef92b25a5fce750f46fabd6e0ca3a9dd0",
-  "preservation/m6/inherited-assembly/clippy-fixed.log": "684e4ad7a37531f7d071dab19d02b571933e258a82a838d2a4231b208113ca8c",
-  "preservation/m6/inherited-assembly/source/src/output/assembly.rs": "215aab8f458d7754696e8c9be86281a8d3cb6729823d71bb02d112eea09b4ec9",
-  "preservation/m6/inherited-assembly/source/src/output.rs": "96f6f9207eff1a931c73ab83895486c88404a20f5d15bf50e536056bcdf0694e",
-  "preservation/m6/inherited-assembly/test-fixed.log": "80247f124794c8a1ffde89c3cbdae1bc4b940db56067058c19bd84f38c779b47",
-  "preservation/m6/inherited-assembly/test.log": "c874f9cd4c8c515dcbe28df214c30acca9c999afea173cc4d83e1b82d4a09915"
-}

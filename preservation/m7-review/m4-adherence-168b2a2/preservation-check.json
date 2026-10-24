@@ -1,8 +1,0 @@
-{
-  "archive": "../conglobate-preservation/2026-10-22/working-tree.tar",
-  "sha256": "f249e9535a2fac7b3f4289a3346d8f5d18ebd4954087101b166426e7223a4eb2",
-  "matches_BASELINE_txt": true,
-  "checked_by": "sha256sum, exit 0",
-  "scope": "Original local full archive only; no claim about remote durability or later external artifacts",
-  "external_assets_durably_archived": false
-}

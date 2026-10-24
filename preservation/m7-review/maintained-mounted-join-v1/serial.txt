@@ -1,9 +1,0 @@
-+ modprobe loop
-+ modprobe dm-zero
-+ modprobe dm-snapshot
-+ modprobe ext4
-+ /lifecycle-tests sandbox-join-failure
-SANDBOX_JOIN_FAILURE_ROLLBACK_PASS
-LIFECYCLE_EXIT 0
-[    2.359128] sysrq: Power Off
-[    2.363780] reboot: Power down

@@ -1,6 +1,0 @@
-{
-  "result": "Production shell status observed while actual descendant blocked; fixed cleanup deadline and retained owners passed. v4 adds stronger PID-namespace, error-kind and retained-D-state checks.",
-  "full_milestone_pass": false,
-  "platform": "native amd64 ordinary disposable VM",
-  "large_assets_durably_archived": false
-}

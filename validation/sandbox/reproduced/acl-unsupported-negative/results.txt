@@ -1,8 +1,0 @@
-FUSE2FS (image): Warning: fuse2fs does not support using the journal.
-There may be file system corruption or data loss if
-the file system is not gracefully unmounted.
-FUSE2FS (image): mounted filesystem 03c441c6-f11e-46a6-8e10-25ba6fc30b25.
-fuse: unknown connection 'want' flags: 0x08000000
-UNSUPPORTED_EXTENSION_WORKER_STATUS 0
-GUEST_EXIT 1
-[    0.679798] sysrq: Resetting

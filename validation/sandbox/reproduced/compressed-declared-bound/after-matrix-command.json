@@ -1,7 +1,0 @@
-[
-  "cargo",
-  "test",
-  "--locked",
-  "--test",
-  "scutes"
-]

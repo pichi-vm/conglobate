@@ -1,2 +1,0 @@
-Passed volume ownership: unformatted mount failure retains snapshot and cleans target; ext4 write, borrowed view, EBUSY cleanup retry, remount persistence and storage release. Fixture-only formatting; no production formatter or sandbox integration qualification.
-Exact booted source is in source/. volume-with-lifetime-tests.rs adds only post-run compile-fail documentation. The original mapped-view API is borrowed from the volume; policy/command lifetime integration remains pending.

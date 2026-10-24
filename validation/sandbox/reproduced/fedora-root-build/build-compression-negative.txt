@@ -1,1 +1,0 @@
-EDQUOT in gzip packaging; no guest started. Generated root/partial initramfs removed; inputs retained.

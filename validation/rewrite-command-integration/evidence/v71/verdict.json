@@ -1,6 +1,0 @@
-{
-  "passed": false,
-  "booted": false,
-  "reason": "compile error: removed marker binding still used by final content checks",
-  "full_sandbox_qualified": false
-}

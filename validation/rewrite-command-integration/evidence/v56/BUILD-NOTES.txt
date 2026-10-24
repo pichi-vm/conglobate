@@ -1,1 +1,0 @@
-Initial fixture build failed with E0433 at three rustix mount references: the fixture has no direct rustix dependency. Corrected fixture-only original-source unmount/restoration to use its existing mount/umount setup tools; production filesystem pin uses safe rustix APIs. Build then passed. This is a retrospective error note, not a raw compiler log.

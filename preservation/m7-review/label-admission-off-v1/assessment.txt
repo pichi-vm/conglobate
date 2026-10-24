@@ -1,1 +1,0 @@
-Build failed before command marker. However labeling error diagnostic was not preserved and runtime cleanup reported Directory not empty. This is not a clean absent-policy test pass. Investigate error-path diagnostic lifetime and attachment cleanup.

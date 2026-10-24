@@ -1,1 +1,0 @@
-v219 full normal offline command/bootstrap/carapace/firmware regression suite after shared setup protocol changes. See verdict and raw serial for result. No enabled recipe, NAT, resolver mount or full M6 qualification claim.

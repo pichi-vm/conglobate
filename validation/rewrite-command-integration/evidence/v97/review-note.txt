@@ -1,1 +1,0 @@
-Passed detached clone before namespace transition, supervisor volume identity pinning, wrong-namespace view/pin/cleanup rejection and retry. Follow-up adds actual idmap and mount attachment exercise.

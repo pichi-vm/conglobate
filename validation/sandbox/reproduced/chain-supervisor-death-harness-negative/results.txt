@@ -1,9 +1,0 @@
-Library version:   1.02.212 (2025-12-15)
-Driver version:    4.50.0
-Traceback (most recent call last):
-  File [35m"/guardian.py"[0m, line [35m25[0m, in [35m<module>[0m
-    assert [1;31mnot names()[0m, 'fixture requires an empty disposable device namespace'
-           [1;31m^^^^^^^^^^^[0m
-[1;35mAssertionError[0m: [35mfixture requires an empty disposable device namespace[0m
-GUEST_EXIT 1
-[    1.741626] sysrq: Resetting

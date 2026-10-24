@@ -1,1 +1,0 @@
-Git metadata stored as git-metadata to avoid nested repository staging; restore as .git. Source snapshot includes test-only assembly fixture additions after v189 compilation; production code and integration fixture correspond to run. No distro/boot/platform qualification.

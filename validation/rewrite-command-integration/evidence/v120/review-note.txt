@@ -1,1 +1,0 @@
-Private completion reporting and original outcome retained through policy-cleanup failure/retry. Combined shell exit 37 and cleanup failure passes. Namespace init maps shell signals to 128+signal; transport preserves reported status, not original signal identity. No qualification/adherence claim.

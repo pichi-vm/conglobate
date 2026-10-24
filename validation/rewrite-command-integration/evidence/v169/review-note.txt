@@ -1,1 +1,0 @@
-Failed with EINVAL after creating /mnt in original unmapped root. Next change attaches tool view before attaching the output beneath it, retaining partial attachment ownership.

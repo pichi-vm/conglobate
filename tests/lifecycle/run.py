@@ -86,7 +86,7 @@ class LifecycleRun:
                                 str(REPO / 'tests/lifecycle/clone-probe.c'), '-o', str(probe)],
                                env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             runtime.executable(probe, Path('usr/bin/clone-probe'))
-        if self.args.case in ("cache-storage", "chain-storage"):
+        if self.args.case in ("cache-storage", "chain-storage", "oci-copy"):
             CacheFixture(self.root / "cache-fixture").create()
         binary = target / 'debug/conglobate-lifecycle-tests'
         runtime.executable(binary, Path('lifecycle-tests'))
@@ -105,6 +105,11 @@ class LifecycleRun:
                  if self.args.case in ('formatter-failures', 'cache-storage', 'chain-storage') or self.args.case.startswith('sandbox-') else
                  'mkdir /work/cgroups\nmount -t cgroup2 cgroup2 /work/cgroups\n')
         if self.args.case in ('clone-filter', 'pty-filter'):
+            setup = ''
+        if self.args.case == 'oci-copy':
+            if self.args.oras is None:
+                raise RuntimeError('--oras is required for oci-copy')
+            shutil.copy2(self.args.oras, self.root / 'usr/bin/oras')
             setup = ''
         if self.args.case == 'external-network-input':
             setup = ''
@@ -207,6 +212,8 @@ exec sleep infinity
         elif self.args.case == 'runtime-scope':
             markers = ['RUNTIME_SCOPE_SUCCESS_CLOSED_PASS', 'RUNTIME_SCOPE_OPERATION_ERROR_CLOSED_PASS',
                        'RUNTIME_SCOPE_CLEANUP_FAILURE_OWNERS_RETAINED_PASS']
+        elif self.args.case == 'oci-copy':
+            markers = ['OCI_ORAS_SELF_CONTAINED_COPY_PASS']
         elif self.args.case == 'pty-filter':
             markers = ['PRIVATE_PTY_FILTER_PASS']
         elif self.args.case == 'clone-filter':
@@ -283,7 +290,8 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['runtime-private-namespace', 'runtime-changed-namespace', 'workspace-mount', 'sandbox-unmapped-default-group', 'sandbox-unmapped-acl', 'sandbox-unmapped-owner', 'runtime-scope', 'sandbox-delayed-teardown', 'sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'pty-filter', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'external-network-input', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['runtime-private-namespace', 'runtime-changed-namespace', 'workspace-mount', 'sandbox-unmapped-default-group', 'sandbox-unmapped-acl', 'sandbox-unmapped-owner', 'runtime-scope', 'sandbox-delayed-teardown', 'sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'pty-filter', 'oci-copy', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'external-network-input', 'sandbox-gate-failure', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--oras', type=Path, help='Trusted ORAS binary for the OCI copy case')
     parser.add_argument('--accel', choices=['kvm', 'tcg'], default='kvm')
     parser.add_argument('--trace-mounts', action='store_true',
                         help='trace fixture mount syscalls inside the disposable guest')

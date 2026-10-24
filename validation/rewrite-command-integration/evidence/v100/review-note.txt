@@ -1,1 +1,0 @@
-Registered helper receives owned detached volume and pinned namespace descriptors; idmap and attach in helper succeed. Parent retains view until helper cancellation/reaping. This transport primitive does not yet enforce aggregate Step/Volume ownership or replace the protected command fixture paths. No adherence pass.

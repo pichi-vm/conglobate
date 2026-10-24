@@ -1,1 +1,0 @@
-Guest exit1: expected EPERM for genuine outer namespace handle but observed ESTALE116. This is an unqualified denial until trusted-side handle validity controls establish that the handle is usable. Retain as incorrect errno expectation, not a security pass.

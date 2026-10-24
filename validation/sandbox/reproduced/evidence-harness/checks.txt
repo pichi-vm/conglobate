@@ -1,3 +1,0 @@
-HARNESS_EXIT_AND_SOURCE_CATALOG_PASS
-Retained source snapshots match every recorded SHA256.
-Guest pressure matrix passed with exact single successful exit.

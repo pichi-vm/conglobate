@@ -1,6 +1,0 @@
-{
-  "marker_observed": true,
-  "expected_marker": "login:",
-  "reason": "expected guest marker observed; harness terminated VM",
-  "confidential_platform_qualified": false
-}

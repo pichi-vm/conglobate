@@ -1,9 +1,0 @@
-{
-  "checks": {
-    "EXTERNAL_NETWORK_PIN_REPLACEMENT_AND_RELEASE_PASS": true,
-    "exit_zero": true,
-    "vm_powered_off": true
-  },
-  "passed": true,
-  "full_lifecycle_qualified": false
-}

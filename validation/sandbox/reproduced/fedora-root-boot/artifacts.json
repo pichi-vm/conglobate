@@ -1,9 +1,0 @@
-{
-  "firmware": {
-    "kernel": "515dcb6e407dff32e970274670fb357187c672fdd7f68d4ed0dbf0c1d7138055",
-    "initramfs": "25475a752227226c6f75cdd153c37349e120a8ffcd5bf9ee2b7a936befaec0c9"
-  },
-  "rootfs_compressed_sha256": "e6d84a059b0fb380e5503e023f6cb3f0e8cf0401fed0a21607f9a07da3e10e44",
-  "rootfs_raw_sha256": "d7e4d5c55e71c21c84307cbd8d54e65c74e3f46ef28b8122e55ffa0b272821e0",
-  "rootfs_raw_bytes": 2147483648
-}

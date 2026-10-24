@@ -1,1 +1,0 @@
-Diagnostic relay first placement still fails; corrected fixture now preserves registration-peer-closed diagnostic and retained cleanup owner. Thread creation after CLONE_NEWPID is a source-grounded placement concern; this run does not expose the precise inner errno. Next placement moves relay to outer receiver before namespace child entry.

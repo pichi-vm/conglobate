@@ -1,1 +1,0 @@
-Fixture compilation failed: new canonical mismatched-record test used minicbor without a direct dependency. No VM ran. Add the already-used local dependency to fixture, updating its lock offline.

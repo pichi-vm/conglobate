@@ -1,7 +1,0 @@
-{
-  "missing_policy_rejected": true,
-  "command_sentinel_absent": true,
-  "label_denial_diagnostic_observed": true,
-  "cleanup_reported_complete": true,
-  "full_sandbox_qualified": false
-}

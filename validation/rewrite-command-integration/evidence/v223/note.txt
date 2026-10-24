@@ -1,1 +1,0 @@
-v223 FAILED: new forwarding fixture created its nested namespace-pin directory with default mode rather than required 0700. Production pin validation correctly rejected it before topology setup. Prior network suite passed. No forwarded NAT qualification claimed. Preserved before fixture fix.

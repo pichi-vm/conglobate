@@ -1,1 +1,0 @@
-Unintended repeat of v143 after a fixture patch script assertion failed without modifying source. Normal VM suite passed; no new coverage claimed. main.rs/run.py source restored from the pre-edit snapshot captured while this VM was running. Other runtime source unchanged.

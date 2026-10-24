@@ -1,5 +1,0 @@
-+ /lifecycle-tests external-network-input
-lifecycle fixture: network namespace input has the wrong type
-LIFECYCLE_EXIT 1
-[    1.727324] sysrq: Power Off
-[    1.729467] reboot: Power down

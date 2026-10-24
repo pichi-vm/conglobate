@@ -1,1 +1,0 @@
-These runs passed, but subsequent source review rejected returning BoundDisabled after partial close. A cleanup-only owner is required to prevent a future activation API from accepting partially removed hooks. This evidence predates that correction.

@@ -1,9 +1,0 @@
-[
-  "cargo",
-  "test",
-  "--locked",
-  "--lib",
-  "execute::tests::trusted_helper_does_not_inherit_shell_startup_environment",
-  "--",
-  "--exact"
-]

@@ -1,1 +1,0 @@
-Bound policy acquires and owns activation map handle before helper launch; Step assembly is infallible. Descriptor exhaustion during identity verification retains owners and retry succeeds. Normal VM passes; exact map-dup failure not isolated.

@@ -1,6 +1,0 @@
-#!/bin/bash
-set -eu
-mount --make-rprivate /
-mount --bind /work/view /work/view
-/runtime-mounts /work/view "$(cat /runtime-failure-stage)"
-exec /entry-helper /work/view /command --restricted

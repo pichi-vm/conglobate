@@ -1,9 +1,0 @@
-# Admitted bootstrap command rejection
-
-Base 96705d0 plus new maintained bootstrap-nonzero recipe and failure assessor mode. No production change. Native amd64 KVM disposable guest, kernel 7.2.10-200.fc44.x86_64, 8 GiB. tests/distro/run.py uses module-root /, cache /var/tmp/conglobate-fedora-input-v1, pin sha256:4b1b5a79839b8d115987aefb23dabe4282713396101b4c5416d17be974b2b2ab and tests/distro/failures/bootstrap-nonzero/recipe.yaml. Compiler environment CARGO_BUILD_JOBS=2, TMPDIR=/var/tmp/conglobate-rewrite-tmp, CARGO_TARGET_DIR=target/m7-stable. Exact VM command/inputs/context/source retained.
-
-First command writes and reads both tool/output filesystems, prints BOOTSTRAP_BOTH_ROOTS_WRITTEN and exits 7. Second command must never run. Runner exits expected 1; independent verifier exits 0 with seven checks true: admitted first command, precise exit status, no published output, build rejection, complete command/runtime cleanup diagnostics and no later-step marker.
-
-Source review: StageFailure::Execution calls reject_command, which retries cleanup, retains original outcome/history, converts storage only to rejected unmounted ownership, and calls DiscardStorage. Bootstrap implementation attempts both tool and output discard independently; successful discard still produces BuildError. Runtime::scoped closes after callback error. This test reaches admitted execution rejection, complementing prior pre-admission label failure; it does not inject every cleanup fault or independently enumerate all kernel resources.
-
-Archived source comparisons: 188 checked, 0 different. Large kernel/initramfs retained locally with hashes, not remotely durable. Failed export backing is not an artifact. No bootable distro, other architecture/confidential-platform or full milestone qualification claim.

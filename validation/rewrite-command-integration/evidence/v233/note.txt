@@ -1,1 +1,0 @@
-v233 FAILED fixture expectation: mapped root read injected resolver bytes successfully, but write open was denied EACCES rather than EROFS because the source inode is outside its user mapping. Both deny writes. Preserve before correcting assertion; no successful full run claimed.

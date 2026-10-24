@@ -1,0 +1,9 @@
+{
+  "entries": 84489,
+  "sha256": "dd4bebf04972a977fd55c50aa2f68c31aefda51d235204903b4ca97ff14be7f3",
+  "archive": "/storage/conglobate-validation/final-preservation/worktree.tar.zst",
+  "exclusions": [
+    ".git (separate verified bundle)",
+    "root target build cache"
+  ]
+}

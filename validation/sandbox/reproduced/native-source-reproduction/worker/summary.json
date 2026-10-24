@@ -1,8 +1,0 @@
-{
-  "objects": 65,
-  "unique_source_and_header_inputs": 338,
-  "all_objects_identical": true,
-  "inputs_stable_at_final_check": true,
-  "inventory_sha256": "d8233976407cfebb0dd1b4c47e155dc1f20c0e545f34e1e13d0cb5ae1d044bde",
-  "scope": "Existing generated configuration/source inputs and current compiler; not a from-release clean bootstrap or libfuse rebuild."
-}

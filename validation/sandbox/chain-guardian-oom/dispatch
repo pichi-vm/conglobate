@@ -1,5 +1,0 @@
-#!/bin/bash
-set -eu
-# Move the trusted monitor out before Python loads or creates build processes.
-printf '%s\n' "$$" >/sys/fs/cgroup/cgroup.procs
-exec python3 /monitor.py "$1"

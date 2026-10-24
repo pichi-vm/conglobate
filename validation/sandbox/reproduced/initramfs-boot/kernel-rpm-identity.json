@@ -1,7 +1,0 @@
-{
-  "rpm": "kernel-core-7.2.11-200.fc44.x86_64.rpm",
-  "rpm_sha256": "6c993e04efdc0d45ae0e2542e045c37450a53ea968416c2e936eca5351988b24",
-  "payload": "/lib/modules/7.2.11-200.fc44.x86_64/vmlinuz",
-  "size": 19020136,
-  "sha256": "515dcb6e407dff32e970274670fb357187c672fdd7f68d4ed0dbf0c1d7138055"
-}

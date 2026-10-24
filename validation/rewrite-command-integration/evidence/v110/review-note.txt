@@ -1,1 +1,0 @@
-Fixed 30-second teardown coordinator passes owned-volume cases in VM and root tests. Root Clippy identifies a large internal transition-error variant; preserve pre-fix code before boxing the transition failure.

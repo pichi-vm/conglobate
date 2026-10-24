@@ -1,1 +1,0 @@
-Step::execute integrates volume transfer, restricted readiness, bounded admission, observation, teardown and storage finalization. Normal VM suite passes; dedicated success/nonzero/timeout/setup-rejection cases all force EBUSY finalization and retry. Only successful command plus clean finalization yields opaque ExecutedVolume. Full M4 remains unqualified.

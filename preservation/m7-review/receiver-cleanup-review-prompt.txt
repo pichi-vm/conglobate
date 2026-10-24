@@ -1,7 +1,0 @@
-Continue our source-grounded reconciliation. Review only current uncommitted src/isolation/receiver.rs and labels.rs against HEAD 92f528f and your last consensus. Do not spawn more agents; perform this focused follow-up yourself. Read-only; no privileged host operations, no edits, no Cargo needed.
-
-ReceiverStartup now owns mount/diagnostics/original deadline. A healthy admitted channel remains in outer scope through start_until failure cleanup. Earlier report/admission failures drop the gate to release the waiting child. Assess consuming ownership, deadline behavior, control-socket lifetime and recovery. Labels now report command root and operation.
-
-Evidence: /var/tmp/conglobate-receiver-root-negative-v1 has passed tests/distro/labeling-fault/verify.py --negative: first probe allowed, second denied, command not admitted, cleanup complete, output absent; error identifies /mnt. 193 rootless tests and 50 doctests passed after receiver refactor; final strict Clippy passed after diagnostic edits. Positive bootstrap regression is running. Exact post-admission gate-send failure has NOT been deterministically injected; do not infer that coverage from readiness failure. Assess whether a small existing-interface test can cover the lifetime ordering without production fault flags.
-
-Return concise findings with source evidence and an updated open/closed ledger. This is not a whole-milestone adherence pass. Durable artifacts and broad qualification remain outstanding. Do not restore registration.

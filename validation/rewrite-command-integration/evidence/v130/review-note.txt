@@ -1,1 +1,0 @@
-Production HelperInvocation dispatch handles namespace creation and ordinary owned-volume command execution. Fault injection remains fixture-only. Normal VM suite passes. Post-build changes are cfg(test) codec tests and rustfmt only; no runtime behavior change. Full M4 remains unqualified.

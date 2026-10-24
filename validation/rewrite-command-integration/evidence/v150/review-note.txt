@@ -1,1 +1,0 @@
-Supervisor-death regression passes with outer-receiver diagnostic relay and post-cleanup completion reporting. Relays use per-write diagnostic locks, not locks held across blocking reads. Independent controller verifies retained live command domain/policy/filesystem before VM shutdown. M4 review R2 remains open.

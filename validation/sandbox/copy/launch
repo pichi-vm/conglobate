@@ -1,9 +1,0 @@
-#!/bin/bash
-set -eu
-mount --make-rprivate /
-mount --bind /work/view /work/view
-mount -t proc -o nosuid,nodev,noexec proc /work/view/proc
-mount -t tmpfs -o nosuid,noexec tmpfs /work/view/dev
-touch /work/view/dev/null
-mount --bind /work/runtime/null /work/view/dev/null
-exec /entry-helper /work/view /command --restricted

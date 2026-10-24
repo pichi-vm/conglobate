@@ -1,8 +1,0 @@
-{
-  "formatter_body_identical": true,
-  "sha256": "527118ff00485ab8c806cd7d7b3aee695b87177cf345193c6b983bc97f8b8e81",
-  "current_api_check": true,
-  "strict_clippy": true,
-  "disposable_vm_run": false,
-  "full_lifecycle_qualified": false
-}

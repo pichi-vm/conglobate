@@ -1,1 +1,0 @@
-Build failed before VM launch: fixture retained a multiline TempDir.path() call after changing fixture directory to a Path. No runtime validation claimed.

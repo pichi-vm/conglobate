@@ -1,9 +1,0 @@
-{
-  "clean-check.log": "4695358c4ba4f5a05ba7df5e99a959131429a7712d4fd91684e176c316cca0c4",
-  "clean-header.log": "48d9b1929c16dcac283156da70c9a11bca6ed024ed8f6e3bdcb449a8d32c7516",
-  "truncated-check.log": "38ca7e1c24caf28e1ed776c4aae6be2d118512df71197750d4e8837bfa28f6d7",
-  "truncated-header.log": "0133c57bbe9a21bf5dd0053ce97a94e3e66925c24d6ad7c7f0145f361318bbc5",
-  "unclean-check.log": "4695358c4ba4f5a05ba7df5e99a959131429a7712d4fd91684e176c316cca0c4",
-  "unclean-header.log": "e4c99838d5a5980df41e9fe263b69f2f4082b5817e3f956c91ed8f9ba8ca55dd",
-  "result.json": "1946eae4a85beb04057a7950ac0fababcfd74979fa6423568ceaeb6e65949c8a"
-}

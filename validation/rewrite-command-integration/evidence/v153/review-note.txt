@@ -1,1 +1,0 @@
-Normal disposable-VM suite passes. Snapshot exhausted by trusted fixture beyond formatted filesystem after successful command and syncfs. Finalization and retry reject InvalidData, no success/rejected-volume extraction; mount removed. No milestone acceptance claimed.

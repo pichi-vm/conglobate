@@ -1,9 +1,0 @@
-+ export PATH=/usr/bin:/usr/sbin
-+ PATH=/usr/bin:/usr/sbin
-+ mkdir -p /work/origin /work/mapped
-+ truncate -s 64M /work/volume.ext4
-+ mke2fs -q -t ext4 -F /work/volume.ext4
-+ mount -o loop /work/volume.ext4 /work/origin
-mount: /work/origin: failed to setup loop device for /work/volume.ext4.
-IDMAP_PROBE_EXIT 32
-[    3.084746] sysrq: Resetting

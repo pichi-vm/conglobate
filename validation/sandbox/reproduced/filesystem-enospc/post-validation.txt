@@ -1,5 +1,0 @@
-Original guest: GUEST_EXIT 0. Host postprocessing: UnboundLocalError for runpy.
-Corrected local import; reran all current metadata assertions on retained log:
-python3 validation/sandbox/metadata/revalidate-log.py /tmp/conglobate-fs-enospc-v1/results.txt
-SAVED_GUEST_METADATA_AND_ENOSPC_VALIDATION_PASS
-HARNESS_EXIT_AND_SOURCE_CATALOG_PASS

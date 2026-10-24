@@ -1,3 +1,0 @@
-    Checking rustix v1.1.5 (https://github.com/bytecodealliance/rustix?rev=8bda151df87574f56f1e4c0b59f2d1df5d61609e#8bda151d)
-   Compiling conglobate v0.2.0 (/home/nathaniel/Projects/pichi-vm/conglobate)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.93s

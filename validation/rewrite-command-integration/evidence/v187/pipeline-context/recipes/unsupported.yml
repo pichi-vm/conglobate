@@ -1,4 +1,0 @@
-carapace:
-  from: example.test/base:1
-  derive:
-    - run: echo MUST_NOT_RUN

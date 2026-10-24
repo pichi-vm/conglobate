@@ -1,9 +1,0 @@
-+ modprobe loop
-+ modprobe dm-zero
-+ modprobe dm-snapshot
-+ modprobe ext4
-+ /lifecycle-tests sandbox-launch-failure
-SANDBOX_LAUNCH_FAILURE_ROLLBACK_PASS
-LIFECYCLE_EXIT 0
-[    2.383741] sysrq: Power Off
-[    2.388428] reboot: Power down

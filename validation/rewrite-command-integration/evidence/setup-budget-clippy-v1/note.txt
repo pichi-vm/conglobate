@@ -1,1 +1,0 @@
-Initial setup-budget Clippy rejection: oversized Late variant. Fixed by boxing retained RunningCommand. No privileged run used this version.

@@ -1,1 +1,0 @@
-v241 FAILED fixture shell syntax: independently cloned raw cleanup view permits ID mapping and restricted command execution. Existing image security checks ran, then a leading semicolon appended after a newline caused shell exit 2. Network/storage finalization returned rejected storage. Preserve before fixing the script and extending the fixture to real DNS lookup.

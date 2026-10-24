@@ -1,9 +1,0 @@
-+ mkdir /work/cgroups
-+ mount -t cgroup2 cgroup2 /work/cgroups
-+ /lifecycle-tests runtime-scope
-RUNTIME_SCOPE_SUCCESS_CLOSED_PASS
-RUNTIME_SCOPE_OPERATION_ERROR_CLOSED_PASS
-RUNTIME_SCOPE_CLEANUP_FAILURE_OWNERS_RETAINED_PASS
-LIFECYCLE_EXIT 0
-[    1.461104] sysrq: Power Off
-[    1.462323] reboot: Power down

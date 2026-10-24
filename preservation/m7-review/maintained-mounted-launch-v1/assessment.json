@@ -1,9 +1,0 @@
-{
-  "checks": {
-    "SANDBOX_LAUNCH_FAILURE_ROLLBACK_PASS": true,
-    "exit_zero": true,
-    "vm_powered_off": true
-  },
-  "passed": true,
-  "full_lifecycle_qualified": false
-}

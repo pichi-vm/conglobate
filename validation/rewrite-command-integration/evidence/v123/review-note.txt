@@ -1,1 +1,0 @@
-Supervisor-death VM passes after production namespace/root helper extraction. Environment shuts VM down; no guardian added. No full qualification or adherence pass.

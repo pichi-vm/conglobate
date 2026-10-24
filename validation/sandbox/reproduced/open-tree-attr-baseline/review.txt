@@ -1,1 +1,0 @@
-Known-negative policy control: two restricted command namespaces successfully create and close a detached mount of an owned empty directory using open_tree_attr(467). No mount is attached, no attributes changed, no outside path used. Guest exit0 means the expected omission was reproduced, not a policy pass. This is not evidence of sandbox escape.

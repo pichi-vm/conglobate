@@ -1,5 +1,0 @@
-+ modprobe veth
-+ /idmap-probe network-probe
-veth: created veth pair identity mismatch
-IDMAP_PROBE_EXIT 1
-[    5.259191] sysrq: Resetting

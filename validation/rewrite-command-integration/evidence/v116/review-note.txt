@@ -1,1 +1,0 @@
-Gated restricted leaf passes supervisor-death suite; policy/pins survive controller kill until independent poweroff. Host malformed-packet, unexpected-rights release, peer-loss, cancellation and no-start-before-ready tests pass. Clippy finds one redundant borrow in refactored receiver; pre-fix VM source preserved.

@@ -1,8 +1,0 @@
-{
-  "kernel_sha256": "41ba36d860aa0b0cd995f4ca8856d80249b244577e704929b55be13fbd1ebd2f",
-  "kernel_release": "6.8.0-147-generic",
-  "drop": null,
-  "case": "cache-storage",
-  "architecture": "native amd64 ordinary VM",
-  "network_attached": false
-}

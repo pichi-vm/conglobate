@@ -1,9 +1,0 @@
-{
-  "baseline": "b3df3a3",
-  "rootless_tests": 197,
-  "doctests": 51,
-  "strict_root_clippy": true,
-  "strict_maintained_fixture_clippy": true,
-  "format_check": true,
-  "new_vm_run": false
-}

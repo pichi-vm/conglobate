@@ -1,1 +1,0 @@
-Harness failure: new case omitted from ownership-init packaging tuple, so no build or writer audit ran. Guest exit1 and fallback marker are expected evidence of this failed attempt, never a sandbox pass. Corrected tuple includes the new case. Prior v1 attempt failed gzip quota before guest startup.

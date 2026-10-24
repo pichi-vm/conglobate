@@ -1,8 +1,0 @@
-+ mkdir /work/cgroups
-+ mount -t cgroup2 cgroup2 /work/cgroups
-+ /lifecycle-tests runtime-changed-namespace
-runtime retained until VM disposal: /proc/self/fd/5/conglobate-runtime-6cBrnX
-RUNTIME_CHANGED_NAMESPACE_REJECTED_PASS
-LIFECYCLE_EXIT 0
-[    1.395350] sysrq: Power Off
-[    1.397923] reboot: Power down

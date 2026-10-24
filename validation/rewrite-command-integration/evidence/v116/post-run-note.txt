@@ -1,1 +1,0 @@
-After VM run, recvmsg receives socket directly instead of &socket; redundant reference only. Exact booted source remains under source/. Final host Clippy checks follow.

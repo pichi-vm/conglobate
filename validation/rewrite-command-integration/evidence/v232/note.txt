@@ -1,1 +1,0 @@
-v232 PASS: named tmpfs resolver source, exact bytes after original source removal, mount-enforced read-only even to root, existing target restoration and dangling /run scaffold cleanup. Explicitly rejects attaching a target pinned in another mount namespace. Network suite also passes dual-stack UDP/TCP NAT and cleanup. No command user-namespace/DNS protocol/CLI integration claim.

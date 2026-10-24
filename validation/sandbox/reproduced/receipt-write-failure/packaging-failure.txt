@@ -1,1 +1,0 @@
-First attempt /tmp/conglobate-receipt-write-v1: gzip exited1 with Disk quota exceeded while producing initramfs.gz. No guest ran. Cleanup preserved logs/source catalogs and removed only generated root/initramfs/kernel files from two packaging failures and one evidence-matched completed run. Fresh-directory retry passed.

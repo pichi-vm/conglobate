@@ -1,9 +1,0 @@
-{
-  "source": "/var/tmp/conglobate-fedora-build-v3/artifact",
-  "manifest": "sha256:0edfae6c9e6e8f2a6d24cded237fb9a624d1f05aca417f7ae280f387aece20bc",
-  "cache": "/var/tmp/conglobate-label-tools-input-v1",
-  "index": "sha256:fd1c4e46822a4a22f468ed8c855af5ce8a89b62458bec33159d89d99b0db6b5a",
-  "preparer_sha256": "f54a8cde18a696adae4027dfe331fd2f24d4b4ce4e36620a2e5ac8baaddae76b",
-  "downloads": false,
-  "durably_archived": false
-}

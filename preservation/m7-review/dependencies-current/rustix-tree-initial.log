@@ -1,4 +1,0 @@
-error: There are multiple `rustix` packages in your project, and the specification `rustix` is ambiguous.
-Please re-run this command with one of the following specifications:
-  registry+https://github.com/rust-lang/crates.io-index#rustix@1.1.5
-  git+https://github.com/bytecodealliance/rustix?rev=8bda151df87574f56f1e4c0b59f2d1df5d61609e#1.1.5

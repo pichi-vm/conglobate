@@ -1,2 +1,0 @@
-RESTRICTED_DERIVED_BOOT_ARTIFACT_PASS
-Runner exit0; export hashes/lengths/EOF and base identity verified.

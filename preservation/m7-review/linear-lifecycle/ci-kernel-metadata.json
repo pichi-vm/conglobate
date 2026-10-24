@@ -1,5 +1,0 @@
-{
-  "url": "https://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/Packages.xz",
-  "sha256": "d0b639b8d595c448980c171d7a2d197db2fda7d34122c9468fb9ba2f32e62aba",
-  "purpose": "Diagnose firmware dependency timeout; selected image directly depends on matching modules but not hardware firmware."
-}

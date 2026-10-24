@@ -1,1 +1,0 @@
-Failed fixture assertion: write-mode open is permitted for the read-only mapping; actual write rejection must be tested. No corruption-test pass inferred.
