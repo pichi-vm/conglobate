@@ -1,0 +1,14 @@
+{
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/hosted-linear-40043887757/clone-filter/vmlinuz",
+    "sha256": "482791f3b4023465bd79c8e261a5596772ec356ae44e919bf1b11a342294ccf4",
+    "size": 17029512,
+    "durably_archived": false
+  },
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/hosted-linear-40043887757/clone-filter/initramfs.gz",
+    "sha256": "56eea877d4dd73b66da1015d0b0c67dff9b25d40f45c430f517d2675aaf58b48",
+    "size": 83328811,
+    "durably_archived": false
+  }
+}

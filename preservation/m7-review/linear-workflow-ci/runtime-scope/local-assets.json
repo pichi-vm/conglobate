@@ -1,0 +1,14 @@
+{
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/hosted-linear-40043887757/runtime-scope/vmlinuz",
+    "sha256": "482791f3b4023465bd79c8e261a5596772ec356ae44e919bf1b11a342294ccf4",
+    "size": 17029512,
+    "durably_archived": false
+  },
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/hosted-linear-40043887757/runtime-scope/initramfs.gz",
+    "sha256": "b01cbb7a6ba1c1c68650c8bfc9512870ede7fe46fe2e6c3e5136941d7ef4c7e6",
+    "size": 83323356,
+    "durably_archived": false
+  }
+}

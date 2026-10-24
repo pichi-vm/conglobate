@@ -1,0 +1,35 @@
+{
+  "commit": "d5e77e652445f66dcba0597cbc9cd52285c35d78",
+  "cases": {
+    "cache-storage": {
+      "passed": true,
+      "matched_source_files": 146,
+      "full_lifecycle_qualified": false
+    },
+    "clone-filter": {
+      "passed": true,
+      "matched_source_files": 146,
+      "full_lifecycle_qualified": false
+    },
+    "contained": {
+      "passed": true,
+      "matched_source_files": 146,
+      "full_lifecycle_qualified": false
+    },
+    "runtime-changed-namespace": {
+      "passed": true,
+      "matched_source_files": 146,
+      "full_lifecycle_qualified": false
+    },
+    "runtime-private-namespace": {
+      "passed": true,
+      "matched_source_files": 146,
+      "full_lifecycle_qualified": false
+    },
+    "runtime-scope": {
+      "passed": true,
+      "matched_source_files": 146,
+      "full_lifecycle_qualified": false
+    }
+  }
+}

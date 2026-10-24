@@ -6304,3 +6304,14 @@ Evidence: preservation/m7-review/linear-pipeline-validation. Production source
 matches 0556f30 in both guest archives. No milestone adherence pass or full distro,
 platform, failure-path or boot qualification is claimed. Large assets are still
 local, not durable retirement archives.
+
+## Hosted linear-workflow evidence
+
+Lifecycle CI 40043887757 at d5e77e6 passes all six configured native-amd64 guest
+cases. Preserved small evidence, assessments and exact source comparisons in
+preservation/m7-review/linear-workflow-ci (146 selected source files per case).
+Rust job 120721017603 in run 40043887779 is green; the dependency job remained
+live at capture. These are configured-case results, not full qualification.
+No additional testing was launched while the architecture identity-range
+question awaits the user's answer. No gate advances. Large assets remain local
+with hashes; durable M8 archival is still required.
