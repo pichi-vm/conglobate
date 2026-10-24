@@ -66,3 +66,47 @@ fn absolute_and_escaping_recipe_paths_fail() {
         assert!(BuildRequest::parse_from(args).is_err(), "{path}");
     }
 }
+
+#[test]
+fn environment_id_maps_are_paired_and_validated() {
+    let mut args = Fixture::args();
+    args.extend(["--recipe", "recipe", "--lock", "lock"].map(str::to_owned));
+    assert!(
+        BuildRequest::parse_from(&args)
+            .unwrap()
+            .id_mappings()
+            .is_none()
+    );
+    for flag in ["--uid-map", "--gid-map"] {
+        let mut unpaired = args.clone();
+        unpaired.extend([flag, "200000:131072"].map(str::to_owned));
+        assert!(BuildRequest::parse_from(unpaired).is_err());
+    }
+    for invalid in [
+        "0:1",
+        "1:0",
+        "4294967295:1",
+        "1:4294967295",
+        "200000",
+        "1:2:3",
+        "-1:2",
+        "+1:2",
+        " 1:2",
+        "1:",
+        ":2",
+    ] {
+        let mut invalid_args = args.clone();
+        invalid_args
+            .extend(["--uid-map", invalid, "--gid-map", "400000:131072"].map(str::to_owned));
+        assert!(BuildRequest::parse_from(invalid_args).is_err(), "{invalid}");
+    }
+    args.extend(["--uid-map", "200000:131072", "--gid-map", "400000:65536"].map(str::to_owned));
+    let mappings = BuildRequest::parse_from(args)
+        .unwrap()
+        .id_mappings()
+        .unwrap();
+    assert_eq!(mappings.uid().parent_start(), 200000);
+    assert_eq!(mappings.uid().count(), 131072);
+    assert_eq!(mappings.gid().parent_start(), 400000);
+    assert_eq!(mappings.gid().count(), 65536);
+}

@@ -107,6 +107,8 @@ pub(super) enum Architecture {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Execution {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id_mappings: Option<IdMappings>,
     pub architecture: Architecture,
     pub recipe: SelectedDocument,
     pub lock: SelectedDocument,
@@ -169,4 +171,33 @@ pub(super) struct Outputs {
     pub pmi: Option<Digest>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dtb: Option<Digest>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct IdMappings {
+    pub uid: IdRange,
+    pub gid: IdRange,
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct IdRange {
+    pub parent_start: u32,
+    pub count: u32,
+}
+impl From<crate::isolation::IdRange> for IdRange {
+    fn from(range: crate::isolation::IdRange) -> Self {
+        Self {
+            parent_start: range.parent_start(),
+            count: range.count(),
+        }
+    }
+}
+impl From<crate::isolation::IdMappings> for IdMappings {
+    fn from(mappings: crate::isolation::IdMappings) -> Self {
+        Self {
+            uid: mappings.uid().into(),
+            gid: mappings.gid().into(),
+        }
+    }
 }

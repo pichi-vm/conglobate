@@ -6,6 +6,7 @@ echo 'Design sketch only; do not execute.' >&2
 exit 2
 
 # ENVIRONMENT owns the VM/kernel, labeling policy, network namespace and DNS.
+# It reserves non-root UID/GID ranges and supplies both mappings.
 # It also clones/checks out Git and supplies a stable local build context.
 # It destroys the VM when conglobate exits unexpectedly or cannot clean up.
 # CONGLOBATE owns one build session: workspace, volumes, commands and output.
@@ -78,6 +79,7 @@ validate_root_and_request_paths
 verify_and_capture_environment_supplied_context
 parse_recipe_and_lock_from_captured_bytes
 validate_complete_plan
+validate_environment_uid_and_gid_ranges_for_executing_stages
 # Explicit context-relative recipe and lock paths, no conventional filenames.
 # Validate all stages and required inputs before executing any recipe command.
 resolve_locked_images_from_local_readonly_cache

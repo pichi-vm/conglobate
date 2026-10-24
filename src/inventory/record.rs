@@ -146,7 +146,7 @@ impl Inventory {
             });
         }
         Self::from_document(Document {
-            version: 2,
+            version: 3,
             builder: Builder::current()?,
             context: Context {
                 repository: Context::text(request.repository())?,
@@ -161,6 +161,7 @@ impl Inventory {
             },
             inputs,
             execution: Execution {
+                id_mappings: captured.id_mappings().map(Into::into),
                 architecture: match output.image().architecture() {
                     crate::cache::HostArchitecture::Amd64 => Architecture::Amd64,
                     crate::cache::HostArchitecture::Arm64 => Architecture::Arm64,

@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! CLI inputs without execution. Recipe and lock locations have no defaults.
-use crate::path::{ContextDirectory, ContextPath, PathError};
+use crate::{
+    isolation::{IdMappings, IdRange},
+    path::{ContextDirectory, ContextPath, PathError},
+};
 use clap::{Args, Parser, Subcommand};
 use std::{
     ffi::OsString,
@@ -30,6 +33,12 @@ enum Action {
 }
 #[derive(Debug, Args)]
 struct BuildArguments {
+    /// Map image UIDs starting at zero to an environment-reserved parent range.
+    #[arg(long, requires = "gid_map", value_name = "PARENT_START:COUNT")]
+    uid_map: Option<IdRange>,
+    /// Map image GIDs starting at zero to an environment-reserved parent range.
+    #[arg(long, requires = "uid_map", value_name = "PARENT_START:COUNT")]
+    gid_map: Option<IdRange>,
     #[arg(long)]
     repository: PathBuf,
     #[arg(long)]
@@ -69,6 +78,7 @@ impl CommitIdentity {
 }
 #[derive(Debug)]
 pub struct BuildRequest {
+    id_mappings: Option<IdMappings>,
     repository: PathBuf,
     commit: CommitIdentity,
     context: ContextDirectory,
@@ -95,6 +105,10 @@ impl BuildRequest {
     {
         let Action::Build(raw) = Cli::try_parse_from(arguments)?.action;
         Ok(Self {
+            id_mappings: raw
+                .uid_map
+                .zip(raw.gid_map)
+                .map(|(uid, gid)| IdMappings::new(uid, gid)),
             repository: raw.repository,
             commit: CommitIdentity::try_from(raw.commit.as_str())?,
             context: ContextDirectory::try_from(raw.context.as_path())?,
@@ -106,6 +120,9 @@ impl BuildRequest {
             network_namespace: raw.network_namespace,
             formatter_runtime: raw.formatter_runtime,
         })
+    }
+    pub fn id_mappings(&self) -> Option<IdMappings> {
+        self.id_mappings
     }
     pub fn repository(&self) -> &Path {
         &self.repository

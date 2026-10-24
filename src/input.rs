@@ -15,6 +15,8 @@ use sha2::{Digest, Sha256};
 
 #[derive(Debug, thiserror::Error)]
 pub enum InputError {
+    #[error("executing stages require --uid-map and --gid-map")]
+    IdMappingsRequired,
     #[error("an authored transform requires an inherited or generated DTB")]
     MissingTransformDtb,
     #[error(transparent)]
@@ -62,6 +64,7 @@ impl SelectedDocument {
 /// build: cache verification and execution preparation are separate gates.
 #[derive(Debug)]
 pub struct CapturedBuild {
+    id_mappings: Option<crate::isolation::IdMappings>,
     context: CapturedContext,
     recipe: SelectedDocument,
     lock: SelectedDocument,
@@ -91,9 +94,19 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
                 .map_err(InputError::NetworkNamespace)?;
             Some(crate::network::NetworkInput::new(namespace, resolver))
         };
+        let id_mappings = if plan.execution_required() {
+            Some(
+                request
+                    .id_mappings()
+                    .ok_or(InputError::IdMappingsRequired)?,
+            )
+        } else {
+            None
+        };
         let recipe = SelectedDocument::new(request.recipe().clone(), &recipe_file);
         let lock = SelectedDocument::new(request.lock().clone(), &lock_file);
         Ok(Self {
+            id_mappings,
             context,
             recipe,
             lock,
@@ -103,6 +116,13 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
     }
 }
 impl CapturedBuild {
+    pub fn id_mappings(&self) -> Option<crate::isolation::IdMappings> {
+        self.id_mappings
+    }
+    pub(crate) fn execution_mappings(&self) -> Result<crate::isolation::IdMappings, InputError> {
+        self.id_mappings.ok_or(InputError::IdMappingsRequired)
+    }
+
     pub fn context(&self) -> &CapturedContext {
         &self.context
     }

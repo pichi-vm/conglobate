@@ -4,7 +4,6 @@ use super::BuildError;
 use crate::{
     execution::HelperProgram,
     input::ResolvedBuild,
-    isolation::IdRange,
     process::ChildReaper,
     recipe::Firmware,
     step::{CommandSandbox, SetupBudget},
@@ -46,11 +45,12 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
         let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())
             .map_err(BuildError::from)?;
         let paths = runtime.paths()?;
+        let mappings = build.captured().execution_mappings()?;
         let sandbox = CommandSandbox::new(
             HelperProgram::current()?,
             paths.sandbox(),
-            IdRange::new(100000, 65536)?,
-            IdRange::new(100000, 65536)?,
+            mappings.uid(),
+            mappings.gid(),
         );
         let networking = build
             .captured()

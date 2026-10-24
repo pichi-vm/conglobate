@@ -25,6 +25,10 @@ orchestrates another stage. `StageOutput` holds these results without command or
 mount authority. The runtime closes before `StageOutput::assemble` transforms
 the DTB, validates firmware compatibility, assembles the image and constructs
 inventory. Pass-through uses the same finalization without execution resources.
+The environment reserves UID/GID ranges and supplies --uid-map/--gid-map.
+Immutable validated IdMappings pass from request to captured plan to each
+CommandSandbox and the inventory. Pass-through captures no effective mappings.
+The binary neither allocates parent IDs nor assumes a fixed image-ID ceiling.
 Tool inputs remain distinct from output ancestry. There is no generic workflow engine
 or persisted build state.
 

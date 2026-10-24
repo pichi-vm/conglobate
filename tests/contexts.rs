@@ -207,6 +207,10 @@ fn request_planning_and_document_receipts_use_only_selected_committed_bytes() {
         "/unused-cache",
         "--output",
         "/unused-output",
+        "--uid-map",
+        "200000:131072",
+        "--gid-map",
+        "400000:131072",
     ])
     .unwrap();
     let build = CapturedBuild::try_from(&request).unwrap();
@@ -261,6 +265,10 @@ fn network_recipe_captures_an_explicit_resolver_once() {
         "/unused-cache",
         "--output",
         "/unused-output",
+        "--uid-map",
+        "200000:131072",
+        "--gid-map",
+        "400000:131072",
     ];
     let request = BuildRequest::parse_from(&args).unwrap();
     assert!(matches!(
@@ -288,17 +296,49 @@ fn network_recipe_captures_an_explicit_resolver_once() {
         Err(InputError::Resolver(_))
     ));
 
-    // Offline plans neither open nor inject a supplied environment resolver.
+    // An executing offline plan still needs environment-allocated identities.
+    repo.write(
+        "recipe",
+        b"carapace:\n  from: base\n  derive:\n    - run: echo ok\n",
+    );
+    let execution_commit = repo.commit();
+    let execution_id = hex::encode(execution_commit.bytes());
+    let position = args.iter().position(|arg| *arg == "--commit").unwrap();
+    args[position + 1] = &execution_id;
+    let mut without_maps = args.clone();
+    for flag in ["--uid-map", "--gid-map"] {
+        let position = without_maps.iter().position(|arg| *arg == flag).unwrap();
+        without_maps.drain(position..position + 2);
+    }
+    let request = BuildRequest::parse_from(&without_maps).unwrap();
+    assert!(matches!(
+        CapturedBuild::try_from(&request),
+        Err(InputError::IdMappingsRequired)
+    ));
+    let request = BuildRequest::parse_from(&args).unwrap();
+    let captured = CapturedBuild::try_from(&request).unwrap();
+    assert_eq!(captured.id_mappings().unwrap().uid().count(), 131072);
+
+    // Pass-through ignores supplied runtime inputs, including mappings.
     repo.write("recipe", b"carapace: {from: base}\n");
     let offline_commit = repo.commit();
     let offline_id = hex::encode(offline_commit.bytes());
     let position = args.iter().position(|arg| *arg == "--commit").unwrap();
     args[position + 1] = &offline_id;
     let request = BuildRequest::parse_from(&args).unwrap();
+    let captured = CapturedBuild::try_from(&request).unwrap();
+    assert!(captured.networking().is_none());
+    assert!(captured.id_mappings().is_none());
+    let position = without_maps
+        .iter()
+        .position(|arg| *arg == "--commit")
+        .unwrap();
+    without_maps[position + 1] = &offline_id;
+    let request = BuildRequest::parse_from(&without_maps).unwrap();
     assert!(
         CapturedBuild::try_from(&request)
             .unwrap()
-            .networking()
+            .id_mappings()
             .is_none()
     );
 }
@@ -364,6 +404,10 @@ fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_command
             cache.path().to_str().unwrap(),
             "--output",
             "/unused-output",
+            "--uid-map",
+            "200000:131072",
+            "--gid-map",
+            "400000:131072",
         ])
         .unwrap();
         let result = CapturedBuild::try_from(&request)
@@ -431,6 +475,10 @@ fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_command
         cache.path().to_str().unwrap(),
         "--output",
         "/unused-output",
+        "--uid-map",
+        "200000:131072",
+        "--gid-map",
+        "400000:131072",
     ])
     .unwrap();
     assert!(

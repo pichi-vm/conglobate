@@ -176,12 +176,7 @@ impl Pipeline {
         }
         let build =
             CapturedBuild::try_from(&self.request)?.resolve(Cache::open(self.request.cache())?)?;
-        let recipe = build.captured().plan().recipe();
-        let inherited = recipe.bootstrap().is_none()
-            && recipe.firmware().is_none()
-            && recipe
-                .carapace()
-                .is_none_or(|stage| stage.directives().is_empty());
+        let inherited = !build.captured().plan().execution_required();
         let output = if inherited {
             StageOutput::inherited(&build)?.assemble(&self.request, &build)?
         } else {

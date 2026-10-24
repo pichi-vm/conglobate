@@ -204,6 +204,15 @@ Defaults and failure behavior:
 - The cache is never mutated. Missing locked objects are errors; image tags
   are never resolved opportunistically during a build. Conglobate downloads
   no additional image artifacts.
+- `--uid-map PARENT_START:COUNT` and `--gid-map PARENT_START:COUNT` are
+  required together for executing stages (bootstrap, nonempty carapace, firmware).
+  Each maps image IDs starting at zero onto a contiguous parent range. The
+  environment reserves these ranges, excluding its service accounts and other
+  workloads; conglobate does not allocate IDs or read subordinate-ID databases.
+  Parent ID zero, empty ranges, overflow and the invalid all-ones ID are rejected.
+  UID and GID counts may differ. All stages use the same supplied pair. Images
+  using IDs outside those ranges are unsupported; no silent ownership rewriting.
+  Pass-through builds do not need mappings and omit them from the inventory.
 - `--network-namespace PATH` is required when any run step enables networking.
   Open and retain the namespace descriptor once before execution; do not reopen
   the pathname per step. It must be a network namespace distinct from the
@@ -958,7 +967,7 @@ of its proposed logical shape, not a second emitted inventory format or a
 finalized CBOR wire schema:
 
 ```yaml
-version: 2
+version: 3
 builder:
   name: conglobate
   version: ...
@@ -981,6 +990,9 @@ inputs:
     manifest: {algorithm: sha256, digest: <bytes>}
     carapace_root: <bytes>
 execution:
+  id_mappings:         # effective mappings; omitted for pass-through
+    uid: {parent_start: 200000, count: 131072}
+    gid: {parent_start: 400000, count: 131072}
   architecture: amd64
   recipe:
     path: recipes/image.yaml
@@ -1075,7 +1087,8 @@ The single-recipe design replaces version one's `execution.recipes` map with
 explicit `execution.recipe` and `execution.lock` path/content records, and
 replaces per-file network-step identifiers with `stage`. This requires a schema
 version change; the existing version-one implementation must not silently emit
-these fields as version one. Emit and validate the version-two schema explicitly.
+these fields as version one. Version three additionally records effective environment-supplied UID/GID
+mappings in execution.id_mappings. Emit and validate version three explicitly.
 The transform record adds a
 required boolean `default_skipped`, indicating that the implicit default
 encountered no DTB or no bootargs property; an authored transform always records

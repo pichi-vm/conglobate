@@ -1,0 +1,22 @@
+{
+  "vmlinuz": {
+    "path": "/storage/conglobate-validation/environment-id-maps-v1/vmlinuz",
+    "size": 19016040,
+    "sha256": "7ef793413bbbadafd4c35fa849a0e73eaf5ec71fa133f403e83d27ad06a45508"
+  },
+  "initramfs.gz": {
+    "path": "/storage/conglobate-validation/environment-id-maps-v1/initramfs.gz",
+    "size": 252958424,
+    "sha256": "0f0066bac42a7a49d67a99dfcf013aa18bfd60ff364067e56538f3491f00b054"
+  },
+  "export.raw": {
+    "path": "/storage/conglobate-validation/environment-id-maps-v1/export.raw",
+    "size": 2147483648,
+    "sha256": "4261de7223dcc1570186b85de40330b6a7385534c551b1dbb30623ca909e3f1f"
+  },
+  "status.raw": {
+    "path": "/storage/conglobate-validation/environment-id-maps-v1/status.raw",
+    "size": 4096,
+    "sha256": "a59c78e4cacff64d2514eaf4711a6d27e0fc203572acac551afaa4453bdb67f9"
+  }
+}

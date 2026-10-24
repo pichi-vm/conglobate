@@ -130,6 +130,14 @@ impl BuildPlan {
             network_steps,
         })
     }
+    pub fn execution_required(&self) -> bool {
+        self.recipe.bootstrap().is_some()
+            || self.recipe.firmware().is_some()
+            || self
+                .recipe
+                .carapace()
+                .is_some_and(|stage| !stage.directives().is_empty())
+    }
     pub fn recipe(&self) -> &Recipe {
         &self.recipe
     }

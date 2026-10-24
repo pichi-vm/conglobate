@@ -8,7 +8,8 @@ bootstrap:
         mkdir -p /mnt/bin /mnt/etc /mnt/dev /mnt/proc /mnt/sys /mnt/tmp /mnt/run
         cp -L /bin/sh /mnt/bin/sh
         cp -L /bin/rm /mnt/bin/rm
-        libraries=$(ldd /bin/sh /bin/rm)
+        cp -L /bin/stat /mnt/bin/stat
+        libraries=$(ldd /bin/sh /bin/rm /bin/stat)
         for library in $libraries; do
           case "$library" in
             /*:) ;; # ldd's executable heading
@@ -16,6 +17,9 @@ bootstrap:
           esac
         done
         printf 'bootstrap\n' > /mnt/etc/stage
+        touch /mnt/etc/high-id
+        chown 70000:80000 /mnt/etc/high-id
+        test "$(stat -c '%u:%g' /mnt/etc/high-id)" = 70000:80000
         printf 'tool-only\n' > /tool-only
         printf 'PIPELINE_BOOTSTRAP_PASS\n'
 carapace:
@@ -25,6 +29,7 @@ carapace:
         test "$stage" = bootstrap
         test ! -e /tool-only
         test ! -e /context
+        test "$(/bin/stat -c '%u:%g' /etc/high-id)" = 70000:80000
         printf 'temporary\n' > /temporary
         printf 'carapace\n' > /etc/stage
         printf 'PIPELINE_CARAPACE_FIRST_PASS\n'

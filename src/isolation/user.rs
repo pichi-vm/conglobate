@@ -19,6 +19,12 @@ pub struct IdRange {
     count: u32,
 }
 impl IdRange {
+    pub fn parent_start(self) -> u32 {
+        self.first
+    }
+    pub fn count(self) -> u32 {
+        self.count
+    }
     pub(crate) fn contains_image_id(self, id: u32) -> bool {
         id < self.count
     }
@@ -33,6 +39,42 @@ impl IdRange {
     }
     fn line(self) -> String {
         format!("0 {} {}\n", self.first, self.count)
+    }
+}
+
+impl std::str::FromStr for IdRange {
+    type Err = io::Error;
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let invalid = || io::Error::other("ID map must be PARENT_START:COUNT in decimal");
+        let (first, count) = value.split_once(':').ok_or_else(invalid)?;
+        if [first, count]
+            .iter()
+            .any(|part| part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit()))
+        {
+            return Err(invalid());
+        }
+        Self::new(
+            first.parse().map_err(|_| invalid())?,
+            count.parse().map_err(|_| invalid())?,
+        )
+    }
+}
+
+/// Environment-allocated parent identities; both namespaces start at image ID 0.
+#[derive(Debug, Clone, Copy)]
+pub struct IdMappings {
+    uid: IdRange,
+    gid: IdRange,
+}
+impl IdMappings {
+    pub fn new(uid: IdRange, gid: IdRange) -> Self {
+        Self { uid, gid }
+    }
+    pub fn uid(self) -> IdRange {
+        self.uid
+    }
+    pub fn gid(self) -> IdRange {
+        self.gid
     }
 }
 

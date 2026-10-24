@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Version-two inventory with strict schema and core deterministic CBOR.
+//! Version-three inventory with strict schema and core deterministic CBOR.
 //! Decoding validates representation, not authenticity or successful execution.
 mod record;
 mod schema;
@@ -123,9 +123,15 @@ impl CanonicalValue {
 }
 impl Document {
     fn validate(&self) -> Result<(), InventoryError> {
-        if self.version != 2 || self.builder.name != "conglobate" || self.builder.version.is_empty()
+        if self.version != 3 || self.builder.name != "conglobate" || self.builder.version.is_empty()
         {
             return Err(InventoryError::invalid("unsupported version or builder"));
+        }
+        if let Some(mappings) = &self.execution.id_mappings {
+            for range in [&mappings.uid, &mappings.gid] {
+                crate::isolation::IdRange::new(range.parent_start, range.count)
+                    .map_err(InventoryError::invalid)?;
+            }
         }
         let size = match self.context.object_format {
             ObjectFormat::Sha1 => 20,
@@ -273,7 +279,7 @@ mod tests {
         }
         fn new() -> Self {
             Self(Document {
-                version: 2,
+                version: 3,
                 builder: Builder {
                     name: "conglobate".into(),
                     version: "test".into(),
@@ -294,6 +300,7 @@ mod tests {
                     carapace_root: None,
                 }],
                 execution: Execution {
+                    id_mappings: None,
                     architecture: Architecture::Amd64,
                     recipe: SelectedDocument {
                         path: "recipes/image.yml".into(),
@@ -380,8 +387,15 @@ mod tests {
         }
     }
     #[test]
-    fn version_two_roundtrip_including_formatter_and_network_receipts() {
+    fn version_three_roundtrip_including_formatter_and_network_receipts() {
         let mut fixture = Fixture::new();
+        fixture.0.execution.id_mappings = Some(
+            crate::isolation::IdMappings::new(
+                crate::isolation::IdRange::new(200000, 131072).unwrap(),
+                crate::isolation::IdRange::new(400000, 65536).unwrap(),
+            )
+            .into(),
+        );
         fixture.0.execution.formatters.push(Fixture::formatter());
         fixture.0.execution.network_steps = vec![
             NetworkStep {
@@ -395,7 +409,7 @@ mod tests {
         ];
         let inventory = Inventory::from_document(fixture.0).unwrap();
         let decoded = Inventory::decode(inventory.bytes()).unwrap();
-        assert_eq!(decoded.version(), 2);
+        assert_eq!(decoded.version(), 3);
         assert_eq!(decoded.bytes(), inventory.bytes());
         let value: Value = ciborium::from_reader(decoded.bytes()).unwrap();
         let mut wire = Wire(value);
@@ -411,6 +425,27 @@ mod tests {
                 .all(|(k, _)| k.as_text() != Some("resolv_conf"))
         );
     }
+    #[test]
+    fn invalid_identity_ranges_and_old_inventory_versions_fail() {
+        for (parent_start, count) in [(0, 1), (1, 0), (u32::MAX, 1)] {
+            let mut fixture = Fixture::new();
+            fixture.0.execution.id_mappings = Some(IdMappings {
+                uid: IdRange {
+                    parent_start,
+                    count,
+                },
+                gid: IdRange {
+                    parent_start: 400000,
+                    count: 65536,
+                },
+            });
+            assert!(Inventory::from_document(fixture.0).is_err());
+        }
+        let mut fixture = Fixture::new();
+        fixture.0.version = 2;
+        assert!(Inventory::from_document(fixture.0).is_err());
+    }
+
     #[test]
     fn core_deterministic_key_order_uses_encoded_bytes() {
         let value = Value::Map(vec![

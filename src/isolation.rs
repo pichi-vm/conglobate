@@ -20,7 +20,9 @@ pub use setup::{
     CommandSetup, GatedCommandSetup, GatedRestrictedCommand, GatedRootSetup, HelperExecutionError,
     RootPreparationError,
 };
-pub use user::{IdRange, Mapped, UserNamespace, UserNamespaceFailure, UserNamespaceState};
+pub use user::{
+    IdMappings, IdRange, Mapped, UserNamespace, UserNamespaceFailure, UserNamespaceState,
+};
 mod root;
 mod runtime;
 pub use devices::CommandDevices;

@@ -140,8 +140,13 @@ Historical experiments are evidence, not competing specifications.
         the command namespace. Keep the superblock supervisor-owned; it does
         not need to belong to the command user namespace. Map image IDs to
         unprivileged outer IDs while preserving the correct IDs on disk. Cover
-        all supported image IDs; reject unmapped IDs. The prototype's 65536-ID
-        mapping is evidence, not a universal OS-image requirement. Retain normal
+        all supported image IDs; reject unmapped IDs. The environment reserves and
+        supplies contiguous parent ranges using --uid-map PARENT_START:COUNT
+        and --gid-map PARENT_START:COUNT. Both start at image ID zero and are
+        required for execution; there is no built-in range or allocator. Exclude
+        parent root and invalid IDs; keep these ranges disjoint from environment
+        service accounts and other workloads. Record the effective pair in the
+        inventory and use it consistently across all executing stages. Retain normal
         kernel ownership, mode and ACL permission checking. Use nosuid,nodev;
         storing file capabilities/setuid bits must not grant build-host privilege.
 

@@ -33,10 +33,14 @@ class PipelineEvidence:
         raw = (self.artifact / 'inventory.cbor').read_bytes()
         inventory = cbor2.loads(raw)
         assert cbor2.dumps(inventory, canonical=True) == raw
-        assert inventory['version'] == 2
+        assert inventory['version'] == 3
         assert len(inventory['inputs']) == 1
         assert inventory['inputs'][0]['roles'] == ['bootstrap-tools', 'firmware-tools']
         execution = inventory['execution']
+        assert execution['id_mappings'] == {
+            'uid': {'parent_start': 200000, 'count': 131072},
+            'gid': {'parent_start': 400000, 'count': 131072}}
+
         assert execution['network_steps'] == []
         assert len(execution['formatters']) == 1
         assert execution['formatters'][0]['stage'] == 'bootstrap'

@@ -210,7 +210,7 @@ RULES
 nft list table ip build_environment > /work/network-before
 {network_startup}
 {probe_control}
-if conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --resolv-conf /etc/resolv.conf --network-namespace {namespace_input} --formatter-runtime /formatter.json; then
+if conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --uid-map 200000:131072 --gid-map 400000:131072 --resolv-conf /etc/resolv.conf --network-namespace {namespace_input} --formatter-runtime /formatter.json; then
     {fault_observation or ':'}
     {network_cleanup}
 else

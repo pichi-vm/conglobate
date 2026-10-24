@@ -6328,3 +6328,25 @@ initial 0–65535 limit or let the environment configure the mapping range. No
 answer has been inferred; current code is unchanged. Independent CI verification
 and preservation are complete. Dependent milestone advancement awaits that
 answer under the mandatory three-clean-pass rule. The full goal scope remains.
+
+## Environment-supplied UID/GID ranges (decision implemented)
+
+The user resolved the pending range decision: the VM configures ranges and
+provides them as inputs. Added paired --uid-map/--gid-map PARENT_START:COUNT;
+image IDs start at zero. Validated immutable IdMappings flow through capture,
+bootstrap, carapace and firmware, without allocation or a fixed 65536-ID limit.
+The environment reserves the parent ranges away from its own service accounts
+and workloads. Executing plans require the pair; pass-through does not. Inventory
+version three records effective mappings. Historical version-two evidence remains.
+
+Rootless validation: 229 tests and 46 doctests pass, strict all-target Clippy and
+formatting pass. Native amd64 disposable-VM full pipeline passes with UID range
+200000:131072 and GID range 400000:131072. Bootstrap creates ownership 70000:80000;
+carapace verifies it after sealing/remount. Firmware, default DTB root binding,
+one-scute-per-carapace and canonical inventory/blob-graph verification pass.
+Evidence: preservation/m7-review/environment-id-maps. Guest source differs from
+final production source only by CLI help comments; the difference is preserved.
+Large local assets are hashed but are not a durable M8 archive. This is a focused
+regression, not distro boot/platform/full sandbox qualification or a complete
+milestone adherence pass. The prior unanswered-decision block is resolved;
+M2/M3 and other reopened gates remain at zero pending complete adherence reviews.

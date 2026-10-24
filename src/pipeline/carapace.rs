@@ -4,7 +4,6 @@ use super::BuildError;
 use crate::{
     execution::HelperProgram,
     input::ResolvedBuild,
-    isolation::IdRange,
     process::ChildReaper,
     recipe::Directive,
     step::CommandSandbox,
@@ -37,11 +36,12 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
             reaper,
         } = self;
         let paths = runtime.paths()?;
+        let mappings = build.captured().execution_mappings()?;
         let sandbox = CommandSandbox::new(
             HelperProgram::current()?,
             paths.sandbox(),
-            IdRange::new(100000, 65536)?,
-            IdRange::new(100000, 65536)?,
+            mappings.uid(),
+            mappings.gid(),
         );
         let scratch = workspace.snapshot_store()?;
         let snapshot = Mapping::<Created>::create()?

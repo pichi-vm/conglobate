@@ -5,7 +5,6 @@ use crate::{
     execution::HelperProgram,
     formatter::{Ext4Format, FormatterManifest},
     input::{CheckedImage, ResolvedBuild},
-    isolation::IdRange,
     process::ChildReaper,
     recipe::Bootstrap,
     request::BuildRequest,
@@ -105,11 +104,12 @@ impl<'a> BootstrapBuild<'a> {
         let output = Volume::<Unmounted>::in_init_namespace(output, runtime.recovery())
             .map_err(BuildError::from)?;
         let paths = runtime.paths()?;
+        let mappings = self.build.captured().execution_mappings()?;
         let sandbox = CommandSandbox::new(
             HelperProgram::current()?,
             paths.sandbox(),
-            IdRange::new(100000, 65536)?,
-            IdRange::new(100000, 65536)?,
+            mappings.uid(),
+            mappings.gid(),
         );
         let networking = self
             .build

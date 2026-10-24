@@ -31,7 +31,7 @@ class BootstrapEvidence:
         raw = (self.artifact / 'inventory.cbor').read_bytes()
         inventory = cbor2.loads(raw)
         assert cbor2.dumps(inventory, canonical=True) == raw
-        assert inventory['version'] == 2
+        assert inventory['version'] == 3
         assert len(inventory['inputs']) == 1
         assert inventory['inputs'][0]['roles'] == ['bootstrap-tools']
         output = inventory['outputs']
