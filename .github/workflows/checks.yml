@@ -42,6 +42,16 @@ jobs:
       - name: Run doctests
         run: cargo test --locked --doc
 
+      - name: Check ORAS interoperability
+        if: matrix.runner == 'ubuntu-24.04'
+        run: |
+          cargo build --locked
+          mkdir -p "$RUNNER_TEMP/oras"
+          curl --fail --location --retry 3 https://github.com/oras-project/oras/releases/download/v1.3.5/oras_1.3.5_linux_amd64.tar.gz -o "$RUNNER_TEMP/oras/oras.tar.gz"
+          printf 'f48a73ea6d026a862c3919fc773da9a8c86fc259c2c737d5baed3b8b9614ad22  %s\n' "$RUNNER_TEMP/oras/oras.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/oras/oras.tar.gz" -C "$RUNNER_TEMP/oras" oras
+          python3 tests/oci/run.py "$RUNNER_TEMP/oci-copy" --binary target/debug/conglobate --oras "$RUNNER_TEMP/oras/oras"
+
   dependencies:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -52,6 +62,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+      - name: Check commit message
+        run: pipx run --spec gitlint==0.19.1 gitlint --ignore-stdin --commit HEAD
       - name: Install dependency checkers
         run: |
           rustup toolchain install 1.94.0 --profile minimal

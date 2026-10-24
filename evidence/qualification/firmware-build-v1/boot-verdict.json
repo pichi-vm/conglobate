@@ -1,0 +1,6 @@
+{
+  "marker_observed": true,
+  "expected_marker": "CONGLOBATE_ARMA_FIRMWARE_BOOT_PASS",
+  "reason": "expected guest marker observed; harness terminated VM",
+  "confidential_platform_qualified": false
+}

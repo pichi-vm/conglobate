@@ -1,0 +1,16 @@
+[
+  [
+    "pichi",
+    "load",
+    "/storage/conglobate-validation/nixos-boot-v6/load-input",
+    "--tag",
+    "conglobate-qualification:local"
+  ],
+  [
+    "pichi",
+    "run",
+    "--memory",
+    "2048",
+    "conglobate-qualification:local"
+  ]
+]

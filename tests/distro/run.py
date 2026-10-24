@@ -48,12 +48,14 @@ class DistroRun:
             raise RuntimeError('label fault requires the normal labeling exception')
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as snapshot:
             for name in ('src', 'Cargo.toml', 'Cargo.lock',
-                         'tests/distro', 'tests/lifecycle', 'validation/global-label-policy',
+                         'tests/distro', 'tests/lifecycle', 'tests/environment',
                          'tests/vm_runtime.py'):
                 snapshot.add(REPOSITORY / name, arcname=name)
+        compiler_tmp = self.output / 'build-tmp'
+        compiler_tmp.mkdir()
         env = os.environ.copy()
         env.update(CARGO_BUILD_JOBS='2', CARGO_TARGET_DIR=str(REPOSITORY / 'target/m7-stable'),
-                   TMPDIR='/var/tmp/conglobate-rewrite-tmp')
+                   TMPDIR=str(compiler_tmp))
         with (self.output / 'build.log').open('wb') as log:
             subprocess.run(['cargo', '+stable', 'build', '--locked'], cwd=REPOSITORY,
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True)

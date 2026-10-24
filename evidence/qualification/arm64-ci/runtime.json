@@ -1,0 +1,9 @@
+{
+  "kernel_sha256": "c5f1e915ecf0303df41c4ec7ce2fc150bf5c50bc940dfb63701996c5bbd069fb",
+  "kernel_release": "7.0.0-38-generic",
+  "drop": null,
+  "case": "cache-storage",
+  "architecture": "aarch64",
+  "acceleration": "tcg",
+  "network_attached": false
+}

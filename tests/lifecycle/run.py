@@ -56,7 +56,7 @@ class LifecycleRun:
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as archive:
             for name in ('src', 'Cargo.toml', 'Cargo.lock', 'tests/lifecycle/src',
                          'tests/lifecycle/Cargo.toml', 'tests/lifecycle/Cargo.lock',
-                         'tests/distro/label_environment.py', 'validation/global-label-policy',
+                         'tests/distro/label_environment.py', 'tests/environment',
                          'tests/lifecycle/run.py', 'tests/lifecycle/cache_fixture.py', 'tests/lifecycle/clone-probe.c', 'tests/vm_runtime.py'):
                 archive.add(REPO / name, arcname=name)
         env = os.environ.copy()

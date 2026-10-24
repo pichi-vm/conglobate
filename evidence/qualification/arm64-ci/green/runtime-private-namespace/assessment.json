@@ -1,0 +1,12 @@
+{
+  "checks": {
+    "RUNTIME_PRIVATE_NAMESPACE_PASS": true,
+    "RUNTIME_SCOPE_SUCCESS_CLOSED_PASS": true,
+    "RUNTIME_SCOPE_OPERATION_ERROR_CLOSED_PASS": true,
+    "RUNTIME_SCOPE_CLEANUP_FAILURE_OWNERS_RETAINED_PASS": true,
+    "exit_zero": true,
+    "vm_powered_off": true
+  },
+  "passed": true,
+  "full_lifecycle_qualified": false
+}

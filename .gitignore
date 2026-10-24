@@ -4,3 +4,6 @@
 /validation/**/__pycache__/
 /reference/**/target/
 /reference/**/__pycache__/
+
+# Python test-runner bytecode is derived local state.
+__pycache__/

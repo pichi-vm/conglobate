@@ -1,9 +1,9 @@
 Conglobate sandbox design
 ========================
-Agreed target design, updated 2026-10-23
+Implemented binary contract; qualification scope updated 2026-10-24
 
-This document specifies the sandbox to implement, not the security properties
-of the current executor. DESIGN.md specifies the standalone binary, committed
+This document specifies the sandbox contract. QUALIFICATION.md states the
+actual evidence and its limits; the contract alone is not proof of security. DESIGN.md specifies the standalone binary, committed
 context, image locks, recipe pipeline, transformations, and artifact/inventory
 formats. This document is authoritative for sandbox policy and lifecycle.
 Historical experiments are evidence, not competing specifications.
@@ -521,48 +521,9 @@ Historical experiments are evidence, not competing specifications.
 
 Evidence navigation
 -------------------
-Paths below are relative to validation/sandbox/ unless stated otherwise.
-- kernel-mount-lsm/REPORT.txt and reproduced/kernel-mount-lsm/: native ext4 evidence.
-- capability-review/REPORT.txt: scoped LSM review and regression tests.
-- two-sandboxes/README.txt and reproduced/two-sandboxes/: historical FUSE topology.
-- worker-placement-fix/README.txt, placement.patch, and reproduced evidence:
-  historical worker chmod correction and ACL regressions.
-- acl-protocol/, acl-fix/, finalize/, metadata/: worker corrections and limits.
-- policy/, chain-pid-lifetime/, runtime-path-fixed/, host-dns/, network/:
-  component evidence; consult each fixture's scope and historical configuration.
-- CONFIDENTIAL-PLATFORM-REVIEW.txt and MKOSI-COMPARISON.txt: alternative analysis.
-- runtime-comparison/REPORT.txt and sources.json: pinned runtime-construction
-  comparison and recommendation; no backend selected or newly qualified.
-- Repository-root SANDBOX-EVIDENCE.txt and SANDBOX-VALIDATION.txt: chronological
-  research ledger, not current requirements or a list of independent blockers.
-- Repository-root SELINUX-RESEARCH.txt and USERSPACE-FILESYSTEM-RESEARCH.txt:
-  historical research; later kernel-mount evidence supersedes earlier conclusions.
-
-Chat decision review, 2026-10-22
-------------------------------
-Kernel-mounted filesystems with idmapped views and a environment-provided BPF LSM labeling exception
-supersede the FUSE-worker backend. Commands remain untrusted and never receive
-SYS_ADMIN or backing-device access. Bootstrap writes directly into a new writable
-carapace layer over dm-zero: trusted formatting, disposable tool root at /, output
-at /mnt, then direct sealing. No image import/conversion. These refinements keep
-cache-backed immutable layers, RAM-backed mutable workspace, no context exposure,
-no artifact downloads, finite command timeouts, fixed internal setup/teardown
-deadlines, networking off by default, outbound NAT, explicit resolver configuration
-excluded from inventory, and the existing inheritance/transform contracts.
-
-Open implementation details include the exact filesystem-property schema and
-backend allowlists, formatter provenance/inventory schema revision, external-policy
-admission validation and lifecycle simplification, UID/GID range allocation, trusted formatting on
-the actual snapshot chain, and full dual-mount integration qualification. None is
-permission to weaken the trust boundary or silently claim prototype coverage.
-
-Recipe layout refinement
-------------------------
-One author-selected YAML file contains stage sections; a second author-selected
-file contains image locks. --recipe and --lock are required paths relative to the
-committed context. No stage-file discovery or reserved configuration directory.
-COPY paths remain context-relative. The inventory must bind both selected paths
-and file contents and identify network steps by stage; DESIGN.md describes the
-required schema migration. Historical multi-file fixtures remain evidence, not
-the new authoring contract. Firmware retains explicit tool-root output paths;
-bootstrap alone has the separate /mnt output filesystem.
+QUALIFICATION.md records accepted environments and remaining qualification limits.
+REIMPLEMENTATION.md records the milestone/adherence gates. Maintained tests are
+under tests/; selected acceptance records are under evidence/. ARCHIVE.md locates
+the verified full history, superseded designs, original reviews, experimental
+sources, patches, failures, boot logs and external artifacts. Historical evidence
+must be read under its recorded trust model and source version.

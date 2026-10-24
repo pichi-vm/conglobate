@@ -6,10 +6,11 @@ bootstrap, carapace layering, firmware replacement and DTB transformation, and
 produces a self-contained OCI image layout with a CBOR input/output inventory.
 See [DESIGN.md](DESIGN.md) for the CLI, schemas and inheritance rules.
 
-The rewrite is undergoing qualification. [M7-QUALIFICATION.md](M7-QUALIFICATION.md)
-records outstanding review, distro boot, architecture, confidential-platform and
-CI coverage. A successful compilation or rootless test run does not establish
-sandbox qualification.
+The standalone rewrite is implemented and qualified in the environments recorded
+in [QUALIFICATION.md](QUALIFICATION.md). Fedora, Debian, Alpine and NixOS example
+recipes live under `tests/distro`. Confidential-computing qualification and
+appliance attestation are deferred; passing tests are not a universal security
+or operating-system compatibility claim.
 
 ## Build and rootless checks
 
@@ -20,12 +21,8 @@ execution environment supplies the fixed labeling exception described in
 [SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt). Disposable-VM fixture tools build their
 own environment policy separately and have additional compiler prerequisites.
 
-The registration-free migration has 195 rootless tests and 50 doctests passing
-with rustc/Cargo 1.94.0; retired policy-API tests remain preserved as historical
-evidence. This does not qualify the composed sandbox. Earlier checks used rustc
-1.99.0-nightly (1a98b1e13, 2026-08-07) and Cargo 1.98.0. These are tested
-environments, not a minimum supported Rust version; that floor has not yet been
-established.
+CI builds and tests with Rust 1.94.0 on native amd64 and Arm64. This is the tested
+toolchain, not a separately established minimum supported Rust version.
 
 After dependencies are available, run these commands as an ordinary user:
 
@@ -47,13 +44,11 @@ workspace storage inside conglobate is separately required to be RAM-backed.
 Serialize Cargo checks and use `CARGO_BUILD_JOBS=2` in constrained development
 environments. The rootless workflow uses Rust 1.94.0 and runs formatting, Clippy,
 tests and doctests. A separate job runs pinned cargo-deny and cargo-audit tools
-for dependency policy and known advisories. The first hosted run exposed the Ubuntu UAPI include-path requirement above;
-the corrected rootless and dependency jobs pass at commit 148ef66
-(GitHub run 39964805125). Privileged VM CI remains outstanding.
-Local license/source checks pass for amd64 and arm64 dependency graphs; this is
-not arm64 execution qualification. Advisory matching depends on package source
-identities: a clean audit does not certify pinned Git revisions against ordinary
-crates.io advisories. Exact results are recorded in the M7 review evidence.
+for dependency policy and known advisories. Disposable-VM lifecycle CI runs on
+both architectures; Arm64 uses explicit TCG emulation when hosted KVM is absent.
+That is a functional test fixture, not a proposed production sandbox. Advisory
+matching depends on package source identities; clean reports do not certify
+pinned Git revisions against every crates.io advisory.
 
 ## Runtime trust boundary
 
@@ -67,16 +62,15 @@ native filesystem/idmapped mount support and the environment-loaded labeling exc
 generic kernel version numbers alone do not establish those prerequisites.
 The current implementation also uses `open_tree(OPEN_TREE_CLONE)` on subtrees of
 its detached workspace. Ubuntu's GA 6.8 kernel rejects this operation. Hosted
-lifecycle qualification currently uses HWE; an attached, protected workspace is
-being evaluated to remove this implementation-specific dependency. This is not
-an architectural requirement for command isolation.
+lifecycle tests use Ubuntu HWE kernels; the recorded kernel and feature checks
+are the supported evidence, rather than a generic minimum-version promise.
 
 [SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt) specifies the boundary and teardown
 requirements. [ARCHITECTURE.md](ARCHITECTURE.md) explains Rust ownership and
 typestate. Privileged integration tests must run inside disposable VMs, never
-directly on the development host. The retained integration harness builds a
-fresh guest from trusted local tools and explicit kernel/module/ORAS inputs;
-provisioning those inputs in CI remains an outstanding M7 task.
+directly on the development host. The maintained harness builds a
+fresh guest from trusted local tools and explicit kernel/module inputs. CI
+provisions these independently of the conglobate binary.
 
 Conglobate does not download missing Git objects or image artifacts. Recipe
 commands have networking disabled by default; enabled commands require an
@@ -98,6 +92,6 @@ transitions. Cleanup failures must preserve resource ownership rather than claim
 successful finalization. See [REIMPLEMENTATION.md](REIMPLEMENTATION.md) for the
 milestones and required adherence gates.
 
-The old implementation and exploratory validation remain preserved as reference
-inputs until replacement evidence and recoverability have been verified. They
-are not competing specifications or completed qualification for the rewrite.
+The old implementation and exploratory validation are preserved outside the
+active tree in verified archives; see [ARCHIVE.md](ARCHIVE.md) for recovery.
+Selected acceptance records remain in `evidence/`.

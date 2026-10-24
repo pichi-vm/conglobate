@@ -1,14 +1,14 @@
 # Conglobate image build design
 
-Status: consolidated target design for implementation. Requirements use “must”
+Status: implemented standalone-binary contract. Requirements use “must”
 or direct statements of behavior. The final sandbox contract and ordered
 implementation outline are in [SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt).
 Deferred ecosystem work is collected in [Remaining decisions](#13-remaining-decisions).
-This document specifies the target design, not the current implementation.
+QUALIFICATION.md records the demonstrated environments and remaining platform limits.
 
-[BUILD-FLOW.sh](BUILD-FLOW.sh) sketches the proposed simplified control flow and
+[BUILD-FLOW.sh](BUILD-FLOW.sh) sketches the linear control flow and
 resource ownership. It is explanatory shell notation, not executable sandbox code
-or evidence that the implementation already follows that structure.
+or a substitute for the implementation and its tests.
 
 Conglobate builds images from committed source and immutable image inputs. It
 can create a new carapace using a tool carapace, extend an existing image, build
@@ -21,7 +21,7 @@ importable image and an inventory binding its supplied inputs to its outputs.
 Hardware qualification is deferred by user decision; ordinary-VM evidence must
 not be represented as confidential-platform qualification. Backend selection
 must preserve command isolation and image metadata semantics on all three
-platforms. See [the platform review](validation/sandbox/CONFIDENTIAL-PLATFORM-REVIEW.txt)
+platforms. See [the preserved platform review](ARCHIVE.md)
 for candidate constraints and the distinction between source analysis and
 hardware validation.
 
@@ -1132,46 +1132,25 @@ An inventory records an execution claim. It does not establish that recipes
 are benign, that network dependencies are reproducible, or that the author
 intended the pinned inputs without a separate authenticity policy.
 
-## 12. Validation and implementation sequence
+## 12. Qualification and retained evidence
 
-The sandbox design is selected; production integration and qualification remain.
-Follow the ordered implementation and qualification gates in
-[SANDBOX-DESIGN.txt](SANDBOX-DESIGN.txt), section 12. The chronological
-[SANDBOX-VALIDATION.txt](SANDBOX-VALIDATION.txt) ledger retains earlier failures
-and follow-ups; its old candidate descriptions are not current requirements.
+The implementation follows the ordered sandbox contract. QUALIFICATION.md and
+REIMPLEMENTATION.md record completion, three-pass adherence gates, actual test
+environments and limits. Maintained tests cover committed inputs, locks, typed
+DTB operations, pipeline combinations, metadata, deterministic inventory,
+publication and disposable-VM lifecycle failures. Distro recipes exercise Fedora
+DNF/SELinux, Debian APT/systemd, Alpine APK/OpenRC and NixOS closure construction.
+A separate firmware recipe constructs an initramfs and arma PMI/DTB, then boots it.
 
-The [kernel-mount LSM validation](validation/sandbox/kernel-mount-lsm/REPORT.txt)
-passed native ext4/idmapping, foreign labels without command SYS_ADMIN, ownership,
-ACLs, file capabilities, an offline Fedora package workload, scoped negative
-controls, clean remount and coordinator-failure teardown on x86_64. It uses a
-regular RAM-backed image and `/image` test mount, not the production snapshot
-chain or full dual-mount bootstrap. The [LSM review](validation/sandbox/capability-review/REPORT.txt)
-records exact-attribute and cleanup-order regressions that must remain covered.
-Earlier FUSE worker tests remain comparative historical evidence.
+CI checks native amd64/Arm64 Rust and guest lifecycle behavior. Arm64 hosted guest
+tests explicitly record TCG when KVM is unavailable. This does not propose TCG as
+the production sandbox. Confidential-computing hardware qualification is deferred
+by user decision; appliance transport and attestation remain separate work.
 
-Required integration tests include trusted formatting directly on a zero-backed
-carapace layer; concurrent tool `/` and output `/mnt` mounts; restricted labeling
-admission on both, missing-policy rejection, exact-attribute behavior, read-only
-denial and confinement of supervisor inodes/descriptors; full tool-root package
-installation; direct scute
-finalization without conversion; safe COPY/export; identity/FD lifetime; actual
-capability/syscall profiles on both architectures; independent build VMs;
-helper death, supervisor death followed by VM shutdown; blocked I/O and fixed deadlines; writeback
-errors; and publication ordering. Validate NAT/DNS and resolver cleanup under
-this final topology. Old component passes do not qualify the complete design.
-
-Preserve tests for pipeline combinations, inheritance and tool ancestry,
-firmware-only output, unavailable CARAPACE, typed DTB operations and defaults,
-locked images, Git capture, deterministic CBOR, OCI/ORAS interoperability,
-and output digest verification. The binary remains standalone and does not create
-VMs. Privileged execution is qualified in disposable VMs with the independent
-shutdown contract; a persistent shared host is outside this lifecycle design.
-
-Build and boot Fedora, Debian, Alpine, and NixOS images, exercising package
-transactions, initramfs/kernel construction, permissions and labeling. Fedora
-must support SELinux under its own target policy. Qualify Intel TDX, AMD SEV-SNP,
-and Arm CCA separately; ordinary x86 tests establish no confidential-platform
-pass. Appliance transport and attestation remain separate integration work.
+Historical FUSE/UML/kernel-mount experiments, superseded implementations, original
+reviews and raw failures/successes are recoverable through ARCHIVE.md. They are
+historical evidence, not alternative active designs. The binary remains standalone
+and does not create VMs; privileged tests run only inside disposable VMs.
 
 ## 13. Remaining decisions
 
@@ -1190,8 +1169,8 @@ firmware signing/resealing contracts, and appliance transport and attestation.
 Sandbox policy is settled in SANDBOX-DESIGN.txt. Exact capability/syscall/ioctl
 profiles, fixed internal deadline values, trusted formatter/property schemas,
 both-root labeling admission, identity allocation, and runtime mount mechanics
-are implementation work constrained by
-that contract. Production integration and platform qualification are required;
+are implemented under
+that contract. Appliance integration and confidential-platform qualification remain separate;
 fully unprivileged storage assembly is outside the selected design.
 
 The initial scope excludes remote Git retrieval, uncommitted working-tree
