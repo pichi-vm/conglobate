@@ -12,11 +12,12 @@ may run functional guest fixtures when hosted KVM is absent; this does not make
 TCG a production sandbox. Historical requirements below are superseded here.
 
 
-M1–M3 are complete. M4's three focused self-reviews are recorded in
-`preservation/m7-review/linear-lifecycle/ADHERENCE.md`; external review disposition
-is recorded beside them. Existing source-matched evidence is reused rather than
-rerun. Both hosted jobs pass at 9a70e50. M4–M6 are complete at 3/3 self-review passes. M7 qualification is next,
-followed by M8 retirement. No goal completion claim.
+M1–M7 are complete at three clean self-review passes each. Final M7 acceptance
+is in preservation/m7-review/FINAL-ADHERENCE.md. Fedora, Debian, Alpine and NixOS
+representative builds/boots and arma firmware construction/boot passed. Native
+amd64/Arm64 Rust checks and seven lifecycle guest cases are green at 5d1f358;
+Arm64 guest acceleration is TCG, not a hardware/confidential qualification.
+M8 recoverability verification and reference retirement are active.
 
 User direction: do not overvalidate. Run tests only for changed behavior or a
 concrete unresolved defect. The three-pass gate is source/evidence review, not
@@ -115,7 +116,7 @@ but must not be claimed to validate the new policy implementation.
 | 4. Privileged lifecycle | RAM workspace, cache-backed verified layers, kernel/idmapped mounts, environment-owned labeling exception, no command SYS_ADMIN in any capability set; private namespaces, restricted descriptors/syscalls, bounded execution/setup/teardown, cancellation and descendant quiescence; partial-setup cleanup, independent VM shutdown after supervisor death and no context/control/block-device exposure. | Complete: linear lifecycle; current evidence and self-review gate | 3 |
 | 5. Direct-layer bootstrap | Trusted formatting on writable snapshot over dm-zero; tool / and output /mnt; per-step remount and policy for both; correct persisted metadata; actual carapace storage chain, clean sealing, no image conversion; failure tests. | Complete: direct-layer bootstrap and focused integration review | 3 |
 | 6. Full pipeline and publication | Layering, confined COPY, firmware pair extraction, DTB transforms/defaults/CARAPACE; offline default plus outbound NAT and explicit DNS; versioned deterministic CBOR inventory, self-contained OCI and atomic no-replacement output; maintained regression and integration coverage. | Complete: linear pipeline and output integration review | 3 |
-| 7. Integrated qualification | Critical source/design/style review resolved; Fedora/Debian/Alpine/NixOS representative builds and boots; amd64/arm64 and TDX/SEV-SNP/CCA qualification with evidence; repository checks and CI green. Unavailable required environments remain outstanding, never passes. | In progress: qualification inventory | 0 |
+| 7. Integrated qualification | Critical source/design/style review resolved; Fedora/Debian/Alpine/NixOS representative builds and boots; amd64/arm64 and TDX/SEV-SNP/CCA qualification with evidence; repository checks and CI green. Unavailable required environments remain outstanding, never passes. | Complete: representative distros, firmware and amd64/Arm64 CI | 3 |
 | 8. Retire references | Historical findings migrated to maintained tests/docs; remove legacy implementation and exploratory validation from active repo only after recoverability verified and replacement evidence accepted; final coherent docs/code, tests and three adherence passes. | Pending | 0 |
 
 ## Mandatory adherence gate

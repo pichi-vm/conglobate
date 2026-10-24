@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+bootstrap:
+  from: qualification.local/fedora:43
+  filesystem: {type: ext4, size: 4GiB, properties: {label: nixos-root}}
+  derive:
+    - network: true
+      timeout: 10m
+      run: dnf -y install tar xz gzip
+    - copy: {from: nix.tar.xz, into: /nix.tar.xz}
+    - copy: {from: nixpkgs.tar.xz, into: /nixpkgs.tar.xz}
+    - copy: {from: configuration.nix, into: /configuration.nix}
+    - copy: {from: build.sh, into: /build.sh}
+    - network: true
+      timeout: 30m
+      run: /bin/sh /build.sh
+carapace:
+  derive:
+    - run: |
+        printf 'conglobate NixOS qualification\n' > /conglobate-qualified
+        chown 1234:2345 /conglobate-qualified
+    - copy: {from: init.sh, into: /sbin/init, mode: "0755"}
+firmware:
+  from: qualification.local/fedora:43
+  derive:
+    - copy: {from: firmware/boot.pmi, into: /qualification-boot.pmi}
+    - copy: {from: firmware/base.dtb, into: /qualification-base.dtb}
+  into: {pmi: /qualification-boot.pmi, dtb: /qualification-base.dtb}

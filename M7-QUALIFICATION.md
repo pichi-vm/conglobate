@@ -1,5 +1,22 @@
 # M7 integrated qualification
 
+Accepted at three consecutive self-review passes: see
+`preservation/m7-review/FINAL-ADHERENCE.md`. The chronological notes below retain
+prior limitations/failures; this status supersedes them.
+
+- Fedora DNF/SELinux enforcing, Debian APT/systemd, Alpine bootstrap/APK/OpenRC,
+  NixOS closure/bootstrap/systemd builds and boots passed on native amd64.
+- The firmware recipe constructs an initramfs and new arma PMI/DTB and boots it.
+- Native amd64 and Arm64 rootless Rust checks pass in hosted run 40052820789.
+- Seven lifecycle cases pass on both architectures in run 40052820734. Arm64
+  uses TCG inside a native Arm64 runner; amd64 uses KVM.
+- Confidential platform qualification is deferred by user direction. Kernel
+  compilation, all distro/architecture combinations and attestation are not claimed.
+- M8 recoverability/retirement is still required.
+
+## Historical qualification ledger
+
+
 M4–M6 are accepted at three focused self-review passes; current records are
 `preservation/m7-review/linear-lifecycle/ADHERENCE.md`,
 `linear-bootstrap-adherence.md` and `linear-pipeline-adherence.md`. M7 remains
