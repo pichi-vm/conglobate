@@ -6,7 +6,7 @@ use crate::chain::ScuteExtent;
 use pichi_artifact::{Digest as ContentDigest, Layer, ScuteDescriptor};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs::File,
     io::{self, BufReader, Read},
 };
@@ -93,9 +93,8 @@ impl Cache {
                 ));
             }
         }
-        let root = manifest
-            .carapace_verity_hash()
-            .ok_or(CacheError::Invalid("missing carapace root"))?;
+        // Cases 1–3: tip is derived from the scute graph (unique root that is
+        // not any other scute's parent). The OCI tip annotation is not SoT.
         let mut candidates = BTreeMap::new();
         for (descriptor, compressed) in layers {
             let scute = self.verify_scute(descriptor, compressed)?;
@@ -103,11 +102,26 @@ impl Cache {
                 return Err(CacheError::Invalid("duplicate scute roots"));
             }
         }
+        let claimed: BTreeSet<[u8; 32]> = candidates
+            .values()
+            .map(|scute| *scute.extent.parent())
+            .collect();
+        let tips: Vec<[u8; 32]> = candidates
+            .keys()
+            .copied()
+            .filter(|root| !claimed.contains(root))
+            .collect();
+        if tips.len() != 1 {
+            return Err(CacheError::Invalid(
+                "carapace tip must be exactly one scute root",
+            ));
+        }
+        let root = tips[0];
         let mut next = root;
         let mut scutes = Vec::new();
         while next != [0; 32] {
             let scute = candidates.remove(&next).ok_or(CacheError::Invalid(
-                "scute ancestry does not reach the manifest root",
+                "scute ancestry does not reach a zero parent",
             ))?;
             next = *scute.extent.parent();
             scutes.push(scute);

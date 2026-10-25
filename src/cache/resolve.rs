@@ -3,7 +3,10 @@
 
 use super::{Cache, CacheError, VerifiedChain, VerifiedMetadata};
 use crate::image::IndexDigest;
-use pichi_artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
+use pichi_artifact::{
+    CHAIN_ANNOTATION_VERITY_HASH, Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest,
+    ManifestValidationError,
+};
 use serde::Deserialize;
 
 const INDEX: &str = "application/vnd.oci.image.index.v1+json";
@@ -127,6 +130,25 @@ impl Cache {
         Ok(())
     }
 
+    /// Parse and apply Artifact D-07 rules, except the tip hash annotation.
+    /// Cases 1–3 drop `dev.pichi.carapace.verity.hash`; Conglobate derives the
+    /// carapace root from the scute graph in `verify_chain`. Artifact still
+    /// requires the tip today — ignore only that rule until its tip-optional
+    /// cut lands in lockstep.
+    fn accept_manifest(bytes: &[u8]) -> Result<Manifest, CacheError> {
+        let manifest = Manifest::from_reader(bytes)?;
+        match manifest.validate() {
+            Ok(()) => Ok(manifest),
+            Err(ManifestValidationError::MissingChainAnnotation(key))
+                if key == CHAIN_ANNOTATION_VERITY_HASH =>
+            {
+                Ok(manifest)
+            }
+            Err(ManifestValidationError::BadVerityRoot(_)) => Ok(manifest),
+            Err(error) => Err(pichi_artifact::Error::Validation(error).into()),
+        }
+    }
+
     pub(crate) fn resolve(&self, pin: IndexDigest) -> Result<ResolvedImage, CacheError> {
         let architecture = HostArchitecture::current()?;
         let index = self.metadata(&Digest::Sha256(*pin.bytes()), None)?;
@@ -161,7 +183,7 @@ impl Cache {
             .parse()
             .map_err(|_| CacheError::Invalid("invalid manifest digest"))?;
         let manifest_bytes = self.metadata(&digest, Some(selected.size))?;
-        let manifest = Manifest::from_reader_validated(manifest_bytes.bytes())?;
+        let manifest = Self::accept_manifest(manifest_bytes.bytes())?;
         // The shared format validates artifact contents, not the OCI envelope.
         if manifest.schema_version != 2 || manifest.media_type != MANIFEST {
             return Err(CacheError::Invalid("invalid manifest envelope"));
@@ -219,6 +241,7 @@ mod tests {
                 blobs.push((digest, bytes));
                 parent = root;
             }
+            let _derived_tip = parent; // inventory/boot derive tip; not an OCI stamp
             // Identity verification is distinct from firmware format validation.
             for (media, bytes) in [("pmi", b"firmware".as_slice()), ("dtb", b"tree".as_slice())] {
                 let digest = Digest::from_bytes_sha256(bytes);
@@ -234,7 +257,7 @@ mod tests {
             layers.reverse(); // Receipts follow manifest order, not ancestry order.
             let config = b"{\"requirements\":{}}".to_vec();
             let config_digest = Digest::from_bytes_sha256(&config);
-            let mut annotations: BTreeMap<String, String> = [
+            let annotations: BTreeMap<String, String> = [
                 ("algo", "sha256"),
                 ("data-block-size", "4096"),
                 ("hash-block-size", "4096"),
@@ -244,7 +267,6 @@ mod tests {
             .into_iter()
             .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.into()))
             .collect();
-            annotations.insert("dev.pichi.carapace.verity.hash".into(), hex::encode(parent));
             let manifest = Manifest {
                 schema_version: 2,
                 media_type: MANIFEST.into(),
