@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+# systemd is PID 1; Conglobate is a normal oneshot unit (not /init).
+# Image hardcodes (uid/gid maps, netns, resolv.conf paths) are supplied by the
+# appliance binary constants, not by this unit's argv.
+
+[Unit]
+Description=Conglobate build appliance (one-shot CBOR on dev.pichi.build)
+Documentation=file:../README.md
+Requires=run-pichi-repo.mount run-pichi-cache.mount run-pichi-output.mount
+After=run-pichi-repo.mount run-pichi-cache.mount run-pichi-output.mount
+ConditionPathExists=/usr/bin/conglobate
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/conglobate appliance
+# Fail the boot target if the build fails; do not linger as active.
+RemainAfterExit=no
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
