@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 extern crate self as conglobate;
 mod anchor;
+mod appliance;
 // The artifact schema is the library surface (see `src/lib.rs`). Because the
 // binary shadows the library crate name via `extern crate self`, it compiles
 // the same sources as a private module; items the engine does not itself call
@@ -45,7 +46,6 @@ mod tests;
 use crate::{
     execution::{HelperInvocation, HelperProgram},
     pipeline::Pipeline,
-    request::BuildRequest,
 };
 fn main() -> std::process::ExitCode {
     let arguments: Vec<_> = std::env::args_os().collect();
@@ -63,9 +63,9 @@ fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     }
-    let request = match BuildRequest::parse_from(arguments) {
-        Ok(request) => request,
-        Err(conglobate::request::RequestError::Cli(error)) => {
+    let command = match request::parse_cli(arguments) {
+        Ok(command) => command,
+        Err(request::RequestError::Cli(error)) => {
             let success = error.exit_code() == 0;
             let _ = error.print();
             return if success {
@@ -79,7 +79,11 @@ fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     };
-    match Pipeline::new(request).run() {
+    let result = match command {
+        request::CliCommand::Build(request) => Pipeline::new(*request).run(),
+        request::CliCommand::Appliance => crate::appliance::run().map_err(Into::into),
+    };
+    match result {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("conglobate: {error:#}");
