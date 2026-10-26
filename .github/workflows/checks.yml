@@ -51,9 +51,21 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - name: Check commit message
-        run: pipx run --spec gitlint==0.19.1 gitlint --ignore-stdin --commit HEAD
+      - name: Check commit messages
+        env:
+          PR_BASE: ${{ github.base_ref }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -n "$PR_BASE" ]; then
+            commit_range="origin/$PR_BASE..HEAD"
+          elif [ -n "$PUSH_BEFORE" ] && [ "$PUSH_BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            commit_range="$PUSH_BEFORE..HEAD"
+          else
+            commit_range="HEAD^..HEAD"
+          fi
+          pipx run --spec gitlint==0.19.1 gitlint --commits "$commit_range"
       - name: Install dependency checkers
         run: |
           rustup toolchain install 1.94.0 --profile minimal
