@@ -1,10 +1,13 @@
 # Conglobate
 
 Conglobate builds layered OS images from committed recipes and locally supplied,
-locked image artifacts. It is a standalone binary. The recipe pipeline supports
-bootstrap, carapace layering, firmware replacement and DTB transformation, and
-produces a self-contained OCI image layout with a CBOR input/output inventory.
-See [DESIGN.md](DESIGN.md) for the CLI, schemas and inheritance rules.
+locked image artifacts. The crate is a types-only library plus a binary engine;
+the standalone CLI remains testable without a VM. Production builds run in a
+pichi appliance image shipped from this repository (see DESIGN.md). The recipe
+pipeline supports bootstrap, carapace layering, firmware replacement and DTB
+transformation, and produces a self-contained OCI image layout with a CBOR
+input/output inventory. See [DESIGN.md](DESIGN.md) for the CLI, appliance CBOR
+contract, schemas and inheritance rules.
 
 Fedora, Debian, Alpine and NixOS example recipes live under `tests/distro`. Confidential-computing qualification and
 appliance attestation are deferred; passing tests are not a universal security
@@ -50,45 +53,55 @@ pinned Git revisions against every crates.io advisory.
 
 ## Runtime trust boundary
 
-Run image builds only in a dedicated disposable VM with a qualified kernel and
-an independent environment controller that destroys the VM if conglobate
-crashes. The supervisor runs as initial-namespace root. Build commands are
-untrusted and run in restricted namespaces; they receive neither supervisor
-control resources nor backing block devices. The kernel, environment-provided BPF LSM labeling exception,
-supervisor and supplied formatter runtime are trusted. The design requires
-native filesystem/idmapped mount support and the environment-loaded labeling exception;
-generic kernel version numbers alone do not establish those prerequisites.
-The current implementation also uses `open_tree(OPEN_TREE_CLONE)` on subtrees of
-its detached workspace. Ubuntu's GA 6.8 kernel rejects this operation. Hosted
-lifecycle tests use Ubuntu HWE kernels; the recorded kernel and feature checks
-are the supported evidence, rather than a generic minimum-version promise.
+Production image builds run in the dedicated disposable **build appliance** (a
+pichi image shipped from this repo) with a qualified kernel and an independent
+environment controller that destroys the VM if conglobate crashes. systemd is
+PID 1; static virtiofs mounts expose `repo`/`cache`/`output` at
+`/run/pichi/{repo,cache,output}`; the one-shot CBOR request arrives on named
+console `dev.pichi.build`. The supervisor runs as initial-namespace root. Build
+commands are untrusted and run in restricted namespaces; they receive neither
+supervisor control resources nor backing block devices. The kernel,
+environment-provided BPF LSM labeling exception, supervisor and **image-resident
+formatters** (internal filesystem-name → formatter map; formatting outside the
+command sandbox) are trusted. There is no host `--formatter-runtime` TEE input.
+The design requires native filesystem/idmapped mount support and the
+environment-loaded labeling exception; generic kernel version numbers alone do
+not establish those prerequisites. The current implementation also uses
+`open_tree(OPEN_TREE_CLONE)` on subtrees of its detached workspace. Ubuntu's GA
+6.8 kernel rejects this operation. Hosted lifecycle tests use Ubuntu HWE
+kernels; the recorded kernel and feature checks are the supported evidence,
+rather than a generic minimum-version promise.
 
-[sandbox design](DESIGN.md#14-sandbox-lifecycle) specifies the boundary and teardown
-requirements. [Rust architecture](DESIGN.md#15-rust-architecture) explains Rust ownership and
-typestate. Privileged integration tests must run inside disposable VMs, never
-directly on the development host. The maintained harness builds a
-fresh guest from trusted local tools and explicit kernel/module inputs. CI
-provisions these independently of the conglobate binary.
+The **standalone CLI** remains first-class for rootless checks and engine tests
+without a VM. [sandbox design](DESIGN.md#14-sandbox-lifecycle) specifies the
+boundary and teardown requirements. [Rust architecture](DESIGN.md#15-rust-architecture)
+explains the types-only lib, binary engine, ownership and typestate. Privileged
+integration tests must run inside disposable VMs, never directly on the
+development host. The maintained harness builds a fresh guest from trusted local
+tools and explicit kernel/module inputs. CI provisions these independently of
+the conglobate binary.
 
 Conglobate does not download missing Git objects or image artifacts. Recipe
-commands have networking disabled by default; enabled commands require an
-externally prepared, build-dedicated network namespace (`--network-namespace PATH`)
-and an explicit resolver file (`--resolv-conf PATH`). The environment owns network
-interfaces, routes, outbound NAT, firewall rules, DNS services and namespace
-lifetime. Conglobate pins the namespace once, joins it for enabled commands and
-temporarily mounts the captured resolver configuration read-only. Disabled
-commands receive a fresh disconnected namespace. Conglobate does not run a DNS
-relay or configure the external network, and requires no particular service manager.
-Artifact preparation, appliance construction and attestation also belong to the
-surrounding environment.
+commands have networking disabled by default. On the standalone CLI, enabled
+commands require an externally prepared, build-dedicated network namespace
+(`--network-namespace PATH`) and an explicit resolver file (`--resolv-conf PATH`).
+In the appliance image those paths are hardcodes, not CBOR fields. The
+environment owns network interfaces, routes, outbound NAT, firewall rules, DNS
+services and namespace lifetime. Conglobate pins the namespace once, joins it for
+enabled commands and temporarily mounts the captured resolver configuration
+read-only. Disabled commands receive a fresh disconnected namespace. Conglobate
+does not run a DNS relay or configure the external network.
+Artifact preparation and attestation belong to the surrounding environment;
+the appliance image itself is built from this repository.
 
 ## Implementation style
 
 Application Rust forbids unsafe code. Prefer methods on meaningful owning types,
 RAII, sealed marker-trait states, immutable validated inputs and consuming
 transitions. Cleanup failures must preserve resource ownership rather than claim
-successful finalization. [Rust architecture](DESIGN.md#15-rust-architecture) describes the module
-boundaries and ownership model. Maintained regression fixtures live under `tests/`.
+successful finalization. [Rust architecture](DESIGN.md#15-rust-architecture)
+describes the types-only library, binary engine, module boundaries and ownership
+model. Maintained regression fixtures live under `tests/`.
 
 See [tests/README.md](tests/README.md) for disposable-VM harness setup and
 fixture-specific instructions.
