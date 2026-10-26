@@ -3,6 +3,12 @@
 #![forbid(unsafe_code)]
 extern crate self as conglobate;
 mod anchor;
+// The artifact schema is the library surface (see `src/lib.rs`). Because the
+// binary shadows the library crate name via `extern crate self`, it compiles
+// the same sources as a private module; items the engine does not itself call
+// are the published contract rather than dead code.
+#[allow(dead_code, unreachable_pub, unused_imports)]
+mod artifact;
 mod cache;
 mod chain;
 mod context;

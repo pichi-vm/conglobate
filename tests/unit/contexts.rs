@@ -345,17 +345,17 @@ fn network_recipe_captures_an_explicit_resolver_once() {
 
 #[test]
 fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_commands() {
+    use crate::artifact::Digest;
     use conglobate::{
         cache::{Cache, HostArchitecture},
         input::{CapturedBuild, InputError},
         request::BuildRequest,
     };
-    use pichi_artifact::Digest;
-    let manifest = pichi_artifact::Manifest {
+    let manifest = crate::artifact::Manifest {
         schema_version: 2,
         media_type: "application/vnd.oci.image.manifest.v1+json".into(),
-        artifact_type: pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
-        config: pichi_artifact::ConfigDescriptor::canonical(),
+        artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
+        config: crate::artifact::ConfigDescriptor::canonical(),
         layers: Vec::new(),
         annotations: Default::default(),
     }
@@ -364,7 +364,7 @@ fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_command
     let manifest_digest = Digest::from_bytes_sha256(&manifest);
     let index = serde_json::to_vec(&serde_json::json!({"schemaVersion":2,
         "mediaType":"application/vnd.oci.image.index.v1+json", "manifests":[{
-            "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+            "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
             "digest":manifest_digest.to_string(),"size":manifest.len(),
             "platform":{"os":"pichi","architecture":HostArchitecture::current().unwrap().oci_name()}}]})).unwrap();
     let index_digest = Digest::from_bytes_sha256(&index);
@@ -436,14 +436,14 @@ fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_command
     }
     let dtb_digest = Digest::from_bytes_sha256(&dtb);
     std::fs::write(blobs.join(dtb_digest.hex()), &dtb).unwrap();
-    let mut with_dtb: pichi_artifact::Manifest =
+    let mut with_dtb: crate::artifact::Manifest =
         serde_json::from_slice(&std::fs::read(blobs.join(manifest_digest.hex())).unwrap()).unwrap();
-    with_dtb
-        .layers
-        .push(pichi_artifact::Layer::Dtb(pichi_artifact::DtbDescriptor {
+    with_dtb.layers.push(crate::artifact::Layer::Dtb(
+        crate::artifact::DtbDescriptor {
             digest: dtb_digest.to_string(),
             size: dtb.len() as u64,
-        }));
+        },
+    ));
     let bytes = with_dtb.to_bytes().unwrap();
     let digest = Digest::from_bytes_sha256(&bytes);
     std::fs::write(blobs.join(digest.hex()), &bytes).unwrap();

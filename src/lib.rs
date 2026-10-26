@@ -12,3 +12,5 @@
 //! request and the appliance entry point — stays private to the
 //! `conglobate` binary and is deliberately absent here.
 #![forbid(unsafe_code)]
+
+pub mod artifact;

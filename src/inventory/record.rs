@@ -18,7 +18,7 @@ impl Digest {
         })
     }
     fn oci(value: &str) -> Result<Self, InventoryError> {
-        let digest: pichi_artifact::Digest = value.parse().map_err(InventoryError::invalid)?;
+        let digest: crate::artifact::Digest = value.parse().map_err(InventoryError::invalid)?;
         Self::identity(digest.as_bytes())
     }
 }
@@ -70,8 +70,8 @@ impl Outputs {
         let mut dtb = None;
         for layer in &output.image().manifest().layers {
             match layer {
-                pichi_artifact::Layer::Pmi(d) => pmi = Some(Digest::oci(&d.digest)?),
-                pichi_artifact::Layer::Dtb(d) => dtb = Some(Digest::oci(&d.digest)?),
+                crate::artifact::Layer::Pmi(d) => pmi = Some(Digest::oci(&d.digest)?),
+                crate::artifact::Layer::Dtb(d) => dtb = Some(Digest::oci(&d.digest)?),
                 _ => {}
             }
         }

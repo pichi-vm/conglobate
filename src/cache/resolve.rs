@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Cache, CacheError, VerifiedChain, VerifiedMetadata};
+use crate::artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
 use crate::image::IndexDigest;
-use pichi_artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
 use serde::Deserialize;
 
 const INDEX: &str = "application/vnd.oci.image.index.v1+json";
@@ -117,7 +117,7 @@ impl Cache {
                 .map_err(|_| CacheError::Invalid("invalid layer digest"))?;
             let verified = matches!(
                 layer,
-                pichi_artifact::Layer::Scute(_) | pichi_artifact::Layer::ScuteZstd(_)
+                crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
             ) && chain
                 .is_some_and(|chain| chain.contains_verified(&digest, layer.size()));
             if !verified {
@@ -177,7 +177,7 @@ impl Cache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pichi_artifact::{Layer, ScuteAnnotations, ScuteDescriptor};
+    use crate::artifact::{Layer, ScuteAnnotations, ScuteDescriptor};
     use std::{collections::BTreeMap, fs};
 
     struct ContentFixture {
@@ -249,7 +249,7 @@ mod tests {
                 schema_version: 2,
                 media_type: MANIFEST.into(),
                 artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
-                config: pichi_artifact::ConfigDescriptor::for_config(
+                config: crate::artifact::ConfigDescriptor::for_config(
                     config_digest.to_string(),
                     config.len() as u64,
                 ),

@@ -159,7 +159,7 @@ impl CheckedImage {
             .layers
             .iter()
             .find_map(|layer| match layer {
-                pichi_artifact::Layer::Dtb(descriptor) => Some(descriptor),
+                crate::artifact::Layer::Dtb(descriptor) => Some(descriptor),
                 _ => None,
             })
             .map(|descriptor| {
@@ -231,7 +231,7 @@ impl CapturedBuild {
                         .manifest()
                         .layers
                         .iter()
-                        .any(|layer| matches!(layer, pichi_artifact::Layer::Dtb(_)))
+                        .any(|layer| matches!(layer, crate::artifact::Layer::Dtb(_)))
                 });
             if !inherited_dtb {
                 return Err(InputError::MissingTransformDtb);

@@ -5,8 +5,8 @@
 mod assembly;
 pub(crate) use assembly::AssembledImage;
 
+use crate::artifact::Digest;
 use crate::cache::{Cache, CacheError};
-use pichi_artifact::Digest;
 use std::{
     ffi::OsString,
     fs::{self, File},

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Cache, CacheError, ResolvedImage};
+use crate::artifact::{Digest as ContentDigest, Layer, ScuteDescriptor};
 use crate::chain::ScuteExtent;
-use pichi_artifact::{Digest as ContentDigest, Layer, ScuteDescriptor};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,

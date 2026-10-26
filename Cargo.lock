@@ -285,7 +285,6 @@ dependencies = [
  "netlink-packet-core",
  "netlink-packet-route",
  "nix",
- "pichi-artifact",
  "pmi",
  "regex",
  "rustix 1.1.5 (git+https://github.com/bytecodealliance/rustix?rev=8bda151df87574f56f1e4c0b59f2d1df5d61609e)",
@@ -1509,18 +1508,6 @@ name = "percent-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
-
-[[package]]
-name = "pichi-artifact"
-version = "0.1.0"
-source = "git+https://github.com/pichi-vm/pichi-artifact?rev=7b97a2427f2f343a90fdd72006e3de022b519057#7b97a2427f2f343a90fdd72006e3de022b519057"
-dependencies = [
- "hex",
- "serde",
- "serde_json",
- "sha2",
- "thiserror",
-]
 
 [[package]]
 name = "pkg-config"
