@@ -68,6 +68,31 @@ mod tests {
     use super::*;
 
     #[test]
+    fn frozen_wire_strings_match_phase_42_lock() {
+        // Exact wire strings — any drift breaks OCI consumers.
+        assert_eq!(
+            MEDIA_TYPE_PICHI_ARTIFACT_V1,
+            "application/vnd.pichi.artifact.v1+json"
+        );
+        assert_eq!(MEDIA_TYPE_PICHI_SCUTE_V1, "application/vnd.pichi.scute.v1");
+        assert_eq!(
+            MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+            "application/vnd.pichi.scute.v1+zstd"
+        );
+        assert_eq!(MEDIA_TYPE_PICHI_PMI_V1, "application/vnd.pichi.pmi.v1");
+        assert_eq!(
+            MEDIA_TYPE_PICHI_REQUIREMENTS_V1,
+            "application/vnd.pichi.requirements.v1+yaml"
+        );
+        assert_eq!(MEDIA_TYPE_PICHI_DTB_V1, "application/vnd.pichi.dtb.v1");
+        assert_eq!(
+            MEDIA_TYPE_PICHI_CONFIG_V1,
+            "application/vnd.pichi.config.v1+json"
+        );
+        assert_eq!(MEDIA_TYPE_OCI_EMPTY_V1, "application/vnd.oci.empty.v1+json");
+    }
+
+    #[test]
     fn all_constants_have_pichi_prefix_or_oci() {
         assert!(MEDIA_TYPE_PICHI_ARTIFACT_V1.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_SCUTE_V1.starts_with("application/vnd.pichi."));

@@ -20,3 +20,60 @@ pub use recipe_io::{
     BuildOutput, CarapaceRecipe, CopyDirective, Directive, FromSpec, LockEntry, PmiRecipe,
     RecipeError, RefsLock, ScuteOut,
 };
+
+#[cfg(test)]
+mod surface_tests {
+    /// The library must stay types-only: engine modules remain binary-private.
+    #[test]
+    fn public_modules_are_artifact_and_recipe_io_only() {
+        let source = include_str!("lib.rs");
+        let surface = source
+            .split("#[cfg(test)]")
+            .next()
+            .expect("lib.rs surface before tests");
+        for forbidden in [
+            "pub mod pipeline",
+            "pub mod storage",
+            "pub mod isolation",
+            "pub mod appliance",
+            "pub mod context",
+            "pub mod formatter",
+            "pub mod request",
+            "pub mod process",
+            "pub mod network",
+            "pub mod execution",
+            "pub mod step",
+            "pub mod inventory",
+            "pub mod cache",
+        ] {
+            assert!(
+                !surface.contains(forbidden),
+                "lib must not export engine module ({forbidden})"
+            );
+        }
+        assert!(
+            surface.contains("pub mod artifact;"),
+            "lib must export artifact"
+        );
+        assert!(
+            surface.contains("pub mod recipe_io;"),
+            "lib must export recipe_io"
+        );
+    }
+
+    #[test]
+    fn recipe_lock_and_artifact_types_resolve() {
+        use crate::{
+            BuildOutput, CarapaceRecipe, LockEntry, PmiRecipe, RefsLock, ScuteOut,
+            artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1},
+        };
+        let _ = MEDIA_TYPE_PICHI_ARTIFACT_V1;
+        let _ = std::mem::size_of::<Digest>();
+        let _ = std::mem::size_of::<CarapaceRecipe>();
+        let _ = std::mem::size_of::<PmiRecipe>();
+        let _ = std::mem::size_of::<RefsLock>();
+        let _ = std::mem::size_of::<LockEntry>();
+        let _ = std::mem::size_of::<BuildOutput>();
+        let _ = std::mem::size_of::<ScuteOut>();
+    }
+}

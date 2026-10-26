@@ -138,3 +138,12 @@ fn formatter_runtime_flag_is_unknown() {
         other => panic!("expected clap unknown-arg error, got {other:?}"),
     }
 }
+
+#[test]
+fn appliance_subcommand_is_recognized() {
+    use crate::request::{CliCommand, parse_cli};
+    match parse_cli(["conglobate", "appliance"]).unwrap() {
+        CliCommand::Appliance => {}
+        other => panic!("expected Appliance, got {other:?}"),
+    }
+}
