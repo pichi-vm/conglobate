@@ -14,3 +14,9 @@
 #![forbid(unsafe_code)]
 
 pub mod artifact;
+pub mod recipe_io;
+
+pub use recipe_io::{
+    BuildOutput, CarapaceRecipe, CopyDirective, Directive, FromSpec, LockEntry, PmiRecipe,
+    RecipeError, RefsLock, ScuteOut,
+};
