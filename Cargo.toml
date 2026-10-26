@@ -10,6 +10,10 @@ description = "Standalone image builder with isolated command execution"
 [features]
 test-fixtures = ["nix/uio", "nix/term", "rustix/pty", "rustix/termios"]
 
+[lib]
+name = "conglobate"
+path = "src/lib.rs"
+
 [[bin]]
 name = "conglobate"
 path = "src/main.rs"
