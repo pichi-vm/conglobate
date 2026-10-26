@@ -57,8 +57,6 @@ struct BuildArguments {
     resolv_conf: Option<PathBuf>,
     #[arg(long)]
     network_namespace: Option<PathBuf>,
-    #[arg(long)]
-    formatter_runtime: Option<PathBuf>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CommitIdentity(Vec<u8>);
@@ -88,7 +86,6 @@ pub(crate) struct BuildRequest {
     output: PathBuf,
     resolv_conf: Option<PathBuf>,
     network_namespace: Option<PathBuf>,
-    formatter_runtime: Option<PathBuf>,
 }
 impl BuildRequest {
     /// Parse CLI arguments and validate commit syntax and context-relative paths.
@@ -118,7 +115,6 @@ impl BuildRequest {
             output: raw.output,
             resolv_conf: raw.resolv_conf,
             network_namespace: raw.network_namespace,
-            formatter_runtime: raw.formatter_runtime,
         })
     }
     pub(crate) fn id_mappings(&self) -> Option<IdMappings> {
@@ -144,9 +140,6 @@ impl BuildRequest {
     }
     pub(crate) fn output(&self) -> &Path {
         &self.output
-    }
-    pub(crate) fn formatter_runtime(&self) -> Option<&Path> {
-        self.formatter_runtime.as_deref()
     }
     pub(crate) fn network_namespace(&self) -> Option<&Path> {
         self.network_namespace.as_deref()

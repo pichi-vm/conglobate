@@ -110,3 +110,31 @@ fn environment_id_maps_are_paired_and_validated() {
     assert_eq!(mappings.gid().parent_start(), 400000);
     assert_eq!(mappings.gid().count(), 65536);
 }
+
+#[test]
+fn formatter_runtime_flag_is_unknown() {
+    let mut args = Fixture::args();
+    args.extend(
+        [
+            "--recipe",
+            "recipe",
+            "--lock",
+            "lock",
+            "--formatter-runtime",
+            "/formatter.json",
+        ]
+        .into_iter()
+        .map(str::to_owned),
+    );
+    let err = BuildRequest::parse_from(args).unwrap_err();
+    match err {
+        conglobate::request::RequestError::Cli(error) => {
+            let rendered = error.to_string();
+            assert!(
+                rendered.contains("unexpected argument") || rendered.contains("formatter-runtime"),
+                "{rendered}"
+            );
+        }
+        other => panic!("expected clap unknown-arg error, got {other:?}"),
+    }
+}

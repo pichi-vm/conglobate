@@ -3,11 +3,10 @@
 use super::rejection::DiscardStorage;
 use crate::{
     execution::HelperProgram,
-    formatter::{Ext4Format, FormatterManifest},
+    formatter::{Ext4Format, selection},
     input::{CheckedImage, ResolvedBuild},
     process::ChildReaper,
     recipe::Bootstrap,
-    request::BuildRequest,
     step::{CommandSandbox, SetupBudget},
     storage::{BootstrapVolumes, Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
 };
@@ -41,14 +40,10 @@ impl<'a> BootstrapBuild<'a> {
     }
     pub(super) fn execute<'w>(
         &self,
-        request: &BuildRequest,
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
     ) -> anyhow::Result<Bootstrapped<'w>> {
-        let manifest = request
-            .formatter_runtime()
-            .ok_or_else(|| anyhow!("bootstrap requires --formatter-runtime"))?;
-        let captured = FormatterManifest::capture(manifest)?;
+        let captured = selection::for_filesystem(self.stage.filesystem())?;
         self.produce(workspace, runtime, captured.stage(workspace)?)
     }
 
