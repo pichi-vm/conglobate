@@ -24,7 +24,7 @@ pub(crate) enum ApplianceError {
 
 /// Read one-shot CBOR from `dev.pichi.build`, build the engine request, run it.
 pub(crate) fn run() -> Result<(), ApplianceError> {
-    let file = open_build_console(Path::new("/sys"))?;
+    let file = open_build_console(Path::new("/sys"), Path::new("/dev"))?;
     let bytes = read_oneshot(file)?;
     let request = ApplianceRequest::decode(&bytes)?;
     let build = request.into_build_request(
