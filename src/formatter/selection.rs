@@ -3,8 +3,13 @@
 //! Internal filesystem-name → formatter profile selection.
 //!
 //! Product CLI never supplies a host formatter path. Standalone builds discover
-//! the trusted host `mke2fs` (+ `ldd` dependencies) here; the appliance image
-//! will eventually carry the same tools without host PATH lookup.
+//! the trusted host `mke2fs` (+ `ldd` dependencies) here.
+//!
+//! **Appliance (until Follow-up A):** the same discovery runs against the guest
+//! root (`/` inside the build VM). The guest rootfs — not a host PATH/`ldd`
+//! handoff from the hypervisor — is the trusted formatter source. Follow-up A
+//! will bundle formatters into the appliance image layout explicitly so capture
+//! no longer depends on ambient guest PATH discovery.
 
 use super::CapturedFormatter;
 use crate::{path::ContextPath, recipe::FilesystemSpec};
