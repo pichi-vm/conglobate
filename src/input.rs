@@ -46,7 +46,7 @@ pub(crate) struct SelectedDocument {
     sha256: [u8; 32],
 }
 impl SelectedDocument {
-    fn new(path: ContextPath, file: &ContextFile<'_>) -> Self {
+    fn new(path: ContextPath, file: &ContextFile) -> Self {
         Self {
             path,
             sha256: Sha256::digest(file.bytes()).into(),

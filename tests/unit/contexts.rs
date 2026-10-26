@@ -56,6 +56,7 @@ impl Repository {
 
 #[test]
 fn capture_uses_verified_commit_and_subtree_in_both_object_formats() {
+    use conglobate::path::ContextPath;
     for format in ["sha1", "sha256"] {
         let repo = Repository::new(format);
         repo.write("build/recipe.yml", b"committed");
@@ -64,22 +65,23 @@ fn capture_uses_verified_commit_and_subtree_in_both_object_formats() {
         repo.write("build/recipe.yml", b"working tree modified");
         let capture = repo.capture(&commit, "build").unwrap();
         assert_eq!(capture.entries().len(), 1);
-        let ContextEntry::File { bytes, .. } = &capture.entries()[Path::new("recipe.yml")] else {
-            panic!("not a file")
-        };
-        assert_eq!(bytes, b"committed");
+        assert!(matches!(
+            capture.entries().get(Path::new("recipe.yml")),
+            Some(ContextEntry::File { .. })
+        ));
+        let path = ContextPath::try_from(Path::new("recipe.yml")).unwrap();
+        assert_eq!(capture.read(&path).unwrap().bytes(), b"committed");
         assert_eq!(
             capture.subtree().to_string(),
             repo.git(&["rev-parse", "HEAD:build"])
         );
         assert_eq!(capture.commit().as_bytes(), commit.bytes());
-        std::fs::remove_dir_all(repo.0.path().join(".git")).unwrap();
-        assert_eq!(bytes, b"committed");
     }
 }
 
 #[test]
 fn tampered_blob_bytes_fail_identity_verification() {
+    use conglobate::path::ContextPath;
     let repo = Repository::new("sha1");
     repo.write("a", b"original");
     repo.write("b", b"different");
@@ -95,24 +97,24 @@ fn tampered_blob_bytes_fail_identity_verification() {
     };
     std::fs::remove_file(object_path(&original)).unwrap();
     std::fs::copy(object_path(&other), object_path(&original)).unwrap();
-    let error = repo.capture(&commit, ".").unwrap_err().to_string();
+    let capture = repo.capture(&commit, ".").unwrap();
+    let path = ContextPath::try_from(Path::new("a")).unwrap();
+    let error = capture.read(&path).unwrap_err().to_string();
     assert!(error.contains("identity"), "{error}");
 }
 
 #[test]
 fn unsupported_lfs_and_submodules_fail() {
+    use conglobate::path::ContextPath;
     let repo = Repository::new("sha1");
     repo.write(
         "pointer",
         b"version https://git-lfs.github.com/spec/v1\noid sha256:123\nsize 1\n",
     );
     let commit = repo.commit();
-    assert!(
-        repo.capture(&commit, ".")
-            .unwrap_err()
-            .to_string()
-            .contains("LFS")
-    );
+    let capture = repo.capture(&commit, ".").unwrap();
+    let path = ContextPath::try_from(Path::new("pointer")).unwrap();
+    assert!(capture.read(&path).unwrap_err().to_string().contains("LFS"));
     repo.git(&["rm", "pointer"]);
     let id = hex::encode(commit.bytes());
     repo.git(&[
@@ -153,6 +155,29 @@ fn selected_files_follow_only_confined_committed_links() {
         let path = ContextPath::try_from(Path::new(name)).unwrap();
         assert!(capture.read(&path).is_err(), "{name}");
     }
+}
+
+#[test]
+fn capture_defers_regular_blob_loads_until_read() {
+    use conglobate::path::ContextPath;
+    let repo = Repository::new("sha1");
+    repo.write("kept", b"keep-me");
+    repo.write("unused", b"never-read");
+    let commit = repo.commit();
+    let unused = repo.git(&["rev-parse", "HEAD:unused"]);
+    let object_path = repo
+        .0
+        .path()
+        .join(".git/objects")
+        .join(&unused[..2])
+        .join(&unused[2..]);
+    // Remove an unused blob before capture; metadata walk must still succeed.
+    std::fs::remove_file(&object_path).unwrap();
+    let capture = repo.capture(&commit, ".").unwrap();
+    let kept = ContextPath::try_from(Path::new("kept")).unwrap();
+    assert_eq!(capture.read(&kept).unwrap().bytes(), b"keep-me");
+    let unused_path = ContextPath::try_from(Path::new("unused")).unwrap();
+    assert!(capture.read(&unused_path).is_err());
 }
 
 #[test]
