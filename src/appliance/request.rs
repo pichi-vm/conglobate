@@ -164,7 +164,8 @@ impl ApplianceRequest {
             output.to_path_buf(),
             Some(resolv_conf),
             Some(network_namespace),
-        ))
+        )
+        .with_location(self.location))
     }
 }
 
@@ -380,5 +381,76 @@ mod tests {
         assert_eq!(build.repository(), repo);
         assert_eq!(build.cache(), Path::new("/run/pichi/cache"));
         assert!(build.id_mappings().is_some());
+        assert_eq!(build.location(), None);
+    }
+
+    #[test]
+    fn location_is_forwarded_as_inventory_provenance() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let repo = dir.path();
+        assert!(
+            Command::new("git")
+                .args(["init", "-b", "main"])
+                .current_dir(repo)
+                .status()
+                .unwrap()
+                .success()
+        );
+        assert!(
+            Command::new("git")
+                .args(["config", "user.email", "t@example.invalid"])
+                .current_dir(repo)
+                .status()
+                .unwrap()
+                .success()
+        );
+        assert!(
+            Command::new("git")
+                .args(["config", "user.name", "t"])
+                .current_dir(repo)
+                .status()
+                .unwrap()
+                .success()
+        );
+        std::fs::write(repo.join("recipe.yml"), "x").unwrap();
+        std::fs::write(repo.join("lock.yml"), "y").unwrap();
+        assert!(
+            Command::new("git")
+                .args(["add", "."])
+                .current_dir(repo)
+                .status()
+                .unwrap()
+                .success()
+        );
+        assert!(
+            Command::new("git")
+                .args(["commit", "-m", "c"])
+                .current_dir(repo)
+                .status()
+                .unwrap()
+                .success()
+        );
+        let mut fields = required();
+        fields.push((
+            "location",
+            Value::Text("https://example.invalid/repo".into()),
+        ));
+        let request = ApplianceRequest::decode(&encode(&fields)).unwrap();
+        let build = request
+            .into_build_request(
+                repo,
+                Path::new("/run/pichi/cache"),
+                Path::new("/run/pichi/output"),
+                super::super::mounts::id_mappings(),
+                PathBuf::from("/run/pichi/netns"),
+                PathBuf::from("/run/pichi/resolv.conf"),
+            )
+            .unwrap();
+        assert_eq!(build.repository(), repo);
+        assert_eq!(
+            build.location(),
+            Some("https://example.invalid/repo"),
+            "CBOR location must reach BuildRequest for inventory provenance"
+        );
     }
 }

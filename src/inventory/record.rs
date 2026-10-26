@@ -149,7 +149,12 @@ impl Inventory {
             version: 3,
             builder: Builder::current()?,
             context: Context {
-                repository: Context::text(request.repository())?,
+                // Appliance CBOR `location` is the provenance locator when set;
+                // otherwise the local repository path (CLI / mount path).
+                repository: match request.location() {
+                    Some(location) => location.to_owned(),
+                    None => Context::text(request.repository())?,
+                },
                 object_format: match context.object_format() {
                     gix::hash::Kind::Sha1 => ObjectFormat::Sha1,
                     gix::hash::Kind::Sha256 => ObjectFormat::Sha256,

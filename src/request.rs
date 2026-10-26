@@ -88,6 +88,9 @@ pub(crate) struct BuildRequest {
     output: PathBuf,
     resolv_conf: Option<PathBuf>,
     network_namespace: Option<PathBuf>,
+    /// Optional provenance locator for inventory (e.g. appliance CBOR `location`).
+    /// Not used as Git identity; mount/path opens still use `repository`.
+    location: Option<String>,
 }
 #[derive(Debug)]
 pub(crate) enum CliCommand {
@@ -134,7 +137,14 @@ impl BuildRequest {
             output,
             resolv_conf,
             network_namespace,
+            location: None,
         }
+    }
+
+    /// Record an optional inventory provenance locator without changing Git opens.
+    pub(crate) fn with_location(mut self, location: Option<String>) -> Self {
+        self.location = location;
+        self
     }
     fn from_build_args(raw: BuildArguments) -> Result<Self, RequestError> {
         Ok(Self::from_parts(
@@ -205,5 +215,9 @@ impl BuildRequest {
     }
     pub(crate) fn resolv_conf(&self) -> Option<&Path> {
         self.resolv_conf.as_deref()
+    }
+    /// Inventory provenance locator when supplied (appliance CBOR `location`).
+    pub(crate) fn location(&self) -> Option<&str> {
+        self.location.as_deref()
     }
 }
