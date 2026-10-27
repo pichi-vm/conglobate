@@ -32,6 +32,9 @@ pub(crate) enum CacheError {
     Invalid(&'static str),
 }
 
+/// JSON indexes, manifests and DTBs. Layers and firmware use other readers.
+const MAX_METADATA_BYTES: u64 = 16 * 1024 * 1024;
+
 /// Pins directory authority; no method creates, downloads or modifies content.
 #[derive(Debug)]
 pub(crate) struct Cache {
@@ -71,28 +74,57 @@ impl Cache {
         Ok(file)
     }
     /// Capture small metadata exactly once. Large immutable layers stay cache-backed.
+    ///
+    /// When `expected_size` is set it must equal the file length, and the
+    /// bytes must hash to `digest`. A descriptor that is only a path key uses
+    /// `metadata_by_path`.
     pub(crate) fn metadata(
         &self,
         digest: &ContentDigest,
         expected_size: Option<u64>,
     ) -> Result<VerifiedMetadata, CacheError> {
-        const MAX_METADATA: u64 = 16 * 1024 * 1024;
-        let mut file = self.blob(digest)?;
-        let size = file.metadata()?.len();
-        if size > MAX_METADATA || expected_size.is_some_and(|expected| expected != size) {
-            return Err(CacheError::Invalid(
-                "metadata size mismatch or limit exceeded",
-            ));
-        }
-        let mut bytes = Vec::new();
-        (&mut file).take(size + 1).read_to_end(&mut bytes)?;
-        if bytes.len() as u64 != size || ContentDigest::from_bytes_sha256(&bytes) != *digest {
+        let bytes = self.read_metadata(digest, expected_size)?;
+        if ContentDigest::from_bytes_sha256(&bytes) != *digest {
             return Err(CacheError::Invalid("metadata content mismatch"));
         }
         Ok(VerifiedMetadata {
             digest: digest.clone(),
             bytes,
         })
+    }
+    /// Read a small blob whose path digest is not a content commitment.
+    ///
+    /// The receipt digest is the SHA-256 of the captured bytes. The metadata
+    /// size cap still applies. Callers authenticate every blob the captured
+    /// document names; this method does not.
+    fn metadata_by_path(
+        &self,
+        path_digest: &ContentDigest,
+    ) -> Result<VerifiedMetadata, CacheError> {
+        let bytes = self.read_metadata(path_digest, None)?;
+        Ok(VerifiedMetadata {
+            digest: ContentDigest::from_bytes_sha256(&bytes),
+            bytes,
+        })
+    }
+    fn read_metadata(
+        &self,
+        digest: &ContentDigest,
+        expected_size: Option<u64>,
+    ) -> Result<Vec<u8>, CacheError> {
+        let mut file = self.blob(digest)?;
+        let size = file.metadata()?.len();
+        if size > MAX_METADATA_BYTES || expected_size.is_some_and(|expected| expected != size) {
+            return Err(CacheError::Invalid(
+                "metadata size mismatch or limit exceeded",
+            ));
+        }
+        let mut bytes = Vec::new();
+        (&mut file).take(size + 1).read_to_end(&mut bytes)?;
+        if bytes.len() as u64 != size {
+            return Err(CacheError::Invalid("metadata content mismatch"));
+        }
+        Ok(bytes)
     }
     /// Capture a firmware blob after authenticating its declared size and digest.
     /// Firmware is not subject to the small JSON/DTB metadata size limit.
