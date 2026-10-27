@@ -9,10 +9,24 @@ Deferred ecosystem work is collected in [Remaining decisions](#13-remaining-deci
 [Validation scope](#12-validation-scope) describes maintained coverage and platform limits.
 Implementation of the full engine reshape is separate from this design lock-in.
 
-Conglobate builds images from committed source and immutable image inputs. It
-can create a new carapace using a tool carapace, extend an existing image, build
-replacement firmware, and transform the final device tree. It emits an
-importable image and an inventory binding its supplied inputs to its outputs.
+The approved recipe design, dated 27 October 2026, is the multi-stage task
+model in [§5](#5-context-and-pipeline) and [§6](#6-execution-recipes). It is
+the recipe source of truth. Tasks are `bootstrap`, `extend`, and `build`. The
+lock is a separate document. References are an untagged `Local` | `Remote`
+enum. `Filesystem` is a kind-tagged enum. `image:` has a short form and a long
+form. Only the image carapace/boot closure runs. DTB rewrite for a new root
+hash is automatic, including when assembly binds a root to imported boot
+lineage. This replaces the fixed `bootstrap` → `carapace` → `firmware` →
+`transform` pipeline. The engine still executes that fixed pipeline. Serde
+types, closure execution, and appliance smoke that implement this model are
+follow-up work. They are not extra wire locks in this document.
+
+Conglobate builds images from committed source and immutable image inputs. A
+bootstrap task formats a new carapace from a tool carapace. An extend task
+produces a carapace from a carapace and commands, and carries boot with it. A
+build task produces artifacts only. A pichi image is not a task: it is the
+assembly of one carapace and optional boot (PMI/DTB). The output is that image
+plus an inventory referencing those components.
 
 ## Trust model — required for attested builds
 
@@ -78,20 +92,23 @@ the implementation's trust boundaries.
 | Image | A manifest and its content-addressed components: a carapace, a firmware pair, or both, with associated configuration and metadata |
 | Scute | One immutable filesystem block layer stored as a copy-on-write (COW) object and protected by dm-verity |
 | Carapace | An ordered chain of scutes assembled into a read-only block device; its top root hash binds the chain |
-| Tool carapace | A carapace supplying the filesystem in which a stage's commands execute; changes to it are disposable unless the stage explicitly exports them |
-| Base image | The image inherited by the output, including its components beyond the carapace |
+| Tool carapace | A carapace supplying the filesystem in which a task's commands execute. Changes to it are disposable unless the task explicitly exports them. It does not become output ancestry because commands ran inside it |
+| Base image | The carapace an `extend` task takes through `from:`, together with boot when that task re-exports it. A tool carapace is not a base image |
+| Task | A named, kind-tagged unit of recipe work. The kinds are `bootstrap`, `extend`, and `build` |
+| Reference | An untagged enum: `Local` names a task in this recipe; `Remote` is a fully qualified OCI image. References have no `./` prefix |
 | PMI | Portable Machine Image, the boot-payload format consumed by the VM launcher |
 | DTB | Device Tree Blob, a binary tree of nodes and byte-valued properties describing the platform and its boot configuration |
-| Firmware pair | The PMI and detached DTB carried by an image; the firmware stage replaces them together |
+| Firmware pair | The PMI and detached DTB. `extend` rewrites the DTB for the new root hash and re-exports the PMI when one is present. Custom PMI/DTB bytes come from an explicit task |
+| Boot | The optional PMI/DTB assembled with one carapace. On `extend`, boot rides with the task |
 | Corium | The guest boot/runtime component whose `corium=<root>` command-line argument selects the root carapace |
 | Arma | The tool commonly used by firmware recipes to produce a PMI and detached DTB |
 | Context | The committed project subtree containing recipes and source files |
 | Inventory | A machine-readable statement identifying the supplied inputs, effective build configuration, and final outputs |
 
 The OCI manifest digest identifies the image description. A carapace root
-identifies its verified filesystem chain. Neither replaces the other: inherited
-firmware is covered by the image description, while filesystem assembly uses
-the carapace root.
+identifies its verified filesystem chain. Neither replaces the other: boot
+assembled into the image is covered by the image description, while filesystem
+assembly uses the carapace root.
 
 ## Contents
 
@@ -102,7 +119,16 @@ the carapace root.
 - [Git context](#3-git-context)
 - [Image locks](#4-image-locks)
 - [Context and pipeline](#5-context-and-pipeline)
+  - [Tasks](#51-tasks)
+  - [Image assembly](#52-image-assembly)
+  - [Closure](#53-closure)
 - [Execution recipes](#6-execution-recipes)
+  - [References](#61-references)
+  - [Task kinds](#62-task-kinds)
+  - [exec, from, into, and copy](#63-exec-from-into-and-copy)
+  - [Filesystem](#64-filesystem)
+  - [Command execution](#65-command-execution)
+  - [Rejected Docker behavior](#66-rejected-docker-behavior)
 - [Build variables](#7-build-variables)
 - [DTB transformations](#8-dtb-transformations)
 - [Privileged execution and resource ownership](#9-privileged-execution-and-resource-ownership)
@@ -150,9 +176,14 @@ A build has the following lifecycle:
    locked image inputs.
 2. Load recipe and lock immediately from the object store; resolve other context
    reads lazily with verify-on-use (see [§3](#3-git-context)).
-3. Create or select the output carapace and execute its layer directives.
-4. Inherit firmware or produce a replacement pair, then transform the DTB.
-5. Package the final components and emit the input/output inventory.
+3. Load tasks and `image:`. Run only the carapace/boot closure
+   (`bootstrap`, `extend`, `build`). Orphan tasks do not run.
+4. Bootstrap formats outside the sandbox and populates `/mnt`. Extend
+   produces a carapace, rewrites the DTB for the new root hash, and
+   re-exports the PMI when present. Build produces artifacts only.
+5. Assemble one carapace and optional boot. Assembly is not a task. When
+   the image root is bound to imported boot lineage, rewrite the DTB
+   automatically. Emit the inventory referencing those components.
 6. In the appliance, optionally bind that inventory to attestation evidence.
 
 The artifact and inventory are Conglobate outputs. Importing or publishing the
@@ -437,8 +468,18 @@ not establish the author's intended identity.
 
 ## 4. Image locks
 
-The committed YAML file selected by `--lock` maps each recipe image reference to one immutable OCI index digest. Proposed
-wire shape:
+The lock is a separate document, selected by `--lock`. It is not embedded
+in the recipe. It maps each `Remote` reference to one immutable OCI index
+digest. `Local` references name tasks ([§6.1](#61-references)) and are not
+entries here. `image:` references are `Local` only, so this document does not
+pin them.
+
+A `Remote` value is a struct of OCI components and must be fully qualified:
+the registry host is required. Bare Hub short names are rejected. A reference
+is not `Remote` merely because it contains `/`. Parsing must not let a task
+name silently win over an OCI reference, or the reverse.
+
+Proposed wire shape:
 
 ```yaml
 version: 1
@@ -494,315 +535,272 @@ The context has no required configuration directory or filenames. For example:
 ```
 
 Select those files with `--recipe recipes/image.yaml --lock locks/images.lock`.
-These names are examples, not defaults. COPY sources remain relative to the
-context root, even when the recipe lives in a subdirectory.
+These names are examples, not defaults. The lock path selects a separate
+document. The recipe does not embed the lock. Context paths stay relative to
+the context root, even when the recipe lives in a subdirectory.
 
-The recipe is one YAML mapping with optional `bootstrap`, `carapace`, `firmware`
-and `transform` sections. `platform` remains reserved and unsupported initially.
-Execution order is fixed, regardless of YAML key order:
+The approved recipe is a set of named tasks plus one `image:` assembly. It
+replaces the fixed pipeline `bootstrap` → `carapace` → `firmware` →
+`transform` as the recipe source of truth. Those names are not top-level
+section keys. `platform` is not a task kind. There is no `kind: import`.
 
-```text
-bootstrap -> carapace -> firmware -> [platform, deferred] -> transform
-```
+A task is a kind-tagged enum. The kinds are `bootstrap`, `extend`, and
+`build`. Reject duplicate keys, unknown keys, and unknown kinds rather than
+merging or ignoring them. YAML null is not an alias for omission or emptiness.
+An empty recipe cannot produce an image.
 
-The lock is a separate input, not a stage. Reject duplicate or unknown keys and
-unsupported sections rather than merging or ignoring them. Execution sections
-are mappings; `transform` is a sequence. Use explicit `{}` or `[]` for empty
-sections; YAML null is not an alias for omission or emptiness. An empty recipe
-cannot produce an image.
+### 5.1 Tasks
 
-For example, an inherited image with an explicitly disabled default transform:
+| Kind | Carapace input (`from:`) | Retained output |
+| --- | --- | --- |
+| `bootstrap` | Tool carapace | A new carapace. The engine formats `filesystem:` outside the sandbox. `exec` only populates `/mnt`. |
+| `extend` | The carapace to extend | A carapace. The engine always rewrites the DTB for the new root hash and re-exports the PMI when one is present. Boot rides with the task. |
+| `build` | Tool carapace | Artifacts only (`into:`). No carapace output. |
+
+`build` replaces the earlier names `export`, `make`, and `produce`. Those
+names are not kinds.
+
+Custom PMI/DTB bytes exist only when an explicit task exports boot. That work
+is not a fourth kind and not an implicit pipeline stage. `build` yields
+artifacts and no carapace, which is the kind available for a producer that
+exports boot and no carapace. Extend exports boot when it re-exports a PMI.
+Automatic DTB rewrite is not a task and not a per-recipe job. See
+[§8](#8-dtb-transformations).
+
+A tool carapace does not become output ancestry because commands execute
+inside it.
+
+### 5.2 Image assembly
+
+Producing a pichi image is not a task. An image is the assembly of one
+carapace and optional boot (PMI and DTB). The inventory references those
+components. Launch configuration and any component beyond carapace and boot
+remain unspecified ([§13](#13-remaining-decisions)).
+
+`image:` references are `Local` only. They name a task in this recipe.
+Two forms are valid.
+
+Short form: one reference. Assembly uses whatever that single task already
+exports: carapace, boot, or both. The task must export a carapace or boot or
+both. Exporting neither is invalid. The short form does not mean
+carapace-only.
 
 ```yaml
-carapace:
-  from: registry.example.com/fedora:43
-transform: []
+image: rootfs
 ```
 
-The pipeline carries an assembled image forward. Separately, a stage may use
-a carapace as its execution environment. **A tool input does not become output
-ancestry merely because commands execute inside it.**
+Long form: `root` and `boot` name tasks. Each reference must provide that
+export.
 
-### 5.1 Stage summary
+```yaml
+image:
+  root: rootfs
+  boot: firmware
+```
 
-| Stage | Execution input | Retained output |
-| --- | --- | --- |
-| Bootstrap | Required tool carapace | A new zero-backed carapace layer, formatted and populated directly |
-| Carapace | Bootstrap output, otherwise required `from` image | Inherited image with additional scutes |
-| Firmware | Resulting carapace, or explicit tool carapace | Replacement PMI and DTB together |
-| Platform | Tool carapace, details deferred | Transformed DTB |
-| Transform | No execution carapace | Declaratively edited DTB |
+`root` requires a carapace export. `boot` requires a boot export.
 
-Omitted stages pass existing output forward. If bootstrap is present and
-carapace is omitted, firmware can use the bootstrap result directly. A carapace
-recipe with no directives is also a valid pass-through when an input exists.
-Without bootstrap, that recipe still needs `from`; `carapace: {}`
-cannot select an input image without bootstrap output.
+### 5.3 Closure
 
-All components of a base image propagate unless a stage replaces them.
-There is no feature for explicitly discarding inherited firmware to obtain a
-carapace-only derivative. A bootstrap tool image's components are not inherited
-because it is not the base of the output image.
-
-### 5.2 Output kinds and section combinations
-
-Valid image kinds are carapace-only, carapace plus PMI/DTB, and PMI/DTB-only.
-The last kind lives entirely within its firmware/initramfs environment.
-
-| Bootstrap | Carapace | Firmware | Result before DTB transformations |
-| --- | --- | --- | --- |
-| Absent | Absent | Absent | Invalid: no image-producing stage |
-| Present | Absent | Absent | New base carapace only |
-| Absent | Present | Absent | Derived image, including all inherited components |
-| Absent | Absent | Present | PMI/DTB-only; tool `from` required |
-| Present | Present | Absent | New carapace plus layers |
-| Present | Absent | Present | New carapace and new PMI/DTB |
-| Absent | Present | Present | Derived carapace and replacement PMI/DTB |
-| Present | Present | Present | New carapace plus layers and new PMI/DTB |
-
-For an existing image requiring only DTB edits, a `carapace` section with `from`
-and no directives selects and passes through the base image.
-
-Existing launch configuration and other image components propagate with the
-base. How a recipe creates or overrides those components is not yet specified;
-the pipeline described here defines carapace and firmware production only.
+Only tasks on the image carapace/boot closure run. A task is in the closure
+when the `image:` carapace reference, the `image:` boot reference, or a task
+already in the closure reaches it through `from:` or `copy`. Orphan tasks do
+not run. YAML key order does not select the closure and does not order
+execution. A task runs after the tasks that produce the inputs it references.
 
 ## 6. Execution recipes
 
-Examples in sections 6.1–6.4 show the contents of the named top-level section;
-place them under that key in the single recipe file. Transform examples show
-sequence contents unless explicitly wrapped in `transform`.
+The task vocabulary is `kind`, `from:`, `exec`, `into:`, `copy`, and, for
+bootstrap, `filesystem:`. Examples show locked fields. Unknown fields and
+unsupported combinations are errors.
 
-The shared vocabulary includes `from` and `derive`; firmware export uses `into`.
-Bootstrap declares its output volume through `filesystem`. A `derive` list contains
-ordered `run` and `copy` directives. Unknown fields and unsupported combinations
-are errors rather than ignored instructions.
+The lock does not specify which YAML key nests the task map. Each task has a
+name that a `Local` reference cites.
 
-Commands execute as UID/GID 0 in a mapped user namespace, with a disposable
-or layered working filesystem exposed through an idmapped kernel mount.
-An environment-provided BPF LSM exception permits foreign SELinux labels without command
-`CAP_SYS_ADMIN`; that capability is absent from every command capability set.
-They never receive initial-user-namespace root authority.
-Tools may be installed during execution; a tool carapace only needs enough
-initial functionality to obtain and run them. A Fedora image with `dnf` can
-build a new Fedora image containing `dnf`, which can then serve as a future
-tool carapace. The first tool carapace is bootstrapped externally.
+### 6.1 References
 
-```yaml
-derive:
-  - run: dnf install -y kernel-devel
-    network: true
-    timeout: 5m
-  - copy:
-      from: ./source
-      into: /build/source
-```
+A reference is an untagged enum: `Local` | `Remote`. References have no `./`
+prefix.
 
-Network access is opt-in per `run` directive and defaults to false. For enabled
-steps conglobate joins the supplied `--network-namespace`; for disabled steps it
-creates a fresh disconnected namespace. Commands cannot administer either.
-The environment provides outbound NAT, permits reply traffic and all reachable
-destinations, and prevents unsolicited inbound connections and inbound port
-forwarding. Conglobate does not create interfaces, allocate addresses, inspect or
-modify routes, install NAT/firewall rules, or require particular forwarding
-sysctls in its own namespace. This is an environment contract, not a policy that
-conglobate can infer from a namespace descriptor. No systemd dependency is imposed.
-Enabled steps may share network state (including conntrack), but no command
-process may survive its step. The namespace must not expose trusted controls.
+`Local` is a limited-charset newtype and names a task in this recipe. This
+lock does not enumerate the character set. `Remote` is a struct of OCI
+components and must be fully qualified: a registry host is required. Bare Hub
+short names are rejected.
 
-Every `run` has a finite positive command-execution timeout, defaulting to `5m`.
-The optional `timeout` field accepts duration strings such as `30m` or `1h`;
-zero, infinite, invalid, and overflowing values fail validation. Setup and
-teardown have separate fixed internal deadlines, not recipe or CLI settings.
-Fresh filesystem mounts and a fresh command sandbox are used for each run step.
+A value is not `Remote` because it contains `/`. That test is rejected. A
+task name must not silently win over an OCI reference, and an OCI reference
+must not silently win over a task name. The variants have to be unambiguous
+without those heuristics.
 
-Common execution behavior:
+`from:` accepts `Local` or `Remote`. `image:` accepts `Local` only.
+`copy.from` is an artifact name in the flat namespace of
+[§6.3](#63-exec-from-into-and-copy), not this reference enum.
 
-- The committed context remains private to the builder. Commands receive
-  selected contents only through explicit `copy` directives.
-- Commands run through `/bin/sh -eu -c`, starting at `/`. Environment and
-  working-directory changes are expressed within a command rather than
-  persisted implicitly between shells. Processes cannot outlive a step.
-- `copy.from` refers to context-relative paths. Copy behavior, including
-  symlinks, follows Dockerfile `COPY` semantics. The implementation must use
-  the Docker reference and compatibility tests rather than choose a blanket
-  follow/preserve policy. This does not add unrelated Docker features such as
-  multi-stage Dockerfiles or `ADD` URL fetching.
-- Owner/group/mode handling follows the corresponding Docker `COPY` behavior
-  for the fields conglobate supports. Metadata and SELinux behavior must be
-  tested in the privileged execution environment.
-- No uncontrolled inherited host environment is exposed to build commands.
+The lock document ([§4](#4-image-locks)) is separate. It pins `Remote`
+references to immutable OCI index digests. Local task names are not entries
+in that document.
 
-`copy.from` accepts one string or a nonempty list of strings. `copy.into` is
-an absolute image path; multiple sources require a trailing slash. Optional
-`owner` and `group` accept quoted numeric IDs or names resolved in the image's
-`/etc/passwd` and `/etc/group`. Defaults are UID/GID zero; specifying only a
-numeric owner uses that ID for both. A named owner uses its primary GID from
-`/etc/passwd` unless `group` explicitly overrides it. Optional `mode` is a quoted
-octal or symbolic mode. Filename patterns use Go `filepath.Match` semantics, including
-Unicode `?` and bracket classes, without shell brace expansion.
+### 6.2 Task kinds
 
-### 6.1 Bootstrap
+`bootstrap` requires `from:` (the tool carapace) and `filesystem:`. The engine
+formats that filesystem outside the command sandbox, on a new zero-backed
+carapace layer, before `exec` starts. The recipe does not run mkfs or mount.
+`exec` populates `/mnt` only.
 
-`bootstrap` section creates a new carapace directly, using a separate tool carapace.
-The supervisor creates a writable snapshot layer over dm-zero and formats its
-block-device view **outside the command sandbox**, using the engine's internal
-filesystem-name → formatter map (initially ext4). Formatting and all subsequent
-output writes land in that layer. There is no host-supplied formatter runtime
-manifest, no intermediate rootfs image, image import, or image-to-scute
-conversion.
+Commands see two writable mounts. `/` is the tool carapace with a disposable
+writable layer. Authors may install tools there; those changes persist across
+the task's steps and are discarded when the task completes. `/mnt` is the new
+output filesystem. Commands populate it with ordinary filesystem and
+package-manager operations. They do not receive the block device or a mount
+privilege.
 
-The command sandbox has two assigned writable mounts:
+`/mnt` is reserved during bootstrap. Resolve its mountpoint within the pinned
+tool root and never follow an image symlink outside that root. Paths under
+`/mnt` address the new filesystem. Other absolute paths address the tool root.
+The context is never mounted into commands.
 
-- `/`: the tool carapace with a disposable writable layer. Authors may install
-  additional tools here; those changes persist across bootstrap steps only.
-- `/mnt`: the new output filesystem. Commands populate it using ordinary
-  filesystem/package-manager operations, without block-device or mount access.
+No tool scutes and no tool boot components are inherited. A deliberate `copy`
+can still contribute output bytes. After writers stop and both filesystems are
+cleanly unmounted, seal the output scute and package its carapace. There is no
+image import and no image-to-scute conversion. The first tool carapace is
+produced outside this recipe.
 
-The initial filesystem declaration is:
+`extend` requires `from:` (the carapace to extend) and its commands in `exec`.
+Existing scutes pass through. The task adds one new scute. Every `exec` step
+modifies that same writable snapshot. Each command keeps its own isolation,
+timeout, and network selection. Stop and reap its descendants, flush, and
+unmount before the next step. Seal the shared snapshot only after every step
+succeeds. A failed task produces no publishable layer. No commands means no
+new scute. Skipping empty block deltas is not part of this model. Sealing is
+not filesystem compaction.
+
+The task always rewrites the DTB for the new carapace root hash and re-exports
+the PMI when the input has one. Boot rides with the extended task. Do not
+replace only half of the PMI/DTB pair, and do not add a boot-discard
+operation.
+
+`build` requires `from:` (the tool carapace). It produces the artifacts named
+by `into:` and does not produce a carapace. Commands use a disposable tool
+root at `/`. There is no `/mnt` output mount. Extract declared artifacts
+through confined handles after all command writers stop. Intermediate tool
+changes do not become scutes. Only the declared artifacts survive. `export`,
+`make`, and `produce` are not accepted as `kind`.
+
+### 6.3 exec, from, into, and copy
+
+`exec` is the ordered command list. The name replaces `derive`. `from:` is the
+carapace input. `into:` declares artifact outputs. `copy` brings a cross-task
+artifact into the task. There is no `artifacts:` input map.
 
 ```yaml
-from: registry.example.com/fedora-tools:43
-filesystem:
-  type: ext4
-  size: 4GiB
-  properties:
-    label: rootfs
-derive:
-  - run: dnf install -y dnf-plugins-core
-    network: true
-  - run: dnf --installroot=/mnt --releasever=43 install -y filesystem bash dnf
-    network: true
-```
-
-`from` is required. `filesystem` declares filesystem capacity, filesystem type and supported typed
-formatting properties. Initially `type` is `ext4`; `size` is a positive integer
-followed immediately by `B`, `KiB`, `MiB` or `GiB`, must be 4096-byte aligned and
-between 16 MiB and 64 GiB inclusive. No fractional values or implicit units.
-`properties.label` defaults to empty and is limited to 16 UTF-8 bytes without NUL.
-Unknown properties fail. The carapace logical device remains 64 GiB; trusted
-formatting uses exactly the requested number of 4096-byte blocks, leaving the
-rest zero-backed. Size is not permission to change the carapace wire geometry. Validate these before privileged
-execution; do not accept arbitrary formatter arguments, executable paths or shell
-fragments from the recipe or host. Fail if the driver, internal formatter map
-entry or required idmapping/metadata support is unavailable. Ext4 is the
-initially validated backend; other kernel filesystems require qualification.
-Record the effective formatting configuration and internal formatter profile
-identity with an explicit inventory schema revision.
-
-`/mnt` is reserved for the output mount during bootstrap. Resolve its mountpoint
-within the pinned tool root; never follow an image symlink outside that root.
-COPY destinations use this same layout, so `/mnt/...` addresses output and other
-paths address the tool root. Context is never mounted into commands. The trusted
-environment provides the fixed exact-`security.selinux` labeling exception.
-After restrictions are applied, validate labeling on both assigned roots before
-admitting each command. Filesystem reachability, read-only mounts, descriptor
-confinement and process isolation protect unrelated supervisor inodes; the
-labeling policy does not maintain a per-filesystem authorization registry.
-
-After writers stop and both filesystems are cleanly unmounted, seal/hash the
-output scute and package its carapace. Discard the tool writable layer. No tool
-scutes or firmware components are inherited; deliberate file copies can still
-contribute output bytes. Bootstrap has no image-file `into` export. The output
-becomes the implicit input of the `carapace` section, or passes forward when it is omitted.
-Maintained pipeline and lifecycle tests exercise dual-mount snapshot chains
-and label admission on both roots.
-
-### 6.2 Carapace
-
-`carapace` section retains filesystem modifications as new layers:
-
-```yaml
-from: registry.example.com/fedora:43
-derive:
+exec:
   - run: dnf install -y nginx
     network: true
-  - copy:
-      from: ./nginx.conf
-      into: /etc/nginx/nginx.conf
+    timeout: 5m
 ```
 
-When bootstrap supplies the input, `from` is forbidden. Otherwise it is
-required. Selecting a base image inherits all its components. The existing
-scutes pass through and new scutes chain onto the preceding root.
+The artifact namespace has two sources. One is the git build context, which is
+a tree. The other is task outputs, which Conglobate defines from `into:`.
 
-The retained model is one new scute per nonempty carapace stage. All `run` and
-`copy` directives modify the same writable snapshot of the input carapace.
-Each command retains separate isolation, timeout and network selection; stop
-and reap its descendants, flush and unmount before proceeding to the next step.
-Seal the shared snapshot only after every directive succeeds. A failed stage
-produces no publishable layer. No directives means no new scute; skipping empty
-block deltas is not part of the initial model.
+`into:` keys and `copy.from` are flat bare names. A name of the form
+`task:name`, and any other colon namespacing, is rejected.
 
-This does not provide Docker-style intermediate layer caching. Files created
-and deleted within the stage are not retained as separate historical layers,
-but filesystem metadata and freed blocks may still contribute to its block
-delta. Sealing is not filesystem compaction.
+`image:` selects carapace and boot exports. It does not select `into:` names.
+Carapace and boot exports are the components described in [§5.1](#51-tasks)
+and [§5.2](#52-image-assembly).
 
-### 6.3 Firmware
+**Open, not locked.** Should `into` keys be paths? The git context preloaded
+into the artifact namespace is a tree, not a flat set of names. Until that is
+decided, keys stay flat bare names. The question is recorded again under
+[Remaining decisions](#13-remaining-decisions). This lock does not define a
+value grammar for `into:` entries and does not define a destination path on
+`copy`.
 
-`firmware` section replaces the PMI and DTB as a pair. It commonly invokes arma,
-but is not restricted to Linux firmware. A custom firmware or UEFI-oriented
-recipe can produce the supported output artifacts through its own tools.
+### 6.4 Filesystem
 
-Omitting `from` uses the resulting carapace. An explicit `from` selects a
-different tool carapace, even when a result carapace exists. If there is no
-result carapace, `from` is required. The execution input never determines which
-scutes become output: a firmware-only build remains firmware-only.
+`filesystem:` is a kind-tagged enum on `bootstrap`. It is not a `type:` field
+plus a generic `properties` map. `kind` selects the variant. That variant's
+properties are a dedicated type. Ext4 properties (`Ext4Properties`) include
+`label`. `FilesystemSize` is a strict type, not a free-form string. Rust type
+names for these values do not use a `Document` suffix.
 
 ```yaml
-from: registry.example.com/kernel-builder:43
-derive:
-  - copy:
-      from: ./kernel.config
-      into: /build/linux/.config
-  - run: |
-      cd /build/linux
-      make -j"$(nproc)"
-      make modules_install
-  - run: |
-      mkdir -p /out
-      dracut --force --no-compress /out/initramfs.cpio \
-        "$(make -s -C /build/linux kernelrelease)"
-  - run: |
-      arma build \
-        --kernel /build/linux/arch/x86/boot/bzImage \
-        --config /build/linux/.config \
-        --initrd /out/initramfs.cpio \
-        --cmdline "console=hvc0 corium=$CARAPACE" \
-        --dtb /out/base.dtb \
-        /out/boot.pmi
-into:
-  pmi: /out/boot.pmi
-  dtb: /out/base.dtb
+filesystem:
+  kind: ext4
+  size: 4GiB
+  label: rootfs
 ```
 
-This is an x86 Linux example. Its tool carapace must supply kernel sources,
-compiler, arma, corium, and appropriately configured initramfs tooling. A
-firmware-only recipe omits the carapace argument and includes its workload in
-the initramfs. The example is a recipe shape, not a universal distro build.
+`size` is a `FilesystemSize`. `label` is the ext4 property. A nested generic
+`properties:` map is not the schema.
 
-All directives share a disposable writable tool root at `/`. Firmware has no
-special `/mnt` output mount. `into` selects explicit paths inside the tool root;
-extract both files through confined handles after all command writers stop.
-Intermediate changes
-do not become scutes. Only the declared PMI and DTB survive. When the stage is
-absent, existing firmware propagates unchanged to DTB finalization.
+The size spelling is that strict type: a positive integer followed immediately
+by `B`, `KiB`, `MiB`, or `GiB`, 4096-byte aligned, between 16 MiB and 64 GiB
+inclusive. No fractional values and no implicit units. `label` defaults to
+empty and is limited to 16 UTF-8 bytes without NUL. Unknown properties fail.
+The carapace logical device remains 64 GiB. Trusted formatting uses exactly
+the requested number of 4096-byte blocks and leaves the rest zero-backed. Size
+does not change carapace wire geometry. Validate this before privileged
+execution. Do not accept arbitrary formatter arguments, executable paths, or
+shell fragments from the recipe or the host. Fail if the driver, the internal
+formatter map entry, or the required idmapping and metadata support is
+unavailable. Ext4 is the initially validated backend. Other kernel filesystems
+require qualification. Record the effective formatting configuration and the
+internal formatter profile identity with an explicit inventory schema revision.
 
-### 6.4 Platform
+### 6.5 Command execution
 
-`platform` section is reserved for arbitrary DTB transformations executed in a
-tool carapace, with the same recipe vocabulary. Implementation and the exact
-working-DTB interface are deferred until there is a user requiring it.
+Commands execute as UID/GID 0 in a mapped user namespace. An
+environment-provided BPF LSM exception permits foreign SELinux labels without
+command `CAP_SYS_ADMIN`. That capability is absent from every command
+capability set. Commands never receive initial-user-namespace root authority.
+A tool carapace only needs enough initial functionality to obtain and run
+further tools.
 
-An implementation that does not support this stage must reject its presence,
-not silently ignore it. Declarative transforms do not require this stage.
+Network access is opt-in per `run` and defaults to false. For an enabled step,
+conglobate joins the supplied `--network-namespace`. For a disabled step, it
+creates a fresh disconnected namespace. Commands cannot administer either
+namespace. The environment contract for NAT, reply traffic, and inbound policy
+is [§14.8](#148-networking-and-dns). Enabled steps may share network state,
+including conntrack. No command process may survive its step.
+
+Every `run` has a finite positive command-execution timeout. The default is
+`5m`. The optional `timeout` field accepts duration strings such as `30m` or
+`1h`. Zero, infinite, invalid, and overflowing values fail validation. Setup
+and teardown have separate fixed internal deadlines. They are not recipe or
+CLI settings. Each `run` gets a fresh filesystem mount and a fresh command
+sandbox.
+
+Common execution rules:
+
+- The committed context stays private to the builder. Commands receive
+  selected bytes only through explicit `copy`.
+- Commands run through `/bin/sh -eu -c`, starting at `/`. Environment and
+  working-directory changes are written inside a command. They do not persist
+  implicitly between shells. Processes cannot outlive a step.
+- No uncontrolled inherited host environment is exposed to build commands.
+- The fixed-pipeline image-path `copy` fields `owner`, `group`, and `mode`,
+  and Go `filepath.Match` source patterns, are not part of this format. This
+  lock does not define replacements for them.
+
+### 6.6 Rejected Docker behavior
+
+These rejections stay in force:
+
+- No copy of a whole stage root.
+- No implicit promotion of a tool carapace into output ancestry.
+- No `ADD` of URLs.
+- Finalize an artifact before another task takes it with `copy`.
+- Artifact names are not a security boundary.
+- A task does not inherit every intermediate output.
+- No Docker layer cache follows from this format.
+- No last-stage-wins rule. `image:` and the closure select outputs.
 
 ## 7. Build variables
 
-After carapace construction, `CARAPACE` identifies the final output carapace
-root as plain hex. It also exists when bootstrap produced that carapace and
-`carapace` section was omitted.
+`CARAPACE` identifies the output carapace root as plain hex once `bootstrap`
+or `extend` has produced it, or once `image:` has selected it. It is absent
+when the closure has no output carapace.
 
 - Shell commands access `$CARAPACE` or `${CARAPACE}` through the environment.
 - Transformation replacements access `${CARAPACE}` through template expansion.
@@ -833,11 +831,13 @@ The DTB is the canonical boot configuration artifact. In particular, Linux's
 kernel command line, when present, is the string `/chosen/bootargs`. There is
 no second persistent command-line definition outside the DTB.
 
-`transform` section is an ordered list of operations executed directly through
-safe Rust libraries. Each item has exactly one `op` discriminator. `set` also
-has a flat `type` discriminator selecting the encoding of `data`.
-`property` names an absolute node path followed by the property name; for
-example, `/chosen/bootargs` selects `bootargs` on the `/chosen` node.
+Recipes have no `transform` section. The encodings below are the engine's
+DTB edit vocabulary, applied by the automatic rewrite in
+[§8.3](#83-automatic-rewrite). Authors do not supply this list. Each operation
+has exactly one `op` discriminator. `set` also has a flat `type` discriminator
+selecting the encoding of `data`. `property` names an absolute node path
+followed by the property name; for example, `/chosen/bootargs` selects
+`bootargs` on the `/chosen` node.
 
 Operations can have an `if` condition:
 
@@ -937,14 +937,14 @@ representable without assuming that a DTB contains runtime type tags.
 
 `regex` operates on exactly one NUL-terminated UTF-8 string, excluding its
 terminator. A string list, binary property, malformed string, absent property,
-or absent DTB is an error for an authored operation.
+or absent DTB is an error for the operation.
 
 **Replace every match; zero matches leave the string unchanged.** There are
 no match-count settings. Target validation happens before matching: an invalid
 string is an error even if the expression would have no matches.
 Invalid regex syntax or invalid replacement-template syntax fails validation.
 
-| Target state | Authored regex operation |
+| Target state | Regex operation |
 | --- | --- |
 | DTB, node, or property missing | Fail |
 | Property is not a single valid string | Fail |
@@ -955,12 +955,20 @@ Use Rust `regex` syntax and capture expansion, with the build-variable extension
 described above. Do not implement sed syntax or shell out. `${1}` in the
 examples preserves the whitespace consumed by the boundary capture.
 
-### 8.3 Default selection
+### 8.3 Automatic rewrite
 
-- Absent `transform` section: select the built-in sequence.
-- Present `transform` section: use exactly the authored sequence.
-- `transform: []`: perform no transformations (a DTB is still required).
-- There is no inclusion or automatic appending of defaults to authored edits.
+The automatic rewrite is engine-owned. It is not a task and not a per-recipe
+job. Recipes have no `transform` key. Authors cannot replace the sequence,
+append to it, or disable it with an empty list.
+
+The engine applies the built-in sequence when a DTB is present and either:
+
+- an `extend` task produces a new carapace root. The rewrite is not optional
+  for that task. The task also re-exports the PMI when one is present, so
+  boot rides with the task; or
+- image assembly binds an image root to imported boot lineage.
+
+When no DTB exists, skip the rewrite. Skipping is not a recipe switch.
 
 The built-in sequence is:
 
@@ -973,20 +981,25 @@ The built-in sequence is:
   replace: '${1}corium=${CARAPACE}'
 ```
 
-It refreshes an existing `corium=` argument and never introduces one. Firmware
-authors establish the initial binding. A matched binding with undefined
-`CARAPACE` fails. Non-string command-line data remains an error. This generic
-regex does not validate all corium arguments or repair duplicate bindings.
+It refreshes an existing `corium=` argument and never introduces one. The
+task that exports boot establishes the initial binding. A matched binding with
+undefined `CARAPACE` fails. Non-string command-line data remains an error.
+This generic regex does not validate all corium arguments or repair duplicate
+bindings.
 
-When no DTB exists, skip only the implicit default transformation stage.
-An authored `transform` section requires a DTB, including an explicitly empty
-sequence. Within an existing DTB, the default uses `if.exists` to skip an absent
+Within an existing DTB, the sequence uses `if.exists` to skip an absent
 command line. No operation reads a missing property successfully, and a
 missing DTB never makes an existence condition return false.
 
-The inventory records the effective default and whether its stage or operation
-was skipped. Property operations only are in scope initially; `set` may create
-ancestor nodes, but there are no explicit whole-node creation/removal operations.
+Whether the rewrite ran or was skipped is recorded by the current
+version-three transform fields
+([§11.2](#112-inventory-wire-profile-and-schema-migration)). This recipe lock
+does not revise that wire record.
+
+Property operations only are in scope initially; `set` may create ancestor
+nodes, but there are no explicit whole-node creation or removal operations.
+Custom PMI/DTB bytes that differ from this sequence come from an explicit
+task's boot export, not from a recipe-authored list of these operations.
 
 ## 9. Privileged execution and resource ownership
 
@@ -1096,8 +1109,10 @@ action and sufficient reserved section capacity. Every target in the PMI must
 accept the edit. A pre-signed SEV identity, bundled-only DTB, unknown target,
 or opaque firmware rejects a changed DTB. Unchanged DTBs require no resealing
 and pass through, including opaque custom firmware. Authors using unsupported
-signing contracts must generate the final DTB during firmware production and
-disable subsequent transforms with `transform: []`.
+signing contracts must export the final DTB from an explicit task. The
+recipe has no `transform` section and no switch that disables the automatic
+rewrite. A firmware contract that rejects a changed DTB still rejects the
+build when that rewrite would change the DTB.
 
 ## 11. Artifact and inventory
 
@@ -1136,7 +1151,14 @@ describes all components and the final transformed DTB.
 
 `inventory.cbor` is versioned machine data. The following is a YAML rendering
 of its proposed logical shape, not a second emitted inventory format or a
-finalized CBOR wire schema:
+finalized CBOR wire schema.
+
+The example's input roles (`bootstrap-tools`, `carapace-base`,
+`firmware-tools`) and `execution.transform` record the fixed-pipeline engine.
+[§5](#5-context-and-pipeline) and [§6](#6-execution-recipes) are the recipe
+source of truth. This recipe lock does not revise the inventory wire schema.
+A later inventory version must name tasks explicitly. Do not read the task
+model out of these role strings.
 
 ```yaml
 version: 3
@@ -1194,8 +1216,10 @@ outputs:
 Digest payloads are CBOR byte strings with explicit algorithm identifiers.
 Absent output components are omitted. Recipe and lock paths are relative to
 the selected context. Their digests identify the exact committed file bytes,
-not a YAML reserialization. Network steps identify the stage section and its
-zero-based directive index. Input roles refer to use, not output ancestry. Source locators
+not a YAML reserialization. In this version-three record, network steps
+identify the fixed-pipeline stage name and its zero-based directive index.
+A later inventory version names tasks instead. Input roles refer to use, not
+output ancestry. Source locators
 are provenance hints, not authenticated identities, and must not expose
 embedded credentials.
 
@@ -1265,7 +1289,11 @@ with `stage`, records effective environment-supplied UID/GID mappings in
 `execution.id_mappings`, and uses formatter receipts with `profile` /
 `profile_digest` instead of host-runtime `executable` / `runtime` fields. Emit
 and validate version three explicitly; do not silently emit these fields as
-version one. Version two is not a supported emit or accept target. The transform
+version one. Version two is not a supported emit or accept target. The
+`execution.transform` fields below are that current fixed-pipeline contract.
+The approved recipe has no authored `transform` section
+([§8.3](#83-automatic-rewrite)). Changing `source` or the role names requires
+a new inventory version. The transform
 record adds a required boolean `default_skipped`, indicating that the implicit
 default encountered no DTB or no bootargs property; an authored transform always
 records false for this field. `target_present` records whether a DTB was
@@ -1333,7 +1361,9 @@ intended the pinned inputs without a separate authenticity policy.
 
 The implementation follows the ordered sandbox contract. Maintained tests cover committed inputs, locks, typed
 DTB operations, pipeline combinations, metadata, deterministic inventory,
-publication and disposable-VM lifecycle failures. Distro recipes exercise Fedora
+publication and disposable-VM lifecycle failures. Those tests exercise the
+fixed pipeline the engine still runs. Coverage of the task model in §5–§6
+lands with the implementation, not with this document. Distro recipes exercise Fedora
 DNF/SELinux, Debian APT/systemd, Alpine APK/OpenRC and NixOS closure construction.
 A separate firmware recipe constructs an initramfs and arma PMI/DTB, then boots it.
 
@@ -1377,9 +1407,34 @@ Fully unprivileged storage assembly is outside the selected design.
 The initial scope excludes remote Git retrieval, uncommitted working-tree
 inputs, submodules, Git LFS, cross-architecture builds, build-time lock updates,
 output-cache mutation, firmware discard, partial PMI/DTB replacement,
-transform-default inclusion, regex match-count options, whole-node operations,
-and execution of `platform` section. Caller working-tree policy is outside this
-interface.
+regex match-count options, and whole-node operations. The recipe format has no
+`transform` section and no `platform` task kind. Caller working-tree policy is
+outside this interface.
+
+### Open recipe question
+
+Whether `into` keys should be paths is not locked. The git build context
+preloaded into the artifact namespace is a tree, not a flat set of names.
+Until a decision, [§6.3](#63-exec-from-into-and-copy) keeps flat bare names for
+`into:` keys and `copy.from`, with no `task:name` colon namespacing.
+
+### Proposed implementation acceptance
+
+These checks were proposed with the recipe locks. They are not additional
+design locks, and this document does not implement them.
+
+1. Serde types and validation match §5–§6, with tests for short and long
+   `image:`, `Local` / `Remote` parsing, kind tagging, closure-only execution,
+   and the `Filesystem` enum.
+2. The engine runs the `bootstrap` / `extend` / `build` closure selected by
+   `image:`, applies the automatic DTB rewrite on assemble, and keeps
+   transitional `build.yaml` dual-write working for smoke.
+3. An appliance smoke with a multi-task recipe (at least bootstrap plus build,
+   or bootstrap plus extend) passes without a registry publish, before the
+   implementation change.
+4. That implementation change waits until this recipe text is on `main`, then
+   merges by rebase after green CI and review clearance. Republish `:0.2.0`
+   only if the appliance contract or digest changes.
 
 ## 14. Sandbox lifecycle
 
@@ -1388,17 +1443,20 @@ The build proceeds in this order; each failure aborts publication:
 1. Validate the request, resolve the commit, load recipe and lock from the
    object store, and resolve and verify every required local image input.
 2. Capture external network inputs if needed. Allocate the protected RAM
-   workspace and execution runtime only when stages require execution.
-3. Execute bootstrap, carapace and firmware in order, passing stage outputs
-   forward. Bootstrap formats a new snapshot over dm-zero; carapace produces
-   one scute for all its directives; firmware replaces the PMI/DTB pair.
-4. For each directive, mount assigned roots. COPY uses lazy verify-on-use
-   context bytes; RUN constructs a fresh sandbox, executes within its timeout,
+   workspace and execution runtime only when the closure requires execution.
+3. Execute the `image:` closure. Bootstrap formats a new snapshot over
+   dm-zero outside the sandbox and populates `/mnt`. Extend produces one
+   scute for its commands, rewrites the DTB for the new root hash, and
+   re-exports the PMI when present. Build extracts artifacts only and
+   produces no carapace. Orphan tasks do not run.
+4. For each `exec` step, mount assigned roots. `copy` uses lazy verify-on-use
+   context bytes; `run` constructs a fresh sandbox, executes within its timeout,
    and stops and reaps all descendants. Remove temporary mounts, flush and
-   unmount before sealing stage output or releasing storage.
-5. Close the execution runtime. Transform the DTB, assemble the complete OCI
-   layout, write the transitional flat `build.yaml` (delta scutes only) and
-   deterministic CBOR inventory, and verify staged output.
+   unmount before sealing task output or releasing storage.
+5. Close the execution runtime. Apply the automatic DTB rewrite, assemble one
+   carapace and optional boot (assembly is not a task), write the transitional
+   flat `build.yaml` (delta scutes only) and deterministic CBOR inventory, and
+   verify staged output.
 6. Finish fallible workspace/context cleanup, then publish without replacing
    an existing destination: CLI `--output` uses an atomic no-replace rename of
    the completed directory; the appliance empty `/run/pichi/output` mount uses
@@ -1483,16 +1541,20 @@ RAII owns resources; destructors cannot certify successful finalization.
    image artifacts. Recipe commands explicitly granted networking may
    download packages; this is distinct from input resolution.
 
-1. Parse one YAML recipe mapping and validate all stage sections before
-   execution. The fixed order is bootstrap, carapace, firmware, transform;
-   platform remains unsupported. Key order never determines execution.
-   Reject duplicate/unknown keys, invalid types and null stage values.
-   Omission retains pass-through/default behavior; explicit {} and []
-   express empty sections subject to their input requirements.
-   Check supported filesystem/backend and runtime prerequisites, required
-   image components, finite command timeouts, variable availability when
-   evaluated, and DNS configuration for network-enabled commands. Reject
-   unsupported behavior rather than silently weakening the sandbox.
+1. Parse one YAML recipe and the separate lock before execution. Tasks are
+   a kind-tagged enum: `bootstrap`, `extend`, or `build`. Reject unknown
+   kinds, including `kind: import`, a `transform` section, and a `platform`
+   kind. `image:` is `Local` only. Run only the carapace/boot closure.
+   Key order never selects that closure. References are an untagged
+   `Local` | `Remote` enum. Do not classify `Remote` by the presence of `/`.
+   Do not let a task name silently win over an OCI reference, or the reverse.
+   `Remote` values must be fully qualified. `Filesystem` is a kind-tagged
+   enum with type-specific properties and a strict `FilesystemSize`.
+   Reject duplicate or unknown keys, invalid types, and null values.
+   Check the filesystem backend and runtime prerequisites, required image
+   exports, finite command timeouts, variable availability when evaluated,
+   and DNS configuration for network-enabled commands. Reject unsupported
+   behavior rather than silently weakening the sandbox.
 
 1. Require and capture --network-namespace when any step enables networking
    as specified in section 14.8. Read --resolv-conf PATH once if networking is needed and retain the
@@ -1635,72 +1697,84 @@ RAII owns resources; destructors cannot certify successful finalization.
    Supervisor death still must not expose privileged handles or permit
    storage reuse before the independently triggered VM shutdown.
 
-### 14.5 Execute the assembly pipeline without changing its inheritance rules
+### 14.5 Execute the image closure under the task rules
 
-1. The bootstrap section selects a tool carapace and declares the output filesystem
-   type, logical size and supported typed properties. Trusted formatting
-   tools create that filesystem on the new zero-backed writable carapace
-   layer before commands start. Never pass arbitrary recipe-provided shell
-   commands or formatter arguments to privileged tooling. Validate properties
-   against the selected backend and record effective configuration and tool
-   identity as build inputs (with an explicit inventory schema revision).
+1. `image:` selects the closure, as specified in [§5.3](#53-closure). Run
+   only tasks reachable from its carapace and boot references. Orphan tasks
+   do not run. YAML key order does not choose the closure or the execution
+   order. A task runs after the inputs it references have been produced.
+   Producing the image is assembly, not a task.
+
+1. A `bootstrap` task selects a tool carapace with `from:` and declares the
+   output filesystem as a kind-tagged `filesystem:` value: a strict
+   `FilesystemSize` and type-specific properties, for example ext4 `label`.
+   Trusted formatting tools create that filesystem on the new zero-backed
+   writable carapace layer before commands start. The recipe does not run
+   mkfs or mount. Never pass recipe-provided shell commands or formatter
+   arguments to privileged tooling. Validate properties against the selected
+   backend and record effective configuration and tool identity as build
+   inputs (with an explicit inventory schema revision).
 
    Commands see the disposable writable tool carapace at / and the fresh
    output filesystem at /mnt. They can install tools into / and populate
-   /mnt, for example using dnf --installroot=/mnt. COPY destinations follow
-   this same sandbox layout. Constrain /mnt setup against the pinned root;
+   /mnt, for example using dnf --installroot=/mnt. Selected bytes land on
+   those assigned mounts. Constrain /mnt setup against the pinned root;
    it is a reserved output mount during bootstrap. Tool modifications persist
-   between its steps but are discarded at stage completion. No tool layers
-   or firmware components are inherited. Deliberately copied tool files can
-   contribute output bytes. Stop writers and cleanly unmount both views;
+   between its steps but are discarded when the task completes. No tool layers
+   or tool boot components are inherited. Deliberately copied bytes can
+   contribute to the output. Stop writers and cleanly unmount both views;
    seal the output layer directly, without import or image conversion.
 
-1. The carapace section extends bootstrap output, or its explicit from image when
-   bootstrap is absent. from is forbidden when bootstrap supplied the
-   input. Preserve all inherited image components, not just the scutes.
-   Empty/omitted stages and firmware-only images follow DESIGN.md.
+1. An `extend` task takes a carapace (`from:`) and commands and produces a
+   carapace. It always rewrites the DTB for the new root hash and re-exports
+   the PMI when one is present. Boot rides with the task. All `exec` steps
+   share one writable snapshot of the input carapace. Seal that snapshot once
+   after every step succeeds. A failed task produces no publishable layer.
+   Do not replace only half of the PMI/DTB pair, and do not add a boot-discard
+   operation. A tool carapace does not become output ancestry.
 
-1. The firmware section produces a replacement PMI/DTB pair together, commonly
-   using arma. It may use a different tool carapace from the output base.
-   Commands use a disposable tool root at /, without a special /mnt
-   output mount. into names the PMI and DTB paths inside that root;
-   extract them through confined handles only after all writers stop.
-   Omission propagates inherited firmware. Do not add a firmware-discard
-   operation or permit replacement of only half of the pair.
+1. A `build` task takes a tool carapace and produces artifacts only. It does
+   not produce a carapace. `into:` names those artifacts with flat bare names.
+   Commands use a disposable tool root at /, without a special /mnt output
+   mount. Extract declared artifacts through confined handles only after all
+   writers stop. Intermediate tool changes do not become scutes. There is no
+   `export`, `make`, or `produce` task kind.
 
-1. The transform section edits DTB properties in the supervisor with safe libraries.
-   It does not require a command sandbox. An authored sequence replaces
-   the built-in sequence completely; transform: [] disables it. No default
-   inclusion operation. Regex replaces all matches, leaves zero matches
-   unchanged, and fails on a non-string. Missing reads fail unless guarded
-   by property-exists; set can create nodes; remove of an absent property
-   fails. Missing DTB fails for authored transforms, but skips the implicit
-   default. The implicit corium edit tolerates absent bootargs and edits
-   existing corium= arguments, without assuming every firmware is Linux.
-   See DESIGN.md for exact typed operations and default syntax.
+1. The automatic DTB rewrite is not a recipe section and not a task. `extend`
+   performs it for the new root hash. Image assembly performs it when the
+   image root is bound to imported boot lineage. The built-in sequence is
+   [§8.3](#83-automatic-rewrite). There is no `transform` key. Custom PMI/DTB
+   bytes come from an explicit task. Reject a `platform` kind. Regex replaces
+   all matches, leaves zero matches unchanged, and fails on a non-string.
+   Missing reads fail unless guarded by property existence. `set` can create
+   nodes. `remove` of an absent property fails. A missing DTB skips the
+   automatic rewrite. The corium edit tolerates absent bootargs and edits
+   existing `corium=` arguments, without assuming every firmware is Linux.
 
-1. Expose $CARAPACE consistently after carapace production/selection as the
-   output carapace root, not the firmware tool root. Referencing it when
-   unavailable fails. Expand string values with the documented dollar
-   escaping. The platform section remains unimplemented; do not add it
-   as part of this sandbox redesign.
+1. Expose `$CARAPACE` as the output carapace root once that carapace exists,
+   not a tool-carapace root and not a build task's tool root. Referencing it
+   when unavailable fails. Expand string values with the documented dollar
+   escaping.
 
 ### 14.6 Keep COPY and output extraction controlled
 
-1. Commands never receive a context mount. COPY selects committed files
-   using the existing Docker-compatible semantics. Copy into a filesystem
-   through its kernel mount, while command writers are stopped. Use
-   scoped handles and root-confined path resolution; symlinks and metadata
-   must not redirect supervisor operations outside the target.
+1. Commands never receive a context mount. `copy` selects a flat bare name
+   from the git context tree or from a task output, after that source is
+   finalized. It does not copy a whole stage root and it does not fetch a
+   URL. The supervisor places selected bytes into an assigned filesystem
+   through its kernel mount, while command writers are stopped. Use scoped
+   handles and root-confined path resolution. Symlinks and metadata must not
+   redirect supervisor operations outside the target.
 
-1. COPY is a supervisor-owned operation, not an image-authored script with
+1. `copy` is a supervisor-owned operation, not an image-authored script with
    context access. Use a controlled mount session without command writers,
    root-confined path resolution and narrowly scoped handles. Complete it
    before the next run. Apply the same rules to disposable tool roots and
    bootstrap output roots; do not expose the context object store to commands.
 
-1. Extract declared firmware outputs only after commands and
-   descendants have stopped. Validate types, bounds, paths, and formats.
+1. Extract declared `into:` artifacts, and boot files a task exports, only
+   after commands and descendants have stopped. Validate types, bounds,
+   paths, and formats.
    Do not execute image-provided cleanup or validation helpers with
    supervisor authority. COPY into a persistent layer is persistent data;
    deleting it in a later layer does not erase the earlier layer.
@@ -1956,13 +2030,17 @@ paths use lazy gix verify-on-use without exposing a context mount. Locked
 multi-architecture indexes select only the host architecture. Image components
 and verified chain roots remain separate from live device mappings.
 
-`Pipeline::execute` sequences bootstrap, carapace and firmware directly. It owns
-one RAM workspace and execution runtime, borrowed by stages. Bootstrap formats
-its new writable snapshot over dm-zero **outside the command sandbox** and uses
-separate tool/output mounts. Carapace directives share one writable snapshot and
-produce one scute for the whole stage. Firmware uses disposable tools and
-extracts the PMI/DTB pair. Tool inputs contribute inventory provenance, not
-accidental output ancestry.
+The engine runs the tasks on the `image:` closure: `bootstrap`, `extend`,
+and `build`. It owns one RAM workspace and execution runtime, borrowed by
+those tasks. Bootstrap formats its new writable snapshot over dm-zero
+**outside the command sandbox** and uses separate tool and output mounts.
+Extend's commands share one writable snapshot and produce one scute. Build
+uses a disposable tool carapace and extracts `into:` artifacts only. Tool
+inputs contribute inventory provenance, not accidental output ancestry.
+Orphan tasks do not run. After the closure, the automatic DTB rewrite and
+image assembly run. Assembly is not a task. The binary still sequences the
+fixed pipeline; that sequencing is superseded by this closure when the task
+model is implemented.
 
 `StageOutput` holds results without command/mount authority. Runtime cleanup
 precedes DTB transformation, image assembly, deterministic CBOR inventory and
