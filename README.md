@@ -3,11 +3,14 @@
 Conglobate builds layered OS images from committed recipes and locally supplied,
 locked image artifacts. The crate is a types-only library plus a binary engine;
 the standalone CLI remains testable without a VM. Production builds run in a
-pichi appliance image shipped from this repository (see DESIGN.md). The recipe
-pipeline supports bootstrap, carapace layering, firmware replacement and DTB
-transformation, and produces a self-contained OCI image layout with a CBOR
-input/output inventory. See [DESIGN.md](DESIGN.md) for the CLI, appliance build-port CBOR
-contract, schemas and inheritance rules.
+pichi appliance image shipped from this repository (see DESIGN.md). The
+approved recipe format is the multi-stage task model in
+[DESIGN.md](DESIGN.md): tasks `bootstrap`, `extend`, and `build`, then
+assembly of one carapace and optional boot. The engine still executes the
+fixed pipeline; implementing the task model is follow-up work. Builds produce
+a self-contained OCI image layout with a CBOR input/output inventory. See
+[DESIGN.md](DESIGN.md) for the task model, CLI, appliance build-port CBOR
+contract, and schemas.
 
 Fedora, Debian, Alpine and NixOS example recipes live under `tests/distro`. Confidential-computing qualification and
 appliance attestation are deferred; passing tests are not a universal security
