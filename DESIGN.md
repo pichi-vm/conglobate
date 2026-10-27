@@ -1234,13 +1234,17 @@ destination:
   then publish the completed directory with an atomic no-replace rename onto a
   path that must not already exist.
 - **Appliance `/run/pichi/output`:** the virtiofs mount root already exists and
-  must be empty at start. Stage privately in a temporary child directory on that
-  same mount, then publish by moving each top-level layout entry (`oci-layout`,
-  `index.json`, `blobs/`, `inventory.cbor`, …) into the mount root with
-  no-replace semantics (refuse if any destination entry already exists). The
-  temporary child is removed after a successful publish. Virtiofs rename within
-  the mount is sufficient for this move-children publish; a whole-mount rename
-  is neither required nor possible.
+  must be empty at start. Complete every fallible check while staging privately
+  in a temporary child directory on that same mount. Only then publish by moving
+  each top-level layout entry (`oci-layout`, `index.json`, `blobs/`,
+  `inventory.cbor`, …) into the mount root with no-replace semantics (refuse if
+  any destination entry already exists). If any move fails, delete already-moved
+  entries and the staging child so the mount does not retain a partial successful
+  image. After a successful publish, remove the temporary child. Virtiofs rename
+  within the mount is sufficient for this move-children publish; a whole-mount
+  rename is neither required nor possible. The shared “atomic publish” invariant
+  means “no successful image exposed until publish completes; failure leaves no
+  successful image,” not “one rename of the mount root.”
 
 The resulting layout includes the canonical empty config blob when referenced;
 replaced, unreferenced blobs are not exported.
@@ -1334,8 +1338,11 @@ The build proceeds in this order; each failure aborts publication:
    unmount before sealing stage output or releasing storage.
 5. Close the execution runtime. Transform the DTB, assemble the complete OCI
    layout, write deterministic CBOR inventory, and verify staged output.
-6. Finish fallible workspace/context cleanup, then atomically publish without
-   replacing an existing destination.
+6. Finish fallible workspace/context cleanup, then publish without replacing
+   an existing destination: CLI `--output` uses an atomic no-replace rename of
+   the completed directory; the appliance empty `/run/pichi/output` mount uses
+   the validated move-children publish in §11.2 (no layout entry becomes visible
+   until every fallible check has succeeded; a failed move cleans the mount).
 
 On failure, stop and reap commands before releasing their dependencies. Preserve
 both operation and cleanup errors. If quiescence or cleanup cannot be established,
@@ -1877,8 +1884,13 @@ accidental output ancestry.
 `StageOutput` holds results without command/mount authority. Runtime cleanup
 precedes DTB transformation, image assembly, deterministic CBOR inventory and
 publication. Pass-through builds use the same finalization without allocating
-an execution runtime. Publication is a no-replacement atomic rename after all
-fallible checks; no successful image is exposed after a failed build.
+an execution runtime. Publication happens only after all fallible checks. CLI `--output`
+uses a no-replacement atomic rename of the completed directory. The appliance
+`/run/pichi/output` mount cannot be renamed as a whole; after private staging
+and validation it publishes by moving each top-level layout entry into the
+empty mount root with no-replace semantics (§1.5, §11.2). If any publish move
+fails, remove already-moved entries and staging so no successful image remains
+exposed. Either path: no successful image is exposed after a failed build.
 
 ### Ownership and Rust states
 
