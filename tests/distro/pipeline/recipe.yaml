@@ -31,6 +31,7 @@ tasks:
     from: bootstrap
     exec:
     - run: |
+        test -z "${CARAPACE+x}"
         read -r stage < /etc/stage
         test "$stage" = bootstrap
         test ! -e /tool-only
@@ -61,7 +62,7 @@ tasks:
     from: bootstrap
     exec:
     - run: |
-        test -n "$CARAPACE"
+        test -z "${CARAPACE+x}"
         printf 'finalized build artifact\n' > /generated
         printf 'MULTISTAGE_ARTIFACT_PRODUCER_PASS\n'
     into: {generated: /generated}

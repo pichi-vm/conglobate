@@ -654,6 +654,7 @@ mod tests {
             include_str!("../../tests/distro/nixos/recipe.yaml"),
             include_str!("../../tests/distro/pipeline/recipe.yaml"),
             include_str!("../../tests/distro/pipeline/imported-boot.yaml"),
+            include_str!("../../tests/distro/pipeline/boot-only.yaml"),
             include_str!("../../tests/distro/confinement/recipe.yaml"),
             include_str!("../../tests/distro/network/recipe.yaml"),
         ] {

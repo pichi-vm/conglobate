@@ -26,6 +26,7 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
         runtime: &Runtime<'_>,
         directives: &[Directive],
         artifacts: &super::artifacts::Artifacts<'_>,
+        carapace: Option<&[u8; 32]>,
     ) -> anyhow::Result<Self> {
         if directives.is_empty() {
             return Ok(self);
@@ -61,7 +62,7 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
             crate::step::DirectiveInputs {
                 context: build.captured().context(),
                 artifacts,
-                carapace: Some(active.root()),
+                carapace,
                 network: networking.as_ref(),
             },
         )?;

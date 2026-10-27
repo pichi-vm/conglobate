@@ -48,6 +48,10 @@ regardless of YAML key order. `bootstrap` formats a fresh filesystem and populat
 may provide boot without a carapace. Extend carries boot forward and automatically
 rewrites its DTB binding; assembly also binds separately imported boot to the
 selected root. There is no authored `transform` section.
+`CARAPACE` becomes available to commands after the selected image-root task
+completes. Commands that produce that root see it unset; input, ancestor and
+tool roots never substitute for the output identity. Boot-only builds leave it
+unset even when a local task supplies their tools.
 
 Some artifact wire details remain provisional implementation choices under
 [DESIGN §6.3](DESIGN.md#63-exec-from-into-and-copy), not additional design locks:
