@@ -4,6 +4,7 @@ use std::{
     fs::File,
     io::{self, Read, Seek, SeekFrom, Write},
     marker::PhantomData,
+    time::{Duration, Instant},
 };
 
 mod sealed {
@@ -78,27 +79,50 @@ impl<A: Access> LoopDevice<A> {
             // systemd-udevd holds LOCK_SH for a whole blkid probe and rearms
             // that probe on IN_CLOSE_WRITE. Device-mapper's last close of this
             // loop is one of those writes, so a probe is usually in progress
-            // here and is a real extra opener. The exclusive lock waits for it
-            // to finish and stops a new probe from opening the node. An opener
-            // that never takes the shared lock is unaffected: LOOP_CLR_FD enters
-            // rundown only when this fd is the sole opener, and status stays
-            // successful until then. Success still requires that ENXIO.
-            rustix::fs::flock(
-                self.device.as_ref(),
-                rustix::fs::FlockOperation::LockExclusive,
-            )?;
+            // here and is a real extra opener. Non-blocking LOCK_EX, retried
+            // until PROBE_LOCK_DEADLINE, waits that probe out and stops a new
+            // one from opening the node. On deadline the error returns below
+            // with this owner intact: nothing is cleared or dropped. An opener
+            // that never takes the shared lock is unaffected. LOOP_CLR_FD
+            // enters rundown only when this fd is the sole opener, and success
+            // still requires ENXIO.
+            acquire_exclusive_lock(self.device.as_ref())?;
             A::flush(self.device.as_ref())?;
             lodown::Device::from(self.device.as_ref().try_clone()?).clear()?;
             match self.device.status() {
                 Err(error) if error.raw_os_error() == Some(6) => Ok(()), // ENXIO: unbound
                 Err(error) => Err(error),
-                Ok(_) => Err(io::Error::new(
-                    io::ErrorKind::ResourceBusy,
-                    "loop detach remains deferred by a live holder",
-                )),
+                Ok(_) => Err(io::Error::new(io::ErrorKind::ResourceBusy, LIVE_HOLDER)),
             }
         })();
         result.map_err(|source| (source, self))
+    }
+}
+
+// Upper bound for draining a udev LOCK_SH probe before detach fails closed.
+// The smoke log's probe window was ~25ms (unmount at 3.560s, live-holder at
+// 3.585s). One second covers that blkid pass on a busy single-CPU guest.
+// Linux flock has no writer preference, so a blocking LOCK_EX can wait
+// forever while probes re-arm; this deadline fails closed instead.
+const PROBE_LOCK_DEADLINE: Duration = Duration::from_secs(1);
+const PROBE_LOCK_POLL: Duration = Duration::from_millis(20);
+const LIVE_HOLDER: &str = "loop detach remains deferred by a live holder";
+
+fn acquire_exclusive_lock(file: &File) -> io::Result<()> {
+    let deadline = Instant::now() + PROBE_LOCK_DEADLINE;
+    loop {
+        match rustix::fs::flock(file, rustix::fs::FlockOperation::NonBlockingLockExclusive) {
+            Ok(()) => return Ok(()),
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                let now = Instant::now();
+                if now >= deadline {
+                    return Err(io::Error::new(io::ErrorKind::ResourceBusy, LIVE_HOLDER));
+                }
+                std::thread::sleep(deadline.saturating_duration_since(now).min(PROBE_LOCK_POLL));
+            }
+            Err(rustix::io::Errno::INTR) => {}
+            Err(error) => return Err(error.into()),
+        }
     }
 }
 impl Read for LoopDevice<Writable> {
@@ -229,7 +253,7 @@ mod tests {
             .open(&path)
             .unwrap();
         let (tx, rx) = mpsc::channel();
-        thread::spawn(move || {
+        let detach = thread::spawn(move || {
             tx.send(match device.close() {
                 Ok(()) => None,
                 Err((error, returned)) => {
@@ -240,11 +264,65 @@ mod tests {
             .unwrap();
         });
         let error = rx
-            .recv_timeout(Duration::from_secs(2))
+            .recv_timeout(Duration::from_millis(500))
             .expect("detach blocked on a non-locking holder")
             .expect("non-locking holder must keep detach busy");
         assert_eq!(error.kind(), io::ErrorKind::ResourceBusy);
         assert!(error.to_string().contains("live holder"));
+        detach.join().unwrap();
         drop(holder);
+    }
+
+    #[test]
+    fn shared_lock_past_deadline_fails_closed() {
+        let Some(device) = attach_writable() else {
+            return;
+        };
+        let path = node_path(&device);
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+        let probe_path = path;
+        let probe = thread::spawn(move || {
+            let held = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&probe_path)
+                .unwrap();
+            rustix::fs::flock(&held, rustix::fs::FlockOperation::LockShared).unwrap();
+            ready_tx.send(()).unwrap();
+            let _ = release_rx.recv_timeout(PROBE_LOCK_DEADLINE + Duration::from_secs(2));
+            drop(held);
+        });
+        ready_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("probe did not take LOCK_SH");
+        let (result_tx, result_rx) = mpsc::channel();
+        let detach = thread::spawn(move || {
+            let started = Instant::now();
+            let outcome = device.close();
+            result_tx.send((started.elapsed(), outcome)).unwrap();
+        });
+        let (elapsed, outcome) = result_rx
+            .recv_timeout(PROBE_LOCK_DEADLINE + Duration::from_millis(400))
+            .expect("detach hung past the probe-lock deadline");
+        let (error, returned) = outcome.expect_err("stuck shared lock must not detach");
+        assert_eq!(error.kind(), io::ErrorKind::ResourceBusy);
+        assert!(error.to_string().contains("live holder"));
+        assert!(
+            returned.device.status().is_ok(),
+            "deadline failure must leave the loop owner bound"
+        );
+        assert!(
+            elapsed + Duration::from_millis(100) >= PROBE_LOCK_DEADLINE,
+            "detach returned before the deadline: {elapsed:?}"
+        );
+        assert!(
+            elapsed < PROBE_LOCK_DEADLINE + Duration::from_millis(400),
+            "detach hung past the deadline: {elapsed:?}"
+        );
+        drop(returned);
+        let _ = release_tx.send(());
+        detach.join().unwrap();
+        probe.join().unwrap();
     }
 }
