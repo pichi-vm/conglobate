@@ -207,8 +207,9 @@ appliance may self-host via `pichi build`. Product assumptions for the guest:
    `{"v":1,"op":"build-input"}`, then reads one host response map. The guest
    must **not** assume the host already pushed bytes before the request (this
    supersedes host one-shot CBOR push / uni-rx-only). On `ok:true`, Conglobate
-   runs the engine against the mounted paths and writes under
-   `/run/pichi/output`. On `ok:false`, it fails with the host `error` string.
+   runs the engine against the mounted paths and publishes the OCI layout
+   (including `inventory.cbor`) into the empty `/run/pichi/output` mount.
+   On `ok:false`, it fails with the host `error` string.
    There is **no** local CBOR copy retained as a second source of truth, **no**
    Conglobate parse of virtiofs field readers / mount tags from the response,
    and **no** mount generator in this crate.
@@ -254,10 +255,44 @@ Recipe and lock paths are always relative to `subdir`. Conglobate opens the
 mounted repository at `/run/pichi/repo`, resolves `ref` to a commit, and uses
 `/run/pichi/cache` as the read-only image cache.
 
+**Ref resolution (guest):** resolve `ref` with gix on the mounted repository to a
+single commit object. Accept a full object id (hex matching `object_format`) or a
+ref name; peel annotated tags to the commit. Reject abbreviated object ids,
+missing refs, and non-commit tips. The resolved commit is the inventory identity;
+optional `location`, when present, is recorded only as inventory
+`context.repository` (provenance locator), not as authenticated identity. The
+host `ref` string itself is not a separate inventory field.
+
+**Wire decoding / failure rules (v0):**
+
+- Maps use text-string keys, definite-length CBOR, and only the fields in the
+  tables above. Reject duplicate keys, noncanonical encodings that the decoder
+  does not normalize, unknown fields, and wrong types.
+- Decode exactly one top-level response map; after that map, any leftover bytes
+  already in the read buffer are trailing data and fail the build (same spirit
+  as inventory trailing-data rejection).
+- Require `v == 1` before interpreting other fields; version mismatch fails.
+- When `ok` is `false`, only `v`, `ok`, and `error` may appear; success-only
+  fields must not appear. When `ok` is `true`, `error` must not appear.
+- Missing build-port device, undecodable CBOR, truncated response, or read
+  timeout (fixed internal deadline) fails the build. There is no silent default
+  recipe/lock/`ref`.
+
+**Output mount:** `/run/pichi/output` is an empty writable virtiofs mount supplied
+by the host (not a path Conglobate creates). Conglobate stages privately inside
+that empty mount and publishes layout entries (`blobs/`, `oci-layout`,
+`index.json`, `inventory.cbor`, and any other exported roots) into the mount
+root with no-replace semantics. Fail if the mount is missing, not a directory,
+or non-empty before publication. This is distinct from CLI `--output`, which
+names a new directory that must not already exist (see [§11.1](#111-inventory-schema)
+finalization and [§14.2](#142-resolve-and-verify-all-supplied-inputs-before-execution)).
+
 ## 2. Standalone CLI
 
 The standalone CLI exercises the same engine without a VM. It is the path used
-by rootless CI and local tests. Appliance production builds use the CBOR
+by rootless CI and local tests. It does not claim the appliance image's
+formatter-tool binding or build-port attestation; those are appliance-only.
+Appliance production builds use the CBOR
 contract in [§1.5](#15-appliance-build-port-cbor) instead of these host flags for
 request transport; both paths share recipe/lock/cache semantics.
 
@@ -1131,12 +1166,14 @@ empty when no formatting ran. Receipt creation follows successful
 execution/finalization; planned work alone is not evidence of execution.
 Each formatter receipt has exactly these fields: `stage` (initially `bootstrap`),
 `profile` (versioned backend name from the internal map), `profile_digest`
-(Digest), `configuration` (Digest), `arguments` (ordered strings), and
+(Digest of the selected internal profile's effective definition as implemented
+by the engine), `configuration` (Digest), `arguments` (ordered strings), and
 `filesystem` (`type`, `size_bytes`, `logical_size_bytes`, `label`). All are
 required; Digest uses the algorithm/byte-string representation above. Arrays
-preserve execution order. No ad-hoc extension to version one is allowed.
-(Schema migration may drop legacy host-runtime path/digest fields once the
-engine reshape lands.)
+preserve execution order. Version three replaces version-one host-runtime
+`executable` / `runtime` receipt fields with `profile` / `profile_digest`;
+emit and validate that receipt shape only under inventory version three. Do not
+emit or accept the version-one host-runtime fields as version three.
 
 ### 11.2 Inventory wire profile and schema migration
 
@@ -1220,7 +1257,8 @@ A separate firmware recipe constructs an initramfs and arma PMI/DTB, then boots 
 CI checks native amd64/Arm64 Rust and guest lifecycle behavior. Arm64 hosted guest
 tests explicitly record TCG when KVM is unavailable. This does not propose TCG as
 the production sandbox. Confidential-computing hardware qualification is deferred
-by user decision; appliance transport and attestation remain separate work.
+by user decision; attestation remains separate work (build-port transport is
+locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-build-port-cbor)).
 
 The binary remains standalone and does not create VMs; privileged tests run only
 inside disposable VMs. Distro recipes do not imply support for every distribution
@@ -1240,7 +1278,8 @@ activation; abrupt conglobate death is handled by disposal of the build VM. Ordi
 
 Remaining ecosystem decisions are authentication of the intended Git identity,
 creation/override of components beyond carapace and firmware, additional
-firmware signing/resealing contracts, and appliance transport and attestation.
+firmware signing/resealing contracts, and attestation (appliance build-port
+transport is already locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-build-port-cbor)).
 
 Sandbox policy is specified in section 14. Exact capability/syscall/ioctl
 profiles, fixed internal deadline values, internal formatter/property schemas,
@@ -1335,8 +1374,10 @@ RAII owns resources; destructors cannot certify successful finalization.
 1. Accept a local Git repository, full commit identity (CLI) or resolve
    appliance `ref` → commit on the mounted repo, context subdirectory,
    read-only image cache, explicit context-relative recipe and lock paths,
-   and new output destination (CLI `--output`, or `/run/pichi/output` in the
-   appliance). Neither recipe nor lock has a default filename. Require
+   and a new output destination for the CLI (`--output` must not already exist),
+   or the empty appliance mount at `/run/pichi/output` into which layout entries
+   are published (see [§1.5](#15-appliance-build-port-cbor)). Neither recipe nor
+   lock has a default filename. Require
    committed files resolved within the selected context; reject absolute
    paths, escapes and missing/non-file inputs. Record selected paths and
    exact content identities in inventory. Load recipe and lock immediately
