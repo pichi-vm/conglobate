@@ -12,6 +12,7 @@ use crate::{
     request::{BuildRequest, CommitIdentity, RequestError},
 };
 use ciborium::Value;
+use std::io::BufRead;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
@@ -78,21 +79,88 @@ impl ApplianceRequest {
         self.location.as_deref()
     }
 
+    /// Default prefetch for build-port response buffering. v0 maps are far
+    /// smaller; tests pin smaller capacities to cover the exact-fill boundary.
+    const RESPONSE_PREFETCH: usize = 8 * 1024;
+
     /// Decode one self-delimiting host response CBOR map from a reader.
     ///
-    /// Uses a buffered reader so leftover bytes already pulled with the map
-    /// (concatenated CBOR) fail as trailing data without waiting for EOF on the
-    /// still-open build port.
+    /// Prefetches through a [`BufReader`]. Leftover bytes already in that
+    /// buffer after one map fail as trailing data. When `refill` is true, one
+    /// additional `fill_buf` runs so a map that ended exactly on a prefetch
+    /// boundary still rejects trailing bytes already available from the
+    /// underlying reader (Cursor / chunked test readers return immediately;
+    /// do not use `refill` on a blocking build-port file — use
+    /// [`Self::decode_response_from_port`] instead).
+    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn decode_response(
         reader: &mut impl std::io::Read,
     ) -> Result<Self, ApplianceRequestError> {
-        let mut buffered = std::io::BufReader::new(reader);
+        Self::decode_response_with_capacity(reader, Self::RESPONSE_PREFETCH, true)
+    }
+
+    /// Production build-port path: buffered decode without a blocking refill,
+    /// then a zero-timeout poll for bytes still waiting on the port.
+    pub(crate) fn decode_response_from_port(
+        file: &mut std::fs::File,
+    ) -> Result<Self, ApplianceRequestError> {
+        let request = Self::decode_response_with_capacity(file, Self::RESPONSE_PREFETCH, false)?;
+        Self::reject_immediate_port_trailing(file)?;
+        Ok(request)
+    }
+
+    fn decode_response_with_capacity(
+        reader: &mut impl std::io::Read,
+        capacity: usize,
+        refill: bool,
+    ) -> Result<Self, ApplianceRequestError> {
+        let mut buffered = std::io::BufReader::with_capacity(capacity, reader);
         let value: Value = ciborium::from_reader(&mut buffered)
             .map_err(|error| ApplianceRequestError::Decode(error.to_string()))?;
         if !buffered.buffer().is_empty() {
             return Err(ApplianceRequestError::TrailingBytes);
         }
+        if refill {
+            let more = buffered
+                .fill_buf()
+                .map_err(|error| ApplianceRequestError::Decode(error.to_string()))?;
+            if !more.is_empty() {
+                return Err(ApplianceRequestError::TrailingBytes);
+            }
+        }
         Self::from_response_value(value)
+    }
+
+    fn reject_immediate_port_trailing(
+        file: &mut std::fs::File,
+    ) -> Result<(), ApplianceRequestError> {
+        use rustix::event::{PollFd, PollFlags, Timespec, poll};
+        use std::io::Read;
+        let mut fds = [PollFd::new(&*file, PollFlags::IN)];
+        poll(
+            &mut fds,
+            Some(&Timespec {
+                tv_sec: 0,
+                tv_nsec: 0,
+            }),
+        )
+        .map_err(|error| ApplianceRequestError::Decode(error.to_string()))?;
+        let events = fds[0].revents();
+        if events.intersects(PollFlags::ERR | PollFlags::NVAL) {
+            return Err(ApplianceRequestError::Decode(
+                "build-port poll returned ERR/NVAL".into(),
+            ));
+        }
+        if !events.intersects(PollFlags::IN | PollFlags::HUP) {
+            return Ok(());
+        }
+        let mut byte = [0u8; 1];
+        match file.read(&mut byte) {
+            Ok(0) => Ok(()),
+            Ok(_) => Err(ApplianceRequestError::TrailingBytes),
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => Ok(()),
+            Err(error) => Err(ApplianceRequestError::Decode(error.to_string())),
+        }
     }
 
     /// Decode a complete response buffer (one map, no trailing bytes).
@@ -386,6 +454,26 @@ mod tests {
             ApplianceRequest::decode_response(&mut cursor),
             Err(ApplianceRequestError::TrailingBytes)
         ));
+    }
+
+    #[test]
+    fn rejects_trailing_bytes_at_prefetch_boundary() {
+        let map = encode(&required());
+        let capacity = map.len();
+        assert!(capacity > 0);
+        let mut bytes = map;
+        bytes.push(0xFF);
+        let mut cursor = std::io::Cursor::new(bytes);
+        // Map ends exactly at the first fill; trailing is only visible after refill.
+        assert!(matches!(
+            ApplianceRequest::decode_response_with_capacity(&mut cursor, capacity, true),
+            Err(ApplianceRequestError::TrailingBytes)
+        ));
+        // Exact map with refill still succeeds (Cursor EOF on second fill).
+        let exact = encode(&required());
+        let capacity = exact.len();
+        let mut cursor = std::io::Cursor::new(exact);
+        ApplianceRequest::decode_response_with_capacity(&mut cursor, capacity, true).unwrap();
     }
 
     #[test]

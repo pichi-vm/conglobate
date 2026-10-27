@@ -30,7 +30,7 @@ pub(crate) enum ApplianceError {
 pub(crate) fn run() -> Result<(), ApplianceError> {
     let mut file = open_build_console(Path::new("/sys"), Path::new("/dev"))?;
     write_build_input_request(&mut file)?;
-    let request = ApplianceRequest::decode_response(&mut file)?;
+    let request = ApplianceRequest::decode_response_from_port(&mut file)?;
     let build = request.into_build_request(
         mounts::repository(),
         mounts::cache(),
