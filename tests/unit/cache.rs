@@ -218,11 +218,7 @@ impl Store {
             root,
         )
     }
-    fn chain_image(
-        &self,
-        layers: Vec<crate::artifact::Layer>,
-        root: [u8; 32],
-    ) -> conglobate::cache::ResolvedImage {
+    fn manifest_bytes(&self, layers: Vec<crate::artifact::Layer>, root: [u8; 32]) -> Vec<u8> {
         let manifest = crate::artifact::Manifest {
             schema_version: 2,
             media_type: "application/vnd.oci.image.manifest.v1+json".into(),
@@ -244,12 +240,124 @@ impl Store {
             )])
             .collect(),
         };
-        let bytes = manifest.to_bytes().unwrap();
+        manifest.to_bytes().unwrap()
+    }
+    fn chain_image(
+        &self,
+        layers: Vec<crate::artifact::Layer>,
+        root: [u8; 32],
+    ) -> conglobate::cache::ResolvedImage {
+        let bytes = self.manifest_bytes(layers, root);
         let digest = self.put(&bytes);
         self.open()
             .resolve(self.index(vec![self.descriptor(&digest, bytes.len())]))
             .unwrap()
     }
+    fn placeholder_digest() -> Digest {
+        "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+            .parse()
+            .unwrap()
+    }
+}
+/// Exact index bytes pinned by `tests/distro/context/lock.yaml`.
+const CONTEXT_LOCK_INDEX: &[u8] = br#"{"manifests":[{"artifactType":"application/vnd.pichi.artifact.v1+json","digest":"sha256:1111111111111111111111111111111111111111111111111111111111111111","mediaType":"application/vnd.oci.image.manifest.v1+json","platform":{"architecture":"amd64","os":"pichi"},"size":2}],"mediaType":"application/vnd.oci.image.index.v1+json","schemaVersion":2}"#;
+
+#[test]
+fn context_lock_index_pin_matches_published_bytes() {
+    assert_eq!(CONTEXT_LOCK_INDEX.len(), 343);
+    assert_eq!(
+        Digest::from_bytes_sha256(CONTEXT_LOCK_INDEX).to_string(),
+        "sha256:4e335e141a3f950ed68c68f23c112930c51af5ec9658d1263353eb229a6429d1"
+    );
+}
+
+#[test]
+fn harness_placeholder_loads_supplied_manifest_and_still_checks_layers() {
+    let store = Store::new();
+    let (layer, root) = store.scute(&[7; 4096], [0; 32], false);
+    let bytes = store.manifest_bytes(vec![layer.clone()], root);
+    let real = Digest::from_bytes_sha256(&bytes);
+    let placeholder = Store::placeholder_digest();
+    assert_ne!(real, placeholder);
+    std::fs::write(store.path(&placeholder), &bytes).unwrap();
+    let cache = store.open();
+    let image = cache
+        .resolve(store.index(vec![store.descriptor(&placeholder, 2)]))
+        .unwrap();
+    assert_eq!(image.manifest_bytes().bytes(), bytes.as_slice());
+    assert_eq!(image.manifest_bytes().digest(), &real);
+    cache.verify_content(&image).unwrap().unwrap();
+
+    // Declared size equal to the file is not the placeholder. The digest
+    // must then match the bytes.
+    let honest_size = store.index(vec![store.descriptor(&placeholder, bytes.len())]);
+    assert!(
+        cache
+            .resolve(honest_size)
+            .unwrap_err()
+            .to_string()
+            .contains("content mismatch")
+    );
+
+    let layer_digest: Digest = layer.digest_str().parse().unwrap();
+    let layer_path = store.path(&layer_digest);
+    let original = std::fs::read(&layer_path).unwrap();
+    let mut changed = original.clone();
+    changed[0] ^= 1;
+    std::fs::write(&layer_path, changed).unwrap();
+    assert!(cache.verify_content(&image).is_err());
+    std::fs::write(&layer_path, original).unwrap();
+
+    std::fs::write(store.path(&placeholder), b"not-a-manifest").unwrap();
+    let err = cache
+        .resolve(store.index(vec![store.descriptor(&placeholder, 2)]))
+        .unwrap_err()
+        .to_string();
+    assert!(
+        !err.contains("metadata size mismatch"),
+        "placeholder path must be read before manifest parsing: {err}"
+    );
+    assert!(err.contains("invalid artifact manifest"), "{err}");
+}
+
+#[test]
+fn harness_placeholder_still_rejects_oversized_blobs() {
+    let store = Store::new();
+    let placeholder = Store::placeholder_digest();
+    std::fs::write(store.path(&placeholder), vec![0; 16 * 1024 * 1024 + 1]).unwrap();
+    let err = store
+        .open()
+        .resolve(store.index(vec![store.descriptor(&placeholder, 2)]))
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("metadata size mismatch or limit exceeded"),
+        "{err}"
+    );
+}
+
+#[cfg(target_arch = "x86_64")]
+#[test]
+fn published_context_lock_index_resolves_harness_manifest() {
+    let store = Store::new();
+    let (layer, root) = store.scute(&[7; 4096], [0; 32], false);
+    let bytes = store.manifest_bytes(vec![layer], root);
+    std::fs::write(store.path(&Store::placeholder_digest()), &bytes).unwrap();
+    let pin = store.put(CONTEXT_LOCK_INDEX);
+    let image = store
+        .open()
+        .resolve(pin.to_string().parse().unwrap())
+        .unwrap();
+    assert_eq!(image.manifest_bytes().bytes(), bytes.as_slice());
+    let mut flipped = CONTEXT_LOCK_INDEX.to_vec();
+    flipped[0] ^= 1;
+    std::fs::write(store.path(&pin), flipped).unwrap();
+    assert!(
+        store
+            .open()
+            .resolve(pin.to_string().parse().unwrap())
+            .is_err()
+    );
 }
 #[test]
 fn chain_verification_orders_mixed_compressed_layers_from_authenticated_root() {

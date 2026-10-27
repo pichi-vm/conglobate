@@ -32,9 +32,22 @@ class CacheFixture:
                      'digest': self.blob(blob), 'size': len(blob),
                      'annotations': {'dev.pichi.scute.verity.salt': salt.hex()}}
             self.image(name, [layer], root)
+        self.harness_placeholder()
         self.chains()
 
-    def image(self, name, layers, root):
+    def harness_placeholder(self):
+        """Real manifest behind the context-lock placeholder descriptor."""
+        data = bytes([43]) * 8192
+        salt = bytes(32)
+        leaves = b''.join(hashlib.sha256(salt + data[i:i + 4096]).digest()
+                          for i in (0, 4096))
+        root = hashlib.sha256(salt + leaves.ljust(4096, b'\0')).hexdigest()
+        layer = {'mediaType': 'application/vnd.pichi.scute.v1',
+                 'digest': self.blob(data), 'size': len(data),
+                 'annotations': {'dev.pichi.scute.verity.salt': salt.hex()}}
+        self.image('placeholder', [layer], root, placeholder=True)
+
+    def image(self, name, layers, root, placeholder=False):
         annotations = {'dev.pichi.carapace.verity.' + k: v for k, v in
                        [('algo', 'sha256'), ('data-block-size', '4096'),
                         ('hash-block-size', '4096'), ('version', '1'), ('hash-type', '1'),
@@ -45,9 +58,17 @@ class CacheFixture:
             'config': {'mediaType': 'application/vnd.oci.empty.v1+json',
                        'digest': self.blob(b'{}'), 'size': 2, 'data': 'e30='},
             'layers': layers, 'annotations': annotations}).encode()
+        if placeholder:
+            # Context-lock descriptor: path key only, not the manifest preimage.
+            (self.root / 'blobs/sha256' / ('1' * 64)).write_bytes(manifest)
+            descriptor_digest = 'sha256:' + '1' * 64
+            descriptor_size = 2
+        else:
+            descriptor_digest = self.blob(manifest)
+            descriptor_size = len(manifest)
         descriptor = {'mediaType': 'application/vnd.oci.image.manifest.v1+json',
                       'artifactType': 'application/vnd.pichi.artifact.v1+json',
-                      'digest': self.blob(manifest), 'size': len(manifest),
+                      'digest': descriptor_digest, 'size': descriptor_size,
                       'platform': {'os': 'pichi', 'architecture': {'x86_64': 'amd64', 'aarch64': 'arm64'}[platform.machine()]}}
         index = json.dumps({'schemaVersion': 2,
                             'mediaType': 'application/vnd.oci.image.index.v1+json',
