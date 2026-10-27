@@ -9,7 +9,7 @@ Description=Pichi build virtiofs (repo → /run/pichi/repo)
 DefaultDependencies=no
 Conflicts=umount.target
 Before=local-fs.target conglobate-build.service
-After=systemd-remount-fs.service
+After=systemd-remount-fs.service systemd-modules-load.service
 
 [Mount]
 What=repo
