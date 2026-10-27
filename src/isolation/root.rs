@@ -77,6 +77,11 @@ impl CommandRoot {
         // exposing the private tty device. Failure is fatal to command setup.
         rustix::process::setsid()?;
         super::runtime::RuntimeTargets::resolve(&self.root)?.install(self.devices)?;
+        // Bare roots have mount points now, but the context-recipe smoke still
+        // has no /bin/sh. Install a private interpreter before the root is
+        // cloned so the pivot includes it and the ext4 layer does not.
+        super::shell::install(&self.root)
+            .map_err(|error| io::Error::other(format!("command shell: {error}")))?;
         // The scope was entered before this directory was opened. Unsharing
         // here would leave the pinned descriptor referring to the old mount
         // namespace rather than its cloned tree.
