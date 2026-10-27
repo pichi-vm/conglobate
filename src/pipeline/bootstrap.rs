@@ -40,6 +40,7 @@ impl<'a> BootstrapBuild<'a> {
         runtime: &Runtime<'_>,
         active: crate::storage::ReadOnlyChain<'_, 'w>,
         reaper: ChildReaper,
+        carapace: Option<&[u8; 32]>,
     ) -> anyhow::Result<Bootstrapped<'w>> {
         let captured = selection::for_filesystem(self.stage.filesystem())
             .context("capture trusted formatter")?;
@@ -49,6 +50,7 @@ impl<'a> BootstrapBuild<'a> {
             captured.stage(workspace)?,
             active,
             reaper,
+            carapace,
         )
     }
 
@@ -59,6 +61,7 @@ impl<'a> BootstrapBuild<'a> {
         formatter: crate::formatter::FormatterRuntime,
         active: crate::storage::ReadOnlyChain<'_, 'w>,
         reaper: ChildReaper,
+        carapace: Option<&[u8; 32]>,
     ) -> anyhow::Result<Bootstrapped<'w>> {
         let sectors =
             NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap();
@@ -100,7 +103,7 @@ impl<'a> BootstrapBuild<'a> {
             crate::step::DirectiveInputs {
                 context: self.build.captured().context(),
                 artifacts: self.artifacts,
-                carapace: None,
+                carapace,
                 network: networking.as_ref(),
             },
         )?;

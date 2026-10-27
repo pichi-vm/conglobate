@@ -71,8 +71,16 @@ impl Pipeline {
         let mut artifacts = artifacts::Artifacts::new();
         let mut receipts = Vec::new();
         let mut reaper = crate::process::ChildReaper::install()?;
+        let selected = match recipe.image() {
+            crate::recipe::Image::Short(name) => name,
+            crate::recipe::Image::Long { root, .. } => root,
+        };
         for name in recipe.order() {
             let task = &recipe.tasks()[name];
+            // DESIGN §7: only a completed selected output supplies CARAPACE.
+            // Input, ancestor and tool identities cannot stand in for a root
+            // that this task has not produced yet, including local tool roots.
+            let carapace = outputs.get(selected).and_then(StageOutput::root);
             let input = match task.from() {
                 Reference::Remote(remote) => {
                     let reference = remote.as_ref().parse()?;
@@ -98,7 +106,13 @@ impl Pipeline {
                             task.directives(),
                             &artifacts,
                         )
-                        .execute(workspace, runtime, active, reaper)?;
+                        .execute(
+                            workspace,
+                            runtime,
+                            active,
+                            reaper,
+                            carapace.as_ref(),
+                        )?;
                         receipts.push(result.receipt);
                         Ok((
                             StageOutput {
@@ -126,6 +140,7 @@ impl Pipeline {
                                 runtime,
                                 task.directives(),
                                 &artifacts,
+                                carapace.as_ref(),
                             )?;
                             derived.active.close()?;
                             output.produced = derived.scutes;
@@ -137,26 +152,9 @@ impl Pipeline {
                     }
                     TaskKind::Build => {
                         let active = input.activate(build, workspace)?;
-                        // CARAPACE is available only from a local produced output,
-                        // never the remote tool carapace. Dependencies execute first.
-                        let selected = match recipe.image() {
-                            crate::recipe::Image::Short(name) => name,
-                            crate::recipe::Image::Long { root, .. } => root,
-                        };
-                        let root =
-                            outputs
-                                .get(selected)
-                                .and_then(StageOutput::root)
-                                .or_else(|| {
-                                    if matches!(task.from(), Reference::Local(_)) {
-                                        input.root()
-                                    } else {
-                                        None
-                                    }
-                                });
                         let result = firmware::BuildTools {
                             active,
-                            root,
+                            root: carapace,
                             reaper,
                         }
                         .run(

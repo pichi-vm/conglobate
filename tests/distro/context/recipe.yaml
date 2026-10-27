@@ -10,6 +10,7 @@ tasks:
         from: message.txt
         into: /etc/conglobate-context-check
     - run: |
+        test -z "${CARAPACE+x}"
         test "$(cat /etc/conglobate-context-check)" = 'committed context bytes'
         test ! -e /context
         test ! -e /build-context

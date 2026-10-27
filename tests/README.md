@@ -299,6 +299,13 @@ whose seed exports a PMI/DTB pair and run the verifier with `--imported-boot`.
 It requires automatic binding to the fresh root without inheriting the boot
 source's carapace.
 
+`pipeline/boot-only.yaml` selects a short-form boot-only build with local tools.
+Supply a PMI and a valid DTB without a `corium=` binding. The command requires
+`CARAPACE` to stay undefined; `pipeline/verify-boot-only.py RUN_DIRECTORY`
+checks the boot pair, empty scute list and absence of an output carapace. The
+ordinary composition and context fixtures also require the variable to remain
+undefined while the selected root task is executing, and the firmware producer
+requires it to be defined after that root finishes.
 
 `prepare.py` copies an existing local artifact manifest and its components into
 a new OCI image-layout directory, verifies their SHA-256 digests and sizes, and
