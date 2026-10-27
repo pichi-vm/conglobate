@@ -111,15 +111,19 @@ const LIVE_HOLDER: &str = "loop detach remains deferred by a live holder";
 fn acquire_exclusive_lock(file: &File) -> io::Result<()> {
     let deadline = Instant::now() + PROBE_LOCK_DEADLINE;
     loop {
+        // Before every attempt, including the retry after EINTR. A probe that
+        // drops after this instant must not be acquired: sleeping out a
+        // WouldBlock, or spinning on EINTR, both come back here first.
+        if Instant::now() >= deadline {
+            return Err(io::Error::new(io::ErrorKind::ResourceBusy, LIVE_HOLDER));
+        }
         match rustix::fs::flock(file, rustix::fs::FlockOperation::NonBlockingLockExclusive) {
             Ok(()) => return Ok(()),
-            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
-                let now = Instant::now();
-                if now >= deadline {
-                    return Err(io::Error::new(io::ErrorKind::ResourceBusy, LIVE_HOLDER));
-                }
-                std::thread::sleep(deadline.saturating_duration_since(now).min(PROBE_LOCK_POLL));
-            }
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => std::thread::sleep(
+                deadline
+                    .saturating_duration_since(Instant::now())
+                    .min(PROBE_LOCK_POLL),
+            ),
             Err(rustix::io::Errno::INTR) => {}
             Err(error) => return Err(error.into()),
         }
@@ -322,6 +326,61 @@ mod tests {
         );
         drop(returned);
         let _ = release_tx.send(());
+        detach.join().unwrap();
+        probe.join().unwrap();
+    }
+
+    #[test]
+    fn deadline_expiry_does_not_acquire_once_probe_drops() {
+        let Some(device) = attach_writable() else {
+            return;
+        };
+        let path = node_path(&device);
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let (started_tx, started_rx) = mpsc::channel();
+        let probe_path = path;
+        let probe = thread::spawn(move || {
+            let held = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&probe_path)
+                .unwrap();
+            rustix::fs::flock(&held, rustix::fs::FlockOperation::LockShared).unwrap();
+            ready_tx.send(()).unwrap();
+            let started: Instant = started_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+            // Inside the 20ms poll window after the detach deadline. A loop
+            // that flocks again after expiry would take this lock and succeed.
+            let release_at = started + PROBE_LOCK_DEADLINE + (PROBE_LOCK_POLL / 2);
+            if let Some(wait) = release_at.checked_duration_since(Instant::now()) {
+                thread::sleep(wait);
+            }
+            drop(held);
+        });
+        ready_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("probe did not take LOCK_SH");
+        let (result_tx, result_rx) = mpsc::channel();
+        let detach = thread::spawn(move || {
+            let started = Instant::now();
+            started_tx.send(started).unwrap();
+            let outcome = device.close();
+            result_tx.send((started.elapsed(), outcome)).unwrap();
+        });
+        let (elapsed, outcome) = result_rx
+            .recv_timeout(PROBE_LOCK_DEADLINE + Duration::from_millis(400))
+            .expect("detach hung past the probe-lock deadline");
+        let (error, returned) = outcome.expect_err("post-deadline acquire must not detach");
+        assert_eq!(error.kind(), io::ErrorKind::ResourceBusy);
+        assert!(error.to_string().contains("live holder"));
+        assert!(
+            returned.device.status().is_ok(),
+            "expiry must leave the loop owner bound"
+        );
+        assert!(
+            elapsed < PROBE_LOCK_DEADLINE + Duration::from_millis(400),
+            "detach hung past the deadline: {elapsed:?}"
+        );
+        drop(returned);
         detach.join().unwrap();
         probe.join().unwrap();
     }
