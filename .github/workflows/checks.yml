@@ -82,6 +82,21 @@ jobs:
 
           echo "gitlint commits: ${commit_range}"
           pipx run --spec gitlint==0.19.1 gitlint --commits "${commit_range}"
+      - name: Check PR title leaves room for squash suffix
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # Squash merges append " (#N)"; gitlint caps titles at 50 chars.
+          squash_title="${PR_TITLE} (#${PR_NUMBER})"
+          if [ "${#squash_title}" -gt 50 ]; then
+            echo "::error::Squash title '${squash_title}' is" \
+              "${#squash_title} chars (max 50); shorten the PR title."
+            exit 1
+          fi
+          echo "Squash title OK (${#squash_title}/50): ${squash_title}"
       - name: Install dependency checkers
         run: |
           rustup toolchain install 1.94.0 --profile minimal
