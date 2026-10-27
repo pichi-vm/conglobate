@@ -21,12 +21,12 @@ use std::{
 
 /// Resolve the internal formatter profile for a recipe filesystem specification.
 ///
-/// Today only `ext4` exists; recipe parse already rejected other kinds, so the
-/// spec carries no kind field. Selection still gates on the known name so an
-/// unknown string fails closed when callers pass one explicitly.
+/// The kind-tagged recipe enum admits only qualified backends. Match it
+/// explicitly so adding a variant requires a corresponding formatter choice.
 pub(crate) fn for_filesystem(spec: &FilesystemSpec) -> io::Result<CapturedFormatter> {
-    let _ = spec;
-    for_name("ext4")
+    match spec {
+        FilesystemSpec::Ext4(_) => for_name("ext4"),
+    }
 }
 
 /// Map a filesystem type name to a captured formatter runtime.
@@ -129,7 +129,12 @@ fn ldd_dependencies(executable: &Path) -> io::Result<Vec<PathBuf>> {
         if let Some(path) = line.split_whitespace().find(|token| token.starts_with('/')) {
             let path = PathBuf::from(path);
             if path.is_file() {
-                dependencies.push(fs::canonicalize(path)?);
+                // Retain the loader's runtime pathname. Canonicalizing a
+                // usrmerge symlink would leave PT_INTERP (e.g. /lib64/...) and
+                // the dynamic linker's library search paths absent in staging.
+                // CapturedFormatter resolves the source safely and materializes
+                // ordinary files at these requested runtime paths.
+                dependencies.push(path);
             }
         }
     }
@@ -154,6 +159,23 @@ mod tests {
         assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
         assert!(err.to_string().contains("xfs"));
         assert!(for_name("btrfs").is_err());
+    }
+
+    #[test]
+    fn captured_runtime_contains_the_executables_exact_elf_interpreter_path() {
+        let executable = find_mke2fs().unwrap();
+        let bytes = fs::read(&executable).unwrap();
+        let elf = goblin::elf::Elf::parse(&bytes).unwrap();
+        if let Some(interpreter) = elf.interpreter {
+            let captured = for_name("ext4").unwrap();
+            let relative = Path::new(interpreter).strip_prefix("/").unwrap();
+            assert!(
+                captured
+                    .files()
+                    .any(|(path, file)| path.as_ref() == relative && file.executable()),
+                "missing ELF interpreter {interpreter}"
+            );
+        }
     }
 
     #[test]

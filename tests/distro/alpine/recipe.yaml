@@ -1,17 +1,26 @@
 # SPDX-License-Identifier: Apache-2.0
-bootstrap:
-  from: qualification.local/fedora:43
-  filesystem: {type: ext4, size: 1GiB, properties: {label: alpine-root}}
-  derive:
+tasks:
+  bootstrap:
+    kind: bootstrap
+    from: qualification.local/fedora:43
+    filesystem:
+      size: 1GiB
+      kind: ext4
+      label: alpine-root
+    exec:
     - network: true
       timeout: 10m
       run: dnf -y install tar gzip
-    - copy: {from: alpine-minirootfs.tar.gz, into: /alpine-minirootfs.tar.gz}
+    - copy:
+        from: alpine-minirootfs.tar.gz
+        into: /alpine-minirootfs.tar.gz
     - run: |
         echo 'c5ca053cfe1d85c5b96dff8b9bc57045f7f184a30ffb6b65776409ca90388677  /alpine-minirootfs.tar.gz' | sha256sum -c -
         tar --numeric-owner -xzf /alpine-minirootfs.tar.gz -C /mnt
-carapace:
-  derive:
+  rootfs:
+    kind: extend
+    from: bootstrap
+    exec:
     - network: true
       timeout: 10m
       run: |
@@ -33,10 +42,22 @@ carapace:
     - copy:
         from: qualification.start
         into: /etc/local.d/conglobate-qualification.start
-        mode: "0755"
-firmware:
-  from: qualification.local/fedora:43
-  derive:
-    - copy: {from: firmware/boot.pmi, into: /qualification-boot.pmi}
-    - copy: {from: firmware/base.dtb, into: /qualification-base.dtb}
-  into: {pmi: /qualification-boot.pmi, dtb: /qualification-base.dtb}
+    - run: chmod 0755 /etc/local.d/conglobate-qualification.start
+  firmware:
+    kind: build
+    from: qualification.local/fedora:43
+    exec:
+    - copy:
+        from: firmware
+        into: /recipe-input-firmware
+    - run: cp -a /recipe-input-firmware/boot.pmi /qualification-boot.pmi
+    - copy:
+        from: firmware
+        into: /recipe-input-firmware
+    - run: cp -a /recipe-input-firmware/base.dtb /qualification-base.dtb
+    into:
+      pmi: /qualification-boot.pmi
+      dtb: /qualification-base.dtb
+image:
+  root: rootfs
+  boot: firmware

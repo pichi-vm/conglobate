@@ -11,7 +11,7 @@ impl OciCopy {
         fs::create_dir(context)?;
         fs::write(
             context.join("recipe.yaml"),
-            "carapace:\n  from: qualification.local/fixture:ci\n",
+            "tasks:\n  rootfs:\n    kind: extend\n    from: qualification.local/fixture:ci\nimage: rootfs\n",
         )?;
         fs::write(
             context.join("images.lock"),

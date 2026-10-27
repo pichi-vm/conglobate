@@ -274,6 +274,44 @@ impl<'a> CopyDestination<'a> {
         }
         Ok(())
     }
+    /// Transfer captured regular bytes through the same confined destination
+    /// resolver as context COPY. No source filesystem handle is exposed.
+    pub(crate) fn artifact(
+        &self,
+        directive: &Copy,
+        source: &crate::firmware::FirmwareFile<'_>,
+    ) -> Result<(), CopyError> {
+        let policy = MetadataPolicy {
+            uid: 0,
+            gid: 0,
+            mode: None,
+        };
+        let mut target = self.resolve(Path::new(directive.destination()), true)?;
+        if directive.destination().ends_with('/') {
+            self.directory(&target, &policy)?;
+        }
+        if self.observe(&target)?.is_some_and(|m| m.is_dir()) {
+            target.push(directive.artifact());
+        }
+        let name = target
+            .file_name()
+            .ok_or(CopyError::Invalid("artifact destination is root"))?;
+        let parent = self.directory(target.parent().unwrap(), &policy)?;
+        match fs::unlinkat(&parent, name, AtFlags::empty()) {
+            Ok(()) | Err(rustix::io::Errno::NOENT) => (),
+            Err(e) => return Err(e.into()),
+        }
+        let mut file: File = fs::openat(
+            &parent,
+            name,
+            OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::CLOEXEC | OFlags::NOFOLLOW,
+            Mode::from_raw_mode(0o600),
+        )?
+        .into();
+        io::copy(&mut source.reader(), &mut file)?;
+        policy.file(&file, source.mode(), false)?;
+        Ok(())
+    }
     pub(crate) fn copy(
         &self,
         context: &CapturedContext,
@@ -348,12 +386,7 @@ impl<'a> CopyDestination<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        document::YamlDocument,
-        path::ContextDirectory,
-        recipe::{Directive, Recipe},
-        request::CommitIdentity,
-    };
+    use crate::{path::ContextDirectory, request::CommitIdentity};
     use std::{
         fs as host,
         os::unix::fs::{MetadataExt, symlink},
@@ -421,23 +454,26 @@ mod tests {
             extra: &str,
             output: Option<&File>,
         ) -> Result<(), CopyError> {
-            let yaml = format!(
-                "carapace:\n  from: example.test/base:1\n  derive:\n    - copy:\n        from: {}\n        into: {}\n        owner: '{}'\n        group: '{}'\n{extra}",
-                serde_json::to_string(source).unwrap(),
-                serde_json::to_string(destination).unwrap(),
-                rustix::process::geteuid().as_raw(),
-                rustix::process::getegid().as_raw()
-            );
-            let recipe = Recipe::try_from(YamlDocument::from(yaml.as_str())).unwrap();
-            let Directive::Copy(directive) = &recipe.carapace().unwrap().directives()[0] else {
-                unreachable!()
+            let mode = if extra.trim().is_empty() {
+                None
+            } else {
+                let values: std::collections::BTreeMap<String, String> =
+                    crate::document::YamlDocument::from(extra).decode().unwrap();
+                values.get("mode").cloned()
             };
+            let directive = crate::recipe::Copy::fixture(
+                source,
+                destination,
+                rustix::process::geteuid().as_raw().to_string(),
+                rustix::process::getegid().as_raw().to_string(),
+                mode,
+            );
             let root = File::open(self.target.path()).unwrap();
             let writer = match output {
                 Some(output) => CopyDestination::bootstrap(&root, output),
                 None => CopyDestination::new(&root),
             };
-            writer.copy(&self.context, directive)
+            writer.copy(&self.context, &directive)
         }
     }
     #[test]

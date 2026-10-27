@@ -17,9 +17,9 @@ enum. `Filesystem` is a kind-tagged enum. `image:` has a short form and a long
 form. Only the image carapace/boot closure runs. DTB rewrite for a new root
 hash is automatic, including when assembly binds a root to imported boot
 lineage. This replaces the fixed `bootstrap` → `carapace` → `firmware` →
-`transform` pipeline. The engine still executes that fixed pipeline. Serde
-types, closure execution, and appliance smoke that implement this model are
-follow-up work. They are not extra wire locks in this document.
+`transform` pipeline. The engine implements the task schema and executes the selected
+closure. Provisional artifact grammar choices are documented in README.md and
+src/recipe/schema.rs; they are not extra wire locks in this document.
 
 Conglobate builds images from committed source and immutable image inputs. A
 bootstrap task formats a new carapace from a tool carapace. An extend task
@@ -1361,9 +1361,8 @@ intended the pinned inputs without a separate authenticity policy.
 
 The implementation follows the ordered sandbox contract. Maintained tests cover committed inputs, locks, typed
 DTB operations, pipeline combinations, metadata, deterministic inventory,
-publication and disposable-VM lifecycle failures. Those tests exercise the
-fixed pipeline the engine still runs. Coverage of the task model in §5–§6
-lands with the implementation, not with this document. Distro recipes exercise Fedora
+publication and disposable-VM lifecycle failures. Those tests exercise the task model in §5–§6 alongside the existing storage,
+isolation, metadata and publication behavior. Distro recipes exercise Fedora
 DNF/SELinux, Debian APT/systemd, Alpine APK/OpenRC and NixOS closure construction.
 A separate firmware recipe constructs an initramfs and arma PMI/DTB, then boots it.
 
@@ -2038,9 +2037,8 @@ Extend's commands share one writable snapshot and produce one scute. Build
 uses a disposable tool carapace and extracts `into:` artifacts only. Tool
 inputs contribute inventory provenance, not accidental output ancestry.
 Orphan tasks do not run. After the closure, the automatic DTB rewrite and
-image assembly run. Assembly is not a task. The binary still sequences the
-fixed pipeline; that sequencing is superseded by this closure when the task
-model is implemented.
+image assembly run. Assembly is not a task. The binary sequences this closure using immutable task results and activates
+local carapace chains only when a dependent task needs their filesystem.
 
 `StageOutput` holds results without command/mount authority. Runtime cleanup
 precedes DTB transformation, image assembly, deterministic CBOR inventory and

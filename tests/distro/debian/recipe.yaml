@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-carapace:
-  from: qualification.local/debian:trixie
-  derive:
+tasks:
+  rootfs:
+    kind: extend
+    from: qualification.local/debian:trixie
+    exec:
     - network: true
       timeout: 20m
       run: |
@@ -25,12 +27,25 @@ carapace:
     - copy:
         from: qualification.sh
         into: /usr/local/bin/conglobate-qualification
-        mode: "0755"
+    - run: chmod 0755 /usr/local/bin/conglobate-qualification
     - run: |
         mkdir -p /etc/systemd/system/multi-user.target.wants
         ln -s ../conglobate-qualification.service /etc/systemd/system/multi-user.target.wants/conglobate-qualification.service
-firmware:
-  derive:
-    - copy: {from: firmware/boot.pmi, into: /qualification-boot.pmi}
-    - copy: {from: firmware/base.dtb, into: /qualification-base.dtb}
-  into: {pmi: /qualification-boot.pmi, dtb: /qualification-base.dtb}
+  firmware:
+    kind: build
+    from: rootfs
+    exec:
+    - copy:
+        from: firmware
+        into: /recipe-input-firmware
+    - run: cp -a /recipe-input-firmware/boot.pmi /qualification-boot.pmi
+    - copy:
+        from: firmware
+        into: /recipe-input-firmware
+    - run: cp -a /recipe-input-firmware/base.dtb /qualification-base.dtb
+    into:
+      pmi: /qualification-boot.pmi
+      dtb: /qualification-base.dtb
+image:
+  root: rootfs
+  boot: firmware

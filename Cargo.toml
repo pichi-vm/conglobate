@@ -68,6 +68,10 @@ devmap-linux = { git = "https://github.com/pichi-vm/devmap.git", rev = "3a2728f6
 devmap-core = { git = "https://github.com/pichi-vm/devmap.git", rev = "3a2728f617e9272be5224bbf76ffc4deafdfe83b", version = "0.1.0" }
 devmap-verity = { git = "https://github.com/pichi-vm/devmap.git", rev = "3a2728f617e9272be5224bbf76ffc4deafdfe83b", version = "0.1.0", features = ["sha2"] }
 
+[dev-dependencies]
+# Verify the formatter's captured runtime includes its exact PT_INTERP path.
+goblin = { version = "0.10", default-features = false, features = ["elf32", "elf64", "endian_fd"] }
+
 [lints.rust]
 unsafe_code = "forbid"
 missing_debug_implementations = "warn"

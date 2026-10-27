@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
+extern crate conglobate as contract;
 extern crate self as conglobate;
 mod anchor;
 // The artifact schema is the library surface (see `src/lib.rs`). Because the
@@ -42,7 +43,7 @@ mod step;
 mod storage;
 mod template;
 mod transform;
-mod value;
+use contract::value;
 
 #[path = "../tests/lifecycle/src/main.rs"]
 mod fixture;

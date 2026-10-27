@@ -619,6 +619,11 @@ mod tests {
     fn run_empty_bin() {
         let image = tempfile::tempdir().expect("image");
         std::fs::create_dir(image.path().join("bin")).unwrap();
+        std::fs::set_permissions(
+            image.path().join("bin"),
+            std::fs::Permissions::from_mode(0o755),
+        )
+        .unwrap();
         std::fs::create_dir(image.path().join("etc")).unwrap();
         std::fs::write(
             image.path().join("etc/conglobate-context-check"),
@@ -634,6 +639,15 @@ mod tests {
             assert_mode_0755(&image.path().join(name));
         }
         install(&root).unwrap();
+        // Fedora's loader closure can be flat under lib64. Supply an actual
+        // nested loader fixture so the umask assertion exercises directory
+        // creation on every host, independently of its loader search paths.
+        Layout::new(&root)
+            .place_all(&[Placed::loader(
+                PathBuf::from("fixture-loader/nested/loader"),
+                b"fixture".to_vec(),
+            )])
+            .unwrap();
         let mounts = image_mounts(image.path());
         assert!(
             mounts.iter().any(|path| path.ends_with("bin")),

@@ -109,7 +109,7 @@ fn linux_filepath_patterns_cover_unicode_classes_and_literal_braces() {
 fn malformed_patterns_and_parent_traversal_fail_during_recipe_parsing() {
     for source in ["[", "[]", "[a-]", "\\", "[^]", "../file", "dir/../file", ""] {
         let yaml = format!(
-            "carapace: {{from: base, derive: [{{copy: {{from: '{source}', into: /file}}}}]}}"
+            "image: root\ntasks: {{root: {{kind: extend, from: registry.test/base:1, exec: [{{copy: {{from: '{source}', into: /file}}}}]}}}}"
         );
         assert!(
             Recipe::try_from(YamlDocument::from(yaml.as_str())).is_err(),

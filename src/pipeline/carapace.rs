@@ -25,6 +25,7 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
         directives: &[Directive],
+        artifacts: &super::artifacts::Artifacts<'_>,
     ) -> anyhow::Result<Self> {
         if directives.is_empty() {
             return Ok(self);
@@ -53,13 +54,16 @@ impl<'s, 'w> DerivedCarapace<'s, 'w> {
             .captured()
             .networking()
             .map(|resolver| crate::network::CommandNetworking::new(resolver, workspace));
-        let completed = sandbox.directives_with_network::<Volume<'_, '_, '_, Mounted>>(
+        let completed = sandbox.directives_with_inputs::<Volume<'_, '_, '_, Mounted>>(
             volume,
             reaper,
-            build.captured().context(),
             directives,
-            None,
-            networking.as_ref(),
+            crate::step::DirectiveInputs {
+                context: build.captured().context(),
+                artifacts,
+                carapace: Some(active.root()),
+                network: networking.as_ref(),
+            },
         )?;
         let (volume, reaper) = completed.into_parts();
         let scute = Arc::new(

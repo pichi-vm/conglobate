@@ -1,8 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-carapace:
-  from: qualification.local/fedora:43
-  derive:
-    - copy: {from: external-endpoint, into: /external-endpoint}
+tasks:
+  rootfs:
+    kind: extend
+    from: qualification.local/fedora:43
+    exec:
+    - copy:
+        from: external-endpoint
+        into: /external-endpoint
     - network: true
       timeout: 30s
       run: |
@@ -16,3 +20,4 @@ carapace:
         '
         rm /external-endpoint
         printf 'NETWORK_EXTERNAL_TCP_REPLY_PASS\n'
+image: rootfs

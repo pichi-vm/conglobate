@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 //! Recipe orchestration. Unsupported execution paths fail before publication.
+pub(crate) mod artifacts;
 mod bootstrap;
 mod carapace;
 mod firmware;
@@ -62,101 +63,129 @@ impl Pipeline {
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
     ) -> anyhow::Result<StageOutput<'b, 'w>> {
+        use crate::recipe::{Reference, TaskKind};
+        use anyhow::Context;
+        use std::collections::BTreeMap;
         let recipe = build.captured().plan().recipe();
-        // Output ancestry is independent of the firmware's selected tool image.
-        let base = recipe
-            .carapace()
-            .and_then(|stage| stage.from())
-            .and_then(|name| build.images().get(name));
-        let directives = recipe
-            .carapace()
-            .map(|stage| stage.directives())
-            .unwrap_or(&[]);
-        // Output identities do not require live block mappings. Assemble the
-        // output chain only when a stage will actually use its filesystem.
-        let needs_chain = !directives.is_empty()
-            || recipe
-                .firmware()
-                .is_some_and(|stage| stage.from().is_none());
-        let (active, produced, reaper, receipt) = if recipe.bootstrap().is_some() {
-            let bootstrap::Bootstrapped {
-                scute,
-                reaper,
-                receipt,
-            } = bootstrap::BootstrapBuild::new(build)?.execute(workspace, runtime)?;
-            let active = if needs_chain {
-                Some(crate::storage::ReadOnlyChain::from_root(
-                    std::sync::Arc::clone(&scute),
-                )?)
-            } else {
-                None
-            };
-            (active, vec![scute], reaper, Some(receipt))
-        } else {
-            let active = base
-                .filter(|_| needs_chain)
-                .and_then(|image| image.chain())
-                .map(|chain| chain.assemble(build.cache(), workspace))
-                .transpose()?;
-            (
-                active,
-                Vec::new(),
-                crate::process::ChildReaper::install()?,
-                None,
-            )
-        };
-
-        let (active, produced, reaper) = if directives.is_empty() {
-            (active, produced, reaper)
-        } else {
-            let derived = carapace::DerivedCarapace {
-                active: active.ok_or(anyhow!("carapace requires a root volume",))?,
-                scutes: produced,
-                reaper,
-            }
-            .derive(build, workspace, runtime, directives)?;
-            (Some(derived.active), derived.scutes, derived.reaper)
-        };
-        let root = produced.last().map(|scute| *scute.root()).or_else(|| {
-            base.and_then(|image| image.chain())
-                .map(|chain| *chain.root())
-        });
-
-        let pair = if let Some(stage) = recipe.firmware() {
-            let tools = if let Some(reference) = stage.from() {
-                if let Some(active) = active {
-                    active.close()?;
+        let mut outputs = BTreeMap::new();
+        let mut artifacts = artifacts::Artifacts::new();
+        let mut receipts = Vec::new();
+        let mut reaper = crate::process::ChildReaper::install()?;
+        for name in recipe.order() {
+            let task = &recipe.tasks()[name];
+            let input = match task.from() {
+                Reference::Remote(remote) => {
+                    let reference = remote.as_ref().parse()?;
+                    StageOutput::remote(
+                        build
+                            .images()
+                            .get(&reference)
+                            .ok_or(anyhow!("unresolved task input"))?,
+                    )
                 }
-                build
-                    .images()
-                    .get(reference)
-                    .and_then(|image| image.chain())
-                    .ok_or(anyhow!("firmware tools require a root volume",))?
-                    .assemble(build.cache(), workspace)?
-            } else {
-                active.ok_or(anyhow!("missing firmware tools"))?
+                Reference::Local(local) => outputs
+                    .get(local)
+                    .cloned()
+                    .ok_or(anyhow!("task input not completed"))?,
             };
-            Some(
-                firmware::FirmwareTools {
-                    active: tools,
-                    root,
-                    reaper,
+            let (result, next_reaper) = (|| -> anyhow::Result<_> {
+                match task.kind() {
+                    TaskKind::Bootstrap(stage) => {
+                        let active = input.activate(build, workspace)?;
+                        let result = bootstrap::BootstrapBuild::new(
+                            build,
+                            stage,
+                            task.directives(),
+                            &artifacts,
+                        )
+                        .execute(workspace, runtime, active, reaper)?;
+                        receipts.push(result.receipt);
+                        Ok((
+                            StageOutput {
+                                base: None,
+                                produced: vec![result.scute],
+                                firmware: None,
+                                boot_base: None,
+                                formatters: vec![],
+                            },
+                            result.reaper,
+                        ))
+                    }
+                    TaskKind::Extend => {
+                        let mut output = input;
+                        if !task.directives().is_empty() {
+                            let active = output.activate(build, workspace)?;
+                            let derived = carapace::DerivedCarapace {
+                                active,
+                                scutes: output.produced,
+                                reaper,
+                            }
+                            .derive(
+                                build,
+                                workspace,
+                                runtime,
+                                task.directives(),
+                                &artifacts,
+                            )?;
+                            derived.active.close()?;
+                            output.produced = derived.scutes;
+                            output.rewrite(build, workspace)?;
+                            Ok((output, derived.reaper))
+                        } else {
+                            Ok((output, reaper))
+                        }
+                    }
+                    TaskKind::Build => {
+                        let active = input.activate(build, workspace)?;
+                        // CARAPACE is available only from a local produced output,
+                        // never the remote tool carapace. Dependencies execute first.
+                        let selected = match recipe.image() {
+                            crate::recipe::Image::Short(name) => name,
+                            crate::recipe::Image::Long { root, .. } => root,
+                        };
+                        let root =
+                            outputs
+                                .get(selected)
+                                .and_then(StageOutput::root)
+                                .or_else(|| {
+                                    if matches!(task.from(), Reference::Local(_)) {
+                                        input.root()
+                                    } else {
+                                        None
+                                    }
+                                });
+                        let result = firmware::BuildTools {
+                            active,
+                            root,
+                            reaper,
+                        }
+                        .run(
+                            build,
+                            task,
+                            workspace,
+                            runtime,
+                            &mut artifacts,
+                        )?;
+                        Ok((
+                            StageOutput {
+                                base: None,
+                                produced: vec![],
+                                firmware: result.firmware,
+                                boot_base: None,
+                                formatters: vec![],
+                            },
+                            result.reaper,
+                        ))
+                    }
                 }
-                .run(build, stage, workspace, runtime)?,
-            )
-        } else {
-            if let Some(active) = active {
-                active.close()?;
-            }
-            None
-        };
-
-        Ok(StageOutput {
-            base,
-            produced,
-            firmware: pair,
-            formatter: receipt,
-        })
+            })()
+            .with_context(|| format!("task {name}"))?;
+            reaper = next_reaper;
+            outputs.insert(name.clone(), result);
+        }
+        let mut output = StageOutput::select(recipe, &outputs)?;
+        output.formatters = receipts;
+        Ok(output)
     }
 }
 /// Created only after the selected recipe path completed and inventory binds

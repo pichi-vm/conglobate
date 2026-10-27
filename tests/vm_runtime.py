@@ -26,9 +26,10 @@ class GuestRuntime:
 
     def create(self):
         self.root.mkdir()
+        self.root.chmod(0o755)
         for directory in ('usr/bin', 'usr/sbin', 'usr/lib', 'usr/lib64',
                           'etc', 'proc', 'sys', 'dev', 'tmp', 'run', 'var'):
-            (self.root / directory).mkdir(parents=True, exist_ok=True)
+            self.directory(self.root / directory)
         for name, target in (('bin', 'usr/bin'), ('sbin', 'usr/sbin'),
                              ('lib', 'usr/lib'), ('lib64', 'usr/lib64'), ('var/run', '../run')):
             (self.root / name).symlink_to(target)
@@ -42,14 +43,32 @@ class GuestRuntime:
             if source is None:
                 raise RuntimeError(f'missing trusted guest tool: {name}')
             self.executable(pathlib.Path(source), pathlib.Path('usr/bin') / name)
+        # Formatter discovery and fallback shell capture run ldd inside the
+        # trusted guest. It is a shell script, so executable() cannot inspect it
+        # with ldd. Its shell and loader are already staged above.
+        ldd = shutil.which('ldd')
+        if ldd is None:
+            raise RuntimeError('missing trusted guest tool: ldd')
+        shutil.copy2(ldd, self.root / 'usr/bin/ldd')
         (self.root / 'usr/bin/sh').symlink_to('bash')
         (self.root / 'usr/sbin/modprobe').symlink_to('../bin/modprobe')
         self.modules()
 
+    def directory(self, path):
+        # Build hosts may use umask 077. Namespace helpers execute after ID
+        # mapping, so the trusted guest's interpreter and library paths must
+        # remain traversable by those mapped credentials.
+        path.relative_to(self.root)
+        path.mkdir(parents=True, exist_ok=True)
+        while path != self.root:
+            path.chmod(0o755)
+            path = path.parent
+
     def executable(self, source, destination):
         target = self.root / destination
-        target.parent.mkdir(parents=True, exist_ok=True)
+        self.directory(target.parent)
         shutil.copy2(source, target)
+        target.chmod(0o755)
         # Only supplied trusted host tools are inspected. Never run ldd on
         # an untrusted recipe/image executable.
         for line in subprocess.check_output(['ldd', str(source)], text=True).splitlines():
@@ -59,7 +78,7 @@ class GuestRuntime:
             if match:
                 library = pathlib.Path(match.group(1))
                 target = self.root / library.relative_to('/')
-                target.parent.mkdir(parents=True, exist_ok=True)
+                self.directory(target.parent)
                 shutil.copy2(library, target)
 
     def modules(self):
@@ -78,6 +97,6 @@ class GuestRuntime:
                 if line.startswith('insmod '):
                     source = pathlib.Path(line.split()[1]).resolve(strict=True)
                     target = target_tree / source.relative_to(source_tree)
-                    target.parent.mkdir(parents=True, exist_ok=True)
+                    self.directory(target.parent)
                     shutil.copy2(source, target)
         subprocess.run(['depmod', '-b', str(self.root), self.kernel_release], check=True)

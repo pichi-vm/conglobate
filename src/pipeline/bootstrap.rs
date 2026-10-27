@@ -4,47 +4,52 @@ use super::rejection::DiscardStorage;
 use crate::{
     execution::HelperProgram,
     formatter::{Ext4Format, selection},
-    input::{CheckedImage, ResolvedBuild},
+    input::ResolvedBuild,
     process::ChildReaper,
     recipe::Bootstrap,
     step::{CommandSandbox, SetupBudget},
     storage::{BootstrapVolumes, Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
 };
-use anyhow::anyhow;
+use anyhow::Context;
 use std::{num::NonZeroU64, sync::Arc};
 
 #[derive(Debug)]
 pub(super) struct BootstrapBuild<'a> {
     build: &'a ResolvedBuild,
     stage: &'a Bootstrap,
-    tools: &'a CheckedImage,
+    directives: &'a [crate::recipe::Directive],
+    artifacts: &'a super::artifacts::Artifacts<'a>,
 }
 impl<'a> BootstrapBuild<'a> {
-    pub(super) fn new(build: &'a ResolvedBuild) -> anyhow::Result<Self> {
-        let recipe = build.captured().plan().recipe();
-        let stage = recipe
-            .bootstrap()
-            .ok_or(anyhow!("missing bootstrap stage"))?;
-        let tools = build
-            .images()
-            .get(stage.from())
-            .ok_or(anyhow!("missing bootstrap tools"))?;
-        if tools.chain().is_none() {
-            return Err(anyhow!("bootstrap tools require a root volume",));
-        }
-        Ok(Self {
+    pub(super) fn new(
+        build: &'a ResolvedBuild,
+        stage: &'a Bootstrap,
+        directives: &'a [crate::recipe::Directive],
+        artifacts: &'a super::artifacts::Artifacts<'a>,
+    ) -> Self {
+        Self {
             build,
             stage,
-            tools,
-        })
+            directives,
+            artifacts,
+        }
     }
     pub(super) fn execute<'w>(
         &self,
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
+        active: crate::storage::ReadOnlyChain<'_, 'w>,
+        reaper: ChildReaper,
     ) -> anyhow::Result<Bootstrapped<'w>> {
-        let captured = selection::for_filesystem(self.stage.filesystem())?;
-        self.produce(workspace, runtime, captured.stage(workspace)?)
+        let captured = selection::for_filesystem(self.stage.filesystem())
+            .context("capture trusted formatter")?;
+        self.produce(
+            workspace,
+            runtime,
+            captured.stage(workspace)?,
+            active,
+            reaper,
+        )
     }
 
     fn produce<'w>(
@@ -52,6 +57,8 @@ impl<'a> BootstrapBuild<'a> {
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
         formatter: crate::formatter::FormatterRuntime,
+        active: crate::storage::ReadOnlyChain<'_, 'w>,
+        reaper: ChildReaper,
     ) -> anyhow::Result<Bootstrapped<'w>> {
         let sectors =
             NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap();
@@ -61,14 +68,11 @@ impl<'a> BootstrapBuild<'a> {
             workspace.snapshot_store()?.attach()?,
             sectors,
         )?;
-        let formatted = self.format(formatter, output)?;
+        let formatted = self
+            .format(formatter, output)
+            .context("format bootstrap filesystem")?;
         let (formatter, output, receipt) = formatted.into_recorded_parts();
         formatter.close()?;
-        let active = self
-            .tools
-            .chain()
-            .expect("validated tools")
-            .assemble(self.build.cache(), workspace)?;
         let tool = Mapping::<Created>::create()?.snapshot(
             &active,
             workspace.snapshot_store()?.attach()?,
@@ -89,13 +93,16 @@ impl<'a> BootstrapBuild<'a> {
             .captured()
             .networking()
             .map(|resolver| crate::network::CommandNetworking::new(resolver, workspace));
-        let completed = sandbox.directives_with_network::<BootstrapVolumes<'_, '_, '_, Mounted>>(
+        let completed = sandbox.directives_with_inputs::<BootstrapVolumes<'_, '_, '_, Mounted>>(
             BootstrapVolumes::new(tool, output),
-            ChildReaper::install()?,
-            self.build.captured().context(),
-            self.stage.directives(),
-            None,
-            networking.as_ref(),
+            reaper,
+            self.directives,
+            crate::step::DirectiveInputs {
+                context: self.build.captured().context(),
+                artifacts: self.artifacts,
+                carapace: None,
+                network: networking.as_ref(),
+            },
         )?;
         let (volumes, reaper) = completed.into_parts();
         let (tool, output) = volumes.into_parts();
@@ -111,8 +118,8 @@ impl<'a> BootstrapBuild<'a> {
         origin.close()?;
         Ok(Bootstrapped {
             scute,
-            reaper,
             receipt,
+            reaper,
         })
     }
     fn format<'o, 'w>(
@@ -135,7 +142,7 @@ impl<'a> BootstrapBuild<'a> {
 /// Bootstrap output only: tools have been discarded, and no later stage ran.
 #[derive(Debug)]
 pub(super) struct Bootstrapped<'w> {
-    pub(super) scute: Arc<crate::storage::SealedScute<'w>>,
     pub(super) reaper: ChildReaper,
+    pub(super) scute: Arc<crate::storage::SealedScute<'w>>,
     pub(super) receipt: crate::formatter::FormatReceipt,
 }

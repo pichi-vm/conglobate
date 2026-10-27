@@ -1,31 +1,31 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+//! Build tasks use disposable tool roots and retain declared regular files only.
 use crate::{
     execution::HelperProgram,
     input::ResolvedBuild,
     process::ChildReaper,
-    recipe::Firmware,
+    recipe::Task,
     step::{CommandSandbox, SetupBudget},
     storage::{Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
 };
 use std::num::NonZeroU64;
 
-/// A disposable tool chain plus the separately selected output-root identity.
-/// Consuming execution cannot turn firmware writes into retained scutes.
 #[derive(Debug)]
-pub(super) struct FirmwareTools<'s, 'w> {
+pub(super) struct BuildTools<'s, 'w> {
     pub(super) active: crate::storage::ReadOnlyChain<'s, 'w>,
     pub(super) root: Option<[u8; 32]>,
     pub(super) reaper: ChildReaper,
 }
-impl<'s, 'w> FirmwareTools<'s, 'w> {
+impl<'s, 'w> BuildTools<'s, 'w> {
     pub(super) fn run(
         self,
         build: &ResolvedBuild,
-        stage: &Firmware,
+        task: &Task,
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
-    ) -> anyhow::Result<crate::firmware::ExtractedFirmware<'w>> {
+        artifacts: &mut super::artifacts::Artifacts<'w>,
+    ) -> anyhow::Result<BuiltArtifacts<'w>> {
         let Self {
             active,
             root,
@@ -48,19 +48,35 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
         let networking = build
             .captured()
             .networking()
-            .map(|resolver| crate::network::CommandNetworking::new(resolver, workspace));
-        let completed = sandbox.directives_with_network::<Volume<'_, '_, '_, Mounted>>(
+            .map(|n| crate::network::CommandNetworking::new(n, workspace));
+        let completed = sandbox.directives_with_inputs::<Volume<'_, '_, '_, Mounted>>(
             volume,
             reaper,
-            build.captured().context(),
-            stage.directives(),
-            root.as_ref(),
-            networking.as_ref(),
+            task.directives(),
+            crate::step::DirectiveInputs {
+                context: build.captured().context(),
+                artifacts,
+                carapace: root.as_ref(),
+                network: networking.as_ref(),
+            },
         )?;
-        let (volume, _reaper) = completed.into_parts();
+        let (volume, reaper) = completed.into_parts();
         let budget = SetupBudget::begin();
         let mut mounted = volume.mount_ext4(paths.volumes())?;
-        let captured = mounted.extract_firmware(stage, workspace, &budget);
+        let captured = (|| -> anyhow::Result<_> {
+            let pair = task
+                .firmware()
+                .map(|f| mounted.extract_firmware(f, workspace, &budget))
+                .transpose()?;
+            let mut outputs = Vec::new();
+            for (name, path) in task.outputs() {
+                outputs.push((
+                    name.clone(),
+                    mounted.extract_artifact(path.as_ref(), workspace, &budget)?,
+                ));
+            }
+            Ok((pair, outputs))
+        })();
         let cleanup_budget = SetupBudget::begin();
         let cleanup = (|| -> anyhow::Result<()> {
             mounted.unmount()?.into_snapshot().close()?.detach()?;
@@ -68,13 +84,25 @@ impl<'s, 'w> FirmwareTools<'s, 'w> {
         })()
         .and_then(|()| active.close().map_err(anyhow::Error::from))
         .and_then(|()| cleanup_budget.check().map_err(anyhow::Error::from));
-        let captured = match (captured.map_err(anyhow::Error::from), cleanup) {
-            (Ok(captured), Ok(())) => captured,
-            (Err(error), Ok(())) | (Ok(_), Err(error)) => return Err(error),
-            (Err(error), Err(cleanup)) => {
-                return Err(error.context(format!("cleanup also failed: {cleanup:#}")));
+        let (pair, outputs) = match (captured, cleanup) {
+            (Ok(value), Ok(())) => value,
+            (Err(e), Ok(())) | (Ok(_), Err(e)) => return Err(e),
+            (Err(e), Err(cleanup)) => {
+                return Err(e.context(format!("cleanup also failed: {cleanup:#}")));
             }
         };
-        Ok(captured)
+        artifacts.extend(outputs);
+        // Custom boot is captured byte-for-byte. Automatic binding is performed
+        // when extend or final image assembly selects a carapace.
+        let firmware = pair
+            .map(|p| p.finalize(&crate::recipe::TransformSelection::Authored(vec![]), None))
+            .transpose()?;
+        Ok(BuiltArtifacts { firmware, reaper })
     }
+}
+
+#[derive(Debug)]
+pub(super) struct BuiltArtifacts<'w> {
+    pub(super) firmware: Option<crate::firmware::FinalizedFirmware<'w>>,
+    pub(super) reaper: ChildReaper,
 }

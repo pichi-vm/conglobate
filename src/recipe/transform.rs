@@ -8,12 +8,12 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct ConditionDocument {
+pub(crate) struct ConditionDocument {
     exists: String,
 }
 #[derive(Debug, Deserialize)]
 #[serde(tag = "op", rename_all = "lowercase", deny_unknown_fields)]
-pub(super) enum TransformDocument {
+pub(crate) enum TransformDocument {
     Set {
         property: String,
         #[serde(rename = "if", default)]

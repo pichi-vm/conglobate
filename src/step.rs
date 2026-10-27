@@ -191,6 +191,7 @@ mod tests {
 mod bootstrap;
 
 mod directives;
+pub(crate) use directives::DirectiveInputs;
 
 impl<R: StepStorage> Step<'_, Ready, R> {
     pub(crate) fn with_network(mut self, network: crate::network::CommandNetwork) -> Self {

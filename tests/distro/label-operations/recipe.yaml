@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-bootstrap:
-  from: qualification.local/fedora-label-tools:43
-  filesystem:
-    type: ext4
-    size: 64MiB
-  derive:
+tasks:
+  bootstrap:
+    kind: bootstrap
+    from: qualification.local/fedora-label-tools:43
+    filesystem:
+      size: 64MiB
+      kind: ext4
+    exec:
     - run: |
         set -x
         label=foreign_u:object_r:foreign_build_t:s0
@@ -32,3 +34,4 @@ bootstrap:
           setfattr -n security.selinux -v "$label" "$file"
         done
         printf 'COMMAND_TWO_ROOT_LABEL_REMOUNT_PASS\n'
+image: bootstrap

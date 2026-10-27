@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use conglobate::{
     document::YamlDocument,
@@ -6,48 +5,41 @@ use conglobate::{
     plan::{BuildPlan, InputRole, Stage},
     recipe::Recipe,
 };
-#[derive(Debug)]
-struct Fixture;
-impl Fixture {
-    fn plan(recipe: &str) -> Result<BuildPlan, conglobate::lock::LockError> {
-        let pins = format!(
-            "version: 1\nimages:\n  base: {{index: sha256:{}}}\n  tools: {{index: sha256:{}}}\n",
-            "00".repeat(32),
-            "11".repeat(32)
-        );
-        let lock = ImageLock::try_from(YamlDocument::from(pins.as_str())).unwrap();
-        BuildPlan::new(Recipe::try_from(YamlDocument::from(recipe)).unwrap(), &lock)
-    }
+fn plan(recipe: &str) -> Result<BuildPlan, conglobate::lock::LockError> {
+    let pins = format!(
+        "version: 1\nimages:\n  registry.test/base:1: {{index: sha256:{}}}\n  registry.test/tools:1: {{index: sha256:{}}}\n",
+        "00".repeat(32),
+        "11".repeat(32)
+    );
+    BuildPlan::new(
+        Recipe::try_from(YamlDocument::from(recipe)).unwrap(),
+        &ImageLock::try_from(YamlDocument::from(pins.as_str())).unwrap(),
+    )
 }
 #[test]
-fn network_receipt_order_ignores_yaml_key_order() {
-    let plan=Fixture::plan("firmware:\n  from: tools\n  into: {pmi: /pmi, dtb: /dtb}\n  derive: [{run: build, network: true}]\ncarapace:\n  from: base\n  derive: [{copy: {from: input, into: /build}}, {run: install, network: true}]\n").unwrap();
+fn only_selected_closure_requires_pins_execution_or_network() {
+    let recipe = "image: base\ntasks:\n  base: {kind: extend, from: registry.test/base:1}\n  orphan: {kind: build, from: missing.registry/tool:1, into: {data: /x}, exec: [{run: never, network: true}]}";
+    let plan = plan(recipe).unwrap();
+    assert_eq!(plan.inputs().len(), 1);
+    assert!(plan.network_steps().is_empty());
+    assert!(!plan.execution_required());
+}
+#[test]
+fn remote_tool_roles_do_not_imply_output_ancestry() {
+    let plan = plan("image: {root: base, boot: boot}\ntasks:\n  base: {kind: extend, from: registry.test/base:1, exec: [{copy: {from: input, into: /x}}, {run: install, network: true}]}\n  boot: {kind: build, from: registry.test/base:1, exec: [{run: compile, network: true}], into: {pmi: /a, dtb: /b}}\n").unwrap();
+    assert_eq!(plan.inputs().len(), 1);
+    assert!(plan.inputs()[0].roles().contains(&InputRole::CarapaceBase));
+    assert!(plan.inputs()[0].roles().contains(&InputRole::FirmwareTools));
     assert_eq!(
         plan.network_steps()
             .iter()
             .map(|s| (s.stage(), s.index()))
             .collect::<Vec<_>>(),
-        vec![(Stage::Carapace, 1), (Stage::Firmware, 0)]
+        [(Stage::Carapace, 1), (Stage::Firmware, 0)]
     );
-    assert_eq!(plan.inputs().len(), 2);
-    assert!(plan.inputs().iter().all(|i| i.execution_required()));
 }
 #[test]
-fn shared_reference_retains_roles_without_conflating_output_ancestry() {
-    let plan =
-        Fixture::plan("carapace: {from: base}\nfirmware: {from: base, into: {pmi: /a, dtb: /b}}")
-            .unwrap();
-    assert_eq!(plan.inputs().len(), 1);
-    assert!(plan.inputs()[0].roles().contains(&InputRole::CarapaceBase));
-    assert!(plan.inputs()[0].roles().contains(&InputRole::FirmwareTools));
-    assert!(plan.inputs()[0].execution_required());
-}
-#[test]
-fn pass_through_base_does_not_require_execution_but_implicit_tools_do() {
-    let pass = Fixture::plan("carapace: {from: base}\ntransform: []").unwrap();
-    assert!(!pass.inputs()[0].execution_required());
-    let firmware =
-        Fixture::plan("carapace: {from: base}\nfirmware: {into: {pmi: /a, dtb: /b}}").unwrap();
-    assert!(firmware.inputs()[0].execution_required());
-    assert!(Fixture::plan("carapace: {from: missing}").is_err());
+fn local_inputs_are_not_lock_entries_and_missing_remote_pin_fails() {
+    assert!(plan("image: child\ntasks: {child: {kind: extend, from: base}, base: {kind: extend, from: registry.test/base:1}}").is_ok());
+    assert!(plan("image: x\ntasks: {x: {kind: extend, from: registry.test/missing:1}}").is_err());
 }

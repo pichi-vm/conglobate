@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-carapace:
-  from: qualification.local/fedora:43
-  derive:
+tasks:
+  rootfs:
+    kind: extend
+    from: qualification.local/fedora:43
+    exec:
     - run: |
         set -x
         test "$PPID" = 1
@@ -92,7 +94,7 @@ carapace:
         test "$(cat /confinement-marker)" = persistent
         printf 'COMMAND_RUNTIME_RECREATED_PASS\n'
     - copy:
-        from: probe-runtime/
+        from: probe-runtime
         into: /probe-runtime
     - run: |
         /probe-runtime/loader --library-path /probe-runtime/lib /probe-runtime/command-probe
@@ -116,3 +118,4 @@ carapace:
         test ! -e /dev/shm/descendant-ready
         test ! -e /dev/shm/descendant-hold
         printf 'COMMAND_AFTER_DESCENDANT_CLEANUP_PASS\n'
+image: rootfs

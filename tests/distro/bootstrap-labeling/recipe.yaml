@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # Minimal two-root lifecycle regression; not a bootable distro qualification.
-bootstrap:
-  from: qualification.local/fedora:43
-  filesystem:
-    type: ext4
-    size: 64MiB
-    properties:
+tasks:
+  bootstrap:
+    kind: bootstrap
+    from: qualification.local/fedora:43
+    filesystem:
+      size: 64MiB
+      kind: ext4
       label: label-probe
-  derive:
+    exec:
     - run: |
         test ! -e /build-context
         printf 'tool-only\n' > /conglobate-tool-marker
@@ -22,3 +23,4 @@ bootstrap:
         test "$(stat -c '%u:%g:%a' /mnt/output-marker)" = '123:456:640'
         test ! -e /mnt/conglobate-tool-marker
         printf 'BOOTSTRAP_TWO_ROOTS_REMOUNT_PASS\n'
+image: bootstrap

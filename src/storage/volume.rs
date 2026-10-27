@@ -146,6 +146,41 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
         crate::copy::CopyDestination::new(&self.resources.root).copy(context, directive)
     }
 
+    pub(crate) fn copy_artifact(
+        &mut self,
+        output: Option<&mut Volume<'_, '_, '_, Mounted>>,
+        directive: &crate::recipe::Copy,
+        source: &crate::firmware::FirmwareFile<'_>,
+    ) -> Result<(), crate::copy::CopyError> {
+        self.scope.verify_current()?;
+        match output {
+            Some(output) => {
+                output.scope.verify_current()?;
+                self.prepare_output_mountpoint()?;
+                crate::copy::CopyDestination::bootstrap(
+                    &self.resources.root,
+                    &output.resources.root,
+                )
+                .artifact(directive, source)
+            }
+            None => {
+                crate::copy::CopyDestination::new(&self.resources.root).artifact(directive, source)
+            }
+        }
+    }
+    pub(crate) fn extract_artifact<'out>(
+        &mut self,
+        path: &str,
+        workspace: &'out super::Workspace,
+        budget: &crate::step::SetupBudget,
+    ) -> std::io::Result<crate::firmware::FirmwareFile<'out>> {
+        self.scope.verify_current()?;
+        crate::firmware::FirmwareFile::capture(
+            crate::firmware::FirmwareFile::open(&self.resources.root, path)?,
+            workspace,
+            budget,
+        )
+    }
     pub(crate) fn copy_with_output(
         &mut self,
         output: &mut Volume<'_, '_, '_, Mounted>,
