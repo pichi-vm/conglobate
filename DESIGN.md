@@ -259,9 +259,10 @@ mounted repository at `/run/pichi/repo`, resolves `ref` to a commit, and uses
 single commit object. Accept a full object id (hex matching `object_format`) or a
 ref name; peel annotated tags to the commit. Reject abbreviated object ids,
 missing refs, and non-commit tips. The resolved commit is the inventory identity;
-optional `location`, when present, is recorded only as inventory
-`context.repository` (provenance locator), not as authenticated identity. The
-host `ref` string itself is not a separate inventory field.
+optional `location`, when present, is recorded as inventory
+`context.repository` (provenance locator); when absent, record the fixed mount
+path `/run/pichi/repo`. Neither is an authenticated identity. The host `ref`
+string itself is not a separate inventory field — only the resolved commit is.
 
 **Wire decoding / failure rules (v0):**
 
@@ -279,13 +280,14 @@ host `ref` string itself is not a separate inventory field.
   recipe/lock/`ref`.
 
 **Output mount:** `/run/pichi/output` is an empty writable virtiofs mount supplied
-by the host (not a path Conglobate creates). Conglobate stages privately inside
-that empty mount and publishes layout entries (`blobs/`, `oci-layout`,
-`index.json`, `inventory.cbor`, and any other exported roots) into the mount
-root with no-replace semantics. Fail if the mount is missing, not a directory,
-or non-empty before publication. This is distinct from CLI `--output`, which
-names a new directory that must not already exist (see [§11.1](#111-inventory-schema)
-finalization and [§14.2](#142-resolve-and-verify-all-supplied-inputs-before-execution)).
+by the host (not a path Conglobate creates). Conglobate stages privately in a
+temporary child directory on that mount, then publishes by moving each top-level
+layout entry (`blobs/`, `oci-layout`, `index.json`, `inventory.cbor`, and any
+other exported roots) into the mount root with no-replace semantics (refuse if
+any destination name already exists). Fail if the mount is missing, not a
+directory, or non-empty before publication. This is distinct from CLI `--output`,
+which names a new directory that must not already exist (see [§11.1](#111-inventory-schema)
+finalization / publication and [§14.2](#142-resolve-and-verify-all-supplied-inputs-before-execution)).
 
 ## 2. Standalone CLI
 
@@ -1066,10 +1068,12 @@ OCI consumers use `result/` directly. Attestation and any additional evidence
 binding the inventory bytes belong to the appliance, as specified in section 11.3.
 
 Include every blob referenced by the output image, including inherited blobs
-from the cache. Import must not require the original cache. The destination
-must not already exist, even if empty. Packaging validates structure and
-content identities before publishing the completed output directory.
-The final manifest describes all components and the final transformed DTB.
+from the cache. Import must not require the original cache. Packaging validates
+structure and content identities before publishing the completed layout.
+CLI `--output` names a destination that must not already exist, even if empty;
+the appliance `/run/pichi/output` mount is an exception — it pre-exists empty and
+receives layout entries as specified in §1.5 and §11.2. The final manifest
+describes all components and the final transformed DTB.
 
 ### 11.1 Inventory schema
 
@@ -1084,9 +1088,9 @@ builder:
   version: ...
   executable: {algorithm: sha256, digest: <bytes>}
 context:
-  repository: <local-path>
+  repository: <provenance-locator>   # CLI: local path; appliance: location or /run/pichi/repo
   object_format: sha1
-  commit: <bytes>
+  commit: <bytes>                    # resolved commit identity; host ref tip not stored
   subdirectory: project
   tree: <bytes>
 inputs:
@@ -1186,28 +1190,29 @@ Git object identities are byte strings. SHA-256 digests have 32 bytes; Git
 identities have 20 or 32 bytes according to `object_format`.
 
 The required top-level fields are `version`, `builder`, `context`, `inputs`,
-`execution`, and `outputs`, with the nested fields illustrated above. Version
-is 2 for the target schema described here. Consumers reject unknown fields,
-unsupported versions, duplicate keys, noncanonical encodings, and trailing data. Absent optional output roots
-and firmware digests are omitted. An input's `carapace_root` is also omitted
-when a firmware-only base passes through without execution; execution-tool
-inputs must have a 32-byte root. Such a base retains the `carapace-base` role,
-which identifies the selecting recipe, not a requirement that scutes exist.
-`outputs.scutes` and `inputs` are arrays,
-including when empty. Scutes are recorded in base-to-top chain order; inputs
-are sorted by reference, with unique sorted roles. Network steps occur in
+`execution`, and `outputs`, with the nested fields illustrated above. Version is 3 for the target schema described here (the example in §11.1). Consumers
+reject unknown fields, unsupported versions, duplicate keys, noncanonical
+encodings, and trailing data. Absent optional output roots and firmware digests
+are omitted. An input's `carapace_root` is also omitted when a firmware-only base
+passes through without execution; execution-tool inputs must have a 32-byte root.
+Such a base retains the `carapace-base` role, which identifies the selecting
+recipe, not a requirement that scutes exist. `outputs.scutes` and `inputs` are
+arrays, including when empty. Scutes are recorded in base-to-top chain order;
+inputs are sorted by reference, with unique sorted roles. Network steps occur in
 pipeline and directive order.
 
-The single-recipe design replaces version one's `execution.recipes` map with
-explicit `execution.recipe` and `execution.lock` path/content records, and
-replaces per-file network-step identifiers with `stage`. This requires a schema
-version change; the existing version-one implementation must not silently emit
-these fields as version one. Version three additionally records effective environment-supplied UID/GID
-mappings in execution.id_mappings. Emit and validate version three explicitly.
-The transform record adds a
-required boolean `default_skipped`, indicating that the implicit default
-encountered no DTB or no bootargs property; an authored transform always records
-false for this field. `target_present` records whether a DTB was supplied.
+Version three is the complete current inventory shape. Relative to version one it
+replaces `execution.recipes` with explicit `execution.recipe` and
+`execution.lock` path/content records, replaces per-file network-step identifiers
+with `stage`, records effective environment-supplied UID/GID mappings in
+`execution.id_mappings`, and uses formatter receipts with `profile` /
+`profile_digest` instead of host-runtime `executable` / `runtime` fields. Emit
+and validate version three explicitly; do not silently emit these fields as
+version one. Version two is not a supported emit or accept target. The transform
+record adds a required boolean `default_skipped`, indicating that the implicit
+default encountered no DTB or no bootargs property; an authored transform always
+records false for this field. `target_present` records whether a DTB was
+supplied.
 For `authored`, the transform digest is the SHA-256 of the exact committed
 recipe bytes containing that section (also identified by `execution.recipe`).
 This binds the section without inventing a YAML reserialization. For `builtin`,
@@ -1215,12 +1220,28 @@ it is the SHA-256 of the builder's exact built-in sequence bytes, including when
 the default is skipped. Changes to those bytes change the recorded identity.
 `source` is `builtin` or `authored`. Input roles are `bootstrap-tools`,
 `carapace-base`, and `firmware-tools`; scute origins are `inherited` or
-`produced`. The builder record hashes the running executable. Local repository
-and context paths are provenance locators, not additional trust anchors.
+`produced`. The builder record hashes the running executable. `context.repository` is a provenance locator string, not a trust
+anchor: on the CLI it is the local repository path; in the appliance it is the
+optional CBOR `location` when present, otherwise the fixed mount path
+`/run/pichi/repo`. The host-requested `ref` tip is not stored in inventory —
+authenticated identity is solely the resolved `context.commit` (and tree).
 
 Finalization checks inventory output identities against the finalized manifest
-and validates every referenced blob before publication. Output is staged under
-a temporary sibling directory and published using an atomic no-replace rename.
+and validates every referenced blob before publication. Publication differs by
+destination:
+
+- **CLI `--output`:** stage under a temporary sibling of the named destination,
+  then publish the completed directory with an atomic no-replace rename onto a
+  path that must not already exist.
+- **Appliance `/run/pichi/output`:** the virtiofs mount root already exists and
+  must be empty at start. Stage privately in a temporary child directory on that
+  same mount, then publish by moving each top-level layout entry (`oci-layout`,
+  `index.json`, `blobs/`, `inventory.cbor`, …) into the mount root with
+  no-replace semantics (refuse if any destination entry already exists). The
+  temporary child is removed after a successful publish. Virtiofs rename within
+  the mount is sufficient for this move-children publish; a whole-mount rename
+  is neither required nor possible.
+
 The resulting layout includes the canonical empty config blob when referenced;
 replaced, unreferenced blobs are not exported.
 
