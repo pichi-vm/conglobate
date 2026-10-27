@@ -36,8 +36,9 @@ impl<'w> LoopAttachment<'w> {
     }
     /// Flush and confirm unbound state before returning writable file authority.
     /// clear() alone can mean deferred detachment, so it is not sufficient.
-    /// A shared BSD lock held by a udev probe is drained first. An opener that
-    /// does not hold that lock still fails this call.
+    /// A shared BSD lock held by a udev probe is drained until a fixed deadline.
+    /// An opener that does not hold that lock, or a shared lock that outlives
+    /// the deadline, still fails this call.
     pub(crate) fn detach(self) -> io::Result<Scratch<'w>> {
         self.device.close().map_err(|(source, device)| {
             drop(device);
