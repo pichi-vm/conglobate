@@ -20,6 +20,7 @@ pub(crate) use setup::{CommandSetup, GatedCommandSetup, GatedRootSetup};
 pub(crate) use user::{IdMappings, IdRange, Mapped, UserNamespace};
 mod root;
 mod runtime;
+mod shell;
 pub(crate) use devices::CommandDevices;
 use nix::sched::{CloneFlags, setns, unshare};
 pub(crate) use root::{CommandRoot, RestrictedCommand};
