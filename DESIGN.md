@@ -241,6 +241,10 @@ Product assumptions for the guest:
 5. Appliance image hardcodes (not CBOR fields): UID/GID maps, the network
    namespace path used when networking is enabled, and the resolver file path.
    Formatting tools live in the image; see [§2](#2-standalone-cli).
+6. **Guest exit.** After `conglobate appliance` exits, success or failure, the
+   oneshot powers the VM off so the launcher is not left at a login prompt.
+   Appliance stdout and stderr are mirrored to the kernel console
+   (`console=hvc0`) and the journal.
 
 ### 1.5 Appliance build-port CBOR
 

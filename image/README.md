@@ -35,7 +35,9 @@ treat virtiofs as first-class, so this image keeps the modules itself.
   - tag `cache` → `/run/pichi/cache` (`Type=virtiofs`, read-only)
   - tag `output` → `/run/pichi/output` (`Type=virtiofs`, read-write)
 - `/usr/bin/conglobate` is the release binary. `conglobate-build.service` is a
-  oneshot whose `ExecStart` is `conglobate appliance`.
+  oneshot whose `ExecStart` is `conglobate appliance`. When that process exits,
+  success or failure, the unit powers the VM off. Appliance stdout and stderr
+  go to the journal and to the kernel console (`console=hvc0`).
 - `e2fsprogs` provides image-resident `mke2fs` (standard paths, `/usr/sbin/mke2fs`
   first). The engine still captures that binary and its `ldd` dependencies from
   the guest root. There is no host formatter path.
