@@ -9,7 +9,7 @@ Description=Pichi build virtiofs (output → /run/pichi/output)
 DefaultDependencies=no
 Conflicts=umount.target
 Before=local-fs.target conglobate-build.service
-After=systemd-remount-fs.service
+After=systemd-remount-fs.service systemd-modules-load.service
 
 [Mount]
 What=output
