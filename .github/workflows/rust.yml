@@ -1,0 +1,38 @@
+name: Rootless tests
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_TERM_COLOR: always
+      RUSTUP_TOOLCHAIN: '1.94.0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Install build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev
+          rustup toolchain install 1.94.0 --profile minimal
+      - name: Run rootless tests
+        run: cargo test --locked --all-targets
+      - name: Compile internal VM fixtures
+        run: cargo check --locked --features test-fixtures --bin conglobate-lifecycle-tests
