@@ -10,7 +10,7 @@
 use ciborium::Value;
 use std::{
     fs,
-    io::{self, Read, Write},
+    io::{self, Write},
     path::Path,
 };
 
@@ -87,7 +87,9 @@ pub(crate) fn write_build_input_request(file: &mut impl Write) -> Result<(), Con
 /// Read one self-delimiting CBOR value from the console (host → guest).
 ///
 /// Does not read to EOF: the host may leave the port open after the response.
-pub(crate) fn read_cbor_value(file: &mut impl Read) -> Result<Value, ConsoleError> {
+/// Test helper: production reads via [`super::request::ApplianceRequest::decode_response`].
+#[cfg(test)]
+pub(crate) fn read_cbor_value(file: &mut impl std::io::Read) -> Result<Value, ConsoleError> {
     ciborium::from_reader(file)
         .map_err(|error| ConsoleError::Io(io::Error::other(error.to_string())))
 }

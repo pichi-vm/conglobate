@@ -31,6 +31,7 @@ pub(crate) enum ApplianceRequestError {
     InvalidType(&'static str),
     #[error("appliance CBOR field {0} is empty or contains NUL")]
     InvalidString(&'static str),
+    #[cfg(test)]
     #[error("appliance CBOR has trailing bytes after the response map")]
     TrailingBytes,
     #[error("appliance CBOR protocol version must be 1")]
@@ -88,6 +89,9 @@ impl ApplianceRequest {
     }
 
     /// Decode a complete response buffer (one map, no trailing bytes).
+    ///
+    /// Test helper: the appliance path uses [`Self::decode_response`] on the live port.
+    #[cfg(test)]
     pub(crate) fn decode(bytes: &[u8]) -> Result<Self, ApplianceRequestError> {
         let mut cursor = std::io::Cursor::new(bytes);
         let request = Self::decode_response(&mut cursor)?;
