@@ -75,6 +75,18 @@ impl<A: Access> LoopDevice<A> {
     }
     pub(super) fn close(self) -> Result<(), (io::Error, Self)> {
         let result = (|| -> io::Result<()> {
+            // systemd-udevd holds LOCK_SH for a whole blkid probe and rearms
+            // that probe on IN_CLOSE_WRITE. Device-mapper's last close of this
+            // loop is one of those writes, so a probe is usually in progress
+            // here and is a real extra opener. The exclusive lock waits for it
+            // to finish and stops a new probe from opening the node. An opener
+            // that never takes the shared lock is unaffected: LOOP_CLR_FD enters
+            // rundown only when this fd is the sole opener, and status stays
+            // successful until then. Success still requires that ENXIO.
+            rustix::fs::flock(
+                self.device.as_ref(),
+                rustix::fs::FlockOperation::LockExclusive,
+            )?;
             A::flush(self.device.as_ref())?;
             lodown::Device::from(self.device.as_ref().try_clone()?).clear()?;
             match self.device.status() {
@@ -111,6 +123,44 @@ impl Seek for LoopDevice<Writable> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::{
+        fs::OpenOptions,
+        os::fd::AsRawFd,
+        path::PathBuf,
+        sync::mpsc,
+        thread,
+        time::{Duration, Instant},
+    };
+
+    fn attach_writable() -> Option<LoopDevice<Writable>> {
+        let backing = tempfile::tempfile().unwrap();
+        backing.set_len(4096).unwrap();
+        // EPERM/EACCES: rootless CI has no loop-control authority. The kernel
+        // retains the backing reference taken by LOOP_CONFIGURE.
+        match LoopDevice::<Writable>::attach(&backing) {
+            Ok(device) => Some(device),
+            Err(error) if matches!(error.raw_os_error(), Some(1) | Some(13)) => None,
+            Err(error) => panic!("attach loop: {error}"),
+        }
+    }
+
+    fn node_path(device: &LoopDevice<Writable>) -> PathBuf {
+        std::fs::read_link(format!(
+            "/proc/self/fd/{}",
+            device.device.as_ref().as_raw_fd()
+        ))
+        .unwrap()
+    }
+
+    fn assert_unbound(path: &std::path::Path) {
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path)
+            .unwrap();
+        let error = lodown::Device::from(file).status().unwrap_err();
+        assert_eq!(error.raw_os_error(), Some(6), "{error}");
+    }
 
     #[test]
     fn invalid_backing_lengths_fail_before_loop_control_access() {
@@ -126,5 +176,75 @@ mod tests {
                 assert!(error.to_string().contains("4096-byte blocks"));
             }
         }
+    }
+
+    #[test]
+    fn sole_owner_detach_confirms_unbound_loop() {
+        let Some(device) = attach_writable() else {
+            return;
+        };
+        let path = node_path(&device);
+        device.close().expect("sole owner detach");
+        assert_unbound(&path);
+    }
+
+    #[test]
+    fn shared_probe_lock_is_drained_before_unbound_detach() {
+        let Some(device) = attach_writable() else {
+            return;
+        };
+        let path = node_path(&device);
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let probe_path = path.clone();
+        let probe = thread::spawn(move || {
+            let held = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&probe_path)
+                .unwrap();
+            rustix::fs::flock(&held, rustix::fs::FlockOperation::LockShared).unwrap();
+            ready_tx.send(()).unwrap();
+            thread::sleep(Duration::from_millis(300));
+        });
+        ready_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        let started = Instant::now();
+        device.close().expect("detach after shared probe");
+        assert!(
+            started.elapsed() >= Duration::from_millis(200),
+            "detach returned before the shared probe released the device"
+        );
+        assert_unbound(&path);
+        probe.join().unwrap();
+    }
+
+    #[test]
+    fn nonlocking_holder_stays_busy() {
+        let Some(device) = attach_writable() else {
+            return;
+        };
+        let path = node_path(&device);
+        let holder = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&path)
+            .unwrap();
+        let (tx, rx) = mpsc::channel();
+        thread::spawn(move || {
+            tx.send(match device.close() {
+                Ok(()) => None,
+                Err((error, returned)) => {
+                    drop(returned);
+                    Some(error)
+                }
+            })
+            .unwrap();
+        });
+        let error = rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("detach blocked on a non-locking holder")
+            .expect("non-locking holder must keep detach busy");
+        assert_eq!(error.kind(), io::ErrorKind::ResourceBusy);
+        assert!(error.to_string().contains("live holder"));
+        drop(holder);
     }
 }
