@@ -84,36 +84,41 @@ impl RuntimeTargets {
     /// Open `path` as a directory mount point. A missing final component is
     /// created on the writable image: bare roots (the context-recipe smoke
     /// carapace has neither `/dev` nor `/proc` nor `/sys`) otherwise fail
-    /// `openat2` with `ENOENT` before any command runs. Existing symlinks and
+    /// `openat2` with `ENOENT` before any command runs. Created mount points
+    /// are mode `0755`; a `chmodat` failure is fatal so a restrictive umask
+    /// cannot leave them non-traversable. Existing symlinks and
     /// non-directories are left alone and still fail closed.
     fn directory(root: &File, path: &str) -> io::Result<File> {
-        let opened = match Self::open_directory(root, path) {
+        match Self::open_directory(root, path) {
             Ok(file) => Ok(file),
             Err(rustix::io::Errno::NOENT) => {
                 match rustix::fs::mkdirat(root, path, Mode::from_raw_mode(0o755)) {
                     Ok(()) => {
-                        // umask must not leave the mount point non-traversable.
-                        let _ = rustix::fs::chmodat(
+                        rustix::fs::chmodat(
                             root,
                             path,
                             Mode::from_raw_mode(0o755),
                             AtFlags::empty(),
-                        );
+                        )
+                        .map_err(|error| Self::target_error(path, error))?;
                         Self::open_directory(root, path)
+                            .map_err(|error| Self::target_error(path, error))
                     }
                     // A dangling symlink or other non-directory occupies the name.
-                    Err(rustix::io::Errno::EXIST) => Self::open_directory(root, path),
-                    Err(error) => Err(error),
+                    Err(rustix::io::Errno::EXIST) => Self::open_directory(root, path)
+                        .map_err(|error| Self::target_error(path, error)),
+                    Err(error) => Err(Self::target_error(path, error)),
                 }
             }
-            Err(error) => Err(error),
-        };
-        opened.map_err(|error| {
-            io::Error::new(
-                io::Error::from(error).kind(),
-                format!("command runtime target /{path}: {error}"),
-            )
-        })
+            Err(error) => Err(Self::target_error(path, error)),
+        }
+    }
+
+    fn target_error(path: &str, error: rustix::io::Errno) -> io::Error {
+        io::Error::new(
+            io::Error::from(error).kind(),
+            format!("command runtime target /{path}: {error}"),
+        )
     }
 
     fn open_directory(root: &File, path: &str) -> Result<File, rustix::io::Errno> {
