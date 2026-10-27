@@ -1,7 +1,10 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Immutable committed objects, captured without checkout filters or hooks.
+//! Immutable committed objects with verify-on-use blob reads.
+//! Tree structure and symlink targets are resolved at capture; regular file
+//! bytes are loaded and identity-checked only when read or copied.
+mod lazy;
 mod read;
 pub(crate) use read::ContextFile;
 
@@ -10,6 +13,7 @@ use gix::{ObjectId, object::tree::EntryKind};
 use std::{
     collections::{BTreeMap, BTreeSet},
     ffi::OsStr,
+    fmt,
     os::unix::ffi::OsStrExt,
     path::{Path, PathBuf},
 };
@@ -29,9 +33,13 @@ impl ContextError {
     }
 }
 
-/// Repository authority is used only during capture, never retained by the result.
-#[derive(Debug)]
+/// Retained object-store handle for verify-on-use blob loads.
 struct ObjectReader(gix::Repository);
+impl fmt::Debug for ObjectReader {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("ObjectReader")
+    }
+}
 impl ObjectReader {
     fn open(path: &Path) -> Result<Self, ContextError> {
         let repository = gix::open::Options::isolated()
@@ -67,12 +75,23 @@ impl ObjectReader {
         }
         Ok(tree)
     }
+    pub(super) fn blob(&self, id: ObjectId) -> Result<Vec<u8>, ContextError> {
+        let mut object = self
+            .verified(id)?
+            .try_into_blob()
+            .map_err(ContextError::git)?;
+        Ok(std::mem::take(&mut object.data))
+    }
 }
 
 #[derive(Debug)]
 pub(crate) enum ContextEntry {
     Directory,
-    File { executable: bool, bytes: Vec<u8> },
+    /// Blob oid only; bytes are loaded through the retained reader on use.
+    File {
+        executable: bool,
+        oid: ObjectId,
+    },
     Symlink(Vec<u8>),
 }
 
@@ -80,6 +99,7 @@ pub(crate) enum ContextEntry {
 pub(crate) struct CapturedContext {
     commit: ObjectId,
     subtree: ObjectId,
+    reader: ObjectReader,
     entries: BTreeMap<PathBuf, ContextEntry>,
 }
 impl CapturedContext {
@@ -96,11 +116,13 @@ impl CapturedContext {
                 "commit object format differs from repository",
             ));
         }
-        let commit_object = reader
-            .verified(commit_id)?
-            .try_into_commit()
-            .map_err(ContextError::git)?;
-        let mut subtree = commit_object.tree_id().map_err(ContextError::git)?.detach();
+        let mut subtree = {
+            let commit_object = reader
+                .verified(commit_id)?
+                .try_into_commit()
+                .map_err(ContextError::git)?;
+            commit_object.tree_id().map_err(ContextError::git)?.detach()
+        };
         for name in context.as_ref().iter() {
             let tree = reader.tree(subtree)?;
             let decoded = tree.decode().map_err(ContextError::git)?;
@@ -134,29 +156,17 @@ impl CapturedContext {
                     EntryKind::Commit => {
                         return Err(ContextError::Invalid("submodules are unsupported"));
                     }
-                    kind => {
-                        let mut object = reader
-                            .verified(entry.oid.to_owned())?
-                            .try_into_blob()
-                            .map_err(ContextError::git)?;
-                        let bytes = std::mem::take(&mut object.data);
-                        if bytes.starts_with(b"version https://git-lfs.github.com/spec/v1\n")
-                            || bytes.starts_with(b"version https://git-lfs.github.com/spec/v1\r\n")
-                        {
-                            return Err(ContextError::Invalid("Git LFS pointers are unsupported"));
+                    EntryKind::Link => {
+                        let bytes = reader.blob(entry.oid.to_owned())?;
+                        if bytes.is_empty() || bytes.contains(&0) {
+                            return Err(ContextError::Invalid("invalid symlink contents"));
                         }
-                        if kind == EntryKind::Link {
-                            if bytes.is_empty() || bytes.contains(&0) {
-                                return Err(ContextError::Invalid("invalid symlink contents"));
-                            }
-                            ContextEntry::Symlink(bytes)
-                        } else {
-                            ContextEntry::File {
-                                executable: kind == EntryKind::BlobExecutable,
-                                bytes,
-                            }
-                        }
+                        ContextEntry::Symlink(bytes)
                     }
+                    kind => ContextEntry::File {
+                        executable: kind == EntryKind::BlobExecutable,
+                        oid: entry.oid.to_owned(),
+                    },
                 };
                 if entries.insert(path, value).is_some() {
                     return Err(ContextError::Invalid("duplicate tree entry"));
@@ -166,6 +176,7 @@ impl CapturedContext {
         Ok(Self {
             commit: commit_id,
             subtree,
+            reader,
             entries,
         })
     }

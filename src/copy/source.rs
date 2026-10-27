@@ -222,7 +222,7 @@ mod tests {
                     "dir/file".into(),
                     ContextEntry::File {
                         executable: true,
-                        bytes: b"committed".to_vec(),
+                        oid: gix::ObjectId::empty_blob(gix::hash::Kind::Sha1),
                     },
                 ),
                 (
@@ -247,7 +247,7 @@ mod tests {
                     "elsewhere".into(),
                     ContextEntry::File {
                         executable: false,
-                        bytes: vec![],
+                        oid: gix::ObjectId::empty_blob(gix::hash::Kind::Sha1),
                     },
                 ),
             ]))
@@ -301,7 +301,7 @@ mod tests {
                 name.into(),
                 ContextEntry::File {
                     executable: false,
-                    bytes: vec![],
+                    oid: gix::ObjectId::empty_blob(gix::hash::Kind::Sha1),
                 },
             );
         }

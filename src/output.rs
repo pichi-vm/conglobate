@@ -5,8 +5,8 @@
 mod assembly;
 pub(crate) use assembly::AssembledImage;
 
+use crate::artifact::Digest;
 use crate::cache::{Cache, CacheError};
-use pichi_artifact::Digest;
 use std::{
     ffi::OsString,
     fs::{self, File},
@@ -15,22 +15,36 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// Owns a temporary sibling of the requested destination, anchored to its
-/// parent descriptor. No unverified cache stream reaches the published name.
-/// The build coordinator must validate the complete layout before publication.
+/// How staged content is published onto the destination path.
+#[derive(Debug)]
+enum PublishKind {
+    /// Destination must not exist; rename the staging directory to `name`.
+    RenameDirectory { name: OsString },
+    /// Destination exists and was empty; move staging children into it.
+    MoveChildren,
+}
+
+/// Owns private staging for an output destination. No unverified cache stream
+/// reaches a published name. The coordinator must validate the layout before
+/// publication.
 #[derive(Debug)]
 pub(crate) struct StagedDirectory {
     temporary: tempfile::TempDir,
     parent: File,
-    destination: OsString,
+    kind: PublishKind,
 }
 impl StagedDirectory {
-    /// Create private staging beside a new destination, anchored to its parent.
-    /// This does not validate an image or publish the destination.
+    /// Create private staging for `destination`.
+    ///
+    /// - If `destination` does not exist: stage as a sibling under its parent
+    ///   (CLI `--output` naming a new directory).
+    /// - If `destination` exists as an empty directory: stage inside it and
+    ///   publish layout entries into that directory (appliance empty virtiofs
+    ///   mount at `/run/pichi/output`).
     ///
     /// # Errors
-    /// Rejects a nameless/existing destination, an inaccessible or non-directory
-    /// parent, and failures to create private sibling storage.
+    /// Rejects a nameless destination, a non-empty or non-directory existing
+    /// path, an inaccessible parent, and staging-directory creation failures.
     pub(crate) fn create(destination: &Path) -> io::Result<Self> {
         let name = destination.file_name().ok_or_else(|| {
             io::Error::new(
@@ -42,34 +56,60 @@ impl StagedDirectory {
             .parent()
             .filter(|p| !p.as_os_str().is_empty())
             .unwrap_or(Path::new("."));
-        let parent = File::open(parent_path)?;
-        if !parent.metadata()?.is_dir() {
+        let parent_dir = File::open(parent_path)?;
+        if !parent_dir.metadata()?.is_dir() {
             return Err(io::Error::new(
                 io::ErrorKind::NotADirectory,
                 "output parent",
             ));
         }
-        match rustix::fs::statat(&parent, name, rustix::fs::AtFlags::SYMLINK_NOFOLLOW) {
-            Err(rustix::io::Errno::NOENT) => {}
-            Err(error) => return Err(error.into()),
+        match rustix::fs::statat(&parent_dir, name, rustix::fs::AtFlags::SYMLINK_NOFOLLOW) {
+            Err(rustix::io::Errno::NOENT) => {
+                let temporary = Self::new_staging(&parent_dir)?;
+                Ok(Self {
+                    temporary,
+                    parent: parent_dir,
+                    kind: PublishKind::RenameDirectory {
+                        name: name.to_owned(),
+                    },
+                })
+            }
+            Err(error) => Err(error.into()),
             Ok(_) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::AlreadyExists,
-                    "output exists",
-                ));
+                let meta = fs::symlink_metadata(destination)?;
+                if !meta.is_dir() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::AlreadyExists,
+                        "output exists",
+                    ));
+                }
+                let mut entries = fs::read_dir(destination)?;
+                if entries.next().transpose()?.is_some() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::AlreadyExists,
+                        "output exists",
+                    ));
+                }
+                let mount = File::open(destination)?;
+                let temporary = Self::new_staging(&mount)?;
+                Ok(Self {
+                    temporary,
+                    parent: mount,
+                    kind: PublishKind::MoveChildren,
+                })
             }
         }
+    }
+
+    fn new_staging(dir: &File) -> io::Result<tempfile::TempDir> {
         let temporary = tempfile::Builder::new()
             .prefix(".conglobate-output-")
             .permissions(fs::Permissions::from_mode(0o700))
-            .tempdir_in(format!("/proc/self/fd/{}", parent.as_raw_fd()))?;
+            .tempdir_in(format!("/proc/self/fd/{}", dir.as_raw_fd()))?;
         fs::create_dir_all(temporary.path().join("blobs/sha256"))?;
-        Ok(Self {
-            temporary,
-            parent,
-            destination: name.to_owned(),
-        })
+        Ok(temporary)
     }
+
     fn blob_path(&self, digest: &Digest) -> PathBuf {
         self.temporary
             .path()
@@ -156,28 +196,70 @@ impl StagedDirectory {
     pub(crate) fn write_inventory(&self, inventory: &[u8]) -> io::Result<()> {
         self.write_file(&self.temporary.path().join("inventory.cbor"), inventory)
     }
-    /// Atomic no-replacement filesystem operation, not a build-success receipt.
-    /// Failure discards private staging. No fallible operation is
-    /// performed after rename, so Err never means the destination was published.
+    /// Publish staged layout to the destination. Not a build-success receipt.
+    ///
+    /// New-directory mode uses one atomic no-replace rename of the staging
+    /// directory. Empty-mount mode moves each staging child into the mount with
+    /// no-replace; on a mid-loop failure it attempts to move published names
+    /// back into staging before returning Err.
     pub(crate) fn publish(self) -> io::Result<()> {
-        let result = rustix::fs::renameat_with(
-            &self.parent,
-            self.temporary
-                .path()
-                .file_name()
-                .expect("generated staging name"),
-            &self.parent,
-            &self.destination,
-            rustix::fs::RenameFlags::NOREPLACE,
-        );
-        match result {
-            Ok(()) => {
-                let _ = self.temporary.keep();
-                Ok(())
+        match &self.kind {
+            PublishKind::RenameDirectory { name } => {
+                let result = rustix::fs::renameat_with(
+                    &self.parent,
+                    self.temporary
+                        .path()
+                        .file_name()
+                        .expect("generated staging name"),
+                    &self.parent,
+                    name,
+                    rustix::fs::RenameFlags::NOREPLACE,
+                );
+                match result {
+                    Ok(()) => {
+                        let _ = self.temporary.keep();
+                        Ok(())
+                    }
+                    Err(error) => Err(error.into()),
+                }
             }
-            Err(error) => Err(error.into()),
+            PublishKind::MoveChildren => self.publish_children(),
         }
     }
+
+    fn publish_children(self) -> io::Result<()> {
+        let staging_dir = File::open(self.temporary.path())?;
+        let mut names: Vec<OsString> = fs::read_dir(self.temporary.path())?
+            .map(|entry| entry.map(|e| e.file_name()))
+            .collect::<io::Result<Vec<_>>>()?;
+        names.sort();
+        let mut published = Vec::new();
+        for name in &names {
+            match rustix::fs::renameat_with(
+                &staging_dir,
+                name.as_os_str(),
+                &self.parent,
+                name.as_os_str(),
+                rustix::fs::RenameFlags::NOREPLACE,
+            ) {
+                Ok(()) => published.push(name.clone()),
+                Err(error) => {
+                    for done in published.iter().rev() {
+                        let _ = rustix::fs::renameat(
+                            &self.parent,
+                            done.as_os_str(),
+                            &staging_dir,
+                            done.as_os_str(),
+                        );
+                    }
+                    return Err(error.into());
+                }
+            }
+        }
+        self.temporary.close()?;
+        Ok(())
+    }
+
     pub(crate) fn discard(self) -> io::Result<()> {
         self.temporary.close()
     }
@@ -268,5 +350,39 @@ mod tests {
             b"{}"
         );
         assert!(StagedDirectory::create(&moved.join("output")).is_err());
+    }
+
+    #[test]
+    fn empty_existing_directory_publishes_children_into_mount() {
+        let parent = tempfile::TempDir::new().unwrap();
+        let mount = parent.path().join("output");
+        fs::create_dir(&mount).unwrap();
+        let staged = StagedDirectory::create(&mount).unwrap();
+        staged.write_inventory(b"inv").unwrap();
+        staged.publish().unwrap();
+        assert_eq!(fs::read(mount.join("inventory.cbor")).unwrap(), b"inv");
+        assert!(mount.join("blobs/sha256").is_dir());
+        let leftover_staging = fs::read_dir(&mount)
+            .unwrap()
+            .filter_map(Result::ok)
+            .any(|e| {
+                e.file_name()
+                    .to_string_lossy()
+                    .starts_with(".conglobate-output-")
+            });
+        assert!(
+            !leftover_staging,
+            "staging directory must be removed after publish"
+        );
+    }
+
+    #[test]
+    fn non_empty_existing_directory_is_rejected() {
+        let parent = tempfile::TempDir::new().unwrap();
+        let mount = parent.path().join("output");
+        fs::create_dir(&mount).unwrap();
+        fs::write(mount.join("sentinel"), b"x").unwrap();
+        let error = StagedDirectory::create(&mount).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::AlreadyExists);
     }
 }

@@ -29,7 +29,9 @@ struct Cli {
 }
 #[derive(Debug, Subcommand)]
 enum Action {
-    Build(BuildArguments),
+    Build(Box<BuildArguments>),
+    /// Build-port appliance entry (request/response CBOR); no flags.
+    Appliance,
 }
 #[derive(Debug, Args)]
 struct BuildArguments {
@@ -57,8 +59,6 @@ struct BuildArguments {
     resolv_conf: Option<PathBuf>,
     #[arg(long)]
     network_namespace: Option<PathBuf>,
-    #[arg(long)]
-    formatter_runtime: Option<PathBuf>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CommitIdentity(Vec<u8>);
@@ -88,9 +88,80 @@ pub(crate) struct BuildRequest {
     output: PathBuf,
     resolv_conf: Option<PathBuf>,
     network_namespace: Option<PathBuf>,
-    formatter_runtime: Option<PathBuf>,
+    /// Optional provenance locator for inventory (e.g. appliance CBOR `location`).
+    /// Not used as Git identity; mount/path opens still use `repository`.
+    location: Option<String>,
 }
+#[derive(Debug)]
+pub(crate) enum CliCommand {
+    Build(Box<BuildRequest>),
+    Appliance,
+}
+
+/// Parse argv into the build or appliance product command.
+pub(crate) fn parse_cli<I, T>(arguments: I) -> Result<CliCommand, RequestError>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
+{
+    match Cli::try_parse_from(arguments)?.action {
+        Action::Build(raw) => Ok(CliCommand::Build(Box::new(BuildRequest::from_build_args(
+            *raw,
+        )?))),
+        Action::Appliance => Ok(CliCommand::Appliance),
+    }
+}
+
 impl BuildRequest {
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn from_parts(
+        id_mappings: Option<IdMappings>,
+        repository: PathBuf,
+        commit: CommitIdentity,
+        context: ContextDirectory,
+        recipe: ContextPath,
+        lock: ContextPath,
+        cache: PathBuf,
+        output: PathBuf,
+        resolv_conf: Option<PathBuf>,
+        network_namespace: Option<PathBuf>,
+    ) -> Self {
+        Self {
+            id_mappings,
+            repository,
+            commit,
+            context,
+            recipe,
+            lock,
+            cache,
+            output,
+            resolv_conf,
+            network_namespace,
+            location: None,
+        }
+    }
+
+    /// Record an optional inventory provenance locator without changing Git opens.
+    pub(crate) fn with_location(mut self, location: Option<String>) -> Self {
+        self.location = location;
+        self
+    }
+    fn from_build_args(raw: BuildArguments) -> Result<Self, RequestError> {
+        Ok(Self::from_parts(
+            raw.uid_map
+                .zip(raw.gid_map)
+                .map(|(uid, gid)| IdMappings::new(uid, gid)),
+            raw.repository,
+            CommitIdentity::try_from(raw.commit.as_str())?,
+            ContextDirectory::try_from(raw.context.as_path())?,
+            ContextPath::try_from(raw.recipe.as_path())?,
+            ContextPath::try_from(raw.lock.as_path())?,
+            raw.cache,
+            raw.output,
+            raw.resolv_conf,
+            raw.network_namespace,
+        ))
+    }
     /// Parse CLI arguments and validate commit syntax and context-relative paths.
     /// This does not open the repository/cache or verify their contents.
     ///
@@ -98,28 +169,22 @@ impl BuildRequest {
     /// Returns CLI diagnostics (including help/version requests), an invalid
     /// commit identity, or a path-validation error. Callers should use the CLI
     /// diagnostic's exit code to distinguish help/version from invalid input.
+    /// Test and lifecycle helper: parse argv as a build request only.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn parse_from<I, T>(arguments: I) -> Result<Self, RequestError>
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,
     {
-        let Action::Build(raw) = Cli::try_parse_from(arguments)?.action;
-        Ok(Self {
-            id_mappings: raw
-                .uid_map
-                .zip(raw.gid_map)
-                .map(|(uid, gid)| IdMappings::new(uid, gid)),
-            repository: raw.repository,
-            commit: CommitIdentity::try_from(raw.commit.as_str())?,
-            context: ContextDirectory::try_from(raw.context.as_path())?,
-            recipe: ContextPath::try_from(raw.recipe.as_path())?,
-            lock: ContextPath::try_from(raw.lock.as_path())?,
-            cache: raw.cache,
-            output: raw.output,
-            resolv_conf: raw.resolv_conf,
-            network_namespace: raw.network_namespace,
-            formatter_runtime: raw.formatter_runtime,
-        })
+        match parse_cli(arguments)? {
+            CliCommand::Build(request) => Ok(*request),
+            CliCommand::Appliance => {
+                Err(RequestError::Cli(clap::Command::new("conglobate").error(
+                    clap::error::ErrorKind::InvalidSubcommand,
+                    "use the appliance entrypoint via main",
+                )))
+            }
+        }
     }
     pub(crate) fn id_mappings(&self) -> Option<IdMappings> {
         self.id_mappings
@@ -145,13 +210,14 @@ impl BuildRequest {
     pub(crate) fn output(&self) -> &Path {
         &self.output
     }
-    pub(crate) fn formatter_runtime(&self) -> Option<&Path> {
-        self.formatter_runtime.as_deref()
-    }
     pub(crate) fn network_namespace(&self) -> Option<&Path> {
         self.network_namespace.as_deref()
     }
     pub(crate) fn resolv_conf(&self) -> Option<&Path> {
         self.resolv_conf.as_deref()
+    }
+    /// Inventory provenance locator when supplied (appliance CBOR `location`).
+    pub(crate) fn location(&self) -> Option<&str> {
+        self.location.as_deref()
     }
 }

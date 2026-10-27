@@ -15,4 +15,4 @@ mod execution;
 pub(crate) use execution::{FormatReceipt, FormattedSnapshot};
 
 mod manifest;
-pub(crate) use manifest::FormatterManifest;
+pub(crate) mod selection;

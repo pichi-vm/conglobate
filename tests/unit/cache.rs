@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+use crate::artifact::Digest;
 use conglobate::cache::Cache;
-use pichi_artifact::Digest;
 use std::path::PathBuf;
 
 struct Store(tempfile::TempDir);
@@ -79,11 +79,11 @@ fn opened_directory_authority_survives_rename_and_rejects_escape() {
 
 impl Store {
     fn manifest(&self) -> (Digest, Vec<u8>) {
-        let manifest = pichi_artifact::Manifest {
+        let manifest = crate::artifact::Manifest {
             schema_version: 2,
             media_type: "application/vnd.oci.image.manifest.v1+json".into(),
-            artifact_type: pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
-            config: pichi_artifact::ConfigDescriptor::canonical(),
+            artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
+            config: crate::artifact::ConfigDescriptor::canonical(),
             layers: Vec::new(),
             annotations: Default::default(),
         };
@@ -92,7 +92,7 @@ impl Store {
     }
     fn descriptor(&self, digest: &Digest, size: usize) -> serde_json::Value {
         serde_json::json!({"mediaType":"application/vnd.oci.image.manifest.v1+json",
-            "artifactType":pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+            "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
             "digest":digest.to_string(),"size":size,
             "platform":{"os":"pichi","architecture":conglobate::cache::HostArchitecture::current().unwrap().oci_name()}})
     }
@@ -192,7 +192,7 @@ impl Store {
         data: &[u8],
         parent: [u8; 32],
         compressed: bool,
-    ) -> (pichi_artifact::Layer, [u8; 32]) {
+    ) -> (crate::artifact::Layer, [u8; 32]) {
         let extent = conglobate::chain::ScuteExtent::new(data.len() as u64, &parent, None).unwrap();
         let root = extent.root(data).unwrap();
         let bytes = if compressed {
@@ -201,33 +201,33 @@ impl Store {
             data.to_vec()
         };
         let digest = self.put(&bytes);
-        let descriptor = pichi_artifact::ScuteDescriptor {
+        let descriptor = crate::artifact::ScuteDescriptor {
             digest: digest.to_string(),
             size: bytes.len() as u64,
-            annotations: pichi_artifact::ScuteAnnotations {
+            annotations: crate::artifact::ScuteAnnotations {
                 data_blocks: None,
                 salt: hex::encode(parent),
             },
         };
         (
             if compressed {
-                pichi_artifact::Layer::ScuteZstd(descriptor)
+                crate::artifact::Layer::ScuteZstd(descriptor)
             } else {
-                pichi_artifact::Layer::Scute(descriptor)
+                crate::artifact::Layer::Scute(descriptor)
             },
             root,
         )
     }
     fn chain_image(
         &self,
-        layers: Vec<pichi_artifact::Layer>,
+        layers: Vec<crate::artifact::Layer>,
         root: [u8; 32],
     ) -> conglobate::cache::ResolvedImage {
-        let manifest = pichi_artifact::Manifest {
+        let manifest = crate::artifact::Manifest {
             schema_version: 2,
             media_type: "application/vnd.oci.image.manifest.v1+json".into(),
-            artifact_type: pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
-            config: pichi_artifact::ConfigDescriptor::canonical(),
+            artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
+            config: crate::artifact::ConfigDescriptor::canonical(),
             layers,
             annotations: [
                 ("algo", "sha256"),
@@ -282,7 +282,7 @@ fn duplicate_disconnected_and_wrong_root_chains_fail() {
 fn scute_digest_and_decoded_block_count_are_both_enforced() {
     let store = Store::new();
     let (mut layer, root) = store.scute(&[7; 8192], [0; 32], true);
-    let pichi_artifact::Layer::ScuteZstd(descriptor) = &mut layer else {
+    let crate::artifact::Layer::ScuteZstd(descriptor) = &mut layer else {
         unreachable!()
     };
     descriptor.annotations.data_blocks = Some(1);
@@ -320,30 +320,30 @@ fn compressed_scutes_reject_invalid_streams_even_with_matching_oci_digests() {
         // Digest the invalid compressed bytes themselves so decoder validation,
         // not a stale OCI digest, must reject this fixture.
         let digest = store.put(&bytes);
-        let descriptor = pichi_artifact::ScuteDescriptor {
+        let descriptor = crate::artifact::ScuteDescriptor {
             digest: digest.to_string(),
             size: bytes.len() as u64,
-            annotations: pichi_artifact::ScuteAnnotations {
+            annotations: crate::artifact::ScuteAnnotations {
                 data_blocks: Some(2),
                 salt: hex::encode([0; 32]),
             },
         };
-        let image = store.chain_image(vec![pichi_artifact::Layer::ScuteZstd(descriptor)], root);
+        let image = store.chain_image(vec![crate::artifact::Layer::ScuteZstd(descriptor)], root);
         assert!(store.open().verify_chain(&image).is_err());
     }
     // Concatenated valid frames describe one complete decoded scute stream.
     let mut frames = zstd::stream::encode_all(&data[..4096], 1).unwrap();
     frames.extend(zstd::stream::encode_all(&data[4096..], 1).unwrap());
     let digest = store.put(&frames);
-    let descriptor = pichi_artifact::ScuteDescriptor {
+    let descriptor = crate::artifact::ScuteDescriptor {
         digest: digest.to_string(),
         size: frames.len() as u64,
-        annotations: pichi_artifact::ScuteAnnotations {
+        annotations: crate::artifact::ScuteAnnotations {
             data_blocks: Some(2),
             salt: hex::encode([0; 32]),
         },
     };
-    let image = store.chain_image(vec![pichi_artifact::Layer::ScuteZstd(descriptor)], root);
+    let image = store.chain_image(vec![crate::artifact::Layer::ScuteZstd(descriptor)], root);
     assert_eq!(
         store.open().verify_chain(&image).unwrap().unwrap().root(),
         &root
@@ -383,7 +383,7 @@ fn invalid_manifest_retains_dependency_error_source() {
     let index = store.index(vec![store.descriptor(&digest, bytes.len())]);
     let error = store.open().resolve(index).unwrap_err();
     let source = std::error::Error::source(&error).unwrap();
-    assert!(source.downcast_ref::<pichi_artifact::Error>().is_some());
+    assert!(source.downcast_ref::<crate::artifact::Error>().is_some());
     assert_eq!(
         error.to_string(),
         format!("invalid artifact manifest: {source}")

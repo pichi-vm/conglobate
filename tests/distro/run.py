@@ -108,18 +108,10 @@ cmp /work/network-before /work/network-after
 echo NETWORK_ENVIRONMENT_RETAINED_PASS"""
             if service:
                 network_cleanup = 'wait "$network_capture"\n' + network_cleanup
-        # Enumerate only the trusted host formatter, never an image executable.
-        formatter = Path(shutil.which('mke2fs'))
-        formatter_files = {'usr/bin/mke2fs'}
-        for line in subprocess.check_output(['ldd', str(formatter)], text=True).splitlines():
-            if 'not found' in line:
-                raise RuntimeError('incomplete trusted formatter runtime')
-            match = re.search(r'(/\S+)', line)
-            if match:
-                formatter_files.add(match.group(1).lstrip('/'))
-        (self.root / 'formatter.json').write_text(json.dumps({
-            'root': '/', 'executable': 'usr/bin/mke2fs', 'files': sorted(formatter_files),
-        }, indent=2) + '\n')
+        # TRANSITIONAL: GuestRuntime.TOOLS still stages host mke2fs into the VM
+        # root. Conglobate now discovers it via the internal formatter map
+        # (no --formatter-runtime / formatter.json TEE). Drop host-tool staging
+        # when the appliance image carries mke2fs itself.
         shutil.copytree(self.arguments.cache, self.root / 'cache')
         context = self.root / 'context'
         shutil.copytree(self.arguments.recipe.resolve().parent, context)
@@ -212,7 +204,7 @@ RULES
 nft list table ip build_environment > /work/network-before
 {network_startup}
 {probe_control}
-if conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --uid-map 200000:131072 --gid-map 400000:131072 --resolv-conf /etc/resolv.conf --network-namespace {namespace_input} --formatter-runtime /formatter.json; then
+if conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --uid-map 200000:131072 --gid-map 400000:131072 --resolv-conf /etc/resolv.conf --network-namespace {namespace_input}; then
     {fault_observation or ':'}
     {network_cleanup}
 else

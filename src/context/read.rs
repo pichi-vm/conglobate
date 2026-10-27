@@ -10,23 +10,24 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// A read borrow pins the captured bytes for its entire lifetime.
+/// Owned bytes from a verify-on-use blob load.
 #[derive(Debug)]
-pub(crate) struct ContextFile<'a> {
-    bytes: &'a [u8],
+pub(crate) struct ContextFile {
+    bytes: Vec<u8>,
 }
-impl ContextFile<'_> {
+impl ContextFile {
     pub(crate) fn bytes(&self) -> &[u8] {
-        self.bytes
+        &self.bytes
     }
     pub(crate) fn text(&self) -> Result<&str, ContextError> {
-        std::str::from_utf8(self.bytes)
+        std::str::from_utf8(&self.bytes)
             .map_err(|_| ContextError::Invalid("selected file is not UTF-8"))
     }
 }
 impl CapturedContext {
     /// Resolve links against captured objects, never the caller's filesystem.
-    pub(crate) fn read(&self, path: &ContextPath) -> Result<ContextFile<'_>, ContextError> {
+    /// Regular file blobs are verified when this returns.
+    pub(crate) fn read(&self, path: &ContextPath) -> Result<ContextFile, ContextError> {
         let mut pending: VecDeque<OsString> = path.as_ref().iter().map(OsString::from).collect();
         let mut resolved = PathBuf::new();
         let mut followed = 0;
@@ -74,7 +75,9 @@ impl CapturedContext {
             }
         }
         match self.entries.get(&resolved) {
-            Some(ContextEntry::File { bytes, .. }) => Ok(ContextFile { bytes }),
+            Some(ContextEntry::File { oid, .. }) => Ok(ContextFile {
+                bytes: self.blob(*oid)?,
+            }),
             _ => Err(ContextError::Invalid(
                 "selected context path is not a regular file",
             )),

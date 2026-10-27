@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use super::StagedDirectory;
+use crate::artifact::Digest;
 use crate::{
     cache::{Cache, CacheError, ResolvedImage, VerifiedChain},
     image::IndexDigest,
 };
-use pichi_artifact::Digest;
 
 /// A self-contained staged image whose manifest, referenced content and chain
 /// were verified from the output storage. No mutable staging authority escapes.
@@ -90,7 +90,7 @@ impl AssembledImage {
                 for (index, layer) in base.manifest().layers.iter().enumerate() {
                     if matches!(
                         layer,
-                        pichi_artifact::Layer::Pmi(_) | pichi_artifact::Layer::Dtb(_)
+                        crate::artifact::Layer::Pmi(_) | crate::artifact::Layer::Dtb(_)
                     ) {
                         continue;
                     }
@@ -106,8 +106,8 @@ impl AssembledImage {
             } else {
                 staged.store_blob(b"{}")?;
                 serde_json::json!({"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json",
-                    "artifactType":pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
-                    "config":pichi_artifact::ConfigDescriptor::canonical(),"layers":[]})
+                    "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+                    "config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
             };
             let mut parent = match base {
                 Some(image) => image.manifest().carapace_verity_hash(),
@@ -126,7 +126,7 @@ impl AssembledImage {
                 manifest["layers"]
                     .as_array_mut()
                     .ok_or(CacheError::Invalid("missing layers"))?
-                    .push(serde_json::to_value(pichi_artifact::Layer::Scute(
+                    .push(serde_json::to_value(crate::artifact::Layer::Scute(
                         scute.descriptor().clone(),
                     ))?);
                 parent = Some(*scute.root());
@@ -143,15 +143,15 @@ impl AssembledImage {
                 .dtb()
                 .bytes()
                 .ok_or(CacheError::Invalid("missing finalized DTB"))?;
-            let dtb = pichi_artifact::DtbDescriptor {
+            let dtb = crate::artifact::DtbDescriptor {
                 digest: staged.store_blob(bytes)?.to_string(),
                 size: bytes.len() as u64,
             };
             let layers = manifest["layers"]
                 .as_array_mut()
                 .ok_or(CacheError::Invalid("missing output layers"))?;
-            layers.push(serde_json::to_value(pichi_artifact::Layer::Pmi(pmi))?);
-            layers.push(serde_json::to_value(pichi_artifact::Layer::Dtb(dtb))?);
+            layers.push(serde_json::to_value(crate::artifact::Layer::Pmi(pmi))?);
+            layers.push(serde_json::to_value(crate::artifact::Layer::Dtb(dtb))?);
             Self::resolve_staging(
                 &staged,
                 &serde_json::to_vec(&manifest)?,
@@ -202,7 +202,7 @@ impl AssembledImage {
                     return Err(CacheError::Invalid("bootstrap scute parent mismatch"));
                 }
                 staged.store_scute(scute)?;
-                layers.push(pichi_artifact::Layer::Scute(scute.descriptor().clone()));
+                layers.push(crate::artifact::Layer::Scute(scute.descriptor().clone()));
                 parent = *scute.root();
             }
             let mut annotations = Self::verity_annotations();
@@ -210,8 +210,8 @@ impl AssembledImage {
             let manifest = serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                "artifactType": pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
-                "config": pichi_artifact::ConfigDescriptor::canonical(),
+                "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+                "config": crate::artifact::ConfigDescriptor::canonical(),
                 "layers": layers,
                 "annotations": annotations
             }))?;
@@ -247,7 +247,7 @@ impl AssembledImage {
             "mediaType": "application/vnd.oci.image.index.v1+json",
             "manifests": [{
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                "artifactType": pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+                "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                 "digest": digest.to_string(),
                 "size": manifest.len(),
                 "platform": {"os": "pichi", "architecture": architecture.oci_name()}
@@ -297,7 +297,7 @@ impl AssembledImage {
                 serde_json::from_slice(image.manifest_bytes().bytes())?;
             let mut changed = false;
             for (position, layer) in image.manifest().layers.iter().enumerate() {
-                if let (pichi_artifact::Layer::Dtb(old), Some(bytes)) = (layer, dtb) {
+                if let (crate::artifact::Layer::Dtb(old), Some(bytes)) = (layer, dtb) {
                     let digest = staged.store_blob(bytes)?;
                     if digest.to_string() != old.digest || bytes.len() as u64 != old.size {
                         let pmi = image
@@ -305,7 +305,7 @@ impl AssembledImage {
                             .layers
                             .iter()
                             .find_map(|layer| match layer {
-                                pichi_artifact::Layer::Pmi(descriptor) => Some(descriptor),
+                                crate::artifact::Layer::Pmi(descriptor) => Some(descriptor),
                                 _ => None,
                             })
                             .ok_or(CacheError::Invalid("changed DTB has no firmware contract"))?;
@@ -345,7 +345,7 @@ impl AssembledImage {
                 manifest["layers"]
                     .as_array_mut()
                     .ok_or(CacheError::Invalid("missing manifest layers"))?
-                    .push(serde_json::to_value(pichi_artifact::Layer::Scute(
+                    .push(serde_json::to_value(crate::artifact::Layer::Scute(
                         scute.descriptor().clone(),
                     ))?);
                 manifest["annotations"]["dev.pichi.carapace.verity.hash"] =
@@ -421,9 +421,9 @@ mod tests {
                 blobs.insert(Digest::from_bytes_sha256(bytes).to_string(), bytes.clone());
             }
             let config_descriptor = if empty_config {
-                pichi_artifact::ConfigDescriptor::canonical()
+                crate::artifact::ConfigDescriptor::canonical()
             } else {
-                pichi_artifact::ConfigDescriptor::for_config(
+                crate::artifact::ConfigDescriptor::for_config(
                     Digest::from_bytes_sha256(&config).to_string(),
                     config.len() as u64,
                 )
@@ -431,7 +431,7 @@ mod tests {
             let manifest = serde_json::to_vec_pretty(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                "artifactType": pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+                "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                 "config": config_descriptor,
                 "layers": [
                     {"mediaType": "application/vnd.pichi.pmi.v1", "digest": Digest::from_bytes_sha256(&pmi).to_string(), "size": pmi.len()},
@@ -446,7 +446,7 @@ mod tests {
                 "mediaType": "application/vnd.oci.image.index.v1+json",
                 "manifests": [{
                     "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                    "artifactType": pichi_artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
+                    "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                     "digest": manifest_digest.to_string(), "size": manifest.len(),
                     "platform": {"os": "pichi", "architecture": HostArchitecture::current().unwrap().oci_name()}
                 }]
