@@ -190,7 +190,23 @@ claim a closed set of all influences when commands can acquire external input.
 
 Conglobate ships its build-appliance as a **pichi image from this repo**, built
 by bootstrap CI (same class as the `fedora`/`carapace` images). Later, the
-appliance may self-host via `pichi build`. Product assumptions for the guest:
+appliance may self-host via `pichi build`.
+
+Bootstrap CI (`.github/workflows/build.yml`, sources under `image/`) builds
+that image with mkosi from Fedora 43 packages. It does not layer the published
+fedora carapace: that image does not treat `virtiofs` as first-class, so this
+rootfs keeps `virtiofs` and `fuse` and loads them after the initramfs pivot.
+systemd is PID 1 and its units bind tags `repo`, `cache`, and `output`.
+`e2fsprogs` supplies image-resident `mke2fs`. The release binary is installed
+at `/usr/bin/conglobate`. On `main`, CI pushes a multi-arch index to
+`ghcr.io/pichi-vm/conglobate` tagged `:0.2.0` (this crate's version) and
+`:latest`, with `platform.os` `pichi` and architectures `amd64` and `arm64`.
+`:0.2.0` is the durable pin (plus the digest once pushed). Consumers must
+not rely on `:latest` alone.
+Pull requests build the image and do not push. `image/conglobate.recipe.yaml`
+stays a self-host-later skeleton; it is not this bootstrap.
+
+Product assumptions for the guest:
 
 1. **PID 1 is systemd.** There is no Conglobate-as-`/init` product path and no
    custom mount generator.
@@ -207,8 +223,15 @@ appliance may self-host via `pichi build`. Product assumptions for the guest:
    `{"v":1,"op":"build-input"}`, then reads one host response map. The guest
    must **not** assume the host already pushed bytes before the request (this
    supersedes host one-shot CBOR push / uni-rx-only). On `ok:true`, Conglobate
-   runs the engine against the mounted paths and publishes the OCI layout
-   (including `inventory.cbor`) into the empty `/run/pichi/output` mount.
+   runs the engine against the mounted paths and publishes into the empty
+   `/run/pichi/output` mount. The locked end state is the OCI layout
+   (`oci-layout`, `index.json`, `blobs/`, `inventory.cbor`). Beside it, the
+   engine dual-writes a transitional flat `build.yaml` (`BuildOutput` /
+   `ScuteOut`) plus delta scute files `NNNN.cow` and `NNNN.verity` in chain
+   order (base first) and, when this build produced firmware, `boot.pmi`.
+   Inherited base scutes are not repeated; the host prepends the operator
+   source carapace from `from:`. An empty delta list is valid here. OCI-only
+   output is not enough for the current host smoke.
    On `ok:false`, it fails with the host `error` string.
    There is **no** local CBOR copy retained as a second source of truth, **no**
    Conglobate parse of virtiofs field readers / mount tags from the response,
@@ -282,7 +305,8 @@ string itself is not a separate inventory field — only the resolved commit is.
 **Output mount:** `/run/pichi/output` is an empty writable virtiofs mount supplied
 by the host (not a path Conglobate creates). Conglobate stages privately in a
 temporary child directory on that mount, then publishes by moving each top-level
-layout entry (`blobs/`, `oci-layout`, `index.json`, `inventory.cbor`, and any
+layout entry (`blobs/`, `oci-layout`, `index.json`, `inventory.cbor`,
+`build.yaml`, each flat `NNNN.cow` / `NNNN.verity` / `boot.pmi`, and any
 other exported roots) into the mount root with no-replace semantics (refuse if
 any destination name already exists). Fail if the mount is missing, not a
 directory, or non-empty before publication. This is distinct from CLI `--output`,
@@ -332,11 +356,14 @@ Defaults and failure behavior:
   no additional image artifacts.
 - **Formatting is outside the command sandbox.** Bootstrap selects a formatter
   from an **internal filesystem-name → formatter map** in the engine/image.
-  There is **no** `--formatter-runtime` flag and **no** host-supplied mke2fs
-  (or other formatter) manifest as a TEE input. Recipe authors cannot override
-  formatter selection. Inventory records the effective internal formatter
-  profile and filesystem specification; it does not treat a host path locator
-  as a formatter identity.
+  The appliance image installs `e2fsprogs`, so `mke2fs` resides at the standard
+  paths that map probes first. Capture still reads that binary and its dynamic
+  dependencies from the guest root; standalone CLI builds use the same probe
+  on the host. There is **no** `--formatter-runtime` flag and **no**
+  host-supplied mke2fs (or other formatter) manifest as a TEE input. Recipe
+  authors cannot override formatter selection. Inventory records the effective
+  internal formatter profile and filesystem specification; it does not treat a
+  host path locator as a formatter identity.
 - `--uid-map PARENT_START:COUNT` and `--gid-map PARENT_START:COUNT` remain
   available on the standalone CLI for VM-free and fixture execution of stages
   that need mappings. In the **appliance image** these ranges are hardcodes,
@@ -1062,9 +1089,18 @@ result/
   index.json         # output image index
   blobs/sha256/      # all referenced manifest, configuration and layer blobs
   inventory.cbor     # successful input/output binding
+  build.yaml         # transitional BuildOutput; scutes may be empty
+  0000.cow           # delta scutes only, chain order; names come from build.yaml
+  0000.verity
+  boot.pmi           # only when this build produced firmware
 ```
 
-OCI consumers use `result/` directly. Attestation and any additional evidence
+OCI consumers use `result/` directly. The transitional `build.yaml` and flat
+blobs are for the current host packaging path: filenames are relative to
+`result/`, chain order is base to top, and only delta scutes are listed. The
+host prepends the operator source carapace named by `from:`. `inventory.cbor`
+remains the successful input/output binding; that host smoke may ignore it.
+Attestation and any additional evidence
 binding the inventory bytes belong to the appliance, as specified in section 11.3.
 
 Include every blob referenced by the output image, including inherited blobs
@@ -1237,7 +1273,8 @@ destination:
   must be empty at start. Complete every fallible check while staging privately
   in a temporary child directory on that same mount. Only then publish by moving
   each top-level layout entry (`oci-layout`, `index.json`, `blobs/`,
-  `inventory.cbor`, …) into the mount root with no-replace semantics (refuse if
+  `inventory.cbor`, `build.yaml`, flat `NNNN.cow` / `NNNN.verity` / `boot.pmi`,
+  …) into the mount root with no-replace semantics (refuse if
   any destination entry already exists). If any move fails, delete already-moved
   entries and the staging child so the mount does not retain a partial successful
   image. After a successful publish, remove the temporary child. Virtiofs rename
@@ -1337,7 +1374,8 @@ The build proceeds in this order; each failure aborts publication:
    and stops and reaps all descendants. Remove temporary mounts, flush and
    unmount before sealing stage output or releasing storage.
 5. Close the execution runtime. Transform the DTB, assemble the complete OCI
-   layout, write deterministic CBOR inventory, and verify staged output.
+   layout, write the transitional flat `build.yaml` (delta scutes only) and
+   deterministic CBOR inventory, and verify staged output.
 6. Finish fallible workspace/context cleanup, then publish without replacing
    an existing destination: CLI `--output` uses an atomic no-replace rename of
    the completed directory; the appliance empty `/run/pichi/output` mount uses

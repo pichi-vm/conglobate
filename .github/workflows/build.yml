@@ -1,0 +1,146 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # Crate version. image/build.sh refuses to run when Cargo.toml disagrees.
+  # Main pushes this tag and :latest. Pull requests do not push.
+  CONGLOBATE_VERSION: "0.2.0"
+  # arma and pichi are nightly-only (artifact deps / `-Z bindeps`); arma
+  # cross-compiles the tatu firmware to bare-metal targets. Pin the toolchain
+  # to the same nightly the fedora image builds with. Conglobate itself is
+  # built with 1.94.0, matching the rootless checks.
+  NIGHTLY: "nightly-2026-07-06"
+
+jobs:
+  # Build each arch natively (no QEMU). Each build exports an OCI layout and
+  # uploads it. No arch job pushes. The index job, on main only, loads both
+  # and pushes one multi-arch index.
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    container:
+      image: fedora:43
+      # --privileged: mkosi + `unshare -r` (the rootfs strip / mkfs) need
+      # user namespaces and full device access.
+      options: --privileged
+    permissions:
+      contents: read
+    env:
+      CARGO_BUILD_JOBS: "2"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Install system tooling
+        run: >-
+          dnf install -y
+          mkosi systemd-standalone-repart e2fsprogs util-linux coreutils cpio
+          git gcc curl openssl-devel pkgconf-pkg-config perl python3
+
+      - name: Install Rust (${{ env.NIGHTLY }} + 1.94.0)
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
+            -y --profile minimal --default-toolchain "$NIGHTLY" \
+            --target x86_64-unknown-none --target aarch64-unknown-none
+          "$HOME/.cargo/bin/rustup" toolchain install 1.94.0 --profile minimal
+          "$HOME/.cargo/bin/rustup" toolchain install stable --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Build arma, pichi, and conglobate
+        run: |
+          # arma and pichi pick up their own rust-toolchain.toml / .cargo/config
+          # when built in-tree. Corium is installed by image/build.sh.
+          git clone --depth 1 https://github.com/pichi-vm/arma /tmp/arma
+          (cd /tmp/arma && cargo build --release --bin arma)
+          echo "ARMA=/tmp/arma/target/release/arma" >> "$GITHUB_ENV"
+          git clone --depth 1 https://github.com/pichi-vm/pichi /tmp/pichi
+          (cd /tmp/pichi && cargo build --release --bin pichi)
+          install -m755 /tmp/pichi/target/release/pichi /usr/local/bin/pichi
+          cargo +1.94.0 build --locked --release --bin conglobate
+          echo "CONGLOBATE_BIN=$PWD/target/release/conglobate" >> "$GITHUB_ENV"
+
+      - name: Build appliance image (native ${{ matrix.arch }})
+        # REVISION reaches build.sh's provenance stamp: git rev-parse is not
+        # reliable in this checkout, so pass the SHA explicitly.
+        env:
+          REVISION: ${{ github.sha }}
+        run: ./image/build.sh
+
+      - name: Check image scripts
+        run: |
+          bash -n image/build.sh
+          python3 -m py_compile image/mkosi.finalize
+          ./image/check-stub.sh
+
+      - name: Export image as an OCI layout directory
+        run: pichi save "conglobate:${CONGLOBATE_VERSION}" -o "oci-${{ matrix.arch }}"
+
+      - name: Upload OCI layout artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: oci-${{ matrix.arch }}
+          path: oci-${{ matrix.arch }}
+
+  # Load both OCI layouts, assemble one multi-arch index, and push :0.2.0
+  # and :latest. Absent on pull requests and on non-main branches, so those
+  # builds stay green without registry credentials.
+  index:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Install pichi
+        run: |
+          rustup toolchain install "$NIGHTLY" --profile minimal
+          git clone --depth 1 https://github.com/pichi-vm/pichi /tmp/pichi
+          (cd /tmp/pichi && cargo "+$NIGHTLY" build --release --bin pichi)
+          sudo install -m755 /tmp/pichi/target/release/pichi /usr/local/bin/pichi
+
+      - name: Download OCI layout artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: oci-*
+
+      - name: Authenticate to ghcr.io
+        run: |
+          mkdir -p "$HOME/.docker"
+          printf '{"auths":{"ghcr.io":{"auth":"%s"}}}' \
+            "$(printf '%s:%s' "${{ github.actor }}" "${{ secrets.GITHUB_TOKEN }}" | base64 -w0)" \
+            > "$HOME/.docker/config.json"
+
+      - name: Load, assemble, and push the multi-arch index
+        run: |
+          # platform.os = pichi: a carapace is a pichi VM guest, not a
+          # container "used on" an OS. Producer and `pichi pull` share this.
+          # :0.2.0 is the durable pin; :latest is a moving alias.
+          VERSION="${CONGLOBATE_VERSION}"
+          pichi load "oci-amd64" --tag "conglobate:${VERSION}-amd64"
+          pichi load "oci-arm64" --tag "conglobate:${VERSION}-arm64"
+          list="conglobate:${VERSION}"
+          pichi manifest create "$list" "${list}-amd64" "${list}-arm64" \
+            -a "org.opencontainers.image.source=https://github.com/pichi-vm/conglobate" \
+            -a "org.opencontainers.image.revision=${{ github.sha }}" \
+            -a "org.opencontainers.image.version=${VERSION}" \
+            -a "org.opencontainers.image.title=Conglobate ${VERSION}" \
+            -a "org.opencontainers.image.description=Conglobate build appliance for pichi"
+          pichi manifest annotate "$list" "${list}-amd64" --os pichi --arch amd64
+          pichi manifest annotate "$list" "${list}-arm64" --os pichi --arch arm64
+          pichi manifest push "$list" "ghcr.io/pichi-vm/conglobate:${VERSION}"
+          pichi manifest push "$list" "ghcr.io/pichi-vm/conglobate:latest"

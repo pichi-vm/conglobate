@@ -206,8 +206,8 @@ pub struct BuildOutput {
     pub scutes: Vec<ScuteOut>,
 
     /// The sealed PMI filename, if `pmi.yaml` ran. Absent for a
-    /// carapace-only build.
-    #[serde(default)]
+    /// carapace-only build. Omitted from the YAML when absent (not `null`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pmi: Option<String>,
 }
 
@@ -594,6 +594,25 @@ registry.example.com/models/llama:7b:
         let out = BuildOutput::parse("scutes: []\n").unwrap();
         assert!(out.scutes.is_empty());
         assert!(out.pmi.is_none());
+    }
+
+    #[test]
+    fn build_output_omits_absent_pmi() {
+        let yaml = BuildOutput {
+            scutes: vec![ScuteOut {
+                cow: "0000.cow".into(),
+                verity: "0000.verity".into(),
+                salt: "ab".repeat(32),
+            }],
+            pmi: None,
+        }
+        .to_yaml()
+        .unwrap();
+        assert!(!yaml.contains("pmi"), "{yaml}");
+        let back = BuildOutput::parse(&yaml).unwrap();
+        assert_eq!(back.scutes.len(), 1);
+        assert_eq!(back.scutes[0].cow, "0000.cow");
+        assert!(back.pmi.is_none());
     }
 
     #[test]

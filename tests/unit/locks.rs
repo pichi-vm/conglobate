@@ -19,6 +19,23 @@ fn pins_are_exact_top_level_identities() {
 }
 
 #[test]
+fn context_smoke_lock_pins_the_documented_fixture_index() {
+    use sha2::{Digest as _, Sha256};
+    let text = include_str!("../distro/context/lock.yaml");
+    let bytes = text
+        .lines()
+        .find_map(|line| line.strip_prefix("# index-bytes: "))
+        .expect("documented fixture index");
+    let mut hash = Sha256::new();
+    hash.update(bytes.as_bytes());
+    let lock = ImageLock::try_from(YamlDocument::from(text)).unwrap();
+    let pin = lock
+        .resolve(&"qualification.local/fedora:43".parse().unwrap())
+        .unwrap();
+    assert_eq!(pin.bytes().as_slice(), hash.finalize().as_slice());
+}
+
+#[test]
 fn duplicate_references_and_unknown_fields_are_rejected() {
     let pin = format!("{{index: sha256:{}}}", "00".repeat(32));
     for text in [

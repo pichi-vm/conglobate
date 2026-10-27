@@ -3,33 +3,74 @@ SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Build-appliance image (stub)
+# Build-appliance image
 
-This tree is a **non-promotion stub** for the Conglobate build appliance.
+Bootstrap CI builds this image with mkosi from Fedora 43 packages and, on
+`main`, publishes it to GHCR. Self-host via `pichi build` is later.
+`conglobate.recipe.yaml` is only that skeleton; it is not the bootstrap
+builder.
 
-It records the intended guest shape — systemd as PID 1, static virtiofs mounts
-for tags `repo` / `cache` / `output` at `/run/pichi/{…}`, and a oneshot unit
-that runs `conglobate appliance` — so reviewers can see the contract without a
-published OCI image.
+## Registry
 
-**Not claimed here**
+- Image: `ghcr.io/pichi-vm/conglobate`
+- Tags pushed on main: `:0.2.0` and `:latest`
+- Durable pin: `:0.2.0` (and the index digest after push). Do not rely on
+  `:latest` alone.
+- Index: `platform.os=pichi`, architectures `amd64` and `arm64`
+- Annotations: `org.opencontainers.image.{source,revision,version,title,description}`
+- Pull requests build both architectures and do not push. The index job runs
+  only when `github.ref` is `refs/heads/main` and the event is not
+  `pull_request`.
 
-- GHCR push, multi-arch index, or promotion (Follow-up A)
-- Self-host construction via `pichi build` (later)
-- A bootable rootfs or hypervisor wiring inside this crate
+The rootfs is not a layer on `ghcr.io/pichi-vm/fedora`. That carapace does not
+treat virtiofs as first-class, so this image keeps the modules itself.
 
-The engine reads only fixed paths and the named console; mount tags and image
-hardcodes (uid/gid maps, netns, resolv.conf) live in these units / the image,
-never in the appliance CBOR build-input response.
+## Guest
+
+- systemd is PID 1 (`/sbin/init` after the Corium pivot).
+- `virtiofs` and `fuse` stay in the rootfs module tree. They are loaded after
+  pivot (`/usr/lib/modules-load.d/pichi-virtiofs.conf`), not from the initramfs.
+  Units mount:
+  - tag `repo` → `/run/pichi/repo` (`Type=virtiofs`, read-only)
+  - tag `cache` → `/run/pichi/cache` (`Type=virtiofs`, read-only)
+  - tag `output` → `/run/pichi/output` (`Type=virtiofs`, read-write)
+- `/usr/bin/conglobate` is the release binary. `conglobate-build.service` is a
+  oneshot whose `ExecStart` is `conglobate appliance`.
+- `e2fsprogs` provides image-resident `mke2fs` (standard paths, `/usr/sbin/mke2fs`
+  first). The engine still captures that binary and its `ldd` dependencies from
+  the guest root. There is no host formatter path.
+
+Image hardcodes, not CBOR fields: UID/GID maps, the network-namespace path, and
+the resolver path (`src/appliance/mounts.rs`).
 
 v0 build-port: `conglobate appliance` opens `dev.pichi.build`, writes
-`{"v":1,"op":"build-input"}`, then reads one self-delimiting host response
-(`ok:true` + `ref`/`recipe`/`lock`/…, or `ok:false` + `error`).
+`{"v":1,"op":"build-input"}`, then reads one self-delimiting host response.
 
-## Formatters (transitional)
+## Dual-write output
 
-Until Follow-up A, Conglobate captures `mke2fs` (+ `ldd` deps) from the **guest
-root** when the appliance runs. That guest rootfs is the trusted formatter
-source; there is no host-side `--formatter-runtime` or hypervisor PATH inject.
-Follow-up A should place formatters in an explicit image-resident layout so
-discovery no longer relies on ambient guest PATH.
+The engine publishes into an empty `/run/pichi/output` (move each child, no
+replace):
+
+1. OCI layout: `oci-layout`, `index.json`, `blobs/`, `inventory.cbor`.
+2. Transitional flat files for the current host:
+   - `build.yaml` matching `BuildOutput` / `ScuteOut`
+   - delta scutes only, chain order base→top: `0000.cow`, `0000.verity`, …
+   - `boot.pmi` when this build produced firmware
+
+Inherited base scutes are not repeated. The host prepends the operator source
+carapace from `from:`. An empty `scutes` list is valid. The salt is the full
+scute salt hex.
+
+## Tree
+
+| Path | Role |
+| --- | --- |
+| `mkosi.conf`, `mkosi.finalize`, `mkosi.repart/` | Fedora 43 rootfs |
+| `build.sh` | Corium initramfs, `pichi import`, local tag `conglobate:0.2.0` |
+| `config.json` | Launch requirements (2 GiB required, 4 GiB recommended) |
+| `units/` | Installed into the rootfs and enabled |
+| `conglobate.recipe.yaml` | Self-host later, not used by bootstrap CI |
+| `check-stub.sh` | Static contract check (no VM) |
+
+`image/build.sh` writes `image/.build/` and a temporary `image/mkosi.extra/`.
+Neither is source.

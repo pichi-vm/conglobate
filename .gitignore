@@ -7,3 +7,7 @@
 
 # Python test-runner bytecode is derived local state.
 __pycache__/
+
+# Appliance mkosi work tree (image/build.sh).
+/image/.build/
+/image/mkosi.extra/
