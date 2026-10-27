@@ -19,8 +19,13 @@ Build on Linux with Rust/Cargo and a C build toolchain for native dependencies
 such as zstd. The binary does not compile or load BPF, depend on libbpf/libelf,
 or require Clang's BPF target or special Linux-header include paths. The trusted
 execution environment supplies the fixed labeling exception described in
-[sandbox design](DESIGN.md#14-sandbox-lifecycle). Disposable-VM fixture tools build their
-own environment policy separately and have additional compiler prerequisites.
+[sandbox design](DESIGN.md#14-sandbox-lifecycle). That environment path is a
+pure-Rust Aya program together with Rust load, attach and pin. Conglobate does
+not perform those steps. The C fixtures `tests/environment/labels.bpf.c`,
+`tests/environment/loader.c` and related C loaders such as
+`tests/distro/labeling-fault/loader.c` are an interim harness for disposable-VM
+qualification only. Fixture tools build that interim policy separately and
+have additional compiler prerequisites until the Aya path replaces them.
 
 CI builds and tests with Rust 1.94.0 on native amd64 and Arm64. This is the tested
 toolchain, not a separately established minimum supported Rust version.
@@ -62,7 +67,8 @@ PID 1; static virtiofs mounts expose `repo`/`cache`/`output` at
 self-delimiting host CBOR response. The supervisor runs as initial-namespace root. Build
 commands are untrusted and run in restricted namespaces; they receive neither
 supervisor control resources nor backing block devices. The kernel,
-environment-provided BPF LSM labeling exception, supervisor and **image-resident
+environment-provided BPF LSM labeling exception (pure-Rust Aya in the trusted
+environment; see the sandbox design), supervisor and **image-resident
 formatters** (internal filesystem-name → formatter map; formatting outside the
 command sandbox) are trusted. There is no host `--formatter-runtime` TEE input.
 The design requires native filesystem/idmapped mount support and the

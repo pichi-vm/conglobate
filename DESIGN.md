@@ -61,8 +61,10 @@ formatter profiles) and effective configuration, to that inventory; measuring
 conglobate alone is insufficient.
 
 The implementation uses kernel ext4 mounts and an environment-provided labeling
-exception. Confidential-hardware qualification remains deferred; tests do not
-prove absence of sandbox vulnerabilities.
+exception. The trusted environment implements that exception as a pure-Rust Aya
+program and a Rust load, attach and pin path (section 14.4). Conglobate does
+not compile or load it. Confidential-hardware qualification remains deferred;
+tests do not prove absence of sandbox vulnerabilities.
 
 The sections follow a build from input selection through execution and output
 verification. Read the architecture and input sections first, then the pipeline
@@ -1005,11 +1007,18 @@ filesystem worker is required. Ext4 is initially validated. Other drivers,
 formatters and metadata combinations require explicit qualification.
 
 The trusted environment loads and retains a fixed BPF LSM exception for exactly
-`security.selinux`. Conglobate does not compile/load/attach the policy or register
-subjects and filesystems. The VM has SELinux disabled; foreign labels belong to
-the target OS and confer no authority in the build environment. Before recipe
-admission, verify required behavior under restricted command credentials; missing
-support fails without a capability fallback. See the labeling requirements in section 14.4.
+`security.selinux`. That program, and its load, attach and pin path, are a
+pure-Rust Aya rewrite owned by the environment (section 14.4). Conglobate does
+not compile, load or attach the policy, does not depend on libbpf, and does not
+register subjects and filesystems. Its only labeling role is `LabelProbe`
+admission. The VM has SELinux disabled; foreign labels belong to the target OS
+and confer no authority in the build environment. Before recipe admission,
+verify required behavior under restricted command credentials; missing support
+fails without a capability fallback. The C sources
+`tests/environment/labels.bpf.c`, `tests/environment/loader.c` and related C
+loaders such as `tests/distro/labeling-fault/loader.c` remain an interim
+disposable-VM qualification harness until the Aya path exists, and are then
+retired. See the labeling requirements in section 14.4.
 
 Label mutation is not constrained by ordinary file write-mode checks. Integrity
 therefore depends on inode/descriptor reachability and read-only views, alongside
@@ -1343,10 +1352,12 @@ creation/override of components beyond carapace and firmware, additional
 firmware signing/resealing contracts, and attestation (appliance build-port
 transport is already locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-build-port-cbor)).
 
-Sandbox policy is specified in section 14. Exact capability/syscall/ioctl
-profiles, fixed internal deadline values, internal formatter/property schemas,
-both-root labeling admission, identity allocation, and runtime mount mechanics
-are implemented under that contract. The build-appliance image, build-port CBOR and
+Sandbox policy is specified in section 14. Section 14.4 locks the environment
+labeling exception to a pure-Rust Aya program with Rust load, attach and pin,
+owned by the trusted environment. Exact capability/syscall/ioctl profiles,
+fixed internal deadline values, internal formatter/property schemas, both-root
+labeling admission, identity allocation, and runtime mount mechanics are
+implemented under that contract. The build-appliance image, build-port CBOR and
 virtiofs mount contract are locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-build-port-cbor);
 full engine reshape and confidential-platform qualification remain separate.
 Fully unprivileged storage assembly is outside the selected design.
@@ -1542,7 +1553,29 @@ RAII owns resources; destructors cannot certify successful finalization.
    security.selinux through inode_xattr_skipcap. There are no per-command
    registrations, subject/filesystem maps, target guards or activation
    transitions. Conglobate does not compile, load, attach, update or remove
-   this policy. The environment retains it for the lifetime of the VM.
+   this policy and does not depend on libbpf. The environment retains the
+   pinned program for the lifetime of the VM. Conglobate's only labeling
+   role is LabelProbe admission: check required behavior under the
+   restricted command credentials, and do not install the policy.
+
+1. Implement that environment exception as a pure-Rust rewrite using Aya.
+   The trusted environment owns the LSM program and the load, attach and
+   pin path; both are Rust. This is the chosen environment path for
+   building the program and for load, attach and pin. Do not implement
+   the exception as the C program tests/environment/labels.bpf.c loaded
+   by tests/environment/loader.c, and do not revive the retired
+   libbpf-rs wrapper around that C object. A C BPF toolchain (bindeps)
+   or a precompiled object is not this path. Conglobate still does not
+   compile, load or attach the program.
+
+1. Until the Aya program and its load, attach and pin path exist, keep the
+   current C fixture as the interim qualification harness for disposable-VM
+   tests. It is not linked into the conglobate binary and it is not the
+   production environment. When the Aya path exists, retire
+   tests/environment/labels.bpf.c, tests/environment/loader.c and the
+   related C loaders, including tests/distro/labeling-fault/loader.c. The
+   labeling-fault hook remains a test-only second program; retiring its C
+   loader does not add a second production policy.
 
 1. Match the complete attribute name, including termination; truncated
    prefix matches are forbidden. Preserve earlier LSM results. Other
@@ -1992,9 +2025,12 @@ Nix builders. Terminal injection/control and namespace/mount creation stay denie
 
 The environment's fixed BPF LSM exception permits exactly security.selinux
 labeling without making the target filesystem's policy the build VM's policy.
-Conglobate probes labeling under the actual command restrictions before admission,
-including both bootstrap roots. It neither loads nor revokes the exception.
-Ordinary ownership, ACL, mount and filesystem checks still apply.
+The trusted environment builds, loads, attaches and pins that exception with
+Aya (pure Rust), as specified in section 14.4. Conglobate probes labeling
+under the actual command restrictions before admission, including both
+bootstrap roots. That `LabelProbe` check is its only labeling role. It neither
+loads nor revokes the exception. Ordinary ownership, ACL, mount and filesystem
+checks still apply.
 
 Each command reconstructs mounts/isolation and has a finite recipe timeout
 (default five minutes). Setup and teardown use separate fixed internal deadlines.
