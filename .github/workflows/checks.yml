@@ -58,14 +58,30 @@ jobs:
           PR_BASE: ${{ github.base_ref }}
           PUSH_BEFORE: ${{ github.event.before }}
         run: |
-          if [ -n "$PR_BASE" ]; then
-            commit_range="origin/$PR_BASE..HEAD"
-          elif [ -n "$PUSH_BEFORE" ] && [ "$PUSH_BEFORE" != "0000000000000000000000000000000000000000" ]; then
-            commit_range="$PUSH_BEFORE..HEAD"
+          set -euo pipefail
+          # PR base / default branch may be missing when only the pushed tip
+          # was checked out; fetch them so range resolution can fall back.
+          base_ref="${PR_BASE:-main}"
+          git fetch --no-tags origin "$base_ref"
+
+          if [ -n "${PR_BASE}" ]; then
+            commit_range="origin/${PR_BASE}..HEAD"
+          elif [ -n "${PUSH_BEFORE}" ] \
+            && [ "${PUSH_BEFORE}" != "0000000000000000000000000000000000000000" ] \
+            && git cat-file -e "${PUSH_BEFORE}^{commit}" 2>/dev/null; then
+            commit_range="${PUSH_BEFORE}..HEAD"
           else
+            # Force-push / new branch: before SHA is not in this clone.
+            merge_base="$(git merge-base "origin/${base_ref}" HEAD)"
+            commit_range="${merge_base}..HEAD"
+          fi
+
+          if [ "$(git rev-list --count "${commit_range}")" -eq 0 ]; then
             commit_range="HEAD^..HEAD"
           fi
-          pipx run --spec gitlint==0.19.1 gitlint --commits "$commit_range"
+
+          echo "gitlint commits: ${commit_range}"
+          pipx run --spec gitlint==0.19.1 gitlint --commits "${commit_range}"
       - name: Install dependency checkers
         run: |
           rustup toolchain install 1.94.0 --profile minimal
