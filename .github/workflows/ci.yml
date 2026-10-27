@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# Fail-fast DAG (replaces three flat push/PR workflows):
+#
+#   Tier 1 — Rootless checks (parallel): lint (fmt+clippy), image-stub,
+#            dependencies (gitlint / cargo-deny / audit)
+#   Tier 2 — after Tier 1 succeeds (parallel with each other):
+#            Rootless tests (amd64/arm matrix),
+#            Disposable VM lifecycle,
+#            appliance build matrix
+#
+# A red Tier-1 job skips the expensive Tier-2 work.
+jobs:
+  checks:
+    name: Rootless checks
+    uses: ./.github/workflows/checks.yml
+    permissions:
+      contents: read
+
+  rust:
+    name: Rootless tests
+    needs: [checks]
+    uses: ./.github/workflows/rust.yml
+    permissions:
+      contents: read
+
+  lifecycle:
+    name: Disposable VM lifecycle
+    needs: [checks]
+    uses: ./.github/workflows/lifecycle.yml
+    permissions:
+      contents: read
+
+  build:
+    name: build
+    needs: [checks]
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit

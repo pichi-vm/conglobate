@@ -1,8 +1,7 @@
 name: Rootless checks
 
 on:
-  pull_request:
-  push:
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -13,13 +12,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  rust:
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [ubuntu-24.04, ubuntu-24.04-arm]
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+  # Cheap / fail-fast tier (parallel). Lifecycle and the appliance build
+  # wait on this whole workflow via ci.yml, so a red lint or stub skips
+  # those expensive jobs.
+  image-stub:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Validate build-appliance image tree
+        run: ./image/check-stub.sh
+
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     env:
       CARGO_BUILD_JOBS: '2'
       CARGO_TERM_COLOR: always
@@ -37,10 +45,6 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Check Clippy
         run: cargo clippy --locked --all-targets -- -D warnings
-      - name: Run rootless tests
-        run: cargo test --locked --all-targets
-      - name: Compile internal VM fixtures
-        run: cargo check --locked --features test-fixtures --bin conglobate-lifecycle-tests
 
   dependencies:
     runs-on: ubuntu-24.04
@@ -108,13 +112,3 @@ jobs:
         run: cargo deny --locked --target aarch64-unknown-linux-gnu check licenses sources bans
       - name: Check known advisories
         run: cargo audit
-
-  image-stub:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
-      - name: Validate build-appliance image tree
-        run: ./image/check-stub.sh
