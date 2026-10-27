@@ -50,8 +50,9 @@ python3 tests/lifecycle/run.py .scratch/NEW-LIFECYCLE-RUN \
 ```
 
 Use separate new directories with `--drop running` for the
-terminal retention cases. The runner stages trusted host formatter tools and
-the fixture, builds a disconnected native amd64/KVM guest, and preserves source,
+terminal retention cases. The runner stages formatter tooling needed by the
+current binary (transitional; product contract is the internal formatter map)
+and the fixture, builds a disconnected native amd64/KVM guest, and preserves source,
 input hashes, kernel identity, serial, raw status and assessment. Success requires
 case assertions, status-disk exit zero and VM poweroff. It does not run BPF or
 mount/device operations on the host. These trusted-formatter tests do not exercise
