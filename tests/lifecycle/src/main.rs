@@ -1,4 +1,6 @@
+// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 #![forbid(unsafe_code)]
 mod blocked_descendant;
 mod blocked_io;

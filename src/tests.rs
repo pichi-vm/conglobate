@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 // Binary-local contract tests; no production library API.
 #[path = "../tests/unit/anchors.rs"]
 mod anchors;

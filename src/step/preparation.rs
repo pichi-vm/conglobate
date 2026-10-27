@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Ownership across acquisition and helper launch, before the ready Step exists.
+
 mod sandbox;
 use super::CommandStorage;
 use super::{Ready, Retained, Step};

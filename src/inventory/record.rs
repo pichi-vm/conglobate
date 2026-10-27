@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use super::{Inventory, InventoryError, schema::*};
 use crate::{output::AssembledImage, recipe::DEFAULT_TRANSFORM, request::BuildRequest};
 use sha2::{Digest as _, Sha256};

@@ -1,4 +1,6 @@
+// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 //! Benign mount compatibility probe, not the production workspace owner.
 //! Any failed assertion ends the disposable guest; no host mounts are touched.
 use rustix::{fs as rfs, mount};

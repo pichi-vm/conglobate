@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Completed task data has no command, mount or live block mapping authority.
+
 use super::CompletedImage;
 use crate::{
     formatter::FormatReceipt,

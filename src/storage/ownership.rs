@@ -1,4 +1,6 @@
+// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 //! Check the original, quiescent filesystem before creating command views.
 use crate::isolation::IdRange;
 use rustix::fs::{self, Mode, OFlags, ResolveFlags};

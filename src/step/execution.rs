@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! One command lifecycle, with acceptance tied to its own finalized storage.
+
 use super::{
     CommandOutcome, CommandStartFailure, CommandStorage, Ready, SetupBudget, Step,
     TeardownCompletion,

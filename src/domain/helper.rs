@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use super::{CommandDomain, DomainCancellation, DomainJoin};
 use crate::process::{Identified, Joined, LaunchFailure, Paired, Process, Supervision, WaitError};
 use std::{

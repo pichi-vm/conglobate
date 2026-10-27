@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use super::CapturedFormatter;
 use crate::{document::YamlDocument, path::ContextPath};
 use serde::Deserialize;

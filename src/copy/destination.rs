@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Descriptor-confined writes. Constructed only under an exclusive volume borrow.
+
 use super::{CopyMode, CopySources, SelectionError};
 use crate::{
     context::{CapturedContext, ContextEntry, ContextError},

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use crate::path::{FilePath, RelativePath};
 use rustix::fs::{Mode, OFlags, ResolveFlags};
 use sha2::{Digest, Sha256};

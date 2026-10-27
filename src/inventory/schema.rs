@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Private wire records. Only validated, immutable Inventory values are public.
+
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 

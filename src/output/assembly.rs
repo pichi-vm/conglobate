@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use super::{StagedDirectory, TRANSITIONAL_PMI_NAME, transitional_manifest};
 use crate::artifact::Digest;
 use crate::{

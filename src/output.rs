@@ -1,11 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Private output storage and atomic filesystem publication. These low-level
-//! owners do not prove a successful build or validate inventory/manifest relations.
-//!
-//! Beside the OCI layout, publication also stages the transitional flat
-//! `build.yaml` and delta cow/verity/(optional) PMI files the current host
-//! smoke reads. Inherited scutes are not repeated there.
+
 mod assembly;
 pub(crate) use assembly::AssembledImage;
 

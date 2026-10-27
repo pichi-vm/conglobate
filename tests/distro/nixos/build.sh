@@ -1,5 +1,7 @@
 #!/bin/sh
+# SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
+
 set -eu
 echo '6ce3ce3703fdc241b560cba401c5d338042122fe5b1a81e07bf1a623f259eba0  /nix.tar.xz' | sha256sum -c -
 echo '554098cd31950c0d555461e1f116b9c1a92436a98883de76ba1e5c31e4092a5e  /nixpkgs.tar.xz' | sha256sum -c -

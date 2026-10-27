@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! External network handles and temporary resolver views. The environment owns
-//! enabled networking; conglobate configures only isolated offline loopback.
+
 mod resolver;
 pub(crate) use resolver::ResolverInput;
 mod loopback;

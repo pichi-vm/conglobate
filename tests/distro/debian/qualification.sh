@@ -1,5 +1,7 @@
 #!/bin/sh
+# SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
+
 set -eu
 . /etc/os-release
 test "$ID" = debian

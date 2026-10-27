@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Ordered recipe directives; failures never yield an accepted stage receipt.
+
 use super::{
     CommandSandbox, CommandStorage, SetupBudget,
     teardown::{Deadline, TEARDOWN_TIMEOUT},
