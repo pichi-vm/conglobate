@@ -31,7 +31,6 @@ pub(crate) enum ApplianceRequestError {
     InvalidType(&'static str),
     #[error("appliance CBOR field {0} is empty or contains NUL")]
     InvalidString(&'static str),
-    #[cfg(test)]
     #[error("appliance CBOR has trailing bytes after the response map")]
     TrailingBytes,
     #[error("appliance CBOR protocol version must be 1")]
@@ -80,25 +79,27 @@ impl ApplianceRequest {
     }
 
     /// Decode one self-delimiting host response CBOR map from a reader.
+    ///
+    /// Uses a buffered reader so leftover bytes already pulled with the map
+    /// (concatenated CBOR) fail as trailing data without waiting for EOF on the
+    /// still-open build port.
     pub(crate) fn decode_response(
         reader: &mut impl std::io::Read,
     ) -> Result<Self, ApplianceRequestError> {
-        let value: Value = ciborium::from_reader(reader)
+        let mut buffered = std::io::BufReader::new(reader);
+        let value: Value = ciborium::from_reader(&mut buffered)
             .map_err(|error| ApplianceRequestError::Decode(error.to_string()))?;
+        if !buffered.buffer().is_empty() {
+            return Err(ApplianceRequestError::TrailingBytes);
+        }
         Self::from_response_value(value)
     }
 
     /// Decode a complete response buffer (one map, no trailing bytes).
-    ///
-    /// Test helper: the appliance path uses [`Self::decode_response`] on the live port.
     #[cfg(test)]
     pub(crate) fn decode(bytes: &[u8]) -> Result<Self, ApplianceRequestError> {
         let mut cursor = std::io::Cursor::new(bytes);
-        let request = Self::decode_response(&mut cursor)?;
-        if cursor.position() != bytes.len() as u64 {
-            return Err(ApplianceRequestError::TrailingBytes);
-        }
-        Ok(request)
+        Self::decode_response(&mut cursor)
     }
 
     fn from_response_value(value: Value) -> Result<Self, ApplianceRequestError> {
@@ -163,6 +164,9 @@ impl ApplianceRequest {
         };
         if !ok {
             let message = take_string(&mut fields, "error", true)?.unwrap();
+            if let Some(name) = fields.keys().next() {
+                return Err(ApplianceRequestError::UnknownField(name.clone()));
+            }
             return Err(ApplianceRequestError::HostRejected(message));
         }
         if fields.contains_key("error") {
@@ -350,12 +354,36 @@ mod tests {
     #[test]
     fn rejects_escaping_paths_and_trailing_bytes() {
         let mut fields = required();
-        fields[1] = ("recipe", Value::Text("../escape".into()));
-        assert!(ApplianceRequest::decode(&encode(&fields)).is_err());
+        // required() order: v, ok, ref, recipe, lock — index 3 is recipe.
+        fields[3] = ("recipe", Value::Text("../escape".into()));
+        assert!(matches!(
+            ApplianceRequest::decode(&encode(&fields)),
+            Err(ApplianceRequestError::Path(crate::path::PathError::Escape))
+        ));
+        let mut fields = required();
+        fields[3] = ("recipe", Value::Text("/etc/passwd".into()));
+        assert!(matches!(
+            ApplianceRequest::decode(&encode(&fields)),
+            Err(ApplianceRequestError::Path(
+                crate::path::PathError::Absolute
+            ))
+        ));
+        let mut fields = required();
+        fields.push(("subdir", Value::Text("../..".into())));
+        assert!(matches!(
+            ApplianceRequest::decode(&encode(&fields)),
+            Err(ApplianceRequestError::Path(crate::path::PathError::Escape))
+        ));
         let mut bytes = encode(&required());
         bytes.push(0);
         assert!(matches!(
             ApplianceRequest::decode(&bytes),
+            Err(ApplianceRequestError::TrailingBytes)
+        ));
+        // Production path: BufReader leftover after one map is trailing data.
+        let mut cursor = std::io::Cursor::new(bytes);
+        assert!(matches!(
+            ApplianceRequest::decode_response(&mut cursor),
             Err(ApplianceRequestError::TrailingBytes)
         ));
     }
@@ -366,6 +394,19 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(error.contains("no recipe"), "{error}");
+    }
+
+    #[test]
+    fn rejects_ok_false_with_success_fields() {
+        let error = ApplianceRequest::decode(&encode(&[
+            ("v", Value::Integer(1.into())),
+            ("ok", Value::Bool(false)),
+            ("error", Value::Text("nope".into())),
+            ("ref", Value::Text("refs/heads/main".into())),
+        ]))
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("ref"), "{error}");
     }
 
     #[test]
