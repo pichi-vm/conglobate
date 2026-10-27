@@ -1,24 +1,24 @@
 # SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
 #
-# Skeleton only — fedora/carapace CI class shape for the build appliance.
-# Not a publishable recipe: Follow-up A owns real rootfs contents, package
-# set, and GHCR promotion. Self-host via `pichi build` is explicitly later.
+# Skeleton only — self-host later via `pichi build`.
+# Not the bootstrap builder. image/build.sh and mkosi.conf publish
+# ghcr.io/pichi-vm/conglobate. This file is not used by that CI.
 #
-# Intended product: an image whose PID 1 is systemd, that installs the units
-# under image/units/, and that places `/usr/bin/conglobate` for the oneshot
-# `conglobate appliance` service.
+# Intended later product: an image whose PID 1 is systemd, that installs the
+# units under image/units/, and that places `/usr/bin/conglobate` for the
+# oneshot `conglobate appliance` service.
 
 bootstrap:
-  # Placeholder locator — replace when Follow-up A selects the real base.
+  # Placeholder locator — the bootstrap image is Fedora 43 from mkosi, not
+  # this recipe. Replace only when self-host is actually wired.
   from: qualification.local/fedora:43
   filesystem: {type: ext4, size: 4GiB, properties: {label: conglobate-build}}
   derive:
     - network: true
       timeout: 30m
       run: |
-        # Stub: install systemd, virtiofs.ko support, and the conglobate binary.
-        # Real package and copy steps land in Follow-up A.
+        # Self-host later. Bootstrap CI does not execute this recipe.
         true
 carapace:
   derive:

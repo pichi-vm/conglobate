@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
+# SPDX-License-Identifier: Apache-2.0
+# Host harness pin for tests/distro/context/recipe.yaml.
+# Not a Fedora GHCR digest. Seed the index-bytes line below, with no
+# trailing newline, as the image index for qualification.local/fedora:43.
+# Encoding matches tests/distro/prepare.py: object keys sorted, separators
+# "," and ":", no whitespace. The inner manifest digest is a placeholder
+# (32 bytes of 0x11, declared size 2). The harness supplies the carapace
+# behind that descriptor.
+# index-bytes: {"manifests":[{"artifactType":"application/vnd.pichi.artifact.v1+json","digest":"sha256:1111111111111111111111111111111111111111111111111111111111111111","mediaType":"application/vnd.oci.image.manifest.v1+json","platform":{"architecture":"amd64","os":"pichi"},"size":2}],"mediaType":"application/vnd.oci.image.index.v1+json","schemaVersion":2}
+version: 1
+images:
+  qualification.local/fedora:43:
+    index: sha256:4e335e141a3f950ed68c68f23c112930c51af5ec9658d1263353eb229a6429d1

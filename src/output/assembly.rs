@@ -1,11 +1,44 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use super::StagedDirectory;
+use super::{StagedDirectory, TRANSITIONAL_PMI_NAME, transitional_manifest};
 use crate::artifact::Digest;
 use crate::{
     cache::{Cache, CacheError, ResolvedImage, VerifiedChain},
     image::IndexDigest,
 };
+
+/// Stage delta scutes and optional firmware beside the OCI layout.
+///
+/// `scutes` is the produced chain only, base first. Inherited layers stay in
+/// the OCI manifest; the host prepends that source carapace when it reads
+/// `build.yaml`. An empty slice still writes `build.yaml` with `scutes: []`.
+fn stage_delta_output(
+    staged: &StagedDirectory,
+    scutes: &[&crate::storage::SealedScute<'_>],
+    pmi: Option<&crate::firmware::FinalizedFirmware<'_>>,
+) -> Result<(), crate::cache::CacheError> {
+    let salts: Vec<&str> = scutes
+        .iter()
+        .map(|scute| scute.descriptor().annotations.salt.as_str())
+        .collect();
+    let manifest = transitional_manifest(&salts, pmi.map(|_| TRANSITIONAL_PMI_NAME.to_string()))?;
+    if manifest.scutes.len() != scutes.len() {
+        return Err(crate::cache::CacheError::Invalid(
+            "delta scute manifest length mismatch",
+        ));
+    }
+    for (entry, scute) in manifest.scutes.iter().zip(scutes) {
+        staged.write_exact_file(&entry.cow, scute.data_reader(), scute.descriptor().size)?;
+        let verity_len = scute.verity_len()?;
+        staged.write_exact_file(&entry.verity, scute.verity_reader()?, verity_len)?;
+    }
+    if let Some(pair) = pmi {
+        let descriptor = pair.pmi_descriptor();
+        staged.write_exact_file(TRANSITIONAL_PMI_NAME, pair.pmi_reader(), descriptor.size)?;
+    }
+    staged.write_build_yaml(&manifest)?;
+    Ok(())
+}
 
 /// A self-contained staged image whose manifest, referenced content and chain
 /// were verified from the output storage. No mutable staging authority escapes.
@@ -152,11 +185,14 @@ impl AssembledImage {
                 .ok_or(CacheError::Invalid("missing output layers"))?;
             layers.push(serde_json::to_value(crate::artifact::Layer::Pmi(pmi))?);
             layers.push(serde_json::to_value(crate::artifact::Layer::Dtb(dtb))?);
-            Self::resolve_staging(
+            let resolved = Self::resolve_staging(
                 &staged,
                 &serde_json::to_vec(&manifest)?,
                 crate::cache::HostArchitecture::current()?,
-            )
+            )?;
+            let produced: Vec<_> = scutes.iter().map(AsRef::as_ref).collect();
+            stage_delta_output(&staged, &produced, Some(pair))?;
+            Ok(resolved)
         })();
         match result {
             Ok((image, chain)) => Ok(Self {
@@ -215,11 +251,13 @@ impl AssembledImage {
                 "layers": layers,
                 "annotations": annotations
             }))?;
-            Self::resolve_staging(
+            let resolved = Self::resolve_staging(
                 &staged,
                 &manifest,
                 crate::cache::HostArchitecture::current()?,
-            )
+            )?;
+            stage_delta_output(&staged, scutes, None)?;
+            Ok(resolved)
         })();
         match result {
             Ok((image, chain)) => Ok(Self {
@@ -359,7 +397,9 @@ impl AssembledImage {
             } else {
                 image.manifest_bytes().bytes().to_vec()
             };
-            Self::resolve_staging(&staged, &manifest, image.architecture())
+            let resolved = Self::resolve_staging(&staged, &manifest, image.architecture())?;
+            stage_delta_output(&staged, scutes, None)?;
+            Ok(resolved)
         })();
         match assembled {
             Ok((image, chain)) => Ok(AssembledImage {
@@ -602,6 +642,38 @@ mod tests {
             assembled.discard().unwrap();
             assert_eq!(fs::read_dir(parent.path()).unwrap().count(), 0);
         }
+    }
+    #[test]
+    fn derived_output_stages_empty_delta_build_yaml_beside_oci() {
+        let input = Input::new(true);
+        let (cache, image) = input.open();
+        let unchanged = crate::recipe::TransformSelection::Authored(vec![])
+            .apply(
+                Some(&input.blobs[image.manifest().layers[1].digest_str()]),
+                None,
+            )
+            .unwrap();
+        let parent = tempfile::tempdir().unwrap();
+        let assembled = AssembledImage::derived(
+            &cache,
+            &image,
+            &[],
+            &parent.path().join("output"),
+            &unchanged,
+        )
+        .unwrap();
+        let root = assembled.staged.temporary.path();
+        assert!(root.join("oci-layout").is_file());
+        assert!(root.join("index.json").is_file());
+        assert!(root.join("blobs").is_dir());
+        let yaml = fs::read_to_string(root.join("build.yaml")).unwrap();
+        let parsed = crate::recipe_io::BuildOutput::parse(&yaml).unwrap();
+        assert!(parsed.scutes.is_empty(), "{yaml}");
+        assert!(parsed.pmi.is_none(), "{yaml}");
+        assert!(!yaml.contains("pmi"), "{yaml}");
+        assert!(!root.join("0000.cow").exists());
+        assert!(!root.join("boot.pmi").exists());
+        assembled.discard().unwrap();
     }
     #[test]
     fn captured_unchanged_dtb_survives_loss_of_cache_copy() {
