@@ -7,7 +7,7 @@ pub(crate) use chain::{PreparedScute, VerifiedChain};
 mod resolve;
 pub(crate) use resolve::{HostArchitecture, ResolvedImage};
 
-use pichi_artifact::Digest as ContentDigest;
+use crate::artifact::Digest as ContentDigest;
 use rustix::fs::{Mode, OFlags, ResolveFlags};
 use sha2::{Digest, Sha256};
 use std::{
@@ -23,7 +23,7 @@ pub(crate) enum CacheError {
     #[error("invalid OCI JSON: {0}")]
     Json(#[from] serde_json::Error),
     #[error("invalid artifact manifest: {0}")]
-    Manifest(#[from] pichi_artifact::Error),
+    Manifest(#[from] crate::artifact::Error),
     #[error("cache I/O: {0}")]
     Io(#[from] io::Error),
     #[error(transparent)]

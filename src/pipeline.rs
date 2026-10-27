@@ -83,11 +83,7 @@ impl Pipeline {
                 scute,
                 reaper,
                 receipt,
-            } = bootstrap::BootstrapBuild::new(build)?.execute(
-                &self.request,
-                workspace,
-                runtime,
-            )?;
+            } = bootstrap::BootstrapBuild::new(build)?.execute(workspace, runtime)?;
             let active = if needs_chain {
                 Some(crate::storage::ReadOnlyChain::from_root(
                     std::sync::Arc::clone(&scute),

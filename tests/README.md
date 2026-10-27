@@ -341,11 +341,15 @@ A different `--expect` marker narrows the claim accordingly (e.g. login alone do
 not execute the file-label assertions). Console logs and launcher identities are
 preserved. Waiting uses pipe readiness, not synchronization sleeps.
 
-The runner also supplies `--formatter-runtime` for bootstrap recipes. Its manifest
-names the trusted environment's mke2fs executable and loader/library files already
-copied into the VM. It enumerates dependencies only from the trusted host tool;
-it never runs ldd on a recipe/image executable. Formatter bytes are captured and
-measured by conglobate under the normal bootstrap contract.
+Bootstrap no longer accepts `--formatter-runtime`. Conglobate selects the ext4
+formatter through an internal filesystem-name map and discovers host `mke2fs`
+(+ `ldd` deps) itself. `GuestRuntime.TOOLS` still stages `mke2fs` into disposable
+VM roots so that discovery succeeds inside the guest.
+
+TRANSITIONAL: lifecycle formatter-failure fixtures still stage
+`/formatter-runtime-files` and `/formatter-stall-files` lists for injection;
+those are test-only file lists, not a product CLI flag, and should go away when
+failure fixtures move onto image-resident tooling.
 
 `seed.py` prepares an initial tool filesystem outside conglobate from an explicitly
 SHA-256-pinned complete rootfs tar archive. It rejects layered whiteouts and member

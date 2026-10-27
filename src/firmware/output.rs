@@ -40,7 +40,7 @@ pub(crate) struct FinalizedFirmware<'w> {
 #[derive(Debug)]
 struct FirmwareFile<'w> {
     bytes: Scratch<'w>,
-    digest: pichi_artifact::Digest,
+    digest: crate::artifact::Digest,
     size: u64,
 }
 impl<'w> ExtractedFirmware<'w> {
@@ -73,8 +73,8 @@ impl<'w> ExtractedFirmware<'w> {
     }
 }
 impl FinalizedFirmware<'_> {
-    pub(crate) fn pmi_descriptor(&self) -> pichi_artifact::PmiDescriptor {
-        pichi_artifact::PmiDescriptor {
+    pub(crate) fn pmi_descriptor(&self) -> crate::artifact::PmiDescriptor {
+        crate::artifact::PmiDescriptor {
             digest: self.pmi.digest.to_string(),
             size: self.pmi.size,
         }

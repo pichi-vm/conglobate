@@ -3,7 +3,7 @@
 //! Descriptor-confined writes. Constructed only under an exclusive volume borrow.
 use super::{CopyMode, CopySources, SelectionError};
 use crate::{
-    context::{CapturedContext, ContextEntry},
+    context::{CapturedContext, ContextEntry, ContextError},
     recipe::Copy,
 };
 use rustix::fs::{self, AtFlags, Mode, OFlags, ResolveFlags};
@@ -20,6 +20,8 @@ use std::{
 pub(crate) enum CopyError {
     #[error(transparent)]
     Selection(#[from] SelectionError),
+    #[error(transparent)]
+    Context(#[from] ContextError),
     #[error("COPY filesystem: {0}")]
     Io(#[from] io::Error),
     #[error("COPY: {0}")]
@@ -232,6 +234,7 @@ impl<'a> CopyDestination<'a> {
         target: &Path,
         entry: &ContextEntry,
         policy: &MetadataPolicy<'_>,
+        context: &CapturedContext,
     ) -> Result<(), CopyError> {
         let name = target
             .file_name()
@@ -245,7 +248,8 @@ impl<'a> CopyDestination<'a> {
             Err(error) => return Err(error.into()),
         }
         match entry {
-            ContextEntry::File { bytes, executable } => {
+            ContextEntry::File { oid, executable } => {
+                let bytes = context.blob(*oid)?;
                 let mut file: File = fs::openat(
                     &parent,
                     name,
@@ -257,7 +261,7 @@ impl<'a> CopyDestination<'a> {
                     Mode::from_raw_mode(0o600),
                 )?
                 .into();
-                file.write_all(bytes)?;
+                file.write_all(&bytes)?;
                 policy.file(&file, if *executable { 0o755 } else { 0o644 }, false)?;
             }
             ContextEntry::Symlink(bytes) => {
@@ -299,7 +303,7 @@ impl<'a> CopyDestination<'a> {
                             self.directory(&path, &policy)?;
                             directories.push(path);
                         }
-                        _ => self.leaf(&path, entry, &policy)?,
+                        _ => self.leaf(&path, entry, &policy, context)?,
                     }
                 }
                 for path in directories.into_iter().rev() {
@@ -333,6 +337,7 @@ impl<'a> CopyDestination<'a> {
                         .entry()
                         .ok_or(CopyError::Invalid("missing source entry"))?,
                     &policy,
+                    context,
                 )?;
             }
         }
