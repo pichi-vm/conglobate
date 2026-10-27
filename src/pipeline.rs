@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Recipe orchestration. Unsupported execution paths fail before publication.
+
 pub(crate) mod artifacts;
 mod bootstrap;
 mod carapace;

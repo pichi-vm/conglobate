@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! COPY selection from immutable Git objects; no ambient filesystem traversal.
+
 use super::SourcePattern;
 use crate::context::{CapturedContext, ContextEntry};
 use std::{

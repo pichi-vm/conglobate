@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use super::{Cache, CacheError, DecodedBlob, VerifiedScute};
 use crate::storage::{Scratch, Workspace};
 use std::{

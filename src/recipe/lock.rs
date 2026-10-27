@@ -1,4 +1,6 @@
+// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 //! Separate remote-reference lock. Local task names never appear here.
 use super::{Error, Remote, decode_yaml, nonnull};
 use serde::{Deserialize, Deserializer, de};

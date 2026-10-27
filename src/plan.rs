@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Selected task closure and remote requirements; no execution or fetching.
+
 use crate::{
     image::{ImageReference, IndexDigest},
     lock::{ImageLock, LockError},

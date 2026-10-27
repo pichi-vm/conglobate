@@ -1,4 +1,6 @@
+// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use conglobate::process::CommandSyscalls;
 use nix::sys::termios::{SetArg, cfmakeraw, tcgetattr, tcsetattr};
 use rustix::{mount, pty};

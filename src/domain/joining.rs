@@ -1,4 +1,6 @@
+// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
+
 use super::CommandDomain;
 use std::{fs::File, io};
 /// Borrowing the live cgroup prevents consuming it for cancellation during joining.

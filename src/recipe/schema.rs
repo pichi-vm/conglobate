@@ -1,11 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Types-only multi-stage recipe contract (DESIGN §5–§6).
-//!
-//! Implementation choices, not additional design locks: `tasks` contains the
-//! task map; `into` maps flat artifact names to absolute regular-file paths;
-//! `copy.into` is an absolute destination. TODO(DESIGN §6.3/§13): revisit these
-//! provisional shapes when the artifact tree/value/destination grammar is locked.
+
 pub use crate::value::{CommandTimeout, FilesystemLabel, FilesystemSize};
 use serde::{Deserialize, Deserializer, de};
 use std::{

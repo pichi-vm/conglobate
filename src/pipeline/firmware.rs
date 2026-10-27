@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-//! Build tasks use disposable tool roots and retain declared regular files only.
+
 use crate::{
     execution::HelperProgram,
     input::ResolvedBuild,
