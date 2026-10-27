@@ -6,7 +6,7 @@ the standalone CLI remains testable without a VM. Production builds run in a
 pichi appliance image shipped from this repository (see DESIGN.md). The recipe
 pipeline supports bootstrap, carapace layering, firmware replacement and DTB
 transformation, and produces a self-contained OCI image layout with a CBOR
-input/output inventory. See [DESIGN.md](DESIGN.md) for the CLI, appliance CBOR
+input/output inventory. See [DESIGN.md](DESIGN.md) for the CLI, appliance build-port CBOR
 contract, schemas and inheritance rules.
 
 Fedora, Debian, Alpine and NixOS example recipes live under `tests/distro`. Confidential-computing qualification and
@@ -57,8 +57,9 @@ Production image builds run in the dedicated disposable **build appliance** (a
 pichi image shipped from this repo) with a qualified kernel and an independent
 environment controller that destroys the VM if conglobate crashes. systemd is
 PID 1; static virtiofs mounts expose `repo`/`cache`/`output` at
-`/run/pichi/{repo,cache,output}`; the one-shot CBOR request arrives on named
-console `dev.pichi.build`. The supervisor runs as initial-namespace root. Build
+`/run/pichi/{repo,cache,output}`; the guest opens named console
+`dev.pichi.build`, writes `{"v":1,"op":"build-input"}`, then reads one
+self-delimiting host CBOR response. The supervisor runs as initial-namespace root. Build
 commands are untrusted and run in restricted namespaces; they receive neither
 supervisor control resources nor backing block devices. The kernel,
 environment-provided BPF LSM labeling exception, supervisor and **image-resident

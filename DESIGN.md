@@ -95,7 +95,7 @@ the carapace root.
 
 - [Architecture and scope](#1-architecture-and-scope)
   - [Build appliance](#14-build-appliance)
-  - [Appliance CBOR request](#15-appliance-cbor-request)
+  - [Appliance build-port CBOR](#15-appliance-build-port-cbor)
 - [Standalone CLI](#2-standalone-cli)
 - [Git context](#3-git-context)
 - [Image locks](#4-image-locks)
@@ -195,42 +195,60 @@ appliance may self-host via `pichi build`. Product assumptions for the guest:
 1. **PID 1 is systemd.** There is no Conglobate-as-`/init` product path and no
    custom mount generator.
 2. **Static virtiofs mounts** (configured in the image/unit, not by Conglobate
-   parsing mount tags from the host request) expose host tags:
+   parsing mount tags from the host response) expose host tags:
    - `repo` → `/run/pichi/repo`
    - `cache` → `/run/pichi/cache`
    - `output` → `/run/pichi/output`
-3. **One-shot CBOR request** arrives on the named console `dev.pichi.build`,
-   opened through the kernel console/hvc sysfs path. Do **not** rely on a udev
-   symlink for this device.
-4. Conglobate reads that CBOR once, runs the engine against the mounted paths,
-   and writes outputs under `/run/pichi/output`. There is **no** local CBOR copy
-   retained as a second source of truth, **no** Conglobate parse of virtiofs
-   field readers / mount tags from the request, and **no** mount generator in
-   this crate.
+3. **Named build-port console** `dev.pichi.build`, opened read/write through
+   the kernel console/hvc sysfs path (not a udev symlink). The channel is
+   bidirectional (guest→host tx and host→guest rx).
+4. **v0 wire (one round trip, self-delimiting CBOR, no length prefix; no
+   streaming/multiplexing):** the guest opens the port, writes one request map
+   `{"v":1,"op":"build-input"}`, then reads one host response map. The guest
+   must **not** assume the host already pushed bytes before the request (this
+   supersedes host one-shot CBOR push / uni-rx-only). On `ok:true`, Conglobate
+   runs the engine against the mounted paths and writes under
+   `/run/pichi/output`. On `ok:false`, it fails with the host `error` string.
+   There is **no** local CBOR copy retained as a second source of truth, **no**
+   Conglobate parse of virtiofs field readers / mount tags from the response,
+   and **no** mount generator in this crate.
 5. Appliance image hardcodes (not CBOR fields): UID/GID maps, the network
    namespace path used when networking is enabled, and the resolver file path.
    Formatting tools live in the image; see [§2](#2-standalone-cli).
 
-### 1.5 Appliance CBOR request
+### 1.5 Appliance build-port CBOR
 
-The host→guest build request is a **flat CBOR map** (not a nested transport
-envelope). Fields:
+Transport is the named console in [§1.4](#14-build-appliance). Maps are **flat**
+(not a nested transport envelope). Self-delimiting CBOR; no length prefix.
+
+**Guest → host request (exactly one map):**
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `ref` | yes | Git ref name or full object id; Conglobate resolves it to a commit on the mounted repo |
-| `recipe` | yes | Path to the recipe YAML, always relative to `subdir` |
-| `lock` | yes | Path to the lock YAML, always relative to `subdir` |
-| `subdir` | no | Context subdirectory within the commit; default `"."` |
-| `location` | no | Optional provenance/locator hint for inventory; not an authenticated identity |
+| `v` | yes | Protocol version; must be `1` |
+| `op` | yes | Must be `"build-input"` |
 
-Explicit non-fields (must not appear; if present, reject):
+**Host → guest response (exactly one map):**
+
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `v` | yes | Protocol version; must be `1` |
+| `ok` | yes | `true` on success; `false` on failure |
+| `error` | when `ok` is `false` | Human-readable failure reason from the host |
+| `ref` | when `ok` is `true` | Git ref name or full object id; Conglobate resolves it to a commit on the mounted repo |
+| `recipe` | when `ok` is `true` | Path to the recipe YAML, always relative to `subdir` |
+| `lock` | when `ok` is `true` | Path to the lock YAML, always relative to `subdir` |
+| `subdir` | no (success) | Context subdirectory within the commit; default `"."` |
+| `location` | no (success) | Optional provenance/locator hint for inventory; not an authenticated identity |
+
+Explicit non-fields on the success response (must not appear; if present, reject):
 
 - `commit` (guest resolves `ref` → commit)
 - virtiofs mount tags or mount paths
 - `output` destination (fixed at `/run/pichi/output`)
 - formatter runtime / mke2fs host manifest
 - UID/GID maps, network-namespace path, resolv-conf path
+- `op` (request-only)
 
 Recipe and lock paths are always relative to `subdir`. Conglobate opens the
 mounted repository at `/run/pichi/repo`, resolves `ref` to a commit, and uses
@@ -240,7 +258,7 @@ mounted repository at `/run/pichi/repo`, resolves `ref` to a commit, and uses
 
 The standalone CLI exercises the same engine without a VM. It is the path used
 by rootless CI and local tests. Appliance production builds use the CBOR
-contract in [§1.5](#15-appliance-cbor-request) instead of these host flags for
+contract in [§1.5](#15-appliance-build-port-cbor) instead of these host flags for
 request transport; both paths share recipe/lock/cache semantics.
 
 Required logical inputs for the CLI are a local Git repository path, a full
@@ -1227,8 +1245,8 @@ firmware signing/resealing contracts, and appliance transport and attestation.
 Sandbox policy is specified in section 14. Exact capability/syscall/ioctl
 profiles, fixed internal deadline values, internal formatter/property schemas,
 both-root labeling admission, identity allocation, and runtime mount mechanics
-are implemented under that contract. The build-appliance image, CBOR request and
-virtiofs mount contract are locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-cbor-request);
+are implemented under that contract. The build-appliance image, build-port CBOR and
+virtiofs mount contract are locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-build-port-cbor);
 full engine reshape and confidential-platform qualification remain separate.
 Fully unprivileged storage assembly is outside the selected design.
 
@@ -1270,7 +1288,7 @@ RAII owns resources; destructors cannot certify successful finalization.
    stages execute. It verifies inputs, interprets recipes, assembles storage,
    owns execution and cleanup, finalizes images, and emits inventory. The
    types-only library has no VM transport or init dependency. Appliance boot
-   (systemd PID 1, static virtiofs, CBOR console) is specified in §1.4; the
+   (systemd PID 1, static virtiofs, build-port console) is specified in §1.4; the
    engine itself does not implement virtiofs or a mount generator.
 
 1. Production deployment is the dedicated disposable appliance VM with
