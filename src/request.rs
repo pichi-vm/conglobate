@@ -30,7 +30,7 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Action {
     Build(Box<BuildArguments>),
-    /// One-shot CBOR appliance entry; no flags.
+    /// Build-port appliance entry (request/response CBOR); no flags.
     Appliance,
 }
 #[derive(Debug, Args)]

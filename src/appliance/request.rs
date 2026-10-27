@@ -1,7 +1,11 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Flat-map CBOR appliance request: accept-list + reject-list with key names.
+//! Host→guest build-input response CBOR: envelope + flat build fields.
+//!
+//! v0 response is a flat map with `v`/`ok` plus build-input fields on success
+//! (`ref`/`recipe`/`lock`/optional `subdir`/`location`), or `error` on failure.
+//! Accept-list + reject-list name offenders.
 
 use crate::{
     path::{ContextDirectory, ContextPath, PathError},
@@ -27,8 +31,14 @@ pub(crate) enum ApplianceRequestError {
     InvalidType(&'static str),
     #[error("appliance CBOR field {0} is empty or contains NUL")]
     InvalidString(&'static str),
-    #[error("appliance CBOR has trailing bytes after the request map")]
+    #[error("appliance CBOR has trailing bytes after the response map")]
     TrailingBytes,
+    #[error("appliance CBOR protocol version must be 1")]
+    BadVersion,
+    #[error("appliance CBOR missing ok field")]
+    MissingOk,
+    #[error("host rejected build-input: {0}")]
+    HostRejected(String),
     #[error(transparent)]
     Path(#[from] PathError),
     #[error(transparent)]
@@ -68,14 +78,26 @@ impl ApplianceRequest {
         self.location.as_deref()
     }
 
-    /// Decode a one-shot CBOR map. Unknown and forbidden keys name the offender.
+    /// Decode one self-delimiting host response CBOR map from a reader.
+    pub(crate) fn decode_response(
+        reader: &mut impl std::io::Read,
+    ) -> Result<Self, ApplianceRequestError> {
+        let value: Value = ciborium::from_reader(reader)
+            .map_err(|error| ApplianceRequestError::Decode(error.to_string()))?;
+        Self::from_response_value(value)
+    }
+
+    /// Decode a complete response buffer (one map, no trailing bytes).
     pub(crate) fn decode(bytes: &[u8]) -> Result<Self, ApplianceRequestError> {
         let mut cursor = std::io::Cursor::new(bytes);
-        let value: Value = ciborium::from_reader(&mut cursor)
-            .map_err(|error| ApplianceRequestError::Decode(error.to_string()))?;
+        let request = Self::decode_response(&mut cursor)?;
         if cursor.position() != bytes.len() as u64 {
             return Err(ApplianceRequestError::TrailingBytes);
         }
+        Ok(request)
+    }
+
+    fn from_response_value(value: Value) -> Result<Self, ApplianceRequestError> {
         let Value::Map(entries) = value else {
             return Err(ApplianceRequestError::Decode(
                 "top-level value must be a map".into(),
@@ -111,6 +133,7 @@ impl ApplianceRequest {
             "repo",
             "mount",
             "tag",
+            "op",
         ] {
             if fields.contains_key(forbidden) {
                 return Err(ApplianceRequestError::RejectedField(forbidden));
@@ -119,10 +142,27 @@ impl ApplianceRequest {
         for key in fields.keys() {
             if !matches!(
                 key.as_str(),
-                "ref" | "recipe" | "lock" | "subdir" | "location"
+                "v" | "ok" | "error" | "ref" | "recipe" | "lock" | "subdir" | "location"
             ) {
                 return Err(ApplianceRequestError::UnknownField(key.clone()));
             }
+        }
+        match fields.remove("v") {
+            Some(Value::Integer(version)) if i128::from(version) == 1 => {}
+            Some(_) => return Err(ApplianceRequestError::BadVersion),
+            None => return Err(ApplianceRequestError::MissingField("v")),
+        }
+        let ok = match fields.remove("ok") {
+            Some(Value::Bool(ok)) => ok,
+            Some(_) => return Err(ApplianceRequestError::InvalidType("ok")),
+            None => return Err(ApplianceRequestError::MissingOk),
+        };
+        if !ok {
+            let message = take_string(&mut fields, "error", true)?.unwrap();
+            return Err(ApplianceRequestError::HostRejected(message));
+        }
+        if fields.contains_key("error") {
+            return Err(ApplianceRequestError::RejectedField("error"));
         }
         let git_ref = take_string(&mut fields, "ref", true)?.unwrap();
         let recipe_text = take_string(&mut fields, "recipe", true)?.unwrap();
@@ -236,10 +276,20 @@ mod tests {
 
     fn required() -> Vec<(&'static str, Value)> {
         vec![
+            ("v", Value::Integer(1.into())),
+            ("ok", Value::Bool(true)),
             ("ref", Value::Text("refs/heads/main".into())),
             ("recipe", Value::Text("recipe.yml".into())),
             ("lock", Value::Text("lock.yml".into())),
         ]
+    }
+
+    fn host_error(message: &str) -> Vec<u8> {
+        encode(&[
+            ("v", Value::Integer(1.into())),
+            ("ok", Value::Bool(false)),
+            ("error", Value::Text(message.into())),
+        ])
     }
 
     #[test]
@@ -304,6 +354,23 @@ mod tests {
             ApplianceRequest::decode(&bytes),
             Err(ApplianceRequestError::TrailingBytes)
         ));
+    }
+
+    #[test]
+    fn rejects_ok_false_with_host_error() {
+        let error = ApplianceRequest::decode(&host_error("no recipe"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("no recipe"), "{error}");
+    }
+
+    #[test]
+    fn decode_response_reads_one_self_delimiting_map() {
+        let exact = encode(&required());
+        let mut cursor = std::io::Cursor::new(exact.as_slice());
+        let request = ApplianceRequest::decode_response(&mut cursor).unwrap();
+        assert_eq!(request.git_ref(), "refs/heads/main");
+        assert_eq!(cursor.position(), exact.len() as u64);
     }
 
     #[test]

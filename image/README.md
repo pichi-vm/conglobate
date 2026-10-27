@@ -20,7 +20,11 @@ published OCI image.
 
 The engine reads only fixed paths and the named console; mount tags and image
 hardcodes (uid/gid maps, netns, resolv.conf) live in these units / the image,
-never in the appliance CBOR request.
+never in the appliance CBOR build-input response.
+
+v0 build-port: `conglobate appliance` opens `dev.pichi.build`, writes
+`{"v":1,"op":"build-input"}`, then reads one self-delimiting host response
+(`ok:true` + `ref`/`recipe`/`lock`/…, or `ok:false` + `error`).
 
 ## Formatters (transitional)
 
