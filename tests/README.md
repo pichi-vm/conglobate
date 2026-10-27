@@ -278,6 +278,10 @@ and a command checks its bytes and the absence of context mounts. The runner the
 requires successful publication/export and verifies exported blob digests. This
 checks the committed-context pipeline, not distro boot or full qualification.
 
+`context/lock.yaml` pins `qualification.local/fedora:43` to a tiny fixture index.
+The host harness seeds that exact index blob. It is not a Fedora GHCR digest.
+`run.py` still writes its own `images.lock` from `--pin`.
+
 `pipeline/recipe.yaml` exercises bootstrap, three carapace directives and firmware
 with an explicit tool image in one offline build. Supply the Fedora seed and
 `--firmware-pmi` / `--firmware-dtb` using its existing pair. The bootstrap installs

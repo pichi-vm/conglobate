@@ -4,8 +4,9 @@
 //! Fixed appliance host paths and image-hardcoded execution inputs.
 //! Tags and mount wiring live in the image units, never in CBOR.
 //!
-//! Formatter tools are not listed here: until Follow-up A they are discovered
-//! from the guest root (see `formatter::selection` and `image/README.md`).
+//! Formatter tools are not listed here. The appliance image installs
+//! `e2fsprogs`; the engine discovers `mke2fs` from the guest root
+//! (see `formatter::selection` and `image/README.md`).
 
 use crate::isolation::{IdMappings, IdRange};
 use std::path::Path;

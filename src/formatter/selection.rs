@@ -2,14 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Internal filesystem-name → formatter profile selection.
 //!
-//! Product CLI never supplies a host formatter path. Standalone builds discover
-//! the trusted host `mke2fs` (+ `ldd` dependencies) here.
+//! Product CLI never supplies a host formatter path. The probe checks the
+//! image-resident paths (`/usr/sbin/mke2fs` first) and only then `PATH`.
 //!
-//! **Appliance (until Follow-up A):** the same discovery runs against the guest
-//! root (`/` inside the build VM). The guest rootfs — not a host PATH/`ldd`
-//! handoff from the hypervisor — is the trusted formatter source. Follow-up A
-//! will bundle formatters into the appliance image layout explicitly so capture
-//! no longer depends on ambient guest PATH discovery.
+//! **Appliance:** the image installs `e2fsprogs`, so `mke2fs` lives at those
+//! paths inside the guest. Discovery still captures that binary and its `ldd`
+//! dependencies from the guest root (`/`). There is no host PATH handoff.
+//! Standalone CLI builds use the same probe on the host.
 
 use super::CapturedFormatter;
 use crate::{path::ContextPath, recipe::FilesystemSpec};

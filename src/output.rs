@@ -2,11 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Private output storage and atomic filesystem publication. These low-level
 //! owners do not prove a successful build or validate inventory/manifest relations.
+//!
+//! Beside the OCI layout, publication also stages the transitional flat
+//! `build.yaml` and delta cow/verity/(optional) PMI files the current host
+//! smoke reads. Inherited scutes are not repeated there.
 mod assembly;
 pub(crate) use assembly::AssembledImage;
 
 use crate::artifact::Digest;
 use crate::cache::{Cache, CacheError};
+use crate::recipe_io::{BuildOutput, ScuteOut};
 use std::{
     ffi::OsString,
     fs::{self, File},
@@ -14,6 +19,82 @@ use std::{
     os::{fd::AsRawFd, unix::fs::PermissionsExt},
     path::{Path, PathBuf},
 };
+
+/// Flat PMI name when this build produced firmware. Carapace-only output omits it.
+pub(crate) const TRANSITIONAL_PMI_NAME: &str = "boot.pmi";
+
+/// `NNNN.cow` / `NNNN.verity` for delta scute `index` (base is `0000`).
+pub(crate) fn delta_blob_names(index: usize) -> io::Result<(String, String)> {
+    if index > 9999 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "delta scute index does not fit in 0000.cow",
+        ));
+    }
+    Ok((format!("{index:04}.cow"), format!("{index:04}.verity")))
+}
+
+/// Build the transitional manifest for delta scutes in the order given.
+///
+/// Callers pass produced scutes only, base first. The host prepends the
+/// operator source carapace from `from:`; an empty list is valid. `pmi` is
+/// `Some` only when this build produced firmware.
+pub(crate) fn transitional_manifest(
+    salts: &[&str],
+    pmi: Option<String>,
+) -> io::Result<BuildOutput> {
+    let mut scutes = Vec::with_capacity(salts.len());
+    for (index, salt) in salts.iter().enumerate() {
+        if !is_full_salt(salt) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "delta scute salt is not full hex",
+            ));
+        }
+        let (cow, verity) = delta_blob_names(index)?;
+        scutes.push(ScuteOut {
+            cow,
+            verity,
+            salt: (*salt).to_string(),
+        });
+    }
+    if let Some(name) = &pmi {
+        validate_flat_name(name)?;
+        if !name.ends_with(".pmi") {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "transitional PMI name must end in .pmi",
+            ));
+        }
+    }
+    Ok(BuildOutput { scutes, pmi })
+}
+
+fn is_full_salt(salt: &str) -> bool {
+    // At least the 32-byte parent root. A longer even hex string is a suffix
+    // on that chain prefix; both are the salt `ScuteOut` already records.
+    salt.len() >= 64
+        && salt.len().is_multiple_of(2)
+        && salt.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn validate_flat_name(name: &str) -> io::Result<()> {
+    if name.is_empty()
+        || name.len() > 64
+        || name.starts_with('.')
+        || name.ends_with('.')
+        || !name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+        || Path::new(name).file_name() != Some(std::ffi::OsStr::new(name))
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "transitional output name must be a single relative component",
+        ));
+    }
+    Ok(())
+}
 
 /// How staged content is published onto the destination path.
 #[derive(Debug)]
@@ -195,6 +276,65 @@ impl StagedDirectory {
     /// Serialization and structural validation belong to the coordinator.
     pub(crate) fn write_inventory(&self, inventory: &[u8]) -> io::Result<()> {
         self.write_file(&self.temporary.path().join("inventory.cbor"), inventory)
+    }
+    /// Copy exactly `size` bytes to a single flat name in the staging root.
+    ///
+    /// The name is one path component (`0000.cow`, `boot.pmi`). A short or long
+    /// reader fails and leaves no published name.
+    pub(crate) fn write_exact_file(
+        &self,
+        name: &str,
+        mut reader: impl Read,
+        size: u64,
+    ) -> io::Result<()> {
+        validate_flat_name(name)?;
+        let path = self.temporary.path().join(name);
+        let mut pending = tempfile::NamedTempFile::new_in(self.temporary.path())?;
+        let mut remaining = size;
+        let mut buffer = [0u8; 65536];
+        while remaining != 0 {
+            let count = remaining.min(buffer.len() as u64) as usize;
+            let count = reader.read(&mut buffer[..count])?;
+            if count == 0 {
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "truncated transitional blob",
+                ));
+            }
+            pending.write_all(&buffer[..count])?;
+            remaining -= count as u64;
+        }
+        if reader.read(&mut buffer[..1])? != 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "transitional blob longer than declared size",
+            ));
+        }
+        pending.as_file().sync_all()?;
+        pending.persist(path).map_err(|error| error.error)?;
+        Ok(())
+    }
+    /// Write `build.yaml` and refuse a document that does not parse back.
+    pub(crate) fn write_build_yaml(&self, output: &BuildOutput) -> io::Result<()> {
+        let yaml = output
+            .to_yaml()
+            .map_err(|error| io::Error::other(error.to_string()))?;
+        let parsed =
+            BuildOutput::parse(&yaml).map_err(|error| io::Error::other(error.to_string()))?;
+        if parsed.pmi != output.pmi || parsed.scutes.len() != output.scutes.len() {
+            return Err(io::Error::other(
+                "transitional build.yaml round-trip mismatch",
+            ));
+        }
+        for (got, expected) in parsed.scutes.iter().zip(&output.scutes) {
+            if got.cow != expected.cow || got.verity != expected.verity || got.salt != expected.salt
+            {
+                return Err(io::Error::other(
+                    "transitional build.yaml round-trip mismatch",
+                ));
+            }
+        }
+        self.write_file(&self.temporary.path().join("build.yaml"), yaml.as_bytes())
     }
     /// Publish staged layout to the destination. Not a build-success receipt.
     ///
@@ -384,5 +524,111 @@ mod tests {
         fs::write(mount.join("sentinel"), b"x").unwrap();
         let error = StagedDirectory::create(&mount).unwrap_err();
         assert_eq!(error.kind(), io::ErrorKind::AlreadyExists);
+    }
+
+    #[test]
+    fn delta_names_are_chain_order_and_bounded() {
+        assert_eq!(
+            delta_blob_names(0).unwrap(),
+            ("0000.cow".to_string(), "0000.verity".to_string())
+        );
+        assert_eq!(delta_blob_names(9999).unwrap().0, "9999.cow".to_string());
+        assert!(delta_blob_names(10_000).is_err());
+    }
+
+    #[test]
+    fn transitional_manifest_keeps_caller_order_and_rejects_bad_inputs() {
+        let base = "ab".repeat(32);
+        let top = "cd".repeat(32);
+        let manifest =
+            transitional_manifest(&[&base, &top], Some(TRANSITIONAL_PMI_NAME.into())).unwrap();
+        assert_eq!(manifest.scutes[0].cow, "0000.cow");
+        assert_eq!(manifest.scutes[0].verity, "0000.verity");
+        assert_eq!(manifest.scutes[0].salt, base);
+        assert_eq!(manifest.scutes[1].cow, "0001.cow");
+        assert_eq!(manifest.scutes[1].salt, top);
+        assert_eq!(manifest.pmi.as_deref(), Some("boot.pmi"));
+        let empty = transitional_manifest(&[], None).unwrap();
+        assert!(empty.scutes.is_empty());
+        assert!(empty.pmi.is_none());
+        assert!(transitional_manifest(&["abcd"], None).is_err());
+        assert!(transitional_manifest(&[&"zz".repeat(32)], None).is_err());
+        assert!(transitional_manifest(&[], Some("../boot.pmi".into())).is_err());
+        assert!(transitional_manifest(&[], Some("boot.bin".into())).is_err());
+    }
+
+    #[test]
+    fn empty_mount_publishes_oci_siblings_and_flat_delta_files() {
+        let parent = tempfile::TempDir::new().unwrap();
+        let mount = parent.path().join("output");
+        fs::create_dir(&mount).unwrap();
+        let staged = StagedDirectory::create(&mount).unwrap();
+        let base = "ab".repeat(32);
+        let top = "cd".repeat(32);
+        let manifest =
+            transitional_manifest(&[&base, &top], Some(TRANSITIONAL_PMI_NAME.into())).unwrap();
+        staged
+            .write_exact_file("0000.cow", &b"cow-base"[..], 8)
+            .unwrap();
+        staged
+            .write_exact_file("0000.verity", &b"ver-base"[..], 8)
+            .unwrap();
+        staged
+            .write_exact_file("0001.cow", &b"cow-top!"[..], 8)
+            .unwrap();
+        staged
+            .write_exact_file("0001.verity", &b"ver-top!"[..], 8)
+            .unwrap();
+        staged
+            .write_exact_file("boot.pmi", &b"pmi-bytes"[..], 9)
+            .unwrap();
+        staged.write_build_yaml(&manifest).unwrap();
+        staged.write_inventory(b"inv").unwrap();
+        staged.publish().unwrap();
+        let yaml = fs::read_to_string(mount.join("build.yaml")).unwrap();
+        assert!(
+            yaml.find("0000.cow").unwrap() < yaml.find("0001.cow").unwrap(),
+            "{yaml}"
+        );
+        assert!(yaml.contains("pmi:"), "{yaml}");
+        assert!(!yaml.contains("null"), "{yaml}");
+        let parsed = BuildOutput::parse(&yaml).unwrap();
+        assert_eq!(parsed.scutes.len(), 2);
+        assert_eq!(parsed.scutes[0].salt, base);
+        assert_eq!(parsed.scutes[1].verity, "0001.verity");
+        assert_eq!(parsed.pmi.as_deref(), Some("boot.pmi"));
+        assert_eq!(fs::read(mount.join("0000.cow")).unwrap(), b"cow-base");
+        assert_eq!(fs::read(mount.join("0001.verity")).unwrap(), b"ver-top!");
+        assert_eq!(fs::read(mount.join("boot.pmi")).unwrap(), b"pmi-bytes");
+        assert_eq!(fs::read(mount.join("inventory.cbor")).unwrap(), b"inv");
+        assert!(mount.join("blobs/sha256").is_dir());
+        assert!(!mount.join("blobs/sha256/0000.cow").exists());
+        assert!(!mount.join("oci-layout").exists());
+    }
+
+    #[test]
+    fn exact_file_rejects_short_long_and_escaping_names() {
+        let parent = tempfile::tempdir().unwrap();
+        let staged = StagedDirectory::create(&parent.path().join("output")).unwrap();
+        assert!(staged.write_exact_file("0000.cow", &b"xy"[..], 4).is_err());
+        assert!(!staged.temporary.path().join("0000.cow").exists());
+        assert!(staged.write_exact_file("0000.cow", &b"xyz"[..], 2).is_err());
+        assert!(!staged.temporary.path().join("0000.cow").exists());
+        assert!(
+            staged
+                .write_exact_file("../0000.cow", &b"z"[..], 1)
+                .is_err()
+        );
+        assert!(
+            staged
+                .write_exact_file("/tmp/0000.cow", &b"z"[..], 1)
+                .is_err()
+        );
+        staged.write_exact_file("0000.cow", &b"ok"[..], 2).unwrap();
+        assert_eq!(
+            fs::read(staged.temporary.path().join("0000.cow")).unwrap(),
+            b"ok"
+        );
+        staged.discard().unwrap();
     }
 }
