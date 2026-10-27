@@ -4,6 +4,13 @@
 # systemd is PID 1; Conglobate is a normal oneshot unit (not /init).
 # Image hardcodes (uid/gid maps, netns, resolv.conf paths) are supplied by the
 # appliance binary constants, not by this unit's argv.
+#
+# RemainAfterExit=no is required for SuccessAction=: a oneshot that stays
+# active never reaches inactive, so the action would not run when the process
+# exits. poweroff-force (systemctl poweroff -f) syncs and unmounts, including
+# the output virtiofs, then powers off without waiting on getty.
+# poweroff-immediate would skip that unmount. An ExecStopPost poweroff can
+# deadlock the stop job, so it is not used.
 
 [Unit]
 Description=Conglobate build appliance (build-port CBOR on dev.pichi.build)
@@ -11,14 +18,17 @@ Documentation=file:../README.md
 Requires=run-pichi-repo.mount run-pichi-cache.mount run-pichi-output.mount
 After=run-pichi-repo.mount run-pichi-cache.mount run-pichi-output.mount
 ConditionPathExists=/usr/bin/conglobate
+SuccessAction=poweroff-force
+FailureAction=poweroff-force
 
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/conglobate appliance
 # Fail the boot target if the build fails; do not linger as active.
 RemainAfterExit=no
-StandardOutput=journal
-StandardError=journal
+# Image cmdline is console=hvc0, so the console copy is the build console.
+StandardOutput=journal+console
+StandardError=journal+console
 
 [Install]
 WantedBy=multi-user.target
