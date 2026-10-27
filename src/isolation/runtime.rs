@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use rustix::{
-    fs::{Mode, OFlags, ResolveFlags},
+    fs::{AtFlags, Mode, OFlags, ResolveFlags},
     mount::{
         self, FsMountFlags, FsOpenFlags, MountAttr, MountAttrFlags, MountPropagationFlags,
         MountSetAttrFlags, MoveMountFlags, OpenTreeFlags,
@@ -81,20 +81,49 @@ impl RuntimeTargets {
         ))
     }
 
+    /// Open `path` as a directory mount point. A missing final component is
+    /// created on the writable image: bare roots (the context-recipe smoke
+    /// carapace has neither `/dev` nor `/proc` nor `/sys`) otherwise fail
+    /// `openat2` with `ENOENT` before any command runs. Existing symlinks and
+    /// non-directories are left alone and still fail closed.
     fn directory(root: &File, path: &str) -> io::Result<File> {
+        let opened = match Self::open_directory(root, path) {
+            Ok(file) => Ok(file),
+            Err(rustix::io::Errno::NOENT) => {
+                match rustix::fs::mkdirat(root, path, Mode::from_raw_mode(0o755)) {
+                    Ok(()) => {
+                        // umask must not leave the mount point non-traversable.
+                        let _ = rustix::fs::chmodat(
+                            root,
+                            path,
+                            Mode::from_raw_mode(0o755),
+                            AtFlags::empty(),
+                        );
+                        Self::open_directory(root, path)
+                    }
+                    // A dangling symlink or other non-directory occupies the name.
+                    Err(rustix::io::Errno::EXIST) => Self::open_directory(root, path),
+                    Err(error) => Err(error),
+                }
+            }
+            Err(error) => Err(error),
+        };
+        opened.map_err(|error| {
+            io::Error::new(
+                io::Error::from(error).kind(),
+                format!("command runtime target /{path}: {error}"),
+            )
+        })
+    }
+
+    fn open_directory(root: &File, path: &str) -> Result<File, rustix::io::Errno> {
         Ok(rustix::fs::openat2(
             root,
             path,
             OFlags::PATH | OFlags::DIRECTORY | OFlags::CLOEXEC,
             Mode::empty(),
             ResolveFlags::IN_ROOT | ResolveFlags::NO_MAGICLINKS | ResolveFlags::NO_XDEV,
-        )
-        .map_err(|error| {
-            io::Error::new(
-                io::Error::from(error).kind(),
-                format!("command runtime target /{path}: {error}"),
-            )
-        })?
+        )?
         .into())
     }
 
@@ -204,7 +233,10 @@ impl ProcRestrictions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{fs, os::unix::fs::symlink};
+    use std::{
+        fs,
+        os::unix::fs::{PermissionsExt, symlink},
+    };
 
     #[test]
     fn absolute_symlinks_resolve_inside_the_image() {
@@ -244,6 +276,57 @@ mod tests {
         fs::remove_file(image.path().join("proc")).unwrap();
         symlink("/sys", image.path().join("proc")).unwrap();
         assert!(RuntimeTargets::resolve(&root).is_err());
+    }
+
+    #[test]
+    fn missing_runtime_directories_are_created_on_the_image() {
+        let image = tempfile::tempdir().unwrap();
+        let root = File::open(image.path()).unwrap();
+        let root_ino = root.metadata().unwrap().ino();
+        RuntimeTargets::resolve(&root).unwrap();
+        for name in ["dev", "proc", "sys"] {
+            let metadata = fs::metadata(image.path().join(name)).unwrap();
+            assert!(metadata.is_dir(), "{name}");
+            assert_ne!(metadata.ino(), root_ino, "{name}");
+            assert_eq!(metadata.permissions().mode() & 0o777, 0o755, "{name}");
+        }
+    }
+
+    #[test]
+    fn existing_runtime_directories_keep_their_inodes() {
+        let image = tempfile::tempdir().unwrap();
+        for name in ["dev", "proc", "sys"] {
+            fs::create_dir(image.path().join(name)).unwrap();
+        }
+        let before: Vec<_> = ["dev", "proc", "sys"]
+            .into_iter()
+            .map(|name| fs::metadata(image.path().join(name)).unwrap().ino())
+            .collect();
+        RuntimeTargets::resolve(&File::open(image.path()).unwrap()).unwrap();
+        let after: Vec<_> = ["dev", "proc", "sys"]
+            .into_iter()
+            .map(|name| fs::metadata(image.path().join(name)).unwrap().ino())
+            .collect();
+        assert_eq!(before, after);
+    }
+
+    #[test]
+    fn dangling_runtime_symlink_is_not_replaced() {
+        let image = tempfile::tempdir().unwrap();
+        fs::create_dir(image.path().join("proc")).unwrap();
+        fs::create_dir(image.path().join("sys")).unwrap();
+        symlink("missing", image.path().join("dev")).unwrap();
+        let error = RuntimeTargets::resolve(&File::open(image.path()).unwrap()).unwrap_err();
+        assert!(
+            error.to_string().contains("command runtime target /dev"),
+            "{error}"
+        );
+        assert!(
+            fs::symlink_metadata(image.path().join("dev"))
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
     }
 
     #[test]
