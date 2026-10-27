@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
+extern crate conglobate as contract;
 extern crate self as conglobate;
 mod anchor;
 mod appliance;
@@ -44,7 +45,7 @@ mod step;
 mod storage;
 mod template;
 mod transform;
-mod value;
+use contract::value;
 
 #[cfg(test)]
 mod tests;

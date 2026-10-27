@@ -282,8 +282,10 @@ checks the committed-context pipeline, not distro boot or full qualification.
 The host harness seeds that exact index blob. It is not a Fedora GHCR digest.
 `run.py` still writes its own `images.lock` from `--pin`.
 
-`pipeline/recipe.yaml` exercises bootstrap, three carapace directives and firmware
-with an explicit tool image in one offline build. Supply the Fedora seed and
+`pipeline/recipe.yaml` exercises bootstrap, an extend task, a local build producer
+whose finalized artifact is copied into the root, and an explicit boot-producing
+build task in one offline build. An unreachable build has no lock entry and asks
+for networking; it must never run. Supply the Fedora seed and
 `--firmware-pmi` / `--firmware-dtb` using its existing pair. The bootstrap installs
 only a shell, rm and their shared libraries into a small new root. Later steps
 check persistence across command/COPY boundaries and separation of tool roots.
@@ -291,6 +293,12 @@ Run `python3 tests/distro/pipeline/verify.py RUN_DIRECTORY` afterward (requires
 `cbor2` and `fdtget`). It requires exactly two produced scutes, checks the exported
 blob graph and canonical inventory, and reads `/chosen/bootargs` to verify the
 final corium root. It does not qualify booting or all stage/failure combinations.
+`pipeline/imported-boot.yaml` uses the same fresh root and artifact producer but
+selects boot from an empty extend task over an imported image. Supply a cache
+whose seed exports a PMI/DTB pair and run the verifier with `--imported-boot`.
+It requires automatic binding to the fresh root without inheriting the boot
+source's carapace.
+
 
 `prepare.py` copies an existing local artifact manifest and its components into
 a new OCI image-layout directory, verifies their SHA-256 digests and sizes, and

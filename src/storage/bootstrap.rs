@@ -79,6 +79,14 @@ impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Mounted> {
             .copy_with_output(&mut self.output, context, directive)
     }
 
+    pub(crate) fn copy_artifact(
+        &mut self,
+        directive: &crate::recipe::Copy,
+        source: &crate::firmware::FirmwareFile<'_>,
+    ) -> Result<(), crate::copy::CopyError> {
+        self.tool
+            .copy_artifact(Some(&mut self.output), directive, source)
+    }
     pub(crate) fn tool(&self) -> &Volume<'n, 'o, 'w, Mounted> {
         &self.tool
     }

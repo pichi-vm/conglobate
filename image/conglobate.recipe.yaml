@@ -9,23 +9,41 @@
 # units under image/units/, and that places `/usr/bin/conglobate` for the
 # oneshot `conglobate appliance` service.
 
-bootstrap:
-  # Placeholder locator — the bootstrap image is Fedora 43 from mkosi, not
-  # this recipe. Replace only when self-host is actually wired.
-  from: qualification.local/fedora:43
-  filesystem: {type: ext4, size: 4GiB, properties: {label: conglobate-build}}
-  derive:
+tasks:
+  bootstrap:
+    kind: bootstrap
+    from: qualification.local/fedora:43
+    filesystem:
+      size: 4GiB
+      kind: ext4
+      label: conglobate-build
+    exec:
     - network: true
       timeout: 30m
       run: |
         # Self-host later. Bootstrap CI does not execute this recipe.
         true
-carapace:
-  derive:
-    - copy: {from: units/run-pichi-repo.mount, into: /usr/lib/systemd/system/run-pichi-repo.mount}
-    - copy: {from: units/run-pichi-cache.mount, into: /usr/lib/systemd/system/run-pichi-cache.mount}
-    - copy: {from: units/run-pichi-output.mount, into: /usr/lib/systemd/system/run-pichi-output.mount}
-    - copy: {from: units/conglobate-build.service, into: /usr/lib/systemd/system/conglobate-build.service}
+  rootfs:
+    kind: extend
+    from: bootstrap
+    exec:
+    - copy:
+        from: units
+        into: /recipe-input-units
+    - run: cp -a /recipe-input-units/run-pichi-repo.mount /usr/lib/systemd/system/run-pichi-repo.mount
+    - copy:
+        from: units
+        into: /recipe-input-units
+    - run: cp -a /recipe-input-units/run-pichi-cache.mount /usr/lib/systemd/system/run-pichi-cache.mount
+    - copy:
+        from: units
+        into: /recipe-input-units
+    - run: cp -a /recipe-input-units/run-pichi-output.mount /usr/lib/systemd/system/run-pichi-output.mount
+    - copy:
+        from: units
+        into: /recipe-input-units
+    - run: cp -a /recipe-input-units/conglobate-build.service /usr/lib/systemd/system/conglobate-build.service
     - run: |
         systemctl enable run-pichi-repo.mount run-pichi-cache.mount run-pichi-output.mount
         systemctl enable conglobate-build.service
+image: rootfs

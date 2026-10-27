@@ -32,16 +32,17 @@ pub(crate) struct ExtractedFirmware<'w> {
     dtb: FirmwareFile<'w>,
 }
 /// Final DTB bytes and their compatible firmware. This is not command success.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct FinalizedFirmware<'w> {
-    pmi: FirmwareFile<'w>,
+    pmi: std::sync::Arc<FirmwareFile<'w>>,
     dtb: TransformedDtb,
 }
 #[derive(Debug)]
-struct FirmwareFile<'w> {
+pub(crate) struct FirmwareFile<'w> {
     bytes: Scratch<'w>,
     digest: crate::artifact::Digest,
     size: u64,
+    executable: bool,
 }
 impl<'w> ExtractedFirmware<'w> {
     pub(crate) fn capture(
@@ -69,7 +70,10 @@ impl<'w> ExtractedFirmware<'w> {
             DtbContract::from_pmi(&self.pmi.read()?)?
                 .check_size(dtb.bytes().expect("present input DTB").len())?;
         }
-        Ok(FinalizedFirmware { pmi: self.pmi, dtb })
+        Ok(FinalizedFirmware {
+            pmi: std::sync::Arc::new(self.pmi),
+            dtb,
+        })
     }
 }
 impl FinalizedFirmware<'_> {
@@ -87,7 +91,7 @@ impl FinalizedFirmware<'_> {
     }
 }
 impl<'w> FirmwareFile<'w> {
-    fn open(root: &File, path: &str) -> io::Result<File> {
+    pub(crate) fn open(root: &File, path: &str) -> io::Result<File> {
         let observed: File = fs::openat2(
             root,
             path,
@@ -102,13 +106,16 @@ impl<'w> FirmwareFile<'w> {
         // Reopen the pinned, checked regular inode, not the image-controlled path.
         File::open(format!("/proc/self/fd/{}", observed.as_raw_fd()))
     }
-    fn capture(
+    pub(crate) fn capture(
         mut source: File,
         workspace: &'w Workspace,
         budget: &SetupBudget,
     ) -> io::Result<Self> {
         budget.check()?;
-        let size = source.metadata()?.len();
+        use std::os::unix::fs::PermissionsExt;
+        let metadata = source.metadata()?;
+        let size = metadata.len();
+        let executable = metadata.permissions().mode() & 0o111 != 0;
         let mut bytes = workspace.scratch()?;
         let mut hash = Sha256::new();
         let mut remaining = size;
@@ -138,12 +145,16 @@ impl<'w> FirmwareFile<'w> {
             bytes,
             digest,
             size,
+            executable,
         })
     }
-    fn reader(&self) -> crate::storage::ScuteReader<'_> {
+    pub(crate) fn mode(&self) -> u32 {
+        if self.executable { 0o755 } else { 0o644 }
+    }
+    pub(crate) fn reader(&self) -> crate::storage::ScuteReader<'_> {
         crate::storage::ScuteReader::new(self.bytes.file(), self.size)
     }
-    fn read(&self) -> io::Result<Vec<u8>> {
+    pub(crate) fn read(&self) -> io::Result<Vec<u8>> {
         let mut bytes = Vec::new();
         bytes
             .try_reserve_exact(usize::try_from(self.size).map_err(io::Error::other)?)
@@ -152,6 +163,53 @@ impl<'w> FirmwareFile<'w> {
         Ok(bytes)
     }
 }
+impl<'w> FinalizedFirmware<'w> {
+    pub(crate) fn inherited(
+        image: &crate::input::CheckedImage,
+        cache: &crate::cache::Cache,
+        workspace: &'w Workspace,
+    ) -> anyhow::Result<Option<Self>> {
+        let pmi = image
+            .image()
+            .manifest()
+            .layers
+            .iter()
+            .find_map(|l| match l {
+                crate::artifact::Layer::Pmi(d) => Some(d),
+                _ => None,
+            });
+        let dtb = image.inherited_dtb(cache)?;
+        let Some((pmi, dtb)) = pmi.zip(dtb) else {
+            return Ok(None);
+        };
+        let digest = pmi.digest.parse()?;
+        let mut bytes = workspace.scratch()?;
+        cache.copy_verified(&digest, pmi.size, &mut bytes)?;
+        bytes.sync_all()?;
+        let dtb = TransformSelection::Authored(vec![]).apply(Some(dtb.bytes()), None)?;
+        Ok(Some(Self {
+            pmi: std::sync::Arc::new(FirmwareFile {
+                bytes,
+                digest,
+                size: pmi.size,
+                executable: false,
+            }),
+            dtb,
+        }))
+    }
+    pub(crate) fn rewrite(&self, root: Option<&str>) -> Result<Self, ExtractionError> {
+        let dtb = TransformSelection::Builtin.apply(self.dtb.bytes(), root)?;
+        if dtb.bytes() != self.dtb.bytes() {
+            DtbContract::from_pmi(&self.pmi.read()?)?
+                .check_size(dtb.bytes().expect("boot DTB").len())?;
+        }
+        Ok(Self {
+            pmi: self.pmi.clone(),
+            dtb,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

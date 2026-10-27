@@ -22,16 +22,27 @@ impl<R: CommandStorage> CompletedDirectives<R> {
         (self.storage, self.reaper)
     }
 }
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct DirectiveInputs<'a, 'w> {
+    pub(crate) context: &'a CapturedContext,
+    pub(crate) artifacts: &'a crate::pipeline::artifacts::Artifacts<'w>,
+    pub(crate) carapace: Option<&'a [u8; 32]>,
+    pub(crate) network: Option<&'a crate::network::CommandNetworking<'a>>,
+}
 impl<'l> CommandSandbox<'l> {
-    pub(crate) fn directives_with_network<R: CommandStorage>(
+    pub(crate) fn directives_with_inputs<R: CommandStorage>(
         &self,
         mut storage: R::Unmounted,
         mut reaper: ChildReaper,
-        context: &CapturedContext,
         directives: &[Directive],
-        carapace: Option<&[u8; 32]>,
-        network: Option<&crate::network::CommandNetworking<'_>>,
+        inputs: DirectiveInputs<'_, '_>,
     ) -> anyhow::Result<CompletedDirectives<R>> {
+        let DirectiveInputs {
+            context,
+            artifacts,
+            carapace,
+            network,
+        } = inputs;
         use anyhow::Context;
         anyhow::ensure!(
             network.is_some()
@@ -67,7 +78,9 @@ impl<'l> CommandSandbox<'l> {
                         Ok(ready.execute(budget, run.timeout())?.into_parts())
                     }
                 }
-                Directive::Copy(copy) => self.copy_directive::<R>(storage, reaper, context, copy),
+                Directive::Copy(copy) => {
+                    self.copy_directive::<R>(storage, reaper, context, copy, artifacts)
+                }
             })()
             .with_context(|| format!("directive {index}"))?;
         }
@@ -79,12 +92,20 @@ impl<'l> CommandSandbox<'l> {
         reaper: ChildReaper,
         context: &CapturedContext,
         directive: &Copy,
+        artifacts: &crate::pipeline::artifacts::Artifacts<'_>,
     ) -> anyhow::Result<(R::Unmounted, ChildReaper)> {
         let budget = SetupBudget::begin();
         let mut mounted = R::mount(storage, self.mount_parent(), budget.deadline())?;
         let result = (|| -> anyhow::Result<()> {
             budget.check()?;
-            mounted.copy(context, directive)?;
+            if let Some(source) = artifacts
+                .iter()
+                .find_map(|(name, file)| (name.as_ref() == directive.artifact()).then_some(file))
+            {
+                mounted.copy_artifact(directive, source)?;
+            } else {
+                mounted.copy(context, directive)?;
+            }
             budget.check()?;
             Ok(())
         })();

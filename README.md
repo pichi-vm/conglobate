@@ -6,8 +6,8 @@ the standalone CLI remains testable without a VM. Production builds run in a
 pichi appliance image shipped from this repository (see DESIGN.md). The
 approved recipe format is the multi-stage task model in
 [DESIGN.md](DESIGN.md): tasks `bootstrap`, `extend`, and `build`, then
-assembly of one carapace and optional boot. The engine still executes the
-fixed pipeline; implementing the task model is follow-up work. Builds produce
+assembly of one carapace and optional boot. The engine executes only the
+selected image's dependency closure. Builds produce
 a self-contained OCI image layout with a CBOR input/output inventory. See
 [DESIGN.md](DESIGN.md) for the task model, CLI, appliance build-port CBOR
 contract, and schemas.
@@ -15,6 +15,57 @@ contract, and schemas.
 Fedora, Debian, Alpine and NixOS example recipes live under `tests/distro`. Confidential-computing qualification and
 appliance attestation are deferred; passing tests are not a universal security
 or operating-system compatibility claim.
+
+## Recipes
+
+A recipe has named `tasks` and an explicit local `image` selection:
+
+```yaml
+tasks:
+  package:
+    kind: build
+    from: registry.example.com/tools:1
+    exec:
+      - run: printf 'built input\n' > /package
+    into: {package: /package}
+  rootfs:
+    kind: extend
+    from: registry.example.com/base:1
+    exec:
+      - copy: {from: package, into: /etc/package}
+image: rootfs
+```
+
+The separate lock pins each remote reference to an OCI index digest. Local
+references name tasks and never appear in the lock. Orphan tasks require no
+cache inputs, networking, or execution. Dependencies run before their consumers,
+regardless of YAML key order. `bootstrap` formats a fresh filesystem and populates
+`/mnt`; `extend` retains its input chain plus one scute for all its commands;
+`build` discards its tool writes and retains declared artifacts only.
+
+`image: rootfs` uses that task's carapace and boot exports. The long form
+`image: {root: rootfs, boot: firmware}` selects them separately. A build task
+may provide boot without a carapace. Extend carries boot forward and automatically
+rewrites its DTB binding; assembly also binds separately imported boot to the
+selected root. There is no authored `transform` section.
+
+Some artifact wire details remain provisional implementation choices under
+[DESIGN §6.3](DESIGN.md#63-exec-from-into-and-copy), not additional design locks:
+`tasks` contains the map; `into` maps flat names to absolute regular-file paths;
+`copy.into` is an absolute destination. An explicit `pmi`/`dtb` pair in `into`
+provides boot. Directory exports and other value grammars fail closed. Context
+COPY selects a single bare file or directory name; source patterns and the old
+owner/group/mode fields are rejected. Artifact names conflicting with the context
+or another producer are rejected. Whether artifact keys should become paths is
+still open. These choices are isolated in the shared recipe schema.
+
+The library exposes the new types and byte-only parsers as `conglobate::recipe`
+(`Recipe`, `Task`, `Reference`, `Filesystem`, `Lock`). `recipe_io` retains the
+legacy host types and transitional `BuildOutput` for existing consumers. Inventory
+version three retains its existing input-role and transform fields. Network step
+indices are cumulative within each legacy role across the executed closure;
+the committed recipe digest binds the task graph. Explicit task names in inventory
+require a future schema version.
 
 ## Build and rootless checks
 

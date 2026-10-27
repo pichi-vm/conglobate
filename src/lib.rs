@@ -14,7 +14,10 @@
 #![forbid(unsafe_code)]
 
 pub mod artifact;
+#[path = "recipe/schema.rs"]
+pub mod recipe;
 pub mod recipe_io;
+pub mod value;
 
 pub use recipe_io::{
     BuildOutput, CarapaceRecipe, CopyDirective, Directive, FromSpec, LockEntry, PmiRecipe,
@@ -25,7 +28,7 @@ pub use recipe_io::{
 mod surface_tests {
     /// The library must stay types-only: engine modules remain binary-private.
     #[test]
-    fn public_modules_are_artifact_and_recipe_io_only() {
+    fn public_surface_remains_types_only() {
         let source = include_str!("lib.rs");
         let surface = source
             .split("#[cfg(test)]")
@@ -55,10 +58,9 @@ mod surface_tests {
             surface.contains("pub mod artifact;"),
             "lib must export artifact"
         );
-        assert!(
-            surface.contains("pub mod recipe_io;"),
-            "lib must export recipe_io"
-        );
+        assert!(surface.contains("pub mod recipe_io;"));
+        assert!(surface.contains("pub mod recipe;"));
+        assert!(surface.contains("pub mod value;"));
     }
 
     #[test]

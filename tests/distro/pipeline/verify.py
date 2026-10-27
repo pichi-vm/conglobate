@@ -10,8 +10,9 @@ import cbor2
 
 
 class PipelineEvidence:
-    def __init__(self, run):
+    def __init__(self, run, imported_boot=False):
         self.run = run
+        self.imported_boot = imported_boot
         self.artifact = run / 'artifact'
 
     def blob(self, descriptor):
@@ -25,9 +26,13 @@ class PipelineEvidence:
 
     def verify(self):
         serial = (self.run / 'serial.txt').read_text()
-        for marker in ('PIPELINE_BOOTSTRAP_PASS', 'PIPELINE_CARAPACE_FIRST_PASS',
-                       'PIPELINE_CARAPACE_LAST_PASS', 'PIPELINE_FIRMWARE_TOOLS_PASS',
-                       'DISTRO_BUILD_AND_EXPORT_PASS'):
+        markers = ['PIPELINE_BOOTSTRAP_PASS', 'PIPELINE_CARAPACE_FIRST_PASS',
+                       'PIPELINE_CARAPACE_LAST_PASS',
+                       'MULTISTAGE_ARTIFACT_PRODUCER_PASS',
+                       'DISTRO_BUILD_AND_EXPORT_PASS']
+        if not self.imported_boot:
+            markers.append('PIPELINE_FIRMWARE_TOOLS_PASS')
+        for marker in markers:
             assert f'\n{marker}\n' in serial, marker
         assert (self.run / 'status.raw').read_bytes().rstrip(b'\0') == b'DISTRO_BUILD_EXIT 0\n'
         raw = (self.artifact / 'inventory.cbor').read_bytes()
@@ -35,7 +40,8 @@ class PipelineEvidence:
         assert cbor2.dumps(inventory, canonical=True) == raw
         assert inventory['version'] == 3
         assert len(inventory['inputs']) == 1
-        assert inventory['inputs'][0]['roles'] == ['bootstrap-tools', 'firmware-tools']
+        assert inventory['inputs'][0]['roles'] == ['bootstrap-tools',
+            'carapace-base' if self.imported_boot else 'firmware-tools']
         execution = inventory['execution']
         assert execution['id_mappings'] == {
             'uid': {'parent_start': 200000, 'count': 131072},
@@ -78,7 +84,8 @@ class PipelineEvidence:
         expected = {item['digest'].split(':')[1]
                     for item in [descriptor, manifest['config'], *layers]}
         assert {path.name for path in (self.artifact / 'blobs/sha256').iterdir()} == expected
-        return {'full_pipeline_passed': True, 'one_carapace_scute': True,
+        return {'full_pipeline_passed': True, 'finalized_artifact_copy': True,
+                'orphan_excluded_without_lock_or_network_input': True, 'one_carapace_scute': True,
                 'bootstrap_and_firmware_tools_not_inherited': True,
                 'root_bound_in_dtb': True, 'inventory_and_blob_graph_verified': True,
                 'boot_qualified': False, 'full_sandbox_qualified': False}
@@ -87,7 +94,8 @@ class PipelineEvidence:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('run', type=Path)
+    parser.add_argument('--imported-boot', action='store_true')
     arguments = parser.parse_args()
-    result = PipelineEvidence(arguments.run).verify()
+    result = PipelineEvidence(arguments.run, arguments.imported_boot).verify()
     (arguments.run / 'pipeline-assessment.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result, indent=2))

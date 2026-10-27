@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-carapace:
-  from: qualification.local/fedora:43
-  derive:
+tasks:
+  rootfs:
+    kind: extend
+    from: qualification.local/fedora:43
+    exec:
     - run: |
         test ! -e /resolver-replaced
         mkdir /resolver-replaced
@@ -22,3 +24,4 @@ carapace:
         printf 'RESOLVER_OWNED_DIRECTORY_REPLACED_PASS\n'
       network: true
       timeout: 30s
+image: rootfs

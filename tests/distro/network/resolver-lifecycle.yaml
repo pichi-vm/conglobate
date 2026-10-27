@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-carapace:
-  from: qualification.local/fedora:43
-  derive:
+tasks:
+  rootfs:
+    kind: extend
+    from: qualification.local/fedora:43
+    exec:
     - run: |
         test ! -e /resolver-lifecycle
         rm -f /etc/resolv.conf
@@ -44,3 +46,4 @@ carapace:
         test -d /resolver-lifecycle/saved
         test ! -e /resolver-lifecycle/saved/config
         printf 'RESOLVER_PINNED_PARENT_CLEANUP_PASS\n'
+image: rootfs

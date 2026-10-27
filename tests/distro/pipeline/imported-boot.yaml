@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: Apache-2.0
+# Imported boot lineage bound to an independently bootstrapped root.
+# Supply a seed that exports both a carapace and PMI/DTB.
+tasks:
+  bootstrap:
+    kind: bootstrap
+    from: qualification.local/fedora:43
+    filesystem:
+      size: 64MiB
+      kind: ext4
+    exec:
+    - run: |
+        mkdir -p /mnt/bin /mnt/etc /mnt/dev /mnt/proc /mnt/sys /mnt/tmp /mnt/run
+        cp -L /bin/sh /mnt/bin/sh
+        cp -L /bin/rm /mnt/bin/rm
+        cp -L /bin/stat /mnt/bin/stat
+        libraries=$(ldd /bin/sh /bin/rm /bin/stat)
+        for library in $libraries; do
+          case "$library" in
+            /*:) ;; # ldd's executable heading
+            /*) cp -L --parents "$library" /mnt ;;
+          esac
+        done
+        printf 'bootstrap\n' > /mnt/etc/stage
+        touch /mnt/etc/high-id
+        chown 70000:80000 /mnt/etc/high-id
+        test "$(stat -c '%u:%g' /mnt/etc/high-id)" = 70000:80000
+        printf 'tool-only\n' > /tool-only
+        printf 'PIPELINE_BOOTSTRAP_PASS\n'
+  rootfs:
+    kind: extend
+    from: bootstrap
+    exec:
+    - run: |
+        read -r stage < /etc/stage
+        test "$stage" = bootstrap
+        test ! -e /tool-only
+        test ! -e /context
+        test "$(/bin/stat -c '%u:%g' /etc/high-id)" = 70000:80000
+        printf 'temporary\n' > /temporary
+        printf 'carapace\n' > /etc/stage
+        printf 'PIPELINE_CARAPACE_FIRST_PASS\n'
+    - copy:
+        from: message.txt
+        into: /etc/context-message
+    - copy:
+        from: generated
+        into: /etc/generated
+    - run: |
+        read -r stage < /etc/stage
+        test "$stage" = carapace
+        read -r message < /etc/context-message
+        test "$message" = 'committed pipeline input'
+        read -r generated < /etc/generated
+        test "$generated" = 'finalized build artifact'
+        test -f /temporary
+        /bin/rm /temporary
+        test ! -e /temporary
+        printf 'PIPELINE_CARAPACE_LAST_PASS\n'
+  producer:
+    kind: build
+    from: bootstrap
+    exec:
+    - run: |
+        test -n "$CARAPACE"
+        printf 'finalized build artifact\n' > /generated
+        printf 'MULTISTAGE_ARTIFACT_PRODUCER_PASS\n'
+    into: {generated: /generated}
+  orphan:
+    kind: build
+    from: unused.registry/tool:1
+    exec: [{run: 'false', network: true}]
+    into: {never: /never}
+  imported_boot:
+    kind: extend
+    from: qualification.local/fedora:43
+image:
+  root: rootfs
+  boot: imported_boot

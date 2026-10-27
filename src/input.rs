@@ -17,10 +17,10 @@ use sha2::{Digest, Sha256};
 pub(crate) enum InputError {
     #[error("executing stages require --uid-map and --gid-map")]
     IdMappingsRequired,
-    #[error("an authored transform requires an inherited or generated DTB")]
-    MissingTransformDtb,
     #[error(transparent)]
     Cache(#[from] crate::cache::CacheError),
+    #[error("{0}")]
+    Exports(String),
     #[error("execution input {0} has no carapace")]
     MissingExecutionCarapace(String),
     #[error(transparent)]
@@ -81,6 +81,19 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
         let recipe = Recipe::try_from(YamlDocument::from(recipe_file.text()?))?;
         let lock = ImageLock::try_from(YamlDocument::from(lock_file.text()?))?;
         let plan = BuildPlan::new(recipe, &lock)?;
+        for task in plan.recipe().tasks().values() {
+            for name in task.outputs().keys() {
+                if context
+                    .entries()
+                    .contains_key(std::path::Path::new(name.as_ref()))
+                {
+                    return Err(InputError::Exports(format!(
+                        "artifact {name} conflicts with committed context"
+                    )));
+                }
+            }
+        }
+
         let networking = if plan.network_steps().is_empty() {
             None
         } else {
@@ -212,30 +225,53 @@ impl CapturedBuild {
             }
             images.insert(input.reference().clone(), CheckedImage { image, chain });
         }
-        let recipe = self.plan.recipe();
-        if recipe.firmware().is_none()
-            && matches!(
-                recipe.transform(),
-                crate::recipe::TransformSelection::Authored(_)
-            )
-        {
-            // Only the selected output base propagates components. Bootstrap
-            // tools (and alternate firmware tools) are never output ancestry.
-            let inherited_dtb = recipe
-                .carapace()
-                .and_then(|stage| stage.from())
-                .and_then(|reference| images.get(reference))
-                .is_some_and(|image| {
-                    image
-                        .image
-                        .manifest()
-                        .layers
-                        .iter()
-                        .any(|layer| matches!(layer, crate::artifact::Layer::Dtb(_)))
-                });
-            if !inherited_dtb {
-                return Err(InputError::MissingTransformDtb);
+        // Verify export availability before allocating any privileged execution
+        // resources. A missing optional boot is fine except when image requests it.
+        let mut exports = std::collections::BTreeMap::new();
+        for name in self.plan.recipe().order() {
+            let task = &self.plan.recipe().tasks()[name];
+            let input = match task.from() {
+                crate::recipe::Reference::Local(local) => *exports
+                    .get(local)
+                    .ok_or_else(|| InputError::Exports("unresolved local input".into()))?,
+                crate::recipe::Reference::Remote(remote) => {
+                    let image = &images[&remote.as_ref().parse().map_err(RecipeError::from)?];
+                    (
+                        image.chain().is_some(),
+                        image
+                            .image()
+                            .manifest()
+                            .layers
+                            .iter()
+                            .any(|l| matches!(l, crate::artifact::Layer::Pmi(_))),
+                    )
+                }
+            };
+            if !input.0 {
+                return Err(InputError::Exports(format!(
+                    "task {name} requires a carapace input"
+                )));
             }
+            let output = match task.kind() {
+                crate::recipe::TaskKind::Bootstrap(_) => (true, false),
+                crate::recipe::TaskKind::Extend => input,
+                crate::recipe::TaskKind::Build => (false, task.firmware().is_some()),
+            };
+            exports.insert(name.clone(), output);
+        }
+        match self.plan.recipe().image() {
+            crate::recipe::Image::Short(name) => {
+                let (root, boot) = exports[name];
+                if !root && !boot {
+                    return Err(InputError::Exports("image has no component exports".into()));
+                }
+            }
+            crate::recipe::Image::Long { root, boot } if !exports[root].0 || !exports[boot].1 => {
+                return Err(InputError::Exports(
+                    "requested image root or boot export unavailable".into(),
+                ));
+            }
+            _ => (),
         }
         Ok(ResolvedBuild {
             captured: self,

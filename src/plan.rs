@@ -1,14 +1,15 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
-
-//! Immutable stage order and image-use requirements; no execution or fetching.
+//! Selected task closure and remote requirements; no execution or fetching.
 use crate::{
     image::{ImageReference, IndexDigest},
     lock::{ImageLock, LockError},
-    recipe::{Directive, Recipe},
+    recipe::{Directive, Recipe, Reference, TaskKind},
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+// Inventory v3 retains its fixed-stage vocabulary until a separately versioned
+// task inventory schema is designed. These are input-use roles, not ancestry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum Stage {
     Bootstrap,
@@ -51,7 +52,6 @@ impl LockedInput {
     pub(crate) fn roles(&self) -> &BTreeSet<InputRole> {
         &self.roles
     }
-    /// Requires a filesystem-bearing image, not merely an image with firmware.
     pub(crate) fn execution_required(&self) -> bool {
         self.execution_required
     }
@@ -64,71 +64,52 @@ pub(crate) struct BuildPlan {
 }
 impl BuildPlan {
     pub(crate) fn new(recipe: Recipe, lock: &ImageLock) -> Result<Self, LockError> {
-        let mut inputs = BTreeMap::<&ImageReference, LockedInput>::new();
+        let mut inputs = BTreeMap::new();
         let mut network_steps = Vec::new();
-        let mut declarations = Vec::new();
-        if let Some(bootstrap) = recipe.bootstrap() {
-            declarations.push((Stage::Bootstrap, bootstrap.directives()));
-            inputs.insert(
-                bootstrap.from(),
-                LockedInput {
-                    reference: bootstrap.from().clone(),
-                    index: lock.resolve(bootstrap.from())?,
-                    roles: BTreeSet::from([InputRole::BootstrapTools]),
+        // Cumulative directive indices per v3 role preserve ordering and avoid
+        // duplicate identities across multiple tasks of the same kind. They
+        // cannot identify task names; the exact recipe digest still binds them.
+        let mut offsets = BTreeMap::<Stage, usize>::new();
+        for name in recipe.order() {
+            let task = &recipe.tasks()[name];
+            let (stage, role) = match task.kind() {
+                TaskKind::Bootstrap(_) => (Stage::Bootstrap, InputRole::BootstrapTools),
+                TaskKind::Extend => (Stage::Carapace, InputRole::CarapaceBase),
+                TaskKind::Build => (Stage::Firmware, InputRole::FirmwareTools),
+            };
+            if let Reference::Remote(remote) = task.from() {
+                let reference: ImageReference = remote.as_ref().parse()?;
+                let input = inputs.entry(reference.clone()).or_insert(LockedInput {
+                    index: lock.resolve(&reference)?,
+                    reference,
+                    roles: BTreeSet::new(),
                     execution_required: true,
-                },
-            );
-        }
-        if let Some(carapace) = recipe.carapace() {
-            declarations.push((Stage::Carapace, carapace.directives()));
-            if let Some(reference) = carapace.from() {
-                let execution_required = !carapace.directives().is_empty()
-                    || recipe.firmware().is_some_and(|f| f.from().is_none());
-                let input = inputs.entry(reference).or_insert(LockedInput {
-                    reference: reference.clone(),
-                    index: lock.resolve(reference)?,
-                    roles: BTreeSet::new(),
-                    execution_required: false,
                 });
-                input.roles.insert(InputRole::CarapaceBase);
-                input.execution_required |= execution_required;
+                input.roles.insert(role);
             }
-        }
-        if let Some(firmware) = recipe.firmware() {
-            declarations.push((Stage::Firmware, firmware.directives()));
-            if let Some(reference) = firmware.from() {
-                let input = inputs.entry(reference).or_insert(LockedInput {
-                    reference: reference.clone(),
-                    index: lock.resolve(reference)?,
-                    roles: BTreeSet::new(),
-                    execution_required: false,
-                });
-                input.roles.insert(InputRole::FirmwareTools);
-                input.execution_required = true;
-            }
-        }
-        for (stage, directives) in declarations {
-            for (index, directive) in directives.iter().enumerate() {
-                if matches!(directive,Directive::Run(run) if run.network()) {
-                    network_steps.push(StepId { stage, index });
+            let offset = offsets.entry(stage).or_default();
+            for (index, directive) in task.directives().iter().enumerate() {
+                if matches!(directive, Directive::Run(run) if run.network()) {
+                    network_steps.push(StepId {
+                        stage,
+                        index: *offset + index,
+                    });
                 }
             }
+            *offset += task.directives().len();
         }
-
-        let inputs = inputs.into_values().collect();
+        network_steps.sort_by_key(|s| (s.stage, s.index));
         Ok(Self {
             recipe,
-            inputs,
+            inputs: inputs.into_values().collect(),
             network_steps,
         })
     }
     pub(crate) fn execution_required(&self) -> bool {
-        self.recipe.bootstrap().is_some()
-            || self.recipe.firmware().is_some()
-            || self
-                .recipe
-                .carapace()
-                .is_some_and(|stage| !stage.directives().is_empty())
+        self.recipe.order().iter().any(|name| {
+            let task = &self.recipe.tasks()[name];
+            !matches!(task.kind(), TaskKind::Extend) || !task.directives().is_empty()
+        })
     }
     pub(crate) fn recipe(&self) -> &Recipe {
         &self.recipe

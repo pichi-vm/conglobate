@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-carapace:
-  from: qualification.local/fedora:43
-  derive:
+tasks:
+  rootfs:
+    kind: extend
+    from: qualification.local/fedora:43
+    exec:
     - run: |
         mkdir -p /run/conglobate-resolver
         rm -f /etc/resolv.conf
@@ -49,3 +51,4 @@ carapace:
         test "$(cat /run/conglobate-resolver/config)" = 'nameserver 192.0.2.123'
         printf 'NETWORK_RESOLVER_SYMLINK_AND_CONTENT_RESTORED_PASS\n'
         printf 'NETWORK_FOLLOWING_OFFLINE_STEP_PASS\n'
+image: rootfs

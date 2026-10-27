@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-bootstrap:
-  from: qualification.local/fedora:43
-  filesystem:
-    type: ext4
-    size: 64MiB
-  derive:
+tasks:
+  bootstrap:
+    kind: bootstrap
+    from: qualification.local/fedora:43
+    filesystem:
+      size: 64MiB
+      kind: ext4
+    exec:
     - run: |
         printf 'tool-write\n' > /bootstrap-tool-write
         printf 'output-write\n' > /mnt/bootstrap-output-write
@@ -13,3 +15,4 @@ bootstrap:
         printf 'BOOTSTRAP_BOTH_ROOTS_WRITTEN\n'
         exit 7
     - run: printf 'BOOTSTRAP_REJECTED_STEP_RAN\n'
+image: bootstrap

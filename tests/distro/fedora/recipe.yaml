@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-carapace:
-  from: qualification.local/fedora:43
-  derive:
+tasks:
+  rootfs:
+    kind: extend
+    from: qualification.local/fedora:43
+    exec:
     - run: |
         rpm -q filesystem systemd
         rpm -qf /usr/bin/dnf
@@ -19,7 +21,7 @@ carapace:
     - copy:
         from: qualification.sh
         into: /usr/local/bin/conglobate-qualification
-        mode: "0755"
+    - run: chmod 0755 /usr/local/bin/conglobate-qualification
     - run: |
         sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
         mkdir -p /etc/systemd/system/multi-user.target.wants
@@ -30,3 +32,4 @@ carapace:
         setfiles -F -e /proc -e /sys -e /dev /etc/selinux/targeted/contexts/files/file_contexts /
         getfattr -n security.selinux /etc/conglobate-qualified
         test -s /etc/conglobate-qualified
+image: rootfs

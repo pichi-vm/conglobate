@@ -2,15 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! One recipe document, validated before execution and independent of key order.
-use crate::{
-    document::YamlDocument,
-    image::{IdentityError, ImageReference},
-    value::{CommandTimeout, FilesystemLabel, FilesystemSize, ValueError},
-};
+use crate::{document::YamlDocument, image::IdentityError, value::ValueError};
 use serde::{Deserialize, Deserializer};
-mod transform;
+pub(crate) mod transform;
 pub(crate) use transform::DEFAULT_TRANSFORM;
-use transform::TransformDocument;
+
 pub(crate) use transform::{
     PropertyValue, TransformAction, TransformOperation, TransformSelection,
 };
@@ -29,6 +25,8 @@ pub(crate) enum RecipeError {
     Identity(#[from] IdentityError),
     #[error(transparent)]
     Value(#[from] ValueError),
+    #[error(transparent)]
+    Schema(#[from] crate::contract::recipe::Error),
     #[error("{0}")]
     Invalid(&'static str),
     #[error("invalid regular expression: {0}")]
@@ -70,147 +68,11 @@ impl<T> Presence<T> {
     }
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Document {
-    #[serde(default)]
-    bootstrap: Presence<BootstrapDocument>,
-    #[serde(default)]
-    carapace: Presence<CarapaceDocument>,
-    #[serde(default)]
-    firmware: Presence<FirmwareDocument>,
-    #[serde(default)]
-    transform: Presence<Vec<TransformDocument>>,
-}
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct BootstrapDocument {
-    from: String,
-    filesystem: FilesystemDocument,
-    #[serde(default)]
-    derive: Presence<Vec<DirectiveDocument>>,
-}
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct FilesystemDocument {
-    #[serde(rename = "type")]
-    kind: String,
-    size: String,
-    #[serde(default)]
-    properties: Presence<PropertiesDocument>,
-}
-#[derive(Debug, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct PropertiesDocument {
-    #[serde(default)]
-    label: Presence<String>,
-}
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct CarapaceDocument {
-    #[serde(default)]
-    from: Presence<String>,
-    #[serde(default)]
-    derive: Presence<Vec<DirectiveDocument>>,
-}
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct FirmwareDocument {
-    #[serde(default)]
-    from: Presence<String>,
-    #[serde(default)]
-    derive: Presence<Vec<DirectiveDocument>>,
-    into: OutputsDocument,
-}
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct OutputsDocument {
-    pmi: String,
-    dtb: String,
-}
-#[derive(Debug, Deserialize)]
-#[serde(untagged, deny_unknown_fields)]
-enum DirectiveDocument {
-    Run {
-        run: String,
-        #[serde(default)]
-        network: Presence<bool>,
-        #[serde(default)]
-        timeout: Presence<String>,
-    },
-    Copy {
-        copy: CopyDocument,
-    },
-}
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct CopyDocument {
-    from: SourcesDocument,
-    into: String,
-    #[serde(default)]
-    owner: Presence<String>,
-    #[serde(default)]
-    group: Presence<String>,
-    #[serde(default)]
-    mode: Presence<String>,
-}
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum SourcesDocument {
-    One(String),
-    Many(Vec<String>),
-}
+pub(crate) use crate::contract::recipe::{
+    ArtifactName, Filesystem as FilesystemSpec, Image, Local, Reference, Run,
+};
+use std::collections::BTreeMap;
 
-#[derive(Debug)]
-pub(crate) struct FilesystemSpec {
-    size: FilesystemSize,
-    label: FilesystemLabel,
-}
-impl TryFrom<FilesystemDocument> for FilesystemSpec {
-    type Error = RecipeError;
-    fn try_from(raw: FilesystemDocument) -> Result<Self, Self::Error> {
-        if raw.kind != "ext4" {
-            return Err(RecipeError::Invalid("unsupported filesystem type"));
-        }
-        Ok(Self {
-            size: raw.size.parse()?,
-            label: raw
-                .properties
-                .into_option()
-                .unwrap_or_default()
-                .label
-                .into_option()
-                .unwrap_or_default()
-                .try_into()?,
-        })
-    }
-}
-impl FilesystemSpec {
-    pub(crate) fn size(&self) -> FilesystemSize {
-        self.size
-    }
-    pub(crate) fn label(&self) -> &FilesystemLabel {
-        &self.label
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct Run {
-    command: String,
-    network: bool,
-    timeout: CommandTimeout,
-}
-impl Run {
-    pub(crate) fn command(&self) -> &str {
-        &self.command
-    }
-    pub(crate) fn network(&self) -> bool {
-        self.network
-    }
-    pub(crate) fn timeout(&self) -> CommandTimeout {
-        self.timeout
-    }
-}
 #[derive(Debug)]
 pub(crate) struct Copy {
     sources: Vec<crate::copy::SourcePattern>,
@@ -237,76 +99,6 @@ impl Copy {
     }
 }
 #[derive(Debug)]
-pub(crate) enum Directive {
-    Run(Run),
-    Copy(Copy),
-}
-impl TryFrom<DirectiveDocument> for Directive {
-    type Error = RecipeError;
-    fn try_from(raw: DirectiveDocument) -> Result<Self, Self::Error> {
-        match raw {
-            DirectiveDocument::Run {
-                run,
-                network,
-                timeout,
-            } => {
-                if run.trim().is_empty() || run.contains('\0') {
-                    return Err(RecipeError::Invalid(
-                        "run must be nonempty and contain no NUL",
-                    ));
-                }
-                Ok(Self::Run(Run {
-                    command: run,
-                    network: network.into_option().unwrap_or(false),
-                    timeout: timeout
-                        .into_option()
-                        .map(|v| v.parse())
-                        .transpose()?
-                        .unwrap_or_default(),
-                }))
-            }
-            DirectiveDocument::Copy { copy } => {
-                let sources = match copy.from {
-                    SourcesDocument::One(path) => vec![path],
-                    SourcesDocument::Many(paths) => paths,
-                };
-                if sources.is_empty() {
-                    return Err(RecipeError::Invalid("COPY requires at least one source"));
-                }
-                let sources = sources
-                    .into_iter()
-                    .map(|source| source.parse())
-                    .collect::<Result<Vec<_>, crate::copy::PatternError>>()?;
-                let destination = ImagePath::try_from(copy.into)?;
-                if sources.len() > 1 && !destination.as_ref().ends_with('/') {
-                    return Err(RecipeError::Invalid(
-                        "multiple COPY sources require a directory destination ending in /",
-                    ));
-                }
-                let owner = copy.owner.into_option();
-                let group = copy.group.into_option();
-                let mode = copy.mode.into_option().map(|s| s.parse()).transpose()?;
-                if [owner.as_deref(), group.as_deref()]
-                    .into_iter()
-                    .flatten()
-                    .any(|s| s.is_empty() || s.contains('\0'))
-                {
-                    return Err(RecipeError::Invalid(
-                        "copy attributes must be nonempty and contain no NUL",
-                    ));
-                }
-                Ok(Self::Copy(Copy {
-                    sources,
-                    destination,
-                    owner,
-                    group,
-                    mode,
-                }))
-            }
-        }
-    }
-}
-#[derive(Debug)]
 struct ImagePath(String);
 impl TryFrom<String> for ImagePath {
     type Error = RecipeError;
@@ -324,176 +116,167 @@ impl AsRef<str> for ImagePath {
         &self.0
     }
 }
+
+#[derive(Debug)]
+pub(crate) enum Directive {
+    Run(Run),
+    Copy(Copy),
+}
+impl TryFrom<crate::contract::recipe::Directive> for Directive {
+    type Error = RecipeError;
+    fn try_from(raw: crate::contract::recipe::Directive) -> Result<Self, Self::Error> {
+        Ok(match raw {
+            crate::contract::recipe::Directive::Run(run) => Self::Run(run),
+            crate::contract::recipe::Directive::Copy { copy } => Self::Copy(Copy {
+                sources: vec![copy.from.as_ref().parse()?],
+                destination: ImagePath::try_from(copy.into.as_ref().to_owned())?,
+                owner: None,
+                group: None,
+                mode: None,
+            }),
+        })
+    }
+}
+impl Copy {
+    pub(crate) fn artifact(&self) -> &str {
+        self.sources[0].source()
+    }
+}
 #[derive(Debug)]
 pub(crate) struct Bootstrap {
-    from: ImageReference,
     filesystem: FilesystemSpec,
-    directives: Vec<Directive>,
-}
-#[derive(Debug)]
-pub(crate) struct Carapace {
-    from: Option<ImageReference>,
-    directives: Vec<Directive>,
-}
-#[derive(Debug)]
-pub(crate) struct Firmware {
-    from: Option<ImageReference>,
-    directives: Vec<Directive>,
-    pmi: ImagePath,
-    dtb: ImagePath,
 }
 impl Bootstrap {
-    pub(crate) fn from(&self) -> &ImageReference {
-        &self.from
-    }
     pub(crate) fn filesystem(&self) -> &FilesystemSpec {
         &self.filesystem
     }
-    pub(crate) fn directives(&self) -> &[Directive] {
-        &self.directives
-    }
 }
-impl Carapace {
-    pub(crate) fn from(&self) -> Option<&ImageReference> {
-        self.from.as_ref()
-    }
-    pub(crate) fn directives(&self) -> &[Directive] {
-        &self.directives
-    }
+#[derive(Debug)]
+pub(crate) struct Firmware {
+    pmi: String,
+    dtb: String,
 }
 impl Firmware {
-    pub(crate) fn from(&self) -> Option<&ImageReference> {
-        self.from.as_ref()
-    }
-    pub(crate) fn directives(&self) -> &[Directive] {
-        &self.directives
-    }
     pub(crate) fn pmi(&self) -> &str {
-        self.pmi.as_ref()
+        &self.pmi
     }
     pub(crate) fn dtb(&self) -> &str {
-        self.dtb.as_ref()
+        &self.dtb
     }
 }
 #[derive(Debug)]
-pub(crate) struct Recipe {
-    bootstrap: Option<Bootstrap>,
-    carapace: Option<Carapace>,
-    firmware: Option<Firmware>,
-    transform: TransformSelection,
+pub(crate) enum TaskKind {
+    Bootstrap(Bootstrap),
+    Extend,
+    Build,
 }
-impl Recipe {
-    pub(crate) fn bootstrap(&self) -> Option<&Bootstrap> {
-        self.bootstrap.as_ref()
+#[derive(Debug)]
+pub(crate) struct Task {
+    from: Reference,
+    kind: TaskKind,
+    directives: Vec<Directive>,
+    outputs: BTreeMap<ArtifactName, crate::contract::recipe::ImagePath>,
+    firmware: Option<Firmware>,
+}
+impl Task {
+    pub(crate) fn from(&self) -> &Reference {
+        &self.from
     }
-    pub(crate) fn carapace(&self) -> Option<&Carapace> {
-        self.carapace.as_ref()
+    pub(crate) fn kind(&self) -> &TaskKind {
+        &self.kind
+    }
+    pub(crate) fn directives(&self) -> &[Directive] {
+        &self.directives
+    }
+    pub(crate) fn outputs(&self) -> &BTreeMap<ArtifactName, crate::contract::recipe::ImagePath> {
+        &self.outputs
     }
     pub(crate) fn firmware(&self) -> Option<&Firmware> {
         self.firmware.as_ref()
     }
+}
+#[derive(Debug)]
+pub(crate) struct Recipe {
+    tasks: BTreeMap<Local, Task>,
+    image: Image,
+    order: Vec<Local>,
+}
+impl Recipe {
+    pub(crate) fn tasks(&self) -> &BTreeMap<Local, Task> {
+        &self.tasks
+    }
+    pub(crate) fn image(&self) -> &Image {
+        &self.image
+    }
+    pub(crate) fn order(&self) -> &[Local] {
+        &self.order
+    }
     pub(crate) fn transform(&self) -> &TransformSelection {
-        &self.transform
+        &TransformSelection::Builtin
     }
 }
 impl TryFrom<YamlDocument<'_>> for Recipe {
     type Error = RecipeError;
     fn try_from(document: YamlDocument<'_>) -> Result<Self, Self::Error> {
-        let raw: Document = document.decode()?;
-        let bootstrap = raw
-            .bootstrap
-            .into_option()
-            .map(|s| {
-                Ok::<_, RecipeError>(Bootstrap {
-                    from: s.from.parse()?,
-                    filesystem: s.filesystem.try_into()?,
-                    directives: s
-                        .derive
-                        .into_option()
-                        .unwrap_or_default()
-                        .into_iter()
-                        .map(Directive::try_from)
-                        .collect::<Result<_, _>>()?,
-                })
+        let raw: crate::contract::recipe::Recipe = document.decode()?;
+        let order = raw.order().to_vec();
+        let raw = raw.into_parts();
+        let tasks = raw
+            .0
+            .into_iter()
+            .map(|(name, task)| {
+                let crate::contract::recipe::TaskParts {
+                    from,
+                    directives,
+                    filesystem,
+                    outputs,
+                    boot: firmware,
+                } = task.into_parts();
+                let kind = match filesystem {
+                    Some(filesystem) => TaskKind::Bootstrap(Bootstrap { filesystem }),
+                    None if outputs.is_some() => TaskKind::Build,
+                    None => TaskKind::Extend,
+                };
+                Ok((
+                    name,
+                    Task {
+                        from,
+                        directives: directives
+                            .into_iter()
+                            .map(Directive::try_from)
+                            .collect::<Result<_, RecipeError>>()?,
+                        kind,
+                        outputs: outputs.unwrap_or_default(),
+                        firmware: firmware.map(|(pmi, dtb)| Firmware { pmi, dtb }),
+                    },
+                ))
             })
-            .transpose()?;
-        let carapace = raw
-            .carapace
-            .into_option()
-            .map(|s| {
-                Ok::<_, RecipeError>(Carapace {
-                    from: s.from.into_option().map(|r| r.parse()).transpose()?,
-                    directives: s
-                        .derive
-                        .into_option()
-                        .unwrap_or_default()
-                        .into_iter()
-                        .map(Directive::try_from)
-                        .collect::<Result<_, _>>()?,
-                })
-            })
-            .transpose()?;
-        let firmware = raw
-            .firmware
-            .into_option()
-            .map(|s| {
-                if s.into.pmi == s.into.dtb {
-                    return Err(RecipeError::Invalid(
-                        "firmware output paths must be distinct",
-                    ));
-                }
-                Ok::<_, RecipeError>(Firmware {
-                    from: s.from.into_option().map(|r| r.parse()).transpose()?,
-                    directives: s
-                        .derive
-                        .into_option()
-                        .unwrap_or_default()
-                        .into_iter()
-                        .map(Directive::try_from)
-                        .collect::<Result<_, _>>()?,
-                    pmi: ImagePath::try_from(s.into.pmi)?,
-                    dtb: ImagePath::try_from(s.into.dtb)?,
-                })
-            })
-            .transpose()?;
-        if bootstrap.is_none() && carapace.is_none() && firmware.is_none() {
-            return Err(RecipeError::Invalid("recipe has no image-producing stage"));
-        }
-        if let Some(stage) = &carapace {
-            if bootstrap.is_some() && stage.from.is_some() {
-                return Err(RecipeError::Invalid(
-                    "carapace.from is forbidden after bootstrap",
-                ));
-            }
-            if bootstrap.is_none() && stage.from.is_none() {
-                return Err(RecipeError::Invalid(
-                    "carapace.from is required without bootstrap",
-                ));
-            }
-        }
-        if let Some(stage) = &firmware
-            && bootstrap.is_none()
-            && carapace.is_none()
-            && stage.from.is_none()
-        {
-            return Err(RecipeError::Invalid(
-                "firmware.from is required without preceding output",
-            ));
-        }
-        let transform = match raw.transform {
-            Presence::Absent => TransformSelection::Builtin,
-            Presence::Present(operations) => TransformSelection::Authored(
-                operations
-                    .into_iter()
-                    .map(TransformOperation::try_from)
-                    .collect::<Result<_, _>>()?,
-            ),
-        };
+            .collect::<Result<_, RecipeError>>()?;
         Ok(Self {
-            bootstrap,
-            carapace,
-            firmware,
-            transform,
+            tasks,
+            image: raw.1,
+            order,
         })
+    }
+}
+
+// Historical filesystem-operation tests retain direct construction of COPY
+// policies. Those policies are deliberately absent from the new recipe schema.
+#[cfg(test)]
+impl Copy {
+    pub(crate) fn fixture(
+        source: &str,
+        destination: &str,
+        owner: String,
+        group: String,
+        mode: Option<String>,
+    ) -> Self {
+        Self {
+            sources: vec![source.parse().unwrap()],
+            destination: ImagePath::try_from(destination.to_owned()).unwrap(),
+            owner: Some(owner),
+            group: Some(group),
+            mode: mode.map(|s| s.parse().unwrap()),
+        }
     }
 }

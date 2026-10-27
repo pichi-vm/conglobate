@@ -21,7 +21,7 @@ pub(crate) enum TransformError {
 }
 
 /// Successful transformation, including the observed default-skip disposition.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct TransformedDtb {
     bytes: Option<Vec<u8>>,
     default_skipped: bool,
@@ -204,7 +204,7 @@ impl PropertyValue {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{document::YamlDocument, recipe::Recipe};
+    use crate::document::YamlDocument;
 
     struct Fixture;
     impl Fixture {
@@ -234,11 +234,16 @@ mod tests {
             dtb: Option<&[u8]>,
             root: Option<&str>,
         ) -> Result<TransformedDtb, TransformError> {
-            let yaml = format!("carapace:\n  from: example.test/base:1\ntransform: {ops}\n");
-            Recipe::try_from(YamlDocument::from(yaml.as_str()))
-                .unwrap()
-                .transform()
-                .apply(dtb, root)
+            let operations: Vec<crate::recipe::transform::TransformDocument> =
+                YamlDocument::from(ops).decode().unwrap();
+            TransformSelection::Authored(
+                operations
+                    .into_iter()
+                    .map(TransformOperation::try_from)
+                    .collect::<Result<_, _>>()
+                    .unwrap(),
+            )
+            .apply(dtb, root)
         }
         fn tree(result: &TransformedDtb) -> OwnedTree {
             let tree: Tree<'_> = Tree::parse(result.bytes().unwrap()).unwrap();

@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-carapace:
-  from: qualification.local/fedora:43
-  derive:
+tasks:
+  rootfs:
+    kind: extend
+    from: qualification.local/fedora:43
+    exec:
     - run: |
         if printf 'invalid\n' >> /etc/resolv.conf; then
           echo 'resolver unexpectedly writable' >&2
@@ -19,3 +21,4 @@ carapace:
         exec /bin/sleep 60
       network: true
       timeout: 5s
+image: rootfs

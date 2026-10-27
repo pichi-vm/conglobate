@@ -297,11 +297,6 @@ impl Inventory {
         receipt: crate::formatter::FormatReceipt,
     ) -> Result<Self, InventoryError> {
         let mut document = self.document;
-        if !document.execution.formatters.is_empty() {
-            return Err(InventoryError::invalid(
-                "bootstrap formatter already recorded",
-            ));
-        }
         document.execution.formatters.push(receipt.try_into()?);
         Self::from_document(document)
     }

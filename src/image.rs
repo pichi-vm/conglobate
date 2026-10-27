@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub(crate) enum IdentityError {
-    #[error("image reference must be nonempty and contain no whitespace or NUL")]
+    #[error("image reference must be a fully qualified OCI reference with a registry host")]
     Reference,
     #[error("expected sha256: followed by 64 hexadecimal digits")]
     Digest,
@@ -18,9 +18,8 @@ pub(crate) struct ImageReference(String);
 impl FromStr for ImageReference {
     type Err = IdentityError;
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        if text.is_empty() || text.contains('\0') || text.chars().any(char::is_whitespace) {
-            return Err(IdentityError::Reference);
-        }
+        text.parse::<crate::contract::recipe::Remote>()
+            .map_err(|_| IdentityError::Reference)?;
         Ok(Self(text.to_owned()))
     }
 }
@@ -35,6 +34,9 @@ impl AsRef<str> for ImageReference {
 pub(crate) struct IndexDigest([u8; 32]);
 
 impl IndexDigest {
+    pub(crate) fn from_bytes(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
     pub(crate) fn bytes(&self) -> &[u8; 32] {
         &self.0
     }

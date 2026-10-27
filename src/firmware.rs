@@ -3,7 +3,7 @@
 //! Firmware permission to substitute a final measured external DTB.
 mod output;
 use ciborium::Value;
-pub(crate) use output::{ExtractedFirmware, ExtractionError, FinalizedFirmware};
+pub(crate) use output::{ExtractedFirmware, ExtractionError, FinalizedFirmware, FirmwareFile};
 use std::collections::BTreeSet;
 
 #[derive(Debug, thiserror::Error)]

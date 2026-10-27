@@ -57,10 +57,12 @@ class DistroRun:
         env.update(CARGO_BUILD_JOBS='2', CARGO_TARGET_DIR=str(REPOSITORY / 'target/m7-stable'),
                    TMPDIR=str(compiler_tmp))
         with (self.output / 'build.log').open('wb') as log:
-            subprocess.run(['cargo', '+stable', 'build', '--locked'], cwd=REPOSITORY,
+            subprocess.run(['cargo', '+' + env.get('RUSTUP_TOOLCHAIN', 'stable'), 'build', '--locked'], cwd=REPOSITORY,
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
         runtime = DistroRuntime(self.root, self.arguments.module_root.resolve(), self.arguments.kernel_release)
         runtime.create()
+        if self.arguments.trace_setup:
+            runtime.executable(Path(shutil.which('strace')), Path('usr/bin/strace'))
         label_environment = LabelEnvironment(REPOSITORY, self.output, runtime)
         label_environment.stage()
         policy_startup = '' if self.arguments.without_label_policy else label_environment.startup()
@@ -79,7 +81,7 @@ class DistroRun:
         network_cleanup = ':'
         if self.arguments.network_fixture or service:
             with (self.output / 'network-fixture-build.log').open('wb') as log:
-                subprocess.run(['cargo', '+stable', 'build', '--locked', '--offline',
+                subprocess.run(['cargo', '+' + env.get('RUSTUP_TOOLCHAIN', 'stable'), 'build', '--locked', '--offline',
                                 '--features', 'test-fixtures', '--bin', 'conglobate-lifecycle-tests'], cwd=REPOSITORY,
                                env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             runtime.executable(REPOSITORY / 'target/m7-stable/debug/conglobate-lifecycle-tests',
@@ -119,7 +121,7 @@ echo NETWORK_ENVIRONMENT_RETAINED_PASS"""
             (context / 'external-endpoint').write_text(service.context_input())
         if self.arguments.command_probe:
             with (self.output / 'command-probe-build.log').open('wb') as log:
-                subprocess.run(['cargo', '+stable', 'build', '--locked', '--offline',
+                subprocess.run(['cargo', '+' + env.get('RUSTUP_TOOLCHAIN', 'stable'), 'build', '--locked', '--offline',
                                 '--features', 'test-fixtures', '--bin', 'command-probe'],
                                cwd=REPOSITORY, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             probe = context / 'probe-runtime'
@@ -157,6 +159,7 @@ echo NETWORK_ENVIRONMENT_RETAINED_PASS"""
             'nameserver 10.0.2.15\n' if self.arguments.network_fixture else 'nameserver 10.0.2.3\n')
         (self.root / 'conglobate-disposable-validation-vm').touch()
         namespace_input = '/proc/self/ns/user' if self.arguments.wrong_network_type else '/run/netns/build'
+        trace = 'strace -f -e trace=%process,openat,openat2,mount,umount2,pivot_root,setns,unshare,fsetxattr,fgetxattr,fremovexattr -e status=failed ' if self.arguments.trace_setup else ''
         (self.root / 'build.sh').write_text(f'''#!/bin/bash
 set -eux
 {policy_startup}
@@ -204,7 +207,7 @@ RULES
 nft list table ip build_environment > /work/network-before
 {network_startup}
 {probe_control}
-if conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --uid-map 200000:131072 --gid-map 400000:131072 --resolv-conf /etc/resolv.conf --network-namespace {namespace_input}; then
+if {trace}conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --uid-map 200000:131072 --gid-map 400000:131072 --resolv-conf /etc/resolv.conf --network-namespace {namespace_input}; then
     {fault_observation or ':'}
     {network_cleanup}
 else
@@ -313,6 +316,7 @@ if __name__ == '__main__':
                         help='Serve controlled guest DNS/TCP and assert network cleanup')
     parser.add_argument('--command-probe', action='store_true',
                         help='Commit safe syscall probe and keyctl runtime into fixture context')
+    parser.add_argument('--trace-setup', action='store_true', help='Diagnostic guest-only tracing; repeat without tracing for qualification')
     parser.add_argument('--wrong-network-type', action='store_true',
                         help='Negative validation: supply a user namespace as the network input')
     parser.add_argument('--without-label-policy', action='store_true',

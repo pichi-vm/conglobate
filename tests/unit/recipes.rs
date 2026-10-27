@@ -1,134 +1,150 @@
-// SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use conglobate::{
     document::YamlDocument,
-    recipe::{Directive, Recipe, TransformSelection},
+    recipe::{Directive, Recipe},
 };
-
-#[derive(Debug)]
-struct Fixture;
-impl Fixture {
-    fn parse(text: &str) -> Result<Recipe, conglobate::recipe::RecipeError> {
-        Recipe::try_from(YamlDocument::from(text))
-    }
-    fn bootstrap() -> &'static str {
-        "bootstrap:\n  from: tools\n  filesystem: {type: ext4, size: 4GiB}\n"
-    }
+fn parse(text: &str) -> Result<Recipe, conglobate::recipe::RecipeError> {
+    Recipe::try_from(YamlDocument::from(text))
 }
-
 #[test]
-fn all_pipeline_combinations_obey_input_rules() {
-    for bits in 0..8 {
-        let mut text = String::new();
-        if bits & 1 != 0 {
-            text.push_str(Fixture::bootstrap());
-        }
-        if bits & 2 != 0 {
-            text.push_str(if bits & 1 != 0 {
-                "carapace: {}\n"
-            } else {
-                "carapace: {from: base}\n"
-            });
-        }
-        if bits & 4 != 0 {
-            text.push_str("firmware:\n  into: {pmi: /out/boot.pmi, dtb: /out/base.dtb}\n");
-            if bits & 3 == 0 {
-                text.push_str("  from: tools\n");
-            }
-        }
-        assert_eq!(Fixture::parse(&text).is_ok(), bits != 0, "{bits}: {text}");
-    }
-    assert!(Fixture::parse("carapace: {}").is_err());
-    assert!(Fixture::parse(&(Fixture::bootstrap().to_owned() + "carapace: {from: base}")).is_err());
-    assert!(Fixture::parse("firmware: {into: {pmi: /a, dtb: /b}}").is_err());
-}
-
-#[test]
-fn omitted_empty_and_null_have_distinct_meanings() {
-    let builtin = Fixture::parse("carapace: {from: base}").unwrap();
-    assert!(matches!(builtin.transform(), TransformSelection::Builtin));
-    let explicit = Fixture::parse("transform: []\ncarapace: {from: base}").unwrap();
-    assert!(matches!(explicit.transform(),TransformSelection::Authored(v) if v.is_empty()));
-    for section in ["bootstrap", "carapace", "firmware", "transform"] {
-        let input = Fixture::bootstrap().to_owned() + &format!("{section}: null\n");
-        assert!(Fixture::parse(&input).is_err(), "{input}");
-    }
-}
-
-#[test]
-fn run_defaults_and_directive_exclusivity() {
-    let recipe=Fixture::parse("carapace:\n  from: base\n  derive:\n    - run: echo ready\n    - run: echo network\n      network: true\n      timeout: 30m\n").unwrap();
-    let directives = recipe.carapace().unwrap().directives();
-    let Directive::Run(first) = &directives[0] else {
+fn locked_filesystem_exec_and_image_sketches_are_accepted() {
+    let recipe = parse("image: rootfs\ntasks:\n  rootfs:\n    kind: bootstrap\n    from: registry.example.com/fedora:43\n    filesystem:\n      kind: ext4\n      size: 4GiB\n      label: rootfs\n    exec:\n      - run: dnf install -y nginx\n        network: true\n        timeout: 5m\n").unwrap();
+    assert_eq!(recipe.order()[0].as_ref(), "rootfs");
+    let Directive::Run(run) = &recipe.tasks().values().next().unwrap().directives()[0] else {
         panic!()
     };
-    assert!(!first.network());
-    assert_eq!(first.timeout().duration().as_secs(), 300);
-    let Directive::Run(second) = &directives[1] else {
-        panic!()
-    };
-    assert!(second.network());
-    assert_eq!(second.timeout().duration().as_secs(), 1800);
-    for bad in [
-        "run: echo ok, copy: {from: a, into: /b}",
-        "copy: {from: a, into: /b}, network: false",
-        "run: echo ok, timeout: 0s",
-        "run: echo ok, network: null",
-        "run: echo ok, extra: true",
+    assert!(run.network());
+    assert_eq!(run.timeout().duration().as_secs(), 300);
+    assert!(parse("image: {root: rootfs, boot: firmware}\ntasks:\n  rootfs: {kind: extend, from: registry.example.com/root:1}\n  firmware: {kind: build, from: rootfs, into: {pmi: /boot.pmi, dtb: /boot.dtb}}\n").is_ok());
+}
+#[test]
+fn reject_old_pipeline_and_unlocked_kind_vocabulary() {
+    for text in [
+        "{}",
+        "image: x",
+        "bootstrap: {}",
+        "carapace: {}",
+        "firmware: {}",
+        "transform: []",
+        "platform: {}",
+        "lock: {}",
     ] {
+        assert!(parse(text).is_err(), "{text}");
+    }
+    for kind in ["import", "platform", "export", "make", "produce"] {
         assert!(
-            Fixture::parse(&format!("carapace: {{from: base, derive: [{{{bad}}}]}}")).is_err(),
-            "{bad}"
+            parse(&format!(
+                "image: x\ntasks: {{x: {{kind: {kind}, from: registry.test/tool:1}}}}"
+            ))
+            .is_err()
         );
     }
 }
-
 #[test]
-fn duplicate_unknown_sections_and_invalid_firmware_are_rejected() {
-    for text in [
-        "carapace: {from: a}\ncarapace: {from: b}",
-        "carapace: {from: a, from: b}",
-        "carapace: {from: a}\nplatform: {}",
-        "carapace: {from: a}\nunknown: {}",
-        "firmware: {from: tools, into: {pmi: /same, dtb: /same}}",
-        "firmware: {from: tools, into: {pmi: /a}}",
+fn reject_unknown_duplicates_nulls_and_wrong_shapes_at_every_level() {
+    let good = "image: x\ntasks: {x: {kind: extend, from: registry.test/base:1}}";
+    assert!(parse(good).is_ok());
+    for field in [
+        "image: null",
+        "tasks: null",
+        "image: x\nimage: x\ntasks: {}",
+        "image: x\ntasks: {x: {kind: extend, kind: build, from: registry.test/base:1}}",
     ] {
-        assert!(Fixture::parse(text).is_err(), "{text}");
+        assert!(parse(field).is_err());
     }
-}
-
-#[test]
-fn typed_transform_values_are_checked_before_execution() {
-    let valid = "carapace: {from: base}\ntransform:\n - {op: set, property: /chosen/n, type: u32, data: 4294967295}\n - {op: set, property: /flag, type: empty}\n - {op: regex, property: /chosen/bootargs, match: 'quiet', replace: '', if: {exists: /chosen/bootargs}}";
-    assert!(Fixture::parse(valid).is_ok());
-    for operation in [
-        "op: set, property: /x, type: bytes, data: '01 zz'",
-        "op: set, property: /x, type: bytes, data: '${CARAPACE}'",
-        "op: set, property: /x, type: u32, data: 4294967296",
-        "op: set, property: /x, type: empty, data: null",
-        "op: set, property: /x, type: strings, data: [1]",
-        "op: regex, property: /x, match: '[', replace: x",
-        "op: remove, property: /",
-        "op: remove, property: /x, data: 1",
+    for fields in [
+        "from: null",
+        "from: registry.test/base:1, exec: null",
+        "from: registry.test/base:1, derive: []",
+        "from: registry.test/base:1, filesystem: {kind: ext4, size: 16MiB}",
+        "from: registry.test/base:1, exec: [{run: echo, network: null}]",
+        "from: registry.test/base:1, exec: [{run: echo, network: yes}]",
+        "from: registry.test/base:1, exec: [{run: echo, timeout: 0s}]",
+        "from: registry.test/base:1, exec: [{run: echo, copy: {from: input, into: /x}}]",
+        "from: registry.test/base:1, exec: [{copy: {from: input, into: /x, owner: root}}]",
+        "from: registry.test/base:1, exec: [{copy: {from: a:b, into: /x}}]",
+        "from: registry.test/base:1, exec: [{copy: {from: '*', into: /x}}]",
     ] {
         assert!(
-            Fixture::parse(&format!(
-                "carapace: {{from: base}}\ntransform: [{{{operation}}}]"
+            parse(&format!(
+                "image: x\ntasks: {{x: {{kind: extend, {fields}}}}}"
             ))
             .is_err(),
-            "{operation}"
+            "{fields}"
         );
     }
-}
-
-#[test]
-fn null_nested_mappings_and_directive_lists_are_not_empty_values() {
-    for recipe in [
-        "bootstrap: {from: tools, filesystem: {type: ext4, size: 16MiB, properties: null}}",
-        "bootstrap: {from: tools, filesystem: {type: ext4, size: 16MiB, properties: {label: null}}}",
-        "carapace: {from: base, derive: null}",
-        "firmware: {from: tools, derive: null, into: {pmi: /pmi, dtb: /dtb}}",
+    for fs in [
+        "type: ext4, size: 16MiB",
+        "kind: xfs, size: 16MiB",
+        "kind: ext4, size: 4G",
+        "kind: ext4, size: 16MiB, properties: {}",
+        "kind: ext4, size: 16MiB, label: null",
+        "kind: ext4, size: 15MiB",
+        "kind: ext4, size: 16MiB, label: abcdefghijklmnopq",
     ] {
-        assert!(Fixture::parse(recipe).is_err(), "{recipe}");
+        assert!(parse(&format!("image: x\ntasks: {{x: {{kind: bootstrap, from: registry.test/tool:1, filesystem: {{{fs}}}}}}}")).is_err(),"{fs}");
     }
+}
+#[test]
+fn graph_checks_missing_inputs_exports_cycles_and_reachable_closure() {
+    let recipe = parse("image: result\ntasks:\n  orphan: {kind: build, from: missing.registry/test:1, into: {ignored: /x}, exec: [{run: 'false', network: true}]}\n  result: {kind: extend, from: base, exec: [{copy: {from: payload, into: /payload}}]}\n  producer: {kind: build, from: base, into: {payload: /out}}\n  base: {kind: extend, from: registry.test/base:1}\n").unwrap();
+    assert_eq!(
+        recipe
+            .order()
+            .iter()
+            .map(|n| n.as_ref())
+            .collect::<Vec<_>>(),
+        ["base", "producer", "result"]
+    );
+    for text in [
+        "image: x\ntasks: {x: {kind: extend, from: missing}}",
+        "image: x\ntasks: {x: {kind: extend, from: y}, y: {kind: extend, from: x}}",
+        "image: x\ntasks: {x: {kind: extend, from: registry.test/base:1, exec: [{copy: {from: payload, into: /x}}]}, y: {kind: build, from: x, into: {payload: /x}}}",
+        "image: x\ntasks: {x: {kind: build, from: registry.test/base:1, into: {payload: /x}}}",
+        "image: {root: x, boot: x}\ntasks: {x: {kind: bootstrap, from: registry.test/base:1, filesystem: {kind: ext4, size: 16MiB}}}",
+        "image: registry.test/base:1\ntasks: {}",
+        "image: x\ntasks: {x: {kind: extend, from: y}, y: {kind: build, from: registry.test/base:1, into: {pmi: /a, dtb: /b}}}",
+    ] {
+        assert!(parse(text).is_err(), "{text}");
+    }
+    assert!(parse("image: boot\ntasks: {boot: {kind: build, from: registry.test/base:1, into: {pmi: /a, dtb: /b}}}").is_ok());
+}
+#[test]
+fn defaults_and_remote_qualification_are_strict() {
+    use crate::contract::recipe::{Local, Reference, Remote};
+    for remote in [
+        "registry.example.com/fedora:43",
+        "localhost:5000/tool:1",
+        "registry:5000/tool:1",
+        "[::1]:5000/tool:1",
+        "ghcr.io/pichi-vm/fedora",
+        "localhost/tool@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    ] {
+        assert!(remote.parse::<Remote>().is_ok(), "{remote}");
+        assert!(remote.parse::<Local>().is_err());
+    }
+    for bad in [
+        "alpine",
+        "alpine:latest",
+        "user/image:tag",
+        "./task",
+        "registry.test/../tool",
+        "registry.test/tool:bad:tag",
+        "registry.test:bad/tool",
+        "bad host.test/tool",
+        "registry.test/tool@sha256:00",
+    ] {
+        assert!(bad.parse::<Remote>().is_err(), "{bad}");
+    }
+    let local: Reference = serde_saphyr::from_str("base").unwrap();
+    assert!(matches!(local, Reference::Local(_)));
+    let recipe = parse(
+        "image: x\ntasks: {x: {kind: extend, from: registry.test/base:1, exec: [{run: 'true'}]}}",
+    )
+    .unwrap();
+    let Directive::Run(run) = &recipe.tasks().values().next().unwrap().directives()[0] else {
+        panic!()
+    };
+    assert!(!run.network());
+    assert_eq!(run.timeout().duration().as_secs(), 300);
 }

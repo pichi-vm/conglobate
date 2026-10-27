@@ -200,9 +200,10 @@ fn request_planning_and_document_receipts_use_only_selected_committed_bytes() {
     use conglobate::{input::CapturedBuild, request::BuildRequest};
     use sha2::{Digest, Sha256};
     let repo = Repository::new("sha1");
-    let recipe = b"carapace:\n  from: base\n";
+    let recipe =
+        b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\nimage: rootfs\n";
     let lock = format!(
-        "version: 1\nimages:\n  base:\n    index: sha256:{}\n",
+        "version: 1\nimages:\n  registry.test/base:1:\n    index: sha256:{}\n",
         "11".repeat(32)
     );
     repo.write("context/config/build.yml", recipe);
@@ -251,7 +252,10 @@ fn request_planning_and_document_receipts_use_only_selected_committed_bytes() {
         build.lock_document().sha256().as_slice(),
         Sha256::digest(lock.as_bytes()).as_slice()
     );
-    assert_eq!(build.plan().inputs()[0].reference().as_ref(), "base");
+    assert_eq!(
+        build.plan().inputs()[0].reference().as_ref(),
+        "registry.test/base:1"
+    );
 }
 
 #[test]
@@ -263,12 +267,12 @@ fn network_recipe_captures_an_explicit_resolver_once() {
     let repo = Repository::new("sha1");
     repo.write(
         "recipe",
-        b"carapace:\n  from: base\n  derive:\n    - run: echo ok\n      network: true\n",
+        b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\n    exec:\n    - run: echo ok\n      network: true\nimage: rootfs\n",
     );
     repo.write(
         "lock",
         format!(
-            "version: 1\nimages:\n  base:\n    index: sha256:{}\n",
+            "version: 1\nimages:\n  registry.test/base:1:\n    index: sha256:{}\n",
             "11".repeat(32)
         )
         .as_bytes(),
@@ -324,7 +328,7 @@ fn network_recipe_captures_an_explicit_resolver_once() {
     // An executing offline plan still needs environment-allocated identities.
     repo.write(
         "recipe",
-        b"carapace:\n  from: base\n  derive:\n    - run: echo ok\n",
+        b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\n    exec:\n    - run: echo ok\nimage: rootfs\n",
     );
     let execution_commit = repo.commit();
     let execution_id = hex::encode(execution_commit.bytes());
@@ -345,7 +349,10 @@ fn network_recipe_captures_an_explicit_resolver_once() {
     assert_eq!(captured.id_mappings().unwrap().uid().count(), 131072);
 
     // Pass-through ignores supplied runtime inputs, including mappings.
-    repo.write("recipe", b"carapace: {from: base}\n");
+    repo.write(
+        "recipe",
+        b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\nimage: rootfs\n",
+    );
     let offline_commit = repo.commit();
     let offline_id = hex::encode(offline_commit.bytes());
     let position = args.iter().position(|arg| *arg == "--commit").unwrap();
@@ -369,7 +376,7 @@ fn network_recipe_captures_an_explicit_resolver_once() {
 }
 
 #[test]
-fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_commands() {
+fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
     use crate::artifact::Digest;
     use conglobate::{
         cache::{Cache, HostArchitecture},
@@ -401,16 +408,12 @@ fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_command
     let repo = Repository::new("sha1");
     repo.write(
         "lock",
-        format!("version: 1\nimages:\n  base:\n    index: {index_digest}\n").as_bytes(),
+        format!("version: 1\nimages:\n  registry.test/base:1:\n    index: {index_digest}\n")
+            .as_bytes(),
     );
-    for (recipe, execution) in [
-        ("carapace: {from: base}", false),
-        ("carapace: {from: base, derive: [{run: echo ok}]}", true),
-        ("carapace: {from: base}\ntransform: []", false),
-        (
-            "carapace: {from: base}\ntransform: [{op: remove, property: /chosen/bootargs}]",
-            false,
-        ),
+    for recipe in [
+        "tasks: {root: {kind: extend, from: registry.test/base:1}}\nimage: root",
+        "tasks: {root: {kind: extend, from: registry.test/base:1, exec: [{run: echo ok}]}}\nimage: root",
     ] {
         repo.write("recipe", recipe.as_bytes());
         let commit = repo.commit();
@@ -438,16 +441,10 @@ fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_command
         let result = CapturedBuild::try_from(&request)
             .unwrap()
             .resolve(Cache::open(cache.path()).unwrap());
-        if execution {
-            assert!(matches!(
-                result,
-                Err(InputError::MissingExecutionCarapace(_))
-            ));
-        } else if recipe.contains("transform:") {
-            assert!(matches!(result, Err(InputError::MissingTransformDtb)));
-        } else {
-            assert_eq!(result.unwrap().images().len(), 1);
-        }
+        assert!(matches!(
+            result,
+            Err(InputError::MissingExecutionCarapace(_))
+        ));
     }
     // A structurally valid empty DTB supplies the inherited component. This
     // preflight checks presence/content identity; transformation parses it later.
@@ -481,9 +478,12 @@ fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_command
     std::fs::write(blobs.join(pin.hex()), index).unwrap();
     repo.write(
         "lock",
-        format!("version: 1\nimages:\n  base:\n    index: {pin}\n").as_bytes(),
+        format!("version: 1\nimages:\n  registry.test/base:1:\n    index: {pin}\n").as_bytes(),
     );
-    repo.write("recipe", b"carapace: {from: base}\ntransform: []");
+    repo.write(
+        "recipe",
+        b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\nimage: rootfs\n",
+    );
     let commit = repo.commit();
     let request = BuildRequest::parse_from([
         "conglobate",
@@ -506,12 +506,12 @@ fn resolved_inputs_allow_firmware_passthrough_but_require_a_carapace_for_command
         "400000:131072",
     ])
     .unwrap();
-    assert!(
+    assert!(matches!(
         CapturedBuild::try_from(&request)
             .unwrap()
-            .resolve(Cache::open(cache.path()).unwrap())
-            .is_ok()
-    );
+            .resolve(Cache::open(cache.path()).unwrap()),
+        Err(InputError::MissingExecutionCarapace(_))
+    ));
 }
 
 #[test]
@@ -602,7 +602,7 @@ fn executing_stage_variants_require_environment_maps_before_cache_access() {
     repo.write(
         "lock",
         format!(
-            "version: 1\nimages:\n  tools: {{index: sha256:{}}}\n",
+            "version: 1\nimages:\n  registry.test/tools:1: {{index: sha256:{}}}\n",
             "11".repeat(32),
         )
         .as_bytes(),
@@ -610,11 +610,11 @@ fn executing_stage_variants_require_environment_maps_before_cache_access() {
     let cache = repo.0.path().join("missing-cache");
     let output = repo.0.path().join("unpublished-output");
     for recipe in [
-        "bootstrap: {from: tools, filesystem: {type: ext4, size: 16MiB}}",
-        "carapace: {from: tools, derive: [{run: 'true'}]}",
-        "carapace: {from: tools, derive: [{copy: {from: input, into: /input}}]}",
-        "firmware: {from: tools, into: {pmi: /pmi, dtb: /dtb}}",
-        "carapace: {from: tools}\nfirmware: {into: {pmi: /pmi, dtb: /dtb}}",
+        "tasks:\n  bootstrap:\n    kind: bootstrap\n    from: registry.test/tools:1\n    filesystem:\n      size: 16MiB\n      kind: ext4\nimage: bootstrap\n",
+        "tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/tools:1\n    exec:\n    - run: 'true'\nimage: rootfs\n",
+        "tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/tools:1\n    exec:\n    - copy:\n        from: input\n        into: /input\nimage: rootfs\n",
+        "tasks:\n  firmware:\n    kind: build\n    from: registry.test/tools:1\n    into:\n      pmi: /pmi\n      dtb: /dtb\nimage: firmware\n",
+        "tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/tools:1\n  firmware:\n    kind: build\n    from: rootfs\n    into:\n      pmi: /pmi\n      dtb: /dtb\nimage:\n  root: rootfs\n  boot: firmware\n",
     ] {
         repo.write("recipe", recipe.as_bytes());
         repo.write("input", b"committed bytes");
