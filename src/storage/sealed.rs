@@ -43,22 +43,6 @@ impl SealedScute<'_> {
             length: self.descriptor.size,
         }
     }
-    /// Byte length of the dm-verity header and hash tree sealed with this scute.
-    pub(crate) fn verity_len(&self) -> io::Result<u64> {
-        let length = self.hash.file().metadata()?.len();
-        if length == 0 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "sealed scute is missing its verity tree",
-            ));
-        }
-        Ok(length)
-    }
-    /// Read-only view of the verity header and hash tree. Independent of
-    /// [`Self::data_reader`]; neither moves the underlying file offset.
-    pub(crate) fn verity_reader(&self) -> io::Result<ScuteReader<'_>> {
-        Ok(ScuteReader::new(self.hash.file(), self.verity_len()?))
-    }
 }
 /// Read/seek-only view; neither a raw file descriptor nor write access escapes.
 #[derive(Debug)]

@@ -72,14 +72,18 @@ entirely. The image manifest carries `dev.pichi.build.commit` (`sha1:<hex>` or
 tree/object-format keys or builder/input/execution/output mirrors. The carapace
 tip root is derived from the manifest; never stamp or require
 `dev.pichi.carapace.verity.hash`. Existing verity parameters and per-scute
-salt/data-blocks annotations stay. Keep transitional `build.yaml` dual-write
-until [Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24), after
-Pichi OCI import. Later attestation binds the image digest and TEE/builder.
+salt/data-blocks annotations stay.
+[Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24) removes
+`build.yaml` and flat packing-list copies after host OCI import landed in
+[Pichi #28](https://github.com/pichi-vm/pichi/pull/28) (`7df44442`). Builds
+leave only `oci-layout`, `index.json`, and `blobs/sha256/…`. Later attestation
+binds the image digest and TEE/builder.
 
 Build publication stamps these annotations from the resolved committed input.
 The library exposes `conglobate::plan` (`Plan`, `Task`, `Reference`,
-`Filesystem`, `Lock`); `plan_io` carries host types and transitional
-`BuildOutput`. The engine dependency module is `src/graph.rs`.
+`Filesystem`, `Lock`); `plan_io` retains legacy host types for source
+compatibility, including the unused `BuildOutput` schema. The engine dependency
+module is `src/graph.rs`.
 
 ## Build and rootless checks
 

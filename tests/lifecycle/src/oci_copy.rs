@@ -69,6 +69,15 @@ impl OciCopy {
         ])?)
         .run()?;
         let artifact = Path::new("/work/oci-output");
+        let roots: std::collections::BTreeSet<_> = fs::read_dir(artifact)?
+            .map(|entry| entry.map(|entry| entry.file_name()))
+            .collect::<Result<_, _>>()?;
+        assert_eq!(
+            roots,
+            ["blobs", "index.json", "oci-layout"]
+                .map(std::ffi::OsString::from)
+                .into()
+        );
         let index: serde_json::Value =
             serde_json::from_slice(&fs::read(artifact.join("index.json"))?)?;
         let digest = index["manifests"][0]["digest"]

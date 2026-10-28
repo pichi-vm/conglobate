@@ -266,13 +266,12 @@ Product assumptions for the guest:
    supersedes host one-shot CBOR push / uni-rx-only). On `ok:true`, Conglobate
    runs the engine against the mounted paths and publishes into the empty
    `/run/pichi/output` mount. The locked end state is the OCI layout
-   (`oci-layout`, `index.json`, `blobs/`). Beside it, the
-   engine dual-writes a transitional flat `build.yaml` (`BuildOutput` /
-   `ScuteOut`) plus delta scute files `NNNN.cow` and `NNNN.verity` in chain
-   order (base first) and, when this build produced firmware, `boot.pmi`.
-   Inherited base scutes are not repeated; the host prepends the operator
-   source carapace from `from:`. An empty delta list is valid here. OCI-only
-   output is not enough for the current host smoke.
+   (`oci-layout`, `index.json`, `blobs/sha256/…`) only. Pichi imports the full
+   guest OCI graph and rebuilds verity from COW blobs plus per-scute salts
+   ([Pichi #28](https://github.com/pichi-vm/pichi/pull/28), `7df44442`).
+   [Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24) removes
+   the transitional packing list and flat copies; inherited layers remain
+   referenced in the self-contained OCI graph.
    On `ok:false`, it fails with the host `error` string.
    There is **no** local CBOR copy retained as a second source of truth, **no**
    Conglobate parse of virtiofs field readers / mount tags from the response,
@@ -349,10 +348,8 @@ record the host `ref` string separately. See [§11.1](#111-image-manifest-annota
 **Output mount:** `/run/pichi/output` is an empty writable virtiofs mount supplied
 by the host (not a path Conglobate creates). Conglobate stages privately in a
 temporary child directory on that mount, then publishes by moving each top-level
-layout entry (`blobs/`, `oci-layout`, `index.json`,
-`build.yaml`, each flat `NNNN.cow` / `NNNN.verity` / `boot.pmi`, and any
-other exported roots) into the mount root with no-replace semantics (refuse if
-any destination name already exists). Fail if the mount is missing, not a
+layout entry (`blobs/`, `oci-layout`, `index.json`) into the mount root with
+no-replace semantics (refuse if any destination name already exists). Fail if the mount is missing, not a
 directory, or non-empty before publication. This is distinct from CLI `--output`,
 which names a new directory that must not already exist (see [§11.2](#112-finalization-and-publication)
 finalization / publication and [§14.2](#142-resolve-and-verify-all-supplied-inputs-before-execution)).
@@ -1167,18 +1164,14 @@ result/
   oci-layout         # OCI layout version; external OCI formats remain JSON
   index.json         # output image index
   blobs/sha256/      # all referenced manifest, configuration and layer blobs
-  build.yaml         # transitional BuildOutput; scutes may be empty
-  0000.cow           # delta scutes only, chain order; names come from build.yaml
-  0000.verity
-  boot.pmi           # only when this build produced firmware
 ```
 
-OCI consumers use `result/` directly. Keep the transitional `build.yaml` and
-flat blobs until [Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24),
-after Pichi OCI import. They serve the current host packaging path: filenames
-are relative to `result/`, chain order is base to top, and only delta scutes
-are listed. The host prepends the operator source carapace named by `from:`.
-An empty delta list is valid. This compatibility output is not a build receipt.
+OCI consumers use `result/` directly. With host OCI import landed in
+[Pichi #28](https://github.com/pichi-vm/pichi/pull/28) (`7df44442`),
+[Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24) is implemented:
+no `build.yaml` or flat `NNNN.cow` / `NNNN.verity` / `boot.pmi` copies are
+emitted. Pichi imports the full OCI graph and rebuilds verity from COW blobs
+and per-scute salts. Boot-only output contains its PMI and DTB as OCI blobs.
 
 Include every blob referenced by the output image, including inherited blobs
 from the cache. Import must not require the original cache. The final manifest
@@ -1232,10 +1225,9 @@ are complete. Publication differs by destination:
 - **Appliance `/run/pichi/output`:** the virtiofs mount root already exists and
   must be empty at start. Complete every fallible check while staging privately
   in a temporary child directory on that same mount. Only then publish by moving
-  each top-level layout entry (`oci-layout`, `index.json`, `blobs/`,
-  `build.yaml`, flat `NNNN.cow` / `NNNN.verity` / `boot.pmi`,
-  …) into the mount root with no-replace semantics (refuse if
-  any destination entry already exists). If any move fails, delete already-moved
+  each top-level layout entry (`oci-layout`, `index.json`, `blobs/`) into the
+  mount root with no-replace semantics (refuse if any destination entry already
+  exists). If any move fails, delete already-moved
   entries and the staging child so the mount does not retain a partial successful
   image. After a successful publish, remove the temporary child. Virtiofs rename
   within the mount is sufficient for this move-children publish; a whole-mount
@@ -1336,13 +1328,12 @@ design locks, and this document does not implement them.
    `image:`, `Local` / `Remote` parsing, kind tagging, closure-only execution,
    and the `Filesystem` enum.
 2. The engine runs the `bootstrap` / `extend` / `build` closure selected by
-   `image:`, applies the automatic DTB rewrite on assemble, and keeps
-   transitional `build.yaml` dual-write working for smoke until #24, after
-   Pichi OCI import.
+   `image:`, applies the automatic DTB rewrite on assemble, and publishes
+   only the self-contained OCI layout after host OCI import (#24).
 3. Annotation checks replace inventory assertions: cover the exact §11.1
    keys, commit algorithm prefixes, context-relative paths, absent optional
-   location, no sidecar, and unchanged verity annotations. Retain dual-write
-   checks until #24 and verify annotations survive OCI copy/import.
+   location, no sidecar, and unchanged verity annotations. Require only OCI
+   entries at the output root and verify annotations survive OCI copy/import.
 4. An appliance smoke with a multi-task plan (at least bootstrap plus build,
    or bootstrap plus extend) passes without a registry publish, before the
    implementation change.
@@ -1368,9 +1359,8 @@ The build proceeds in this order; each failure aborts publication:
    and stops and reaps all descendants. Remove temporary mounts, flush and
    unmount before sealing task output or releasing storage.
 5. Close the execution runtime. Apply the automatic DTB rewrite, assemble one
-   carapace and optional boot (assembly is not a task), write the transitional
-   flat `build.yaml` (delta scutes only), annotate the image manifest, and
-   verify staged output.
+   carapace and optional boot (assembly is not a task), annotate the image
+   manifest, and verify the staged self-contained OCI layout.
 6. Finish fallible workspace/context cleanup, then publish without replacing
    an existing destination: CLI `--output` uses an atomic no-replace rename of
    the completed directory; the appliance empty `/run/pichi/output` mount uses

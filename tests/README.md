@@ -255,7 +255,8 @@ or qualify confidential VMs.
 interoperability assertion: a committed pass-through build publishes a synthetic
 scute chain, ORAS copies its manifest/config/layer graph, and the fixture compares
 the exact blob set and every byte. The fixture verifies that the manifest build annotations survive the copy
-and that no inventory sidecar is emitted.
+and that the output root contains exactly `oci-layout`, `index.json`, and
+`blobs/`, with no packing-list copies or inventory sidecar.
 amd64 CI uses checksum-pinned ORAS 1.3.5. This case runs as root in the disposable guest;
 it does not require unprivileged user namespaces on the runner host.
 

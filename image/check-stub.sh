@@ -13,7 +13,8 @@ grep -q 'ghcr.io/pichi-vm/conglobate' "$readme" || fail "README must name the GH
 grep -q ':latest' "$readme" || fail "README must document the :latest tag"
 grep -q '0.2.0' "$readme" || fail "README must document the version tag"
 grep -q 'virtiofs' "$readme" || fail "README must document virtiofs"
-grep -q 'build.yaml' "$readme" || fail "README must document dual-write"
+grep -q '## OCI output' "$readme" || fail "README must document OCI output"
+grep -q 'Pichi #28' "$readme" || fail "README must document host OCI import"
 grep -q 'e2fsprogs' "$readme" || fail "README must document image-resident e2fsprogs"
 grep -qi 'self-host' "$readme" || fail "README must keep self-host as later"
 if grep -qi 'non-promotion' "$readme"; then

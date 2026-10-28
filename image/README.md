@@ -60,28 +60,19 @@ digest and TEE/builder. The carapace tip root is derived from the manifest;
 never stamp or require `dev.pichi.carapace.verity.hash`. Existing verity
 parameters and per-scute salt/data-blocks annotations stay.
 
-This docs-only lock precedes the code change. The current engine still emits
-the legacy inventory and uses legacy field names. The skeleton filename
-`conglobate.plan.yaml` also stays until the implementation rename.
+## OCI output
 
-## Dual-write output
+The engine publishes only `oci-layout`, `index.json`, and `blobs/sha256/…`
+into the empty `/run/pichi/output` mount (move each child, no replacement).
+Every referenced inherited and produced blob is included, with the locked
+build-context annotations on the image manifest.
 
-The target engine publishes into an empty `/run/pichi/output` (move each child, no
-replace):
-
-1. OCI layout: `oci-layout`, `index.json`, `blobs/`.
-2. Transitional flat files for the current host:
-   - `build.yaml` matching `BuildOutput` / `ScuteOut`
-   - delta scutes only, chain order base→top: `0000.cow`, `0000.verity`, …
-   - `boot.pmi` when this build produced firmware
-
-Keep this dual-write until
-[Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24), after Pichi
-OCI import. It is compatibility packaging, not a replacement build receipt.
-
-Inherited base scutes are not repeated. The host prepends the operator source
-carapace from `from:`. An empty `scutes` list is valid. The salt is the full
-scute salt hex.
+[Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24) removes
+`build.yaml` and flat `NNNN.cow` / `NNNN.verity` / `boot.pmi` copies after
+host OCI import landed in
+[Pichi #28](https://github.com/pichi-vm/pichi/pull/28) (`7df44442`). The host
+imports the full OCI graph and rebuilds verity from COW blobs and per-scute
+salts. Firmware remains in its OCI blob paths.
 
 ## Tree
 

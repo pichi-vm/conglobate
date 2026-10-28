@@ -3,7 +3,7 @@
 
 //! The `pichi.build` plan I/O types shared with the host — parse and
 //! validate for `carapace.yaml`, `pmi.yaml` and `refs.lock` (BUILD.md §2.1,
-//! §2.2, §2.4), plus the build VM's `output/build.yaml` manifest.
+//! §2.2, §2.4), plus legacy packing-list types retained for source compatibility.
 //!
 //! These are the on-disk YAML schema and nothing else: a `parse` constructor
 //! on each runs the deserializer then a structural `validate` pass. Reading
@@ -196,9 +196,8 @@ pub struct LockEntry {
     pub carapace: String,
 }
 
-/// The build VM's output manifest (`output/build.yaml`), written by
-/// conglobate and read by `pichi build` to package the artifact. Filenames
-/// are relative to the output sink directory.
+/// Legacy packing-list schema retained for source compatibility.
+/// Conglobate no longer emits this document; Pichi imports the OCI layout.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BuildOutput {
@@ -226,13 +225,13 @@ pub struct ScuteOut {
 }
 
 impl BuildOutput {
-    /// Parse `output/build.yaml`.
+    /// Parse a legacy packing list.
     pub fn parse(yaml: &str) -> Result<Self, PlanError> {
         let out: Self = serde_yaml::from_str(yaml)?;
         Ok(out)
     }
 
-    /// Serialize to YAML (what conglobate writes).
+    /// Serialize the legacy schema to YAML.
     pub fn to_yaml(&self) -> Result<String, PlanError> {
         Ok(serde_yaml::to_string(self)?)
     }
