@@ -9,9 +9,18 @@ Deferred ecosystem work is collected in [Remaining decisions](#13-remaining-deci
 [Validation scope](#12-validation-scope) describes maintained coverage and platform limits.
 Implementation of the full engine reshape is separate from this design lock-in.
 
-The approved recipe design, dated 27 October 2026, is the multi-stage task
-model in [§5](#5-context-and-pipeline) and [§6](#6-execution-recipes). It is
-the recipe source of truth. Tasks are `bootstrap`, `extend`, and `build`. The
+The 28 October 2026 decision in [§11](#11-artifact-and-build-annotations)
+locks build binding annotations and removes `inventory.cbor`. User-facing YAML
+and prose call the document a **plan** and the selected path in a commit the
+**context**. The target CLI uses `--plan`; build-port fields are `plan` and
+`context`. This is a documentation lock: code, shared Rust types/modules and
+fixture filenames still use legacy names until the follow-up implementation.
+The existing `src/plan.rs` engine module has a naming conflict to resolve
+in the follow-up code tip; no Rust module or file is renamed by this decision.
+
+The approved plan design, dated 27 October 2026, is the multi-stage task
+model in [§5](#5-context-and-pipeline) and [§6](#6-execution-plans). It is
+the plan source of truth. Tasks are `bootstrap`, `extend`, and `build`. The
 lock is a separate document. References are an untagged `Local` | `Remote`
 enum. `Filesystem` is a kind-tagged enum. `image:` has a short form and a long
 form. Only the image carapace/boot closure runs. DTB rewrite for a new root
@@ -26,7 +35,7 @@ bootstrap task formats a new carapace from a tool carapace. An extend task
 produces a carapace from a carapace and commands, and carries boot with it. A
 build task produces artifacts only. A pichi image is not a task: it is the
 assembly of one carapace and optional boot (PMI/DTB). The output is that image
-plus an inventory referencing those components.
+with build binding annotations on its manifest (see [§11](#11-artifact-and-build-annotations)).
 
 ## Trust model — required for attested builds
 
@@ -42,10 +51,10 @@ filesystem-name → formatter map) are trusted.** Running without host root does
 by itself establish this boundary. Host-supplied formatter runtimes are not part
 of the design.
 
-The builder verifies inputs, interprets recipes, assembles storage, formats and
-mounts filesystems, enforces execution policy, finalizes outputs, and generates
-the inventory. Kernel filesystem drivers replace the separately sandboxed FUSE
-worker. Commands run in mapped user namespaces with private mount/PID/IPC/UTS/
+The builder verifies inputs, interprets plans, assembles storage, formats and
+mounts filesystems, enforces execution policy, finalizes outputs, and annotates
+the image manifest. Kernel filesystem drivers replace the separately sandboxed
+FUSE worker. Commands run in mapped user namespaces with private mount/PID/IPC/UTS/
 network namespaces. Idmapped mount views preserve target ownership on disk.
 The kernel parses filesystem contents: this increases the shared-kernel attack
 surface compared with an isolated userspace worker. Content verification does
@@ -54,7 +63,7 @@ not prove that filesystem metadata is safe to parse.
 Commands may modify only their assigned working filesystems and explicitly
 authorized outputs, and use explicitly provided runtime resources. They must
 not access or interfere with builder processes, backing devices, namespace
-handles, control interfaces, inventory, output staging, or immutable inputs.
+handles, control interfaces, image metadata, output staging, or immutable inputs.
 The build context is not mounted into commands; COPY exposes selected files.
 Untrusted filesystem paths, symlinks, and metadata must not redirect trusted
 builder operations outside those authorized effects.
@@ -68,10 +77,10 @@ an incomplete or compromised build to be accepted.
 
 Before sealing an output, the builder must terminate and reap all command
 descendants, revoke their write access, and finish filesystem writeback and clean unmount.
-The bytes hashed for the inventory must remain stable through publication.
+The finalized image bytes must remain stable through publication.
 Future attestation must bind the trusted execution environment, including the
 kernel, environment-provided labeling policy, appliance image (and its internal
-formatter profiles) and effective configuration, to that inventory; measuring
+formatter profiles) and effective configuration, to the image digest; measuring
 conglobate alone is insufficient.
 
 The implementation uses kernel ext4 mounts and an environment-provided labeling
@@ -82,8 +91,8 @@ tests do not prove absence of sandbox vulnerabilities.
 
 The sections follow a build from input selection through execution and output
 verification. Read the architecture and input sections first, then the pipeline
-and recipe reference. Resource ownership, measurement, and the inventory define
-the implementation's trust boundaries.
+and plan reference. Resource ownership, measurement, and the image manifest
+define the implementation's trust boundaries.
 
 ## Terminology
 
@@ -94,16 +103,16 @@ the implementation's trust boundaries.
 | Carapace | An ordered chain of scutes assembled into a read-only block device; its top root hash binds the chain |
 | Tool carapace | A carapace supplying the filesystem in which a task's commands execute. Changes to it are disposable unless the task explicitly exports them. It does not become output ancestry because commands ran inside it |
 | Base image | The carapace an `extend` task takes through `from:`, together with boot when that task re-exports it. A tool carapace is not a base image |
-| Task | A named, kind-tagged unit of recipe work. The kinds are `bootstrap`, `extend`, and `build` |
-| Reference | An untagged enum: `Local` names a task in this recipe; `Remote` is a fully qualified OCI image. References have no `./` prefix |
+| Task | A named, kind-tagged unit of plan work. The kinds are `bootstrap`, `extend`, and `build` |
+| Reference | An untagged enum: `Local` names a task in this plan; `Remote` is a fully qualified OCI image. References have no `./` prefix |
 | PMI | Portable Machine Image, the boot-payload format consumed by the VM launcher |
 | DTB | Device Tree Blob, a binary tree of nodes and byte-valued properties describing the platform and its boot configuration |
 | Firmware pair | The PMI and detached DTB. `extend` rewrites the DTB for the new root hash and re-exports the PMI when one is present. Custom PMI/DTB bytes come from an explicit task |
 | Boot | The optional PMI/DTB assembled with one carapace. On `extend`, boot rides with the task |
 | Corium | The guest boot/runtime component whose `corium=<root>` command-line argument selects the root carapace |
-| Arma | The tool commonly used by firmware recipes to produce a PMI and detached DTB |
-| Context | The committed project subtree containing recipes and source files |
-| Inventory | A machine-readable statement identifying the supplied inputs, effective build configuration, and final outputs |
+| Arma | The tool commonly used by firmware plans to produce a PMI and detached DTB |
+| Context | The committed project subtree containing plans and source files |
+| Plan | The user-facing YAML document defining tasks and image assembly |
 
 The OCI manifest digest identifies the image description. A carapace root
 identifies its verified filesystem chain. Neither replaces the other: boot
@@ -122,7 +131,7 @@ assembly uses the carapace root.
   - [Tasks](#51-tasks)
   - [Image assembly](#52-image-assembly)
   - [Closure](#53-closure)
-- [Execution recipes](#6-execution-recipes)
+- [Execution plans](#6-execution-plans)
   - [References](#61-references)
   - [Task kinds](#62-task-kinds)
   - [exec, from, into, and copy](#63-exec-from-into-and-copy)
@@ -133,7 +142,7 @@ assembly uses the carapace root.
 - [DTB transformations](#8-dtb-transformations)
 - [Privileged execution and resource ownership](#9-privileged-execution-and-resource-ownership)
 - [Firmware measurement boundary](#10-firmware-measurement-boundary)
-- [Artifact and inventory](#11-artifact-and-inventory)
+- [Artifact and build annotations](#11-artifact-and-build-annotations)
 - [Validation scope](#12-validation-scope)
 - [Remaining decisions](#13-remaining-decisions)
 - [Sandbox lifecycle](#14-sandbox-lifecycle)
@@ -150,10 +159,10 @@ assembly uses the carapace root.
    on the Conglobate lib** for those types; it does not re-own artifact schemas.
 2. **Standalone CLI** (`conglobate build`) remains a first-class, VM-free entry
    point for rootless checks and engine tests. Given a local Git repository, a
-   commit (or resolved ref), a context subdirectory, recipe/lock paths, a
+   commit (or resolved ref), a context path, plan/lock paths, a
    read-only image cache and an output directory, it produces an importable
-   artifact and inventory without requiring virtiofs, a hypervisor, or the
-   appliance image. The supervisor runs as root for storage assembly when
+   artifact with build annotations without requiring virtiofs, a hypervisor,
+   or the appliance image. The supervisor runs as root for storage assembly when
    privileged stages run; commands never receive that initial-namespace root
    authority. The engine has no code dependency on VM management, virtiofs, GPT
    transport, or a particular hypervisor.
@@ -174,7 +183,7 @@ A build has the following lifecycle:
 
 1. Select a committed context (resolve ref→commit when given a ref) and verify
    locked image inputs.
-2. Load recipe and lock immediately from the object store; resolve other context
+2. Load plan and lock immediately from the object store; resolve other context
    reads lazily with verify-on-use (see [§3](#3-git-context)).
 3. Load tasks and `image:`. Run only the carapace/boot closure
    (`bootstrap`, `extend`, `build`). Orphan tasks do not run.
@@ -183,10 +192,11 @@ A build has the following lifecycle:
    re-exports the PMI when present. Build produces artifacts only.
 5. Assemble one carapace and optional boot. Assembly is not a task. When
    the image root is bound to imported boot lineage, rewrite the DTB
-   automatically. Emit the inventory referencing those components.
-6. In the appliance, optionally bind that inventory to attestation evidence.
+   automatically. Annotate the final image manifest with the build binding facts.
+6. In the appliance, later bind the image digest and TEE/builder to
+   attestation evidence.
 
-The artifact and inventory are Conglobate outputs. Importing or publishing the
+The annotated OCI image is the Conglobate output. Importing or publishing the
 image, transporting it out of a VM, and obtaining hardware attestation are
 surrounding integrations.
 
@@ -199,7 +209,7 @@ it does not claim that every transitive dependency has no unsafe internals.
 Use the ecosystem's storage, carapace, device-mapper, loop-device, and DTB
 libraries where appropriate. Library selection and API adaptation remain
 implementation work. Do not recreate low-level syscall interfaces or shell out
-to system tools for the built-in DTB operations. Recipe-authored commands can
+to system tools for the built-in DTB operations. Plan-authored commands can
 of course invoke tools inside their execution environment.
 
 YAML is used for human-authored formats. CBOR is used for machine-generated
@@ -213,11 +223,11 @@ image manifest digests, and carapace roots provide different identities and
 must not be conflated. A repository location or mutable image tag is not an
 immutable identity.
 
-Per-step network access is supported. Recording the supplied inputs and the
-fact that networking was enabled does not identify every downloaded byte or
-promise reproducibility. Network dependency pinning and reproducible OS/package
-selection are outside the initial builder's guarantees. The inventory must not
-claim a closed set of all influences when commands can acquire external input.
+Per-step network access is supported. The commit, lock and manifest do not
+identify every downloaded byte or promise reproducibility. Network dependency
+pinning and reproducible OS/package selection are outside the initial
+builder's guarantees. Build annotations do not claim a closed set of all
+influences when commands can acquire external input.
 
 ### 1.4 Build appliance
 
@@ -258,7 +268,7 @@ Product assumptions for the guest:
    supersedes host one-shot CBOR push / uni-rx-only). On `ok:true`, Conglobate
    runs the engine against the mounted paths and publishes into the empty
    `/run/pichi/output` mount. The locked end state is the OCI layout
-   (`oci-layout`, `index.json`, `blobs/`, `inventory.cbor`). Beside it, the
+   (`oci-layout`, `index.json`, `blobs/`). Beside it, the
    engine dual-writes a transitional flat `build.yaml` (`BuildOutput` /
    `ScuteOut`) plus delta scute files `NNNN.cow` and `NNNN.verity` in chain
    order (base first) and, when this build produced firmware, `boot.pmi`.
@@ -297,10 +307,10 @@ Transport is the named console in [§1.4](#14-build-appliance). Maps are **flat*
 | `ok` | yes | `true` on success; `false` on failure |
 | `error` | when `ok` is `false` | Human-readable failure reason from the host |
 | `ref` | when `ok` is `true` | Git ref name or full object id; Conglobate resolves it to a commit on the mounted repo |
-| `recipe` | when `ok` is `true` | Path to the recipe YAML, always relative to `subdir` |
-| `lock` | when `ok` is `true` | Path to the lock YAML, always relative to `subdir` |
-| `subdir` | no (success) | Context subdirectory within the commit; default `"."` |
-| `location` | no (success) | Optional provenance/locator hint for inventory; not an authenticated identity |
+| `plan` | when `ok` is `true` | Path to the plan YAML, always relative to `context` |
+| `lock` | when `ok` is `true` | Path to the lock YAML, always relative to `context` |
+| `context` | no (success) | Context path within the commit; default `"."` |
+| `location` | no (success) | Optional provenance/locator hint for the manifest; not an authenticated identity |
 
 Explicit non-fields on the success response (must not appear; if present, reject):
 
@@ -311,18 +321,18 @@ Explicit non-fields on the success response (must not appear; if present, reject
 - UID/GID maps, network-namespace path, resolv-conf path
 - `op` (request-only)
 
-Recipe and lock paths are always relative to `subdir`. Conglobate opens the
+Plan and lock paths are always relative to `context`. Conglobate opens the
 mounted repository at `/run/pichi/repo`, resolves `ref` to a commit, and uses
 `/run/pichi/cache` as the read-only image cache.
 
 **Ref resolution (guest):** resolve `ref` with gix on the mounted repository to a
-single commit object. Accept a full object id (hex matching `object_format`) or a
+single commit object. Accept a full object id (SHA-1 or SHA-256 hex) or a
 ref name; peel annotated tags to the commit. Reject abbreviated object ids,
-missing refs, and non-commit tips. The resolved commit is the inventory identity;
-optional `location`, when present, is recorded as inventory
-`context.repository` (provenance locator); when absent, record the fixed mount
-path `/run/pichi/repo`. Neither is an authenticated identity. The host `ref`
-string itself is not a separate inventory field — only the resolved commit is.
+missing refs, and non-commit tips. Record the resolved commit in
+`dev.pichi.build.commit`, with `sha1:` or `sha256:` in the value. Optional
+`location` becomes `dev.pichi.build.location`; omit that annotation when absent.
+The location and fixed mount path are not authenticated identities. Do not
+record the host `ref` string separately. See [§11.1](#111-image-manifest-annotation-contract).
 
 **Wire decoding / failure rules (v0):**
 
@@ -330,24 +340,23 @@ string itself is not a separate inventory field — only the resolved commit is.
   tables above. Reject duplicate keys, noncanonical encodings that the decoder
   does not normalize, unknown fields, and wrong types.
 - Decode exactly one top-level response map; after that map, any leftover bytes
-  already in the read buffer are trailing data and fail the build (same spirit
-  as inventory trailing-data rejection).
+  already in the read buffer are trailing data and fail the build.
 - Require `v == 1` before interpreting other fields; version mismatch fails.
 - When `ok` is `false`, only `v`, `ok`, and `error` may appear; success-only
   fields must not appear. When `ok` is `true`, `error` must not appear.
 - Missing build-port device, undecodable CBOR, truncated response, or read
   timeout (fixed internal deadline) fails the build. There is no silent default
-  recipe/lock/`ref`.
+  plan/lock/`ref`.
 
 **Output mount:** `/run/pichi/output` is an empty writable virtiofs mount supplied
 by the host (not a path Conglobate creates). Conglobate stages privately in a
 temporary child directory on that mount, then publishes by moving each top-level
-layout entry (`blobs/`, `oci-layout`, `index.json`, `inventory.cbor`,
+layout entry (`blobs/`, `oci-layout`, `index.json`,
 `build.yaml`, each flat `NNNN.cow` / `NNNN.verity` / `boot.pmi`, and any
 other exported roots) into the mount root with no-replace semantics (refuse if
 any destination name already exists). Fail if the mount is missing, not a
 directory, or non-empty before publication. This is distinct from CLI `--output`,
-which names a new directory that must not already exist (see [§11.1](#111-inventory-schema)
+which names a new directory that must not already exist (see [§11.2](#112-finalization-and-publication)
 finalization / publication and [§14.2](#142-resolve-and-verify-all-supplied-inputs-before-execution)).
 
 ## 2. Standalone CLI
@@ -357,19 +366,19 @@ by rootless CI and local tests. It does not claim the appliance image's
 formatter-tool binding or build-port attestation; those are appliance-only.
 Appliance production builds use the CBOR
 contract in [§1.5](#15-appliance-build-port-cbor) instead of these host flags for
-request transport; both paths share recipe/lock/cache semantics.
+request transport; both paths share plan/lock/cache semantics.
 
 Required logical inputs for the CLI are a local Git repository path, a full
-commit identity (or a ref the CLI resolves locally), a subdirectory within that
-commit, context-relative recipe and lock paths, a read-only image cache, and an
+commit identity (or a ref the CLI resolves locally), a context path within that
+commit, context-relative plan and lock paths, a read-only image cache, and an
 output directory:
 
 ```sh
 conglobate build \
   --repository <local-path> \
   --commit <full-object-id> \
-  --context <relative-subdirectory> \
-  --recipe <context-relative-yaml-path> \
+  --context <path-in-commit> \
+  --plan <context-relative-yaml-path> \
   --lock <context-relative-lock-path> \
   --cache <read-only-image-cache> \
   --output <directory>
@@ -377,14 +386,14 @@ conglobate build \
 
 Defaults and failure behavior:
 
-- `--context` defaults to `.`. It cannot escape the checkout. (Appliance CBOR
-  uses `subdir` for the same role.)
-- `--recipe` and `--lock` are required, with no default filenames or discovery.
+- `--context` defaults to `.`. It cannot escape the selected commit.
+  Appliance CBOR uses `context` for the same role.
+- `--plan` and `--lock` are required, with no default filenames or discovery.
   Both paths are relative to the selected context, not the current directory or
   each other's parent. Resolve them through the committed-context path rules,
   including confined symlink handling. Absolute paths, escapes, missing files
   and non-file targets fail. Both inputs must come from the selected commit.
-  The inventory records their selected paths and exact content identities.
+  The manifest records their selected paths; the commit binds their bytes.
 - `--commit` identifies a commit, not a branch, tag, abbreviated hash, or index
   snapshot. Locator and identity are separate on the CLI. The appliance passes
   `ref` instead; the guest resolves `ref` → commit on the mounted repository.
@@ -397,10 +406,10 @@ Defaults and failure behavior:
   paths that map probes first. Capture still reads that binary and its dynamic
   dependencies from the guest root; standalone CLI builds use the same probe
   on the host. There is **no** `--formatter-runtime` flag and **no**
-  host-supplied mke2fs (or other formatter) manifest as a TEE input. Recipe
-  authors cannot override formatter selection. Inventory records the effective
-  internal formatter profile and filesystem specification; it does not treat a
-  host path locator as a formatter identity.
+  host-supplied mke2fs (or other formatter) manifest as a TEE input. Plan
+  authors cannot override formatter selection. The internal formatter profile
+  and filesystem specification control formatting; no execution receipt is
+  emitted.
 - `--uid-map PARENT_START:COUNT` and `--gid-map PARENT_START:COUNT` remain
   available on the standalone CLI for VM-free and fixture execution of stages
   that need mappings. In the **appliance image** these ranges are hardcodes,
@@ -409,7 +418,7 @@ Defaults and failure behavior:
   the invalid all-ones ID are rejected. UID and GID counts may differ. All
   stages use the same pair. Images using IDs outside those ranges are
   unsupported; no silent ownership rewriting. Pass-through builds do not need
-  mappings and omit them from the inventory.
+  mappings.
 - `--network-namespace PATH` and `--resolv-conf PATH` remain available on the
   standalone CLI when any run step enables networking (same capture/join rules
   as before). In the **appliance image** the namespace path and resolver file
@@ -417,13 +426,14 @@ Defaults and failure behavior:
   before execution; do not reopen the pathname per step. Capture resolver
   contents once and inject them temporarily, read-only, following symlinks
   confined to the command root. No implicit resolver or DNS relay. Resolver
-  contents and their digest are omitted from inventory.
-- Successful output is published only when all components and the inventory
-  are complete. Refuse an existing output destination rather than overwrite it.
+  contents and their digest are not recorded as build annotations.
+- Successful output is published only when all components and manifest
+  annotations are complete. Refuse an existing output destination rather than
+  overwrite it.
 - Logs go to stderr; the process exit status distinguishes success from
   failure. A precise exit-code taxonomy is deferred.
 - No successful artifact is published for a failed build. Failure diagnostics
-  may be retained separately and are not a successful build inventory.
+  may be retained separately and do not constitute a successful image.
 
 Repository input is always local. Fetching belongs to the caller, not
 conglobate. The initial implementation builds only for the host architecture;
@@ -441,7 +451,7 @@ commit files, or fetch remote content.
 
 ### 3.1 Immediate vs lazy reads
 
-1. **Recipe and lock** are loaded **immediately** from the Git object store and
+1. **Plan and lock** are loaded **immediately** from the Git object store and
    verified against their object identities before pipeline execution.
 2. **COPY and other context reads** use **lazy gix verify-on-use**: each path is
    resolved and content-verified when first needed. There is **no** eager full
@@ -455,21 +465,22 @@ commit files, or fetch remote content.
 ### 3.2 Context ownership
 
 Conglobate does not clone, fetch or run checkout operations. It records the
-repository object format, selected commit (after ref resolution when applicable)
-and context subtree identity in the inventory. Paths and the caller's working
-tree do not substitute for object verification. Preserve committed bytes,
+selected commit (after ref resolution when applicable) with its algorithm in
+`dev.pichi.build.commit`, and the context path in `dev.pichi.build.context`.
+There is no separate tree or object-format annotation. Paths and the caller's
+working tree do not substitute for object verification. Preserve committed bytes,
 executable bits and symlink targets. Do not execute caller-provided hooks or
 checkout filters.
 
-Git's object format must be recorded. Whether SHA-1 Git identities require an
-additional independently authenticated commitment for the intended threat
-model remains a security-design question. Hashing received bytes alone does
-not establish the author's intended identity.
+The commit annotation value identifies Git's hash algorithm. Whether SHA-1 Git
+identities require an additional independently authenticated commitment for the
+intended threat model remains a security-design question. Hashing received
+bytes alone does not establish the author's intended identity.
 
 ## 4. Image locks
 
 The lock is a separate document, selected by `--lock`. It is not embedded
-in the recipe. It maps each `Remote` reference to one immutable OCI index
+in the plan. It maps each `Remote` reference to one immutable OCI index
 digest. `Local` references name tasks ([§6.1](#61-references)) and are not
 entries here. `image:` references are `Local` only, so this document does not
 pin them.
@@ -508,10 +519,10 @@ platform manifest, and verifies it. The carapace / filesystem root is derived
 from the scute graph (exactly one tip root), not from an OCI tip annotation.
 `dev.pichi.carapace.verity.hash` is never written, never read, and is stripped
 on rewrite if present; other verity parameter annotations remain. Guest boot
-(`corium=` / `$CARAPACE`) and inventory `carapace_root` use that derived
-measurement. It verifies content and
-chain consistency against those identities. The inventory records both the
-pinned index and the selected manifest.
+(`corium=` / `$CARAPACE`) uses that derived measurement. Conglobate verifies
+content and chain consistency against those identities. The committed lock
+pins the index, which in turn binds the selected manifest; do not mirror those
+identities into build annotations.
 
 Missing pins, missing cached content, incompatible or ambiguous platform
 selection, and mismatches are errors. Mutable cache tags are never consulted
@@ -533,26 +544,26 @@ The context has no required configuration directory or filenames. For example:
 
 ```text
 <committed-context>/
-  recipes/image.yaml
+  plans/image.yaml
   locks/images.lock
   config/
   sources/
 ```
 
-Select those files with `--recipe recipes/image.yaml --lock locks/images.lock`.
+Select those files with `--plan plans/image.yaml --lock locks/images.lock`.
 These names are examples, not defaults. The lock path selects a separate
-document. The recipe does not embed the lock. Context paths stay relative to
-the context root, even when the recipe lives in a subdirectory.
+document. The plan does not embed the lock. Context paths stay relative to
+the context root, even when the plan lives in a nested directory.
 
-The approved recipe is a set of named tasks plus one `image:` assembly. It
+The approved plan is a set of named tasks plus one `image:` assembly. It
 replaces the fixed pipeline `bootstrap` → `carapace` → `firmware` →
-`transform` as the recipe source of truth. Those names are not top-level
+`transform` as the plan source of truth. Those names are not top-level
 section keys. `platform` is not a task kind. There is no `kind: import`.
 
 A task is a kind-tagged enum. The kinds are `bootstrap`, `extend`, and
 `build`. Reject duplicate keys, unknown keys, and unknown kinds rather than
 merging or ignoring them. YAML null is not an alias for omission or emptiness.
-An empty recipe cannot produce an image.
+An empty plan cannot produce an image.
 
 ### 5.1 Tasks
 
@@ -569,7 +580,7 @@ Custom PMI/DTB bytes exist only when an explicit task exports boot. That work
 is not a fourth kind and not an implicit pipeline stage. `build` yields
 artifacts and no carapace, which is the kind available for a producer that
 exports boot and no carapace. Extend exports boot when it re-exports a PMI.
-Automatic DTB rewrite is not a task and not a per-recipe job. See
+Automatic DTB rewrite is not a task and not a per-plan job. See
 [§8](#8-dtb-transformations).
 
 A tool carapace does not become output ancestry because commands execute
@@ -578,11 +589,11 @@ inside it.
 ### 5.2 Image assembly
 
 Producing a pichi image is not a task. An image is the assembly of one
-carapace and optional boot (PMI and DTB). The inventory references those
+carapace and optional boot (PMI and DTB). The image manifest references those
 components. Launch configuration and any component beyond carapace and boot
 remain unspecified ([§13](#13-remaining-decisions)).
 
-`image:` references are `Local` only. They name a task in this recipe.
+`image:` references are `Local` only. They name a task in this plan.
 Two forms are valid.
 
 Short form: one reference. Assembly uses whatever that single task already
@@ -613,7 +624,7 @@ already in the closure reaches it through `from:` or `copy`. Orphan tasks do
 not run. YAML key order does not select the closure and does not order
 execution. A task runs after the tasks that produce the inputs it references.
 
-## 6. Execution recipes
+## 6. Execution plans
 
 The task vocabulary is `kind`, `from:`, `exec`, `into:`, `copy`, and, for
 bootstrap, `filesystem:`. Examples show locked fields. Unknown fields and
@@ -627,7 +638,7 @@ name that a `Local` reference cites.
 A reference is an untagged enum: `Local` | `Remote`. References have no `./`
 prefix.
 
-`Local` is a limited-charset newtype and names a task in this recipe. This
+`Local` is a limited-charset newtype and names a task in this plan. This
 lock does not enumerate the character set. `Remote` is a struct of OCI
 components and must be fully qualified: a registry host is required. Bare Hub
 short names are rejected.
@@ -649,7 +660,7 @@ in that document.
 
 `bootstrap` requires `from:` (the tool carapace) and `filesystem:`. The engine
 formats that filesystem outside the command sandbox, on a new zero-backed
-carapace layer, before `exec` starts. The recipe does not run mkfs or mount.
+carapace layer, before `exec` starts. The plan does not run mkfs or mount.
 `exec` populates `/mnt` only.
 
 Commands see two writable mounts. `/` is the tool carapace with a disposable
@@ -668,7 +679,7 @@ No tool scutes and no tool boot components are inherited. A deliberate `copy`
 can still contribute output bytes. After writers stop and both filesystems are
 cleanly unmounted, seal the output scute and package its carapace. There is no
 image import and no image-to-scute conversion. The first tool carapace is
-produced outside this recipe.
+produced outside this plan.
 
 `extend` requires `from:` (the carapace to extend) and its commands in `exec`.
 Existing scutes pass through. The task adds one new scute. Every `exec` step
@@ -747,11 +758,11 @@ The carapace logical device remains 64 GiB. Trusted formatting uses exactly
 the requested number of 4096-byte blocks and leaves the rest zero-backed. Size
 does not change carapace wire geometry. Validate this before privileged
 execution. Do not accept arbitrary formatter arguments, executable paths, or
-shell fragments from the recipe or the host. Fail if the driver, the internal
+shell fragments from the plan or the host. Fail if the driver, the internal
 formatter map entry, or the required idmapping and metadata support is
 unavailable. Ext4 is the initially validated backend. Other kernel filesystems
-require qualification. Record the effective formatting configuration and the
-internal formatter profile identity with an explicit inventory schema revision.
+require qualification. Validate the effective formatting configuration and
+internal formatter profile before execution; do not emit formatter receipts.
 
 ### 6.5 Command execution
 
@@ -772,7 +783,7 @@ including conntrack. No command process may survive its step.
 Every `run` has a finite positive command-execution timeout. The default is
 `5m`. The optional `timeout` field accepts duration strings such as `30m` or
 `1h`. Zero, infinite, invalid, and overflowing values fail validation. Setup
-and teardown have separate fixed internal deadlines. They are not recipe or
+and teardown have separate fixed internal deadlines. They are not plan or
 CLI settings. Each `run` gets a fresh filesystem mount and a fresh command
 sandbox.
 
@@ -836,7 +847,7 @@ The DTB is the canonical boot configuration artifact. In particular, Linux's
 kernel command line, when present, is the string `/chosen/bootargs`. There is
 no second persistent command-line definition outside the DTB.
 
-Recipes have no `transform` section. The encodings below are the engine's
+Plans have no `transform` section. The encodings below are the engine's
 DTB edit vocabulary, applied by the automatic rewrite in
 [§8.3](#83-automatic-rewrite). Authors do not supply this list. Each operation
 has exactly one `op` discriminator. `set` also has a flat `type` discriminator
@@ -962,8 +973,8 @@ examples preserves the whitespace consumed by the boundary capture.
 
 ### 8.3 Automatic rewrite
 
-The automatic rewrite is engine-owned. It is not a task and not a per-recipe
-job. Recipes have no `transform` key. Authors cannot replace the sequence,
+The automatic rewrite is engine-owned. It is not a task and not a per-plan
+job. Plans have no `transform` key. Authors cannot replace the sequence,
 append to it, or disable it with an empty list.
 
 The engine applies the built-in sequence when a DTB is present and either:
@@ -973,7 +984,7 @@ The engine applies the built-in sequence when a DTB is present and either:
   boot rides with the task; or
 - image assembly binds an image root to imported boot lineage.
 
-When no DTB exists, skip the rewrite. Skipping is not a recipe switch.
+When no DTB exists, skip the rewrite. Skipping is not a plan switch.
 
 The built-in sequence is:
 
@@ -996,15 +1007,13 @@ Within an existing DTB, the sequence uses `if.exists` to skip an absent
 command line. No operation reads a missing property successfully, and a
 missing DTB never makes an existence condition return false.
 
-Whether the rewrite ran or was skipped is recorded by the current
-version-three transform fields
-([§11.2](#112-inventory-wire-profile-and-schema-migration)). This recipe lock
-does not revise that wire record.
+The finalized DTB in the image manifest binds the rewrite result. Do not emit
+transform execution records; see [§11.1](#111-image-manifest-annotation-contract).
 
 Property operations only are in scope initially; `set` may create ancestor
 nodes, but there are no explicit whole-node creation or removal operations.
 Custom PMI/DTB bytes that differ from this sequence come from an explicit
-task's boot export, not from a recipe-authored list of these operations.
+task's boot export, not from a plan-authored list of these operations.
 
 ## 9. Privileged execution and resource ownership
 
@@ -1024,7 +1033,7 @@ VM disposal. No recovery/reuse API or retry of a failed build is required.
 Abrupt supervisor death also invalidates the build and is handled by VM disposal.
 
 The root supervisor owns verified inputs, cache handles, loop/device-mapper
-assembly, writable snapshots, inventory, and publication. Immutable carapace
+assembly, writable snapshots, image metadata, and publication. Immutable carapace
 layers remain cache-backed with verified reads. One private build-wide tmpfs
 holds mutable snapshots and scratch; ordinary tmpfs behavior applies. The
 execution environment configures capacity and resource limits, with no disk
@@ -1042,7 +1051,7 @@ pure-Rust Aya rewrite owned by the environment (section 14.4). Conglobate does
 not compile, load or attach the policy, does not depend on libbpf, and does not
 register subjects and filesystems. Its only labeling role is `LabelProbe`
 admission. The VM has SELinux disabled; foreign labels belong to the target OS
-and confer no authority in the build environment. Before recipe admission,
+and confer no authority in the build environment. Before plan admission,
 verify required behavior under restricted command credentials; missing support
 fails without a capability fallback. The C sources
 `tests/environment/labels.bpf.c`, `tests/environment/loader.c` and related C
@@ -1066,7 +1075,7 @@ creation and control access are prohibited. Context enters only through COPY.
 Commands never share the supervisor network namespace. Enabled steps join the
 environment-owned build namespace with outbound NAT without destination filtering; supervisor controls must not be
 exposed on reachable network addresses. The environment supplies `--resolv-conf`;
-there is no built-in DNS relay, resolver inventory entry or persistent injection.
+there is no built-in DNS relay, resolver annotation or persistent injection.
 
 On every exit path, stop/reap all descendants before removing runtime mounts
 and resolver mounts, flushing and cleanly unmounting filesystems for sealing.
@@ -1095,8 +1104,8 @@ and isolation tests does not prove absence of sandbox vulnerabilities.
 
 ## 10. Firmware measurement boundary
 
-Firmware production precedes final DTB transformations. The final artifact
-and inventory must identify the transformed DTB, and any measurement or
+Firmware production precedes final DTB transformations. The final image manifest
+must identify the transformed DTB, and any measurement or
 signature commitment covering it must use those final bytes.
 
 Detached does not automatically mean freely mutable: the relevant PMI/firmware
@@ -1115,219 +1124,92 @@ accept the edit. A pre-signed SEV identity, bundled-only DTB, unknown target,
 or opaque firmware rejects a changed DTB. Unchanged DTBs require no resealing
 and pass through, including opaque custom firmware. Authors using unsupported
 signing contracts must export the final DTB from an explicit task. The
-recipe has no `transform` section and no switch that disables the automatic
+plan has no `transform` section and no switch that disables the automatic
 rewrite. A firmware contract that rejects a changed DTB still rejects the
 build when that rewrite would change the DTB.
 
-## 11. Artifact and inventory
+## 11. Artifact and build annotations
 
-The output directory is itself a self-contained OCI image layout, with the
-successful build inventory alongside its standard entrypoints:
+Nathaniel's decision of 28 October 2026, tracked in
+[Conglobate #25](https://github.com/pichi-vm/conglobate/issues/25) and
+[Pichi #27](https://github.com/pichi-vm/pichi/issues/27), replaces the inventory
+with build annotations on the **image manifest**. Drop `inventory.cbor`
+entirely; it is not an optional output. Do not emit a replacement receipt file.
+
+The output directory is itself a self-contained OCI image layout:
 
 ```text
 result/
   oci-layout         # OCI layout version; external OCI formats remain JSON
   index.json         # output image index
   blobs/sha256/      # all referenced manifest, configuration and layer blobs
-  inventory.cbor     # successful input/output binding
   build.yaml         # transitional BuildOutput; scutes may be empty
   0000.cow           # delta scutes only, chain order; names come from build.yaml
   0000.verity
   boot.pmi           # only when this build produced firmware
 ```
 
-OCI consumers use `result/` directly. The transitional `build.yaml` and flat
-blobs are for the current host packaging path: filenames are relative to
-`result/`, chain order is base to top, and only delta scutes are listed. The
-host prepends the operator source carapace named by `from:`. `inventory.cbor`
-remains the successful input/output binding; that host smoke may ignore it.
-Attestation and any additional evidence
-binding the inventory bytes belong to the appliance, as specified in section 11.3.
+OCI consumers use `result/` directly. Keep the transitional `build.yaml` and
+flat blobs until [Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24),
+after Pichi OCI import. They serve the current host packaging path: filenames
+are relative to `result/`, chain order is base to top, and only delta scutes
+are listed. The host prepends the operator source carapace named by `from:`.
+An empty delta list is valid. This compatibility output is not a build receipt.
 
 Include every blob referenced by the output image, including inherited blobs
-from the cache. Import must not require the original cache. Packaging validates
-structure and content identities before publishing the completed layout.
-CLI `--output` names a destination that must not already exist, even if empty;
-the appliance `/run/pichi/output` mount is an exception — it pre-exists empty and
-receives layout entries as specified in §1.5 and §11.2. The final manifest
+from the cache. Import must not require the original cache. The final manifest
 describes all components and the final transformed DTB.
 
-### 11.1 Inventory schema
+### 11.1 Image-manifest annotation contract
 
-`inventory.cbor` is versioned machine data. The following is a YAML rendering
-of its proposed logical shape, not a second emitted inventory format or a
-finalized CBOR wire schema.
+Write these build binding facts on the published image manifest itself,
+not only on an index, index descriptor, or configuration blob:
 
-The example's input roles (`bootstrap-tools`, `carapace-base`,
-`firmware-tools`) and `execution.transform` record the fixed-pipeline engine.
-[§5](#5-context-and-pipeline) and [§6](#6-execution-recipes) are the recipe
-source of truth. This recipe lock does not revise the inventory wire schema.
-A later inventory version must name tasks explicitly. Do not read the task
-model out of these role strings.
+| Annotation | Value |
+| --- | --- |
+| `dev.pichi.build.commit` | Required: `sha1:<hex>` or `sha256:<hex>`, using the full resolved Git commit identity |
+| `dev.pichi.build.context` | Required: path inside that commit; `.` selects the commit root |
+| `dev.pichi.build.plan` | Required: plan path relative to the selected context |
+| `dev.pichi.build.lock` | Required: lock path relative to the selected context |
+| `dev.pichi.build.location` | Optional: provenance hint for where to obtain the repository |
 
-```yaml
-version: 3
-builder:
-  name: conglobate
-  version: ...
-  executable: {algorithm: sha256, digest: <bytes>}
-context:
-  repository: <provenance-locator>   # CLI: local path; appliance: location or /run/pichi/repo
-  object_format: sha1
-  commit: <bytes>                    # resolved commit identity; host ref tip not stored
-  subdirectory: project
-  tree: <bytes>
-inputs:
-  - roles: [carapace-base]
-    reference: registry.example.com/fedora:43
-    index: {algorithm: sha256, digest: <bytes>}
-    manifest: {algorithm: sha256, digest: <bytes>}
-    carapace_root: <bytes>
-  - roles: [firmware-tools]
-    reference: registry.example.com/kernel-builder:43
-    index: {algorithm: sha256, digest: <bytes>}
-    manifest: {algorithm: sha256, digest: <bytes>}
-    carapace_root: <bytes>
-execution:
-  id_mappings:         # effective mappings; omitted for pass-through
-    uid: {parent_start: 200000, count: 131072}
-    gid: {parent_start: 400000, count: 131072}
-  architecture: amd64
-  recipe:
-    path: recipes/image.yaml
-    content: {algorithm: sha256, digest: <bytes>}
-  lock:
-    path: locks/images.lock
-    content: {algorithm: sha256, digest: <bytes>}
-  transform:
-    source: builtin
-    digest: {algorithm: sha256, digest: <bytes>}
-    target_present: true
-  formatters: []        # nonempty for bootstrap; records described below
-  network_steps:
-    - {stage: carapace, step: 0}
-outputs:
-  manifest: {algorithm: sha256, digest: <bytes>}
-  carapace_root: <bytes>
-  scutes:
-    - digest: {algorithm: sha256, digest: <bytes>}
-      origin: inherited
-    - digest: {algorithm: sha256, digest: <bytes>}
-      origin: produced
-  pmi: {algorithm: sha256, digest: <bytes>}
-  dtb: {algorithm: sha256, digest: <bytes>}
-```
+Location says where to get it; commit says what it is; context selects a path
+in that commit; plan and lock select paths relative to context. The commit
+value carries its algorithm. There are no separate tree or object-format keys.
+Plan and lock bytes are already bound through the commit and selected paths;
+do not mirror their content digests as additional build annotations.
 
-Digest payloads are CBOR byte strings with explicit algorithm identifiers.
-Absent output components are omitted. Recipe and lock paths are relative to
-the selected context. Their digests identify the exact committed file bytes,
-not a YAML reserialization. In this version-three record, network steps
-identify the fixed-pipeline stage name and its zero-based directive index.
-A later inventory version names tasks instead. Input roles refer to use, not
-output ancestry. Source locators
-are provenance hints, not authenticated identities, and must not expose
-embedded credentials.
+Location is only a locator, not an authenticated identity. Omit it when no
+provenance hint is supplied; the appliance's fixed repository mount is not an
+identity. Locators must not expose embedded credentials. The host-requested
+`ref` is resolved before publication and is not a separate annotation.
 
-Resolver configuration and its digest are deliberately excluded from inventory;
-network-enabled steps are still recorded. This environment configuration is not
-claimed to be an exhaustively measured input. Inventory coverage otherwise must
-include effective build options, selected architecture,
-the committed lock, all supplied image manifests, recipe contents, and the
-effective built-in transform version/content when applicable. Some identities
-are transitively covered by the context or image manifest; explicit entries
-make auditing useful without inventing independent trust anchors. The manifest
-identity binds all output components, including inherited configuration not
-listed separately in the example. The inventory must not imply that only
-scutes, PMI, and DTB are inherited.
+Do not add `builder`, `inputs`, `execution`, or `outputs` mirrors. The plan,
+lock, commit and OCI graph already carry the binding facts. Execution receipts,
+including formatter, transform, network-step and ID-mapping records, are not
+recorded in a sidecar or mirrored into annotations. This decision does not
+remove input verification or execution/finalization checks.
 
-Inventory encoding is deterministic CBOR. The implementation must specify the
-exact deterministic encoding profile, required fields, unknown-field/version
-handling, ordering of arrays, and digest algorithms.
-Do not bind evidence to a human-readable reserialization. Bind the exact
-emitted CBOR bytes. Deterministic serialization does not imply a deterministic
-build or require timestamps in every inventory.
+The carapace tip root remains deterministically implied by the manifest's
+scute graph. Never stamp or require `dev.pichi.carapace.verity.hash`. Keep the
+existing carapace verity parameter annotations and per-scute salt/data-blocks
+annotations. Boot binding uses the root derived from that graph.
 
-Formatter receipts identify each executed **internal** backend profile, effective
-filesystem specification (type, capacity in bytes, label and logical device
-capacity), configuration digest and effective argument vector. They bind the
-image-resident formatter profile, not a host TEE `--formatter-runtime` manifest.
-Dynamic device paths are locators, not identities. The `formatters` array is
-empty when no formatting ran. Receipt creation follows successful
-execution/finalization; planned work alone is not evidence of execution.
-Each formatter receipt has exactly these fields: `stage` (initially `bootstrap`),
-`profile` (versioned backend name from the internal map), `profile_digest`
-(Digest of the selected internal profile's effective definition as implemented
-by the engine), `configuration` (Digest), `arguments` (ordered strings), and
-`filesystem` (`type`, `size_bytes`, `logical_size_bytes`, `label`). All are
-required; Digest uses the algorithm/byte-string representation above. Arrays
-preserve execution order. Version three replaces version-one host-runtime
-`executable` / `runtime` receipt fields with `profile` / `profile_digest`;
-emit and validate that receipt shape only under inventory version three. Do not
-emit or accept the version-one host-runtime fields as version three.
+### 11.2 Finalization and publication
 
-### 11.2 Inventory wire profile and schema migration
-
-The deterministic encoding profile uses RFC 8949 section 4.2.1 core
-deterministic CBOR:
-shortest integer and length encodings, definite-length containers, and map keys
-ordered by the bytewise lexicographic order of their deterministic encodings.
-Floating-point values and CBOR tags are not part of this schema. Digests and
-Git object identities are byte strings. SHA-256 digests have 32 bytes; Git
-identities have 20 or 32 bytes according to `object_format`.
-
-The required top-level fields are `version`, `builder`, `context`, `inputs`,
-`execution`, and `outputs`, with the nested fields illustrated above. Version is 3 for the target schema described here (the example in §11.1). Consumers
-reject unknown fields, unsupported versions, duplicate keys, noncanonical
-encodings, and trailing data. Absent optional output roots and firmware digests
-are omitted. An input's `carapace_root` is also omitted when a firmware-only base
-passes through without execution; execution-tool inputs must have a 32-byte root.
-Such a base retains the `carapace-base` role, which identifies the selecting
-recipe, not a requirement that scutes exist. `outputs.scutes` and `inputs` are
-arrays, including when empty. Scutes are recorded in base-to-top chain order;
-inputs are sorted by reference, with unique sorted roles. Network steps occur in
-pipeline and directive order.
-
-Version three is the complete current inventory shape. Relative to version one it
-replaces `execution.recipes` with explicit `execution.recipe` and
-`execution.lock` path/content records, replaces per-file network-step identifiers
-with `stage`, records effective environment-supplied UID/GID mappings in
-`execution.id_mappings`, and uses formatter receipts with `profile` /
-`profile_digest` instead of host-runtime `executable` / `runtime` fields. Emit
-and validate version three explicitly; do not silently emit these fields as
-version one. Version two is not a supported emit or accept target. The
-`execution.transform` fields below are that current fixed-pipeline contract.
-The approved recipe has no authored `transform` section
-([§8.3](#83-automatic-rewrite)). Changing `source` or the role names requires
-a new inventory version. The transform
-record adds a required boolean `default_skipped`, indicating that the implicit
-default encountered no DTB or no bootargs property; an authored transform always
-records false for this field. `target_present` records whether a DTB was
-supplied.
-For `authored`, the transform digest is the SHA-256 of the exact committed
-recipe bytes containing that section (also identified by `execution.recipe`).
-This binds the section without inventing a YAML reserialization. For `builtin`,
-it is the SHA-256 of the builder's exact built-in sequence bytes, including when
-the default is skipped. Changes to those bytes change the recorded identity.
-`source` is `builtin` or `authored`. Input roles are `bootstrap-tools`,
-`carapace-base`, and `firmware-tools`; scute origins are `inherited` or
-`produced`. The builder record hashes the running executable. `context.repository` is a provenance locator string, not a trust
-anchor: on the CLI it is the local repository path; in the appliance it is the
-optional CBOR `location` when present, otherwise the fixed mount path
-`/run/pichi/repo`. The host-requested `ref` tip is not stored in inventory —
-authenticated identity is solely the resolved `context.commit` (and tree).
-
-Finalization checks inventory output identities against the finalized manifest
-and validates every referenced blob before publication. Publication differs by
-destination:
+Validate the annotation values against the selected commit, context, plan and
+lock, then validate the finalized manifest and every referenced blob before
+publication. Hash finalized bytes after all manifest annotations and DTB edits
+are complete. Publication differs by destination:
 
 - **CLI `--output`:** stage under a temporary sibling of the named destination,
   then publish the completed directory with an atomic no-replace rename onto a
-  path that must not already exist.
+  path that must not already exist, even if empty.
 - **Appliance `/run/pichi/output`:** the virtiofs mount root already exists and
   must be empty at start. Complete every fallible check while staging privately
   in a temporary child directory on that same mount. Only then publish by moving
   each top-level layout entry (`oci-layout`, `index.json`, `blobs/`,
-  `inventory.cbor`, `build.yaml`, flat `NNNN.cow` / `NNNN.verity` / `boot.pmi`,
+  `build.yaml`, flat `NNNN.cow` / `NNNN.verity` / `boot.pmi`,
   …) into the mount root with no-replace semantics (refuse if
   any destination entry already exists). If any move fails, delete already-moved
   entries and the staging child so the mount does not retain a partial successful
@@ -1342,34 +1224,34 @@ replaced, unreferenced blobs are not exported.
 
 ### 11.3 Attestation
 
-The guest generates the inventory from what it verified, consumed, and
-produced. Evidence binds its digest to the measured execution environment.
-The builder executable digest alone does not identify the kernel, libraries,
-or other privileged environment that determined the result.
+Later attestation binds the finalized **image digest** and the **TEE/builder**.
+It does not introduce a second receipt file. Measuring the builder executable
+alone does not identify the kernel, libraries, labeling policy, formatter
+profiles or other privileged environment that determined the result.
 
-Standalone execution emits the same inventory without claiming attestation.
-Initial conglobate emits inventory only. Attestation belongs to the appliance
-integration; evidence remains separate
-to avoid circular hashing. The report-data encoding, endorsements, verifier
-policy, freshness, and hardware-specific mechanism are deferred.
+Standalone execution publishes the same annotated image without claiming
+attestation. Report-data encoding, endorsements, verifier policy, freshness,
+and hardware-specific mechanisms remain appliance integration work.
 
-Outputs must be hashed from the finalized bytes the trusted builder actually
-produced, before relying on an untrusted output transport. Re-reading mutable
-host output and treating it as authoritative would break that binding. A
-consumer can verify retrieved bytes against the attested inventory.
+Hash the finalized bytes the trusted builder actually produced before relying
+on an untrusted output transport. Re-reading mutable host output and treating
+it as authoritative would break that binding. A consumer verifies retrieved
+manifest bytes against the attested image digest, then verifies its OCI graph.
 
-An inventory records an execution claim. It does not establish that recipes
-are benign, that network dependencies are reproducible, or that the author
-intended the pinned inputs without a separate authenticity policy.
+Attestation does not establish that plans are benign, network dependencies are
+reproducible, or the author intended the pinned inputs without a separate
+authenticity policy.
 
 ## 12. Validation scope
 
-The implementation follows the ordered sandbox contract. Maintained tests cover committed inputs, locks, typed
-DTB operations, pipeline combinations, metadata, deterministic inventory,
-publication and disposable-VM lifecycle failures. Those tests exercise the task model in §5–§6 alongside the existing storage,
-isolation, metadata and publication behavior. Distro recipes exercise Fedora
+The implementation follows the ordered sandbox contract. Maintained tests
+cover committed inputs, locks, typed DTB operations, pipeline combinations,
+metadata, legacy inventory, publication and disposable-VM lifecycle failures.
+The follow-up code tip must replace inventory checks with manifest annotation
+checks. Those tests exercise the task model in §5–§6 alongside the existing
+storage, isolation, metadata and publication behavior. Distro plans exercise Fedora
 DNF/SELinux, Debian APT/systemd, Alpine APK/OpenRC and NixOS closure construction.
-A separate firmware recipe constructs an initramfs and arma PMI/DTB, then boots it.
+A separate firmware plan constructs an initramfs and arma PMI/DTB, then boots it.
 
 CI checks native amd64/Arm64 Rust and guest lifecycle behavior. Arm64 hosted guest
 tests explicitly record TCG when KVM is unavailable. This does not propose TCG as
@@ -1378,18 +1260,18 @@ by user decision; attestation remains separate work (build-port transport is
 locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-build-port-cbor)).
 
 The binary remains standalone and does not create VMs; privileged tests run only
-inside disposable VMs. Distro recipes do not imply support for every distribution
+inside disposable VMs. Distro plans do not imply support for every distribution
 and architecture combination. The supported labeling environment disables build-VM
 SELinux; an enforcing build VM requires separate qualification. Boot checks stop
 at their success markers and do not qualify guest-initiated shutdown.
 
 ## 13. Remaining decisions
 
-The design uses gix: recipe and lock verify immediately; other context paths
-verify on use. Recipe symlinks resolve only within the committed context; hooks
-and checkout filters do not execute. The lock and
-inventory wire formats, YAML values, device exposure, and supported firmware
-measurement contracts are specified above. Temporary writable mappings use
+The design uses gix: plan and lock verify immediately; other context paths
+verify on use. Plan symlinks resolve only within the committed context; hooks
+and checkout filters do not execute. The lock format, image-manifest annotation
+contract, YAML values, device exposure, and supported firmware measurement
+contracts are specified above. Temporary writable mappings use
 kernel deferred removal and scratch leases for in-process cleanup after failed
 activation; abrupt conglobate death is handled by disposal of the build VM. Ordinary tmpfs allocation failures propagate as build failures.
 
@@ -1411,11 +1293,11 @@ Fully unprivileged storage assembly is outside the selected design.
 The initial scope excludes remote Git retrieval, uncommitted working-tree
 inputs, submodules, Git LFS, cross-architecture builds, build-time lock updates,
 output-cache mutation, firmware discard, partial PMI/DTB replacement,
-regex match-count options, and whole-node operations. The recipe format has no
+regex match-count options, and whole-node operations. The plan format has no
 `transform` section and no `platform` task kind. Caller working-tree policy is
 outside this interface.
 
-### Open recipe question
+### Open plan question
 
 Whether `into` keys should be paths is not locked. The git build context
 preloaded into the artifact namespace is a tree, not a flat set of names.
@@ -1424,7 +1306,7 @@ Until a decision, [§6.3](#63-exec-from-into-and-copy) keeps flat bare names for
 
 ### Proposed implementation acceptance
 
-These checks were proposed with the recipe locks. They are not additional
+These checks were proposed with the plan locks. They are not additional
 design locks, and this document does not implement them.
 
 1. Serde types and validation match §5–§6, with tests for short and long
@@ -1432,11 +1314,16 @@ design locks, and this document does not implement them.
    and the `Filesystem` enum.
 2. The engine runs the `bootstrap` / `extend` / `build` closure selected by
    `image:`, applies the automatic DTB rewrite on assemble, and keeps
-   transitional `build.yaml` dual-write working for smoke.
-3. An appliance smoke with a multi-task recipe (at least bootstrap plus build,
+   transitional `build.yaml` dual-write working for smoke until #24, after
+   Pichi OCI import.
+3. Annotation checks replace inventory assertions: cover the exact §11.1
+   keys, commit algorithm prefixes, context-relative paths, absent optional
+   location, no sidecar, and unchanged verity annotations. Retain dual-write
+   checks until #24 and verify annotations survive OCI copy/import.
+4. An appliance smoke with a multi-task plan (at least bootstrap plus build,
    or bootstrap plus extend) passes without a registry publish, before the
    implementation change.
-4. That implementation change waits until this recipe text is on `main`, then
+5. That implementation change waits until this plan text is on `main`, then
    merges by rebase after green CI and review clearance. Republish `:0.2.0`
    only if the appliance contract or digest changes.
 
@@ -1444,7 +1331,7 @@ design locks, and this document does not implement them.
 
 The build proceeds in this order; each failure aborts publication:
 
-1. Validate the request, resolve the commit, load recipe and lock from the
+1. Validate the request, resolve the commit, load plan and lock from the
    object store, and resolve and verify every required local image input.
 2. Capture external network inputs if needed. Allocate the protected RAM
    workspace and execution runtime only when the closure requires execution.
@@ -1459,7 +1346,7 @@ The build proceeds in this order; each failure aborts publication:
    unmount before sealing task output or releasing storage.
 5. Close the execution runtime. Apply the automatic DTB rewrite, assemble one
    carapace and optional boot (assembly is not a task), write the transitional
-   flat `build.yaml` (delta scutes only) and deterministic CBOR inventory, and
+   flat `build.yaml` (delta scutes only), annotate the image manifest, and
    verify staged output.
 6. Finish fallible workspace/context cleanup, then publish without replacing
    an existing destination: CLI `--output` uses an atomic no-replace rename of
@@ -1475,8 +1362,8 @@ RAII owns resources; destructors cannot certify successful finalization.
 ### 14.1 Trust model and scope
 
 1. Conglobate's engine binary runs as initial-namespace root when privileged
-   stages execute. It verifies inputs, interprets recipes, assembles storage,
-   owns execution and cleanup, finalizes images, and emits inventory. The
+   stages execute. It verifies inputs, interprets plans, assembles storage,
+   owns execution and cleanup, finalizes images, and annotates the manifest. The
    types-only library has no VM transport or init dependency. Appliance boot
    (systemd PID 1, static virtiofs, build-port console) is specified in §1.4; the
    engine itself does not implement virtiofs or a mount generator.
@@ -1501,7 +1388,7 @@ RAII owns resources; destructors cannot certify successful finalization.
 1. The root supervisor owns block devices, mounts, formatting and
    publication. Commands run in separate mapped user/mount/PID/IPC/UTS/net
    namespaces and receive only assigned filesystem views. They must not
-   alter supervisor state, inputs, inventory, control interfaces, output
+   alter supervisor state, inputs, image metadata, control interfaces, output
    staging or other builds. Never expose backing block devices to commands.
    Attestation must identify the kernel, policy, formatter and dependencies,
    not merely the conglobate executable.
@@ -1523,29 +1410,29 @@ RAII owns resources; destructors cannot certify successful finalization.
 ### 14.2 Resolve and verify all supplied inputs before execution
 
 1. Accept a local Git repository, full commit identity (CLI) or resolve
-   appliance `ref` → commit on the mounted repo, context subdirectory,
-   read-only image cache, explicit context-relative recipe and lock paths,
+   appliance `ref` → commit on the mounted repo, context path,
+   read-only image cache, explicit context-relative plan and lock paths,
    and a new output destination for the CLI (`--output` must not already exist),
    or the empty appliance mount at `/run/pichi/output` into which layout entries
-   are published (see [§1.5](#15-appliance-build-port-cbor)). Neither recipe nor
+   are published (see [§1.5](#15-appliance-build-port-cbor)). Neither plan nor
    lock has a default filename. Require
    committed files resolved within the selected context; reject absolute
    paths, escapes and missing/non-file inputs. Record selected paths and
-   exact content identities in inventory. Load recipe and lock immediately
-   from the object store; resolve COPY and other context paths with lazy
+   bind their exact bytes through the commit annotation. Load plan and lock
+   immediately from the object store; resolve COPY and other context paths with lazy
    gix verify-on-use. Do not clone, do not treat a working-tree checkout as
    SoT, and do not eagerly capture the entire context tree. Commands never
    receive the context. Use the Git, lock, and host-architecture rules in
    DESIGN.md. Working-tree policy for callers is outside this interface.
 
-1. Resolve recipe references only through the committed, architecture-aware
+1. Resolve plan references only through the committed, architecture-aware
    lock, pinning the top-level multi-architecture index and verifying its
    referenced content. Missing artifacts or blobs are errors. Conglobate
    does not fetch Git content, resolve tags remotely, or download extra
-   image artifacts. Recipe commands explicitly granted networking may
+   image artifacts. Plan commands explicitly granted networking may
    download packages; this is distinct from input resolution.
 
-1. Parse one YAML recipe and the separate lock before execution. Tasks are
+1. Parse one YAML plan and the separate lock before execution. Tasks are
    a kind-tagged enum: `bootstrap`, `extend`, or `build`. Reject unknown
    kinds, including `kind: import`, a `transform` section, and a `platform`
    kind. `image:` is `Local` only. Run only the carapace/boot closure.
@@ -1565,7 +1452,7 @@ RAII owns resources; destructors cannot certify successful finalization.
    selected bytes privately. The argument is mandatory if any run step
    has network: true. An unreadable or invalid selected file is an error;
    there is no implicit host-file or public-resolver fallback. Resolver
-   configuration and its digest are deliberately OMITTED from inventory.
+   configuration and its digest are not recorded as build annotations.
    The environment supplies resolvers reachable from the command network;
    a supervisor-loopback address does not become reachable by copying it.
 
@@ -1590,7 +1477,7 @@ RAII owns resources; destructors cannot certify successful finalization.
    output-layer storage, runtime state, resolver bytes, and intermediate outputs.
    Use ordinary tmpfs behavior, with no disk fallback. The environment
    configures capacity and resource limits; do not add per-step memory,
-   swap, or tmpfs-size policy to recipes. Allocation/write failures fail
+   swap, or tmpfs-size policy to plans. Allocation/write failures fail
    the build. Final artifact destination storage is separate.
 
 1. Mount assigned filesystems with trusted kernel drivers. Only one writer
@@ -1621,9 +1508,9 @@ RAII owns resources; destructors cannot certify successful finalization.
    and --gid-map PARENT_START:COUNT. Both start at image ID zero and are
    required for execution; there is no built-in range or allocator. Exclude
    parent root and invalid IDs; keep these ranges disjoint from environment
-   service accounts and other workloads. Record the effective pair in the
-   inventory and use it consistently across all executing stages. Retain normal
-   kernel ownership, mode and ACL permission checking. Use nosuid,nodev;
+   service accounts and other workloads. Use the same effective pair
+   consistently across all executing stages; do not emit an execution record.
+   Retain normal kernel ownership, mode and ACL permission checking. Use nosuid,nodev;
    storing file capabilities/setuid bits must not grant build-host privilege.
 
 1. The trusted environment loads a fixed BPF LSM exception before
@@ -1678,7 +1565,7 @@ RAII owns resources; destructors cannot certify successful finalization.
    from obtaining new mounts or joining outside namespaces. Validate this
    combined boundary again with the global exception active.
 
-1. Validate the required labeling behavior before admitting recipe commands
+1. Validate the required labeling behavior before admitting plan commands
    under the restricted command credentials. Missing or incompatible
    environment support fails the build, with no capability fallback.
    Do not infer support from a familiar pin pathname or a successful
@@ -1713,11 +1600,11 @@ RAII owns resources; destructors cannot certify successful finalization.
    output filesystem as a kind-tagged `filesystem:` value: a strict
    `FilesystemSize` and type-specific properties, for example ext4 `label`.
    Trusted formatting tools create that filesystem on the new zero-backed
-   writable carapace layer before commands start. The recipe does not run
-   mkfs or mount. Never pass recipe-provided shell commands or formatter
+   writable carapace layer before commands start. The plan does not run
+   mkfs or mount. Never pass plan-provided shell commands or formatter
    arguments to privileged tooling. Validate properties against the selected
-   backend and record effective configuration and tool identity as build
-   inputs (with an explicit inventory schema revision).
+   backend. Validate the effective configuration and tool identity before
+   execution. Do not emit a formatter receipt.
 
    Commands see the disposable writable tool carapace at / and the fresh
    output filesystem at /mnt. They can install tools into / and populate
@@ -1744,7 +1631,7 @@ RAII owns resources; destructors cannot certify successful finalization.
    writers stop. Intermediate tool changes do not become scutes. There is no
    `export`, `make`, or `produce` task kind.
 
-1. The automatic DTB rewrite is not a recipe section and not a task. `extend`
+1. The automatic DTB rewrite is not a plan section and not a task. `extend`
    performs it for the new root hash. Image assembly performs it when the
    image root is bound to imported boot lineage. The built-in sequence is
    [§8.3](#83-automatic-rewrite). There is no `transform` key. Custom PMI/DTB
@@ -1831,7 +1718,7 @@ RAII owns resources; destructors cannot certify successful finalization.
    close-on-exec; no image command may inherit or obtain it through procfs.
    It grants no storage/control authority and is not a cleanup receipt.
 
-1. Every run has a finite positive timeout. Default: 5 minutes. Recipes
+1. Every run has a finite positive timeout. Default: 5 minutes. Plans
    may override it with duration strings, for example timeout: 30m.
    Reject zero, infinite, invalid, or overflowing durations. The timer
    covers command execution only, from release to execute through command
@@ -1927,7 +1814,7 @@ RAII owns resources; destructors cannot certify successful finalization.
    abrupt conglobate death by shutting down the dedicated VM.
 
 1. Setup and teardown have finite FIXED INTERNAL DEADLINES, chosen and
-   tested as implementation constants. They are not recipe or CLI knobs
+   tested as implementation constants. They are not plan or CLI knobs
    and do not consume command timeout. Exceeding either fails the build.
    Start teardown's budget when command completion or observation failure
    is observed. Retain that cutoff across delayed cleanup calls and retries;
@@ -1965,20 +1852,18 @@ RAII owns resources; destructors cannot certify successful finalization.
    transport copies. Do not treat a clean process exit alone as evidence
    that filesystem writes succeeded.
 
-1. Emit a self-contained OCI image-layout artifact and deterministic CBOR
-   inventory binding the verified context, lock, image inputs, recipes,
-   effective build behavior, and final outputs. Include every referenced
-   output blob, including inherited ones. Resolver contents/digest are an
-   explicit inventory exclusion; network-step permission is recorded.
-   Network acquisition is not claimed to be reproducible or exhaustive
-   input accounting. Version any schema change explicitly; do not add
-   fields silently to the strict existing inventory wire format.
+1. Emit a self-contained OCI image layout with the build annotations in
+   [§11.1](#111-image-manifest-annotation-contract). Include every referenced
+   output blob, including inherited ones. Do not emit an inventory or mirror
+   builder, input, execution or output records into annotations. The commit,
+   context and plan/lock paths bind committed build inputs; network acquisition
+   is not claimed to be reproducible or exhaustive input accounting.
 
 1. Require a new output directory. Stage the complete artifact, verify its
    identities, and publish atomically without replacement. Failures emit
    diagnostics, not a successful artifact. Cache mutation/import and
    attestation belong to external integrations. The appliance may attest
-   the exact inventory bytes and trusted execution environment later.
+   the finalized image digest and TEE/builder later.
 
 ### 14.12 Validation requirements
 
@@ -2029,7 +1914,7 @@ clone/checkout-as-SoT, network setup, policy registration or attestation. It
 has no dependency on the pichi binary; pichi depends on this lib.
 
 `BuildRequest`, `ResolvedBuild` and `BuildPlan` progressively validate inputs.
-Recipe and lock load immediately from the object store; COPY and other context
+Plan and lock load immediately from the object store; COPY and other context
 paths use lazy gix verify-on-use without exposing a context mount. Locked
 multi-architecture indexes select only the host architecture. Image components
 and verified chain roots remain separate from live device mappings.
@@ -2040,13 +1925,14 @@ those tasks. Bootstrap formats its new writable snapshot over dm-zero
 **outside the command sandbox** and uses separate tool and output mounts.
 Extend's commands share one writable snapshot and produce one scute. Build
 uses a disposable tool carapace and extracts `into:` artifacts only. Tool
-inputs contribute inventory provenance, not accidental output ancestry.
+inputs are bound by the committed plan and lock; they do not become output
+ancestry.
 Orphan tasks do not run. After the closure, the automatic DTB rewrite and
 image assembly run. Assembly is not a task. The binary sequences this closure using immutable task results and activates
 local carapace chains only when a dependent task needs their filesystem.
 
 `StageOutput` holds results without command/mount authority. Runtime cleanup
-precedes DTB transformation, image assembly, deterministic CBOR inventory and
+precedes DTB transformation, image assembly, manifest annotation and
 publication. Pass-through builds use the same finalization without allocating
 an execution runtime. Publication happens only after all fallible checks. CLI `--output`
 uses a no-replacement atomic rename of the completed directory. The appliance
@@ -2125,7 +2011,7 @@ bootstrap roots. That `LabelProbe` check is its only labeling role. It neither
 loads nor revokes the exception. Ordinary ownership, ACL, mount and filesystem
 checks still apply.
 
-Each command reconstructs mounts/isolation and has a finite recipe timeout
+Each command reconstructs mounts/isolation and has a finite plan timeout
 (default five minutes). Setup and teardown use separate fixed internal deadlines.
 Descriptor handshakes establish readiness; sleeps are not synchronization.
 The supervisor sends init's gate endpoint over the receiver's existing control

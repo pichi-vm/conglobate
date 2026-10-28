@@ -8,7 +8,7 @@ when finished. Each runner requires a new output directory.
 ## Trusted guest labeling environment
 
 The files in `tests/environment/` provision the fixed exact-name `security.selinux` exception in
-an owned disposable VM. They are not linked into conglobate, not a recipe input,
+an owned disposable VM. They are not linked into conglobate, not a plan input,
 and must never be loaded on the development host. The loader requires the guest
 marker, loads once and pins the link for the VM lifetime. There are no subject or
 filesystem registrations. Ordinary inode, mount, ownership and ACL checks remain.
@@ -85,7 +85,7 @@ The former temporarily sets the disposable guest's user-namespace allowance to
 zero and restores it before rollback; the latter deliberately leaves a dm-zero
 snapshot unformatted. Both use the production CommandSandbox/Runtime owners,
 retain original diagnostics, require clean resource directories and child drain,
-and explicitly release the returned snapshot and runtime. No recipe runs and
+and explicitly release the returned snapshot and runtime. No plan runs and
 these cases do not validate receiver admission, labels or mounted command teardown.
 
 The `sandbox-launch-failure`, `sandbox-join-failure` and `sandbox-attached-exit`
@@ -96,7 +96,7 @@ Attached-exit receives the volume, prepares and attaches an idmapped root in a
 private mount namespace, confirms mapped ownership, records its stage and exits
 without destructors. The supervisor must reject setup and fully finalize rejected
 storage. The fixture requires no children, attachment directories or cgroups,
-then explicitly detaches the snapshot and closes the runtime. No recipe executes,
+then explicitly detaches the snapshot and closes the runtime. No plan executes,
 so this does not exercise labeling admission or post-admission receiver failure.
 
 `--case external-network-input` checks the environment-owned namespace contract.
@@ -254,8 +254,10 @@ or qualify confidential VMs.
 `--case oci-copy --oras /path/to/oras` preserves the original third-party OCI
 interoperability assertion: a committed pass-through build publishes a synthetic
 scute chain, ORAS copies its manifest/config/layer graph, and the fixture compares
-the exact blob set and every byte. Inventory stays outside the OCI graph. amd64
-CI uses checksum-pinned ORAS 1.3.5. This case runs as root in the disposable guest;
+the exact blob set and every byte. The current fixture also emits a legacy
+inventory outside the OCI graph; the locked target drops it entirely. The
+follow-up code tip must verify build annotations survive the copy instead.
+amd64 CI uses checksum-pinned ORAS 1.3.5. This case runs as root in the disposable guest;
 it does not require unprivileged user namespaces on the runner host.
 
 For mount compatibility diagnosis, --trace-mounts stages the trusted host strace
@@ -269,11 +271,16 @@ that changing namespaces after resource acquisition rejects cleanup and leaves
 resources for guest disposal. Neither case executes untrusted image commands.
 
 ## Distro harness and inputs
+
+User-facing terminology is now plan/context. Commands and fixture filenames
+below retain their existing spelling until the follow-up code tip; `--recipe`
+is the current harness flag. The locked target CLI/build-port contract is in
+[DESIGN](../DESIGN.md#11-artifact-and-build-annotations).
 Paths such as `context/recipe.yaml` below are relative to `tests/distro/`.
 
 
 `context/recipe.yaml` is a small offline CLI regression using the Fedora seed.
-The runner commits `message.txt` with the recipe; COPY installs it into the image,
+The runner commits `message.txt` with the plan; COPY installs it into the image,
 and a command checks its bytes and the absence of context mounts. The runner then
 requires successful publication/export and verifies exported blob digests. This
 checks the committed-context pipeline, not distro boot or full qualification.
@@ -291,8 +298,10 @@ only a shell, rm and their shared libraries into a small new root. Later steps
 check persistence across command/COPY boundaries and separation of tool roots.
 Run `python3 tests/distro/pipeline/verify.py RUN_DIRECTORY` afterward (requires
 `cbor2` and `fdtget`). It requires exactly two produced scutes, checks the exported
-blob graph and canonical inventory, and reads `/chosen/bootargs` to verify the
-final corium root. It does not qualify booting or all stage/failure combinations.
+blob graph and legacy inventory, and reads `/chosen/bootargs` to verify the
+final corium root. The follow-up code tip must replace inventory checks with
+image-manifest annotation checks. It does not qualify booting or all
+stage/failure combinations.
 `pipeline/imported-boot.yaml` uses the same fresh root and artifact producer but
 selects boot from an empty extend task over an imported image. Supply a cache
 whose seed exports a PMI/DTB pair and run the verifier with `--imported-boot`.
@@ -326,10 +335,10 @@ The supplied architecture describes the existing artifact; this script does not
 inspect executable machine types or convert architectures.
 
 This is fixture preparation, not distro qualification. Conglobate must still
-verify the carapace chain, execute a real distro recipe, and produce an image
+verify the carapace chain, execute a real distro plan, and produce an image
 that boots. See DESIGN.md section 12 for validation scope and limits.
 
-The initial real Fedora recipe is `fedora/recipe.yaml`. It uses the existing
+The initial real Fedora plan is `fedora/recipe.yaml`. It uses the existing
 local Fedora carapace, runs RPM/DNF, installs SELinux tooling and targeted policy,
 and labels the resulting root with that policy. It inherits firmware. A completed
 build alone does not qualify booting or enforcing the installed policy.
@@ -338,7 +347,7 @@ build alone does not qualify booting or enforcing the installed policy.
 constructor as the integration tests. It adds outbound QEMU user networking for
 package transactions; the existing regression VM remains disconnected. Supply
 `--kernel`, `--kernel-release`, `--module-root`, `--cache`, `--pin`, and `--recipe`
-plus a new output directory. The current lock generation uses the Fedora recipe's
+plus a new output directory. The current lock generation uses the Fedora plan's
 `qualification.local/fedora:43` reference. All conglobate artifacts remain local;
 network downloads occur only in the explicitly network-enabled DNF command.
 
@@ -354,7 +363,7 @@ runner covers a build, with boot checked separately.
 check of the produced image. It uses an isolated cache and loads a disposable
 copy because the installed pichi loader consumes input blob paths. Neither tool
 is a conglobate runtime dependency, and this does not replace the ORAS CI checks.
-The default required marker comes from the Fedora recipe's oneshot service, which
+The default required marker comes from the Fedora plan's oneshot service, which
 checks enforcing mode, the target file's expected SELinux label and root ownership.
 The harness terminates the VM after the marker; it does not claim guest shutdown.
 A different `--expect` marker narrows the claim accordingly (e.g. login alone does
@@ -380,10 +389,10 @@ is initial seed preparation, not a conglobate bootstrap-stage pass. The Debian
 seed provenance records its OCI origin and external importer identity.
 
 The runner accepts `--reference` to name the pinned seed in the generated lock.
-For recipes that package an existing firmware pair, `--firmware-pmi` and
+For plans that package an existing firmware pair, `--firmware-pmi` and
 `--firmware-dtb` copy both files into the committed context's `firmware/` directory.
 They become measured context inputs; the binary does not fetch or select firmware.
-The Debian recipe currently uses the known Fedora-built kernel/corium platform
+The Debian plan currently uses the known Fedora-built kernel/corium platform
 pair with Debian userspace, then the default DTB transformation binds its new root.
 That tests Debian APT/systemd and firmware-stage extraction, not Debian kernel
 packaging or new arma firmware generation.
@@ -396,7 +405,7 @@ happens only inside the VM. `--without-label-policy` is a harness negative-test
 switch; conglobate has no policy-loading option or dependency.
 
 The trusted guest init records the build script exit status on a separate 4-KiB
-virtio result device and syncs it before reboot. Recipe commands cannot access
+virtio result device and syncs it before reboot. Plan commands cannot access
 that device. The runner requires both the exact build/export console marker and
 a successful result record, then verifies all exported blob hashes. This avoids
 relying on an exit line that the kernel's reboot printk can interrupt; no sleep
@@ -411,7 +420,7 @@ request; it does not fetch artifacts. The runner waits for successful service
 completion and checks that no conglobate veth links or nftables tables remain
 on either build success or failure. The service has a finite observation deadline.
 
-`network/recipe.yaml` exercises actual recipe DNS/TCP, read-only resolver injection,
+`network/recipe.yaml` exercises actual plan DNS/TCP, read-only resolver injection,
 and a following offline step. `network/nonzero.yaml` and `network/timeout.yaml`
 reach the same exchange and then fail deliberately. Assess each completed run with
 `python3 tests/distro/network/verify.py RUN success|nonzero|timeout`. Failed builds

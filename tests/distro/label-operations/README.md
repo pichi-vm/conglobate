@@ -1,8 +1,8 @@
-# Recipe-command labeling on both bootstrap filesystems
+# Plan-command labeling on both bootstrap filesystems
 
 Use a local, verified Fedora tool image containing attr's setfattr/getfattr.
-Run this recipe through `tests/distro/run.py` with matching reference and index
-pin, then run `verify.py RUN_DIRECTORY` (Python cbor2 required). No recipe step
+Run this plan through `tests/distro/run.py` with matching reference and index
+pin, then run `verify.py RUN_DIRECTORY` (Python cbor2 required). No plan step
 uses networking.
 
 Commands set/read foreign security.selinux values on `/` and `/mnt`; values
