@@ -1,6 +1,6 @@
 # Background-child cleanup regression
 
-Run this recipe through `tests/distro/run.py`. It checks that named pipes are
+Run this plan through `tests/distro/run.py`. It checks that named pipes are
 supported while persistent character/block device creation remains denied.
 
 The child opens its FIFO for reading/writing before a second FIFO acknowledges

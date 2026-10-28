@@ -1,6 +1,6 @@
 # Firmware construction qualification
 
-This recipe builds a new initramfs and runs arma inside an isolated firmware
+This plan builds a new initramfs and runs arma inside an isolated firmware
 step, using the completed carapace's CARAPACE environment value. It replaces
 both PMI and DTB, then boots the emitted artifact and checks the expected kernel
 release from a systemd service. This validates firmware construction from a

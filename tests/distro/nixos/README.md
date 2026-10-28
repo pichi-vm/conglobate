@@ -6,7 +6,7 @@ formatted root. The carapace stage writes a numeric-ownership marker. A boot
 wrapper supplies volatile writable state before NixOS activation; the root and
 store stay measured and read-only. The systemd service verifies NixOS activation
 and the persisted marker. Firmware is the supplied known kernel/corium pair;
-this recipe does not compile a kernel.
+this plan does not compile a kernel.
 
 Copy this directory into a context and add `nix.tar.xz` (Nix 2.35.3 x86_64) and
 `nixpkgs.tar.xz` (NixOS 26.05 revision cd4ea8d57de16f4810bc5f14207bac45fbf19f67).
@@ -21,5 +21,5 @@ Use run.py with `--memory 16384` and both firmware inputs. Success requires the
 CONGLOBATE_NIXOS_SYSTEMD_BOOT_PASS marker from boot.py, not merely a built closure.
 
 The marker checks activation and persisted numeric ownership. Nested Nix
-sandbox/filter settings and local unsigned-output copy are intentional recipe
+sandbox/filter settings and local unsigned-output copy are intentional plan
 choices, not conglobate confinement exceptions.

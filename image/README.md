@@ -48,16 +48,36 @@ the resolver path (`src/appliance/mounts.rs`).
 v0 build-port: `conglobate appliance` opens `dev.pichi.build`, writes
 `{"v":1,"op":"build-input"}`, then reads one self-delimiting host response.
 
+## Locked output contract
+
+The 28 October 2026 decision in
+[DESIGN §11](../DESIGN.md#11-artifact-and-build-annotations) drops
+`inventory.cbor` entirely. Build binding facts belong on the image manifest:
+commit with its hash algorithm, context path in that commit, plan and lock paths
+relative to context, and an optional location hint. No execution receipts or
+builder/input/output mirrors are emitted. Later attestation binds the image
+digest and TEE/builder. The carapace tip root is derived from the manifest;
+never stamp or require `dev.pichi.carapace.verity.hash`. Existing verity
+parameters and per-scute salt/data-blocks annotations stay.
+
+This docs-only lock precedes the code change. The current engine still emits
+the legacy inventory and uses legacy field names. The skeleton filename
+`conglobate.recipe.yaml` also stays until the implementation rename.
+
 ## Dual-write output
 
-The engine publishes into an empty `/run/pichi/output` (move each child, no
+The target engine publishes into an empty `/run/pichi/output` (move each child, no
 replace):
 
-1. OCI layout: `oci-layout`, `index.json`, `blobs/`, `inventory.cbor`.
+1. OCI layout: `oci-layout`, `index.json`, `blobs/`.
 2. Transitional flat files for the current host:
    - `build.yaml` matching `BuildOutput` / `ScuteOut`
    - delta scutes only, chain order base→top: `0000.cow`, `0000.verity`, …
    - `boot.pmi` when this build produced firmware
+
+Keep this dual-write until
+[Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24), after Pichi
+OCI import. It is compatibility packaging, not a replacement build receipt.
 
 Inherited base scutes are not repeated. The host prepends the operator source
 carapace from `from:`. An empty `scutes` list is valid. The salt is the full

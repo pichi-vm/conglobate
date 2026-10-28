@@ -3,7 +3,7 @@
 Run `resolver-lifecycle.yaml` with the distro runner's `--network-fixture`, then
 run `python3 tests/distro/network/verify_resolver.py RUN_DIRECTORY`.
 
-The recipe starts with an absolute dangling resolver symlink and missing ancestor
+The plan starts with an absolute dangling resolver symlink and missing ancestor
 directories. The enabled command checks read-only injection and an actual DNS/TCP
 exchange. A subsequent offline command requires every temporary ancestor to be
 removed while preserving the symlink. A second enabled command renames an existing

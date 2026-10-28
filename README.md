@@ -1,24 +1,24 @@
 # Conglobate
 
-Conglobate builds layered OS images from committed recipes and locally supplied,
+Conglobate builds layered OS images from committed plans and locally supplied,
 locked image artifacts. The crate is a types-only library plus a binary engine;
 the standalone CLI remains testable without a VM. Production builds run in a
 pichi appliance image shipped from this repository (see DESIGN.md). The
-approved recipe format is the multi-stage task model in
+approved plan format is the multi-stage task model in
 [DESIGN.md](DESIGN.md): tasks `bootstrap`, `extend`, and `build`, then
 assembly of one carapace and optional boot. The engine executes only the
 selected image's dependency closure. Builds produce
-a self-contained OCI image layout with a CBOR input/output inventory. See
-[DESIGN.md](DESIGN.md) for the task model, CLI, appliance build-port CBOR
-contract, and schemas.
+a self-contained OCI image layout with build binding annotations on the image
+manifest. See [DESIGN.md](DESIGN.md) for the task model, CLI, appliance
+build-port CBOR contract, and schemas.
 
-Fedora, Debian, Alpine and NixOS example recipes live under `tests/distro`. Confidential-computing qualification and
+Fedora, Debian, Alpine and NixOS example plans live under `tests/distro`. Confidential-computing qualification and
 appliance attestation are deferred; passing tests are not a universal security
 or operating-system compatibility claim.
 
-## Recipes
+## Plans
 
-A recipe has named `tasks` and an explicit local `image` selection:
+A plan has named `tasks` and an explicit local `image` selection:
 
 ```yaml
 tasks:
@@ -61,15 +61,28 @@ provides boot. Directory exports and other value grammars fail closed. Context
 COPY selects a single bare file or directory name; source patterns and the old
 owner/group/mode fields are rejected. Artifact names conflicting with the context
 or another producer are rejected. Whether artifact keys should become paths is
-still open. These choices are isolated in the shared recipe schema.
+still open. These choices are isolated in the shared plan schema.
 
-The library exposes the new types and byte-only parsers as `conglobate::recipe`
-(`Recipe`, `Task`, `Reference`, `Filesystem`, `Lock`). `recipe_io` retains the
-legacy host types and transitional `BuildOutput` for existing consumers. Inventory
-version three retains its existing input-role and transform fields. Network step
-indices are cumulative within each legacy role across the executed closure;
-the committed recipe digest binds the task graph. Explicit task names in inventory
-require a future schema version.
+The 28 October 2026 decision in
+[DESIGN §11](DESIGN.md#11-artifact-and-build-annotations) drops `inventory.cbor`
+entirely. The image manifest carries `dev.pichi.build.commit` (`sha1:<hex>` or
+`sha256:<hex>`), `dev.pichi.build.context` (path in that commit), and
+`dev.pichi.build.plan` / `dev.pichi.build.lock` (paths relative to context).
+`dev.pichi.build.location` is an optional provenance hint. There are no separate
+tree/object-format keys or builder/input/execution/output mirrors. The carapace
+tip root is derived from the manifest; never stamp or require
+`dev.pichi.carapace.verity.hash`. Existing verity parameters and per-scute
+salt/data-blocks annotations stay. Keep transitional `build.yaml` dual-write
+until [Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24), after
+Pichi OCI import. Later attestation binds the image digest and TEE/builder.
+
+This is a docs-first contract. The follow-up code tip will implement annotation
+emission, remove inventory code/tests, and rename user-facing fields and flags.
+The existing library still exposes `conglobate::recipe` (`Recipe`, `Task`,
+`Reference`, `Filesystem`, `Lock`); `recipe_io` retains legacy host types and
+transitional `BuildOutput`. Rust modules/types and fixture filenames keep their
+current names here. The existing `src/plan.rs` engine module needs a separate
+name decision before the code rename.
 
 ## Build and rootless checks
 
@@ -146,7 +159,7 @@ development host. The maintained harness builds a fresh guest from trusted local
 tools and explicit kernel/module inputs. CI provisions these independently of
 the conglobate binary.
 
-Conglobate does not download missing Git objects or image artifacts. Recipe
+Conglobate does not download missing Git objects or image artifacts. Plan
 commands have networking disabled by default. On the standalone CLI, enabled
 commands require an externally prepared, build-dedicated network namespace
 (`--network-namespace PATH`) and an explicit resolver file (`--resolv-conf PATH`).
