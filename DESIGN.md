@@ -504,9 +504,14 @@ selector.
 The index transitively pins its per-architecture manifests and their blobs.
 Do not duplicate child manifest digests or carapace roots in the lock.
 Conglobate verifies the index from the read-only cache, selects the matching
-platform manifest, verifies it, and obtains the carapace root from that
-manifest. It verifies content and chain consistency against those identities.
-The inventory records both the pinned index and the selected manifest.
+platform manifest, and verifies it. The carapace / filesystem root is derived
+from the scute graph (exactly one tip root), not from an OCI tip annotation.
+`dev.pichi.carapace.verity.hash` is never written, never read, and is stripped
+on rewrite if present; other verity parameter annotations remain. Guest boot
+(`corium=` / `$CARAPACE`) and inventory `carapace_root` use that derived
+measurement. It verifies content and
+chain consistency against those identities. The inventory records both the
+pinned index and the selected manifest.
 
 Missing pins, missing cached content, incompatible or ambiguous platform
 selection, and mismatches are errors. Mutable cache tags are never consulted

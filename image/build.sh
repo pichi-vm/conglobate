@@ -134,13 +134,20 @@ install -m0755 "$corium_bin" "$stage/init"
 initrd="$work/initrd.cpio"
 echo ">>> initrd $(du -h "$initrd" | cut -f1)  modules: $(find "$stage" -name '*.ko*' | wc -l)"
 
-# ---- 4. import the carapace once; read its top root hash ------------------
+# ---- 4. import the carapace once; tip = scute verity root from import -----
+# Tip is the dm-verity root computed while formatting the scute (exactly one
+# tip for a base carapace). Never read OCI tip-hash annotation.
 carapace="conglobate:$VERSION-carapace"
-pichi import raw "$root" -t "$carapace" --quiet
-hash="$(pichi inspect "$carapace" \
-	--format '{{ manifest.annotations["dev.pichi.carapace.verity.hash"] }}')"
-[[ "$hash" =~ ^[[:xdigit:]]{64}$ ]] || { echo "!!! invalid carapace verity root: $hash" >&2; exit 1; }
-echo ">>> carapace $carapace  root $hash"
+import_log="$work/import.log"
+RUST_LOG="${RUST_LOG:+${RUST_LOG},}pichi::cmd::import::raw=info" \
+	pichi import raw "$root" -t "$carapace" 2>"$import_log"
+hash="$(sed -n 's/.*verity root \([0-9a-fA-F]\{64\}\).*/\1/p' "$import_log" | tail -1)"
+[[ "$hash" =~ ^[[:xdigit:]]{64}$ ]] || {
+	echo "!!! missing carapace tip from import log:" >&2
+	cat "$import_log" >&2
+	exit 1
+}
+echo ">>> carapace $carapace  tip $hash"
 
 # ---- 5. detached-mode PMI + base DTB -------------------------------------
 # corium= is the trust anchor Corium reads. systemd.* applies to PID 1 after
