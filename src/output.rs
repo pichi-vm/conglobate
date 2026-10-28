@@ -11,7 +11,10 @@ use std::{
     ffi::OsString,
     fs::{self, File},
     io::{self, Read, Write},
-    os::{fd::AsRawFd, unix::fs::PermissionsExt},
+    os::{
+        fd::AsRawFd,
+        unix::fs::{OpenOptionsExt, PermissionsExt},
+    },
     path::{Path, PathBuf},
 };
 
@@ -193,8 +196,23 @@ impl StagedDirectory {
             .join(digest.algo())
             .join(digest.hex())
     }
-    /// Copy the exact stream being verified to a private temporary file. Failed
-    /// verification or writes remove that file, leaving no digest-named blob.
+    /// Write at the final private staging name and remove it on failure.
+    /// Keeping the file must not rename it: the current virtiofs transport
+    /// invalidates renamed inode IDs, so validation cannot reopen those files.
+    /// Only publication exposes these names outside the supervisor's staging.
+    fn pending_file(&self, path: &Path) -> io::Result<tempfile::NamedTempFile> {
+        let path = tempfile::TempPath::try_from_path(path)?;
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&path)?;
+        Ok(tempfile::NamedTempFile::from_parts(file, path))
+    }
+    /// Copy the exact stream being verified to private staging. Failed
+    /// verification or writes remove it, leaving no digest-named blob.
     pub(crate) fn copy_blob(
         &self,
         cache: &Cache,
@@ -202,16 +220,14 @@ impl StagedDirectory {
         size: u64,
     ) -> Result<(), CacheError> {
         let target = self.blob_path(digest);
-        let mut pending = tempfile::NamedTempFile::new_in(self.temporary.path())?;
+        let mut pending = self.pending_file(&target)?;
         cache.copy_verified(digest, size, pending.as_file_mut())?;
         pending.as_file().sync_all()?;
-        // The directory is supervisor-private; replacing the same digest here
-        // replaces only already-verified staging data, never published content.
-        pending.persist(target).map_err(|error| error.error)?;
+        pending.keep().map_err(|error| error.error)?;
         Ok(())
     }
     /// Stream a sealed layer without buffering its contents in memory. Verify
-    /// the exact written bytes before giving them their digest name.
+    /// the exact written bytes before retaining their private staging name.
     pub(crate) fn store_scute(
         &self,
         scute: &crate::storage::SealedScute<'_>,
@@ -230,7 +246,7 @@ impl StagedDirectory {
         size: u64,
     ) -> Result<(), CacheError> {
         use sha2::{Digest as _, Sha256};
-        let mut pending = tempfile::NamedTempFile::new_in(self.temporary.path())?;
+        let mut pending = self.pending_file(&self.blob_path(digest))?;
         let mut hash = Sha256::new();
         let mut remaining = size;
         let mut buffer = [0u8; 65536];
@@ -248,9 +264,7 @@ impl StagedDirectory {
             return Err(CacheError::Invalid("produced scute content mismatch"));
         }
         pending.as_file().sync_all()?;
-        pending
-            .persist(self.blob_path(digest))
-            .map_err(|error| error.error)?;
+        pending.keep().map_err(|error| error.error)?;
         Ok(())
     }
     /// Store captured or newly produced small content, deriving its identity
@@ -261,10 +275,10 @@ impl StagedDirectory {
         Ok(digest)
     }
     fn write_file(&self, path: &Path, bytes: &[u8]) -> io::Result<()> {
-        let mut pending = tempfile::NamedTempFile::new_in(self.temporary.path())?;
+        let mut pending = self.pending_file(path)?;
         pending.write_all(bytes)?;
         pending.as_file().sync_all()?;
-        pending.persist(path).map_err(|error| error.error)?;
+        pending.keep().map_err(|error| error.error)?;
         Ok(())
     }
     /// Add inventory without rewriting the already assembled image layout.
@@ -284,7 +298,7 @@ impl StagedDirectory {
     ) -> io::Result<()> {
         validate_flat_name(name)?;
         let path = self.temporary.path().join(name);
-        let mut pending = tempfile::NamedTempFile::new_in(self.temporary.path())?;
+        let mut pending = self.pending_file(&path)?;
         let mut remaining = size;
         let mut buffer = [0u8; 65536];
         while remaining != 0 {
@@ -306,7 +320,7 @@ impl StagedDirectory {
             ));
         }
         pending.as_file().sync_all()?;
-        pending.persist(path).map_err(|error| error.error)?;
+        pending.keep().map_err(|error| error.error)?;
         Ok(())
     }
     /// Write `build.yaml` and refuse a document that does not parse back.
@@ -429,14 +443,14 @@ mod tests {
             .unwrap();
         assert_eq!(fs::read(staged.blob_path(&digest)).unwrap(), bytes);
         assert_eq!(fs::read_dir(staged.temporary.path()).unwrap().count(), 1);
-        // Failed replacement keeps the previously verified blob: write goes to a
-        // private tempfile and only rename/persist installs the digest name.
+        // Replacing an already staged digest must also remove partial bytes
+        // when verification fails, so they cannot survive into publication.
         assert!(
             staged
                 .store_verified(&bytes[..bytes.len() - 1], &digest, bytes.len() as u64)
                 .is_err()
         );
-        assert_eq!(fs::read(staged.blob_path(&digest)).unwrap(), bytes);
+        assert!(!staged.blob_path(&digest).exists());
         staged.discard().unwrap();
     }
     #[test]
