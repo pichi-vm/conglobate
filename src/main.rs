@@ -35,9 +35,8 @@ mod path;
 mod pipeline;
 mod plan;
 mod process;
-// Portable YAML contract (`BuildOutput` and the plan/lock types). The engine
-// writes `build.yaml` from these types; the host links the same module via the
-// library. Most items are unused in the binary.
+// Portable plan/lock types and legacy host schemas exposed by the library.
+// Most items are unused in the binary.
 #[allow(dead_code, unreachable_pub, unused_imports)]
 mod plan_io;
 mod request;

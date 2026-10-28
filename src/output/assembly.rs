@@ -1,45 +1,12 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{StagedDirectory, TRANSITIONAL_PMI_NAME, transitional_manifest};
+use super::StagedDirectory;
 use crate::artifact::Digest;
 use crate::{
     cache::{Cache, CacheError, ResolvedImage, VerifiedChain},
     image::IndexDigest,
 };
-
-/// Stage delta scutes and optional firmware beside the OCI layout.
-///
-/// `scutes` is the produced chain only, base first. Inherited layers stay in
-/// the OCI manifest; the host prepends that source carapace when it reads
-/// `build.yaml`. An empty slice still writes `build.yaml` with `scutes: []`.
-fn stage_delta_output(
-    staged: &StagedDirectory,
-    scutes: &[&crate::storage::SealedScute<'_>],
-    pmi: Option<&crate::firmware::FinalizedFirmware<'_>>,
-) -> Result<(), crate::cache::CacheError> {
-    let salts: Vec<&str> = scutes
-        .iter()
-        .map(|scute| scute.descriptor().annotations.salt.as_str())
-        .collect();
-    let manifest = transitional_manifest(&salts, pmi.map(|_| TRANSITIONAL_PMI_NAME.to_string()))?;
-    if manifest.scutes.len() != scutes.len() {
-        return Err(crate::cache::CacheError::Invalid(
-            "delta scute manifest length mismatch",
-        ));
-    }
-    for (entry, scute) in manifest.scutes.iter().zip(scutes) {
-        staged.write_exact_file(&entry.cow, scute.data_reader(), scute.descriptor().size)?;
-        let verity_len = scute.verity_len()?;
-        staged.write_exact_file(&entry.verity, scute.verity_reader()?, verity_len)?;
-    }
-    if let Some(pair) = pmi {
-        let descriptor = pair.pmi_descriptor();
-        staged.write_exact_file(TRANSITIONAL_PMI_NAME, pair.pmi_reader(), descriptor.size)?;
-    }
-    staged.write_build_yaml(&manifest)?;
-    Ok(())
-}
 
 /// A self-contained staged image whose manifest, referenced content and chain
 /// were verified from the output storage. No mutable staging authority escapes.
@@ -280,8 +247,6 @@ impl AssembledImage {
                 &serde_json::to_vec(&manifest)?,
                 crate::cache::HostArchitecture::current()?,
             )?;
-            let produced: Vec<_> = scutes.iter().map(AsRef::as_ref).collect();
-            stage_delta_output(&staged, &produced, Some(pair))?;
             Ok(resolved)
         })();
         match result {
@@ -346,7 +311,6 @@ impl AssembledImage {
                 &manifest,
                 crate::cache::HostArchitecture::current()?,
             )?;
-            stage_delta_output(&staged, scutes, None)?;
             Ok(resolved)
         })();
         match result {
@@ -488,7 +452,6 @@ impl AssembledImage {
                 image.manifest_bytes().bytes().to_vec()
             };
             let resolved = Self::resolve_staging(&staged, &manifest, image.architecture())?;
-            stage_delta_output(&staged, scutes, None)?;
             Ok(resolved)
         })();
         match assembled {
@@ -618,6 +581,19 @@ mod tests {
             (cache, image)
         }
     }
+    fn assert_oci_only(root: &std::path::Path) {
+        let names: std::collections::BTreeSet<_> = fs::read_dir(root)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(
+            names,
+            ["blobs", "index.json", "oci-layout"]
+                .map(std::ffi::OsString::from)
+                .into()
+        );
+    }
+
     #[test]
     fn publication_binds_committed_inputs_and_replaces_inherited_provenance() {
         use crate::{input::CapturedBuild, request::BuildRequest};
@@ -761,7 +737,7 @@ mod tests {
                     );
                     assembled.publish().unwrap();
                     assert!(!destination.join("inventory.cbor").exists());
-                    assert!(destination.join("build.yaml").is_file());
+                    assert_oci_only(&destination);
                     let index: serde_json::Value =
                         serde_json::from_slice(&fs::read(destination.join("index.json")).unwrap())
                             .unwrap();
@@ -891,7 +867,7 @@ mod tests {
         }
     }
     #[test]
-    fn derived_output_stages_empty_delta_build_yaml_beside_oci() {
+    fn derived_output_publishes_only_oci_to_new_directory_or_empty_mount() {
         let input = Input::new(true);
         let (cache, image) = input.open();
         let unchanged = crate::plan::TransformSelection::Authored(vec![])
@@ -900,27 +876,21 @@ mod tests {
                 None,
             )
             .unwrap();
-        let parent = tempfile::tempdir().unwrap();
-        let assembled = AssembledImage::derived(
-            &cache,
-            &image,
-            &[],
-            &parent.path().join("output"),
-            &unchanged,
-        )
-        .unwrap();
-        let root = assembled.staged.temporary.path();
-        assert!(root.join("oci-layout").is_file());
-        assert!(root.join("index.json").is_file());
-        assert!(root.join("blobs").is_dir());
-        let yaml = fs::read_to_string(root.join("build.yaml")).unwrap();
-        let parsed = crate::plan_io::BuildOutput::parse(&yaml).unwrap();
-        assert!(parsed.scutes.is_empty(), "{yaml}");
-        assert!(parsed.pmi.is_none(), "{yaml}");
-        assert!(!yaml.contains("pmi"), "{yaml}");
-        assert!(!root.join("0000.cow").exists());
-        assert!(!root.join("boot.pmi").exists());
-        assembled.discard().unwrap();
+        for empty_mount in [false, true] {
+            let parent = tempfile::tempdir().unwrap();
+            let destination = parent.path().join("output");
+            if empty_mount {
+                fs::create_dir(&destination).unwrap();
+            }
+            let assembled =
+                AssembledImage::derived(&cache, &image, &[], &destination, &unchanged).unwrap();
+            assert_oci_only(assembled.staged.temporary.path());
+            assembled.publish().unwrap();
+            assert_oci_only(&destination);
+            assert!(destination.join("oci-layout").is_file());
+            assert!(destination.join("index.json").is_file());
+            assert!(destination.join("blobs/sha256").is_dir());
+        }
     }
     #[test]
     fn captured_unchanged_dtb_survives_loss_of_cache_copy() {

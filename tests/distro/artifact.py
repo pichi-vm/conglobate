@@ -7,7 +7,7 @@ import subprocess
 
 def build_manifest(run):
     artifact = run / 'artifact'
-    assert not (artifact / 'inventory.cbor').exists()
+    assert {entry.name for entry in artifact.iterdir()} == {'oci-layout', 'index.json', 'blobs'}
     index = json.loads((artifact / 'index.json').read_text())
     assert len(index['manifests']) == 1
     descriptor = index['manifests'][0]
