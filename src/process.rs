@@ -37,7 +37,7 @@ pub(crate) trait ProcessState: private::Sealed + std::fmt::Debug {
 /// Status has not yet been collected by this owner; not proof of OS liveness.
 pub(crate) struct Running;
 /// A trusted helper whose own pidfd was received over its private channel.
-/// This state does not establish containment or authorize recipe execution.
+/// This state does not establish containment or authorize plan execution.
 ///
 #[derive(Debug)]
 pub(crate) struct Identified;

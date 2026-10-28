@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Check the minimal bootstrap regression's exported graph and inventory."""
+"""Check the minimal bootstrap regression's exported graph and build annotations."""
 import argparse
 import hashlib
 import json
 from pathlib import Path
-import cbor2
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from artifact import build_manifest
 
 
 class BootstrapEvidence:
@@ -28,52 +30,22 @@ class BootstrapEvidence:
                        'DISTRO_BUILD_AND_EXPORT_PASS'):
             assert f'\n{marker}\n' in serial
         assert (self.run / 'status.raw').read_bytes().rstrip(b'\0') == b'DISTRO_BUILD_EXIT 0\n'
-        raw = (self.artifact / 'inventory.cbor').read_bytes()
-        inventory = cbor2.loads(raw)
-        assert cbor2.dumps(inventory, canonical=True) == raw
-        assert inventory['version'] == 3
-        assert len(inventory['inputs']) == 1
-        assert inventory['inputs'][0]['roles'] == ['bootstrap-tools']
-        output = inventory['outputs']
-        assert 'pmi' not in output and 'dtb' not in output
-        assert len(output['scutes']) == 1
-        assert output['scutes'][0]['origin'] == 'produced'
-        execution = inventory['execution']
-        assert execution['network_steps'] == []
-        assert execution['transform']['default_skipped'] is True
-        assert execution['transform']['target_present'] is False
-        assert len(execution['formatters']) == 1
-        formatter = execution['formatters'][0]
-        assert formatter['stage'] == 'bootstrap'
-        assert formatter['filesystem'] == {
-            'type': 'ext4', 'label': 'label-probe', 'size_bytes': 64 * 1024**2,
-            'logical_size_bytes': 64 * 1024**3,
-        }
-        inputs = json.loads((self.run / 'inputs.json').read_text())
-        for entry in formatter['runtime']:
-            # The profile generates its own configuration, separately measured.
-            if entry['path'] != 'etc/mke2fs.conf':
-                runtime_root = (self.run / 'root').resolve()
-                path = (runtime_root / entry['path']).resolve().relative_to(runtime_root)
-                assert entry['digest']['digest'].hex() == inputs[str(path)]
-        assert formatter['arguments'][-2:] == ['/dev/output', '16384']
         index = json.loads((self.artifact / 'index.json').read_text())
         assert len(index['manifests']) == 1
         descriptor = index['manifests'][0]
-        assert descriptor['digest'] == 'sha256:' + output['manifest']['digest'].hex()
-        manifest = json.loads(self.descriptor(descriptor))
+        manifest = build_manifest(self.run)
+        assert manifest == json.loads(self.descriptor(descriptor))
         self.descriptor(manifest['config'])
         assert len(manifest['layers']) == 1
         layer = manifest['layers'][0]
         assert layer['mediaType'] == 'application/vnd.pichi.scute.v1'
-        assert layer['digest'] == 'sha256:' + output['scutes'][0]['digest']['digest'].hex()
         self.descriptor(layer)
         expected = {item['digest'].split(':')[1]
                     for item in (descriptor, manifest['config'], layer)}
         assert {p.name for p in (self.artifact / 'blobs/sha256').iterdir()} == expected
         return {'two_root_steps_passed': True, 'export_graph_verified': True,
-                'formatter_receipt_verified': True, 'tool_components_not_inherited': True,
-                'inventory_canonical': True, 'bootable_distro_qualified': False,
+                'tool_components_not_inherited': True,
+                'build_annotations_verified': True, 'bootable_distro_qualified': False,
                 'full_sandbox_qualified': False}
 
 

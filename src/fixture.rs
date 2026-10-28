@@ -22,9 +22,9 @@ mod execution;
 mod filesystem;
 mod firmware;
 mod formatter;
+mod graph;
 mod image;
 mod input;
-mod inventory;
 mod isolation;
 mod lock;
 mod network;
@@ -34,12 +34,11 @@ mod path;
 mod pipeline;
 mod plan;
 mod process;
-mod recipe;
-// Portable YAML contract (`BuildOutput` and the recipe/lock types). The engine
+// Portable YAML contract (`BuildOutput` and the plan/lock types). The engine
 // writes `build.yaml` from these types; the host links the same module via the
 // library. Most items are unused in the binary.
 #[allow(dead_code, unreachable_pub, unused_imports)]
-mod recipe_io;
+mod plan_io;
 mod request;
 mod step;
 mod storage;

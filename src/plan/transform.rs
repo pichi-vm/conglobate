@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Validated transform descriptions; execution is implemented separately.
-use super::{ImagePath, Presence, RecipeError};
+use super::{ImagePath, PlanError, Presence};
 use crate::template::Template;
 use serde::Deserialize;
 
@@ -77,7 +77,7 @@ impl TransformOperation {
     pub(crate) fn action(&self) -> &TransformAction {
         &self.action
     }
-    fn property_path(path: &str) -> Result<(), RecipeError> {
+    fn property_path(path: &str) -> Result<(), PlanError> {
         let _ = ImagePath::try_from(path.to_owned())?;
         if path == "/"
             || path
@@ -85,13 +85,13 @@ impl TransformOperation {
                 .skip(1)
                 .any(|p| p.is_empty() || p == "." || p == "..")
         {
-            return Err(RecipeError::Invalid("invalid DTB property path"));
+            return Err(PlanError::Invalid("invalid DTB property path"));
         }
         Ok(())
     }
 }
 impl TryFrom<TransformDocument> for TransformOperation {
-    type Error = RecipeError;
+    type Error = PlanError;
     fn try_from(raw: TransformDocument) -> Result<Self, Self::Error> {
         let (property, condition, action) = match raw {
             TransformDocument::Remove {
@@ -135,9 +135,9 @@ impl TryFrom<TransformDocument> for TransformOperation {
     }
 }
 impl PropertyValue {
-    fn decode(kind: &str, data: Presence<serde_json::Value>) -> Result<Self, RecipeError> {
+    fn decode(kind: &str, data: Presence<serde_json::Value>) -> Result<Self, PlanError> {
         use serde_json::Value;
-        let invalid = RecipeError::Invalid("DTB set type/data mismatch");
+        let invalid = PlanError::Invalid("DTB set type/data mismatch");
         match (kind, data) {
             ("empty", Presence::Absent) => Ok(Self::Empty),
             ("string", Presence::Present(Value::String(s))) if !s.contains('\0') => {
@@ -147,7 +147,7 @@ impl PropertyValue {
                 a.into_iter()
                     .map(|v| match v {
                         Value::String(s) if !s.contains('\0') => Ok(Template::set(&s)?),
-                        _ => Err(RecipeError::Invalid("expected NUL-free string")),
+                        _ => Err(PlanError::Invalid("expected NUL-free string")),
                     })
                     .collect::<Result<_, _>>()?,
             )),
@@ -164,14 +164,14 @@ impl PropertyValue {
                     .map(|v| {
                         v.as_u64()
                             .and_then(|n| u32::try_from(n).ok())
-                            .ok_or(RecipeError::Invalid("expected unsigned 32-bit cell"))
+                            .ok_or(PlanError::Invalid("expected unsigned 32-bit cell"))
                     })
                     .collect::<Result<_, _>>()?,
             )),
             ("bytes", Presence::Present(Value::String(s))) => {
                 let compact: String = s.chars().filter(|c| !c.is_ascii_whitespace()).collect();
                 let bytes = hex::decode(compact)
-                    .map_err(|_| RecipeError::Invalid("expected hexadecimal bytes"))?;
+                    .map_err(|_| PlanError::Invalid("expected hexadecimal bytes"))?;
                 Ok(Self::Bytes(bytes))
             }
             _ => Err(invalid),
@@ -181,7 +181,7 @@ impl PropertyValue {
 
 pub(crate) const DEFAULT_TRANSFORM: &str = "- op: regex\n  if:\n    exists: /chosen/bootargs\n  property: /chosen/bootargs\n  match: '(^|\\s)corium=[^\\s]*'\n  replace: '${1}corium=${CARAPACE}'\n";
 impl TransformSelection {
-    pub(crate) fn builtin_operations() -> Result<Vec<TransformOperation>, RecipeError> {
+    pub(crate) fn builtin_operations() -> Result<Vec<TransformOperation>, PlanError> {
         crate::document::YamlDocument::from(DEFAULT_TRANSFORM)
             .decode::<Vec<TransformDocument>>()?
             .into_iter()

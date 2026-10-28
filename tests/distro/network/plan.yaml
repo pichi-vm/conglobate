@@ -21,7 +21,7 @@ tasks:
           test "$response" = reply
           exec 3>&-
         '
-        printf 'NETWORK_RECIPE_DNS_TCP_AND_READONLY_RESOLVER_PASS\n'
+        printf 'NETWORK_PLAN_DNS_TCP_AND_READONLY_RESOLVER_PASS\n'
         readlink /proc/self/ns/net > /run/network-identity
         checked=0
         while read -r name value rest; do

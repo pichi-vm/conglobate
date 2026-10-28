@@ -16,7 +16,7 @@ use crate::{
 use std::{io, mem::ManuallyDrop, path::Path, process::Command};
 
 /// Deployment-owned paths. Each acquisition validates its protected filesystem
-/// and mount namespace; these paths are never taken from a command recipe.
+/// and mount namespace; these paths are never taken from a command plan.
 #[derive(Debug)]
 pub(crate) struct SandboxDirectories<'l> {
     recovery: &'l RecoveryDirectory,

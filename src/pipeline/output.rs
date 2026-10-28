@@ -3,11 +3,9 @@
 
 use super::CompletedImage;
 use crate::{
-    formatter::FormatReceipt,
     input::{CheckedImage, ResolvedBuild},
-    inventory::Inventory,
     output::AssembledImage,
-    recipe::{Image, Local, Recipe, Reference},
+    plan::{Image, Local, Plan, Reference},
     request::BuildRequest,
     storage::{ReadOnlyChain, SealedScute, Workspace},
 };
@@ -19,7 +17,6 @@ pub(super) struct StageOutput<'b, 'w> {
     pub(super) produced: Vec<Arc<SealedScute<'w>>>,
     pub(super) firmware: Option<crate::firmware::FinalizedFirmware<'w>>,
     pub(super) boot_base: Option<&'b CheckedImage>,
-    pub(super) formatters: Vec<FormatReceipt>,
 }
 impl Clone for StageOutput<'_, '_> {
     fn clone(&self) -> Self {
@@ -28,7 +25,6 @@ impl Clone for StageOutput<'_, '_> {
             produced: self.produced.clone(),
             firmware: self.firmware.clone(),
             boot_base: self.boot_base,
-            formatters: vec![],
         }
     }
 }
@@ -45,7 +41,6 @@ impl<'b, 'w> StageOutput<'b, 'w> {
             produced: vec![],
             firmware: None,
             boot_base: has_boot.then_some(base),
-            formatters: vec![],
         }
     }
     pub(super) fn root(&self) -> Option<[u8; 32]> {
@@ -94,8 +89,8 @@ impl<'b, 'w> StageOutput<'b, 'w> {
         }
         Ok(())
     }
-    pub(super) fn select(recipe: &Recipe, outputs: &BTreeMap<Local, Self>) -> anyhow::Result<Self> {
-        let mut output = match recipe.image() {
+    pub(super) fn select(plan: &Plan, outputs: &BTreeMap<Local, Self>) -> anyhow::Result<Self> {
+        let mut output = match plan.image() {
             Image::Short(name) => outputs
                 .get(name)
                 .ok_or(anyhow!("missing image task"))?
@@ -127,12 +122,12 @@ impl<'b, 'w> StageOutput<'b, 'w> {
         Ok(output)
     }
     pub(super) fn inherited(build: &'b ResolvedBuild) -> anyhow::Result<Self> {
-        let recipe = build.captured().plan().recipe();
+        let plan = build.captured().graph().plan();
         let mut outputs = BTreeMap::new();
-        for name in recipe.order() {
-            let task = &recipe.tasks()[name];
+        for name in plan.order() {
+            let task = &plan.tasks()[name];
             ensure!(
-                matches!(task.kind(), crate::recipe::TaskKind::Extend)
+                matches!(task.kind(), crate::plan::TaskKind::Extend)
                     && task.directives().is_empty(),
                 "pass-through requires empty extend tasks"
             );
@@ -150,7 +145,7 @@ impl<'b, 'w> StageOutput<'b, 'w> {
             };
             outputs.insert(name.clone(), output);
         }
-        Self::select(recipe, &outputs)
+        Self::select(plan, &outputs)
     }
     pub(super) fn assemble(
         self,
@@ -163,7 +158,6 @@ impl<'b, 'w> StageOutput<'b, 'w> {
             produced,
             firmware,
             boot_base,
-            formatters,
         } = self;
         // Capture separately selected inherited boot without promoting its root
         // or configuration into the output ancestry. No command runtime is used.
@@ -199,7 +193,7 @@ impl<'b, 'w> StageOutput<'b, 'w> {
         let dtb = if let Some(pair) = &pair {
             pair.dtb()
         } else {
-            transformed = crate::recipe::TransformSelection::Builtin
+            transformed = crate::plan::TransformSelection::Builtin
                 .apply(inherited_dtb.as_ref().map(|s| s.bytes()), root.as_deref())?;
             &transformed
         };
@@ -222,12 +216,8 @@ impl<'b, 'w> StageOutput<'b, 'w> {
         } else {
             AssembledImage::bootstrap_layers(&produced, request.output())?
         };
-        let mut inventory = Inventory::from_build(request, build, &image, dtb, &produced)?;
-        for receipt in formatters {
-            inventory = inventory.with_formatter(receipt)?;
-        }
-        inventory.check_output(&image)?;
-        Ok(CompletedImage { image, inventory })
+        let image = image.bind_build(request, build.captured())?;
+        Ok(CompletedImage { image })
     }
 }
 fn same_base(left: Option<&CheckedImage>, right: Option<&CheckedImage>) -> bool {

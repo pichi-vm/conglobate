@@ -12,11 +12,9 @@ Implementation of the full engine reshape is separate from this design lock-in.
 The 28 October 2026 decision in [§11](#11-artifact-and-build-annotations)
 locks build binding annotations and removes `inventory.cbor`. User-facing YAML
 and prose call the document a **plan** and the selected path in a commit the
-**context**. The target CLI uses `--plan`; build-port fields are `plan` and
-`context`. This is a documentation lock: code, shared Rust types/modules and
-fixture filenames still use legacy names until the follow-up implementation.
-The existing `src/plan.rs` engine module has a naming conflict to resolve
-in the follow-up code tip; no Rust module or file is renamed by this decision.
+**context**. The CLI uses `--plan`; build-port fields are `plan` and `context`. Shared
+Rust plan types and fixture filenames use the same vocabulary. The engine
+dependency module is `src/graph.rs`; `plan` names the YAML document.
 
 The approved plan design, dated 27 October 2026, is the multi-stage task
 model in [§5](#5-context-and-pipeline) and [§6](#6-execution-plans). It is
@@ -28,7 +26,7 @@ hash is automatic, including when assembly binds a root to imported boot
 lineage. This replaces the fixed `bootstrap` → `carapace` → `firmware` →
 `transform` pipeline. The engine implements the task schema and executes the selected
 closure. Provisional artifact grammar choices are documented in README.md and
-src/recipe/schema.rs; they are not extra wire locks in this document.
+src/plan/schema.rs; they are not extra wire locks in this document.
 
 Conglobate builds images from committed source and immutable image inputs. A
 bootstrap task formats a new carapace from a tool carapace. An extend task
@@ -246,7 +244,7 @@ at `/usr/bin/conglobate`. On `main`, CI pushes a multi-arch index to
 `:latest`, with `platform.os` `pichi` and architectures `amd64` and `arm64`.
 `:0.2.0` is the durable pin (plus the digest once pushed). Consumers must
 not rely on `:latest` alone.
-Pull requests build the image and do not push. `image/conglobate.recipe.yaml`
+Pull requests build the image and do not push. `image/conglobate.plan.yaml`
 stays a self-host-later skeleton; it is not this bootstrap.
 
 Product assumptions for the guest:
@@ -1246,9 +1244,8 @@ authenticity policy.
 
 The implementation follows the ordered sandbox contract. Maintained tests
 cover committed inputs, locks, typed DTB operations, pipeline combinations,
-metadata, legacy inventory, publication and disposable-VM lifecycle failures.
-The follow-up code tip must replace inventory checks with manifest annotation
-checks. Those tests exercise the task model in §5–§6 alongside the existing
+metadata, manifest build annotations, publication and disposable-VM lifecycle
+failures. Those tests exercise the task model in §5–§6 alongside the existing
 storage, isolation, metadata and publication behavior. Distro plans exercise Fedora
 DNF/SELinux, Debian APT/systemd, Alpine APK/OpenRC and NixOS closure construction.
 A separate firmware plan constructs an initramfs and arma PMI/DTB, then boots it.

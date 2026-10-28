@@ -14,6 +14,8 @@ mod contexts;
 mod copy_modes;
 #[path = "../tests/unit/copy_patterns.rs"]
 mod copy_patterns;
+#[path = "../tests/unit/graphs.rs"]
+mod graphs;
 #[path = "../tests/unit/identities.rs"]
 mod identities;
 #[path = "../tests/unit/locks.rs"]
@@ -22,8 +24,6 @@ mod locks;
 mod plans;
 #[path = "../tests/unit/processes.rs"]
 mod processes;
-#[path = "../tests/unit/recipes.rs"]
-mod recipes;
 #[path = "../tests/unit/requests.rs"]
 mod requests;
 #[path = "../tests/unit/supervision.rs"]

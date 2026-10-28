@@ -12,7 +12,7 @@ use std::{
 
 /// The environment's exact resolver bytes, captured once for a build. There is
 /// no source pathname or writable handle to reopen between steps. This input is
-/// deliberately excluded from inventory, and Debug never renders its contents.
+/// deliberately excluded from build annotations, and Debug never renders its contents.
 /// Resolver syntax and reachable DNS service are supplied by the environment;
 /// conglobate does not rewrite stubs or infer servers/search domains.
 pub(crate) struct ResolverInput {

@@ -3,7 +3,7 @@
 
 use super::{DtbContract, FirmwareError};
 use crate::{
-    recipe::TransformSelection,
+    plan::TransformSelection,
     step::SetupBudget,
     storage::{Scratch, Workspace},
     transform::{TransformError, TransformedDtb},

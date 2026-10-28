@@ -4,6 +4,9 @@
 import argparse
 import json
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from artifact import build_manifest
 
 
 class ResolverEvidence:
@@ -24,7 +27,7 @@ class ResolverEvidence:
         checks = {marker: f'\n{marker}\n' in serial for marker in self.MARKERS}
         checks['exit_zero'] = (self.run / 'status.raw').read_bytes().rstrip(b'\0') == b'DISTRO_BUILD_EXIT 0\n'
         checks['runtime_cleanup'] = 'runtime cleanup:' not in serial and 'runtime retained' not in serial
-        checks['artifact_published'] = (self.run / 'artifact/inventory.cbor').is_file()
+        checks['build_annotations_verified'] = bool(build_manifest(self.run))
         result = {'checks': checks, 'passed': all(checks.values()),
                   'full_sandbox_qualified': False}
         (self.run / 'resolver-assessment.json').write_text(json.dumps(result, indent=2) + '\n')

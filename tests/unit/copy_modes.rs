@@ -4,7 +4,7 @@
 use conglobate::copy::CopyMode;
 
 #[test]
-fn valid_internal_modes_remain_available_without_recipe_fields() {
+fn valid_internal_modes_remain_available_without_plan_fields() {
     for mode in ["0644", "u=rw,g=u,o=r", "a+X", "u+x-w", "a+t", "a=", "u=go"] {
         assert!(mode.parse::<CopyMode>().is_ok(), "{mode}");
     }

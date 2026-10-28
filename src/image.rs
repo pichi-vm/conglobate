@@ -18,7 +18,7 @@ pub(crate) struct ImageReference(String);
 impl FromStr for ImageReference {
     type Err = IdentityError;
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        text.parse::<crate::contract::recipe::Remote>()
+        text.parse::<crate::contract::plan::Remote>()
             .map_err(|_| IdentityError::Reference)?;
         Ok(Self(text.to_owned()))
     }

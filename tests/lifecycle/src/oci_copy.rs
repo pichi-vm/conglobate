@@ -12,7 +12,7 @@ impl OciCopy {
         let context = Path::new("/work/oci-context");
         fs::create_dir(context)?;
         fs::write(
-            context.join("recipe.yaml"),
+            context.join("plan.yaml"),
             "tasks:\n  rootfs:\n    kind: extend\n    from: qualification.local/fixture:ci\nimage: rootfs\n",
         )?;
         fs::write(
@@ -58,8 +58,8 @@ impl OciCopy {
             "/work/oci-context",
             "--commit",
             commit.trim(),
-            "--recipe",
-            "recipe.yaml",
+            "--plan",
+            "plan.yaml",
             "--lock",
             "images.lock",
             "--cache",
@@ -105,7 +105,22 @@ impl OciCopy {
                 fs::read(copied.join("blobs/sha256").join(&name))?
             );
         }
-        assert!(artifact.join("inventory.cbor").is_file());
+        assert!(!artifact.join("inventory.cbor").exists());
+        let manifest: serde_json::Value = serde_json::from_slice(&fs::read(
+            copied
+                .join("blobs/sha256")
+                .join(digest.strip_prefix("sha256:").unwrap()),
+        )?)?;
+        let annotations = &manifest["annotations"];
+        assert_eq!(
+            annotations["dev.pichi.build.commit"],
+            format!("sha1:{}", commit.trim())
+        );
+        assert_eq!(annotations["dev.pichi.build.context"], ".");
+        assert_eq!(annotations["dev.pichi.build.plan"], "plan.yaml");
+        assert_eq!(annotations["dev.pichi.build.lock"], "images.lock");
+        assert!(annotations.get("dev.pichi.build.location").is_none());
+        assert!(annotations.get("dev.pichi.carapace.verity.hash").is_none());
         println!("OCI_ORAS_SELF_CONTAINED_COPY_PASS");
         Ok(())
     }

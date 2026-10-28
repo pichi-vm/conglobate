@@ -26,7 +26,7 @@ pub(crate) struct ImageLock {
 impl TryFrom<YamlDocument<'_>> for ImageLock {
     type Error = LockError;
     fn try_from(document: YamlDocument<'_>) -> Result<Self, Self::Error> {
-        let raw: crate::contract::recipe::Lock = document.decode()?;
+        let raw: crate::contract::plan::Lock = document.decode()?;
         let images = raw
             .images()
             .iter()

@@ -82,7 +82,7 @@ impl RuntimeTargets {
     }
 
     /// Open `path` as a directory mount point. A missing final component is
-    /// created on the writable image: bare roots (the context-recipe smoke
+    /// created on the writable image: bare roots (the context-plan smoke
     /// carapace has neither `/dev` nor `/proc` nor `/sys`) otherwise fail
     /// `openat2` with `ENOENT` before any command runs. Created mount points
     /// are mode `0755`; a `chmodat` failure is fatal so a restrictive umask

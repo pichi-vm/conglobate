@@ -67,7 +67,7 @@ impl<'l, R: CommandStorage> Step<'l, Ready, R> {
             .expect_err("failed setup cannot yield an accepted command")
     }
     /// Transfer this step's assigned volume, require restricted-leaf readiness,
-    /// start under the recipe timeout, observe completion and finalize storage.
+    /// start under the plan timeout, observe completion and finalize storage.
     /// Every failure after launch performs bounded cleanup before returning.
     pub(crate) fn execute(
         self,

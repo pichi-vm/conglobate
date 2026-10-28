@@ -4,7 +4,9 @@
 import argparse
 import json
 from pathlib import Path
-import cbor2
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from artifact import build_manifest
 
 
 class ConfinementEvidence:
@@ -22,8 +24,8 @@ class ConfinementEvidence:
         checks = {marker: f'\n{marker}\n' in serial for marker in self.MARKERS}
         checks['exit_zero'] = (self.run / 'status.raw').read_bytes().rstrip(b'\0') == b'DISTRO_BUILD_EXIT 0\n'
         checks['no_live_extra_descriptor'] = '\nUNEXPECTED_LIVE_DESCRIPTOR ' not in serial
-        inventory = cbor2.loads((self.run / 'artifact/inventory.cbor').read_bytes())
-        checks['network_disabled'] = inventory['execution']['network_steps'] == []
+        manifest = build_manifest(self.run)
+        checks['build_annotations_verified'] = bool(manifest)
         report = {'checks': checks, 'passed': all(checks.values()),
                   'full_sandbox_qualified': False, 'platforms': ['native amd64 ordinary VM']}
         (self.run / 'confinement-assessment.json').write_text(json.dumps(report, indent=2) + '\n')

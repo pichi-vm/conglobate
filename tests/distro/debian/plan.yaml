@@ -37,12 +37,12 @@ tasks:
     exec:
     - copy:
         from: firmware
-        into: /recipe-input-firmware
-    - run: cp -a /recipe-input-firmware/boot.pmi /qualification-boot.pmi
+        into: /plan-input-firmware
+    - run: cp -a /plan-input-firmware/boot.pmi /qualification-boot.pmi
     - copy:
         from: firmware
-        into: /recipe-input-firmware
-    - run: cp -a /recipe-input-firmware/base.dtb /qualification-base.dtb
+        into: /plan-input-firmware
+    - run: cp -a /plan-input-firmware/base.dtb /qualification-base.dtb
     into:
       pmi: /qualification-boot.pmi
       dtb: /qualification-base.dtb

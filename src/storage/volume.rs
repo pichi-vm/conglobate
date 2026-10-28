@@ -89,7 +89,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
     }
     /// Initial backend is ext4, with fixed nodev/nosuid mount policy. The parent
     /// must be trusted tmpfs in this volume's mount namespace; it stores only the
-    /// empty attachment directory, not image data. No recipe mount options pass through.
+    /// empty attachment directory, not image data. No plan mount options pass through.
     pub(crate) fn mount_ext4(self, parent: &Path) -> io::Result<Volume<'ns, 'a, 'w, Mounted>> {
         let attempt = (|| -> io::Result<MountedResources> {
             self.scope.verify_current()?;
@@ -141,7 +141,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
     pub(crate) fn copy(
         &mut self,
         context: &crate::context::CapturedContext,
-        directive: &crate::recipe::Copy,
+        directive: &crate::plan::Copy,
     ) -> Result<(), crate::copy::CopyError> {
         self.scope.verify_current()?;
         crate::copy::CopyDestination::new(&self.resources.root).copy(context, directive)
@@ -150,7 +150,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
     pub(crate) fn copy_artifact(
         &mut self,
         output: Option<&mut Volume<'_, '_, '_, Mounted>>,
-        directive: &crate::recipe::Copy,
+        directive: &crate::plan::Copy,
         source: &crate::firmware::FirmwareFile<'_>,
     ) -> Result<(), crate::copy::CopyError> {
         self.scope.verify_current()?;
@@ -186,7 +186,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
         &mut self,
         output: &mut Volume<'_, '_, '_, Mounted>,
         context: &crate::context::CapturedContext,
-        directive: &crate::recipe::Copy,
+        directive: &crate::plan::Copy,
     ) -> Result<(), crate::copy::CopyError> {
         self.scope.verify_current()?;
         output.scope.verify_current()?;
@@ -329,7 +329,7 @@ impl Volume<'_, '_, '_, Mounted> {
     /// separately proves command success and quiescence before this operation.
     pub(crate) fn extract_firmware<'w>(
         &mut self,
-        firmware: &crate::recipe::Firmware,
+        firmware: &crate::plan::Firmware,
         workspace: &'w super::Workspace,
         budget: &crate::step::SetupBudget,
     ) -> Result<crate::firmware::ExtractedFirmware<'w>, crate::firmware::ExtractionError> {

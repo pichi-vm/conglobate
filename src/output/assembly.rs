@@ -43,7 +43,7 @@ fn stage_delta_output(
 
 /// A self-contained staged image whose manifest, referenced content and chain
 /// were verified from the output storage. No mutable staging authority escapes.
-/// This is not a successful recipe execution or an inventory/publication receipt.
+/// This is not a successful plan execution or a publication receipt.
 #[derive(Debug)]
 pub(crate) struct AssembledImage {
     staged: StagedDirectory,
@@ -69,18 +69,99 @@ impl AssembledImage {
             annotations.remove("dev.pichi.carapace.verity.hash");
         }
     }
-    pub(crate) fn publish_inventory(
-        self,
-        inventory: &crate::inventory::Inventory,
-    ) -> anyhow::Result<()> {
-        inventory.check_output(&self)?;
-        self.staged.write_inventory(inventory.bytes())?;
-        self.staged.publish()?;
-        Ok(())
+    /// Stamp the resolved input before hashing and validating the final layout.
+    pub(crate) fn bind_build(
+        mut self,
+        request: &crate::request::BuildRequest,
+        build: &crate::input::CapturedBuild,
+    ) -> anyhow::Result<Self> {
+        let mut manifest: serde_json::Value =
+            serde_json::from_slice(self.image.manifest_bytes().bytes())?;
+        let annotations = manifest
+            .as_object_mut()
+            .expect("validated manifest")
+            .entry("annotations")
+            .or_insert_with(|| serde_json::json!({}))
+            .as_object_mut()
+            .ok_or_else(|| anyhow::anyhow!("invalid manifest annotations"))?;
+        // Inherited provenance belongs to the old build. Keep unrelated and
+        // verity parameter annotations, but replace the entire build binding.
+        annotations.retain(|key, _| {
+            !key.starts_with("dev.pichi.build.") && key != "dev.pichi.carapace.verity.hash"
+        });
+        let commit = build.context().commit();
+        let algorithm = match commit.kind() {
+            gix::hash::Kind::Sha1 => "sha1",
+            gix::hash::Kind::Sha256 => "sha256",
+            _ => anyhow::bail!("unsupported Git commit algorithm"),
+        };
+        let context: &std::path::Path = request.context().as_ref();
+        for (key, value) in [
+            ("commit", format!("{algorithm}:{commit}")),
+            (
+                "context",
+                if context.as_os_str().is_empty() {
+                    ".".into()
+                } else {
+                    context
+                        .to_str()
+                        .ok_or_else(|| anyhow::anyhow!("context is not UTF-8"))?
+                        .into()
+                },
+            ),
+            (
+                "plan",
+                build
+                    .plan_document()
+                    .path()
+                    .as_ref()
+                    .to_str()
+                    .ok_or_else(|| anyhow::anyhow!("plan path is not UTF-8"))?
+                    .into(),
+            ),
+            (
+                "lock",
+                build
+                    .lock_document()
+                    .path()
+                    .as_ref()
+                    .to_str()
+                    .ok_or_else(|| anyhow::anyhow!("lock path is not UTF-8"))?
+                    .into(),
+            ),
+        ] {
+            annotations.insert(format!("dev.pichi.build.{key}"), value.into());
+        }
+        if let Some(location) = request.location() {
+            annotations.insert("dev.pichi.build.location".into(), location.into());
+        }
+        let old_digest = self.image.manifest_bytes().digest().clone();
+        let (image, chain) = Self::resolve_staging(
+            &self.staged,
+            &serde_json::to_vec(&manifest)?,
+            self.image.architecture(),
+        )?;
+        anyhow::ensure!(
+            self.chain.as_ref().map(|chain| chain.root())
+                == chain.as_ref().map(|chain| chain.root()),
+            "build binding changed the scute graph"
+        );
+        let new_digest = Digest::from_bytes_sha256(image.manifest_bytes().bytes());
+        if old_digest != new_digest {
+            std::fs::remove_file(self.staged.blob_path(&old_digest))?;
+        }
+        self.image = image;
+        self.chain = chain;
+        Ok(self)
     }
+    pub(crate) fn publish(self) -> std::io::Result<()> {
+        self.staged.publish()
+    }
+    #[cfg(test)]
     pub(crate) fn image(&self) -> &ResolvedImage {
         &self.image
     }
+    #[cfg(test)]
     pub(crate) fn chain(&self) -> Option<&VerifiedChain> {
         self.chain.as_ref()
     }
@@ -251,7 +332,7 @@ impl AssembledImage {
                 parent = *scute.root();
             }
             let annotations = Self::verity_annotations();
-            let _tip = parent; // baked into guest via corium=/inventory; not OCI tip
+            let _tip = parent; // baked into guest via corium=; not OCI tip
             let manifest = serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
@@ -538,13 +619,170 @@ mod tests {
         }
     }
     #[test]
+    fn publication_binds_committed_inputs_and_replaces_inherited_provenance() {
+        use crate::{input::CapturedBuild, request::BuildRequest};
+        use std::process::Command;
+        for algorithm in ["sha1", "sha256"] {
+            for context in [".", "nested/context"] {
+                for location in [None, Some("https://example.invalid/source")] {
+                    let input = Input::new(false);
+                    let (cache, image) = input.open();
+                    let repo = tempfile::tempdir().unwrap();
+                    let git = |args: &[&str]| {
+                        let output = Command::new("git")
+                            .arg("-C")
+                            .arg(repo.path())
+                            .args(args)
+                            .output()
+                            .unwrap();
+                        assert!(
+                            output.status.success(),
+                            "{}",
+                            String::from_utf8_lossy(&output.stderr)
+                        );
+                        String::from_utf8(output.stdout).unwrap().trim().to_owned()
+                    };
+                    git(&["init", "-q", &format!("--object-format={algorithm}")]);
+                    let selected = repo.path().join(context).join("config");
+                    fs::create_dir_all(&selected).unwrap();
+                    fs::write(
+                        selected.join("plan.yaml"),
+                        "image: base\ntasks: {base: {kind: extend, from: registry.test/base:1}}\n",
+                    )
+                    .unwrap();
+                    fs::write(
+                        selected.join("lock.yaml"),
+                        format!(
+                            "version: 1\nimages: {{registry.test/base:1: {{index: sha256:{}}}}}\n",
+                            "00".repeat(32)
+                        ),
+                    )
+                    .unwrap();
+                    git(&["add", "."]);
+                    git(&[
+                        "-c",
+                        "user.name=Fixture",
+                        "-c",
+                        "user.email=fixture@example.invalid",
+                        "commit",
+                        "-qm",
+                        "Pin inputs",
+                    ]);
+                    let commit = git(&["rev-parse", "HEAD"]);
+                    let output = tempfile::tempdir().unwrap();
+                    let destination = output.path().join("result");
+                    let request = BuildRequest::parse_from([
+                        "conglobate",
+                        "build",
+                        "--repository",
+                        repo.path().to_str().unwrap(),
+                        "--commit",
+                        &commit,
+                        "--context",
+                        context,
+                        "--plan",
+                        "config/plan.yaml",
+                        "--lock",
+                        "config/lock.yaml",
+                        "--cache",
+                        input.directory.path().to_str().unwrap(),
+                        "--output",
+                        destination.to_str().unwrap(),
+                    ])
+                    .unwrap()
+                    .with_location(location.map(str::to_owned));
+                    let captured = CapturedBuild::try_from(&request).unwrap();
+                    fs::write(selected.join("plan.yaml"), "working tree changed").unwrap();
+                    let unchanged = crate::plan::TransformSelection::Authored(vec![])
+                        .apply(
+                            Some(&input.blobs[image.manifest().layers[1].digest_str()]),
+                            None,
+                        )
+                        .unwrap();
+                    let mut assembled =
+                        AssembledImage::derived(&cache, &image, &[], &destination, &unchanged)
+                            .unwrap();
+                    // Seed stale build keys to exercise pass-through rebinding.
+                    let mut manifest: serde_json::Value =
+                        serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
+                    for key in [
+                        "commit",
+                        "context",
+                        "plan",
+                        "lock",
+                        "location",
+                        "tree",
+                        "object-format",
+                    ] {
+                        manifest["annotations"][format!("dev.pichi.build.{key}")] = "stale".into();
+                    }
+                    manifest["annotations"]["dev.pichi.carapace.verity.hash"] = "stale".into();
+                    let (stale, chain) = AssembledImage::resolve_staging(
+                        &assembled.staged,
+                        &serde_json::to_vec(&manifest).unwrap(),
+                        image.architecture(),
+                    )
+                    .unwrap();
+                    let original =
+                        Digest::from_bytes_sha256(assembled.image.manifest_bytes().bytes());
+                    fs::remove_file(assembled.staged.blob_path(&original)).unwrap();
+                    assembled.image = stale;
+                    assembled.chain = chain;
+                    let assembled = assembled.bind_build(&request, &captured).unwrap();
+                    let final_manifest: serde_json::Value =
+                        serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
+                    let annotations = final_manifest["annotations"].as_object().unwrap();
+                    assert_eq!(
+                        annotations["dev.pichi.build.commit"],
+                        format!("{algorithm}:{commit}")
+                    );
+                    assert_eq!(annotations["dev.pichi.build.context"], context);
+                    assert_eq!(annotations["dev.pichi.build.plan"], "config/plan.yaml");
+                    assert_eq!(annotations["dev.pichi.build.lock"], "config/lock.yaml");
+                    assert_eq!(
+                        annotations
+                            .get("dev.pichi.build.location")
+                            .and_then(|v| v.as_str()),
+                        location
+                    );
+                    assert_eq!(
+                        annotations
+                            .keys()
+                            .filter(|key| key.starts_with("dev.pichi.build."))
+                            .count(),
+                        if location.is_some() { 5 } else { 4 }
+                    );
+                    assert!(!annotations.contains_key("dev.pichi.carapace.verity.hash"));
+                    assert_eq!(final_manifest["layers"], manifest["layers"]);
+                    assert_eq!(final_manifest["config"], manifest["config"]);
+                    assert_eq!(
+                        annotations["example.org/retain"],
+                        manifest["annotations"]["example.org/retain"]
+                    );
+                    assembled.publish().unwrap();
+                    assert!(!destination.join("inventory.cbor").exists());
+                    assert!(destination.join("build.yaml").is_file());
+                    let index: serde_json::Value =
+                        serde_json::from_slice(&fs::read(destination.join("index.json")).unwrap())
+                            .unwrap();
+                    let raw = serde_json::to_vec(&final_manifest).unwrap();
+                    assert_eq!(
+                        index["manifests"][0]["digest"],
+                        Digest::from_bytes_sha256(&raw).to_string()
+                    );
+                    assert_eq!(index["manifests"][0]["size"], raw.len());
+                }
+            }
+        }
+    }
+    #[test]
     fn opaque_firmware_allows_unchanged_dtb_but_rejects_edits() {
         let input = Input::with_firmware(true, b"opaque firmware".to_vec());
         let (cache, image) = input.open();
         let old: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
         let bytes = &input.blobs[old["layers"][1]["digest"].as_str().unwrap()];
         let parent = tempfile::tempdir().unwrap();
-        let unchanged = crate::recipe::TransformSelection::Authored(vec![])
+        let unchanged = crate::plan::TransformSelection::Authored(vec![])
             .apply(Some(bytes), None)
             .unwrap();
         AssembledImage::derived(
@@ -557,7 +795,7 @@ mod tests {
         .unwrap()
         .discard()
         .unwrap();
-        let changed = crate::recipe::TransformSelection::Builtin
+        let changed = crate::plan::TransformSelection::Builtin
             .apply(Some(bytes), Some("new"))
             .unwrap();
         let failure = AssembledImage::derived(
@@ -577,7 +815,7 @@ mod tests {
         let (cache, image) = input.open();
         let old: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
         let old_digest = old["layers"][1]["digest"].as_str().unwrap();
-        let result = crate::recipe::TransformSelection::Builtin
+        let result = crate::plan::TransformSelection::Builtin
             .apply(Some(&input.blobs[old_digest]), Some("new"))
             .unwrap();
         let parent = tempfile::tempdir().unwrap();
@@ -616,7 +854,7 @@ mod tests {
             let (cache, image) = input.open();
             let parent = tempfile::tempdir().unwrap();
             let destination = parent.path().join("output");
-            let unchanged = crate::recipe::TransformSelection::Authored(vec![])
+            let unchanged = crate::plan::TransformSelection::Authored(vec![])
                 .apply(
                     Some(&input.blobs[image.manifest().layers[1].digest_str()]),
                     None,
@@ -656,7 +894,7 @@ mod tests {
     fn derived_output_stages_empty_delta_build_yaml_beside_oci() {
         let input = Input::new(true);
         let (cache, image) = input.open();
-        let unchanged = crate::recipe::TransformSelection::Authored(vec![])
+        let unchanged = crate::plan::TransformSelection::Authored(vec![])
             .apply(
                 Some(&input.blobs[image.manifest().layers[1].digest_str()]),
                 None,
@@ -676,7 +914,7 @@ mod tests {
         assert!(root.join("index.json").is_file());
         assert!(root.join("blobs").is_dir());
         let yaml = fs::read_to_string(root.join("build.yaml")).unwrap();
-        let parsed = crate::recipe_io::BuildOutput::parse(&yaml).unwrap();
+        let parsed = crate::plan_io::BuildOutput::parse(&yaml).unwrap();
         assert!(parsed.scutes.is_empty(), "{yaml}");
         assert!(parsed.pmi.is_none(), "{yaml}");
         assert!(!yaml.contains("pmi"), "{yaml}");
@@ -689,7 +927,7 @@ mod tests {
         let input = Input::new(false);
         let (cache, image) = input.open();
         let digest = image.manifest().layers[1].digest_str();
-        let unchanged = crate::recipe::TransformSelection::Authored(vec![])
+        let unchanged = crate::plan::TransformSelection::Authored(vec![])
             .apply(Some(&input.blobs[digest]), None)
             .unwrap();
         fs::remove_file(
@@ -732,7 +970,7 @@ mod tests {
         .unwrap();
         let parent = tempfile::tempdir().unwrap();
         let destination = parent.path().join("output");
-        let unchanged = crate::recipe::TransformSelection::Authored(vec![])
+        let unchanged = crate::plan::TransformSelection::Authored(vec![])
             .apply(
                 Some(&input.blobs[image.manifest().layers[1].digest_str()]),
                 None,

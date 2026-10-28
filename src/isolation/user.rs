@@ -19,9 +19,11 @@ pub(crate) struct IdRange {
     count: u32,
 }
 impl IdRange {
+    #[cfg(test)]
     pub(crate) fn parent_start(self) -> u32 {
         self.first
     }
+    #[cfg(test)]
     pub(crate) fn count(self) -> u32 {
         self.count
     }

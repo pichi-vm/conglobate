@@ -4,7 +4,7 @@
 //! Host→guest build-input response CBOR: envelope + flat build fields.
 //!
 //! v0 response is a flat map with `v`/`ok` plus build-input fields on success
-//! (`ref`/`recipe`/`lock`/optional `subdir`/`location`), or `error` on failure.
+//! (`ref`/`plan`/`lock`/optional `context`/`location`), or `error` on failure.
 //! Accept-list + reject-list name offenders.
 
 use crate::{
@@ -32,6 +32,8 @@ pub(crate) enum ApplianceRequestError {
     InvalidType(&'static str),
     #[error("appliance CBOR field {0} is empty or contains NUL")]
     InvalidString(&'static str),
+    #[error("build location must be a credential-free Git locator")]
+    InvalidLocation,
     #[error("appliance CBOR has trailing bytes after the response map")]
     TrailingBytes,
     #[error("appliance CBOR protocol version must be 1")]
@@ -51,9 +53,9 @@ pub(crate) enum ApplianceRequestError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ApplianceRequest {
     git_ref: String,
-    recipe: ContextPath,
+    plan: ContextPath,
     lock: ContextPath,
-    subdir: ContextDirectory,
+    context: ContextDirectory,
     location: Option<String>,
 }
 
@@ -63,16 +65,16 @@ impl ApplianceRequest {
         &self.git_ref
     }
     #[cfg_attr(not(test), allow(dead_code))]
-    pub(crate) fn recipe(&self) -> &ContextPath {
-        &self.recipe
+    pub(crate) fn plan(&self) -> &ContextPath {
+        &self.plan
     }
     #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn lock(&self) -> &ContextPath {
         &self.lock
     }
     #[cfg_attr(not(test), allow(dead_code))]
-    pub(crate) fn subdir(&self) -> &ContextDirectory {
-        &self.subdir
+    pub(crate) fn context(&self) -> &ContextDirectory {
+        &self.context
     }
     #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn location(&self) -> Option<&str> {
@@ -215,7 +217,7 @@ impl ApplianceRequest {
         for key in fields.keys() {
             if !matches!(
                 key.as_str(),
-                "v" | "ok" | "error" | "ref" | "recipe" | "lock" | "subdir" | "location"
+                "v" | "ok" | "error" | "ref" | "plan" | "lock" | "context" | "location"
             ) {
                 return Err(ApplianceRequestError::UnknownField(key.clone()));
             }
@@ -241,19 +243,29 @@ impl ApplianceRequest {
             return Err(ApplianceRequestError::RejectedField("error"));
         }
         let git_ref = take_string(&mut fields, "ref", true)?.unwrap();
-        let recipe_text = take_string(&mut fields, "recipe", true)?.unwrap();
+        let plan_text = take_string(&mut fields, "plan", true)?.unwrap();
         let lock_text = take_string(&mut fields, "lock", true)?.unwrap();
-        let subdir_text =
-            take_string(&mut fields, "subdir", false)?.unwrap_or_else(|| ".".to_owned());
+        let context_text =
+            take_string(&mut fields, "context", false)?.unwrap_or_else(|| ".".to_owned());
         let location = take_string(&mut fields, "location", false)?;
-        let recipe = ContextPath::try_from(Path::new(&recipe_text))?;
+        if let Some(location) = &location {
+            // Parser errors can include the input; never surface them here.
+            let locator = gix::url::parse(location.as_bytes().into())
+                .map_err(|_| ApplianceRequestError::InvalidLocation)?;
+            if locator.password().is_some()
+                || (locator.user().is_some() && locator.scheme != gix::url::Scheme::Ssh)
+            {
+                return Err(ApplianceRequestError::InvalidLocation);
+            }
+        }
+        let plan = ContextPath::try_from(Path::new(&plan_text))?;
         let lock = ContextPath::try_from(Path::new(&lock_text))?;
-        let subdir = ContextDirectory::try_from(Path::new(&subdir_text))?;
+        let context = ContextDirectory::try_from(Path::new(&context_text))?;
         Ok(Self {
             git_ref,
-            recipe,
+            plan,
             lock,
-            subdir,
+            context,
             location,
         })
     }
@@ -273,8 +285,8 @@ impl ApplianceRequest {
             Some(id_mappings),
             repository.to_path_buf(),
             commit,
-            self.subdir,
-            self.recipe,
+            self.context,
+            self.plan,
             self.lock,
             cache.to_path_buf(),
             output.to_path_buf(),
@@ -355,7 +367,7 @@ mod tests {
             ("v", Value::Integer(1.into())),
             ("ok", Value::Bool(true)),
             ("ref", Value::Text("refs/heads/main".into())),
-            ("recipe", Value::Text("recipe.yml".into())),
+            ("plan", Value::Text("plan.yml".into())),
             ("lock", Value::Text("lock.yml".into())),
         ]
     }
@@ -369,26 +381,43 @@ mod tests {
     }
 
     #[test]
-    fn accepts_required_fields_and_defaults_subdir() {
+    fn accepts_required_fields_and_defaults_context() {
         let request = ApplianceRequest::decode(&encode(&required())).unwrap();
         assert_eq!(request.git_ref(), "refs/heads/main");
-        assert_eq!(request.recipe().as_ref(), Path::new("recipe.yml"));
+        assert_eq!(request.plan().as_ref(), Path::new("plan.yml"));
         assert_eq!(request.lock().as_ref(), Path::new("lock.yml"));
-        assert_eq!(request.subdir().as_ref(), Path::new(""));
+        assert_eq!(request.context().as_ref(), Path::new(""));
         assert_eq!(request.location(), None);
     }
 
     #[test]
-    fn accepts_optional_subdir_and_location() {
+    fn accepts_optional_context_and_location() {
         let mut fields = required();
-        fields.push(("subdir", Value::Text("project".into())));
+        fields.push(("context", Value::Text("project".into())));
         fields.push((
             "location",
             Value::Text("https://example.invalid/repo".into()),
         ));
         let request = ApplianceRequest::decode(&encode(&fields)).unwrap();
-        assert_eq!(request.subdir().as_ref(), Path::new("project"));
+        assert_eq!(request.context().as_ref(), Path::new("project"));
         assert_eq!(request.location(), Some("https://example.invalid/repo"));
+    }
+
+    #[test]
+    fn rejects_credentials_without_echoing_the_locator() {
+        for location in [
+            "https://secret@example.invalid/repo",
+            "https://user:secret@example.invalid/repo",
+            "ssh://user:secret@example.invalid/repo",
+        ] {
+            let mut fields = required();
+            fields.push(("location", Value::Text(location.into())));
+            let error = ApplianceRequest::decode(&encode(&fields))
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains("credential-free"));
+            assert!(!error.contains("secret"));
+        }
     }
 
     #[test]
@@ -422,14 +451,14 @@ mod tests {
     #[test]
     fn rejects_escaping_paths_and_trailing_bytes() {
         let mut fields = required();
-        // required() order: v, ok, ref, recipe, lock — index 3 is recipe.
-        fields[3] = ("recipe", Value::Text("../escape".into()));
+        // required() order: v, ok, ref, plan, lock — index 3 is plan.
+        fields[3] = ("plan", Value::Text("../escape".into()));
         assert!(matches!(
             ApplianceRequest::decode(&encode(&fields)),
             Err(ApplianceRequestError::Path(crate::path::PathError::Escape))
         ));
         let mut fields = required();
-        fields[3] = ("recipe", Value::Text("/etc/passwd".into()));
+        fields[3] = ("plan", Value::Text("/etc/passwd".into()));
         assert!(matches!(
             ApplianceRequest::decode(&encode(&fields)),
             Err(ApplianceRequestError::Path(
@@ -437,7 +466,7 @@ mod tests {
             ))
         ));
         let mut fields = required();
-        fields.push(("subdir", Value::Text("../..".into())));
+        fields.push(("context", Value::Text("../..".into())));
         assert!(matches!(
             ApplianceRequest::decode(&encode(&fields)),
             Err(ApplianceRequestError::Path(crate::path::PathError::Escape))
@@ -478,10 +507,10 @@ mod tests {
 
     #[test]
     fn rejects_ok_false_with_host_error() {
-        let error = ApplianceRequest::decode(&host_error("no recipe"))
+        let error = ApplianceRequest::decode(&host_error("no plan"))
             .unwrap_err()
             .to_string();
-        assert!(error.contains("no recipe"), "{error}");
+        assert!(error.contains("no plan"), "{error}");
     }
 
     #[test]
@@ -534,7 +563,7 @@ mod tests {
                 .unwrap()
                 .success()
         );
-        std::fs::write(repo.join("recipe.yml"), "x").unwrap();
+        std::fs::write(repo.join("plan.yml"), "x").unwrap();
         std::fs::write(repo.join("lock.yml"), "y").unwrap();
         assert!(
             Command::new("git")
@@ -585,7 +614,7 @@ mod tests {
     }
 
     #[test]
-    fn location_is_forwarded_as_inventory_provenance() {
+    fn location_is_forwarded_as_build_provenance() {
         let dir = tempfile::TempDir::new().unwrap();
         let repo = dir.path();
         assert!(
@@ -612,7 +641,7 @@ mod tests {
                 .unwrap()
                 .success()
         );
-        std::fs::write(repo.join("recipe.yml"), "x").unwrap();
+        std::fs::write(repo.join("plan.yml"), "x").unwrap();
         std::fs::write(repo.join("lock.yml"), "y").unwrap();
         assert!(
             Command::new("git")
@@ -650,7 +679,7 @@ mod tests {
         assert_eq!(
             build.location(),
             Some("https://example.invalid/repo"),
-            "CBOR location must reach BuildRequest for inventory provenance"
+            "CBOR location must reach BuildRequest for build provenance"
         );
     }
 }

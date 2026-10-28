@@ -23,7 +23,7 @@ use std::{
 use std::{io::IoSlice, mem::MaybeUninit};
 
 /// Trusted helper acknowledged self-placement in a command domain. This is not
-/// sandbox readiness, persisted recovery ownership or permission to run a recipe.
+/// sandbox readiness, persisted recovery ownership or permission to run a plan.
 #[derive(Debug)]
 pub(crate) struct Joined;
 impl private::Sealed for Joined {}

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Assess recipe-command xattr behavior on both bootstrap mounts."""
+"""Assess plan-command xattr behavior on both bootstrap mounts."""
 import argparse
 import json
 from pathlib import Path
-import cbor2
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from artifact import build_manifest
 
 
 class LabelOperationsEvidence:
@@ -17,10 +19,10 @@ class LabelOperationsEvidence:
             'COMMAND_TWO_ROOT_LABEL_WRITE_PASS', 'COMMAND_TWO_ROOT_LABEL_REMOUNT_PASS',
             'DISTRO_BUILD_AND_EXPORT_PASS')}
         checks['exit_zero'] = (self.run / 'status.raw').read_bytes().rstrip(b'\0') == b'DISTRO_BUILD_EXIT 0\n'
-        inventory = cbor2.loads((self.run / 'artifact/inventory.cbor').read_bytes())
-        checks['network_disabled'] = inventory['execution']['network_steps'] == []
-        checks['bootstrap_tool_role'] = inventory['inputs'][0]['roles'] == ['bootstrap-tools']
-        checks['new_output_only'] = len(inventory['outputs']['scutes']) == 1 and inventory['outputs']['scutes'][0]['origin'] == 'produced'
+        manifest = build_manifest(self.run)
+        checks['build_annotations_verified'] = bool(manifest)
+        checks['new_output_only'] = [layer['mediaType'] for layer in manifest['layers']] == [
+            'application/vnd.pichi.scute.v1']
         report = {'checks': checks, 'passed': all(checks.values()),
                   'differential_admission_probe_qualified': False, 'full_sandbox_qualified': False}
         (self.run / 'label-operations-assessment.json').write_text(json.dumps(report, indent=2) + '\n')

@@ -99,7 +99,7 @@ class LifecycleRun:
             (self.root / name).write_text('\n'.join(sorted(files)) + '\n')
         if self.args.case == 'sandbox-blocked-descendant':
             files = {'usr/bin/bash', 'usr/bin/sync'} | self.dependencies(shutil.which('bash')) | self.dependencies(shutil.which('sync'))
-            (self.root / 'recipe-runtime-files').write_text('\n'.join(sorted(files)) + '\n')
+            (self.root / 'plan-runtime-files').write_text('\n'.join(sorted(files)) + '\n')
         mode = '' if self.args.drop is None else f'FORMATTER_DROP={self.args.drop} '
         setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\nmodprobe dm-verity\nmodprobe ext4\n'
                  if self.args.case in ('formatter-failures', 'cache-storage', 'chain-storage') or self.args.case.startswith('sandbox-') else
@@ -249,7 +249,7 @@ exec sleep infinity
         elif self.args.case == 'sandbox-delayed-teardown':
             markers = ['DELAYED_TEARDOWN_CANNOT_RENEW_OBSERVATION_CUTOFF_PASS']
         elif self.args.case == 'sandbox-blocked-descendant':
-            markers = ['RECIPE_DESCENDANT_UNINTERRUPTIBLE_PASS',
+            markers = ['PLAN_DESCENDANT_UNINTERRUPTIBLE_PASS',
                        'SHELL_SUCCESS_BEFORE_BLOCKED_DESCENDANT_CLEANUP_PASS',
                        'BLOCKED_DESCENDANT_TEARDOWN_RETAINS_SUCCESS_AND_STORAGE_PASS']
         elif self.args.case == 'sandbox-blocked-io':

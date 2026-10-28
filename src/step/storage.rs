@@ -7,8 +7,8 @@ use crate::{
     copy::CopyError,
     isolation::{Mapped, UserNamespace},
     network::CommandNetwork,
+    plan::Copy,
     process::{Joined, Supervision},
-    recipe::Copy,
     storage::{BootstrapVolumes, Mounted, Unmounted, Volume},
 };
 use std::{fmt::Debug, io, path::Path, time::Instant};

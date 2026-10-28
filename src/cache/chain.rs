@@ -22,6 +22,7 @@ pub(crate) struct VerifiedScute {
     blob_size: u64,
 }
 impl VerifiedScute {
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn digest(&self) -> &ContentDigest {
         &self.digest
     }

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Offline composition regression, not a bootable distro recipe.
+# Offline composition regression, not a bootable distro plan.
 tasks:
   bootstrap:
     kind: bootstrap
@@ -80,10 +80,10 @@ tasks:
         test ! -e /etc/context-message
         test ! -e /tool-only
         printf 'PIPELINE_FIRMWARE_TOOLS_PASS\n'
-    - copy: {from: firmware, into: /recipe-input-firmware}
+    - copy: {from: firmware, into: /plan-input-firmware}
     - run: |
-        cp -a /recipe-input-firmware/boot.pmi /output.pmi
-        cp -a /recipe-input-firmware/base.dtb /output.dtb
+        cp -a /plan-input-firmware/boot.pmi /output.pmi
+        cp -a /plan-input-firmware/base.dtb /output.dtb
     into:
       pmi: /output.pmi
       dtb: /output.dtb

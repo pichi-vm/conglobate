@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! CLI inputs without execution. Recipe and lock locations have no defaults.
+//! CLI inputs without execution. Plan and lock locations have no defaults.
 use crate::{
     isolation::{IdMappings, IdRange},
     path::{ContextDirectory, ContextPath, PathError},
@@ -48,7 +48,7 @@ struct BuildArguments {
     #[arg(long, default_value = ".")]
     context: PathBuf,
     #[arg(long)]
-    recipe: PathBuf,
+    plan: PathBuf,
     #[arg(long)]
     lock: PathBuf,
     #[arg(long)]
@@ -82,13 +82,13 @@ pub(crate) struct BuildRequest {
     repository: PathBuf,
     commit: CommitIdentity,
     context: ContextDirectory,
-    recipe: ContextPath,
+    plan: ContextPath,
     lock: ContextPath,
     cache: PathBuf,
     output: PathBuf,
     resolv_conf: Option<PathBuf>,
     network_namespace: Option<PathBuf>,
-    /// Optional provenance locator for inventory (e.g. appliance CBOR `location`).
+    /// Optional provenance locator for build annotations (e.g. appliance CBOR `location`).
     /// Not used as Git identity; mount/path opens still use `repository`.
     location: Option<String>,
 }
@@ -119,7 +119,7 @@ impl BuildRequest {
         repository: PathBuf,
         commit: CommitIdentity,
         context: ContextDirectory,
-        recipe: ContextPath,
+        plan: ContextPath,
         lock: ContextPath,
         cache: PathBuf,
         output: PathBuf,
@@ -131,7 +131,7 @@ impl BuildRequest {
             repository,
             commit,
             context,
-            recipe,
+            plan,
             lock,
             cache,
             output,
@@ -141,7 +141,7 @@ impl BuildRequest {
         }
     }
 
-    /// Record an optional inventory provenance locator without changing Git opens.
+    /// Record an optional build provenance locator without changing Git opens.
     pub(crate) fn with_location(mut self, location: Option<String>) -> Self {
         self.location = location;
         self
@@ -154,7 +154,7 @@ impl BuildRequest {
             raw.repository,
             CommitIdentity::try_from(raw.commit.as_str())?,
             ContextDirectory::try_from(raw.context.as_path())?,
-            ContextPath::try_from(raw.recipe.as_path())?,
+            ContextPath::try_from(raw.plan.as_path())?,
             ContextPath::try_from(raw.lock.as_path())?,
             raw.cache,
             raw.output,
@@ -198,8 +198,8 @@ impl BuildRequest {
     pub(crate) fn context(&self) -> &ContextDirectory {
         &self.context
     }
-    pub(crate) fn recipe(&self) -> &ContextPath {
-        &self.recipe
+    pub(crate) fn plan(&self) -> &ContextPath {
+        &self.plan
     }
     pub(crate) fn lock(&self) -> &ContextPath {
         &self.lock
@@ -216,7 +216,7 @@ impl BuildRequest {
     pub(crate) fn resolv_conf(&self) -> Option<&Path> {
         self.resolv_conf.as_deref()
     }
-    /// Inventory provenance locator when supplied (appliance CBOR `location`).
+    /// Build provenance locator when supplied (appliance CBOR `location`).
     pub(crate) fn location(&self) -> Option<&str> {
         self.location.as_deref()
     }

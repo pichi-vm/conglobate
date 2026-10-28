@@ -236,7 +236,7 @@ mod tests {
                 blobs.push((digest, bytes));
                 parent = root;
             }
-            let _derived_tip = parent; // inventory/boot derive tip; not an OCI stamp
+            let _derived_tip = parent; // boot derives tip; not an OCI stamp
             // Identity verification is distinct from firmware format validation.
             for (media, bytes) in [("pmi", b"firmware".as_slice()), ("dtb", b"tree".as_slice())] {
                 let digest = Digest::from_bytes_sha256(bytes);

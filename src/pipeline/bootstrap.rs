@@ -6,8 +6,8 @@ use crate::{
     execution::HelperProgram,
     formatter::{Ext4Format, selection},
     input::ResolvedBuild,
+    plan::Bootstrap,
     process::ChildReaper,
-    recipe::Bootstrap,
     step::{CommandSandbox, SetupBudget},
     storage::{BootstrapVolumes, Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
 };
@@ -18,14 +18,14 @@ use std::{num::NonZeroU64, sync::Arc};
 pub(super) struct BootstrapBuild<'a> {
     build: &'a ResolvedBuild,
     stage: &'a Bootstrap,
-    directives: &'a [crate::recipe::Directive],
+    directives: &'a [crate::plan::Directive],
     artifacts: &'a super::artifacts::Artifacts<'a>,
 }
 impl<'a> BootstrapBuild<'a> {
     pub(super) fn new(
         build: &'a ResolvedBuild,
         stage: &'a Bootstrap,
-        directives: &'a [crate::recipe::Directive],
+        directives: &'a [crate::plan::Directive],
         artifacts: &'a super::artifacts::Artifacts<'a>,
     ) -> Self {
         Self {
@@ -75,7 +75,7 @@ impl<'a> BootstrapBuild<'a> {
         let formatted = self
             .format(formatter, output)
             .context("format bootstrap filesystem")?;
-        let (formatter, output, receipt) = formatted.into_recorded_parts();
+        let (formatter, output) = formatted.into_parts();
         formatter.close()?;
         let tool = Mapping::<Created>::create()?.snapshot(
             &active,
@@ -120,11 +120,7 @@ impl<'a> BootstrapBuild<'a> {
         );
         active.close()?;
         origin.close()?;
-        Ok(Bootstrapped {
-            scute,
-            receipt,
-            reaper,
-        })
+        Ok(Bootstrapped { scute, reaper })
     }
     fn format<'o, 'w>(
         &self,
@@ -148,5 +144,4 @@ impl<'a> BootstrapBuild<'a> {
 pub(super) struct Bootstrapped<'w> {
     pub(super) reaper: ChildReaper,
     pub(super) scute: Arc<crate::storage::SealedScute<'w>>,
-    pub(super) receipt: crate::formatter::FormatReceipt,
 }

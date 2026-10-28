@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 
 Bootstrap CI builds this image with mkosi from Fedora 43 packages and, on
 `main`, publishes it to GHCR. Self-host via `pichi build` is later.
-`conglobate.recipe.yaml` is only that skeleton; it is not the bootstrap
+`conglobate.plan.yaml` is only that skeleton; it is not the bootstrap
 builder.
 
 ## Registry
@@ -62,7 +62,7 @@ parameters and per-scute salt/data-blocks annotations stay.
 
 This docs-only lock precedes the code change. The current engine still emits
 the legacy inventory and uses legacy field names. The skeleton filename
-`conglobate.recipe.yaml` also stays until the implementation rename.
+`conglobate.plan.yaml` also stays until the implementation rename.
 
 ## Dual-write output
 
@@ -91,7 +91,7 @@ scute salt hex.
 | `build.sh` | Corium initramfs, `pichi import`, local tag `conglobate:0.2.0` |
 | `config.json` | Launch requirements (2 GiB required, 4 GiB recommended) |
 | `units/` | Installed into the rootfs and enabled |
-| `conglobate.recipe.yaml` | Self-host later, not used by bootstrap CI |
+| `conglobate.plan.yaml` | Self-host later, not used by bootstrap CI |
 | `check-stub.sh` | Static contract check (no VM) |
 
 `image/build.sh` writes `image/.build/` and a temporary `image/mkosi.extra/`.

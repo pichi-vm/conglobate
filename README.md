@@ -76,13 +76,10 @@ salt/data-blocks annotations stay. Keep transitional `build.yaml` dual-write
 until [Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24), after
 Pichi OCI import. Later attestation binds the image digest and TEE/builder.
 
-This is a docs-first contract. The follow-up code tip will implement annotation
-emission, remove inventory code/tests, and rename user-facing fields and flags.
-The existing library still exposes `conglobate::recipe` (`Recipe`, `Task`,
-`Reference`, `Filesystem`, `Lock`); `recipe_io` retains legacy host types and
-transitional `BuildOutput`. Rust modules/types and fixture filenames keep their
-current names here. The existing `src/plan.rs` engine module needs a separate
-name decision before the code rename.
+Build publication stamps these annotations from the resolved committed input.
+The library exposes `conglobate::plan` (`Plan`, `Task`, `Reference`,
+`Filesystem`, `Lock`); `plan_io` carries host types and transitional
+`BuildOutput`. The engine dependency module is `src/graph.rs`.
 
 ## Build and rootless checks
 

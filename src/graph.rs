@@ -4,12 +4,11 @@
 use crate::{
     image::{ImageReference, IndexDigest},
     lock::{ImageLock, LockError},
-    recipe::{Directive, Recipe, Reference, TaskKind},
+    plan::{Directive, Plan, Reference, TaskKind},
 };
 use std::collections::{BTreeMap, BTreeSet};
 
-// Inventory v3 retains its fixed-stage vocabulary until a separately versioned
-// task inventory schema is designed. These are input-use roles, not ancestry.
+// Input-use roles describe verification needs, not output ancestry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum Stage {
     Bootstrap,
@@ -28,9 +27,11 @@ pub(crate) struct StepId {
     index: usize,
 }
 impl StepId {
+    #[cfg(test)]
     pub(crate) fn stage(self) -> Stage {
         self.stage
     }
+    #[cfg(test)]
     pub(crate) fn index(self) -> usize {
         self.index
     }
@@ -49,6 +50,7 @@ impl LockedInput {
     pub(crate) fn index(&self) -> IndexDigest {
         self.index
     }
+    #[cfg(test)]
     pub(crate) fn roles(&self) -> &BTreeSet<InputRole> {
         &self.roles
     }
@@ -57,21 +59,20 @@ impl LockedInput {
     }
 }
 #[derive(Debug)]
-pub(crate) struct BuildPlan {
-    recipe: Recipe,
+pub(crate) struct BuildGraph {
+    plan: Plan,
     inputs: Vec<LockedInput>,
     network_steps: Vec<StepId>,
 }
-impl BuildPlan {
-    pub(crate) fn new(recipe: Recipe, lock: &ImageLock) -> Result<Self, LockError> {
+impl BuildGraph {
+    pub(crate) fn new(plan: Plan, lock: &ImageLock) -> Result<Self, LockError> {
         let mut inputs = BTreeMap::new();
         let mut network_steps = Vec::new();
-        // Cumulative directive indices per v3 role preserve ordering and avoid
-        // duplicate identities across multiple tasks of the same kind. They
-        // cannot identify task names; the exact recipe digest still binds them.
+        // Group network directives by stage while preserving their order across
+        // tasks of the same kind. Only the selected task closure is visited.
         let mut offsets = BTreeMap::<Stage, usize>::new();
-        for name in recipe.order() {
-            let task = &recipe.tasks()[name];
+        for name in plan.order() {
+            let task = &plan.tasks()[name];
             let (stage, role) = match task.kind() {
                 TaskKind::Bootstrap(_) => (Stage::Bootstrap, InputRole::BootstrapTools),
                 TaskKind::Extend => (Stage::Carapace, InputRole::CarapaceBase),
@@ -100,19 +101,19 @@ impl BuildPlan {
         }
         network_steps.sort_by_key(|s| (s.stage, s.index));
         Ok(Self {
-            recipe,
+            plan,
             inputs: inputs.into_values().collect(),
             network_steps,
         })
     }
     pub(crate) fn execution_required(&self) -> bool {
-        self.recipe.order().iter().any(|name| {
-            let task = &self.recipe.tasks()[name];
+        self.plan.order().iter().any(|name| {
+            let task = &self.plan.tasks()[name];
             !matches!(task.kind(), TaskKind::Extend) || !task.directives().is_empty()
         })
     }
-    pub(crate) fn recipe(&self) -> &Recipe {
-        &self.recipe
+    pub(crate) fn plan(&self) -> &Plan {
+        &self.plan
     }
     pub(crate) fn inputs(&self) -> &[LockedInput] {
         &self.inputs

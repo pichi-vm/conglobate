@@ -4,8 +4,8 @@
 use crate::{
     execution::HelperProgram,
     input::ResolvedBuild,
+    plan::Task,
     process::ChildReaper,
-    recipe::Task,
     step::{CommandSandbox, SetupBudget},
     storage::{Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
 };
@@ -95,7 +95,7 @@ impl<'s, 'w> BuildTools<'s, 'w> {
         // Custom boot is captured byte-for-byte. Automatic binding is performed
         // when extend or final image assembly selects a carapace.
         let firmware = pair
-            .map(|p| p.finalize(&crate::recipe::TransformSelection::Authored(vec![]), None))
+            .map(|p| p.finalize(&crate::plan::TransformSelection::Authored(vec![]), None))
             .transpose()?;
         Ok(BuiltArtifacts { firmware, reaper })
     }

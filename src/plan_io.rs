@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! The `pichi.build` recipe I/O types shared with the host — parse and
+//! The `pichi.build` plan I/O types shared with the host — parse and
 //! validate for `carapace.yaml`, `pmi.yaml` and `refs.lock` (BUILD.md §2.1,
 //! §2.2, §2.4), plus the build VM's `output/build.yaml` manifest.
 //!
@@ -11,7 +11,7 @@
 //! job and stay private to the binary — this module is the half the host
 //! (`pichi build` / `pichi update`) links against.
 //!
-//! The engine keeps its own, richer recipe and lock models; this is the
+//! The engine keeps its own, richer plan and lock models; this is the
 //! portable contract between the two sides, held stable for downstream
 //! consumers.
 
@@ -20,13 +20,13 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-/// Recipe parse / validation failures.
+/// Plan parse / validation failures.
 #[derive(Debug, Error)]
-pub enum RecipeError {
+pub enum PlanError {
     #[error("parse: {0}")]
     Parse(#[from] serde_yaml::Error),
 
-    #[error("invalid recipe: {0}")]
+    #[error("invalid plan: {0}")]
     Invalid(String),
 }
 
@@ -34,7 +34,7 @@ pub enum RecipeError {
 /// registry reference (BUILD.md §2.1).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct CarapaceRecipe {
+pub struct CarapacePlan {
     /// Exactly one registry reference to derive from (v1: no
     /// `raw:`/`tarball:`/`oci:` — run `pichi import` first).
     pub from: String,
@@ -49,7 +49,7 @@ pub struct CarapaceRecipe {
 /// materialized as scutes.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct PmiRecipe {
+pub struct PmiPlan {
     /// Omit to build against the carapace produced by `carapace.yaml`
     /// (the common case). Required when there is no `carapace.yaml`, or
     /// to build against a different carapace.
@@ -181,7 +181,7 @@ impl FromSpec {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct RefsLock {
-    /// Reference (exactly as written in a recipe) → its pins.
+    /// Reference (exactly as written in a plan) → its pins.
     pub entries: BTreeMap<String, LockEntry>,
 }
 
@@ -227,52 +227,50 @@ pub struct ScuteOut {
 
 impl BuildOutput {
     /// Parse `output/build.yaml`.
-    pub fn parse(yaml: &str) -> Result<Self, RecipeError> {
+    pub fn parse(yaml: &str) -> Result<Self, PlanError> {
         let out: Self = serde_yaml::from_str(yaml)?;
         Ok(out)
     }
 
     /// Serialize to YAML (what conglobate writes).
-    pub fn to_yaml(&self) -> Result<String, RecipeError> {
+    pub fn to_yaml(&self) -> Result<String, PlanError> {
         Ok(serde_yaml::to_string(self)?)
     }
 }
 
-impl CarapaceRecipe {
+impl CarapacePlan {
     /// Parse and validate a `carapace.yaml` document.
-    pub fn parse(yaml: &str) -> Result<Self, RecipeError> {
-        let recipe: Self = serde_yaml::from_str(yaml)?;
-        recipe.validate()?;
-        Ok(recipe)
+    pub fn parse(yaml: &str) -> Result<Self, PlanError> {
+        let plan: Self = serde_yaml::from_str(yaml)?;
+        plan.validate()?;
+        Ok(plan)
     }
 
     /// Structural checks beyond serde's shape enforcement.
-    fn validate(&self) -> Result<(), RecipeError> {
+    fn validate(&self) -> Result<(), PlanError> {
         if self.from.trim().is_empty() {
-            return Err(RecipeError::Invalid(
-                "carapace.yaml: `from` is empty".into(),
-            ));
+            return Err(PlanError::Invalid("carapace.yaml: `from` is empty".into()));
         }
         validate_directives(&self.derive)
     }
 }
 
-impl PmiRecipe {
+impl PmiPlan {
     /// Parse and validate a `pmi.yaml` document.
-    pub fn parse(yaml: &str) -> Result<Self, RecipeError> {
-        let recipe: Self = serde_yaml::from_str(yaml)?;
-        recipe.validate()?;
-        Ok(recipe)
+    pub fn parse(yaml: &str) -> Result<Self, PlanError> {
+        let plan: Self = serde_yaml::from_str(yaml)?;
+        plan.validate()?;
+        Ok(plan)
     }
 
-    fn validate(&self) -> Result<(), RecipeError> {
+    fn validate(&self) -> Result<(), PlanError> {
         if self.into.trim().is_empty() {
-            return Err(RecipeError::Invalid("pmi.yaml: `into` is empty".into()));
+            return Err(PlanError::Invalid("pmi.yaml: `into` is empty".into()));
         }
         if let Some(from) = &self.from
             && from.trim().is_empty()
         {
-            return Err(RecipeError::Invalid(
+            return Err(PlanError::Invalid(
                 "pmi.yaml: `from` is present but empty (omit it to build against carapace.yaml)"
                     .into(),
             ));
@@ -284,7 +282,7 @@ impl PmiRecipe {
 impl RefsLock {
     /// Parse a `refs.lock` document. An empty document is a valid empty
     /// lock (a project with no carapace references).
-    pub fn parse(yaml: &str) -> Result<Self, RecipeError> {
+    pub fn parse(yaml: &str) -> Result<Self, PlanError> {
         if yaml.trim().is_empty() {
             return Ok(Self::default());
         }
@@ -295,7 +293,7 @@ impl RefsLock {
         Ok(lock)
     }
 
-    /// Look up the pins for a reference exactly as written in a recipe.
+    /// Look up the pins for a reference exactly as written in a plan.
     pub fn get(&self, reference: &str) -> Option<&LockEntry> {
         self.entries.get(reference)
     }
@@ -303,16 +301,16 @@ impl RefsLock {
     /// Serialize to YAML (the body of `refs.lock`, sans the generated-file
     /// header `pichi update` prepends). Keys are emitted in sorted order
     /// (`BTreeMap`) for a stable, diff-friendly file.
-    pub fn to_yaml(&self) -> Result<String, RecipeError> {
+    pub fn to_yaml(&self) -> Result<String, PlanError> {
         Ok(serde_yaml::to_string(self)?)
     }
 }
 
 impl LockEntry {
-    fn validate(&self, reference: &str) -> Result<(), RecipeError> {
+    fn validate(&self, reference: &str) -> Result<(), PlanError> {
         for (field, value) in [("manifest", &self.manifest), ("carapace", &self.carapace)] {
             if !value.starts_with("sha256:") || value.len() <= "sha256:".len() {
-                return Err(RecipeError::Invalid(format!(
+                return Err(PlanError::Invalid(format!(
                     "refs.lock: {reference}: `{field}` is not a sha256 digest: {value:?}"
                 )));
             }
@@ -324,13 +322,13 @@ impl LockEntry {
 /// `mode` is a build error when `from` is a list (BUILD.md §2.1). The
 /// single-path-resolving-to-a-directory case is a guest-side runtime
 /// check (it needs the filesystem) and is not enforced here.
-fn validate_directives(derive: &[Directive]) -> Result<(), RecipeError> {
+fn validate_directives(derive: &[Directive]) -> Result<(), PlanError> {
     for d in derive {
         if let Directive::Copy(c) = d
             && c.mode.is_some()
             && c.from.is_list()
         {
-            return Err(RecipeError::Invalid(format!(
+            return Err(PlanError::Invalid(format!(
                 "copy into {:?}: `mode` is not allowed when `from` is a list of paths",
                 c.into
             )));
@@ -344,7 +342,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_full_carapace_recipe() {
+    fn parses_full_carapace_plan() {
         let yaml = r#"
 from: registry.example.com/base/fedora:43
 derive:
@@ -356,7 +354,7 @@ derive:
       group: appuser
       mode: "0755"
 "#;
-        let r = CarapaceRecipe::parse(yaml).unwrap();
+        let r = CarapacePlan::parse(yaml).unwrap();
         assert_eq!(r.from, "registry.example.com/base/fedora:43");
         assert_eq!(r.derive.len(), 2);
         match &r.derive[0] {
@@ -379,8 +377,8 @@ derive:
     }
 
     #[test]
-    fn carapace_recipe_derive_is_optional() {
-        let r = CarapaceRecipe::parse("from: reg/base:1").unwrap();
+    fn carapace_plan_derive_is_optional() {
+        let r = CarapacePlan::parse("from: reg/base:1").unwrap();
         assert!(r.derive.is_empty());
     }
 
@@ -393,7 +391,7 @@ derive:
       from: [pichi.build/config.yaml, pichi.build/refs.lock]
       into: /usr/lib/corium/
 ";
-        let r = CarapaceRecipe::parse(yaml).unwrap();
+        let r = CarapacePlan::parse(yaml).unwrap();
         match &r.derive[0] {
             Directive::Copy(c) => match &c.from {
                 FromSpec::Many(v) => assert_eq!(v.len(), 2),
@@ -410,7 +408,7 @@ derive:
                     \x20 - run: dnf install -y kernel\n\
                     \x20   network: true\n\
                     \x20 - run: make\n";
-        let r = CarapaceRecipe::parse(yaml).unwrap();
+        let r = CarapacePlan::parse(yaml).unwrap();
         match &r.derive[0] {
             Directive::Run { command, network } => {
                 assert_eq!(command, "dnf install -y kernel");
@@ -432,8 +430,8 @@ derive:
                     \x20     from: a\n\
                     \x20     into: /b\n\
                     \x20   network: true\n";
-        let err = CarapaceRecipe::parse(yaml).unwrap_err();
-        assert!(matches!(err, RecipeError::Parse(_)), "{err:?}");
+        let err = CarapacePlan::parse(yaml).unwrap_err();
+        assert!(matches!(err, PlanError::Parse(_)), "{err:?}");
     }
 
     #[test]
@@ -444,14 +442,14 @@ derive:
                     \x20   copy:\n\
                     \x20     from: a\n\
                     \x20     into: /b\n";
-        let err = CarapaceRecipe::parse(yaml).unwrap_err();
-        assert!(matches!(err, RecipeError::Parse(_)), "{err:?}");
+        let err = CarapacePlan::parse(yaml).unwrap_err();
+        assert!(matches!(err, PlanError::Parse(_)), "{err:?}");
     }
 
     #[test]
     fn directive_with_neither_run_nor_copy_is_rejected() {
-        let err = CarapaceRecipe::parse("from: reg/base:1\nderive:\n  - {}\n").unwrap_err();
-        assert!(matches!(err, RecipeError::Parse(_)), "{err:?}");
+        let err = CarapacePlan::parse("from: reg/base:1\nderive:\n  - {}\n").unwrap_err();
+        assert!(matches!(err, PlanError::Parse(_)), "{err:?}");
     }
 
     #[test]
@@ -464,24 +462,24 @@ derive:
       into: /dst/
       mode: "0644"
 "#;
-        let err = CarapaceRecipe::parse(yaml).unwrap_err();
-        assert!(matches!(err, RecipeError::Invalid(_)), "{err:?}");
+        let err = CarapacePlan::parse(yaml).unwrap_err();
+        assert!(matches!(err, PlanError::Invalid(_)), "{err:?}");
     }
 
     #[test]
     fn empty_from_is_rejected() {
-        let err = CarapaceRecipe::parse("from: \"\"").unwrap_err();
-        assert!(matches!(err, RecipeError::Invalid(_)), "{err:?}");
+        let err = CarapacePlan::parse("from: \"\"").unwrap_err();
+        assert!(matches!(err, PlanError::Invalid(_)), "{err:?}");
     }
 
     #[test]
     fn unknown_field_is_rejected() {
-        let err = CarapaceRecipe::parse("from: reg/base:1\nbogus: 1").unwrap_err();
-        assert!(matches!(err, RecipeError::Parse(_)), "{err:?}");
+        let err = CarapacePlan::parse("from: reg/base:1\nbogus: 1").unwrap_err();
+        assert!(matches!(err, PlanError::Parse(_)), "{err:?}");
     }
 
     #[test]
-    fn parses_full_pmi_recipe() {
+    fn parses_full_pmi_plan() {
         let yaml = r"
 from: registry.example.com/base/kernel-builder:latest
 derive:
@@ -493,7 +491,7 @@ derive:
   - run: arma build --kernel /boot/vmlinuz-* --initramfs /tmp/initramfs.img -o /tmp/boot.pmi
 into: /tmp/boot.pmi
 ";
-        let r = PmiRecipe::parse(yaml).unwrap();
+        let r = PmiPlan::parse(yaml).unwrap();
         assert_eq!(
             r.from.as_deref(),
             Some("registry.example.com/base/kernel-builder:latest")
@@ -503,22 +501,22 @@ into: /tmp/boot.pmi
     }
 
     #[test]
-    fn pmi_recipe_from_is_optional() {
-        let r = PmiRecipe::parse("into: /tmp/x.pmi").unwrap();
+    fn pmi_plan_from_is_optional() {
+        let r = PmiPlan::parse("into: /tmp/x.pmi").unwrap();
         assert!(r.from.is_none());
         assert!(r.derive.is_empty());
     }
 
     #[test]
-    fn pmi_recipe_requires_into() {
-        let err = PmiRecipe::parse("from: reg/b:1").unwrap_err();
-        assert!(matches!(err, RecipeError::Parse(_)), "{err:?}");
+    fn pmi_plan_requires_into() {
+        let err = PmiPlan::parse("from: reg/b:1").unwrap_err();
+        assert!(matches!(err, PlanError::Parse(_)), "{err:?}");
     }
 
     #[test]
-    fn pmi_recipe_rejects_present_but_empty_from() {
-        let err = PmiRecipe::parse("from: \"\"\ninto: /tmp/x.pmi\n").unwrap_err();
-        assert!(matches!(err, RecipeError::Invalid(_)), "{err:?}");
+    fn pmi_plan_rejects_present_but_empty_from() {
+        let err = PmiPlan::parse("from: \"\"\ninto: /tmp/x.pmi\n").unwrap_err();
+        assert!(matches!(err, PlanError::Invalid(_)), "{err:?}");
     }
 
     #[test]
@@ -545,14 +543,14 @@ registry.example.com/models/llama:7b:
     fn refs_lock_rejects_non_sha256_digest() {
         let yaml = "reg/x:1:\n  manifest: deadbeef\n  carapace: sha256:aa\n";
         let err = RefsLock::parse(yaml).unwrap_err();
-        assert!(matches!(err, RecipeError::Invalid(_)), "{err:?}");
+        assert!(matches!(err, PlanError::Invalid(_)), "{err:?}");
     }
 
     #[test]
     fn refs_lock_rejects_bare_sha256_prefix() {
         let yaml = "reg/x:1:\n  manifest: \"sha256:\"\n  carapace: sha256:aa\n";
         let err = RefsLock::parse(yaml).unwrap_err();
-        assert!(matches!(err, RecipeError::Invalid(_)), "{err:?}");
+        assert!(matches!(err, PlanError::Invalid(_)), "{err:?}");
     }
 
     #[test]
@@ -618,6 +616,6 @@ registry.example.com/models/llama:7b:
     #[test]
     fn build_output_rejects_unknown_field() {
         let err = BuildOutput::parse("scutes: []\nbogus: 1\n").unwrap_err();
-        assert!(matches!(err, RecipeError::Parse(_)), "{err:?}");
+        assert!(matches!(err, PlanError::Parse(_)), "{err:?}");
     }
 }

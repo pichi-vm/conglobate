@@ -3,7 +3,7 @@
 
 //! Private `/bin/sh` for a writable root that does not have one.
 //!
-//! Carapace `run` pivots into the image and execs `/bin/sh`. The context-recipe
+//! Carapace `run` pivots into the image and execs `/bin/sh`. The context-plan
 //! smoke's source carapace is a tiny ext4 (`os-release` only), so that exec
 //! cannot succeed even after `/dev`, `/proc`, and `/sys` exist. When `bin/sh`
 //! is already a regular file this module does nothing. Otherwise it mounts a
@@ -535,14 +535,14 @@ mod tests {
     }
 
     #[test]
-    fn private_shell_runs_the_context_recipe_script() {
+    fn private_shell_runs_the_context_plan_script() {
         if std::env::var("CONGLOBATE_SHELL_PROBE").as_deref()
-            == Ok("private_shell_runs_the_context_recipe_script")
+            == Ok("private_shell_runs_the_context_plan_script")
         {
             run_minimal_shell();
             return;
         }
-        unshare_probe("private_shell_runs_the_context_recipe_script");
+        unshare_probe("private_shell_runs_the_context_plan_script");
     }
 
     #[test]
@@ -690,7 +690,7 @@ mod tests {
             .env("LANG", "C.UTF-8")
             .status()
             .unwrap();
-        assert!(status.success(), "context recipe script failed: {status}");
+        assert!(status.success(), "context plan script failed: {status}");
     }
 
     fn assert_layer_has_only_empty_mount_points(root: &Path) {
