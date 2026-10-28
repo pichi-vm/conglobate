@@ -32,14 +32,6 @@ const CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE: &str = "dev.pichi.carapace.verity
 const CHAIN_ANNOTATION_VERITY_VERSION: &str = "dev.pichi.carapace.verity.version";
 const CHAIN_ANNOTATION_VERITY_HASH_TYPE: &str = "dev.pichi.carapace.verity.hash-type";
 
-/// The carapace trust anchor `rootₙ₋₁`: the hex-encoded dm-verity root of the
-/// carapace's top scute (BUILD.md §7.1). MANDATORY on any manifest that carries
-/// scute layers. It is a *verify-against* value, never trusted blindly: pull /
-/// load recompute the root from the (undistributed) scute cows and reject a
-/// mismatch; the authoritative anchor remains the one measured inside the PMI's
-/// boot manifest at launch.
-pub const CHAIN_ANNOTATION_VERITY_HASH: &str = "dev.pichi.carapace.verity.hash";
-
 /// Canonical SHA-256 digest of `{}` (the OCI 1.1 empty config blob).
 const EMPTY_CONFIG_DIGEST: &str =
     "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a";
@@ -53,8 +45,8 @@ const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 /// - `config` MUST be the OCI 1.1 empty-config descriptor with inline `data: "e30="`.
 /// - Layer order is NOT load-bearing (D-03); writers MAY emit in any order.
 /// - At most ONE [`Layer::Pmi`] (D-03 — zero pmi = base/non-bootable, one pmi = appliance/bootable).
-/// - Top-level annotations MUST include the three `dev.pichi.carapace.verity.*` keys
-///   (D-06 / D-07 rule 3).
+/// - Top-level annotations MUST include the carapace verity *param* keys
+///   (D-06 / D-07 rule 3) when scute layers exist. Tip hash is not used.
 /// - Every scute layer MUST carry a `dev.pichi.scute.verity.salt` annotation
 ///   parseable as hex (D-05 / D-07 rule 4-5).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -348,14 +340,15 @@ pub enum ManifestValidationError {
     #[error("invalid data-block count for scute {0}")]
     BadScuteBlocks(String),
 
-    /// The carapace verity-root annotation is present but not a 32-byte hex
-    /// string (BUILD.md §7.1). Presence-when-scutes is enforced separately via
-    /// [`ManifestValidationError::MissingChainAnnotation`].
-    #[error("carapace verity root annotation is not 32-byte hex: {0}")]
-    BadVerityRoot(String),
     /// More than one base DTB layer (BUILD.md §7.1 — at most one).
     #[error("artifact has more than one base DTB layer (got {0}); at most one is permitted")]
     MultipleDtb(usize),
+    /// A helper rejected zstd-compressed scute layers (decompressed-COW deferred).
+    #[error("artifact has zstd-compressed scute layers; decompressed-COW handling is deferred")]
+    CompressedScuteUnsupported,
+    /// A bootable partition helper found no PMI layer.
+    #[error("artifact is not bootable (no PMI layer); usable as a from: source only")]
+    MissingPmi,
 }
 
 impl Manifest {
@@ -406,14 +399,52 @@ impl Manifest {
             .any(|l| matches!(l, Layer::Scute(_) | Layer::ScuteZstd(_)))
     }
 
-    /// The declared carapace trust anchor `rootₙ₋₁` (the
-    /// [`CHAIN_ANNOTATION_VERITY_HASH`] annotation), decoded to 32 bytes.
-    /// `None` if absent or not a 32-byte hex string. This is the *declared*
-    /// value; callers that need trust MUST recompute and compare (pull / load).
-    pub fn carapace_verity_hash(&self) -> Option<[u8; 32]> {
-        let hex_str = self.annotations.get(CHAIN_ANNOTATION_VERITY_HASH)?;
-        let bytes = hex::decode(hex_str).ok()?;
-        <[u8; 32]>::try_from(bytes.as_slice()).ok()
+    /// The single base DTB layer, if present.
+    pub fn dtb_layer(&self) -> Option<&DtbDescriptor> {
+        self.layers.iter().find_map(|layer| match layer {
+            Layer::Dtb(descriptor) => Some(descriptor),
+            _ => None,
+        })
+    }
+
+    /// Partition layers into the PMI descriptor and ordered scute list.
+    ///
+    /// Fails when the artifact has no PMI (not bootable) or carries zstd
+    /// scutes (decompressed-COW handling is deferred). DTB layers are ignored.
+    pub fn partition_layers(
+        &self,
+    ) -> Result<(&PmiDescriptor, Vec<&ScuteDescriptor>), ManifestValidationError> {
+        let mut pmi: Option<&PmiDescriptor> = None;
+        let mut scutes = Vec::new();
+        for layer in &self.layers {
+            match layer {
+                Layer::Pmi(descriptor) => pmi = Some(descriptor),
+                Layer::Scute(descriptor) => scutes.push(descriptor),
+                Layer::Dtb(_) => {}
+                Layer::ScuteZstd(_) => {
+                    return Err(ManifestValidationError::CompressedScuteUnsupported);
+                }
+            }
+        }
+        let pmi = pmi.ok_or(ManifestValidationError::MissingPmi)?;
+        Ok((pmi, scutes))
+    }
+
+    /// Collect uncompressed scute layers (build `from:` sources).
+    ///
+    /// Fails when any zstd scute is present (decompressed-COW deferred).
+    pub fn scute_layers(&self) -> Result<Vec<&ScuteDescriptor>, ManifestValidationError> {
+        let mut scutes = Vec::new();
+        for layer in &self.layers {
+            match layer {
+                Layer::Scute(descriptor) => scutes.push(descriptor),
+                Layer::Pmi(_) | Layer::Dtb(_) => {}
+                Layer::ScuteZstd(_) => {
+                    return Err(ManifestValidationError::CompressedScuteUnsupported);
+                }
+            }
+        }
+        Ok(scutes)
     }
 
     /// Validate per D-07. See [`ManifestValidationError`] for the rule set.
@@ -470,19 +501,6 @@ impl Manifest {
                         value: v.clone(),
                     });
                 }
-            }
-            // The verity root anchor MUST be present and 32-byte hex; pull /
-            // load recompute and compare it (here we check presence + shape).
-            match self.annotations.get(CHAIN_ANNOTATION_VERITY_HASH) {
-                None => {
-                    return Err(ManifestValidationError::MissingChainAnnotation(
-                        CHAIN_ANNOTATION_VERITY_HASH,
-                    ));
-                }
-                Some(root) if hex::decode(root).map(|b| b.len()) != Ok(32) => {
-                    return Err(ManifestValidationError::BadVerityRoot(root.clone()));
-                }
-                Some(_) => {}
             }
         }
         // Rule 5 (out of order — bail early on count): at most one PMI
@@ -608,7 +626,6 @@ mod tests {
         );
         a.insert(CHAIN_ANNOTATION_VERITY_VERSION.into(), "1".into());
         a.insert(CHAIN_ANNOTATION_VERITY_HASH_TYPE.into(), "1".into());
-        a.insert(CHAIN_ANNOTATION_VERITY_HASH.into(), "ab".repeat(32));
         a.insert(
             "org.opencontainers.image.created".into(),
             "2026-05-06T14:32:00Z".into(),
@@ -807,25 +824,12 @@ mod tests {
     }
 
     #[test]
-    fn validate_rejects_missing_verity_root_when_scutes_present() {
-        let mut m = sample_base_manifest();
-        m.annotations.remove(CHAIN_ANNOTATION_VERITY_HASH);
-        let err = m.validate().unwrap_err();
-        assert!(
-            matches!(err, ManifestValidationError::MissingChainAnnotation(k) if k == CHAIN_ANNOTATION_VERITY_HASH),
-            "{err:?}"
-        );
-    }
-
-    #[test]
-    fn validate_rejects_malformed_verity_root() {
+    fn validate_ignores_stale_tip_hash_annotation() {
+        // Tip hash is not read: a present stale label must not affect validate.
         let mut m = sample_base_manifest();
         m.annotations
-            .insert(CHAIN_ANNOTATION_VERITY_HASH.into(), "deadbeef".into()); // 4 bytes, not 32
-        assert!(matches!(
-            m.validate().unwrap_err(),
-            ManifestValidationError::BadVerityRoot(_)
-        ));
+            .insert("dev.pichi.carapace.verity.hash".into(), "deadbeef".into());
+        m.validate().unwrap();
     }
 
     #[test]
@@ -863,15 +867,9 @@ mod tests {
     }
 
     #[test]
-    fn carapace_verity_hash_decodes_annotation() {
-        let m = sample_base_manifest();
-        assert_eq!(m.carapace_verity_hash(), Some([0xabu8; 32]));
-    }
-
-    #[test]
-    fn validate_accepts_scuteless_manifest_without_verity_root() {
-        // A PMI-only (scute-less) manifest has no carapace, so the root anchor
-        // is not required.
+    fn validate_accepts_scuteless_manifest_without_chain_annotations() {
+        // A PMI-only (scute-less) manifest has no carapace, so chain
+        // verity annotations are not required.
         let mut m = sample_base_manifest();
         m.layers.clear();
         m.layers.push(Layer::Pmi(PmiDescriptor {
@@ -879,8 +877,57 @@ mod tests {
                 .into(),
             size: 4096,
         }));
-        m.annotations.remove(CHAIN_ANNOTATION_VERITY_HASH);
+        m.annotations.clear();
         m.validate().unwrap();
+    }
+
+    #[test]
+    fn dtb_layer_returns_single_base_dtb() {
+        let mut m = sample_base_manifest();
+        assert!(m.dtb_layer().is_none());
+        m.layers.push(sample_dtb_layer());
+        assert_eq!(m.dtb_layer().unwrap().size, 8192);
+    }
+
+    #[test]
+    fn partition_layers_splits_pmi_and_scutes() {
+        let mut m = sample_base_manifest();
+        m.layers.push(Layer::Pmi(PmiDescriptor {
+            digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+                .into(),
+            size: 4096,
+        }));
+        m.layers.push(sample_dtb_layer());
+        let (pmi, scutes) = m.partition_layers().unwrap();
+        assert_eq!(pmi.size, 4096);
+        assert_eq!(scutes.len(), 1);
+    }
+
+    #[test]
+    fn partition_layers_requires_pmi() {
+        let m = sample_base_manifest();
+        assert!(matches!(
+            m.partition_layers().unwrap_err(),
+            ManifestValidationError::MissingPmi
+        ));
+    }
+
+    #[test]
+    fn scute_layers_collects_uncompressed_scutes() {
+        let m = sample_base_manifest();
+        assert_eq!(m.scute_layers().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn scute_layers_rejects_zstd() {
+        let mut m = sample_base_manifest();
+        if let Layer::Scute(descriptor) = m.layers[0].clone() {
+            m.layers[0] = Layer::ScuteZstd(descriptor);
+        }
+        assert!(matches!(
+            m.scute_layers().unwrap_err(),
+            ManifestValidationError::CompressedScuteUnsupported
+        ));
     }
 
     #[test]

@@ -66,7 +66,7 @@ impl ImageOwnership {
                 "invalid POSIX ACL encoding",
             ));
         }
-        for entry in bytes[4..].chunks_exact(8) {
+        for entry in bytes[4..].as_chunks::<8>().0 {
             let tag = u16::from_le_bytes([entry[0], entry[1]]);
             if u16::from_le_bytes([entry[2], entry[3]]) > 7 {
                 return Err(io::Error::new(

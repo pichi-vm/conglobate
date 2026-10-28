@@ -52,6 +52,7 @@ pub(crate) struct AssembledImage {
 }
 impl AssembledImage {
     fn verity_annotations() -> serde_json::Value {
+        // Keep verity param annotations; never stamp tip hash.
         serde_json::json!({
             "dev.pichi.carapace.verity.algo": "sha256",
             "dev.pichi.carapace.verity.data-block-size": "4096",
@@ -59,6 +60,14 @@ impl AssembledImage {
             "dev.pichi.carapace.verity.version": "1",
             "dev.pichi.carapace.verity.hash-type": "1"
         })
+    }
+    fn strip_tip_annotation(manifest: &mut serde_json::Value) {
+        if let Some(annotations) = manifest
+            .get_mut("annotations")
+            .and_then(|value| value.as_object_mut())
+        {
+            annotations.remove("dev.pichi.carapace.verity.hash");
+        }
     }
     pub(crate) fn publish_inventory(
         self,
@@ -144,7 +153,7 @@ impl AssembledImage {
                     "config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
             };
             let mut parent = match base {
-                Some(image) => image.manifest().carapace_verity_hash(),
+                Some(image) => cache.verify_chain(image)?.map(|chain| *chain.root()),
                 None => Some([0; 32]),
             };
             if base.is_none() && !scutes.is_empty() {
@@ -164,9 +173,8 @@ impl AssembledImage {
                         scute.descriptor().clone(),
                     ))?);
                 parent = Some(*scute.root());
-                manifest["annotations"]["dev.pichi.carapace.verity.hash"] =
-                    hex::encode(scute.root()).into();
             }
+            Self::strip_tip_annotation(&mut manifest);
             let pmi = pair.pmi_descriptor();
             let digest = pmi
                 .digest
@@ -242,8 +250,8 @@ impl AssembledImage {
                 layers.push(crate::artifact::Layer::Scute(scute.descriptor().clone()));
                 parent = *scute.root();
             }
-            let mut annotations = Self::verity_annotations();
-            annotations["dev.pichi.carapace.verity.hash"] = hex::encode(parent).into();
+            let annotations = Self::verity_annotations();
+            let _tip = parent; // baked into guest via corium=/inventory; not OCI tip
             let manifest = serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
@@ -373,7 +381,7 @@ impl AssembledImage {
                     .map_err(|_| CacheError::Invalid("invalid output layer digest"))?;
                 staged.copy_blob(cache, &digest, layer.size())?;
             }
-            let mut parent = image.manifest().carapace_verity_hash();
+            let mut parent = cache.verify_chain(image)?.map(|chain| *chain.root());
             for scute in scutes {
                 if parent.as_ref() != Some(scute.parent()) {
                     return Err(CacheError::Invalid(
@@ -387,13 +395,13 @@ impl AssembledImage {
                     .push(serde_json::to_value(crate::artifact::Layer::Scute(
                         scute.descriptor().clone(),
                     ))?);
-                manifest["annotations"]["dev.pichi.carapace.verity.hash"] =
-                    hex::encode(scute.root()).into();
                 parent = Some(*scute.root());
                 changed = true;
             }
             // Preserve unrelated fields, and preserve exact JSON bytes for no-op edits.
+            // When rewriting, drop any inherited tip-hash annotation.
             let manifest = if changed {
+                Self::strip_tip_annotation(&mut manifest);
                 serde_json::to_vec(&manifest)?
             } else {
                 image.manifest_bytes().bytes().to_vec()

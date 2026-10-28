@@ -220,6 +220,7 @@ impl Store {
         )
     }
     fn manifest_bytes(&self, layers: Vec<crate::artifact::Layer>, root: [u8; 32]) -> Vec<u8> {
+        let _ = root; // tip derived from scute graph; never stamp tip hash
         let manifest = crate::artifact::Manifest {
             schema_version: 2,
             media_type: "application/vnd.oci.image.manifest.v1+json".into(),
@@ -235,10 +236,6 @@ impl Store {
             ]
             .into_iter()
             .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.to_owned()))
-            .chain([(
-                String::from("dev.pichi.carapace.verity.hash"),
-                hex::encode(root),
-            )])
             .collect(),
         };
         manifest.to_bytes().unwrap()
@@ -374,16 +371,13 @@ fn chain_verification_orders_mixed_compressed_layers_from_authenticated_root() {
     assert!(chain.scutes()[1].compressed());
 }
 #[test]
-fn duplicate_disconnected_and_wrong_root_chains_fail() {
+fn duplicate_and_ambiguous_tip_chains_fail() {
     let store = Store::new();
     let (base, root) = store.scute(&[7; 4096], [0; 32], false);
     let (other, _) = store.scute(&[9; 4096], [0; 32], true);
-    for (layers, claimed) in [
-        (vec![base.clone(), base.clone()], root),
-        (vec![base.clone(), other], root),
-        (vec![base], [5; 32]),
-    ] {
-        let image = store.chain_image(layers, claimed);
+    // Duplicate roots, or two tips both parented at zeros (ambiguous tip).
+    for layers in [vec![base.clone(), base.clone()], vec![base, other]] {
+        let image = store.chain_image(layers, root);
         assert!(store.open().verify_chain(&image).is_err());
     }
 }

@@ -236,6 +236,7 @@ mod tests {
                 blobs.push((digest, bytes));
                 parent = root;
             }
+            let _derived_tip = parent; // inventory/boot derive tip; not an OCI stamp
             // Identity verification is distinct from firmware format validation.
             for (media, bytes) in [("pmi", b"firmware".as_slice()), ("dtb", b"tree".as_slice())] {
                 let digest = Digest::from_bytes_sha256(bytes);
@@ -251,7 +252,7 @@ mod tests {
             layers.reverse(); // Receipts follow manifest order, not ancestry order.
             let config = b"{\"requirements\":{}}".to_vec();
             let config_digest = Digest::from_bytes_sha256(&config);
-            let mut annotations: BTreeMap<String, String> = [
+            let annotations: BTreeMap<String, String> = [
                 ("algo", "sha256"),
                 ("data-block-size", "4096"),
                 ("hash-block-size", "4096"),
@@ -261,7 +262,6 @@ mod tests {
             .into_iter()
             .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.into()))
             .collect();
-            annotations.insert("dev.pichi.carapace.verity.hash".into(), hex::encode(parent));
             let manifest = Manifest {
                 schema_version: 2,
                 media_type: MANIFEST.into(),
