@@ -1,32 +1,31 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! One recipe document, validated before execution and independent of key order.
+//! One plan document, validated before execution and independent of key order.
 use crate::{document::YamlDocument, image::IdentityError, value::ValueError};
 use serde::{Deserialize, Deserializer};
 pub(crate) mod transform;
-pub(crate) use transform::DEFAULT_TRANSFORM;
 
 pub(crate) use transform::{
     PropertyValue, TransformAction, TransformOperation, TransformSelection,
 };
 
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum RecipeError {
+pub(crate) enum PlanError {
     #[error(transparent)]
     Pattern(#[from] crate::copy::PatternError),
     #[error(transparent)]
     Mode(#[from] crate::copy::ModeError),
     #[error(transparent)]
     Template(#[from] crate::template::TemplateError),
-    #[error("invalid recipe YAML: {0}")]
+    #[error("invalid plan YAML: {0}")]
     Document(#[from] serde_saphyr::Error),
     #[error(transparent)]
     Identity(#[from] IdentityError),
     #[error(transparent)]
     Value(#[from] ValueError),
     #[error(transparent)]
-    Schema(#[from] crate::contract::recipe::Error),
+    Schema(#[from] crate::contract::plan::Error),
     #[error("{0}")]
     Invalid(&'static str),
     #[error("invalid regular expression: {0}")]
@@ -68,7 +67,7 @@ impl<T> Presence<T> {
     }
 }
 
-pub(crate) use crate::contract::recipe::{
+pub(crate) use crate::contract::plan::{
     ArtifactName, Filesystem as FilesystemSpec, Image, Local, Reference, Run,
 };
 use std::collections::BTreeMap;
@@ -101,10 +100,10 @@ impl Copy {
 #[derive(Debug)]
 struct ImagePath(String);
 impl TryFrom<String> for ImagePath {
-    type Error = RecipeError;
+    type Error = PlanError;
     fn try_from(text: String) -> Result<Self, Self::Error> {
         if !text.starts_with('/') || text.contains('\0') {
-            return Err(RecipeError::Invalid(
+            return Err(PlanError::Invalid(
                 "image path must be absolute and contain no NUL",
             ));
         }
@@ -122,12 +121,12 @@ pub(crate) enum Directive {
     Run(Run),
     Copy(Copy),
 }
-impl TryFrom<crate::contract::recipe::Directive> for Directive {
-    type Error = RecipeError;
-    fn try_from(raw: crate::contract::recipe::Directive) -> Result<Self, Self::Error> {
+impl TryFrom<crate::contract::plan::Directive> for Directive {
+    type Error = PlanError;
+    fn try_from(raw: crate::contract::plan::Directive) -> Result<Self, Self::Error> {
         Ok(match raw {
-            crate::contract::recipe::Directive::Run(run) => Self::Run(run),
-            crate::contract::recipe::Directive::Copy { copy } => Self::Copy(Copy {
+            crate::contract::plan::Directive::Run(run) => Self::Run(run),
+            crate::contract::plan::Directive::Copy { copy } => Self::Copy(Copy {
                 sources: vec![copy.from.as_ref().parse()?],
                 destination: ImagePath::try_from(copy.into.as_ref().to_owned())?,
                 owner: None,
@@ -175,7 +174,7 @@ pub(crate) struct Task {
     from: Reference,
     kind: TaskKind,
     directives: Vec<Directive>,
-    outputs: BTreeMap<ArtifactName, crate::contract::recipe::ImagePath>,
+    outputs: BTreeMap<ArtifactName, crate::contract::plan::ImagePath>,
     firmware: Option<Firmware>,
 }
 impl Task {
@@ -188,7 +187,7 @@ impl Task {
     pub(crate) fn directives(&self) -> &[Directive] {
         &self.directives
     }
-    pub(crate) fn outputs(&self) -> &BTreeMap<ArtifactName, crate::contract::recipe::ImagePath> {
+    pub(crate) fn outputs(&self) -> &BTreeMap<ArtifactName, crate::contract::plan::ImagePath> {
         &self.outputs
     }
     pub(crate) fn firmware(&self) -> Option<&Firmware> {
@@ -196,12 +195,12 @@ impl Task {
     }
 }
 #[derive(Debug)]
-pub(crate) struct Recipe {
+pub(crate) struct Plan {
     tasks: BTreeMap<Local, Task>,
     image: Image,
     order: Vec<Local>,
 }
-impl Recipe {
+impl Plan {
     pub(crate) fn tasks(&self) -> &BTreeMap<Local, Task> {
         &self.tasks
     }
@@ -211,21 +210,18 @@ impl Recipe {
     pub(crate) fn order(&self) -> &[Local] {
         &self.order
     }
-    pub(crate) fn transform(&self) -> &TransformSelection {
-        &TransformSelection::Builtin
-    }
 }
-impl TryFrom<YamlDocument<'_>> for Recipe {
-    type Error = RecipeError;
+impl TryFrom<YamlDocument<'_>> for Plan {
+    type Error = PlanError;
     fn try_from(document: YamlDocument<'_>) -> Result<Self, Self::Error> {
-        let raw: crate::contract::recipe::Recipe = document.decode()?;
+        let raw: crate::contract::plan::Plan = document.decode()?;
         let order = raw.order().to_vec();
         let raw = raw.into_parts();
         let tasks = raw
             .0
             .into_iter()
             .map(|(name, task)| {
-                let crate::contract::recipe::TaskParts {
+                let crate::contract::plan::TaskParts {
                     from,
                     directives,
                     filesystem,
@@ -244,14 +240,14 @@ impl TryFrom<YamlDocument<'_>> for Recipe {
                         directives: directives
                             .into_iter()
                             .map(Directive::try_from)
-                            .collect::<Result<_, RecipeError>>()?,
+                            .collect::<Result<_, PlanError>>()?,
                         kind,
                         outputs: outputs.unwrap_or_default(),
                         firmware: firmware.map(|(pmi, dtb)| Firmware { pmi, dtb }),
                     },
                 ))
             })
-            .collect::<Result<_, RecipeError>>()?;
+            .collect::<Result<_, PlanError>>()?;
         Ok(Self {
             tasks,
             image: raw.1,
@@ -261,7 +257,7 @@ impl TryFrom<YamlDocument<'_>> for Recipe {
 }
 
 // Historical filesystem-operation tests retain direct construction of COPY
-// policies. Those policies are deliberately absent from the new recipe schema.
+// policies. Those policies are deliberately absent from the new plan schema.
 #[cfg(test)]
 impl Copy {
     pub(crate) fn fixture(

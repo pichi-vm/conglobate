@@ -48,7 +48,7 @@ impl FormatInputs<'_, '_> {
     }
 }
 /// Trusted child succeeded and was reaped; current snapshot health was checked.
-/// This is not clean volume finalization, an inventory receipt or a sealed layer.
+/// This is not clean volume finalization, a publication receipt or a sealed layer.
 #[derive(Debug)]
 pub(crate) struct FormattedSnapshot<'origin, 'workspace> {
     inputs: Box<FormatInputs<'origin, 'workspace>>,
@@ -148,45 +148,8 @@ impl<'a, 'w> Formatting<'a, 'w> {
         }
     }
 }
-/// Evidence of one successful, reaped formatter execution and healthy snapshot.
-/// It does not certify later commands, sealing, or output publication. There is
-/// no constructor from a recipe, captured runtime, or decoded inventory.
-///
-#[derive(Debug)]
-pub(crate) struct FormatReceipt {
-    format: Ext4Format,
-    executable: crate::path::ContextPath,
-    runtime: Vec<(crate::path::ContextPath, [u8; 32])>,
-}
-impl FormatReceipt {
-    pub(crate) fn format(&self) -> &Ext4Format {
-        &self.format
-    }
-    pub(crate) fn executable(&self) -> &crate::path::ContextPath {
-        &self.executable
-    }
-    pub(crate) fn runtime(&self) -> &[(crate::path::ContextPath, [u8; 32])] {
-        &self.runtime
-    }
-}
 impl<'a, 'w> FormattedSnapshot<'a, 'w> {
-    /// Consume successful execution while retaining its exact input identities.
-    /// Resource owners remain separate so the coordinator must still close them.
-    pub(crate) fn into_recorded_parts(
-        self,
-    ) -> (FormatterRuntime, SnapshotMapping<'a, 'w>, FormatReceipt) {
-        let captured = self.inputs.runtime.captured();
-        let receipt = FormatReceipt {
-            executable: captured.executable().clone(),
-            runtime: captured
-                .files()
-                .map(|(path, file)| (path.clone(), *file.digest()))
-                .collect(),
-            format: self.inputs.format,
-        };
-        (self.inputs.runtime, self.inputs.snapshot, receipt)
-    }
-    #[cfg(feature = "test-fixtures")]
+    /// Consume successful execution; resource owners must still be closed.
     pub(crate) fn into_parts(self) -> (FormatterRuntime, SnapshotMapping<'a, 'w>) {
         (self.inputs.runtime, self.inputs.snapshot)
     }

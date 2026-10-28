@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
-# Host harness pin for tests/distro/context/recipe.yaml.
+# Host harness pin for tests/distro/context/plan.yaml.
 # Not a Fedora GHCR digest. Seed the index-bytes line below, with no
 # trailing newline, as the image index for qualification.local/fedora:43.
 # Encoding matches tests/distro/prepare.py: object keys sorted, separators

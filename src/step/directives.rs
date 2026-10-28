@@ -7,8 +7,8 @@ use super::{
 };
 use crate::{
     context::CapturedContext,
+    plan::{Copy, Directive},
     process::ChildReaper,
-    recipe::{Copy, Directive},
 };
 use std::time::Instant;
 

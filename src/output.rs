@@ -6,7 +6,7 @@ pub(crate) use assembly::AssembledImage;
 
 use crate::artifact::Digest;
 use crate::cache::{Cache, CacheError};
-use crate::recipe_io::{BuildOutput, ScuteOut};
+use crate::plan_io::{BuildOutput, ScuteOut};
 use std::{
     ffi::OsString,
     fs::{self, File},
@@ -281,11 +281,6 @@ impl StagedDirectory {
         pending.keep().map_err(|error| error.error)?;
         Ok(())
     }
-    /// Add inventory without rewriting the already assembled image layout.
-    /// Serialization and structural validation belong to the coordinator.
-    pub(crate) fn write_inventory(&self, inventory: &[u8]) -> io::Result<()> {
-        self.write_file(&self.temporary.path().join("inventory.cbor"), inventory)
-    }
     /// Copy exactly `size` bytes to a single flat name in the staging root.
     ///
     /// The name is one path component (`0000.cow`, `boot.pmi`). A short or long
@@ -492,16 +487,15 @@ mod tests {
         fs::create_dir(&parent).unwrap();
         let staged = StagedDirectory::create(&parent.join("output")).unwrap();
         let digest = staged.store_blob(b"{}").unwrap();
-        staged.write_inventory(b"inventory").unwrap();
+        staged
+            .write_file(&staged.temporary.path().join("index.json"), b"index")
+            .unwrap();
         let moved = root.path().join("moved");
         fs::rename(&parent, &moved).unwrap();
         fs::create_dir(&parent).unwrap();
         staged.publish().unwrap();
         assert!(!parent.join("output").exists());
-        assert_eq!(
-            fs::read(moved.join("output/inventory.cbor")).unwrap(),
-            b"inventory"
-        );
+        assert_eq!(fs::read(moved.join("output/index.json")).unwrap(), b"index");
         assert_eq!(
             fs::read(moved.join("output/blobs/sha256").join(digest.hex())).unwrap(),
             b"{}"
@@ -515,9 +509,11 @@ mod tests {
         let mount = parent.path().join("output");
         fs::create_dir(&mount).unwrap();
         let staged = StagedDirectory::create(&mount).unwrap();
-        staged.write_inventory(b"inv").unwrap();
+        staged
+            .write_file(&staged.temporary.path().join("index.json"), b"index")
+            .unwrap();
         staged.publish().unwrap();
-        assert_eq!(fs::read(mount.join("inventory.cbor")).unwrap(), b"inv");
+        assert_eq!(fs::read(mount.join("index.json")).unwrap(), b"index");
         assert!(mount.join("blobs/sha256").is_dir());
         let leftover_staging = fs::read_dir(&mount)
             .unwrap()
@@ -600,7 +596,9 @@ mod tests {
             .write_exact_file("boot.pmi", &b"pmi-bytes"[..], 9)
             .unwrap();
         staged.write_build_yaml(&manifest).unwrap();
-        staged.write_inventory(b"inv").unwrap();
+        staged
+            .write_file(&staged.temporary.path().join("index.json"), b"index")
+            .unwrap();
         staged.publish().unwrap();
         let yaml = fs::read_to_string(mount.join("build.yaml")).unwrap();
         assert!(
@@ -617,7 +615,7 @@ mod tests {
         assert_eq!(fs::read(mount.join("0000.cow")).unwrap(), b"cow-base");
         assert_eq!(fs::read(mount.join("0001.verity")).unwrap(), b"ver-top!");
         assert_eq!(fs::read(mount.join("boot.pmi")).unwrap(), b"pmi-bytes");
-        assert_eq!(fs::read(mount.join("inventory.cbor")).unwrap(), b"inv");
+        assert_eq!(fs::read(mount.join("index.json")).unwrap(), b"index");
         assert!(mount.join("blobs/sha256").is_dir());
         assert!(!mount.join("blobs/sha256/0000.cow").exists());
         assert!(!mount.join("oci-layout").exists());

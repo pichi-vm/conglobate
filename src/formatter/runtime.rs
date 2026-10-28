@@ -3,6 +3,7 @@
 
 use crate::path::{FilePath, RelativePath};
 use rustix::fs::{Mode, OFlags, ResolveFlags};
+#[cfg(test)]
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
@@ -18,10 +19,12 @@ use std::{
 #[derive(Debug)]
 pub(crate) struct FormatterFile {
     bytes: Box<[u8]>,
+    #[cfg(test)]
     digest: [u8; 32],
     executable: bool,
 }
 impl FormatterFile {
+    #[cfg(test)]
     pub(crate) fn digest(&self) -> &[u8; 32] {
         &self.digest
     }
@@ -58,6 +61,7 @@ impl FormatterFile {
             ));
         }
         Ok(Self {
+            #[cfg(test)]
             digest: Sha256::digest(&bytes).into(),
             bytes: bytes.into_boxed_slice(),
             executable: metadata.permissions().mode() & 0o111 != 0,
@@ -145,6 +149,7 @@ impl CapturedFormatter {
             path,
             FormatterFile {
                 bytes: super::Ext4Format::configuration().into(),
+                #[cfg(test)]
                 digest: super::Ext4Format::configuration_digest(),
                 executable: false,
             },

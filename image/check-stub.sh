@@ -41,11 +41,11 @@ grep -q '^FailureAction=poweroff-force$' "$service" || fail "service must power 
 grep -q '^StandardOutput=journal+console$' "$service" || fail "service must mirror stdout to the console"
 grep -q '^StandardError=journal+console$' "$service" || fail "service must mirror stderr to the console"
 
-recipe="$root/conglobate.recipe.yaml"
-[[ -f "$recipe" ]] || fail "missing recipe skeleton"
-grep -qi 'self-host' "$recipe" || fail "recipe must stay labelled self-host"
-grep -qi 'later' "$recipe" || fail "recipe must stay labelled later"
-grep -qi 'not the bootstrap' "$recipe" || fail "recipe must say it is not the bootstrap builder"
+plan="$root/conglobate.plan.yaml"
+[[ -f "$plan" ]] || fail "missing plan skeleton"
+grep -qi 'self-host' "$plan" || fail "plan must stay labelled self-host"
+grep -qi 'later' "$plan" || fail "plan must stay labelled later"
+grep -qi 'not the bootstrap' "$plan" || fail "plan must say it is not the bootstrap builder"
 
 conf="$root/mkosi.conf"
 [[ -f "$conf" ]] || fail "missing mkosi.conf"

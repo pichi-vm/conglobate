@@ -10,7 +10,7 @@ use std::{collections::BTreeMap, io};
 
 /// Compiled native-ABI command filter. Default-deny candidate derived from the
 /// preserved syscall validation, not a qualified distro compatibility contract.
-/// No policy file or recipe can add authority. Other ABIs are rejected by the
+/// No policy file or plan can add authority. Other ABIs are rejected by the
 /// generated architecture guard (x32 numbers also miss the native allowlist).
 #[derive(Debug)]
 pub(crate) struct CommandSyscalls {

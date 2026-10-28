@@ -5,8 +5,10 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from artifact import build_manifest, scute_root
 import subprocess
-import cbor2
 
 
 class PipelineEvidence:
@@ -35,33 +37,12 @@ class PipelineEvidence:
         for marker in markers:
             assert f'\n{marker}\n' in serial, marker
         assert (self.run / 'status.raw').read_bytes().rstrip(b'\0') == b'DISTRO_BUILD_EXIT 0\n'
-        raw = (self.artifact / 'inventory.cbor').read_bytes()
-        inventory = cbor2.loads(raw)
-        assert cbor2.dumps(inventory, canonical=True) == raw
-        assert inventory['version'] == 3
-        assert len(inventory['inputs']) == 1
-        assert inventory['inputs'][0]['roles'] == ['bootstrap-tools',
-            'carapace-base' if self.imported_boot else 'firmware-tools']
-        execution = inventory['execution']
-        assert execution['id_mappings'] == {
-            'uid': {'parent_start': 200000, 'count': 131072},
-            'gid': {'parent_start': 400000, 'count': 131072}}
-
-        assert execution['network_steps'] == []
-        assert len(execution['formatters']) == 1
-        assert execution['formatters'][0]['stage'] == 'bootstrap'
-        assert execution['transform']['target_present'] is True
-        assert execution['transform']['default_skipped'] is False
-        output = inventory['outputs']
-        # One bootstrap layer plus ONE carapace layer despite three directives.
-        assert len(output['scutes']) == 2
-        assert all(scute['origin'] == 'produced' for scute in output['scutes'])
         index = json.loads((self.artifact / 'index.json').read_text())
         assert len(index['manifests']) == 1
         descriptor = index['manifests'][0]
-        assert descriptor['digest'] == 'sha256:' + output['manifest']['digest'].hex()
         _, manifest_bytes = self.blob(descriptor)
-        manifest = json.loads(manifest_bytes)
+        manifest = build_manifest(self.run)
+        assert manifest == json.loads(manifest_bytes)
         self.blob(manifest['config'])
         layers = manifest['layers']
         assert len(layers) == 4
@@ -69,25 +50,33 @@ class PipelineEvidence:
             'application/vnd.pichi.dtb.v1', 'application/vnd.pichi.pmi.v1',
             'application/vnd.pichi.scute.v1', 'application/vnd.pichi.scute.v1']
         scutes = [layer for layer in layers if layer['mediaType'] == 'application/vnd.pichi.scute.v1']
-        assert [layer['digest'] for layer in scutes] == [
-            'sha256:' + scute['digest']['digest'].hex() for scute in output['scutes']]
+        assert len(scutes) == 2
+        root = bytes(32)
+        for scute in scutes:
+            path, _ = self.blob(scute)
+            annotations = scute['annotations']
+            salt = bytes.fromhex(annotations['dev.pichi.scute.verity.salt'])
+            assert salt[:32] == root
+            data = path.read_bytes()
+            blocks = int(annotations['dev.pichi.scute.verity.data-blocks'])
+            data = data.ljust(blocks * 4096, b'\0')
+            assert len(data) == blocks * 4096
+            root = scute_root(data, salt)
         for layer in layers:
             path, data = self.blob(layer)
             if layer['mediaType'] == 'application/vnd.pichi.pmi.v1':
                 assert data == (self.run / 'root/context/firmware/boot.pmi').read_bytes()
-                assert layer['digest'] == 'sha256:' + output['pmi']['digest'].hex()
             if layer['mediaType'] == 'application/vnd.pichi.dtb.v1':
                 cmdline = subprocess.check_output(
                     ['fdtget', '-t', 's', str(path), '/chosen', 'bootargs'], text=True)
-                assert 'corium=' + output['carapace_root'].hex() in cmdline.split()
-                assert layer['digest'] == 'sha256:' + output['dtb']['digest'].hex()
+                assert 'corium=' + root.hex() in cmdline.split()
         expected = {item['digest'].split(':')[1]
                     for item in [descriptor, manifest['config'], *layers]}
         assert {path.name for path in (self.artifact / 'blobs/sha256').iterdir()} == expected
         return {'full_pipeline_passed': True, 'finalized_artifact_copy': True,
                 'orphan_excluded_without_lock_or_network_input': True, 'one_carapace_scute': True,
                 'bootstrap_and_firmware_tools_not_inherited': True,
-                'root_bound_in_dtb': True, 'inventory_and_blob_graph_verified': True,
+                'root_bound_in_dtb': True, 'annotations_and_blob_graph_verified': True,
                 'boot_qualified': False, 'full_sandbox_qualified': False}
 
 

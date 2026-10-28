@@ -168,10 +168,7 @@ mod tests {
                     Value::Text("ref".into()),
                     Value::Text("refs/heads/main".into()),
                 ),
-                (
-                    Value::Text("recipe".into()),
-                    Value::Text("recipe.yml".into()),
-                ),
+                (Value::Text("plan".into()), Value::Text("plan.yml".into())),
                 (Value::Text("lock".into()), Value::Text("lock.yml".into())),
             ]);
             ciborium::into_writer(&response, &mut host).unwrap();

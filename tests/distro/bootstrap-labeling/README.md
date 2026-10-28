@@ -2,7 +2,7 @@
 
 Run this plan with `tests/distro/run.py` and the qualified Fedora tool cache.
 Then run `python3 tests/distro/bootstrap-labeling/verify.py RUN_DIRECTORY`.
-The independent assessment requires Python cbor2.
+The independent assessment requires Python 3.
 
 Both commands pass through the production restricted labeling probe for `/`
 and `/mnt`. The second step checks data, numeric ownership and permissions

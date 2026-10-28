@@ -1,16 +1,17 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Recipe planning from one immutable committed context. Image verification follows.
+//! Build planning from one immutable committed context. Image verification follows.
 use crate::{
     context::{CapturedContext, ContextError, ContextFile},
     document::YamlDocument,
+    graph::BuildGraph,
     lock::{ImageLock, LockError},
     path::ContextPath,
-    plan::BuildPlan,
-    recipe::{Recipe, RecipeError},
+    plan::{Plan, PlanError},
     request::BuildRequest,
 };
+#[cfg(test)]
 use sha2::{Digest, Sha256};
 
 #[derive(Debug, thiserror::Error)]
@@ -26,7 +27,7 @@ pub(crate) enum InputError {
     #[error(transparent)]
     Context(#[from] ContextError),
     #[error(transparent)]
-    Recipe(#[from] RecipeError),
+    Plan(#[from] PlanError),
     #[error(transparent)]
     Lock(#[from] LockError),
     #[error("network-enabled commands require --resolv-conf")]
@@ -43,32 +44,35 @@ pub(crate) enum InputError {
 #[derive(Debug)]
 pub(crate) struct SelectedDocument {
     path: ContextPath,
+    #[cfg(test)]
     sha256: [u8; 32],
 }
 impl SelectedDocument {
-    fn new(path: ContextPath, file: &ContextFile) -> Self {
+    fn new(path: ContextPath, _file: &ContextFile) -> Self {
         Self {
             path,
-            sha256: Sha256::digest(file.bytes()).into(),
+            #[cfg(test)]
+            sha256: Sha256::digest(_file.bytes()).into(),
         }
     }
     pub(crate) fn path(&self) -> &ContextPath {
         &self.path
     }
+    #[cfg(test)]
     pub(crate) fn sha256(&self) -> &[u8; 32] {
         &self.sha256
     }
 }
 
-/// Owns all committed bytes used to derive the plan. This is not an executable
+/// Owns all committed bytes used to derive the graph. This is not an executable
 /// build: cache verification and execution preparation are separate gates.
 #[derive(Debug)]
 pub(crate) struct CapturedBuild {
     id_mappings: Option<crate::isolation::IdMappings>,
     context: CapturedContext,
-    recipe: SelectedDocument,
+    plan: SelectedDocument,
     lock: SelectedDocument,
-    plan: BuildPlan,
+    graph: BuildGraph,
     networking: Option<crate::network::NetworkInput>,
 }
 impl TryFrom<&BuildRequest> for CapturedBuild {
@@ -76,12 +80,12 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
     fn try_from(request: &BuildRequest) -> Result<Self, Self::Error> {
         let context =
             CapturedContext::capture(request.repository(), request.commit(), request.context())?;
-        let recipe_file = context.read(request.recipe())?;
+        let plan_file = context.read(request.plan())?;
         let lock_file = context.read(request.lock())?;
-        let recipe = Recipe::try_from(YamlDocument::from(recipe_file.text()?))?;
+        let plan = Plan::try_from(YamlDocument::from(plan_file.text()?))?;
         let lock = ImageLock::try_from(YamlDocument::from(lock_file.text()?))?;
-        let plan = BuildPlan::new(recipe, &lock)?;
-        for task in plan.recipe().tasks().values() {
+        let graph = BuildGraph::new(plan, &lock)?;
+        for task in graph.plan().tasks().values() {
             for name in task.outputs().keys() {
                 if context
                     .entries()
@@ -94,7 +98,7 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
             }
         }
 
-        let networking = if plan.network_steps().is_empty() {
+        let networking = if graph.network_steps().is_empty() {
             None
         } else {
             let path = request.resolv_conf().ok_or(InputError::ResolverRequired)?;
@@ -107,7 +111,7 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
                 .map_err(InputError::NetworkNamespace)?;
             Some(crate::network::NetworkInput::new(namespace, resolver))
         };
-        let id_mappings = if plan.execution_required() {
+        let id_mappings = if graph.execution_required() {
             Some(
                 request
                     .id_mappings()
@@ -116,19 +120,20 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
         } else {
             None
         };
-        let recipe = SelectedDocument::new(request.recipe().clone(), &recipe_file);
+        let plan = SelectedDocument::new(request.plan().clone(), &plan_file);
         let lock = SelectedDocument::new(request.lock().clone(), &lock_file);
         Ok(Self {
             id_mappings,
             context,
-            recipe,
-            lock,
             plan,
+            lock,
+            graph,
             networking,
         })
     }
 }
 impl CapturedBuild {
+    #[cfg(test)]
     pub(crate) fn id_mappings(&self) -> Option<crate::isolation::IdMappings> {
         self.id_mappings
     }
@@ -139,8 +144,8 @@ impl CapturedBuild {
     pub(crate) fn context(&self) -> &CapturedContext {
         &self.context
     }
-    pub(crate) fn recipe_document(&self) -> &SelectedDocument {
-        &self.recipe
+    pub(crate) fn plan_document(&self) -> &SelectedDocument {
+        &self.plan
     }
     pub(crate) fn lock_document(&self) -> &SelectedDocument {
         &self.lock
@@ -148,8 +153,8 @@ impl CapturedBuild {
     pub(crate) fn networking(&self) -> Option<&crate::network::NetworkInput> {
         self.networking.as_ref()
     }
-    pub(crate) fn plan(&self) -> &BuildPlan {
-        &self.plan
+    pub(crate) fn graph(&self) -> &BuildGraph {
+        &self.graph
     }
 }
 
@@ -215,7 +220,7 @@ impl CapturedBuild {
     /// No privileged setup or output publication occurs here.
     pub(crate) fn resolve(self, cache: crate::cache::Cache) -> Result<ResolvedBuild, InputError> {
         let mut images = std::collections::BTreeMap::new();
-        for input in self.plan.inputs() {
+        for input in self.graph.inputs() {
             let image = cache.resolve(input.index())?;
             let chain = cache.verify_content(&image)?;
             if input.execution_required() && chain.is_none() {
@@ -228,14 +233,14 @@ impl CapturedBuild {
         // Verify export availability before allocating any privileged execution
         // resources. A missing optional boot is fine except when image requests it.
         let mut exports = std::collections::BTreeMap::new();
-        for name in self.plan.recipe().order() {
-            let task = &self.plan.recipe().tasks()[name];
+        for name in self.graph.plan().order() {
+            let task = &self.graph.plan().tasks()[name];
             let input = match task.from() {
-                crate::recipe::Reference::Local(local) => *exports
+                crate::plan::Reference::Local(local) => *exports
                     .get(local)
                     .ok_or_else(|| InputError::Exports("unresolved local input".into()))?,
-                crate::recipe::Reference::Remote(remote) => {
-                    let image = &images[&remote.as_ref().parse().map_err(RecipeError::from)?];
+                crate::plan::Reference::Remote(remote) => {
+                    let image = &images[&remote.as_ref().parse().map_err(PlanError::from)?];
                     (
                         image.chain().is_some(),
                         image
@@ -253,20 +258,20 @@ impl CapturedBuild {
                 )));
             }
             let output = match task.kind() {
-                crate::recipe::TaskKind::Bootstrap(_) => (true, false),
-                crate::recipe::TaskKind::Extend => input,
-                crate::recipe::TaskKind::Build => (false, task.firmware().is_some()),
+                crate::plan::TaskKind::Bootstrap(_) => (true, false),
+                crate::plan::TaskKind::Extend => input,
+                crate::plan::TaskKind::Build => (false, task.firmware().is_some()),
             };
             exports.insert(name.clone(), output);
         }
-        match self.plan.recipe().image() {
-            crate::recipe::Image::Short(name) => {
+        match self.graph.plan().image() {
+            crate::plan::Image::Short(name) => {
                 let (root, boot) = exports[name];
                 if !root && !boot {
                     return Err(InputError::Exports("image has no component exports".into()));
                 }
             }
-            crate::recipe::Image::Long { root, boot } if !exports[root].0 || !exports[boot].1 => {
+            crate::plan::Image::Long { root, boot } if !exports[root].0 || !exports[boot].1 => {
                 return Err(InputError::Exports(
                     "requested image root or boot export unavailable".into(),
                 ));

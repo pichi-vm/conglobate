@@ -16,6 +16,7 @@ pub(crate) struct ContextFile {
     bytes: Vec<u8>,
 }
 impl ContextFile {
+    #[cfg(test)]
     pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
     }

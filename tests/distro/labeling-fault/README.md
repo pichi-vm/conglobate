@@ -14,8 +14,8 @@ compiled objects are captured by the ordinary runtime input hashes.
 
 Use `tests/distro/run.py --label-fault-second-filesystem` with:
 
-1. `tests/distro/labeling/recipe.yaml`: require build success, allowed=1, denied=0.
-2. `tests/distro/bootstrap-labeling/recipe.yaml`: require pre-command failure,
+1. `tests/distro/labeling/plan.yaml`: require build success, allowed=1, denied=0.
+2. `tests/distro/bootstrap-labeling/plan.yaml`: require pre-command failure,
    allowed=1, denied=1, complete cleanup and no published output.
 
 Run this directory's `verify.py RUN_DIRECTORY` (add `--negative` for bootstrap).

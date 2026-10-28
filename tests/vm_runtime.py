@@ -70,7 +70,7 @@ class GuestRuntime:
         shutil.copy2(source, target)
         target.chmod(0o755)
         # Only supplied trusted host tools are inspected. Never run ldd on
-        # an untrusted recipe/image executable.
+        # an untrusted plan/image executable.
         for line in subprocess.check_output(['ldd', str(source)], text=True).splitlines():
             if 'not found' in line:
                 raise RuntimeError(f'missing dependency for {source}: {line}')

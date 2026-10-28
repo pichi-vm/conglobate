@@ -21,7 +21,7 @@ tasks:
     - network: true
       timeout: 30m
       run: |
-        # Self-host later. Bootstrap CI does not execute this recipe.
+        # Self-host later. Bootstrap CI does not execute this plan.
         true
   rootfs:
     kind: extend
@@ -29,20 +29,20 @@ tasks:
     exec:
     - copy:
         from: units
-        into: /recipe-input-units
-    - run: cp -a /recipe-input-units/run-pichi-repo.mount /usr/lib/systemd/system/run-pichi-repo.mount
+        into: /plan-input-units
+    - run: cp -a /plan-input-units/run-pichi-repo.mount /usr/lib/systemd/system/run-pichi-repo.mount
     - copy:
         from: units
-        into: /recipe-input-units
-    - run: cp -a /recipe-input-units/run-pichi-cache.mount /usr/lib/systemd/system/run-pichi-cache.mount
+        into: /plan-input-units
+    - run: cp -a /plan-input-units/run-pichi-cache.mount /usr/lib/systemd/system/run-pichi-cache.mount
     - copy:
         from: units
-        into: /recipe-input-units
-    - run: cp -a /recipe-input-units/run-pichi-output.mount /usr/lib/systemd/system/run-pichi-output.mount
+        into: /plan-input-units
+    - run: cp -a /plan-input-units/run-pichi-output.mount /usr/lib/systemd/system/run-pichi-output.mount
     - copy:
         from: units
-        into: /recipe-input-units
-    - run: cp -a /recipe-input-units/conglobate-build.service /usr/lib/systemd/system/conglobate-build.service
+        into: /plan-input-units
+    - run: cp -a /plan-input-units/conglobate-build.service /usr/lib/systemd/system/conglobate-build.service
     - run: |
         systemctl enable run-pichi-repo.mount run-pichi-cache.mount run-pichi-output.mount
         systemctl enable conglobate-build.service

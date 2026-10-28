@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::CapturedFormatter;
-use crate::{path::ContextPath, recipe::FilesystemSpec};
+use crate::{path::ContextPath, plan::FilesystemSpec};
 use std::{
     collections::BTreeSet,
     env, fs, io,
@@ -10,9 +10,9 @@ use std::{
     process::Command,
 };
 
-/// Resolve the internal formatter profile for a recipe filesystem specification.
+/// Resolve the internal formatter profile for a plan filesystem specification.
 ///
-/// The kind-tagged recipe enum admits only qualified backends. Match it
+/// The kind-tagged plan enum admits only qualified backends. Match it
 /// explicitly so adding a variant requires a corresponding formatter choice.
 pub(crate) fn for_filesystem(spec: &FilesystemSpec) -> io::Result<CapturedFormatter> {
     match spec {

@@ -254,9 +254,8 @@ or qualify confidential VMs.
 `--case oci-copy --oras /path/to/oras` preserves the original third-party OCI
 interoperability assertion: a committed pass-through build publishes a synthetic
 scute chain, ORAS copies its manifest/config/layer graph, and the fixture compares
-the exact blob set and every byte. The current fixture also emits a legacy
-inventory outside the OCI graph; the locked target drops it entirely. The
-follow-up code tip must verify build annotations survive the copy instead.
+the exact blob set and every byte. The fixture verifies that the manifest build annotations survive the copy
+and that no inventory sidecar is emitted.
 amd64 CI uses checksum-pinned ORAS 1.3.5. This case runs as root in the disposable guest;
 it does not require unprivileged user namespaces on the runner host.
 
@@ -272,14 +271,13 @@ resources for guest disposal. Neither case executes untrusted image commands.
 
 ## Distro harness and inputs
 
-User-facing terminology is now plan/context. Commands and fixture filenames
-below retain their existing spelling until the follow-up code tip; `--recipe`
-is the current harness flag. The locked target CLI/build-port contract is in
+Commands and fixtures use plan/context terminology; `--plan` selects the
+harness input. The CLI/build-port contract is in
 [DESIGN](../DESIGN.md#11-artifact-and-build-annotations).
-Paths such as `context/recipe.yaml` below are relative to `tests/distro/`.
+Paths such as `context/plan.yaml` below are relative to `tests/distro/`.
 
 
-`context/recipe.yaml` is a small offline CLI regression using the Fedora seed.
+`context/plan.yaml` is a small offline CLI regression using the Fedora seed.
 The runner commits `message.txt` with the plan; COPY installs it into the image,
 and a command checks its bytes and the absence of context mounts. The runner then
 requires successful publication/export and verifies exported blob digests. This
@@ -289,7 +287,7 @@ checks the committed-context pipeline, not distro boot or full qualification.
 The host harness seeds that exact index blob. It is not a Fedora GHCR digest.
 `run.py` still writes its own `images.lock` from `--pin`.
 
-`pipeline/recipe.yaml` exercises bootstrap, an extend task, a local build producer
+`pipeline/plan.yaml` exercises bootstrap, an extend task, a local build producer
 whose finalized artifact is copied into the root, and an explicit boot-producing
 build task in one offline build. An unreachable build has no lock entry and asks
 for networking; it must never run. Supply the Fedora seed and
@@ -297,10 +295,9 @@ for networking; it must never run. Supply the Fedora seed and
 only a shell, rm and their shared libraries into a small new root. Later steps
 check persistence across command/COPY boundaries and separation of tool roots.
 Run `python3 tests/distro/pipeline/verify.py RUN_DIRECTORY` afterward (requires
-`cbor2` and `fdtget`). It requires exactly two produced scutes, checks the exported
-blob graph and legacy inventory, and reads `/chosen/bootargs` to verify the
-final corium root. The follow-up code tip must replace inventory checks with
-image-manifest annotation checks. It does not qualify booting or all
+`fdtget`). It requires exactly two produced scutes, checks the exported
+blob graph and image-manifest build annotations, and reads `/chosen/bootargs`
+to verify the final corium root. It does not qualify booting or all
 stage/failure combinations.
 `pipeline/imported-boot.yaml` uses the same fresh root and artifact producer but
 selects boot from an empty extend task over an imported image. Supply a cache
@@ -338,7 +335,7 @@ This is fixture preparation, not distro qualification. Conglobate must still
 verify the carapace chain, execute a real distro plan, and produce an image
 that boots. See DESIGN.md section 12 for validation scope and limits.
 
-The initial real Fedora plan is `fedora/recipe.yaml`. It uses the existing
+The initial real Fedora plan is `fedora/plan.yaml`. It uses the existing
 local Fedora carapace, runs RPM/DNF, installs SELinux tooling and targeted policy,
 and labels the resulting root with that policy. It inherits firmware. A completed
 build alone does not qualify booting or enforcing the installed policy.
@@ -346,7 +343,7 @@ build alone does not qualify booting or enforcing the installed policy.
 `run.py` builds a fresh disposable amd64/KVM VM using the same trusted runtime
 constructor as the integration tests. It adds outbound QEMU user networking for
 package transactions; the existing regression VM remains disconnected. Supply
-`--kernel`, `--kernel-release`, `--module-root`, `--cache`, `--pin`, and `--recipe`
+`--kernel`, `--kernel-release`, `--module-root`, `--cache`, `--pin`, and `--plan`
 plus a new output directory. The current lock generation uses the Fedora plan's
 `qualification.local/fedora:43` reference. All conglobate artifacts remain local;
 network downloads occur only in the explicitly network-enabled DNF command.
@@ -420,7 +417,7 @@ request; it does not fetch artifacts. The runner waits for successful service
 completion and checks that no conglobate veth links or nftables tables remain
 on either build success or failure. The service has a finite observation deadline.
 
-`network/recipe.yaml` exercises actual plan DNS/TCP, read-only resolver injection,
+`network/plan.yaml` exercises actual plan DNS/TCP, read-only resolver injection,
 and a following offline step. `network/nonzero.yaml` and `network/timeout.yaml`
 reach the same exchange and then fail deliberately. Assess each completed run with
 `python3 tests/distro/network/verify.py RUN success|nonzero|timeout`. Failed builds

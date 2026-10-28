@@ -98,6 +98,7 @@ pub(crate) enum ContextEntry {
 #[derive(Debug)]
 pub(crate) struct CapturedContext {
     commit: ObjectId,
+    #[cfg(test)]
     subtree: ObjectId,
     reader: ObjectReader,
     entries: BTreeMap<PathBuf, ContextEntry>,
@@ -175,6 +176,7 @@ impl CapturedContext {
         }
         Ok(Self {
             commit: commit_id,
+            #[cfg(test)]
             subtree,
             reader,
             entries,
@@ -183,11 +185,9 @@ impl CapturedContext {
     pub(crate) fn commit(&self) -> ObjectId {
         self.commit
     }
+    #[cfg(test)]
     pub(crate) fn subtree(&self) -> ObjectId {
         self.subtree
-    }
-    pub(crate) fn object_format(&self) -> gix::hash::Kind {
-        self.commit.kind()
     }
     pub(crate) fn entries(&self) -> &BTreeMap<PathBuf, ContextEntry> {
         &self.entries

@@ -1,7 +1,7 @@
 # Command confinement observations
 
 Use this plan with `tests/distro/run.py --command-probe`, then run `verify.py RUN_DIRECTORY`
-(Python cbor2 required). The environment-owned labeling exception is active.
+(Python 3 required). The environment-owned labeling exception is active.
 
 The command steps check:
 

@@ -116,7 +116,7 @@ echo NETWORK_ENVIRONMENT_RETAINED_PASS"""
         # when the appliance image carries mke2fs itself.
         shutil.copytree(self.arguments.cache, self.root / 'cache')
         context = self.root / 'context'
-        shutil.copytree(self.arguments.recipe.resolve().parent, context)
+        shutil.copytree(self.arguments.plan.resolve().parent, context)
         if service:
             (context / 'external-endpoint').write_text(service.context_input())
         if self.arguments.command_probe:
@@ -138,9 +138,9 @@ echo NETWORK_ENVIRONMENT_RETAINED_PASS"""
                         shutil.copy2(library, probe / 'lib' / library.name)
                         if library.name.startswith('ld-linux'):
                             shutil.copy2(library, probe / 'loader')
-        selected = context / self.arguments.recipe.name
-        if selected.name != 'recipe.yaml':
-            shutil.copy2(selected, context / 'recipe.yaml')
+        selected = context / self.arguments.plan.name
+        if selected.name != 'plan.yaml':
+            shutil.copy2(selected, context / 'plan.yaml')
         if self.arguments.firmware_pmi:
             firmware = context / 'firmware'
             firmware.mkdir()
@@ -207,7 +207,7 @@ RULES
 nft list table ip build_environment > /work/network-before
 {network_startup}
 {probe_control}
-if {trace}conglobate build --repository /context --commit {commit} --recipe recipe.yaml --lock images.lock --cache /cache --output /work/output --uid-map 200000:131072 --gid-map 400000:131072 --resolv-conf /etc/resolv.conf --network-namespace {namespace_input}; then
+if {trace}conglobate build --repository /context --commit {commit} --plan plan.yaml --lock images.lock --cache /cache --output /work/output --uid-map 200000:131072 --gid-map 400000:131072 --resolv-conf /etc/resolv.conf --network-namespace {namespace_input}; then
     {fault_observation or ':'}
     {network_cleanup}
 else
@@ -305,7 +305,7 @@ if __name__ == '__main__':
     parser.add_argument('--module-root', type=Path, required=True)
     parser.add_argument('--cache', type=Path, required=True)
     parser.add_argument('--pin', required=True)
-    parser.add_argument('--recipe', type=Path, required=True)
+    parser.add_argument('--plan', type=Path, required=True)
     parser.add_argument('--memory', type=int, default=8192, help='Disposable VM memory in MiB')
     parser.add_argument('--reference', default='qualification.local/fedora:43')
     parser.add_argument('--firmware-pmi', type=Path)

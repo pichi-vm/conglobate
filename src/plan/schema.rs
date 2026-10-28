@@ -42,7 +42,7 @@ fn decode_yaml<T: serde::de::DeserializeOwned>(text: &str) -> Result<T, Error> {
 }
 
 #[derive(Debug, thiserror::Error)]
-#[error("invalid recipe: {0}")]
+#[error("invalid plan: {0}")]
 pub struct Error(pub String);
 impl Error {
     fn invalid(text: impl fmt::Display) -> Self {
@@ -418,20 +418,20 @@ pub enum Image {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(try_from = "RawRecipe")]
-pub struct Recipe {
+#[serde(try_from = "RawPlan")]
+pub struct Plan {
     tasks: BTreeMap<Local, Task>,
     image: Image,
     order: Vec<Local>,
 }
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct RawRecipe {
+struct RawPlan {
     #[serde(deserialize_with = "nonnull")]
     tasks: BTreeMap<Local, Task>,
     image: Image,
 }
-impl Recipe {
+impl Plan {
     pub fn parse(text: &str) -> Result<Self, Error> {
         decode_yaml(text)
     }
@@ -445,9 +445,9 @@ impl Recipe {
         &self.order
     }
 }
-impl TryFrom<RawRecipe> for Recipe {
+impl TryFrom<RawPlan> for Plan {
     type Error = Error;
-    fn try_from(raw: RawRecipe) -> Result<Self, Error> {
+    fn try_from(raw: RawPlan) -> Result<Self, Error> {
         let mut producers = BTreeMap::new();
         for (name, task) in &raw.tasks {
             if let Task::Build(build) = task {
@@ -630,7 +630,7 @@ impl Task {
         }
     }
 }
-impl Recipe {
+impl Plan {
     pub fn into_parts(self) -> (BTreeMap<Local, Task>, Image) {
         (self.tasks, self.image)
     }
@@ -640,20 +640,20 @@ impl Recipe {
 mod tests {
     use super::*;
     #[test]
-    fn shipped_task_recipes_parse_with_the_shared_schema() {
+    fn shipped_task_plans_parse_with_the_shared_schema() {
         for text in [
-            include_str!("../../image/conglobate.recipe.yaml"),
-            include_str!("../../tests/distro/alpine/recipe.yaml"),
-            include_str!("../../tests/distro/debian/recipe.yaml"),
-            include_str!("../../tests/distro/fedora/recipe.yaml"),
-            include_str!("../../tests/distro/nixos/recipe.yaml"),
-            include_str!("../../tests/distro/pipeline/recipe.yaml"),
+            include_str!("../../image/conglobate.plan.yaml"),
+            include_str!("../../tests/distro/alpine/plan.yaml"),
+            include_str!("../../tests/distro/debian/plan.yaml"),
+            include_str!("../../tests/distro/fedora/plan.yaml"),
+            include_str!("../../tests/distro/nixos/plan.yaml"),
+            include_str!("../../tests/distro/pipeline/plan.yaml"),
             include_str!("../../tests/distro/pipeline/imported-boot.yaml"),
             include_str!("../../tests/distro/pipeline/boot-only.yaml"),
-            include_str!("../../tests/distro/confinement/recipe.yaml"),
-            include_str!("../../tests/distro/network/recipe.yaml"),
+            include_str!("../../tests/distro/confinement/plan.yaml"),
+            include_str!("../../tests/distro/network/plan.yaml"),
         ] {
-            Recipe::parse(text).unwrap();
+            Plan::parse(text).unwrap();
         }
     }
     #[test]
@@ -664,7 +664,7 @@ mod tests {
             "image: root\ntasks: {root: {kind: extend, from: registry.test/base:1, exec: [{run: 123}]}}",
             "image: root\ntasks: {root: {kind: extend, from: registry.test/base:1, exec: [{copy: {from: 123, into: /x}}]}}",
         ] {
-            assert!(Recipe::parse(text).is_err(), "{text}");
+            assert!(Plan::parse(text).is_err(), "{text}");
         }
     }
     #[test]

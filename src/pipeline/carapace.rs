@@ -4,8 +4,8 @@
 use crate::{
     execution::HelperProgram,
     input::ResolvedBuild,
+    plan::Directive,
     process::ChildReaper,
-    recipe::Directive,
     step::CommandSandbox,
     storage::{Created, Mapping, Mounted, Runtime, SealedScute, Unmounted, Volume, Workspace},
 };

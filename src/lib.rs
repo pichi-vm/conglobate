@@ -4,14 +4,14 @@
 #![forbid(unsafe_code)]
 
 pub mod artifact;
-#[path = "recipe/schema.rs"]
-pub mod recipe;
-pub mod recipe_io;
+#[path = "plan/schema.rs"]
+pub mod plan;
+pub mod plan_io;
 pub mod value;
 
-pub use recipe_io::{
-    BuildOutput, CarapaceRecipe, CopyDirective, Directive, FromSpec, LockEntry, PmiRecipe,
-    RecipeError, RefsLock, ScuteOut,
+pub use plan_io::{
+    BuildOutput, CarapacePlan, CopyDirective, Directive, FromSpec, LockEntry, PlanError, PmiPlan,
+    RefsLock, ScuteOut,
 };
 
 #[cfg(test)]
@@ -48,21 +48,21 @@ mod surface_tests {
             surface.contains("pub mod artifact;"),
             "lib must export artifact"
         );
-        assert!(surface.contains("pub mod recipe_io;"));
-        assert!(surface.contains("pub mod recipe;"));
+        assert!(surface.contains("pub mod plan_io;"));
+        assert!(surface.contains("pub mod plan;"));
         assert!(surface.contains("pub mod value;"));
     }
 
     #[test]
-    fn recipe_lock_and_artifact_types_resolve() {
+    fn plan_lock_and_artifact_types_resolve() {
         use crate::{
-            BuildOutput, CarapaceRecipe, LockEntry, PmiRecipe, RefsLock, ScuteOut,
+            BuildOutput, CarapacePlan, LockEntry, PmiPlan, RefsLock, ScuteOut,
             artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1},
         };
         let _ = MEDIA_TYPE_PICHI_ARTIFACT_V1;
         let _ = std::mem::size_of::<Digest>();
-        let _ = std::mem::size_of::<CarapaceRecipe>();
-        let _ = std::mem::size_of::<PmiRecipe>();
+        let _ = std::mem::size_of::<CarapacePlan>();
+        let _ = std::mem::size_of::<PmiPlan>();
         let _ = std::mem::size_of::<RefsLock>();
         let _ = std::mem::size_of::<LockEntry>();
         let _ = std::mem::size_of::<BuildOutput>();

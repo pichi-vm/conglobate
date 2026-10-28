@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::recipe::{PropertyValue, TransformAction, TransformOperation, TransformSelection};
+use crate::plan::{PropertyValue, TransformAction, TransformOperation, TransformSelection};
 use devtree::{OwnedNode, OwnedProperty, OwnedTree, Tree};
 
 #[derive(Debug, thiserror::Error)]
@@ -17,19 +17,21 @@ pub(crate) enum TransformError {
     #[error(transparent)]
     Template(#[from] crate::template::TemplateError),
     #[error(transparent)]
-    Recipe(#[from] crate::recipe::RecipeError),
+    Plan(#[from] crate::plan::PlanError),
 }
 
 /// Successful transformation, including the observed default-skip disposition.
 #[derive(Debug, Clone)]
 pub(crate) struct TransformedDtb {
     bytes: Option<Vec<u8>>,
+    #[cfg(test)]
     default_skipped: bool,
 }
 impl TransformedDtb {
     pub(crate) fn bytes(&self) -> Option<&[u8]> {
         self.bytes.as_deref()
     }
+    #[cfg(test)]
     pub(crate) fn default_skipped(&self) -> bool {
         self.default_skipped
     }
@@ -53,6 +55,7 @@ impl TransformSelection {
             return if builtin {
                 Ok(TransformedDtb {
                     bytes: None,
+                    #[cfg(test)]
                     default_skipped: true,
                 })
             } else {
@@ -70,6 +73,7 @@ impl TransformSelection {
             }
             Self::Authored(ops) => ops,
         };
+        #[cfg(test)]
         let mut executed = false;
         for op in operations {
             if op
@@ -79,7 +83,10 @@ impl TransformSelection {
                 continue;
             }
             op.apply(&mut edited, carapace)?;
-            executed = true;
+            #[cfg(test)]
+            {
+                executed = true;
+            }
         }
         let output = if edited == original {
             bytes.to_vec()
@@ -93,6 +100,7 @@ impl TransformSelection {
         };
         Ok(TransformedDtb {
             bytes: Some(output),
+            #[cfg(test)]
             default_skipped: builtin && !executed,
         })
     }
@@ -234,7 +242,7 @@ mod tests {
             dtb: Option<&[u8]>,
             root: Option<&str>,
         ) -> Result<TransformedDtb, TransformError> {
-            let operations: Vec<crate::recipe::transform::TransformDocument> =
+            let operations: Vec<crate::plan::transform::TransformDocument> =
                 YamlDocument::from(ops).decode().unwrap();
             TransformSelection::Authored(
                 operations

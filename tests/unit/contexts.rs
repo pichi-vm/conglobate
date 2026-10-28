@@ -60,17 +60,17 @@ fn capture_uses_verified_commit_and_subtree_in_both_object_formats() {
     use conglobate::path::ContextPath;
     for format in ["sha1", "sha256"] {
         let repo = Repository::new(format);
-        repo.write("build/recipe.yml", b"committed");
+        repo.write("build/plan.yml", b"committed");
         repo.write("outside", b"not selected");
         let commit = repo.commit();
-        repo.write("build/recipe.yml", b"working tree modified");
+        repo.write("build/plan.yml", b"working tree modified");
         let capture = repo.capture(&commit, "build").unwrap();
         assert_eq!(capture.entries().len(), 1);
         assert!(matches!(
-            capture.entries().get(Path::new("recipe.yml")),
+            capture.entries().get(Path::new("plan.yml")),
             Some(ContextEntry::File { .. })
         ));
-        let path = ContextPath::try_from(Path::new("recipe.yml")).unwrap();
+        let path = ContextPath::try_from(Path::new("plan.yml")).unwrap();
         assert_eq!(capture.read(&path).unwrap().bytes(), b"committed");
         assert_eq!(
             capture.subtree().to_string(),
@@ -138,13 +138,13 @@ fn unsupported_lfs_and_submodules_fail() {
 fn selected_files_follow_only_confined_committed_links() {
     use conglobate::path::ContextPath;
     let repo = Repository::new("sha1");
-    repo.write("dir/recipe", b"selected");
+    repo.write("dir/plan", b"selected");
     for (name, target) in [
-        ("selected", "dir/recipe"),
+        ("selected", "dir/plan"),
         ("escape", "../outside"),
         ("absolute", "/etc/passwd"),
         ("loop", "loop"),
-        ("broken", "missing/../dir/recipe"),
+        ("broken", "missing/../dir/plan"),
     ] {
         std::os::unix::fs::symlink(target, repo.0.path().join(name)).unwrap();
     }
@@ -185,14 +185,14 @@ fn capture_defers_regular_blob_loads_until_read() {
 fn packed_objects_are_supported_and_capture_does_not_execute_filters() {
     let repo = Repository::new("sha1");
     repo.write(".gitattributes", b"* filter=fixture\n");
-    repo.write("recipe", b"original\n");
+    repo.write("plan", b"original\n");
     let commit = repo.commit();
     // A failing filter is enough to detect accidental execution; no external effect.
     repo.git(&["config", "filter.fixture.smudge", "false"]);
     repo.git(&["config", "filter.fixture.required", "true"]);
     repo.git(&["gc", "--prune=now"]);
     let capture = repo.capture(&commit, ".").unwrap();
-    let path = conglobate::path::ContextPath::try_from(Path::new("recipe")).unwrap();
+    let path = conglobate::path::ContextPath::try_from(Path::new("plan")).unwrap();
     assert_eq!(capture.read(&path).unwrap().bytes(), b"original\n");
 }
 
@@ -201,13 +201,13 @@ fn request_planning_and_document_receipts_use_only_selected_committed_bytes() {
     use conglobate::{input::CapturedBuild, request::BuildRequest};
     use sha2::{Digest, Sha256};
     let repo = Repository::new("sha1");
-    let recipe =
+    let plan =
         b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\nimage: rootfs\n";
     let lock = format!(
         "version: 1\nimages:\n  registry.test/base:1:\n    index: sha256:{}\n",
         "11".repeat(32)
     );
-    repo.write("context/config/build.yml", recipe);
+    repo.write("context/config/build.yml", plan);
     repo.write("context/pins.yml", lock.as_bytes());
     std::os::unix::fs::symlink(
         "config/build.yml",
@@ -215,7 +215,7 @@ fn request_planning_and_document_receipts_use_only_selected_committed_bytes() {
     )
     .unwrap();
     let commit = repo.commit();
-    repo.write("context/config/build.yml", b"not the recipe");
+    repo.write("context/config/build.yml", b"not the plan");
     repo.write("context/pins.yml", b"not the lock");
     let request = BuildRequest::parse_from([
         "conglobate",
@@ -226,7 +226,7 @@ fn request_planning_and_document_receipts_use_only_selected_committed_bytes() {
         &hex::encode(commit.bytes()),
         "--context",
         "context",
-        "--recipe",
+        "--plan",
         "selected.yml",
         "--lock",
         "pins.yml",
@@ -242,32 +242,32 @@ fn request_planning_and_document_receipts_use_only_selected_committed_bytes() {
     .unwrap();
     let build = CapturedBuild::try_from(&request).unwrap();
     assert_eq!(
-        build.recipe_document().path().as_ref(),
+        build.plan_document().path().as_ref(),
         Path::new("selected.yml")
     );
     assert_eq!(
-        build.recipe_document().sha256().as_slice(),
-        Sha256::digest(recipe).as_slice()
+        build.plan_document().sha256().as_slice(),
+        Sha256::digest(plan).as_slice()
     );
     assert_eq!(
         build.lock_document().sha256().as_slice(),
         Sha256::digest(lock.as_bytes()).as_slice()
     );
     assert_eq!(
-        build.plan().inputs()[0].reference().as_ref(),
+        build.graph().inputs()[0].reference().as_ref(),
         "registry.test/base:1"
     );
 }
 
 #[test]
-fn network_recipe_captures_an_explicit_resolver_once() {
+fn network_plan_captures_an_explicit_resolver_once() {
     use conglobate::{
         input::{CapturedBuild, InputError},
         request::BuildRequest,
     };
     let repo = Repository::new("sha1");
     repo.write(
-        "recipe",
+        "plan",
         b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\n    exec:\n    - run: echo ok\n      network: true\nimage: rootfs\n",
     );
     repo.write(
@@ -287,8 +287,8 @@ fn network_recipe_captures_an_explicit_resolver_once() {
         repo.0.path().to_str().unwrap(),
         "--commit",
         &id,
-        "--recipe",
-        "recipe",
+        "--plan",
+        "plan",
         "--lock",
         "lock",
         "--cache",
@@ -326,9 +326,9 @@ fn network_recipe_captures_an_explicit_resolver_once() {
         Err(InputError::Resolver(_))
     ));
 
-    // An executing offline plan still needs environment-allocated identities.
+    // An executing offline graph still needs environment-allocated identities.
     repo.write(
-        "recipe",
+        "plan",
         b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\n    exec:\n    - run: echo ok\nimage: rootfs\n",
     );
     let execution_commit = repo.commit();
@@ -351,7 +351,7 @@ fn network_recipe_captures_an_explicit_resolver_once() {
 
     // Pass-through ignores supplied runtime inputs, including mappings.
     repo.write(
-        "recipe",
+        "plan",
         b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\nimage: rootfs\n",
     );
     let offline_commit = repo.commit();
@@ -412,11 +412,11 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
         format!("version: 1\nimages:\n  registry.test/base:1:\n    index: {index_digest}\n")
             .as_bytes(),
     );
-    for recipe in [
+    for plan in [
         "tasks: {root: {kind: extend, from: registry.test/base:1}}\nimage: root",
         "tasks: {root: {kind: extend, from: registry.test/base:1, exec: [{run: echo ok}]}}\nimage: root",
     ] {
-        repo.write("recipe", recipe.as_bytes());
+        repo.write("plan", plan.as_bytes());
         let commit = repo.commit();
         let request = BuildRequest::parse_from([
             "conglobate",
@@ -425,8 +425,8 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
             repo.0.path().to_str().unwrap(),
             "--commit",
             &hex::encode(commit.bytes()),
-            "--recipe",
-            "recipe",
+            "--plan",
+            "plan",
             "--lock",
             "lock",
             "--cache",
@@ -482,7 +482,7 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
         format!("version: 1\nimages:\n  registry.test/base:1:\n    index: {pin}\n").as_bytes(),
     );
     repo.write(
-        "recipe",
+        "plan",
         b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\nimage: rootfs\n",
     );
     let commit = repo.commit();
@@ -493,8 +493,8 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
         repo.0.path().to_str().unwrap(),
         "--commit",
         &hex::encode(commit.bytes()),
-        "--recipe",
-        "recipe",
+        "--plan",
+        "plan",
         "--lock",
         "lock",
         "--cache",
@@ -610,14 +610,14 @@ fn executing_stage_variants_require_environment_maps_before_cache_access() {
     );
     let cache = repo.0.path().join("missing-cache");
     let output = repo.0.path().join("unpublished-output");
-    for recipe in [
+    for plan in [
         "tasks:\n  bootstrap:\n    kind: bootstrap\n    from: registry.test/tools:1\n    filesystem:\n      size: 16MiB\n      kind: ext4\nimage: bootstrap\n",
         "tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/tools:1\n    exec:\n    - run: 'true'\nimage: rootfs\n",
         "tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/tools:1\n    exec:\n    - copy:\n        from: input\n        into: /input\nimage: rootfs\n",
         "tasks:\n  firmware:\n    kind: build\n    from: registry.test/tools:1\n    into:\n      pmi: /pmi\n      dtb: /dtb\nimage: firmware\n",
         "tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/tools:1\n  firmware:\n    kind: build\n    from: rootfs\n    into:\n      pmi: /pmi\n      dtb: /dtb\nimage:\n  root: rootfs\n  boot: firmware\n",
     ] {
-        repo.write("recipe", recipe.as_bytes());
+        repo.write("plan", plan.as_bytes());
         repo.write("input", b"committed bytes");
         let commit = repo.commit();
         let identity = hex::encode(commit.bytes());
@@ -628,8 +628,8 @@ fn executing_stage_variants_require_environment_maps_before_cache_access() {
             repo.0.path().to_str().unwrap(),
             "--commit",
             &identity,
-            "--recipe",
-            "recipe",
+            "--plan",
+            "plan",
             "--lock",
             "lock",
             "--cache",
@@ -643,7 +643,7 @@ fn executing_stage_variants_require_environment_maps_before_cache_access() {
                 CapturedBuild::try_from(&request),
                 Err(InputError::IdMappingsRequired)
             ),
-            "{recipe}"
+            "{plan}"
         );
         args.extend(["--uid-map", "200000:131072", "--gid-map", "400000:65536"]);
         let captured = CapturedBuild::try_from(&BuildRequest::parse_from(&args).unwrap()).unwrap();

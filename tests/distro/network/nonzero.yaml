@@ -16,7 +16,7 @@ tasks:
           test "$response" = reply
           exec 3>&-
         '
-        printf 'NETWORK_RECIPE_DNS_TCP_AND_READONLY_RESOLVER_PASS\n'
+        printf 'NETWORK_PLAN_DNS_TCP_AND_READONLY_RESOLVER_PASS\n'
         printf 'COMMAND_EXPECTED_FAILURE\n'
         exit 7
       network: true

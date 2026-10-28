@@ -1,6 +1,6 @@
 # Bootstrap command rejection
 
-Run the plan in `recipe.yaml` through `tests/distro/run.py` with the qualified Fedora tool cache.
+Run the plan in `plan.yaml` through `tests/distro/run.py` with the qualified Fedora tool cache.
 An exit status of 1 from the runner is expected. Assess the result with:
 
 ```

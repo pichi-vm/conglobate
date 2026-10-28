@@ -405,7 +405,7 @@ impl SandboxFailures {
                         line.clear();
                         assert_ne!(reader.read_line(&mut line)?, 0);
                         eprint!("{line}");
-                        if line.starts_with("BLOCKED_RECIPE_READY ") {
+                        if line.starts_with("BLOCKED_PLAN_READY ") {
                             break;
                         }
                     }
@@ -436,7 +436,7 @@ impl SandboxFailures {
                     );
                     BlockedDescendant::signal(child, "CONT")?;
                     BlockedDescendant::await_state(child, 'D')?;
-                    println!("RECIPE_DESCENDANT_UNINTERRUPTIBLE_PASS");
+                    println!("PLAN_DESCENDANT_UNINTERRUPTIBLE_PASS");
                     BlockedDescendant::signal(shell, "USR1")?;
                     let observed = running.observe();
                     assert!(observed.outcome().success(), "{}", observed.outcome());

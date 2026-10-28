@@ -4,7 +4,7 @@
 use super::{CopyMode, CopySources, SelectionError};
 use crate::{
     context::{CapturedContext, ContextEntry, ContextError},
-    recipe::Copy,
+    plan::Copy,
 };
 use rustix::fs::{self, AtFlags, Mode, OFlags, ResolveFlags};
 use std::{
@@ -461,7 +461,7 @@ mod tests {
                     crate::document::YamlDocument::from(extra).decode().unwrap();
                 values.get("mode").cloned()
             };
-            let directive = crate::recipe::Copy::fixture(
+            let directive = crate::plan::Copy::fixture(
                 source,
                 destination,
                 rustix::process::geteuid().as_raw().to_string(),

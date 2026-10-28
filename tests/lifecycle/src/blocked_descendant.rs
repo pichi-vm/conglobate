@@ -20,13 +20,13 @@ trap 'exit 0' USR1
     exec /usr/bin/sync /blocked-writer
 ) &
 child=$!
-printf 'BLOCKED_RECIPE_READY %s %s\n' "$BASHPID" "$child" >&2
+printf 'BLOCKED_PLAN_READY %s %s\n' "$BASHPID" "$child" >&2
 wait -f "$child"
 exit 91
 "#;
 
     pub(super) fn stage(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
-        for file in fs::read_to_string("/recipe-runtime-files")?.lines() {
+        for file in fs::read_to_string("/plan-runtime-files")?.lines() {
             let destination = root.join(file);
             fs::create_dir_all(destination.parent().unwrap())?;
             fs::copy(Path::new("/").join(file), destination)?;

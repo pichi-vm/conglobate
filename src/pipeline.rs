@@ -10,7 +10,6 @@ mod rejection;
 use crate::{
     cache::Cache,
     input::{CapturedBuild, ResolvedBuild},
-    inventory::Inventory,
     output::AssembledImage,
     request::BuildRequest,
     storage::{Runtime, Workspace},
@@ -28,13 +27,13 @@ impl Pipeline {
     pub(crate) fn new(request: BuildRequest) -> Self {
         Self { request }
     }
-    /// Resolve local inputs, execute the recipe and publish its verified output.
+    /// Resolve local inputs, execute the plan and publish its verified output.
     /// The caller supplies the dedicated disposable-VM environment; this method
     /// does not manage VM shutdown or turn the calling process into a sandbox.
     ///
     /// # Errors
     /// Rejects non-root execution, invalid/unavailable inputs, unsupported work,
-    /// failed stage execution, cleanup, assembly, inventory or publication.
+    /// failed stage execution, cleanup, assembly or publication.
     /// Ordinary errors do not authorize another build in the same VM. Some
     /// failures retain unfinished kernel resources until environment disposal;
     /// returning an error is not a successful teardown receipt.
@@ -44,7 +43,7 @@ impl Pipeline {
         }
         let build =
             CapturedBuild::try_from(&self.request)?.resolve(Cache::open(self.request.cache())?)?;
-        let inherited = !build.captured().plan().execution_required();
+        let inherited = !build.captured().graph().execution_required();
         let output = if inherited {
             StageOutput::inherited(&build)?.assemble(&self.request, &build)?
         } else {
@@ -63,20 +62,19 @@ impl Pipeline {
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
     ) -> anyhow::Result<StageOutput<'b, 'w>> {
-        use crate::recipe::{Reference, TaskKind};
+        use crate::plan::{Reference, TaskKind};
         use anyhow::Context;
         use std::collections::BTreeMap;
-        let recipe = build.captured().plan().recipe();
+        let plan = build.captured().graph().plan();
         let mut outputs = BTreeMap::new();
         let mut artifacts = artifacts::Artifacts::new();
-        let mut receipts = Vec::new();
         let mut reaper = crate::process::ChildReaper::install()?;
-        let selected = match recipe.image() {
-            crate::recipe::Image::Short(name) => name,
-            crate::recipe::Image::Long { root, .. } => root,
+        let selected = match plan.image() {
+            crate::plan::Image::Short(name) => name,
+            crate::plan::Image::Long { root, .. } => root,
         };
-        for name in recipe.order() {
-            let task = &recipe.tasks()[name];
+        for name in plan.order() {
+            let task = &plan.tasks()[name];
             // DESIGN §7: only a completed selected output supplies CARAPACE.
             // Input, ancestor and tool identities cannot stand in for a root
             // that this task has not produced yet, including local tool roots.
@@ -113,14 +111,12 @@ impl Pipeline {
                             reaper,
                             carapace.as_ref(),
                         )?;
-                        receipts.push(result.receipt);
                         Ok((
                             StageOutput {
                                 base: None,
                                 produced: vec![result.scute],
                                 firmware: None,
                                 boot_base: None,
-                                formatters: vec![],
                             },
                             result.reaper,
                         ))
@@ -170,7 +166,6 @@ impl Pipeline {
                                 produced: vec![],
                                 firmware: result.firmware,
                                 boot_base: None,
-                                formatters: vec![],
                             },
                             result.reaper,
                         ))
@@ -181,21 +176,17 @@ impl Pipeline {
             reaper = next_reaper;
             outputs.insert(name.clone(), result);
         }
-        let mut output = StageOutput::select(recipe, &outputs)?;
-        output.formatters = receipts;
-        Ok(output)
+        StageOutput::select(plan, &outputs)
     }
 }
-/// Created only after the selected recipe path completed and inventory binds
-/// its finalized output. Neither decoded inventory nor raw storage can create it.
+/// Created only after the selected plan completed and its output was verified.
 #[derive(Debug)]
 pub(crate) struct CompletedImage {
     image: AssembledImage,
-    inventory: Inventory,
 }
 impl CompletedImage {
     pub(crate) fn publish(self) -> anyhow::Result<()> {
-        self.image.publish_inventory(&self.inventory)?;
+        self.image.publish()?;
         Ok(())
     }
 }

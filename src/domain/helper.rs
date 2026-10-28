@@ -10,7 +10,7 @@ use std::{
 };
 
 /// Owns a contained trusted helper, supervision channel and cgroup.
-/// This does not configure a command sandbox or authorize recipe execution.
+/// This does not configure a command sandbox or authorize plan execution.
 ///
 #[derive(Debug)]
 pub(crate) struct ContainedHelper {
