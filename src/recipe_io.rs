@@ -198,7 +198,7 @@ pub struct LockEntry {
 
 /// The build VM's output manifest (`output/build.yaml`), written by
 /// conglobate and read by `pichi build` to package the artifact. Filenames
-/// are relative to the output sink directory.
+/// must be plain basenames within the output sink directory.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BuildOutput {
@@ -215,10 +215,10 @@ pub struct BuildOutput {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ScuteOut {
-    /// COW blob filename (relative to the output dir).
+    /// COW blob basename within the output dir.
     pub cow: String,
 
-    /// dm-verity blob filename (relative to the output dir).
+    /// dm-verity blob basename within the output dir.
     pub verity: String,
 
     /// Full dm-verity salt, hex (the scute's salt-chain prefix + suffix).
@@ -226,16 +226,41 @@ pub struct ScuteOut {
 }
 
 impl BuildOutput {
-    /// Parse `output/build.yaml`.
+    /// Parse and validate `output/build.yaml`.
     pub fn parse(yaml: &str) -> Result<Self, RecipeError> {
         let out: Self = serde_yaml::from_str(yaml)?;
+        out.validate()?;
         Ok(out)
+    }
+
+    fn validate(&self) -> Result<(), RecipeError> {
+        for scute in &self.scutes {
+            validate_output_name("cow", &scute.cow)?;
+            validate_output_name("verity", &scute.verity)?;
+        }
+        if let Some(pmi) = &self.pmi {
+            validate_output_name("pmi", pmi)?;
+        }
+        Ok(())
     }
 
     /// Serialize to YAML (what conglobate writes).
     pub fn to_yaml(&self) -> Result<String, RecipeError> {
         Ok(serde_yaml::to_string(self)?)
     }
+}
+
+fn validate_output_name(field: &str, name: &str) -> Result<(), RecipeError> {
+    if name.is_empty()
+        || matches!(name, "." | "..")
+        || name.contains(['/', '\\'])
+        || name.chars().any(char::is_control)
+    {
+        return Err(RecipeError::Invalid(format!(
+            "build.yaml: `{field}` must be a non-empty plain basename without separators or control characters: {name:?}"
+        )));
+    }
+    Ok(())
 }
 
 impl CarapaceRecipe {
@@ -619,5 +644,70 @@ registry.example.com/models/llama:7b:
     fn build_output_rejects_unknown_field() {
         let err = BuildOutput::parse("scutes: []\nbogus: 1\n").unwrap_err();
         assert!(matches!(err, RecipeError::Parse(_)), "{err:?}");
+    }
+
+    #[test]
+    fn build_output_rejects_invalid_names() {
+        for name in [
+            "",
+            ".",
+            "..",
+            "/etc/passwd",
+            "../x",
+            "foo/bar",
+            r"foo\bar",
+            "foo/../bar",
+            "foo/./bar",
+            r"C:\Windows\system.ini",
+            r"\\server\share",
+            "foo\0bar",
+            "foo\nbar",
+            "foo\rbar",
+            "foo\tbar",
+            "foo\u{7f}bar",
+            "foo\u{85}bar",
+        ] {
+            for field in ["cow", "verity", "pmi"] {
+                let scute = ScuteOut {
+                    cow: "0000.cow".into(),
+                    verity: "0000.verity".into(),
+                    salt: "00ff".into(),
+                };
+                let mut out = BuildOutput {
+                    scutes: vec![scute.clone(), scute],
+                    pmi: Some("boot.pmi".into()),
+                };
+                match field {
+                    "cow" => out.scutes[1].cow = name.into(),
+                    "verity" => out.scutes[1].verity = name.into(),
+                    "pmi" => out.pmi = Some(name.into()),
+                    _ => unreachable!(),
+                }
+                let yaml = out.to_yaml().unwrap();
+                let err = BuildOutput::parse(&yaml).expect_err(&format!("{field}: {name:?}"));
+                assert!(matches!(err, RecipeError::Invalid(_)), "{err:?}");
+                assert!(err.to_string().contains(field), "{err}");
+            }
+        }
+    }
+
+    #[test]
+    fn build_output_accepts_plain_basenames() {
+        for name in [
+            "0000.cow", "boot.pmi", "base.dtb", ".hidden", "..data", "a..b", "Δ.cow",
+        ] {
+            let out = BuildOutput {
+                scutes: vec![ScuteOut {
+                    cow: name.into(),
+                    verity: name.into(),
+                    salt: "00ff".into(),
+                }],
+                pmi: Some(name.into()),
+            };
+            let back = BuildOutput::parse(&out.to_yaml().unwrap()).unwrap();
+            assert_eq!(back.scutes[0].cow, name);
+            assert_eq!(back.scutes[0].verity, name);
+            assert_eq!(back.pmi.as_deref(), Some(name));
+        }
     }
 }
