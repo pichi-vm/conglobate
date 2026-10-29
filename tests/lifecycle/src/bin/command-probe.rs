@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #![forbid(unsafe_code)]
+// Engine and fixture binaries require Linux; the library is portable.
+#![cfg(target_os = "linux")]
 use std::{fs, io, os::unix::net::UnixStream, process::Command};
 
 #[derive(Debug)]
