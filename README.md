@@ -85,6 +85,15 @@ The library exposes `conglobate::plan` (`Plan`, `Task`, `Reference`,
 compatibility, including the unused `BuildOutput` schema. The engine dependency
 module is `src/graph.rs`.
 
+An artifact dependency tells Cargo to build a dependency's executable and make
+that executable available to the consuming package, for example from its build
+script. For conglobate, use `artifact = "bin:conglobate"`, which selects only the
+main executable. Do not use `artifact = "bin"`: Cargo ignores `required-features`
+when selecting artifact dependencies
+([rust-lang/cargo#12061](https://github.com/rust-lang/cargo/issues/12061)), so that
+would also build the test-only `conglobate-lifecycle-tests` and `command-probe`
+binaries.
+
 ## Build and rootless checks
 
 Build on Linux with Rust/Cargo and a C build toolchain for native dependencies
