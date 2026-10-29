@@ -5,12 +5,6 @@
 extern crate conglobate as contract;
 extern crate self as conglobate;
 mod anchor;
-// The artifact schema is the library surface (see `src/lib.rs`). Because the
-// binary shadows the library crate name via `extern crate self`, it compiles
-// the same sources as a private module; items the engine does not itself call
-// are the published contract rather than dead code.
-#[allow(dead_code, unreachable_pub, unused_imports)]
-mod artifact;
 mod cache;
 mod chain;
 mod context;
@@ -34,16 +28,12 @@ mod path;
 mod pipeline;
 mod plan;
 mod process;
-// Portable plan/lock types and legacy host schemas exposed by the library.
-// Most items are unused in the binary.
-#[allow(dead_code, unreachable_pub, unused_imports)]
-mod plan_io;
 mod request;
 mod step;
 mod storage;
 mod template;
 mod transform;
-use contract::value;
+use contract::{artifact, value};
 
 #[path = "../tests/lifecycle/src/main.rs"]
 mod fixture;

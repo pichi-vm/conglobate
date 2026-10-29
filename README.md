@@ -81,9 +81,9 @@ binds the image digest and TEE/builder.
 
 Build publication stamps these annotations from the resolved committed input.
 The library exposes `conglobate::plan` (`Plan`, `Task`, `Reference`,
-`Filesystem`, `Lock`); `plan_io` retains legacy host types for source
-compatibility, including the unused `BuildOutput` schema. The engine dependency
-module is `src/graph.rs`.
+`Filesystem`, `Lock`), `conglobate::artifact` (manifest layers, annotation
+names, and media types), and `conglobate::console` (the build console
+messages). The engine dependency module is `src/graph.rs`.
 
 ## Build and rootless checks
 

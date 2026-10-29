@@ -52,10 +52,6 @@ impl FilesystemSize {
     pub fn bytes(self) -> u64 {
         self.0.get()
     }
-
-    pub fn blocks(self) -> u64 {
-        self.bytes() / 4096
-    }
 }
 
 impl FromStr for FilesystemSize {

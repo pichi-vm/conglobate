@@ -7,13 +7,7 @@ pub mod artifact;
 pub mod console;
 #[path = "plan/schema.rs"]
 pub mod plan;
-pub mod plan_io;
 pub mod value;
-
-pub use plan_io::{
-    BuildOutput, CarapacePlan, CopyDirective, Directive, FromSpec, LockEntry, PlanError, PmiPlan,
-    RefsLock, ScuteOut,
-};
 
 #[cfg(test)]
 mod surface_tests {
@@ -50,24 +44,23 @@ mod surface_tests {
             "lib must export artifact"
         );
         assert!(surface.contains("pub mod console;"));
-        assert!(surface.contains("pub mod plan_io;"));
+        assert!(!surface.contains("plan_io"));
         assert!(surface.contains("pub mod plan;"));
         assert!(surface.contains("pub mod value;"));
     }
 
     #[test]
-    fn plan_lock_and_artifact_types_resolve() {
+    fn plan_lock_console_and_artifact_types_resolve() {
         use crate::{
-            BuildOutput, CarapacePlan, LockEntry, PmiPlan, RefsLock, ScuteOut,
             artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1},
+            console::{BuildReply, BuildRequest},
+            plan::{Lock, Plan},
         };
         let _ = MEDIA_TYPE_PICHI_ARTIFACT_V1;
         let _ = std::mem::size_of::<Digest>();
-        let _ = std::mem::size_of::<CarapacePlan>();
-        let _ = std::mem::size_of::<PmiPlan>();
-        let _ = std::mem::size_of::<RefsLock>();
-        let _ = std::mem::size_of::<LockEntry>();
-        let _ = std::mem::size_of::<BuildOutput>();
-        let _ = std::mem::size_of::<ScuteOut>();
+        let _ = std::mem::size_of::<Plan>();
+        let _ = std::mem::size_of::<Lock>();
+        let _ = std::mem::size_of::<BuildRequest>();
+        let _ = std::mem::size_of::<BuildReply>();
     }
 }

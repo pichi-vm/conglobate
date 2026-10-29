@@ -156,6 +156,21 @@ pub(crate) struct Firmware {
     dtb: String,
 }
 impl Firmware {
+    /// Boot files a build task exports. By convention both are declared
+    /// together under the artifact names `pmi` and `dtb`.
+    fn declared(
+        outputs: &BTreeMap<ArtifactName, crate::contract::plan::ImagePath>,
+    ) -> Option<Self> {
+        let path = |name: &str| {
+            outputs
+                .get(&name.parse().ok()?)
+                .map(|p| p.as_ref().to_owned())
+        };
+        Some(Self {
+            pmi: path("pmi")?,
+            dtb: path("dtb")?,
+        })
+    }
     pub(crate) fn pmi(&self) -> &str {
         &self.pmi
     }
@@ -221,18 +236,25 @@ impl TryFrom<YamlDocument<'_>> for Plan {
             .0
             .into_iter()
             .map(|(name, task)| {
-                let crate::contract::plan::TaskParts {
-                    from,
-                    directives,
-                    filesystem,
-                    outputs,
-                    boot: firmware,
-                } = task.into_parts();
-                let kind = match filesystem {
-                    Some(filesystem) => TaskKind::Bootstrap(Bootstrap { filesystem }),
-                    None if outputs.is_some() => TaskKind::Build,
-                    None => TaskKind::Extend,
+                use crate::contract::plan::Task as Raw;
+                let (from, directives, kind, outputs) = match task {
+                    Raw::Bootstrap(task) => (
+                        task.from,
+                        task.directives,
+                        TaskKind::Bootstrap(Bootstrap {
+                            filesystem: task.filesystem,
+                        }),
+                        BTreeMap::new(),
+                    ),
+                    Raw::Extend(task) => (
+                        task.from,
+                        task.directives,
+                        TaskKind::Extend,
+                        BTreeMap::new(),
+                    ),
+                    Raw::Build(task) => (task.from, task.directives, TaskKind::Build, task.into),
                 };
+                let firmware = Firmware::declared(&outputs);
                 Ok((
                     name,
                     Task {
@@ -242,8 +264,8 @@ impl TryFrom<YamlDocument<'_>> for Plan {
                             .map(Directive::try_from)
                             .collect::<Result<_, PlanError>>()?,
                         kind,
-                        outputs: outputs.unwrap_or_default(),
-                        firmware: firmware.map(|(pmi, dtb)| Firmware { pmi, dtb }),
+                        outputs,
+                        firmware,
                     },
                 ))
             })

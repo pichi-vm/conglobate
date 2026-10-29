@@ -44,8 +44,8 @@ fn capacity_is_explicit_aligned_and_bounded() {
         assert!(FilesystemSize::try_from(bytes).is_err(), "{bytes}");
     }
     assert_eq!(
-        "4GiB".parse::<FilesystemSize>().unwrap().blocks(),
-        1_048_576
+        "4GiB".parse::<FilesystemSize>().unwrap().bytes(),
+        4 * 1024 * 1024 * 1024
     );
     assert_eq!(
         "64GiB".parse::<FilesystemSize>().unwrap().bytes(),

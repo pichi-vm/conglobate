@@ -106,21 +106,7 @@ impl fmt::Display for ArtifactName {
 /// An explicitly qualified OCI reference, retaining parsed components.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Remote {
-    registry: String,
-    repository: String,
-    selector: String,
     text: String,
-}
-impl Remote {
-    pub fn registry(&self) -> &str {
-        &self.registry
-    }
-    pub fn repository(&self) -> &str {
-        &self.repository
-    }
-    pub fn selector(&self) -> &str {
-        &self.selector
-    }
 }
 impl AsRef<str> for Remote {
     fn as_ref(&self) -> &str {
@@ -135,7 +121,7 @@ impl FromStr for Remote {
                 "remote reference requires a valid explicit registry host and OCI repository",
             )
         };
-        let (registry, rest) = text.split_once('/').ok_or_else(invalid)?;
+        let (registry, _) = text.split_once('/').ok_or_else(invalid)?;
         let (host, port) = if let Some(ipv6) = registry.strip_prefix('[') {
             let (address, suffix) = ipv6.split_once(']').ok_or_else(invalid)?;
             address
@@ -184,21 +170,8 @@ impl FromStr for Remote {
         {
             return Err(invalid());
         }
-        // Reject malformed digest/tag combinations left as repository text by the
-        // general OCI parser. No Docker Hub shorthand normalization is performed.
-        let selector = if let Some((_, digest)) = rest.split_once('@') {
-            format!("@{digest}")
-        } else if let Some((_, tag)) = rest.rsplit_once(':') {
-            format!(":{tag}")
-        } else {
-            String::new()
-        };
-        Ok(Self {
-            registry: registry.into(),
-            repository: parsed.repo,
-            selector,
-            text: text.into(),
-        })
+        // No Docker Hub shorthand normalization is performed.
+        Ok(Self { text: text.into() })
     }
 }
 
@@ -345,26 +318,27 @@ impl AsRef<str> for ImagePath {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Bootstrap {
-    from: Reference,
-    filesystem: Filesystem,
+    pub from: Reference,
+    pub filesystem: Filesystem,
     #[serde(default, rename = "exec", deserialize_with = "nonnull")]
-    directives: Vec<Directive>,
+    pub directives: Vec<Directive>,
 }
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Extend {
-    from: Reference,
+    pub from: Reference,
     #[serde(default, rename = "exec", deserialize_with = "nonnull")]
-    directives: Vec<Directive>,
+    pub directives: Vec<Directive>,
 }
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Build {
-    from: Reference,
+    pub from: Reference,
     #[serde(default, rename = "exec", deserialize_with = "nonnull")]
-    directives: Vec<Directive>,
+    pub directives: Vec<Directive>,
+    /// Files the task exports, by artifact name (`into` in the plan).
     #[serde(deserialize_with = "nonnull")]
-    into: BTreeMap<ArtifactName, ImagePath>,
+    pub into: BTreeMap<ArtifactName, ImagePath>,
 }
 impl Bootstrap {
     pub fn filesystem(&self) -> &Filesystem {
@@ -377,7 +351,7 @@ impl Build {
     }
     // Provisional convention matching prior firmware paths; not a locked
     // into value grammar. Both files must be explicitly declared together.
-    pub fn boot(&self) -> Option<(&str, &str)> {
+    fn boot(&self) -> Option<(&str, &str)> {
         Some((
             self.into.get(&"pmi".parse().ok()?)?.as_ref(),
             self.into.get(&"dtb".parse().ok()?)?.as_ref(),
@@ -406,7 +380,7 @@ impl Task {
             Self::Build(t) => &t.directives,
         }
     }
-    pub fn has_root(&self) -> bool {
+    fn has_root(&self) -> bool {
         !matches!(self, Self::Build(_))
     }
 }
@@ -591,45 +565,6 @@ impl TryFrom<RawPlan> for Plan {
     }
 }
 
-/// Owned task data for consumers that keep execution authority outside the lib.
-#[derive(Debug)]
-pub struct TaskParts {
-    pub from: Reference,
-    pub directives: Vec<Directive>,
-    pub filesystem: Option<Filesystem>,
-    pub outputs: Option<BTreeMap<ArtifactName, ImagePath>>,
-    pub boot: Option<(String, String)>,
-}
-impl Task {
-    pub fn into_parts(self) -> TaskParts {
-        match self {
-            Self::Bootstrap(t) => TaskParts {
-                from: t.from,
-                directives: t.directives,
-                filesystem: Some(t.filesystem),
-                outputs: None,
-                boot: None,
-            },
-            Self::Extend(t) => TaskParts {
-                from: t.from,
-                directives: t.directives,
-                filesystem: None,
-                outputs: None,
-                boot: None,
-            },
-            Self::Build(t) => {
-                let boot = t.boot().map(|(pmi, dtb)| (pmi.to_owned(), dtb.to_owned()));
-                TaskParts {
-                    from: t.from,
-                    directives: t.directives,
-                    filesystem: None,
-                    outputs: Some(t.into),
-                    boot,
-                }
-            }
-        }
-    }
-}
 impl Plan {
     pub fn into_parts(self) -> (BTreeMap<Local, Task>, Image) {
         (self.tasks, self.image)
@@ -673,9 +608,7 @@ mod tests {
         let Reference::Remote(remote) = reference else {
             panic!()
         };
-        assert_eq!(remote.registry(), "registry.test");
-        assert_eq!(remote.repository(), "base");
-        assert_eq!(remote.selector(), ":1");
+        assert_eq!(remote.as_ref(), "registry.test/base:1");
         let text = format!(
             "version: 1\nimages: {{registry.test/base:1: {{index: sha256:{}}}}}",
             "11".repeat(32)

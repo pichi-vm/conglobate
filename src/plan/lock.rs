@@ -30,7 +30,7 @@ impl Serialize for IndexPin {
         serializer.serialize_str(&format!("sha256:{}", hex::encode(self.0)))
     }
 }
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Pin {
     index: IndexPin,
@@ -66,21 +66,29 @@ impl Lock {
     }
 
     /// Write version 1 lock YAML, with references in sorted order.
+    ///
+    /// The format is small and fixed, so it is written directly. Each
+    /// reference is a double-quoted key; validated references never hold a
+    /// quote or backslash, and quoting keeps keys such as `[::1]:5000/x`
+    /// from reading as YAML syntax.
     pub fn to_yaml(&self) -> Result<String, Error> {
-        #[derive(Serialize)]
-        struct Document<'a> {
-            version: u64,
-            images: BTreeMap<&'a str, Pin>,
+        let mut text = String::from("version: 1\n");
+        if self.images.is_empty() {
+            text.push_str("images: {}\n");
+            return Ok(text);
         }
-        let document = Document {
-            version: 1,
-            images: self
-                .images
-                .iter()
-                .map(|(remote, &index)| (remote.as_ref(), Pin { index }))
-                .collect(),
-        };
-        serde_yaml::to_string(&document).map_err(Error::invalid)
+        text.push_str("images:\n");
+        for (remote, index) in &self.images {
+            let remote = remote.as_ref();
+            if remote.contains(['"', '\\']) || remote.chars().any(char::is_control) {
+                return Err(Error::invalid("lock reference cannot be written"));
+            }
+            text.push_str(&format!(
+                "  \"{remote}\":\n    index: sha256:{}\n",
+                hex::encode(index.0)
+            ));
+        }
+        Ok(text)
     }
 
     pub fn parse(text: &str) -> Result<Self, Error> {
@@ -112,13 +120,25 @@ mod tests {
         for lock in [Lock::new(images), Lock::new(BTreeMap::new())] {
             let yaml = lock.to_yaml().unwrap();
             assert_eq!(Lock::parse(&yaml).unwrap(), lock);
-            let document: serde_yaml::Value = serde_yaml::from_str(&yaml).unwrap();
+            let document: serde_json::Value = serde_saphyr::from_str(&yaml).unwrap();
             assert_eq!(document["version"], 1);
-            for pin in document["images"].as_mapping().unwrap().values() {
-                assert_eq!(pin.as_mapping().unwrap().len(), 1);
+            for pin in document["images"].as_object().unwrap().values() {
+                assert_eq!(pin.as_object().unwrap().len(), 1);
                 assert!(pin["index"].as_str().unwrap().starts_with("sha256:"));
             }
         }
+    }
+
+    #[test]
+    fn bracketed_registry_keys_round_trip() {
+        let images = [(
+            "[::1]:5000/base:1".parse().unwrap(),
+            format!("sha256:{}", "ef".repeat(32)).parse().unwrap(),
+        )]
+        .into_iter()
+        .collect();
+        let lock = Lock::new(images);
+        assert_eq!(Lock::parse(&lock.to_yaml().unwrap()).unwrap(), lock);
     }
 
     #[test]

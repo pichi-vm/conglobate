@@ -24,6 +24,8 @@ impl From<&FilesystemSpec> for Ext4Format {
 impl Ext4Format {
     pub(crate) const PROFILE: &'static str = "conglobate-ext4-v1";
     pub(crate) const CONFIGURATION_PATH: &'static str = "etc/mke2fs.conf";
+    /// Block size passed to mke2fs with `-b` below.
+    const BLOCK_BYTES: u64 = 4096;
     const OPTIONS: &'static [&'static str] = &[
         "-q",
         "-F",
@@ -64,7 +66,7 @@ impl Ext4Format {
             "-L".into(),
             self.label.as_ref().into(),
             device.as_os_str().to_owned(),
-            self.size.blocks().to_string().into(),
+            (self.size.bytes() / Self::BLOCK_BYTES).to_string().into(),
         ]);
         args
     }

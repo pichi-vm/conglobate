@@ -10,7 +10,7 @@ description = "Standalone image builder with isolated command execution"
 [features]
 default = ["engine"]
 # Engine deps (sandbox, mounts, git, registry I/O, VM helpers). Types-only
-# consumers (`artifact` + `plan` + `plan_io`) set `default-features = false`.
+# consumers (`artifact`, `console`, `plan`) set `default-features = false`.
 engine = [
     "dep:anyhow",
     "dep:netlink-packet-core",
@@ -63,10 +63,6 @@ test = false
 # --- types-only lib surface (always on) ---
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
-# The portable `[lib]` plan/lock surface (`src/plan_io.rs`) only. The host
-# and conglobate must agree byte-for-byte on that schema, so it keeps the
-# parser it was specified against.
-serde_yaml = "0.9"
 # Shared multi-stage plan/lock YAML parser (`src/plan/schema.rs`). Kept on
 # the always-on lib surface so `default-features = false` types consumers compile.
 serde-saphyr = { version = "2", default-features = false, features = ["deserialize"] }
