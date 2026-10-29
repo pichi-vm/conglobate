@@ -640,6 +640,29 @@ impl Plan {
 mod tests {
     use super::*;
     #[test]
+    fn context_copy_only_smoke_needs_no_commands() {
+        let plan = Plan::parse(include_str!("../../tests/distro/context/copy-only.yaml")).unwrap();
+        let lock = Lock::parse(include_str!("../../tests/distro/context/lock.yaml")).unwrap();
+        assert_eq!(plan.tasks().len(), 1);
+        assert_eq!(plan.order(), &["rootfs".parse::<Local>().unwrap()]);
+        let task = &plan.tasks()[&plan.order()[0]];
+        assert!(matches!(task, Task::Extend(_)));
+        let Reference::Remote(remote) = task.from() else {
+            panic!("the host supplies a locked seed image");
+        };
+        assert!(lock.images().contains_key(remote));
+        let [Directive::Copy { copy }] = task.directives() else {
+            panic!("the smoke plan must contain exactly one COPY and no RUN");
+        };
+        assert_eq!(copy.from.as_ref(), "message.txt");
+        assert_eq!(copy.into.as_ref(), "/etc/conglobate-context-check");
+        assert_eq!(
+            include_str!("../../tests/distro/context/message.txt"),
+            "committed context bytes\n"
+        );
+    }
+
+    #[test]
     fn shipped_task_plans_parse_with_the_shared_schema() {
         for text in [
             include_str!("../../image/conglobate.plan.yaml"),

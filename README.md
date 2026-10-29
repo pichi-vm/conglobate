@@ -16,6 +16,16 @@ Fedora, Debian, Alpine and NixOS example plans live under `tests/distro`. Confid
 appliance attestation are deferred; passing tests are not a universal security
 or operating-system compatibility claim.
 
+For a small host smoke test, select `tests/distro/context` as the committed
+context, `copy-only.yaml` as the plan, and `lock.yaml` as the lock. This plan
+copies `message.txt` to `/etc/conglobate-context-check` in the output image.
+It has no RUN step, so a host such as Pichi can supply a tiny seed filesystem
+without a shell or package manager. The remote name is the existing fixture
+alias; the host must supply its seed and cache using the harness convention
+documented in `lock.yaml` and [DESIGN §4](DESIGN.md#4-image-locks).
+Check the copied bytes in the output from the host. The neighboring `plan.yaml`
+uses RUN to check the copy inside a Fedora image.
+
 ## Plans
 
 A plan has named `tasks` and an explicit local `image` selection:

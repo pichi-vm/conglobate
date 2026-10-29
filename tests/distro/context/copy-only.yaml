@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
+# SPDX-License-Identifier: Apache-2.0
+# Host smoke test with lock.yaml and a seed that needs no shell or packages.
+tasks:
+  rootfs:
+    kind: extend
+    from: qualification.local/fedora:43
+    exec:
+    - copy:
+        from: message.txt
+        into: /etc/conglobate-context-check
+image: rootfs
