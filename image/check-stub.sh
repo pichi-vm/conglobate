@@ -81,6 +81,15 @@ grep -q '^RemainAfterExit=yes$' "$netns" || fail "$netns must stay active for th
 grep -q 'unshare --net=/run/pichi/netns' "$netns" || fail "$netns must bind the namespace at /run/pichi/netns"
 grep -q '/run/pichi/resolv.conf' "$netns" || fail "$netns must write /run/pichi/resolv.conf"
 grep -q 'pichi-build-netns.service' "$root/build.sh" || fail "build.sh must enable pichi-build-netns.service"
+grep -q '^Requires=pichi-build-netns.service$' "$service" || fail "$service must require the build network"
+grep -q '^After=pichi-build-netns.service' "$service" || fail "$service must start after the build network"
+
+smoke="$root/smoke/pichi.yaml"
+[[ -f "$smoke" ]] || fail "missing $smoke"
+[[ -f "$root/smoke/pichi.lock" ]] || fail "missing $root/smoke/pichi.lock"
+grep -q 'network: true' "$smoke" || fail "$smoke must run a network step"
+grep -q 'pichi-build:' "$smoke" || fail "$smoke must check it is in the build namespace"
+grep -q 'curl ' "$smoke" || fail "$smoke must make an outbound request"
 for package in iproute util-linux-core kmod; do
 	grep -q "^ *${package}$" "$conf" || fail "mkosi.conf must install ${package}"
 done

@@ -60,6 +60,15 @@ treat virtiofs as first-class, so this image keeps the modules itself.
     `/run/pichi/resolv.conf`.
   - Steps without `network: true` still get a fresh namespace with no way
     out.
+  - `conglobate-build.service` requires and starts after
+    `pichi-build-netns.service`, so the namespace and resolver file exist
+    before the build reads them.
+- `smoke/pichi.yaml` is a network smoke test for a freshly built image. Its
+  `network: true` step checks that it sees only loopback and `pichi-build`
+  (so it is not in the VM's own namespace), resolves a name and fetches a
+  page over HTTPS; the next step checks it is offline again. Run it from the
+  repository root after `image/build.sh`:
+  `pichi build -b conglobate:0.2.0 --ref HEAD --context image/smoke .`
 - `e2fsprogs` provides image-resident `mke2fs` (standard paths, `/usr/sbin/mke2fs`
   first). The engine still captures that binary and its `ldd` dependencies from
   the guest root. There is no host formatter path.
@@ -106,6 +115,7 @@ salts. Firmware remains in its OCI blob paths.
 | `units/` | Installed into the rootfs and enabled |
 | `network/` | systemd-networkd files, installed into `/usr/lib/systemd/network/` |
 | `conglobate.plan.yaml` | Self-host later, not used by bootstrap CI |
+| `smoke/` | Network smoke plan and lock, run by hand against a built image |
 | `check-stub.sh` | Static contract check (no VM) |
 
 `image/build.sh` writes `image/.build/` and a temporary `image/mkosi.extra/`.

@@ -1,0 +1,4 @@
+version: 1
+images:
+  ghcr.io/pichi-vm/fedora:43:
+    index: sha256:97f4c23afd5178048f83da6764dc8d651525ff57bfdf348ef1b43c45398b479f
