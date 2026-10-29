@@ -22,9 +22,9 @@ pub enum DigestParseError {
     /// Algorithm prefix not recognised (only `sha256:` is supported in v0.8).
     #[error("unknown algorithm prefix: expected 'sha256:', got '{0}'")]
     UnknownAlgorithm(String),
-    /// Hex decoding failed.
-    #[error("invalid hex in digest: {0}")]
-    InvalidHex(#[from] hex::FromHexError),
+    /// The digest text is not hexadecimal.
+    #[error("invalid hex in digest")]
+    InvalidHex,
     /// Hex string had wrong length for the algorithm.
     #[error("wrong digest length: expected {expected} hex chars, got {actual}")]
     WrongLength {
@@ -64,7 +64,7 @@ impl Digest {
     /// Return the lowercase hex string (64 chars for SHA-256).
     pub fn hex(&self) -> String {
         match self {
-            Self::Sha256(b) => hex::encode(b),
+            Self::Sha256(b) => crate::hex::encode(b),
         }
     }
 
@@ -87,7 +87,7 @@ impl FromStr for Digest {
                     actual: hex_str.len(),
                 });
             }
-            let bytes = hex::decode(hex_str)?;
+            let bytes = crate::hex::decode(hex_str).ok_or(DigestParseError::InvalidHex)?;
             let mut arr = [0u8; 32];
             arr.copy_from_slice(&bytes);
             Ok(Self::Sha256(arr))
@@ -180,6 +180,6 @@ mod tests {
         // 64 chars but invalid hex (z is not valid hex)
         let bad_hex = "z".repeat(64);
         let err = format!("sha256:{bad_hex}").parse::<Digest>().unwrap_err();
-        assert!(matches!(err, DigestParseError::InvalidHex(_)));
+        assert!(matches!(err, DigestParseError::InvalidHex));
     }
 }

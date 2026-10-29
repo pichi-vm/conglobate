@@ -55,7 +55,7 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Check Clippy
-        run: cargo clippy --locked --all-targets -- -D warnings
+        run: cargo clippy --locked --all-targets --features cli -- -D warnings
       - name: Check types-only lib
         run: cargo check --locked --lib --no-default-features
 

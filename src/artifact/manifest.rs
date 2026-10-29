@@ -552,7 +552,7 @@ impl Manifest {
                     return Err(ManifestValidationError::BadScuteBlocks(d.digest.clone()));
                 }
             }
-            if hex::decode(&d.annotations.salt).is_err() {
+            if crate::hex::decode(&d.annotations.salt).is_none() {
                 return Err(ManifestValidationError::BadSalt(d.annotations.salt.clone()));
             }
         }

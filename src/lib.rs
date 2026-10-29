@@ -5,6 +5,7 @@
 
 pub mod artifact;
 pub mod console;
+mod hex;
 #[path = "plan/schema.rs"]
 pub mod plan;
 pub mod value;

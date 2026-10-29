@@ -33,6 +33,6 @@ jobs:
           sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev
           rustup toolchain install 1.94.0 --profile minimal
       - name: Run rootless tests
-        run: cargo test --locked --all-targets
+        run: cargo test --locked --all-targets --features cli
       - name: Compile internal VM fixtures
         run: cargo check --locked --features test-fixtures --bin conglobate-lifecycle-tests

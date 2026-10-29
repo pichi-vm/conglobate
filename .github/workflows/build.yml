@@ -68,7 +68,7 @@ jobs:
           git clone --depth 1 https://github.com/pichi-vm/pichi /tmp/pichi
           (cd /tmp/pichi && cargo build --release --bin pichi)
           install -m755 /tmp/pichi/target/release/pichi /usr/local/bin/pichi
-          cargo +1.94.0 build --locked --release --bin conglobate
+          cargo +1.94.0 build --locked --release --features cli --bin conglobate
           echo "CONGLOBATE_BIN=$PWD/target/release/conglobate" >> "$GITHUB_ENV"
 
       - name: Build appliance image (native ${{ matrix.arch }})

@@ -1,8 +1,9 @@
 # Conglobate
 
 Conglobate builds layered OS images from committed plans and locally supplied,
-locked image artifacts. The crate is a types-only library plus a binary engine;
-the standalone CLI remains testable without a VM. Production builds run in a
+locked image artifacts. The crate is a types-only library plus a binary engine
+built with the `cli` feature (off by default, so library users get only the
+shared types); the standalone CLI remains testable without a VM. Production builds run in a
 pichi appliance image shipped from this repository (see DESIGN.md). The
 approved plan format is the multi-stage task model in
 [DESIGN.md](DESIGN.md): tasks `bootstrap`, `extend`, and `build`, then
@@ -105,10 +106,11 @@ toolchain, not a separately established minimum supported Rust version.
 After dependencies are available, run these commands as an ordinary user:
 
 ```sh
-cargo build --locked
+cargo build --locked --features cli
 cargo fmt --all -- --check
-cargo clippy --locked --all-targets -- -D warnings
-cargo test --locked --all-targets
+cargo clippy --locked --all-targets --features cli -- -D warnings
+cargo check --locked --lib --no-default-features
+cargo test --locked --all-targets --features cli
 cargo check --locked --features test-fixtures --bin conglobate-lifecycle-tests
 ```
 

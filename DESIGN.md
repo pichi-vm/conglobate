@@ -151,6 +151,8 @@ assembly uses the carapace root.
 ### 1.1 Component responsibilities
 
 1. **Conglobate crate** is a types-only `[lib]` plus a `[[bin]]` engine.
+   The binary and its dependencies need the `cli` feature, which is off by
+   default; the library's own dependencies stay small.
    The library exposes shared types (including OCI/image output types formerly
    owned by `pichi-artifact`); those types retire into this crate so OCI outputs
    are Conglobate outputs. The binary owns the build engine. **`pichi` depends
@@ -1911,8 +1913,8 @@ RAII owns resources; destructors cannot certify successful finalization.
 ## 15. Rust architecture
 
 The crate exposes a **types-only `[lib]`** (including OCI/image output types
-retired from `pichi-artifact`) and a **`[[bin]]` engine**. Engine modules remain
-private to the binary. Opt-in VM fixtures compile the same engine modules into a
+retired from `pichi-artifact`) and a **`[[bin]]` engine** behind the `cli`
+feature (off by default). Engine modules remain private to the binary. Opt-in VM fixtures compile the same engine modules into a
 separate test binary. Downstream `pichi` depends on the lib for shared types.
 
 ### Inputs and workflow

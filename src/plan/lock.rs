@@ -27,7 +27,7 @@ impl<'de> Deserialize<'de> for IndexPin {
 }
 impl Serialize for IndexPin {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&format!("sha256:{}", hex::encode(self.0)))
+        serializer.serialize_str(&format!("sha256:{}", crate::hex::encode(self.0)))
     }
 }
 #[derive(Debug, Deserialize)]
@@ -85,7 +85,7 @@ impl Lock {
             }
             text.push_str(&format!(
                 "  \"{remote}\":\n    index: sha256:{}\n",
-                hex::encode(index.0)
+                crate::hex::encode(index.0)
             ));
         }
         Ok(text)

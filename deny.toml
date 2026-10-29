@@ -5,6 +5,10 @@
 # listed here fails CI by design — a deliberate prompt to review the new
 # license before accepting it.
 
+[graph]
+# Check the program's dependencies too; they sit behind the `cli` feature.
+all-features = true
+
 [licenses]
 allow = [
     "Apache-2.0",   # this crate + many deps
