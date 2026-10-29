@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Cache, CacheError, VerifiedChain, VerifiedMetadata};
-use crate::artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
+use crate::artifact::{
+    Digest, MEDIA_TYPE_OCI_IMAGE_INDEX_V1 as INDEX, MEDIA_TYPE_OCI_IMAGE_MANIFEST_V1 as MANIFEST,
+    MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest,
+};
 use crate::image::IndexDigest;
 use serde::Deserialize;
 
-const INDEX: &str = "application/vnd.oci.image.index.v1+json";
-const MANIFEST: &str = "application/vnd.oci.image.manifest.v1+json";
 /// `tests/distro/context/lock.yaml` pins an index whose only manifest
 /// descriptor uses this digest and a declared size of 2. The host stores the
 /// real carapace manifest at that blob path. Those bytes are not the preimage

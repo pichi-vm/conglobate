@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Cache, CacheError, ResolvedImage};
-use crate::artifact::{Digest as ContentDigest, Layer, ScuteDescriptor};
+use crate::artifact::{
+    ANNOTATION_CARAPACE_VERITY_ALGO, ANNOTATION_CARAPACE_VERITY_DATA_BLOCK_SIZE,
+    ANNOTATION_CARAPACE_VERITY_HASH_BLOCK_SIZE, ANNOTATION_CARAPACE_VERITY_HASH_TYPE,
+    ANNOTATION_CARAPACE_VERITY_VERSION, Digest as ContentDigest, Layer, ScuteDescriptor,
+};
 use crate::chain::ScuteExtent;
 use sha2::{Digest, Sha256};
 use std::{
@@ -77,18 +81,13 @@ impl Cache {
             return Ok(None);
         }
         for (key, expected) in [
-            ("algo", "sha256"),
-            ("data-block-size", "4096"),
-            ("hash-block-size", "4096"),
-            ("version", "1"),
-            ("hash-type", "1"),
+            (ANNOTATION_CARAPACE_VERITY_ALGO, "sha256"),
+            (ANNOTATION_CARAPACE_VERITY_DATA_BLOCK_SIZE, "4096"),
+            (ANNOTATION_CARAPACE_VERITY_HASH_BLOCK_SIZE, "4096"),
+            (ANNOTATION_CARAPACE_VERITY_VERSION, "1"),
+            (ANNOTATION_CARAPACE_VERITY_HASH_TYPE, "1"),
         ] {
-            if manifest
-                .annotations
-                .get(&format!("dev.pichi.carapace.verity.{key}"))
-                .map(String::as_str)
-                != Some(expected)
-            {
+            if manifest.annotations.get(key).map(String::as_str) != Some(expected) {
                 return Err(CacheError::Invalid(
                     "unsupported carapace verity parameters",
                 ));

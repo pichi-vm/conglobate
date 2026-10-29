@@ -2,7 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::StagedDirectory;
-use crate::artifact::Digest;
+use crate::artifact::{
+    ANNOTATION_BUILD_COMMIT, ANNOTATION_BUILD_CONTEXT, ANNOTATION_BUILD_LOCATION,
+    ANNOTATION_BUILD_LOCK, ANNOTATION_BUILD_PLAN, ANNOTATION_BUILD_PREFIX,
+    ANNOTATION_CARAPACE_VERITY_ALGO, ANNOTATION_CARAPACE_VERITY_DATA_BLOCK_SIZE,
+    ANNOTATION_CARAPACE_VERITY_HASH, ANNOTATION_CARAPACE_VERITY_HASH_BLOCK_SIZE,
+    ANNOTATION_CARAPACE_VERITY_HASH_TYPE, ANNOTATION_CARAPACE_VERITY_VERSION, Digest,
+    MEDIA_TYPE_OCI_IMAGE_INDEX_V1, MEDIA_TYPE_OCI_IMAGE_MANIFEST_V1,
+};
 use crate::{
     cache::{Cache, CacheError, ResolvedImage, VerifiedChain},
     image::IndexDigest,
@@ -21,11 +28,11 @@ impl AssembledImage {
     fn verity_annotations() -> serde_json::Value {
         // Keep verity param annotations; never stamp tip hash.
         serde_json::json!({
-            "dev.pichi.carapace.verity.algo": "sha256",
-            "dev.pichi.carapace.verity.data-block-size": "4096",
-            "dev.pichi.carapace.verity.hash-block-size": "4096",
-            "dev.pichi.carapace.verity.version": "1",
-            "dev.pichi.carapace.verity.hash-type": "1"
+            ANNOTATION_CARAPACE_VERITY_ALGO: "sha256",
+            ANNOTATION_CARAPACE_VERITY_DATA_BLOCK_SIZE: "4096",
+            ANNOTATION_CARAPACE_VERITY_HASH_BLOCK_SIZE: "4096",
+            ANNOTATION_CARAPACE_VERITY_VERSION: "1",
+            ANNOTATION_CARAPACE_VERITY_HASH_TYPE: "1"
         })
     }
     fn strip_tip_annotation(manifest: &mut serde_json::Value) {
@@ -33,7 +40,7 @@ impl AssembledImage {
             .get_mut("annotations")
             .and_then(|value| value.as_object_mut())
         {
-            annotations.remove("dev.pichi.carapace.verity.hash");
+            annotations.remove(ANNOTATION_CARAPACE_VERITY_HASH);
         }
     }
     /// Stamp the resolved input before hashing and validating the final layout.
@@ -54,7 +61,7 @@ impl AssembledImage {
         // Inherited provenance belongs to the old build. Keep unrelated and
         // verity parameter annotations, but replace the entire build binding.
         annotations.retain(|key, _| {
-            !key.starts_with("dev.pichi.build.") && key != "dev.pichi.carapace.verity.hash"
+            !key.starts_with(ANNOTATION_BUILD_PREFIX) && key != ANNOTATION_CARAPACE_VERITY_HASH
         });
         let commit = build.context().commit();
         let algorithm = match commit.kind() {
@@ -64,9 +71,9 @@ impl AssembledImage {
         };
         let context: &std::path::Path = request.context().as_ref();
         for (key, value) in [
-            ("commit", format!("{algorithm}:{commit}")),
+            (ANNOTATION_BUILD_COMMIT, format!("{algorithm}:{commit}")),
             (
-                "context",
+                ANNOTATION_BUILD_CONTEXT,
                 if context.as_os_str().is_empty() {
                     ".".into()
                 } else {
@@ -77,7 +84,7 @@ impl AssembledImage {
                 },
             ),
             (
-                "plan",
+                ANNOTATION_BUILD_PLAN,
                 build
                     .plan_document()
                     .path()
@@ -87,7 +94,7 @@ impl AssembledImage {
                     .into(),
             ),
             (
-                "lock",
+                ANNOTATION_BUILD_LOCK,
                 build
                     .lock_document()
                     .path()
@@ -97,10 +104,10 @@ impl AssembledImage {
                     .into(),
             ),
         ] {
-            annotations.insert(format!("dev.pichi.build.{key}"), value.into());
+            annotations.insert(key.into(), value.into());
         }
         if let Some(location) = request.location() {
-            annotations.insert("dev.pichi.build.location".into(), location.into());
+            annotations.insert(ANNOTATION_BUILD_LOCATION.into(), location.into());
         }
         let old_digest = self.image.manifest_bytes().digest().clone();
         let (image, chain) = Self::resolve_staging(
@@ -196,7 +203,7 @@ impl AssembledImage {
                 document
             } else {
                 staged.store_blob(b"{}")?;
-                serde_json::json!({"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json",
+                serde_json::json!({"schemaVersion":2,"mediaType":MEDIA_TYPE_OCI_IMAGE_MANIFEST_V1,
                     "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                     "config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
             };
@@ -300,7 +307,7 @@ impl AssembledImage {
             let _tip = parent; // baked into guest via corium=; not OCI tip
             let manifest = serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": 2,
-                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "mediaType": MEDIA_TYPE_OCI_IMAGE_MANIFEST_V1,
                 "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                 "config": crate::artifact::ConfigDescriptor::canonical(),
                 "layers": layers,
@@ -336,9 +343,9 @@ impl AssembledImage {
         let digest = staged.store_blob(manifest)?;
         let index = serde_json::to_vec(&serde_json::json!({
             "schemaVersion": 2,
-            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "mediaType": MEDIA_TYPE_OCI_IMAGE_INDEX_V1,
             "manifests": [{
-                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "mediaType": MEDIA_TYPE_OCI_IMAGE_MANIFEST_V1,
                 "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                 "digest": digest.to_string(),
                 "size": manifest.len(),

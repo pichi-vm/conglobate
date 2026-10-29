@@ -14,24 +14,21 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::artifact::annotation::{
+    ANNOTATION_CARAPACE_VERITY_ALGO, ANNOTATION_CARAPACE_VERITY_DATA_BLOCK_SIZE,
+    ANNOTATION_CARAPACE_VERITY_HASH_BLOCK_SIZE, ANNOTATION_CARAPACE_VERITY_HASH_TYPE,
+    ANNOTATION_CARAPACE_VERITY_VERSION, ANNOTATION_SCUTE_VERITY_DATA_BLOCKS,
+    ANNOTATION_SCUTE_VERITY_SALT,
+};
 use crate::artifact::media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_CONFIG_V1,
     MEDIA_TYPE_PICHI_DTB_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_SCUTE_V1,
     MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 
-/// Required chain-wide annotation keys (per D-06). These are the dm-verity
-/// superblock fields a consumer needs to *reconstruct* the (undistributed)
-/// verity layer from the cow — the sole reason pichi carries them. All MUST be
-/// present in `Manifest::annotations` per D-07 rule 3 when scute layers exist.
-const CHAIN_ANNOTATION_VERITY_ALGO: &str = "dev.pichi.carapace.verity.algo";
-const CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE: &str = "dev.pichi.carapace.verity.data-block-size";
-const CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE: &str = "dev.pichi.carapace.verity.hash-block-size";
-/// dm-verity superblock `version` and `hash_type` — reconstruction inputs that
-/// were previously hardcoded in the builder rather than conveyed.
-const CHAIN_ANNOTATION_VERITY_VERSION: &str = "dev.pichi.carapace.verity.version";
-const CHAIN_ANNOTATION_VERITY_HASH_TYPE: &str = "dev.pichi.carapace.verity.hash-type";
-
+// The carapace verity annotations below are the dm-verity superblock fields
+// a reader needs to rebuild the verity layer, which is not distributed. All
+// of them must be present when the manifest has scute layers.
 /// Canonical SHA-256 digest of `{}` (the OCI 1.1 empty config blob).
 const EMPTY_CONFIG_DIGEST: &str =
     "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a";
@@ -146,6 +143,17 @@ const _: () = {
     assert!(
         const_str_eq(MEDIA_TYPE_PICHI_DTB_V1, "application/vnd.pichi.dtb.v1"),
         "Layer::Dtb serde rename must match MEDIA_TYPE_PICHI_DTB_V1"
+    );
+    assert!(
+        const_str_eq(
+            ANNOTATION_SCUTE_VERITY_DATA_BLOCKS,
+            "dev.pichi.scute.verity.data-blocks"
+        ),
+        "ScuteAnnotations::data_blocks serde rename must match its constant"
+    );
+    assert!(
+        const_str_eq(ANNOTATION_SCUTE_VERITY_SALT, "dev.pichi.scute.verity.salt"),
+        "ScuteAnnotations::salt serde rename must match its constant"
     );
 };
 
@@ -477,11 +485,11 @@ impl Manifest {
         // A scute-less (PMI-only) artifact carries none of them.
         if self.has_scutes() {
             for key in [
-                CHAIN_ANNOTATION_VERITY_ALGO,
-                CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
-                CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE,
-                CHAIN_ANNOTATION_VERITY_VERSION,
-                CHAIN_ANNOTATION_VERITY_HASH_TYPE,
+                ANNOTATION_CARAPACE_VERITY_ALGO,
+                ANNOTATION_CARAPACE_VERITY_DATA_BLOCK_SIZE,
+                ANNOTATION_CARAPACE_VERITY_HASH_BLOCK_SIZE,
+                ANNOTATION_CARAPACE_VERITY_VERSION,
+                ANNOTATION_CARAPACE_VERITY_HASH_TYPE,
             ] {
                 if !self.annotations.contains_key(key) {
                     return Err(ManifestValidationError::MissingChainAnnotation(key));
@@ -491,8 +499,8 @@ impl Manifest {
             // consumer's TCB control per the carapace spec, not storage's):
             // version / hash-type must parse as integers.
             for key in [
-                CHAIN_ANNOTATION_VERITY_VERSION,
-                CHAIN_ANNOTATION_VERITY_HASH_TYPE,
+                ANNOTATION_CARAPACE_VERITY_VERSION,
+                ANNOTATION_CARAPACE_VERITY_HASH_TYPE,
             ] {
                 let v = &self.annotations[key];
                 if v.parse::<u32>().is_err() {
@@ -528,13 +536,13 @@ impl Manifest {
                 continue;
             };
             if let Some(blocks) = d.annotations.data_blocks {
-                let value = &self.annotations[CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE];
+                let value = &self.annotations[ANNOTATION_CARAPACE_VERITY_DATA_BLOCK_SIZE];
                 let block_size = value
                     .parse::<u32>()
                     .ok()
                     .filter(|size| *size != 0)
                     .ok_or_else(|| ManifestValidationError::BadChainAnnotation {
-                        key: CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
+                        key: ANNOTATION_CARAPACE_VERITY_DATA_BLOCK_SIZE,
                         value: value.clone(),
                     })?;
                 if blocks == 0
@@ -615,17 +623,17 @@ mod tests {
 
     fn sample_chain_annotations() -> BTreeMap<String, String> {
         let mut a = BTreeMap::new();
-        a.insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), "sha256".into());
+        a.insert(ANNOTATION_CARAPACE_VERITY_ALGO.into(), "sha256".into());
         a.insert(
-            CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE.into(),
+            ANNOTATION_CARAPACE_VERITY_DATA_BLOCK_SIZE.into(),
             "4096".into(),
         );
         a.insert(
-            CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE.into(),
+            ANNOTATION_CARAPACE_VERITY_HASH_BLOCK_SIZE.into(),
             "4096".into(),
         );
-        a.insert(CHAIN_ANNOTATION_VERITY_VERSION.into(), "1".into());
-        a.insert(CHAIN_ANNOTATION_VERITY_HASH_TYPE.into(), "1".into());
+        a.insert(ANNOTATION_CARAPACE_VERITY_VERSION.into(), "1".into());
+        a.insert(ANNOTATION_CARAPACE_VERITY_HASH_TYPE.into(), "1".into());
         a.insert(
             "org.opencontainers.image.created".into(),
             "2026-05-06T14:32:00Z".into(),
@@ -788,10 +796,10 @@ mod tests {
     #[test]
     fn validate_rejects_missing_chain_annotation() {
         let mut m = sample_base_manifest();
-        m.annotations.remove(CHAIN_ANNOTATION_VERITY_ALGO);
+        m.annotations.remove(ANNOTATION_CARAPACE_VERITY_ALGO);
         let err = m.validate().unwrap_err();
         assert!(
-            matches!(err, ManifestValidationError::MissingChainAnnotation(k) if k == CHAIN_ANNOTATION_VERITY_ALGO)
+            matches!(err, ManifestValidationError::MissingChainAnnotation(k) if k == ANNOTATION_CARAPACE_VERITY_ALGO)
         );
     }
 
@@ -835,8 +843,8 @@ mod tests {
     #[test]
     fn validate_requires_verity_version_and_hash_type_when_scutes_present() {
         for key in [
-            CHAIN_ANNOTATION_VERITY_VERSION,
-            CHAIN_ANNOTATION_VERITY_HASH_TYPE,
+            ANNOTATION_CARAPACE_VERITY_VERSION,
+            ANNOTATION_CARAPACE_VERITY_HASH_TYPE,
         ] {
             let mut m = sample_base_manifest();
             m.annotations.remove(key);
@@ -856,13 +864,13 @@ mod tests {
         // is accepted — pichi imposes no value whitelist).
         let mut m = sample_base_manifest();
         m.annotations.insert(
-            CHAIN_ANNOTATION_VERITY_VERSION.into(),
+            ANNOTATION_CARAPACE_VERITY_VERSION.into(),
             "not-a-number".into(),
         );
         assert!(matches!(
             m.validate().unwrap_err(),
             ManifestValidationError::BadChainAnnotation { key, .. }
-                if key == CHAIN_ANNOTATION_VERITY_VERSION
+                if key == ANNOTATION_CARAPACE_VERITY_VERSION
         ));
     }
 

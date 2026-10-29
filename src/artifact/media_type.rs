@@ -63,6 +63,12 @@ pub const MEDIA_TYPE_PICHI_CONFIG_V1: &str = "application/vnd.pichi.config.v1+js
 /// `data: "e30="`); pichi artifacts now use [`MEDIA_TYPE_PICHI_CONFIG_V1`].
 pub const MEDIA_TYPE_OCI_EMPTY_V1: &str = "application/vnd.oci.empty.v1+json";
 
+/// Standard OCI image manifest. Every pichi artifact manifest has this type.
+pub const MEDIA_TYPE_OCI_IMAGE_MANIFEST_V1: &str = "application/vnd.oci.image.manifest.v1+json";
+
+/// Standard OCI image index: a list of manifests, one per platform.
+pub const MEDIA_TYPE_OCI_IMAGE_INDEX_V1: &str = "application/vnd.oci.image.index.v1+json";
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,6 +96,14 @@ mod tests {
             "application/vnd.pichi.config.v1+json"
         );
         assert_eq!(MEDIA_TYPE_OCI_EMPTY_V1, "application/vnd.oci.empty.v1+json");
+        assert_eq!(
+            MEDIA_TYPE_OCI_IMAGE_MANIFEST_V1,
+            "application/vnd.oci.image.manifest.v1+json"
+        );
+        assert_eq!(
+            MEDIA_TYPE_OCI_IMAGE_INDEX_V1,
+            "application/vnd.oci.image.index.v1+json"
+        );
     }
 
     #[test]
