@@ -38,7 +38,7 @@ impl Repository {
         std::fs::write(path, bytes).unwrap();
     }
     fn commit(&self) -> CommitIdentity {
-        self.git(&["add", "."]);
+        self.git(&["add", "--ignore-removal", "."]);
         self.git(&["commit", "-m", "fixture"]);
         CommitIdentity::try_from(self.git(&["rev-parse", "HEAD"]).as_str()).unwrap()
     }
@@ -64,7 +64,7 @@ fn capture_uses_verified_commit_and_subtree_in_both_object_formats() {
         repo.write("outside", b"not selected");
         let commit = repo.commit();
         repo.write("build/plan.yml", b"working tree modified");
-        let capture = repo.capture(&commit, "build").unwrap();
+        let mut capture = repo.capture(&commit, "build").unwrap();
         assert_eq!(capture.entries().len(), 1);
         assert!(matches!(
             capture.entries().get(Path::new("plan.yml")),
@@ -98,14 +98,14 @@ fn tampered_blob_bytes_fail_identity_verification() {
     };
     std::fs::remove_file(object_path(&original)).unwrap();
     std::fs::copy(object_path(&other), object_path(&original)).unwrap();
-    let capture = repo.capture(&commit, ".").unwrap();
+    let mut capture = repo.capture(&commit, ".").unwrap();
     let path = ContextPath::try_from(Path::new("a")).unwrap();
     let error = capture.read(&path).unwrap_err().to_string();
     assert!(error.contains("identity"), "{error}");
 }
 
 #[test]
-fn unsupported_lfs_and_submodules_fail() {
+fn lfs_fails_on_use_and_unused_gitlinks_are_ignored() {
     use conglobate::path::ContextPath;
     let repo = Repository::new("sha1");
     repo.write(
@@ -113,7 +113,7 @@ fn unsupported_lfs_and_submodules_fail() {
         b"version https://git-lfs.github.com/spec/v1\noid sha256:123\nsize 1\n",
     );
     let commit = repo.commit();
-    let capture = repo.capture(&commit, ".").unwrap();
+    let mut capture = repo.capture(&commit, ".").unwrap();
     let path = ContextPath::try_from(Path::new("pointer")).unwrap();
     assert!(capture.read(&path).unwrap_err().to_string().contains("LFS"));
     repo.git(&["rm", "pointer"]);
@@ -126,8 +126,11 @@ fn unsupported_lfs_and_submodules_fail() {
     ]);
     repo.git(&["commit", "-m", "gitlink"]);
     let commit = CommitIdentity::try_from(repo.git(&["rev-parse", "HEAD"]).as_str()).unwrap();
+    let mut capture = repo.capture(&commit, ".").unwrap();
+    let path = ContextPath::try_from(Path::new("module/file")).unwrap();
     assert!(
-        repo.capture(&commit, ".")
+        capture
+            .read(&path)
             .unwrap_err()
             .to_string()
             .contains("submodule")
@@ -149,7 +152,7 @@ fn selected_files_follow_only_confined_committed_links() {
         std::os::unix::fs::symlink(target, repo.0.path().join(name)).unwrap();
     }
     let commit = repo.commit();
-    let capture = repo.capture(&commit, ".").unwrap();
+    let mut capture = repo.capture(&commit, ".").unwrap();
     let selected = ContextPath::try_from(Path::new("selected")).unwrap();
     assert_eq!(capture.read(&selected).unwrap().bytes(), b"selected");
     for name in ["escape", "absolute", "loop", "broken", "dir"] {
@@ -174,7 +177,7 @@ fn capture_defers_regular_blob_loads_until_read() {
         .join(&unused[2..]);
     // Remove an unused blob before capture; metadata walk must still succeed.
     std::fs::remove_file(&object_path).unwrap();
-    let capture = repo.capture(&commit, ".").unwrap();
+    let mut capture = repo.capture(&commit, ".").unwrap();
     let kept = ContextPath::try_from(Path::new("kept")).unwrap();
     assert_eq!(capture.read(&kept).unwrap().bytes(), b"keep-me");
     let unused_path = ContextPath::try_from(Path::new("unused")).unwrap();
@@ -191,7 +194,7 @@ fn packed_objects_are_supported_and_capture_does_not_execute_filters() {
     repo.git(&["config", "filter.fixture.smudge", "false"]);
     repo.git(&["config", "filter.fixture.required", "true"]);
     repo.git(&["gc", "--prune=now"]);
-    let capture = repo.capture(&commit, ".").unwrap();
+    let mut capture = repo.capture(&commit, ".").unwrap();
     let path = conglobate::path::ContextPath::try_from(Path::new("plan")).unwrap();
     assert_eq!(capture.read(&path).unwrap().bytes(), b"original\n");
 }
@@ -530,7 +533,7 @@ fn captured_bytes_modes_and_links_survive_source_changes() {
     std::os::unix::fs::symlink("dir/plain", repo.0.path().join("link")).unwrap();
     std::os::unix::fs::symlink("../outside", repo.0.path().join("escape")).unwrap();
     let commit = repo.commit();
-    let captured = repo.capture(&commit, ".").unwrap();
+    let mut captured = repo.capture(&commit, ".").unwrap();
     repo.write("dir/plain", b"changed");
     let plain = captured
         .read(&ContextPath::try_from(Path::new("link")).unwrap())
@@ -586,7 +589,7 @@ fn captured_reads_reject_trailing_symlink_separators() {
     std::os::unix::fs::symlink("file/", repo.0.path().join("link")).unwrap();
     std::os::unix::fs::symlink("file/.", repo.0.path().join("dotlink")).unwrap();
     let commit = repo.commit();
-    let captured = repo.capture(&commit, ".").unwrap();
+    let mut captured = repo.capture(&commit, ".").unwrap();
     let path = ContextPath::try_from(Path::new("link")).unwrap();
     let dotpath = ContextPath::try_from(Path::new("dotlink")).unwrap();
     assert!(captured.read(&path).is_err());
@@ -653,4 +656,264 @@ fn executing_stage_variants_require_environment_maps_before_cache_access() {
         assert!(!cache.exists());
         assert!(!output.exists());
     }
+}
+
+impl Repository {
+    /// Stage a store without a module checkout; name deliberately differs from path.
+    fn module(&self, child: &Repository, path: &str, name: &str) {
+        let store = self.0.path().join(".git/modules").join(name);
+        std::fs::create_dir_all(store.parent().unwrap()).unwrap();
+        self.git(&[
+            "clone",
+            "--bare",
+            child.0.path().to_str().unwrap(),
+            store.to_str().unwrap(),
+        ]);
+        let nested = child.0.path().join(".git/modules");
+        if nested.exists() {
+            std::fs::rename(nested, store.join("modules")).unwrap();
+        }
+        let modules = self.0.path().join(".gitmodules");
+        let mut bytes = std::fs::read_to_string(&modules).unwrap_or_default();
+        bytes.push_str(&format!(
+            "[submodule \"{name}\"]\n\tpath = {path}\n\turl = never-fetch.invalid/repo\n"
+        ));
+        self.write(".gitmodules", bytes.as_bytes());
+        let id = child.git(&["rev-parse", "HEAD"]);
+        self.git(&[
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            &format!("160000,{id},{path}"),
+        ]);
+    }
+}
+
+#[test]
+fn used_modules_resolve_recorded_objects_and_context_subdirectories() {
+    use conglobate::path::ContextPath;
+    for format in ["sha1", "sha256"] {
+        let child = Repository::new(format);
+        child.write("dir/file", b"module bytes");
+        child.commit();
+        let repo = Repository::new(format);
+        repo.module(&child, "vendor/lib", "different-name");
+        let commit = repo.commit();
+        // Neither local config nor working .gitmodules controls resolution.
+        repo.write(".gitmodules", b"invalid working metadata");
+        child.write("dir/file", b"later bytes");
+        child.commit();
+        let mut context = repo.capture(&commit, ".").unwrap();
+        let path = ContextPath::try_from(Path::new("vendor/lib/dir/file")).unwrap();
+        assert_eq!(context.read(&path).unwrap().bytes(), b"module bytes");
+        conglobate::copy::CopySources::prepare(&mut context, &["vendor/lib".parse().unwrap()])
+            .unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let root = std::fs::File::open(output.path()).unwrap();
+        let directive = conglobate::plan::Copy::fixture(
+            "vendor/lib",
+            "/copied",
+            rustix::process::geteuid().as_raw().to_string(),
+            rustix::process::getegid().as_raw().to_string(),
+            None,
+        );
+        conglobate::copy::CopyDestination::new(&root)
+            .copy(&context, &directive)
+            .unwrap();
+        assert_eq!(
+            std::fs::read(output.path().join("copied/dir/file")).unwrap(),
+            b"module bytes"
+        );
+        let mut context = repo.capture(&commit, "vendor/lib/dir").unwrap();
+        let path = ContextPath::try_from(Path::new("file")).unwrap();
+        assert_eq!(context.read(&path).unwrap().bytes(), b"module bytes");
+    }
+}
+
+#[test]
+fn copy_preparation_requires_only_selected_module_stores() {
+    use conglobate::copy::{CopySources, SourcePattern};
+    let child = Repository::new("sha1");
+    child.write("file", b"module");
+    child.commit();
+    let repo = Repository::new("sha1");
+    repo.write("kept", b"ordinary");
+    repo.module(&child, "used", "used-store");
+    repo.module(&child, "unused", "unused-store");
+    let commit = repo.commit();
+    std::fs::remove_dir_all(repo.0.path().join(".git/modules/unused-store")).unwrap();
+    let prepare = |context: &mut CapturedContext, pattern: &str| {
+        CopySources::prepare(context, &[pattern.parse::<SourcePattern>().unwrap()])
+    };
+    let mut context = repo.capture(&commit, ".").unwrap();
+    prepare(&mut context, "kept").unwrap();
+    prepare(&mut context, "us*/file").unwrap();
+    let error = prepare(&mut context, "unused/file")
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.contains("unused") && error.contains("needed store"),
+        "{error}"
+    );
+    for pattern in ["unused", "/", "un*"] {
+        let mut context = repo.capture(&commit, ".").unwrap();
+        assert!(prepare(&mut context, pattern).is_err(), "{pattern}");
+    }
+}
+
+#[test]
+fn nested_module_depth_is_limited_to_eight_used_gitlinks() {
+    use conglobate::{copy::CopySources, path::ContextPath};
+    let mut child = Repository::new("sha1");
+    child.write("file", b"deep bytes");
+    child.commit();
+    for _ in 0..9 {
+        let parent = Repository::new("sha1");
+        parent.write("file", b"at this depth");
+        parent.module(&child, "nested", "store");
+        parent.commit();
+        child = parent;
+    }
+    let commit = CommitIdentity::try_from(child.git(&["rev-parse", "HEAD"]).as_str()).unwrap();
+    let mut context = child.capture(&commit, ".").unwrap();
+    let within = format!("{}file", "nested/".repeat(8));
+    let path = ContextPath::try_from(Path::new(&within)).unwrap();
+    assert_eq!(context.read(&path).unwrap().bytes(), b"at this depth");
+    CopySources::prepare(&mut context, &[within.parse().unwrap()]).unwrap();
+    let beyond = format!("{}file", "nested/".repeat(9));
+    let path = ContextPath::try_from(Path::new(&beyond)).unwrap();
+    let error = context.read(&path).unwrap_err().to_string();
+    assert!(error.contains("depth") && error.contains("8"), "{error}");
+    assert!(CopySources::prepare(&mut context, &["/".parse().unwrap()]).is_err());
+    let mut context = child.capture(&commit, &"nested/".repeat(8)).unwrap();
+    assert!(
+        context
+            .read(&ContextPath::try_from(Path::new("file")).unwrap())
+            .is_ok()
+    );
+    assert!(child.capture(&commit, &"nested/".repeat(9)).is_err());
+}
+
+#[test]
+fn planning_scans_used_copies_and_static_documents_before_execution() {
+    use conglobate::{input::CapturedBuild, request::BuildRequest};
+    let child = Repository::new("sha1");
+    child.write("file", b"input");
+    child.write("plan", b"tasks:\n  root:\n    kind: extend\n    from: registry.test/base:1\n    exec:\n    - copy:\n        from: module\n        into: /input\nimage: root\n");
+    child.write(
+        "lock",
+        format!(
+            "version: 1\nimages:\n  registry.test/base:1: {{index: sha256:{}}}\n",
+            "11".repeat(32)
+        )
+        .as_bytes(),
+    );
+    child.commit();
+    let repo = Repository::new("sha1");
+    repo.module(&child, "module", "store");
+    let commit = repo.commit();
+    let identity = hex::encode(commit.bytes());
+    let request = BuildRequest::parse_from([
+        "conglobate",
+        "build",
+        "--repository",
+        repo.0.path().to_str().unwrap(),
+        "--commit",
+        &identity,
+        "--plan",
+        "module/plan",
+        "--lock",
+        "module/lock",
+        "--cache",
+        "missing-cache",
+        "--output",
+        "unused-output",
+        "--uid-map",
+        "200000:65536",
+        "--gid-map",
+        "300000:65536",
+    ])
+    .unwrap();
+    CapturedBuild::try_from(&request).unwrap();
+    // Keep static documents outside the missing module to isolate COPY scanning.
+    repo.write("plan", &std::fs::read(child.0.path().join("plan")).unwrap());
+    repo.write("lock", &std::fs::read(child.0.path().join("lock")).unwrap());
+    let commit = repo.commit();
+    std::fs::remove_dir_all(repo.0.path().join(".git/modules/store")).unwrap();
+    let identity = hex::encode(commit.bytes());
+    let request = BuildRequest::parse_from([
+        "conglobate",
+        "build",
+        "--repository",
+        repo.0.path().to_str().unwrap(),
+        "--commit",
+        &identity,
+        "--plan",
+        "plan",
+        "--lock",
+        "lock",
+        "--cache",
+        "missing-cache",
+        "--output",
+        "unused-output",
+    ])
+    .unwrap();
+    let error = CapturedBuild::try_from(&request).unwrap_err().to_string();
+    assert!(
+        error.contains("module") && error.contains("needed store"),
+        "{error}"
+    );
+    repo.write("plan", b"tasks:\n  root:\n    kind: extend\n    from: registry.test/base:1\n  unused:\n    kind: extend\n    from: registry.test/base:1\n    exec:\n    - copy:\n        from: module\n        into: /input\nimage: root\n");
+    let commit = repo.commit();
+    let identity = hex::encode(commit.bytes());
+    let request = BuildRequest::parse_from([
+        "conglobate",
+        "build",
+        "--repository",
+        repo.0.path().to_str().unwrap(),
+        "--commit",
+        &identity,
+        "--plan",
+        "plan",
+        "--lock",
+        "lock",
+        "--cache",
+        "missing-cache",
+        "--output",
+        "unused-output",
+    ])
+    .unwrap();
+    CapturedBuild::try_from(&request).unwrap();
+}
+
+#[test]
+fn module_reads_reject_missing_commits_and_host_alternates() {
+    use conglobate::path::ContextPath;
+    let child = Repository::new("sha1");
+    child.write("file", b"input");
+    child.commit();
+    let repo = Repository::new("sha1");
+    repo.module(&child, "module", "store");
+    let commit = repo.commit();
+    let store = repo.0.path().join(".git/modules/store");
+    std::fs::write(
+        store.join("objects/info/alternates"),
+        format!("{}\n", child.0.path().join(".git/objects").display()),
+    )
+    .unwrap();
+    let path = ContextPath::try_from(Path::new("module/file")).unwrap();
+    let mut context = repo.capture(&commit, ".").unwrap();
+    assert!(
+        context
+            .read(&path)
+            .unwrap_err()
+            .to_string()
+            .contains("alternates")
+    );
+    std::fs::remove_file(store.join("objects/info/alternates")).unwrap();
+    let id = child.git(&["rev-parse", "HEAD"]);
+    std::fs::remove_file(store.join("objects").join(&id[..2]).join(&id[2..])).unwrap();
+    let mut context = repo.capture(&commit, ".").unwrap();
+    let error = context.read(&path).unwrap_err().to_string();
+    assert!(error.contains("submodule"), "{error}");
 }

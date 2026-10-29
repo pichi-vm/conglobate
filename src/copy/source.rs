@@ -13,6 +13,10 @@ use std::{
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum SelectionError {
+    #[error("unresolved submodule: {0:?}")]
+    Module(PathBuf),
+    #[error(transparent)]
+    Context(#[from] crate::context::ContextError),
     #[error("COPY source matched no entries: {0}")]
     NoMatch(String),
     #[error("COPY source is missing or traverses a non-directory: {0:?}")]
@@ -63,6 +67,19 @@ pub(crate) struct CopySources<'a> {
     entries: Vec<CopySource<'a>>,
 }
 impl<'a> CopySources<'a> {
+    /// Resolve only stores reached by selection, before execution starts.
+    pub(crate) fn prepare(
+        context: &mut CapturedContext,
+        patterns: &[SourcePattern],
+    ) -> Result<(), SelectionError> {
+        loop {
+            match CopySources::select(context, patterns) {
+                Err(SelectionError::Module(path)) => context.expand(&path)?,
+                result => return result.map(|_| ()),
+            }
+        }
+    }
+
     pub(crate) fn select(
         context: &'a CapturedContext,
         patterns: &[SourcePattern],
@@ -98,6 +115,9 @@ impl<'a> SourceTree<'a> {
                 for path in paths {
                     // Before wildcard walking, an explicit directory symlink is
                     // resolved. Once walking, symlinks are leaves (fsutil semantics).
+                    if matches!(self.entries.get(&path), Some(ContextEntry::Module { .. })) {
+                        return Err(SelectionError::Module(path));
+                    }
                     let actual = if wildcard_seen {
                         if !path.as_os_str().is_empty()
                             && !matches!(self.entries.get(&path), Some(ContextEntry::Directory))
@@ -142,6 +162,11 @@ impl<'a> SourceTree<'a> {
             }
             for selected in paths {
                 let resolved = self.resolve(&selected)?;
+                if let Some((path, _)) = self.entries.iter().find(|(path, entry)| {
+                    path.starts_with(&resolved) && matches!(entry, ContextEntry::Module { .. })
+                }) {
+                    return Err(SelectionError::Module(path.clone()));
+                }
                 entries.push(CopySource {
                     selected,
                     resolved,
@@ -187,6 +212,7 @@ impl<'a> SourceTree<'a> {
                 .get(&resolved)
                 .ok_or_else(|| SelectionError::Missing(path.to_owned()))?
             {
+                ContextEntry::Module { .. } => return Err(SelectionError::Module(resolved)),
                 ContextEntry::Symlink(bytes) => {
                     links += 1;
                     let target = Path::new(OsStr::from_bytes(bytes));
@@ -221,6 +247,7 @@ mod tests {
                 (
                     "dir/file".into(),
                     ContextEntry::File {
+                        store: 0,
                         executable: true,
                         oid: gix::ObjectId::empty_blob(gix::hash::Kind::Sha1),
                     },
@@ -246,6 +273,7 @@ mod tests {
                 (
                     "elsewhere".into(),
                     ContextEntry::File {
+                        store: 0,
                         executable: false,
                         oid: gix::ObjectId::empty_blob(gix::hash::Kind::Sha1),
                     },
@@ -300,6 +328,7 @@ mod tests {
             fixture.0.insert(
                 name.into(),
                 ContextEntry::File {
+                    store: 0,
                     executable: false,
                     oid: gix::ObjectId::empty_blob(gix::hash::Kind::Sha1),
                 },

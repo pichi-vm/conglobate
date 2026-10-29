@@ -28,7 +28,7 @@ impl ContextFile {
 impl CapturedContext {
     /// Resolve links against captured objects, never the caller's filesystem.
     /// Regular file blobs are verified when this returns.
-    pub(crate) fn read(&self, path: &ContextPath) -> Result<ContextFile, ContextError> {
+    pub(crate) fn read(&mut self, path: &ContextPath) -> Result<ContextFile, ContextError> {
         let mut pending: VecDeque<OsString> = path.as_ref().iter().map(OsString::from).collect();
         let mut resolved = PathBuf::new();
         let mut followed = 0;
@@ -43,6 +43,7 @@ impl CapturedContext {
                 continue;
             }
             resolved.push(part);
+            self.expand(&resolved)?;
             let entry = self.entries.get(&resolved).ok_or(ContextError::Invalid(
                 "selected context path does not exist",
             ))?;
@@ -76,8 +77,8 @@ impl CapturedContext {
             }
         }
         match self.entries.get(&resolved) {
-            Some(ContextEntry::File { oid, .. }) => Ok(ContextFile {
-                bytes: self.blob(*oid)?,
+            Some(ContextEntry::File { oid, store, .. }) => Ok(ContextFile {
+                bytes: self.blob(*store, *oid)?,
             }),
             _ => Err(ContextError::Invalid(
                 "selected context path is not a regular file",

@@ -5,6 +5,7 @@
 //! Tree structure and symlink targets are resolved at capture; regular file
 //! bytes are loaded and identity-checked only when read or copied.
 mod lazy;
+mod modules;
 mod read;
 pub(crate) use read::ContextFile;
 
@@ -26,6 +27,8 @@ pub(crate) enum ContextError {
     Git(String),
     #[error("invalid committed context: {0}")]
     Invalid(&'static str),
+    #[error("submodule {path:?}: {reason}")]
+    Module { path: PathBuf, reason: String },
 }
 impl ContextError {
     fn git(error: impl std::fmt::Display) -> Self {
@@ -46,6 +49,17 @@ impl ObjectReader {
             .open(path)
             .map_err(ContextError::git)?
             .to_thread_local();
+        if !repository
+            .objects
+            .store_ref()
+            .alternate_db_paths()
+            .map_err(ContextError::git)?
+            .is_empty()
+        {
+            return Err(ContextError::Invalid(
+                "host object alternates are unsupported",
+            ));
+        }
         Ok(Self(repository))
     }
     fn verified(&self, id: ObjectId) -> Result<gix::Object<'_>, ContextError> {
@@ -87,8 +101,14 @@ impl ObjectReader {
 #[derive(Debug)]
 pub(crate) enum ContextEntry {
     Directory,
+    Module {
+        store: usize,
+        path: PathBuf,
+        oid: ObjectId,
+    },
     /// Blob oid only; bytes are loaded through the retained reader on use.
     File {
+        store: usize,
         executable: bool,
         oid: ObjectId,
     },
@@ -100,7 +120,7 @@ pub(crate) struct CapturedContext {
     commit: ObjectId,
     #[cfg(test)]
     subtree: ObjectId,
-    reader: ObjectReader,
+    stores: Vec<Store>,
     entries: BTreeMap<PathBuf, ContextEntry>,
 }
 impl CapturedContext {
@@ -117,15 +137,23 @@ impl CapturedContext {
                 "commit object format differs from repository",
             ));
         }
-        let mut subtree = {
-            let commit_object = reader
-                .verified(commit_id)?
-                .try_into_commit()
-                .map_err(ContextError::git)?;
-            commit_object.tree_id().map_err(ContextError::git)?.detach()
+        let root = reader.commit_tree(commit_id)?;
+        let mut captured = Self {
+            commit: commit_id,
+            #[cfg(test)]
+            subtree: root,
+            stores: vec![Store {
+                reader,
+                root,
+                depth: 0,
+            }],
+            entries: BTreeMap::new(),
         };
-        for name in context.as_ref().iter() {
-            let tree = reader.tree(subtree)?;
+        let mut store = 0;
+        let mut subtree = root;
+        let mut repository_path = PathBuf::new();
+        for name in context.as_ref().iter().filter(|n| *n != ".") {
+            let tree = captured.stores[store].reader.tree(subtree)?;
             let decoded = tree.decode().map_err(ContextError::git)?;
             let entry = decoded
                 .entries
@@ -135,52 +163,98 @@ impl CapturedContext {
                     bytes == name.as_bytes()
                 })
                 .ok_or(ContextError::Invalid("context subtree does not exist"))?;
-            if entry.mode.kind() != EntryKind::Tree {
-                return Err(ContextError::Invalid(
-                    "context selection is not a directory",
-                ));
+            repository_path.push(name);
+            let id = entry.oid.to_owned();
+            let kind = entry.mode.kind();
+            drop(tree);
+            match kind {
+                EntryKind::Tree => subtree = id,
+                EntryKind::Commit => {
+                    store = captured.open_module(store, &repository_path, id)?;
+                    subtree = captured.stores[store].root;
+                    repository_path.clear();
+                }
+                _ => {
+                    return Err(ContextError::Invalid(
+                        "context selection is not a directory",
+                    ));
+                }
             }
-            subtree = entry.oid.to_owned();
         }
-        let mut entries = BTreeMap::new();
-        let mut pending = vec![(PathBuf::new(), subtree)];
-        while let Some((parent, id)) = pending.pop() {
+        #[cfg(test)]
+        {
+            captured.subtree = subtree;
+        }
+        captured.scan(store, PathBuf::new(), repository_path, subtree)?;
+        Ok(captured)
+    }
+
+    fn scan(
+        &mut self,
+        store: usize,
+        prefix: PathBuf,
+        repository_path: PathBuf,
+        id: ObjectId,
+    ) -> Result<(), ContextError> {
+        let reader = &self.stores[store].reader;
+        let mut pending = vec![(prefix, repository_path, id)];
+        while let Some((parent, repository_path, id)) = pending.pop() {
             let tree = reader.tree(id)?;
             for entry in tree.decode().map_err(ContextError::git)?.entries {
                 let name = EntryName::try_from(entry.filename.as_ref() as &[u8])?;
                 let path = parent.join(name.0);
+                let module_path = repository_path.join(name.0);
+                let oid = entry.oid.to_owned();
                 let value = match entry.mode.kind() {
                     EntryKind::Tree => {
-                        pending.push((path.clone(), entry.oid.to_owned()));
+                        pending.push((path.clone(), module_path, oid));
                         ContextEntry::Directory
                     }
-                    EntryKind::Commit => {
-                        return Err(ContextError::Invalid("submodules are unsupported"));
-                    }
+                    EntryKind::Commit => ContextEntry::Module {
+                        store,
+                        path: module_path,
+                        oid,
+                    },
                     EntryKind::Link => {
-                        let bytes = reader.blob(entry.oid.to_owned())?;
+                        let bytes = reader.blob(oid)?;
                         if bytes.is_empty() || bytes.contains(&0) {
                             return Err(ContextError::Invalid("invalid symlink contents"));
                         }
                         ContextEntry::Symlink(bytes)
                     }
                     kind => ContextEntry::File {
+                        store,
                         executable: kind == EntryKind::BlobExecutable,
-                        oid: entry.oid.to_owned(),
+                        oid,
                     },
                 };
-                if entries.insert(path, value).is_some() {
+                if self.entries.insert(path, value).is_some() {
                     return Err(ContextError::Invalid("duplicate tree entry"));
                 }
             }
         }
-        Ok(Self {
-            commit: commit_id,
-            #[cfg(test)]
-            subtree,
-            reader,
-            entries,
-        })
+        Ok(())
+    }
+
+    pub(crate) fn expand(&mut self, selected: &Path) -> Result<(), ContextError> {
+        let Some(ContextEntry::Module { store, path, oid }) = self.entries.get(selected) else {
+            return Ok(());
+        };
+        let store = self
+            .open_module(*store, &path.clone(), *oid)
+            .map_err(|error| ContextError::Module {
+                path: selected.to_owned(),
+                reason: error.to_string(),
+            })?;
+        self.scan(
+            store,
+            selected.to_owned(),
+            PathBuf::new(),
+            self.stores[store].root,
+        )?;
+        self.entries
+            .insert(selected.to_owned(), ContextEntry::Directory);
+        Ok(())
     }
     pub(crate) fn commit(&self) -> ObjectId {
         self.commit
@@ -209,5 +283,29 @@ impl<'a> TryFrom<&'a [u8]> for EntryName<'a> {
             return Err(ContextError::Invalid("invalid tree entry name"));
         }
         Ok(Self(OsStr::from_bytes(bytes)))
+    }
+}
+
+#[derive(Debug)]
+struct Store {
+    reader: ObjectReader,
+    root: ObjectId,
+    depth: usize,
+}
+
+impl ObjectReader {
+    fn commit_tree(&self, id: ObjectId) -> Result<ObjectId, ContextError> {
+        if id.kind() != self.0.object_hash() {
+            return Err(ContextError::Invalid(
+                "module object format differs from repository",
+            ));
+        }
+        Ok(self
+            .verified(id)?
+            .try_into_commit()
+            .map_err(ContextError::git)?
+            .tree_id()
+            .map_err(ContextError::git)?
+            .detach())
     }
 }

@@ -248,8 +248,12 @@ impl<'a> CopyDestination<'a> {
             Err(error) => return Err(error.into()),
         }
         match entry {
-            ContextEntry::File { oid, executable } => {
-                let bytes = context.blob(*oid)?;
+            ContextEntry::File {
+                oid,
+                executable,
+                store,
+            } => {
+                let bytes = context.blob(*store, *oid)?;
                 let mut file: File = fs::openat(
                     &parent,
                     name,
@@ -268,7 +272,7 @@ impl<'a> CopyDestination<'a> {
                 fs::symlinkat(OsStr::from_bytes(bytes), &parent, name)?;
                 policy.link(&parent, name)?;
             }
-            ContextEntry::Directory => {
+            ContextEntry::Directory | ContextEntry::Module { .. } => {
                 return Err(CopyError::Invalid("directory passed to leaf writer"));
             }
         }
