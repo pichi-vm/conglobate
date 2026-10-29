@@ -458,7 +458,33 @@ commit files, or fetch remote content.
 3. Verified bytes are immutable for the rest of the build. Subsequent source
    changes in a caller working tree cannot alter what Conglobate reads.
 4. The context is never exposed to image commands; COPY exposes selected files.
-5. Submodules and Git LFS are initially rejected.
+5. Git LFS pointers are rejected when used. Submodules use Model E below.
+
+### 3.1.1 Submodules (Model E)
+
+One host repository virtiofs mount supplies the superproject and its existing
+`.git/modules` stores. Resolve each used gitlink at its recorded commit using
+that store; never substitute a module working tree or its current HEAD. Use
+committed `.gitmodules` path-to-name mappings, including names that differ from
+paths. Nested stores live under their parent store's `modules/<name>`.
+No host alternates are allowed.
+
+Conglobate never fetches or runs submodule init. Pichi must not initialize
+submodules either. The user stages the host checkout with only the modules
+needed for the build. A needed store or recorded commit missing on disk is a
+clear planning failure.
+
+The fail policy is **used-paths eager**: before execution, resolve stores for
+known static context reads (including plan and lock) and COPY directives in
+the selected plan closure. Directory COPY includes its descendants; patterns
+require stores only where selection traverses or includes a module. Unused
+gitlinks stay quiet, including nested gitlinks in an otherwise used module.
+Regular file blobs retain lazy identity verification on use.
+
+Nested modules recurse with a hard **depth cap of 8**. The superproject is
+depth 0; modules at depth 8 are supported, and using a gitlink at depth 9
+fails before execution. Selecting a context directory inside a module counts
+toward the same limit. Symlinks retain context confinement across modules.
 
 ### 3.2 Context ownership
 
@@ -1288,7 +1314,7 @@ full engine reshape and confidential-platform qualification remain separate.
 Fully unprivileged storage assembly is outside the selected design.
 
 The initial scope excludes remote Git retrieval, uncommitted working-tree
-inputs, submodules, Git LFS, cross-architecture builds, build-time lock updates,
+inputs, Git LFS, cross-architecture builds, build-time lock updates,
 output-cache mutation, firmware discard, partial PMI/DTB replacement,
 regex match-count options, and whole-node operations. The plan format has no
 `transform` section and no `platform` task kind. Caller working-tree policy is
@@ -1910,7 +1936,7 @@ uses the internal filesystem-name → formatter map; there is no host
 clone/checkout-as-SoT, network setup, policy registration or attestation. It
 has no dependency on the pichi binary; pichi depends on this lib.
 
-`BuildRequest`, `ResolvedBuild` and `BuildPlan` progressively validate inputs.
+`BuildRequest`, `ResolvedBuild` and `BuildGraph` progressively validate inputs.
 Plan and lock load immediately from the object store; COPY and other context
 paths use lazy gix verify-on-use without exposing a context mount. Locked
 multi-architecture indexes select only the host architecture. Image components

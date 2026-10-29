@@ -29,6 +29,8 @@ pub(crate) enum InputError {
     #[error(transparent)]
     Plan(#[from] PlanError),
     #[error(transparent)]
+    Selection(#[from] crate::copy::SelectionError),
+    #[error(transparent)]
     Lock(#[from] LockError),
     #[error("network-enabled commands require --resolv-conf")]
     ResolverRequired,
@@ -78,7 +80,7 @@ pub(crate) struct CapturedBuild {
 impl TryFrom<&BuildRequest> for CapturedBuild {
     type Error = InputError;
     fn try_from(request: &BuildRequest) -> Result<Self, Self::Error> {
-        let context =
+        let mut context =
             CapturedContext::capture(request.repository(), request.commit(), request.context())?;
         let plan_file = context.read(request.plan())?;
         let lock_file = context.read(request.lock())?;
@@ -94,6 +96,22 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
                     return Err(InputError::Exports(format!(
                         "artifact {name} conflicts with committed context"
                     )));
+                }
+            }
+        }
+
+        let artifacts: std::collections::BTreeSet<_> = graph
+            .plan()
+            .tasks()
+            .values()
+            .flat_map(|task| task.outputs().keys().map(|name| name.as_ref()))
+            .collect();
+        for name in graph.plan().order() {
+            for directive in graph.plan().tasks()[name].directives() {
+                if let crate::plan::Directive::Copy(copy) = directive
+                    && !artifacts.contains(copy.artifact())
+                {
+                    crate::copy::CopySources::prepare(&mut context, copy.sources())?;
                 }
             }
         }
