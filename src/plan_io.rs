@@ -186,6 +186,7 @@ pub struct RefsLock {
 }
 
 /// One `refs.lock` entry.
+/// For the current index-only lock format, use [`crate::plan::Lock`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LockEntry {
