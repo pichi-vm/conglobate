@@ -19,7 +19,9 @@
 #   3. strip /boot and the in-tree vmlinuz/System.map — boot payload is the
 #      PMI's domain; the carapace keeps only its .ko module tree;
 #   4. require virtiofs + fuse in that module tree, /usr/bin/conglobate, the
-#      mount units, and image-resident mke2fs.
+#      mount units, and image-resident mke2fs;
+#   5. require the network card driver (virtio_net) and systemd-networkd,
+#      enabled, with its network file and its system user.
 
 import glob
 import os
@@ -152,7 +154,7 @@ for f in (f"{kd}/vmlinuz", f"{kd}/System.map"):
 # option or a modular build whose .ko was stripped does not.
 
 
-def require_fs_module(name, option):
+def require_module(name, option):
     value = config.get(f"CONFIG_{option}")
     hits = glob.glob(f"{kd}/kernel/**/{name}.ko*", recursive=True)
     if value == "y":
@@ -167,8 +169,8 @@ def require_fs_module(name, option):
     )
 
 
-require_fs_module("fuse", "FUSE_FS")
-require_fs_module("virtiofs", "VIRTIO_FS")
+require_module("fuse", "FUSE_FS")
+require_module("virtiofs", "VIRTIO_FS")
 
 binary = f"{buildroot}/usr/bin/conglobate"
 if not os.path.isfile(binary) or not os.access(binary, os.X_OK):
@@ -218,3 +220,24 @@ ldd = subprocess.run(
 ldd_text = ldd.stdout + ldd.stderr
 if ldd.returncode != 0 or "not found" in ldd_text:
     raise SystemExit("conglobate is not runnable in the appliance rootfs:\n" + ldd_text)
+
+# ---- 5. the VM's own network (systemd-networkd) ---------------------------
+# udev loads virtio_net from the rootfs module tree for the one card pichi
+# attaches. networkd runs DHCP on it; wait-online backs network-online.target.
+require_module("virtio_net", "VIRTIO_NET")
+
+for unit in ("systemd-networkd.service", "systemd-networkd-wait-online.service"):
+    if not os.path.isfile(f"{buildroot}/usr/lib/systemd/system/{unit}"):
+        raise SystemExit(f"appliance rootfs is missing {unit} (systemd-networkd package)")
+for link in (
+    "multi-user.target.wants/systemd-networkd.service",
+    "network-online.target.wants/systemd-networkd-wait-online.service",
+):
+    if not os.path.islink(f"{buildroot}/usr/lib/systemd/system/{link}"):
+        raise SystemExit(f"network unit is not enabled: {link}")
+if not os.path.isfile(f"{buildroot}/usr/lib/systemd/network/10-uplink.network"):
+    raise SystemExit("appliance rootfs is missing 10-uplink.network")
+# The root is read-only at run time, so networkd's user must exist now.
+with open(f"{buildroot}/etc/passwd") as handle:
+    if not any(line.startswith("systemd-network:") for line in handle):
+        raise SystemExit("appliance rootfs has no systemd-network user")

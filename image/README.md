@@ -38,6 +38,12 @@ treat virtiofs as first-class, so this image keeps the modules itself.
   oneshot whose `ExecStart` is `conglobate appliance`. When that process exits,
   success or failure, the unit powers the VM off. Appliance stdout and stderr
   go to the journal and to the kernel console (`console=hvc0`).
+- systemd-networkd, the systemd service that sets up network links, brings
+  up the one virtio-net card pichi attaches. `network/10-uplink.network`
+  asks for an address by DHCP (the protocol a machine uses to be handed an
+  address). dillo answers with its user-mode NAT: guest `10.0.2.15`,
+  gateway `10.0.2.2`, DNS `10.0.2.3`. `systemd-networkd-wait-online` backs
+  `network-online.target`, so units can wait until the card has an address.
 - `e2fsprogs` provides image-resident `mke2fs` (standard paths, `/usr/sbin/mke2fs`
   first). The engine still captures that binary and its `ldd` dependencies from
   the guest root. There is no host formatter path.
@@ -82,6 +88,7 @@ salts. Firmware remains in its OCI blob paths.
 | `build.sh` | Corium initramfs, `pichi import`, local tag `conglobate:0.2.0` |
 | `config.json` | Launch requirements (2 GiB required, 4 GiB recommended) |
 | `units/` | Installed into the rootfs and enabled |
+| `network/` | systemd-networkd files, installed into `/usr/lib/systemd/network/` |
 | `conglobate.plan.yaml` | Self-host later, not used by bootstrap CI |
 | `check-stub.sh` | Static contract check (no VM) |
 

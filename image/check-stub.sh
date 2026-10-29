@@ -17,6 +17,7 @@ grep -q '## OCI output' "$readme" || fail "README must document OCI output"
 grep -q 'Pichi #28' "$readme" || fail "README must document host OCI import"
 grep -q 'e2fsprogs' "$readme" || fail "README must document image-resident e2fsprogs"
 grep -qi 'self-host' "$readme" || fail "README must keep self-host as later"
+grep -q 'systemd-networkd' "$readme" || fail "README must document systemd-networkd"
 if grep -qi 'non-promotion' "$readme"; then
 	fail "README must not deny promotion"
 fi
@@ -55,6 +56,14 @@ grep -q '^Release=43$' "$conf" || fail "mkosi.conf must pin Fedora 43"
 grep -q 'e2fsprogs' "$conf" || fail "mkosi.conf must install e2fsprogs"
 grep -q 'kernel-modules' "$conf" || fail "mkosi.conf must install kernel-modules for virtiofs"
 grep -q 'systemd' "$conf" || fail "mkosi.conf must install systemd"
+grep -q 'systemd-networkd' "$conf" || fail "mkosi.conf must install systemd-networkd"
+
+uplink="$root/network/10-uplink.network"
+[[ -f "$uplink" ]] || fail "missing $uplink"
+grep -q '^Driver=virtio_net$' "$uplink" || fail "$uplink must match the virtio-net card"
+grep -q '^DHCP=ipv4$' "$uplink" || fail "$uplink must use DHCP"
+grep -q 'systemd-networkd.service' "$root/build.sh" || fail "build.sh must enable systemd-networkd"
+grep -q 'systemd-networkd-wait-online.service' "$root/build.sh" || fail "build.sh must enable wait-online"
 if grep -E '/usr/lib/modules/.*/(fuse|virtiofs)' "$conf"; then
 	fail "mkosi.conf RemoveFiles must not drop fuse or virtiofs"
 fi
@@ -78,6 +87,8 @@ fi
 grep -q 'virtiofs' "$root/mkosi.finalize" || fail "finalize must require virtiofs"
 grep -q 'FUSE_FS' "$root/mkosi.finalize" || fail "finalize must require fuse"
 grep -q 'mke2fs' "$root/mkosi.finalize" || fail "finalize must require mke2fs"
+grep -q 'VIRTIO_NET' "$root/mkosi.finalize" || fail "finalize must require virtio_net"
+grep -q 'systemd-networkd.service' "$root/mkosi.finalize" || fail "finalize must require systemd-networkd"
 python3 -m py_compile "$root/mkosi.finalize"
 bash -n "$root/build.sh"
 

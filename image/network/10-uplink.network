@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+# The VM's own network card. pichi attaches one virtio-net card, and dillo
+# answers DHCP on it with user-mode NAT (guest 10.0.2.15, gateway 10.0.2.2,
+# DNS 10.0.2.3). systemd-networkd asks for that address here.
+
+[Match]
+Driver=virtio_net
+
+[Network]
+DHCP=ipv4
+LinkLocalAddressing=no
+IPv6AcceptRA=no
+
+[Link]
+RequiredForOnline=routable

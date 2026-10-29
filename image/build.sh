@@ -95,6 +95,8 @@ inst="$extra/usr/lib/systemd/system"
 mkdir -p "$extra/usr/bin" \
 	"$inst/local-fs.target.wants" \
 	"$inst/multi-user.target.wants" \
+	"$inst/network-online.target.wants" \
+	"$extra/usr/lib/systemd/network" \
 	"$extra/usr/lib/modules-load.d"
 install -m0755 "$conglobate_bin" "$extra/usr/bin/conglobate"
 install -m0644 "$here/units/"*.mount "$here/units/"*.service "$inst/"
@@ -102,6 +104,12 @@ for tag in repo cache output; do
 	ln -s "../run-pichi-${tag}.mount" "$inst/local-fs.target.wants/run-pichi-${tag}.mount"
 done
 ln -s ../conglobate-build.service "$inst/multi-user.target.wants/conglobate-build.service"
+# systemd-networkd configures the network card from image/network/.
+# wait-online lets units order themselves after the card has an address.
+install -m0644 "$here/network/"*.network "$extra/usr/lib/systemd/network/"
+ln -s ../systemd-networkd.service "$inst/multi-user.target.wants/systemd-networkd.service"
+ln -s ../systemd-networkd-wait-online.service \
+	"$inst/network-online.target.wants/systemd-networkd-wait-online.service"
 printf '%s\n' fuse virtiofs > "$extra/usr/lib/modules-load.d/pichi-virtiofs.conf"
 
 # mkosi copies mkosi.extra/ into the image before mkosi.finalize.
