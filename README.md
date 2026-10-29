@@ -164,9 +164,12 @@ Conglobate does not download missing Git objects or image artifacts. Plan
 commands have networking disabled by default. On the standalone CLI, enabled
 commands require an externally prepared, build-dedicated network namespace
 (`--network-namespace PATH`) and an explicit resolver file (`--resolv-conf PATH`).
-In the appliance image those paths are hardcodes, not CBOR fields. The
-environment owns network interfaces, routes, outbound NAT, firewall rules, DNS
-services and namespace lifetime. Conglobate pins the namespace once, joins it for
+In the appliance image those paths are hardcodes, not CBOR fields
+(`/run/pichi/netns` and `/run/pichi/resolv.conf`). The environment owns network
+interfaces, routes, outbound NAT, firewall rules, DNS services and namespace
+lifetime. In the appliance, the environment is the VM image itself: its boot
+units bring up the network card, the build namespace, NAT and the resolver file
+before the build starts (see [image/README.md](image/README.md)). Conglobate pins the namespace once, joins it for
 enabled commands and temporarily mounts the captured resolver configuration
 read-only. Disabled commands receive a fresh disconnected namespace. Conglobate
 does not run a DNS relay or configure the external network.

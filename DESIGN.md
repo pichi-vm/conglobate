@@ -417,7 +417,9 @@ Defaults and failure behavior:
 - `--network-namespace PATH` and `--resolv-conf PATH` remain available on the
   standalone CLI when any run step enables networking (same capture/join rules
   as before). In the **appliance image** the namespace path and resolver file
-  are hardcodes, not CBOR fields. Open and retain the namespace descriptor once
+  are hardcodes, not CBOR fields: `/run/pichi/netns` and
+  `/run/pichi/resolv.conf`. The image's own boot units create both before
+  the build starts (see `image/README.md`). Open and retain the namespace descriptor once
   before execution; do not reopen the pathname per step. Capture resolver
   contents once and inject them temporarily, read-only, following symlinks
   confined to the command root. No implicit resolver or DNS relay. Resolver
@@ -1094,9 +1096,12 @@ shm, empty read-only sysfs, and explicit environment and stdio. Namespace/mount
 creation and control access are prohibited. Context enters only through COPY.
 
 Commands never share the supervisor network namespace. Enabled steps join the
-environment-owned build namespace with outbound NAT without destination filtering; supervisor controls must not be
-exposed on reachable network addresses. The environment supplies `--resolv-conf`;
-there is no built-in DNS relay, resolver annotation or persistent injection.
+environment-owned build namespace with outbound NAT without destination
+filtering; supervisor controls must not be exposed on reachable network
+addresses. The environment supplies `--resolv-conf`; there is no built-in DNS
+relay, resolver annotation or persistent injection. In the appliance, the
+environment is the VM image: its boot units, not the conglobate binary, set up
+that namespace, its NAT and its resolver file.
 
 On every exit path, stop/reap all descendants before removing runtime mounts
 and resolver mounts, flushing and cleanly unmounting filesystems for sealing.
@@ -2049,5 +2054,10 @@ Networking is offline by default. Enabled commands join an environment-supplied,
 validated and pinned namespace and receive captured read-only resolver bytes.
 The environment owns outbound NAT, ingress policy, DNS and namespace lifetime.
 Resolver mounts follow symlinks only within the command root and restore prior
-image state. Conglobate implements no NAT allocator, resolver service or networkd
-integration.
+image state. The conglobate binary implements no NAT allocator, resolver service
+or networkd integration. In the appliance, the VM image is that environment.
+systemd-networkd brings up the VM's network card and a veth pair (a virtual
+cable with two ends) and masquerades build traffic, which means it rewrites the
+source address to the VM's own. A oneshot unit moves one end of the cable into
+`/run/pichi/netns` and writes `/run/pichi/resolv.conf`, which points at the
+DNS server the VM host provides.
