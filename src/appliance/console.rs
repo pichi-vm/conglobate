@@ -7,16 +7,14 @@
 //! request map, then reads one self-delimiting CBOR response. The guest must
 //! not assume the host already pushed bytes before the request.
 
+#[cfg(test)]
 use ciborium::Value;
+use contract::console::{BuildRequest, CONSOLE_NAME};
 use std::{
     fs,
     io::{self, Write},
     path::Path,
 };
-
-pub(crate) const CONSOLE_NAME: &str = "dev.pichi.build";
-pub(crate) const PROTOCOL_VERSION: i64 = 1;
-pub(crate) const BUILD_INPUT_OP: &str = "build-input";
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ConsoleError {
@@ -63,15 +61,8 @@ pub(crate) fn open_build_console(
 
 /// Encode the v0 guest→host request: `{"v":1,"op":"build-input"}`.
 pub(crate) fn encode_build_input_request() -> Result<Vec<u8>, ConsoleError> {
-    let value = Value::Map(vec![
-        (
-            Value::Text("v".into()),
-            Value::Integer(PROTOCOL_VERSION.into()),
-        ),
-        (Value::Text("op".into()), Value::Text(BUILD_INPUT_OP.into())),
-    ]);
     let mut bytes = Vec::new();
-    ciborium::into_writer(&value, &mut bytes)
+    ciborium::into_writer(&BuildRequest::build_input(), &mut bytes)
         .map_err(|error| ConsoleError::Encode(error.to_string()))?;
     Ok(bytes)
 }
@@ -130,8 +121,11 @@ mod tests {
             };
             map.insert(key, v);
         }
+        assert_eq!(map.len(), 2);
         assert_eq!(map.get("v"), Some(&Value::Integer(1.into())));
         assert_eq!(map.get("op"), Some(&Value::Text("build-input".into())));
+        let request: BuildRequest = ciborium::from_reader(Cursor::new(&bytes)).unwrap();
+        assert_eq!(request, BuildRequest::build_input());
     }
 
     #[test]

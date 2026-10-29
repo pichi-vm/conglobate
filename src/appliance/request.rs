@@ -3,15 +3,17 @@
 
 //! Host→guest build-input response CBOR: envelope + flat build fields.
 //!
-//! v0 response is a flat map with `v`/`ok` plus build-input fields on success
-//! (`ref`/`plan`/`lock`/optional `context`/`location`), or `error` on failure.
-//! Accept-list + reject-list name offenders.
+//! The response is the library's [`BuildReply`]: a flat map with `v`/`ok`
+//! plus build-input fields on success (`ref`/`plan`/`lock`/optional
+//! `context`/`location`), or `error` on failure. Duplicate keys and known
+//! host-only field names are rejected by name before the typed decode.
 
 use crate::{
     path::{ContextDirectory, ContextPath, PathError},
     request::{BuildRequest, CommitIdentity, RequestError},
 };
 use ciborium::Value;
+use contract::console::BuildReply;
 use std::io::BufRead;
 use std::{
     collections::BTreeMap,
@@ -24,22 +26,12 @@ pub(crate) enum ApplianceRequestError {
     Decode(String),
     #[error("appliance CBOR rejects field {0}")]
     RejectedField(&'static str),
-    #[error("appliance CBOR rejects unknown field {0}")]
-    UnknownField(String),
-    #[error("appliance CBOR missing required field {0}")]
-    MissingField(&'static str),
-    #[error("appliance CBOR field {0} has invalid type")]
-    InvalidType(&'static str),
     #[error("appliance CBOR field {0} is empty or contains NUL")]
     InvalidString(&'static str),
     #[error("build location must be a credential-free Git locator")]
     InvalidLocation,
     #[error("appliance CBOR has trailing bytes after the response map")]
     TrailingBytes,
-    #[error("appliance CBOR protocol version must be 1")]
-    BadVersion,
-    #[error("appliance CBOR missing ok field")]
-    MissingOk,
     #[error("host rejected build-input: {0}")]
     HostRejected(String),
     #[error(transparent)]
@@ -214,40 +206,35 @@ impl ApplianceRequest {
                 return Err(ApplianceRequestError::RejectedField(forbidden));
             }
         }
-        for key in fields.keys() {
-            if !matches!(
-                key.as_str(),
-                "v" | "ok" | "error" | "ref" | "plan" | "lock" | "context" | "location"
-            ) {
-                return Err(ApplianceRequestError::UnknownField(key.clone()));
+        // Field names are now known to be unique, so the typed reply sees
+        // exactly the map that was sent.
+        let value = Value::Map(
+            fields
+                .into_iter()
+                .map(|(name, value)| (Value::Text(name), value))
+                .collect(),
+        );
+        let input = match value
+            .deserialized::<BuildReply>()
+            .map_err(|error| ApplianceRequestError::Decode(error.to_string()))?
+        {
+            BuildReply::Success(input) => input,
+            BuildReply::Failure { error } => {
+                return Err(ApplianceRequestError::HostRejected(error));
             }
-        }
-        match fields.remove("v") {
-            Some(Value::Integer(version)) if i128::from(version) == 1 => {}
-            Some(_) => return Err(ApplianceRequestError::BadVersion),
-            None => return Err(ApplianceRequestError::MissingField("v")),
-        }
-        let ok = match fields.remove("ok") {
-            Some(Value::Bool(ok)) => ok,
-            Some(_) => return Err(ApplianceRequestError::InvalidType("ok")),
-            None => return Err(ApplianceRequestError::MissingOk),
         };
-        if !ok {
-            let message = take_string(&mut fields, "error", true)?.unwrap();
-            if let Some(name) = fields.keys().next() {
-                return Err(ApplianceRequestError::UnknownField(name.clone()));
-            }
-            return Err(ApplianceRequestError::HostRejected(message));
-        }
-        if fields.contains_key("error") {
-            return Err(ApplianceRequestError::RejectedField("error"));
-        }
-        let git_ref = take_string(&mut fields, "ref", true)?.unwrap();
-        let plan_text = take_string(&mut fields, "plan", true)?.unwrap();
-        let lock_text = take_string(&mut fields, "lock", true)?.unwrap();
-        let context_text =
-            take_string(&mut fields, "context", false)?.unwrap_or_else(|| ".".to_owned());
-        let location = take_string(&mut fields, "location", false)?;
+        let git_ref = checked_string(input.git_ref, "ref")?;
+        let plan_text = checked_string(input.plan, "plan")?;
+        let lock_text = checked_string(input.lock, "lock")?;
+        let context_text = input
+            .context
+            .map(|context| checked_string(context, "context"))
+            .transpose()?
+            .unwrap_or_else(|| ".".to_owned());
+        let location = input
+            .location
+            .map(|location| checked_string(location, "location"))
+            .transpose()?;
         if let Some(location) = &location {
             // Parser errors can include the input; never surface them here.
             let locator = gix::url::parse(location.as_bytes().into())
@@ -297,22 +284,11 @@ impl ApplianceRequest {
     }
 }
 
-fn take_string(
-    fields: &mut BTreeMap<String, Value>,
-    name: &'static str,
-    required: bool,
-) -> Result<Option<String>, ApplianceRequestError> {
-    match fields.remove(name) {
-        None if required => Err(ApplianceRequestError::MissingField(name)),
-        None => Ok(None),
-        Some(Value::Text(text)) => {
-            if text.is_empty() || text.contains('\0') {
-                return Err(ApplianceRequestError::InvalidString(name));
-            }
-            Ok(Some(text))
-        }
-        Some(_) => Err(ApplianceRequestError::InvalidType(name)),
+fn checked_string(text: String, name: &'static str) -> Result<String, ApplianceRequestError> {
+    if text.is_empty() || text.contains('\0') {
+        return Err(ApplianceRequestError::InvalidString(name));
     }
+    Ok(text)
 }
 
 fn resolve_ref(repository: &Path, git_ref: &str) -> Result<CommitIdentity, ApplianceRequestError> {

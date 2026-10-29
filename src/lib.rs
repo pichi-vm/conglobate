@@ -4,6 +4,7 @@
 #![forbid(unsafe_code)]
 
 pub mod artifact;
+pub mod console;
 #[path = "plan/schema.rs"]
 pub mod plan;
 pub mod plan_io;
@@ -48,6 +49,7 @@ mod surface_tests {
             surface.contains("pub mod artifact;"),
             "lib must export artifact"
         );
+        assert!(surface.contains("pub mod console;"));
         assert!(surface.contains("pub mod plan_io;"));
         assert!(surface.contains("pub mod plan;"));
         assert!(surface.contains("pub mod value;"));
