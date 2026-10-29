@@ -64,6 +64,26 @@ grep -q '^Driver=virtio_net$' "$uplink" || fail "$uplink must match the virtio-n
 grep -q '^DHCP=ipv4$' "$uplink" || fail "$uplink must use DHCP"
 grep -q 'systemd-networkd.service' "$root/build.sh" || fail "build.sh must enable systemd-networkd"
 grep -q 'systemd-networkd-wait-online.service' "$root/build.sh" || fail "build.sh must enable wait-online"
+
+netdev="$root/network/20-build.netdev"
+[[ -f "$netdev" ]] || fail "missing $netdev"
+grep -q '^Kind=veth$' "$netdev" || fail "$netdev must make a veth pair"
+build_network="$root/network/20-build.network"
+[[ -f "$build_network" ]] || fail "missing $build_network"
+grep -q '^IPMasquerade=ipv4$' "$build_network" || fail "$build_network must masquerade"
+grep -q '^RequiredForOnline=no$' "$build_network" || fail "$build_network must not hold up network-online"
+grep -q '^IPv4Forwarding=yes$' "$root/network/networkd.conf" || fail "networkd.conf must forward IPv4"
+grep -q '^nameserver ' "$root/network/resolv.conf" || fail "resolv.conf must name a DNS server"
+netns="$root/units/pichi-build-netns.service"
+[[ -f "$netns" ]] || fail "missing $netns"
+grep -q '^Type=oneshot$' "$netns" || fail "$netns must be Type=oneshot"
+grep -q '^RemainAfterExit=yes$' "$netns" || fail "$netns must stay active for the build"
+grep -q 'unshare --net=/run/pichi/netns' "$netns" || fail "$netns must bind the namespace at /run/pichi/netns"
+grep -q '/run/pichi/resolv.conf' "$netns" || fail "$netns must write /run/pichi/resolv.conf"
+grep -q 'pichi-build-netns.service' "$root/build.sh" || fail "build.sh must enable pichi-build-netns.service"
+for package in iproute util-linux-core kmod; do
+	grep -q "^ *${package}$" "$conf" || fail "mkosi.conf must install ${package}"
+done
 if grep -E '/usr/lib/modules/.*/(fuse|virtiofs)' "$conf"; then
 	fail "mkosi.conf RemoveFiles must not drop fuse or virtiofs"
 fi
@@ -89,6 +109,8 @@ grep -q 'FUSE_FS' "$root/mkosi.finalize" || fail "finalize must require fuse"
 grep -q 'mke2fs' "$root/mkosi.finalize" || fail "finalize must require mke2fs"
 grep -q 'VIRTIO_NET' "$root/mkosi.finalize" || fail "finalize must require virtio_net"
 grep -q 'systemd-networkd.service' "$root/mkosi.finalize" || fail "finalize must require systemd-networkd"
+grep -q 'NFT_MASQ' "$root/mkosi.finalize" || fail "finalize must require the NAT modules"
+grep -q 'pichi-build-netns.service' "$root/mkosi.finalize" || fail "finalize must require the build network unit"
 python3 -m py_compile "$root/mkosi.finalize"
 bash -n "$root/build.sh"
 

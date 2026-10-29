@@ -97,6 +97,8 @@ mkdir -p "$extra/usr/bin" \
 	"$inst/multi-user.target.wants" \
 	"$inst/network-online.target.wants" \
 	"$extra/usr/lib/systemd/network" \
+	"$extra/usr/lib/systemd/networkd.conf.d" \
+	"$extra/usr/lib/pichi" \
 	"$extra/usr/lib/modules-load.d"
 install -m0755 "$conglobate_bin" "$extra/usr/bin/conglobate"
 install -m0644 "$here/units/"*.mount "$here/units/"*.service "$inst/"
@@ -104,13 +106,21 @@ for tag in repo cache output; do
 	ln -s "../run-pichi-${tag}.mount" "$inst/local-fs.target.wants/run-pichi-${tag}.mount"
 done
 ln -s ../conglobate-build.service "$inst/multi-user.target.wants/conglobate-build.service"
-# systemd-networkd configures the network card from image/network/.
-# wait-online lets units order themselves after the card has an address.
-install -m0644 "$here/network/"*.network "$extra/usr/lib/systemd/network/"
+# systemd-networkd configures the network card and the build network's
+# veth pair and NAT from image/network/. wait-online lets units order
+# themselves after the card has an address. pichi-build-netns.service
+# moves the build end into /run/pichi/netns and writes the resolver file.
+install -m0644 "$here/network/"*.network "$here/network/"*.netdev "$extra/usr/lib/systemd/network/"
+install -m0644 "$here/network/networkd.conf" "$extra/usr/lib/systemd/networkd.conf.d/pichi-build.conf"
+install -m0644 "$here/network/resolv.conf" "$extra/usr/lib/pichi/resolv.conf"
+ln -s ../pichi-build-netns.service "$inst/multi-user.target.wants/pichi-build-netns.service"
 ln -s ../systemd-networkd.service "$inst/multi-user.target.wants/systemd-networkd.service"
 ln -s ../systemd-networkd-wait-online.service \
 	"$inst/network-online.target.wants/systemd-networkd-wait-online.service"
 printf '%s\n' fuse virtiofs > "$extra/usr/lib/modules-load.d/pichi-virtiofs.conf"
+# The kernel would also load these on first use; listing them makes the
+# build network's veth pair and NAT not depend on that.
+printf '%s\n' veth nf_tables nf_nat nft_masq > "$extra/usr/lib/modules-load.d/pichi-build-network.conf"
 
 # mkosi copies mkosi.extra/ into the image before mkosi.finalize.
 mkosi --force --release "$RELEASE" --output-dir "$work"

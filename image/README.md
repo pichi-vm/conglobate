@@ -44,6 +44,22 @@ treat virtiofs as first-class, so this image keeps the modules itself.
   address). dillo answers with its user-mode NAT: guest `10.0.2.15`,
   gateway `10.0.2.2`, DNS `10.0.2.3`. `systemd-networkd-wait-online` backs
   `network-online.target`, so units can wait until the card has an address.
+- The image also builds the isolated network that `network: true` build
+  steps use. A network namespace is a separate copy of the network stack
+  with its own links, addresses and routes.
+  - networkd makes a veth pair (two virtual links joined like a cable):
+    `pichi-nat` stays in the VM with `192.168.250.1/30`, and
+    `IPMasquerade=ipv4` rewrites build traffic to leave from the VM's own
+    address (NAT). `network/networkd.conf` turns on IPv4 forwarding.
+  - networkd cannot create a namespace or move a link into one
+    ([systemd#14915](https://github.com/systemd/systemd/issues/14915)), so
+    the oneshot `pichi-build-netns.service` creates the namespace bound at
+    `/run/pichi/netns`, moves `pichi-build` into it with `192.168.250.2`, a
+    default route and loopback, and copies `network/resolv.conf`
+    (`nameserver 10.0.2.3`, dillo's DNS reached through the NAT) to
+    `/run/pichi/resolv.conf`.
+  - Steps without `network: true` still get a fresh namespace with no way
+    out.
 - `e2fsprogs` provides image-resident `mke2fs` (standard paths, `/usr/sbin/mke2fs`
   first). The engine still captures that binary and its `ldd` dependencies from
   the guest root. There is no host formatter path.

@@ -21,7 +21,9 @@
 #   4. require virtiofs + fuse in that module tree, /usr/bin/conglobate, the
 #      mount units, and image-resident mke2fs;
 #   5. require the network card driver (virtio_net) and systemd-networkd,
-#      enabled, with its network file and its system user.
+#      enabled, with its network file and its system user;
+#   6. require the isolated build network: the veth and NAT modules, the
+#      networkd files, pichi-build-netns.service and the tools it runs.
 
 import glob
 import os
@@ -241,3 +243,31 @@ if not os.path.isfile(f"{buildroot}/usr/lib/systemd/network/10-uplink.network"):
 with open(f"{buildroot}/etc/passwd") as handle:
     if not any(line.startswith("systemd-network:") for line in handle):
         raise SystemExit("appliance rootfs has no systemd-network user")
+
+# ---- 6. the isolated build network ----------------------------------------
+# networkd makes the veth pair and the NAT rule; pichi-build-netns.service
+# moves one end into /run/pichi/netns with ip, unshare and nsenter.
+require_module("veth", "VETH")
+require_module("nf_tables", "NF_TABLES")
+require_module("nf_nat", "NF_NAT")
+require_module("nft_masq", "NFT_MASQ")
+require_module("nft_chain_nat", "NFT_NAT")
+
+for path in (
+    "usr/lib/systemd/network/20-build.netdev",
+    "usr/lib/systemd/network/20-build.network",
+    "usr/lib/systemd/networkd.conf.d/pichi-build.conf",
+    "usr/lib/pichi/resolv.conf",
+    "usr/lib/modules-load.d/pichi-build-network.conf",
+    "usr/lib/systemd/system/pichi-build-netns.service",
+):
+    if not os.path.isfile(f"{buildroot}/{path}"):
+        raise SystemExit(f"appliance rootfs is missing /{path}")
+if not os.path.islink(
+    f"{buildroot}/usr/lib/systemd/system/multi-user.target.wants/pichi-build-netns.service"
+):
+    raise SystemExit("pichi-build-netns.service is not enabled")
+for tool in ("/usr/bin/ip", "/usr/bin/unshare", "/usr/bin/nsenter", "/usr/bin/udevadm"):
+    path = in_root(tool)
+    if not os.path.isfile(path) or not os.access(path, os.X_OK):
+        raise SystemExit(f"pichi-build-netns.service needs {tool} in the appliance rootfs")

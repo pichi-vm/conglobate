@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+# The isolated build network. A network namespace is a separate copy of
+# the network stack, with its own links, addresses and routes. Build
+# steps with `network: true` join the one bound at /run/pichi/netns.
+#
+# systemd-networkd creates the veth pair and the NAT (20-build.netdev and
+# 20-build.network) but cannot create a namespace or move a link into one
+# (https://github.com/systemd/systemd/issues/14915). This oneshot does
+# those steps, then writes the resolver file conglobate reads.
+
+[Unit]
+Description=Pichi build network namespace (/run/pichi/netns)
+Requires=systemd-networkd.service
+Wants=network-online.target
+After=systemd-networkd.service network-online.target
+Before=conglobate-build.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/usr/bin/udevadm wait --timeout=60 /sys/class/net/pichi-build
+ExecStart=/usr/bin/mkdir -p /run/pichi
+ExecStart=/usr/bin/touch /run/pichi/netns
+ExecStart=/usr/bin/unshare --net=/run/pichi/netns /usr/bin/true
+ExecStart=/usr/bin/ip link set pichi-build netns /run/pichi/netns
+ExecStart=/usr/bin/nsenter --net=/run/pichi/netns /usr/bin/ip link set lo up
+ExecStart=/usr/bin/nsenter --net=/run/pichi/netns /usr/bin/ip address add 192.168.250.2/30 dev pichi-build
+ExecStart=/usr/bin/nsenter --net=/run/pichi/netns /usr/bin/ip link set pichi-build up
+ExecStart=/usr/bin/nsenter --net=/run/pichi/netns /usr/bin/ip route add default via 192.168.250.1
+ExecStart=/usr/bin/install -m0644 /usr/lib/pichi/resolv.conf /run/pichi/resolv.conf
+# Return only once networkd has finished the VM end, NAT rule included.
+ExecStartPost=/usr/lib/systemd/systemd-networkd-wait-online --interface=pichi-nat:routable --timeout=60
+
+[Install]
+WantedBy=multi-user.target

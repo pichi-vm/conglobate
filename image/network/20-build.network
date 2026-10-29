@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+# The VM end of the build network. Build steps reach the outside world
+# through this address. IPMasquerade rewrites their traffic so it leaves
+# from the VM's own address on the network card (NAT). The other end,
+# pichi-build, gets 192.168.250.2 inside the build network namespace.
+# 192.168.250.0/30 stays clear of dillo's 10.0.2.0/24.
+
+[Match]
+Name=pichi-nat
+
+[Network]
+Address=192.168.250.1/30
+IPMasquerade=ipv4
+ConfigureWithoutCarrier=yes
+LinkLocalAddressing=no
+IPv6AcceptRA=no
+
+[Link]
+# The far end only comes up once pichi-build-netns.service has run, so
+# network-online.target must not wait for this link.
+RequiredForOnline=no

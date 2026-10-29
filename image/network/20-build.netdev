@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+# A veth pair: two virtual network links joined like the two ends of a
+# cable. pichi-nat stays in the VM. pichi-build-netns.service moves
+# pichi-build into the build network namespace (/run/pichi/netns).
+
+[NetDev]
+Name=pichi-nat
+Kind=veth
+
+[Peer]
+Name=pichi-build
