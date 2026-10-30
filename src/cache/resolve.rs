@@ -195,6 +195,7 @@ impl Cache {
 mod tests {
     use super::*;
     use crate::artifact::{Layer, ScuteAnnotations, ScuteDescriptor};
+    use sha2::{Digest as _, Sha256};
     use std::{collections::BTreeMap, fs};
 
     struct ContentFixture {
@@ -219,7 +220,7 @@ mod tests {
                 } else {
                     data
                 };
-                let digest = Digest::from_bytes_sha256(&bytes);
+                let digest = Digest::Sha256(Sha256::digest(&bytes).into());
                 let descriptor = ScuteDescriptor {
                     digest: digest.to_string(),
                     size: bytes.len() as u64,
@@ -239,7 +240,7 @@ mod tests {
             let _derived_tip = parent; // boot derives tip; not an OCI stamp
             // Identity verification is distinct from firmware format validation.
             for (media, bytes) in [("pmi", b"firmware".as_slice()), ("dtb", b"tree".as_slice())] {
-                let digest = Digest::from_bytes_sha256(bytes);
+                let digest = Digest::Sha256(Sha256::digest(bytes).into());
                 layers.push(
                     serde_json::from_value(serde_json::json!({
                         "mediaType": format!("application/vnd.pichi.{media}.v1"),
@@ -251,7 +252,7 @@ mod tests {
             }
             layers.reverse(); // Receipts follow manifest order, not ancestry order.
             let config = b"{\"requirements\":{}}".to_vec();
-            let config_digest = Digest::from_bytes_sha256(&config);
+            let config_digest = Digest::Sha256(Sha256::digest(&config).into());
             let annotations: BTreeMap<String, String> = [
                 ("algo", "sha256"),
                 ("data-block-size", "4096"),
@@ -284,7 +285,7 @@ mod tests {
             let bytes = manifest.to_bytes().unwrap();
             let image = ResolvedImage {
                 manifest_bytes: VerifiedMetadata {
-                    digest: Digest::from_bytes_sha256(&bytes),
+                    digest: Digest::Sha256(Sha256::digest(&bytes).into()),
                     bytes,
                 },
                 manifest,

@@ -3,6 +3,7 @@
 
 use crate::artifact::Digest;
 use conglobate::cache::Cache;
+use sha2::{Digest as _, Sha256};
 use std::path::PathBuf;
 
 struct Store(tempfile::TempDir);
@@ -16,7 +17,7 @@ impl Store {
         self.0.path().join("blobs/sha256").join(digest.hex())
     }
     fn put(&self, bytes: &[u8]) -> Digest {
-        let digest = Digest::from_bytes_sha256(bytes);
+        let digest = Digest::Sha256(Sha256::digest(bytes).into());
         std::fs::write(self.path(&digest), bytes).unwrap();
         digest
     }
@@ -112,7 +113,9 @@ fn pinned_index_selects_only_host_vm_artifact_and_preserves_exact_metadata() {
     let selected = store.descriptor(&digest, bytes.len());
     let mut unrelated = selected.clone();
     unrelated["platform"]["os"] = "linux".into();
-    unrelated["digest"] = Digest::from_bytes_sha256(b"not cached").to_string().into();
+    unrelated["digest"] = Digest::Sha256(Sha256::digest(b"not cached").into())
+        .to_string()
+        .into();
     let pin = store.index(vec![unrelated, selected]);
     let image = store.open().resolve(pin).unwrap();
     assert_eq!(image.manifest_bytes().bytes(), bytes);
@@ -173,7 +176,7 @@ fn manifest_resolution_does_not_silently_stand_in_for_content_verification() {
     let (_, bytes) = store.manifest();
     let mut manifest: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     let config = b"{}";
-    let config_digest = Digest::from_bytes_sha256(config);
+    let config_digest = Digest::Sha256(Sha256::digest(config).into());
     manifest["config"] = serde_json::json!({
         "mediaType":"application/vnd.pichi.config.v1+json",
         "digest":config_digest.to_string(),"size":config.len()});
@@ -264,7 +267,7 @@ const CONTEXT_LOCK_INDEX: &[u8] = br#"{"manifests":[{"artifactType":"application
 fn context_lock_index_pin_matches_published_bytes() {
     assert_eq!(CONTEXT_LOCK_INDEX.len(), 343);
     assert_eq!(
-        Digest::from_bytes_sha256(CONTEXT_LOCK_INDEX).to_string(),
+        Digest::Sha256(Sha256::digest(CONTEXT_LOCK_INDEX).into()).to_string(),
         "sha256:4e335e141a3f950ed68c68f23c112930c51af5ec9658d1263353eb229a6429d1"
     );
 }
@@ -274,7 +277,7 @@ fn harness_placeholder_loads_supplied_manifest_and_still_checks_layers() {
     let store = Store::new();
     let (layer, root) = store.scute(&[7; 4096], [0; 32], false);
     let bytes = store.manifest_bytes(vec![layer.clone()], root);
-    let real = Digest::from_bytes_sha256(&bytes);
+    let real = Digest::Sha256(Sha256::digest(&bytes).into());
     let placeholder = Store::placeholder_digest();
     assert_ne!(real, placeholder);
     std::fs::write(store.path(&placeholder), &bytes).unwrap();

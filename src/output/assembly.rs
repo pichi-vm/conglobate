@@ -7,6 +7,7 @@ use crate::{
     cache::{Cache, CacheError, ResolvedImage, VerifiedChain},
     image::IndexDigest,
 };
+use sha2::{Digest as _, Sha256};
 
 /// A self-contained staged image whose manifest, referenced content and chain
 /// were verified from the output storage. No mutable staging authority escapes.
@@ -113,7 +114,7 @@ impl AssembledImage {
                 == chain.as_ref().map(|chain| chain.root()),
             "build binding changed the scute graph"
         );
-        let new_digest = Digest::from_bytes_sha256(image.manifest_bytes().bytes());
+        let new_digest = Digest::Sha256(Sha256::digest(image.manifest_bytes().bytes()).into());
         if old_digest != new_digest {
             std::fs::remove_file(self.staged.blob_path(&old_digest))?;
         }
@@ -360,7 +361,7 @@ impl AssembledImage {
         let chain = output_cache.verify_content(&output_image)?;
         // The index is the layout entrypoint, not referenced by its own
         // manifest. Remove the temporary lookup blob after validation.
-        std::fs::remove_file(staged.blob_path(&Digest::from_bytes_sha256(&index)))?;
+        std::fs::remove_file(staged.blob_path(&Digest::Sha256(Sha256::digest(&index).into())))?;
         Ok((output_image, chain))
     }
     fn assemble(
@@ -511,13 +512,16 @@ mod tests {
                 b"{\"requirements\":{}}".to_vec()
             };
             for bytes in [&pmi, &dtb, &config] {
-                blobs.insert(Digest::from_bytes_sha256(bytes).to_string(), bytes.clone());
+                blobs.insert(
+                    Digest::Sha256(Sha256::digest(bytes).into()).to_string(),
+                    bytes.clone(),
+                );
             }
             let config_descriptor = if empty_config {
                 crate::artifact::ConfigDescriptor::canonical()
             } else {
                 crate::artifact::ConfigDescriptor::for_config(
-                    Digest::from_bytes_sha256(&config).to_string(),
+                    Digest::Sha256(Sha256::digest(&config).into()).to_string(),
                     config.len() as u64,
                 )
             };
@@ -527,13 +531,13 @@ mod tests {
                 "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                 "config": config_descriptor,
                 "layers": [
-                    {"mediaType": "application/vnd.pichi.pmi.v1", "digest": Digest::from_bytes_sha256(&pmi).to_string(), "size": pmi.len()},
-                    {"mediaType": "application/vnd.pichi.dtb.v1", "digest": Digest::from_bytes_sha256(&dtb).to_string(), "size": dtb.len()}
+                    {"mediaType": "application/vnd.pichi.pmi.v1", "digest": Digest::Sha256(Sha256::digest(&pmi).into()).to_string(), "size": pmi.len()},
+                    {"mediaType": "application/vnd.pichi.dtb.v1", "digest": Digest::Sha256(Sha256::digest(&dtb).into()).to_string(), "size": dtb.len()}
                 ],
                 "annotations": {"example.org/retain": "exactly"},
                 "x-preserved-extension": {"nested": [1, 2, 3]}
             })).unwrap();
-            let manifest_digest = Digest::from_bytes_sha256(&manifest);
+            let manifest_digest = Digest::Sha256(Sha256::digest(&manifest).into());
             let index = serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -545,7 +549,7 @@ mod tests {
                 }]
             })).unwrap();
             blobs.insert(manifest_digest.to_string(), manifest.clone());
-            let index_digest = Digest::from_bytes_sha256(&index);
+            let index_digest = Digest::Sha256(Sha256::digest(&index).into());
             fs::create_dir_all(directory.path().join("blobs/sha256")).unwrap();
             for (digest, bytes) in &blobs {
                 if empty_config && bytes == b"{}" {
@@ -699,8 +703,9 @@ mod tests {
                         image.architecture(),
                     )
                     .unwrap();
-                    let original =
-                        Digest::from_bytes_sha256(assembled.image.manifest_bytes().bytes());
+                    let original = Digest::Sha256(
+                        Sha256::digest(assembled.image.manifest_bytes().bytes()).into(),
+                    );
                     fs::remove_file(assembled.staged.blob_path(&original)).unwrap();
                     assembled.image = stale;
                     assembled.chain = chain;
@@ -744,7 +749,7 @@ mod tests {
                     let raw = serde_json::to_vec(&final_manifest).unwrap();
                     assert_eq!(
                         index["manifests"][0]["digest"],
-                        Digest::from_bytes_sha256(&raw).to_string()
+                        Digest::Sha256(Sha256::digest(&raw).into()).to_string()
                     );
                     assert_eq!(index["manifests"][0]["size"], raw.len());
                 }
@@ -805,7 +810,7 @@ mod tests {
         assert_eq!(new["annotations"], old["annotations"]);
         assert_eq!(new["x-preserved-extension"], old["x-preserved-extension"]);
         assert_ne!(new["layers"][1]["digest"], old["layers"][1]["digest"]);
-        let digest = Digest::from_bytes_sha256(result.bytes().unwrap());
+        let digest = Digest::Sha256(Sha256::digest(result.bytes().unwrap()).into());
         assert_eq!(new["layers"][1]["digest"], digest.to_string());
         assert_eq!(
             fs::read(assembled.staged.blob_path(&digest)).unwrap(),

@@ -6,6 +6,7 @@ pub(crate) use assembly::AssembledImage;
 
 use crate::artifact::Digest;
 use crate::cache::{Cache, CacheError};
+use sha2::{Digest as _, Sha256};
 use std::{
     ffi::OsString,
     fs::{self, File},
@@ -168,7 +169,6 @@ impl StagedDirectory {
         digest: &Digest,
         size: u64,
     ) -> Result<(), CacheError> {
-        use sha2::{Digest as _, Sha256};
         let mut pending = self.pending_file(&self.blob_path(digest))?;
         let mut hash = Sha256::new();
         let mut remaining = size;
@@ -193,7 +193,7 @@ impl StagedDirectory {
     /// Store captured or newly produced small content, deriving its identity
     /// from these bytes. The coordinator supplies the matching descriptor.
     pub(crate) fn store_blob(&self, bytes: &[u8]) -> io::Result<Digest> {
-        let digest = Digest::from_bytes_sha256(bytes);
+        let digest = Digest::Sha256(Sha256::digest(bytes).into());
         self.write_file(&self.blob_path(&digest), bytes)?;
         Ok(digest)
     }
@@ -281,7 +281,7 @@ mod tests {
         let parent = tempfile::tempdir().unwrap();
         let staged = StagedDirectory::create(&parent.path().join("output")).unwrap();
         let bytes = vec![37u8; 150_000];
-        let digest = Digest::from_bytes_sha256(&bytes);
+        let digest = Digest::Sha256(Sha256::digest(&bytes).into());
         for (input, size) in [
             (&bytes[..bytes.len() - 1], bytes.len() as u64),
             (&bytes[..], bytes.len() as u64 - 1),
@@ -290,7 +290,7 @@ mod tests {
             assert!(staged.store_verified(input, &digest, size).is_err());
             assert!(!staged.blob_path(&digest).exists());
         }
-        let wrong = Digest::from_bytes_sha256(b"wrong");
+        let wrong = Digest::Sha256(Sha256::digest(b"wrong").into());
         assert!(
             staged
                 .store_verified(&bytes[..], &wrong, bytes.len() as u64)
@@ -330,7 +330,7 @@ mod tests {
         let parent = tempfile::tempdir().unwrap();
         let cache_path = parent.path().join("cache");
         fs::create_dir_all(cache_path.join("blobs/sha256")).unwrap();
-        let digest = Digest::from_bytes_sha256(b"original");
+        let digest = Digest::Sha256(Sha256::digest(b"original").into());
         let blob = cache_path.join("blobs/sha256").join(digest.hex());
         fs::write(&blob, b"original").unwrap();
         let cache = Cache::open(&cache_path).unwrap();
