@@ -43,6 +43,18 @@ regardless of YAML key order. `bootstrap` formats a fresh filesystem and populat
 `/mnt`; `extend` retains its input chain plus one scute for all its commands;
 `build` discards its tool writes and retains declared artifacts only.
 
+Before resolving a lock, inspect the committed plan with:
+
+```sh
+conglobate inputs --repository . --commit "$(git rev-parse HEAD)" \
+  --context . --plan pichi.yaml
+```
+
+This prints a JSON object with an `images` array of unique remote references
+from the selected task closure. It uses the build's context reader and planner;
+no lock, cache, privileged setup, or commands are needed. Pichi consumes this
+output and resolves each reference to an OCI index pin.
+
 `image: rootfs` uses that task's carapace and boot exports. The long form
 `image: {root: rootfs, boot: firmware}` selects them separately. A build task
 may provide boot without a carapace. Extend carries boot forward and automatically
@@ -61,7 +73,7 @@ provides boot. Directory exports and other value grammars fail closed. Context
 COPY selects a single bare file or directory name; source patterns and the old
 owner/group/mode fields are rejected. Artifact names conflicting with the context
 or another producer are rejected. Whether artifact keys should become paths is
-still open. These choices are isolated in the shared plan schema.
+still open. These choices are isolated in the executable's private plan schema.
 
 The 28 October 2026 decision in
 [DESIGN §11](DESIGN.md#11-artifact-and-build-annotations) drops `inventory.cbor`
