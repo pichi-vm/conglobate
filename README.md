@@ -80,10 +80,10 @@ leave only `oci-layout`, `index.json`, and `blobs/sha256/…`. Later attestation
 binds the image digest and TEE/builder.
 
 Build publication stamps these annotations from the resolved committed input.
-The library exposes `conglobate::plan` (`Plan`, `Task`, `Reference`,
-`Filesystem`, `Lock`); `plan_io` retains legacy host types for source
-compatibility, including the unused `BuildOutput` schema. The engine dependency
-module is `src/graph.rs`.
+Plan parsing, filesystem properties, and dependency ordering are private to
+the executable. The library does not expose legacy `pichi.build` plans or
+packing lists. Builds publish OCI layouts; consumers use the shared artifact
+types. The engine dependency module is `src/graph.rs`.
 
 ## Build and rootless checks
 

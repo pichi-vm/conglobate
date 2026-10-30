@@ -30,16 +30,12 @@ mod path;
 mod pipeline;
 mod plan;
 mod process;
-// Portable plan/lock types and legacy host schemas exposed by the library.
-// Most items are unused in the binary.
-#[allow(dead_code, unreachable_pub, unused_imports)]
-mod plan_io;
 mod request;
 mod step;
 mod storage;
 mod template;
 mod transform;
-use contract::value;
+mod value;
 
 #[cfg(test)]
 mod tests;

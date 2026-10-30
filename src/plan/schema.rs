@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-pub use crate::value::{CommandTimeout, FilesystemLabel, FilesystemSize};
+pub(crate) use crate::value::{CommandTimeout, FilesystemLabel, FilesystemSize};
 use serde::{Deserialize, Deserializer, de};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -31,19 +31,12 @@ fn nonnull<'de, D: Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result<T, D:
     Option::<T>::deserialize(d)?
         .ok_or_else(|| de::Error::custom("null is not omission or an empty collection"))
 }
+#[path = "lock.rs"]
 mod lock;
-pub use lock::{IndexPin, Lock};
-fn decode_yaml<T: serde::de::DeserializeOwned>(text: &str) -> Result<T, Error> {
-    let mut options = serde_saphyr::Options::default();
-    options.strict_booleans = true;
-    options.legacy_octal_numbers = false;
-    options.duplicate_keys = serde_saphyr::DuplicateKeyPolicy::Error;
-    serde_saphyr::from_str_with_options(text, options).map_err(Error::invalid)
-}
-
+pub(crate) use lock::Lock;
 #[derive(Debug, thiserror::Error)]
 #[error("invalid plan: {0}")]
-pub struct Error(pub String);
+pub(crate) struct Error(pub(crate) String);
 impl Error {
     fn invalid(text: impl fmt::Display) -> Self {
         Self(text.to_string())
@@ -53,7 +46,7 @@ impl Error {
 /// Local names deliberately exclude OCI separators and artifact path syntax.
 /// The precise limited charset is an implementation choice, not a design lock.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Local(String);
+pub(crate) struct Local(String);
 impl FromStr for Local {
     type Err = Error;
     fn from_str(text: &str) -> Result<Self, Self::Err> {
@@ -84,7 +77,7 @@ impl fmt::Display for Local {
 /// Provisional flat artifact name, kept separate from task references so the
 /// open DESIGN §6.3 path-key decision can change this grammar independently.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ArtifactName(String);
+pub(crate) struct ArtifactName(String);
 impl FromStr for ArtifactName {
     type Err = Error;
     fn from_str(text: &str) -> Result<Self, Error> {
@@ -105,22 +98,8 @@ impl fmt::Display for ArtifactName {
 
 /// An explicitly qualified OCI reference, retaining parsed components.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Remote {
-    registry: String,
-    repository: String,
-    selector: String,
+pub(crate) struct Remote {
     text: String,
-}
-impl Remote {
-    pub fn registry(&self) -> &str {
-        &self.registry
-    }
-    pub fn repository(&self) -> &str {
-        &self.repository
-    }
-    pub fn selector(&self) -> &str {
-        &self.selector
-    }
 }
 impl AsRef<str> for Remote {
     fn as_ref(&self) -> &str {
@@ -135,7 +114,7 @@ impl FromStr for Remote {
                 "remote reference requires a valid explicit registry host and OCI repository",
             )
         };
-        let (registry, rest) = text.split_once('/').ok_or_else(invalid)?;
+        let (registry, _) = text.split_once('/').ok_or_else(invalid)?;
         let (host, port) = if let Some(ipv6) = registry.strip_prefix('[') {
             let (address, suffix) = ipv6.split_once(']').ok_or_else(invalid)?;
             address
@@ -184,21 +163,7 @@ impl FromStr for Remote {
         {
             return Err(invalid());
         }
-        // Reject malformed digest/tag combinations left as repository text by the
-        // general OCI parser. No Docker Hub shorthand normalization is performed.
-        let selector = if let Some((_, digest)) = rest.split_once('@') {
-            format!("@{digest}")
-        } else if let Some((_, tag)) = rest.rsplit_once(':') {
-            format!(":{tag}")
-        } else {
-            String::new()
-        };
-        Ok(Self {
-            registry: registry.into(),
-            repository: parsed.repo,
-            selector,
-            text: text.into(),
-        })
+        Ok(Self { text: text.into() })
     }
 }
 
@@ -233,20 +198,20 @@ impl FromStr for Reference {
 /// Untagged variants have disjoint grammars; neither can shadow the other.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
-pub enum Reference {
+pub(crate) enum Reference {
     Local(Local),
     Remote(Remote),
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
-pub enum Filesystem {
+pub(crate) enum Filesystem {
     Ext4(Ext4Properties),
 }
 /// Dedicated ext4 capacity and properties, validated before execution.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Ext4Properties {
+pub(crate) struct Ext4Properties {
     size: FilesystemSize,
     #[serde(default)]
     label: FilesystemLabel,
@@ -257,12 +222,12 @@ impl<'de> Deserialize<'de> for FilesystemLabel {
     }
 }
 impl Filesystem {
-    pub fn size(&self) -> FilesystemSize {
+    pub(crate) fn size(&self) -> FilesystemSize {
         match self {
             Self::Ext4(p) => p.size,
         }
     }
-    pub fn label(&self) -> &FilesystemLabel {
+    pub(crate) fn label(&self) -> &FilesystemLabel {
         match self {
             Self::Ext4(p) => &p.label,
         }
@@ -271,7 +236,7 @@ impl Filesystem {
 
 #[derive(Debug, Deserialize)]
 #[serde(try_from = "RawRun")]
-pub struct Run {
+pub(crate) struct Run {
     command: String,
     network: bool,
     timeout: CommandTimeout,
@@ -299,32 +264,32 @@ impl TryFrom<RawRun> for Run {
     }
 }
 impl Run {
-    pub fn command(&self) -> &str {
+    pub(crate) fn command(&self) -> &str {
         &self.command
     }
-    pub fn network(&self) -> bool {
+    pub(crate) fn network(&self) -> bool {
         self.network
     }
-    pub fn timeout(&self) -> CommandTimeout {
+    pub(crate) fn timeout(&self) -> CommandTimeout {
         self.timeout
     }
 }
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Copy {
-    pub from: ArtifactName,
-    pub into: ImagePath,
+pub(crate) struct Copy {
+    pub(crate) from: ArtifactName,
+    pub(crate) into: ImagePath,
 }
 #[derive(Debug, Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
-pub enum Directive {
+pub(crate) enum Directive {
     Run(Run),
     Copy { copy: Copy },
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(try_from = "String")]
-pub struct ImagePath(String);
+pub(crate) struct ImagePath(String);
 impl TryFrom<String> for ImagePath {
     type Error = Error;
     fn try_from(text: String) -> Result<Self, Error> {
@@ -344,7 +309,7 @@ impl AsRef<str> for ImagePath {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Bootstrap {
+pub(crate) struct Bootstrap {
     from: Reference,
     filesystem: Filesystem,
     #[serde(default, rename = "exec", deserialize_with = "nonnull")]
@@ -352,32 +317,24 @@ pub struct Bootstrap {
 }
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Extend {
+pub(crate) struct Extend {
     from: Reference,
     #[serde(default, rename = "exec", deserialize_with = "nonnull")]
     directives: Vec<Directive>,
 }
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Build {
+pub(crate) struct Build {
     from: Reference,
     #[serde(default, rename = "exec", deserialize_with = "nonnull")]
     directives: Vec<Directive>,
     #[serde(deserialize_with = "nonnull")]
     into: BTreeMap<ArtifactName, ImagePath>,
 }
-impl Bootstrap {
-    pub fn filesystem(&self) -> &Filesystem {
-        &self.filesystem
-    }
-}
 impl Build {
-    pub fn outputs(&self) -> &BTreeMap<ArtifactName, ImagePath> {
-        &self.into
-    }
     // Provisional convention matching prior firmware paths; not a locked
     // into value grammar. Both files must be explicitly declared together.
-    pub fn boot(&self) -> Option<(&str, &str)> {
+    pub(crate) fn boot(&self) -> Option<(&str, &str)> {
         Some((
             self.into.get(&"pmi".parse().ok()?)?.as_ref(),
             self.into.get(&"dtb".parse().ok()?)?.as_ref(),
@@ -386,40 +343,40 @@ impl Build {
 }
 #[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
-pub enum Task {
+pub(crate) enum Task {
     Bootstrap(Bootstrap),
     Extend(Extend),
     Build(Build),
 }
 impl Task {
-    pub fn from(&self) -> &Reference {
+    pub(crate) fn from(&self) -> &Reference {
         match self {
             Self::Bootstrap(t) => &t.from,
             Self::Extend(t) => &t.from,
             Self::Build(t) => &t.from,
         }
     }
-    pub fn directives(&self) -> &[Directive] {
+    pub(crate) fn directives(&self) -> &[Directive] {
         match self {
             Self::Bootstrap(t) => &t.directives,
             Self::Extend(t) => &t.directives,
             Self::Build(t) => &t.directives,
         }
     }
-    pub fn has_root(&self) -> bool {
+    pub(crate) fn has_root(&self) -> bool {
         !matches!(self, Self::Build(_))
     }
 }
 #[derive(Debug, Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
-pub enum Image {
+pub(crate) enum Image {
     Short(Local),
     Long { root: Local, boot: Local },
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(try_from = "RawPlan")]
-pub struct Plan {
+pub(crate) struct Plan {
     tasks: BTreeMap<Local, Task>,
     image: Image,
     order: Vec<Local>,
@@ -432,16 +389,7 @@ struct RawPlan {
     image: Image,
 }
 impl Plan {
-    pub fn parse(text: &str) -> Result<Self, Error> {
-        decode_yaml(text)
-    }
-    pub fn tasks(&self) -> &BTreeMap<Local, Task> {
-        &self.tasks
-    }
-    pub fn image(&self) -> &Image {
-        &self.image
-    }
-    pub fn order(&self) -> &[Local] {
+    pub(crate) fn order(&self) -> &[Local] {
         &self.order
     }
 }
@@ -593,15 +541,15 @@ impl TryFrom<RawPlan> for Plan {
 
 /// Owned task data for consumers that keep execution authority outside the lib.
 #[derive(Debug)]
-pub struct TaskParts {
-    pub from: Reference,
-    pub directives: Vec<Directive>,
-    pub filesystem: Option<Filesystem>,
-    pub outputs: Option<BTreeMap<ArtifactName, ImagePath>>,
-    pub boot: Option<(String, String)>,
+pub(crate) struct TaskParts {
+    pub(crate) from: Reference,
+    pub(crate) directives: Vec<Directive>,
+    pub(crate) filesystem: Option<Filesystem>,
+    pub(crate) outputs: Option<BTreeMap<ArtifactName, ImagePath>>,
+    pub(crate) boot: Option<(String, String)>,
 }
 impl Task {
-    pub fn into_parts(self) -> TaskParts {
+    pub(crate) fn into_parts(self) -> TaskParts {
         match self {
             Self::Bootstrap(t) => TaskParts {
                 from: t.from,
@@ -631,7 +579,7 @@ impl Task {
     }
 }
 impl Plan {
-    pub fn into_parts(self) -> (BTreeMap<Local, Task>, Image) {
+    pub(crate) fn into_parts(self) -> (BTreeMap<Local, Task>, Image) {
         (self.tasks, self.image)
     }
 }
@@ -639,8 +587,9 @@ impl Plan {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::document::YamlDocument;
     #[test]
-    fn shipped_task_plans_parse_with_the_shared_schema() {
+    fn shipped_task_plans_parse() {
         for text in [
             include_str!("../../image/conglobate.plan.yaml"),
             include_str!("../../tests/distro/alpine/plan.yaml"),
@@ -653,7 +602,7 @@ mod tests {
             include_str!("../../tests/distro/confinement/plan.yaml"),
             include_str!("../../tests/distro/network/plan.yaml"),
         ] {
-            Plan::parse(text).unwrap();
+            YamlDocument::from(text).decode::<Plan>().unwrap();
         }
     }
     #[test]
@@ -664,7 +613,7 @@ mod tests {
             "image: root\ntasks: {root: {kind: extend, from: registry.test/base:1, exec: [{run: 123}]}}",
             "image: root\ntasks: {root: {kind: extend, from: registry.test/base:1, exec: [{copy: {from: 123, into: /x}}]}}",
         ] {
-            assert!(Plan::parse(text).is_err(), "{text}");
+            assert!(YamlDocument::from(text).decode::<Plan>().is_err(), "{text}");
         }
     }
     #[test]
@@ -673,21 +622,19 @@ mod tests {
         let Reference::Remote(remote) = reference else {
             panic!()
         };
-        assert_eq!(remote.registry(), "registry.test");
-        assert_eq!(remote.repository(), "base");
-        assert_eq!(remote.selector(), ":1");
+        assert_eq!(remote.as_ref(), "registry.test/base:1");
         let text = format!(
             "version: 1\nimages: {{registry.test/base:1: {{index: sha256:{}}}}}",
             "11".repeat(32)
         );
-        let lock = Lock::parse(&text).unwrap();
+        let lock = YamlDocument::from(text.as_str()).decode::<Lock>().unwrap();
         assert_eq!(lock.images()[&remote].bytes(), &[0x11; 32]);
         for text in [
             "version: 1\nimages: {local: {index: sha256:00}}",
             "version: 1\nimages: null",
             "version: 1\nimages: {}\nimages: {}",
         ] {
-            assert!(Lock::parse(text).is_err(), "{text}");
+            assert!(YamlDocument::from(text).decode::<Lock>().is_err(), "{text}");
         }
     }
 }
