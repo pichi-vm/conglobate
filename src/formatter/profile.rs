@@ -85,9 +85,8 @@ mod tests {
             ["-L", "-x; $(false)", "/dev/output", "4096"].map(OsString::from)
         );
         assert_eq!(format.size().bytes(), 16 * 1024 * 1024);
-        assert_eq!(
-            FilesystemSize::LOGICAL_DEVICE_BYTES,
-            64 * 1024 * 1024 * 1024
-        );
+        let larger = Ext4Format::new("65GiB".parse().unwrap(), FilesystemLabel::default());
+        let args = larger.arguments(Path::new("/dev/output"));
+        assert_eq!(args.last().unwrap(), "17039360");
     }
 }

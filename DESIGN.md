@@ -768,10 +768,11 @@ filesystem:
 `properties:` map is not the schema.
 
 The size spelling is that strict type: a positive integer followed immediately
-by `B`, `KiB`, `MiB`, or `GiB`, 4096-byte aligned, between 16 MiB and 64 GiB
-inclusive. No fractional values and no implicit units. `label` defaults to
-empty and is limited to 16 UTF-8 bytes without NUL. Unknown properties fail.
-The carapace logical device remains 64 GiB. Trusted formatting uses exactly
+by `B`, `KiB`, `MiB`, or `GiB`, 4096-byte aligned, at least 16 MiB and no
+larger than `carapace::ZERO_SIZE_BYTES`. No fractional values and no implicit
+units. `label` defaults to empty and is limited to 16 UTF-8 bytes without NUL.
+Unknown properties fail. Carapace owns the logical device geometry through
+`ZERO_SIZE_BYTES` and `ZERO_SIZE_SECTORS`. Trusted formatting uses exactly
 the requested number of 4096-byte blocks and leaves the rest zero-backed. Size
 does not change carapace wire geometry. Validate this before privileged
 execution. Do not accept arbitrary formatter arguments, executable paths, or
@@ -2001,10 +2002,14 @@ mount-namespace identity through partial setup and explicit teardown. Unresolved
 live resources remain retained until VM disposal. Deferred device removal is a
 destructor fallback, never evidence of successful close or permission to seal.
 
-Carapace owns the read-only logical device geometry. Bootstrap's configured
-ext4 capacity is a filesystem capacity within that geometry, not a format change.
-The initial backend accepts aligned 16 MiB–64 GiB capacities and typed ext4
-properties. Trusted mke2fs uses 4096-byte filesystem blocks. Finalization trims
+Carapace owns the logical origin geometry through `ZERO_SIZE_SECTORS`.
+Bootstrap's configured ext4 capacity is independent of that logical extent.
+The backend accepts aligned capacities of at least 16 MiB within the origin
+and typed ext4 properties. Formatter and runtime resource limits still apply;
+accepting a size does not promise that mke2fs can format it. Sparse writable
+COW stores share the backing workspace's capacity, including snapshot metadata;
+they are never sized from the logical origin. Exhaustion fails the build.
+Trusted mke2fs uses 4096-byte filesystem blocks. Finalization trims
 unused snapshot capacity, uses ecosystem wire types and seals the scute directly;
 there is no image-to-carapace import/conversion step.
 

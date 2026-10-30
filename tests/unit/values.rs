@@ -34,7 +34,7 @@ fn context_relative_paths_do_not_gain_resolution_authority() {
 #[test]
 fn capacity_is_explicit_aligned_and_bounded() {
     let minimum = 16 * 1024 * 1024;
-    let maximum = FilesystemSize::LOGICAL_DEVICE_BYTES;
+    let maximum = carapace::ZERO_SIZE_BYTES;
     for bytes in [minimum, minimum + 4096, maximum - 4096, maximum] {
         let numeric = FilesystemSize::try_from(bytes).unwrap();
         assert_eq!(numeric.bytes(), bytes);
@@ -48,8 +48,8 @@ fn capacity_is_explicit_aligned_and_bounded() {
         1_048_576
     );
     assert_eq!(
-        "64GiB".parse::<FilesystemSize>().unwrap().bytes(),
-        FilesystemSize::LOGICAL_DEVICE_BYTES
+        "65GiB".parse::<FilesystemSize>().unwrap().bytes(),
+        65 * 1024 * 1024 * 1024
     );
     for value in [
         "0B",
@@ -59,7 +59,6 @@ fn capacity_is_explicit_aligned_and_bounded() {
         "4GB",
         "4",
         "15MiB",
-        "65GiB",
         "16777217B",
         "18446744073709551615GiB",
     ] {

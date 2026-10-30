@@ -85,7 +85,8 @@ impl ChainStorage {
             let inherited = bytes;
             let mut scratch = workspace.scratch()?;
             scratch.set_len(1024 * 1024)?;
-            let sectors = NonZeroU64::new(8192).unwrap();
+            let sectors = NonZeroU64::new(carapace::ZERO_SIZE_SECTORS).unwrap();
+            let beyond_old_limit = 65 * 1024 * 1024 * 1024;
             let snapshot = conglobate::storage::Mapping::<conglobate::storage::Created>::create()?
                 .snapshot(
                     &mounted,
@@ -112,6 +113,8 @@ impl ChainStorage {
             writer.write_all(&[99; 4096])?;
             writer.seek(SeekFrom::Start(8192))?;
             writer.write_all(&[77; 4096])?;
+            writer.seek(SeekFrom::Start(beyond_old_limit))?;
+            writer.write_all(&[88; 4096])?;
             writer.sync_all()?;
             snapshot.usage()?;
             reader.rewind()?;
@@ -142,6 +145,10 @@ impl ChainStorage {
             assert_eq!(&bytes[..4096], &[99; 4096]);
             assert_eq!(&bytes[4096..8192], &[67; 4096]);
             assert_eq!(&bytes[8192..], &[77; 4096]);
+            changed.seek(SeekFrom::Start(beyond_old_limit))?;
+            let mut distant = [0; 4096];
+            changed.read_exact(&mut distant)?;
+            assert_eq!(distant, [88; 4096]);
             drop(changed);
             let scratch = snapshot
                 .close()
@@ -174,6 +181,10 @@ impl ChainStorage {
             assert_eq!(&bytes[4096..8192], &[67; 4096]);
             assert_eq!(&bytes[8192..], &[77; 4096]);
             let extended = bytes;
+            reader.seek(SeekFrom::Start(beyond_old_limit))?;
+            reader.read_exact(&mut distant)?;
+            assert_eq!(distant, [88; 4096]);
+            println!("LARGE_SPARSE_ORIGIN_PASS");
             println!("SEALED_EXTENSION_OVER_VERIFIED_CHAIN_PASS");
             let failure = mounted.close().unwrap_err();
             assert_eq!(failure.kind(), std::io::ErrorKind::ResourceBusy);

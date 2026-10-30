@@ -64,8 +64,7 @@ impl<'a> BootstrapBuild<'a> {
         reaper: ChildReaper,
         carapace: Option<&[u8; 32]>,
     ) -> anyhow::Result<Bootstrapped<'w>> {
-        let sectors =
-            NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap();
+        let sectors = NonZeroU64::new(carapace::ZERO_SIZE_SECTORS).unwrap();
         let origin = Mapping::<Created>::create()?.zero(sectors)?;
         let output = Mapping::<Created>::create()?.snapshot(
             &origin,

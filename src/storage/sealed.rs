@@ -180,7 +180,7 @@ impl SnapshotExtent {
                 if exception.new_chunk == 0 {
                     return Ok(Self { bytes: end * 4096 });
                 }
-                if exception.old_chunk >= crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 4096
+                if exception.old_chunk >= carapace::ZERO_SIZE_BYTES / 4096
                     || exception.new_chunk < 2
                     || exception.new_chunk >= chunks
                     || (exception.new_chunk - 1).is_multiple_of(stride)
@@ -332,11 +332,7 @@ mod tests {
             assert!(store.extent().is_err());
         }
         let mut store = Store::new(3);
-        store.entry(
-            0,
-            crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 4096,
-            2,
-        );
+        store.entry(0, carapace::ZERO_SIZE_BYTES / 4096, 2);
         assert!(store.extent().is_err());
         store.0[4..8].fill(0);
         assert!(store.extent().is_err());

@@ -34,7 +34,7 @@ impl<'s, 'w> BuildTools<'s, 'w> {
         let snapshot = Mapping::<Created>::create()?.snapshot(
             &active,
             workspace.snapshot_store()?.attach()?,
-            NonZeroU64::new(crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap(),
+            NonZeroU64::new(carapace::ZERO_SIZE_SECTORS).unwrap(),
         )?;
         let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())?;
         let paths = runtime.paths()?;

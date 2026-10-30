@@ -241,6 +241,7 @@ exec sleep infinity
                        'WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS',
                        'CHAIN_TERMINAL_CLOSE_RETAINS_LIVE_HOLDER_PASS',
                        'SEALED_EXTENSION_OVER_VERIFIED_CHAIN_PASS',
+                       'LARGE_SPARSE_ORIGIN_PASS',
                        'CARAPACE_CHAIN_CLEANUP_PASS', 'OWNED_TWO_SCUTE_CHAIN_PASS']
         elif self.args.case == 'cache-storage':
             markers = ['VERITY_TERMINAL_CLOSE_RETAINS_LIVE_HOLDER_PASS',
