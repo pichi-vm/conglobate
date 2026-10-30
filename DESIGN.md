@@ -1017,8 +1017,11 @@ The built-in sequence is:
 It refreshes an existing `corium=` argument and never introduces one. The
 task that exports boot establishes the initial binding. A matched binding with
 undefined `CARAPACE` fails. Non-string command-line data remains an error.
-This generic regex does not validate all corium arguments or repair duplicate
-bindings.
+Before applying the sequence, reject duplicate `corium` options and a bare
+`corium` without `=`. Option names use the same whitespace-delimited tokens
+as the guest; `corium.log` and `corium.halt` are separate options. A single
+existing value may be a placeholder because the rewrite replaces it with the
+new root. Preserve unrelated arguments and whitespace.
 
 Within an existing DTB, the sequence uses `if.exists` to skip an absent
 command line. No operation reads a missing property successfully, and a

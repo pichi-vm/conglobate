@@ -14,6 +14,8 @@ pub(crate) enum TransformError {
     MissingProperty(String),
     #[error("DTB property is not one NUL-terminated UTF-8 string: {0}")]
     NotString(String),
+    #[error("invalid Corium boot arguments: {0}")]
+    Corium(&'static str),
     #[error(transparent)]
     Template(#[from] crate::template::TemplateError),
     #[error(transparent)]
@@ -65,6 +67,25 @@ impl TransformSelection {
         let tree: Tree<'_> = Tree::parse(bytes)?;
         let original = OwnedTree::from(&tree);
         let mut edited = original.clone();
+        if builtin {
+            let bootargs = PropertyPath::new("/chosen/bootargs");
+            if bootargs.get(&edited).is_some() {
+                // Match Corium's whitespace-delimited option names, including
+                // a bare option. Rewriting duplicate values still leaves a
+                // command line that the guest rejects.
+                let mut roots = bootargs
+                    .string(&edited)?
+                    .split_whitespace()
+                    .filter(|token| *token == "corium" || token.starts_with("corium="));
+                let root = roots.next();
+                if roots.next().is_some() {
+                    return Err(TransformError::Corium("duplicate corium arguments"));
+                }
+                if root == Some("corium") {
+                    return Err(TransformError::Corium("corium requires an equals sign"));
+                }
+            }
+        }
         let defaults;
         let operations = match self {
             Self::Builtin => {
@@ -127,6 +148,15 @@ impl<'a> PropertyPath<'a> {
     fn get<'t>(&self, tree: &'t OwnedTree) -> Option<&'t OwnedProperty> {
         tree.find_path(self.node)?.property(self.name)
     }
+    fn string<'t>(&self, tree: &'t OwnedTree) -> Result<&'t str, TransformError> {
+        self.get(tree)
+            .ok_or_else(|| self.missing())?
+            .as_ref()
+            .strip_suffix(&[0])
+            .filter(|bytes| !bytes.contains(&0))
+            .and_then(|bytes| std::str::from_utf8(bytes).ok())
+            .ok_or_else(|| TransformError::NotString(self.path.to_owned()))
+    }
     fn node_mut<'t>(
         &self,
         tree: &'t mut OwnedTree,
@@ -160,12 +190,7 @@ impl TransformOperation {
                 pattern,
                 replacement,
             } => {
-                let raw = target.get(tree).ok_or_else(|| target.missing())?.as_ref();
-                let text = raw
-                    .strip_suffix(&[0])
-                    .filter(|b| !b.contains(&0))
-                    .and_then(|b| std::str::from_utf8(b).ok())
-                    .ok_or_else(|| TransformError::NotString(target.path.to_owned()))?;
+                let text = target.string(tree)?;
                 let mut output = String::new();
                 let mut end = 0;
                 for captures in pattern.captures_iter(text) {
@@ -299,9 +324,9 @@ mod tests {
         assert!(!empty.default_skipped());
     }
     #[test]
-    fn default_updates_all_matches_and_requires_root_only_for_matches() {
+    fn default_updates_one_root_and_preserves_other_boot_arguments() {
         let dtb = Fixture::dtb(Some(
-            OwnedProperty::new("bootargs").with_str("corium=old quiet corium=older"),
+            OwnedProperty::new("bootargs").with_str("console=ttyS0 corium=old quiet"),
         ));
         assert!(TransformSelection::Builtin.apply(Some(&dtb), None).is_err());
         let result = TransformSelection::Builtin
@@ -314,7 +339,7 @@ mod tests {
                 .property("bootargs")
                 .unwrap()
                 .as_str(),
-            Some("corium=abcd quiet corium=abcd")
+            Some("console=ttyS0 corium=abcd quiet")
         );
         assert_eq!(&result.bytes().unwrap()[24..32], &dtb[24..32]);
         assert_eq!(
@@ -331,6 +356,56 @@ mod tests {
                 .is_err()
         );
     }
+    #[test]
+    fn default_rejects_duplicate_and_bare_corium_options() {
+        for text in [
+            "corium=abcd corium=abcd",
+            "corium= corium=abcd",
+            "corium=abcd corium=",
+            "corium corium=abcd",
+            "corium=abcd corium",
+            "corium",
+            "corium=abcd\tcorium=ef01",
+            "corium=abcd\u{2003}corium=ef01",
+        ] {
+            let dtb = Fixture::dtb(Some(OwnedProperty::new("bootargs").with_str(text)));
+            assert!(
+                matches!(
+                    TransformSelection::Builtin.apply(Some(&dtb), Some("0123")),
+                    Err(TransformError::Corium(_))
+                ),
+                "accepted {text:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn repeated_rewrites_keep_one_binding_and_preserve_whitespace() {
+        let text =
+            "  other.corium=abcd\tcorium.log=off\ncorium=old  quiet\u{2003}corium.halt=mounted ";
+        let dtb = Fixture::dtb(Some(OwnedProperty::new("bootargs").with_str(text)));
+        let first = TransformSelection::Builtin
+            .apply(Some(&dtb), Some("01"))
+            .unwrap();
+        let second = TransformSelection::Builtin
+            .apply(first.bytes(), Some("02"))
+            .unwrap();
+        let tree = Fixture::tree(&second);
+        assert_eq!(
+            tree.find_path("/chosen")
+                .unwrap()
+                .property("bootargs")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+            text.replace("corium=old", "corium=02")
+        );
+        let unchanged = TransformSelection::Builtin
+            .apply(second.bytes(), Some("02"))
+            .unwrap();
+        assert_eq!(unchanged.bytes(), second.bytes());
+    }
+
     #[test]
     fn regex_checks_type_before_matching_and_conditions_before_reading() {
         let op = "\n- op: regex\n  property: /chosen/bootargs\n  match: absent\n  replace: '${CARAPACE}'";
