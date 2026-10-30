@@ -7,16 +7,14 @@
 //! request map, then reads one self-delimiting CBOR response. The guest must
 //! not assume the host already pushed bytes before the request.
 
+use crate::contract::build::{PORT_NAME as CONSOLE_NAME, Request};
+#[cfg(test)]
 use ciborium::Value;
 use std::{
     fs,
     io::{self, Write},
     path::Path,
 };
-
-pub(crate) const CONSOLE_NAME: &str = "dev.pichi.build";
-pub(crate) const PROTOCOL_VERSION: i64 = 1;
-pub(crate) const BUILD_INPUT_OP: &str = "build-input";
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ConsoleError {
@@ -63,15 +61,8 @@ pub(crate) fn open_build_console(
 
 /// Encode the v0 guest→host request: `{"v":1,"op":"build-input"}`.
 pub(crate) fn encode_build_input_request() -> Result<Vec<u8>, ConsoleError> {
-    let value = Value::Map(vec![
-        (
-            Value::Text("v".into()),
-            Value::Integer(PROTOCOL_VERSION.into()),
-        ),
-        (Value::Text("op".into()), Value::Text(BUILD_INPUT_OP.into())),
-    ]);
     let mut bytes = Vec::new();
-    ciborium::into_writer(&value, &mut bytes)
+    ciborium::into_writer(&Request::default(), &mut bytes)
         .map_err(|error| ConsoleError::Encode(error.to_string()))?;
     Ok(bytes)
 }

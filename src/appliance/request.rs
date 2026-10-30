@@ -7,39 +7,24 @@
 //! (`ref`/`plan`/`lock`/optional `context`/`location`), or `error` on failure.
 //! Accept-list + reject-list name offenders.
 
+use crate::contract::build::{Input, Response};
 use crate::{
     path::{ContextDirectory, ContextPath, PathError},
     request::{BuildRequest, CommitIdentity, RequestError},
 };
+#[cfg(test)]
 use ciborium::Value;
 use std::io::BufRead;
-use std::{
-    collections::BTreeMap,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ApplianceRequestError {
     #[error("appliance CBOR: {0}")]
     Decode(String),
-    #[error("appliance CBOR rejects field {0}")]
-    RejectedField(&'static str),
-    #[error("appliance CBOR rejects unknown field {0}")]
-    UnknownField(String),
-    #[error("appliance CBOR missing required field {0}")]
-    MissingField(&'static str),
-    #[error("appliance CBOR field {0} has invalid type")]
-    InvalidType(&'static str),
-    #[error("appliance CBOR field {0} is empty or contains NUL")]
-    InvalidString(&'static str),
     #[error("build location must be a credential-free Git locator")]
     InvalidLocation,
     #[error("appliance CBOR has trailing bytes after the response map")]
     TrailingBytes,
-    #[error("appliance CBOR protocol version must be 1")]
-    BadVersion,
-    #[error("appliance CBOR missing ok field")]
-    MissingOk,
     #[error("host rejected build-input: {0}")]
     HostRejected(String),
     #[error(transparent)]
@@ -117,7 +102,7 @@ impl ApplianceRequest {
         refill: bool,
     ) -> Result<Self, ApplianceRequestError> {
         let mut buffered = std::io::BufReader::with_capacity(capacity, reader);
-        let value: Value = ciborium::from_reader(&mut buffered)
+        let response: Response = ciborium::from_reader(&mut buffered)
             .map_err(|error| ApplianceRequestError::Decode(error.to_string()))?;
         if !buffered.buffer().is_empty() {
             return Err(ApplianceRequestError::TrailingBytes);
@@ -130,7 +115,7 @@ impl ApplianceRequest {
                 return Err(ApplianceRequestError::TrailingBytes);
             }
         }
-        Self::from_response_value(value)
+        Self::from_response(response)
     }
 
     fn reject_immediate_port_trailing(
@@ -172,82 +157,19 @@ impl ApplianceRequest {
         Self::decode_response(&mut cursor)
     }
 
-    fn from_response_value(value: Value) -> Result<Self, ApplianceRequestError> {
-        let Value::Map(entries) = value else {
-            return Err(ApplianceRequestError::Decode(
-                "top-level value must be a map".into(),
-            ));
+    fn from_response(response: Response) -> Result<Self, ApplianceRequestError> {
+        let input = match response {
+            Response::Success(input) => input,
+            Response::Failure(error) => return Err(ApplianceRequestError::HostRejected(error)),
         };
-        let mut fields = BTreeMap::new();
-        for (key, value) in entries {
-            let name = match key {
-                Value::Text(text) => text,
-                _ => {
-                    return Err(ApplianceRequestError::Decode(
-                        "map keys must be text".into(),
-                    ));
-                }
-            };
-            if fields.insert(name.clone(), value).is_some() {
-                return Err(ApplianceRequestError::Decode(format!(
-                    "duplicate field {name}"
-                )));
-            }
-        }
-        for forbidden in [
-            "commit",
-            "output",
-            "repository",
-            "cache",
-            "uid_map",
-            "gid_map",
-            "network_namespace",
-            "resolv_conf",
-            "formatter_runtime",
-            "formatter-runtime",
-            "repo",
-            "mount",
-            "tag",
-            "op",
-        ] {
-            if fields.contains_key(forbidden) {
-                return Err(ApplianceRequestError::RejectedField(forbidden));
-            }
-        }
-        for key in fields.keys() {
-            if !matches!(
-                key.as_str(),
-                "v" | "ok" | "error" | "ref" | "plan" | "lock" | "context" | "location"
-            ) {
-                return Err(ApplianceRequestError::UnknownField(key.clone()));
-            }
-        }
-        match fields.remove("v") {
-            Some(Value::Integer(version)) if i128::from(version) == 1 => {}
-            Some(_) => return Err(ApplianceRequestError::BadVersion),
-            None => return Err(ApplianceRequestError::MissingField("v")),
-        }
-        let ok = match fields.remove("ok") {
-            Some(Value::Bool(ok)) => ok,
-            Some(_) => return Err(ApplianceRequestError::InvalidType("ok")),
-            None => return Err(ApplianceRequestError::MissingOk),
-        };
-        if !ok {
-            let message = take_string(&mut fields, "error", true)?.unwrap();
-            if let Some(name) = fields.keys().next() {
-                return Err(ApplianceRequestError::UnknownField(name.clone()));
-            }
-            return Err(ApplianceRequestError::HostRejected(message));
-        }
-        if fields.contains_key("error") {
-            return Err(ApplianceRequestError::RejectedField("error"));
-        }
-        let git_ref = take_string(&mut fields, "ref", true)?.unwrap();
-        let plan_text = take_string(&mut fields, "plan", true)?.unwrap();
-        let lock_text = take_string(&mut fields, "lock", true)?.unwrap();
-        let context_text =
-            take_string(&mut fields, "context", false)?.unwrap_or_else(|| ".".to_owned());
-        let location = take_string(&mut fields, "location", false)?;
+        let Input {
+            git_ref,
+            plan: plan_text,
+            lock: lock_text,
+            context,
+            location,
+        } = input;
+        let context_text = context.unwrap_or_else(|| ".".into());
         if let Some(location) = &location {
             // Parser errors can include the input; never surface them here.
             let locator = gix::url::parse(location.as_bytes().into())
@@ -294,24 +216,6 @@ impl ApplianceRequest {
             Some(network_namespace),
         )
         .with_location(self.location))
-    }
-}
-
-fn take_string(
-    fields: &mut BTreeMap<String, Value>,
-    name: &'static str,
-    required: bool,
-) -> Result<Option<String>, ApplianceRequestError> {
-    match fields.remove(name) {
-        None if required => Err(ApplianceRequestError::MissingField(name)),
-        None => Ok(None),
-        Some(Value::Text(text)) => {
-            if text.is_empty() || text.contains('\0') {
-                return Err(ApplianceRequestError::InvalidString(name));
-            }
-            Ok(Some(text))
-        }
-        Some(_) => Err(ApplianceRequestError::InvalidType(name)),
     }
 }
 
@@ -378,6 +282,25 @@ mod tests {
             ("ok", Value::Bool(false)),
             ("error", Value::Text(message.into())),
         ])
+    }
+
+    #[test]
+    fn shared_host_response_is_consumed_without_translation() {
+        let response = Response::Success(Input {
+            git_ref: "refs/heads/main".into(),
+            plan: "pichi.yaml".into(),
+            lock: "pichi.lock".into(),
+            context: Some("project".into()),
+            location: Some("https://example.invalid/repo".into()),
+        });
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&response, &mut bytes).unwrap();
+        let input = ApplianceRequest::decode(&bytes).unwrap();
+        assert_eq!(input.git_ref(), "refs/heads/main");
+        assert_eq!(input.context().as_ref(), Path::new("project"));
+        assert_eq!(input.plan().as_ref(), Path::new("pichi.yaml"));
+        assert_eq!(input.lock().as_ref(), Path::new("pichi.lock"));
+        assert_eq!(input.location(), Some("https://example.invalid/repo"));
     }
 
     #[test]

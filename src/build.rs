@@ -3,6 +3,11 @@
 
 //! Inputs shared by the host and builder. Transport and resolution are external.
 
+mod port;
+pub use port::{
+    BUILD_INPUT_OP, Input, PORT_NAME, PROTOCOL_VERSION, Request, RequestError, Response,
+};
+
 use crate::artifact::Digest;
 use serde::{Deserialize, Deserializer, Serialize, de};
 use std::collections::BTreeMap;
