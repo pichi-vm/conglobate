@@ -102,13 +102,16 @@ have additional compiler prerequisites until the Aya path replaces them.
 CI builds and tests with Rust 1.94.0 on native amd64 and Arm64. This is the tested
 toolchain, not a separately established minimum supported Rust version.
 
+The library has no default features. Enable `cli` to build the executable;
+`test-fixtures` enables it automatically for the internal VM fixtures.
+
 After dependencies are available, run these commands as an ordinary user:
 
 ```sh
-cargo build --locked
+cargo build --locked --features cli --bin conglobate
 cargo fmt --all -- --check
-cargo clippy --locked --all-targets -- -D warnings
-cargo test --locked --all-targets
+cargo clippy --locked --features cli --all-targets -- -D warnings
+cargo test --locked --features cli --all-targets
 cargo check --locked --features test-fixtures --bin conglobate-lifecycle-tests
 ```
 

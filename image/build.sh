@@ -68,7 +68,7 @@ mkdir -p "$work"
 if [ -n "${CONGLOBATE_BIN:-}" ]; then
 	conglobate_bin="$CONGLOBATE_BIN"
 else
-	cargo "+$CONGLOBATE_TOOLCHAIN" build --locked --release --bin conglobate --manifest-path "$repo/Cargo.toml"
+	cargo "+$CONGLOBATE_TOOLCHAIN" build --locked --release --features cli --bin conglobate --manifest-path "$repo/Cargo.toml"
 	conglobate_bin="$repo/target/release/conglobate"
 fi
 if [ ! -x "$conglobate_bin" ]; then
