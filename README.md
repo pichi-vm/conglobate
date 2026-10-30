@@ -124,6 +124,7 @@ cargo build --locked --features cli --bin conglobate
 cargo fmt --all -- --check
 cargo clippy --locked --features cli --all-targets -- -D warnings
 cargo test --locked --features cli --all-targets
+python3 tests/check_contract.py
 cargo check --locked --features test-fixtures --bin conglobate-lifecycle-tests
 ```
 
