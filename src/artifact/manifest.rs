@@ -343,12 +343,6 @@ pub enum ManifestValidationError {
     /// More than one base DTB layer (BUILD.md §7.1 — at most one).
     #[error("artifact has more than one base DTB layer (got {0}); at most one is permitted")]
     MultipleDtb(usize),
-    /// A helper rejected zstd-compressed scute layers (decompressed-COW deferred).
-    #[error("artifact has zstd-compressed scute layers; decompressed-COW handling is deferred")]
-    CompressedScuteUnsupported,
-    /// A bootable partition helper found no PMI layer.
-    #[error("artifact is not bootable (no PMI layer); usable as a from: source only")]
-    MissingPmi,
 }
 
 impl Manifest {
@@ -358,54 +352,6 @@ impl Manifest {
         self.layers
             .iter()
             .any(|l| matches!(l, Layer::Scute(_) | Layer::ScuteZstd(_)))
-    }
-
-    /// The single base DTB layer, if present.
-    pub fn dtb_layer(&self) -> Option<&DtbDescriptor> {
-        self.layers.iter().find_map(|layer| match layer {
-            Layer::Dtb(descriptor) => Some(descriptor),
-            _ => None,
-        })
-    }
-
-    /// Partition layers into the PMI descriptor and ordered scute list.
-    ///
-    /// Fails when the artifact has no PMI (not bootable) or carries zstd
-    /// scutes (decompressed-COW handling is deferred). DTB layers are ignored.
-    pub fn partition_layers(
-        &self,
-    ) -> Result<(&PmiDescriptor, Vec<&ScuteDescriptor>), ManifestValidationError> {
-        let mut pmi: Option<&PmiDescriptor> = None;
-        let mut scutes = Vec::new();
-        for layer in &self.layers {
-            match layer {
-                Layer::Pmi(descriptor) => pmi = Some(descriptor),
-                Layer::Scute(descriptor) => scutes.push(descriptor),
-                Layer::Dtb(_) => {}
-                Layer::ScuteZstd(_) => {
-                    return Err(ManifestValidationError::CompressedScuteUnsupported);
-                }
-            }
-        }
-        let pmi = pmi.ok_or(ManifestValidationError::MissingPmi)?;
-        Ok((pmi, scutes))
-    }
-
-    /// Collect uncompressed scute layers (build `from:` sources).
-    ///
-    /// Fails when any zstd scute is present (decompressed-COW deferred).
-    pub fn scute_layers(&self) -> Result<Vec<&ScuteDescriptor>, ManifestValidationError> {
-        let mut scutes = Vec::new();
-        for layer in &self.layers {
-            match layer {
-                Layer::Scute(descriptor) => scutes.push(descriptor),
-                Layer::Pmi(_) | Layer::Dtb(_) => {}
-                Layer::ScuteZstd(_) => {
-                    return Err(ManifestValidationError::CompressedScuteUnsupported);
-                }
-            }
-        }
-        Ok(scutes)
     }
 
     /// Validate per D-07. See [`ManifestValidationError`] for the rule set.
@@ -833,55 +779,6 @@ mod tests {
         }));
         m.annotations.clear();
         m.validate().unwrap();
-    }
-
-    #[test]
-    fn dtb_layer_returns_single_base_dtb() {
-        let mut m = sample_base_manifest();
-        assert!(m.dtb_layer().is_none());
-        m.layers.push(sample_dtb_layer());
-        assert_eq!(m.dtb_layer().unwrap().size, 8192);
-    }
-
-    #[test]
-    fn partition_layers_splits_pmi_and_scutes() {
-        let mut m = sample_base_manifest();
-        m.layers.push(Layer::Pmi(PmiDescriptor {
-            digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
-                .into(),
-            size: 4096,
-        }));
-        m.layers.push(sample_dtb_layer());
-        let (pmi, scutes) = m.partition_layers().unwrap();
-        assert_eq!(pmi.size, 4096);
-        assert_eq!(scutes.len(), 1);
-    }
-
-    #[test]
-    fn partition_layers_requires_pmi() {
-        let m = sample_base_manifest();
-        assert!(matches!(
-            m.partition_layers().unwrap_err(),
-            ManifestValidationError::MissingPmi
-        ));
-    }
-
-    #[test]
-    fn scute_layers_collects_uncompressed_scutes() {
-        let m = sample_base_manifest();
-        assert_eq!(m.scute_layers().unwrap().len(), 1);
-    }
-
-    #[test]
-    fn scute_layers_rejects_zstd() {
-        let mut m = sample_base_manifest();
-        if let Layer::Scute(descriptor) = m.layers[0].clone() {
-            m.layers[0] = Layer::ScuteZstd(descriptor);
-        }
-        assert!(matches!(
-            m.scute_layers().unwrap_err(),
-            ManifestValidationError::CompressedScuteUnsupported
-        ));
     }
 
     #[test]
