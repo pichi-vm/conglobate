@@ -61,7 +61,7 @@ fi
 
 [[ -f "$root/mkosi.repart/10-root.conf" ]] || fail "missing repart root"
 grep -q '^Format=ext4$' "$root/mkosi.repart/10-root.conf" || fail "root partition must be ext4"
-grep -q 'SizeMinBytes=64G' "$root/mkosi.repart/10-root.conf" || fail "root must be 64G"
+grep -q '^Minimize=guess$' "$root/mkosi.repart/10-root.conf" || fail "root must use content-based sizing"
 [[ -f "$root/config.json" ]] || fail "missing config.json"
 
 [[ -x "$root/build.sh" ]] || fail "build.sh must be executable"
