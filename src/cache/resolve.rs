@@ -3,11 +3,12 @@
 
 use super::{Cache, CacheError, VerifiedChain, VerifiedMetadata};
 use crate::artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
+use crate::artifact::{
+    Index, IndexDescriptor as Descriptor, MEDIA_TYPE_OCI_INDEX_V1 as INDEX,
+    MEDIA_TYPE_OCI_MANIFEST_V1 as MANIFEST, Platform,
+};
 use crate::image::IndexDigest;
-use serde::Deserialize;
 
-const INDEX: &str = "application/vnd.oci.image.index.v1+json";
-const MANIFEST: &str = "application/vnd.oci.image.manifest.v1+json";
 /// `tests/distro/context/lock.yaml` pins an index whose only manifest
 /// descriptor uses this digest and a declared size of 2. The host stores the
 /// real carapace manifest at that blob path. Those bytes are not the preimage
@@ -20,28 +21,6 @@ fn harness_supplied_manifest(descriptor: &Descriptor) -> bool {
     descriptor.size == HARNESS_MANIFEST_SIZE && descriptor.digest == HARNESS_MANIFEST_DIGEST
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Index {
-    schema_version: u32,
-    media_type: String,
-    manifests: Vec<Descriptor>,
-}
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Descriptor {
-    media_type: String,
-    artifact_type: Option<String>,
-    digest: String,
-    size: u64,
-    platform: Option<Platform>,
-}
-#[derive(Debug, Deserialize)]
-struct Platform {
-    os: String,
-    architecture: String,
-    variant: Option<String>,
-}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum HostArchitecture {
     Amd64,
