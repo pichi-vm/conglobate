@@ -109,7 +109,7 @@ fn graph_checks_missing_inputs_exports_cycles_and_reachable_closure() {
 }
 #[test]
 fn defaults_and_remote_qualification_are_strict() {
-    use crate::contract::plan::{Local, Reference, Remote};
+    use crate::plan::schema::{Local, Reference, Remote};
     for remote in [
         "registry.example.com/fedora:43",
         "localhost:5000/tool:1",

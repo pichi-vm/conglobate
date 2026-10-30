@@ -5,7 +5,7 @@
 use std::{num::NonZeroU64, str::FromStr, time::Duration};
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
-pub enum ValueError {
+pub(crate) enum ValueError {
     #[error("expected a positive decimal integer followed by an explicit unit")]
     Syntax,
     #[error("value overflows its supported representation")]
@@ -44,16 +44,16 @@ impl<'a> TryFrom<&'a str> for Quantity<'a> {
 
 /// Filesystem capacity; the carapace logical device geometry is independent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FilesystemSize(NonZeroU64);
+pub(crate) struct FilesystemSize(NonZeroU64);
 
 impl FilesystemSize {
-    pub const LOGICAL_DEVICE_BYTES: u64 = 64 * 1024 * 1024 * 1024;
+    pub(crate) const LOGICAL_DEVICE_BYTES: u64 = 64 * 1024 * 1024 * 1024;
 
-    pub fn bytes(self) -> u64 {
+    pub(crate) fn bytes(self) -> u64 {
         self.0.get()
     }
 
-    pub fn blocks(self) -> u64 {
+    pub(crate) fn blocks(self) -> u64 {
         self.bytes() / 4096
     }
 }
@@ -93,7 +93,7 @@ impl TryFrom<u64> for FilesystemSize {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct FilesystemLabel(String);
+pub(crate) struct FilesystemLabel(String);
 
 impl TryFrom<String> for FilesystemLabel {
     type Error = ValueError;
@@ -113,10 +113,10 @@ impl AsRef<str> for FilesystemLabel {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CommandTimeout(Duration);
+pub(crate) struct CommandTimeout(Duration);
 
 impl CommandTimeout {
-    pub fn duration(self) -> Duration {
+    pub(crate) fn duration(self) -> Duration {
         self.0
     }
 }

@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Separate remote-reference lock. Local task names never appear here.
-use super::{Error, Remote, decode_yaml, nonnull};
+use super::{Error, Remote, nonnull};
 use serde::{Deserialize, Deserializer, de};
 use std::{collections::BTreeMap, str::FromStr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct IndexPin([u8; 32]);
+pub(crate) struct IndexPin([u8; 32]);
 impl IndexPin {
-    pub fn bytes(&self) -> &[u8; 32] {
+    pub(crate) fn bytes(&self) -> &[u8; 32] {
         &self.0
     }
 }
@@ -39,7 +39,7 @@ struct RawLock {
 }
 #[derive(Debug, Deserialize)]
 #[serde(try_from = "RawLock")]
-pub struct Lock {
+pub(crate) struct Lock {
     images: BTreeMap<Remote, IndexPin>,
 }
 impl TryFrom<RawLock> for Lock {
@@ -54,10 +54,7 @@ impl TryFrom<RawLock> for Lock {
     }
 }
 impl Lock {
-    pub fn parse(text: &str) -> Result<Self, Error> {
-        decode_yaml(text)
-    }
-    pub fn images(&self) -> &BTreeMap<Remote, IndexPin> {
+    pub(crate) fn images(&self) -> &BTreeMap<Remote, IndexPin> {
         &self.images
     }
 }

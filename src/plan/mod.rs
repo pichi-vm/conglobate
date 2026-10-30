@@ -4,6 +4,7 @@
 //! One plan document, validated before execution and independent of key order.
 use crate::{document::YamlDocument, image::IdentityError, value::ValueError};
 use serde::{Deserialize, Deserializer};
+pub(crate) mod schema;
 pub(crate) mod transform;
 
 pub(crate) use transform::{
@@ -25,7 +26,7 @@ pub(crate) enum PlanError {
     #[error(transparent)]
     Value(#[from] ValueError),
     #[error(transparent)]
-    Schema(#[from] crate::contract::plan::Error),
+    Schema(#[from] crate::plan::schema::Error),
     #[error("{0}")]
     Invalid(&'static str),
     #[error("invalid regular expression: {0}")]
@@ -67,7 +68,7 @@ impl<T> Presence<T> {
     }
 }
 
-pub(crate) use crate::contract::plan::{
+pub(crate) use crate::plan::schema::{
     ArtifactName, Filesystem as FilesystemSpec, Image, Local, Reference, Run,
 };
 use std::collections::BTreeMap;
@@ -121,12 +122,12 @@ pub(crate) enum Directive {
     Run(Run),
     Copy(Copy),
 }
-impl TryFrom<crate::contract::plan::Directive> for Directive {
+impl TryFrom<crate::plan::schema::Directive> for Directive {
     type Error = PlanError;
-    fn try_from(raw: crate::contract::plan::Directive) -> Result<Self, Self::Error> {
+    fn try_from(raw: crate::plan::schema::Directive) -> Result<Self, Self::Error> {
         Ok(match raw {
-            crate::contract::plan::Directive::Run(run) => Self::Run(run),
-            crate::contract::plan::Directive::Copy { copy } => Self::Copy(Copy {
+            crate::plan::schema::Directive::Run(run) => Self::Run(run),
+            crate::plan::schema::Directive::Copy { copy } => Self::Copy(Copy {
                 sources: vec![copy.from.as_ref().parse()?],
                 destination: ImagePath::try_from(copy.into.as_ref().to_owned())?,
                 owner: None,
@@ -174,7 +175,7 @@ pub(crate) struct Task {
     from: Reference,
     kind: TaskKind,
     directives: Vec<Directive>,
-    outputs: BTreeMap<ArtifactName, crate::contract::plan::ImagePath>,
+    outputs: BTreeMap<ArtifactName, crate::plan::schema::ImagePath>,
     firmware: Option<Firmware>,
 }
 impl Task {
@@ -187,7 +188,7 @@ impl Task {
     pub(crate) fn directives(&self) -> &[Directive] {
         &self.directives
     }
-    pub(crate) fn outputs(&self) -> &BTreeMap<ArtifactName, crate::contract::plan::ImagePath> {
+    pub(crate) fn outputs(&self) -> &BTreeMap<ArtifactName, crate::plan::schema::ImagePath> {
         &self.outputs
     }
     pub(crate) fn firmware(&self) -> Option<&Firmware> {
@@ -214,14 +215,14 @@ impl Plan {
 impl TryFrom<YamlDocument<'_>> for Plan {
     type Error = PlanError;
     fn try_from(document: YamlDocument<'_>) -> Result<Self, Self::Error> {
-        let raw: crate::contract::plan::Plan = document.decode()?;
+        let raw: crate::plan::schema::Plan = document.decode()?;
         let order = raw.order().to_vec();
         let raw = raw.into_parts();
         let tasks = raw
             .0
             .into_iter()
             .map(|(name, task)| {
-                let crate::contract::plan::TaskParts {
+                let crate::plan::schema::TaskParts {
                     from,
                     directives,
                     filesystem,

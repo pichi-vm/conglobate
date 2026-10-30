@@ -11,6 +11,7 @@ description = "Standalone image builder with isolated command execution"
 default = []
 # Runtime dependencies are enabled only when building the CLI.
 cli = [
+    "dep:serde-saphyr",
     "dep:serde_json",
     "dep:sha2",
     "dep:anyhow",
@@ -64,16 +65,10 @@ test = false
 # --- types-only lib surface (always on) ---
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
-# The portable `[lib]` plan/lock surface (`src/plan_io.rs`) only. The host
-# and conglobate must agree byte-for-byte on that schema, so it keeps the
-# parser it was specified against.
-serde_yaml = "0.9"
-# Shared multi-stage plan/lock YAML parser (`src/plan/schema.rs`). Kept on
-# the always-on lib surface so `default-features = false` types consumers compile.
-serde-saphyr = { version = "2", default-features = false, features = ["deserialize"] }
 hex = "0.4"
 
 # --- binary runtime (bins require `cli`) ---
+serde-saphyr = { version = "2", optional = true, default-features = false, features = ["deserialize"] }
 serde_json = { version = "1", optional = true }
 sha2 = { version = "0.11", optional = true }
 anyhow = { version = "1", optional = true }
