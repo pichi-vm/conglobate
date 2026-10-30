@@ -14,6 +14,7 @@
 
 mod config;
 mod digest;
+mod index;
 mod manifest;
 mod media_type;
 mod reference;
@@ -33,3 +34,8 @@ pub use media_type::{
     MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 pub use reference::{Reference, ReferenceKind, ReferenceParseError};
+
+pub use index::{
+    Index, IndexDescriptor, LayoutMarker, MEDIA_TYPE_OCI_INDEX_V1, MEDIA_TYPE_OCI_MANIFEST_V1,
+    Platform,
+};
