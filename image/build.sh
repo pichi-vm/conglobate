@@ -23,7 +23,7 @@ ARMA="${ARMA:-arma}"
 CORIUM_GIT="${CORIUM_GIT:-https://github.com/pichi-vm/corium}"
 # Corium 0.2: Linux 7+, corium=<hash>, GPT discovery and /sbin/init handoff.
 # Same pin as the fedora base image.
-CORIUM_REV="${CORIUM_REV:-b1d2d24a8db9cf845c79a3cabc7cdd5dd6f0a275}"
+CORIUM_REV="${CORIUM_REV:-0c6f5743263b1d7afb298521859b6679eb67f2af}"
 CORIUM_TOOLCHAIN="${CORIUM_TOOLCHAIN:-stable}"
 CONGLOBATE_TOOLCHAIN="${CONGLOBATE_TOOLCHAIN:-1.94.0}"
 
