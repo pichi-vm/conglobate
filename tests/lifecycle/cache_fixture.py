@@ -50,11 +50,10 @@ class CacheFixture:
         self.image('pinned', [layer], root)
 
     def image(self, name, layers, root):
-        # Tip derived from scute graph; never stamp verity.hash.
-        _ = root
         annotations = {'dev.pichi.carapace.verity.' + k: v for k, v in
                        [('algo', 'sha256'), ('data-block-size', '4096'),
-                        ('hash-block-size', '4096'), ('version', '1'), ('hash-type', '1')]}
+                        ('hash-block-size', '4096'), ('version', '1'), ('hash-type', '1'),
+                        ('hash', root)]}
         manifest = json.dumps({'schemaVersion': 2,
             'mediaType': 'application/vnd.oci.image.manifest.v1+json',
             'artifactType': 'application/vnd.pichi.artifact.v1+json',

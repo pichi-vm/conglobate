@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::StagedDirectory;
-use crate::artifact::Digest;
+use crate::artifact::{CARAPACE_ROOT_ANNOTATION, Digest};
 use crate::{
     cache::{Cache, CacheError, ResolvedImage, VerifiedChain},
     image::IndexDigest,
@@ -20,7 +20,7 @@ pub(crate) struct AssembledImage {
 }
 impl AssembledImage {
     fn verity_annotations() -> serde_json::Value {
-        // Keep verity param annotations; never stamp tip hash.
+        // Reconstruction parameters are shared by every scute in this output.
         serde_json::json!({
             "dev.pichi.carapace.verity.algo": "sha256",
             "dev.pichi.carapace.verity.data-block-size": "4096",
@@ -29,12 +29,9 @@ impl AssembledImage {
             "dev.pichi.carapace.verity.hash-type": "1"
         })
     }
-    fn strip_tip_annotation(manifest: &mut serde_json::Value) {
-        if let Some(annotations) = manifest
-            .get_mut("annotations")
-            .and_then(|value| value.as_object_mut())
-        {
-            annotations.remove("dev.pichi.carapace.verity.hash");
+    fn set_tip_annotation(manifest: &mut serde_json::Value, root: Option<[u8; 32]>) {
+        if let Some(root) = root {
+            manifest["annotations"][CARAPACE_ROOT_ANNOTATION] = hex::encode(root).into();
         }
     }
     /// Stamp the resolved input before hashing and validating the final layout.
@@ -53,10 +50,8 @@ impl AssembledImage {
             .as_object_mut()
             .ok_or_else(|| anyhow::anyhow!("invalid manifest annotations"))?;
         // Inherited provenance belongs to the old build. Keep unrelated and
-        // verity parameter annotations, but replace the entire build binding.
-        annotations.retain(|key, _| {
-            !key.starts_with("dev.pichi.build.") && key != "dev.pichi.carapace.verity.hash"
-        });
+        // verity annotations, but replace the entire build binding.
+        annotations.retain(|key, _| !key.starts_with("dev.pichi.build."));
         let commit = build.context().commit();
         let algorithm = match commit.kind() {
             gix::hash::Kind::Sha1 => "sha1",
@@ -223,7 +218,7 @@ impl AssembledImage {
                     ))?);
                 parent = Some(*scute.root());
             }
-            Self::strip_tip_annotation(&mut manifest);
+            Self::set_tip_annotation(&mut manifest, parent.filter(|root| root != &[0; 32]));
             let pmi = pair.pmi_descriptor();
             let digest = pmi
                 .digest
@@ -297,8 +292,8 @@ impl AssembledImage {
                 layers.push(crate::artifact::Layer::Scute(scute.descriptor().clone()));
                 parent = *scute.root();
             }
-            let annotations = Self::verity_annotations();
-            let _tip = parent; // baked into guest via corium=; not OCI tip
+            let mut annotations = Self::verity_annotations();
+            annotations[CARAPACE_ROOT_ANNOTATION] = hex::encode(parent).into();
             let manifest = serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
@@ -449,9 +444,9 @@ impl AssembledImage {
                 changed = true;
             }
             // Preserve unrelated fields, and preserve exact JSON bytes for no-op edits.
-            // When rewriting, drop any inherited tip-hash annotation.
+            // A changed chain carries the final produced root.
             let manifest = if changed {
-                Self::strip_tip_annotation(&mut manifest);
+                Self::set_tip_annotation(&mut manifest, parent);
                 serde_json::to_vec(&manifest)?
             } else {
                 image.manifest_bytes().bytes().to_vec()
@@ -700,7 +695,6 @@ mod tests {
                     ] {
                         manifest["annotations"][format!("dev.pichi.build.{key}")] = "stale".into();
                     }
-                    manifest["annotations"]["dev.pichi.carapace.verity.hash"] = "stale".into();
                     let (stale, chain) = AssembledImage::resolve_staging(
                         &assembled.staged,
                         &serde_json::to_vec(&manifest).unwrap(),

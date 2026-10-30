@@ -233,6 +233,60 @@ mod tests {
         }
     }
     #[test]
+    fn sealed_outputs_commit_the_final_root() {
+        use crate::{cache::Cache, output::AssembledImage, storage::Workspace};
+        use std::{io::Write, sync::Arc};
+
+        let directory = tempfile::tempdir().unwrap();
+        let workspace = Workspace {
+            root: File::open(directory.path()).unwrap(),
+        };
+        let mut scratch = workspace.scratch().unwrap();
+        scratch.write_all(&Store::new(2).0).unwrap();
+        let base = Arc::new(scratch.seal_snapshot([0; 32]).unwrap());
+        let output = directory.path().join("base");
+        let image = AssembledImage::bootstrap_layers(&[Arc::clone(&base)], &output).unwrap();
+        assert_eq!(
+            image.image().manifest().carapace_root().unwrap(),
+            Some(*base.root())
+        );
+        image.publish().unwrap();
+
+        let index = std::fs::read(output.join("index.json")).unwrap();
+        let digest = crate::artifact::Digest::Sha256(Sha256::digest(&index).into());
+        std::fs::write(output.join("blobs/sha256").join(digest.hex()), &index).unwrap();
+        let cache = Cache::open(&output).unwrap();
+        let image = cache.resolve(digest.to_string().parse().unwrap()).unwrap();
+        let mut scratch = workspace.scratch().unwrap();
+        scratch.write_all(&Store::new(2).0).unwrap();
+        let top = Arc::new(scratch.seal_snapshot(*base.root()).unwrap());
+        let dtb = crate::plan::TransformSelection::Builtin
+            .apply(None, None)
+            .unwrap();
+        let extended = AssembledImage::derived(
+            &cache,
+            &image,
+            &[Arc::clone(&top)],
+            &directory.path().join("extended"),
+            &dtb,
+        )
+        .unwrap();
+        let bootstrap = AssembledImage::bootstrap_layers(
+            &[base, Arc::clone(&top)],
+            &directory.path().join("bootstrap"),
+        )
+        .unwrap();
+        for output in [extended, bootstrap] {
+            assert_eq!(
+                output.image().manifest().carapace_root().unwrap(),
+                Some(*top.root())
+            );
+            assert_eq!(output.chain().unwrap().scutes().len(), 2);
+            assert_eq!(output.chain().unwrap().root(), top.root());
+            output.discard().unwrap();
+        }
+    }
+    #[test]
     fn readonly_cursors_are_independent_and_allow_eof_seeks() {
         use std::io::Write;
         let mut file = tempfile::tempfile().unwrap();

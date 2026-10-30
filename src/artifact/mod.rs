@@ -8,9 +8,8 @@
 //! filesystem, registry, cache, VM-launch, hashing, or codec operations.
 //! Callers serialize and deserialize these types with their chosen serde codec.
 //!
-//! Retired here from the standalone `pichi-artifact` crate; the wire contract
-//! — media-type tags, manifest shape, digest and reference syntax — is
-//! unchanged, so artifacts written against that crate stay readable.
+//! Retired here from the standalone `pichi-artifact` crate. The v1 format uses
+//! these shared types, including required scute lengths and a manifest chain tip.
 
 mod config;
 mod digest;
@@ -25,8 +24,8 @@ pub use config::{
 };
 pub use digest::{Digest, DigestParseError};
 pub use manifest::{
-    ConfigDescriptor, DtbDescriptor, Layer, Manifest, ManifestValidationError, PmiDescriptor,
-    ScuteAnnotations, ScuteDescriptor,
+    CARAPACE_ROOT_ANNOTATION, ConfigDescriptor, DtbDescriptor, Layer, Manifest,
+    ManifestValidationError, PmiDescriptor, ScuteAnnotations, ScuteDescriptor,
 };
 pub use media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_CONFIG_V1,

@@ -129,7 +129,21 @@ impl OciCopy {
         assert_eq!(annotations["dev.pichi.build.plan"], "plan.yaml");
         assert_eq!(annotations["dev.pichi.build.lock"], "images.lock");
         assert!(annotations.get("dev.pichi.build.location").is_none());
-        assert!(annotations.get("dev.pichi.carapace.verity.hash").is_none());
+        let cache = conglobate::cache::Cache::open(Path::new("/cache-fixture"))?;
+        let source = cache.resolve(
+            fs::read_to_string("/cache-fixture/chain.pin")?
+                .trim()
+                .parse()?,
+        )?;
+        assert_eq!(
+            annotations["dev.pichi.carapace.verity.hash"],
+            hex::encode(
+                source
+                    .manifest()
+                    .carapace_root()?
+                    .ok_or("missing input root")?
+            )
+        );
         println!("OCI_ORAS_SELF_CONTAINED_COPY_PASS");
         Ok(())
     }

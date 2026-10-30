@@ -223,7 +223,6 @@ impl Store {
         )
     }
     fn manifest_bytes(&self, layers: Vec<crate::artifact::Layer>, root: [u8; 32]) -> Vec<u8> {
-        let _ = root; // tip derived from scute graph; never stamp tip hash
         let manifest = crate::artifact::Manifest {
             schema_version: 2,
             media_type: "application/vnd.oci.image.manifest.v1+json".into(),
@@ -236,6 +235,7 @@ impl Store {
                 ("hash-block-size", "4096"),
                 ("version", "1"),
                 ("hash-type", "1"),
+                ("hash", &hex::encode(root)),
             ]
             .into_iter()
             .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.to_owned()))
@@ -398,6 +398,27 @@ fn duplicate_and_ambiguous_tip_chains_fail() {
         let image = store.chain_image(layers, root);
         assert!(store.open().verify_chain(&image).is_err());
     }
+}
+
+#[test]
+fn manifest_tip_must_commit_the_complete_chain() {
+    let store = Store::new();
+    let (base, base_root) = store.scute(&[7; 8192], [0; 32], false);
+    let (top, top_root) = store.scute(&[9; 4097], base_root, true);
+    for root in [base_root, [1; 32]] {
+        let image = store.chain_image(vec![top.clone(), base.clone()], root);
+        assert!(
+            store
+                .open()
+                .verify_chain(&image)
+                .unwrap_err()
+                .to_string()
+                .contains("manifest tip")
+        );
+    }
+    // Even a matching tip cannot authorize an incomplete chain.
+    let image = store.chain_image(vec![top], top_root);
+    assert!(store.open().verify_chain(&image).is_err());
 }
 #[test]
 fn scute_digest_and_decoded_block_count_are_both_enforced() {

@@ -220,6 +220,7 @@ mod tests {
                 ("hash-block-size", "4096"),
                 ("version", "1"),
                 ("hash-type", "1"),
+                ("hash", &hex::encode(parent)),
             ]
             .into_iter()
             .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.into()))

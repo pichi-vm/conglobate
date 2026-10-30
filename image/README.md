@@ -56,9 +56,10 @@ The 28 October 2026 decision in
 commit with its hash algorithm, context path in that commit, plan and lock paths
 relative to context, and an optional location hint. No execution receipts or
 builder/input/output mirrors are emitted. Later attestation binds the image
-digest and TEE/builder. The carapace tip root is derived from the manifest;
-never stamp or require `dev.pichi.carapace.verity.hash`. Existing verity
-parameters and per-scute salt/data-blocks annotations stay.
+digest and TEE/builder. A manifest containing scutes carries one
+`dev.pichi.carapace.verity.hash` committing the final salt-linked chain root.
+The boot command line uses that same root. Existing verity parameters and
+per-scute salt/data-blocks annotations stay; no per-scute hashes are added.
 
 ## OCI output
 

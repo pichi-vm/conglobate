@@ -536,12 +536,12 @@ selector.
 The index transitively pins its per-architecture manifests and their blobs.
 Do not duplicate child manifest digests or carapace roots in the lock.
 Conglobate verifies the index from the read-only cache, selects the matching
-platform manifest, and verifies it. The carapace / filesystem root is derived
-from the scute graph (exactly one tip root), not from an OCI tip annotation.
-`dev.pichi.carapace.verity.hash` is never written, never read, and is stripped
-on rewrite if present; other verity parameter annotations remain. Guest boot
-(`corium=` / `$CARAPACE`) uses that derived measurement. Conglobate verifies
-content and chain consistency against those identities. The committed lock
+platform manifest, and verifies it. A manifest containing scutes must carry
+`dev.pichi.carapace.verity.hash`: the final scute's nonzero SHA-256 root as
+64 hexadecimal characters, without an algorithm prefix. The root commits the
+complete chain through each scute's salt prefix; no per-scute root annotations
+are needed. Guest boot (`corium=` / `$CARAPACE`) uses the same final root.
+Conglobate verifies content and chain consistency against that commitment. The committed lock
 pins the index, which in turn binds the selected manifest; do not mirror those
 identities into build annotations.
 
@@ -1206,10 +1206,13 @@ including formatter, transform, network-step and ID-mapping records, are not
 recorded in a sidecar or mirrored into annotations. This decision does not
 remove input verification or execution/finalization checks.
 
-The carapace tip root remains deterministically implied by the manifest's
-scute graph. Never stamp or require `dev.pichi.carapace.verity.hash`. Keep the
-existing carapace verity parameter annotations and per-scute salt/data-blocks
-annotations. Boot binding uses the root derived from that graph.
+Require `dev.pichi.carapace.verity.hash` once on a manifest containing scutes.
+Producers stamp the final sealed root and preserve it through build binding;
+extend updates it together with the automatic boot command-line binding.
+Boot-only artifacts have no carapace root annotation. Keep the existing
+carapace verity parameters and per-scute salt/data-blocks for Pichi to
+reconstruct headers and trees. This completes the existing v1 format without
+changing version identifiers.
 
 Every raw or compressed scute requires `dev.pichi.scute.verity.data-blocks`
 as a positive decimal string. Its padded byte extent must fit in `u64`. For
