@@ -26,14 +26,14 @@ pub(crate) struct ImageLock {
 impl TryFrom<YamlDocument<'_>> for ImageLock {
     type Error = LockError;
     fn try_from(document: YamlDocument<'_>) -> Result<Self, Self::Error> {
-        let raw: crate::plan::schema::Lock = document.decode()?;
+        let raw: crate::contract::build::Lock = document.decode()?;
         let images = raw
-            .images()
+            .images
             .iter()
             .map(|(reference, pin)| {
                 Ok((
-                    reference.as_ref().parse()?,
-                    IndexDigest::from_bytes(*pin.bytes()),
+                    reference.parse()?,
+                    IndexDigest::from_bytes(pin.index.as_sha256_array()),
                 ))
             })
             .collect::<Result<_, IdentityError>>()?;
