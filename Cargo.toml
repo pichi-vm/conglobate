@@ -37,6 +37,7 @@ cli = [
     "dep:devmap-linux",
     "dep:devmap-core",
     "dep:devmap-verity",
+    "dep:carapace",
 ]
 test-fixtures = ["cli", "nix/uio", "nix/term", "rustix/pty", "rustix/termios"]
 
@@ -93,6 +94,7 @@ gix = { version = "0.84", optional = true, default-features = false, features = 
 clap = { version = "4", optional = true, features = ["derive"] }
 
 lodown = { git = "https://github.com/pichi-vm/lodown.git", rev = "31f8951293af180150e5e4c654c47a5b190097b9", version = "0.1.0", optional = true }
+carapace = { git = "https://github.com/pichi-vm/carapace", rev = "b2365ba4e1cd52ec7f8419c8553390dbe23507de", optional = true, default-features = false, features = ["loop"] }
 devmap-snapshot = { git = "https://github.com/pichi-vm/devmap.git", rev = "3a2728f617e9272be5224bbf76ffc4deafdfe83b", version = "0.1.0", optional = true }
 devmap-linux = { git = "https://github.com/pichi-vm/devmap.git", rev = "3a2728f617e9272be5224bbf76ffc4deafdfe83b", version = "0.1.0", optional = true }
 devmap-core = { git = "https://github.com/pichi-vm/devmap.git", rev = "3a2728f617e9272be5224bbf76ffc4deafdfe83b", version = "0.1.0", optional = true }

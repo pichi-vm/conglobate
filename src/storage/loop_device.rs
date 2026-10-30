@@ -4,44 +4,16 @@
 use std::{
     fs::File,
     io::{self, Read, Seek, SeekFrom, Write},
-    marker::PhantomData,
     time::{Duration, Instant},
 };
-
-mod sealed {
-    pub(crate) trait Sealed {}
-}
-pub(super) trait Access: sealed::Sealed {
-    const READ_ONLY: bool;
-    fn flush(file: &File) -> io::Result<()>;
-}
-#[derive(Debug)]
-pub(super) struct ReadOnly;
-#[derive(Debug)]
-pub(super) struct Writable;
-impl sealed::Sealed for ReadOnly {}
-impl sealed::Sealed for Writable {}
-impl Access for ReadOnly {
-    const READ_ONLY: bool = true;
-    fn flush(_: &File) -> io::Result<()> {
-        Ok(())
-    }
-}
-impl Access for Writable {
-    const READ_ONLY: bool = false;
-    fn flush(file: &File) -> io::Result<()> {
-        file.sync_all()
-    }
-}
 
 /// Storage-private loop authority. Failed/deferred close returns the same owner;
 /// autoclear on descriptor drop is not a successful-detachment receipt.
 #[derive(Debug)]
-pub(super) struct LoopDevice<A: Access> {
+pub(super) struct LoopDevice {
     device: lodown::Device,
-    _access: PhantomData<A>,
 }
-impl<A: Access> LoopDevice<A> {
+impl LoopDevice {
     pub(super) fn attach(file: &File) -> io::Result<Self> {
         let length = file.metadata()?.len();
         if length == 0 || !length.is_multiple_of(4096) {
@@ -55,7 +27,7 @@ impl<A: Access> LoopDevice<A> {
             file,
             4096,
             lodown::Configurable {
-                read_only: A::READ_ONLY,
+                read_only: false,
                 writable: lodown::Writable {
                     autoclear: true,
                     ..Default::default()
@@ -63,10 +35,7 @@ impl<A: Access> LoopDevice<A> {
                 ..Default::default()
             },
         )?;
-        Ok(Self {
-            device,
-            _access: PhantomData,
-        })
+        Ok(Self { device })
     }
     pub(super) fn id(&self) -> io::Result<devmap_linux::DevId> {
         self.device.as_ref().metadata()?.try_into()
@@ -88,7 +57,7 @@ impl<A: Access> LoopDevice<A> {
             // enters rundown only when this fd is the sole opener, and success
             // still requires ENXIO.
             acquire_exclusive_lock(self.device.as_ref())?;
-            A::flush(self.device.as_ref())?;
+            self.device.as_ref().sync_all()?;
             lodown::Device::from(self.device.as_ref().try_clone()?).clear()?;
             match self.device.status() {
                 Err(error) if error.raw_os_error() == Some(6) => Ok(()), // ENXIO: unbound
@@ -130,20 +99,20 @@ fn acquire_exclusive_lock(file: &File) -> io::Result<()> {
         }
     }
 }
-impl Read for LoopDevice<Writable> {
+impl Read for LoopDevice {
     fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
         self.device.read(bytes)
     }
 }
-impl Write for LoopDevice<Writable> {
+impl Write for LoopDevice {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
         self.device.write(bytes)
     }
     fn flush(&mut self) -> io::Result<()> {
-        Writable::flush(self.device.as_ref())
+        self.device.as_ref().sync_all()
     }
 }
-impl Seek for LoopDevice<Writable> {
+impl Seek for LoopDevice {
     fn seek(&mut self, offset: SeekFrom) -> io::Result<u64> {
         self.device.seek(offset)
     }
@@ -161,19 +130,19 @@ mod tests {
         time::{Duration, Instant},
     };
 
-    fn attach_writable() -> Option<LoopDevice<Writable>> {
+    fn attach_writable() -> Option<LoopDevice> {
         let backing = tempfile::tempfile().unwrap();
         backing.set_len(4096).unwrap();
         // EPERM/EACCES: rootless CI has no loop-control authority. The kernel
         // retains the backing reference taken by LOOP_CONFIGURE.
-        match LoopDevice::<Writable>::attach(&backing) {
+        match LoopDevice::attach(&backing) {
             Ok(device) => Some(device),
             Err(error) if matches!(error.raw_os_error(), Some(1) | Some(13)) => None,
             Err(error) => panic!("attach loop: {error}"),
         }
     }
 
-    fn node_path(device: &LoopDevice<Writable>) -> PathBuf {
+    fn node_path(device: &LoopDevice) -> PathBuf {
         std::fs::read_link(format!(
             "/proc/self/fd/{}",
             device.device.as_ref().as_raw_fd()
@@ -197,13 +166,9 @@ mod tests {
         // Invalid inputs only: this test never requests a kernel loop device.
         for length in [0, 1, 4095, 4097, 8191] {
             backing.set_len(length).unwrap();
-            for error in [
-                LoopDevice::<ReadOnly>::attach(&backing).unwrap_err(),
-                LoopDevice::<Writable>::attach(&backing).unwrap_err(),
-            ] {
-                assert_eq!(error.kind(), io::ErrorKind::InvalidInput, "{length}");
-                assert!(error.to_string().contains("4096-byte blocks"));
-            }
+            let error = LoopDevice::attach(&backing).unwrap_err();
+            assert_eq!(error.kind(), io::ErrorKind::InvalidInput, "{length}");
+            assert!(error.to_string().contains("4096-byte blocks"));
         }
     }
 

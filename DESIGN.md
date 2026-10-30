@@ -1998,18 +1998,24 @@ mount-namespace identity through partial setup and explicit teardown. Unresolved
 live resources remain retained until VM disposal. Deferred device removal is a
 destructor fallback, never evidence of successful close or permission to seal.
 
-The carapace format uses a 64 GiB dm-zero origin. Bootstrap's configured ext4
-capacity is a filesystem capacity within that geometry, not a format change.
+Carapace owns the read-only logical device geometry. Bootstrap's configured
+ext4 capacity is a filesystem capacity within that geometry, not a format change.
 The initial backend accepts aligned 16 MiB–64 GiB capacities and typed ext4
 properties. Trusted mke2fs uses 4096-byte filesystem blocks. Finalization trims
 unused snapshot capacity, uses ecosystem wire types and seals the scute directly;
 there is no image-to-carapace import/conversion step.
 
-Scute wire parsing belongs to devmap-snapshot. Conglobate owns activation and
-fallible cleanup using devmap/lodown. A read-only file with deferred removal alone
-cannot prove successful finalization. It does not duplicate the
-wire codec. The pinned rustix revision supplies the safe borrowed-descriptor
-mount_setattr API (upstream PR 1630); the pin is intentional, not a mutable branch.
+Scute wire parsing belongs to devmap-snapshot. Carapace owns read-only loop,
+verity and snapshot assembly; Conglobate supplies prepared files and the trusted
+tip. Carapace validates the on-disk headers before using them for activation.
+A private read-only linear mapping provides Conglobate's fallible consumer-close
+boundary without removing shared
+Carapace mappings. Its retained Carapace file keeps the immutable stack alive.
+Conglobate still owns writable snapshot activation, immediate removal and loop
+writeback/detachment before sealing. Deferred removal of immutable inputs does
+not prove successful finalization of writable output. Neither assembly nor wire
+codecs are duplicated. The pinned rustix revision supplies the safe
+borrowed-descriptor mount_setattr API (upstream PR 1630); the pin is intentional, not a mutable branch.
 
 ### Command boundary
 

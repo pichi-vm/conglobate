@@ -11,11 +11,9 @@ pub(crate) use volume::{Mounted, Unmounted, Volume, VolumeState, VolumeView};
 mod loop_device;
 mod loopback;
 pub(crate) use chain::ReadOnlyChain;
-mod verity;
 pub(crate) use loopback::LoopAttachment;
-pub(crate) use verity::VerityMapping;
 mod snapshot;
-pub(crate) use snapshot::{SnapshotMapping, SnapshotOrigin, SnapshotUsage};
+pub(crate) use snapshot::{SnapshotMapping, SnapshotOrigin};
 mod mapping;
 pub(crate) use mapping::{Active, Created, Mapping};
 

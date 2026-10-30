@@ -21,11 +21,13 @@ class CacheFixture:
         for name, count, compressed in [('aligned', 8192, False),
                                          ('partial', 4097, False),
                                          ('compressed', 4097, True)]:
-            data = bytes([42]) * count
-            padded = data.ljust(8192, b'\0')
+            header = struct.pack('<IIII', 0x70416e53, 1, 1, 8)
+            metadata = struct.pack('<QQQQ', 0, 2, 1, 3)
+            data = header.ljust(4096, b'\0') + metadata.ljust(4096, b'\0') + bytes([42]) * count
+            padded = data.ljust(16384, b'\0')
             salt = bytes(32)
             leaves = b''.join(hashlib.sha256(salt + padded[i:i+4096]).digest()
-                              for i in (0, 4096))
+                              for i in range(0, len(padded), 4096))
             root = hashlib.sha256(salt + leaves.ljust(4096, b'\0')).hexdigest()
             blob = subprocess.check_output(['zstd', '-q', '-c'], input=data) if compressed else data
             layer = {'mediaType': 'application/vnd.pichi.scute.v1' + ('+zstd' if compressed else ''),

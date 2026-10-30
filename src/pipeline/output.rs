@@ -54,20 +54,16 @@ impl<'b, 'w> StageOutput<'b, 'w> {
         build: &'b ResolvedBuild,
         workspace: &'w Workspace,
     ) -> anyhow::Result<ReadOnlyChain<'b, 'w>> {
-        let mut scutes = self.produced.iter();
-        let mut active = if let Some(chain) = self.base.and_then(|b| b.chain()) {
-            chain.assemble(build.cache(), workspace)?
-        } else {
-            ReadOnlyChain::from_root(Arc::clone(
-                scutes
-                    .next()
-                    .ok_or(anyhow!("task input requires a carapace"))?,
-            ))?
-        };
-        for scute in scutes {
-            active = active.extend(Arc::clone(scute))?;
+        let base = self.base.and_then(|base| base.chain());
+        if base.is_none() && self.produced.is_empty() {
+            return Err(anyhow!("task input requires a carapace"));
         }
-        Ok(active)
+        Ok(ReadOnlyChain::assemble(
+            base,
+            &self.produced,
+            build.cache(),
+            workspace,
+        )?)
     }
     pub(super) fn rewrite(
         &mut self,

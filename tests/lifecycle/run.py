@@ -239,7 +239,9 @@ exec sleep infinity
         elif self.args.case == 'chain-storage':
             markers = ['LOOP_DEFERRED_DETACH_WRITEBACK_PASS', 'INVALID_SECOND_SCUTE_REJECTED_PASS',
                        'WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS',
-                       'CHAIN_TERMINAL_CLOSE_RETAINS_LIVE_HOLDER_PASS', 'OWNED_TWO_SCUTE_CHAIN_PASS']
+                       'CHAIN_TERMINAL_CLOSE_RETAINS_LIVE_HOLDER_PASS',
+                       'SEALED_EXTENSION_OVER_VERIFIED_CHAIN_PASS',
+                       'CARAPACE_CHAIN_CLEANUP_PASS', 'OWNED_TWO_SCUTE_CHAIN_PASS']
         elif self.args.case == 'cache-storage':
             markers = ['VERITY_TERMINAL_CLOSE_RETAINS_LIVE_HOLDER_PASS',
                        'VERITY_CACHE_CORRUPTION_READ_REJECTED_PASS',

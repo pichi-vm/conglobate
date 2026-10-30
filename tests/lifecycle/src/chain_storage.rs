@@ -143,7 +143,7 @@ impl ChainStorage {
             assert_eq!(&bytes[4096..8192], &[67; 4096]);
             assert_eq!(&bytes[8192..], &[77; 4096]);
             drop(changed);
-            snapshot
+            let scratch = snapshot
                 .close()
                 .map_err(|e| e.to_string())?
                 .detach()
@@ -154,13 +154,45 @@ impl ChainStorage {
             assert_eq!(bytes, inherited);
             assert_eq!(cache.verify_chain(&image)?.unwrap().root(), chain.root());
             println!("WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS");
+            let scute = std::sync::Arc::new(scratch.seal_snapshot(*mounted.root())?);
+            let root = *scute.root();
+            drop(reader);
+            let mounted = mounted.extend(scute)?;
+            assert_eq!(mounted.root(), &root);
+            fs::remove_file(node)?;
+            let id = mounted.id();
+            rustix::fs::mknodat(
+                rustix::fs::CWD,
+                node,
+                rustix::fs::FileType::BlockDevice,
+                rustix::fs::Mode::RUSR,
+                rustix::fs::makedev(id.major(), id.minor()),
+            )?;
+            let mut reader = fs::File::open(node)?;
+            reader.read_exact(&mut bytes)?;
+            assert_eq!(&bytes[..4096], &[99; 4096]);
+            assert_eq!(&bytes[4096..8192], &[67; 4096]);
+            assert_eq!(&bytes[8192..], &[77; 4096]);
+            let extended = bytes;
+            println!("SEALED_EXTENSION_OVER_VERIFIED_CHAIN_PASS");
             let failure = mounted.close().unwrap_err();
             assert_eq!(failure.kind(), std::io::ErrorKind::ResourceBusy);
             assert_eq!(failure.raw_os_error(), Some(16));
             reader.rewind()?;
             reader.read_exact(&mut bytes)?;
-            assert_eq!(bytes, inherited);
+            assert_eq!(bytes, extended);
             println!("CHAIN_TERMINAL_CLOSE_RETAINS_LIVE_HOLDER_PASS");
+            drop(reader);
+            fs::remove_file(node)?;
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            while Self::mappings()? != baseline {
+                assert!(
+                    std::time::Instant::now() < deadline,
+                    "chain mappings leaked"
+                );
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            println!("CARAPACE_CHAIN_CLEANUP_PASS");
             println!("OWNED_TWO_SCUTE_CHAIN_PASS");
             return Ok(());
         }
