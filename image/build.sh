@@ -136,7 +136,7 @@ echo ">>> initrd $(du -h "$initrd" | cut -f1)  modules: $(find "$stage" -name '*
 
 # ---- 4. import the carapace once; tip = scute verity root from import -----
 # Tip is the dm-verity root computed while formatting the scute (exactly one
-# tip for a base carapace). Never read OCI tip-hash annotation.
+# tip for a base carapace). Pichi also commits this root in the manifest.
 carapace="conglobate:$VERSION-carapace"
 import_log="$work/import.log"
 RUST_LOG="${RUST_LOG:+${RUST_LOG},}pichi::cmd::import::raw=info" \

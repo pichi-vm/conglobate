@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from artifact import build_manifest, scute_root
+from artifact import build_manifest
 import subprocess
 
 
@@ -51,17 +51,8 @@ class PipelineEvidence:
             'application/vnd.pichi.scute.v1', 'application/vnd.pichi.scute.v1']
         scutes = [layer for layer in layers if layer['mediaType'] == 'application/vnd.pichi.scute.v1']
         assert len(scutes) == 2
-        root = bytes(32)
-        for scute in scutes:
-            path, _ = self.blob(scute)
-            annotations = scute['annotations']
-            salt = bytes.fromhex(annotations['dev.pichi.scute.verity.salt'])
-            assert salt[:32] == root
-            data = path.read_bytes()
-            blocks = int(annotations['dev.pichi.scute.verity.data-blocks'])
-            data = data.ljust(blocks * 4096, b'\0')
-            assert len(data) == blocks * 4096
-            root = scute_root(data, salt)
+        # build_manifest independently verifies the full, unordered salt chain.
+        root = manifest['annotations']['dev.pichi.carapace.verity.hash']
         for layer in layers:
             path, data = self.blob(layer)
             if layer['mediaType'] == 'application/vnd.pichi.pmi.v1':
@@ -69,7 +60,7 @@ class PipelineEvidence:
             if layer['mediaType'] == 'application/vnd.pichi.dtb.v1':
                 cmdline = subprocess.check_output(
                     ['fdtget', '-t', 's', str(path), '/chosen', 'bootargs'], text=True)
-                assert 'corium=' + root.hex() in cmdline.split()
+                assert 'corium=' + root in cmdline.split()
         expected = {item['digest'].split(':')[1]
                     for item in [descriptor, manifest['config'], *layers]}
         assert {path.name for path in (self.artifact / 'blobs/sha256').iterdir()} == expected

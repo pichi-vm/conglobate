@@ -94,8 +94,7 @@ impl Cache {
                 ));
             }
         }
-        // Tip is derived from the scute graph (unique root that is not any
-        // other scute's parent). Never read an OCI tip-hash annotation.
+        // The authenticated manifest commits one tip for the complete chain.
         let mut candidates = BTreeMap::new();
         for (descriptor, compressed) in layers {
             let scute = self.verify_scute(descriptor, compressed)?;
@@ -118,6 +117,11 @@ impl Cache {
             ));
         }
         let root = tips[0];
+        if manifest.carapace_root()? != Some(root) {
+            return Err(CacheError::Invalid(
+                "carapace root differs from manifest tip",
+            ));
+        }
         let mut next = root;
         let mut scutes = Vec::new();
         while next != [0; 32] {

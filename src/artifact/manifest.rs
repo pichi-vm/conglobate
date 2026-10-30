@@ -32,6 +32,9 @@ const CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE: &str = "dev.pichi.carapace.verity
 const CHAIN_ANNOTATION_VERITY_VERSION: &str = "dev.pichi.carapace.verity.version";
 const CHAIN_ANNOTATION_VERITY_HASH_TYPE: &str = "dev.pichi.carapace.verity.hash-type";
 
+/// Hex-encoded SHA-256 root of the final scute, committing the salt-linked chain.
+pub const CARAPACE_ROOT_ANNOTATION: &str = "dev.pichi.carapace.verity.hash";
+
 /// Canonical SHA-256 digest of `{}` (the OCI 1.1 empty config blob).
 const EMPTY_CONFIG_DIGEST: &str =
     "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a";
@@ -46,7 +49,7 @@ const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 /// - Layer order is NOT load-bearing (D-03); writers MAY emit in any order.
 /// - At most ONE [`Layer::Pmi`] (D-03 — zero pmi = base/non-bootable, one pmi = appliance/bootable).
 /// - Top-level annotations MUST include the carapace verity *param* keys
-///   (D-06 / D-07 rule 3) when scute layers exist. Tip hash is not used.
+///   and one chain-tip root when scute layers exist.
 /// - Every scute layer MUST carry a `dev.pichi.scute.verity.salt` annotation
 ///   parseable as hex (D-05 / D-07 rule 4-5).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -68,8 +71,9 @@ pub struct Manifest {
     pub config: ConfigDescriptor,
     /// Typed layer descriptors. Order is NOT load-bearing (D-03).
     pub layers: Vec<Layer>,
-    /// Top-level annotations. MUST include `dev.pichi.carapace.verity.{algo,
-    /// data-block-size,hash-block-size}` and SHOULD include
+    /// Top-level annotations. With scutes, MUST include
+    /// `dev.pichi.carapace.verity.{algo,data-block-size,hash-block-size,
+    /// version,hash-type,hash}` and SHOULD include
     /// `org.opencontainers.image.created` (D-06).
     /// `BTreeMap` for byte-stable JSON serialisation (lexicographic key order).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -343,6 +347,28 @@ pub enum ManifestValidationError {
 }
 
 impl Manifest {
+    /// The chain-tip commitment, present exactly when this artifact has scutes.
+    /// This parses the wire value; consumers must authenticate the manifest and
+    /// verify scute reads against this root before using their contents.
+    pub fn carapace_root(&self) -> Result<Option<[u8; 32]>, ManifestValidationError> {
+        let value = self.annotations.get(CARAPACE_ROOT_ANNOTATION);
+        if !self.has_scutes() && value.is_none() {
+            return Ok(None);
+        }
+        let value = value.ok_or(ManifestValidationError::MissingChainAnnotation(
+            CARAPACE_ROOT_ANNOTATION,
+        ))?;
+        let mut root = [0; 32];
+        if !self.has_scutes() || hex::decode_to_slice(value, &mut root).is_err() || root == [0; 32]
+        {
+            return Err(ManifestValidationError::BadChainAnnotation {
+                key: CARAPACE_ROOT_ANNOTATION,
+                value: value.clone(),
+            });
+        }
+        Ok(Some(root))
+    }
+
     /// Return `true` if this manifest carries at least one scute layer (i.e.
     /// it describes a carapace, so a verity root anchor is meaningful).
     fn has_scutes(&self) -> bool {
@@ -379,6 +405,7 @@ impl Manifest {
         // Rule 3 (BUILD.md §7.1): the carapace verity-chain annotations describe
         // the carapace, so they are required ONLY when scute layers are present.
         // A scute-less (PMI-only) artifact carries none of them.
+        self.carapace_root()?;
         if self.has_scutes() {
             for key in [
                 CHAIN_ANNOTATION_VERITY_ALGO,
@@ -534,6 +561,7 @@ mod tests {
         );
         a.insert(CHAIN_ANNOTATION_VERITY_VERSION.into(), "1".into());
         a.insert(CHAIN_ANNOTATION_VERITY_HASH_TYPE.into(), "1".into());
+        a.insert(CARAPACE_ROOT_ANNOTATION.into(), "ab".repeat(32));
         a.insert(
             "org.opencontainers.image.created".into(),
             "2026-05-06T14:32:00Z".into(),
@@ -724,12 +752,42 @@ mod tests {
     }
 
     #[test]
-    fn validate_ignores_stale_tip_hash_annotation() {
-        // Tip hash is not read: a present stale label must not affect validate.
+    fn validate_requires_one_nonzero_chain_tip() {
         let mut m = sample_base_manifest();
+        assert_eq!(m.carapace_root().unwrap(), Some([0xab; 32]));
+        m.annotations.remove(CARAPACE_ROOT_ANNOTATION);
+        assert!(matches!(
+            m.validate(),
+            Err(ManifestValidationError::MissingChainAnnotation(
+                CARAPACE_ROOT_ANNOTATION
+            ))
+        ));
+        for invalid in [
+            "".into(),
+            "deadbeef".into(),
+            "gg".repeat(32),
+            "00".repeat(32),
+            "ab".repeat(33),
+            format!("sha256:{}", "ab".repeat(32)),
+        ] {
+            m.annotations
+                .insert(CARAPACE_ROOT_ANNOTATION.into(), invalid);
+            assert!(matches!(
+                m.validate(),
+                Err(ManifestValidationError::BadChainAnnotation {
+                    key: CARAPACE_ROOT_ANNOTATION,
+                    ..
+                })
+            ));
+        }
         m.annotations
-            .insert("dev.pichi.carapace.verity.hash".into(), "deadbeef".into());
+            .insert(CARAPACE_ROOT_ANNOTATION.into(), "AB".repeat(32));
         m.validate().unwrap();
+        m.layers.clear();
+        assert!(m.validate().is_err());
+        m.annotations.clear();
+        m.validate().unwrap();
+        assert_eq!(m.carapace_root().unwrap(), None);
     }
 
     #[test]
