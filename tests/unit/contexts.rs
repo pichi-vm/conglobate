@@ -388,15 +388,14 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
         request::BuildRequest,
     };
     use sha2::{Digest as _, Sha256};
-    let manifest = crate::artifact::Manifest {
+    let manifest = serde_json::to_vec(&crate::artifact::Manifest {
         schema_version: 2,
         media_type: "application/vnd.oci.image.manifest.v1+json".into(),
         artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
         config: crate::artifact::ConfigDescriptor::canonical(),
         layers: Vec::new(),
         annotations: Default::default(),
-    }
-    .to_bytes()
+    })
     .unwrap();
     let manifest_digest = Digest::Sha256(Sha256::digest(&manifest).into());
     let index = serde_json::to_vec(&serde_json::json!({"schemaVersion":2,
@@ -471,7 +470,7 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
             size: dtb.len() as u64,
         },
     ));
-    let bytes = with_dtb.to_bytes().unwrap();
+    let bytes = serde_json::to_vec(&with_dtb).unwrap();
     let digest = Digest::Sha256(Sha256::digest(&bytes).into());
     std::fs::write(blobs.join(digest.hex()), &bytes).unwrap();
     let mut with_dtb_index: serde_json::Value =

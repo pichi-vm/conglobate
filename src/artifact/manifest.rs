@@ -352,36 +352,6 @@ pub enum ManifestValidationError {
 }
 
 impl Manifest {
-    /// Deserialise a manifest from a JSON byte stream. Does NOT validate.
-    /// Use [`Self::from_reader_validated`] to deserialise + validate in one call.
-    ///
-    /// # Errors
-    /// Returns [`crate::artifact::Error::Json`] or [`crate::artifact::Error::Io`] on failure.
-    pub fn from_reader<R: std::io::Read>(r: R) -> Result<Self, crate::artifact::Error> {
-        Ok(serde_json::from_reader(r)?)
-    }
-
-    /// Deserialise + validate (per D-07).
-    ///
-    /// # Errors
-    /// Returns [`crate::artifact::Error`] on parse failure or `Err(crate::artifact::Error::Validation(...))`
-    /// on D-07 rule violation.
-    pub fn from_reader_validated<R: std::io::Read>(r: R) -> Result<Self, crate::artifact::Error> {
-        let m = Self::from_reader(r)?;
-        m.validate()?;
-        Ok(m)
-    }
-
-    /// Serialise this manifest to a compact JSON byte vector. Byte-stable
-    /// modulo annotation key order (BTreeMap) and struct field declaration
-    /// order (serde derive guarantee).
-    ///
-    /// # Errors
-    /// Returns [`crate::artifact::Error::Json`] on serialisation failure.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, crate::artifact::Error> {
-        Ok(serde_json::to_vec(self)?)
-    }
-
     /// Return `true` if this manifest carries at least one scute layer (i.e.
     /// it describes a carapace, so a verity root anchor is meaningful).
     fn has_scutes(&self) -> bool {
@@ -647,8 +617,9 @@ mod tests {
     #[test]
     fn round_trip() {
         let m = sample_base_manifest();
-        let b = m.to_bytes().unwrap();
-        let m2 = Manifest::from_reader(b.as_slice()).unwrap();
+        let b = serde_json::to_vec(&m).unwrap();
+        let m2 = serde_json::from_slice::<Manifest>(&b).unwrap();
+        m2.validate().unwrap();
         assert_eq!(m, m2);
     }
 
@@ -671,8 +642,9 @@ mod tests {
         m.layers.push(sample_dtb_layer());
         m.validate().unwrap();
 
-        let b = m.to_bytes().unwrap();
-        let m2 = Manifest::from_reader_validated(b.as_slice()).unwrap();
+        let b = serde_json::to_vec(&m).unwrap();
+        let m2 = serde_json::from_slice::<Manifest>(&b).unwrap();
+        m2.validate().unwrap();
         assert_eq!(m, m2);
         let json = String::from_utf8(b).unwrap();
         assert!(json.contains(MEDIA_TYPE_PICHI_DTB_V1));
@@ -702,9 +674,9 @@ mod tests {
     #[test]
     fn round_trip_byte_stable() {
         let m = sample_base_manifest();
-        let b1 = m.to_bytes().unwrap();
-        let m2 = Manifest::from_reader(b1.as_slice()).unwrap();
-        let b2 = m2.to_bytes().unwrap();
+        let b1 = serde_json::to_vec(&m).unwrap();
+        let m2 = serde_json::from_slice::<Manifest>(&b1).unwrap();
+        let b2 = serde_json::to_vec(&m2).unwrap();
         assert_eq!(b1, b2, "manifest bytes must be stable across round-trip");
     }
 
@@ -917,14 +889,6 @@ mod tests {
         let json = r#"{"mediaType":"application/vnd.unknown.v1","digest":"sha256:1234","size":1}"#;
         let r: Result<Layer, _> = serde_json::from_str(json);
         assert!(r.is_err(), "unknown mediaType must fail to deserialize");
-    }
-
-    #[test]
-    fn from_reader_validated_combines_parse_and_validate() {
-        let m = sample_base_manifest();
-        let b = m.to_bytes().unwrap();
-        let m2 = Manifest::from_reader_validated(b.as_slice()).unwrap();
-        assert_eq!(m, m2);
     }
 
     #[test]

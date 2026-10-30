@@ -23,7 +23,7 @@ pub(crate) enum CacheError {
     #[error("invalid OCI JSON: {0}")]
     Json(#[from] serde_json::Error),
     #[error("invalid artifact manifest: {0}")]
-    Manifest(#[from] crate::artifact::Error),
+    Manifest(#[from] crate::artifact::ManifestValidationError),
     #[error("cache I/O: {0}")]
     Io(#[from] io::Error),
     #[error(transparent)]
