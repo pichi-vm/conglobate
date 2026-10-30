@@ -31,9 +31,6 @@ fn nonnull<'de, D: Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result<T, D:
     Option::<T>::deserialize(d)?
         .ok_or_else(|| de::Error::custom("null is not omission or an empty collection"))
 }
-#[path = "lock.rs"]
-mod lock;
-pub(crate) use lock::Lock;
 #[derive(Debug, thiserror::Error)]
 #[error("invalid plan: {0}")]
 pub(crate) struct Error(pub(crate) String);
@@ -617,24 +614,11 @@ mod tests {
         }
     }
     #[test]
-    fn strict_reference_and_lock_round_trip_keeps_no_implicit_hub_defaults() {
+    fn strict_reference_keeps_no_implicit_hub_defaults() {
         let reference: Reference = "registry.test/base:1".parse().unwrap();
         let Reference::Remote(remote) = reference else {
             panic!()
         };
         assert_eq!(remote.as_ref(), "registry.test/base:1");
-        let text = format!(
-            "version: 1\nimages: {{registry.test/base:1: {{index: sha256:{}}}}}",
-            "11".repeat(32)
-        );
-        let lock = YamlDocument::from(text.as_str()).decode::<Lock>().unwrap();
-        assert_eq!(lock.images()[&remote].bytes(), &[0x11; 32]);
-        for text in [
-            "version: 1\nimages: {local: {index: sha256:00}}",
-            "version: 1\nimages: null",
-            "version: 1\nimages: {}\nimages: {}",
-        ] {
-            assert!(YamlDocument::from(text).decode::<Lock>().is_err(), "{text}");
-        }
     }
 }

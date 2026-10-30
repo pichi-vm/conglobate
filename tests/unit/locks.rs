@@ -46,6 +46,8 @@ fn duplicate_references_and_unknown_fields_are_rejected() {
         format!("version: 1\nimages:\n  base: {pin}\n  base: {pin}"),
         format!("version: 1\nversion: 1\nimages: {{base: {pin}}}"),
         "version: 1\nimages: {}\nextra: ignored".into(),
+        "version: 1\nimages: null".into(),
+        format!("version: 1\nimages: {{base: {pin}}}"),
         "version: 2\nimages: {}".into(),
         "version: 1\nimages: {base: {index: latest}}".into(),
         "version: 1\nimages: {base: {index: sha256:00, manifest: other}}".into(),
