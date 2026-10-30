@@ -1208,6 +1208,13 @@ scute graph. Never stamp or require `dev.pichi.carapace.verity.hash`. Keep the
 existing carapace verity parameter annotations and per-scute salt/data-blocks
 annotations. Boot binding uses the root derived from that graph.
 
+Every raw or compressed scute requires `dev.pichi.scute.verity.data-blocks`
+as a positive decimal string. Its padded byte extent must fit in `u64`. For
+raw scutes it must equal the descriptor size rounded up to the data block
+size; for compressed scutes it bounds decoded bytes, with only the final
+block allowed to be partial. Missing counts are invalid in v1. Producers
+emit the count used to format the verity tree; no version identifiers change.
+
 ### 11.2 Finalization and publication
 
 Validate the annotation values against the selected commit, context, plan and

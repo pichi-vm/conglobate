@@ -149,21 +149,20 @@ impl Cache {
             // authenticating the compressed stream, then re-open and authenticate
             // the hashing pass too. Neither pass copies layer data into scratch.
             let mut source = DecodedBlob::open(self, &digest, descriptor.size, true)?;
-            let count = if let Some(blocks) = descriptor.annotations.data_blocks {
-                let limit = blocks
-                    .checked_mul(4096)
-                    .and_then(|v| v.checked_add(1))
-                    .ok_or(CacheError::Invalid("scute extent overflow"))?;
-                io::copy(&mut (&mut source).take(limit), &mut io::sink())?
-            } else {
-                io::copy(&mut source, &mut io::sink())?
-            };
+            let limit = descriptor
+                .annotations
+                .data_blocks
+                .get()
+                .checked_mul(4096)
+                .and_then(|v| v.checked_add(1))
+                .ok_or(CacheError::Invalid("scute extent overflow"))?;
+            let count = io::copy(&mut (&mut source).take(limit), &mut io::sink())?;
             source.finish()?;
             count
         } else {
             descriptor.size
         };
-        let extent = ScuteExtent::new(size, &salt, descriptor.annotations.data_blocks)?;
+        let extent = ScuteExtent::new(size, &salt, Some(descriptor.annotations.data_blocks.get()))?;
         let mut source = DecodedBlob::open(self, &digest, descriptor.size, compressed)?;
         let root = extent.root(&mut source)?;
         source.finish()?;
