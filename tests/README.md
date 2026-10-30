@@ -381,8 +381,10 @@ failure fixtures move onto image-resident tooling.
 `seed.py` prepares an initial tool filesystem outside conglobate from an explicitly
 SHA-256-pinned complete rootfs tar archive. It rejects layered whiteouts and member
 path traversal, formats/extracts only in a disconnected disposable VM, checks
-passwd/shadow numeric ownership and modes, unmounts, and runs e2fsck. Its sparse
-64-GiB filesystem can then be converted into an initial carapace externally. This
+passwd/shadow numeric ownership and modes, unmounts, and runs e2fsck. Supply
+`--size-mib` for the filesystem capacity needed by the rootfs and later package
+installs. The sparse filesystem can then be converted into an initial carapace
+externally. Filesystem capacity is independent of Carapace virtual geometry. This
 is initial seed preparation, not a conglobate bootstrap-stage pass. The Debian
 seed provenance records its OCI origin and external importer identity.
 
