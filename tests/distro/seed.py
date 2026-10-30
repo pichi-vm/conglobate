@@ -68,6 +68,8 @@ set +e
 bash /seed.sh
 status=$?
 echo "SEED_EXIT $status"
+printf 'SEED_EXIT %s\\n' "$status" > /dev/vdb
+sync
 echo b > /proc/sysrq-trigger
 exec sleep infinity
 ''')
@@ -81,17 +83,22 @@ exec sleep infinity
         image = self.output / 'root.ext4'
         with image.open('wb') as stream:
             stream.truncate(64 * 1024**3)
+        result = self.output / 'status.raw'
+        result.write_bytes(bytes(4096))
         command = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-m', '2048',
             '-smp', '2', '-nodefaults', '-no-reboot', '-display', 'none', '-serial', 'stdio',
             '-monitor', 'none', '-kernel', str(self.output / 'vmlinuz'),
             '-initrd', str(self.output / 'initramfs.gz'),
             '-append', 'console=ttyS0 rdinit=/init selinux=0 panic=-1 quiet',
-            '-drive', f'file={image},format=raw,if=virtio']
+            '-drive', f'file={image},format=raw,if=virtio',
+            '-drive', f'file={result},format=raw,if=virtio']
         (self.output / 'command.json').write_text(json.dumps(command, indent=2) + '\n')
         with (self.output / 'serial.txt').open('wb') as log:
             subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=240, check=True)
         serial = (self.output / 'serial.txt').read_text(errors='replace')
-        passed = 'SEED_FORMAT_EXTRACT_UNMOUNT_PASS' in serial and 'SEED_EXIT 0' in serial
+        exit_record = result.read_bytes().split(b'\0', 1)[0]
+        passed = ('SEED_FORMAT_EXTRACT_UNMOUNT_PASS' in serial
+                  and exit_record == b'SEED_EXIT 0\n')
         for name in ['etc/passwd', 'etc/shadow']:
             member = next(m for m in members if str(Path(m.name)) == name)
             expected = f'SEED_OWNER {member.uid} {member.gid} {member.mode:o} /target/{name}'
