@@ -159,6 +159,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
+name = "carapace"
+version = "0.1.0"
+source = "git+https://github.com/pichi-vm/carapace?rev=b2365ba4e1cd52ec7f8419c8553390dbe23507de#b2365ba4e1cd52ec7f8419c8553390dbe23507de"
+dependencies = [
+ "devmap-core",
+ "devmap-linux",
+ "devmap-snapshot",
+ "devmap-verity",
+ "lodown",
+]
+
+[[package]]
 name = "cc"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -269,6 +281,7 @@ name = "conglobate"
 version = "0.2.0"
 dependencies = [
  "anyhow",
+ "carapace",
  "ciborium",
  "clap",
  "devmap-core",

@@ -1,10 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{
-    Scratch,
-    loop_device::{LoopDevice, Writable},
-};
+use super::{Scratch, loop_device::LoopDevice};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 
 /// Owns both the kernel loop attachment and its writable RAM backing. No backing
@@ -12,14 +9,14 @@ use std::io::{self, Read, Seek, SeekFrom, Write};
 /// autoclear retains the kernel backing reference until remaining holders close.
 #[derive(Debug)]
 pub(crate) struct LoopAttachment<'workspace> {
-    device: LoopDevice<Writable>,
+    device: LoopDevice,
     backing: Scratch<'workspace>,
 }
 impl<'w> Scratch<'w> {
     /// One attempt. Another claimant can win after get_free; kernel EBUSY is
     /// reported with the backing intact. No blocking advisory lock/retry loop.
     pub(crate) fn attach(self) -> io::Result<LoopAttachment<'w>> {
-        let device = LoopDevice::<Writable>::attach(&self.file)?;
+        let device = LoopDevice::attach(&self.file)?;
         Ok(LoopAttachment {
             device,
             backing: self,

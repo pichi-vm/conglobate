@@ -7,7 +7,7 @@ use std::{fs, path::Path};
 pub(super) struct CacheStorage;
 impl CacheStorage {
     pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
-        use std::io::{Read, Write};
+        use std::io::{Read, Seek, SeekFrom, Write};
         let workspace = conglobate::storage::Workspace::create()?;
         let cache = conglobate::cache::Cache::open(Path::new("/cache-fixture"))?;
         for name in ["aligned", "partial", "compressed"] {
@@ -18,13 +18,12 @@ impl CacheStorage {
             let prepared = scute.prepare(&cache, &workspace)?;
             assert_eq!(prepared.is_cache_backed(), name == "aligned");
             assert_eq!(prepared.root(), chain.root());
-            assert_eq!(prepared.data_size()?, 8192);
+            assert_eq!(prepared.data_size()?, 16384);
             assert_eq!(prepared.hash_size()?, 8192);
             let path = format!("/cache-fixture/blobs/sha256/{}", scute.digest().hex());
             let original = fs::read(&path)?;
-            let verified = scute
-                .prepare(&cache, &workspace)?
-                .activate()
+            let verified = chain
+                .assemble(&cache, &workspace)
                 .map_err(|e| e.to_string())?;
             let id = verified.id();
             let node = Path::new("/dev/conglobate-verity-probe");
@@ -41,7 +40,7 @@ impl CacheStorage {
             let mut holder = fs::File::open(node)?;
             let mut data = vec![0; 8192];
             holder.read_exact(&mut data)?;
-            let actual_size = scute.extent().size() as usize;
+            let actual_size = scute.extent().size() as usize - 8192;
             assert!(data[..actual_size].iter().all(|byte| *byte == 42));
             assert!(data[actual_size..].iter().all(|byte| *byte == 0));
             drop(holder);
@@ -50,9 +49,8 @@ impl CacheStorage {
             if name == "aligned" {
                 // Fresh mapping: corrupt after activation but before its first
                 // read, so a previously verified page cannot mask the test.
-                let verified = scute
-                    .prepare(&cache, &workspace)?
-                    .activate()
+                let verified = chain
+                    .assemble(&cache, &workspace)
                     .map_err(|e| e.to_string())?;
                 let id = verified.id();
                 rustix::fs::mknodat(
@@ -63,10 +61,12 @@ impl CacheStorage {
                     rustix::fs::makedev(id.major(), id.minor()),
                 )?;
                 let mut corruptor = fs::OpenOptions::new().write(true).open(&path)?;
+                corruptor.seek(SeekFrom::Start(12288))?;
                 corruptor.write_all(&[1; 4096])?;
                 corruptor.sync_all()?;
                 drop(corruptor);
                 let mut holder = fs::File::open(node)?;
+                holder.seek(SeekFrom::Start(4096))?;
                 let error = holder.read_exact(&mut [0; 4096]).unwrap_err();
                 assert_eq!(error.raw_os_error(), Some(5));
                 drop(holder);
@@ -81,7 +81,7 @@ impl CacheStorage {
             if name == "aligned" {
                 fs::rename(&path, format!("{path}.original"))?;
                 fs::write(&path, b"replacement")?;
-                assert_eq!(prepared.data_size()?, 8192);
+                assert_eq!(prepared.data_size()?, 16384);
                 assert!(scute.prepare(&cache, &workspace).is_err());
             }
         }
@@ -89,7 +89,7 @@ impl CacheStorage {
         let pin = fs::read_to_string("/cache-fixture/compressed.pin")?;
         let image = cache.resolve(pin.parse()?)?;
         let chain = cache.verify_chain(&image)?.unwrap();
-        let verified = chain.scutes()[0].prepare(&cache, &workspace)?.activate()?;
+        let verified = chain.assemble(&cache, &workspace)?;
         let id = verified.id();
         let node = Path::new("/dev/conglobate-terminal-verity");
         rustix::fs::mknodat(

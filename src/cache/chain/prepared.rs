@@ -23,10 +23,7 @@ enum Source<'s, 'w> {
         data: Data<'w>,
         hash: Scratch<'w>,
     },
-    Produced {
-        scute: std::sync::Arc<crate::storage::SealedScute<'w>>,
-        header: Box<devmap_verity::Header>,
-    },
+    Produced(std::sync::Arc<crate::storage::SealedScute<'w>>),
 }
 
 #[derive(Debug)]
@@ -97,21 +94,10 @@ impl<'s> VerifiedScute {
 }
 
 impl<'s, 'w> PreparedScute<'s, 'w> {
-    pub(crate) fn produced(
-        scute: std::sync::Arc<crate::storage::SealedScute<'w>>,
-    ) -> Result<Self, crate::chain::ChainError> {
-        let header = crate::chain::ScuteExtent::new(
-            scute.descriptor().size,
-            scute.parent(),
-            Some(scute.descriptor().annotations.data_blocks.get()),
-        )?
-        .header();
-        Ok(Self {
-            source: Source::Produced {
-                scute,
-                header: Box::new(header),
-            },
-        })
+    pub(crate) fn produced(scute: std::sync::Arc<crate::storage::SealedScute<'w>>) -> Self {
+        Self {
+            source: Source::Produced(scute),
+        }
     }
     pub(crate) fn files(&self) -> (&File, &File) {
         match &self.source {
@@ -122,19 +108,13 @@ impl<'s, 'w> PreparedScute<'s, 'w> {
                 };
                 (data, hash.file())
             }
-            Source::Produced { scute, .. } => scute.files(),
-        }
-    }
-    pub(crate) fn header(&self) -> devmap_verity::Header {
-        match &self.source {
-            Source::Cached { scute, .. } => scute.extent.header(),
-            Source::Produced { header, .. } => **header,
+            Source::Produced(scute) => scute.files(),
         }
     }
     pub(crate) fn root(&self) -> &[u8; 32] {
         match &self.source {
             Source::Cached { scute, .. } => scute.root(),
-            Source::Produced { scute, .. } => scute.root(),
+            Source::Produced(scute) => scute.root(),
         }
     }
     #[cfg(feature = "test-fixtures")]
