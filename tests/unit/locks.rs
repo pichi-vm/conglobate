@@ -23,9 +23,9 @@ fn pins_are_exact_top_level_identities() {
 }
 
 #[test]
-fn context_smoke_lock_pins_the_documented_fixture_index() {
+fn metadata_lock_pins_the_documented_fixture_index() {
     use sha2::{Digest as _, Sha256};
-    let text = include_str!("../distro/context/lock.yaml");
+    let text = include_str!("fixtures/metadata-lock.yaml");
     let bytes = text
         .lines()
         .find_map(|line| line.strip_prefix("# index-bytes: "))
@@ -34,7 +34,7 @@ fn context_smoke_lock_pins_the_documented_fixture_index() {
     hash.update(bytes.as_bytes());
     let lock = ImageLock::try_from(YamlDocument::from(text)).unwrap();
     let pin = lock
-        .resolve(&"qualification.local/fedora:43".parse().unwrap())
+        .resolve(&"qualification.local/metadata:1".parse().unwrap())
         .unwrap();
     assert_eq!(pin.bytes().as_slice(), hash.finalize().as_slice());
 }

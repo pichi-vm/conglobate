@@ -4,22 +4,9 @@
 use super::{Cache, CacheError, VerifiedChain, VerifiedMetadata};
 use crate::artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
 use crate::artifact::{
-    Index, IndexDescriptor as Descriptor, MEDIA_TYPE_OCI_INDEX_V1 as INDEX,
-    MEDIA_TYPE_OCI_MANIFEST_V1 as MANIFEST, Platform,
+    Index, MEDIA_TYPE_OCI_INDEX_V1 as INDEX, MEDIA_TYPE_OCI_MANIFEST_V1 as MANIFEST, Platform,
 };
 use crate::image::IndexDigest;
-
-/// `tests/distro/context/lock.yaml` pins an index whose only manifest
-/// descriptor uses this digest and a declared size of 2. The host stores the
-/// real carapace manifest at that blob path. Those bytes are not the preimage
-/// and are not 2 bytes long. The index blob itself stays content-addressed.
-const HARNESS_MANIFEST_DIGEST: &str =
-    "sha256:1111111111111111111111111111111111111111111111111111111111111111";
-const HARNESS_MANIFEST_SIZE: u64 = 2;
-
-fn harness_supplied_manifest(descriptor: &Descriptor) -> bool {
-    descriptor.size == HARNESS_MANIFEST_SIZE && descriptor.digest == HARNESS_MANIFEST_DIGEST
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum HostArchitecture {
@@ -150,13 +137,7 @@ impl Cache {
             .digest
             .parse()
             .map_err(|_| CacheError::Invalid("invalid manifest digest"))?;
-        // The context-lock placeholder names a path. Every other descriptor
-        // still requires the file length and the SHA-256 of the bytes.
-        let manifest_bytes = if harness_supplied_manifest(selected) {
-            self.metadata_by_path(&digest)?
-        } else {
-            self.metadata(&digest, Some(selected.size))?
-        };
+        let manifest_bytes = self.metadata(&digest, Some(selected.size))?;
         let manifest: Manifest = serde_json::from_slice(manifest_bytes.bytes())?;
         manifest.validate()?;
         // The shared format validates artifact contents, not the OCI envelope.

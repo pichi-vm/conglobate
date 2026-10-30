@@ -284,9 +284,10 @@ and a command checks its bytes and the absence of context mounts. The runner the
 requires successful publication/export and verifies exported blob digests. This
 checks the committed-context pipeline, not distro boot or full qualification.
 
-`context/lock.yaml` pins `qualification.local/fedora:43` to a tiny fixture index.
-The host harness seeds that exact index blob. It is not a Fedora GHCR digest.
-`run.py` still writes its own `images.lock` from `--pin`.
+`prepare.py` writes a content-addressed index referring to the actual source
+manifest. Pass its `index.pin` to `run.py --pin`; the runner commits the generated
+`images.lock` alongside the plan before invoking Conglobate. No placeholder
+manifest digest or precommitted distro lock is used.
 
 `pipeline/plan.yaml` exercises bootstrap, an extend task, a local build producer
 whose finalized artifact is copied into the root, and an explicit boot-producing

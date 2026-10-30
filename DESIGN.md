@@ -551,13 +551,9 @@ to override a pin. An image without a carapace cannot supply an execution
 carapace. A build never rewrites the lock; lock creation and cache population
 belong to the caller.
 
-One first-smoke exception is `tests/distro/context/lock.yaml`. That index's
-manifest descriptor is a harness placeholder: the digest is 32 bytes of
-`0x11` and the declared size is 2. The host stores the real carapace manifest
-at that blob path. Those bytes need not be 2 long and need not hash to the
-placeholder. The guest still refuses a read over the small-metadata limit,
-records the SHA-256 of the bytes it captured, and verifies every blob that
-manifest names. Any other descriptor keeps the size and digest checks.
+Every selected manifest must match its descriptor's size and digest, including
+qualification fixtures. The distro runner commits a lock containing the actual
+prepared index digest; fixture paths never bypass content authentication.
 
 ## 5. Context and pipeline
 

@@ -32,11 +32,11 @@ class CacheFixture:
                      'digest': self.blob(blob), 'size': len(blob),
                      'annotations': {'dev.pichi.scute.verity.salt': salt.hex()}}
             self.image(name, [layer], root)
-        self.harness_placeholder()
+        self.pinned_manifest()
         self.chains()
 
-    def harness_placeholder(self):
-        """Real manifest behind the context-lock placeholder descriptor."""
+    def pinned_manifest(self):
+        """A real content-addressed manifest for payload-mutation checks."""
         data = bytes([43]) * 8192
         salt = bytes(32)
         leaves = b''.join(hashlib.sha256(salt + data[i:i + 4096]).digest()
@@ -45,9 +45,9 @@ class CacheFixture:
         layer = {'mediaType': 'application/vnd.pichi.scute.v1',
                  'digest': self.blob(data), 'size': len(data),
                  'annotations': {'dev.pichi.scute.verity.salt': salt.hex()}}
-        self.image('placeholder', [layer], root, placeholder=True)
+        self.image('pinned', [layer], root)
 
-    def image(self, name, layers, root, placeholder=False):
+    def image(self, name, layers, root):
         # Tip derived from scute graph; never stamp verity.hash.
         _ = root
         annotations = {'dev.pichi.carapace.verity.' + k: v for k, v in
@@ -59,14 +59,8 @@ class CacheFixture:
             'config': {'mediaType': 'application/vnd.oci.empty.v1+json',
                        'digest': self.blob(b'{}'), 'size': 2, 'data': 'e30='},
             'layers': layers, 'annotations': annotations}).encode()
-        if placeholder:
-            # Context-lock descriptor: path key only, not the manifest preimage.
-            (self.root / 'blobs/sha256' / ('1' * 64)).write_bytes(manifest)
-            descriptor_digest = 'sha256:' + '1' * 64
-            descriptor_size = 2
-        else:
-            descriptor_digest = self.blob(manifest)
-            descriptor_size = len(manifest)
+        descriptor_digest = self.blob(manifest)
+        descriptor_size = len(manifest)
         descriptor = {'mediaType': 'application/vnd.oci.image.manifest.v1+json',
                       'artifactType': 'application/vnd.pichi.artifact.v1+json',
                       'digest': descriptor_digest, 'size': descriptor_size,

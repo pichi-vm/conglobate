@@ -108,12 +108,12 @@ impl CacheStorage {
         holder.read_exact(&mut byte)?;
         assert_eq!(byte, [42]);
         println!("VERITY_TERMINAL_CLOSE_RETAINS_LIVE_HOLDER_PASS");
-        let pin = fs::read_to_string("/cache-fixture/placeholder.pin")?;
+        let pin = fs::read_to_string("/cache-fixture/pinned.pin")?;
         let image = cache.resolve(pin.parse()?)?;
         assert_ne!(image.manifest_bytes().digest().hex(), "1".repeat(64));
         let chain = cache
             .verify_chain(&image)?
-            .ok_or("placeholder manifest produced no scute chain")?;
+            .ok_or("pinned manifest produced no scute chain")?;
         let path = format!(
             "/cache-fixture/blobs/sha256/{}",
             chain.scutes()[0].digest().hex()
@@ -122,7 +122,7 @@ impl CacheStorage {
         fs::write(&path, vec![1; original.len()])?;
         assert!(cache.verify_chain(&image).is_err());
         fs::write(&path, original)?;
-        println!("HARNESS_PLACEHOLDER_MANIFEST_PASS");
+        println!("AUTHENTICATED_MANIFEST_PAYLOAD_MUTATION_PASS");
         println!("CACHE_BACKED_SCUTE_PREPARATION_PASS");
         println!("OWNED_VERITY_READ_AND_CLEANUP_PASS");
         Ok(())

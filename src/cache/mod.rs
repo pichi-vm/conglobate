@@ -76,8 +76,7 @@ impl Cache {
     /// Capture small metadata exactly once. Large immutable layers stay cache-backed.
     ///
     /// When `expected_size` is set it must equal the file length, and the
-    /// bytes must hash to `digest`. A descriptor that is only a path key uses
-    /// `metadata_by_path`.
+    /// bytes must hash to `digest`.
     pub(crate) fn metadata(
         &self,
         digest: &ContentDigest,
@@ -89,21 +88,6 @@ impl Cache {
         }
         Ok(VerifiedMetadata {
             digest: digest.clone(),
-            bytes,
-        })
-    }
-    /// Read a small blob whose path digest is not a content commitment.
-    ///
-    /// The receipt digest is the SHA-256 of the captured bytes. The metadata
-    /// size cap still applies. Callers authenticate every blob the captured
-    /// document names; this method does not.
-    fn metadata_by_path(
-        &self,
-        path_digest: &ContentDigest,
-    ) -> Result<VerifiedMetadata, CacheError> {
-        let bytes = self.read_metadata(path_digest, None)?;
-        Ok(VerifiedMetadata {
-            digest: ContentDigest::Sha256(Sha256::digest(&bytes).into()),
             bytes,
         })
     }
