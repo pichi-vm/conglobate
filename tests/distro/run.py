@@ -57,7 +57,7 @@ class DistroRun:
         env.update(CARGO_BUILD_JOBS='2', CARGO_TARGET_DIR=str(REPOSITORY / 'target/m7-stable'),
                    TMPDIR=str(compiler_tmp))
         with (self.output / 'build.log').open('wb') as log:
-            subprocess.run(['cargo', '+' + env.get('RUSTUP_TOOLCHAIN', 'stable'), 'build', '--locked'], cwd=REPOSITORY,
+            subprocess.run(['cargo', '+' + env.get('RUSTUP_TOOLCHAIN', 'stable'), 'build', '--locked', '--features', 'cli', '--bin', 'conglobate'], cwd=REPOSITORY,
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
         runtime = DistroRuntime(self.root, self.arguments.module_root.resolve(), self.arguments.kernel_release)
         runtime.create()
