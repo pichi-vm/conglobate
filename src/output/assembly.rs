@@ -335,17 +335,21 @@ impl AssembledImage {
         architecture: crate::cache::HostArchitecture,
     ) -> Result<(ResolvedImage, Option<VerifiedChain>), CacheError> {
         let digest = staged.store_blob(manifest)?;
-        let index = serde_json::to_vec(&serde_json::json!({
-            "schemaVersion": 2,
-            "mediaType": "application/vnd.oci.image.index.v1+json",
-            "manifests": [{
-                "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
-                "digest": digest.to_string(),
-                "size": manifest.len(),
-                "platform": {"os": "pichi", "architecture": architecture.oci_name()}
-            }]
-        }))?;
+        let index = serde_json::to_vec(&crate::artifact::Index {
+            manifests: vec![crate::artifact::IndexDescriptor {
+                media_type: crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1.into(),
+                artifact_type: Some(crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into()),
+                digest: digest.to_string(),
+                size: manifest.len() as u64,
+                platform: Some(crate::artifact::Platform {
+                    os: "pichi".into(),
+                    architecture: architecture.oci_name().into(),
+                    variant: None,
+                }),
+                annotations: Default::default(),
+            }],
+            ..Default::default()
+        })?;
         let pin: IndexDigest = staged
             .store_blob(&index)?
             .to_string()
@@ -354,7 +358,7 @@ impl AssembledImage {
         staged.write_file(&staged.temporary.path().join("index.json"), &index)?;
         staged.write_file(
             &staged.temporary.path().join("oci-layout"),
-            b"{\"imageLayoutVersion\":\"1.0.0\"}",
+            &serde_json::to_vec(&crate::artifact::LayoutMarker::default())?,
         )?;
         let output_cache = Cache::open(staged.temporary.path())?;
         let output_image = output_cache.resolve(pin)?;
