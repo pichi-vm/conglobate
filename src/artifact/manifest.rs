@@ -382,15 +382,6 @@ impl Manifest {
         Ok(serde_json::to_vec(self)?)
     }
 
-    /// Compute the SHA-256 content digest of the serialised manifest.
-    ///
-    /// # Errors
-    /// Returns [`crate::artifact::Error`] if serialisation fails.
-    pub fn digest(&self) -> Result<crate::artifact::Digest, crate::artifact::Error> {
-        let bytes = self.to_bytes()?;
-        Ok(crate::artifact::Digest::from_bytes_sha256(&bytes))
-    }
-
     /// Return `true` if this manifest carries at least one scute layer (i.e.
     /// it describes a carapace, so a verity root anchor is meaningful).
     fn has_scutes(&self) -> bool {
@@ -558,6 +549,7 @@ impl Manifest {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sha2::{Digest as _, Sha256};
 
     #[test]
     fn data_blocks_is_an_optional_decimal_annotation() {
@@ -717,16 +709,6 @@ mod tests {
     }
 
     #[test]
-    fn digest_matches_to_bytes_hash() {
-        let m = sample_base_manifest();
-        let bytes = m.to_bytes().unwrap();
-        assert_eq!(
-            m.digest().unwrap(),
-            crate::artifact::Digest::from_bytes_sha256(&bytes)
-        );
-    }
-
-    #[test]
     fn empty_config_canonical_matches_oci_spec() {
         let c = ConfigDescriptor::canonical();
         assert_eq!(c.media_type, MEDIA_TYPE_OCI_EMPTY_V1);
@@ -734,7 +716,7 @@ mod tests {
         assert_eq!(c.data.as_deref(), Some("e30="));
         assert_eq!(c.digest, EMPTY_CONFIG_DIGEST);
         // Cross-check: SHA-256 of "{}" really is the EMPTY_CONFIG_DIGEST hex
-        let manual = crate::artifact::Digest::from_bytes_sha256(b"{}").to_string();
+        let manual = crate::artifact::Digest::Sha256(Sha256::digest(b"{}").into()).to_string();
         assert_eq!(manual, EMPTY_CONFIG_DIGEST);
     }
 

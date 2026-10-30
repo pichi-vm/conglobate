@@ -6,7 +6,6 @@
 use std::fmt;
 use std::str::FromStr;
 
-use sha2::{Digest as _, Sha256};
 use thiserror::Error;
 
 /// Typed digest sum-type. Per D-01.
@@ -36,14 +35,6 @@ pub enum DigestParseError {
 }
 
 impl Digest {
-    /// Hash arbitrary bytes with SHA-256, return a typed [`Digest`].
-    pub fn from_bytes_sha256(data: &[u8]) -> Self {
-        let hash = Sha256::digest(data);
-        let mut bytes = [0u8; 32];
-        bytes.copy_from_slice(&hash);
-        Self::Sha256(bytes)
-    }
-
     /// Return the algorithm name string (for OCI media-type prefix matching).
     pub fn algo(&self) -> &'static str {
         match self {
@@ -112,12 +103,6 @@ mod tests {
     const HELLO_HEX: &str = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
 
     #[test]
-    fn from_bytes_sha256_known_value() {
-        let d = Digest::from_bytes_sha256(b"hello");
-        assert_eq!(d.hex(), HELLO_HEX);
-    }
-
-    #[test]
     fn from_str_round_trip() {
         let s = format!("sha256:{HELLO_HEX}");
         let d: Digest = s.parse().unwrap();
@@ -125,15 +110,8 @@ mod tests {
     }
 
     #[test]
-    fn from_bytes_and_from_str_agree() {
-        let by_bytes = Digest::from_bytes_sha256(b"hello");
-        let by_str: Digest = format!("sha256:{HELLO_HEX}").parse().unwrap();
-        assert_eq!(by_bytes, by_str);
-    }
-
-    #[test]
     fn display_round_trips() {
-        let d = Digest::from_bytes_sha256(b"hello");
+        let d = format!("sha256:{HELLO_HEX}").parse::<Digest>().unwrap();
         let s = d.to_string();
         let d2: Digest = s.parse().unwrap();
         assert_eq!(d, d2);
@@ -141,19 +119,19 @@ mod tests {
 
     #[test]
     fn algo_returns_sha256() {
-        let d = Digest::from_bytes_sha256(b"x");
+        let d = Digest::Sha256([0x42; 32]);
         assert_eq!(d.algo(), "sha256");
     }
 
     #[test]
     fn hex_length_is_64() {
-        let d = Digest::from_bytes_sha256(b"x");
+        let d = Digest::Sha256([0x42; 32]);
         assert_eq!(d.hex().len(), 64);
     }
 
     #[test]
     fn as_bytes_length_is_32() {
-        let d = Digest::from_bytes_sha256(b"x");
+        let d = Digest::Sha256([0x42; 32]);
         assert_eq!(d.as_bytes().len(), 32);
     }
 

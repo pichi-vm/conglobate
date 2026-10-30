@@ -84,7 +84,7 @@ impl Cache {
         expected_size: Option<u64>,
     ) -> Result<VerifiedMetadata, CacheError> {
         let bytes = self.read_metadata(digest, expected_size)?;
-        if ContentDigest::from_bytes_sha256(&bytes) != *digest {
+        if ContentDigest::Sha256(Sha256::digest(&bytes).into()) != *digest {
             return Err(CacheError::Invalid("metadata content mismatch"));
         }
         Ok(VerifiedMetadata {
@@ -103,7 +103,7 @@ impl Cache {
     ) -> Result<VerifiedMetadata, CacheError> {
         let bytes = self.read_metadata(path_digest, None)?;
         Ok(VerifiedMetadata {
-            digest: ContentDigest::from_bytes_sha256(&bytes),
+            digest: ContentDigest::Sha256(Sha256::digest(&bytes).into()),
             bytes,
         })
     }

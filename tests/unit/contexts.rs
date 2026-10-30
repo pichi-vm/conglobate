@@ -387,6 +387,7 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
         input::{CapturedBuild, InputError},
         request::BuildRequest,
     };
+    use sha2::{Digest as _, Sha256};
     let manifest = crate::artifact::Manifest {
         schema_version: 2,
         media_type: "application/vnd.oci.image.manifest.v1+json".into(),
@@ -397,13 +398,13 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
     }
     .to_bytes()
     .unwrap();
-    let manifest_digest = Digest::from_bytes_sha256(&manifest);
+    let manifest_digest = Digest::Sha256(Sha256::digest(&manifest).into());
     let index = serde_json::to_vec(&serde_json::json!({"schemaVersion":2,
         "mediaType":"application/vnd.oci.image.index.v1+json", "manifests":[{
             "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
             "digest":manifest_digest.to_string(),"size":manifest.len(),
             "platform":{"os":"pichi","architecture":HostArchitecture::current().unwrap().oci_name()}}]})).unwrap();
-    let index_digest = Digest::from_bytes_sha256(&index);
+    let index_digest = Digest::Sha256(Sha256::digest(&index).into());
     let cache = tempfile::tempdir().unwrap();
     let blobs = cache.path().join("blobs/sha256");
     std::fs::create_dir_all(&blobs).unwrap();
@@ -460,7 +461,7 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
     for word in [1_u32, 0, 2, 9] {
         dtb.extend(word.to_be_bytes());
     }
-    let dtb_digest = Digest::from_bytes_sha256(&dtb);
+    let dtb_digest = Digest::Sha256(Sha256::digest(&dtb).into());
     std::fs::write(blobs.join(dtb_digest.hex()), &dtb).unwrap();
     let mut with_dtb: crate::artifact::Manifest =
         serde_json::from_slice(&std::fs::read(blobs.join(manifest_digest.hex())).unwrap()).unwrap();
@@ -471,14 +472,14 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
         },
     ));
     let bytes = with_dtb.to_bytes().unwrap();
-    let digest = Digest::from_bytes_sha256(&bytes);
+    let digest = Digest::Sha256(Sha256::digest(&bytes).into());
     std::fs::write(blobs.join(digest.hex()), &bytes).unwrap();
     let mut with_dtb_index: serde_json::Value =
         serde_json::from_slice(&std::fs::read(blobs.join(index_digest.hex())).unwrap()).unwrap();
     with_dtb_index["manifests"][0]["digest"] = digest.to_string().into();
     with_dtb_index["manifests"][0]["size"] = bytes.len().into();
     let index = serde_json::to_vec(&with_dtb_index).unwrap();
-    let pin = Digest::from_bytes_sha256(&index);
+    let pin = Digest::Sha256(Sha256::digest(&index).into());
     std::fs::write(blobs.join(pin.hex()), index).unwrap();
     repo.write(
         "lock",
