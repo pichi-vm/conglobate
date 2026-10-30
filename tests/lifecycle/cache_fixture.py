@@ -30,7 +30,8 @@ class CacheFixture:
             blob = subprocess.check_output(['zstd', '-q', '-c'], input=data) if compressed else data
             layer = {'mediaType': 'application/vnd.pichi.scute.v1' + ('+zstd' if compressed else ''),
                      'digest': self.blob(blob), 'size': len(blob),
-                     'annotations': {'dev.pichi.scute.verity.salt': salt.hex()}}
+                     'annotations': {'dev.pichi.scute.verity.salt': salt.hex(),
+                                     'dev.pichi.scute.verity.data-blocks': str((len(data) + 4095) // 4096)}}
             self.image(name, [layer], root)
         self.pinned_manifest()
         self.chains()
@@ -44,7 +45,8 @@ class CacheFixture:
         root = hashlib.sha256(salt + leaves.ljust(4096, b'\0')).hexdigest()
         layer = {'mediaType': 'application/vnd.pichi.scute.v1',
                  'digest': self.blob(data), 'size': len(data),
-                 'annotations': {'dev.pichi.scute.verity.salt': salt.hex()}}
+                 'annotations': {'dev.pichi.scute.verity.salt': salt.hex(),
+                                 'dev.pichi.scute.verity.data-blocks': str((len(data) + 4095) // 4096)}}
         self.image('pinned', [layer], root)
 
     def image(self, name, layers, root):
@@ -87,6 +89,7 @@ class CacheFixture:
                 root = hashlib.sha256(parent + leaves.ljust(4096, b'\0')).digest()
                 layers.append({'mediaType': 'application/vnd.pichi.scute.v1',
                                'digest': self.blob(data), 'size': len(data),
-                               'annotations': {'dev.pichi.scute.verity.salt': parent.hex()}})
+                               'annotations': {'dev.pichi.scute.verity.salt': parent.hex(),
+                                               'dev.pichi.scute.verity.data-blocks': str(len(data) // 4096)}})
                 parent = root
             self.image('chain' if valid else 'invalid-header', layers, parent.hex())

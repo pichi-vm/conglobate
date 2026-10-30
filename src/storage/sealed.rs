@@ -101,15 +101,16 @@ impl<'w> Scratch<'w> {
             input: &mut self.file,
             digest: Sha256::new(),
         };
-        let root = ScuteExtent::new(extent.bytes, &parent, Some(extent.bytes / 4096))?
-            .format(&mut input, &mut hash)?;
+        let scute = ScuteExtent::new(extent.bytes, &parent, Some(extent.bytes / 4096))?;
+        let data_blocks = scute.header().parameters.data.count;
+        let root = scute.format(&mut input, &mut hash)?;
         let digest = format!("sha256:{}", hex::encode(input.digest.finalize()));
         hash.sync_all()?;
         let descriptor = ScuteDescriptor {
             digest,
             size: extent.bytes,
             annotations: ScuteAnnotations {
-                data_blocks: Some(extent.bytes / 4096),
+                data_blocks,
                 salt: hex::encode(parent),
             },
         };

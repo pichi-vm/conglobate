@@ -209,7 +209,7 @@ impl Store {
             digest: digest.to_string(),
             size: bytes.len() as u64,
             annotations: crate::artifact::ScuteAnnotations {
-                data_blocks: None,
+                data_blocks: extent.header().parameters.data.count,
                 salt: hex::encode(parent),
             },
         };
@@ -406,7 +406,7 @@ fn scute_digest_and_decoded_block_count_are_both_enforced() {
     let crate::artifact::Layer::ScuteZstd(descriptor) = &mut layer else {
         unreachable!()
     };
-    descriptor.annotations.data_blocks = Some(1);
+    descriptor.annotations.data_blocks = 1u64.try_into().unwrap();
     let image = store.chain_image(vec![layer], root);
     assert!(store.open().verify_chain(&image).is_err());
     let (layer, root) = store.scute(&[7; 4096], [0; 32], false);
@@ -445,7 +445,7 @@ fn compressed_scutes_reject_invalid_streams_even_with_matching_oci_digests() {
             digest: digest.to_string(),
             size: bytes.len() as u64,
             annotations: crate::artifact::ScuteAnnotations {
-                data_blocks: Some(2),
+                data_blocks: 2u64.try_into().unwrap(),
                 salt: hex::encode([0; 32]),
             },
         };
@@ -460,7 +460,7 @@ fn compressed_scutes_reject_invalid_streams_even_with_matching_oci_digests() {
         digest: digest.to_string(),
         size: frames.len() as u64,
         annotations: crate::artifact::ScuteAnnotations {
-            data_blocks: Some(2),
+            data_blocks: 2u64.try_into().unwrap(),
             salt: hex::encode([0; 32]),
         },
     };

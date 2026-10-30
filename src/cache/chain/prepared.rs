@@ -103,7 +103,7 @@ impl<'s, 'w> PreparedScute<'s, 'w> {
         let header = crate::chain::ScuteExtent::new(
             scute.descriptor().size,
             scute.parent(),
-            scute.descriptor().annotations.data_blocks,
+            Some(scute.descriptor().annotations.data_blocks.get()),
         )?
         .header();
         Ok(Self {
