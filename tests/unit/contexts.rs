@@ -917,3 +917,48 @@ fn module_reads_reject_missing_commits_and_host_alternates() {
     let error = context.read(&path).unwrap_err().to_string();
     assert!(error.contains("submodule"), "{error}");
 }
+
+#[test]
+fn inputs_inspects_only_selected_committed_tasks_without_a_lock() {
+    use conglobate::request::{CliCommand, parse_cli};
+    let repo = Repository::new("sha1");
+    repo.write(
+        "build/plan.yaml",
+        br#"
+tasks:
+  base:
+    kind: extend
+    from: registry.example/base:latest
+  selected:
+    kind: extend
+    from: base
+  unused:
+    kind: extend
+    from: registry.example/unused:latest
+image: selected
+"#,
+    );
+    repo.commit();
+    let commit = repo.git(&["rev-parse", "HEAD"]);
+    repo.write("build/plan.yaml", b"invalid working tree");
+    let CliCommand::Inputs(request) = parse_cli([
+        "conglobate",
+        "inputs",
+        "--repository",
+        repo.0.path().to_str().unwrap(),
+        "--commit",
+        &commit,
+        "--context",
+        "build",
+        "--plan",
+        "plan.yaml",
+    ])
+    .unwrap() else {
+        panic!("inputs command")
+    };
+    let inputs = request.inputs().unwrap();
+    assert_eq!(
+        inputs.images,
+        ["registry.example/base:latest".to_owned()].into()
+    );
+}

@@ -95,3 +95,11 @@ mod tests {
         );
     }
 }
+
+/// Remote image references needed by the selected build task closure.
+/// Produced by `conglobate inputs`; Pichi resolves these into a lock.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Inputs {
+    pub images: std::collections::BTreeSet<String>,
+}
