@@ -25,7 +25,7 @@ jobs:
       CARGO_BUILD_JOBS: '2'
       RUSTUP_TOOLCHAIN: '1.94.0'
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - name: Install trusted guest inputs
