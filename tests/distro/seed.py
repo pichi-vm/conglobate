@@ -24,6 +24,9 @@ class SeedRun:
         self.root = self.output / 'root'
 
     def run(self):
+        if not 0 < self.arguments.size_mib <= (2**63 - 1) // 1024**2:
+            raise ValueError('--size-mib must be positive and fit a signed 64-bit file size')
+        size = self.arguments.size_mib * 1024**2
         if platform.machine() != 'x86_64':
             raise RuntimeError('native amd64/KVM seed preparation only')
         source = self.arguments.archive.resolve()
@@ -82,7 +85,7 @@ exec sleep infinity
         shutil.copy2(self.arguments.kernel, self.output / 'vmlinuz')
         image = self.output / 'root.ext4'
         with image.open('wb') as stream:
-            stream.truncate(64 * 1024**3)
+            stream.truncate(size)
         result = self.output / 'status.raw'
         result.write_bytes(bytes(4096))
         command = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-m', '2048',
@@ -105,7 +108,8 @@ exec sleep infinity
             passed = passed and expected in serial
         (self.output / 'verdict.json').write_text(json.dumps({
             'seed_filesystem_passed': passed, 'archive_sha256': digest,
-            'archive_members': len(members), 'conglobate_build_passed': False,
+            'archive_members': len(members), 'filesystem_bytes': size,
+            'conglobate_build_passed': False,
         }, indent=2) + '\n')
         if not passed:
             raise RuntimeError('seed preparation failed; inspect serial.txt')
@@ -117,6 +121,8 @@ if __name__ == '__main__':
     parser.add_argument('output', type=Path)
     parser.add_argument('--archive', type=Path, required=True)
     parser.add_argument('--sha256', required=True)
+    parser.add_argument('--size-mib', type=int, required=True,
+                        help='Filesystem capacity in MiB, including space for later package installs')
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
