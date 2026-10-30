@@ -28,7 +28,7 @@ use thiserror::Error;
 pub const CONFIG_SCHEMA_VERSION: u32 = 1;
 
 /// The pichi artifact config blob (`application/vnd.pichi.config.v1+json`).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
     /// Schema version (see [`CONFIG_SCHEMA_VERSION`]). Required on the wire so
@@ -38,6 +38,20 @@ pub struct Config {
     /// The host-facing launch contract.
     #[serde(default)]
     pub requirements: Requirements,
+}
+
+// Canonical field order and requirements are properties of the wire format,
+// independent of the caller's choice of JSON or another serde codec.
+impl Serialize for Config {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct as _;
+        let mut requirements = self.requirements.clone();
+        requirements.canonicalize();
+        let mut state = serializer.serialize_struct("Config", 2)?;
+        state.serialize_field("version", &self.version)?;
+        state.serialize_field("requirements", &requirements)?;
+        state.end()
+    }
 }
 
 impl Default for Config {
@@ -52,9 +66,6 @@ impl Default for Config {
 /// Errors constructing or validating a [`Config`].
 #[derive(Debug, Error)]
 pub enum ConfigError {
-    /// JSON (de)serialisation failed.
-    #[error("config JSON: {0}")]
-    Json(#[from] serde_json::Error),
     /// The blob declares a schema version this build does not understand.
     #[error("unsupported config schema version {got} (this build understands {want})")]
     UnsupportedVersion {
@@ -66,36 +77,9 @@ pub enum ConfigError {
 }
 
 impl Config {
-    /// Serialise to the config-blob JSON bytes (compact, canonical).
-    ///
-    /// The requirements are canonicalised first (see
-    /// [`Requirements::canonicalize`]) so semantically-equal configs produce
-    /// byte-identical blobs — the config is content-addressed, so canonical
-    /// form is what lets equivalent launch contracts dedup.
-    ///
-    /// # Errors
-    /// [`ConfigError::Json`] on serialisation failure.
-    pub fn to_json(&self) -> Result<Vec<u8>, ConfigError> {
-        let mut canonical = self.clone();
-        canonical.requirements.canonicalize();
-        Ok(serde_json::to_vec(&canonical)?)
-    }
-
-    /// Parse + validate config-blob JSON bytes.
-    ///
-    /// # Errors
-    /// [`ConfigError`] on parse failure, an unsupported schema version, or an
-    /// inconsistent requirement band.
-    pub fn from_json(bytes: &[u8]) -> Result<Self, ConfigError> {
-        let cfg: Self = serde_json::from_slice(bytes)?;
-        cfg.validate()?;
-        Ok(cfg)
-    }
-
     /// Check the schema version is understood. Requirement invariants (nonzero,
     /// 2-MiB memory, band ordering) are enforced by the field types at parse, so
-    /// there is nothing else to check here. Shared by [`Self::from_json`] and by
-    /// callers that parse the blob through another format (e.g. `--config` YAML).
+    /// there is nothing else to check here. Callers validate after decoding.
     ///
     /// # Errors
     /// [`ConfigError::UnsupportedVersion`] if the version is not understood.
@@ -428,8 +412,8 @@ mod tests {
     #[test]
     fn empty_config_round_trips() {
         let c = Config::default();
-        let b = c.to_json().unwrap();
-        assert_eq!(Config::from_json(&b).unwrap(), c);
+        let b = serde_json::to_vec(&c).unwrap();
+        assert_eq!(serde_json::from_slice::<Config>(&b).unwrap(), c);
     }
 
     #[test]
@@ -448,8 +432,8 @@ mod tests {
                 interfaces: BTreeMap::new(),
             },
         };
-        let b = c.to_json().unwrap();
-        let c2 = Config::from_json(&b).unwrap();
+        let b = serde_json::to_vec(&c).unwrap();
+        let c2 = serde_json::from_slice::<Config>(&b).unwrap();
         assert_eq!(c, c2);
         assert_eq!(c2.requirements.cpus_required(), Some(2));
         assert_eq!(c2.requirements.cpus_recommended(), Some(4));
@@ -471,7 +455,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let bytes = c.to_json().unwrap();
+        let bytes = serde_json::to_vec(&c).unwrap();
         assert_eq!(
             std::str::from_utf8(&bytes).unwrap(),
             r#"{"version":1,"requirements":{}}"#
@@ -487,7 +471,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let back = Config::from_json(&c2.to_json().unwrap()).unwrap();
+        let back = serde_json::from_slice::<Config>(&serde_json::to_vec(&c2).unwrap()).unwrap();
         assert_eq!(back.requirements.cpus_required(), None); // floor dropped
         assert_eq!(back.requirements.cpus_recommended(), Some(4));
     }
@@ -498,17 +482,19 @@ mod tests {
         assert!(Band::new(Some(nz(4)), Some(nz(2))).is_none());
         assert!(Band::new(Some(nz(2)), Some(nz(4))).is_some());
         // ...and Deserialize routes through `new`, so the wire is rejected too.
-        let err = Config::from_json(
+        let err = serde_json::from_slice::<Config>(
             br#"{"version":1,"requirements":{"cpus":{"required":4,"recommended":2}}}"#,
         );
-        assert!(matches!(err, Err(ConfigError::Json(_))));
+        assert!(err.is_err());
     }
 
     #[test]
     fn rejects_zero_cpus_at_parse() {
         // Nonzero typing makes 0 unrepresentable — serde rejects it directly.
-        let err = Config::from_json(br#"{"version":1,"requirements":{"cpus":{"required":0}}}"#);
-        assert!(matches!(err, Err(ConfigError::Json(_))));
+        let err = serde_json::from_slice::<Config>(
+            br#"{"version":1,"requirements":{"cpus":{"required":0}}}"#,
+        );
+        assert!(err.is_err());
     }
 
     #[test]
@@ -520,13 +506,16 @@ mod tests {
         assert!(Memory::from_mib(3).is_none()); // odd MiB
         assert!(Memory::from_mib(0).is_none()); // zero
         // ...and it's rejected at parse.
-        let err = Config::from_json(br#"{"version":1,"requirements":{"memory":{"required":513}}}"#);
-        assert!(matches!(err, Err(ConfigError::Json(_))));
+        let err = serde_json::from_slice::<Config>(
+            br#"{"version":1,"requirements":{"memory":{"required":513}}}"#,
+        );
+        assert!(err.is_err());
     }
 
     #[test]
     fn rejects_unknown_version() {
-        let err = Config::from_json(br#"{"version":2,"requirements":{}}"#);
+        let config: Config = serde_json::from_slice(br#"{"version":2,"requirements":{}}"#).unwrap();
+        let err = config.validate();
         assert!(matches!(
             err,
             Err(ConfigError::UnsupportedVersion { got: 2, want: 1 })

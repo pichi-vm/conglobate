@@ -89,7 +89,7 @@ impl Store {
             layers: Vec::new(),
             annotations: Default::default(),
         };
-        let bytes = manifest.to_bytes().unwrap();
+        let bytes = serde_json::to_vec(&manifest).unwrap();
         (self.put(&bytes), bytes)
     }
     fn descriptor(&self, digest: &Digest, size: usize) -> serde_json::Value {
@@ -241,7 +241,7 @@ impl Store {
             .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.to_owned()))
             .collect(),
         };
-        manifest.to_bytes().unwrap()
+        serde_json::to_vec(&manifest).unwrap()
     }
     fn chain_image(
         &self,
@@ -318,7 +318,7 @@ fn harness_placeholder_loads_supplied_manifest_and_still_checks_layers() {
         !err.contains("metadata size mismatch"),
         "placeholder path must be read before manifest parsing: {err}"
     );
-    assert!(err.contains("invalid artifact manifest"), "{err}");
+    assert!(err.contains("invalid OCI JSON"), "{err}");
 }
 
 #[test]
@@ -482,16 +482,31 @@ fn verified_copy_propagates_destination_failure() {
 }
 
 #[test]
-fn invalid_manifest_retains_dependency_error_source() {
+fn invalid_manifest_json_retains_decoder_error_source() {
     let store = Store::new();
     let bytes = b"not JSON";
     let digest = store.put(bytes);
     let index = store.index(vec![store.descriptor(&digest, bytes.len())]);
     let error = store.open().resolve(index).unwrap_err();
     let source = std::error::Error::source(&error).unwrap();
-    assert!(source.downcast_ref::<crate::artifact::Error>().is_some());
-    assert_eq!(
-        error.to_string(),
-        format!("invalid artifact manifest: {source}")
+    assert!(source.downcast_ref::<serde_json::Error>().is_some());
+    assert_eq!(error.to_string(), format!("invalid OCI JSON: {source}"));
+}
+
+#[test]
+fn decoded_manifest_still_requires_structural_validation() {
+    let store = Store::new();
+    let (_, bytes) = store.manifest();
+    let mut manifest: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    manifest["artifactType"] = "application/unknown".into();
+    let bytes = serde_json::to_vec(&manifest).unwrap();
+    let digest = store.put(&bytes);
+    let index = store.index(vec![store.descriptor(&digest, bytes.len())]);
+    let error = store.open().resolve(index).unwrap_err();
+    let source = std::error::Error::source(&error).unwrap();
+    assert!(
+        source
+            .downcast_ref::<crate::artifact::ManifestValidationError>()
+            .is_some()
     );
 }

@@ -5,8 +5,8 @@
 //!
 //! Defines image manifests, component descriptors, media types, digests,
 //! references, and the artifact config-blob schema. This module performs no
-//! filesystem, registry, cache, VM-launch, or build orchestration. Reader-based
-//! decoding accepts a caller-provided stream.
+//! filesystem, registry, cache, VM-launch, hashing, or codec operations.
+//! Callers serialize and deserialize these types with their chosen serde codec.
 //!
 //! Retired here from the standalone `pichi-artifact` crate; the wire contract
 //! — media-type tags, manifest shape, digest and reference syntax — is
@@ -14,7 +14,6 @@
 
 mod config;
 mod digest;
-mod error;
 mod manifest;
 mod media_type;
 mod reference;
@@ -24,7 +23,6 @@ pub use config::{
     Requirements,
 };
 pub use digest::{Digest, DigestParseError};
-pub use error::Error;
 pub use manifest::{
     ConfigDescriptor, DtbDescriptor, Layer, Manifest, ManifestValidationError, PmiDescriptor,
     ScuteAnnotations, ScuteDescriptor,
