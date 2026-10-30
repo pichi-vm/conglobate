@@ -10,7 +10,9 @@ pub(crate) enum ValueError {
     Syntax,
     #[error("value overflows its supported representation")]
     Overflow,
-    #[error("filesystem size must be 4096-byte aligned and between 16 MiB and 64 GiB")]
+    #[error(
+        "filesystem size must be 4096-byte aligned, at least 16 MiB, and fit the carapace origin"
+    )]
     Capacity,
     #[error("ext4 label must be at most 16 UTF-8 bytes and contain no NUL")]
     Label,
@@ -47,8 +49,6 @@ impl<'a> TryFrom<&'a str> for Quantity<'a> {
 pub(crate) struct FilesystemSize(NonZeroU64);
 
 impl FilesystemSize {
-    pub(crate) const LOGICAL_DEVICE_BYTES: u64 = 64 * 1024 * 1024 * 1024;
-
     pub(crate) fn bytes(self) -> u64 {
         self.0.get()
     }
@@ -83,7 +83,7 @@ impl TryFrom<u64> for FilesystemSize {
     type Error = ValueError;
 
     fn try_from(bytes: u64) -> Result<Self, Self::Error> {
-        if !(16 * 1024 * 1024..=Self::LOGICAL_DEVICE_BYTES).contains(&bytes)
+        if !(16 * 1024 * 1024..=carapace::ZERO_SIZE_BYTES).contains(&bytes)
             || !bytes.is_multiple_of(4096)
         {
             return Err(ValueError::Capacity);

@@ -24,8 +24,7 @@ impl FormatterFailures {
     }
     pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
         let workspace = Workspace::create()?;
-        let sectors =
-            NonZeroU64::new(conglobate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 512).unwrap();
+        let sectors = NonZeroU64::new(carapace::ZERO_SIZE_SECTORS).unwrap();
         let origin = Mapping::<Created>::create()?.zero(sectors)?;
         for exhausted in [false, true] {
             let mut scratch = workspace.scratch()?;
