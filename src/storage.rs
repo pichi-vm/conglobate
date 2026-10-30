@@ -54,12 +54,22 @@ impl Workspace {
         )?;
         Ok(Self { root: root.into() })
     }
-    /// Sparse capacity for the full logical device, with 256 exception entries
-    /// per metadata chunk plus the header and terminal metadata chunk.
+    /// Bound each sparse COW store by the workspace's backing capacity, including
+    /// its snapshot metadata. Logical origin size does not allocate backing.
+    /// Stores share the mount budget; exhaustion still fails the build.
     pub(crate) fn snapshot_store(&self) -> io::Result<Scratch<'_>> {
-        let chunks = crate::value::FilesystemSize::LOGICAL_DEVICE_BYTES / 4096;
+        let stat = fs::fstatvfs(&self.root)?;
+        let bytes = stat
+            .f_blocks
+            .checked_mul(stat.f_frsize)
+            .ok_or_else(|| io::Error::other("workspace capacity overflow"))?;
+        let bytes = bytes / 4096 * 4096;
+        // Header, first metadata chunk, and at least one data chunk.
+        if bytes < 3 * 4096 {
+            return Err(io::Error::other("workspace too small for a snapshot"));
+        }
         let mut scratch = self.scratch()?;
-        scratch.set_len((chunks + chunks.div_ceil(256) + 2) * 4096)?;
+        scratch.set_len(bytes)?;
         Ok(scratch)
     }
     /// New anonymous scratch storage, removed on last close. Neither names nor
@@ -121,3 +131,22 @@ mod bootstrap;
 pub(crate) use bootstrap::BootstrapVolumes;
 mod sealed;
 pub(crate) use sealed::{ScuteReader, SealedScute};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::MetadataExt;
+
+    #[test]
+    fn snapshot_backing_tracks_workspace_capacity_without_allocating_it() {
+        let directory = tempfile::tempdir().unwrap();
+        let workspace = Workspace {
+            root: File::open(directory.path()).unwrap(),
+        };
+        let stat = fs::fstatvfs(&workspace.root).unwrap();
+        let scratch = workspace.snapshot_store().unwrap();
+        let metadata = scratch.file().metadata().unwrap();
+        assert_eq!(metadata.len(), stat.f_blocks * stat.f_frsize / 4096 * 4096);
+        assert_eq!(metadata.blocks(), 0);
+    }
+}
