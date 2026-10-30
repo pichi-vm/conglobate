@@ -45,9 +45,7 @@ impl IndexDigest {
 impl FromStr for IndexDigest {
     type Err = IdentityError;
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        let encoded = text.strip_prefix("sha256:").ok_or(IdentityError::Digest)?;
-        let mut bytes = [0; 32];
-        hex::decode_to_slice(encoded, &mut bytes).map_err(|_| IdentityError::Digest)?;
-        Ok(Self(bytes))
+        let digest: crate::artifact::Digest = text.parse().map_err(|_| IdentityError::Digest)?;
+        Ok(Self(digest.as_sha256_array()))
     }
 }
