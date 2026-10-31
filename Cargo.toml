@@ -101,6 +101,7 @@ devmap-core = { git = "https://github.com/pichi-vm/devmap.git", rev = "3a2728f61
 devmap-verity = { git = "https://github.com/pichi-vm/devmap.git", rev = "3a2728f617e9272be5224bbf76ffc4deafdfe83b", version = "0.1.0", optional = true, features = ["sha2"] }
 
 [dev-dependencies]
+ciborium = "0.2.2"
 serde_json = "1"
 sha2 = "0.11"
 # Verify the formatter's captured runtime includes its exact PT_INTERP path.
