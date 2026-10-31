@@ -134,17 +134,13 @@ install -m0755 "$corium_bin" "$stage/init"
 initrd="$work/initrd.cpio"
 echo ">>> initrd $(du -h "$initrd" | cut -f1)  modules: $(find "$stage" -name '*.ko*' | wc -l)"
 
-# ---- 4. import the carapace once; tip = scute verity root from import -----
-# Tip is the dm-verity root computed while formatting the scute (exactly one
-# tip for a base carapace). Pichi also commits this root in the manifest.
+# ---- 4. import the carapace once; read its committed chain tip -----------
 carapace="conglobate:$VERSION-carapace"
-import_log="$work/import.log"
-RUST_LOG="${RUST_LOG:+${RUST_LOG},}pichi::cmd::import::raw=info" \
-	pichi import raw "$root" -t "$carapace" 2>"$import_log"
-hash="$(sed -n 's/.*verity root \([0-9a-fA-F]\{64\}\).*/\1/p' "$import_log" | tail -1)"
-[[ "$hash" =~ ^[[:xdigit:]]{64}$ ]] || {
-	echo "!!! missing carapace tip from import log:" >&2
-	cat "$import_log" >&2
+pichi import raw "$root" -t "$carapace" --quiet
+hash="$(pichi inspect "$carapace" \
+	--format '{{ manifest.annotations["dev.pichi.carapace.verity.hash"] }}')"
+[[ "$hash" =~ ^[[:xdigit:]]{64}$ && "$hash" =~ [1-9a-fA-F] ]] || {
+	echo "!!! invalid manifest carapace root: $hash" >&2
 	exit 1
 }
 echo ">>> carapace $carapace  tip $hash"
