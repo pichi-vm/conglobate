@@ -176,12 +176,11 @@ impl CapturedBuild {
     }
 }
 
-/// One locked image and its verified chain (if present). Receipts describe reads,
-/// not a promise that a subsequent cache read will return unchanged bytes.
+/// One locked image with authenticated metadata. Carapace verifies filesystem
+/// reads against its root when execution activates the prepared input files.
 #[derive(Debug)]
 pub(crate) struct CheckedImage {
     image: crate::cache::ResolvedImage,
-    chain: Option<crate::cache::VerifiedChain>,
 }
 impl CheckedImage {
     /// Capture the selected DTB with a fresh digest/size check. Earlier input
@@ -210,8 +209,8 @@ impl CheckedImage {
     pub(crate) fn image(&self) -> &crate::cache::ResolvedImage {
         &self.image
     }
-    pub(crate) fn chain(&self) -> Option<&crate::cache::VerifiedChain> {
-        self.chain.as_ref()
+    pub(crate) fn root(&self) -> Option<[u8; 32]> {
+        self.image.root()
     }
 }
 #[derive(Debug)]
@@ -240,13 +239,13 @@ impl CapturedBuild {
         let mut images = std::collections::BTreeMap::new();
         for input in self.graph.inputs() {
             let image = cache.resolve(input.index())?;
-            let chain = cache.verify_content(&image)?;
-            if input.execution_required() && chain.is_none() {
+            cache.verify_metadata(&image)?;
+            if input.execution_required() && image.root().is_none() {
                 return Err(InputError::MissingExecutionCarapace(
                     input.reference().as_ref().to_owned(),
                 ));
             }
-            images.insert(input.reference().clone(), CheckedImage { image, chain });
+            images.insert(input.reference().clone(), CheckedImage { image });
         }
         // Verify export availability before allocating any privileged execution
         // resources. A missing optional boot is fine except when image requests it.
@@ -260,7 +259,7 @@ impl CapturedBuild {
                 crate::plan::Reference::Remote(remote) => {
                     let image = &images[&remote.as_ref().parse().map_err(PlanError::from)?];
                     (
-                        image.chain().is_some(),
+                        image.root().is_some(),
                         image
                             .image()
                             .manifest()

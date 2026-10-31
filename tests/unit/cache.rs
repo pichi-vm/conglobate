@@ -185,9 +185,9 @@ fn manifest_resolution_does_not_silently_stand_in_for_content_verification() {
     let pin = store.index(vec![store.descriptor(&digest, encoded.len())]);
     let cache = store.open();
     let image = cache.resolve(pin).unwrap();
-    assert!(cache.verify_references(&image).is_err());
+    assert!(cache.verify_metadata(&image).is_err());
     store.put(config);
-    cache.verify_references(&image).unwrap();
+    cache.verify_metadata(&image).unwrap();
 }
 
 impl Store {
@@ -197,19 +197,30 @@ impl Store {
         parent: [u8; 32],
         compressed: bool,
     ) -> (crate::artifact::Layer, [u8; 32]) {
-        let extent = conglobate::chain::ScuteExtent::new(data.len() as u64, &parent, None).unwrap();
-        let root = extent.root(data).unwrap();
+        use crate::tests::ScuteFixture as _;
+        let (header, tree, root) = data.scute_files(parent);
+        let data_blocks = std::num::NonZero::new((data.len() as u64).div_ceil(4096)).unwrap();
         let bytes = if compressed {
-            zstd::stream::encode_all(data, 1).unwrap()
+            b"opaque compressed input".to_vec()
         } else {
             data.to_vec()
         };
         let digest = self.put(&bytes);
+        let directory = self.path(&digest).with_extension("prepared");
+        std::fs::create_dir_all(&directory).unwrap();
+        let key = hex::encode(Sha256::digest(header.encode()));
+        std::fs::write(directory.join(format!("{key}.verity")), tree).unwrap();
+        let size = header.parameters.data_size().unwrap();
+        if compressed || data.len() as u64 != size {
+            let mut padded = data.to_vec();
+            padded.resize(size as usize, 0);
+            std::fs::write(directory.join(format!("{size}.deflated")), padded).unwrap();
+        }
         let descriptor = crate::artifact::ScuteDescriptor {
             digest: digest.to_string(),
             size: bytes.len() as u64,
             annotations: crate::artifact::ScuteAnnotations {
-                data_blocks: extent.header().parameters.data.count,
+                data_blocks,
                 salt: hex::encode(parent),
             },
         };
@@ -248,16 +259,11 @@ impl Store {
         layers: Vec<crate::artifact::Layer>,
         root: [u8; 32],
     ) -> conglobate::cache::ResolvedImage {
-        self.open().resolve(self.chain_index(layers, root)).unwrap()
-    }
-    fn chain_index(
-        &self,
-        layers: Vec<crate::artifact::Layer>,
-        root: [u8; 32],
-    ) -> conglobate::image::IndexDigest {
         let bytes = self.manifest_bytes(layers, root);
         let digest = self.put(&bytes);
-        self.index(vec![self.descriptor(&digest, bytes.len())])
+        self.open()
+            .resolve(self.index(vec![self.descriptor(&digest, bytes.len())]))
+            .unwrap()
     }
     fn placeholder_digest() -> Digest {
         "sha256:1111111111111111111111111111111111111111111111111111111111111111"
@@ -316,17 +322,22 @@ fn former_harness_descriptor_rejects_wrong_size_and_digest() {
 }
 
 #[test]
-fn authenticated_manifest_still_checks_referenced_layers() {
+fn exporting_an_authenticated_manifest_still_checks_layer_copies() {
     let store = Store::new();
     let (layer, root) = store.scute(&[7; 4096], [0; 32], false);
     let image = store.chain_image(vec![layer.clone()], root);
     let cache = store.open();
-    cache.verify_content(&image).unwrap().unwrap();
+    cache.verify_metadata(&image).unwrap();
     let digest = layer.digest_str().parse().unwrap();
     let mut changed = std::fs::read(store.path(&digest)).unwrap();
     changed[0] ^= 1;
     std::fs::write(store.path(&digest), changed).unwrap();
-    assert!(cache.verify_content(&image).is_err());
+    cache.verify_metadata(&image).unwrap();
+    assert!(
+        cache
+            .copy_verified(&digest, layer.size(), &mut std::io::sink())
+            .is_err()
+    );
 }
 
 #[test]
@@ -381,151 +392,38 @@ fn fixture_lock_authenticates_manifest_and_index_bytes() {
     }
 }
 #[test]
-fn chain_verification_preserves_manifest_order_for_mixed_compressed_layers() {
+fn manifest_tip_is_captured_without_scanning_encoded_scutes() {
     let store = Store::new();
     let (base, base_root) = store.scute(&[7; 8192], [0; 32], false);
     let (top, top_root) = store.scute(&[9; 4097], base_root, true);
-    let image = store.chain_image(vec![base, top], top_root);
-    let chain = store.open().verify_chain(&image).unwrap().unwrap();
-    assert_eq!(chain.root(), &top_root);
-    assert_eq!(chain.scutes().len(), 2);
-    assert_eq!(chain.scutes()[0].root(), &base_root);
-    assert_eq!(chain.scutes()[1].extent().size(), 4097);
-    assert!(chain.scutes()[1].compressed());
-}
-#[test]
-fn duplicate_and_multiple_base_chains_fail() {
-    let store = Store::new();
-    let (base, root) = store.scute(&[7; 4096], [0; 32], false);
-    let (other, _) = store.scute(&[9; 4096], [0; 32], true);
-    // A manifest cannot contain the same base twice or two different bases.
-    for layers in [vec![base.clone(), base.clone()], vec![base, other]] {
-        assert!(
-            store
-                .open()
-                .resolve(store.chain_index(layers, root))
-                .is_err()
-        );
+    let layers = vec![base, top];
+    let image = store.chain_image(layers.clone(), top_root);
+    assert_eq!(image.root(), Some(top_root));
+    for layer in layers {
+        std::fs::remove_file(store.path(&layer.digest_str().parse().unwrap())).unwrap();
     }
+    // Neither encoded blobs nor regenerated hash trees are needed for metadata.
+    // Actual filesystem access must open prepared files and verify reads instead.
+    store.open().verify_metadata(&image).unwrap();
 }
 
 #[test]
-fn child_scutes_cannot_be_reordered_or_omitted() {
+fn reconstruction_annotations_do_not_configure_execution() {
     let store = Store::new();
-    let (base, base_root) = store.scute(&[7; 8192], [0; 32], false);
-    let (middle, middle_root) = store.scute(&[8; 8192], base_root, true);
-    let (top, top_root) = store.scute(&[9; 8192], middle_root, false);
-    let image = store.chain_image(vec![base.clone(), middle.clone(), top.clone()], top_root);
-    store.open().verify_chain(&image).unwrap();
-    for layers in [vec![base.clone(), top.clone(), middle], vec![base, top]] {
-        // Both manifests have their base first. Only content verification can
-        // establish that each subsequent parent is the preceding scute.
-        let image = store.chain_image(layers, top_root);
-        assert!(
-            store
-                .open()
-                .verify_chain(&image)
-                .unwrap_err()
-                .to_string()
-                .contains("base-to-tip order")
-        );
-    }
-}
-
-#[test]
-fn manifest_tip_must_commit_the_complete_chain() {
-    let store = Store::new();
-    let (base, base_root) = store.scute(&[7; 8192], [0; 32], false);
-    let (top, top_root) = store.scute(&[9; 4097], base_root, true);
-    for root in [base_root, [1; 32]] {
-        let image = store.chain_image(vec![base.clone(), top.clone()], root);
-        assert!(
-            store
-                .open()
-                .verify_chain(&image)
-                .unwrap_err()
-                .to_string()
-                .contains("manifest tip")
-        );
-    }
-    // Even a matching tip cannot authorize an incomplete chain.
-    assert!(
-        store
-            .open()
-            .resolve(store.chain_index(vec![top], top_root))
-            .is_err()
-    );
-}
-#[test]
-fn scute_digest_and_decoded_block_count_are_both_enforced() {
-    let store = Store::new();
-    let (mut layer, root) = store.scute(&[7; 8192], [0; 32], true);
-    let crate::artifact::Layer::ScuteZstd(descriptor) = &mut layer else {
-        unreachable!()
-    };
-    descriptor.annotations.data_blocks = 1u64.try_into().unwrap();
-    let image = store.chain_image(vec![layer], root);
-    assert!(store.open().verify_chain(&image).is_err());
-    let (layer, root) = store.scute(&[7; 4096], [0; 32], false);
-    let digest: Digest = layer.digest_str().parse().unwrap();
-    let image = store.chain_image(vec![layer], root);
-    std::fs::write(store.path(&digest), [8; 4096]).unwrap();
-    assert!(
-        store
-            .open()
-            .verify_chain(&image)
-            .unwrap_err()
-            .to_string()
-            .contains("content mismatch")
-    );
-}
-
-#[test]
-fn compressed_scutes_reject_invalid_streams_even_with_matching_oci_digests() {
-    let store = Store::new();
-    let data = [7; 8192];
-    let (_, root) = store.scute(&data, [0; 32], true);
-    let mut encoder = zstd::stream::Encoder::new(Vec::new(), 1).unwrap();
-    encoder.include_checksum(true).unwrap();
-    std::io::Write::write_all(&mut encoder, &data).unwrap();
-    let valid = encoder.finish().unwrap();
-    let mut wrong_checksum = valid.clone();
-    *wrong_checksum.last_mut().unwrap() ^= 1;
-    let truncated = valid[..valid.len() - 1].to_vec();
-    let mut trailing_junk = valid.clone();
-    trailing_junk.extend(b"invalid trailing frame");
-    for bytes in [wrong_checksum, truncated, trailing_junk] {
-        // Digest the invalid compressed bytes themselves so decoder validation,
-        // not a stale OCI digest, must reject this fixture.
-        let digest = store.put(&bytes);
-        let descriptor = crate::artifact::ScuteDescriptor {
-            digest: digest.to_string(),
-            size: bytes.len() as u64,
-            annotations: crate::artifact::ScuteAnnotations {
-                data_blocks: 2u64.try_into().unwrap(),
-                salt: hex::encode([0; 32]),
-            },
-        };
-        let image = store.chain_image(vec![crate::artifact::Layer::ScuteZstd(descriptor)], root);
-        assert!(store.open().verify_chain(&image).is_err());
-    }
-    // Concatenated valid frames describe one complete decoded scute stream.
-    let mut frames = zstd::stream::encode_all(&data[..4096], 1).unwrap();
-    frames.extend(zstd::stream::encode_all(&data[4096..], 1).unwrap());
-    let digest = store.put(&frames);
-    let descriptor = crate::artifact::ScuteDescriptor {
-        digest: digest.to_string(),
-        size: frames.len() as u64,
-        annotations: crate::artifact::ScuteAnnotations {
-            data_blocks: 2u64.try_into().unwrap(),
-            salt: hex::encode([0; 32]),
-        },
-    };
-    let image = store.chain_image(vec![crate::artifact::Layer::ScuteZstd(descriptor)], root);
-    assert_eq!(
-        store.open().verify_chain(&image).unwrap().unwrap().root(),
-        &root
-    );
+    let (layer, root) = store.scute(&[7; 8192], [0; 32], true);
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&store.manifest_bytes(vec![layer], root)).unwrap();
+    manifest["annotations"]["dev.pichi.carapace.verity.version"] = "99".into();
+    manifest["annotations"]["dev.pichi.carapace.verity.hash-type"] = "0".into();
+    manifest["annotations"]["dev.pichi.carapace.verity.algo"] = "untrusted hint".into();
+    let bytes = serde_json::to_vec(&manifest).unwrap();
+    let digest = store.put(&bytes);
+    let cache = store.open();
+    let image = cache
+        .resolve(store.index(vec![store.descriptor(&digest, bytes.len())]))
+        .unwrap();
+    assert_eq!(image.root(), Some(root));
+    cache.verify_metadata(&image).unwrap();
 }
 
 #[test]
@@ -581,4 +479,134 @@ fn decoded_manifest_still_requires_structural_validation() {
             .downcast_ref::<crate::artifact::ManifestValidationError>()
             .is_some()
     );
+}
+
+#[test]
+fn prepared_discovery_requires_manifest_order_and_complete_chain() {
+    use conglobate::cache::FromIndex as _;
+    let store = Store::new();
+    let (base, base_root) = store.scute(&[1; 8192], [0; 32], false);
+    let (middle, middle_root) = store.scute(&[2; 4097], base_root, true);
+    let (tip, tip_root) = store.scute(&[3; 8192], middle_root, false);
+    let cache = store.open();
+    for (layers, valid) in [
+        (vec![base.clone(), middle.clone(), tip.clone()], true),
+        (vec![base.clone(), tip.clone(), middle], false),
+        (vec![base.clone(), tip], false),
+        (vec![base], false),
+    ] {
+        let image = store.chain_image(layers, tip_root);
+        let result = carapace::Chain::from_index(&cache, &image);
+        assert_eq!(result.is_ok(), valid, "{result:?}");
+        if let Ok(chain) = result {
+            assert_eq!(chain.root.as_ref(), &tip_root);
+            assert_eq!(chain.scutes.len(), 3);
+        }
+    }
+}
+
+#[test]
+fn prepared_variants_are_selected_by_root_and_payloads_remain_lazy() {
+    use conglobate::cache::FromIndex as _;
+    use std::os::unix::fs::FileExt as _;
+    let store = Store::new();
+    // The same blob has valid prepared variants with different parents.
+    let (base, base_root) = store.scute(&[4; 8192], [0; 32], false);
+    let (tip, tip_root) = store.scute(&[4; 8192], base_root, false);
+    // Other images can retain variants outside Carapace's hash convention.
+    // Their presence must not hide the matching normal-format preparation.
+    use crate::tests::ScuteFixture as _;
+    use devmap_verity::Format as _;
+    let (mut other_header, _, _) = [4; 8192].scute_files([0; 32]);
+    other_header.parameters.hash_type = devmap_verity::HashType::ChromeOs;
+    let mut other_tree = std::io::Cursor::new(Vec::new());
+    other_header
+        .format([4; 8192].as_slice(), &mut other_tree)
+        .unwrap();
+    let directory = store
+        .path(&tip.digest_str().parse().unwrap())
+        .with_extension("prepared");
+    std::fs::write(
+        directory.join("other-format.verity"),
+        other_tree.into_inner(),
+    )
+    .unwrap();
+    let cache = store.open();
+    for (layers, root, count) in [
+        (vec![base.clone()], base_root, 1),
+        (vec![base, tip.clone()], tip_root, 2),
+    ] {
+        let image = store.chain_image(layers, root);
+        let chain = carapace::Chain::from_index(&cache, &image).unwrap();
+        assert_eq!(chain.scutes.len(), count);
+        assert!(chain.scutes[0].data.write_all_at(b"x", 0).is_err());
+    }
+    let path = store.path(&tip.digest_str().parse().unwrap());
+    let (base, _) = store.scute(&[4; 8192], [0; 32], false);
+    let image = store.chain_image(vec![base], base_root);
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(&path)
+        .unwrap()
+        .write_all_at(b"x", 4096)
+        .unwrap();
+    let chain = carapace::Chain::from_index(&cache, &image).unwrap();
+    // Discovery retained the opened inode when the cache pathname is replaced.
+    std::fs::remove_file(&path).unwrap();
+    std::fs::write(path, [9; 8192]).unwrap();
+    let mut byte = [0];
+    chain.scutes[0].data.read_exact_at(&mut byte, 4096).unwrap();
+    assert_eq!(byte, [b'x']);
+}
+
+#[test]
+fn prepared_root_and_header_mutations_are_rejected() {
+    use conglobate::cache::FromIndex as _;
+    let store = Store::new();
+    let (base, root) = store.scute(&[1; 8192], [0; 32], false);
+    let image = store.chain_image(vec![base.clone()], root);
+    let directory = store
+        .path(&base.digest_str().parse().unwrap())
+        .with_extension("prepared");
+    let path = std::fs::read_dir(&directory)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let bytes = std::fs::read(&path).unwrap();
+    let cache = store.open();
+    for offset in [8, 88, 4096] {
+        let mut changed = bytes.clone();
+        changed[offset] ^= 1;
+        std::fs::write(&path, changed).unwrap();
+        assert!(carapace::Chain::from_index(&cache, &image).is_err());
+    }
+    std::fs::write(&path, &bytes).unwrap();
+    std::fs::write(directory.join("duplicate.verity"), &bytes).unwrap();
+    assert!(carapace::Chain::from_index(&cache, &image).is_err());
+}
+
+#[test]
+fn compressed_and_partial_inputs_use_prepared_data_including_single_block_trees() {
+    use conglobate::cache::FromIndex as _;
+    use std::os::unix::fs::FileExt as _;
+    for (size, compressed) in [
+        (4096, false),
+        (4097, false),
+        (4097, true),
+        (129 * 4096, false),
+    ] {
+        let store = Store::new();
+        let (base, root) = store.scute(&vec![3; size], [0; 32], compressed);
+        let image = store.chain_image(vec![base.clone()], root);
+        if compressed {
+            std::fs::remove_file(store.path(&base.digest_str().parse().unwrap())).unwrap();
+        }
+        let chain = carapace::Chain::from_index(&store.open(), &image).unwrap();
+        let mut bytes = vec![0; size.div_ceil(4096) * 4096];
+        chain.scutes[0].data.read_exact_at(&mut bytes, 0).unwrap();
+        assert!(bytes[..size].iter().all(|b| *b == 3));
+        assert!(bytes[size..].iter().all(|b| *b == 0));
+    }
 }

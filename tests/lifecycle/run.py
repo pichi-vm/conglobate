@@ -87,7 +87,8 @@ class LifecycleRun:
                                env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             runtime.executable(probe, Path('usr/bin/clone-probe'))
         if self.args.case in ("cache-storage", "chain-storage", "oci-copy"):
-            CacheFixture(self.root / "cache-fixture").create()
+            fixture = CacheFixture(self.root / "cache-fixture")
+            fixture.create()
         binary = target / 'debug/conglobate-lifecycle-tests'
         runtime.executable(binary, Path('lifecycle-tests'))
         runtime.executable(binary, Path('usr/bin/formatter-stall'))
@@ -246,7 +247,8 @@ exec sleep infinity
         elif self.args.case == 'cache-storage':
             markers = ['VERITY_TERMINAL_CLOSE_RETAINS_LIVE_HOLDER_PASS',
                        'VERITY_CACHE_CORRUPTION_READ_REJECTED_PASS',
-                       'CACHE_BACKED_SCUTE_PREPARATION_PASS', 'OWNED_VERITY_READ_AND_CLEANUP_PASS']
+                       'PREPARED_INPUTS_USE_VALIDATED_HEADERS_PASS', 'OWNED_VERITY_READ_AND_CLEANUP_PASS',
+                       'INPUT_CORRUPTION_IS_LAZY_PASS', 'MISSING_ROOT_DISCOVERY_REJECTED_PASS']
         elif self.args.case == 'sandbox-supervisor-death':
             markers = ['FILESYSTEM_WRITER_UNINTERRUPTIBLE_PASS', 'SUPERVISOR_ABRUPT_DEATH_INJECTED']
         elif self.args.case == 'sandbox-delayed-teardown':

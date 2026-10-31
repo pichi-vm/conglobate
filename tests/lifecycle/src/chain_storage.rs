@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+use conglobate::cache::FromIndex as _;
 use std::{
     collections::BTreeSet,
     fs,
@@ -13,7 +14,7 @@ use std::{
 #[derive(Debug)]
 pub(super) struct ChainStorage;
 impl ChainStorage {
-    fn mappings() -> std::io::Result<BTreeSet<std::ffi::OsString>> {
+    pub(super) fn mappings() -> std::io::Result<BTreeSet<std::ffi::OsString>> {
         fs::read_dir("/sys/block")?
             .filter_map(|entry| match entry {
                 Ok(entry) if entry.file_name().as_encoded_bytes().starts_with(b"dm-") => {
@@ -52,18 +53,21 @@ impl ChainStorage {
         for name in ["invalid-header", "chain"] {
             let pin = fs::read_to_string(format!("/cache-fixture/{name}.pin"))?;
             let image = cache.resolve(pin.parse()?)?;
-            let chain = cache.verify_chain(&image)?.ok_or("missing chain")?;
+            let root = image.root().ok_or("missing chain")?;
+            let discovery = carapace::Chain::from_index(&cache, &image)?;
             if name == "invalid-header" {
-                let failure = chain.assemble(&cache, &workspace).unwrap_err();
+                // Discovery reads verity headers. The snapshot header is data:
+                // activation must read it through verity before accepting it.
+                let failure =
+                    conglobate::storage::ReadOnlyChain::assemble(Some(discovery), &[]).unwrap_err();
                 assert_eq!(failure.kind(), std::io::ErrorKind::InvalidData);
                 drop(failure);
                 println!("INVALID_SECOND_SCUTE_REJECTED_PASS");
                 continue;
             }
-            let mounted = chain
-                .assemble(&cache, &workspace)
+            let mounted = conglobate::storage::ReadOnlyChain::assemble(Some(discovery), &[])
                 .map_err(|e| e.to_string())?;
-            assert_eq!(mounted.root(), chain.root());
+            assert_eq!(mounted.root(), &root);
             let id = mounted.id();
             let node = Path::new("/dev/conglobate-chain-probe");
             rustix::fs::mknodat(
@@ -159,7 +163,7 @@ impl ChainStorage {
             reader.rewind()?;
             reader.read_exact(&mut bytes)?;
             assert_eq!(bytes, inherited);
-            assert_eq!(cache.verify_chain(&image)?.unwrap().root(), chain.root());
+            assert_eq!(image.root(), Some(root));
             println!("WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS");
             let scute = std::sync::Arc::new(scratch.seal_snapshot(*mounted.root())?);
             let root = *scute.root();

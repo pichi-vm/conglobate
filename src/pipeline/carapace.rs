@@ -14,12 +14,12 @@ use std::{num::NonZeroU64, sync::Arc};
 /// Successful retained layers and their live read-only chain, ready for the next
 /// stage. The reaper transfers with the build instead of being reinstalled.
 #[derive(Debug)]
-pub(super) struct DerivedCarapace<'s, 'w> {
-    pub(super) active: crate::storage::ReadOnlyChain<'s, 'w>,
+pub(super) struct DerivedCarapace<'w> {
+    pub(super) active: crate::storage::ReadOnlyChain<'w>,
     pub(super) scutes: Vec<Arc<SealedScute<'w>>>,
     pub(super) reaper: ChildReaper,
 }
-impl<'s, 'w> DerivedCarapace<'s, 'w> {
+impl<'w> DerivedCarapace<'w> {
     pub(super) fn derive(
         self,
         build: &ResolvedBuild,

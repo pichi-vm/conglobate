@@ -97,7 +97,7 @@ impl Pipeline {
             let (result, next_reaper) = (|| -> anyhow::Result<_> {
                 match task.kind() {
                     TaskKind::Bootstrap(stage) => {
-                        let active = input.activate(build, workspace)?;
+                        let active = input.activate(build.cache())?;
                         let result = bootstrap::BootstrapBuild::new(
                             build,
                             stage,
@@ -124,7 +124,7 @@ impl Pipeline {
                     TaskKind::Extend => {
                         let mut output = input;
                         if !task.directives().is_empty() {
-                            let active = output.activate(build, workspace)?;
+                            let active = output.activate(build.cache())?;
                             let derived = carapace::DerivedCarapace {
                                 active,
                                 scutes: output.produced,
@@ -147,7 +147,7 @@ impl Pipeline {
                         }
                     }
                     TaskKind::Build => {
-                        let active = input.activate(build, workspace)?;
+                        let active = input.activate(build.cache())?;
                         let result = firmware::BuildTools {
                             active,
                             root: carapace,

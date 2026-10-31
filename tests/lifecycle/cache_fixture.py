@@ -35,6 +35,9 @@ class CacheFixture:
                      'annotations': {'dev.pichi.scute.verity.salt': salt.hex(),
                                      'dev.pichi.scute.verity.data-blocks': str((len(data) + 4095) // 4096)}}
             self.image(name, [layer], root)
+            if name == 'aligned':
+                self.image('header-hints', [layer], root)
+                self.image('missing-root', [layer], '11' * 32)
         self.pinned_manifest()
         self.chains()
 
@@ -56,6 +59,13 @@ class CacheFixture:
                        [('algo', 'sha256'), ('data-block-size', '4096'),
                         ('hash-block-size', '4096'), ('version', '1'), ('hash-type', '1'),
                         ('hash', root)]}
+        if name == 'header-hints':
+            # These reconstruction hints must not configure guest activation.
+            annotations.update({'dev.pichi.carapace.verity.version': '99',
+                                'dev.pichi.carapace.verity.hash-type': '0',
+                                'dev.pichi.carapace.verity.algo': 'untrusted hint'})
+        for layer in layers:
+            self.prepare(layer)
         manifest = json.dumps({'schemaVersion': 2,
             'mediaType': 'application/vnd.oci.image.manifest.v1+json',
             'artifactType': 'application/vnd.pichi.artifact.v1+json',
@@ -94,3 +104,27 @@ class CacheFixture:
                                                'dev.pichi.scute.verity.data-blocks': str(len(data) // 4096)}})
                 parent = root
             self.image('chain' if valid else 'invalid-header', layers, parent.hex())
+
+    def prepare(self, layer):
+        """Independent host-side preparation for the small disposable fixtures."""
+        data = (self.root / 'blobs/sha256' / layer['digest'].split(':')[1]).read_bytes()
+        if layer['mediaType'].endswith('+zstd'):
+            data = subprocess.check_output(['zstd', '-q', '-d', '-c'], input=data)
+        blocks = int(layer['annotations']['dev.pichi.scute.verity.data-blocks'])
+        assert (len(data) + 4095) // 4096 == blocks and 1 < blocks <= 128
+        data = data.ljust(blocks * 4096, b'\0')
+        salt = bytes.fromhex(layer['annotations']['dev.pichi.scute.verity.salt'])
+        hashes = b''.join(hashlib.sha256(salt + data[i:i + 4096]).digest()
+                          for i in range(0, len(data), 4096)).ljust(4096, b'\0')
+        root = hashlib.sha256(salt + hashes).digest()
+        header = bytearray(4096)
+        struct.pack_into('<8sII16s32sIIQH', header, 0, b'verity\0\0', 1, 1,
+                         bytes(16), b'sha256', 4096, 4096, blocks, len(salt))
+        header[88:88 + len(salt)] = salt
+        source = self.root / 'blobs/sha256' / layer['digest'].split(':')[1]
+        directory = source.with_suffix('.prepared')
+        directory.mkdir(exist_ok=True)
+        key = hashlib.sha256(header[:512]).hexdigest()
+        (directory / (key + '.verity')).write_bytes(bytes(header) + hashes)
+        if layer['mediaType'].endswith('+zstd') or layer['size'] != len(data):
+            (directory / (str(len(data)) + '.deflated')).write_bytes(data)

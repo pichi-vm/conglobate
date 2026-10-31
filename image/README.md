@@ -88,3 +88,8 @@ salts. Firmware remains in its OCI blob paths.
 
 `image/build.sh` writes `image/.build/` and a temporary `image/mkosi.extra/`.
 Neither is source.
+
+Input scutes are prepared by Pichi in the read-only cache.
+Conglobate discovers them in manifest order from its trusted tip and delegates
+header validation and lazy block verification to Carapace. The encoded OCI
+cache supplies metadata and blobs for output copies, not a decompression path.

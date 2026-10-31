@@ -4,19 +4,19 @@
 use super::StagedDirectory;
 use crate::artifact::{CARAPACE_ROOT_ANNOTATION, Digest};
 use crate::{
-    cache::{Cache, CacheError, ResolvedImage, VerifiedChain},
+    cache::{Cache, CacheError, ResolvedImage},
     image::IndexDigest,
 };
 use sha2::{Digest as _, Sha256};
 
-/// A self-contained staged image whose manifest, referenced content and chain
-/// were verified from the output storage. No mutable staging authority escapes.
+/// A self-contained staged image whose copied blobs were authenticated and
+/// whose new scutes were sealed against the selected parent root.
+/// No mutable staging authority escapes.
 /// This is not a successful plan execution or a publication receipt.
 #[derive(Debug)]
 pub(crate) struct AssembledImage {
     staged: StagedDirectory,
     image: ResolvedImage,
-    chain: Option<VerifiedChain>,
 }
 impl AssembledImage {
     fn verity_annotations() -> serde_json::Value {
@@ -99,14 +99,13 @@ impl AssembledImage {
             annotations.insert("dev.pichi.build.location".into(), location.into());
         }
         let old_digest = self.image.manifest_bytes().digest().clone();
-        let (image, chain) = Self::resolve_staging(
+        let image = Self::resolve_staging(
             &self.staged,
             &serde_json::to_vec(&manifest)?,
             self.image.architecture(),
         )?;
         anyhow::ensure!(
-            self.chain.as_ref().map(|chain| chain.root())
-                == chain.as_ref().map(|chain| chain.root()),
+            self.image.root() == image.root(),
             "build binding changed the scute graph"
         );
         let new_digest = Digest::Sha256(Sha256::digest(image.manifest_bytes().bytes()).into());
@@ -114,7 +113,6 @@ impl AssembledImage {
             std::fs::remove_file(self.staged.blob_path(&old_digest))?;
         }
         self.image = image;
-        self.chain = chain;
         Ok(self)
     }
     pub(crate) fn publish(self) -> std::io::Result<()> {
@@ -123,10 +121,6 @@ impl AssembledImage {
     #[cfg(test)]
     pub(crate) fn image(&self) -> &ResolvedImage {
         &self.image
-    }
-    #[cfg(test)]
-    pub(crate) fn chain(&self) -> Option<&VerifiedChain> {
-        self.chain.as_ref()
     }
     #[cfg(test)]
     pub(crate) fn discard(self) -> std::io::Result<()> {
@@ -197,7 +191,7 @@ impl AssembledImage {
                     "config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
             };
             let mut parent = match base {
-                Some(image) => cache.verify_chain(image)?.map(|chain| *chain.root()),
+                Some(image) => image.root(),
                 None => Some([0; 32]),
             };
             if base.is_none() && !scutes.is_empty() {
@@ -246,11 +240,7 @@ impl AssembledImage {
             Ok(resolved)
         })();
         match result {
-            Ok((image, chain)) => Ok(Self {
-                staged,
-                image,
-                chain,
-            }),
+            Ok(image) => Ok(Self { staged, image }),
             Err(source) => {
                 let error = anyhow::Error::new(source);
                 Err(match staged.discard() {
@@ -310,11 +300,7 @@ impl AssembledImage {
             Ok(resolved)
         })();
         match result {
-            Ok((image, chain)) => Ok(Self {
-                staged,
-                image,
-                chain,
-            }),
+            Ok(image) => Ok(Self { staged, image }),
             Err(source) => {
                 let error = anyhow::Error::new(source);
                 Err(match staged.discard() {
@@ -328,7 +314,7 @@ impl AssembledImage {
         staged: &StagedDirectory,
         manifest: &[u8],
         architecture: crate::cache::HostArchitecture,
-    ) -> Result<(ResolvedImage, Option<VerifiedChain>), CacheError> {
+    ) -> Result<ResolvedImage, CacheError> {
         let digest = staged.store_blob(manifest)?;
         let index = serde_json::to_vec(&crate::artifact::Index {
             manifests: vec![crate::artifact::IndexDescriptor {
@@ -357,11 +343,11 @@ impl AssembledImage {
         )?;
         let output_cache = Cache::open(staged.temporary.path())?;
         let output_image = output_cache.resolve(pin)?;
-        let chain = output_cache.verify_content(&output_image)?;
+        output_cache.verify_metadata(&output_image)?;
         // The index is the layout entrypoint, not referenced by its own
         // manifest. Remove the temporary lookup blob after validation.
         std::fs::remove_file(staged.blob_path(&Digest::Sha256(Sha256::digest(&index).into())))?;
-        Ok((output_image, chain))
+        Ok(output_image)
     }
     fn assemble(
         cache: &Cache,
@@ -426,7 +412,7 @@ impl AssembledImage {
                     .map_err(|_| CacheError::Invalid("invalid output layer digest"))?;
                 staged.copy_blob(cache, &digest, layer.size())?;
             }
-            let mut parent = cache.verify_chain(image)?.map(|chain| *chain.root());
+            let mut parent = image.root();
             for scute in scutes {
                 if parent.as_ref() != Some(scute.parent()) {
                     return Err(CacheError::Invalid(
@@ -455,11 +441,7 @@ impl AssembledImage {
             Ok(resolved)
         })();
         match assembled {
-            Ok((image, chain)) => Ok(AssembledImage {
-                staged,
-                image,
-                chain,
-            }),
+            Ok(image) => Ok(AssembledImage { staged, image }),
             Err(source) => {
                 let error = anyhow::Error::new(source);
                 Err(match staged.discard() {
@@ -695,7 +677,7 @@ mod tests {
                     ] {
                         manifest["annotations"][format!("dev.pichi.build.{key}")] = "stale".into();
                     }
-                    let (stale, chain) = AssembledImage::resolve_staging(
+                    let stale = AssembledImage::resolve_staging(
                         &assembled.staged,
                         &serde_json::to_vec(&manifest).unwrap(),
                         image.architecture(),
@@ -706,7 +688,6 @@ mod tests {
                     );
                     fs::remove_file(assembled.staged.blob_path(&original)).unwrap();
                     assembled.image = stale;
-                    assembled.chain = chain;
                     let assembled = assembled.bind_build(&request, &captured).unwrap();
                     let final_manifest: serde_json::Value =
                         serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
@@ -823,7 +804,7 @@ mod tests {
         drop(cache);
         fs::remove_dir_all(input.directory.path()).unwrap();
         let cache = Cache::open(assembled.staged.temporary.path()).unwrap();
-        cache.verify_references(assembled.image()).unwrap();
+        cache.verify_metadata(assembled.image()).unwrap();
         assembled.discard().unwrap();
     }
     #[test]
@@ -842,7 +823,7 @@ mod tests {
             let assembled =
                 AssembledImage::derived(&cache, &image, &[], &destination, &unchanged).unwrap();
             assert!(!destination.exists());
-            assert!(assembled.chain().is_none());
+            assert!(assembled.image().root().is_none());
             assert_eq!(assembled.image().manifest_bytes().bytes(), input.manifest);
             drop(cache);
             fs::remove_dir_all(input.directory.path()).unwrap();
@@ -923,7 +904,7 @@ mod tests {
         assert_eq!(assembled.image().manifest_bytes().bytes(), input.manifest);
         Cache::open(assembled.staged.temporary.path())
             .unwrap()
-            .verify_references(assembled.image())
+            .verify_metadata(assembled.image())
             .unwrap();
         assembled.discard().unwrap();
         assert_eq!(fs::read_dir(parent.path()).unwrap().count(), 0);

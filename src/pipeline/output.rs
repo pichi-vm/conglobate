@@ -3,6 +3,7 @@
 
 use super::CompletedImage;
 use crate::{
+    cache::{Cache, FromIndex as _},
     input::{CheckedImage, ResolvedBuild},
     output::AssembledImage,
     plan::{Image, Local, Plan, Reference},
@@ -47,23 +48,18 @@ impl<'b, 'w> StageOutput<'b, 'w> {
         self.produced
             .last()
             .map(|s| *s.root())
-            .or_else(|| self.base.and_then(|b| b.chain()).map(|c| *c.root()))
+            .or_else(|| self.base.and_then(|b| b.root()))
     }
-    pub(super) fn activate(
-        &self,
-        build: &'b ResolvedBuild,
-        workspace: &'w Workspace,
-    ) -> anyhow::Result<ReadOnlyChain<'b, 'w>> {
-        let base = self.base.and_then(|base| base.chain());
+    pub(super) fn activate(&self, cache: &Cache) -> anyhow::Result<ReadOnlyChain<'w>> {
+        let base = self
+            .base
+            .filter(|base| base.root().is_some())
+            .map(|base| carapace::Chain::from_index(cache, base.image()))
+            .transpose()?;
         if base.is_none() && self.produced.is_empty() {
             return Err(anyhow!("task input requires a carapace"));
         }
-        Ok(ReadOnlyChain::assemble(
-            base,
-            &self.produced,
-            build.cache(),
-            workspace,
-        )?)
+        Ok(ReadOnlyChain::assemble(base, &self.produced)?)
     }
     pub(super) fn rewrite(
         &mut self,

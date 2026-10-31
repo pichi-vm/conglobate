@@ -39,7 +39,7 @@ impl<'a> BootstrapBuild<'a> {
         &self,
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
-        active: crate::storage::ReadOnlyChain<'_, 'w>,
+        active: crate::storage::ReadOnlyChain<'w>,
         reaper: ChildReaper,
         carapace: Option<&[u8; 32]>,
     ) -> anyhow::Result<Bootstrapped<'w>> {
@@ -60,7 +60,7 @@ impl<'a> BootstrapBuild<'a> {
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
         formatter: crate::formatter::FormatterRuntime,
-        active: crate::storage::ReadOnlyChain<'_, 'w>,
+        active: crate::storage::ReadOnlyChain<'w>,
         reaper: ChildReaper,
         carapace: Option<&[u8; 32]>,
     ) -> anyhow::Result<Bootstrapped<'w>> {

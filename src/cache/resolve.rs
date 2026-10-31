@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{Cache, CacheError, VerifiedChain, VerifiedMetadata};
+use super::{Cache, CacheError, VerifiedMetadata};
 use crate::artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
 use crate::artifact::{
     Index, MEDIA_TYPE_OCI_INDEX_V1 as INDEX, MEDIA_TYPE_OCI_MANIFEST_V1 as MANIFEST, Platform,
@@ -44,8 +44,14 @@ pub(crate) struct ResolvedImage {
     manifest_bytes: VerifiedMetadata,
     manifest: Manifest,
     architecture: HostArchitecture,
+    root: Option<[u8; 32]>,
 }
 impl ResolvedImage {
+    /// The commitment in the authenticated manifest, not a payload receipt.
+    pub(crate) fn root(&self) -> Option<[u8; 32]> {
+        self.root
+    }
+
     pub(crate) fn manifest_bytes(&self) -> &VerifiedMetadata {
         &self.manifest_bytes
     }
@@ -57,27 +63,9 @@ impl ResolvedImage {
     }
 }
 impl Cache {
-    /// Check every non-inline content descriptor in the selected manifest.
-    /// This is content identity verification, not scute-chain verification.
-    #[cfg(test)]
-    pub(crate) fn verify_references(&self, image: &ResolvedImage) -> Result<(), CacheError> {
-        self.verify_references_with_chain(image, None)
-    }
-    /// Combine initial identity and ancestry checks. This never authorizes a
-    /// later cache read: preparation still authenticates its own open inode.
-    pub(crate) fn verify_content(
-        &self,
-        image: &ResolvedImage,
-    ) -> Result<Option<VerifiedChain>, CacheError> {
-        let chain = self.verify_chain(image)?;
-        self.verify_references_with_chain(image, chain.as_ref())?;
-        Ok(chain)
-    }
-    fn verify_references_with_chain(
-        &self,
-        image: &ResolvedImage,
-        chain: Option<&VerifiedChain>,
-    ) -> Result<(), CacheError> {
+    /// Authenticate small non-scute inputs. Scutes are supplied separately by
+    /// Pichi and checked lazily by Carapace against the manifest commitment.
+    pub(crate) fn verify_metadata(&self, image: &ResolvedImage) -> Result<(), CacheError> {
         let manifest = image.manifest();
         let config = &manifest.config;
         if !config.is_empty() {
@@ -88,18 +76,17 @@ impl Cache {
             self.verify(&digest, config.size)?;
         }
         for layer in &manifest.layers {
+            if matches!(
+                layer,
+                crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
+            ) {
+                continue;
+            }
             let digest = layer
                 .digest_str()
                 .parse()
                 .map_err(|_| CacheError::Invalid("invalid layer digest"))?;
-            let verified = matches!(
-                layer,
-                crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
-            ) && chain
-                .is_some_and(|chain| chain.contains_verified(&digest, layer.size()));
-            if !verified {
-                self.verify(&digest, layer.size())?;
-            }
+            self.verify(&digest, layer.size())?;
         }
         Ok(())
     }
@@ -146,6 +133,7 @@ impl Cache {
         }
         Ok(ResolvedImage {
             manifest_bytes,
+            root: manifest.carapace_root()?,
             manifest,
             architecture,
         })
@@ -173,11 +161,12 @@ mod tests {
             let mut parent = [0; 32];
             for compressed in [false, true] {
                 let data = vec![7; if compressed { 4097 } else { 8192 }];
-                let extent =
-                    crate::chain::ScuteExtent::new(data.len() as u64, &parent, None).unwrap();
-                let root = extent.root(data.as_slice()).unwrap();
+                use crate::tests::ScuteFixture as _;
+                let root = data.scute_root(parent);
+                let data_blocks =
+                    std::num::NonZero::new((data.len() as u64).div_ceil(4096)).unwrap();
                 let bytes = if compressed {
-                    zstd::stream::encode_all(data.as_slice(), 1).unwrap()
+                    b"unread encoded scute".to_vec()
                 } else {
                     data
                 };
@@ -186,7 +175,7 @@ mod tests {
                     digest: digest.to_string(),
                     size: bytes.len() as u64,
                     annotations: ScuteAnnotations {
-                        data_blocks: extent.header().parameters.data.count,
+                        data_blocks,
                         salt: hex::encode(parent),
                     },
                 };
@@ -198,7 +187,6 @@ mod tests {
                 blobs.push((digest, bytes));
                 parent = root;
             }
-            let _derived_tip = parent; // boot derives tip; not an OCI stamp
             // Identity verification is distinct from firmware format validation.
             for (media, bytes) in [("pmi", b"firmware".as_slice()), ("dtb", b"tree".as_slice())] {
                 let digest = Digest::Sha256(Sha256::digest(bytes).into());
@@ -249,6 +237,7 @@ mod tests {
                     digest: Digest::Sha256(Sha256::digest(&bytes).into()),
                     bytes,
                 },
+                root: manifest.carapace_root().unwrap(),
                 manifest,
                 architecture: HostArchitecture::current().unwrap(),
             };
@@ -261,12 +250,10 @@ mod tests {
     }
 
     #[test]
-    fn combined_verification_rejects_each_changed_blob() {
+    fn metadata_checks_do_not_scan_scute_payloads() {
         let fixture = ContentFixture::new();
         let cache = Cache::open(fixture.directory.path()).unwrap();
-        let chain = cache.verify_content(&fixture.image).unwrap();
-        assert_eq!(chain.unwrap().scutes().len(), 2);
-        cache.verify_references(&fixture.image).unwrap();
+        cache.verify_metadata(&fixture.image).unwrap();
         for (digest, bytes) in &fixture.blobs {
             let path = fixture
                 .directory
@@ -276,8 +263,21 @@ mod tests {
             let mut changed = bytes.clone();
             changed[0] ^= 1;
             fs::write(&path, changed).unwrap();
-            assert!(cache.verify_content(&fixture.image).is_err(), "{digest}");
-            assert!(cache.verify_references(&fixture.image).is_err(), "{digest}");
+            let scute = fixture.image.manifest().layers.iter().any(|layer| {
+                matches!(layer, Layer::Scute(_) | Layer::ScuteZstd(_))
+                    && layer.digest_str() == digest.to_string()
+            });
+            assert_eq!(
+                cache.verify_metadata(&fixture.image).is_ok(),
+                scute,
+                "{digest}"
+            );
+            // Export still authenticates encoded bytes as it copies them.
+            assert!(
+                cache
+                    .copy_verified(digest, bytes.len() as u64, &mut std::io::sink())
+                    .is_err()
+            );
             fs::write(path, bytes).unwrap();
         }
     }

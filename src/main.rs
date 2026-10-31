@@ -8,7 +8,6 @@ mod anchor;
 mod appliance;
 use contract::artifact;
 mod cache;
-mod chain;
 mod context;
 mod copy;
 mod deadline;

@@ -7,7 +7,6 @@ extern crate self as conglobate;
 mod anchor;
 use contract::artifact;
 mod cache;
-mod chain;
 mod context;
 mod copy;
 mod deadline;

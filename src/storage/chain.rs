@@ -1,78 +1,56 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{Active, Created, Mapping, SealedScute, Workspace};
-use crate::cache::{Cache, PreparedScute, VerifiedChain};
+use super::{Active, Created, Mapping, SealedScute};
 use carapace::Assemble as _;
 use std::{fs::File, io, num::NonZeroU64, sync::Arc};
 
-/// Carapace owns the verified stack. The private linear mapping preserves this
-/// consumer's fallible close boundary without removing shared Carapace mappings.
-/// Prepared backing remains immutable and retained for subsequent extensions.
+/// Carapace owns the shared verified snapshot stack. The linear mapping
+/// preserves this consumer's fallible close boundary without removing
+/// Carapace's descriptor-owned mappings.
+/// Retain prepared file handles and locally produced scutes across extensions.
 #[derive(Debug)]
-pub(crate) struct ReadOnlyChain<'s, 'w> {
+pub(crate) struct ReadOnlyChain<'w> {
     mapping: Mapping<Active>,
     _source: File,
-    inputs: Vec<PreparedScute<'s, 'w>>,
-    root: [u8; 32],
+    inputs: carapace::Chain,
+    produced: Vec<Arc<SealedScute<'w>>>,
 }
 
-#[cfg(feature = "test-fixtures")]
-impl VerifiedChain {
-    pub(crate) fn assemble<'s, 'w>(
-        &'s self,
-        cache: &Cache,
-        workspace: &'w Workspace,
-    ) -> io::Result<ReadOnlyChain<'s, 'w>> {
-        ReadOnlyChain::assemble(Some(self), &[], cache, workspace)
-    }
-}
-
-impl<'s, 'w> ReadOnlyChain<'s, 'w> {
-    /// Collect inherited and newly sealed scutes before activating once.
+impl<'w> ReadOnlyChain<'w> {
+    /// Activate discovered inputs and newly sealed scutes together.
+    /// Carapace revalidates their headers and verifies every consumed data block.
     pub(crate) fn assemble(
-        base: Option<&'s VerifiedChain>,
+        base: Option<carapace::Chain>,
         produced: &[Arc<SealedScute<'w>>],
-        cache: &Cache,
-        workspace: &'w Workspace,
     ) -> io::Result<Self> {
-        let mut inputs = Vec::new();
-        let mut root = [0; 32];
-        if let Some(base) = base {
-            for scute in base.scutes() {
-                inputs.push(scute.prepare(cache, workspace).map_err(io::Error::other)?);
-            }
-            root = *base.root();
-        }
+        let mut inputs = base.unwrap_or_else(|| carapace::Chain {
+            root: Box::new([0; 32]),
+            scutes: Vec::new(),
+        });
         for scute in produced {
-            if scute.parent() != &root {
-                return Err(io::Error::other(
-                    "produced scute parent differs from input chain",
-                ));
-            }
-            inputs.push(PreparedScute::produced(Arc::clone(scute)));
-            root = *scute.root();
+            Self::append(&mut inputs, scute)?;
         }
-        Self::activate(inputs)
+        Self::activate(inputs, produced.to_vec())
     }
 
-    fn activate(inputs: Vec<PreparedScute<'s, 'w>>) -> io::Result<Self> {
-        let root = inputs.last().map_or([0; 32], |input| *input.root());
-        let scutes = inputs
-            .iter()
-            .map(|input| {
-                let (data, hash) = input.files();
-                Ok(carapace::Scute {
-                    data: data.try_clone()?,
-                    hash: hash.try_clone()?,
-                })
-            })
-            .collect::<io::Result<_>>()?;
-        let source = carapace::Chain {
-            root: root.to_vec().into_boxed_slice(),
-            scutes,
+    fn append(inputs: &mut carapace::Chain, scute: &SealedScute<'_>) -> io::Result<()> {
+        if inputs.root.as_ref() != scute.parent() {
+            return Err(io::Error::other(
+                "produced scute parent differs from input chain",
+            ));
         }
-        .assemble()?;
+        let (data, hash) = scute.files();
+        inputs.scutes.push(carapace::Scute {
+            data: data.try_clone()?,
+            hash: hash.try_clone()?,
+        });
+        inputs.root = Box::new(*scute.root());
+        Ok(())
+    }
+
+    fn activate(inputs: carapace::Chain, produced: Vec<Arc<SealedScute<'w>>>) -> io::Result<Self> {
+        let source = inputs.assemble()?;
         let target = devmap_linux::targets::Linear {
             device: source.metadata()?.try_into()?,
             offset: 0,
@@ -86,32 +64,31 @@ impl<'s, 'w> ReadOnlyChain<'s, 'w> {
             mapping,
             _source: source,
             inputs,
-            root,
+            produced,
         })
     }
 
     pub(crate) fn extend(self, scute: Arc<SealedScute<'w>>) -> io::Result<Self> {
-        if scute.parent() != &self.root {
-            return Err(io::Error::other(
-                "produced scute parent differs from active chain",
-            ));
-        }
-        let prepared = PreparedScute::produced(scute);
         let Self {
             mapping,
             _source,
             mut inputs,
-            ..
+            mut produced,
         } = self;
+        Self::append(&mut inputs, &scute)?;
         // Writable consumers must have completed before replacing this view.
         mapping.close()?;
         drop(_source);
-        inputs.push(prepared);
-        Self::activate(inputs)
+        produced.push(scute);
+        Self::activate(inputs, produced)
     }
 
     pub(crate) fn root(&self) -> &[u8; 32] {
-        &self.root
+        self.inputs
+            .root
+            .as_ref()
+            .try_into()
+            .expect("SHA-256 chain commitment")
     }
 
     /// Diagnostic identity, not an independent lifetime lease.
@@ -127,8 +104,8 @@ impl<'s, 'w> ReadOnlyChain<'s, 'w> {
     }
 }
 
-impl<'a> From<&'a ReadOnlyChain<'_, '_>> for super::SnapshotOrigin<'a> {
-    fn from(chain: &'a ReadOnlyChain<'_, '_>) -> Self {
+impl<'a> From<&'a ReadOnlyChain<'_>> for super::SnapshotOrigin<'a> {
+    fn from(chain: &'a ReadOnlyChain<'_>) -> Self {
         Self::from(&chain.mapping)
     }
 }
