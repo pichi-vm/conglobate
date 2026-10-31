@@ -22,8 +22,8 @@ IMAGE="${IMAGE:-ghcr.io/pichi-vm/conglobate}"
 ARMA="${ARMA:-arma}"
 CORIUM_GIT="${CORIUM_GIT:-https://github.com/pichi-vm/corium}"
 # Corium 0.2: Linux 7+, corium=<hash>, GPT discovery and /sbin/init handoff.
-# Same pin as the fedora base image.
-CORIUM_REV="${CORIUM_REV:-0c6f5743263b1d7afb298521859b6679eb67f2af}"
+# Includes the read-only mount view needed to reuse the root chain.
+CORIUM_REV="${CORIUM_REV:-81af93c28f5624b36e12227bb45442d477b07eb2}"
 CORIUM_TOOLCHAIN="${CORIUM_TOOLCHAIN:-stable}"
 CONGLOBATE_TOOLCHAIN="${CONGLOBATE_TOOLCHAIN:-1.94.0}"
 
