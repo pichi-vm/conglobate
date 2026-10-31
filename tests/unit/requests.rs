@@ -34,7 +34,7 @@ fn both_selected_configuration_paths_are_required() {
     let request = BuildRequest::parse_from(args).unwrap();
     assert_eq!(request.plan().as_ref(), Path::new("build/config.yml"));
     assert_eq!(request.lock().as_ref(), Path::new("pins/lock.yml"));
-    assert_eq!(request.context().as_ref(), Path::new(""));
+    assert_eq!(request.context().as_ref(), Path::new("."));
 }
 #[test]
 fn context_selection_does_not_rebase_configuration_against_plan_directory() {

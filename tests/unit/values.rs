@@ -27,7 +27,7 @@ fn context_relative_paths_do_not_gain_resolution_authority() {
         ContextPath::try_from(Path::new("a/../plans/build.yml"))
             .unwrap()
             .as_ref(),
-        Path::new("plans/build.yml")
+        Path::new("a/../plans/build.yml")
     );
 }
 

@@ -318,9 +318,14 @@ Explicit non-fields on the success response (must not appear; if present, reject
 - UID/GID maps, network-namespace path, resolv-conf path
 - `op` (request-only)
 
-Plan and lock paths are always relative to `context`. Conglobate opens the
-mounted repository at `/run/pichi/repo`, resolves `ref` to a commit, and uses
-`/run/pichi/cache` as the read-only image cache.
+Conglobate opens `/run/pichi/repo`, resolves `ref` to a commit, and resolves
+context symlinks against that committed tree. Context selection must stay
+within the repository; plan and lock resolution must stay within the selected
+context. Absolute paths, escaping links, missing components, and symlink loops
+are rejected. Parent components are resolved after symlinks, never removed
+lexically before traversal. This checks the committed source actually used
+by the build rather than unrelated working-tree contents. `/run/pichi/cache`
+is the read-only image cache.
 
 **Ref resolution (guest):** resolve `ref` with gix on the mounted repository to a
 single commit object. Accept a full object id (SHA-1 or SHA-256 hex) or a
