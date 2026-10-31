@@ -24,9 +24,9 @@ pub(crate) enum ApplianceError {
 
 /// Open `dev.pichi.build`, request build-input, decode the host response, run.
 ///
-/// v0 wire: guest writes `{"v":1,"op":"build-input"}`, then reads one
-/// self-delimiting CBOR response map (`ok:true` + build fields, or `ok:false`
-/// + `error`). Guest must not assume the host pushed bytes before the request.
+/// The guest writes `["build", 1, null]`, then reads `[true, Input]` or
+/// `[false, message]` as one self-delimiting CBOR array. The host responds
+/// only after the request.
 pub(crate) fn run() -> Result<(), ApplianceError> {
     let mut file = open_build_console(Path::new("/sys"), Path::new("/dev"))?;
     write_build_input_request(&mut file)?;

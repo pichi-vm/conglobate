@@ -1,13 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Host→guest build-input response CBOR: envelope + flat build fields.
-//!
-//! v0 response is a flat map with `v`/`ok` plus build-input fields on success
-//! (`ref`/`plan`/`lock`/optional `context`/`location`), or `error` on failure.
-//! Accept-list + reject-list name offenders.
+//! Host→guest build responses: `[true, Input]` or `[false, message]`.
 
-use crate::contract::build::{Input, Response};
+use crate::contract::launch::{Input, Response};
 use crate::{
     path::{ContextDirectory, ContextPath, PathError},
     request::{BuildRequest, CommitIdentity, RequestError},
@@ -23,7 +19,7 @@ pub(crate) enum ApplianceRequestError {
     Decode(String),
     #[error("build location must be a credential-free Git locator")]
     InvalidLocation,
-    #[error("appliance CBOR has trailing bytes after the response map")]
+    #[error("appliance CBOR has trailing bytes after the response")]
     TrailingBytes,
     #[error("host rejected build-input: {0}")]
     HostRejected(String),
@@ -66,15 +62,15 @@ impl ApplianceRequest {
         self.location.as_deref()
     }
 
-    /// Default prefetch for build-port response buffering. v0 maps are far
+    /// Default prefetch for build-port response buffering. Responses are far
     /// smaller; tests pin smaller capacities to cover the exact-fill boundary.
     const RESPONSE_PREFETCH: usize = 8 * 1024;
 
-    /// Decode one self-delimiting host response CBOR map from a reader.
+    /// Decode one self-delimiting host response CBOR array from a reader.
     ///
     /// Prefetches through a [`BufReader`]. Leftover bytes already in that
-    /// buffer after one map fail as trailing data. When `refill` is true, one
-    /// additional `fill_buf` runs so a map that ended exactly on a prefetch
+    /// buffer after one response fail as trailing data. When `refill` is true, one
+    /// additional `fill_buf` runs so a response that ended exactly on a prefetch
     /// boundary still rejects trailing bytes already available from the
     /// underlying reader (Cursor / chunked test readers return immediately;
     /// do not use `refill` on a blocking build-port file — use
@@ -102,7 +98,7 @@ impl ApplianceRequest {
         refill: bool,
     ) -> Result<Self, ApplianceRequestError> {
         let mut buffered = std::io::BufReader::with_capacity(capacity, reader);
-        let response: Response = ciborium::from_reader(&mut buffered)
+        let response: Response<Input> = ciborium::from_reader(&mut buffered)
             .map_err(|error| ApplianceRequestError::Decode(error.to_string()))?;
         if !buffered.buffer().is_empty() {
             return Err(ApplianceRequestError::TrailingBytes);
@@ -150,26 +146,25 @@ impl ApplianceRequest {
         }
     }
 
-    /// Decode a complete response buffer (one map, no trailing bytes).
+    /// Decode a complete response buffer (one response, no trailing bytes).
     #[cfg(test)]
     pub(crate) fn decode(bytes: &[u8]) -> Result<Self, ApplianceRequestError> {
         let mut cursor = std::io::Cursor::new(bytes);
         Self::decode_response(&mut cursor)
     }
 
-    fn from_response(response: Response) -> Result<Self, ApplianceRequestError> {
+    fn from_response(response: Response<Input>) -> Result<Self, ApplianceRequestError> {
         let input = match response {
-            Response::Success(input) => input,
-            Response::Failure(error) => return Err(ApplianceRequestError::HostRejected(error)),
+            Response::Ok(input) => input,
+            Response::Err(error) => return Err(ApplianceRequestError::HostRejected(error)),
         };
         let Input {
-            git_ref,
+            r#ref: git_ref,
             plan: plan_text,
             lock: lock_text,
-            context,
+            context: context_text,
             location,
         } = input;
-        let context_text = context.unwrap_or_else(|| ".".into());
         if let Some(location) = &location {
             // Parser errors can include the input; never surface them here.
             let locator = gix::url::parse(location.as_bytes().into())
@@ -255,42 +250,40 @@ mod tests {
     use super::*;
     use std::process::Command;
 
-    fn encode(map: &[(&str, Value)]) -> Vec<u8> {
-        let value = Value::Map(
-            map.iter()
-                .map(|(k, v)| (Value::Text((*k).into()), v.clone()))
+    fn encode(fields: &[(&str, Value)]) -> Vec<u8> {
+        let payload = Value::Map(
+            fields
+                .iter()
+                .map(|(key, value)| (Value::Text((*key).into()), value.clone()))
                 .collect(),
         );
         let mut bytes = Vec::new();
-        ciborium::into_writer(&value, &mut bytes).unwrap();
+        ciborium::into_writer(&Value::Array(vec![Value::Bool(true), payload]), &mut bytes).unwrap();
         bytes
     }
 
     fn required() -> Vec<(&'static str, Value)> {
         vec![
-            ("v", Value::Integer(1.into())),
-            ("ok", Value::Bool(true)),
             ("ref", Value::Text("refs/heads/main".into())),
             ("plan", Value::Text("plan.yml".into())),
             ("lock", Value::Text("lock.yml".into())),
+            ("context", Value::Text(".".into())),
         ]
     }
 
     fn host_error(message: &str) -> Vec<u8> {
-        encode(&[
-            ("v", Value::Integer(1.into())),
-            ("ok", Value::Bool(false)),
-            ("error", Value::Text(message.into())),
-        ])
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&Response::<Input>::Err(message.into()), &mut bytes).unwrap();
+        bytes
     }
 
     #[test]
     fn shared_host_response_is_consumed_without_translation() {
-        let response = Response::Success(Input {
-            git_ref: "refs/heads/main".into(),
+        let response = Response::Ok(Input {
+            r#ref: "refs/heads/main".into(),
             plan: "pichi.yaml".into(),
             lock: "pichi.lock".into(),
-            context: Some("project".into()),
+            context: "project".into(),
             location: Some("https://example.invalid/repo".into()),
         });
         let mut bytes = Vec::new();
@@ -304,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    fn accepts_required_fields_and_defaults_context() {
+    fn accepts_required_fields_and_explicit_root_context() {
         let request = ApplianceRequest::decode(&encode(&required())).unwrap();
         assert_eq!(request.git_ref(), "refs/heads/main");
         assert_eq!(request.plan().as_ref(), Path::new("plan.yml"));
@@ -314,9 +307,9 @@ mod tests {
     }
 
     #[test]
-    fn accepts_optional_context_and_location() {
+    fn accepts_selected_context_and_optional_location() {
         let mut fields = required();
-        fields.push(("context", Value::Text("project".into())));
+        fields[3] = ("context", Value::Text("project".into()));
         fields.push((
             "location",
             Value::Text("https://example.invalid/repo".into()),
@@ -324,6 +317,18 @@ mod tests {
         let request = ApplianceRequest::decode(&encode(&fields)).unwrap();
         assert_eq!(request.context().as_ref(), Path::new("project"));
         assert_eq!(request.location(), Some("https://example.invalid/repo"));
+    }
+
+    #[test]
+    fn accepts_null_location() {
+        let mut fields = required();
+        fields.push(("location", Value::Null));
+        assert_eq!(
+            ApplianceRequest::decode(&encode(&fields))
+                .unwrap()
+                .location(),
+            None
+        );
     }
 
     #[test]
@@ -344,7 +349,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_forbidden_and_unknown_keys_by_name() {
+    fn rejects_forbidden_and_unknown_keys() {
         for key in [
             "commit",
             "output",
@@ -358,30 +363,32 @@ mod tests {
         ] {
             let mut fields = required();
             fields.push((key, Value::Text("x".into())));
-            let error = ApplianceRequest::decode(&encode(&fields))
-                .unwrap_err()
-                .to_string();
-            assert!(error.contains(key), "{key}: {error}");
+            let error = ApplianceRequest::decode(&encode(&fields)).unwrap_err();
+            assert!(
+                matches!(&error, ApplianceRequestError::Decode(_)),
+                "{key}: {error}"
+            );
         }
         let mut fields = required();
         fields.push(("surprise", Value::Text("x".into())));
-        let error = ApplianceRequest::decode(&encode(&fields))
-            .unwrap_err()
-            .to_string();
-        assert!(error.contains("surprise"), "{error}");
+        let error = ApplianceRequest::decode(&encode(&fields)).unwrap_err();
+        assert!(
+            matches!(&error, ApplianceRequestError::Decode(_)),
+            "{error}"
+        );
     }
 
     #[test]
     fn rejects_escaping_paths_and_trailing_bytes() {
         let mut fields = required();
-        // required() order: v, ok, ref, plan, lock — index 3 is plan.
-        fields[3] = ("plan", Value::Text("../escape".into()));
+        // required() order: ref, plan, lock, context.
+        fields[1] = ("plan", Value::Text("../escape".into()));
         assert!(matches!(
             ApplianceRequest::decode(&encode(&fields)),
             Err(ApplianceRequestError::Path(crate::path::PathError::Escape))
         ));
         let mut fields = required();
-        fields[3] = ("plan", Value::Text("/etc/passwd".into()));
+        fields[1] = ("plan", Value::Text("/etc/passwd".into()));
         assert!(matches!(
             ApplianceRequest::decode(&encode(&fields)),
             Err(ApplianceRequestError::Path(
@@ -389,7 +396,7 @@ mod tests {
             ))
         ));
         let mut fields = required();
-        fields.push(("context", Value::Text("../..".into())));
+        fields[3] = ("context", Value::Text("../..".into()));
         assert!(matches!(
             ApplianceRequest::decode(&encode(&fields)),
             Err(ApplianceRequestError::Path(crate::path::PathError::Escape))
@@ -400,7 +407,7 @@ mod tests {
             ApplianceRequest::decode(&bytes),
             Err(ApplianceRequestError::TrailingBytes)
         ));
-        // Production path: BufReader leftover after one map is trailing data.
+        // Production path: BufReader leftover after one response is trailing data.
         let mut cursor = std::io::Cursor::new(bytes);
         assert!(matches!(
             ApplianceRequest::decode_response(&mut cursor),
@@ -416,12 +423,12 @@ mod tests {
         let mut bytes = map;
         bytes.push(0xFF);
         let mut cursor = std::io::Cursor::new(bytes);
-        // Map ends exactly at the first fill; trailing is only visible after refill.
+        // Array ends exactly at the first fill; trailing is only visible after refill.
         assert!(matches!(
             ApplianceRequest::decode_response_with_capacity(&mut cursor, capacity, true),
             Err(ApplianceRequestError::TrailingBytes)
         ));
-        // Exact map with refill still succeeds (Cursor EOF on second fill).
+        // Exact array with refill still succeeds (Cursor EOF on second fill).
         let exact = encode(&required());
         let capacity = exact.len();
         let mut cursor = std::io::Cursor::new(exact);
@@ -430,27 +437,27 @@ mod tests {
 
     #[test]
     fn rejects_ok_false_with_host_error() {
-        let error = ApplianceRequest::decode(&host_error("no plan"))
-            .unwrap_err()
-            .to_string();
-        assert!(error.contains("no plan"), "{error}");
+        for message in ["no plan", "", "host\0message"] {
+            assert!(matches!(
+                ApplianceRequest::decode(&host_error(message)),
+                Err(ApplianceRequestError::HostRejected(error)) if error == message
+            ));
+        }
     }
 
     #[test]
-    fn rejects_ok_false_with_success_fields() {
-        let error = ApplianceRequest::decode(&encode(&[
-            ("v", Value::Integer(1.into())),
-            ("ok", Value::Bool(false)),
-            ("error", Value::Text("nope".into())),
-            ("ref", Value::Text("refs/heads/main".into())),
-        ]))
-        .unwrap_err()
-        .to_string();
-        assert!(error.contains("ref"), "{error}");
+    fn rejects_failure_with_success_payload() {
+        let mut bytes = encode(&required());
+        assert_eq!(bytes[1], 0xf5);
+        bytes[1] = 0xf4;
+        assert!(matches!(
+            ApplianceRequest::decode(&bytes),
+            Err(ApplianceRequestError::Decode(_))
+        ));
     }
 
     #[test]
-    fn decode_response_reads_one_self_delimiting_map() {
+    fn decode_response_reads_one_self_delimiting_array() {
         let exact = encode(&required());
         let mut cursor = std::io::Cursor::new(exact.as_slice());
         let request = ApplianceRequest::decode_response(&mut cursor).unwrap();

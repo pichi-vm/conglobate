@@ -259,11 +259,11 @@ Product assumptions for the guest:
 3. **Named build-port console** `dev.pichi.build`, opened read/write through
    the kernel console/hvc sysfs path (not a udev symlink). The channel is
    bidirectional (guest→host tx and host→guest rx).
-4. **v0 wire (one round trip, self-delimiting CBOR, no length prefix; no
-   streaming/multiplexing):** the guest opens the port, writes one request map
-   `{"v":1,"op":"build-input"}`, then reads one host response map. The guest
+4. **Wire (one round trip, self-delimiting CBOR, no length prefix; no
+   streaming/multiplexing):** the guest opens the port, writes one request array
+   `["build", 1, null]`, then reads one host response array. The guest
    must **not** assume the host already pushed bytes before the request (this
-   supersedes host one-shot CBOR push / uni-rx-only). On `ok:true`, Conglobate
+   supersedes host one-shot CBOR push / uni-rx-only). On `[true, Input]`, Conglobate
    runs the engine against the mounted paths and publishes into the empty
    `/run/pichi/output` mount. The locked end state is the OCI layout
    (`oci-layout`, `index.json`, `blobs/sha256/…`) only. Pichi imports the full
@@ -272,7 +272,7 @@ Product assumptions for the guest:
    [Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24) removes
    the transitional packing list and flat copies; inherited layers remain
    referenced in the self-contained OCI graph.
-   On `ok:false`, it fails with the host `error` string.
+   On `[false, message]`, it fails with the host error string.
    There is **no** local CBOR copy retained as a second source of truth, **no**
    Conglobate parse of virtiofs field readers / mount tags from the response,
    and **no** mount generator in this crate.
@@ -286,37 +286,50 @@ Product assumptions for the guest:
 
 ### 1.5 Appliance build-port CBOR
 
-Transport is the named console in [§1.4](#14-build-appliance). Maps are **flat**
-(not a nested transport envelope). Self-delimiting CBOR; no length prefix.
+Transport is the named console in [§1.4](#14-build-appliance). Each message
+is one self-delimiting CBOR array, with no length prefix. Commands version
+their own request and response schemas; there is no global protocol version.
 
-**Guest → host request (exactly one map):**
+- Guest → host: `["build", 1, null]` (`[command, version, body]`).
+- Host → guest success: `[true, Input]`.
+- Host → guest failure: `[false, message]`, where `message` is a string.
 
-| Field | Required | Meaning |
-| --- | --- | --- |
-| `v` | yes | Protocol version; must be `1` |
-| `op` | yes | Must be `"build-input"` |
+The portable library exposes `launch::{Command, Request, Response,
+Requests, Build, Input, PORT_NAME}`. `Request<T>` supplies and validates the
+command name and `u16` version declared by `T: Command`; the trait also
+associates the response payload type. `Build` wraps a private `Option<()>`
+for build V1 and its response payload is `Input`. Construct it with
+`Build::default()` to encode a null request body. The untagged `Requests` enum
+bundles concrete requests. `Response<T>` has `Ok(T)` and `Err(String)` variants, with
+conversions to and from standard `Result`. Serde bounds live on the envelope
+implementations, not on the request trait.
 
-**Host → guest response (exactly one map):**
+`launch/mod.rs` reexports one public contract type per file. Request decoding
+destructures a `(String, u16, T)` tuple. Response decoding derives untagged
+selection between `(bool, T)` and `(bool, String)` tuple decoders, each checking
+its status value. Public payloads and request dispatch also derive Serde.
+Untagged decoding reports a generic error when no variant matches.
+Server-side `Requests` checks the full request length; direct `Request<T>`
+decoding follows the format's tuple length checks, and Ciborium does not reject
+extra tuple elements on its own.
+`Option<()>` supports direct and buffered null decoding. Ciborium also decodes
+CBOR undefined as Serde None, so the Serde layer cannot distinguish these two
+input representations.
 
-| Field | Required | Meaning |
-| --- | --- | --- |
-| `v` | yes | Protocol version; must be `1` |
-| `ok` | yes | `true` on success; `false` on failure |
-| `error` | when `ok` is `false` | Human-readable failure reason from the host |
-| `ref` | when `ok` is `true` | Git ref name or full object id; Conglobate resolves it to a commit on the mounted repo |
-| `plan` | when `ok` is `true` | Path to the plan YAML, always relative to `context` |
-| `lock` | when `ok` is `true` | Path to the lock YAML, always relative to `context` |
-| `context` | no (success) | Context path within the commit; default `"."` |
-| `location` | no (success) | Optional provenance/locator hint for the manifest; not an authenticated identity |
+The success payload is an `Input` map with these text-string fields:
 
-Explicit non-fields on the success response (must not appear; if present, reject):
+- `ref`: required Git ref name or full object ID.
+- `plan`: required plan path relative to the selected context.
+- `lock`: required lock path relative to the selected context.
+- `context`: required context directory within the mounted repository;
+  `"."` explicitly selects the root.
+- `location`: optional provenance locator; omitted or null means absent.
+  Serialization omits it when absent. It is not an authenticated identity.
 
-- `commit` (guest resolves `ref` → commit)
-- virtiofs mount tags or mount paths
-- `output` destination (fixed at `/run/pichi/output`)
-- formatter runtime / mke2fs host manifest
-- UID/GID maps, network-namespace path, resolv-conf path
-- `op` (request-only)
+The derived wire decoder checks field types and rejects unknown and duplicate
+fields. Path types and Git parsers validate locators when they are used.
+Commit identities, mount tags, output paths, formatter paths, UID/GID maps,
+and network configuration do not belong in this payload.
 
 Conglobate opens `/run/pichi/repo`, resolves `ref` to a commit, and resolves
 context symlinks against that committed tree. Context selection must stay
@@ -324,8 +337,9 @@ within the repository; plan and lock resolution must stay within the selected
 context. Absolute paths, escaping links, missing components, and symlink loops
 are rejected. Parent components are resolved after symlinks, never removed
 lexically before traversal. This checks the committed source actually used
-by the build rather than unrelated working-tree contents. `/run/pichi/cache`
-is the read-only image cache.
+by the build rather than unrelated working-tree contents. Pichi likewise uses
+confined filesystem opens when reading the host lock. `/run/pichi/cache` is
+the read-only image cache.
 
 **Ref resolution (guest):** resolve `ref` with gix on the mounted repository to a
 single commit object. Accept a full object id (SHA-1 or SHA-256 hex) or a
@@ -336,19 +350,20 @@ missing refs, and non-commit tips. Record the resolved commit in
 The location and fixed mount path are not authenticated identities. Do not
 record the host `ref` string separately. See [§11.1](#111-image-manifest-annotation-contract).
 
-**Wire decoding / failure rules (v0):**
+**Wire decoding / failure rules:**
 
-- Maps use text-string keys, definite-length CBOR, and only the fields in the
-  tables above. Reject duplicate keys, noncanonical encodings that the decoder
-  does not normalize, unknown fields, and wrong types.
-- Decode exactly one top-level response map; after that map, any leftover bytes
-  already in the read buffer are trailing data and fail the build.
-- Require `v == 1` before interpreting other fields; version mismatch fails.
-- When `ok` is `false`, only `v`, `ok`, and `error` may appear; success-only
-  fields must not appear. When `ok` is `true`, `error` must not appear.
-- Missing build-port device, undecodable CBOR, truncated response, or read
-  timeout (fixed internal deadline) fails the build. There is no silent default
-  plan/lock/`ref`.
+- Emit definite-length arrays of exactly three request elements or two response
+  elements. Reject unknown command/version pairs, missing or extra elements,
+  and incorrect element types. Build V1 requires a null request body.
+- The boolean status determines whether the response payload is `Input` or an
+  error string. Their shapes cannot be mixed.
+- Decode exactly one response; leftover bytes already available in the buffer
+  or on the port are trailing data and fail the build.
+- Missing build-port device, undecodable CBOR, or a truncated response fails
+  the build. There is no silent default plan, lock, ref, or context.
+- This replaces the former map envelopes. Host and appliance must use the
+  matching command contract; changing a host library pin does not update a
+  separately published appliance image.
 
 **Output mount:** `/run/pichi/output` is an empty writable virtiofs mount supplied
 by the host (not a path Conglobate creates). Conglobate stages privately in a

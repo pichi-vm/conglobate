@@ -3,11 +3,11 @@
 
 //! Open the named virtio console via sysfs virtio-ports. No udev symlink dependency.
 //!
-//! v0 build-port: guest opens `dev.pichi.build` read/write, writes one CBOR
-//! request map, then reads one self-delimiting CBOR response. The guest must
+//! Build port: guest opens `dev.pichi.build` read/write, writes one CBOR
+//! request array, then reads one self-delimiting CBOR response. The guest must
 //! not assume the host already pushed bytes before the request.
 
-use crate::contract::build::{PORT_NAME as CONSOLE_NAME, Request};
+use crate::contract::launch::{Build, PORT_NAME as CONSOLE_NAME, Request};
 #[cfg(test)]
 use ciborium::Value;
 use std::{
@@ -59,10 +59,10 @@ pub(crate) fn open_build_console(
     Err(ConsoleError::NotFound)
 }
 
-/// Encode the v0 guest→host request: `{"v":1,"op":"build-input"}`.
+/// Encode the guest→host request: `["build", 1, null]`.
 pub(crate) fn encode_build_input_request() -> Result<Vec<u8>, ConsoleError> {
     let mut bytes = Vec::new();
-    ciborium::into_writer(&Request::default(), &mut bytes)
+    ciborium::into_writer(&Request(Build::default()), &mut bytes)
         .map_err(|error| ConsoleError::Encode(error.to_string()))?;
     Ok(bytes)
 }
@@ -111,18 +111,15 @@ mod tests {
     fn encode_request_is_v1_build_input() {
         let bytes = encode_build_input_request().unwrap();
         let value: Value = ciborium::from_reader(Cursor::new(&bytes)).unwrap();
-        let Value::Map(entries) = value else {
-            panic!("expected map");
-        };
-        let mut map = std::collections::BTreeMap::new();
-        for (k, v) in entries {
-            let Value::Text(key) = k else {
-                panic!("key");
-            };
-            map.insert(key, v);
-        }
-        assert_eq!(map.get("v"), Some(&Value::Integer(1.into())));
-        assert_eq!(map.get("op"), Some(&Value::Text("build-input".into())));
+        assert_eq!(
+            value,
+            Value::Array(vec![
+                Value::Text("build".into()),
+                Value::Integer(1.into()),
+                Value::Null
+            ])
+        );
+        assert_eq!(bytes, b"\x83\x65build\x01\xf6");
     }
 
     #[test]
@@ -145,35 +142,33 @@ mod tests {
         let host_thread = thread::spawn(move || {
             host_barrier.wait();
             let request = read_cbor_value(&mut host).unwrap();
-            let Value::Map(entries) = request else {
-                panic!("request map");
-            };
-            assert!(entries.iter().any(|(k, v)| {
-                matches!(k, Value::Text(t) if t == "op")
-                    && matches!(v, Value::Text(t) if t == "build-input")
-            }));
-            let response = Value::Map(vec![
-                (Value::Text("v".into()), Value::Integer(1.into())),
-                (Value::Text("ok".into()), Value::Bool(true)),
-                (
-                    Value::Text("ref".into()),
-                    Value::Text("refs/heads/main".into()),
-                ),
-                (Value::Text("plan".into()), Value::Text("plan.yml".into())),
-                (Value::Text("lock".into()), Value::Text("lock.yml".into())),
-            ]);
+            assert_eq!(
+                request,
+                Value::Array(vec![
+                    Value::Text("build".into()),
+                    Value::Integer(1.into()),
+                    Value::Null
+                ])
+            );
+            let response = crate::contract::launch::Response::Ok(crate::contract::launch::Input {
+                r#ref: "refs/heads/main".into(),
+                plan: "plan.yml".into(),
+                lock: "lock.yml".into(),
+                context: ".".into(),
+                location: None,
+            });
             ciborium::into_writer(&response, &mut host).unwrap();
         });
         barrier.wait();
         write_build_input_request(&mut guest).unwrap();
         let response = read_cbor_value(&mut guest).unwrap();
         host_thread.join().unwrap();
-        let Value::Map(entries) = response else {
-            panic!("response map");
+        let Value::Array(fields) = response else {
+            panic!("response array");
         };
-        assert!(entries.iter().any(|(k, v)| {
-            matches!(k, Value::Text(t) if t == "ok") && matches!(v, Value::Bool(true))
-        }));
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0], Value::Bool(true));
+        assert!(matches!(fields[1], Value::Map(_)));
     }
 
     #[test]
