@@ -211,7 +211,6 @@ mod tests {
                 );
                 blobs.push((digest, bytes.to_vec()));
             }
-            layers.reverse(); // Receipts follow manifest order, not ancestry order.
             let config = b"{\"requirements\":{}}".to_vec();
             let config_digest = Digest::Sha256(Sha256::digest(&config).into());
             let annotations: BTreeMap<String, String> = [

@@ -51,7 +51,7 @@ class PipelineEvidence:
             'application/vnd.pichi.scute.v1', 'application/vnd.pichi.scute.v1']
         scutes = [layer for layer in layers if layer['mediaType'] == 'application/vnd.pichi.scute.v1']
         assert len(scutes) == 2
-        # build_manifest independently verifies the full, unordered salt chain.
+        # build_manifest independently verifies the chain in manifest order.
         root = manifest['annotations']['dev.pichi.carapace.verity.hash']
         for layer in layers:
             path, data = self.blob(layer)

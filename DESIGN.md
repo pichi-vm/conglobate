@@ -1215,6 +1215,14 @@ carapace verity parameters and per-scute salt/data-blocks for Pichi to
 reconstruct headers and trees. This completes the existing v1 format without
 changing version identifiers.
 
+Scute descriptors in the manifest's `layers` array MUST follow base-to-tip
+chain order. The first scute has a zero parent-root salt prefix; each later
+scute's prefix names the preceding scute's root. The final scute's root equals
+the manifest tip. PMI and DTB descriptors do not participate in this order.
+Consumers reject a broken sequence instead of sorting it. Structural validation
+checks the base position; verifying the chain establishes the remaining links.
+No separate ordering field, per-scute root annotation or version bump is needed.
+
 Every raw or compressed scute requires `dev.pichi.scute.verity.data-blocks`
 as a positive decimal string. Its padded byte extent must fit in `u64`. For
 raw scutes it must equal the descriptor size rounded up to the data block
