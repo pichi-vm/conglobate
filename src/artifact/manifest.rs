@@ -46,7 +46,7 @@ const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 /// Schema invariants (per CONTEXT.md D-03 / D-07 — enforced by [`Manifest::validate`]):
 /// - Top-level `artifact_type` MUST equal [`MEDIA_TYPE_PICHI_ARTIFACT_V1`].
 /// - `config` MUST be the OCI 1.1 empty-config descriptor with inline `data: "e30="`.
-/// - Layer order is NOT load-bearing (D-03); writers MAY emit in any order.
+/// - Scute layers MUST appear in chain order, from base to tip.
 /// - At most ONE [`Layer::Pmi`] (D-03 — zero pmi = base/non-bootable, one pmi = appliance/bootable).
 /// - Top-level annotations MUST include the carapace verity *param* keys
 ///   and one chain-tip root when scute layers exist.
@@ -69,7 +69,8 @@ pub struct Manifest {
     /// with no launch contract) or a real `vnd.pichi.config.v1+json` blob
     /// carrying the launch contract (BUILD.md §7.1).
     pub config: ConfigDescriptor,
-    /// Typed layer descriptors. Order is NOT load-bearing (D-03).
+    /// Typed layer descriptors. Scutes appear in base-to-tip chain order;
+    /// PMI and DTB descriptors do not participate in that order.
     pub layers: Vec<Layer>,
     /// Top-level annotations. With scutes, MUST include
     /// `dev.pichi.carapace.verity.{algo,data-block-size,hash-block-size,
@@ -333,9 +334,13 @@ pub enum ManifestValidationError {
     /// D-07 rule 5: more than one PMI layer.
     #[error("artifact has more than one PMI layer (got {0}); per D-03 at most one is permitted")]
     MultiplePmi(usize),
-    /// D-07 rule 4: scute salt is not valid hex.
-    #[error("scute salt is not valid hex: {0}")]
+    /// Scute salt is not valid hex or lacks the 32-byte parent root prefix.
+    #[error("scute salt must contain a hex-encoded parent root: {0}")]
     BadSalt(String),
+
+    /// The first scute must be the base; later scutes must have a parent.
+    #[error("scutes must appear in base-to-tip order: {0}")]
+    BadScuteOrder(String),
 
     /// Declared data-block count is zero or contradicts a raw blob's size.
     #[error("invalid data-block count for scute {0}")]
@@ -377,7 +382,9 @@ impl Manifest {
             .any(|l| matches!(l, Layer::Scute(_) | Layer::ScuteZstd(_)))
     }
 
-    /// Validate per D-07. See [`ManifestValidationError`] for the rule set.
+    /// Validate manifest structure. Scute order starts with a zero-parent base;
+    /// consumers must verify each subsequent parent against the preceding
+    /// scute's content and the final root against the manifest commitment.
     ///
     /// # Errors
     /// Returns the first violated rule — does NOT collect all errors.
@@ -452,8 +459,9 @@ impl Manifest {
         if dtb_count > 1 {
             return Err(ManifestValidationError::MultipleDtb(dtb_count));
         }
-        // Rule 4: every scute has a hex-parseable salt (presence enforced by
-        // the typed `ScuteAnnotations`; here we check hex validity)
+        // The salt's parent prefix identifies the base without reading blobs.
+        // Full chain continuity is checked when consumers verify the scutes.
+        let mut first_scute = true;
         for layer in &self.layers {
             let (Layer::Scute(d) | Layer::ScuteZstd(d)) = layer else {
                 continue;
@@ -474,9 +482,15 @@ impl Manifest {
             {
                 return Err(ManifestValidationError::BadScuteBlocks(d.digest.clone()));
             }
-            if hex::decode(&d.annotations.salt).is_err() {
-                return Err(ManifestValidationError::BadSalt(d.annotations.salt.clone()));
+            let salt = hex::decode(&d.annotations.salt)
+                .map_err(|_| ManifestValidationError::BadSalt(d.annotations.salt.clone()))?;
+            let parent = salt
+                .get(..32)
+                .ok_or_else(|| ManifestValidationError::BadSalt(d.annotations.salt.clone()))?;
+            if first_scute != parent.iter().all(|byte| *byte == 0) {
+                return Err(ManifestValidationError::BadScuteOrder(d.digest.clone()));
             }
+            first_scute = false;
         }
         // Rule 6: every layer's mediaType is in the allowed set —
         // ENFORCED IMPLICITLY by `Layer`'s enum variants (an unknown
@@ -581,7 +595,7 @@ mod tests {
                 size: 1024,
                 annotations: ScuteAnnotations {
                     data_blocks: 1u64.try_into().unwrap(),
-                    salt: "00ff".into(),
+                    salt: "00".repeat(32),
                 },
             })],
             annotations: sample_chain_annotations(),
@@ -749,6 +763,50 @@ mod tests {
             m.validate().unwrap_err(),
             ManifestValidationError::BadSalt(_)
         ));
+    }
+
+    #[test]
+    fn scutes_start_with_one_base_even_among_firmware_layers() {
+        let mut manifest = sample_base_manifest();
+        let Layer::Scute(mut child) = manifest.layers[0].clone() else {
+            unreachable!()
+        };
+        // Only the parent prefix is the sentinel; the rest is ordinary salt.
+        let Layer::Scute(base) = &mut manifest.layers[0] else {
+            unreachable!()
+        };
+        base.annotations.salt.push_str("abcd");
+        child.annotations.salt = "ab".repeat(32);
+        manifest.layers.insert(0, sample_dtb_layer());
+        manifest.layers.push(Layer::ScuteZstd(child));
+        manifest.validate().unwrap();
+
+        manifest.layers.swap(1, 2);
+        assert!(matches!(
+            manifest.validate(),
+            Err(ManifestValidationError::BadScuteOrder(_))
+        ));
+        manifest.layers.swap(1, 2);
+        manifest.layers.push(manifest.layers[1].clone());
+        assert!(matches!(
+            manifest.validate(),
+            Err(ManifestValidationError::BadScuteOrder(_))
+        ));
+    }
+
+    #[test]
+    fn scute_salts_must_contain_a_complete_parent_root() {
+        for salt in [String::new(), "00".repeat(31)] {
+            let mut manifest = sample_base_manifest();
+            let Layer::Scute(base) = &mut manifest.layers[0] else {
+                unreachable!()
+            };
+            base.annotations.salt = salt;
+            assert!(matches!(
+                manifest.validate(),
+                Err(ManifestValidationError::BadSalt(_))
+            ));
+        }
     }
 
     #[test]

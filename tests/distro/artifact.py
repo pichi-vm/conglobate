@@ -25,7 +25,7 @@ def build_manifest(run):
     annotations = manifest['annotations']
     assert {key: value for key, value in annotations.items()
             if key.startswith('dev.pichi.build.')} == expected
-    parents = {}
+    root = bytes(32)
     for layer in manifest['layers']:
         if not layer['mediaType'].startswith('application/vnd.pichi.scute.v1'):
             continue
@@ -39,15 +39,10 @@ def build_manifest(run):
         assert blocks > 0 and (len(data) + 4095) // 4096 == blocks
         salt = bytes.fromhex(layer['annotations']['dev.pichi.scute.verity.salt'])
         assert len(salt) >= 32
+        assert salt[:32] == root
         root = scute_root(data.ljust(blocks * 4096, b'\0'), salt)
-        assert root not in parents
-        parents[root] = salt[:32]
-    if parents:
-        root = bytes.fromhex(annotations['dev.pichi.carapace.verity.hash'])
-        assert len(root) == 32 and root != bytes(32)
-        while root != bytes(32):
-            root = parents.pop(root)
-        assert not parents
+    if root != bytes(32):
+        assert root.hex() == annotations['dev.pichi.carapace.verity.hash']
     else:
         assert 'dev.pichi.carapace.verity.hash' not in annotations
     return manifest

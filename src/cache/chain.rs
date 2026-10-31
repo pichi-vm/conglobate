@@ -6,7 +6,6 @@ use crate::artifact::{Digest as ContentDigest, Layer, ScuteDescriptor};
 use crate::chain::ScuteExtent;
 use sha2::{Digest, Sha256};
 use std::{
-    collections::{BTreeMap, BTreeSet},
     fs::File,
     io::{self, BufReader, Read},
 };
@@ -94,47 +93,23 @@ impl Cache {
                 ));
             }
         }
-        // The authenticated manifest commits one tip for the complete chain.
-        let mut candidates = BTreeMap::new();
+        // The manifest declares base-to-tip order. Verify that exact sequence;
+        // silently sorting it would accept a different manifest contract.
+        let mut root = [0; 32];
+        let mut scutes = Vec::new();
         for (descriptor, compressed) in layers {
             let scute = self.verify_scute(descriptor, compressed)?;
-            if candidates.insert(scute.root, scute).is_some() {
-                return Err(CacheError::Invalid("duplicate scute roots"));
+            if scute.extent.parent() != &root {
+                return Err(CacheError::Invalid("scutes are not in base-to-tip order"));
             }
+            root = scute.root;
+            scutes.push(scute);
         }
-        let claimed: BTreeSet<[u8; 32]> = candidates
-            .values()
-            .map(|scute| *scute.extent.parent())
-            .collect();
-        let tips: Vec<[u8; 32]> = candidates
-            .keys()
-            .copied()
-            .filter(|root| !claimed.contains(root))
-            .collect();
-        if tips.len() != 1 {
-            return Err(CacheError::Invalid(
-                "carapace tip must be exactly one scute root",
-            ));
-        }
-        let root = tips[0];
         if manifest.carapace_root()? != Some(root) {
             return Err(CacheError::Invalid(
                 "carapace root differs from manifest tip",
             ));
         }
-        let mut next = root;
-        let mut scutes = Vec::new();
-        while next != [0; 32] {
-            let scute = candidates.remove(&next).ok_or(CacheError::Invalid(
-                "scute ancestry does not reach a zero parent",
-            ))?;
-            next = *scute.extent.parent();
-            scutes.push(scute);
-        }
-        if scutes.is_empty() || !candidates.is_empty() {
-            return Err(CacheError::Invalid("disconnected scutes"));
-        }
-        scutes.reverse();
         Ok(Some(VerifiedChain { root, scutes }))
     }
     fn verify_scute(

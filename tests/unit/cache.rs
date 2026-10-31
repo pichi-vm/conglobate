@@ -248,11 +248,16 @@ impl Store {
         layers: Vec<crate::artifact::Layer>,
         root: [u8; 32],
     ) -> conglobate::cache::ResolvedImage {
+        self.open().resolve(self.chain_index(layers, root)).unwrap()
+    }
+    fn chain_index(
+        &self,
+        layers: Vec<crate::artifact::Layer>,
+        root: [u8; 32],
+    ) -> conglobate::image::IndexDigest {
         let bytes = self.manifest_bytes(layers, root);
         let digest = self.put(&bytes);
-        self.open()
-            .resolve(self.index(vec![self.descriptor(&digest, bytes.len())]))
-            .unwrap()
+        self.index(vec![self.descriptor(&digest, bytes.len())])
     }
     fn placeholder_digest() -> Digest {
         "sha256:1111111111111111111111111111111111111111111111111111111111111111"
@@ -376,11 +381,11 @@ fn fixture_lock_authenticates_manifest_and_index_bytes() {
     }
 }
 #[test]
-fn chain_verification_orders_mixed_compressed_layers_from_authenticated_root() {
+fn chain_verification_preserves_manifest_order_for_mixed_compressed_layers() {
     let store = Store::new();
     let (base, base_root) = store.scute(&[7; 8192], [0; 32], false);
     let (top, top_root) = store.scute(&[9; 4097], base_root, true);
-    let image = store.chain_image(vec![top, base], top_root);
+    let image = store.chain_image(vec![base, top], top_root);
     let chain = store.open().verify_chain(&image).unwrap().unwrap();
     assert_eq!(chain.root(), &top_root);
     assert_eq!(chain.scutes().len(), 2);
@@ -389,14 +394,41 @@ fn chain_verification_orders_mixed_compressed_layers_from_authenticated_root() {
     assert!(chain.scutes()[1].compressed());
 }
 #[test]
-fn duplicate_and_ambiguous_tip_chains_fail() {
+fn duplicate_and_multiple_base_chains_fail() {
     let store = Store::new();
     let (base, root) = store.scute(&[7; 4096], [0; 32], false);
     let (other, _) = store.scute(&[9; 4096], [0; 32], true);
-    // Duplicate roots, or two tips both parented at zeros (ambiguous tip).
+    // A manifest cannot contain the same base twice or two different bases.
     for layers in [vec![base.clone(), base.clone()], vec![base, other]] {
-        let image = store.chain_image(layers, root);
-        assert!(store.open().verify_chain(&image).is_err());
+        assert!(
+            store
+                .open()
+                .resolve(store.chain_index(layers, root))
+                .is_err()
+        );
+    }
+}
+
+#[test]
+fn child_scutes_cannot_be_reordered_or_omitted() {
+    let store = Store::new();
+    let (base, base_root) = store.scute(&[7; 8192], [0; 32], false);
+    let (middle, middle_root) = store.scute(&[8; 8192], base_root, true);
+    let (top, top_root) = store.scute(&[9; 8192], middle_root, false);
+    let image = store.chain_image(vec![base.clone(), middle.clone(), top.clone()], top_root);
+    store.open().verify_chain(&image).unwrap();
+    for layers in [vec![base.clone(), top.clone(), middle], vec![base, top]] {
+        // Both manifests have their base first. Only content verification can
+        // establish that each subsequent parent is the preceding scute.
+        let image = store.chain_image(layers, top_root);
+        assert!(
+            store
+                .open()
+                .verify_chain(&image)
+                .unwrap_err()
+                .to_string()
+                .contains("base-to-tip order")
+        );
     }
 }
 
@@ -406,7 +438,7 @@ fn manifest_tip_must_commit_the_complete_chain() {
     let (base, base_root) = store.scute(&[7; 8192], [0; 32], false);
     let (top, top_root) = store.scute(&[9; 4097], base_root, true);
     for root in [base_root, [1; 32]] {
-        let image = store.chain_image(vec![top.clone(), base.clone()], root);
+        let image = store.chain_image(vec![base.clone(), top.clone()], root);
         assert!(
             store
                 .open()
@@ -417,8 +449,12 @@ fn manifest_tip_must_commit_the_complete_chain() {
         );
     }
     // Even a matching tip cannot authorize an incomplete chain.
-    let image = store.chain_image(vec![top], top_root);
-    assert!(store.open().verify_chain(&image).is_err());
+    assert!(
+        store
+            .open()
+            .resolve(store.chain_index(vec![top], top_root))
+            .is_err()
+    );
 }
 #[test]
 fn scute_digest_and_decoded_block_count_are_both_enforced() {
