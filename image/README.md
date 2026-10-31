@@ -45,8 +45,8 @@ treat virtiofs as first-class, so this image keeps the modules itself.
 Image hardcodes, not CBOR fields: UID/GID maps, the network-namespace path, and
 the resolver path (`src/appliance/mounts.rs`).
 
-v0 build-port: `conglobate appliance` opens `dev.pichi.build`, writes
-`{"v":1,"op":"build-input"}`, then reads one self-delimiting host response.
+Build-port command version 1: `conglobate appliance` opens `dev.pichi.build`, writes
+`["build", 1, null]`, then reads one self-delimiting host response.
 
 ## Locked output contract
 

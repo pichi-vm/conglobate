@@ -152,7 +152,7 @@ pichi image shipped from this repo) with a qualified kernel and an independent
 environment controller that destroys the VM if conglobate crashes. systemd is
 PID 1; static virtiofs mounts expose `repo`/`cache`/`output` at
 `/run/pichi/{repo,cache,output}`; the guest opens named console
-`dev.pichi.build`, writes `{"v":1,"op":"build-input"}`, then reads one
+`dev.pichi.build`, writes `["build", 1, null]`, then reads one
 self-delimiting host CBOR response. The supervisor runs as initial-namespace root. Build
 commands are untrusted and run in restricted namespaces; they receive neither
 supervisor control resources nor backing block devices. The kernel,
