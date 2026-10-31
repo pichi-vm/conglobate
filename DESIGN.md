@@ -1489,7 +1489,7 @@ RAII owns resources; destructors cannot certify successful finalization.
 
 ### 14.3 Assemble storage and the build workspace
 
-1. Keep immutable carapace layers cache-backed. Verify the chain and use
+1. Keep immutable carapace layers in Pichi-prepared read-only files. Verify reads and use
    verified reads; do not copy every immutable layer into tmpfs. Merely
    hashing a mutable cache file once is insufficient. Later mutation must
    produce verification failure, never silently change accepted inputs.
@@ -1948,7 +1948,7 @@ has no dependency on the pichi binary; pichi depends on this lib.
 Plan and lock load immediately from the object store; COPY and other context
 paths use lazy gix verify-on-use without exposing a context mount. Locked
 multi-architecture indexes select only the host architecture. Image components
-and verified chain roots remain separate from live device mappings.
+and authenticated chain commitments remain separate from live device mappings.
 
 The engine runs the tasks on the `image:` closure: `bootstrap`, `extend`,
 and `build`. It owns one RAM workspace and execution runtime, borrowed by
@@ -2022,8 +2022,23 @@ unused snapshot capacity, uses ecosystem wire types and seals the scute directly
 there is no image-to-carapace import/conversion step.
 
 Scute wire parsing belongs to devmap-snapshot. Carapace owns read-only loop,
-verity and snapshot assembly; Conglobate supplies prepared files and the trusted
-tip. Carapace validates the on-disk headers before using them for activation.
+verity and snapshot assembly. Pichi bounds decompression by the required block
+count and supplies prepared data/hash files in the cache. Conglobate passes
+its cache and authenticated index selection to the binary's `FromIndex`
+implementation for `carapace::Chain`. It walks scutes in reverse manifest order,
+starting at the trusted tip. Each source blob's `.prepared` directory holds
+parameter-keyed `.verity` variants. Discovery identifies the matching variant
+by hashing its top tree block with the header's salt; a one-block data extent
+has no tree and requires that single data block instead. This bounded read
+selects files without reconstructing trees or activating mappings. The selected
+header's salt prefix supplies the preceding root; the walk must end at the base.
+Carapace validates the retained files' actual headers before activation and
+checks every consumed block through dm-verity.
+Conglobate does not decompress inputs, regenerate their trees, scan their
+payloads to discover roots, or compare header parameters with reconstruction
+annotations. Those annotations exist for Pichi's preparation. Firmware and
+configuration reads still authenticate their OCI identities; output copies
+still authenticate the encoded blobs while copying them.
 A private read-only linear mapping provides Conglobate's fallible consumer-close
 boundary without removing shared
 Carapace mappings. Its retained Carapace file keeps the immutable stack alive.

@@ -6,8 +6,6 @@
 mod anchors;
 #[path = "../tests/unit/cache.rs"]
 mod cache;
-#[path = "../tests/unit/chains.rs"]
-mod chains;
 #[path = "../tests/unit/contexts.rs"]
 mod contexts;
 #[path = "../tests/unit/copy_modes.rs"]
@@ -32,3 +30,37 @@ mod supervision;
 mod templates;
 #[path = "../tests/unit/values.rs"]
 mod values;
+
+/// Authentic roots for cache metadata fixtures; production only seals snapshots.
+pub(crate) trait ScuteFixture {
+    fn scute_files(&self, parent: [u8; 32]) -> (devmap_verity::Header, Vec<u8>, [u8; 32]);
+    fn scute_root(&self, parent: [u8; 32]) -> [u8; 32] {
+        self.scute_files(parent).2
+    }
+}
+impl ScuteFixture for [u8] {
+    fn scute_files(&self, parent: [u8; 32]) -> (devmap_verity::Header, Vec<u8>, [u8; 32]) {
+        use devmap_core::{BlockSize, Geometry};
+        use devmap_verity::{Algorithm, Format as _, HashType, Header, Parameters, Salt};
+        use std::{io::Cursor, num::NonZero};
+        let block = BlockSize::from_bytes(NonZero::new(4096).unwrap()).unwrap();
+        let mut data = self.to_vec();
+        data.resize(data.len().div_ceil(4096) * 4096, 0);
+        let header = Header {
+            uuid: [0; 16],
+            parameters: Parameters {
+                algorithm: Algorithm::Sha256,
+                hash_type: HashType::Normal,
+                salt: Salt::new(&parent).unwrap(),
+                data: Geometry {
+                    size: block,
+                    count: NonZero::new(data.len() as u64 / 4096).unwrap(),
+                },
+                hash: block,
+            },
+        };
+        let mut tree = Cursor::new(Vec::new());
+        let root = header.format(data.as_slice(), &mut tree).unwrap();
+        (header, tree.into_inner(), root.as_ref().try_into().unwrap())
+    }
+}

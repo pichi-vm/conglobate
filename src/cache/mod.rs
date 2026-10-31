@@ -3,8 +3,8 @@
 
 //! Read-only content access. A receipt verifies a read, never future cache bytes.
 mod chain;
-pub(crate) use chain::{PreparedScute, VerifiedChain};
 mod resolve;
+pub(crate) use chain::FromIndex;
 pub(crate) use resolve::{HostArchitecture, ResolvedImage};
 
 use crate::artifact::Digest as ContentDigest;
@@ -18,8 +18,6 @@ use std::{
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum CacheError {
-    #[error(transparent)]
-    Chain(#[from] crate::chain::ChainError),
     #[error("invalid OCI JSON: {0}")]
     Json(#[from] serde_json::Error),
     #[error("invalid artifact manifest: {0}")]
@@ -42,7 +40,7 @@ pub(crate) struct Cache {
 }
 impl Cache {
     /// Open existing directory authority without fetching or validating blobs.
-    /// Individual reads and chain verification establish content identities.
+    /// Individual reads establish content identities.
     ///
     /// # Errors
     /// Returns an I/O error if the supplied directory cannot be opened.
@@ -59,15 +57,21 @@ impl Cache {
     }
     fn blob(&self, digest: &ContentDigest) -> Result<File, CacheError> {
         let path = format!("blobs/{}/{}", digest.algo(), digest.hex());
+        self.regular_file(Path::new(&path))
+    }
+    fn open_at(&self, path: &Path, flags: OFlags) -> Result<File, CacheError> {
         let fd = rustix::fs::openat2(
             &self.directory,
             path,
-            OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC,
+            OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC | flags,
             Mode::empty(),
             ResolveFlags::BENEATH | ResolveFlags::NO_MAGICLINKS,
         )
         .map_err(io::Error::from)?;
-        let file = File::from(fd);
+        Ok(fd.into())
+    }
+    fn regular_file(&self, path: &Path) -> Result<File, CacheError> {
+        let file = self.open_at(path, OFlags::empty())?;
         if !file.metadata()?.is_file() {
             return Err(CacheError::Invalid("blob is not a regular file"));
         }

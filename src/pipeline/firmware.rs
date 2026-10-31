@@ -12,12 +12,12 @@ use crate::{
 use std::num::NonZeroU64;
 
 #[derive(Debug)]
-pub(super) struct BuildTools<'s, 'w> {
-    pub(super) active: crate::storage::ReadOnlyChain<'s, 'w>,
+pub(super) struct BuildTools<'w> {
+    pub(super) active: crate::storage::ReadOnlyChain<'w>,
     pub(super) root: Option<[u8; 32]>,
     pub(super) reaper: ChildReaper,
 }
-impl<'s, 'w> BuildTools<'s, 'w> {
+impl<'w> BuildTools<'w> {
     pub(super) fn run(
         self,
         build: &ResolvedBuild,

@@ -3,12 +3,14 @@
 
 use super::Scratch;
 use crate::artifact::{ScuteAnnotations, ScuteDescriptor};
-use crate::chain::{ChainError, ScuteExtent};
+use devmap_core::{BlockSize, Geometry};
 use devmap_snapshot::{Exception, Header};
+use devmap_verity::{Algorithm, Format as _, HashType, Header as VerityHeader, Parameters, Salt};
 use sha2::{Digest, Sha256};
 use std::{
     fs::File,
     io::{self, Read, Seek, SeekFrom},
+    num::NonZero,
     os::unix::fs::FileExt,
 };
 
@@ -90,7 +92,7 @@ impl<'w> Scratch<'w> {
     /// have confirmed unbound state before returning this writable authority.
     /// Only unused trailing capacity is removed; no filesystem image is copied
     /// or converted. Caller separately owns command/finalization success proofs.
-    pub(crate) fn seal_snapshot(mut self, parent: [u8; 32]) -> Result<SealedScute<'w>, ChainError> {
+    pub(crate) fn seal_snapshot(mut self, parent: [u8; 32]) -> io::Result<SealedScute<'w>> {
         let capacity = self.file.metadata()?.len();
         let extent = SnapshotExtent::read(&mut self.file, capacity)?;
         self.file.set_len(extent.bytes)?;
@@ -101,9 +103,24 @@ impl<'w> Scratch<'w> {
             input: &mut self.file,
             digest: Sha256::new(),
         };
-        let scute = ScuteExtent::new(extent.bytes, &parent, Some(extent.bytes / 4096))?;
-        let data_blocks = scute.header().parameters.data.count;
-        let root = scute.format(&mut input, &mut hash)?;
+        let data_blocks = NonZero::new(extent.bytes / 4096).expect("nonempty snapshot extent");
+        let block = BlockSize::from_bytes(NonZero::new(4096).expect("nonzero block size"))
+            .expect("valid block size");
+        let header = VerityHeader {
+            uuid: [0; 16],
+            parameters: Parameters {
+                algorithm: Algorithm::Sha256,
+                hash_type: HashType::Normal,
+                salt: Salt::new(&parent).expect("SHA-256 parent fits salt"),
+                data: Geometry {
+                    size: block,
+                    count: data_blocks,
+                },
+                hash: block,
+            },
+        };
+        let root = header.format(&mut input, &mut hash)?;
+        let root = root.as_ref().try_into().expect("SHA-256 root width");
         let digest = format!("sha256:{}", hex::encode(input.digest.finalize()));
         hash.sync_all()?;
         let descriptor = ScuteDescriptor {
@@ -233,6 +250,62 @@ mod tests {
         }
     }
     #[test]
+    fn sealed_snapshot_preserves_bytes_digest_and_tree() {
+        use std::io::Write;
+        let directory = tempfile::tempdir().unwrap();
+        let workspace = super::super::Workspace {
+            root: File::open(directory.path()).unwrap(),
+        };
+        let bytes = Store::new(2).0;
+        let mut scratch = workspace.scratch().unwrap();
+        scratch.write_all(&bytes).unwrap();
+        // Unused capacity is deliberately excluded from both commitments.
+        scratch.set_len(4 * 4096).unwrap();
+        let parent = [3; 32];
+        let sealed = scratch.seal_snapshot(parent).unwrap();
+        let mut data = Vec::new();
+        sealed.data_reader().read_to_end(&mut data).unwrap();
+        assert_eq!(data, bytes);
+        assert_eq!(
+            sealed.descriptor().digest,
+            format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
+        );
+        assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 2);
+        let mut tree = vec![0; 8192];
+        sealed.files().1.read_exact_at(&mut tree, 0).unwrap();
+        assert_eq!(sealed.files().1.metadata().unwrap().len(), 8192);
+        let header = VerityHeader::decode(tree[..512].try_into().unwrap()).unwrap();
+        assert_eq!(header.parameters.salt.as_ref(), parent);
+        assert_eq!(header.parameters.data.count.get(), 2);
+        for (index, block) in bytes.chunks_exact(4096).enumerate() {
+            let mut hash = Sha256::new();
+            hash.update(parent);
+            hash.update(block);
+            assert_eq!(
+                &tree[4096 + index * 32..4096 + (index + 1) * 32],
+                hash.finalize().as_slice()
+            );
+        }
+        assert!(tree[4160..].iter().all(|byte| *byte == 0));
+        let mut hash = Sha256::new();
+        hash.update(parent);
+        hash.update(&tree[4096..]);
+        assert_eq!(sealed.root().as_slice(), hash.finalize().as_slice());
+    }
+    #[test]
+    fn sealing_rejects_incomplete_snapshot_extents() {
+        use std::io::Write;
+        let directory = tempfile::tempdir().unwrap();
+        let workspace = super::super::Workspace {
+            root: File::open(directory.path()).unwrap(),
+        };
+        for length in [0, 4096, 4097, 8191] {
+            let mut scratch = workspace.scratch().unwrap();
+            scratch.write_all(&Store::new(2).0[..length]).unwrap();
+            assert!(scratch.seal_snapshot([0; 32]).is_err());
+        }
+    }
+    #[test]
     fn sealed_outputs_commit_the_final_root() {
         use crate::{cache::Cache, output::AssembledImage, storage::Workspace};
         use std::{io::Write, sync::Arc};
@@ -281,8 +354,8 @@ mod tests {
                 output.image().manifest().carapace_root().unwrap(),
                 Some(*top.root())
             );
-            assert_eq!(output.chain().unwrap().scutes().len(), 2);
-            assert_eq!(output.chain().unwrap().root(), top.root());
+            assert_eq!(output.image().manifest().layers.len(), 2);
+            assert_eq!(output.image().root(), Some(*top.root()));
             output.discard().unwrap();
         }
     }

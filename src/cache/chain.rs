@@ -2,245 +2,137 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Cache, CacheError, ResolvedImage};
-use crate::artifact::{Digest as ContentDigest, Layer, ScuteDescriptor};
-use crate::chain::ScuteExtent;
-use sha2::{Digest, Sha256};
+use crate::artifact::{Digest as ContentDigest, Layer};
+use carapace::{Chain, Scute};
+use devmap_verity::{Algorithm, HashType, Header};
+use rustix::fs::{Dir, OFlags};
+use sha2::{Digest as _, Sha256};
 use std::{
-    fs::File,
-    io::{self, BufReader, Read},
+    os::unix::{ffi::OsStrExt as _, fs::FileExt as _},
+    path::PathBuf,
 };
-mod prepared;
-pub(crate) use prepared::PreparedScute;
 
-#[derive(Debug)]
-pub(crate) struct VerifiedScute {
-    digest: ContentDigest,
-    root: [u8; 32],
-    extent: ScuteExtent,
-    compressed: bool,
-    blob_size: u64,
+/// Discover an ordered chain from authenticated index metadata and prepared files.
+/// Discovery pins read-only files without activating devices. Assembly validates
+/// their headers again; dm-verity checks payload blocks when they are read.
+pub(crate) trait FromIndex: Sized {
+    fn from_index(cache: &Cache, image: &ResolvedImage) -> Result<Self, CacheError>;
 }
-impl VerifiedScute {
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn digest(&self) -> &ContentDigest {
-        &self.digest
-    }
-    pub(crate) fn root(&self) -> &[u8; 32] {
-        &self.root
-    }
-    #[cfg(any(test, feature = "test-fixtures"))]
-    pub(crate) fn extent(&self) -> &ScuteExtent {
-        &self.extent
-    }
-    #[cfg(test)]
-    pub(crate) fn compressed(&self) -> bool {
-        self.compressed
-    }
-}
-/// Content and ancestry verified during these reads. Mount-time dm-verity is
-/// still required because the cache itself can change afterward.
-#[derive(Debug)]
-pub(crate) struct VerifiedChain {
-    root: [u8; 32],
-    scutes: Vec<VerifiedScute>,
-}
-impl VerifiedChain {
-    pub(super) fn contains_verified(&self, digest: &ContentDigest, size: u64) -> bool {
-        self.scutes
-            .iter()
-            .any(|scute| scute.digest == *digest && scute.blob_size == size)
-    }
-    pub(crate) fn root(&self) -> &[u8; 32] {
-        &self.root
-    }
-    pub(crate) fn scutes(&self) -> &[VerifiedScute] {
-        &self.scutes
-    }
-}
-impl Cache {
-    pub(crate) fn verify_chain(
-        &self,
-        image: &ResolvedImage,
-    ) -> Result<Option<VerifiedChain>, CacheError> {
-        let manifest = image.manifest();
-        let mut layers = manifest
-            .layers
-            .iter()
-            .filter_map(|layer| match layer {
-                Layer::Scute(descriptor) => Some((descriptor, false)),
-                Layer::ScuteZstd(descriptor) => Some((descriptor, true)),
-                _ => None,
-            })
-            .peekable();
-        if layers.peek().is_none() {
-            return Ok(None);
-        }
-        for (key, expected) in [
-            ("algo", "sha256"),
-            ("data-block-size", "4096"),
-            ("hash-block-size", "4096"),
-            ("version", "1"),
-            ("hash-type", "1"),
-        ] {
-            if manifest
-                .annotations
-                .get(&format!("dev.pichi.carapace.verity.{key}"))
-                .map(String::as_str)
-                != Some(expected)
-            {
-                return Err(CacheError::Invalid(
-                    "unsupported carapace verity parameters",
-                ));
-            }
-        }
-        // The manifest declares base-to-tip order. Verify that exact sequence;
-        // silently sorting it would accept a different manifest contract.
-        let mut root = [0; 32];
+
+impl FromIndex for Chain {
+    fn from_index(cache: &Cache, image: &ResolvedImage) -> Result<Self, CacheError> {
+        let root = image
+            .root()
+            .ok_or(CacheError::Invalid("indexed image has no carapace"))?;
+        let mut parent = root;
         let mut scutes = Vec::new();
-        for (descriptor, compressed) in layers {
-            let scute = self.verify_scute(descriptor, compressed)?;
-            if scute.extent.parent() != &root {
+        for layer in image.manifest().layers.iter().rev() {
+            if !matches!(layer, Layer::Scute(_) | Layer::ScuteZstd(_)) {
+                continue;
+            }
+            if parent == [0; 32] {
                 return Err(CacheError::Invalid("scutes are not in base-to-tip order"));
             }
-            root = scute.root;
+            let (scute, previous) = cache.prepared_scute(layer, parent)?;
             scutes.push(scute);
+            parent = previous;
         }
-        if manifest.carapace_root()? != Some(root) {
+        if scutes.is_empty() || parent != [0; 32] {
             return Err(CacheError::Invalid(
-                "carapace root differs from manifest tip",
+                "manifest does not contain a complete chain",
             ));
         }
-        Ok(Some(VerifiedChain { root, scutes }))
+        scutes.reverse();
+        Ok(Self {
+            root: root.into(),
+            scutes,
+        })
     }
-    fn verify_scute(
+}
+
+impl Cache {
+    fn prepared_scute(
         &self,
-        descriptor: &ScuteDescriptor,
-        compressed: bool,
-    ) -> Result<VerifiedScute, CacheError> {
-        let digest = descriptor
-            .digest
+        layer: &Layer,
+        root: [u8; 32],
+    ) -> Result<(Scute, [u8; 32]), CacheError> {
+        let digest: ContentDigest = layer
+            .digest_str()
             .parse()
             .map_err(|_| CacheError::Invalid("invalid scute digest"))?;
-        let salt = hex::decode(&descriptor.annotations.salt)
-            .map_err(|_| CacheError::Invalid("invalid scute salt"))?;
-        let size = if compressed {
-            // No unbounded-length verity input: first measure decoded bytes while
-            // authenticating the compressed stream, then re-open and authenticate
-            // the hashing pass too. Neither pass copies layer data into scratch.
-            let mut source = DecodedBlob::open(self, &digest, descriptor.size, true)?;
-            let limit = descriptor
-                .annotations
-                .data_blocks
-                .get()
-                .checked_mul(4096)
-                .and_then(|v| v.checked_add(1))
-                .ok_or(CacheError::Invalid("scute extent overflow"))?;
-            let count = io::copy(&mut (&mut source).take(limit), &mut io::sink())?;
-            source.finish()?;
-            count
-        } else {
-            descriptor.size
-        };
-        let extent = ScuteExtent::new(size, &salt, Some(descriptor.annotations.data_blocks.get()))?;
-        let mut source = DecodedBlob::open(self, &digest, descriptor.size, compressed)?;
-        let root = extent.root(&mut source)?;
-        source.finish()?;
-        Ok(VerifiedScute {
-            digest,
-            root,
-            extent,
-            compressed,
-            blob_size: descriptor.size,
-        })
-    }
-}
-
-#[derive(Debug)]
-struct CheckedBlob {
-    file: File,
-    expected: ContentDigest,
-    size: u64,
-    count: u64,
-    hash: Sha256,
-}
-impl CheckedBlob {
-    fn open(cache: &Cache, digest: &ContentDigest, size: u64) -> Result<Self, CacheError> {
-        let file = cache.blob(digest)?;
-        if file.metadata()?.len() != size {
-            return Err(CacheError::Invalid("scute blob size mismatch"));
-        }
-        Ok(Self {
-            file,
-            expected: digest.clone(),
-            size,
-            count: 0,
-            hash: Sha256::new(),
-        })
-    }
-    fn finish(mut self) -> Result<(), CacheError> {
-        if self.read(&mut [0])? != 0
-            || self.count != self.size
-            || self.hash.finalize().as_slice() != self.expected.as_bytes()
-        {
-            return Err(CacheError::Invalid("scute blob content mismatch"));
-        }
-        Ok(())
-    }
-}
-impl Read for CheckedBlob {
-    fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
-        let count = self.file.read(bytes)?;
-        self.count = self
-            .count
-            .checked_add(count as u64)
-            .ok_or_else(|| io::Error::other("blob size overflow"))?;
-        if self.count > self.size {
-            return Err(io::Error::other("blob grew during read"));
-        }
-        self.hash.update(&bytes[..count]);
-        Ok(count)
-    }
-}
-
-enum DecodedBlob {
-    Plain(CheckedBlob),
-    Compressed(zstd::stream::read::Decoder<'static, BufReader<CheckedBlob>>),
-}
-impl DecodedBlob {
-    fn open(
-        cache: &Cache,
-        digest: &ContentDigest,
-        size: u64,
-        compressed: bool,
-    ) -> Result<Self, CacheError> {
-        let source = CheckedBlob::open(cache, digest, size)?;
-        Ok(if compressed {
-            Self::Compressed(zstd::stream::read::Decoder::new(source)?)
-        } else {
-            Self::Plain(source)
-        })
-    }
-    fn finish(mut self) -> Result<(), CacheError> {
-        if self.read(&mut [0])? != 0 {
-            return Err(CacheError::Invalid("unconsumed decoded data"));
-        }
-        match self {
-            Self::Plain(source) => source.finish(),
-            Self::Compressed(decoder) => {
-                let source = decoder.finish();
-                if !source.buffer().is_empty() {
-                    return Err(CacheError::Invalid("unconsumed compressed data"));
-                }
-                source.into_inner().finish()
+        let source = PathBuf::from(format!("blobs/{}/{}", digest.algo(), digest.hex()));
+        let directory = source.with_extension("prepared");
+        let handle = self.open_at(&directory, OFlags::DIRECTORY)?;
+        let mut selected = None;
+        for entry in Dir::read_from(&handle).map_err(std::io::Error::from)? {
+            let entry = entry.map_err(std::io::Error::from)?;
+            let name = std::ffi::OsStr::from_bytes(entry.file_name().to_bytes());
+            let path = directory.join(name);
+            if path
+                .extension()
+                .is_none_or(|extension| extension != "verity")
+            {
+                continue;
+            }
+            let hash = self.regular_file(&path)?;
+            let mut record = [0; 512];
+            hash.read_exact_at(&mut record, 0)?;
+            let header = Header::decode(record)?;
+            let parameters = &header.parameters;
+            // The manifest tip is SHA-256. Inspect only the root tree block to
+            // select a cached variant; do not reconstruct or scan the tree.
+            if parameters.algorithm != Algorithm::Sha256 || parameters.hash_type != HashType::Normal
+            {
+                // Another image may have prepared this source with a different
+                // hash convention. It cannot satisfy this SHA-256 chain tip.
+                continue;
+            }
+            let parent: [u8; 32] = parameters
+                .salt
+                .as_ref()
+                .get(..32)
+                .ok_or(CacheError::Invalid(
+                    "prepared scute salt has no parent root",
+                ))?
+                .try_into()
+                .expect("checked parent length");
+            let size = parameters.data_size()?;
+            if hash.metadata()?.len() != header.total_size()? {
+                return Err(CacheError::Invalid("prepared hash extent mismatch"));
+            }
+            let data_path = if matches!(layer, Layer::ScuteZstd(_)) || layer.size() != size {
+                directory.join(format!("{size}.deflated"))
+            } else {
+                source.clone()
+            };
+            let data = self.regular_file(&data_path)?;
+            if data.metadata()?.len() != size {
+                return Err(CacheError::Invalid("prepared data extent mismatch"));
+            }
+            let single_block = header.tree_size()? == 0;
+            let block_size = if single_block {
+                parameters.data.size
+            } else {
+                parameters.hash
+            };
+            let mut block = vec![0; block_size.bytes().get() as usize];
+            if single_block {
+                data.read_exact_at(&mut block, 0)?;
+            } else {
+                hash.read_exact_at(&mut block, header.prefix_size())?;
+            }
+            let mut hasher = Sha256::new();
+            hasher.update(parameters.salt.as_ref());
+            hasher.update(&block);
+            if hasher.finalize().as_slice() != root {
+                continue;
+            }
+            if selected.replace((Scute { data, hash }, parent)).is_some() {
+                return Err(CacheError::Invalid("ambiguous prepared scute variants"));
             }
         }
-    }
-}
-impl Read for DecodedBlob {
-    fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
-        match self {
-            Self::Plain(source) => source.read(bytes),
-            Self::Compressed(source) => source.read(bytes),
-        }
+        selected.ok_or(CacheError::Invalid(
+            "prepared scute does not match the chain root",
+        ))
     }
 }

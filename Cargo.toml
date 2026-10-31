@@ -28,7 +28,6 @@ cli = [
     "dep:ciborium",
     "dep:serde_bytes",
     "dep:regex",
-    "dep:zstd",
     "dep:tempfile",
     "dep:gix",
     "dep:clap",
@@ -88,7 +87,6 @@ rustix = { git = "https://github.com/bytecodealliance/rustix", rev = "8bda151df8
 ciborium = { version = "0.2.2", optional = true }
 serde_bytes = { version = "0.11", optional = true }
 regex = { version = "1", optional = true }
-zstd = { version = "0.14.3", optional = true, default-features = false }
 tempfile = { version = "3", optional = true }
 gix = { version = "0.84", optional = true, default-features = false, features = ["sha1", "sha256"] }
 clap = { version = "4", optional = true, features = ["derive"] }
