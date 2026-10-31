@@ -30,6 +30,10 @@ impl CapturedContext {
     /// Regular file blobs are verified when this returns.
     pub(crate) fn read(&mut self, path: &ContextPath) -> Result<ContextFile, ContextError> {
         let mut pending: VecDeque<OsString> = path.as_ref().iter().map(OsString::from).collect();
+        let bytes = path.as_ref().as_os_str().as_bytes();
+        if bytes.ends_with(b"/") || bytes.ends_with(b"/.") {
+            pending.push_back(OsString::from("."));
+        }
         let mut resolved = PathBuf::new();
         let mut followed = 0;
         while let Some(part) = pending.pop_front() {

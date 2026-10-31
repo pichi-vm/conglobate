@@ -12,8 +12,8 @@ pub(crate) use read::ContextFile;
 use crate::{path::ContextDirectory, request::CommitIdentity};
 use gix::{ObjectId, object::tree::EntryKind};
 use std::{
-    collections::{BTreeMap, BTreeSet},
-    ffi::OsStr,
+    collections::{BTreeMap, BTreeSet, VecDeque},
+    ffi::{OsStr, OsString},
     fmt,
     os::unix::ffi::OsStrExt,
     path::{Path, PathBuf},
@@ -152,7 +152,19 @@ impl CapturedContext {
         let mut store = 0;
         let mut subtree = root;
         let mut repository_path = PathBuf::new();
-        for name in context.as_ref().iter().filter(|n| *n != ".") {
+        let mut parents = Vec::new();
+        let mut pending: VecDeque<OsString> = context.as_ref().iter().map(OsString::from).collect();
+        let mut followed = 0;
+        while let Some(name) = pending.pop_front() {
+            if name == "." {
+                continue;
+            }
+            if name == ".." {
+                (store, subtree, repository_path) = parents.pop().ok_or(ContextError::Invalid(
+                    "context selection escapes repository",
+                ))?;
+                continue;
+            }
             let tree = captured.stores[store].reader.tree(subtree)?;
             let decoded = tree.decode().map_err(ContextError::git)?;
             let entry = decoded
@@ -163,16 +175,38 @@ impl CapturedContext {
                     bytes == name.as_bytes()
                 })
                 .ok_or(ContextError::Invalid("context subtree does not exist"))?;
-            repository_path.push(name);
             let id = entry.oid.to_owned();
             let kind = entry.mode.kind();
             drop(tree);
             match kind {
-                EntryKind::Tree => subtree = id,
+                EntryKind::Tree => {
+                    parents.push((store, subtree, repository_path.clone()));
+                    repository_path.push(name);
+                    subtree = id;
+                }
                 EntryKind::Commit => {
+                    parents.push((store, subtree, repository_path.clone()));
+                    repository_path.push(name);
                     store = captured.open_module(store, &repository_path, id)?;
                     subtree = captured.stores[store].root;
                     repository_path.clear();
+                }
+                EntryKind::Link => {
+                    followed += 1;
+                    if followed > 40 {
+                        return Err(ContextError::Invalid("too many context symlinks"));
+                    }
+                    let target = captured.stores[store].reader.blob(id)?;
+                    if target.is_empty() || target.contains(&0) {
+                        return Err(ContextError::Invalid("invalid symlink contents"));
+                    }
+                    let target = Path::new(OsStr::from_bytes(&target));
+                    if target.is_absolute() {
+                        return Err(ContextError::Invalid("absolute context symlink"));
+                    }
+                    for part in target.iter().rev() {
+                        pending.push_front(part.to_owned());
+                    }
                 }
                 _ => {
                     return Err(ContextError::Invalid(

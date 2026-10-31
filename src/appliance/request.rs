@@ -309,7 +309,7 @@ mod tests {
         assert_eq!(request.git_ref(), "refs/heads/main");
         assert_eq!(request.plan().as_ref(), Path::new("plan.yml"));
         assert_eq!(request.lock().as_ref(), Path::new("lock.yml"));
-        assert_eq!(request.context().as_ref(), Path::new(""));
+        assert_eq!(request.context().as_ref(), Path::new("."));
         assert_eq!(request.location(), None);
     }
 

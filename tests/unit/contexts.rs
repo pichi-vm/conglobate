@@ -162,6 +162,84 @@ fn selected_files_follow_only_confined_committed_links() {
 }
 
 #[test]
+fn context_selection_resolves_links_and_parents_before_checking_containment() {
+    use conglobate::path::ContextPath;
+    let repo = Repository::new("sha1");
+    repo.write("dir/plan", b"selected");
+    repo.write("other/plan", b"other");
+    repo.write("file", b"not a directory");
+    for (name, target) in [
+        ("selected", "dir"),
+        ("escape", "../outside"),
+        ("absolute", "/tmp"),
+        ("loop", "loop"),
+        ("broken", "missing/../dir"),
+    ] {
+        std::os::unix::fs::symlink(target, repo.0.path().join(name)).unwrap();
+    }
+    let commit = repo.commit();
+    // Resolution must use committed links, even when the worktree disagrees.
+    std::fs::remove_file(repo.0.path().join("selected")).unwrap();
+    std::os::unix::fs::symlink("../outside", repo.0.path().join("selected")).unwrap();
+    for context in ["dir", "selected", "other/../dir", "selected/../dir"] {
+        let mut captured = repo.capture(&commit, context).unwrap();
+        let plan = ContextPath::try_from(Path::new("plan")).unwrap();
+        assert_eq!(
+            captured.read(&plan).unwrap().bytes(),
+            b"selected",
+            "{context}"
+        );
+    }
+    for context in [
+        "escape",
+        "absolute",
+        "loop",
+        "broken",
+        "escape/../dir",
+        "absolute/../dir",
+        "missing/../dir",
+        "file/../dir",
+    ] {
+        assert!(repo.capture(&commit, context).is_err(), "{context}");
+    }
+}
+
+#[test]
+fn input_files_preserve_symlink_and_parent_resolution() {
+    use conglobate::path::ContextPath;
+    let repo = Repository::new("sha1");
+    repo.write("context/dir/plan", b"plan");
+    repo.write("context/dir/lock", b"lock");
+    for (name, target) in [
+        ("escape", "../../outside"),
+        ("absolute", "/tmp"),
+        ("selected", "dir"),
+    ] {
+        std::os::unix::fs::symlink(target, repo.0.path().join("context").join(name)).unwrap();
+    }
+    let commit = repo.commit();
+    let mut captured = repo.capture(&commit, "context").unwrap();
+    for file in ["plan", "lock"] {
+        for prefix in ["dir", "selected", "dir/../dir", "selected/../dir"] {
+            let path = ContextPath::try_from(Path::new(&format!("{prefix}/{file}"))).unwrap();
+            assert_eq!(captured.read(&path).unwrap().bytes(), file.as_bytes());
+        }
+        for path in [
+            format!("escape/{file}"),
+            format!("escape/../dir/{file}"),
+            format!("absolute/../dir/{file}"),
+            format!("missing/../dir/{file}"),
+            format!("dir/{file}/../{file}"),
+            format!("dir/{file}/"),
+            format!("dir/{file}/."),
+        ] {
+            let path = ContextPath::try_from(Path::new(&path)).unwrap();
+            assert!(captured.read(&path).is_err(), "{}", path.as_ref().display());
+        }
+    }
+}
+
+#[test]
 fn capture_defers_regular_blob_loads_until_read() {
     use conglobate::path::ContextPath;
     let repo = Repository::new("sha1");

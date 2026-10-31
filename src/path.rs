@@ -19,7 +19,8 @@ pub(crate) enum PathError {
     Nul,
 }
 
-/// A normalized relative file locator. This does not prove symlink confinement.
+/// A relative locator whose components must still be resolved in context.
+/// Lexical checks do not prove symlink confinement; preserve `..` for resolution.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct RelativePath<K: PathKind> {
     path: PathBuf,
@@ -71,7 +72,7 @@ impl<K: PathKind> TryFrom<&Path> for RelativePath<K> {
             return Err(PathError::Empty);
         }
         Ok(Self {
-            path: normalized,
+            path: path.to_path_buf(),
             kind: PhantomData,
         })
     }
