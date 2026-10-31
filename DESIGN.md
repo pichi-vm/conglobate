@@ -1223,6 +1223,14 @@ Consumers reject a broken sequence instead of sorting it. Structural validation
 checks the base position; verifying the chain establishes the remaining links.
 No separate ordering field, per-scute root annotation or version bump is needed.
 
+Every newly sealed scute appends 32 bytes from the operating system's
+cryptographic random source to its 32-byte parent-root prefix. Failure to obtain
+randomness fails sealing. The full 64-byte salt is recorded in the verity header
+and descriptor annotation. Reusing an existing layer preserves its full salt;
+consumers continue to accept existing layers with shorter suffixes. Identical
+COW bytes retain their blob digest, but independently sealed layers have
+different salts, verity trees and roots.
+
 Every raw or compressed scute requires `dev.pichi.scute.verity.data-blocks`
 as a positive decimal string. Its padded byte extent must fit in `u64`. For
 raw scutes it must equal the descriptor size rounded up to the data block

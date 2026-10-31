@@ -106,12 +106,16 @@ impl<'w> Scratch<'w> {
         let data_blocks = NonZero::new(extent.bytes / 4096).expect("nonempty snapshot extent");
         let block = BlockSize::from_bytes(NonZero::new(4096).expect("nonzero block size"))
             .expect("valid block size");
+        // Preserve the parent link and independently randomize this new layer.
+        let mut salt = [0; 64];
+        salt[..32].copy_from_slice(&parent);
+        getrandom::fill(&mut salt[32..]).map_err(io::Error::other)?;
         let header = VerityHeader {
             uuid: [0; 16],
             parameters: Parameters {
                 algorithm: Algorithm::Sha256,
                 hash_type: HashType::Normal,
-                salt: Salt::new(&parent).expect("SHA-256 parent fits salt"),
+                salt: Salt::new(&salt).expect("parent and random suffix fit salt"),
                 data: Geometry {
                     size: block,
                     count: data_blocks,
@@ -128,7 +132,7 @@ impl<'w> Scratch<'w> {
             size: extent.bytes,
             annotations: ScuteAnnotations {
                 data_blocks,
-                salt: hex::encode(parent),
+                salt: hex::encode(salt),
             },
         };
         Ok(SealedScute {
@@ -257,40 +261,51 @@ mod tests {
             root: File::open(directory.path()).unwrap(),
         };
         let bytes = Store::new(2).0;
-        let mut scratch = workspace.scratch().unwrap();
-        scratch.write_all(&bytes).unwrap();
-        // Unused capacity is deliberately excluded from both commitments.
-        scratch.set_len(4 * 4096).unwrap();
-        let parent = [3; 32];
-        let sealed = scratch.seal_snapshot(parent).unwrap();
-        let mut data = Vec::new();
-        sealed.data_reader().read_to_end(&mut data).unwrap();
-        assert_eq!(data, bytes);
-        assert_eq!(
-            sealed.descriptor().digest,
-            format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
-        );
-        assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 2);
-        let mut tree = vec![0; 8192];
-        sealed.files().1.read_exact_at(&mut tree, 0).unwrap();
-        assert_eq!(sealed.files().1.metadata().unwrap().len(), 8192);
-        let header = VerityHeader::decode(tree[..512].try_into().unwrap()).unwrap();
-        assert_eq!(header.parameters.salt.as_ref(), parent);
-        assert_eq!(header.parameters.data.count.get(), 2);
-        for (index, block) in bytes.chunks_exact(4096).enumerate() {
-            let mut hash = Sha256::new();
-            hash.update(parent);
-            hash.update(block);
+        let mut salts = Vec::new();
+        let mut roots = Vec::new();
+        for _ in 0..2 {
+            let mut scratch = workspace.scratch().unwrap();
+            scratch.write_all(&bytes).unwrap();
+            // Unused capacity is deliberately excluded from both commitments.
+            scratch.set_len(4 * 4096).unwrap();
+            let parent = [3; 32];
+            let sealed = scratch.seal_snapshot(parent).unwrap();
+            let mut data = Vec::new();
+            sealed.data_reader().read_to_end(&mut data).unwrap();
+            assert_eq!(data, bytes);
             assert_eq!(
-                &tree[4096 + index * 32..4096 + (index + 1) * 32],
-                hash.finalize().as_slice()
+                sealed.descriptor().digest,
+                format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
             );
+            assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 2);
+            let mut tree = vec![0; 8192];
+            sealed.files().1.read_exact_at(&mut tree, 0).unwrap();
+            assert_eq!(sealed.files().1.metadata().unwrap().len(), 8192);
+            let header = VerityHeader::decode(tree[..512].try_into().unwrap()).unwrap();
+            let salt = header.parameters.salt.as_ref();
+            assert_eq!(salt.len(), 64);
+            assert_eq!(&salt[..32], parent);
+            assert_eq!(sealed.descriptor().annotations.salt, hex::encode(salt));
+            assert_eq!(header.parameters.data.count.get(), 2);
+            for (index, block) in bytes.chunks_exact(4096).enumerate() {
+                let mut hash = Sha256::new();
+                hash.update(salt);
+                hash.update(block);
+                assert_eq!(
+                    &tree[4096 + index * 32..4096 + (index + 1) * 32],
+                    hash.finalize().as_slice()
+                );
+            }
+            assert!(tree[4160..].iter().all(|byte| *byte == 0));
+            let mut hash = Sha256::new();
+            hash.update(salt);
+            hash.update(&tree[4096..]);
+            assert_eq!(sealed.root().as_slice(), hash.finalize().as_slice());
+            salts.push(salt.to_vec());
+            roots.push(*sealed.root());
         }
-        assert!(tree[4160..].iter().all(|byte| *byte == 0));
-        let mut hash = Sha256::new();
-        hash.update(parent);
-        hash.update(&tree[4096..]);
-        assert_eq!(sealed.root().as_slice(), hash.finalize().as_slice());
+        assert_ne!(salts[0][32..], salts[1][32..]);
+        assert_ne!(roots[0], roots[1]);
     }
     #[test]
     fn sealing_rejects_incomplete_snapshot_extents() {
