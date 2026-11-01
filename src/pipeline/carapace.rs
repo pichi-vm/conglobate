@@ -4,7 +4,7 @@
 use crate::{
     execution::HelperProgram,
     input::ResolvedBuild,
-    plan::Directive,
+    plan::Task,
     process::ChildReaper,
     step::CommandSandbox,
     storage::{Created, Mapping, Mounted, Runtime, SealedScute, Unmounted, Volume, Workspace},
@@ -25,11 +25,11 @@ impl<'w> DerivedCarapace<'w> {
         build: &ResolvedBuild,
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
-        directives: &[Directive],
+        task: &Task,
         artifacts: &super::artifacts::Artifacts<'_>,
         carapace: Option<&[u8; 32]>,
     ) -> anyhow::Result<Self> {
-        if directives.is_empty() {
+        if task.directives().is_empty() {
             return Ok(self);
         }
         let Self {
@@ -51,7 +51,8 @@ impl<'w> DerivedCarapace<'w> {
             scratch.attach()?,
             NonZeroU64::new(carapace::ZERO_SIZE_SECTORS).unwrap(),
         )?;
-        let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())?;
+        let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())?
+            .with_mounts(task.mounts(), paths.volumes(), false)?;
         let networking = build
             .captured()
             .networking()
@@ -59,7 +60,7 @@ impl<'w> DerivedCarapace<'w> {
         let completed = sandbox.directives_with_inputs::<Volume<'_, '_, '_, Mounted>>(
             volume,
             reaper,
-            directives,
+            task.directives(),
             crate::step::DirectiveInputs {
                 context: build.captured().context(),
                 artifacts,

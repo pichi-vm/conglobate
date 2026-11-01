@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+tasks:
+  rootfs:
+    kind: bootstrap
+    from: qualification.local/fedora:43
+    filesystem: {kind: ext4, size: 32MiB, esp: 257MiB}
+    mount: {/boot/efi: esp, /tmp: tmpfs, /tmp/nested: tmpfs}
+    exec:
+    - run: |
+        printf 'discarded\n' > /mnt/boot/efi/marker
+        printf 'temporary\n' > /mnt/tmp/nested/marker
+        printf 'STAGE_MOUNTS_EXPECTED_FAILURE\n'
+        exit 7
+    - run: printf 'STAGE_UNEXPECTED_CONTINUATION\n'
+image: rootfs

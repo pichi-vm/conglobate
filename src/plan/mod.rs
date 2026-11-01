@@ -177,8 +177,14 @@ pub(crate) struct Task {
     directives: Vec<Directive>,
     outputs: BTreeMap<ArtifactName, crate::plan::schema::ImagePath>,
     firmware: Option<Firmware>,
+    mount: BTreeMap<crate::contract::recipe::ImagePath, crate::contract::recipe::Mount>,
 }
 impl Task {
+    pub(crate) fn mounts(
+        &self,
+    ) -> &BTreeMap<crate::contract::recipe::ImagePath, crate::contract::recipe::Mount> {
+        &self.mount
+    }
     pub(crate) fn from(&self) -> &Reference {
         &self.from
     }
@@ -223,6 +229,7 @@ impl TryFrom<YamlDocument<'_>> for Plan {
             .into_iter()
             .map(|(name, task)| {
                 let crate::plan::schema::TaskParts {
+                    mount,
                     from,
                     directives,
                     filesystem,
@@ -237,6 +244,7 @@ impl TryFrom<YamlDocument<'_>> for Plan {
                 Ok((
                     name,
                     Task {
+                        mount,
                         from,
                         directives: directives
                             .into_iter()

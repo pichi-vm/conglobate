@@ -76,6 +76,15 @@ an incomplete or compromised build to be accepted.
 Before sealing an output, the builder must terminate and reap all command
 descendants, revoke their write access, and finish filesystem writeback and clean unmount.
 The finalized image bytes must remain stable through publication.
+
+Stage `mount` entries attach tmpfs or the image's formatted ESP at image-relative
+paths. Creation maps that namespace beneath `/mnt`; extension uses `/`.
+Temporary filesystem owners remain alive across command and COPY steps, while
+each step receives its own mount views. Finalization flushes and unmounts child
+views in reverse order, releases the stage owners, then releases the partition
+views before closing the whole-disk snapshot. A failed unmount retains owners
+and cannot produce a successful image. Persisted-image readers do not replay
+stage mounts; ESP data is part of the disk and tmpfs data disappears.
 Future attestation must bind the trusted execution environment, including the
 kernel, environment-provided labeling policy, appliance image (and its internal
 formatter profiles) and effective configuration, to the image digest; measuring

@@ -16,6 +16,7 @@ mod partition_storage;
 mod pty_filter;
 mod runtime_scope;
 mod sandbox_failures;
+mod stage_mounts;
 mod workspace_mount;
 mod writeback;
 use conglobate::execution::{HelperInvocation, HelperProgram};
@@ -37,6 +38,8 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "stage-mounts" => stage_mounts::StageMounts::run(false),
+            [mode] if mode == "stage-mount-busy" => stage_mounts::StageMounts::run(true),
             [mode] if mode == "partition-storage" => {
                 partition_storage::PartitionStorage::run(false)
             }

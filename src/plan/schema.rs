@@ -309,6 +309,8 @@ impl AsRef<str> for ImagePath {
 pub(crate) struct Bootstrap {
     from: Reference,
     filesystem: Filesystem,
+    #[serde(default)]
+    mount: BTreeMap<crate::contract::recipe::ImagePath, crate::contract::recipe::Mount>,
     #[serde(default, rename = "exec", deserialize_with = "nonnull")]
     directives: Vec<Directive>,
 }
@@ -316,6 +318,8 @@ pub(crate) struct Bootstrap {
 #[serde(deny_unknown_fields)]
 pub(crate) struct Extend {
     from: Reference,
+    #[serde(default)]
+    mount: BTreeMap<crate::contract::recipe::ImagePath, crate::contract::recipe::Mount>,
     #[serde(default, rename = "exec", deserialize_with = "nonnull")]
     directives: Vec<Directive>,
 }
@@ -549,11 +553,13 @@ pub(crate) struct TaskParts {
     pub(crate) filesystem: Option<Filesystem>,
     pub(crate) outputs: Option<BTreeMap<ArtifactName, ImagePath>>,
     pub(crate) boot: Option<(String, String)>,
+    pub(crate) mount: BTreeMap<crate::contract::recipe::ImagePath, crate::contract::recipe::Mount>,
 }
 impl Task {
     pub(crate) fn into_parts(self) -> TaskParts {
         match self {
             Self::Bootstrap(t) => TaskParts {
+                mount: t.mount,
                 from: t.from,
                 directives: t.directives,
                 filesystem: Some(t.filesystem),
@@ -561,6 +567,7 @@ impl Task {
                 boot: None,
             },
             Self::Extend(t) => TaskParts {
+                mount: t.mount,
                 from: t.from,
                 directives: t.directives,
                 filesystem: None,
@@ -570,6 +577,7 @@ impl Task {
             Self::Build(t) => {
                 let boot = t.boot().map(|(pmi, dtb)| (pmi.to_owned(), dtb.to_owned()));
                 TaskParts {
+                    mount: BTreeMap::new(),
                     from: t.from,
                     directives: t.directives,
                     filesystem: None,
@@ -599,6 +607,9 @@ mod tests {
             include_str!("../../tests/distro/fedora/plan.yaml"),
             include_str!("../../tests/distro/nixos/plan.yaml"),
             include_str!("../../tests/distro/pipeline/plan.yaml"),
+            include_str!("../../tests/distro/stage-mounts/plan.yaml"),
+            include_str!("../../tests/distro/stage-mounts/nonzero.yaml"),
+            include_str!("../../tests/distro/stage-mounts/timeout.yaml"),
             include_str!("../../tests/distro/pipeline/imported-boot.yaml"),
             include_str!("../../tests/distro/pipeline/boot-only.yaml"),
             include_str!("../../tests/distro/confinement/plan.yaml"),

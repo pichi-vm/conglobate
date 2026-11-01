@@ -98,19 +98,8 @@ impl Pipeline {
                 match task.kind() {
                     TaskKind::Bootstrap(stage) => {
                         let active = input.activate(build.cache())?;
-                        let result = bootstrap::BootstrapBuild::new(
-                            build,
-                            stage,
-                            task.directives(),
-                            &artifacts,
-                        )
-                        .execute(
-                            workspace,
-                            runtime,
-                            active,
-                            reaper,
-                            carapace.as_ref(),
-                        )?;
+                        let result = bootstrap::BootstrapBuild::new(build, stage, task, &artifacts)
+                            .execute(workspace, runtime, active, reaper, carapace.as_ref())?;
                         Ok((
                             StageOutput {
                                 base: None,
@@ -134,7 +123,7 @@ impl Pipeline {
                                 build,
                                 workspace,
                                 runtime,
-                                task.directives(),
+                                task,
                                 &artifacts,
                                 carapace.as_ref(),
                             )?;

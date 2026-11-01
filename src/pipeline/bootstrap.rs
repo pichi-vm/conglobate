@@ -18,20 +18,20 @@ use std::{num::NonZeroU64, sync::Arc};
 pub(super) struct BootstrapBuild<'a> {
     build: &'a ResolvedBuild,
     stage: &'a Bootstrap,
-    directives: &'a [crate::plan::Directive],
+    task: &'a crate::plan::Task,
     artifacts: &'a super::artifacts::Artifacts<'a>,
 }
 impl<'a> BootstrapBuild<'a> {
     pub(super) fn new(
         build: &'a ResolvedBuild,
         stage: &'a Bootstrap,
-        directives: &'a [crate::plan::Directive],
+        task: &'a crate::plan::Task,
         artifacts: &'a super::artifacts::Artifacts<'a>,
     ) -> Self {
         Self {
             build,
             stage,
-            directives,
+            task,
             artifacts,
         }
     }
@@ -82,8 +82,9 @@ impl<'a> BootstrapBuild<'a> {
             sectors,
         )?;
         let tool = Volume::<Unmounted>::in_init_namespace(tool, runtime.recovery())?;
-        let output = Volume::<Unmounted>::in_init_namespace(output, runtime.recovery())?;
         let paths = runtime.paths()?;
+        let output = Volume::<Unmounted>::in_init_namespace(output, runtime.recovery())?
+            .with_mounts(self.task.mounts(), paths.volumes(), true)?;
         let mappings = self.build.captured().execution_mappings()?;
         let sandbox = CommandSandbox::new(
             HelperProgram::current()?,
@@ -99,7 +100,7 @@ impl<'a> BootstrapBuild<'a> {
         let completed = sandbox.directives_with_inputs::<BootstrapVolumes<'_, '_, '_, Mounted>>(
             BootstrapVolumes::new(tool, output),
             reaper,
-            self.directives,
+            self.task.directives(),
             crate::step::DirectiveInputs {
                 context: self.build.captured().context(),
                 artifacts: self.artifacts,

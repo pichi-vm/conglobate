@@ -94,6 +94,18 @@ impl<'o, 'w> PartitionedSnapshot<'o, 'w> {
         self.root.open_read_only()
     }
 
+    pub(super) fn open_esp(&self) -> io::Result<File> {
+        self.esp
+            .as_ref()
+            .ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "stage requests an ESP mount but the image has no ESP",
+                )
+            })?
+            .open_read_only()
+    }
+
     pub(crate) fn validate(&self) -> io::Result<()> {
         self.snapshot.usage().map(|_| ())
     }

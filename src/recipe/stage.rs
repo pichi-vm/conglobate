@@ -41,9 +41,17 @@ impl Stage {
         let mut seen = BTreeSet::new();
         for path in self.mounts().keys() {
             let normalized = path.normalized();
-            if normalized == "/" || !seen.insert(normalized) {
+            let first = normalized
+                .trim_start_matches('/')
+                .split('/')
+                .next()
+                .unwrap_or("");
+            if normalized == "/"
+                || (matches!(self, Self::Extend(_)) && matches!(first, "dev" | "proc" | "sys"))
+                || !seen.insert(normalized)
+            {
                 return Err(Error::from(
-                    "mount paths cannot replace root or name the same location twice",
+                    "mount paths cannot replace root, runtime controls or another mount",
                 ));
             }
         }

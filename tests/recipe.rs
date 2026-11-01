@@ -100,6 +100,9 @@ fn copy_namespaces_and_mount_paths_preserve_confinement() {
     for mount in [
         json!({"/":"tmpfs"}),
         json!({"/tmp":"tmpfs", "tmp/.":"tmpfs"}),
+        json!({"dev":"tmpfs"}),
+        json!({"/proc/hidden":"tmpfs"}),
+        json!({"./sys/":"esp"}),
     ] {
         assert!(recipe(json!({"stages":{"test":{"extending":"registry.example.com/base:1", "mount":mount, "derive":[{"exec":"true"}]}},"image":"test"})).validate().is_err());
     }
