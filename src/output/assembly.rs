@@ -766,7 +766,7 @@ mod tests {
             &changed,
         )
         .unwrap_err();
-        assert!(failure.to_string().contains("firmware/DTB compatibility"));
+        assert!(failure.to_string().contains("firmware compatibility"));
         assert!(!parent.path().join("changed").exists());
     }
     #[test]

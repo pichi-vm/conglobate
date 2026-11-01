@@ -26,6 +26,8 @@ pub(crate) enum CacheError {
     Io(#[from] io::Error),
     #[error(transparent)]
     Firmware(#[from] crate::firmware::FirmwareError),
+    #[error(transparent)]
+    BootConfig(#[from] crate::artifact::BootConfigError),
     #[error("invalid cache content: {0}")]
     Invalid(&'static str),
 }

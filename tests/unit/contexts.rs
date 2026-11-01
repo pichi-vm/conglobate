@@ -466,12 +466,19 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
         request::BuildRequest,
     };
     use sha2::{Digest as _, Sha256};
+    let pmi = b"firmware";
+    let pmi_digest = Digest::Sha256(Sha256::digest(pmi).into());
     let manifest = serde_json::to_vec(&crate::artifact::Manifest {
         schema_version: 2,
         media_type: "application/vnd.oci.image.manifest.v1+json".into(),
         artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
         config: crate::artifact::ConfigDescriptor::canonical(),
-        layers: Vec::new(),
+        layers: vec![crate::artifact::Layer::Pmi(
+            crate::artifact::PmiDescriptor {
+                digest: pmi_digest.to_string(),
+                size: pmi.len() as u64,
+            },
+        )],
         annotations: Default::default(),
     })
     .unwrap();
@@ -485,6 +492,7 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
     let cache = tempfile::tempdir().unwrap();
     let blobs = cache.path().join("blobs/sha256");
     std::fs::create_dir_all(&blobs).unwrap();
+    std::fs::write(blobs.join(pmi_digest.hex()), pmi).unwrap();
     std::fs::write(blobs.join(manifest_digest.hex()), manifest).unwrap();
     std::fs::write(blobs.join(index_digest.hex()), index).unwrap();
     let repo = Repository::new("sha1");

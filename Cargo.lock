@@ -1503,7 +1503,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 [[package]]
 name = "pmi"
 version = "0.1.0"
-source = "git+https://github.com/pichi-vm/pmi?rev=364ee0be240fa44c9d7cef7692593f3b52e45b78#364ee0be240fa44c9d7cef7692593f3b52e45b78"
+source = "git+https://github.com/pichi-vm/pmi?rev=710d64917968dfea4e608c1a12942c0c42ebb1e7#710d64917968dfea4e608c1a12942c0c42ebb1e7"
 dependencies = [
  "serde",
 ]

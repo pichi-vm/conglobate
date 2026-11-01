@@ -12,7 +12,7 @@ impl Fixture {
     pub(crate) fn image(target: &str, spec: &serde_json::Value, capacity: u32) -> Vec<u8> {
         Self::sections(0x8664, &[(target, spec)], &[(".dtb", capacity)])
     }
-    fn sections(
+    pub(crate) fn sections(
         machine: u16,
         targets: &[(&str, &serde_json::Value)],
         reserves: &[(&str, u32)],
@@ -215,4 +215,111 @@ fn ambiguous_unknown_malformed_and_nonzero_fill_sections_fail() {
             .to_string()
             .contains("duplicate manifest key")
     );
+}
+
+impl Fixture {
+    pub(crate) fn bootconfig_spec(machine: u16) -> serde_json::Value {
+        let mut spec = Self::detached();
+        spec["actions"][0]["kind"] = "lbc:bootconfig".into();
+        spec["actions"][0]["section"] = ".bconf".into();
+        if machine == 0xaa64 {
+            spec["cpu:profile"] = "armv8.2-a".into();
+            spec["vm:vcpu"] = serde_json::json!({"pstate":5,"pc":8192});
+        }
+        spec
+    }
+}
+
+#[test]
+fn bootconfig_contract_checks_architecture_and_native_footer_capacity() {
+    for (machine, architecture) in [(0x8664, "amd64"), (0xaa64, "arm64")] {
+        let spec = Fixture::bootconfig_spec(machine);
+        let bytes = Fixture::sections(machine, &[(".pmi.vm", &spec)], &[(".bconf", 4096)]);
+        let contract = BootConfigContract::from_pmi(&bytes, architecture).unwrap();
+        contract.check_size(4075).unwrap();
+        assert!(contract.check_size(4076).is_err());
+        assert!(contract.check_size(usize::MAX).is_err());
+        assert!(
+            BootConfigContract::from_pmi(
+                &bytes,
+                if architecture == "amd64" {
+                    "arm64"
+                } else {
+                    "amd64"
+                }
+            )
+            .is_err()
+        );
+    }
+}
+
+#[test]
+fn bootconfig_contract_rejects_missing_ambiguous_nonzero_and_overlapping_reservations() {
+    let spec = Fixture::bootconfig_spec(0x8664);
+    for (field, value) in [
+        ("section", serde_json::json!(".absent")),
+        ("gpa", serde_json::json!(8193)),
+        ("gpa", serde_json::json!(u64::MAX - 4095)),
+        ("kind", serde_json::json!("dt:dtb")),
+    ] {
+        let mut changed = spec.clone();
+        changed["actions"][0][field] = value;
+        assert!(
+            BootConfigContract::from_pmi(
+                &Fixture::sections(0x8664, &[(".pmi.vm", &changed)], &[(".bconf", 4096)]),
+                "amd64"
+            )
+            .is_err()
+        );
+    }
+    for capacity in [0, 4095] {
+        assert!(
+            BootConfigContract::from_pmi(
+                &Fixture::sections(0x8664, &[(".pmi.vm", &spec)], &[(".bconf", capacity)]),
+                "amd64"
+            )
+            .is_err()
+        );
+    }
+    for gpa in [8192, 16384] {
+        let mut duplicate = spec.clone();
+        let mut second = spec["actions"][0].clone();
+        second["gpa"] = gpa.into();
+        duplicate["actions"].as_array_mut().unwrap().push(second);
+        assert!(
+            BootConfigContract::from_pmi(
+                &Fixture::sections(0x8664, &[(".pmi.vm", &duplicate)], &[(".bconf", 4096)]),
+                "amd64"
+            )
+            .is_err()
+        );
+    }
+    let offset = 0x98 + 240 + 40;
+    for (field, value) in [(36, 0x40000040), (36, 0xc2000080), (16, 512)] {
+        let mut image = Fixture(Fixture::sections(
+            0x8664,
+            &[(".pmi.vm", &spec)],
+            &[(".bconf", 4096)],
+        ));
+        image.u32(offset + field, value);
+        assert!(BootConfigContract::from_pmi(&image.0, "amd64").is_err());
+    }
+    let mut tdx = spec.clone();
+    tdx.as_object_mut().unwrap().remove("vm:vcpu");
+    tdx["actions"][0]["section"] = ".small".into();
+    let bytes = Fixture::sections(
+        0x8664,
+        &[(".pmi.vm", &spec), (".pmi.tdx", &tdx)],
+        &[(".bconf", 4096), (".small", 128)],
+    );
+    let contract = BootConfigContract::from_pmi(&bytes, "amd64").unwrap();
+    contract.check_size(107).unwrap();
+    assert!(contract.check_size(108).is_err());
+    tdx["actions"] = serde_json::json!([]);
+    let bytes = Fixture::sections(
+        0x8664,
+        &[(".pmi.vm", &spec), (".pmi.tdx", &tdx)],
+        &[(".bconf", 4096)],
+    );
+    assert!(BootConfigContract::from_pmi(&bytes, "amd64").is_err());
 }

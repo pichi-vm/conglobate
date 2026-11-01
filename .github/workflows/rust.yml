@@ -36,3 +36,23 @@ jobs:
         run: cargo test --locked --features cli --all-targets
       - name: Compile internal VM fixtures
         run: cargo check --locked --features test-fixtures --bin conglobate-lifecycle-tests
+      - name: Check out the Linux bootconfig reference utility
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: torvalds/linux
+          # Linux 6.18; parser qualification must not follow a moving branch.
+          ref: 7d0a66e4bb9081d75c82ec4957c50034cb0ea449
+          path: .linux-bootconfig
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /tools/bootconfig/
+            /include/linux/bootconfig.h
+            /lib/bootconfig.c
+      - name: Compare native boot configuration with Linux
+        run: |
+          cc -Wall -O2 -I.linux-bootconfig/tools/bootconfig/include \
+            .linux-bootconfig/tools/bootconfig/main.c \
+            .linux-bootconfig/lib/bootconfig.c -o .linux-bootconfig/bootconfig
+          BOOTCONFIG="$PWD/.linux-bootconfig/bootconfig" \
+            cargo test --locked --test boot_config -- --include-ignored

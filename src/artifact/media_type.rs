@@ -48,6 +48,9 @@ pub const MEDIA_TYPE_PICHI_PMI_V1: &str = "application/vnd.pichi.pmi.v1";
 /// migration; new writers MUST NOT emit it.
 pub const MEDIA_TYPE_PICHI_REQUIREMENTS_V1: &str = "application/vnd.pichi.requirements.v1+yaml";
 
+/// Native Linux boot configuration text. Requires a PMI with a reservation.
+pub const MEDIA_TYPE_PICHI_BOOTCONFIG_V1: &str = "application/vnd.pichi.bootconfig.v1";
+
 /// Base DTB layer: the measured base devicetree for a PMI built in the `dt`
 /// extension's *detached* channel mode. `pichi run` supplies it to the VMM
 /// out-of-band (`dillo --dtb`). At most one per manifest; appears only

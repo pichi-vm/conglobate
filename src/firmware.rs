@@ -1,13 +1,15 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+mod boot_config_contract;
 mod output;
+pub(crate) use boot_config_contract::BootConfigContract;
 use ciborium::Value;
 pub(crate) use output::{ExtractedFirmware, ExtractionError, FinalizedFirmware, FirmwareFile};
 use std::collections::BTreeSet;
 
 #[derive(Debug, thiserror::Error)]
-#[error("firmware/DTB compatibility: {0}")]
+#[error("firmware compatibility: {0}")]
 pub(crate) struct FirmwareError(String);
 impl FirmwareError {
     fn invalid(error: impl std::fmt::Display) -> Self {

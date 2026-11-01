@@ -9,15 +9,16 @@
 //! tagged on `mediaType`), `ConfigDescriptor` for the OCI 1.1 empty-config
 //! pattern, and `validate()` enforcing all six D-07 rules.
 
+use super::{BootConfig, BootConfigDescriptor};
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::artifact::media_type::{
-    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_CONFIG_V1,
-    MEDIA_TYPE_PICHI_DTB_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_SCUTE_V1,
-    MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1,
+    MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_DTB_V1, MEDIA_TYPE_PICHI_PMI_V1,
+    MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 
 /// Required chain-wide annotation keys (per D-06). These are the dm-verity
@@ -47,7 +48,8 @@ const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 /// - Top-level `artifact_type` MUST equal [`MEDIA_TYPE_PICHI_ARTIFACT_V1`].
 /// - `config` MUST be the OCI 1.1 empty-config descriptor with inline `data: "e30="`.
 /// - Scute layers MUST appear in chain order, from base to tip.
-/// - At most ONE [`Layer::Pmi`] (D-03 — zero pmi = base/non-bootable, one pmi = appliance/bootable).
+/// - A root, a PMI, or both must be present.
+/// - At most one PMI and one boot configuration, which requires a PMI.
 /// - Top-level annotations MUST include the carapace verity *param* keys
 ///   and one chain-tip root when scute layers exist.
 /// - Every scute layer MUST carry a `dev.pichi.scute.verity.salt` annotation
@@ -70,7 +72,7 @@ pub struct Manifest {
     /// carrying the launch contract (BUILD.md §7.1).
     pub config: ConfigDescriptor,
     /// Typed layer descriptors. Scutes appear in base-to-tip chain order;
-    /// PMI and DTB descriptors do not participate in that order.
+    /// PMI, boot configuration, and legacy DTB descriptors are outside that order.
     pub layers: Vec<Layer>,
     /// Top-level annotations. With scutes, MUST include
     /// `dev.pichi.carapace.verity.{algo,data-block-size,hash-block-size,
@@ -178,12 +180,19 @@ pub enum Layer {
     /// Uncompressed scute (dm-snapshot COW) layer.
     #[serde(rename = "application/vnd.pichi.scute.v1")]
     Scute(ScuteDescriptor),
+
     /// Zstd-compressed scute layer (per D-08).
     #[serde(rename = "application/vnd.pichi.scute.v1+zstd")]
     ScuteZstd(ScuteDescriptor),
+
     /// PMI payload layer (uncompressed per D-09).
     #[serde(rename = "application/vnd.pichi.pmi.v1")]
     Pmi(PmiDescriptor),
+
+    /// Native Linux boot configuration accompanying the PMI. At most one.
+    #[serde(rename = "application/vnd.pichi.bootconfig.v1")]
+    BootConfig(BootConfigDescriptor),
+
     /// Base DTB layer for a detached-channel PMI (BUILD.md §7.1). At most one.
     #[serde(rename = "application/vnd.pichi.dtb.v1")]
     Dtb(DtbDescriptor),
@@ -196,6 +205,7 @@ impl Layer {
             Self::Scute(d) | Self::ScuteZstd(d) => &d.digest,
             Self::Pmi(d) => &d.digest,
             Self::Dtb(d) => &d.digest,
+            Self::BootConfig(d) => &d.digest,
         }
     }
 
@@ -205,6 +215,7 @@ impl Layer {
             Self::Scute(d) | Self::ScuteZstd(d) => d.size,
             Self::Pmi(d) => d.size,
             Self::Dtb(d) => d.size,
+            Self::BootConfig(d) => d.size,
         }
     }
 
@@ -224,6 +235,7 @@ impl Layer {
             Self::ScuteZstd(_) => MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
             Self::Pmi(_) => MEDIA_TYPE_PICHI_PMI_V1,
             Self::Dtb(_) => MEDIA_TYPE_PICHI_DTB_V1,
+            Self::BootConfig(_) => MEDIA_TYPE_PICHI_BOOTCONFIG_V1,
         }
     }
 }
@@ -301,6 +313,10 @@ pub struct DtbDescriptor {
 /// Validation errors for [`Manifest::validate`] (per D-07).
 #[derive(Debug, Error)]
 pub enum ManifestValidationError {
+    /// Image components are missing, duplicated, or incompatible.
+    #[error("invalid image components: {0}")]
+    Components(&'static str),
+
     /// D-07 rule 1: wrong `artifactType`.
     #[error("artifactType must be {expected}, got {actual}")]
     WrongArtifactType {
@@ -459,6 +475,38 @@ impl Manifest {
         if dtb_count > 1 {
             return Err(ManifestValidationError::MultipleDtb(dtb_count));
         }
+        let mut configs = self.layers.iter().filter_map(|layer| match layer {
+            Layer::BootConfig(config) => Some(config),
+            _ => None,
+        });
+        let config = configs.next();
+        if configs.next().is_some() {
+            return Err(ManifestValidationError::Components(
+                "multiple boot configurations",
+            ));
+        }
+        if config.is_some() && pmi_count != 1 {
+            return Err(ManifestValidationError::Components(
+                "boot configuration requires a PMI",
+            ));
+        }
+        if config
+            .is_some_and(|config| config.size == 0 || config.size > BootConfig::MAX_SIZE as u64)
+        {
+            return Err(ManifestValidationError::Components(
+                "boot configuration must be nonempty and fit Linux limits",
+            ));
+        }
+        if pmi_count == 0 && !self.has_scutes() {
+            return Err(ManifestValidationError::Components(
+                "image requires a root or PMI",
+            ));
+        }
+        if config.is_some() && dtb_count != 0 {
+            return Err(ManifestValidationError::Components(
+                "boot configuration cannot accompany a detached DTB",
+            ));
+        }
         // The salt's parent prefix identifies the base without reading blobs.
         // Full chain continuity is checked when consumers verify the scutes.
         let mut first_scute = true;
@@ -503,6 +551,70 @@ impl Manifest {
 mod tests {
     use super::*;
     use sha2::{Digest as _, Sha256};
+
+    #[test]
+    fn component_combinations_require_pmi_for_bootconfig() {
+        for root in [false, true] {
+            for boot in [false, true] {
+                for config in [false, true] {
+                    let mut manifest = sample_base_manifest();
+                    if !root {
+                        manifest.layers.clear();
+                        manifest.annotations.clear();
+                    }
+                    if boot {
+                        manifest.layers.push(Layer::Pmi(PmiDescriptor {
+                            digest: format!("sha256:{}", "12".repeat(32)),
+                            size: 4096,
+                        }));
+                    }
+                    if config {
+                        manifest
+                            .layers
+                            .push(Layer::BootConfig(BootConfigDescriptor {
+                                digest: format!("sha256:{}", "34".repeat(32)),
+                                size: 8,
+                            }));
+                    }
+                    let valid = boot || root && !config;
+                    assert_eq!(
+                        manifest.validate().is_ok(),
+                        valid,
+                        "root={root} boot={boot} config={config}"
+                    );
+                    if valid {
+                        assert_eq!(
+                            manifest,
+                            serde_json::from_slice::<Manifest>(
+                                &serde_json::to_vec(&manifest).unwrap()
+                            )
+                            .unwrap()
+                        );
+                    }
+                    if config && boot {
+                        manifest
+                            .layers
+                            .push(manifest.layers.last().unwrap().clone());
+                        assert!(manifest.validate().is_err());
+                    }
+                }
+            }
+        }
+        for size in [0, BootConfig::MAX_SIZE as u64 + 1] {
+            let mut manifest = sample_base_manifest();
+            manifest.layers.push(Layer::Pmi(PmiDescriptor {
+                digest: format!("sha256:{}", "12".repeat(32)),
+                size: 4096,
+            }));
+            manifest
+                .layers
+                .push(Layer::BootConfig(BootConfigDescriptor {
+                    digest: format!("sha256:{}", "34".repeat(32)),
+                    size,
+                }));
+            assert!(manifest.validate().is_err());
+        }
+    }
 
     #[test]
     fn data_blocks_is_a_required_positive_decimal_annotation() {
@@ -844,6 +956,14 @@ mod tests {
         m.layers.clear();
         assert!(m.validate().is_err());
         m.annotations.clear();
+        assert!(matches!(
+            m.validate(),
+            Err(ManifestValidationError::Components(_))
+        ));
+        m.layers.push(Layer::Pmi(PmiDescriptor {
+            digest: format!("sha256:{}", "12".repeat(32)),
+            size: 4096,
+        }));
         m.validate().unwrap();
         assert_eq!(m.carapace_root().unwrap(), None);
     }

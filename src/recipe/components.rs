@@ -23,6 +23,11 @@ impl Components {
         if self.root.is_none() && self.boot.is_none() {
             return Err(Error::from("image must select a root or PMI"));
         }
+        if let Some(BootConfigSource::Overlay(overlay)) = &self.bootconfig {
+            overlay
+                .apply(&crate::artifact::BootConfig::default())
+                .map_err(|error| Error::from(error.to_string()))?;
+        }
         Ok(())
     }
 }

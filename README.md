@@ -236,3 +236,18 @@ amd64 and Arm64.
   for a reader with no knowledge of the project's history or how the work was
   produced. Do not reference internal process, prior iterations, or review
   back-and-forth. (gitlint cannot check this — it is a review responsibility.)
+
+The portable `artifact::BootConfig` type parses native Linux configuration and
+writes deterministic text. It retains bare keys, empty values and arrays; it
+accepts nested keys, comments, `:=` replacement and `+=` append syntax on input.
+`recipe::BootConfig::apply` applies YAML values to a resolved base: null deletes
+only that key, and arrays replace the complete previous value. Linux has no
+quote escapes; values that cannot be represented faithfully are errors.
+
+Images carry native text as `application/vnd.pichi.bootconfig.v1`, alongside
+exactly one PMI. Empty images and standalone boot configurations are invalid.
+An empty merged configuration has no descriptor. Input validation authenticates
+config bytes, checks Linux limits, and checks every PMI target's reservation,
+including native padding and footer space. These contracts are available to
+consumers before the CLI moves to staged plans; existing task execution still
+uses the detached-DTB path during that migration.

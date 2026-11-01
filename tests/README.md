@@ -5,6 +5,21 @@ disposable VMs; rootless checks are documented in [README.md](../README.md).
 Use repository-local scratch output directories and remove generated artifacts
 when finished. Each runner requires a new output directory.
 
+## Native boot configuration
+
+`tests/boot_config.rs` checks Linux text syntax, exact-key deletion, list
+replacement, bare versus empty values, and parser/reservation limits. Run its
+reference-parser comparison explicitly with a Linux `bootconfig` executable:
+
+```sh
+BOOTCONFIG=/path/to/bootconfig cargo test --locked --test boot_config -- --include-ignored
+```
+
+The rootless CI matrix compiles the standalone utility from a pinned Linux
+6.18 revision and runs this comparison on both architectures. This is an
+external test oracle, not code linked into Conglobate. A missing executable
+fails the comparison. Actual firmware handoff remains a separate VM check.
+
 ## Trusted guest labeling environment
 
 The files in `tests/environment/` provision the fixed exact-name `security.selinux` exception in
