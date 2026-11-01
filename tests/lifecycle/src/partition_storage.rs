@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use conglobate::{
+    contract::recipe::Format,
     disk::{Architecture, Disk},
     execution::HelperProgram,
     formatter::{CapturedFormatter, Ext4Format},
-    plan::FilesystemSpec,
     step::SetupBudget,
     storage::{Created, Mapping, PartitionedSnapshot, ReadOnlyChain, Workspace},
 };
@@ -102,7 +102,7 @@ impl PartitionStorage {
         scratch.set_len(32 * 1024 * 1024)?;
         let snapshot =
             Mapping::<Created>::create()?.snapshot(&origin, scratch.attach()?, sectors)?;
-        let spec: FilesystemSpec = serde_saphyr::from_str(
+        let spec: Format = serde_saphyr::from_str(
             "kind: ext4\nsize: 32MiB\nlabel: partition-test\nesp: 257MiB\n",
         )?;
         let format = Ext4Format::from(&spec);

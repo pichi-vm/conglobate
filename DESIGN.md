@@ -16,24 +16,12 @@ and prose call the document a **plan** and the selected path in a commit the
 Rust plan types and fixture filenames use the same vocabulary. The engine
 dependency module is `src/graph.rs`; `plan` names the YAML document.
 
-The approved plan design, dated 27 October 2026, is the multi-stage task
-model in [§5](#5-context-and-pipeline) and [§6](#6-execution-plans). It is
-the plan source of truth. Tasks are `bootstrap`, `extend`, and `build`. The
-lock is a separate document. References are an untagged `Local` | `Remote`
-enum. `Filesystem` is a kind-tagged enum. `image:` has a short form and a long
-form. Only the image carapace/boot closure runs. DTB rewrite for a new root
-hash is automatic, including when assembly binds a root to imported boot
-lineage. This replaces the fixed `bootstrap` → `carapace` → `firmware` →
-`transform` pipeline. The engine implements the task schema and executes the selected
-closure. Provisional artifact grammar choices are documented in README.md and
-src/plan/schema.rs; they are not extra wire locks in this document.
-
-Conglobate builds images from committed source and immutable image inputs. A
-bootstrap task formats a new carapace from a tool carapace. An extend task
-produces a carapace from a carapace and commands, and carries boot with it. A
-build task produces artifacts only. A pichi image is not a task: it is the
-assembly of one carapace and optional boot (PMI/DTB). The output is that image
-with build binding annotations on its manifest (see [§11](#11-artifact-and-build-annotations)).
+The staged plan model in [§5](#5-context-and-pipeline) and
+[§6](#6-execution-plans) is the plan source of truth. The lock remains a separate
+document. Stages create or extend images; explicit component selection produces
+the final image. Native bootconfig carries mutable boot settings alongside an
+immutable PMI with its embedded platform DTB and command line. The final image
+has build binding annotations ([§11](#11-artifact-and-build-annotations)).
 
 ## Trust model — required for attested builds
 
@@ -105,21 +93,18 @@ define the implementation's trust boundaries.
 
 | Term | Meaning in this design |
 | --- | --- |
-| Image | A manifest and its content-addressed components: a carapace, a firmware pair, or both, with associated configuration and metadata |
-| Scute | One immutable filesystem block layer stored as a copy-on-write (COW) object and protected by dm-verity |
-| Carapace | An ordered chain of scutes assembled into a read-only block device; its top root hash binds the chain |
-| Tool carapace | A carapace supplying the filesystem in which a task's commands execute. Changes to it are disposable unless the task explicitly exports them. It does not become output ancestry because commands ran inside it |
-| Base image | The carapace an `extend` task takes through `from:`, together with boot when that task re-exports it. A tool carapace is not a base image |
-| Task | A named, kind-tagged unit of plan work. The kinds are `bootstrap`, `extend`, and `build` |
-| Reference | An untagged enum: `Local` names a task in this plan; `Remote` is a fully qualified OCI image. References have no `./` prefix |
-| PMI | Portable Machine Image, the boot-payload format consumed by the VM launcher |
-| DTB | Device Tree Blob, a binary tree of nodes and byte-valued properties describing the platform and its boot configuration |
-| Firmware pair | The PMI and detached DTB. `extend` rewrites the DTB for the new root hash and re-exports the PMI when one is present. Custom PMI/DTB bytes come from an explicit task |
-| Boot | The optional PMI/DTB assembled with one carapace. On `extend`, boot rides with the task |
-| Corium | The guest boot/runtime component whose `corium=<root>` command-line argument selects the root carapace |
-| Arma | The tool commonly used by firmware plans to produce a PMI and detached DTB |
-| Context | The committed project subtree containing plans and source files |
-| Plan | The user-facing YAML document defining tasks and image assembly |
+| Image | A manifest containing a carapace, a PMI, or both, optionally bootconfig when PMI is present, and launch metadata |
+| Scute | One immutable copy-on-write (COW) block layer protected by dm-verity |
+| Carapace | An ordered scute chain assembled into a read-only block device; its tip hash binds the whole disk |
+| Tool carapace | The disposable root supplying commands for a creation stage; its ancestry is not inherited |
+| Stage | A named image created with `using` and `format`, or extended with `extending`, followed by nonempty `derive` |
+| ImageRef | An untagged reference: local `StageRef` or a qualified OCI `Remote`; no `./` prefix |
+| PMI | Portable Machine Image consumed by the launcher; includes its platform DTB and immutable command line |
+| BootConfig | Native Linux bootconfig text accompanying a PMI with an appropriate reservation |
+| Corium | Assembles the chain named by `corium.root`, validates its GPT, and mounts the native root partition |
+| Arma | A PMI producer; `--dtb attached --cmdline bootconfig` embeds the base DTB and reserves native bootconfig space |
+| Context | The unnamed committed project subtree available to COPY |
+| Plan | The user-facing YAML document defining stages and final image composition |
 
 The OCI manifest digest identifies the image description. A carapace root
 identifies its verified filesystem chain. Neither replaces the other: boot
@@ -135,18 +120,17 @@ assembly uses the carapace root.
 - [Git context](#3-git-context)
 - [Image locks](#4-image-locks)
 - [Context and pipeline](#5-context-and-pipeline)
-  - [Tasks](#51-tasks)
+  - [Stages](#51-stages)
   - [Image assembly](#52-image-assembly)
   - [Closure](#53-closure)
 - [Execution plans](#6-execution-plans)
   - [References](#61-references)
-  - [Task kinds](#62-task-kinds)
-  - [exec, from, into, and copy](#63-exec-from-into-and-copy)
-  - [Filesystem](#64-filesystem)
+  - [Creation and extension](#62-creation-and-extension)
+  - [Directives](#63-directives)
+  - [Format and mounts](#64-format-and-mounts)
   - [Command execution](#65-command-execution)
-  - [Rejected Docker behavior](#66-rejected-docker-behavior)
-- [Build variables](#7-build-variables)
-- [DTB transformations](#8-dtb-transformations)
+- [Literal values](#7-literal-values)
+- [Boot configuration](#8-boot-configuration)
 - [Privileged execution and resource ownership](#9-privileged-execution-and-resource-ownership)
 - [Firmware measurement boundary](#10-firmware-measurement-boundary)
 - [Artifact and build annotations](#11-artifact-and-build-annotations)
@@ -192,14 +176,12 @@ A build has the following lifecycle:
    locked image inputs.
 2. Load plan and lock immediately from the object store; resolve other context
    reads lazily with verify-on-use (see [§3](#3-git-context)).
-3. Load tasks and `image:`. Run only the carapace/boot closure
-   (`bootstrap`, `extend`, `build`). Orphan tasks do not run.
-4. Bootstrap formats outside the sandbox and populates `/mnt`. Extend
-   produces a carapace, rewrites the DTB for the new root hash, and
-   re-exports the PMI when present. Build produces artifacts only.
-5. Assemble one carapace and optional boot. Assembly is not a task. When
-   the image root is bound to imported boot lineage, rewrite the DTB
-   automatically. Annotate the final image manifest with the build binding facts.
+3. Validate stages, references and `image`, then run only the selected closure.
+4. Create GPT roots using trusted formatters and populate `/mnt`, or extend
+   existing roots at `/`. Retain one new scute per stage after clean teardown.
+5. Select root, PMI and bootconfig independently. Apply the authored config
+   overlay, then bind an existing `corium.root` when new layers or a different
+   root are joined. Verify component compatibility and annotate the manifest.
 6. In the appliance, later bind the image digest and TEE/builder to
    attestation evidence.
 
@@ -213,11 +195,10 @@ Conglobate uses `#![forbid(unsafe_code)]`. Privileged operations are implemented
 through safe library APIs. This is a prohibition on unsafe code in conglobate;
 it does not claim that every transitive dependency has no unsafe internals.
 
-Use the ecosystem's storage, carapace, device-mapper, loop-device, and DTB
-libraries where appropriate. Library selection and API adaptation remain
-implementation work. Do not recreate low-level syscall interfaces or shell out
-to system tools for the built-in DTB operations. Plan-authored commands can
-of course invoke tools inside their execution environment.
+Use the ecosystem's storage, Carapace, GPT, device-mapper and loop-device
+libraries. Do not recreate low-level syscall interfaces. Native bootconfig
+parsing and encoding are portable library operations; image commands run
+only inside their assigned execution environment.
 
 YAML is used for human-authored formats. CBOR is used for machine-generated
 formats controlled by this project. Existing external formats, including OCI
@@ -531,13 +512,13 @@ bytes alone does not establish the author's intended identity.
 
 The lock is a separate document, selected by `--lock`. It is not embedded
 in the plan. It maps each `Remote` reference to one immutable OCI index
-digest. `Local` references name tasks ([§6.1](#61-references)) and are not
-entries here. `image:` references are `Local` only, so this document does not
-pin them.
+digest. `StageRef` references name stages ([§6.1](#61-references)) and are not
+entries here. Direct remote `image` component selectors are pinned alongside
+selected remote stage inputs.
 
 A `Remote` value is a struct of OCI components and must be fully qualified:
 the registry host is required. Bare Hub short names are rejected. A reference
-is not `Remote` merely because it contains `/`. Parsing must not let a task
+is not `Remote` merely because it contains `/`. Parsing must not let a stage
 name silently win over an OCI reference, or the reverse.
 
 Proposed wire shape:
@@ -569,7 +550,7 @@ platform manifest, and verifies it. A manifest containing scutes must carry
 `dev.pichi.carapace.verity.hash`: the final scute's nonzero SHA-256 root as
 64 hexadecimal characters, without an algorithm prefix. The root commits the
 complete chain through each scute's salt prefix; no per-scute root annotations
-are needed. Guest boot (`corium=` / `$CARAPACE`) uses the same final root.
+are needed. Guest boot (`corium.root` in bootconfig) uses the same final root.
 Conglobate verifies content and chain consistency against that commitment. The committed lock
 pins the index, which in turn binds the selected manifest; do not mirror those
 identities into build annotations.
@@ -601,469 +582,185 @@ These names are examples, not defaults. The lock path selects a separate
 document. The plan does not embed the lock. Context paths stay relative to
 the context root, even when the plan lives in a nested directory.
 
-The approved plan is a set of named tasks plus one `image:` assembly. It
-replaces the fixed pipeline `bootstrap` → `carapace` → `firmware` →
-`transform` as the plan source of truth. Those names are not top-level
-section keys. `platform` is not a task kind. There is no `kind: import`.
+A plan has a `stages` map (default empty) and required `image`. The public
+`conglobate::recipe` module owns the serde types, one production type per module.
+The CLI uses those types. No task kinds, export maps, recursive builders or
+standalone bootconfig outputs remain. Unknown fields, duplicate keys, invalid
+references and shapes are errors. Collection nulls are not empty collections;
+optional fields may be omitted and bootconfig values use null for deletion.
 
-A task is a kind-tagged enum. The kinds are `bootstrap`, `extend`, and
-`build`. Reject duplicate keys, unknown keys, and unknown kinds rather than
-merging or ignoring them. YAML null is not an alias for omission or emptiness.
-An empty plan cannot produce an image.
+### 5.1 Stages
 
-### 5.1 Tasks
-
-| Kind | Carapace input (`from:`) | Retained output |
+| Shape | Input | Output |
 | --- | --- | --- |
-| `bootstrap` | Tool carapace | A new carapace. The engine formats `filesystem:` outside the sandbox. `exec` only populates `/mnt`. |
-| `extend` | The carapace to extend | A carapace. The engine always rewrites the DTB for the new root hash and re-exports the PMI when one is present. Boot rides with the task. |
-| `build` | Tool carapace | Artifacts only (`into:`). No carapace output. |
+| `using`, `format`, `mount?`, `derive` | Local or remote image with a root | Fresh carapace; tools and their boot components are discarded |
+| `extending`, `mount?`, `derive` | Local or remote image with a root | Extended carapace plus inherited PMI and accompanying config |
 
-`build` replaces the earlier names `export`, `make`, and `produce`. Those
-names are not kinds.
-
-Custom PMI/DTB bytes exist only when an explicit task exports boot. That work
-is not a fourth kind and not an implicit pipeline stage. `build` yields
-artifacts and no carapace, which is the kind available for a producer that
-exports boot and no carapace. Extend exports boot when it re-exports a PMI.
-Automatic DTB rewrite is not a task and not a per-plan job. See
-[§8](#8-dtb-transformations).
-
-A tool carapace does not become output ancestry because commands execute
-inside it.
+Both shapes require a nonempty `derive`. Extension cannot declare `format`.
+Each successful stage adds one scute, regardless of directive count. Named
+stages are images; their roots provide the namespace for named COPY.
 
 ### 5.2 Image assembly
 
-Producing a pichi image is not a task. An image is the assembly of one
-carapace and optional boot (PMI and DTB). The image manifest references those
-components. Launch configuration and any component beyond carapace and boot
-remain unspecified ([§13](#13-remaining-decisions)).
-
-`image:` references are `Local` only. They name a task in this plan.
-Two forms are valid.
-
-Short form: one reference. Assembly uses whatever that single task already
-exports: carapace, boot, or both. The task must export a carapace or boot or
-both. Exporting neither is invalid. The short form does not mean
-carapace-only.
-
-```yaml
-image: rootfs
-```
-
-Long form: `root` and `boot` name tasks. Each reference must provide that
-export.
+`image: stage-or-remote` forwards every available component. Explicit composition
+has independent optional fields; an omitted field is absent:
 
 ```yaml
 image:
   root: rootfs
-  boot: firmware
+  boot: {from: firmware, path: /out/image.pmi}
+  bootconfig:
+    from: registry.example.com/base:1
+    values:
+      corium.root: ""
+      corium.log: info
+      corium.halt: null
+      kernel.console: [ttyS0, hvc0]
+      kernel.quiet: []
 ```
 
-`root` requires a carapace export. `boot` requires a boot export.
+`root` selects only a source's carapace. Scalar `boot` selects an existing PMI;
+`boot: {from, path}` extracts a regular PMI file from that source's persisted
+root. The file source can be local or remote and contributes no output ancestry.
+Scalar bootconfig inherits a source's config. Its object form has optional
+`from` and `values`; absent `from` starts empty. Config sources require an
+existing bootconfig, and the output requires a selected PMI.
+
+Valid component sets are root, PMI, root+PMI, PMI+config and root+PMI+config.
+Empty images and config without PMI fail. Canonical empty config has no layer;
+an explicit empty overlay still requires a PMI bootconfig reservation.
+
+Launch metadata comes from the selected root's base, otherwise inherited PMI,
+otherwise canonical empty metadata. A newly created root starts empty. Only
+selected root scutes define ancestry; selecting another image's PMI or config
+never imports its root. Build provenance always describes the current build.
 
 ### 5.3 Closure
 
-Only tasks on the image carapace/boot closure run. A task is in the closure
-when the `image:` carapace reference, the `image:` boot reference, or a task
-already in the closure reaches it through `from:` or `copy`. Orphan tasks do
-not run. YAML key order does not select the closure and does not order
-execution. A task runs after the tasks that produce the inputs it references.
+Validate every stage's shape and references, including unused cycles. Traverse
+image selectors, stage sources and named copies in deterministic topological
+order. Only the selected closure executes or acquires remote inputs. Lock direct
+remote image selectors too. PMI/config-only selection does not activate or
+require the source filesystem. An extracted PMI requires a persisted root reader
+but no command sandbox if there are no selected stages.
 
 ## 6. Execution plans
 
-The task vocabulary is `kind`, `from:`, `exec`, `into:`, `copy`, and, for
-bootstrap, `filesystem:`. Examples show locked fields. Unknown fields and
-unsupported combinations are errors.
-
-The lock does not specify which YAML key nests the task map. Each task has a
-name that a `Local` reference cites.
-
 ### 6.1 References
 
-A reference is an untagged enum: `Local` | `Remote`. References have no `./`
-prefix.
+`ImageRef` distinguishes a local `StageRef` from a qualified OCI `Remote` by
+disjoint validated grammars. Bare registry defaults and ambiguous short image
+names are not allowed. COPY's `from` accepts only a stage name. A missing local
+source or cycle fails before privileged setup. Local references never enter
+the lock; remote references pin complete OCI indexes and select the native
+platform. All selected components must agree with that platform.
 
-`Local` is a limited-charset newtype and names a task in this plan. This
-lock does not enumerate the character set. `Remote` is a struct of OCI
-components and must be fully qualified: a registry host is required. Bare Hub
-short names are rejected.
-
-A value is not `Remote` because it contains `/`. That test is rejected. A
-task name must not silently win over an OCI reference, and an OCI reference
-must not silently win over a task name. The variants have to be unambiguous
-without those heuristics.
-
-`from:` accepts `Local` or `Remote`. `image:` accepts `Local` only.
-`copy.from` is an artifact name in the flat namespace of
-[§6.3](#63-exec-from-into-and-copy), not this reference enum.
-
-The lock document ([§4](#4-image-locks)) is separate. It pins `Remote`
-references to immutable OCI index digests. Local task names are not entries
-in that document.
-
-### 6.2 Task kinds
-
-`bootstrap` requires `from:` (the tool carapace) and `filesystem:`. The engine
-formats that filesystem outside the command sandbox, on a new zero-backed
-carapace layer, before `exec` starts. The plan does not run mkfs or mount.
-`exec` populates `/mnt` only.
-
-Commands see two writable mounts. `/` is the tool carapace with a disposable
-writable layer. Authors may install tools there; those changes persist across
-the task's steps and are discarded when the task completes. `/mnt` is the new
-output filesystem. Commands populate it with ordinary filesystem and
-package-manager operations. They do not receive the block device or a mount
-privilege.
-
-`/mnt` is reserved during bootstrap. Resolve its mountpoint within the pinned
-tool root and never follow an image symlink outside that root. Paths under
-`/mnt` address the new filesystem. Other absolute paths address the tool root.
-The context is never mounted into commands.
-
-No tool scutes and no tool boot components are inherited. A deliberate `copy`
-can still contribute output bytes. After writers stop and both filesystems are
-cleanly unmounted, seal the output scute and package its carapace. There is no
-image import and no image-to-scute conversion. The first tool carapace is
-produced outside this plan.
-
-`extend` requires `from:` (the carapace to extend) and its commands in `exec`.
-Existing scutes pass through. The task adds one new scute. Every `exec` step
-modifies that same writable snapshot. Each command keeps its own isolation,
-timeout, and network selection. Stop and reap its descendants, flush, and
-unmount before the next step. Seal the shared snapshot only after every step
-succeeds. A failed task produces no publishable layer. No commands means no
-new scute. Skipping empty block deltas is not part of this model. Sealing is
-not filesystem compaction.
-
-The task always rewrites the DTB for the new carapace root hash and re-exports
-the PMI when the input has one. Boot rides with the extended task. Do not
-replace only half of the PMI/DTB pair, and do not add a boot-discard
-operation.
-
-`build` requires `from:` (the tool carapace). It produces the artifacts named
-by `into:` and does not produce a carapace. Commands use a disposable tool
-root at `/`. There is no `/mnt` output mount. Extract declared artifacts
-through confined handles after all command writers stop. Intermediate tool
-changes do not become scutes. Only the declared artifacts survive. `export`,
-`make`, and `produce` are not accepted as `kind`.
-
-### 6.3 exec, from, into, and copy
-
-`exec` is the ordered command list. The name replaces `derive`. `from:` is the
-carapace input. `into:` declares artifact outputs. `copy` brings a cross-task
-artifact into the task. There is no `artifacts:` input map.
+### 6.2 Creation and extension
 
 ```yaml
-exec:
-  - run: dnf install -y nginx
-    network: true
-    timeout: 5m
+stages:
+  rootfs:
+    using: registry.example.com/tools:1
+    format: {kind: ext4, size: 4GiB, label: rootfs, esp: 512MiB}
+    mount: {/boot/efi: esp, /tmp: tmpfs}
+    derive:
+      - exec: mkdir -p /mnt/etc
+      - copy: {path: files/os-release, into: /mnt/etc/os-release}
+  configured:
+    extending: rootfs
+    derive:
+      - exec: printf '%s\n' configured > /etc/variant
+image: configured
 ```
 
-The artifact namespace has two sources. One is the git build context, which is
-a tree. The other is task outputs, which Conglobate defines from `into:`.
+Creation runs tools at `/` and mounts the new output at `/mnt`. Tool writes
+last across directives but are discarded. Extension executes in the selected
+root at `/` and retains its boot components. Both use one writable whole-disk
+snapshot for the new output layer. Stop writers, flush and normally unmount
+all filesystem views, remove partition mappings, close the snapshot and seal.
+Failed cleanup retains resources for VM disposal and rejects publication.
 
-`into:` keys and `copy.from` are flat bare names. A name of the form
-`task:name`, and any other colon namespacing, is rejected.
+### 6.3 Directives
 
-`image:` selects carapace and boot exports. It does not select `into:` names.
-Carapace and boot exports are the components described in [§5.1](#51-tasks)
-and [§5.2](#52-image-assembly).
+`derive` entries are `exec: <command>` with optional `network` and `timeout`, or
+`copy: {from?: <stage>, path: <path>, into: <path>}`. Commands are nonempty and
+NUL-free. Default timeout is 300 seconds, with explicit positive unit-bearing
+values supported. Networking defaults off.
 
-**Open, not locked.** Should `into` keys be paths? The git context preloaded
-into the artifact namespace is a tree, not a flat set of names. Until that is
-decided, keys stay flat bare names. The question is recorded again under
-[Remaining decisions](#13-remaining-decisions). This lock does not define a
-value grammar for `into:` entries and does not define a destination path on
-`copy`.
+COPY without `from` reads the captured Git context, with its confined paths and
+source-pattern rules. Named COPY reads a completed stage's whole persisted root.
+Source paths are root-relative with optional `/`. Selected symlinks resolve
+within that source; nested directory symlinks remain links. Reject special-file
+reads before opening their data. Destination paths resolve within the execution
+root, including creation's `/mnt` boundary. Directory copies copy their contents;
+a trailing slash makes a destination directory. Existing hardlinks are replaced
+without modifying other linked files. Ownership and modes follow the established
+context-copy policy. No context root or source-stage mount goes into a command.
 
-### 6.4 Filesystem
+### 6.4 Format and mounts
 
-`filesystem:` is a kind-tagged enum on `bootstrap`. It is not a `type:` field
-plus a generic `properties` map. `kind` selects the variant. That variant's
-properties are a dedicated type. Ext4 properties (`Ext4Properties`) include
-`label`. `FilesystemSize` is a strict type, not a free-form string. Rust type
-names for these values do not use a `Document` suffix.
+`format` is a kind-tagged `Format` enum; currently ext4 with explicit `size`,
+optional `label` and optional ESP size. Size is the root capacity. Formatting
+always writes GPT with 4096-byte logical sectors and 1 MiB alignment. Use native
+Discoverable Partitions Specification root type UUIDs and the standard ESP UUID;
+disk/partition unique UUIDs are independent nonzero random identifiers.
 
-```yaml
-filesystem:
-  kind: ext4
-  size: 4GiB
-  label: rootfs
-```
+An ESP is FAT32 with 4096-byte sectors and one-sector clusters. Supported size is
+257 MiB through 1 TiB; 256 MiB has too few usable clusters. Examples use 512 MiB.
+Capture and verify `mkfs.fat` alongside `mke2fs`. Image commands do not format or
+mount devices with supervisor authority.
 
-`size` is a `FilesystemSize`. `label` is the ext4 property. A nested generic
-`properties:` map is not the schema.
+`mount` maps image-relative paths to `tmpfs` or `esp`, in both stage shapes.
+Leading `/` is optional; normalize duplicates, reject root replacement,
+traversal, symlink targets and control-path masking. Creation's `/boot/efi` means
+`/mnt/boot/efi` in its command namespace. Mount parents before children and
+unmount in reverse order. Stage-owned mounts persist across every directive.
+ESP requires this image's partition and writes persist in the same COW layer;
+tmpfs disappears. Neither is replayed by a later stage or source reader.
 
-The size spelling is that strict type: a positive integer followed immediately
-by `B`, `KiB`, `MiB`, or `GiB`, 4096-byte aligned, at least 16 MiB and no
-larger than `carapace::ZERO_SIZE_BYTES`. No fractional values and no implicit
-units. `label` defaults to empty and is limited to 16 UTF-8 bytes without NUL.
-Unknown properties fail. Carapace owns the logical device geometry through
-`ZERO_SIZE_BYTES` and `ZERO_SIZE_SECTORS`. Trusted formatting uses exactly
-the requested number of 4096-byte blocks and leaves the rest zero-backed. Size
-does not change carapace wire geometry. Validate this before privileged
-execution. Do not accept arbitrary formatter arguments, executable paths, or
-shell fragments from the plan or the host. Fail if the driver, the internal
-formatter map entry, or the required idmapping and metadata support is
-unavailable. Ext4 is the initially validated backend. Other kernel filesystems
-require qualification. Validate the effective formatting configuration and
-internal formatter profile before execution; do not emit formatter receipts.
+Conglobate owns GPT parsing and partition views above the whole-disk writable
+snapshot. GPT and filesystem writes keep original disk offsets. The primary
+header's backup-LBA bounds the logical disk within Carapace's larger geometry;
+validate both headers/tables and partition ranges before mapping. Checked byte
+conversion separates GPT 4096-byte LBAs from device-mapper 512-byte sectors.
+Carapace is unchanged. No extra loop wrapper or kernel partition scan is needed.
+Corium separately reads GPT and maps the root with its existing readonly linear
+view. Systemd sibling-partition auto-discovery is not promised; runtime ESP
+mounting is explicit OS policy.
 
 ### 6.5 Command execution
 
-Commands execute as UID/GID 0 in a mapped user namespace. An
-environment-provided BPF LSM exception permits foreign SELinux labels without
-command `CAP_SYS_ADMIN`. That capability is absent from every command
-capability set. Commands never receive initial-user-namespace root authority.
-A tool carapace only needs enough initial functionality to obtain and run
-further tools.
+Every command gets a fresh sandbox with the existing namespace, identity,
+capability, seccomp, supervision and network policy. Stage storage persists;
+command namespace state and processes do not. Commands never receive device
+nodes, supervisor handles, cache descriptors or the Git object store. See
+[§14](#14-sandbox-lifecycle) for the complete execution and failure contract.
 
-Network access is opt-in per `run` and defaults to false. For an enabled step,
-conglobate joins the supplied `--network-namespace`. For a disabled step, it
-creates a fresh disconnected namespace. Commands cannot administer either
-namespace. The environment contract for NAT, reply traffic, and inbound policy
-is [§14.8](#148-networking-and-dns). Enabled steps may share network state,
-including conntrack. No command process may survive its step.
+## 7. Literal values
 
-Every `run` has a finite positive command-execution timeout. The default is
-`5m`. The optional `timeout` field accepts duration strings such as `30m` or
-`1h`. Zero, infinite, invalid, and overflowing values fail validation. Setup
-and teardown have separate fixed internal deadlines. They are not plan or
-CLI settings. Each `run` gets a fresh filesystem mount and a fresh command
-sandbox.
+No `CARAPACE` environment injection or build-variable template expansion occurs.
+Shell commands use ordinary shell expansion inside their sandbox. Bootconfig
+strings are literal data, including `$`, quote characters and shell-like text.
+The native encoder never invokes a shell.
 
-Common execution rules:
+## 8. Boot configuration
 
-- The committed context stays private to the builder. Commands receive
-  selected bytes only through explicit `copy`.
-- Commands run through `/bin/sh -eu -c`, starting at `/`. Environment and
-  working-directory changes are written inside a command. They do not persist
-  implicitly between shells. Processes cannot outlive a step.
-- No uncontrolled inherited host environment is exposed to build commands.
-- The fixed-pipeline image-path `copy` fields `owner`, `group`, and `mode`,
-  and Go `filepath.Match` source patterns, are not part of this format. This
-  lock does not define replacements for them.
+`values` maps dotted keys to strings, string arrays, or null. `""` is an empty
+value, `[]` a bare key, and null deletes exactly that key without deleting child
+keys. Arrays replace the complete prior array. Reject unquoted numbers/booleans,
+invalid keys, unrepresentable strings and Linux size/node/depth limits.
 
-### 6.6 Rejected Docker behavior
+Parse inherited native bootconfig, including nested keys, comments, bare values,
+lists and override operators. Inheritance retains the source bytes. Overlays
+use one deterministic native writer; differential tests use Linux's utility.
+The OCI media type is `application/vnd.pichi.bootconfig.v1`.
 
-These rejections stay in force:
-
-- No copy of a whole stage root.
-- No implicit promotion of a tool carapace into output ancestry.
-- No `ADD` of URLs.
-- Finalize an artifact before another task takes it with `copy`.
-- Artifact names are not a security boundary.
-- A task does not inherit every intermediate output.
-- No Docker layer cache follows from this format.
-- No last-stage-wins rule. `image:` and the closure select outputs.
-
-## 7. Build variables
-
-`CARAPACE` identifies the output carapace root as plain hex once `bootstrap`
-or `extend` has produced it, or once `image:` has selected it. It is absent
-when the closure has no output carapace.
-
-- Shell commands access `$CARAPACE` or `${CARAPACE}` through the environment.
-- Transformation replacements access `${CARAPACE}` through template expansion.
-- A tool carapace's root must never be substituted for the output root.
-- With no output carapace, the variable is undefined. An evaluated reference
-  fails instead of expanding to an empty value.
-
-`/bin/sh -eu -c` enables unset-variable checking and shell error-exit behavior.
-Shell quoting and explicit shell constructs still have their normal meaning;
-this is not static validation of every textual variable occurrence.
-
-In transformation templates, uppercase names are reserved for build variables;
-numbered or lowercase names refer to regex captures. `$$` writes a literal
-`$`, so `$${CARAPACE}` writes the literal text `${CARAPACE}`. Expansion is
-single-pass and never invokes a shell.
-
-Build variables expand in `set` data of type `string` and `strings`, using the
-same dollar escaping. Set values have no regex captures. Numeric and binary
-set values remain explicitly typed data.
-
-Regex replacement variables are evaluated only when a match is expanded. Zero
-matches therefore do not evaluate `CARAPACE`. An evaluated undefined build
-variable is an error in either set data or a regex replacement.
-
-## 8. DTB transformations
-
-The DTB is the canonical boot configuration artifact. In particular, Linux's
-kernel command line, when present, is the string `/chosen/bootargs`. There is
-no second persistent command-line definition outside the DTB.
-
-Plans have no `transform` section. The encodings below are the engine's
-DTB edit vocabulary, applied by the automatic rewrite in
-[§8.3](#83-automatic-rewrite). Authors do not supply this list. Each operation
-has exactly one `op` discriminator. `set` also has a flat `type` discriminator
-selecting the encoding of `data`. `property` names an absolute node path
-followed by the property name; for example, `/chosen/bootargs` selects
-`bootargs` on the `/chosen` node.
-
-Operations can have an `if` condition:
-
-```yaml
-- op: regex
-  if:
-    exists: /chosen/bootargs
-  property: /chosen/bootargs
-  match: '(^|\s)corium=[^\s]*'
-  replace: '${1}corium=${CARAPACE}'
-```
-
-`if.exists` requires a DTB. It returns false when the named node or property
-is absent and skips the operation before reading its value. An attempted read
-of a missing property still fails. Existence does not validate type: a present
-non-string property still fails a regex operation.
-
-The following illustrates all operations. It assumes an input DTB containing
-`/some-device/obsolete-option`, because removing a missing property fails.
-
-```yaml
-- op: set
-  property: /chosen/bootargs
-  type: string
-  data: "console=ttyS0,115200 quiet"
-
-- op: set
-  property: /compatible
-  type: strings
-  data: ["example,my-machine", "example,my-platform"]
-
-- op: set
-  property: /some-device/clock-frequency
-  type: u32
-  data: 24000000
-
-- op: set
-  property: /memory@80000000/reg
-  type: cells
-  data: [0x0, 0x80000000, 0x0, 0x40000000]
-
-- op: set
-  property: /some-device/enabled
-  type: empty
-
-- op: set
-  property: /some-device/vendor-data
-  type: bytes
-  data: "01 ab 00 ff"
-
-- op: remove
-  property: /some-device/obsolete-option
-
-- op: regex
-  property: /chosen/bootargs
-  match: '(^|\s)console=ttyS0,115200'
-  replace: '${1}console=hvc0'
-
-- op: regex
-  property: /chosen/bootargs
-  match: '$'
-  replace: ' systemd.show_status=false'
-```
-
-The illustrative `enabled` property has no universal device-tree meaning;
-bindings determine the meaning of properties. The editor controls encoding,
-not device-specific policy. Parent-cell layouts, phandle consistency, and
-firmware hardware constraints remain the author's responsibility unless
-explicitly validated by the relevant downstream consumer.
-
-### 8.1 Set and remove
-
-`set` creates or replaces the property, creating missing ancestor nodes in an
-existing DTB. A missing DTB is an error; `set` does not implicitly invent a
-machine description. `remove` deletes an existing property and fails when its
-node or property is absent.
-
-| Type | Encoding |
-| --- | --- |
-| `string` | One UTF-8 string with a trailing NUL |
-| `strings` | Ordered sequence of NUL-terminated UTF-8 strings |
-| `u32` | One big-endian unsigned 32-bit integer |
-| `u64` | One big-endian unsigned 64-bit integer |
-| `cells` | Ordered big-endian unsigned 32-bit integers |
-| `empty` | Present property with zero bytes; no `data` |
-| `bytes` | Literal byte sequence expressed as hexadecimal |
-
-Reject invalid widths, out-of-range values, malformed hex, and embedded NULs
-in individual strings. YAML uses strict booleans and does not interpret leading
-zero integers as legacy octal. Integer data accepts YAML integer notation
-within its unsigned width. Hexadecimal byte data ignores ASCII whitespace,
-accepts either letter case, and requires an even number of hex digits with no
-`0x` prefix. Arbitrary property bytes are
-representable without assuming that a DTB contains runtime type tags.
-
-### 8.2 Regex
-
-`regex` operates on exactly one NUL-terminated UTF-8 string, excluding its
-terminator. A string list, binary property, malformed string, absent property,
-or absent DTB is an error for the operation.
-
-**Replace every match; zero matches leave the string unchanged.** There are
-no match-count settings. Target validation happens before matching: an invalid
-string is an error even if the expression would have no matches.
-Invalid regex syntax or invalid replacement-template syntax fails validation.
-
-| Target state | Regex operation |
-| --- | --- |
-| DTB, node, or property missing | Fail |
-| Property is not a single valid string | Fail |
-| Valid string, zero matches | Succeed without changing it |
-| Valid string, one or more matches | Replace all matches in that operation |
-
-Use Rust `regex` syntax and capture expansion, with the build-variable extension
-described above. Do not implement sed syntax or shell out. `${1}` in the
-examples preserves the whitespace consumed by the boundary capture.
-
-### 8.3 Automatic rewrite
-
-The automatic rewrite is engine-owned. It is not a task and not a per-plan
-job. Plans have no `transform` key. Authors cannot replace the sequence,
-append to it, or disable it with an empty list.
-
-The engine applies the built-in sequence when a DTB is present and either:
-
-- an `extend` task produces a new carapace root. The rewrite is not optional
-  for that task. The task also re-exports the PMI when one is present, so
-  boot rides with the task; or
-- image assembly binds an image root to imported boot lineage.
-
-When no DTB exists, skip the rewrite. Skipping is not a plan switch.
-
-The built-in sequence is:
-
-```yaml
-- op: regex
-  if:
-    exists: /chosen/bootargs
-  property: /chosen/bootargs
-  match: '(^|\s)corium=[^\s]*'
-  replace: '${1}corium=${CARAPACE}'
-```
-
-It refreshes an existing `corium=` argument and never introduces one. The
-task that exports boot establishes the initial binding. A matched binding with
-undefined `CARAPACE` fails. Non-string command-line data remains an error.
-Before applying the sequence, reject duplicate `corium` options and a bare
-`corium` without `=`. Option names use the same whitespace-delimited tokens
-as the guest; `corium.log` and `corium.halt` are separate options. A single
-existing value may be a placeholder because the rewrite replaces it with the
-new root. Preserve unrelated arguments and whitespace.
-
-Within an existing DTB, the sequence uses `if.exists` to skip an absent
-command line. No operation reads a missing property successfully, and a
-missing DTB never makes an existence condition return false.
-
-The finalized DTB in the image manifest binds the rewrite result. Do not emit
-transform execution records; see [§11.1](#111-image-manifest-annotation-contract).
-
-Property operations only are in scope initially; `set` may create ancestor
-nodes, but there are no explicit whole-node creation or removal operations.
-Custom PMI/DTB bytes that differ from this sequence come from an explicit
-task's boot export, not from a plan-authored list of these operations.
+After applying an overlay and finalizing the selected root, update an existing
+`corium.root` when new layers were produced or a different root is joined to
+PMI/config lineage. An empty value opts in; deleting the key prevents its
+recreation. Unchanged-root config-only overlays preserve the authored binding.
+Root-only outputs never manufacture configuration. Rebinding selects a chain;
+it does not update the Corium binary. New Corium code requires a newly built PMI.
 
 ## 9. Privileged execution and resource ownership
 
@@ -1154,29 +851,17 @@ and isolation tests does not prove absence of sandbox vulnerabilities.
 
 ## 10. Firmware measurement boundary
 
-Firmware production precedes final DTB transformations. The final image manifest
-must identify the transformed DTB, and any measurement or
-signature commitment covering it must use those final bytes.
+The PMI and its embedded DTB/command line are immutable. Validate its PE
+structure, target schemas, section ranges and architecture before publication.
+A detached `dt:dtb` fill is unsupported. Native bootconfig is a separate
+component, accepted only when every target declares sufficient compatible
+reservation space, including native padding and footer. Reject opaque PMI,
+malformed targets and a pre-signed SEV identity with external bootconfig.
 
-Detached does not automatically mean freely mutable: the relevant PMI/firmware
-contract determines which modifications are valid. Firmware formats that bind
-the DTB before transformation require a compatible final sealing step or must
-reject such transformations. This ordering must be reconciled with arma and
-PMI contracts before promising support for arbitrary firmware signing flows.
-
-The default corium edit packages an existing root-binding convention. Generic
-DTB editing does not prove that custom firmware consumes the root securely.
-
-The initial implementation accepts changed DTBs only for recognized PMI VM,
-SEV, TDX, and CCA target manifests with exactly one external `dt:dtb` fill
-action and sufficient reserved section capacity. Every target in the PMI must
-accept the edit. A pre-signed SEV identity, bundled-only DTB, unknown target,
-or opaque firmware rejects a changed DTB. Unchanged DTBs require no resealing
-and pass through, including opaque custom firmware. Authors using unsupported
-signing contracts must export the final DTB from an explicit task. The
-plan has no `transform` section and no switch that disables the automatic
-rewrite. A firmware contract that rejects a changed DTB still rejects the
-build when that rewrite would change the DTB.
+This structural check is not proof that a kernel boots or that a particular
+firmware consumes a root securely. Real boot qualification is separate. Future
+signing flows must commit to the finalized selected components; no mutation or
+resealing of existing PMI bytes occurs during composition.
 
 ## 11. Artifact and build annotations
 
@@ -1200,11 +885,11 @@ OCI consumers use `result/` directly. With host OCI import landed in
 [Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24) is implemented:
 no `build.yaml` or flat `NNNN.cow` / `NNNN.verity` / `boot.pmi` copies are
 emitted. Pichi imports the full OCI graph and rebuilds verity from COW blobs
-and per-scute salts. Boot-only output contains its PMI and DTB as OCI blobs.
+and per-scute salts. Boot-only output contains its PMI and optional native bootconfig as OCI blobs.
 
 Include every blob referenced by the output image, including inherited blobs
 from the cache. Import must not require the original cache. The final manifest
-describes all components and the final transformed DTB.
+describes exactly the selected components and finalized bootconfig.
 
 ### 11.1 Image-manifest annotation contract
 
@@ -1232,7 +917,7 @@ identity. Locators must not expose embedded credentials. The host-requested
 
 Do not add `builder`, `inputs`, `execution`, or `outputs` mirrors. The plan,
 lock, commit and OCI graph already carry the binding facts. Execution receipts,
-including formatter, transform, network-step and ID-mapping records, are not
+including formatter, bootconfig-edit, network-step and ID-mapping records, are not
 recorded in a sidecar or mirrored into annotations. This decision does not
 remove input verification or execution/finalization checks.
 
@@ -1247,7 +932,7 @@ changing version identifiers.
 Scute descriptors in the manifest's `layers` array MUST follow base-to-tip
 chain order. The first scute has a zero parent-root salt prefix; each later
 scute's prefix names the preceding scute's root. The final scute's root equals
-the manifest tip. PMI and DTB descriptors do not participate in this order.
+the manifest tip. PMI and bootconfig descriptors do not participate in this order.
 Consumers reject a broken sequence instead of sorting it. Structural validation
 checks the base position; verifying the chain establishes the remaining links.
 No separate ordering field, per-scute root annotation or version bump is needed.
@@ -1271,7 +956,7 @@ emit the count used to format the verity tree; no version identifiers change.
 
 Validate the annotation values against the selected commit, context, plan and
 lock, then validate the finalized manifest and every referenced blob before
-publication. Hash finalized bytes after all manifest annotations and DTB edits
+publication. Hash finalized bytes after all manifest annotations and bootconfig edits
 are complete. Publication differs by destination:
 
 - **CLI `--output`:** stage under a temporary sibling of the named destination,
@@ -1316,12 +1001,12 @@ authenticity policy.
 ## 12. Validation scope
 
 The implementation follows the ordered sandbox contract. Maintained tests
-cover committed inputs, locks, typed DTB operations, pipeline combinations,
+cover committed inputs, locks, native bootconfig operations, pipeline combinations,
 metadata, manifest build annotations, publication and disposable-VM lifecycle
-failures. Those tests exercise the task model in §5–§6 alongside the existing
+failures. Those tests exercise the stage model in §5–§6 alongside the existing
 storage, isolation, metadata and publication behavior. Distro plans exercise Fedora
 DNF/SELinux, Debian APT/systemd, Alpine APK/OpenRC and NixOS closure construction.
-A separate firmware plan constructs an initramfs and arma PMI/DTB, then boots it.
+A separate firmware plan constructs an initramfs and Arma PMI, then boots it.
 
 CI checks native amd64/Arm64 Rust and guest lifecycle behavior. Arm64 hosted guest
 tests explicitly record TCG when KVM is unavailable. This does not propose TCG as
@@ -1346,9 +1031,9 @@ kernel deferred removal and scratch leases for in-process cleanup after failed
 activation; abrupt conglobate death is handled by disposal of the build VM. Ordinary tmpfs allocation failures propagate as build failures.
 
 Remaining ecosystem decisions are authentication of the intended Git identity,
-creation/override of components beyond carapace and firmware, additional
-firmware signing/resealing contracts, and attestation (appliance build-port
-transport is already locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-build-port-cbor)).
+additional firmware signing contracts and hardware attestation. Component
+selection and bootconfig overlays are specified here. Appliance build-port
+transport remains as defined in §1.4–§1.5.
 
 Sandbox policy is specified in section 14. Section 14.4 locks the environment
 labeling exception to a pure-Rust Aya program with Rust load, attach and pin,
@@ -1360,41 +1045,17 @@ virtiofs mount contract are locked in [§1.4](#14-build-appliance)–[§1.5](#15
 full engine reshape and confidential-platform qualification remain separate.
 Fully unprivileged storage assembly is outside the selected design.
 
-The initial scope excludes remote Git retrieval, uncommitted working-tree
-inputs, Git LFS, cross-architecture builds, build-time lock updates,
-output-cache mutation, firmware discard, partial PMI/DTB replacement,
-regex match-count options, and whole-node operations. The plan format has no
-`transform` section and no `platform` task kind. Caller working-tree policy is
-outside this interface.
+The scope excludes remote Git retrieval, uncommitted working-tree inputs,
+Git LFS, cross-architecture builds and build-time lock updates. Plans do not
+modify the input cache. Caller working-tree policy is outside this interface.
 
-### Open plan question
-
-Whether `into` keys should be paths is not locked. The git build context
-preloaded into the artifact namespace is a tree, not a flat set of names.
-Until a decision, [§6.3](#63-exec-from-into-and-copy) keeps flat bare names for
-`into:` keys and `copy.from`, with no `task:name` colon namespacing.
-
-### Proposed implementation acceptance
-
-These checks were proposed with the plan locks. They are not additional
-design locks, and this document does not implement them.
-
-1. Serde types and validation match §5–§6, with tests for short and long
-   `image:`, `Local` / `Remote` parsing, kind tagging, closure-only execution,
-   and the `Filesystem` enum.
-2. The engine runs the `bootstrap` / `extend` / `build` closure selected by
-   `image:`, applies the automatic DTB rewrite on assemble, and publishes
-   only the self-contained OCI layout after host OCI import (#24).
-3. Annotation checks replace inventory assertions: cover the exact §11.1
-   keys, commit algorithm prefixes, context-relative paths, absent optional
-   location, no sidecar, and unchanged verity annotations. Require only OCI
-   entries at the output root and verify annotations survive OCI copy/import.
-4. An appliance smoke with a multi-task plan (at least bootstrap plus build,
-   or bootstrap plus extend) passes without a registry publish, before the
-   implementation change.
-5. That implementation change waits until this plan text is on `main`, then
-   merges by rebase after green CI and review clearance. Republish `:0.2.0`
-   only if the appliance contract or digest changes.
+Implementation acceptance covers all component subsets, selected dependencies,
+native configuration overlays and rebinding, GPT creation/extension, explicit
+mount persistence, confined named copies and PMI extraction, unchanged inputs,
+failed teardown and publication. Preserve build annotations and OCI graph
+identity through the host import and third-party OCI copy paths. Boot acceptance
+uses the produced image through the launcher and Corium; file-format tests alone
+do not establish that path.
 
 ## 14. Sandbox lifecycle
 
@@ -1404,18 +1065,15 @@ The build proceeds in this order; each failure aborts publication:
    object store, and resolve and verify every required local image input.
 2. Capture external network inputs if needed. Allocate the protected RAM
    workspace and execution runtime only when the closure requires execution.
-3. Execute the `image:` closure. Bootstrap formats a new snapshot over
-   dm-zero outside the sandbox and populates `/mnt`. Extend produces one
-   scute for its commands, rewrites the DTB for the new root hash, and
-   re-exports the PMI when present. Build extracts artifacts only and
-   produces no carapace. Orphan tasks do not run.
-4. For each `exec` step, mount assigned roots. `copy` uses lazy verify-on-use
-   context bytes; `run` constructs a fresh sandbox, executes within its timeout,
-   and stops and reaps all descendants. Remove temporary mounts, flush and
-   unmount before sealing task output or releasing storage.
-5. Close the execution runtime. Apply the automatic DTB rewrite, assemble one
-   carapace and optional boot (assembly is not a task), annotate the image
-   manifest, and verify the staged self-contained OCI layout.
+3. Execute the selected stages. Creation formats a GPT disk over dm-zero and
+   populates `/mnt`; extension changes `/`. Each emits one scute after its
+   entire derive sequence completes. Unselected stages do not run.
+4. `exec` uses a fresh sandbox and stops/reaps all descendants. COPY reads
+   captured context or a persisted stage with writers stopped. Stage mounts
+   span directives; flush and normally unmount all views before sealing.
+5. Select components, apply the bootconfig overlay and implicit root binding,
+   close the runtime, validate PMI/config compatibility, annotate the manifest
+   and verify the self-contained OCI layout.
 6. Finish fallible workspace/context cleanup, then publish without replacing
    an existing destination: CLI `--output` uses an atomic no-replace rename of
    the completed directory; the appliance empty `/run/pichi/output` mount uses
@@ -1500,18 +1158,15 @@ RAII owns resources; destructors cannot certify successful finalization.
    image artifacts. Plan commands explicitly granted networking may
    download packages; this is distinct from input resolution.
 
-1. Parse one YAML plan and the separate lock before execution. Tasks are
-   a kind-tagged enum: `bootstrap`, `extend`, or `build`. Reject unknown
-   kinds, including `kind: import`, a `transform` section, and a `platform`
-   kind. `image:` is `Local` only. Run only the carapace/boot closure.
-   Key order never selects that closure. References are an untagged
-   `Local` | `Remote` enum. Do not classify `Remote` by the presence of `/`.
-   Do not let a task name silently win over an OCI reference, or the reverse.
-   `Remote` values must be fully qualified. `Filesystem` is a kind-tagged
-   enum with type-specific properties and a strict `FilesystemSize`.
-   Reject duplicate or unknown keys, invalid types, and null values.
+1. Parse one YAML plan and the separate lock before execution. Stages are
+   the untagged creation/extension enum in §5. References distinguish local
+   stage names from qualified remote images. Direct image selectors can be
+   remote and are locked too. Validate all declarations and execute only the
+   selected closure. `Format` is a kind-tagged enum with typed properties.
+   Reject duplicate or unknown keys and invalid types. Bootconfig values may
+   be null to delete a key; collection nulls are not empty collections.
    Check the filesystem backend and runtime prerequisites, required image
-   exports, finite command timeouts, variable availability when evaluated,
+   components, finite command timeouts,
    and DNS configuration for network-enabled commands. Reject unsupported
    behavior rather than silently weakening the sandbox.
 
@@ -1656,87 +1311,28 @@ RAII owns resources; destructors cannot certify successful finalization.
    Supervisor death still must not expose privileged handles or permit
    storage reuse before the independently triggered VM shutdown.
 
-### 14.5 Execute the image closure under the task rules
+### 14.5 Execute the image closure under the stage rules
 
-1. `image:` selects the closure, as specified in [§5.3](#53-closure). Run
-   only tasks reachable from its carapace and boot references. Orphan tasks
-   do not run. YAML key order does not choose the closure or the execution
-   order. A task runs after the inputs it references have been produced.
-   Producing the image is assembly, not a task.
-
-1. A `bootstrap` task selects a tool carapace with `from:` and declares the
-   output filesystem as a kind-tagged `filesystem:` value: a strict
-   `FilesystemSize` and type-specific properties, for example ext4 `label`.
-   Trusted formatting tools create that filesystem on the new zero-backed
-   writable carapace layer before commands start. The plan does not run
-   mkfs or mount. Never pass plan-provided shell commands or formatter
-   arguments to privileged tooling. Validate properties against the selected
-   backend. Validate the effective configuration and tool identity before
-   execution. Do not emit a formatter receipt.
-
-   Commands see the disposable writable tool carapace at / and the fresh
-   output filesystem at /mnt. They can install tools into / and populate
-   /mnt, for example using dnf --installroot=/mnt. Selected bytes land on
-   those assigned mounts. Constrain /mnt setup against the pinned root;
-   it is a reserved output mount during bootstrap. Tool modifications persist
-   between its steps but are discarded when the task completes. No tool layers
-   or tool boot components are inherited. Deliberately copied bytes can
-   contribute to the output. Stop writers and cleanly unmount both views;
-   seal the output layer directly, without import or image conversion.
-
-1. An `extend` task takes a carapace (`from:`) and commands and produces a
-   carapace. It always rewrites the DTB for the new root hash and re-exports
-   the PMI when one is present. Boot rides with the task. All `exec` steps
-   share one writable snapshot of the input carapace. Seal that snapshot once
-   after every step succeeds. A failed task produces no publishable layer.
-   Do not replace only half of the PMI/DTB pair, and do not add a boot-discard
-   operation. A tool carapace does not become output ancestry.
-
-1. A `build` task takes a tool carapace and produces artifacts only. It does
-   not produce a carapace. `into:` names those artifacts with flat bare names.
-   Commands use a disposable tool root at /, without a special /mnt output
-   mount. Extract declared artifacts through confined handles only after all
-   writers stop. Intermediate tool changes do not become scutes. There is no
-   `export`, `make`, or `produce` task kind.
-
-1. The automatic DTB rewrite is not a plan section and not a task. `extend`
-   performs it for the new root hash. Image assembly performs it when the
-   image root is bound to imported boot lineage. The built-in sequence is
-   [§8.3](#83-automatic-rewrite). There is no `transform` key. Custom PMI/DTB
-   bytes come from an explicit task. Reject a `platform` kind. Regex replaces
-   all matches, leaves zero matches unchanged, and fails on a non-string.
-   Missing reads fail unless guarded by property existence. `set` can create
-   nodes. `remove` of an absent property fails. A missing DTB skips the
-   automatic rewrite. The corium edit tolerates absent bootargs and edits
-   existing `corium=` arguments, without assuming every firmware is Linux.
-
-1. Expose `$CARAPACE` as the output carapace root once that carapace exists,
-   not a tool-carapace root and not a build task's tool root. Referencing it
-   when unavailable fails. Expand string values with the documented dollar
-   escaping.
+Run only stages selected through image selectors and transitive source/COPY
+references, in dependency order. Apply the creation/extension namespaces and
+whole-disk snapshot rules from §6.2. An extension retains its PMI and binds an
+existing config key after sealing. Creation drops tool boot components.
+Assembly independently selects components and applies §8 after authored config
+changes. No shell build variable or detached DTB rewrite participates.
 
 ### 14.6 Keep COPY and output extraction controlled
 
-1. Commands never receive a context mount. `copy` selects a flat bare name
-   from the git context tree or from a task output, after that source is
-   finalized. It does not copy a whole stage root and it does not fetch a
-   URL. The supervisor places selected bytes into an assigned filesystem
-   through its kernel mount, while command writers are stopped. Use scoped
-   handles and root-confined path resolution. Symlinks and metadata must not
-   redirect supervisor operations outside the target.
+Commands never receive a context mount. COPY selects host-context paths or a
+completed named stage's persisted root. Supervisor readers open the bounded
+root partition with disposable journal writes and never replay source mounts.
+Use confined handles and reject special files before data access. The selected
+source root does not become output ancestry merely because bytes were copied.
 
-1. `copy` is a supervisor-owned operation, not an image-authored script with
-   context access. Use a controlled mount session without command writers,
-   root-confined path resolution and narrowly scoped handles. Complete it
-   before the next run. Apply the same rules to disposable tool roots and
-   bootstrap output roots; do not expose the context object store to commands.
-
-1. Extract declared `into:` artifacts, and boot files a task exports, only
-   after commands and descendants have stopped. Validate types, bounds,
-   paths, and formats.
-   Do not execute image-provided cleanup or validation helpers with
-   supervisor authority. COPY into a persistent layer is persistent data;
-   deleting it in a later layer does not erase the earlier layer.
+Extract a `boot: {from, path}` regular PMI only after stage writers have
+stopped. Capture it into supervisor scratch, authenticate its bytes and validate
+its format before publication. Do not execute image-provided validation helpers
+with supervisor authority. Copies into persistent layers remain part of those
+layers even if a later layer deletes their paths.
 
 ### 14.7 Start a fresh command sandbox for every run step
 
@@ -1775,7 +1371,7 @@ RAII owns resources; destructors cannot certify successful finalization.
 
 1. Run /bin/sh -eu -c, cwd /, null stdin, and explicit diagnostic output.
    Clear the caller environment; supply only the documented PATH, HOME,
-   LANG, and applicable CARAPACE. No automatic credential/proxy forwarding.
+   and LANG. No automatic credential/proxy forwarding.
    Namespace init must reap descendants. No process may outlive the step,
    including a daemon whose shell already exited successfully.
    Resident init reports shell status before namespace-exit cleanup through
@@ -1915,7 +1511,7 @@ RAII owns resources; destructors cannot certify successful finalization.
 
 1. After writers are gone and filesystems are cleanly finalized, seal
    and hash writable output layers using the carapace APIs; firmware
-   extraction and DTB transformation follow the pipeline contract. Hash
+   extraction and bootconfig composition follow the pipeline contract. Hash
    the finalized bytes that will be published, not subsequently mutable
    transport copies. Do not treat a clean process exit alone as evidence
    that filesystem writes succeeded.
@@ -1987,20 +1583,16 @@ paths use lazy gix verify-on-use without exposing a context mount. Locked
 multi-architecture indexes select only the host architecture. Image components
 and authenticated chain commitments remain separate from live device mappings.
 
-The engine runs the tasks on the `image:` closure: `bootstrap`, `extend`,
-and `build`. It owns one RAM workspace and execution runtime, borrowed by
-those tasks. Bootstrap formats its new writable snapshot over dm-zero
-**outside the command sandbox** and uses separate tool and output mounts.
-Extend's commands share one writable snapshot and produce one scute. Build
-uses a disposable tool carapace and extracts `into:` artifacts only. Tool
-inputs are bound by the committed plan and lock; they do not become output
-ancestry.
-Orphan tasks do not run. After the closure, the automatic DTB rewrite and
-image assembly run. Assembly is not a task. The binary sequences this closure using immutable task results and activates
-local carapace chains only when a dependent task needs their filesystem.
+The engine runs the selected stages using one RAM workspace and execution
+runtime. Creation formats a whole-disk snapshot over dm-zero outside the
+command sandbox and uses separate tool/output roots. Extension adds one scute.
+Persisted stage roots supply named COPY and regular PMI file extraction.
+Orphan stages do not run. Component-only forwarding uses no execution runtime.
+The binary sequences immutable stage results and activates source chains only
+when filesystem operations require them.
 
 `StageOutput` holds results without command/mount authority. Runtime cleanup
-precedes DTB transformation, image assembly, manifest annotation and
+precedes final component validation, image assembly, manifest annotation and
 publication. Pass-through builds use the same finalization without allocating
 an execution runtime. Publication happens only after all fallible checks. CLI `--output`
 uses a no-replacement atomic rename of the completed directory. The appliance

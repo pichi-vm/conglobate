@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   bootstrap:
-    kind: bootstrap
-    from: qualification.local/fedora-label-tools:43
-    filesystem:
+    using: qualification.local/fedora-label-tools:43
+    format:
       size: 64MiB
       kind: ext4
-    exec:
-    - run: |
+    derive:
+    - exec: |
         set -x
         label=foreign_u:object_r:foreign_build_t:s0
         for root in / /mnt/; do
@@ -22,7 +21,7 @@ tasks:
         if LC_ALL=C setfattr -n security.selinux -v "$label" /sys 2>/readonly-label-error; then exit 1; fi
         grep -q 'Read-only file system' /readonly-label-error
         printf 'COMMAND_TWO_ROOT_LABEL_WRITE_PASS\n'
-    - run: |
+    - exec: |
         set -x
         label=foreign_u:object_r:foreign_build_t:s0
         for root in / /mnt/; do

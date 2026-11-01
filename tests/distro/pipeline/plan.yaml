@@ -1,14 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Offline composition regression, not a bootable distro plan.
-tasks:
+stages:
   bootstrap:
-    kind: bootstrap
-    from: qualification.local/fedora:43
-    filesystem:
+    using: qualification.local/fedora:43
+    format:
       size: 64MiB
       kind: ext4
-    exec:
-    - run: |
+    derive:
+    - exec: |
         mkdir -p /mnt/bin /mnt/etc /mnt/dev /mnt/proc /mnt/sys /mnt/tmp /mnt/run
         cp -L /bin/sh /mnt/bin/sh
         cp -L /bin/rm /mnt/bin/rm
@@ -27,10 +26,9 @@ tasks:
         printf 'tool-only\n' > /tool-only
         printf 'PIPELINE_BOOTSTRAP_PASS\n'
   rootfs:
-    kind: extend
-    from: bootstrap
-    exec:
-    - run: |
+    extending: bootstrap
+    derive:
+    - exec: |
         test -z "${CARAPACE+x}"
         read -r stage < /etc/stage
         test "$stage" = bootstrap
@@ -41,52 +39,46 @@ tasks:
         printf 'carapace\n' > /etc/stage
         printf 'PIPELINE_CARAPACE_FIRST_PASS\n'
     - copy:
-        from: message.txt
+        path: message.txt
         into: /etc/context-message
     - copy:
-        from: generated
+        from: producer
+        path: /generated
         into: /etc/generated
-    - run: |
+    - exec: |
         read -r stage < /etc/stage
         test "$stage" = carapace
         read -r message < /etc/context-message
         test "$message" = 'committed pipeline input'
         read -r generated < /etc/generated
-        test "$generated" = 'finalized build artifact'
+        test "$generated" = 'persisted stage file'
         test -f /temporary
         /bin/rm /temporary
         test ! -e /temporary
         printf 'PIPELINE_CARAPACE_LAST_PASS\n'
   producer:
-    kind: build
-    from: bootstrap
-    exec:
-    - run: |
+    extending: bootstrap
+    derive:
+    - exec: |
         test -z "${CARAPACE+x}"
-        printf 'finalized build artifact\n' > /generated
-        printf 'MULTISTAGE_ARTIFACT_PRODUCER_PASS\n'
-    into: {generated: /generated}
+        printf 'persisted stage file\n' > /generated
+        printf 'MULTISTAGE_FILE_PRODUCER_PASS\n'
   orphan:
-    kind: build
-    from: unused.registry/tool:1
-    exec: [{run: 'false', network: true}]
-    into: {never: /never}
+    extending: unused.registry/tool:1
+    derive: [{exec: 'false', network: true}]
   firmware:
-    kind: build
-    from: qualification.local/fedora:43
-    exec:
-    - run: |
-        test -n "$CARAPACE"
+    extending: qualification.local/fedora:43
+    derive:
+    - exec: |
+        test -z "${CARAPACE+x}"
         test ! -e /etc/context-message
         test ! -e /tool-only
         printf 'PIPELINE_FIRMWARE_TOOLS_PASS\n'
-    - copy: {from: firmware, into: /plan-input-firmware}
-    - run: |
+    - copy: {path: firmware, into: /plan-input-firmware}
+    - exec: |
         cp -a /plan-input-firmware/boot.pmi /output.pmi
-        cp -a /plan-input-firmware/base.dtb /output.dtb
-    into:
-      pmi: /output.pmi
-      dtb: /output.dtb
 image:
   root: rootfs
-  boot: firmware
+  boot: {from: firmware, path: /output.pmi}
+  bootconfig:
+    values: {corium.root: ""}

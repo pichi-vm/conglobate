@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
-    - run: printf 'FIRST_DIRECTIVE_COMPLETE\n'
-    - run: exit 7
+    extending: qualification.local/fedora:43
+    derive:
+    - exec: printf 'FIRST_DIRECTIVE_COMPLETE\n'
+    - exec: exit 7
 image: rootfs

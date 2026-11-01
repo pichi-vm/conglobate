@@ -22,7 +22,11 @@ impl YamlDocument<'_> {
         options.strict_booleans = true;
         options.legacy_octal_numbers = false;
         options.duplicate_keys = serde_saphyr::DuplicateKeyPolicy::Error;
-        serde_saphyr::from_str_with_options(self.text, options)
+        // Buffer YAML's actual scalar/collection kinds before Serde visits the
+        // schema. Direct typed decoding coerces null to an empty map and some
+        // scalars to strings; neither belongs to the authored JSON-shaped model.
+        let value: serde_json::Value = serde_saphyr::from_str_with_options(self.text, options)?;
+        T::deserialize(value).map_err(serde::de::Error::custom)
     }
 }
 

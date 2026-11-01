@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
-    - run: |
+    extending: qualification.local/fedora:43
+    derive:
+    - exec: |
         set -x
         test "$PPID" = 1
         test "$$" -ne 1
@@ -88,18 +87,18 @@ tasks:
         printf 'temporary\n' > /dev/shm/confinement-marker
         printf 'persistent\n' > /confinement-marker
         printf 'COMMAND_RUNTIME_BOUNDARY_PASS\n'
-    - run: |
+    - exec: |
         set -x
         test ! -e /dev/shm/confinement-marker
         test "$(cat /confinement-marker)" = persistent
         printf 'COMMAND_RUNTIME_RECREATED_PASS\n'
     - copy:
-        from: probe-runtime
+        path: probe-runtime
         into: /probe-runtime
-    - run: |
+    - exec: |
         /probe-runtime/loader --library-path /probe-runtime/lib /probe-runtime/command-probe
         rm -rf /probe-runtime
-    - run: |
+    - exec: |
         set -x
         mkfifo /dev/shm/descendant-ready /dev/shm/descendant-hold
         (
@@ -114,7 +113,7 @@ tasks:
         kill -0 "$child"
         printf 'COMMAND_EXITS_WITH_LIVE_DESCENDANT_PASS\n'
       timeout: 5s
-    - run: |
+    - exec: |
         test ! -e /dev/shm/descendant-ready
         test ! -e /dev/shm/descendant-hold
         printf 'COMMAND_AFTER_DESCENDANT_CLEANUP_PASS\n'

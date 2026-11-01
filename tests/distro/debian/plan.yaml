@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/debian:trixie
-    exec:
+    extending: qualification.local/debian:trixie
+    derive:
     - network: true
       timeout: 20m
-      run: |
+      exec: |
         printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d
         chmod 0755 /usr/sbin/policy-rc.d
         apt-get update
@@ -22,30 +21,28 @@ tasks:
         cp -a /var/lib/dpkg /usr/share/factory/var/lib/dpkg
         printf 'C /var/lib/dpkg - - - -\n' > /usr/lib/tmpfiles.d/conglobate-dpkg.conf
     - copy:
-        from: qualification.service
+        path: qualification.service
         into: /etc/systemd/system/conglobate-qualification.service
     - copy:
-        from: qualification.sh
+        path: qualification.sh
         into: /usr/local/bin/conglobate-qualification
-    - run: chmod 0755 /usr/local/bin/conglobate-qualification
-    - run: |
+    - exec: chmod 0755 /usr/local/bin/conglobate-qualification
+    - exec: |
         mkdir -p /etc/systemd/system/multi-user.target.wants
         ln -s ../conglobate-qualification.service /etc/systemd/system/multi-user.target.wants/conglobate-qualification.service
   firmware:
-    kind: build
-    from: rootfs
-    exec:
+    extending: rootfs
+    derive:
     - copy:
-        from: firmware
+        path: firmware
         into: /plan-input-firmware
-    - run: cp -a /plan-input-firmware/boot.pmi /qualification-boot.pmi
-    - copy:
-        from: firmware
-        into: /plan-input-firmware
-    - run: cp -a /plan-input-firmware/base.dtb /qualification-base.dtb
-    into:
-      pmi: /qualification-boot.pmi
-      dtb: /qualification-base.dtb
+    - exec: cp -a /plan-input-firmware/boot.pmi /qualification-boot.pmi
 image:
   root: rootfs
-  boot: firmware
+  boot: {from: firmware, path: /qualification-boot.pmi}
+  bootconfig:
+    values:
+      corium.root: ""
+      kernel.console: [ttyS0, hvc0]
+      kernel.systemd.volatile: state
+      kernel.systemd.unit: multi-user.target

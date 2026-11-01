@@ -6,7 +6,7 @@ use crate::{
     execution::HelperProgram,
     formatter::{CapturedFormatter, Ext4Format},
     input::ResolvedBuild,
-    plan::Bootstrap,
+    plan::Stage,
     process::ChildReaper,
     step::{CommandSandbox, SetupBudget},
     storage::{BootstrapVolumes, Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
@@ -17,22 +17,19 @@ use std::{num::NonZeroU64, sync::Arc};
 #[derive(Debug)]
 pub(super) struct BootstrapBuild<'a> {
     build: &'a ResolvedBuild,
-    stage: &'a Bootstrap,
-    task: &'a crate::plan::Task,
-    artifacts: &'a super::artifacts::Artifacts<'a>,
+    stage: &'a Stage,
+    sources: &'a super::sources::Sources<'a, 'a>,
 }
 impl<'a> BootstrapBuild<'a> {
     pub(super) fn new(
         build: &'a ResolvedBuild,
-        stage: &'a Bootstrap,
-        task: &'a crate::plan::Task,
-        artifacts: &'a super::artifacts::Artifacts<'a>,
+        stage: &'a Stage,
+        sources: &'a super::sources::Sources<'a, 'a>,
     ) -> Self {
         Self {
             build,
             stage,
-            task,
-            artifacts,
+            sources,
         }
     }
     pub(super) fn execute<'w>(
@@ -41,17 +38,16 @@ impl<'a> BootstrapBuild<'a> {
         runtime: &Runtime<'_>,
         active: crate::storage::ReadOnlyChain<'w>,
         reaper: ChildReaper,
-        carapace: Option<&[u8; 32]>,
     ) -> anyhow::Result<Bootstrapped<'w>> {
-        let captured = CapturedFormatter::for_filesystem(self.stage.filesystem())
-            .context("capture trusted formatter")?;
+        let captured =
+            CapturedFormatter::for_filesystem(self.stage.format.as_ref().expect("creation format"))
+                .context("capture trusted formatter")?;
         self.produce(
             workspace,
             runtime,
             captured.stage(workspace)?,
             active,
             reaper,
-            carapace,
         )
     }
 
@@ -62,7 +58,6 @@ impl<'a> BootstrapBuild<'a> {
         formatter: crate::formatter::FormatterRuntime,
         active: crate::storage::ReadOnlyChain<'w>,
         reaper: ChildReaper,
-        carapace: Option<&[u8; 32]>,
     ) -> anyhow::Result<Bootstrapped<'w>> {
         let sectors = NonZeroU64::new(carapace::ZERO_SIZE_SECTORS).unwrap();
         let origin = Mapping::<Created>::create()?.zero(sectors)?;
@@ -84,7 +79,7 @@ impl<'a> BootstrapBuild<'a> {
         let tool = Volume::<Unmounted>::in_init_namespace(tool, runtime.recovery())?;
         let paths = runtime.paths()?;
         let output = Volume::<Unmounted>::in_init_namespace(output, runtime.recovery())?
-            .with_mounts(self.task.mounts(), paths.volumes(), true)?;
+            .with_mounts(&self.stage.mount, paths.volumes(), true)?;
         let mappings = self.build.captured().execution_mappings()?;
         let sandbox = CommandSandbox::new(
             HelperProgram::current()?,
@@ -100,11 +95,10 @@ impl<'a> BootstrapBuild<'a> {
         let completed = sandbox.directives_with_inputs::<BootstrapVolumes<'_, '_, '_, Mounted>>(
             BootstrapVolumes::new(tool, output),
             reaper,
-            self.task.directives(),
+            &self.stage.derive,
             crate::step::DirectiveInputs {
                 context: self.build.captured().context(),
-                artifacts: self.artifacts,
-                carapace,
+                sources: self.sources,
                 network: networking.as_ref(),
             },
         )?;
@@ -131,7 +125,7 @@ impl<'a> BootstrapBuild<'a> {
         formatter
             .format(
                 snapshot,
-                Ext4Format::from(self.stage.filesystem()),
+                Ext4Format::from(self.stage.format.as_ref().expect("creation format")),
                 &helper,
                 SetupBudget::begin(),
             )?

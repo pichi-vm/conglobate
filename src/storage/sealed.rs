@@ -333,7 +333,17 @@ mod tests {
         scratch.write_all(&Store::new(2).0).unwrap();
         let base = Arc::new(scratch.seal_snapshot([0; 32]).unwrap());
         let output = directory.path().join("base");
-        let image = AssembledImage::bootstrap_layers(&[Arc::clone(&base)], &output).unwrap();
+        let cache = Cache::open(directory.path()).unwrap();
+        let selection = crate::pipeline::output::StageOutput {
+            root: Some(crate::pipeline::root::Root {
+                base: None,
+                produced: vec![Arc::clone(&base)],
+            }),
+            pmi: None,
+            bootconfig: None,
+            config_requested: false,
+        };
+        let image = AssembledImage::components(&cache, &selection, &output).unwrap();
         assert_eq!(
             image.image().manifest().carapace_root().unwrap(),
             Some(*base.root())
@@ -344,23 +354,39 @@ mod tests {
         let digest = crate::artifact::Digest::Sha256(Sha256::digest(&index).into());
         std::fs::write(output.join("blobs/sha256").join(digest.hex()), &index).unwrap();
         let cache = Cache::open(&output).unwrap();
-        let image = cache.resolve(digest.to_string().parse().unwrap()).unwrap();
+        let image = crate::input::CheckedImage::verify(
+            &cache,
+            cache.resolve(digest.to_string().parse().unwrap()).unwrap(),
+        )
+        .unwrap();
         let mut scratch = workspace.scratch().unwrap();
         scratch.write_all(&Store::new(2).0).unwrap();
         let top = Arc::new(scratch.seal_snapshot(*base.root()).unwrap());
-        let dtb = crate::plan::TransformSelection::Builtin
-            .apply(None, None)
-            .unwrap();
-        let extended = AssembledImage::derived(
+        let extended = AssembledImage::components(
             &cache,
-            &image,
-            &[Arc::clone(&top)],
+            &crate::pipeline::output::StageOutput {
+                root: Some(crate::pipeline::root::Root {
+                    base: Some(&image),
+                    produced: vec![Arc::clone(&top)],
+                }),
+                pmi: None,
+                bootconfig: None,
+                config_requested: false,
+            },
             &directory.path().join("extended"),
-            &dtb,
         )
         .unwrap();
-        let bootstrap = AssembledImage::bootstrap_layers(
-            &[base, Arc::clone(&top)],
+        let bootstrap = AssembledImage::components(
+            &cache,
+            &crate::pipeline::output::StageOutput {
+                root: Some(crate::pipeline::root::Root {
+                    base: None,
+                    produced: vec![base, Arc::clone(&top)],
+                }),
+                pmi: None,
+                bootconfig: None,
+                config_requested: false,
+            },
             &directory.path().join("bootstrap"),
         )
         .unwrap();

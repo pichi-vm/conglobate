@@ -5,7 +5,7 @@ use crate::{
     context::CapturedContext,
     document::YamlDocument,
     path::{ContextDirectory, ContextPath},
-    plan::{Plan, Reference},
+    plan::Plan,
     request::CommitIdentity,
 };
 use std::path::PathBuf;
@@ -34,12 +34,8 @@ impl Inspect {
         let plan = Plan::try_from(YamlDocument::from(file.text()?))?;
         Ok(crate::contract::build::Inputs {
             images: plan
-                .order()
-                .iter()
-                .filter_map(|name| match plan.tasks()[name].from() {
-                    Reference::Remote(reference) => Some(reference.as_ref().to_owned()),
-                    Reference::Local(_) => None,
-                })
+                .remote_sources()
+                .map(|remote| remote.as_ref().to_owned())
                 .collect(),
         })
     }

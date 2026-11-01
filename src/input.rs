@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Build planning from one immutable committed context. Image verification follows.
+mod availability;
 use crate::{
     context::{CapturedContext, ContextError, ContextFile},
     document::YamlDocument,
@@ -16,12 +17,14 @@ use sha2::{Digest, Sha256};
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum InputError {
+    #[error(transparent)]
+    Identity(#[from] crate::image::IdentityError),
     #[error("executing stages require --uid-map and --gid-map")]
     IdMappingsRequired,
     #[error(transparent)]
     Cache(#[from] crate::cache::CacheError),
     #[error("{0}")]
-    Exports(String),
+    Components(String),
     #[error("execution input {0} has no carapace")]
     MissingExecutionCarapace(String),
     #[error(transparent)]
@@ -87,29 +90,10 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
         let plan = Plan::try_from(YamlDocument::from(plan_file.text()?))?;
         let lock = ImageLock::try_from(YamlDocument::from(lock_file.text()?))?;
         let graph = BuildGraph::new(plan, &lock)?;
-        for task in graph.plan().tasks().values() {
-            for name in task.outputs().keys() {
-                if context
-                    .entries()
-                    .contains_key(std::path::Path::new(name.as_ref()))
-                {
-                    return Err(InputError::Exports(format!(
-                        "artifact {name} conflicts with committed context"
-                    )));
-                }
-            }
-        }
-
-        let artifacts: std::collections::BTreeSet<_> = graph
-            .plan()
-            .tasks()
-            .values()
-            .flat_map(|task| task.outputs().keys().map(|name| name.as_ref()))
-            .collect();
-        for name in graph.plan().order() {
-            for directive in graph.plan().tasks()[name].directives() {
+        for name in &graph.plan().order {
+            for directive in &graph.plan().stages[name].derive {
                 if let crate::plan::Directive::Copy(copy) = directive
-                    && !artifacts.contains(copy.artifact())
+                    && copy.from().is_none()
                 {
                     crate::copy::CopySources::prepare(&mut context, copy.sources())?;
                 }
@@ -129,7 +113,7 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
                 .map_err(InputError::NetworkNamespace)?;
             Some(crate::network::NetworkInput::new(namespace, resolver))
         };
-        let id_mappings = if graph.execution_required() {
+        let id_mappings = if graph.plan().commands_required() {
             Some(
                 request
                     .id_mappings()
@@ -183,9 +167,16 @@ pub(crate) struct CheckedImage {
     image: crate::cache::ResolvedImage,
 }
 impl CheckedImage {
-    /// Capture the selected DTB with a fresh digest/size check. Earlier input
-    /// receipts do not authorize trusting mutable cache bytes on this read.
-    pub(crate) fn inherited_dtb(
+    pub(crate) fn verify(
+        cache: &crate::cache::Cache,
+        image: crate::cache::ResolvedImage,
+    ) -> Result<Self, crate::cache::CacheError> {
+        cache.verify_metadata(&image)?;
+        Ok(Self { image })
+    }
+
+    /// Capture selected native config with a fresh digest/size check.
+    pub(crate) fn bootconfig(
         &self,
         cache: &crate::cache::Cache,
     ) -> Result<Option<crate::cache::VerifiedMetadata>, crate::cache::CacheError> {
@@ -194,14 +185,14 @@ impl CheckedImage {
             .layers
             .iter()
             .find_map(|layer| match layer {
-                crate::artifact::Layer::Dtb(descriptor) => Some(descriptor),
+                crate::artifact::Layer::BootConfig(descriptor) => Some(descriptor),
                 _ => None,
             })
             .map(|descriptor| {
                 let digest = descriptor
                     .digest
                     .parse()
-                    .map_err(|_| crate::cache::CacheError::Invalid("invalid DTB digest"))?;
+                    .map_err(|_| crate::cache::CacheError::Invalid("invalid bootconfig digest"))?;
                 cache.metadata(&digest, Some(descriptor.size))
             })
             .transpose()
@@ -239,62 +230,15 @@ impl CapturedBuild {
         let mut images = std::collections::BTreeMap::new();
         for input in self.graph.inputs() {
             let image = cache.resolve(input.index())?;
-            cache.verify_metadata(&image)?;
-            if input.execution_required() && image.root().is_none() {
+            let image = CheckedImage::verify(&cache, image)?;
+            if input.root_required() && image.root().is_none() {
                 return Err(InputError::MissingExecutionCarapace(
                     input.reference().as_ref().to_owned(),
                 ));
             }
-            images.insert(input.reference().clone(), CheckedImage { image });
+            images.insert(input.reference().clone(), image);
         }
-        // Verify export availability before allocating any privileged execution
-        // resources. A missing optional boot is fine except when image requests it.
-        let mut exports = std::collections::BTreeMap::new();
-        for name in self.graph.plan().order() {
-            let task = &self.graph.plan().tasks()[name];
-            let input = match task.from() {
-                crate::plan::Reference::Local(local) => *exports
-                    .get(local)
-                    .ok_or_else(|| InputError::Exports("unresolved local input".into()))?,
-                crate::plan::Reference::Remote(remote) => {
-                    let image = &images[&remote.as_ref().parse().map_err(PlanError::from)?];
-                    (
-                        image.root().is_some(),
-                        image
-                            .image()
-                            .manifest()
-                            .layers
-                            .iter()
-                            .any(|l| matches!(l, crate::artifact::Layer::Pmi(_))),
-                    )
-                }
-            };
-            if !input.0 {
-                return Err(InputError::Exports(format!(
-                    "task {name} requires a carapace input"
-                )));
-            }
-            let output = match task.kind() {
-                crate::plan::TaskKind::Bootstrap(_) => (true, false),
-                crate::plan::TaskKind::Extend => input,
-                crate::plan::TaskKind::Build => (false, task.firmware().is_some()),
-            };
-            exports.insert(name.clone(), output);
-        }
-        match self.graph.plan().image() {
-            crate::plan::Image::Short(name) => {
-                let (root, boot) = exports[name];
-                if !root && !boot {
-                    return Err(InputError::Exports("image has no component exports".into()));
-                }
-            }
-            crate::plan::Image::Long { root, boot } if !exports[root].0 || !exports[boot].1 => {
-                return Err(InputError::Exports(
-                    "requested image root or boot export unavailable".into(),
-                ));
-            }
-            _ => (),
-        }
+        availability::Availability::validate(self.graph.plan(), &images)?;
         Ok(ResolvedBuild {
             captured: self,
             cache,

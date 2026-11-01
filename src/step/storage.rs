@@ -41,10 +41,11 @@ pub(crate) trait CommandStorage: StepStorage + Sized {
         deadline: Instant,
     ) -> io::Result<()>;
     fn copy(&mut self, context: &CapturedContext, directive: &Copy) -> Result<(), CopyError>;
-    fn copy_artifact(
+    fn copy_image(
         &mut self,
         directive: &Copy,
-        source: &crate::firmware::FirmwareFile<'_>,
+        source: &Volume<'_, '_, '_, Mounted>,
+        budget: &super::SetupBudget,
     ) -> Result<(), CopyError>;
 }
 impl<'n, 'o, 'w> CommandStorage for Volume<'n, 'o, 'w, Mounted> {
@@ -99,12 +100,13 @@ impl<'n, 'o, 'w> CommandStorage for Volume<'n, 'o, 'w, Mounted> {
     fn copy(&mut self, context: &CapturedContext, directive: &Copy) -> Result<(), CopyError> {
         self.copy(context, directive)
     }
-    fn copy_artifact(
+    fn copy_image(
         &mut self,
         directive: &Copy,
-        source: &crate::firmware::FirmwareFile<'_>,
+        source: &Volume<'_, '_, '_, Mounted>,
+        budget: &super::SetupBudget,
     ) -> Result<(), CopyError> {
-        self.copy_artifact(None, directive, source)
+        self.copy_image(None, directive, source, budget)
     }
 }
 impl<'n, 'o, 'w> CommandStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
@@ -155,11 +157,12 @@ impl<'n, 'o, 'w> CommandStorage for BootstrapVolumes<'n, 'o, 'w, Mounted> {
     fn copy(&mut self, context: &CapturedContext, directive: &Copy) -> Result<(), CopyError> {
         self.copy(context, directive)
     }
-    fn copy_artifact(
+    fn copy_image(
         &mut self,
         directive: &Copy,
-        source: &crate::firmware::FirmwareFile<'_>,
+        source: &Volume<'_, '_, '_, Mounted>,
+        budget: &super::SetupBudget,
     ) -> Result<(), CopyError> {
-        self.copy_artifact(directive, source)
+        self.copy_image(directive, source, budget)
     }
 }
