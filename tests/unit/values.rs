@@ -40,7 +40,7 @@ fn capacity_is_explicit_aligned_and_bounded() {
         assert_eq!(numeric.bytes(), bytes);
         assert_eq!(format!("{bytes}B").parse::<FilesystemSize>(), Ok(numeric));
     }
-    for bytes in [0, minimum - 4096, minimum + 1, maximum + 4096, u64::MAX] {
+    for bytes in [0, minimum - 4096, minimum + 1, u64::MAX] {
         assert!(FilesystemSize::try_from(bytes).is_err(), "{bytes}");
     }
     assert_eq!(
@@ -50,6 +50,16 @@ fn capacity_is_explicit_aligned_and_bounded() {
     assert_eq!(
         "65GiB".parse::<FilesystemSize>().unwrap().bytes(),
         65 * 1024 * 1024 * 1024
+    );
+    let oversized = maximum + 4096;
+    assert!(FilesystemSize::try_from(oversized).is_ok());
+    let plan = format!(
+        "tasks:\n  base:\n    kind: bootstrap\n    from: registry.test/base:1\n    filesystem: {{kind: ext4, size: {oversized}B}}\nimage: base\n"
+    );
+    assert!(
+        crate::document::YamlDocument::from(plan.as_str())
+            .decode::<crate::plan::schema::Plan>()
+            .is_err()
     );
     for value in [
         "0B",

@@ -16,6 +16,22 @@ Fedora, Debian, Alpine and NixOS example plans live under `tests/distro`. Confid
 appliance attestation are deferred; passing tests are not a universal security
 or operating-system compatibility claim.
 
+## Staged recipe library
+
+`conglobate::recipe` exposes portable serde types for staged images. Each type
+lives in its own module. `Plan::validate()` checks every declaration and
+reference; `Plan::order()` returns only the selected dependency closure.
+Runtime dependencies remain behind `cli`. This library API is introduced
+before the executable migration; the CLI syntax below still applies here.
+See [the staged recipe example](tests/fixtures/staged-recipe.yaml).
+
+Stages either create a root with `using`, `format` and nonempty `derive`, or
+extend a root with `extending` and nonempty `derive`. Directives contain `exec`
+or `copy`. COPY reads the unnamed host context unless `from` names a stage.
+Mount targets belong to the output image namespace. The top-level `image`
+forwards one source or selects `root`, `boot` and `bootconfig` explicitly.
+Bootconfig requires a selected PMI; omitting its `from` starts empty.
+
 ## Plans
 
 A plan has named `tasks` and an explicit local `image` selection:

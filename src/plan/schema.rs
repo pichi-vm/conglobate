@@ -176,8 +176,6 @@ macro_rules! string_deserialize {
 string_deserialize!(Local);
 string_deserialize!(ArtifactName);
 string_deserialize!(Remote);
-string_deserialize!(FilesystemSize);
-string_deserialize!(CommandTimeout);
 
 impl FromStr for Reference {
     type Err = Error;
@@ -212,11 +210,6 @@ pub(crate) struct Ext4Properties {
     size: FilesystemSize,
     #[serde(default)]
     label: FilesystemLabel,
-}
-impl<'de> Deserialize<'de> for FilesystemLabel {
-    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        strict_string(d)?.try_into().map_err(de::Error::custom)
-    }
 }
 impl Filesystem {
     pub(crate) fn size(&self) -> FilesystemSize {
@@ -395,6 +388,11 @@ impl TryFrom<RawPlan> for Plan {
     fn try_from(raw: RawPlan) -> Result<Self, Error> {
         let mut producers = BTreeMap::new();
         for (name, task) in &raw.tasks {
+            if let Task::Bootstrap(bootstrap) = task
+                && bootstrap.filesystem.size().bytes() > carapace::ZERO_SIZE_BYTES
+            {
+                return Err(Error::invalid("filesystem exceeds the carapace origin"));
+            }
             if let Task::Build(build) = task {
                 if build.into.is_empty() {
                     return Err(Error::invalid("build requires declared artifacts"));
