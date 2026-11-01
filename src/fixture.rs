@@ -5,6 +5,7 @@
 extern crate conglobate as contract;
 extern crate self as conglobate;
 mod anchor;
+mod disk;
 use contract::artifact;
 mod cache;
 mod context;

@@ -4,7 +4,7 @@
 use super::rejection::DiscardStorage;
 use crate::{
     execution::HelperProgram,
-    formatter::{Ext4Format, selection},
+    formatter::{CapturedFormatter, Ext4Format},
     input::ResolvedBuild,
     plan::Bootstrap,
     process::ChildReaper,
@@ -43,7 +43,7 @@ impl<'a> BootstrapBuild<'a> {
         reaper: ChildReaper,
         carapace: Option<&[u8; 32]>,
     ) -> anyhow::Result<Bootstrapped<'w>> {
-        let captured = selection::for_filesystem(self.stage.filesystem())
+        let captured = CapturedFormatter::for_filesystem(self.stage.filesystem())
             .context("capture trusted formatter")?;
         self.produce(
             workspace,
@@ -74,7 +74,7 @@ impl<'a> BootstrapBuild<'a> {
         let formatted = self
             .format(formatter, output)
             .context("format bootstrap filesystem")?;
-        let (formatter, output) = formatted.into_parts();
+        let (formatter, output) = formatted.into_parts()?;
         formatter.close()?;
         let tool = Mapping::<Created>::create()?.snapshot(
             &active,
@@ -112,7 +112,7 @@ impl<'a> BootstrapBuild<'a> {
         tool.discard()?;
         let scute = Arc::new(
             output
-                .into_snapshot()
+                .into_snapshot()?
                 .close()?
                 .detach()?
                 .seal_snapshot([0; 32])?,

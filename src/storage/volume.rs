@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::SnapshotMapping;
+use super::{PartitionedSnapshot, SnapshotMapping};
 use crate::anchor::RecoveryDirectory;
 use rustix::{fs, mount};
 use std::{
@@ -47,7 +47,7 @@ pub(crate) struct MountedResources {
 pub(crate) struct Volume<'ns, 'origin, 'workspace, S: VolumeState> {
     // Mount resources must drop before the underlying snapshot.
     resources: S::Resources,
-    snapshot: SnapshotMapping<'origin, 'workspace>,
+    snapshot: PartitionedSnapshot<'origin, 'workspace>,
     scope: &'ns RecoveryDirectory,
     _thread: PhantomData<Rc<()>>,
 }
@@ -65,12 +65,12 @@ impl<'volume> VolumeView<'volume> {
     }
 }
 impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
-    pub(crate) fn into_snapshot(self) -> SnapshotMapping<'a, 'w> {
-        self.snapshot
+    pub(crate) fn into_snapshot(self) -> io::Result<SnapshotMapping<'a, 'w>> {
+        self.snapshot.into_snapshot()
     }
     /// Observe snapshot health after all filesystem writes have been flushed.
     pub(crate) fn validate_snapshot(&self) -> std::io::Result<()> {
-        self.snapshot.usage().map(|_| ())
+        self.snapshot.validate()
     }
     /// Mount under supervisor ownership in the verified init namespace.
     /// Command execution still requires its own private namespace and view.
@@ -78,9 +78,10 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
         snapshot: SnapshotMapping<'a, 'w>,
         scope: &'ns RecoveryDirectory,
     ) -> io::Result<Self> {
+        scope.verify_current()?;
         let volume = Self {
             resources: (),
-            snapshot,
+            snapshot: PartitionedSnapshot::open(snapshot)?,
             scope,
             _thread: PhantomData,
         };
@@ -94,7 +95,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
         let attempt = (|| -> io::Result<MountedResources> {
             self.scope.verify_current()?;
             let point = Point::create(parent)?;
-            let source = self.snapshot.open_read_only()?;
+            let source = self.snapshot.open_root()?;
             let context = mount::fsopen("ext4", mount::FsOpenFlags::FSOPEN_CLOEXEC)?;
             mount::fsconfig_set_string(
                 &context,

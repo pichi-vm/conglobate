@@ -210,8 +210,15 @@ pub(crate) struct Ext4Properties {
     size: FilesystemSize,
     #[serde(default)]
     label: FilesystemLabel,
+    #[serde(default)]
+    esp: Option<FilesystemSize>,
 }
 impl Filesystem {
+    pub(crate) fn esp(&self) -> Option<FilesystemSize> {
+        match self {
+            Self::Ext4(properties) => properties.esp,
+        }
+    }
     pub(crate) fn size(&self) -> FilesystemSize {
         match self {
             Self::Ext4(p) => p.size,
@@ -388,10 +395,10 @@ impl TryFrom<RawPlan> for Plan {
     fn try_from(raw: RawPlan) -> Result<Self, Error> {
         let mut producers = BTreeMap::new();
         for (name, task) in &raw.tasks {
-            if let Task::Bootstrap(bootstrap) = task
-                && bootstrap.filesystem.size().bytes() > carapace::ZERO_SIZE_BYTES
-            {
-                return Err(Error::invalid("filesystem exceeds the carapace origin"));
+            if let Task::Bootstrap(bootstrap) = task {
+                crate::formatter::Ext4Format::from(&bootstrap.filesystem)
+                    .layout()
+                    .map_err(|error| Error::invalid(error.to_string()))?;
             }
             if let Task::Build(build) = task {
                 if build.into.is_empty() {

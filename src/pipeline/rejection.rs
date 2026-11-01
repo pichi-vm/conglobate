@@ -8,7 +8,7 @@ pub(super) trait DiscardStorage {
 }
 impl DiscardStorage for Volume<'_, '_, '_, Unmounted> {
     fn discard(self) -> anyhow::Result<()> {
-        self.into_snapshot().close()?.detach()?;
+        self.into_snapshot()?.close()?.detach()?;
         Ok(())
     }
 }

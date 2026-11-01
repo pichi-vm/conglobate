@@ -19,6 +19,7 @@ cli = [
     "dep:netlink-packet-core",
     "dep:netlink-packet-route",
     "dep:goblin",
+    "dep:gpt",
     "dep:pmi",
     "dep:devtree",
     "dep:seccompiler",
@@ -76,6 +77,7 @@ getrandom = { version = "0.4", optional = true }
 anyhow = { version = "1", optional = true }
 netlink-packet-core = { version = "=0.9.0", optional = true }
 netlink-packet-route = { version = "=0.33.0", optional = true }
+gpt = { version = "4.1", optional = true }
 goblin = { version = "0.10", optional = true, default-features = false, features = ["std", "pe32", "pe64"] }
 pmi = { git = "https://github.com/pichi-vm/pmi", rev = "710d64917968dfea4e608c1a12942c0c42ebb1e7", version = "0.1.0", optional = true }
 devtree = { git = "https://github.com/pichi-vm/devtree", rev = "e90bafce9ee9e4f7f570f07c5c242b6398c64980", features = ["alloc"], optional = true }
