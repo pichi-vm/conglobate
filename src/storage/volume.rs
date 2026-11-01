@@ -201,13 +201,15 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
         crate::copy::CopyDestination::new(&self.resources.root).copy(context, directive)
     }
 
-    pub(crate) fn copy_artifact(
+    pub(crate) fn copy_image(
         &mut self,
         output: Option<&mut Volume<'_, '_, '_, Mounted>>,
         directive: &crate::plan::Copy,
-        source: &crate::firmware::FirmwareFile<'_>,
+        source: &Volume<'_, '_, '_, Mounted>,
+        budget: &crate::step::SetupBudget,
     ) -> Result<(), crate::copy::CopyError> {
         self.scope.verify_current()?;
+        source.scope.verify_current()?;
         match output {
             Some(output) => {
                 output.scope.verify_current()?;
@@ -216,11 +218,13 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
                     &self.resources.root,
                     &output.resources.root,
                 )
-                .artifact(directive, source)
+                .image(&source.resources.root, directive, budget)
             }
-            None => {
-                crate::copy::CopyDestination::new(&self.resources.root).artifact(directive, source)
-            }
+            None => crate::copy::CopyDestination::new(&self.resources.root).image(
+                &source.resources.root,
+                directive,
+                budget,
+            ),
         }
     }
     pub(crate) fn extract_artifact<'out>(
@@ -457,24 +461,6 @@ impl Drop for MountLease {
 }
 
 impl Volume<'_, '_, '_, Mounted> {
-    /// Capture declared output files under an exclusive borrow. The coordinator
-    /// separately proves command success and quiescence before this operation.
-    pub(crate) fn extract_firmware<'w>(
-        &mut self,
-        firmware: &crate::plan::Firmware,
-        workspace: &'w super::Workspace,
-        budget: &crate::step::SetupBudget,
-    ) -> Result<crate::firmware::ExtractedFirmware<'w>, crate::firmware::ExtractionError> {
-        self.scope.verify_current()?;
-        crate::firmware::ExtractedFirmware::capture(
-            &self.resources.root,
-            firmware.pmi(),
-            firmware.dtb(),
-            workspace,
-            budget,
-        )
-    }
-
     /// Reserved bootstrap mountpoint, created through the original unmapped
     /// filesystem so image UID/GID 0 remain UID/GID 0 on disk. Called before
     /// any command admission; reject symlinks and preexisting submounts.

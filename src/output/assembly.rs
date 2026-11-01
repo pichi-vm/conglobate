@@ -128,186 +128,122 @@ impl AssembledImage {
     }
 }
 impl AssembledImage {
-    pub(crate) fn derived(
+    pub(crate) fn components(
         cache: &Cache,
-        image: &ResolvedImage,
-        scutes: &[std::sync::Arc<crate::storage::SealedScute<'_>>],
-        destination: &std::path::Path,
-        dtb: &crate::transform::TransformedDtb,
-    ) -> anyhow::Result<Self> {
-        Self::assemble(
-            cache,
-            image,
-            destination,
-            dtb.bytes(),
-            &scutes.iter().map(AsRef::as_ref).collect::<Vec<_>>(),
-        )
-    }
-    /// Replace the firmware pair while preserving only the chosen output base.
-    /// Tool image components are never implicit output ancestry.
-    pub(crate) fn firmware(
-        cache: &Cache,
-        base: Option<&ResolvedImage>,
-        pair: &crate::firmware::FinalizedFirmware<'_>,
-        scutes: &[std::sync::Arc<crate::storage::SealedScute<'_>>],
+        selection: &crate::pipeline::output::StageOutput<'_, '_>,
         destination: &std::path::Path,
     ) -> anyhow::Result<Self> {
         let staged = StagedDirectory::create(destination)?;
-        let result = (|| -> Result<_, CacheError> {
-            let mut manifest = if let Some(base) = base {
-                let config = &base.manifest().config;
-                if config.is_empty() {
-                    staged.store_blob(b"{}")?;
-                } else {
-                    let digest = config
-                        .digest
-                        .parse()
-                        .map_err(|_| CacheError::Invalid("invalid config digest"))?;
-                    staged.copy_blob(cache, &digest, config.size)?;
-                }
-                let mut document: serde_json::Value =
-                    serde_json::from_slice(base.manifest_bytes().bytes())?;
-                let mut layers = Vec::new();
-                for (index, layer) in base.manifest().layers.iter().enumerate() {
-                    if matches!(
-                        layer,
-                        crate::artifact::Layer::Pmi(_) | crate::artifact::Layer::Dtb(_)
-                    ) {
-                        continue;
+        let assembled = (|| -> anyhow::Result<ResolvedImage> {
+            let metadata = match &selection.root {
+                Some(root) => root.base,
+                None => selection.pmi.as_ref().and_then(|pmi| pmi.inherited()),
+            };
+            let mut manifest = match metadata {
+                Some(image) => {
+                    let config = &image.image().manifest().config;
+                    if config.is_empty() {
+                        staged.store_blob(b"{}")?;
+                    } else {
+                        staged.copy_blob(cache, &config.digest.parse()?, config.size)?;
                     }
-                    let digest = layer
-                        .digest_str()
-                        .parse()
-                        .map_err(|_| CacheError::Invalid("invalid layer digest"))?;
-                    staged.copy_blob(cache, &digest, layer.size())?;
-                    layers.push(document["layers"][index].clone());
+                    serde_json::from_slice::<serde_json::Value>(
+                        image.image().manifest_bytes().bytes(),
+                    )?
                 }
-                document["layers"] = layers.into();
-                document
-            } else {
-                staged.store_blob(b"{}")?;
-                serde_json::json!({"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json",
-                    "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
-                    "config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
+                None => {
+                    staged.store_blob(b"{}")?;
+                    serde_json::json!({"schemaVersion":2,"mediaType":crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1,"artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,"config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
+                }
             };
-            let mut parent = match base {
-                Some(image) => image.root(),
-                None => Some([0; 32]),
-            };
-            if base.is_none() && !scutes.is_empty() {
-                manifest["annotations"] = Self::verity_annotations();
+            let annotations = manifest
+                .as_object_mut()
+                .expect("manifest object")
+                .entry("annotations")
+                .or_insert_with(|| serde_json::json!({}))
+                .as_object_mut()
+                .ok_or_else(|| anyhow::anyhow!("invalid manifest annotations"))?;
+            if selection.root.is_none() {
+                annotations.retain(|name, _| !name.starts_with("dev.pichi.carapace."));
             }
-            for scute in scutes {
-                if parent.as_ref() != Some(scute.parent()) {
-                    return Err(CacheError::Invalid(
-                        "produced scute parent differs from firmware output base",
-                    ));
+            let mut layers = Vec::new();
+            if let Some(root) = &selection.root {
+                let mut parent = [0; 32];
+                if let Some(base) = root.base {
+                    let original: serde_json::Value =
+                        serde_json::from_slice(base.image().manifest_bytes().bytes())?;
+                    for (index, layer) in base.image().manifest().layers.iter().enumerate() {
+                        if matches!(
+                            layer,
+                            crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
+                        ) {
+                            staged.copy_blob(cache, &layer.digest_str().parse()?, layer.size())?;
+                            layers.push(original["layers"][index].clone());
+                        }
+                    }
+                    parent = base
+                        .root()
+                        .ok_or_else(|| anyhow::anyhow!("selected root base has no scutes"))?;
                 }
-                staged.store_scute(scute)?;
-                manifest["layers"]
-                    .as_array_mut()
-                    .ok_or(CacheError::Invalid("missing layers"))?
-                    .push(serde_json::to_value(crate::artifact::Layer::Scute(
+                for scute in &root.produced {
+                    anyhow::ensure!(
+                        scute.parent() == &parent,
+                        "produced scute parent differs from selected root"
+                    );
+                    staged.store_scute(scute)?;
+                    layers.push(serde_json::to_value(crate::artifact::Layer::Scute(
                         scute.descriptor().clone(),
                     ))?);
-                parent = Some(*scute.root());
+                    parent = *scute.root();
+                }
+                anyhow::ensure!(
+                    parent == root.hash(),
+                    "selected root hash differs from scute ancestry"
+                );
+                let parameters = Self::verity_annotations();
+                if root.base.is_none() {
+                    annotations.extend(parameters.as_object().expect("verity annotations").clone());
+                } else if !root.produced.is_empty() {
+                    for (key, expected) in parameters.as_object().expect("verity annotations") {
+                        anyhow::ensure!(
+                            annotations.get(key) == Some(expected),
+                            "source chain uses incompatible verity parameter {key}"
+                        );
+                    }
+                }
+                Self::set_tip_annotation(&mut manifest, Some(parent));
             }
-            Self::set_tip_annotation(&mut manifest, parent.filter(|root| root != &[0; 32]));
-            let pmi = pair.pmi_descriptor();
-            let digest = pmi
-                .digest
-                .parse()
-                .map_err(|_| CacheError::Invalid("invalid captured PMI digest"))?;
-            staged.store_verified(pair.pmi_reader(), &digest, pmi.size)?;
-            let bytes = pair
-                .dtb()
-                .bytes()
-                .ok_or(CacheError::Invalid("missing finalized DTB"))?;
-            let dtb = crate::artifact::DtbDescriptor {
-                digest: staged.store_blob(bytes)?.to_string(),
-                size: bytes.len() as u64,
-            };
-            let layers = manifest["layers"]
-                .as_array_mut()
-                .ok_or(CacheError::Invalid("missing output layers"))?;
-            layers.push(serde_json::to_value(crate::artifact::Layer::Pmi(pmi))?);
-            layers.push(serde_json::to_value(crate::artifact::Layer::Dtb(dtb))?);
-            let resolved = Self::resolve_staging(
+            if let Some(pmi) = &selection.pmi {
+                pmi.store(cache, &staged)?;
+                layers.push(serde_json::to_value(crate::artifact::Layer::Pmi(
+                    pmi.descriptor(),
+                ))?);
+            }
+            if let Some(config) = &selection.bootconfig
+                && !config.bytes.is_empty()
+            {
+                anyhow::ensure!(selection.pmi.is_some(), "bootconfig requires PMI");
+                let digest = staged.store_blob(&config.bytes)?;
+                layers.push(serde_json::to_value(crate::artifact::Layer::BootConfig(
+                    crate::artifact::BootConfigDescriptor {
+                        digest: digest.to_string(),
+                        size: config.bytes.len() as u64,
+                    },
+                ))?);
+            }
+            manifest["layers"] = layers.into();
+            Ok(Self::resolve_staging(
                 &staged,
                 &serde_json::to_vec(&manifest)?,
                 crate::cache::HostArchitecture::current()?,
-            )?;
-            Ok(resolved)
+            )?)
         })();
-        match result {
+        match assembled {
             Ok(image) => Ok(Self { staged, image }),
-            Err(source) => {
-                let error = anyhow::Error::new(source);
-                Err(match staged.discard() {
-                    Ok(()) => error,
-                    Err(cleanup) => error.context(format!("output staging cleanup: {cleanup}")),
-                })
-            }
-        }
-    }
-    pub(crate) fn bootstrap_layers(
-        scutes: &[std::sync::Arc<crate::storage::SealedScute<'_>>],
-        destination: &std::path::Path,
-    ) -> anyhow::Result<Self> {
-        Self::assemble_bootstrap(
-            &scutes.iter().map(AsRef::as_ref).collect::<Vec<_>>(),
-            destination,
-        )
-    }
-    fn assemble_bootstrap(
-        scutes: &[&crate::storage::SealedScute<'_>],
-        destination: &std::path::Path,
-    ) -> anyhow::Result<Self> {
-        let staged = StagedDirectory::create(destination)?;
-        let result = (|| -> Result<_, CacheError> {
-            if scutes.is_empty() {
-                return Err(CacheError::Invalid("missing bootstrap root scute"));
-            }
-            if scutes[0].parent() != &[0; 32] {
-                return Err(CacheError::Invalid("bootstrap scute has a nonzero parent"));
-            }
-            staged.store_blob(b"{}")?;
-            let mut parent = [0; 32];
-            let mut layers = Vec::with_capacity(scutes.len());
-            for scute in scutes {
-                if scute.parent() != &parent {
-                    return Err(CacheError::Invalid("bootstrap scute parent mismatch"));
-                }
-                staged.store_scute(scute)?;
-                layers.push(crate::artifact::Layer::Scute(scute.descriptor().clone()));
-                parent = *scute.root();
-            }
-            let mut annotations = Self::verity_annotations();
-            annotations[CARAPACE_ROOT_ANNOTATION] = hex::encode(parent).into();
-            let manifest = serde_json::to_vec(&serde_json::json!({
-                "schemaVersion": 2,
-                "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
-                "config": crate::artifact::ConfigDescriptor::canonical(),
-                "layers": layers,
-                "annotations": annotations
-            }))?;
-            let resolved = Self::resolve_staging(
-                &staged,
-                &manifest,
-                crate::cache::HostArchitecture::current()?,
-            )?;
-            Ok(resolved)
-        })();
-        match result {
-            Ok(image) => Ok(Self { staged, image }),
-            Err(source) => {
-                let error = anyhow::Error::new(source);
-                Err(match staged.discard() {
-                    Ok(()) => error,
-                    Err(cleanup) => error.context(format!("output staging cleanup: {cleanup}")),
-                })
-            }
+            Err(error) => Err(match staged.discard() {
+                Ok(()) => error,
+                Err(cleanup) => error.context(format!("output staging cleanup: {cleanup}")),
+            }),
         }
     }
     fn resolve_staging(
@@ -349,108 +285,6 @@ impl AssembledImage {
         std::fs::remove_file(staged.blob_path(&Digest::Sha256(Sha256::digest(&index).into())))?;
         Ok(output_image)
     }
-    fn assemble(
-        cache: &Cache,
-        image: &ResolvedImage,
-        destination: &std::path::Path,
-        dtb: Option<&[u8]>,
-        scutes: &[&crate::storage::SealedScute<'_>],
-    ) -> anyhow::Result<Self> {
-        let staged = StagedDirectory::create(destination)?;
-        let assembled = (|| -> Result<_, CacheError> {
-            let config = &image.manifest().config;
-            if config.is_empty() {
-                let digest = staged.store_blob(b"{}")?;
-                if digest.to_string() != config.digest || config.size != 2 {
-                    return Err(CacheError::Invalid("invalid canonical output config"));
-                }
-            } else {
-                let digest: Digest = config
-                    .digest
-                    .parse()
-                    .map_err(|_| CacheError::Invalid("invalid config digest"))?;
-                staged.copy_blob(cache, &digest, config.size)?;
-            }
-            let mut manifest: serde_json::Value =
-                serde_json::from_slice(image.manifest_bytes().bytes())?;
-            let mut changed = false;
-            for (position, layer) in image.manifest().layers.iter().enumerate() {
-                if let (crate::artifact::Layer::Dtb(old), Some(bytes)) = (layer, dtb) {
-                    let digest = staged.store_blob(bytes)?;
-                    if digest.to_string() != old.digest || bytes.len() as u64 != old.size {
-                        let pmi = image
-                            .manifest()
-                            .layers
-                            .iter()
-                            .find_map(|layer| match layer {
-                                crate::artifact::Layer::Pmi(descriptor) => Some(descriptor),
-                                _ => None,
-                            })
-                            .ok_or(CacheError::Invalid("changed DTB has no firmware contract"))?;
-                        let firmware_digest = pmi
-                            .digest
-                            .parse()
-                            .map_err(|_| CacheError::Invalid("invalid PMI digest"))?;
-                        cache
-                            .firmware_contract(&firmware_digest, pmi.size)?
-                            .check_size(bytes.len())?;
-                        let descriptor = &mut manifest["layers"][position];
-                        descriptor["digest"] = digest.to_string().into();
-                        descriptor["size"] = (bytes.len() as u64).into();
-                        // Inline OCI data must describe the replaced bytes too.
-                        if let Some(object) = descriptor.as_object_mut() {
-                            object.remove("data");
-                            object.remove("urls");
-                        }
-                        changed = true;
-                    }
-                    continue;
-                }
-                let digest = layer
-                    .digest_str()
-                    .parse()
-                    .map_err(|_| CacheError::Invalid("invalid output layer digest"))?;
-                staged.copy_blob(cache, &digest, layer.size())?;
-            }
-            let mut parent = image.root();
-            for scute in scutes {
-                if parent.as_ref() != Some(scute.parent()) {
-                    return Err(CacheError::Invalid(
-                        "produced scute parent differs from output base",
-                    ));
-                }
-                staged.store_scute(scute)?;
-                manifest["layers"]
-                    .as_array_mut()
-                    .ok_or(CacheError::Invalid("missing manifest layers"))?
-                    .push(serde_json::to_value(crate::artifact::Layer::Scute(
-                        scute.descriptor().clone(),
-                    ))?);
-                parent = Some(*scute.root());
-                changed = true;
-            }
-            // Preserve unrelated fields, and preserve exact JSON bytes for no-op edits.
-            // A changed chain carries the final produced root.
-            let manifest = if changed {
-                Self::set_tip_annotation(&mut manifest, parent);
-                serde_json::to_vec(&manifest)?
-            } else {
-                image.manifest_bytes().bytes().to_vec()
-            };
-            let resolved = Self::resolve_staging(&staged, &manifest, image.architecture())?;
-            Ok(resolved)
-        })();
-        match assembled {
-            Ok(image) => Ok(AssembledImage { staged, image }),
-            Err(source) => {
-                let error = anyhow::Error::new(source);
-                Err(match staged.discard() {
-                    Ok(()) => error,
-                    Err(cleanup) => error.context(format!("output staging cleanup: {cleanup}")),
-                })
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -467,32 +301,18 @@ mod tests {
     }
     impl Input {
         fn new(empty_config: bool) -> Self {
-            Self::with_firmware(
-                empty_config,
-                crate::firmware::tests::Fixture::image(
-                    ".pmi.vm",
-                    &crate::firmware::tests::Fixture::detached(),
-                    4096,
-                ),
-            )
+            Self::with_firmware(empty_config, crate::firmware::tests::Fixture::native())
         }
         fn with_firmware(empty_config: bool, pmi: Vec<u8>) -> Self {
             let directory = tempfile::tempdir().unwrap();
             let mut blobs = BTreeMap::new();
-            let dtb =
-                devtree::OwnedTree::new(devtree::OwnedNode::new("").with_child(
-                    devtree::OwnedNode::new("chosen").with_property(
-                        devtree::OwnedProperty::new("bootargs").with_str("corium=old"),
-                    ),
-                ))
-                .encode()
-                .unwrap();
+            let bootconfig = b"corium.root = old\n".to_vec();
             let config = if empty_config {
                 b"{}".to_vec()
             } else {
                 b"{\"requirements\":{}}".to_vec()
             };
-            for bytes in [&pmi, &dtb, &config] {
+            for bytes in [&pmi, &bootconfig, &config] {
                 blobs.insert(
                     Digest::Sha256(Sha256::digest(bytes).into()).to_string(),
                     bytes.clone(),
@@ -513,7 +333,7 @@ mod tests {
                 "config": config_descriptor,
                 "layers": [
                     {"mediaType": "application/vnd.pichi.pmi.v1", "digest": Digest::Sha256(Sha256::digest(&pmi).into()).to_string(), "size": pmi.len()},
-                    {"mediaType": "application/vnd.pichi.dtb.v1", "digest": Digest::Sha256(Sha256::digest(&dtb).into()).to_string(), "size": dtb.len()}
+                    {"mediaType": "application/vnd.pichi.bootconfig.v1", "digest": Digest::Sha256(Sha256::digest(&bootconfig).into()).to_string(), "size": bootconfig.len()}
                 ],
                 "annotations": {"example.org/retain": "exactly"},
                 "x-preserved-extension": {"nested": [1, 2, 3]}
@@ -560,10 +380,25 @@ mod tests {
                 blobs,
             }
         }
-        fn open(&self) -> (Cache, ResolvedImage) {
+        fn open(&self) -> (Cache, crate::input::CheckedImage) {
             let cache = Cache::open(self.directory.path()).unwrap();
             let image = cache.resolve(self.pin).unwrap();
+            let image = crate::input::CheckedImage::verify(&cache, image).unwrap();
             (cache, image)
+        }
+        fn selection<'a>(
+            &self,
+            image: &'a crate::input::CheckedImage,
+        ) -> crate::pipeline::output::StageOutput<'a, 'static> {
+            crate::pipeline::output::StageOutput {
+                root: None,
+                pmi: Some(crate::pipeline::pmi::Pmi::Inherited(image)),
+                bootconfig: Some(crate::pipeline::boot_config::BootConfig {
+                    bytes: self.blobs[image.image().manifest().layers[1].digest_str()].clone(),
+                    root: None,
+                }),
+                config_requested: true,
+            }
         }
     }
     fn assert_oci_only(root: &std::path::Path) {
@@ -606,11 +441,7 @@ mod tests {
                     git(&["init", "-q", &format!("--object-format={algorithm}")]);
                     let selected = repo.path().join(context).join("config");
                     fs::create_dir_all(&selected).unwrap();
-                    fs::write(
-                        selected.join("plan.yaml"),
-                        "image: base\ntasks: {base: {kind: extend, from: registry.test/base:1}}\n",
-                    )
-                    .unwrap();
+                    fs::write(selected.join("plan.yaml"), "image: registry.test/base:1\n").unwrap();
                     fs::write(
                         selected.join("lock.yaml"),
                         format!(
@@ -654,15 +485,9 @@ mod tests {
                     .with_location(location.map(str::to_owned));
                     let captured = CapturedBuild::try_from(&request).unwrap();
                     fs::write(selected.join("plan.yaml"), "working tree changed").unwrap();
-                    let unchanged = crate::plan::TransformSelection::Authored(vec![])
-                        .apply(
-                            Some(&input.blobs[image.manifest().layers[1].digest_str()]),
-                            None,
-                        )
-                        .unwrap();
+                    let selection = input.selection(&image);
                     let mut assembled =
-                        AssembledImage::derived(&cache, &image, &[], &destination, &unchanged)
-                            .unwrap();
+                        AssembledImage::components(&cache, &selection, &destination).unwrap();
                     // Seed stale build keys to exercise pass-through rebinding.
                     let mut manifest: serde_json::Value =
                         serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
@@ -680,7 +505,7 @@ mod tests {
                     let stale = AssembledImage::resolve_staging(
                         &assembled.staged,
                         &serde_json::to_vec(&manifest).unwrap(),
-                        image.architecture(),
+                        image.image().architecture(),
                     )
                     .unwrap();
                     let original = Digest::Sha256(
@@ -736,52 +561,34 @@ mod tests {
         }
     }
     #[test]
-    fn opaque_firmware_allows_unchanged_dtb_but_rejects_edits() {
+    fn opaque_pmi_and_oversized_config_are_rejected_without_output() {
         let input = Input::with_firmware(true, b"opaque firmware".to_vec());
+        let cache = Cache::open(input.directory.path()).unwrap();
+        let image = cache.resolve(input.pin).unwrap();
+        assert!(crate::input::CheckedImage::verify(&cache, image).is_err());
+        let input = Input::new(true);
         let (cache, image) = input.open();
-        let old: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
-        let bytes = &input.blobs[old["layers"][1]["digest"].as_str().unwrap()];
+        let mut selection = input.selection(&image);
+        selection.bootconfig.as_mut().unwrap().bytes =
+            format!("key = {}\n", "x".repeat(4096)).into_bytes();
         let parent = tempfile::tempdir().unwrap();
-        let unchanged = crate::plan::TransformSelection::Authored(vec![])
-            .apply(Some(bytes), None)
-            .unwrap();
-        AssembledImage::derived(
-            &cache,
-            &image,
-            &[],
-            &parent.path().join("unchanged"),
-            &unchanged,
-        )
-        .unwrap()
-        .discard()
-        .unwrap();
-        let changed = crate::plan::TransformSelection::Builtin
-            .apply(Some(bytes), Some("new"))
-            .unwrap();
-        let failure = AssembledImage::derived(
-            &cache,
-            &image,
-            &[],
-            &parent.path().join("changed"),
-            &changed,
-        )
-        .unwrap_err();
-        assert!(failure.to_string().contains("firmware compatibility"));
-        assert!(!parent.path().join("changed").exists());
+        let destination = parent.path().join("output");
+        assert!(AssembledImage::components(&cache, &selection, &destination).is_err());
+        assert!(!destination.exists());
+        assert_eq!(fs::read_dir(parent.path()).unwrap().count(), 0);
     }
     #[test]
-    fn transformed_output_replaces_only_dtb_and_is_self_contained() {
+    fn overlay_replaces_only_bootconfig_and_is_self_contained() {
         let input = Input::new(false);
         let (cache, image) = input.open();
         let old: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
         let old_digest = old["layers"][1]["digest"].as_str().unwrap();
-        let result = crate::plan::TransformSelection::Builtin
-            .apply(Some(&input.blobs[old_digest]), Some("new"))
-            .unwrap();
+        let mut selection = input.selection(&image);
+        let result = b"corium.root = new\n";
+        selection.bootconfig.as_mut().unwrap().bytes = result.to_vec();
         let parent = tempfile::tempdir().unwrap();
         let assembled =
-            AssembledImage::derived(&cache, &image, &[], &parent.path().join("output"), &result)
-                .unwrap();
+            AssembledImage::components(&cache, &selection, &parent.path().join("output")).unwrap();
         let new: serde_json::Value =
             serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
         assert_eq!(new["config"], old["config"]);
@@ -789,11 +596,11 @@ mod tests {
         assert_eq!(new["annotations"], old["annotations"]);
         assert_eq!(new["x-preserved-extension"], old["x-preserved-extension"]);
         assert_ne!(new["layers"][1]["digest"], old["layers"][1]["digest"]);
-        let digest = Digest::Sha256(Sha256::digest(result.bytes().unwrap()).into());
+        let digest = Digest::Sha256(Sha256::digest(result).into());
         assert_eq!(new["layers"][1]["digest"], digest.to_string());
         assert_eq!(
             fs::read(assembled.staged.blob_path(&digest)).unwrap(),
-            result.bytes().unwrap()
+            result
         );
         assert!(
             !assembled
@@ -808,23 +615,23 @@ mod tests {
         assembled.discard().unwrap();
     }
     #[test]
-    fn inheritance_preserves_all_selected_content_and_exact_manifest_without_source_cache() {
+    fn inheritance_preserves_components_and_metadata_without_source_cache() {
         for empty_config in [true, false] {
             let input = Input::new(empty_config);
             let (cache, image) = input.open();
             let parent = tempfile::tempdir().unwrap();
             let destination = parent.path().join("output");
-            let unchanged = crate::plan::TransformSelection::Authored(vec![])
-                .apply(
-                    Some(&input.blobs[image.manifest().layers[1].digest_str()]),
-                    None,
-                )
-                .unwrap();
-            let assembled =
-                AssembledImage::derived(&cache, &image, &[], &destination, &unchanged).unwrap();
+            let selection = input.selection(&image);
+            let assembled = AssembledImage::components(&cache, &selection, &destination).unwrap();
             assert!(!destination.exists());
             assert!(assembled.image().root().is_none());
-            assert_eq!(assembled.image().manifest_bytes().bytes(), input.manifest);
+            assert_eq!(
+                serde_json::from_slice::<serde_json::Value>(
+                    assembled.image().manifest_bytes().bytes()
+                )
+                .unwrap(),
+                serde_json::from_slice::<serde_json::Value>(&input.manifest).unwrap()
+            );
             drop(cache);
             fs::remove_dir_all(input.directory.path()).unwrap();
             let blob_directory = assembled.staged.temporary.path().join("blobs/sha256");
@@ -833,6 +640,9 @@ mod tests {
                 input.blobs.len()
             );
             for (digest, expected) in input.blobs {
+                if expected == input.manifest {
+                    continue;
+                } // JSON may be serialized canonically.
                 assert_eq!(
                     fs::read(blob_directory.join(digest.strip_prefix("sha256:").unwrap())).unwrap(),
                     expected
@@ -854,20 +664,14 @@ mod tests {
     fn derived_output_publishes_only_oci_to_new_directory_or_empty_mount() {
         let input = Input::new(true);
         let (cache, image) = input.open();
-        let unchanged = crate::plan::TransformSelection::Authored(vec![])
-            .apply(
-                Some(&input.blobs[image.manifest().layers[1].digest_str()]),
-                None,
-            )
-            .unwrap();
+        let selection = input.selection(&image);
         for empty_mount in [false, true] {
             let parent = tempfile::tempdir().unwrap();
             let destination = parent.path().join("output");
             if empty_mount {
                 fs::create_dir(&destination).unwrap();
             }
-            let assembled =
-                AssembledImage::derived(&cache, &image, &[], &destination, &unchanged).unwrap();
+            let assembled = AssembledImage::components(&cache, &selection, &destination).unwrap();
             assert_oci_only(assembled.staged.temporary.path());
             assembled.publish().unwrap();
             assert_oci_only(&destination);
@@ -877,13 +681,11 @@ mod tests {
         }
     }
     #[test]
-    fn captured_unchanged_dtb_survives_loss_of_cache_copy() {
+    fn captured_bootconfig_survives_loss_of_cache_copy() {
         let input = Input::new(false);
         let (cache, image) = input.open();
-        let digest = image.manifest().layers[1].digest_str();
-        let unchanged = crate::plan::TransformSelection::Authored(vec![])
-            .apply(Some(&input.blobs[digest]), None)
-            .unwrap();
+        let digest = image.image().manifest().layers[1].digest_str();
+        let selection = input.selection(&image);
         fs::remove_file(
             input
                 .directory
@@ -893,15 +695,13 @@ mod tests {
         )
         .unwrap();
         let parent = tempfile::tempdir().unwrap();
-        let assembled = AssembledImage::derived(
-            &cache,
-            &image,
-            &[],
-            &parent.path().join("output"),
-            &unchanged,
-        )
-        .unwrap();
-        assert_eq!(assembled.image().manifest_bytes().bytes(), input.manifest);
+        let assembled =
+            AssembledImage::components(&cache, &selection, &parent.path().join("output")).unwrap();
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(assembled.image().manifest_bytes().bytes())
+                .unwrap(),
+            serde_json::from_slice::<serde_json::Value>(&input.manifest).unwrap()
+        );
         Cache::open(assembled.staged.temporary.path())
             .unwrap()
             .verify_metadata(assembled.image())
@@ -913,7 +713,7 @@ mod tests {
     fn missing_reference_retains_only_private_staging_for_cleanup() {
         let input = Input::new(false);
         let (cache, image) = input.open();
-        let layer = &image.manifest().layers[0];
+        let layer = &image.image().manifest().layers[0];
         fs::remove_file(
             input
                 .directory
@@ -924,14 +724,8 @@ mod tests {
         .unwrap();
         let parent = tempfile::tempdir().unwrap();
         let destination = parent.path().join("output");
-        let unchanged = crate::plan::TransformSelection::Authored(vec![])
-            .apply(
-                Some(&input.blobs[image.manifest().layers[1].digest_str()]),
-                None,
-            )
-            .unwrap();
-        let _error =
-            AssembledImage::derived(&cache, &image, &[], &destination, &unchanged).unwrap_err();
+        let selection = input.selection(&image);
+        let _error = AssembledImage::components(&cache, &selection, &destination).unwrap_err();
         assert!(!destination.exists());
         assert_eq!(fs::read_dir(parent.path()).unwrap().count(), 0);
     }

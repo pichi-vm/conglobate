@@ -88,7 +88,8 @@ impl Cache {
                 .map_err(|_| CacheError::Invalid("invalid layer digest"))?;
             self.verify(&digest, layer.size())?;
         }
-        if let Some(config) = manifest.layers.iter().find_map(|layer| match layer {
+        let config_size = if let Some(config) = manifest.layers.iter().find_map(|layer| match layer
+        {
             crate::artifact::Layer::BootConfig(config) => Some(config),
             _ => None,
         }) {
@@ -103,27 +104,34 @@ impl Cache {
             if parsed.is_empty() {
                 return Err(CacheError::Invalid("empty bootconfig must be omitted"));
             }
-            let pmi = manifest
-                .layers
-                .iter()
-                .find_map(|layer| match layer {
-                    crate::artifact::Layer::Pmi(pmi) => Some(pmi),
-                    _ => None,
-                })
-                .ok_or(CacheError::Invalid("bootconfig requires PMI"))?;
+            Some(text.len())
+        } else {
+            None
+        };
+        if let Some(pmi) = manifest.layers.iter().find_map(|layer| match layer {
+            crate::artifact::Layer::Pmi(pmi) => Some(pmi),
+            _ => None,
+        }) {
             let digest = pmi
                 .digest
                 .parse()
                 .map_err(|_| CacheError::Invalid("invalid PMI digest"))?;
             let mut bytes = Vec::new();
-            let size = usize::try_from(pmi.size)
-                .map_err(|_| CacheError::Invalid("PMI exceeds address space"))?;
             bytes
-                .try_reserve_exact(size)
+                .try_reserve_exact(
+                    usize::try_from(pmi.size)
+                        .map_err(|_| CacheError::Invalid("PMI exceeds address space"))?,
+                )
                 .map_err(|_| CacheError::Invalid("PMI allocation failed"))?;
             self.copy_verified(&digest, pmi.size, &mut bytes)?;
-            crate::firmware::BootConfigContract::from_pmi(&bytes, image.architecture().oci_name())?
-                .check_size(text.len())?;
+            crate::firmware::PmiContract::validate(&bytes, image.architecture().oci_name())?;
+            if let Some(size) = config_size {
+                crate::firmware::BootConfigContract::from_pmi(
+                    &bytes,
+                    image.architecture().oci_name(),
+                )?
+                .check_size(size)?;
+            }
         }
         Ok(())
     }
@@ -224,8 +232,11 @@ mod tests {
                 blobs.push((digest, bytes));
                 parent = root;
             }
-            // Identity verification is distinct from firmware format validation.
-            for (media, bytes) in [("pmi", b"firmware".as_slice()), ("dtb", b"tree".as_slice())] {
+            let pmi = crate::firmware::tests::Fixture::native();
+            for (media, bytes) in [
+                ("pmi", pmi.as_slice()),
+                ("bootconfig", b"kernel.quiet\n".as_slice()),
+            ] {
                 let digest = Digest::Sha256(Sha256::digest(bytes).into());
                 layers.push(
                     serde_json::from_value(serde_json::json!({

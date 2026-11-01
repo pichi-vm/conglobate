@@ -81,6 +81,7 @@ fn opened_directory_authority_survives_rename_and_rejects_escape() {
 
 impl Store {
     fn manifest(&self) -> (Digest, Vec<u8>) {
+        let pmi = crate::firmware::tests::Fixture::native();
         let manifest = crate::artifact::Manifest {
             schema_version: 2,
             media_type: "application/vnd.oci.image.manifest.v1+json".into(),
@@ -88,8 +89,8 @@ impl Store {
             config: crate::artifact::ConfigDescriptor::canonical(),
             layers: vec![crate::artifact::Layer::Pmi(
                 crate::artifact::PmiDescriptor {
-                    digest: self.put(b"firmware").to_string(),
-                    size: 8,
+                    digest: self.put(&pmi).to_string(),
+                    size: pmi.len() as u64,
                 },
             )],
             annotations: Default::default(),

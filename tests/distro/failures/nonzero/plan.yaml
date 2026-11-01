@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
+    extending: qualification.local/fedora:43
+    derive:
     - timeout: 5m
-      run: |
+      exec: |
         printf 'COMMAND_EXPECTED_FAILURE\n'
         exit 7
 image: rootfs

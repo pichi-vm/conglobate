@@ -9,41 +9,39 @@
 # units under image/units/, and that places `/usr/bin/conglobate` for the
 # oneshot `conglobate appliance` service.
 
-tasks:
+stages:
   bootstrap:
-    kind: bootstrap
-    from: qualification.local/fedora:43
-    filesystem:
+    using: qualification.local/fedora:43
+    format:
       size: 4GiB
       kind: ext4
       label: conglobate-build
-    exec:
+    derive:
     - network: true
       timeout: 30m
-      run: |
+      exec: |
         # Self-host later. Bootstrap CI does not execute this plan.
         true
   rootfs:
-    kind: extend
-    from: bootstrap
-    exec:
+    extending: bootstrap
+    derive:
     - copy:
-        from: units
+        path: units
         into: /plan-input-units
-    - run: cp -a /plan-input-units/run-pichi-repo.mount /usr/lib/systemd/system/run-pichi-repo.mount
+    - exec: cp -a /plan-input-units/run-pichi-repo.mount /usr/lib/systemd/system/run-pichi-repo.mount
     - copy:
-        from: units
+        path: units
         into: /plan-input-units
-    - run: cp -a /plan-input-units/run-pichi-cache.mount /usr/lib/systemd/system/run-pichi-cache.mount
+    - exec: cp -a /plan-input-units/run-pichi-cache.mount /usr/lib/systemd/system/run-pichi-cache.mount
     - copy:
-        from: units
+        path: units
         into: /plan-input-units
-    - run: cp -a /plan-input-units/run-pichi-output.mount /usr/lib/systemd/system/run-pichi-output.mount
+    - exec: cp -a /plan-input-units/run-pichi-output.mount /usr/lib/systemd/system/run-pichi-output.mount
     - copy:
-        from: units
+        path: units
         into: /plan-input-units
-    - run: cp -a /plan-input-units/conglobate-build.service /usr/lib/systemd/system/conglobate-build.service
-    - run: |
+    - exec: cp -a /plan-input-units/conglobate-build.service /usr/lib/systemd/system/conglobate-build.service
+    - exec: |
         systemctl enable run-pichi-repo.mount run-pichi-cache.mount run-pichi-output.mount
         systemctl enable conglobate-build.service
 image: rootfs

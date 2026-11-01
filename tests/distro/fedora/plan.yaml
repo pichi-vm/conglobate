@@ -1,33 +1,32 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
-    - run: |
+    extending: qualification.local/fedora:43
+    derive:
+    - exec: |
         rpm -q filesystem systemd
         rpm -qf /usr/bin/dnf
         dnf --version
         test ! -e /build-context
     - network: true
       timeout: 20m
-      run: |
+      exec: |
         dnf -y install attr policycoreutils selinux-policy-targeted
         rpm -q attr policycoreutils selinux-policy-targeted
         printf 'conglobate Fedora qualification\n' > /etc/conglobate-qualified
     - copy:
-        from: qualification.service
+        path: qualification.service
         into: /etc/systemd/system/conglobate-qualification.service
     - copy:
-        from: qualification.sh
+        path: qualification.sh
         into: /usr/local/bin/conglobate-qualification
-    - run: chmod 0755 /usr/local/bin/conglobate-qualification
-    - run: |
+    - exec: chmod 0755 /usr/local/bin/conglobate-qualification
+    - exec: |
         sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
         mkdir -p /etc/systemd/system/multi-user.target.wants
         ln -s ../conglobate-qualification.service /etc/systemd/system/multi-user.target.wants/conglobate-qualification.service
     - timeout: 10m
-      run: |
+      exec: |
         test -f /etc/selinux/targeted/contexts/files/file_contexts
         setfiles -F -e /proc -e /sys -e /dev /etc/selinux/targeted/contexts/files/file_contexts /
         getfattr -n security.selinux /etc/conglobate-qualified

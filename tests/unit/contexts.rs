@@ -282,8 +282,7 @@ fn request_planning_and_document_receipts_use_only_selected_committed_bytes() {
     use conglobate::{input::CapturedBuild, request::BuildRequest};
     use sha2::{Digest, Sha256};
     let repo = Repository::new("sha1");
-    let plan =
-        b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\nimage: rootfs\n";
+    let plan = b"image: registry.test/base:1\n";
     let lock = format!(
         "version: 1\nimages:\n  registry.test/base:1:\n    index: sha256:{}\n",
         "11".repeat(32)
@@ -349,7 +348,7 @@ fn network_plan_captures_an_explicit_resolver_once() {
     let repo = Repository::new("sha1");
     repo.write(
         "plan",
-        b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\n    exec:\n    - run: echo ok\n      network: true\nimage: rootfs\n",
+        b"stages:\n  rootfs:\n    extending: registry.test/base:1\n    derive:\n    - exec: echo ok\n      network: true\nimage: rootfs\n",
     );
     repo.write(
         "lock",
@@ -410,7 +409,7 @@ fn network_plan_captures_an_explicit_resolver_once() {
     // An executing offline graph still needs environment-allocated identities.
     repo.write(
         "plan",
-        b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\n    exec:\n    - run: echo ok\nimage: rootfs\n",
+        b"stages:\n  rootfs:\n    extending: registry.test/base:1\n    derive:\n    - exec: echo ok\nimage: rootfs\n",
     );
     let execution_commit = repo.commit();
     let execution_id = hex::encode(execution_commit.bytes());
@@ -431,10 +430,7 @@ fn network_plan_captures_an_explicit_resolver_once() {
     assert_eq!(captured.id_mappings().unwrap().uid().count(), 131072);
 
     // Pass-through ignores supplied runtime inputs, including mappings.
-    repo.write(
-        "plan",
-        b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\nimage: rootfs\n",
-    );
+    repo.write("plan", b"image: registry.test/base:1\n");
     let offline_commit = repo.commit();
     let offline_id = hex::encode(offline_commit.bytes());
     let position = args.iter().position(|arg| *arg == "--commit").unwrap();
@@ -458,7 +454,7 @@ fn network_plan_captures_an_explicit_resolver_once() {
 }
 
 #[test]
-fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
+fn resolved_stages_require_carapaces_even_when_pmi_and_config_exist() {
     use crate::artifact::Digest;
     use conglobate::{
         cache::{Cache, HostArchitecture},
@@ -466,8 +462,8 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
         request::BuildRequest,
     };
     use sha2::{Digest as _, Sha256};
-    let pmi = b"firmware";
-    let pmi_digest = Digest::Sha256(Sha256::digest(pmi).into());
+    let pmi = crate::firmware::tests::Fixture::native();
+    let pmi_digest = Digest::Sha256(Sha256::digest(&pmi).into());
     let manifest = serde_json::to_vec(&crate::artifact::Manifest {
         schema_version: 2,
         media_type: "application/vnd.oci.image.manifest.v1+json".into(),
@@ -502,8 +498,8 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
             .as_bytes(),
     );
     for plan in [
-        "tasks: {root: {kind: extend, from: registry.test/base:1}}\nimage: root",
-        "tasks: {root: {kind: extend, from: registry.test/base:1, exec: [{run: echo ok}]}}\nimage: root",
+        "stages: {root: {using: registry.test/base:1, format: {kind: ext4, size: 1GiB}, derive: [{exec: echo ok}]}}\nimage: root",
+        "stages: {root: {extending: registry.test/base:1, derive: [{exec: echo ok}]}}\nimage: root",
     ] {
         repo.write("plan", plan.as_bytes());
         let commit = repo.commit();
@@ -536,34 +532,28 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
             Err(InputError::MissingExecutionCarapace(_))
         ));
     }
-    // A structurally valid empty DTB supplies the inherited component. This
-    // preflight checks presence/content identity; transformation parses it later.
-    let mut dtb = Vec::new();
-    for word in [0xd00dfeed_u32, 72, 56, 72, 40, 17, 16, 0, 0, 16] {
-        dtb.extend(word.to_be_bytes());
-    }
-    dtb.extend([0; 16]);
-    for word in [1_u32, 0, 2, 9] {
-        dtb.extend(word.to_be_bytes());
-    }
-    let dtb_digest = Digest::Sha256(Sha256::digest(&dtb).into());
-    std::fs::write(blobs.join(dtb_digest.hex()), &dtb).unwrap();
-    let mut with_dtb: crate::artifact::Manifest =
+    // Configuration accompanies PMI but never supplies a stage filesystem.
+    let bootconfig = b"kernel.quiet\n";
+    let bootconfig_digest = Digest::Sha256(Sha256::digest(bootconfig).into());
+    std::fs::write(blobs.join(bootconfig_digest.hex()), bootconfig).unwrap();
+    let mut with_bootconfig: crate::artifact::Manifest =
         serde_json::from_slice(&std::fs::read(blobs.join(manifest_digest.hex())).unwrap()).unwrap();
-    with_dtb.layers.push(crate::artifact::Layer::Dtb(
-        crate::artifact::DtbDescriptor {
-            digest: dtb_digest.to_string(),
-            size: dtb.len() as u64,
-        },
-    ));
-    let bytes = serde_json::to_vec(&with_dtb).unwrap();
+    with_bootconfig
+        .layers
+        .push(crate::artifact::Layer::BootConfig(
+            crate::artifact::BootConfigDescriptor {
+                digest: bootconfig_digest.to_string(),
+                size: bootconfig.len() as u64,
+            },
+        ));
+    let bytes = serde_json::to_vec(&with_bootconfig).unwrap();
     let digest = Digest::Sha256(Sha256::digest(&bytes).into());
     std::fs::write(blobs.join(digest.hex()), &bytes).unwrap();
-    let mut with_dtb_index: serde_json::Value =
+    let mut with_bootconfig_index: serde_json::Value =
         serde_json::from_slice(&std::fs::read(blobs.join(index_digest.hex())).unwrap()).unwrap();
-    with_dtb_index["manifests"][0]["digest"] = digest.to_string().into();
-    with_dtb_index["manifests"][0]["size"] = bytes.len().into();
-    let index = serde_json::to_vec(&with_dtb_index).unwrap();
+    with_bootconfig_index["manifests"][0]["digest"] = digest.to_string().into();
+    with_bootconfig_index["manifests"][0]["size"] = bytes.len().into();
+    let index = serde_json::to_vec(&with_bootconfig_index).unwrap();
     let pin = Digest::Sha256(Sha256::digest(&index).into());
     std::fs::write(blobs.join(pin.hex()), index).unwrap();
     repo.write(
@@ -572,7 +562,7 @@ fn resolved_extend_inputs_require_carapaces_with_or_without_commands() {
     );
     repo.write(
         "plan",
-        b"tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/base:1\nimage: rootfs\n",
+        b"stages:\n  rootfs:\n    extending: registry.test/base:1\n    derive: [{exec: echo ok}]\nimage: rootfs\n",
     );
     let commit = repo.commit();
     let request = BuildRequest::parse_from([
@@ -700,11 +690,11 @@ fn executing_stage_variants_require_environment_maps_before_cache_access() {
     let cache = repo.0.path().join("missing-cache");
     let output = repo.0.path().join("unpublished-output");
     for plan in [
-        "tasks:\n  bootstrap:\n    kind: bootstrap\n    from: registry.test/tools:1\n    filesystem:\n      size: 16MiB\n      kind: ext4\nimage: bootstrap\n",
-        "tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/tools:1\n    exec:\n    - run: 'true'\nimage: rootfs\n",
-        "tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/tools:1\n    exec:\n    - copy:\n        from: input\n        into: /input\nimage: rootfs\n",
-        "tasks:\n  firmware:\n    kind: build\n    from: registry.test/tools:1\n    into:\n      pmi: /pmi\n      dtb: /dtb\nimage: firmware\n",
-        "tasks:\n  rootfs:\n    kind: extend\n    from: registry.test/tools:1\n  firmware:\n    kind: build\n    from: rootfs\n    into:\n      pmi: /pmi\n      dtb: /dtb\nimage:\n  root: rootfs\n  boot: firmware\n",
+        "stages: {root: {using: registry.test/tools:1, format: {kind: ext4, size: 16MiB}, derive: [{exec: 'true'}]}}\nimage: root",
+        "stages: {root: {extending: registry.test/tools:1, derive: [{exec: 'true'}]}}\nimage: root",
+        "stages: {root: {extending: registry.test/tools:1, derive: [{copy: {path: input, into: /input}}]}}\nimage: root",
+        "stages: {firmware: {extending: registry.test/tools:1, derive: [{exec: 'true'}]}}\nimage: {boot: {from: firmware, path: /image.pmi}}",
+        "stages: {root: {extending: registry.test/tools:1, derive: [{exec: 'true'}]}, firmware: {extending: root, derive: [{exec: 'true'}]}}\nimage: {root: root, boot: {from: firmware, path: /image.pmi}}",
     ] {
         repo.write("plan", plan.as_bytes());
         repo.write("input", b"committed bytes");
@@ -885,7 +875,7 @@ fn planning_scans_used_copies_and_static_documents_before_execution() {
     use conglobate::{input::CapturedBuild, request::BuildRequest};
     let child = Repository::new("sha1");
     child.write("file", b"input");
-    child.write("plan", b"tasks:\n  root:\n    kind: extend\n    from: registry.test/base:1\n    exec:\n    - copy:\n        from: module\n        into: /input\nimage: root\n");
+    child.write("plan", b"stages:\n  root:\n    extending: registry.test/base:1\n    derive:\n    - copy:\n        path: module\n        into: /input\nimage: root\n");
     child.write(
         "lock",
         format!(
@@ -949,7 +939,7 @@ fn planning_scans_used_copies_and_static_documents_before_execution() {
         error.contains("module") && error.contains("needed store"),
         "{error}"
     );
-    repo.write("plan", b"tasks:\n  root:\n    kind: extend\n    from: registry.test/base:1\n  unused:\n    kind: extend\n    from: registry.test/base:1\n    exec:\n    - copy:\n        from: module\n        into: /input\nimage: root\n");
+    repo.write("plan", b"stages:\n  unused:\n    extending: registry.test/base:1\n    derive:\n    - copy:\n        path: module\n        into: /input\nimage: registry.test/base:1\n");
     let commit = repo.commit();
     let identity = hex::encode(commit.bytes());
     let request = BuildRequest::parse_from([
@@ -1005,22 +995,22 @@ fn module_reads_reject_missing_commits_and_host_alternates() {
 }
 
 #[test]
-fn inputs_inspects_only_selected_committed_tasks_without_a_lock() {
+fn inputs_inspects_only_selected_committed_stages_without_a_lock() {
     use conglobate::request::{CliCommand, parse_cli};
     let repo = Repository::new("sha1");
     repo.write(
         "build/plan.yaml",
         br#"
-tasks:
+stages:
   base:
-    kind: extend
-    from: registry.example/base:latest
+    extending: registry.example/base:latest
+    derive: [{exec: 'true'}]
   selected:
-    kind: extend
-    from: base
+    extending: base
+    derive: [{exec: 'true'}]
   unused:
-    kind: extend
-    from: registry.example/unused:latest
+    extending: registry.example/unused:latest
+    derive: [{exec: 'true'}]
 image: selected
 "#,
     );

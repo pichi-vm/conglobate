@@ -1,15 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
+    extending: qualification.local/fedora:43
+    derive:
     - copy:
-        from: external-endpoint
+        path: external-endpoint
         into: /external-endpoint
     - network: true
       timeout: 30s
-      run: |
+      exec: |
         /bin/bash -eu -c '
           read -r port token < /external-endpoint
           exec 3<>/dev/tcp/10.0.2.2/$port

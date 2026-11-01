@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    plan::FilesystemSpec,
+    contract::recipe::Format,
     value::{FilesystemLabel, FilesystemSize},
 };
 #[cfg(test)]
@@ -17,10 +17,11 @@ pub(crate) struct Ext4Format {
     label: FilesystemLabel,
     esp: Option<FilesystemSize>,
 }
-impl From<&FilesystemSpec> for Ext4Format {
-    fn from(spec: &FilesystemSpec) -> Self {
-        let mut format = Self::new(spec.size(), spec.label().clone());
-        format.esp = spec.esp();
+impl From<&Format> for Ext4Format {
+    fn from(spec: &Format) -> Self {
+        let Format::Ext4(spec) = spec;
+        let mut format = Self::new(spec.size, spec.label.clone());
+        format.esp = spec.esp;
         format
     }
 }

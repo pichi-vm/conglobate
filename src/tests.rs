@@ -4,6 +4,8 @@
 // Binary-local contract tests; no production library API.
 #[path = "../tests/unit/anchors.rs"]
 mod anchors;
+#[path = "../tests/unit/boot_configs.rs"]
+mod boot_configs;
 #[path = "../tests/unit/cache.rs"]
 mod cache;
 #[path = "../tests/unit/contexts.rs"]
@@ -26,8 +28,6 @@ mod processes;
 mod requests;
 #[path = "../tests/unit/supervision.rs"]
 mod supervision;
-#[path = "../tests/unit/templates.rs"]
-mod templates;
 #[path = "../tests/unit/values.rs"]
 mod values;
 

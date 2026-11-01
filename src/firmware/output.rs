@@ -1,12 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{DtbContract, FirmwareError};
 use crate::{
-    plan::TransformSelection,
     step::SetupBudget,
     storage::{Scratch, Workspace},
-    transform::{TransformError, TransformedDtb},
 };
 use rustix::fs::{self, Mode, OFlags, ResolveFlags};
 use sha2::{Digest as _, Sha256};
@@ -16,79 +13,11 @@ use std::{
     os::fd::AsRawFd,
 };
 
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum ExtractionError {
-    #[error("firmware extraction: {0}")]
-    Io(#[from] io::Error),
-    #[error(transparent)]
-    Transform(#[from] TransformError),
-    #[error(transparent)]
-    Contract(#[from] FirmwareError),
-}
-/// Both declared files have been captured. No output filesystem authority escapes.
-#[derive(Debug)]
-pub(crate) struct ExtractedFirmware<'w> {
-    pmi: FirmwareFile<'w>,
-    dtb: FirmwareFile<'w>,
-}
-/// Final DTB bytes and their compatible firmware. This is not command success.
-#[derive(Debug, Clone)]
-pub(crate) struct FinalizedFirmware<'w> {
-    pmi: std::sync::Arc<FirmwareFile<'w>>,
-    dtb: TransformedDtb,
-}
 #[derive(Debug)]
 pub(crate) struct FirmwareFile<'w> {
     bytes: Scratch<'w>,
     digest: crate::artifact::Digest,
     size: u64,
-    executable: bool,
-}
-impl<'w> ExtractedFirmware<'w> {
-    pub(crate) fn capture(
-        root: &File,
-        pmi: &str,
-        dtb: &str,
-        workspace: &'w Workspace,
-        budget: &SetupBudget,
-    ) -> Result<Self, ExtractionError> {
-        let pmi = FirmwareFile::open(root, pmi)?;
-        let dtb = FirmwareFile::open(root, dtb)?;
-        Ok(Self {
-            pmi: FirmwareFile::capture(pmi, workspace, budget)?,
-            dtb: FirmwareFile::capture(dtb, workspace, budget)?,
-        })
-    }
-    pub(crate) fn finalize(
-        self,
-        transform: &TransformSelection,
-        carapace: Option<&str>,
-    ) -> Result<FinalizedFirmware<'w>, ExtractionError> {
-        let original = self.dtb.read()?;
-        let dtb = transform.apply(Some(&original), carapace)?;
-        if dtb.bytes() != Some(original.as_slice()) {
-            DtbContract::from_pmi(&self.pmi.read()?)?
-                .check_size(dtb.bytes().expect("present input DTB").len())?;
-        }
-        Ok(FinalizedFirmware {
-            pmi: std::sync::Arc::new(self.pmi),
-            dtb,
-        })
-    }
-}
-impl FinalizedFirmware<'_> {
-    pub(crate) fn pmi_descriptor(&self) -> crate::artifact::PmiDescriptor {
-        crate::artifact::PmiDescriptor {
-            digest: self.pmi.digest.to_string(),
-            size: self.pmi.size,
-        }
-    }
-    pub(crate) fn pmi_reader(&self) -> impl Read + '_ {
-        self.pmi.reader()
-    }
-    pub(crate) fn dtb(&self) -> &TransformedDtb {
-        &self.dtb
-    }
 }
 impl<'w> FirmwareFile<'w> {
     pub(crate) fn open(root: &File, path: &str) -> io::Result<File> {
@@ -112,10 +41,8 @@ impl<'w> FirmwareFile<'w> {
         budget: &SetupBudget,
     ) -> io::Result<Self> {
         budget.check()?;
-        use std::os::unix::fs::PermissionsExt;
         let metadata = source.metadata()?;
         let size = metadata.len();
-        let executable = metadata.permissions().mode() & 0o111 != 0;
         let mut bytes = workspace.scratch()?;
         let mut hash = Sha256::new();
         let mut remaining = size;
@@ -145,11 +72,13 @@ impl<'w> FirmwareFile<'w> {
             bytes,
             digest,
             size,
-            executable,
         })
     }
-    pub(crate) fn mode(&self) -> u32 {
-        if self.executable { 0o755 } else { 0o644 }
+    pub(crate) fn descriptor(&self) -> crate::artifact::PmiDescriptor {
+        crate::artifact::PmiDescriptor {
+            digest: self.digest.to_string(),
+            size: self.size,
+        }
     }
     pub(crate) fn reader(&self) -> crate::storage::ScuteReader<'_> {
         crate::storage::ScuteReader::new(self.bytes.file(), self.size)
@@ -163,53 +92,6 @@ impl<'w> FirmwareFile<'w> {
         Ok(bytes)
     }
 }
-impl<'w> FinalizedFirmware<'w> {
-    pub(crate) fn inherited(
-        image: &crate::input::CheckedImage,
-        cache: &crate::cache::Cache,
-        workspace: &'w Workspace,
-    ) -> anyhow::Result<Option<Self>> {
-        let pmi = image
-            .image()
-            .manifest()
-            .layers
-            .iter()
-            .find_map(|l| match l {
-                crate::artifact::Layer::Pmi(d) => Some(d),
-                _ => None,
-            });
-        let dtb = image.inherited_dtb(cache)?;
-        let Some((pmi, dtb)) = pmi.zip(dtb) else {
-            return Ok(None);
-        };
-        let digest = pmi.digest.parse()?;
-        let mut bytes = workspace.scratch()?;
-        cache.copy_verified(&digest, pmi.size, &mut bytes)?;
-        bytes.sync_all()?;
-        let dtb = TransformSelection::Authored(vec![]).apply(Some(dtb.bytes()), None)?;
-        Ok(Some(Self {
-            pmi: std::sync::Arc::new(FirmwareFile {
-                bytes,
-                digest,
-                size: pmi.size,
-                executable: false,
-            }),
-            dtb,
-        }))
-    }
-    pub(crate) fn rewrite(&self, root: Option<&str>) -> Result<Self, ExtractionError> {
-        let dtb = TransformSelection::Builtin.apply(self.dtb.bytes(), root)?;
-        if dtb.bytes() != self.dtb.bytes() {
-            DtbContract::from_pmi(&self.pmi.read()?)?
-                .check_size(dtb.bytes().expect("boot DTB").len())?;
-        }
-        Ok(Self {
-            pmi: self.pmi.clone(),
-            dtb,
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

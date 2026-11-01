@@ -1,12 +1,14 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-pub(crate) mod artifacts;
+pub(crate) mod boot_config;
 mod bootstrap;
 mod carapace;
-mod firmware;
-mod output;
+pub(crate) mod output;
+pub(crate) mod pmi;
 mod rejection;
+pub(crate) mod root;
+pub(crate) mod sources;
 use crate::{
     cache::Cache,
     input::{CapturedBuild, ResolvedBuild},
@@ -45,7 +47,8 @@ impl Pipeline {
             CapturedBuild::try_from(&self.request)?.resolve(Cache::open(self.request.cache())?)?;
         let inherited = !build.captured().graph().execution_required();
         let output = if inherited {
-            StageOutput::inherited(&build)?.assemble(&self.request, &build)?
+            StageOutput::select(&build, &std::collections::BTreeMap::new(), None)?
+                .assemble(&self.request, &build)?
         } else {
             let workspace = Workspace::create()?;
             let stages = Runtime::scoped(&workspace, std::path::Path::new("/run"), |runtime| {
@@ -62,110 +65,60 @@ impl Pipeline {
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
     ) -> anyhow::Result<StageOutput<'b, 'w>> {
-        use crate::plan::{Reference, TaskKind};
         use anyhow::Context;
         use std::collections::BTreeMap;
         let plan = build.captured().graph().plan();
         let mut outputs = BTreeMap::new();
-        let mut artifacts = artifacts::Artifacts::new();
         let mut reaper = crate::process::ChildReaper::install()?;
-        let selected = match plan.image() {
-            crate::plan::Image::Short(name) => name,
-            crate::plan::Image::Long { root, .. } => root,
-        };
-        for name in plan.order() {
-            let task = &plan.tasks()[name];
-            // DESIGN §7: only a completed selected output supplies CARAPACE.
-            // Input, ancestor and tool identities cannot stand in for a root
-            // that this task has not produced yet, including local tool roots.
-            let carapace = outputs.get(selected).and_then(StageOutput::root);
-            let input = match task.from() {
-                Reference::Remote(remote) => {
-                    let reference = remote.as_ref().parse()?;
-                    StageOutput::remote(
-                        build
-                            .images()
-                            .get(&reference)
-                            .ok_or(anyhow!("unresolved task input"))?,
-                    )
-                }
-                Reference::Local(local) => outputs
-                    .get(local)
-                    .cloned()
-                    .ok_or(anyhow!("task input not completed"))?,
+        for name in &plan.order {
+            let stage = &plan.stages[name];
+            let mut input = StageOutput::resolve(&stage.from, build, &outputs)?;
+            let source = input
+                .root
+                .take()
+                .ok_or_else(|| anyhow!("stage {name} has no carapace source"))?;
+            let sources = sources::Sources {
+                outputs: &outputs,
+                build,
+                workspace,
+                runtime,
             };
-            let (result, next_reaper) = (|| -> anyhow::Result<_> {
-                match task.kind() {
-                    TaskKind::Bootstrap(stage) => {
-                        let active = input.activate(build.cache())?;
-                        let result = bootstrap::BootstrapBuild::new(build, stage, task, &artifacts)
-                            .execute(workspace, runtime, active, reaper, carapace.as_ref())?;
-                        Ok((
-                            StageOutput {
+            let (output, next_reaper) = (|| -> anyhow::Result<_> {
+                let active = source.activate(build.cache())?;
+                if stage.format.is_some() {
+                    let result = bootstrap::BootstrapBuild::new(build, stage, &sources)
+                        .execute(workspace, runtime, active, reaper)?;
+                    Ok((
+                        StageOutput {
+                            root: Some(root::Root {
                                 base: None,
                                 produced: vec![result.scute],
-                                firmware: None,
-                                boot_base: None,
-                            },
-                            result.reaper,
-                        ))
+                            }),
+                            pmi: None,
+                            bootconfig: None,
+                            config_requested: false,
+                        },
+                        result.reaper,
+                    ))
+                } else {
+                    let derived = carapace::DerivedCarapace {
+                        scutes: source.produced,
+                        reaper,
                     }
-                    TaskKind::Extend => {
-                        let mut output = input;
-                        if !task.directives().is_empty() {
-                            let active = output.activate(build.cache())?;
-                            let derived = carapace::DerivedCarapace {
-                                active,
-                                scutes: output.produced,
-                                reaper,
-                            }
-                            .derive(
-                                build,
-                                workspace,
-                                runtime,
-                                task,
-                                &artifacts,
-                                carapace.as_ref(),
-                            )?;
-                            derived.active.close()?;
-                            output.produced = derived.scutes;
-                            output.rewrite(build, workspace)?;
-                            Ok((output, derived.reaper))
-                        } else {
-                            Ok((output, reaper))
-                        }
-                    }
-                    TaskKind::Build => {
-                        let active = input.activate(build.cache())?;
-                        let result = firmware::BuildTools {
-                            active,
-                            root: carapace,
-                            reaper,
-                        }
-                        .run(
-                            build,
-                            task,
-                            workspace,
-                            runtime,
-                            &mut artifacts,
-                        )?;
-                        Ok((
-                            StageOutput {
-                                base: None,
-                                produced: vec![],
-                                firmware: result.firmware,
-                                boot_base: None,
-                            },
-                            result.reaper,
-                        ))
-                    }
+                    .derive(build, workspace, runtime, stage, &sources, active)?;
+                    input.root = Some(root::Root {
+                        base: source.base,
+                        produced: derived.scutes,
+                    });
+                    input.bind()?;
+                    Ok((input, derived.reaper))
                 }
             })()
-            .with_context(|| format!("task {name}"))?;
+            .with_context(|| format!("stage {name}"))?;
             reaper = next_reaper;
-            outputs.insert(name.clone(), result);
+            outputs.insert(name.clone(), output);
         }
-        StageOutput::select(plan, &outputs)
+        StageOutput::select(build, &outputs, Some((workspace, runtime)))
     }
 }
 /// Created only after the selected plan completed and its output was verified.

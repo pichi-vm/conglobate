@@ -1,15 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
-    - run: |
+    extending: qualification.local/fedora:43
+    derive:
+    - exec: |
         mkdir -p /run/conglobate-resolver
         rm -f /etc/resolv.conf
         ln -s /run/conglobate-resolver/config /etc/resolv.conf
         printf 'nameserver 192.0.2.123\n' > /run/conglobate-resolver/config
-    - run: |
+    - exec: |
         if printf 'invalid\n' >> /etc/resolv.conf; then
           echo 'resolver unexpectedly writable' >&2
           exit 1
@@ -36,12 +35,12 @@ tasks:
         printf 'NETWORK_COMMAND_CAPABILITIES_RESTRICTED_PASS\n'
       network: true
       timeout: 30s
-    - run: |
+    - exec: |
         test "$(readlink /proc/self/ns/net)" = "$(cat /run/network-identity)"
         printf 'NETWORK_ENABLED_STEPS_REUSE_NAMESPACE_PASS\n'
       network: true
       timeout: 30s
-    - run: |
+    - exec: |
         test "$(readlink /proc/self/ns/net)" != "$(cat /run/network-identity)"
         test "$(wc -l < /proc/net/route)" = 1
         test "$(grep -c : /proc/net/dev)" = 1

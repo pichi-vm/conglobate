@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
-    - run: |
+    extending: qualification.local/fedora:43
+    derive:
+    - exec: |
         set -x
         if mknod /forbidden-character-device c 1 3; then exit 1; fi
         if mknod /forbidden-block-device b 1 0; then exit 1; fi
@@ -22,7 +21,7 @@ tasks:
         printf 'BACKGROUND_CHILD_STARTED_PASS\n'
         # Intentionally exit without waiting. PID-1/domain teardown must stop
         # the child before the next step can mount this filesystem.
-    - run: |
+    - exec: |
         set -x
         test -p /descendant-release
         test ! -e /descendant-output

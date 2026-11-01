@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# Supply a GPT image with PMI and bootconfig containing corium.root.
+stages:
+  extended:
+    extending: qualification.local/fedora:43
+    derive:
+      - copy: {path: message.txt, into: /etc/staged-extension}
+      - exec: |
+          test "$(cat /etc/staged-extension)" = 'committed pipeline input'
+          test -z "${CARAPACE+x}"
+          printf 'INHERITED_BOOT_EXTENSION_PASS\n'
+image: extended

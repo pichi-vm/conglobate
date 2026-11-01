@@ -1,15 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # Imported boot lineage bound to an independently bootstrapped root.
-# Supply a seed that exports both a carapace and PMI/DTB.
-tasks:
+# Supply a seed that exports both a carapace and PMI/bootconfig.
+stages:
   bootstrap:
-    kind: bootstrap
-    from: qualification.local/fedora:43
-    filesystem:
+    using: qualification.local/fedora:43
+    format:
       size: 64MiB
       kind: ext4
-    exec:
-    - run: |
+    derive:
+    - exec: |
         mkdir -p /mnt/bin /mnt/etc /mnt/dev /mnt/proc /mnt/sys /mnt/tmp /mnt/run
         cp -L /bin/sh /mnt/bin/sh
         cp -L /bin/rm /mnt/bin/rm
@@ -28,10 +27,9 @@ tasks:
         printf 'tool-only\n' > /tool-only
         printf 'PIPELINE_BOOTSTRAP_PASS\n'
   rootfs:
-    kind: extend
-    from: bootstrap
-    exec:
-    - run: |
+    extending: bootstrap
+    derive:
+    - exec: |
         test -z "${CARAPACE+x}"
         read -r stage < /etc/stage
         test "$stage" = bootstrap
@@ -42,39 +40,34 @@ tasks:
         printf 'carapace\n' > /etc/stage
         printf 'PIPELINE_CARAPACE_FIRST_PASS\n'
     - copy:
-        from: message.txt
+        path: message.txt
         into: /etc/context-message
     - copy:
-        from: generated
+        from: producer
+        path: /generated
         into: /etc/generated
-    - run: |
+    - exec: |
         read -r stage < /etc/stage
         test "$stage" = carapace
         read -r message < /etc/context-message
         test "$message" = 'committed pipeline input'
         read -r generated < /etc/generated
-        test "$generated" = 'finalized build artifact'
+        test "$generated" = 'persisted stage file'
         test -f /temporary
         /bin/rm /temporary
         test ! -e /temporary
         printf 'PIPELINE_CARAPACE_LAST_PASS\n'
   producer:
-    kind: build
-    from: bootstrap
-    exec:
-    - run: |
+    extending: bootstrap
+    derive:
+    - exec: |
         test -z "${CARAPACE+x}"
-        printf 'finalized build artifact\n' > /generated
-        printf 'MULTISTAGE_ARTIFACT_PRODUCER_PASS\n'
-    into: {generated: /generated}
+        printf 'persisted stage file\n' > /generated
+        printf 'MULTISTAGE_FILE_PRODUCER_PASS\n'
   orphan:
-    kind: build
-    from: unused.registry/tool:1
-    exec: [{run: 'false', network: true}]
-    into: {never: /never}
-  imported_boot:
-    kind: extend
-    from: qualification.local/fedora:43
+    extending: unused.registry/tool:1
+    derive: [{exec: 'false', network: true}]
 image:
   root: rootfs
-  boot: imported_boot
+  boot: qualification.local/fedora:43
+  bootconfig: qualification.local/fedora:43
