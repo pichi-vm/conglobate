@@ -88,6 +88,43 @@ impl Cache {
                 .map_err(|_| CacheError::Invalid("invalid layer digest"))?;
             self.verify(&digest, layer.size())?;
         }
+        if let Some(config) = manifest.layers.iter().find_map(|layer| match layer {
+            crate::artifact::Layer::BootConfig(config) => Some(config),
+            _ => None,
+        }) {
+            let digest = config
+                .digest
+                .parse()
+                .map_err(|_| CacheError::Invalid("invalid bootconfig digest"))?;
+            let data = self.metadata(&digest, Some(config.size))?;
+            let text = std::str::from_utf8(data.bytes())
+                .map_err(|_| CacheError::Invalid("bootconfig is not UTF-8"))?;
+            let parsed: crate::artifact::BootConfig = text.parse()?;
+            if parsed.is_empty() {
+                return Err(CacheError::Invalid("empty bootconfig must be omitted"));
+            }
+            let pmi = manifest
+                .layers
+                .iter()
+                .find_map(|layer| match layer {
+                    crate::artifact::Layer::Pmi(pmi) => Some(pmi),
+                    _ => None,
+                })
+                .ok_or(CacheError::Invalid("bootconfig requires PMI"))?;
+            let digest = pmi
+                .digest
+                .parse()
+                .map_err(|_| CacheError::Invalid("invalid PMI digest"))?;
+            let mut bytes = Vec::new();
+            let size = usize::try_from(pmi.size)
+                .map_err(|_| CacheError::Invalid("PMI exceeds address space"))?;
+            bytes
+                .try_reserve_exact(size)
+                .map_err(|_| CacheError::Invalid("PMI allocation failed"))?;
+            self.copy_verified(&digest, pmi.size, &mut bytes)?;
+            crate::firmware::BootConfigContract::from_pmi(&bytes, image.architecture().oci_name())?
+                .check_size(text.len())?;
+        }
         Ok(())
     }
 
