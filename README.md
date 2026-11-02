@@ -83,7 +83,8 @@ binding. PMI bytes and their embedded command line are never rewritten. Updating
 Corium code requires a new PMI.
 
 Creation defaults to a 256 GiB ext4 root without a journal. `format` optionally selects
-`fs: ext4`, `fs: xfs` or `fs: btrfs`, whole MiB/GiB/TiB `size`, `label` and an `esp` capacity. Btrfs compression is off.
+`fs: ext4`, `fs: xfs` or `fs: btrfs`, whole MiB/GiB/TiB `size`, `label` and an `esp` capacity. Btrfs compression is off. Every new scute is compacted
+against its parent before sealing, so unchanged blocks do not inflate layers.
 
 COPY without `from` reads the captured Git context. With `from`, it reads a
 named stage's whole persisted root; stage mounts are not replayed. Destination

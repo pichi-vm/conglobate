@@ -684,7 +684,11 @@ last across directives but are discarded. Extension executes in the selected
 root at `/` and retains its boot components. Both use one writable whole-disk
 snapshot for the new output layer. Stop writers, flush and normally unmount
 all filesystem views, remove partition mappings, close the snapshot, detach its
-loop attachment and seal.
+loop attachment, compact and seal. Compaction compares exception blocks with the
+same logical block in the retained immutable origin (zero for a new root). Equal
+blocks disappear; zeros masking nonzero parent data remain. Packed exception
+metadata and data are written to a separate scratch file with bounded buffers,
+then hashed for the scute digest and verity tree. Failure rejects publication.
 Failed cleanup retains resources for VM disposal and rejects publication.
 
 ### 6.3 Directives
@@ -1223,7 +1227,7 @@ RAII owns resources; destructors cannot certify successful finalization.
    Format through its block-device view: formatting and population write
    into this layer from the outset. No temporary rootfs image, image import,
    or image-to-scute conversion is part of bootstrap. After clean teardown,
-   seal/hash the resulting scute and package the new carapace.
+   compact and seal/hash the resulting scute and package the new carapace.
 
 ### 14.4 Mount filesystems under the environment-provided labeling exception
 

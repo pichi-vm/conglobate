@@ -110,7 +110,7 @@ impl<'a> BootstrapBuild<'a> {
                 .into_snapshot()?
                 .close()?
                 .detach()?
-                .seal_snapshot([0; 32])?,
+                .seal_snapshot([0; 32], &origin)?,
         );
         active.close()?;
         origin.close()?;

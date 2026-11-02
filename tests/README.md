@@ -61,7 +61,7 @@ ESP through the production formatter. It checks partition bounds and on-disk
 offsets, writes both filesystems, seals and extends the whole-disk snapshot,
 then checks persistence and hashes the entire parent disk to detect changes.
 It keeps the parent mounted while writing the child to catch shared-UUID aliasing.
-New ext4 roots must lack a journal.
+New ext4 roots must lack a journal. Every seal compacts against its actual origin.
 Writable partition views must close before sealing. `partition-busy` holds an
 ESP view open and requires finalization to fail while retaining the snapshot.
 These cases need `dosfstools`, `xfsprogs`, `btrfs-progs` and the guest's
