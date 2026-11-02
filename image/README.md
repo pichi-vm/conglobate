@@ -38,9 +38,9 @@ filesystems and device drivers needed by both the appliance and build stages.
   oneshot whose `ExecStart` is `conglobate appliance`. When that process exits,
   success or failure, the unit powers the VM off. Appliance stdout and stderr
   go to the journal and to the kernel console (`console=hvc0`).
-- `e2fsprogs` provides image-resident `mke2fs` (standard paths, `/usr/sbin/mke2fs`
-  first). The engine still captures that binary and its `ldd` dependencies from
-  the guest root. There is no host formatter path.
+- `e2fsprogs` and `dosfstools` provide image-resident `mke2fs` and `mkfs.fat`.
+  The engine captures each formatter and its `ldd` dependencies from the
+  appliance. Loop, FAT and its character-set modules remain available.
 
 Image hardcodes, not CBOR fields: UID/GID maps, the network-namespace path, and
 the resolver path (`src/appliance/mounts.rs`).
