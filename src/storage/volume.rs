@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::SnapshotMapping;
+use super::{PartitionedSnapshot, SnapshotMapping};
 use crate::anchor::RecoveryDirectory;
 use rustix::{fs, mount};
 use std::{
@@ -12,6 +12,8 @@ use std::{
     path::{Path, PathBuf},
     rc::Rc,
 };
+mod stage;
+use stage::{StageAttachments, StageMounts};
 
 mod private {
     pub(crate) trait Sealed {}
@@ -33,6 +35,7 @@ impl VolumeState for Mounted {
 }
 #[derive(Debug)]
 pub(crate) struct MountedResources {
+    children: StageAttachments,
     root: File,
     lease: MountLease,
 }
@@ -47,11 +50,12 @@ pub(crate) struct MountedResources {
 pub(crate) struct Volume<'ns, 'origin, 'workspace, S: VolumeState> {
     // Mount resources must drop before the underlying snapshot.
     resources: S::Resources,
-    snapshot: SnapshotMapping<'origin, 'workspace>,
+    stage: StageMounts,
+    snapshot: PartitionedSnapshot<'origin, 'workspace>,
     scope: &'ns RecoveryDirectory,
     _thread: PhantomData<Rc<()>>,
 }
-/// Nonrecursive detached view cloned in the volume's namespace. Assignment to
+/// Detached tree cloned in the volume's namespace, including owned stage mounts. Assignment to
 /// a private command namespace preserves the borrow of its mounted volume.
 #[derive(Debug)]
 pub(crate) struct VolumeView<'volume> {
@@ -65,12 +69,43 @@ impl<'volume> VolumeView<'volume> {
     }
 }
 impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
-    pub(crate) fn into_snapshot(self) -> SnapshotMapping<'a, 'w> {
-        self.snapshot
+    pub(crate) fn into_snapshot(self) -> io::Result<SnapshotMapping<'a, 'w>> {
+        if let Err(error) = self.stage.close(self.scope) {
+            std::mem::forget(self.snapshot);
+            return Err(error);
+        }
+        self.snapshot.into_snapshot()
+    }
+    pub(crate) fn with_mounts(
+        mut self,
+        mounts: &std::collections::BTreeMap<
+            crate::contract::recipe::ImagePath,
+            crate::contract::recipe::Mount,
+        >,
+        parent: &Path,
+        creation: bool,
+    ) -> io::Result<Self> {
+        match self
+            .stage
+            .populate(mounts, &self.snapshot, self.scope, parent, creation)
+        {
+            Ok(()) => Ok(self),
+            Err(error) => Err(self.discard(error)),
+        }
+    }
+    fn discard(self, error: io::Error) -> io::Error {
+        match self
+            .into_snapshot()
+            .and_then(|snapshot| snapshot.close())
+            .and_then(|backing| backing.detach())
+        {
+            Ok(_) => error,
+            Err(cleanup) => io::Error::other(format!("{error}; stage cleanup: {cleanup}")),
+        }
     }
     /// Observe snapshot health after all filesystem writes have been flushed.
     pub(crate) fn validate_snapshot(&self) -> std::io::Result<()> {
-        self.snapshot.usage().map(|_| ())
+        self.snapshot.validate()
     }
     /// Mount under supervisor ownership in the verified init namespace.
     /// Command execution still requires its own private namespace and view.
@@ -78,9 +113,11 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
         snapshot: SnapshotMapping<'a, 'w>,
         scope: &'ns RecoveryDirectory,
     ) -> io::Result<Self> {
+        scope.verify_current()?;
         let volume = Self {
             resources: (),
-            snapshot,
+            stage: StageMounts::default(),
+            snapshot: PartitionedSnapshot::open(snapshot)?,
             scope,
             _thread: PhantomData,
         };
@@ -94,7 +131,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
         let attempt = (|| -> io::Result<MountedResources> {
             self.scope.verify_current()?;
             let point = Point::create(parent)?;
-            let source = self.snapshot.open_read_only()?;
+            let source = self.snapshot.open_root()?;
             let context = mount::fsopen("ext4", mount::FsOpenFlags::FSOPEN_CLOEXEC)?;
             mount::fsconfig_set_string(
                 &context,
@@ -123,16 +160,33 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
             // Infallible ownership transfer after attachment. Point's destructor
             // only removes an empty directory; it never traverses mounted data.
             Ok(MountedResources {
+                children: StageAttachments::default(),
                 root,
                 lease: MountLease { point: Some(point) },
             })
         })();
-        Ok(Volume {
-            resources: attempt?,
+        let resources = match attempt {
+            Ok(resources) => resources,
+            Err(error) => return Err(self.discard(error)),
+        };
+        let mut volume: Volume<'ns, 'a, 'w, Mounted> = Volume {
+            resources,
+            stage: self.stage,
             snapshot: self.snapshot,
             scope: self.scope,
             _thread: PhantomData,
-        })
+        };
+        match volume.stage.attach(
+            &volume.resources.root,
+            volume.scope,
+            &mut volume.resources.children,
+        ) {
+            Ok(()) => Ok(volume),
+            Err(error) => Err(match volume.unmount() {
+                Ok(unmounted) => unmounted.discard(error),
+                Err(cleanup) => io::Error::other(format!("{error}; root cleanup: {cleanup}")),
+            }),
+        }
     }
 }
 impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
@@ -147,13 +201,15 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
         crate::copy::CopyDestination::new(&self.resources.root).copy(context, directive)
     }
 
-    pub(crate) fn copy_artifact(
+    pub(crate) fn copy_image(
         &mut self,
         output: Option<&mut Volume<'_, '_, '_, Mounted>>,
         directive: &crate::plan::Copy,
-        source: &crate::firmware::FirmwareFile<'_>,
+        source: &Volume<'_, '_, '_, Mounted>,
+        budget: &crate::step::SetupBudget,
     ) -> Result<(), crate::copy::CopyError> {
         self.scope.verify_current()?;
+        source.scope.verify_current()?;
         match output {
             Some(output) => {
                 output.scope.verify_current()?;
@@ -162,11 +218,13 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
                     &self.resources.root,
                     &output.resources.root,
                 )
-                .artifact(directive, source)
+                .image(&source.resources.root, directive, budget)
             }
-            None => {
-                crate::copy::CopyDestination::new(&self.resources.root).artifact(directive, source)
-            }
+            None => crate::copy::CopyDestination::new(&self.resources.root).image(
+                &source.resources.root,
+                directive,
+                budget,
+            ),
         }
     }
     pub(crate) fn extract_artifact<'out>(
@@ -202,7 +260,23 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
         deadline: std::time::Instant,
     ) -> io::Result<()> {
         self.scope.verify_current()?;
-        super::ownership::ImageOwnership::new(uid, gid, deadline).validate(&self.resources.root)
+        // A nonrecursive view exposes the persisted root without stage mounts.
+        // Validate every owned temporary filesystem independently below.
+        let tree = mount::open_tree(
+            &self.resources.root,
+            "",
+            mount::OpenTreeFlags::AT_EMPTY_PATH
+                | mount::OpenTreeFlags::OPEN_TREE_CLONE
+                | mount::OpenTreeFlags::OPEN_TREE_CLOEXEC,
+        )?;
+        let root = File::from(fs::openat(
+            &tree,
+            ".",
+            fs::OFlags::RDONLY | fs::OFlags::DIRECTORY | fs::OFlags::CLOEXEC,
+            fs::Mode::empty(),
+        )?);
+        super::ownership::ImageOwnership::new(uid, gid, deadline).validate(&root)?;
+        self.stage.validate_ownership(uid, gid, deadline)
     }
     pub(crate) fn validate_command_root(&self) -> io::Result<()> {
         self.scope.verify_current()?;
@@ -215,6 +289,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
             &self.resources.root,
             "",
             mount::OpenTreeFlags::AT_EMPTY_PATH
+                | mount::OpenTreeFlags::AT_RECURSIVE
                 | mount::OpenTreeFlags::OPEN_TREE_CLONE
                 | mount::OpenTreeFlags::OPEN_TREE_CLOEXEC,
         )?;
@@ -225,36 +300,26 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
         })
     }
     pub(crate) fn unmount(self) -> io::Result<Volume<'ns, 'a, 'w, Unmounted>> {
-        if let Err(error) = self
-            .scope
-            .verify_current()
-            .and_then(|()| fs::syncfs(&self.resources.root).map_err(Into::into))
-        {
-            std::mem::forget(self);
+        let MountedResources {
+            root,
+            lease,
+            children,
+        } = self.resources;
+        if let Err(error) = children.close(self.scope) {
+            std::mem::forget((root, lease, self.stage, self.snapshot));
             return Err(error);
         }
-        let MountedResources { root, mut lease } = self.resources;
-        drop(root);
-        let volume = Volume {
+        if let Err(error) = lease.close(root, self.scope) {
+            std::mem::forget((self.stage, self.snapshot));
+            return Err(error);
+        }
+        Ok(Volume {
             resources: (),
+            stage: self.stage,
             snapshot: self.snapshot,
             scope: self.scope,
             _thread: PhantomData,
-        };
-        let point = lease.point.as_ref().expect("attached mount");
-        let result = volume
-            .scope
-            .verify_current()
-            .and_then(|()| {
-                mount::unmount(point.path(), mount::UnmountFlags::NOFOLLOW).map_err(Into::into)
-            })
-            .and_then(|()| point.remove());
-        if let Err(error) = result {
-            std::mem::forget((lease, volume));
-            return Err(error);
-        }
-        lease.point.take();
-        Ok(volume)
+        })
     }
 }
 
@@ -262,6 +327,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Mounted> {
 struct Point {
     parent: File,
     name: std::ffi::OsString,
+    remove: bool,
 }
 impl Point {
     fn create(parent: &Path) -> io::Result<Self> {
@@ -286,12 +352,57 @@ impl Point {
                 .expect("generated directory name")
                 .to_owned(),
             parent,
+            remove: true,
         })
+    }
+    fn image(root: &File, path: &str) -> io::Result<Self> {
+        let mut parent = root.try_clone()?;
+        let components = path.trim_start_matches('/').split('/').collect::<Vec<_>>();
+        for (index, name) in components.iter().enumerate() {
+            if name.is_empty() || *name == "." || *name == ".." {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "invalid stage mount component",
+                ));
+            }
+            match fs::mkdirat(&parent, *name, fs::Mode::from_raw_mode(0o755)) {
+                Ok(()) => fs::chmodat(
+                    &parent,
+                    *name,
+                    fs::Mode::from_raw_mode(0o755),
+                    fs::AtFlags::empty(),
+                )?,
+                Err(rustix::io::Errno::EXIST) => (),
+                Err(error) => return Err(error.into()),
+            }
+            let directory = File::from(fs::openat2(
+                &parent,
+                *name,
+                fs::OFlags::PATH | fs::OFlags::DIRECTORY | fs::OFlags::CLOEXEC,
+                fs::Mode::empty(),
+                fs::ResolveFlags::BENEATH | fs::ResolveFlags::NO_SYMLINKS,
+            )?);
+            if index + 1 == components.len() {
+                return Ok(Self {
+                    parent,
+                    name: (*name).into(),
+                    remove: false,
+                });
+            }
+            parent = directory;
+        }
+        Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "stage mount cannot replace root",
+        ))
     }
     fn path(&self) -> PathBuf {
         PathBuf::from(format!("/proc/self/fd/{}", self.parent.as_raw_fd())).join(&self.name)
     }
     fn remove(&self) -> io::Result<()> {
+        if !self.remove {
+            return Ok(());
+        }
         match fs::unlinkat(&self.parent, &self.name, fs::AtFlags::REMOVEDIR) {
             Ok(()) | Err(rustix::io::Errno::NOENT) => Ok(()),
             Err(error) => Err(error.into()),
@@ -309,6 +420,31 @@ impl Drop for Point {
 struct MountLease {
     point: Option<Point>,
 }
+impl MountLease {
+    fn close(mut self, root: File, scope: &RecoveryDirectory) -> io::Result<()> {
+        if let Err(error) = scope
+            .verify_current()
+            .and_then(|()| fs::syncfs(&root).map_err(Into::into))
+        {
+            std::mem::forget((root, self));
+            return Err(error);
+        }
+        drop(root);
+        let point = self.point.as_ref().expect("attached mount");
+        let result = scope
+            .verify_current()
+            .and_then(|()| {
+                mount::unmount(point.path(), mount::UnmountFlags::NOFOLLOW).map_err(Into::into)
+            })
+            .and_then(|()| point.remove());
+        if let Err(error) = result {
+            std::mem::forget(self);
+            return Err(error);
+        }
+        self.point.take();
+        Ok(())
+    }
+}
 impl Drop for MountLease {
     fn drop(&mut self) {
         if let Some(point) = self.point.take() {
@@ -325,24 +461,6 @@ impl Drop for MountLease {
 }
 
 impl Volume<'_, '_, '_, Mounted> {
-    /// Capture declared output files under an exclusive borrow. The coordinator
-    /// separately proves command success and quiescence before this operation.
-    pub(crate) fn extract_firmware<'w>(
-        &mut self,
-        firmware: &crate::plan::Firmware,
-        workspace: &'w super::Workspace,
-        budget: &crate::step::SetupBudget,
-    ) -> Result<crate::firmware::ExtractedFirmware<'w>, crate::firmware::ExtractionError> {
-        self.scope.verify_current()?;
-        crate::firmware::ExtractedFirmware::capture(
-            &self.resources.root,
-            firmware.pmi(),
-            firmware.dtb(),
-            workspace,
-            budget,
-        )
-    }
-
     /// Reserved bootstrap mountpoint, created through the original unmapped
     /// filesystem so image UID/GID 0 remain UID/GID 0 on disk. Called before
     /// any command admission; reject symlinks and preexisting submounts.

@@ -19,8 +19,8 @@ cli = [
     "dep:netlink-packet-core",
     "dep:netlink-packet-route",
     "dep:goblin",
+    "dep:gpt",
     "dep:pmi",
-    "dep:devtree",
     "dep:seccompiler",
     "dep:linux-raw-sys",
     "dep:minicbor",
@@ -28,7 +28,6 @@ cli = [
     "dep:rustix",
     "dep:ciborium",
     "dep:serde_bytes",
-    "dep:regex",
     "dep:tempfile",
     "dep:gix",
     "dep:clap",
@@ -76,9 +75,9 @@ getrandom = { version = "0.4", optional = true }
 anyhow = { version = "1", optional = true }
 netlink-packet-core = { version = "=0.9.0", optional = true }
 netlink-packet-route = { version = "=0.33.0", optional = true }
+gpt = { version = "4.1", optional = true }
 goblin = { version = "0.10", optional = true, default-features = false, features = ["std", "pe32", "pe64"] }
-pmi = { git = "https://github.com/pichi-vm/pmi", rev = "364ee0be240fa44c9d7cef7692593f3b52e45b78", version = "0.1.0", optional = true }
-devtree = { git = "https://github.com/pichi-vm/devtree", rev = "e90bafce9ee9e4f7f570f07c5c242b6398c64980", features = ["alloc"], optional = true }
+pmi = { git = "https://github.com/pichi-vm/pmi", rev = "710d64917968dfea4e608c1a12942c0c42ebb1e7", version = "0.1.0", optional = true }
 seccompiler = { version = "=0.5.0", optional = true }
 linux-raw-sys = { version = "=0.12.1", features = ["general"], optional = true }
 minicbor = { version = "2.3.1", features = ["std"], optional = true }
@@ -88,7 +87,6 @@ nix = { version = "0.31", optional = true, default-features = false, features = 
 rustix = { git = "https://github.com/bytecodealliance/rustix", rev = "8bda151df87574f56f1e4c0b59f2d1df5d61609e", version = "1", optional = true, features = ["fs", "mount", "process", "event", "net", "stdio", "thread", "time"] }
 ciborium = { version = "0.2.2", optional = true }
 serde_bytes = { version = "0.11", optional = true }
-regex = { version = "1", optional = true }
 tempfile = { version = "3", optional = true }
 gix = { version = "0.84", optional = true, default-features = false, features = ["sha1", "sha256"] }
 clap = { version = "4", optional = true, features = ["derive"] }

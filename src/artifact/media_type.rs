@@ -48,11 +48,8 @@ pub const MEDIA_TYPE_PICHI_PMI_V1: &str = "application/vnd.pichi.pmi.v1";
 /// migration; new writers MUST NOT emit it.
 pub const MEDIA_TYPE_PICHI_REQUIREMENTS_V1: &str = "application/vnd.pichi.requirements.v1+yaml";
 
-/// Base DTB layer: the measured base devicetree for a PMI built in the `dt`
-/// extension's *detached* channel mode. `pichi run` supplies it to the VMM
-/// out-of-band (`dillo --dtb`). At most one per manifest; appears only
-/// alongside a (detached-mode) PMI. Uncompressed (small).
-pub const MEDIA_TYPE_PICHI_DTB_V1: &str = "application/vnd.pichi.dtb.v1";
+/// Native Linux boot configuration text. Requires a PMI with a reservation.
+pub const MEDIA_TYPE_PICHI_BOOTCONFIG_V1: &str = "application/vnd.pichi.bootconfig.v1";
 
 /// pichi image config blob — the OCI 1.1 `config` descriptor's target. Carries
 /// the launch contract (the `requirements` projection of `config.yaml`,
@@ -84,7 +81,10 @@ mod tests {
             MEDIA_TYPE_PICHI_REQUIREMENTS_V1,
             "application/vnd.pichi.requirements.v1+yaml"
         );
-        assert_eq!(MEDIA_TYPE_PICHI_DTB_V1, "application/vnd.pichi.dtb.v1");
+        assert_eq!(
+            MEDIA_TYPE_PICHI_BOOTCONFIG_V1,
+            "application/vnd.pichi.bootconfig.v1"
+        );
         assert_eq!(
             MEDIA_TYPE_PICHI_CONFIG_V1,
             "application/vnd.pichi.config.v1+json"
@@ -100,7 +100,7 @@ mod tests {
         assert!(MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.ends_with("+zstd"));
         assert!(MEDIA_TYPE_PICHI_PMI_V1.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_REQUIREMENTS_V1.starts_with("application/vnd.pichi."));
-        assert!(MEDIA_TYPE_PICHI_DTB_V1.starts_with("application/vnd.pichi."));
+        assert!(MEDIA_TYPE_PICHI_BOOTCONFIG_V1.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_CONFIG_V1.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_CONFIG_V1.ends_with("+json"));
         assert!(MEDIA_TYPE_OCI_EMPTY_V1.starts_with("application/vnd.oci."));

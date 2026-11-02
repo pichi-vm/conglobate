@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Supervisor-owned mutable RAM storage. Immutable layers remain cache-backed.
+mod partitioned;
+pub(crate) use partitioned::PartitionedSnapshot;
 mod runtime;
 pub(crate) use runtime::Runtime;
 mod chain;

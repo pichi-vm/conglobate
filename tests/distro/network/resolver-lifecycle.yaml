@@ -1,14 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
-    - run: |
+    extending: qualification.local/fedora:43
+    derive:
+    - exec: |
         test ! -e /resolver-lifecycle
         rm -f /etc/resolv.conf
         ln -s /resolver-lifecycle/missing/nested/config /etc/resolv.conf
-    - run: |
+    - exec: |
         test -L /etc/resolv.conf
         test -f /resolver-lifecycle/missing/nested/config
         if printf 'invalid\n' >> /etc/resolv.conf; then exit 1; fi
@@ -21,7 +20,7 @@ tasks:
         printf 'RESOLVER_DANGLING_INJECTION_PASS\n'
       network: true
       timeout: 30s
-    - run: |
+    - exec: |
         test -L /etc/resolv.conf
         test "$(readlink /etc/resolv.conf)" = /resolver-lifecycle/missing/nested/config
         test ! -e /resolver-lifecycle
@@ -29,7 +28,7 @@ tasks:
         mkdir -p /resolver-lifecycle/existing
         rm /etc/resolv.conf
         ln -s /resolver-lifecycle/existing/config /etc/resolv.conf
-    - run: |
+    - exec: |
         test -f /resolver-lifecycle/existing/config
         if printf 'invalid\n' >> /etc/resolv.conf; then exit 1; fi
         mv /resolver-lifecycle/existing /resolver-lifecycle/saved
@@ -40,7 +39,7 @@ tasks:
         printf 'RESOLVER_PARENT_REPLACED_DURING_COMMAND_PASS\n'
       network: true
       timeout: 30s
-    - run: |
+    - exec: |
         test "$(cat /etc/resolv.conf)" = 'author replacement'
         test -L /etc/resolv.conf
         test -d /resolver-lifecycle/saved

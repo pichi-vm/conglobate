@@ -14,7 +14,7 @@ pub(crate) struct ReadOnlyChain<'w> {
     mapping: Mapping<Active>,
     _source: File,
     inputs: carapace::Chain,
-    produced: Vec<Arc<SealedScute<'w>>>,
+    _produced: Vec<Arc<SealedScute<'w>>>,
 }
 
 impl<'w> ReadOnlyChain<'w> {
@@ -64,16 +64,17 @@ impl<'w> ReadOnlyChain<'w> {
             mapping,
             _source: source,
             inputs,
-            produced,
+            _produced: produced,
         })
     }
 
+    #[cfg(feature = "test-fixtures")]
     pub(crate) fn extend(self, scute: Arc<SealedScute<'w>>) -> io::Result<Self> {
         let Self {
             mapping,
             _source,
             mut inputs,
-            mut produced,
+            _produced: mut produced,
         } = self;
         Self::append(&mut inputs, &scute)?;
         // Writable consumers must have completed before replacing this view.

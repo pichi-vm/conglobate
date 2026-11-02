@@ -4,44 +4,57 @@ Conglobate builds layered OS images from committed plans and locally supplied,
 locked image artifacts. The crate is a types-only library plus a binary engine;
 the standalone CLI remains testable without a VM. Production builds run in a
 pichi appliance image shipped from this repository (see DESIGN.md). The
-approved plan format is the multi-stage task model in
-[DESIGN.md](DESIGN.md): tasks `bootstrap`, `extend`, and `build`, then
-assembly of one carapace and optional boot. The engine executes only the
-selected image's dependency closure. Builds produce
-a self-contained OCI image layout with build binding annotations on the image
-manifest. See [DESIGN.md](DESIGN.md) for the task model, CLI, appliance
-build-port CBOR contract, and schemas.
+plan format is defined in [DESIGN.md](DESIGN.md). Named stages create or extend
+image roots; the top-level image declaration selects the root, PMI and optional
+bootconfig. The engine executes only the selected dependency closure and emits
+a self-contained OCI layout with build annotations on its manifest.
 
 Fedora, Debian, Alpine and NixOS example plans live under `tests/distro`. Confidential-computing qualification and
 appliance attestation are deferred; passing tests are not a universal security
 or operating-system compatibility claim.
 
+## Staged recipe library
+
+`conglobate::recipe` exposes portable serde types for staged images. Each type
+lives in its own module. `Plan::validate()` checks every declaration and
+reference; `Plan::order()` returns only the selected dependency closure.
+Runtime dependencies remain behind `cli`. The executable decodes the same types.
+See [the staged recipe example](tests/fixtures/staged-recipe.yaml).
+
+Stages either create a root with `using`, `format` and nonempty `derive`, or
+extend a root with `extending` and nonempty `derive`. Directives contain `exec`
+or `copy`. COPY reads the unnamed host context unless `from` names a stage.
+Mount targets belong to the output image namespace. The top-level `image`
+forwards one source or selects `root`, `boot` and `bootconfig` explicitly.
+Bootconfig requires a selected PMI; omitting its `from` starts empty.
+
 ## Plans
 
-A plan has named `tasks` and an explicit local `image` selection:
+A plan has a `stages` map and an `image` selection:
 
 ```yaml
-tasks:
+stages:
   package:
-    kind: build
-    from: registry.example.com/tools:1
-    exec:
-      - run: printf 'built input\n' > /package
-    into: {package: /package}
+    extending: registry.example.com/tools:1
+    derive:
+      - exec: printf 'built input\n' > /package
   rootfs:
-    kind: extend
-    from: registry.example.com/base:1
-    exec:
-      - copy: {from: package, into: /etc/package}
+    extending: registry.example.com/base:1
+    mount:
+      /tmp: tmpfs
+    derive:
+      - copy: {from: package, path: /package, into: /etc/package}
+      - exec: cat /etc/package
 image: rootfs
 ```
 
-The separate lock pins each remote reference to an OCI index digest. Local
-references name tasks and never appear in the lock. Orphan tasks require no
-cache inputs, networking, or execution. Dependencies run before their consumers,
-regardless of YAML key order. `bootstrap` formats a fresh filesystem and populates
-`/mnt`; `extend` retains its input chain plus one scute for all its commands;
-`build` discards its tool writes and retains declared artifacts only.
+The separate lock pins remote stage inputs and direct image selectors to OCI
+index digests. Local references name stages. Every declaration is validated;
+only the selected dependency closure fetches inputs and executes. Dependencies
+run before consumers regardless of YAML map order. A creation stage uses
+`using` and `format`, populates a new GPT root at `/mnt`, and emits that root
+alone. An extension uses `extending`, changes its root at `/`, and retains its
+PMI and bootconfig. Both require nonempty `derive` and produce one scute.
 
 Before resolving a lock, inspect the committed plan with:
 
@@ -50,30 +63,41 @@ conglobate inputs --repository . --commit "$(git rev-parse HEAD)" \
   --context . --plan pichi.yaml
 ```
 
-This prints a JSON object with an `images` array of unique remote references
-from the selected task closure. It uses the build's context reader and planner;
-no lock, cache, privileged setup, or commands are needed. Pichi consumes this
-output and resolves each reference to an OCI index pin.
+This prints the selected unique remote references as an `images` JSON array.
+No lock, cache or privileged runtime is needed. Pichi resolves those references
+and supplies the cache; it does not interpret YAML plans on the host.
 
-`image: rootfs` uses that task's carapace and boot exports. The long form
-`image: {root: rootfs, boot: firmware}` selects them separately. A build task
-may provide boot without a carapace. Extend carries boot forward and automatically
-rewrites its DTB binding; assembly also binds separately imported boot to the
-selected root. There is no authored `transform` section.
-`CARAPACE` becomes available to commands after the selected image-root task
-completes. Commands that produce that root see it unset; input, ancestor and
-tool roots never substitute for the output identity. Boot-only builds leave it
-unset even when a local task supplies their tools.
+`image: rootfs` forwards all available components from that stage. The same
+shortcut accepts a qualified remote. Explicit composition selects each component:
 
-Some artifact wire details remain provisional implementation choices under
-[DESIGN §6.3](DESIGN.md#63-exec-from-into-and-copy), not additional design locks:
-`tasks` contains the map; `into` maps flat names to absolute regular-file paths;
-`copy.into` is an absolute destination. An explicit `pmi`/`dtb` pair in `into`
-provides boot. Directory exports and other value grammars fail closed. Context
-COPY selects a single bare file or directory name; source patterns and the old
-owner/group/mode fields are rejected. Artifact names conflicting with the context
-or another producer are rejected. Whether artifact keys should become paths is
-still open. These choices are isolated in the executable's private plan schema.
+```yaml
+image:
+  root: rootfs
+  boot: {from: package, path: /boot/image.pmi}
+  bootconfig:
+    from: registry.example.com/base:1
+    values:
+      corium.root: ""
+      corium.log: info
+      corium.halt: null
+      kernel.console: [ttyS0, hvc0]
+      kernel.quiet: []
+```
+
+Here `boot` extracts a regular PMI file from a persisted image root. A scalar
+`boot` instead selects an existing image's PMI. Omitted components are absent;
+bootconfig requires PMI. Omitting bootconfig's `from` starts empty. Strings,
+string lists, bare keys (`[]`), empty strings, and exact-key deletion (`null`)
+remain distinct. An existing `corium.root` is rebound after an overlay when new
+root layers or a different root are joined. Unchanged-root overlays retain the
+authored binding. PMI bytes and their embedded command line are never rewritten.
+Updating Corium code requires a new PMI.
+
+COPY without `from` reads the captured Git context. With `from`, it reads a
+named stage's whole persisted root; stage mounts are not replayed. Destination
+paths belong to the execution root (`/mnt/...` during creation). ESP and tmpfs
+mount targets always belong to the output image namespace. Mounts span the
+stage's commands and copies; ESP writes persist, tmpfs writes disappear.
 
 The 28 October 2026 decision in
 [DESIGN §11](DESIGN.md#11-artifact-and-build-annotations) drops `inventory.cbor`
@@ -220,3 +244,17 @@ amd64 and Arm64.
   for a reader with no knowledge of the project's history or how the work was
   produced. Do not reference internal process, prior iterations, or review
   back-and-forth. (gitlint cannot check this — it is a review responsibility.)
+
+The portable `artifact::BootConfig` type parses native Linux configuration and
+writes deterministic text. It retains bare keys, empty values and arrays; it
+accepts nested keys, comments, `:=` replacement and `+=` append syntax on input.
+`recipe::BootConfig::apply` applies YAML values to a resolved base: null deletes
+only that key, and arrays replace the complete previous value. Linux has no
+quote escapes; values that cannot be represented faithfully are errors.
+
+Images carry native text as `application/vnd.pichi.bootconfig.v1`, alongside
+exactly one PMI. Empty images and standalone boot configurations are invalid.
+An empty merged configuration has no descriptor. Input validation authenticates
+config bytes, checks Linux limits, and checks every PMI target's reservation,
+including native padding and footer space. The engine validates PMI architecture and reservations before publishing.
+Bootconfig is native text; it is not a detached DTB.

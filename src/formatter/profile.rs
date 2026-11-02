@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    plan::FilesystemSpec,
+    contract::recipe::Format,
     value::{FilesystemLabel, FilesystemSize},
 };
 #[cfg(test)]
@@ -15,10 +15,14 @@ use std::{ffi::OsString, path::Path};
 pub(crate) struct Ext4Format {
     size: FilesystemSize,
     label: FilesystemLabel,
+    esp: Option<FilesystemSize>,
 }
-impl From<&FilesystemSpec> for Ext4Format {
-    fn from(spec: &FilesystemSpec) -> Self {
-        Self::new(spec.size(), spec.label().clone())
+impl From<&Format> for Ext4Format {
+    fn from(spec: &Format) -> Self {
+        let Format::Ext4(spec) = spec;
+        let mut format = Self::new(spec.size, spec.label.clone());
+        format.esp = spec.esp;
+        format
     }
 }
 impl Ext4Format {
@@ -43,7 +47,21 @@ impl Ext4Format {
         "root_owner=0:0,nodiscard,lazy_itable_init=0,lazy_journal_init=0",
     ];
     pub(crate) fn new(size: FilesystemSize, label: FilesystemLabel) -> Self {
-        Self { size, label }
+        Self {
+            size,
+            label,
+            esp: None,
+        }
+    }
+    pub(crate) fn layout(&self) -> std::io::Result<crate::disk::Layout> {
+        crate::disk::Layout::new(
+            crate::disk::Architecture::current()?,
+            self.size.bytes(),
+            self.esp()?.map(|esp| esp.bytes()),
+        )
+    }
+    pub(crate) fn esp(&self) -> std::io::Result<Option<super::Fat32Format>> {
+        self.esp.map(super::Fat32Format::try_from).transpose()
     }
     #[cfg(test)]
     pub(crate) fn size(&self) -> FilesystemSize {

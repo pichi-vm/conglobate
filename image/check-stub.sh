@@ -39,6 +39,10 @@ grep -q 'Requires=.*run-pichi-output.mount' "$service" || fail "service must Req
 grep -q '^RemainAfterExit=no$' "$service" || fail "service must not remain after exit (SuccessAction would not run)"
 grep -q '^SuccessAction=poweroff-force$' "$service" || fail "service must power off on success"
 grep -q '^FailureAction=poweroff-force$' "$service" || fail "service must power off on failure"
+grep -q '^PrivateNetwork=yes$' "$service" || fail "supervisor must have an offline namespace"
+grep -q 'Requires=.*conglobate-network.service' "$service" || fail "commands need the pinned appliance namespace"
+grep -q 'mount --bind /proc/1/ns/net /run/pichi/netns' "$root/units/conglobate-network.service" || fail "appliance network must be pinned before the supervisor starts"
+grep -q '^BindReadOnlyPaths=/run/systemd/resolve/resolv.conf:/run/pichi/resolv.conf$' "$service" || fail "commands need captured DNS configuration"
 grep -q '^StandardOutput=journal+console$' "$service" || fail "service must mirror stdout to the console"
 grep -q '^StandardError=journal+console$' "$service" || fail "service must mirror stderr to the console"
 
@@ -51,6 +55,8 @@ grep -qi 'not the bootstrap' "$plan" || fail "plan must say it is not the bootst
 conf="$root/mkosi.conf"
 [[ -f "$conf" ]] || fail "missing mkosi.conf"
 grep -q '^Distribution=fedora$' "$conf" || fail "mkosi.conf must be Fedora"
+grep -q '^SectorSize=4096$' "$conf" || fail "disk must use 4096-byte sectors"
+grep -q 'dosfstools' "$conf" || fail "appliance must install mkfs.fat"
 grep -q '^Release=43$' "$conf" || fail "mkosi.conf must pin Fedora 43"
 grep -q 'e2fsprogs' "$conf" || fail "mkosi.conf must install e2fsprogs"
 grep -q 'kernel-modules' "$conf" || fail "mkosi.conf must install kernel-modules for virtiofs"
@@ -66,6 +72,10 @@ grep -q '^Minimize=guess$' "$root/mkosi.repart/10-root.conf" || fail "root must 
 
 [[ -x "$root/build.sh" ]] || fail "build.sh must be executable"
 grep -q 'pichi import raw' "$root/build.sh" || fail "build.sh must import the raw carapace"
+grep -q 'pichi import raw "$disk"' "$root/build.sh" || fail "import must retain the whole GPT disk"
+grep -q -- '--cmdline bootconfig' "$root/build.sh" || fail "PMI command line must be fixed"
+grep -q -- '--dtb attached' "$root/build.sh" || fail "PMI must embed the platform DTB"
+grep -q -- '--bootconfig' "$root/build.sh" || fail "image must carry native bootconfig"
 grep -q 'pichi import pmi' "$root/build.sh" || fail "build.sh must import the PMI"
 grep -q '/usr/bin/conglobate' "$root/build.sh" || fail "build.sh must install /usr/bin/conglobate"
 grep -q 'virtiofs' "$root/build.sh" || fail "build.sh must stage virtiofs autoload"
@@ -75,6 +85,8 @@ if grep -q 'pichi manifest push' "$root/build.sh"; then
 fi
 
 [[ -f "$root/mkosi.finalize" ]] || fail "missing mkosi.finalize"
+grep -q 'BOOT_CONFIG' "$root/mkosi.finalize" || fail "kernel must support native bootconfig"
+grep -q 'VFAT_FS' "$root/mkosi.finalize" || fail "kernel must support ESP stage mounts"
 grep -q 'virtiofs' "$root/mkosi.finalize" || fail "finalize must require virtiofs"
 grep -q 'FUSE_FS' "$root/mkosi.finalize" || fail "finalize must require fuse"
 grep -q 'mke2fs' "$root/mkosi.finalize" || fail "finalize must require mke2fs"
@@ -88,7 +100,7 @@ grep -q "github.event_name != 'pull_request'" "$workflow" || fail "pull requests
 grep -q 'pichi manifest push' "$workflow" || fail "workflow must push the index on main"
 grep -q ':latest' "$workflow" || fail "workflow must tag :latest"
 grep -q 'CONGLOBATE_VERSION' "$workflow" || fail "workflow must tag the crate version"
-grep -q '\-\-os pichi' "$workflow" || fail "workflow must set platform.os=pichi"
+grep -q -- '--os pichi' "$workflow" || fail "workflow must set platform.os=pichi"
 grep -q 'arch amd64' "$workflow" || fail "workflow must annotate amd64"
 grep -q 'arch arm64' "$workflow" || fail "workflow must annotate arm64"
 grep -q 'ubuntu-24.04-arm' "$workflow" || fail "workflow must build arm64 natively"

@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
-    - run: |
+    extending: qualification.local/fedora:43
+    derive:
+    - exec: |
         if printf 'invalid\n' >> /etc/resolv.conf; then
           echo 'resolver unexpectedly writable' >&2
           exit 1

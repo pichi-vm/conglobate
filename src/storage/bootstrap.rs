@@ -80,13 +80,14 @@ impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Mounted> {
             .copy_with_output(&mut self.output, context, directive)
     }
 
-    pub(crate) fn copy_artifact(
+    pub(crate) fn copy_image(
         &mut self,
         directive: &crate::plan::Copy,
-        source: &crate::firmware::FirmwareFile<'_>,
+        source: &Volume<'_, '_, '_, Mounted>,
+        budget: &crate::step::SetupBudget,
     ) -> Result<(), crate::copy::CopyError> {
         self.tool
-            .copy_artifact(Some(&mut self.output), directive, source)
+            .copy_image(Some(&mut self.output), directive, source, budget)
     }
     pub(crate) fn tool(&self) -> &Volume<'n, 'o, 'w, Mounted> {
         &self.tool

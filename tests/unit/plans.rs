@@ -9,73 +9,81 @@ fn parse(text: &str) -> Result<Plan, conglobate::plan::PlanError> {
     Plan::try_from(YamlDocument::from(text))
 }
 #[test]
-fn locked_filesystem_exec_and_image_sketches_are_accepted() {
-    let plan = parse("image: rootfs\ntasks:\n  rootfs:\n    kind: bootstrap\n    from: registry.example.com/fedora:43\n    filesystem:\n      kind: ext4\n      size: 4GiB\n      label: rootfs\n    exec:\n      - run: dnf install -y nginx\n        network: true\n        timeout: 5m\n").unwrap();
-    assert_eq!(plan.order()[0].as_ref(), "rootfs");
-    let Directive::Run(run) = &plan.tasks().values().next().unwrap().directives()[0] else {
+fn creation_exec_and_component_selection_are_accepted() {
+    let plan = parse("image: rootfs\nstages:\n  rootfs:\n    using: registry.example.com/fedora:43\n    format: {kind: ext4, size: 4GiB, label: rootfs}\n    derive:\n      - exec: dnf install -y nginx\n        network: true\n        timeout: 5m\n").unwrap();
+    assert_eq!(plan.order[0].as_ref(), "rootfs");
+    let Directive::Exec(exec) = &plan.stages.values().next().unwrap().derive[0] else {
         panic!()
     };
-    assert!(run.network());
-    assert_eq!(run.timeout().duration().as_secs(), 300);
-    assert!(parse("image: {root: rootfs, boot: firmware}\ntasks:\n  rootfs: {kind: extend, from: registry.example.com/root:1}\n  firmware: {kind: build, from: rootfs, into: {pmi: /boot.pmi, dtb: /boot.dtb}}\n").is_ok());
+    assert!(exec.network);
+    assert_eq!(exec.timeout.duration().as_secs(), 300);
+    assert!(parse("image: {root: rootfs, boot: {from: firmware, path: /boot.pmi}}\nstages:\n  rootfs: {extending: registry.test/root:1, derive: [{exec: install}]}\n  firmware: {extending: rootfs, derive: [{exec: compile}]}\n").is_ok());
 }
 #[test]
-fn reject_old_pipeline_and_unlocked_kind_vocabulary() {
+fn old_task_and_pipeline_vocabulary_is_rejected() {
     for text in [
         "{}",
-        "image: x",
+        "image: missing",
         "bootstrap: {}",
         "carapace: {}",
         "firmware: {}",
         "transform: []",
         "platform: {}",
         "lock: {}",
+        "image: registry.test/base:1\ntasks: {}",
     ] {
         assert!(parse(text).is_err(), "{text}");
     }
-    for kind in ["import", "platform", "export", "make", "produce"] {
+    for kind in [
+        "bootstrap",
+        "extend",
+        "build",
+        "import",
+        "platform",
+        "export",
+        "make",
+        "produce",
+    ] {
         assert!(
             parse(&format!(
-                "image: x\ntasks: {{x: {{kind: {kind}, from: registry.test/tool:1}}}}"
+                "image: x\nstages: {{x: {{kind: {kind}, from: registry.test/tool:1}}}}"
             ))
             .is_err()
         );
     }
 }
 #[test]
-fn reject_unknown_duplicates_nulls_and_wrong_shapes_at_every_level() {
-    let good = "image: x\ntasks: {x: {kind: extend, from: registry.test/base:1}}";
-    assert!(parse(good).is_ok());
-    for field in [
+fn unknown_duplicates_nulls_and_wrong_shapes_are_rejected() {
+    assert!(
+        parse("image: x\nstages: {x: {extending: registry.test/base:1, derive: [{exec: 'true'}]}}")
+            .is_ok()
+    );
+    for text in [
         "image: null",
-        "tasks: null",
-        "image: x\nimage: x\ntasks: {}",
-        "image: x\ntasks: {x: {kind: extend, kind: build, from: registry.test/base:1}}",
+        "image: registry.test/base:1\nstages: null",
+        "image: x\nimage: x\nstages: {}",
+        "image: x\nstages: {x: {extending: a, extending: b, derive: [{exec: 'true'}]}}",
     ] {
-        assert!(parse(field).is_err());
+        assert!(parse(text).is_err(), "{text}");
     }
     for fields in [
-        "from: null",
-        "from: registry.test/base:1, exec: null",
-        "from: registry.test/base:1, derive: []",
-        "from: registry.test/base:1, filesystem: {kind: ext4, size: 16MiB}",
-        "from: registry.test/base:1, exec: [{run: echo, network: null}]",
-        "from: registry.test/base:1, exec: [{run: echo, network: yes}]",
-        "from: registry.test/base:1, exec: [{run: echo, timeout: 0s}]",
-        "from: registry.test/base:1, exec: [{run: echo, copy: {from: input, into: /x}}]",
-        "from: registry.test/base:1, exec: [{copy: {from: input, into: /x, owner: root}}]",
-        "from: registry.test/base:1, exec: [{copy: {from: a:b, into: /x}}]",
-        "from: registry.test/base:1, exec: [{copy: {from: '*', into: /x}}]",
+        "extending: null, derive: [{exec: 'true'}]",
+        "extending: registry.test/base:1, derive: null",
+        "extending: registry.test/base:1, derive: []",
+        "extending: registry.test/base:1, format: {kind: ext4, size: 16MiB}, derive: [{exec: 'true'}]",
+        "extending: registry.test/base:1, derive: [{exec: echo, network: null}]",
+        "extending: registry.test/base:1, derive: [{exec: echo, network: yes}]",
+        "extending: registry.test/base:1, derive: [{exec: echo, timeout: 0s}]",
+        "extending: registry.test/base:1, derive: [{exec: echo, copy: {path: input, into: /x}}]",
+        "extending: registry.test/base:1, derive: [{copy: {path: input, into: /x, owner: root}}]",
+        "extending: registry.test/base:1, derive: [{copy: {from: registry.test/remote:1, path: input, into: /x}}]",
     ] {
         assert!(
-            parse(&format!(
-                "image: x\ntasks: {{x: {{kind: extend, {fields}}}}}"
-            ))
-            .is_err(),
+            parse(&format!("image: x\nstages: {{x: {{{fields}}}}}")).is_err(),
             "{fields}"
         );
     }
-    for fs in [
+    for format in [
         "type: ext4, size: 16MiB",
         "kind: xfs, size: 16MiB",
         "kind: ext4, size: 4G",
@@ -83,33 +91,37 @@ fn reject_unknown_duplicates_nulls_and_wrong_shapes_at_every_level() {
         "kind: ext4, size: 16MiB, label: null",
         "kind: ext4, size: 15MiB",
         "kind: ext4, size: 16MiB, label: abcdefghijklmnopq",
+        "kind: ext4, size: 16MiB, esp: 256MiB",
     ] {
-        assert!(parse(&format!("image: x\ntasks: {{x: {{kind: bootstrap, from: registry.test/tool:1, filesystem: {{{fs}}}}}}}")).is_err(),"{fs}");
+        assert!(parse(&format!("image: x\nstages: {{x: {{using: registry.test/tool:1, format: {{{format}}}, derive: [{{exec: 'true'}}]}}}}")).is_err(), "{format}");
     }
+    assert!(parse("image: x\nstages: {x: {using: registry.test/tool:1, format: {kind: ext4, size: 16MiB}, mount: {/efi: esp}, derive: [{exec: 'true'}]}}").is_err());
 }
 #[test]
-fn graph_checks_missing_inputs_exports_cycles_and_reachable_closure() {
-    let plan = parse("image: result\ntasks:\n  orphan: {kind: build, from: missing.registry/test:1, into: {ignored: /x}, exec: [{run: 'false', network: true}]}\n  result: {kind: extend, from: base, exec: [{copy: {from: payload, into: /payload}}]}\n  producer: {kind: build, from: base, into: {payload: /out}}\n  base: {kind: extend, from: registry.test/base:1}\n").unwrap();
+fn graph_checks_named_copies_cycles_and_selected_closure() {
+    let plan = parse("image: result\nstages:\n  orphan: {extending: missing.registry/test:1, derive: [{exec: 'false', network: true}]}\n  result: {extending: base, derive: [{copy: {from: producer, path: /out, into: /payload}}]}\n  producer: {extending: base, derive: [{exec: produce}]}\n  base: {extending: registry.test/base:1, derive: [{exec: base}]}\n").unwrap();
     assert_eq!(
-        plan.order().iter().map(|n| n.as_ref()).collect::<Vec<_>>(),
+        plan.order
+            .iter()
+            .map(|name| name.as_ref())
+            .collect::<Vec<_>>(),
         ["base", "producer", "result"]
     );
     for text in [
-        "image: x\ntasks: {x: {kind: extend, from: missing}}",
-        "image: x\ntasks: {x: {kind: extend, from: y}, y: {kind: extend, from: x}}",
-        "image: x\ntasks: {x: {kind: extend, from: registry.test/base:1, exec: [{copy: {from: payload, into: /x}}]}, y: {kind: build, from: x, into: {payload: /x}}}",
-        "image: x\ntasks: {x: {kind: build, from: registry.test/base:1, into: {payload: /x}}}",
-        "image: {root: x, boot: x}\ntasks: {x: {kind: bootstrap, from: registry.test/base:1, filesystem: {kind: ext4, size: 16MiB}}}",
-        "image: registry.test/base:1\ntasks: {}",
-        "image: x\ntasks: {x: {kind: extend, from: y}, y: {kind: build, from: registry.test/base:1, into: {pmi: /a, dtb: /b}}}",
+        "image: x\nstages: {x: {extending: missing, derive: [{exec: x}]}}",
+        "image: x\nstages: {x: {extending: y, derive: [{exec: x}]}, y: {extending: x, derive: [{exec: y}]}}",
+        "image: x\nstages: {x: {extending: registry.test/base:1, derive: [{copy: {from: y, path: payload, into: /x}}]}, y: {extending: x, derive: [{exec: y}]}}",
+        "image: {bootconfig: {values: {corium.root: ''}}}",
+        "image: {root: registry.test/base:1, bootconfig: {}}",
     ] {
         assert!(parse(text).is_err(), "{text}");
     }
-    assert!(parse("image: boot\ntasks: {boot: {kind: build, from: registry.test/base:1, into: {pmi: /a, dtb: /b}}}").is_ok());
+    assert!(parse("image: registry.test/base:1").is_ok());
+    assert!(parse("image: {boot: registry.test/base:1}").is_ok());
 }
 #[test]
 fn defaults_and_remote_qualification_are_strict() {
-    use crate::plan::schema::{Local, Reference, Remote};
+    use crate::contract::recipe::{ImageRef, Remote, StageRef};
     for remote in [
         "registry.example.com/fedora:43",
         "localhost:5000/tool:1",
@@ -119,13 +131,13 @@ fn defaults_and_remote_qualification_are_strict() {
         "localhost/tool@sha256:0000000000000000000000000000000000000000000000000000000000000000",
     ] {
         assert!(remote.parse::<Remote>().is_ok(), "{remote}");
-        assert!(remote.parse::<Local>().is_err());
+        assert!(remote.parse::<StageRef>().is_err());
     }
     for bad in [
         "alpine",
         "alpine:latest",
         "user/image:tag",
-        "./task",
+        "./stage",
         "registry.test/../tool",
         "registry.test/tool:bad:tag",
         "registry.test:bad/tool",
@@ -134,15 +146,50 @@ fn defaults_and_remote_qualification_are_strict() {
     ] {
         assert!(bad.parse::<Remote>().is_err(), "{bad}");
     }
-    let local: Reference = serde_saphyr::from_str("base").unwrap();
-    assert!(matches!(local, Reference::Local(_)));
-    let plan = parse(
-        "image: x\ntasks: {x: {kind: extend, from: registry.test/base:1, exec: [{run: 'true'}]}}",
-    )
-    .unwrap();
-    let Directive::Run(run) = &plan.tasks().values().next().unwrap().directives()[0] else {
+    let local: ImageRef = serde_saphyr::from_str("base").unwrap();
+    assert!(matches!(local, ImageRef::Local(_)));
+    let plan =
+        parse("image: x\nstages: {x: {extending: registry.test/base:1, derive: [{exec: 'true'}]}}")
+            .unwrap();
+    let Directive::Exec(exec) = &plan.stages.values().next().unwrap().derive[0] else {
         panic!()
     };
-    assert!(!run.network());
-    assert_eq!(run.timeout().duration().as_secs(), 300);
+    assert!(!exec.network);
+    assert_eq!(exec.timeout.duration().as_secs(), 300);
+}
+
+#[test]
+fn shipped_staged_plans_use_the_runtime_contract() {
+    for text in [
+        include_str!("../../image/conglobate.plan.yaml"),
+        include_str!("../distro/alpine/plan.yaml"),
+        include_str!("../distro/debian/plan.yaml"),
+        include_str!("../distro/fedora/plan.yaml"),
+        include_str!("../distro/nixos/plan.yaml"),
+        include_str!("../distro/firmware/plan.yaml"),
+        include_str!("../distro/pipeline/plan.yaml"),
+        include_str!("../distro/stage-mounts/plan.yaml"),
+        include_str!("../distro/stage-mounts/nonzero.yaml"),
+        include_str!("../distro/stage-mounts/timeout.yaml"),
+        include_str!("../distro/pipeline/imported-boot.yaml"),
+        include_str!("../distro/pipeline/boot-only.yaml"),
+        include_str!("../distro/pipeline/extend.yaml"),
+        include_str!("../distro/pipeline/copy-missing.yaml"),
+        include_str!("../distro/confinement/plan.yaml"),
+        include_str!("../distro/network/plan.yaml"),
+    ] {
+        parse(text).unwrap();
+    }
+    for fields in [
+        "derive: null",
+        "derive: [{exec: 123}]",
+        "derive: [{copy: {path: 123, into: /x}}]",
+    ] {
+        assert!(
+            parse(&format!(
+                "stages: {{root: {{extending: registry.test/base:1, {fields}}}}}\nimage: root"
+            ))
+            .is_err()
+        );
+    }
 }

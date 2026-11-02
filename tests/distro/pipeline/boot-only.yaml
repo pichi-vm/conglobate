@@ -1,17 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
-# Supply a PMI and DTB without a corium binding: this image has no root.
+# Extract a PMI without bootconfig: this image has no root.
 # A local carapace used only as tools must not define CARAPACE.
-tasks:
-  tools:
-    kind: extend
-    from: qualification.local/fedora:43
+stages:
   boot:
-    kind: build
-    from: tools
-    exec:
-      - run: |
+    extending: qualification.local/fedora:43
+    derive:
+      - exec: |
           test -z "${CARAPACE+x}"
           printf 'BOOT_ONLY_CARAPACE_UNDEFINED_PASS\n'
-      - copy: {from: firmware, into: /boot-input}
-    into: {pmi: /boot-input/boot.pmi, dtb: /boot-input/base.dtb}
-image: boot
+      - copy: {path: firmware, into: /boot-input}
+image:
+  boot: {from: boot, path: /boot-input/boot.pmi}

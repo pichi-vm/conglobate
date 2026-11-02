@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+stages:
+  source:
+    extending: qualification.local/fedora:43
+    derive:
+      - exec: printf 'NAMED_COPY_SOURCE_READY\n'
+  destination:
+    extending: source
+    mount: {/tmp: tmpfs}
+    derive:
+      - copy:
+          from: source
+          path: /missing-copy-source
+          into: /tmp/copied
+      - exec: printf 'NAMED_COPY_UNEXPECTED_CONTINUATION\n'
+image: destination

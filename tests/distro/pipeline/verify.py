@@ -8,7 +8,6 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from artifact import build_manifest
-import subprocess
 
 
 class PipelineEvidence:
@@ -30,7 +29,7 @@ class PipelineEvidence:
         serial = (self.run / 'serial.txt').read_text()
         markers = ['PIPELINE_BOOTSTRAP_PASS', 'PIPELINE_CARAPACE_FIRST_PASS',
                        'PIPELINE_CARAPACE_LAST_PASS',
-                       'MULTISTAGE_ARTIFACT_PRODUCER_PASS',
+                       'MULTISTAGE_FILE_PRODUCER_PASS',
                        'DISTRO_BUILD_AND_EXPORT_PASS']
         if not self.imported_boot:
             markers.append('PIPELINE_FIRMWARE_TOOLS_PASS')
@@ -47,7 +46,7 @@ class PipelineEvidence:
         layers = manifest['layers']
         assert len(layers) == 4
         assert sorted(layer['mediaType'] for layer in layers) == [
-            'application/vnd.pichi.dtb.v1', 'application/vnd.pichi.pmi.v1',
+            'application/vnd.pichi.bootconfig.v1', 'application/vnd.pichi.pmi.v1',
             'application/vnd.pichi.scute.v1', 'application/vnd.pichi.scute.v1']
         scutes = [layer for layer in layers if layer['mediaType'] == 'application/vnd.pichi.scute.v1']
         assert len(scutes) == 2
@@ -57,17 +56,15 @@ class PipelineEvidence:
             path, data = self.blob(layer)
             if layer['mediaType'] == 'application/vnd.pichi.pmi.v1':
                 assert data == (self.run / 'root/context/firmware/boot.pmi').read_bytes()
-            if layer['mediaType'] == 'application/vnd.pichi.dtb.v1':
-                cmdline = subprocess.check_output(
-                    ['fdtget', '-t', 's', str(path), '/chosen', 'bootargs'], text=True)
-                assert 'corium=' + root in cmdline.split()
+            if layer['mediaType'] == 'application/vnd.pichi.bootconfig.v1':
+                assert data.decode() == f'corium.root = "{root}";\n'
         expected = {item['digest'].split(':')[1]
                     for item in [descriptor, manifest['config'], *layers]}
         assert {path.name for path in (self.artifact / 'blobs/sha256').iterdir()} == expected
-        return {'full_pipeline_passed': True, 'finalized_artifact_copy': True,
+        return {'full_pipeline_passed': True, 'persisted_stage_copy': True,
                 'orphan_excluded_without_lock_or_network_input': True, 'one_carapace_scute': True,
                 'bootstrap_and_firmware_tools_not_inherited': True,
-                'root_bound_in_dtb': True, 'annotations_and_blob_graph_verified': True,
+                'root_bound_in_bootconfig': True, 'annotations_and_blob_graph_verified': True,
                 'boot_qualified': False, 'full_sandbox_qualified': False}
 
 

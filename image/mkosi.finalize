@@ -19,7 +19,7 @@
 #   3. strip /boot and the in-tree vmlinuz/System.map — boot payload is the
 #      PMI's domain; the carapace keeps only its .ko module tree;
 #   4. require virtiofs + fuse in that module tree, /usr/bin/conglobate, the
-#      mount units, and image-resident mke2fs.
+#      mount/network units, and image-resident ext4/FAT formatters.
 
 import glob
 import os
@@ -40,7 +40,8 @@ with open(f"{kd}/config") as f:
     config = dict(line.strip().split("=", 1) for line in f if line.startswith("CONFIG_") and "=" in line)
 
 # GPT parsing and the API filesystems must be available before module loading.
-for option in ("BLOCK", "BLK_DEV_INITRD", "DEVTMPFS", "PROC_FS", "SYSFS", "EFI_PARTITION"):
+for option in ("BLOCK", "BLK_DEV_INITRD", "BOOT_CONFIG", "DEVTMPFS", "PROC_FS", "SYSFS", "EFI_PARTITION",
+               "USER_NS", "PID_NS", "NET_NS"):
     if config.get(f"CONFIG_{option}") != "y":
         raise SystemExit(f"Corium requires CONFIG_{option}=y")
 
@@ -169,6 +170,11 @@ def require_fs_module(name, option):
 
 require_fs_module("fuse", "FUSE_FS")
 require_fs_module("virtiofs", "VIRTIO_FS")
+require_fs_module("loop", "BLK_DEV_LOOP")
+require_fs_module("vfat", "VFAT_FS")
+require_fs_module("nls_cp437", "NLS_CODEPAGE_437")
+require_fs_module("nls_iso8859-1", "NLS_ISO8859_1")
+require_fs_module("virtio_net", "VIRTIO_NET")
 
 binary = f"{buildroot}/usr/bin/conglobate"
 if not os.path.isfile(binary) or not os.access(binary, os.X_OK):
@@ -179,6 +185,7 @@ for unit in (
     "run-pichi-cache.mount",
     "run-pichi-output.mount",
     "conglobate-build.service",
+    "conglobate-network.service",
 ):
     path = f"{buildroot}/usr/lib/systemd/system/{unit}"
     if not os.path.isfile(path):
@@ -199,15 +206,24 @@ if not os.path.isfile(modules_load):
     raise SystemExit("missing modules-load.d/pichi-virtiofs.conf")
 with open(modules_load) as handle:
     loaded = {line.strip() for line in handle if line.strip() and not line.startswith("#")}
-for name in ("fuse", "virtiofs"):
+for name in ("fuse", "virtiofs", "loop", "vfat", "nls_cp437", "nls_iso8859-1", "virtio_net"):
     if name not in loaded:
         raise SystemExit(f"modules-load.d must list {name}")
 
-mke2fs = in_root("/usr/sbin/mke2fs")
-if not os.path.isfile(mke2fs):
-    mke2fs = in_root("/sbin/mke2fs")
-if not os.path.isfile(mke2fs) or not os.access(mke2fs, os.X_OK):
-    raise SystemExit("e2fsprogs mke2fs is not executable in the appliance rootfs")
+for binary, package in (("mke2fs", "e2fsprogs"), ("mkfs.fat", "dosfstools")):
+    paths = (in_root(f"/usr/sbin/{binary}"), in_root(f"/sbin/{binary}"))
+    if not any(os.path.isfile(path) and os.access(path, os.X_OK) for path in paths):
+        raise SystemExit(f"{package} {binary} is not executable in the appliance rootfs")
+
+network = f"{buildroot}/usr/lib/systemd/network/10-build.network"
+if not os.path.isfile(network):
+    raise SystemExit("missing DHCP configuration for the build network")
+for service, target in (("systemd-networkd", "multi-user"),
+                        ("systemd-resolved", "multi-user"),
+                        ("systemd-networkd-wait-online", "network-online")):
+    link = f"{buildroot}/usr/lib/systemd/system/{target}.target.wants/{service}.service"
+    if not os.path.islink(link):
+        raise SystemExit(f"network service is not enabled: {link}")
 
 ldd = subprocess.run(
     ["chroot", buildroot, "ldd", "/usr/bin/conglobate"],

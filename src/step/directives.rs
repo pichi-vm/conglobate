@@ -25,8 +25,7 @@ impl<R: CommandStorage> CompletedDirectives<R> {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct DirectiveInputs<'a, 'w> {
     pub(crate) context: &'a CapturedContext,
-    pub(crate) artifacts: &'a crate::pipeline::artifacts::Artifacts<'w>,
-    pub(crate) carapace: Option<&'a [u8; 32]>,
+    pub(crate) sources: &'a crate::pipeline::sources::Sources<'a, 'w>,
     pub(crate) network: Option<&'a crate::network::CommandNetworking<'a>>,
 }
 impl<'l> CommandSandbox<'l> {
@@ -39,8 +38,7 @@ impl<'l> CommandSandbox<'l> {
     ) -> anyhow::Result<CompletedDirectives<R>> {
         let DirectiveInputs {
             context,
-            artifacts,
-            carapace,
+            sources,
             network,
         } = inputs;
         use anyhow::Context;
@@ -48,23 +46,17 @@ impl<'l> CommandSandbox<'l> {
             network.is_some()
                 || !directives
                     .iter()
-                    .any(|d| matches!(d, Directive::Run(run) if run.network())),
+                    .any(|d| matches!(d, Directive::Exec(run) if run.network)),
             "network-enabled directives require captured networking"
         );
         for (index, directive) in directives.iter().enumerate() {
             (storage, reaper) = (|| match directive {
-                Directive::Run(run) => {
+                Directive::Exec(run) => {
                     let budget = SetupBudget::begin();
-                    let script = match carapace {
-                        Some(root) => {
-                            format!("export CARAPACE={}\n{}", hex::encode(root), run.command())
-                        }
-                        None => run.command().to_owned(),
-                    };
-                    let receiver = self.receiver(script, &budget)?;
+                    let receiver = self.receiver(run.exec.clone(), &budget)?;
                     let prepared = self.prepare_storage::<R>(storage, reaper, &budget)?;
                     let ready = prepared.launch(receiver, budget.deadline())?;
-                    if run.network() {
+                    if run.network {
                         let network = match self.prepare_network(network.expect("checked"), &budget)
                         {
                             Ok(network) => network,
@@ -72,14 +64,14 @@ impl<'l> CommandSandbox<'l> {
                         };
                         Ok(ready
                             .with_network(network)
-                            .execute(budget, run.timeout())?
+                            .execute(budget, run.timeout)?
                             .into_parts())
                     } else {
-                        Ok(ready.execute(budget, run.timeout())?.into_parts())
+                        Ok(ready.execute(budget, run.timeout)?.into_parts())
                     }
                 }
                 Directive::Copy(copy) => {
-                    self.copy_directive::<R>(storage, reaper, context, copy, artifacts)
+                    self.copy_directive::<R>(storage, reaper, context, copy, sources)
                 }
             })()
             .with_context(|| format!("directive {index}"))?;
@@ -92,17 +84,14 @@ impl<'l> CommandSandbox<'l> {
         reaper: ChildReaper,
         context: &CapturedContext,
         directive: &Copy,
-        artifacts: &crate::pipeline::artifacts::Artifacts<'_>,
+        sources: &crate::pipeline::sources::Sources<'_, '_>,
     ) -> anyhow::Result<(R::Unmounted, ChildReaper)> {
         let budget = SetupBudget::begin();
         let mut mounted = R::mount(storage, self.mount_parent(), budget.deadline())?;
         let result = (|| -> anyhow::Result<()> {
             budget.check()?;
-            if let Some(source) = artifacts
-                .iter()
-                .find_map(|(name, file)| (name.as_ref() == directive.artifact()).then_some(file))
-            {
-                mounted.copy_artifact(directive, source)?;
+            if directive.from().is_some() {
+                sources.copy(&mut mounted, directive, &budget)?;
             } else {
                 mounted.copy(context, directive)?;
             }

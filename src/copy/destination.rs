@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+mod image;
 use super::{CopyMode, CopySources, SelectionError};
 use crate::{
     context::{CapturedContext, ContextEntry, ContextError},
@@ -276,44 +277,6 @@ impl<'a> CopyDestination<'a> {
                 return Err(CopyError::Invalid("directory passed to leaf writer"));
             }
         }
-        Ok(())
-    }
-    /// Transfer captured regular bytes through the same confined destination
-    /// resolver as context COPY. No source filesystem handle is exposed.
-    pub(crate) fn artifact(
-        &self,
-        directive: &Copy,
-        source: &crate::firmware::FirmwareFile<'_>,
-    ) -> Result<(), CopyError> {
-        let policy = MetadataPolicy {
-            uid: 0,
-            gid: 0,
-            mode: None,
-        };
-        let mut target = self.resolve(Path::new(directive.destination()), true)?;
-        if directive.destination().ends_with('/') {
-            self.directory(&target, &policy)?;
-        }
-        if self.observe(&target)?.is_some_and(|m| m.is_dir()) {
-            target.push(directive.artifact());
-        }
-        let name = target
-            .file_name()
-            .ok_or(CopyError::Invalid("artifact destination is root"))?;
-        let parent = self.directory(target.parent().unwrap(), &policy)?;
-        match fs::unlinkat(&parent, name, AtFlags::empty()) {
-            Ok(()) | Err(rustix::io::Errno::NOENT) => (),
-            Err(e) => return Err(e.into()),
-        }
-        let mut file: File = fs::openat(
-            &parent,
-            name,
-            OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::CLOEXEC | OFlags::NOFOLLOW,
-            Mode::from_raw_mode(0o600),
-        )?
-        .into();
-        io::copy(&mut source.reader(), &mut file)?;
-        policy.file(&file, source.mode(), false)?;
         Ok(())
     }
     pub(crate) fn copy(

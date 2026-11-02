@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
-    - run: printf 'COMMAND_LABEL_ADMISSION_PASS\n'
+    extending: qualification.local/fedora:43
+    derive:
+    - exec: printf 'COMMAND_LABEL_ADMISSION_PASS\n'
 image: rootfs

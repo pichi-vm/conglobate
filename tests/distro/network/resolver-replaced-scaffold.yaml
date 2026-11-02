@@ -1,15 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
-    - run: |
+    extending: qualification.local/fedora:43
+    derive:
+    - exec: |
         test ! -e /resolver-replaced
         mkdir /resolver-replaced
         rm -f /etc/resolv.conf
         ln -s /resolver-replaced/generated/config /etc/resolv.conf
-    - run: |
+    - exec: |
         test -f /etc/resolv.conf
         if printf 'invalid\n' >> /etc/resolv.conf; then exit 1; fi
         /bin/bash -eu -c '

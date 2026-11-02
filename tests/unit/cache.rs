@@ -81,12 +81,18 @@ fn opened_directory_authority_survives_rename_and_rejects_escape() {
 
 impl Store {
     fn manifest(&self) -> (Digest, Vec<u8>) {
+        let pmi = crate::firmware::tests::Fixture::native();
         let manifest = crate::artifact::Manifest {
             schema_version: 2,
             media_type: "application/vnd.oci.image.manifest.v1+json".into(),
             artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
             config: crate::artifact::ConfigDescriptor::canonical(),
-            layers: Vec::new(),
+            layers: vec![crate::artifact::Layer::Pmi(
+                crate::artifact::PmiDescriptor {
+                    digest: self.put(&pmi).to_string(),
+                    size: pmi.len() as u64,
+                },
+            )],
             annotations: Default::default(),
         };
         let bytes = serde_json::to_vec(&manifest).unwrap();
@@ -608,5 +614,52 @@ fn compressed_and_partial_inputs_use_prepared_data_including_single_block_trees(
         chain.scutes[0].data.read_exact_at(&mut bytes, 0).unwrap();
         assert!(bytes[..size].iter().all(|b| *b == 3));
         assert!(bytes[size..].iter().all(|b| *b == 0));
+    }
+}
+
+#[test]
+fn cached_bootconfig_is_authenticated_parsed_and_checked_against_its_pmi() {
+    use crate::{cache::HostArchitecture, firmware::tests::Fixture};
+    let store = Store::new();
+    let architecture = HostArchitecture::current().unwrap().oci_name();
+    let machine = if architecture == "amd64" {
+        0x8664
+    } else {
+        0xaa64
+    };
+    let spec = Fixture::bootconfig_spec(machine);
+    let pmi = Fixture::sections(machine, &[(".pmi.vm", &spec)], &[(".bconf", 4096)]);
+    let pmi_digest = store.put(&pmi);
+    for (text, valid) in [
+        ("corium.root = \"\";".to_owned(), true),
+        ("key = é;".into(), false),
+        ("key = one; key = two;".into(), false),
+        (format!("key = {};", "x".repeat(4080)), false),
+    ] {
+        let digest = store.put(text.as_bytes());
+        let (_, bytes) = store.manifest();
+        let mut manifest: crate::artifact::Manifest = serde_json::from_slice(&bytes).unwrap();
+        manifest.layers = vec![
+            crate::artifact::Layer::Pmi(crate::artifact::PmiDescriptor {
+                digest: pmi_digest.to_string(),
+                size: pmi.len() as u64,
+            }),
+            crate::artifact::Layer::BootConfig(crate::artifact::BootConfigDescriptor {
+                digest: digest.to_string(),
+                size: text.len() as u64,
+            }),
+        ];
+        let bytes = serde_json::to_vec(&manifest).unwrap();
+        let manifest_digest = store.put(&bytes);
+        let pin = store.index(vec![store.descriptor(&manifest_digest, bytes.len())]);
+        let cache = store.open();
+        let image = cache.resolve(pin).unwrap();
+        assert_eq!(cache.verify_metadata(&image).is_ok(), valid, "{text:?}");
+        if valid {
+            let mut changed = text.into_bytes();
+            changed[0] ^= 1;
+            std::fs::write(store.path(&digest), changed).unwrap();
+            assert!(cache.verify_metadata(&image).is_err());
+        }
     }
 }

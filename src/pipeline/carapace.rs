@@ -4,18 +4,17 @@
 use crate::{
     execution::HelperProgram,
     input::ResolvedBuild,
-    plan::Directive,
+    plan::Stage,
     process::ChildReaper,
     step::CommandSandbox,
     storage::{Created, Mapping, Mounted, Runtime, SealedScute, Unmounted, Volume, Workspace},
 };
 use std::{num::NonZeroU64, sync::Arc};
 
-/// Successful retained layers and their live read-only chain, ready for the next
-/// stage. The reaper transfers with the build instead of being reinstalled.
+/// Retained layers and the build's reaper. Stage results keep no live mappings;
+/// a dependent stage activates the complete persisted chain when it needs it.
 #[derive(Debug)]
 pub(super) struct DerivedCarapace<'w> {
-    pub(super) active: crate::storage::ReadOnlyChain<'w>,
     pub(super) scutes: Vec<Arc<SealedScute<'w>>>,
     pub(super) reaper: ChildReaper,
 }
@@ -25,15 +24,11 @@ impl<'w> DerivedCarapace<'w> {
         build: &ResolvedBuild,
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
-        directives: &[Directive],
-        artifacts: &super::artifacts::Artifacts<'_>,
-        carapace: Option<&[u8; 32]>,
+        stage: &Stage,
+        sources: &super::sources::Sources<'_, '_>,
+        active: crate::storage::ReadOnlyChain<'w>,
     ) -> anyhow::Result<Self> {
-        if directives.is_empty() {
-            return Ok(self);
-        }
         let Self {
-            active,
             scutes: mut produced,
             reaper,
         } = self;
@@ -51,7 +46,8 @@ impl<'w> DerivedCarapace<'w> {
             scratch.attach()?,
             NonZeroU64::new(carapace::ZERO_SIZE_SECTORS).unwrap(),
         )?;
-        let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())?;
+        let volume = Volume::<Unmounted>::in_init_namespace(snapshot, runtime.recovery())?
+            .with_mounts(&stage.mount, paths.volumes(), false)?;
         let networking = build
             .captured()
             .networking()
@@ -59,26 +55,24 @@ impl<'w> DerivedCarapace<'w> {
         let completed = sandbox.directives_with_inputs::<Volume<'_, '_, '_, Mounted>>(
             volume,
             reaper,
-            directives,
+            &stage.derive,
             crate::step::DirectiveInputs {
                 context: build.captured().context(),
-                artifacts,
-                carapace,
+                sources,
                 network: networking.as_ref(),
             },
         )?;
         let (volume, reaper) = completed.into_parts();
         let scute = Arc::new(
             volume
-                .into_snapshot()
+                .into_snapshot()?
                 .close()?
                 .detach()?
                 .seal_snapshot(*active.root())?,
         );
-        let active = active.extend(Arc::clone(&scute))?;
+        active.close()?;
         produced.push(scute);
         Ok(DerivedCarapace {
-            active,
             scutes: produced,
             reaper,
         })

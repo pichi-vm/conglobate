@@ -40,7 +40,7 @@ fn capacity_is_explicit_aligned_and_bounded() {
         assert_eq!(numeric.bytes(), bytes);
         assert_eq!(format!("{bytes}B").parse::<FilesystemSize>(), Ok(numeric));
     }
-    for bytes in [0, minimum - 4096, minimum + 1, maximum + 4096, u64::MAX] {
+    for bytes in [0, minimum - 4096, minimum + 1, u64::MAX] {
         assert!(FilesystemSize::try_from(bytes).is_err(), "{bytes}");
     }
     assert_eq!(
@@ -51,6 +51,15 @@ fn capacity_is_explicit_aligned_and_bounded() {
         "65GiB".parse::<FilesystemSize>().unwrap().bytes(),
         65 * 1024 * 1024 * 1024
     );
+    let oversized = maximum + 4096;
+    assert!(FilesystemSize::try_from(oversized).is_ok());
+    let plan = format!(
+        "stages:\n  base:\n    using: registry.test/base:1\n    format: {{kind: ext4, size: {oversized}B}}\n    derive: [{{exec: 'true'}}]\nimage: base\n"
+    );
+    assert!(matches!(
+        crate::plan::Plan::try_from(crate::document::YamlDocument::from(plan.as_str())),
+        Err(crate::plan::PlanError::Format(_))
+    ));
     for value in [
         "0B",
         "1GiB ",
@@ -113,6 +122,6 @@ fn timeout_parsing_uses_duration_bounds_without_a_policy_limit() {
         format!("{}s", seconds + 1)
             .parse::<CommandTimeout>()
             .unwrap_err(),
-        conglobate::value::ValueError::Overflow
+        crate::contract::recipe::ValueError::Overflow
     );
 }
