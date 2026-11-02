@@ -49,6 +49,13 @@ is a terminal VM-disposal case that checks retained storage on abandonment.
 A failed wait now performs its own bounded cancellation and cleanup.
 The stalled formatter parks; synchronization does not use sleeps.
 
+`stage-mounts` exercises persistent stage-owned tmpfs and ESP mounts across
+successive volume views. It verifies that source readers see no temporary
+mounts, that ESP contents remain on disk, and that missing ESP or a symlink
+mount target releases partially acquired owners. `stage-mount-busy` holds a
+directory in a nested child mount and requires unmount to fail while retaining
+the whole snapshot and runtime until disposable guest shutdown.
+
 `partition-storage` formats a 4 KiB-sector GPT with native ext4 root and FAT32
 ESP through the production formatter. It checks partition bounds and on-disk
 offsets, writes both filesystems, seals and extends the whole-disk snapshot,
@@ -312,6 +319,18 @@ checks the committed-context pipeline, not distro boot or full qualification.
 manifest. Pass its `index.pin` to `run.py --pin`; the runner commits the generated
 `images.lock` alongside the plan before invoking Conglobate. No placeholder
 manifest digest or precommitted distro lock is used.
+
+`stage-mounts/plan.yaml` checks creation and extension with explicit ESP,
+tmpfs and nested tmpfs mounts. Commands and COPY share their contents throughout
+the stage, even when a command renames a mount's parent directory. Later stages
+observe ESP writes but no temporary mounts. Its seed must contain sh, cat, cp,
+mkdir, mv, ldd and their libraries. Run `stage-mounts/verify.py RUN success`
+afterward to check command markers, cleanup and the four-layer exported chain.
+The companion `nonzero.yaml` and `timeout.yaml` deliberately fail after writing
+to both mounted filesystems; the generic runner returns failure. Their verifiers
+(`stage-mounts/verify.py RUN nonzero|timeout`) require the intended error,
+completed command cleanup, absent output and no execution of the next command.
+These checks qualify mount lifetime, not booting the output image.
 
 `pipeline/plan.yaml` exercises bootstrap, an extend task, a local build producer
 whose finalized artifact is copied into the root, and an explicit boot-producing

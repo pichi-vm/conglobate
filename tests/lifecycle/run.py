@@ -103,7 +103,7 @@ class LifecycleRun:
             (self.root / 'plan-runtime-files').write_text('\n'.join(sorted(files)) + '\n')
         mode = '' if self.args.drop is None else f'FORMATTER_DROP={self.args.drop} '
         setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\nmodprobe dm-verity\nmodprobe ext4\nmodprobe vfat\n'
-                 if self.args.case in ('partition-storage', 'partition-busy', 'formatter-failures', 'cache-storage', 'chain-storage') or self.args.case.startswith('sandbox-') else
+                 if self.args.case in ('stage-mounts', 'stage-mount-busy', 'partition-storage', 'partition-busy', 'formatter-failures', 'cache-storage', 'chain-storage') or self.args.case.startswith('sandbox-') else
                  'mkdir /work/cgroups\nmount -t cgroup2 cgroup2 /work/cgroups\n')
         if self.args.case in ('clone-filter', 'pty-filter'):
             setup = ''
@@ -194,7 +194,13 @@ exec sleep infinity
         serial = (self.output / 'serial.txt').read_text(errors='replace')
         # Immediate abandonment need not schedule the child before VM disposal.
         markers = [] if self.args.drop == 'running' else ['FORMATTER_STALL_ENTERED']
-        if self.args.case == 'partition-storage':
+        if self.args.case == 'stage-mounts':
+            markers = ['STAGE_MOUNTS_SURVIVE_DIRECTIVES_NOT_STAGE_PASS',
+                       'MISSING_ESP_RELEASES_PARTIAL_STAGE_PASS',
+                       'SYMLINK_MOUNT_RELEASES_PARTIAL_VIEWS_PASS']
+        elif self.args.case == 'stage-mount-busy':
+            markers = ['BUSY_STAGE_MOUNT_RETAINS_SNAPSHOT_AND_RUNTIME_PASS']
+        elif self.args.case == 'partition-storage':
             markers = ['PARTITIONED_ROOT_AND_ESP_FORMAT_PASS', 'PARTITION_WRITES_LEAVE_PARENT_UNCHANGED_PASS',
                        'WHOLE_DISK_LAYER_PRESERVES_BOTH_PARTITIONS_PASS', 'PARTITION_VIEWS_RELEASE_BEFORE_SEALING_PASS']
         elif self.args.case == 'partition-busy':
@@ -297,7 +303,7 @@ if __name__ == '__main__':
     parser.add_argument('--kernel', type=Path, required=True)
     parser.add_argument('--kernel-release', required=True)
     parser.add_argument('--module-root', type=Path, required=True)
-    parser.add_argument('--case', choices=['partition-storage', 'partition-busy', 'runtime-private-namespace', 'runtime-changed-namespace', 'workspace-mount', 'sandbox-unmapped-default-group', 'sandbox-unmapped-acl', 'sandbox-unmapped-owner', 'runtime-scope', 'sandbox-delayed-teardown', 'sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'pty-filter', 'oci-copy', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'external-network-input', 'sandbox-gate-failure', 'sandbox-start-reject', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
+    parser.add_argument('--case', choices=['stage-mounts', 'stage-mount-busy', 'partition-storage', 'partition-busy', 'runtime-private-namespace', 'runtime-changed-namespace', 'workspace-mount', 'sandbox-unmapped-default-group', 'sandbox-unmapped-acl', 'sandbox-unmapped-owner', 'runtime-scope', 'sandbox-delayed-teardown', 'sandbox-blocked-descendant', 'sandbox-cleanup-timeout', 'sandbox-held-cleanup', 'sandbox-missing-cleanup', 'clone-filter', 'pty-filter', 'oci-copy', 'chain-storage', 'sandbox-busy-execution', 'cache-storage', 'sandbox-writeback', 'formatter-failures', 'contained', 'sandbox-namespace-failure', 'sandbox-mount-failure', 'sandbox-launch-failure', 'sandbox-join-failure', 'sandbox-attached-exit', 'external-network-input', 'sandbox-gate-failure', 'sandbox-start-reject', 'sandbox-blocked-io', 'sandbox-supervisor-death'], default='formatter-failures')
     parser.add_argument('--oras', type=Path, help='Trusted ORAS binary for the OCI copy case')
     parser.add_argument('--accel', choices=['kvm', 'tcg'], default='kvm')
     parser.add_argument('--trace-mounts', action='store_true',
