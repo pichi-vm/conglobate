@@ -42,6 +42,11 @@ treat virtiofs as first-class, so this image keeps the modules itself.
   first). The engine still captures that binary and its `ldd` dependencies from
   the guest root. There is no host formatter path.
 
+- `systemd-networkd` configures the virtual NIC with DHCP. The build service
+  runs in a separate offline namespace; only `network: true` commands join
+  the configured appliance namespace. `systemd-resolved` supplies its DNS
+  configuration through `/run/pichi/resolv.conf`.
+
 Image hardcodes, not CBOR fields: UID/GID maps, the network-namespace path, and
 the resolver path (`src/appliance/mounts.rs`).
 
