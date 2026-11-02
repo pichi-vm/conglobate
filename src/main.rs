@@ -7,6 +7,8 @@ extern crate self as conglobate;
 mod anchor;
 mod appliance;
 use contract::artifact;
+#[cfg(test)]
+mod boot_config;
 mod cache;
 mod context;
 mod copy;
