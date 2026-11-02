@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::Scratch;
+use super::{Scratch, SnapshotOrigin};
 use crate::artifact::{ScuteAnnotations, ScuteDescriptor};
 use devmap_core::{BlockSize, Geometry};
 use devmap_snapshot::{Exception, Header};
@@ -90,12 +90,28 @@ impl Seek for ScuteReader<'_> {
 impl<'w> Scratch<'w> {
     /// Seal a detached persistent snapshot store. LoopAttachment::detach must
     /// have confirmed unbound state before returning this writable authority.
-    /// Only unused trailing capacity is removed; no filesystem image is copied
-    /// or converted. Caller separately owns command/finalization success proofs.
-    pub(crate) fn seal_snapshot(mut self, parent: [u8; 32]) -> io::Result<SealedScute<'w>> {
+    /// Compact against the retained, read-only origin before hashing any bytes.
+    /// Caller separately owns command/finalization success proofs.
+    pub(crate) fn seal_snapshot<'a>(
+        self,
+        parent: [u8; 32],
+        origin: impl Into<SnapshotOrigin<'a>>,
+    ) -> io::Result<SealedScute<'w>> {
+        let origin = origin.into().open_read_only()?;
+        self.seal_with_reader(parent, |offset, bytes| origin.read_exact_at(bytes, offset))
+    }
+
+    fn seal_with_reader(
+        mut self,
+        parent: [u8; 32],
+        read_origin: impl FnMut(u64, &mut [u8; 4096]) -> io::Result<()>,
+    ) -> io::Result<SealedScute<'w>> {
         let capacity = self.file.metadata()?.len();
         let extent = SnapshotExtent::read(&mut self.file, capacity)?;
         self.file.set_len(extent.bytes)?;
+        let packed = self._workspace.scratch()?;
+        let bytes = super::compact::compact(&self.file, packed.file(), read_origin)?;
+        self = packed;
         self.file.sync_all()?;
         self.file.rewind()?;
         let mut hash = self._workspace.scratch()?;
@@ -103,7 +119,7 @@ impl<'w> Scratch<'w> {
             input: &mut self.file,
             digest: Sha256::new(),
         };
-        let data_blocks = NonZero::new(extent.bytes / 4096).expect("nonempty snapshot extent");
+        let data_blocks = NonZero::new(bytes / 4096).expect("nonempty snapshot extent");
         let block = BlockSize::from_bytes(NonZero::new(4096).expect("nonzero block size"))
             .expect("valid block size");
         // Preserve the parent link and independently randomize this new layer.
@@ -129,7 +145,7 @@ impl<'w> Scratch<'w> {
         hash.sync_all()?;
         let descriptor = ScuteDescriptor {
             digest,
-            size: extent.bytes,
+            size: bytes,
             annotations: ScuteAnnotations {
                 data_blocks,
                 salt: hex::encode(salt),
@@ -269,7 +285,9 @@ mod tests {
             // Unused capacity is deliberately excluded from both commitments.
             scratch.set_len(4 * 4096).unwrap();
             let parent = [3; 32];
-            let sealed = scratch.seal_snapshot(parent).unwrap();
+            let sealed = scratch
+                .seal_with_reader(parent, |_, _| unreachable!())
+                .unwrap();
             let mut data = Vec::new();
             sealed.data_reader().read_to_end(&mut data).unwrap();
             assert_eq!(data, bytes);
@@ -308,6 +326,55 @@ mod tests {
         assert_ne!(roots[0], roots[1]);
     }
     #[test]
+    fn sealing_hashes_only_packed_exceptions_and_propagates_origin_failure() {
+        use std::io::Write;
+        let directory = tempfile::tempdir().unwrap();
+        let workspace = super::super::Workspace {
+            root: File::open(directory.path()).unwrap(),
+        };
+        let mut input = Store::new(8);
+        input.entry(0, 1, 7);
+        input.entry(1, 2, 4);
+        input.0[7 * 4096..8 * 4096].fill(9);
+        let mut scratch = workspace.scratch().unwrap();
+        scratch.write_all(&input.0).unwrap();
+        assert!(
+            scratch
+                .seal_with_reader([3; 32], |_, _| Err(io::ErrorKind::PermissionDenied.into()))
+                .is_err()
+        );
+        let mut scratch = workspace.scratch().unwrap();
+        scratch.write_all(&input.0).unwrap();
+        let sealed = scratch
+            .seal_with_reader([3; 32], |_, bytes| {
+                bytes.fill(9);
+                Ok(())
+            })
+            .unwrap();
+        let mut packed = Vec::new();
+        sealed.data_reader().read_to_end(&mut packed).unwrap();
+        assert_eq!(packed.len(), 3 * 4096);
+        let entry = Exception::decode(packed[4096..4112].try_into().unwrap());
+        assert_eq!((entry.old_chunk, entry.new_chunk), (2, 2));
+        assert!(packed[4112..].iter().all(|byte| *byte == 0));
+        assert_eq!(
+            sealed.descriptor().digest,
+            format!("sha256:{}", hex::encode(Sha256::digest(&packed)))
+        );
+        assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 3);
+        let mut header = [0; 512];
+        sealed.files().1.read_exact_at(&mut header, 0).unwrap();
+        assert_eq!(
+            VerityHeader::decode(header)
+                .unwrap()
+                .parameters
+                .data
+                .count
+                .get(),
+            3
+        );
+    }
+    #[test]
     fn sealing_rejects_incomplete_snapshot_extents() {
         use std::io::Write;
         let directory = tempfile::tempdir().unwrap();
@@ -317,7 +384,11 @@ mod tests {
         for length in [0, 4096, 4097, 8191] {
             let mut scratch = workspace.scratch().unwrap();
             scratch.write_all(&Store::new(2).0[..length]).unwrap();
-            assert!(scratch.seal_snapshot([0; 32]).is_err());
+            assert!(
+                scratch
+                    .seal_with_reader([0; 32], |_, _| unreachable!())
+                    .is_err()
+            );
         }
     }
     #[test]
@@ -331,7 +402,11 @@ mod tests {
         };
         let mut scratch = workspace.scratch().unwrap();
         scratch.write_all(&Store::new(2).0).unwrap();
-        let base = Arc::new(scratch.seal_snapshot([0; 32]).unwrap());
+        let base = Arc::new(
+            scratch
+                .seal_with_reader([0; 32], |_, _| unreachable!())
+                .unwrap(),
+        );
         let output = directory.path().join("base");
         let image = AssembledImage::bootstrap_layers(&[Arc::clone(&base)], &output).unwrap();
         assert_eq!(
@@ -347,7 +422,11 @@ mod tests {
         let image = cache.resolve(digest.to_string().parse().unwrap()).unwrap();
         let mut scratch = workspace.scratch().unwrap();
         scratch.write_all(&Store::new(2).0).unwrap();
-        let top = Arc::new(scratch.seal_snapshot(*base.root()).unwrap());
+        let top = Arc::new(
+            scratch
+                .seal_with_reader(*base.root(), |_, _| unreachable!())
+                .unwrap(),
+        );
         let dtb = crate::planner::TransformSelection::Builtin
             .apply(None, None)
             .unwrap();
