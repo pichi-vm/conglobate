@@ -39,6 +39,10 @@ grep -q 'Requires=.*run-pichi-output.mount' "$service" || fail "service must Req
 grep -q '^RemainAfterExit=no$' "$service" || fail "service must not remain after exit (SuccessAction would not run)"
 grep -q '^SuccessAction=poweroff-force$' "$service" || fail "service must power off on success"
 grep -q '^FailureAction=poweroff-force$' "$service" || fail "service must power off on failure"
+grep -q '^PrivateNetwork=yes$' "$service" || fail "supervisor must have an offline namespace"
+grep -q 'Requires=.*conglobate-network.service' "$service" || fail "commands need the pinned appliance namespace"
+grep -q 'mount --bind /proc/1/ns/net /run/pichi/netns' "$root/units/conglobate-network.service" || fail "appliance network must be pinned before the supervisor starts"
+grep -q '^BindReadOnlyPaths=/run/systemd/resolve/resolv.conf:/run/pichi/resolv.conf$' "$service" || fail "commands need captured DNS configuration"
 grep -q '^StandardOutput=journal+console$' "$service" || fail "service must mirror stdout to the console"
 grep -q '^StandardError=journal+console$' "$service" || fail "service must mirror stderr to the console"
 
