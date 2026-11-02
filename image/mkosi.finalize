@@ -40,7 +40,7 @@ with open(f"{kd}/config") as f:
     config = dict(line.strip().split("=", 1) for line in f if line.startswith("CONFIG_") and "=" in line)
 
 # GPT parsing and the API filesystems must be available before module loading.
-for option in ("BLOCK", "BLK_DEV_INITRD", "DEVTMPFS", "PROC_FS", "SYSFS", "EFI_PARTITION"):
+for option in ("BLOCK", "BLK_DEV_INITRD", "BOOT_CONFIG", "DEVTMPFS", "PROC_FS", "SYSFS", "EFI_PARTITION"):
     if config.get(f"CONFIG_{option}") != "y":
         raise SystemExit(f"Corium requires CONFIG_{option}=y")
 
