@@ -4,13 +4,16 @@
 //! Shared, application-independent types for OCI-compatible pichi artifacts.
 //!
 //! Defines image manifests, component descriptors, media types, digests,
-//! references, and the artifact config-blob schema. This module performs no
-//! filesystem, registry, cache, VM-launch, hashing, or codec operations.
+//! references, native boot configuration, and the artifact config-blob schema.
+//! This module performs no filesystem, registry, cache, VM-launch, or hashing operations.
 //! Callers serialize and deserialize these types with their chosen serde codec.
 //!
 //! Retired here from the standalone `pichi-artifact` crate. The v1 format uses
 //! these shared types, including required scute lengths and a manifest chain tip.
 
+mod boot_config;
+mod boot_config_error;
+mod boot_config_parser;
 mod config;
 mod digest;
 mod index;
@@ -18,6 +21,8 @@ mod manifest;
 mod media_type;
 mod reference;
 
+pub use boot_config::BootConfig;
+pub use boot_config_error::BootConfigError;
 pub use config::{
     Band, CONFIG_SCHEMA_VERSION, Config, ConfigError, Ingress, Interface, Memory, PortSpec,
     Requirements,
