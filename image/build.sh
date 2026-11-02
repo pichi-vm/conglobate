@@ -102,7 +102,7 @@ for tag in repo cache output; do
 	ln -s "../run-pichi-${tag}.mount" "$inst/local-fs.target.wants/run-pichi-${tag}.mount"
 done
 ln -s ../conglobate-build.service "$inst/multi-user.target.wants/conglobate-build.service"
-printf '%s\n' fuse virtiofs > "$extra/usr/lib/modules-load.d/pichi-virtiofs.conf"
+printf '%s\n' fuse virtiofs loop vfat nls_cp437 nls_iso8859-1 > "$extra/usr/lib/modules-load.d/pichi-virtiofs.conf"
 
 # mkosi copies mkosi.extra/ into the image before mkosi.finalize.
 mkosi --force --release "$RELEASE" --output-dir "$work"
