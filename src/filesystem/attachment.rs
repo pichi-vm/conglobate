@@ -84,6 +84,7 @@ struct AttachmentBacking {
     point: MountPoint,
     _namespace: File,
     output_namespace: Option<File>,
+    children: super::children::MountChildren,
 }
 #[derive(Debug)]
 struct AttachmentLease {
@@ -92,6 +93,12 @@ struct AttachmentLease {
 }
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum AttachmentFailure<'ns> {
+    #[error("capturing assigned submounts: {source}")]
+    Children {
+        source: io::Error,
+        mount: Mount<'ns, Attached>,
+    },
+
     #[error("attaching mapped root: {source}")]
     Root {
         source: io::Error,
@@ -145,13 +152,14 @@ impl<'ns> Mount<'ns, Idmapped> {
                         point,
                         _namespace,
                         output_namespace: None,
+                        children: super::children::MountChildren::default(),
                     }),
                 },
             },
             _scope: self._scope,
             _thread: PhantomData,
         };
-        match output {
+        let mut mounted = match output {
             Some(output) => mounted.attach_output(Mount {
                 resources: IdmappedResources {
                     root: output.root,
@@ -162,6 +170,22 @@ impl<'ns> Mount<'ns, Idmapped> {
                 _thread: PhantomData,
             }),
             None => Ok(mounted),
+        }?;
+        match super::children::MountChildren::capture(&mounted.resources.root) {
+            Ok(children) => {
+                mounted
+                    .resources
+                    .lease
+                    .backing
+                    .as_mut()
+                    .expect("attached root")
+                    .children = children;
+                Ok(mounted)
+            }
+            Err(source) => Err(AttachmentFailure::Children {
+                source,
+                mount: mounted,
+            }),
         }
     }
 }
@@ -229,10 +253,8 @@ impl AttachmentLease {
         let result = (|| -> io::Result<()> {
             scope.verify_current()?;
             let backing = self.backing.as_mut().expect("live attachment lease");
-            if backing.output_namespace.is_some() {
-                rustix::mount::unmount(backing.point.path().join("mnt"), UnmountFlags::empty())?;
-                backing.output_namespace.take();
-            }
+            backing.children.close()?;
+            backing.output_namespace.take();
             rustix::mount::unmount(backing.point.path(), UnmountFlags::empty())?;
             Ok(())
         })();
