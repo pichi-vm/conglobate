@@ -55,6 +55,7 @@ grep -qi 'not the bootstrap' "$plan" || fail "plan must say it is not the bootst
 conf="$root/mkosi.conf"
 [[ -f "$conf" ]] || fail "missing mkosi.conf"
 grep -q '^Distribution=fedora$' "$conf" || fail "mkosi.conf must be Fedora"
+grep -q '^SectorSize=4096$' "$conf" || fail "disk must use 4096-byte sectors"
 grep -q '^Release=43$' "$conf" || fail "mkosi.conf must pin Fedora 43"
 grep -q 'e2fsprogs' "$conf" || fail "mkosi.conf must install e2fsprogs"
 grep -q 'kernel-modules' "$conf" || fail "mkosi.conf must install kernel-modules for virtiofs"
@@ -70,6 +71,10 @@ grep -q '^Minimize=guess$' "$root/mkosi.repart/10-root.conf" || fail "root must 
 
 [[ -x "$root/build.sh" ]] || fail "build.sh must be executable"
 grep -q 'pichi import raw' "$root/build.sh" || fail "build.sh must import the raw carapace"
+grep -q 'pichi import raw "$disk"' "$root/build.sh" || fail "import must retain the whole GPT disk"
+grep -q -- '--cmdline bootconfig' "$root/build.sh" || fail "PMI command line must be fixed"
+grep -q -- '--dtb attached' "$root/build.sh" || fail "PMI must embed the platform DTB"
+grep -q -- '--bootconfig' "$root/build.sh" || fail "image must carry native bootconfig"
 grep -q 'pichi import pmi' "$root/build.sh" || fail "build.sh must import the PMI"
 grep -q '/usr/bin/conglobate' "$root/build.sh" || fail "build.sh must install /usr/bin/conglobate"
 grep -q 'virtiofs' "$root/build.sh" || fail "build.sh must stage virtiofs autoload"
@@ -79,6 +84,7 @@ if grep -q 'pichi manifest push' "$root/build.sh"; then
 fi
 
 [[ -f "$root/mkosi.finalize" ]] || fail "missing mkosi.finalize"
+grep -q 'BOOT_CONFIG' "$root/mkosi.finalize" || fail "kernel must support native bootconfig"
 grep -q 'virtiofs' "$root/mkosi.finalize" || fail "finalize must require virtiofs"
 grep -q 'FUSE_FS' "$root/mkosi.finalize" || fail "finalize must require fuse"
 grep -q 'mke2fs' "$root/mkosi.finalize" || fail "finalize must require mke2fs"
