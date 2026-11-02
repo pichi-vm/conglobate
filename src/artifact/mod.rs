@@ -11,6 +11,7 @@
 //! Retired here from the standalone `pichi-artifact` crate. The v1 format uses
 //! these shared types, including required scute lengths and a manifest chain tip.
 
+mod boot_config_descriptor;
 mod config;
 mod digest;
 mod index;
@@ -18,6 +19,7 @@ mod manifest;
 mod media_type;
 mod reference;
 
+pub use boot_config_descriptor::BootConfigDescriptor;
 pub use config::{
     Band, CONFIG_SCHEMA_VERSION, Config, ConfigError, Ingress, Interface, Memory, PortSpec,
     Requirements,
@@ -28,9 +30,9 @@ pub use manifest::{
     ManifestValidationError, PmiDescriptor, ScuteAnnotations, ScuteDescriptor,
 };
 pub use media_type::{
-    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_CONFIG_V1,
-    MEDIA_TYPE_PICHI_DTB_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_REQUIREMENTS_V1,
-    MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
+    MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_DTB_V1, MEDIA_TYPE_PICHI_PMI_V1,
+    MEDIA_TYPE_PICHI_REQUIREMENTS_V1, MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 pub use reference::{Reference, ReferenceKind, ReferenceParseError};
 

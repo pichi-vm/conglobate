@@ -48,6 +48,9 @@ pub const MEDIA_TYPE_PICHI_PMI_V1: &str = "application/vnd.pichi.pmi.v1";
 /// migration; new writers MUST NOT emit it.
 pub const MEDIA_TYPE_PICHI_REQUIREMENTS_V1: &str = "application/vnd.pichi.requirements.v1+yaml";
 
+/// Zstd-compressed native Linux boot configuration text accompanying a PMI.
+pub const MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD: &str = "application/vnd.pichi.bootconfig.v1+zstd";
+
 /// Base DTB layer: the measured base devicetree for a PMI built in the `dt`
 /// extension's *detached* channel mode. `pichi run` supplies it to the VMM
 /// out-of-band (`dillo --dtb`). At most one per manifest; appears only
