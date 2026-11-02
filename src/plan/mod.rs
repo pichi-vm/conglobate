@@ -8,7 +8,7 @@
 //! their private storage cannot be mutated into an invalid value.
 
 mod boot;
-pub mod boot_config;
+mod boot_config;
 mod directive;
 mod extract;
 mod filesystem;
@@ -23,6 +23,7 @@ mod stage;
 mod stage_ref;
 
 pub use boot::Boot;
+pub use boot_config::{Key, Value};
 pub use directive::Directive;
 pub use extract::Extract;
 pub use filesystem::Filesystem;
