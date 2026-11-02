@@ -9,13 +9,13 @@ import subprocess
 class GuestRuntime:
     TOOLS = (
         'bash', 'cat', 'cmp', 'chmod', 'chown', 'cp', 'e2fsck', 'getcap', 'getfacl',
-        'getfattr', 'git', 'grep', 'ip', 'ln', 'mkdir', 'mke2fs', 'modprobe', 'mount',
+        'getfattr', 'git', 'grep', 'ip', 'ln', 'mkdir', 'mke2fs', 'mkfs.fat', 'fsck.fat', 'modprobe', 'mount',
         'mv', 'newgidmap', 'newuidmap', 'nft', 'rm', 'rmdir', 'setcap',
         'setfacl', 'setfattr', 'setpriv', 'sleep', 'stat', 'touch', 'true',
         'truncate', 'umount', 'unshare',
     )
     MODULES = (
-        'loop', 'ext4', 'dm-zero', 'dm-snapshot', 'dm-verity', 'veth',
+        'loop', 'ext4', 'vfat', 'nls_cp437', 'nls_iso8859-1', 'dm-zero', 'dm-snapshot', 'dm-verity', 'veth',
         'nf_tables', 'nft_chain_nat', 'nft_masq', 'nft_ct',
     )
 
