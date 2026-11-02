@@ -129,6 +129,7 @@ impl Seek for Scratch<'_> {
 
 mod bootstrap;
 pub(crate) use bootstrap::BootstrapVolumes;
+mod compact;
 mod sealed;
 pub(crate) use sealed::{ScuteReader, SealedScute};
 
