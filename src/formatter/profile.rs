@@ -59,16 +59,12 @@ impl RootFormat {
         let (minimum_mib, max_label) = match self.filesystem {
             Filesystem::Ext4 => (16, 16),
             Filesystem::Xfs => (300, 12),
-            Filesystem::Btrfs => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    "unsupported root filesystem",
-                ));
-            }
+            Filesystem::Btrfs => (114, 255),
         };
         if self.size.bytes() < minimum_mib * 1024 * 1024
             || self.label.len() > max_label
             || self.label.contains('\0')
+            || (self.filesystem == Filesystem::Btrfs && self.label.contains('\n'))
         {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -116,7 +112,11 @@ impl RootFormat {
             ]
             .map(OsString::from)
             .to_vec(),
-            Filesystem::Btrfs => unreachable!("validated root filesystem"),
+            Filesystem::Btrfs => [
+                "-q", "-f", "-K", "-s", "4096", "-n", "16384", "-d", "single", "-m", "dup",
+            ]
+            .map(OsString::from)
+            .to_vec(),
         };
         args.extend([
             "-L".into(),

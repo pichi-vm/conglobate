@@ -86,6 +86,8 @@ impl PartitionStorage {
                 Self::command("e2fsck", &["-fn", &node])?;
             } else if kind == "xfs" {
                 Self::command("xfs_repair", &["-n", &node])?;
+            } else if kind == "btrfs" {
+                Self::command("btrfs", &["check", "--readonly", &node])?;
             } else {
                 Self::command("fsck.fat", &["-n", &node])?;
             }
@@ -111,7 +113,7 @@ impl PartitionStorage {
     }
 
     pub(super) fn run(busy: bool) -> Result<(), Box<dyn std::error::Error>> {
-        for filesystem in ["ext4", "xfs"] {
+        for filesystem in ["ext4", "xfs", "btrfs"] {
             Self::filesystem(filesystem, busy)?;
             if busy {
                 break;

@@ -13,9 +13,13 @@ pub(super) fn detect(source: &File) -> io::Result<&'static str> {
     if block[1080..1082] == [0x53, 0xef] {
         return Ok("ext4");
     }
+    source.read_exact_at(&mut block, 64 * 1024)?;
+    if &block[64..72] == b"_BHRfS_M" {
+        return Ok("btrfs");
+    }
     Err(io::Error::new(
         io::ErrorKind::InvalidData,
-        "root is not ext4 or XFS",
+        "root is not ext4, XFS, or Btrfs",
     ))
 }
 
@@ -24,7 +28,11 @@ mod tests {
     use super::*;
     #[test]
     fn selects_only_supported_filesystem_signatures() {
-        for (kind, offset, magic) in [("ext4", 1080, &[0x53, 0xef][..]), ("xfs", 0, &b"XFSB"[..])] {
+        for (kind, offset, magic) in [
+            ("ext4", 1080, &[0x53, 0xef][..]),
+            ("xfs", 0, &b"XFSB"[..]),
+            ("btrfs", 65536 + 64, &b"_BHRfS_M"[..]),
+        ] {
             let file = tempfile::tempfile().unwrap();
             file.set_len(128 * 1024).unwrap();
             assert!(detect(&file).is_err());

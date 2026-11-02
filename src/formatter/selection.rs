@@ -19,12 +19,7 @@ impl CapturedFormatter {
         let captured = Self::for_name(match spec.filesystem {
             crate::contract::plan::Filesystem::Ext4 => "ext4",
             crate::contract::plan::Filesystem::Xfs => "xfs",
-            crate::contract::plan::Filesystem::Btrfs => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "unsupported root filesystem",
-                ));
-            }
+            crate::contract::plan::Filesystem::Btrfs => "btrfs",
         })?;
         if let Some(size) = spec.esp {
             super::Fat32Format::try_from(size)?;
@@ -40,6 +35,7 @@ impl CapturedFormatter {
         match name {
             "ext4" => Self::capture_host_ext4(),
             "xfs" => Self::host_tool("mkfs.xfs")?.with_mount_table(),
+            "btrfs" => Self::host_tool("mkfs.btrfs")?.with_mount_table(),
             _ => unreachable!("profile was checked"),
         }
     }
@@ -49,6 +45,7 @@ impl CapturedFormatter {
         match name {
             "ext4" => Ok(super::RootFormat::PROFILE),
             "xfs" => Ok("conglobate-xfs-v1"),
+            "btrfs" => Ok("conglobate-btrfs-v1"),
             other => Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 format!("unsupported filesystem type: {other}"),

@@ -172,17 +172,18 @@ impl CapturedFormatter {
                 "formatter runtime reserves /proc mount tables",
             ));
         }
-        let name = "proc/mounts";
-        let bytes = b"none / tmpfs ro 0 0\nnone /dev tmpfs rw 0 0\n";
-        self.files.insert(
-            RelativePath::try_from(Path::new(name)).expect("fixed mount table path"),
-            FormatterFile {
-                bytes: bytes.to_vec().into(),
-                #[cfg(test)]
-                digest: Sha256::digest(bytes).into(),
-                executable: false,
-            },
-        );
+        for name in ["proc/mounts", "proc/self/mounts"] {
+            let bytes = b"none / tmpfs ro 0 0\nnone /dev tmpfs rw 0 0\n";
+            self.files.insert(
+                RelativePath::try_from(Path::new(name)).expect("fixed mount table path"),
+                FormatterFile {
+                    bytes: bytes.to_vec().into(),
+                    #[cfg(test)]
+                    digest: Sha256::digest(bytes).into(),
+                    executable: false,
+                },
+            );
+        }
         Ok(self)
     }
 

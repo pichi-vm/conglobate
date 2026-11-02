@@ -38,7 +38,7 @@ filesystems and device drivers needed by both the appliance and build stages.
   oneshot whose `ExecStart` is `conglobate appliance`. When that process exits,
   success or failure, the unit powers the VM off. Appliance stdout and stderr
   go to the journal and to the kernel console (`console=hvc0`).
-- `e2fsprogs`, `xfsprogs` and `dosfstools` provide the root and ESP formatters.
+- `e2fsprogs`, `xfsprogs`, `btrfs-progs` and `dosfstools` provide the root and ESP formatters.
   The engine captures each formatter and its `ldd` dependencies from the
   appliance. Loop, FAT and its character-set modules remain available.
 - `systemd-networkd` configures the virtual NIC with DHCP. The build service

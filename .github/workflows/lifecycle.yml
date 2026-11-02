@@ -37,7 +37,7 @@ jobs:
           # hardware firmware and headers that our disposable guest never uses.
           guest_image=$(apt-cache depends linux-image-generic-hwe-24.04 | awk '$1 == "Depends:" && $2 ~ /^linux-image-[0-9]/ {print $2}')
           [[ "$guest_image" =~ ^linux-image-[0-9][a-zA-Z0-9.+-]*-generic$ ]]
-          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev ${{ matrix.qemu }} cpio zstd kmod "$guest_image" e2fsprogs dosfstools xfsprogs acl attr libcap2-bin uidmap nftables iproute2 dmsetup
+          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev ${{ matrix.qemu }} cpio zstd kmod "$guest_image" e2fsprogs dosfstools xfsprogs btrfs-progs acl attr libcap2-bin uidmap nftables iproute2 dmsetup
           rustup toolchain install 1.94.0 --profile minimal
       - name: Select guest acceleration and installed kernel
         run: |
