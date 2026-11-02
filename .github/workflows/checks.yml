@@ -7,10 +7,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: rootless-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   # Tier-1 fail-fast (parallel with lint/dependencies).
   license-headers:
