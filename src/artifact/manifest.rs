@@ -9,15 +9,16 @@
 //! tagged on `mediaType`), `ConfigDescriptor` for the OCI 1.1 empty-config
 //! pattern, and `validate()` enforcing all six D-07 rules.
 
+use super::BootConfigDescriptor;
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::artifact::media_type::{
-    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_CONFIG_V1,
-    MEDIA_TYPE_PICHI_DTB_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_SCUTE_V1,
-    MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
+    MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_DTB_V1, MEDIA_TYPE_PICHI_PMI_V1,
+    MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 
 /// Required chain-wide annotation keys (per D-06). These are the dm-verity
@@ -184,6 +185,11 @@ pub enum Layer {
     /// PMI payload layer (uncompressed per D-09).
     #[serde(rename = "application/vnd.pichi.pmi.v1")]
     Pmi(PmiDescriptor),
+
+    /// Zstd-compressed native boot configuration. Requires one PMI.
+    #[serde(rename = "application/vnd.pichi.bootconfig.v1+zstd")]
+    BootConfig(BootConfigDescriptor),
+
     /// Base DTB layer for a detached-channel PMI (BUILD.md §7.1). At most one.
     #[serde(rename = "application/vnd.pichi.dtb.v1")]
     Dtb(DtbDescriptor),
@@ -195,6 +201,7 @@ impl Layer {
         match self {
             Self::Scute(d) | Self::ScuteZstd(d) => &d.digest,
             Self::Pmi(d) => &d.digest,
+            Self::BootConfig(d) => &d.digest,
             Self::Dtb(d) => &d.digest,
         }
     }
@@ -204,6 +211,7 @@ impl Layer {
         match self {
             Self::Scute(d) | Self::ScuteZstd(d) => d.size,
             Self::Pmi(d) => d.size,
+            Self::BootConfig(d) => d.size,
             Self::Dtb(d) => d.size,
         }
     }
@@ -212,7 +220,7 @@ impl Layer {
     /// Phase 44 cmd::pull's pipeline composer to decide whether to wrap
     /// the `BlobStore`-side sink in a `ZstdDecodeWriter` (Pitfall 5/12).
     pub fn is_zstd_variant(&self) -> bool {
-        matches!(self, Self::ScuteZstd(_))
+        matches!(self, Self::ScuteZstd(_) | Self::BootConfig(_))
     }
 
     /// Return the static mediaType string for this variant. Mirrors the
@@ -223,6 +231,7 @@ impl Layer {
             Self::Scute(_) => MEDIA_TYPE_PICHI_SCUTE_V1,
             Self::ScuteZstd(_) => MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
             Self::Pmi(_) => MEDIA_TYPE_PICHI_PMI_V1,
+            Self::BootConfig(_) => MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
             Self::Dtb(_) => MEDIA_TYPE_PICHI_DTB_V1,
         }
     }
@@ -334,6 +343,15 @@ pub enum ManifestValidationError {
     /// D-07 rule 5: more than one PMI layer.
     #[error("artifact has more than one PMI layer (got {0}); per D-03 at most one is permitted")]
     MultiplePmi(usize),
+
+    /// More than one boot configuration layer.
+    #[error("artifact has more than one boot configuration layer (got {0})")]
+    MultipleBootConfig(usize),
+
+    /// Boot configuration cannot be distributed independently of firmware.
+    #[error("boot configuration requires a PMI")]
+    BootConfigWithoutPmi,
+
     /// Scute salt is not valid hex or lacks the 32-byte parent root prefix.
     #[error("scute salt must contain a hex-encoded parent root: {0}")]
     BadSalt(String),
@@ -450,6 +468,19 @@ impl Manifest {
         if pmi_count > 1 {
             return Err(ManifestValidationError::MultiplePmi(pmi_count));
         }
+        let boot_config_count = self
+            .layers
+            .iter()
+            .filter(|layer| matches!(layer, Layer::BootConfig(_)))
+            .count();
+        if boot_config_count > 1 {
+            return Err(ManifestValidationError::MultipleBootConfig(
+                boot_config_count,
+            ));
+        }
+        if boot_config_count != 0 && pmi_count == 0 {
+            return Err(ManifestValidationError::BootConfigWithoutPmi);
+        }
         // At most one base DTB layer (BUILD.md §7.1).
         let dtb_count = self
             .layers
@@ -503,6 +534,46 @@ impl Manifest {
 mod tests {
     use super::*;
     use sha2::{Digest as _, Sha256};
+
+    #[test]
+    fn boot_config_is_a_compressed_component_requiring_one_pmi() {
+        let config = Layer::BootConfig(BootConfigDescriptor {
+            digest: format!("sha256:{}", "34".repeat(32)),
+            size: 73,
+        });
+        let json = serde_json::to_value(&config).unwrap();
+        assert_eq!(
+            json["mediaType"],
+            "application/vnd.pichi.bootconfig.v1+zstd"
+        );
+        assert_eq!(json["size"], 73);
+        assert_eq!(serde_json::from_value::<Layer>(json).unwrap(), config);
+        assert!(config.is_zstd_variant());
+        assert_eq!(config.media_type_str(), MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD);
+
+        for root in [false, true] {
+            let mut manifest = sample_base_manifest();
+            if !root {
+                manifest.layers.clear();
+                manifest.annotations.clear();
+            }
+            manifest.layers.push(config.clone());
+            assert!(matches!(
+                manifest.validate(),
+                Err(ManifestValidationError::BootConfigWithoutPmi)
+            ));
+            manifest.layers.push(Layer::Pmi(PmiDescriptor {
+                digest: format!("sha256:{}", "12".repeat(32)),
+                size: 4096,
+            }));
+            manifest.validate().unwrap();
+            manifest.layers.push(config.clone());
+            assert!(matches!(
+                manifest.validate(),
+                Err(ManifestValidationError::MultipleBootConfig(2))
+            ));
+        }
+    }
 
     #[test]
     fn data_blocks_is_a_required_positive_decimal_annotation() {
