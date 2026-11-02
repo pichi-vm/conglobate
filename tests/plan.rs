@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use conglobate::plan::{
-    Directive, FilesystemSize, ImageRef, Plan, Stage, StageRef,
-    boot_config::{Key, Value as ConfigValue},
+    Directive, FilesystemSize, ImageRef, Key, Plan, Stage, StageRef, Value as ConfigValue,
 };
 use serde_json::{Value, json};
 
