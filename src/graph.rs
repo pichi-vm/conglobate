@@ -4,7 +4,7 @@
 use crate::{
     image::{ImageReference, IndexDigest},
     lock::{ImageLock, LockError},
-    plan::{Directive, Plan, Reference, TaskKind},
+    planner::{Directive, Plan, Reference, TaskKind},
 };
 use std::collections::{BTreeMap, BTreeSet};
 

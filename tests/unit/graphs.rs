@@ -5,7 +5,7 @@ use conglobate::{
     document::YamlDocument,
     graph::{BuildGraph, InputRole, Stage},
     lock::ImageLock,
-    plan::Plan,
+    planner::Plan,
 };
 fn graph(plan: &str) -> Result<BuildGraph, conglobate::lock::LockError> {
     let pins = format!(

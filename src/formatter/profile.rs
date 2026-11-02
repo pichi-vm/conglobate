@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    plan::FilesystemSpec,
+    planner::FilesystemSpec,
     value::{FilesystemLabel, FilesystemSize},
 };
 #[cfg(test)]

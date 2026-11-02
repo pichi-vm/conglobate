@@ -348,7 +348,7 @@ mod tests {
         let mut scratch = workspace.scratch().unwrap();
         scratch.write_all(&Store::new(2).0).unwrap();
         let top = Arc::new(scratch.seal_snapshot(*base.root()).unwrap());
-        let dtb = crate::plan::TransformSelection::Builtin
+        let dtb = crate::planner::TransformSelection::Builtin
             .apply(None, None)
             .unwrap();
         let extended = AssembledImage::derived(

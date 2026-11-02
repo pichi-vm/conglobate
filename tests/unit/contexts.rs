@@ -788,7 +788,7 @@ fn used_modules_resolve_recorded_objects_and_context_subdirectories() {
             .unwrap();
         let output = tempfile::tempdir().unwrap();
         let root = std::fs::File::open(output.path()).unwrap();
-        let directive = conglobate::plan::Copy::fixture(
+        let directive = conglobate::planner::Copy::fixture(
             "vendor/lib",
             "/copied",
             rustix::process::geteuid().as_raw().to_string(),

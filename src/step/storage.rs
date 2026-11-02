@@ -7,7 +7,7 @@ use crate::{
     copy::CopyError,
     isolation::{Mapped, UserNamespace},
     network::CommandNetwork,
-    plan::Copy,
+    planner::Copy,
     process::{Joined, Supervision},
     storage::{BootstrapVolumes, Mounted, Unmounted, Volume},
 };

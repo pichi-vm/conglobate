@@ -6,7 +6,7 @@ use crate::{
     execution::HelperProgram,
     formatter::{Ext4Format, selection},
     input::ResolvedBuild,
-    plan::Bootstrap,
+    planner::Bootstrap,
     process::ChildReaper,
     step::{CommandSandbox, SetupBudget},
     storage::{BootstrapVolumes, Created, Mapping, Mounted, Runtime, Unmounted, Volume, Workspace},
@@ -18,14 +18,14 @@ use std::{num::NonZeroU64, sync::Arc};
 pub(super) struct BootstrapBuild<'a> {
     build: &'a ResolvedBuild,
     stage: &'a Bootstrap,
-    directives: &'a [crate::plan::Directive],
+    directives: &'a [crate::planner::Directive],
     artifacts: &'a super::artifacts::Artifacts<'a>,
 }
 impl<'a> BootstrapBuild<'a> {
     pub(super) fn new(
         build: &'a ResolvedBuild,
         stage: &'a Bootstrap,
-        directives: &'a [crate::plan::Directive],
+        directives: &'a [crate::planner::Directive],
         artifacts: &'a super::artifacts::Artifacts<'a>,
     ) -> Self {
         Self {

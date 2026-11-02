@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::CapturedFormatter;
-use crate::{path::ContextPath, plan::FilesystemSpec};
+use crate::{path::ContextPath, planner::FilesystemSpec};
 use std::{
     collections::BTreeSet,
     env, fs, io,

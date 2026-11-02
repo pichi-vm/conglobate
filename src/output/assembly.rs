@@ -654,7 +654,7 @@ mod tests {
                     .with_location(location.map(str::to_owned));
                     let captured = CapturedBuild::try_from(&request).unwrap();
                     fs::write(selected.join("plan.yaml"), "working tree changed").unwrap();
-                    let unchanged = crate::plan::TransformSelection::Authored(vec![])
+                    let unchanged = crate::planner::TransformSelection::Authored(vec![])
                         .apply(
                             Some(&input.blobs[image.manifest().layers[1].digest_str()]),
                             None,
@@ -742,7 +742,7 @@ mod tests {
         let old: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
         let bytes = &input.blobs[old["layers"][1]["digest"].as_str().unwrap()];
         let parent = tempfile::tempdir().unwrap();
-        let unchanged = crate::plan::TransformSelection::Authored(vec![])
+        let unchanged = crate::planner::TransformSelection::Authored(vec![])
             .apply(Some(bytes), None)
             .unwrap();
         AssembledImage::derived(
@@ -755,7 +755,7 @@ mod tests {
         .unwrap()
         .discard()
         .unwrap();
-        let changed = crate::plan::TransformSelection::Builtin
+        let changed = crate::planner::TransformSelection::Builtin
             .apply(Some(bytes), Some("new"))
             .unwrap();
         let failure = AssembledImage::derived(
@@ -775,7 +775,7 @@ mod tests {
         let (cache, image) = input.open();
         let old: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
         let old_digest = old["layers"][1]["digest"].as_str().unwrap();
-        let result = crate::plan::TransformSelection::Builtin
+        let result = crate::planner::TransformSelection::Builtin
             .apply(Some(&input.blobs[old_digest]), Some("new"))
             .unwrap();
         let parent = tempfile::tempdir().unwrap();
@@ -814,7 +814,7 @@ mod tests {
             let (cache, image) = input.open();
             let parent = tempfile::tempdir().unwrap();
             let destination = parent.path().join("output");
-            let unchanged = crate::plan::TransformSelection::Authored(vec![])
+            let unchanged = crate::planner::TransformSelection::Authored(vec![])
                 .apply(
                     Some(&input.blobs[image.manifest().layers[1].digest_str()]),
                     None,
@@ -854,7 +854,7 @@ mod tests {
     fn derived_output_publishes_only_oci_to_new_directory_or_empty_mount() {
         let input = Input::new(true);
         let (cache, image) = input.open();
-        let unchanged = crate::plan::TransformSelection::Authored(vec![])
+        let unchanged = crate::planner::TransformSelection::Authored(vec![])
             .apply(
                 Some(&input.blobs[image.manifest().layers[1].digest_str()]),
                 None,
@@ -881,7 +881,7 @@ mod tests {
         let input = Input::new(false);
         let (cache, image) = input.open();
         let digest = image.manifest().layers[1].digest_str();
-        let unchanged = crate::plan::TransformSelection::Authored(vec![])
+        let unchanged = crate::planner::TransformSelection::Authored(vec![])
             .apply(Some(&input.blobs[digest]), None)
             .unwrap();
         fs::remove_file(
@@ -924,7 +924,7 @@ mod tests {
         .unwrap();
         let parent = tempfile::tempdir().unwrap();
         let destination = parent.path().join("output");
-        let unchanged = crate::plan::TransformSelection::Authored(vec![])
+        let unchanged = crate::planner::TransformSelection::Authored(vec![])
             .apply(
                 Some(&input.blobs[image.manifest().layers[1].digest_str()]),
                 None,
