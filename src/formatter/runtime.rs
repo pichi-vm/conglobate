@@ -80,8 +80,31 @@ impl FormatterFile {
 pub(crate) struct CapturedFormatter {
     executable: RelativePath<FilePath>,
     files: BTreeMap<RelativePath<FilePath>, FormatterFile>,
+    fat: Option<RelativePath<FilePath>>,
 }
 impl CapturedFormatter {
+    pub(super) fn with_fat(mut self, fat: Self) -> io::Result<Self> {
+        for (path, file) in &fat.files {
+            if self.files.iter().any(|(existing, old)| {
+                if existing == path {
+                    old.bytes != file.bytes || old.executable != file.executable
+                } else {
+                    existing.as_ref().starts_with(path.as_ref())
+                        || path.as_ref().starts_with(existing.as_ref())
+                }
+            }) {
+                return Err(io::Error::other(
+                    "trusted formatter inputs conflict between captures",
+                ));
+            }
+        }
+        self.fat = Some(fat.executable);
+        self.files.extend(fat.files);
+        Ok(self)
+    }
+    pub(super) fn fat(&self) -> Option<&RelativePath<FilePath>> {
+        self.fat.as_ref()
+    }
     pub(crate) fn capture(
         root: &Path,
         executable: RelativePath<FilePath>,
@@ -129,7 +152,11 @@ impl CapturedFormatter {
                 "formatter executable must be captured with execute permission",
             ));
         }
-        Ok(Self { executable, files })
+        Ok(Self {
+            executable,
+            files,
+            fat: None,
+        })
     }
     /// Add the builder-owned configuration, rejecting a supplied host config.
     /// The captured root must never choose ambient mke2fs defaults.

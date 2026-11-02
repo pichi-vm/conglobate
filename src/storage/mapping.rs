@@ -83,11 +83,20 @@ impl Mapping<Created> {
 }
 impl Mapping<Active> {
     pub(super) fn open_read_only(&self) -> io::Result<File> {
+        self.open(false)
+    }
+    pub(super) fn open_read_write(&self) -> io::Result<File> {
+        self.open(true)
+    }
+    fn open(&self, writable: bool) -> io::Result<File> {
         use std::os::unix::fs::FileTypeExt;
         let fd = rustix::fs::open(
             format!("/dev/dm-{}", self.id().minor()),
-            rustix::fs::OFlags::RDONLY
-                | rustix::fs::OFlags::CLOEXEC
+            (if writable {
+                rustix::fs::OFlags::RDWR
+            } else {
+                rustix::fs::OFlags::RDONLY
+            }) | rustix::fs::OFlags::CLOEXEC
                 | rustix::fs::OFlags::NOFOLLOW
                 | rustix::fs::OFlags::NONBLOCK,
             rustix::fs::Mode::empty(),
