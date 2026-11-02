@@ -172,7 +172,7 @@ impl PartitionStorage {
                 .into_snapshot()?
                 .close()?
                 .detach()?
-                .seal_snapshot(*parent.root())?,
+                .seal_snapshot(*parent.root(), &parent)?,
         );
         assert_eq!(Self::digest(parent.id(), bytes)?, before);
         println!("PARTITION_WRITES_LEAVE_PARENT_UNCHANGED_PASS");

@@ -40,7 +40,7 @@ impl Ext4Format {
         "-m",
         "0",
         "-E",
-        "root_owner=0:0,nodiscard,lazy_itable_init=0,lazy_journal_init=0",
+        "root_owner=0:0,nodiscard,lazy_itable_init=0",
     ];
     pub(crate) fn new(size: FilesystemSize, label: String) -> Self {
         Self {
@@ -95,6 +95,34 @@ impl Ext4Format {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[ignore = "requires the mke2fs executable"]
+    fn new_ext4_root_has_no_journal() {
+        use std::{fs::File, os::unix::fs::FileExt, process::Command};
+
+        let directory = tempfile::tempdir().unwrap();
+        let configuration = directory.path().join("mke2fs.conf");
+        std::fs::write(&configuration, Ext4Format::configuration()).unwrap();
+        let path = directory.path().join("root.ext4");
+        File::create(&path).unwrap().set_len(64 << 20).unwrap();
+        let format = Ext4Format::new(FilesystemSize::new(64).unwrap(), "root".into());
+        assert!(
+            Command::new("mke2fs")
+                .env("MKE2FS_CONFIG", configuration)
+                .args(format.arguments(&path))
+                .status()
+                .unwrap()
+                .success()
+        );
+        let root = File::open(path).unwrap();
+        let mut magic = [0; 2];
+        root.read_exact_at(&mut magic, 1024 + 56).unwrap();
+        assert_eq!(magic, [0x53, 0xef]);
+        let mut compatible = [0; 4];
+        root.read_exact_at(&mut compatible, 1024 + 92).unwrap();
+        assert_eq!(u32::from_le_bytes(compatible) & 4, 0);
+    }
+
     #[test]
     fn capacity_and_label_are_data_in_fixed_formatter_arguments() {
         let format = Ext4Format::new(FilesystemSize::new(16).unwrap(), "-x; $(false)".to_owned());
