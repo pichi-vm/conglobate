@@ -155,7 +155,7 @@ impl PartitionStorage {
                 .into_snapshot()?
                 .close()?
                 .detach()?
-                .seal_snapshot([0; 32])?,
+                .seal_snapshot([0; 32], &origin)?,
         );
         origin.close()?;
         let parent = ReadOnlyChain::assemble(None, &[scute])?;

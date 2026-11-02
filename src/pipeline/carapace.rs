@@ -68,7 +68,7 @@ impl<'w> DerivedCarapace<'w> {
                 .into_snapshot()?
                 .close()?
                 .detach()?
-                .seal_snapshot(*active.root())?,
+                .seal_snapshot(*active.root(), &active)?,
         );
         active.close()?;
         produced.push(scute);
