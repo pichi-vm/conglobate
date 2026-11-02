@@ -1,24 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
-    - run: |
-        if printf 'invalid\n' >> /etc/resolv.conf; then
-          echo 'resolver unexpectedly writable' >&2
-          exit 1
-        fi
-        /bin/bash -eu -c '
-          exec 3<>/dev/tcp/build.fixture/45457
-          printf "request\n" >&3
-          IFS= read -r response <&3
-          test "$response" = reply
-          exec 3>&-
-        '
-        printf 'NETWORK_PLAN_DNS_TCP_AND_READONLY_RESOLVER_PASS\n'
-        printf 'COMMAND_EXPECTED_FAILURE\n'
-        exit 7
-      network: true
-      timeout: 30s
+    extend: qualification.local/fedora:43
+    steps:
+    - exec:
+        command: |
+          if printf 'invalid\n' >> /etc/resolv.conf; then
+            echo 'resolver unexpectedly writable' >&2
+            exit 1
+          fi
+          /bin/bash -eu -c '
+            exec 3<>/dev/tcp/build.fixture/45457
+            printf "request\n" >&3
+            IFS= read -r response <&3
+            test "$response" = reply
+            exec 3>&-
+          '
+          printf 'NETWORK_PLAN_DNS_TCP_AND_READONLY_RESOLVER_PASS\n'
+          printf 'COMMAND_EXPECTED_FAILURE\n'
+          exit 7
+        network: true
+        timeout: 30s
 image: rootfs

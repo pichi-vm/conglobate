@@ -1,47 +1,53 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
+    extend: qualification.local/fedora:43
+    steps:
     - copy:
-        from: qualification.sh
+        path: qualification.sh
         into: /usr/local/bin/conglobate-qualification
-    - run: chmod 0755 /usr/local/bin/conglobate-qualification
+    - exec:
+        command: chmod 0755 /usr/local/bin/conglobate-qualification
     - copy:
-        from: qualification.service
+        path: qualification.service
         into: /etc/systemd/system/conglobate-qualification.service
-    - run: |
-        mkdir -p /etc/systemd/system/multi-user.target.wants
-        ln -s ../conglobate-qualification.service /etc/systemd/system/multi-user.target.wants/conglobate-qualification.service
+    - exec:
+        command: |
+          mkdir -p /etc/systemd/system/multi-user.target.wants
+          ln -s ../conglobate-qualification.service /etc/systemd/system/multi-user.target.wants/conglobate-qualification.service
   firmware:
-    kind: build
-    from: qualification.local/fedora:43
-    exec:
-    - network: true
-      timeout: 10m
-      run: dnf -y install tar cpio findutils
+    extend: qualification.local/fedora:43
+    steps:
+    - exec:
+        command: dnf -y install tar cpio findutils
+        network: true
+        timeout: 10m
     - copy:
-        from: arma
+        path: arma
         into: /arma
-    - run: chmod 0755 /arma
+    - exec:
+        command: chmod 0755 /arma
     - copy:
-        from: vmlinuz
+        path: vmlinuz
         into: /vmlinuz
     - copy:
-        from: kernel.config
+        path: kernel.config
         into: /kernel.config
     - copy:
-        from: initrd-files.tar
+        path: initrd-files.tar
         into: /initrd-files.tar
-    - run: |
-        mkdir /initrd
-        tar -xf /initrd-files.tar -C /initrd
-        (cd /initrd; find . -print0 | cpio --null --create --format=newc --quiet) > /initrd.cpio
-        /arma build --kernel /vmlinuz --config /kernel.config --initrd /initrd.cpio --cmdline "corium=$CARAPACE console=hvc0 systemd.volatile=state systemd.unit=multi-user.target" --dtb /base.dtb /boot.pmi
-    into:
-      pmi: /boot.pmi
-      dtb: /base.dtb
+    - exec:
+        command: |
+          mkdir /initrd
+          tar -xf /initrd-files.tar -C /initrd
+          (cd /initrd; find . -print0 | cpio --null --create --format=newc --quiet) > /initrd.cpio
+          /arma build --kernel /vmlinuz --config /kernel.config --initrd /initrd.cpio --cmdline bootconfig --dtb attached /boot.pmi
 image:
   root: rootfs
-  boot: firmware
+  boot:
+    extract: {from: firmware, path: /boot.pmi}
+    define:
+      corium.root: ""
+      kernel.console: [ttyS0, hvc0]
+      kernel.systemd.volatile: state
+      kernel.systemd.unit: multi-user.target

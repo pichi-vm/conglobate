@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
-    - timeout: 1s
-      run: |
-        printf 'COMMAND_TIMEOUT_STARTED\n'
-        sleep 30
+    extend: qualification.local/fedora:43
+    steps:
+    - exec:
+        command: |
+          printf 'COMMAND_TIMEOUT_STARTED\n'
+          sleep 30
+        timeout: 1s
 image: rootfs

@@ -8,7 +8,6 @@ mod anchor;
 mod appliance;
 mod disk;
 use contract::artifact;
-#[cfg(test)]
 mod boot_config;
 mod cache;
 mod context;
@@ -36,8 +35,6 @@ mod process;
 mod request;
 mod step;
 mod storage;
-mod template;
-mod transform;
 mod value;
 
 #[cfg(test)]

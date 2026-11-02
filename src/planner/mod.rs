@@ -1,87 +1,42 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! One plan document, validated before execution and independent of key order.
-use crate::{document::YamlDocument, image::IdentityError, value::ValueError};
-use serde::{Deserialize, Deserializer};
-pub(crate) mod schema;
-pub(crate) mod transform;
-
-pub(crate) use transform::{
-    PropertyValue, TransformAction, TransformOperation, TransformSelection,
+//! Validated authored plans and compiled host-copy selections.
+use crate::{contract::plan, document::YamlDocument};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    time::Duration,
 };
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum PlanError {
-    #[error(transparent)]
-    Pattern(#[from] crate::copy::PatternError),
-    #[error(transparent)]
-    Mode(#[from] crate::copy::ModeError),
-    #[error(transparent)]
-    Template(#[from] crate::template::TemplateError),
+    #[error("invalid format: {0}")]
+    Format(#[from] std::io::Error),
     #[error("invalid plan YAML: {0}")]
     Document(#[from] serde_saphyr::Error),
+    #[error("invalid plan: {0}")]
+    Invalid(String),
     #[error(transparent)]
-    Identity(#[from] IdentityError),
-    #[error(transparent)]
-    Value(#[from] ValueError),
-    #[error(transparent)]
-    Schema(#[from] crate::planner::schema::Error),
-    #[error("{0}")]
-    Invalid(&'static str),
-    #[error("invalid regular expression: {0}")]
-    Regex(#[from] regex::Error),
+    Pattern(#[from] crate::copy::PatternError),
 }
-
-// Presence must survive parsing: null is not omission or an empty section.
-#[derive(Debug, Default)]
-pub(crate) enum Presence<T> {
-    #[default]
-    Absent,
-    Present(T),
-}
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for Presence<T> {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_option(PresenceVisitor(std::marker::PhantomData))
-    }
-}
-#[derive(Debug)]
-struct PresenceVisitor<T>(std::marker::PhantomData<T>);
-impl<'de, T: Deserialize<'de>> serde::de::Visitor<'de> for PresenceVisitor<T> {
-    type Value = Presence<T>;
-    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str("an explicit non-null value")
-    }
-    fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
-        Err(E::custom("null is not omission or an empty section"))
-    }
-    fn visit_some<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
-        T::deserialize(deserializer).map(Presence::Present)
-    }
-}
-impl<T> Presence<T> {
-    fn into_option(self) -> Option<T> {
-        match self {
-            Self::Absent => None,
-            Self::Present(value) => Some(value),
-        }
-    }
-}
-
-pub(crate) use crate::planner::schema::{
-    ArtifactName, Filesystem as FilesystemSpec, Image, Local, Reference, Run,
-};
-use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub(crate) struct Copy {
+    from: Option<plan::StageRef>,
+    path: plan::ImagePath,
     sources: Vec<crate::copy::SourcePattern>,
-    destination: ImagePath,
+    destination: plan::ImagePath,
     owner: Option<String>,
     group: Option<String>,
     mode: Option<crate::copy::CopyMode>,
 }
 impl Copy {
+    pub(crate) fn from(&self) -> Option<&plan::StageRef> {
+        self.from.as_ref()
+    }
+    pub(crate) fn path(&self) -> &plan::ImagePath {
+        &self.path
+    }
     pub(crate) fn sources(&self) -> &[crate::copy::SourcePattern] {
         &self.sources
     }
@@ -99,37 +54,38 @@ impl Copy {
     }
 }
 #[derive(Debug)]
-struct ImagePath(String);
-impl TryFrom<String> for ImagePath {
-    type Error = PlanError;
-    fn try_from(text: String) -> Result<Self, Self::Error> {
-        if !text.starts_with('/') || text.contains('\0') {
-            return Err(PlanError::Invalid(
-                "image path must be absolute and contain no NUL",
-            ));
-        }
-        Ok(Self(text))
-    }
+pub(crate) struct Exec {
+    pub(crate) exec: String,
+    pub(crate) network: bool,
+    pub(crate) timeout: Duration,
 }
-impl AsRef<str> for ImagePath {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
-
 #[derive(Debug)]
 pub(crate) enum Directive {
-    Run(Run),
+    Exec(Exec),
     Copy(Copy),
 }
-impl TryFrom<crate::planner::schema::Directive> for Directive {
+impl TryFrom<plan::Directive> for Directive {
     type Error = PlanError;
-    fn try_from(raw: crate::planner::schema::Directive) -> Result<Self, Self::Error> {
+    fn try_from(raw: plan::Directive) -> Result<Self, Self::Error> {
         Ok(match raw {
-            crate::planner::schema::Directive::Run(run) => Self::Run(run),
-            crate::planner::schema::Directive::Copy { copy } => Self::Copy(Copy {
-                sources: vec![copy.from.as_ref().parse()?],
-                destination: ImagePath::try_from(copy.into.as_ref().to_owned())?,
+            plan::Directive::Exec {
+                command,
+                network,
+                timeout,
+            } => Self::Exec(Exec {
+                exec: command,
+                network,
+                timeout,
+            }),
+            plan::Directive::Copy { from, path, into } => Self::Copy(Copy {
+                sources: if from.is_none() {
+                    vec![path.normalized().parse()?]
+                } else {
+                    vec![]
+                },
+                from,
+                path,
+                destination: into,
                 owner: None,
                 group: None,
                 mode: None,
@@ -137,136 +93,201 @@ impl TryFrom<crate::planner::schema::Directive> for Directive {
         })
     }
 }
-impl Copy {
-    pub(crate) fn artifact(&self) -> &str {
-        self.sources[0].source()
-    }
-}
 #[derive(Debug)]
-pub(crate) struct Bootstrap {
-    filesystem: FilesystemSpec,
+pub(crate) struct Stage {
+    pub(crate) from: plan::ImageRef,
+    pub(crate) format: Option<plan::Format>,
+    pub(crate) mount: BTreeMap<plan::ImagePath, plan::Mount>,
+    pub(crate) derive: Vec<Directive>,
 }
-impl Bootstrap {
-    pub(crate) fn filesystem(&self) -> &FilesystemSpec {
-        &self.filesystem
-    }
-}
-#[derive(Debug)]
-pub(crate) struct Firmware {
-    pmi: String,
-    dtb: String,
-}
-impl Firmware {
-    pub(crate) fn pmi(&self) -> &str {
-        &self.pmi
-    }
-    pub(crate) fn dtb(&self) -> &str {
-        &self.dtb
-    }
-}
-#[derive(Debug)]
-pub(crate) enum TaskKind {
-    Bootstrap(Bootstrap),
-    Extend,
-    Build,
-}
-#[derive(Debug)]
-pub(crate) struct Task {
-    from: Reference,
-    kind: TaskKind,
-    directives: Vec<Directive>,
-    outputs: BTreeMap<ArtifactName, crate::planner::schema::ImagePath>,
-    firmware: Option<Firmware>,
-    mount: BTreeMap<crate::contract::plan::ImagePath, crate::contract::plan::Mount>,
-}
-impl Task {
-    pub(crate) fn mounts(
-        &self,
-    ) -> &BTreeMap<crate::contract::plan::ImagePath, crate::contract::plan::Mount> {
-        &self.mount
-    }
-    pub(crate) fn from(&self) -> &Reference {
-        &self.from
-    }
-    pub(crate) fn kind(&self) -> &TaskKind {
-        &self.kind
-    }
-    pub(crate) fn directives(&self) -> &[Directive] {
-        &self.directives
-    }
-    pub(crate) fn outputs(&self) -> &BTreeMap<ArtifactName, crate::planner::schema::ImagePath> {
-        &self.outputs
-    }
-    pub(crate) fn firmware(&self) -> Option<&Firmware> {
-        self.firmware.as_ref()
+impl TryFrom<plan::Stage> for Stage {
+    type Error = PlanError;
+    fn try_from(raw: plan::Stage) -> Result<Self, Self::Error> {
+        let (from, format, mount, derive) = match raw {
+            plan::Stage::Create {
+                r#use,
+                format,
+                mounts,
+                steps,
+            } => (r#use, Some(format), mounts, steps),
+            plan::Stage::Extend {
+                extend,
+                mounts,
+                steps,
+            } => (extend, None, mounts, steps),
+        };
+        let mut paths = BTreeSet::new();
+        for path in mount.keys() {
+            let normalized = path.normalized();
+            let first = normalized
+                .trim_start_matches('/')
+                .split('/')
+                .next()
+                .unwrap_or("");
+            if normalized == "/"
+                || (format.is_none() && matches!(first, "dev" | "proc" | "sys"))
+                || !paths.insert(normalized)
+            {
+                return Err(PlanError::Invalid(
+                    "mounts cannot replace the root, runtime controls, or another mount".into(),
+                ));
+            }
+        }
+        if let Some(spec) = &format {
+            crate::formatter::Ext4Format::from(spec).layout()?;
+            if let Some(esp) = spec.esp {
+                crate::formatter::Fat32Format::try_from(esp)?;
+            } else if mount.values().any(|kind| *kind == plan::Mount::Esp) {
+                return Err(PlanError::Invalid("ESP mount requires format.esp".into()));
+            }
+        }
+        Ok(Self {
+            from,
+            format,
+            mount,
+            derive: derive
+                .into_iter()
+                .map(Directive::try_from)
+                .collect::<Result<_, _>>()?,
+        })
     }
 }
 #[derive(Debug)]
 pub(crate) struct Plan {
-    tasks: BTreeMap<Local, Task>,
-    image: Image,
-    order: Vec<Local>,
+    pub(crate) stages: BTreeMap<plan::StageRef, Stage>,
+    pub(crate) image: plan::Image,
+    pub(crate) order: Vec<plan::StageRef>,
 }
 impl Plan {
-    pub(crate) fn tasks(&self) -> &BTreeMap<Local, Task> {
-        &self.tasks
+    /// The selected graph's remote inputs, including direct component selectors.
+    pub(crate) fn remote_sources(&self) -> impl Iterator<Item = &plan::Remote> {
+        self.order
+            .iter()
+            .map(|name| &self.stages[name].from)
+            .chain(self.image_sources())
+            .filter_map(|source| match source {
+                plan::ImageRef::Remote(remote) => Some(remote),
+                plan::ImageRef::Local(_) => None,
+            })
     }
-    pub(crate) fn image(&self) -> &Image {
-        &self.image
+    pub(crate) fn commands_required(&self) -> bool {
+        !self.order.is_empty()
     }
-    pub(crate) fn order(&self) -> &[Local] {
-        &self.order
+    pub(crate) fn root_reader_required(&self) -> bool {
+        matches!(
+            &self.image,
+            plan::Image::Components {
+                boot: Some(plan::Boot::Extract { .. }),
+                ..
+            }
+        )
+    }
+    fn image_sources(&self) -> Vec<&plan::ImageRef> {
+        match &self.image {
+            plan::Image::Shorthand(source) => vec![source],
+            plan::Image::Components { root, boot } => root
+                .iter()
+                .chain(boot.iter().map(|boot| match boot {
+                    plan::Boot::Shorthand(source) => source,
+                    plan::Boot::Inherit { inherit }
+                    | plan::Boot::InheritDefined { inherit, .. }
+                    | plan::Boot::InheritExtended { inherit, .. } => inherit,
+                    plan::Boot::Extract { extract, .. } => &extract.from,
+                }))
+                .collect(),
+        }
+    }
+    fn walk(
+        &self,
+        start: &plan::StageRef,
+        done: &mut BTreeSet<plan::StageRef>,
+        order: &mut Vec<plan::StageRef>,
+    ) -> Result<(), PlanError> {
+        let mut visiting = BTreeSet::new();
+        let mut stack = vec![(start.clone(), false)];
+        while let Some((name, exit)) = stack.pop() {
+            if exit {
+                visiting.remove(&name);
+                done.insert(name.clone());
+                order.push(name);
+                continue;
+            }
+            if done.contains(&name) {
+                continue;
+            }
+            let stage = self
+                .stages
+                .get(&name)
+                .ok_or_else(|| PlanError::Invalid(format!("unknown stage {name}")))?;
+            if !visiting.insert(name.clone()) {
+                return Err(PlanError::Invalid(format!(
+                    "stage dependency cycle at {name}"
+                )));
+            }
+            let mut dependencies = BTreeSet::new();
+            if let plan::ImageRef::Local(name) = &stage.from {
+                dependencies.insert(name.clone());
+            }
+            for directive in &stage.derive {
+                if let Directive::Copy(copy) = directive
+                    && let Some(name) = copy.from()
+                {
+                    dependencies.insert(name.clone());
+                }
+            }
+            stack.push((name, true));
+            stack.extend(dependencies.into_iter().rev().map(|name| (name, false)));
+        }
+        Ok(())
+    }
+}
+impl TryFrom<plan::Plan> for Plan {
+    type Error = PlanError;
+    fn try_from(raw: plan::Plan) -> Result<Self, Self::Error> {
+        if matches!(
+            raw.image,
+            plan::Image::Components {
+                root: None,
+                boot: None
+            }
+        ) {
+            return Err(PlanError::Invalid(
+                "image contains neither root nor PMI".into(),
+            ));
+        }
+        let stages = raw
+            .stages
+            .into_iter()
+            .map(|(name, stage)| Ok((name, Stage::try_from(stage)?)))
+            .collect::<Result<_, PlanError>>()?;
+        let mut plan = Self {
+            stages,
+            image: raw.image,
+            order: Vec::new(),
+        };
+        let mut checked = BTreeSet::new();
+        for name in plan.stages.keys() {
+            plan.walk(name, &mut checked, &mut Vec::new())?;
+        }
+        let mut order = Vec::new();
+        let mut done = BTreeSet::new();
+        for source in plan.image_sources() {
+            if let plan::ImageRef::Local(name) = source {
+                plan.walk(name, &mut done, &mut order)?;
+            }
+        }
+        plan.order = order;
+        Ok(plan)
     }
 }
 impl TryFrom<YamlDocument<'_>> for Plan {
     type Error = PlanError;
     fn try_from(document: YamlDocument<'_>) -> Result<Self, Self::Error> {
-        let raw: crate::planner::schema::Plan = document.decode()?;
-        let order = raw.order().to_vec();
-        let raw = raw.into_parts();
-        let tasks = raw
-            .0
-            .into_iter()
-            .map(|(name, task)| {
-                let crate::planner::schema::TaskParts {
-                    mount,
-                    from,
-                    directives,
-                    filesystem,
-                    outputs,
-                    boot: firmware,
-                } = task.into_parts();
-                let kind = match filesystem {
-                    Some(filesystem) => TaskKind::Bootstrap(Bootstrap { filesystem }),
-                    None if outputs.is_some() => TaskKind::Build,
-                    None => TaskKind::Extend,
-                };
-                Ok((
-                    name,
-                    Task {
-                        mount,
-                        from,
-                        directives: directives
-                            .into_iter()
-                            .map(Directive::try_from)
-                            .collect::<Result<_, PlanError>>()?,
-                        kind,
-                        outputs: outputs.unwrap_or_default(),
-                        firmware: firmware.map(|(pmi, dtb)| Firmware { pmi, dtb }),
-                    },
-                ))
-            })
-            .collect::<Result<_, PlanError>>()?;
-        Ok(Self {
-            tasks,
-            image: raw.1,
-            order,
-        })
+        Self::try_from(document.decode::<plan::Plan>()?)
     }
 }
 
-// Historical filesystem-operation tests retain direct construction of COPY
-// policies. Those policies are deliberately absent from the new plan schema.
+// Filesystem tests exercise metadata policies independently of the YAML schema.
 #[cfg(test)]
 impl Copy {
     pub(crate) fn fixture(
@@ -277,8 +298,10 @@ impl Copy {
         mode: Option<String>,
     ) -> Self {
         Self {
+            from: None,
+            path: plan::ImagePath::new(source.to_owned()).unwrap(),
             sources: vec![source.parse().unwrap()],
-            destination: ImagePath::try_from(destination.to_owned()).unwrap(),
+            destination: plan::ImagePath::new(destination.to_owned()).unwrap(),
             owner: Some(owner),
             group: Some(group),
             mode: mode.map(|s| s.parse().unwrap()),
