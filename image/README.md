@@ -42,6 +42,11 @@ filesystems and device drivers needed by both the appliance and build stages.
   The engine captures each formatter and its `ldd` dependencies from the
   appliance. Loop, FAT and its character-set modules remain available.
 
+- `systemd-networkd` configures the virtual NIC with DHCP. The build service
+  runs in a separate offline namespace; only `network: true` commands join
+  the configured appliance namespace. `systemd-resolved` supplies its DNS
+  configuration through `/run/pichi/resolv.conf`.
+
 Image hardcodes, not CBOR fields: UID/GID maps, the network-namespace path, and
 the resolver path (`src/appliance/mounts.rs`).
 
