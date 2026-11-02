@@ -62,7 +62,7 @@ impl Pipeline {
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
     ) -> anyhow::Result<StageOutput<'b, 'w>> {
-        use crate::plan::{Reference, TaskKind};
+        use crate::planner::{Reference, TaskKind};
         use anyhow::Context;
         use std::collections::BTreeMap;
         let plan = build.captured().graph().plan();
@@ -70,8 +70,8 @@ impl Pipeline {
         let mut artifacts = artifacts::Artifacts::new();
         let mut reaper = crate::process::ChildReaper::install()?;
         let selected = match plan.image() {
-            crate::plan::Image::Short(name) => name,
-            crate::plan::Image::Long { root, .. } => root,
+            crate::planner::Image::Short(name) => name,
+            crate::planner::Image::Long { root, .. } => root,
         };
         for name in plan.order() {
             let task = &plan.tasks()[name];

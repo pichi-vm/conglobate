@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::plan::{PropertyValue, TransformAction, TransformOperation, TransformSelection};
+use crate::planner::{PropertyValue, TransformAction, TransformOperation, TransformSelection};
 use devtree::{OwnedNode, OwnedProperty, OwnedTree, Tree};
 
 #[derive(Debug, thiserror::Error)]
@@ -19,7 +19,7 @@ pub(crate) enum TransformError {
     #[error(transparent)]
     Template(#[from] crate::template::TemplateError),
     #[error(transparent)]
-    Plan(#[from] crate::plan::PlanError),
+    Plan(#[from] crate::planner::PlanError),
 }
 
 /// Successful transformation, including the observed default-skip disposition.
@@ -267,7 +267,7 @@ mod tests {
             dtb: Option<&[u8]>,
             root: Option<&str>,
         ) -> Result<TransformedDtb, TransformError> {
-            let operations: Vec<crate::plan::transform::TransformDocument> =
+            let operations: Vec<crate::planner::transform::TransformDocument> =
                 YamlDocument::from(ops).decode().unwrap();
             TransformSelection::Authored(
                 operations

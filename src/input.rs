@@ -8,7 +8,7 @@ use crate::{
     graph::BuildGraph,
     lock::{ImageLock, LockError},
     path::ContextPath,
-    plan::{Plan, PlanError},
+    planner::{Plan, PlanError},
     request::BuildRequest,
 };
 #[cfg(test)]
@@ -108,7 +108,7 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
             .collect();
         for name in graph.plan().order() {
             for directive in graph.plan().tasks()[name].directives() {
-                if let crate::plan::Directive::Copy(copy) = directive
+                if let crate::planner::Directive::Copy(copy) = directive
                     && !artifacts.contains(copy.artifact())
                 {
                     crate::copy::CopySources::prepare(&mut context, copy.sources())?;
@@ -253,10 +253,10 @@ impl CapturedBuild {
         for name in self.graph.plan().order() {
             let task = &self.graph.plan().tasks()[name];
             let input = match task.from() {
-                crate::plan::Reference::Local(local) => *exports
+                crate::planner::Reference::Local(local) => *exports
                     .get(local)
                     .ok_or_else(|| InputError::Exports("unresolved local input".into()))?,
-                crate::plan::Reference::Remote(remote) => {
+                crate::planner::Reference::Remote(remote) => {
                     let image = &images[&remote.as_ref().parse().map_err(PlanError::from)?];
                     (
                         image.root().is_some(),
@@ -275,20 +275,20 @@ impl CapturedBuild {
                 )));
             }
             let output = match task.kind() {
-                crate::plan::TaskKind::Bootstrap(_) => (true, false),
-                crate::plan::TaskKind::Extend => input,
-                crate::plan::TaskKind::Build => (false, task.firmware().is_some()),
+                crate::planner::TaskKind::Bootstrap(_) => (true, false),
+                crate::planner::TaskKind::Extend => input,
+                crate::planner::TaskKind::Build => (false, task.firmware().is_some()),
             };
             exports.insert(name.clone(), output);
         }
         match self.graph.plan().image() {
-            crate::plan::Image::Short(name) => {
+            crate::planner::Image::Short(name) => {
                 let (root, boot) = exports[name];
                 if !root && !boot {
                     return Err(InputError::Exports("image has no component exports".into()));
                 }
             }
-            crate::plan::Image::Long { root, boot } if !exports[root].0 || !exports[boot].1 => {
+            crate::planner::Image::Long { root, boot } if !exports[root].0 || !exports[boot].1 => {
                 return Err(InputError::Exports(
                     "requested image root or boot export unavailable".into(),
                 ));

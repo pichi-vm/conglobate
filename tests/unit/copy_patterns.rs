@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use conglobate::{copy::SourcePattern, document::YamlDocument, plan::Plan};
+use conglobate::{copy::SourcePattern, document::YamlDocument, planner::Plan};
 use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
 
 struct SmallGlob;

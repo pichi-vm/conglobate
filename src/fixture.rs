@@ -28,7 +28,7 @@ mod output;
 mod packet;
 mod path;
 mod pipeline;
-mod plan;
+mod planner;
 mod process;
 mod request;
 mod step;

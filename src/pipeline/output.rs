@@ -6,7 +6,7 @@ use crate::{
     cache::{Cache, FromIndex as _},
     input::{CheckedImage, ResolvedBuild},
     output::AssembledImage,
-    plan::{Image, Local, Plan, Reference},
+    planner::{Image, Local, Plan, Reference},
     request::BuildRequest,
     storage::{ReadOnlyChain, SealedScute, Workspace},
 };
@@ -119,7 +119,7 @@ impl<'b, 'w> StageOutput<'b, 'w> {
         for name in plan.order() {
             let task = &plan.tasks()[name];
             ensure!(
-                matches!(task.kind(), crate::plan::TaskKind::Extend)
+                matches!(task.kind(), crate::planner::TaskKind::Extend)
                     && task.directives().is_empty(),
                 "pass-through requires empty extend tasks"
             );
@@ -185,7 +185,7 @@ impl<'b, 'w> StageOutput<'b, 'w> {
         let dtb = if let Some(pair) = &pair {
             pair.dtb()
         } else {
-            transformed = crate::plan::TransformSelection::Builtin
+            transformed = crate::planner::TransformSelection::Builtin
                 .apply(inherited_dtb.as_ref().map(|s| s.bytes()), root.as_deref())?;
             &transformed
         };

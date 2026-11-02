@@ -5,7 +5,7 @@ use crate::{
     context::CapturedContext,
     document::YamlDocument,
     path::{ContextDirectory, ContextPath},
-    plan::{Plan, Reference},
+    planner::{Plan, Reference},
     request::CommitIdentity,
 };
 use std::path::PathBuf;
