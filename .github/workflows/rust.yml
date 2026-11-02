@@ -30,10 +30,12 @@ jobs:
       - name: Install build prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev
+          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev e2fsprogs
           rustup toolchain install 1.94.0 --profile minimal
       - name: Run rootless tests
         run: cargo test --locked --features cli --all-targets
+      - name: Verify new ext4 roots have no journal
+        run: cargo test --locked --features cli --bin conglobate new_ext4_root_has_no_journal -- --ignored
       - name: Compile internal VM fixtures
         run: cargo check --locked --features test-fixtures --bin conglobate-lifecycle-tests
 
