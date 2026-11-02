@@ -20,7 +20,7 @@ pub(crate) struct FormatterManifest {
 }
 impl FormatterManifest {
     /// TRANSITIONAL: YAML profile loader kept for unit tests and any residual
-    /// internal callers. Product bootstrap uses `selection::for_name` instead
+    /// internal callers. Product bootstrap uses `CapturedFormatter::for_filesystem` instead
     /// and never accepts a caller-supplied TEE path from `BuildRequest`.
     #[allow(dead_code)]
     pub(crate) fn capture(path: &Path) -> io::Result<CapturedFormatter> {

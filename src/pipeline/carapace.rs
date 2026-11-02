@@ -70,7 +70,7 @@ impl<'w> DerivedCarapace<'w> {
         let (volume, reaper) = completed.into_parts();
         let scute = Arc::new(
             volume
-                .into_snapshot()
+                .into_snapshot()?
                 .close()?
                 .detach()?
                 .seal_snapshot(*active.root())?,

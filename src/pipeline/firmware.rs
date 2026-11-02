@@ -79,7 +79,7 @@ impl<'w> BuildTools<'w> {
         })();
         let cleanup_budget = SetupBudget::begin();
         let cleanup = (|| -> anyhow::Result<()> {
-            mounted.unmount()?.into_snapshot().close()?.detach()?;
+            mounted.unmount()?.into_snapshot()?.close()?.detach()?;
             Ok(())
         })()
         .and_then(|()| active.close().map_err(anyhow::Error::from))

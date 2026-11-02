@@ -58,6 +58,9 @@ impl Mapping<Created> {
     }
 }
 impl<'a, 'w> SnapshotMapping<'a, 'w> {
+    pub(super) fn open_read_write(&self) -> io::Result<std::fs::File> {
+        self.mapping.open_read_write()
+    }
     pub(super) fn open_read_only(&self) -> io::Result<std::fs::File> {
         self.mapping.open_read_only()
     }
