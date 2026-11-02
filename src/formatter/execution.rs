@@ -6,7 +6,7 @@ use crate::{
     execution::HelperProgram,
     process::{Process, Running},
     step::SetupBudget,
-    storage::SnapshotMapping,
+    storage::{PartitionedSnapshot, SnapshotMapping},
 };
 use std::{
     io,
@@ -28,14 +28,17 @@ pub(crate) struct Formatting<'origin, 'workspace> {
 #[derive(Debug)]
 struct FormatInputs<'origin, 'workspace> {
     runtime: FormatterRuntime,
-    snapshot: SnapshotMapping<'origin, 'workspace>,
+    snapshot: PartitionedSnapshot<'origin, 'workspace>,
     format: Ext4Format,
+    next: Option<std::process::Command>,
 }
 impl FormatInputs<'_, '_> {
-    fn reject(self, error: anyhow::Error) -> anyhow::Error {
+    fn reject(mut self, error: anyhow::Error) -> anyhow::Error {
+        self.next.take();
         let storage = self
             .snapshot
-            .close()
+            .into_snapshot()
+            .and_then(|snapshot| snapshot.close())
             .and_then(|attached| attached.detach())
             .map(|_| ());
         let runtime = self.runtime.close();
@@ -61,10 +64,24 @@ impl FormatterRuntime {
         program: &HelperProgram,
         budget: SetupBudget,
     ) -> anyhow::Result<Formatting<'a, 'w>> {
-        let inputs = Box::new(FormatInputs {
+        budget.check()?;
+        let layout = format.layout()?;
+        let snapshot = match PartitionedSnapshot::create(snapshot, &layout) {
+            Ok(snapshot) => snapshot,
+            Err(error) => {
+                return Err(match self.close() {
+                    Ok(()) => error.into(),
+                    Err(cleanup) => {
+                        anyhow::Error::new(error).context(format!("formatter cleanup: {cleanup}"))
+                    }
+                });
+            }
+        };
+        let mut inputs = Box::new(FormatInputs {
             runtime: self,
             snapshot,
             format,
+            next: None,
         });
         let result = (|| -> io::Result<Process<Running>> {
             budget.check()?;
@@ -79,14 +96,32 @@ impl FormatterRuntime {
                     "formatter requires builder-owned ext4 configuration",
                 ));
             }
+            if let Some(format) = inputs.format.esp()? {
+                let device = inputs
+                    .snapshot
+                    .esp_id()
+                    .ok_or_else(|| io::Error::other("missing formatted ESP view"))?;
+                let executable =
+                    inputs.runtime.captured().fat().ok_or_else(|| {
+                        io::Error::other("ESP formatting requires captured mkfs.fat")
+                    })?;
+                let mut command = program.formatter(
+                    Path::new("/").join(executable.as_ref()),
+                    format.arguments(Path::new("/dev/output")),
+                    budget.cutoff()?,
+                )?;
+                command.stdin(FormatterInput::new(&inputs.runtime, device)?.into_stdio()?);
+                inputs.next = Some(command);
+            }
             let executable = Path::new("/").join(inputs.runtime.captured().executable().as_ref());
             let mut command = program.formatter(
                 executable,
                 inputs.format.arguments(Path::new("/dev/output")),
                 budget.cutoff()?,
             )?;
-            command
-                .stdin(FormatterInput::new(&inputs.runtime, inputs.snapshot.id())?.into_stdio()?);
+            command.stdin(
+                FormatterInput::new(&inputs.runtime, inputs.snapshot.root_id())?.into_stdio()?,
+            );
             budget.check()?;
             command.spawn().map(Process::from)
         })();
@@ -125,7 +160,7 @@ impl<'a, 'w> Formatting<'a, 'w> {
             }
         };
         // Successful wait is the proof permitting resource destruction again.
-        let inputs = ManuallyDrop::into_inner(inputs);
+        let mut inputs = ManuallyDrop::into_inner(inputs);
         let result = (|| -> io::Result<()> {
             if Instant::now() >= deadline {
                 return Err(io::Error::new(
@@ -139,18 +174,35 @@ impl<'a, 'w> Formatting<'a, 'w> {
                     reaped.status()
                 )));
             }
-            inputs.snapshot.usage()?;
+            inputs.snapshot.sync()?;
             Ok(())
         })();
         match result {
-            Ok(()) => Ok(FormattedSnapshot { inputs }),
+            Ok(()) => {
+                if let Some(mut command) = inputs.next.take() {
+                    let process = command.spawn().map(Process::from);
+                    drop(command);
+                    match process {
+                        Ok(process) => Self {
+                            process,
+                            inputs: ManuallyDrop::new(inputs),
+                            deadline,
+                        }
+                        .wait(),
+                        Err(error) => Err(inputs.reject(error.into())),
+                    }
+                } else {
+                    Ok(FormattedSnapshot { inputs })
+                }
+            }
             Err(source) => Err(inputs.reject(source.into())),
         }
     }
 }
 impl<'a, 'w> FormattedSnapshot<'a, 'w> {
     /// Consume successful execution; resource owners must still be closed.
-    pub(crate) fn into_parts(self) -> (FormatterRuntime, SnapshotMapping<'a, 'w>) {
-        (self.inputs.runtime, self.inputs.snapshot)
+    pub(crate) fn into_parts(self) -> io::Result<(FormatterRuntime, SnapshotMapping<'a, 'w>)> {
+        let snapshot = self.inputs.snapshot.into_snapshot()?;
+        Ok((self.inputs.runtime, snapshot))
     }
 }

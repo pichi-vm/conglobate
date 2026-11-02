@@ -12,6 +12,7 @@ mod formatter_failures;
 mod gate_failure;
 mod network;
 mod oci_copy;
+mod partition_storage;
 mod pty_filter;
 mod runtime_scope;
 mod sandbox_failures;
@@ -36,6 +37,10 @@ impl Lifecycle {
             invocation.execute(&HelperProgram::current()?);
         }
         match args.as_slice() {
+            [mode] if mode == "partition-storage" => {
+                partition_storage::PartitionStorage::run(false)
+            }
+            [mode] if mode == "partition-busy" => partition_storage::PartitionStorage::run(true),
             [mode] if mode == "sandbox-start-reject" => {
                 sandbox_failures::SandboxFailures::run(sandbox_failures::FailurePoint::StartGate)
             }
