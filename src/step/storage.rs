@@ -55,7 +55,7 @@ impl<'n, 'o, 'w> CommandStorage for Volume<'n, 'o, 'w, Mounted> {
     }
     fn mount(volume: Self::Unmounted, parent: &Path, deadline: Instant) -> anyhow::Result<Self> {
         crate::step::teardown::Deadline::check(deadline)?;
-        Ok(volume.mount_ext4(parent)?)
+        Ok(volume.mount_root(parent)?)
     }
     fn validate_command_root(&self) -> io::Result<()> {
         self.validate_command_root()

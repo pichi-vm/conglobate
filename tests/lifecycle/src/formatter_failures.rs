@@ -3,7 +3,7 @@
 
 use conglobate::{
     execution::HelperProgram,
-    formatter::{CapturedFormatter, Ext4Format},
+    formatter::{CapturedFormatter, RootFormat},
     path::ContextPath,
     process::WaitError,
     step::SetupBudget,
@@ -58,7 +58,7 @@ impl FormatterFailures {
             let formatting = runtime
                 .format(
                     snapshot,
-                    Ext4Format::new(
+                    RootFormat::new(
                         crate::value::FilesystemSize::new(16).unwrap(),
                         "failure-probe".to_owned(),
                     ),

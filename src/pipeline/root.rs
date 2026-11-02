@@ -47,7 +47,7 @@ impl<'w> Root<'_, 'w> {
         )?;
         let paths = runtime.paths()?;
         let mut volume =
-            Volume::in_init_namespace(snapshot, runtime.recovery())?.mount_ext4(paths.volumes())?;
+            Volume::in_init_namespace(snapshot, runtime.recovery())?.mount_root(paths.volumes())?;
         let result = budget
             .check()
             .map_err(Into::into)

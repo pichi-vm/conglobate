@@ -7,6 +7,7 @@ pub(crate) use partitioned::PartitionedSnapshot;
 mod runtime;
 pub(crate) use runtime::Runtime;
 mod chain;
+mod filesystem;
 mod ownership;
 mod volume;
 pub(crate) use volume::{Mounted, Unmounted, Volume, VolumeState, VolumeView};

@@ -24,8 +24,8 @@ from label_environment import LabelEnvironment
 
 
 class LifecycleRuntime(GuestRuntime):
-    TOOLS = GuestRuntime.TOOLS + ('dmsetup',)
-    MODULES = ('loop', 'ext4', 'vfat', 'nls_cp437', 'nls_iso8859-1', 'dm-zero', 'dm-snapshot', 'dm-verity', 'virtio_pci', 'virtio_blk',
+    TOOLS = GuestRuntime.TOOLS + ('dmsetup', 'mkfs.xfs', 'xfs_repair')
+    MODULES = ('loop', 'ext4', 'xfs', 'vfat', 'nls_cp437', 'nls_iso8859-1', 'dm-zero', 'dm-snapshot', 'dm-verity', 'virtio_pci', 'virtio_blk',
                'veth', 'nf_tables', 'nft_chain_nat', 'nft_masq', 'nft_ct')
 
 
@@ -102,7 +102,7 @@ class LifecycleRun:
             files = {'usr/bin/bash', 'usr/bin/sync'} | self.dependencies(shutil.which('bash')) | self.dependencies(shutil.which('sync'))
             (self.root / 'plan-runtime-files').write_text('\n'.join(sorted(files)) + '\n')
         mode = '' if self.args.drop is None else f'FORMATTER_DROP={self.args.drop} '
-        setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\nmodprobe dm-verity\nmodprobe ext4\nmodprobe vfat\n'
+        setup = ('modprobe loop\nmodprobe dm-zero\nmodprobe dm-snapshot\nmodprobe dm-verity\nmodprobe ext4\nmodprobe xfs\nmodprobe vfat\n'
                  if self.args.case in ('stage-mounts', 'stage-mount-busy', 'partition-storage', 'partition-busy', 'formatter-failures', 'cache-storage', 'chain-storage') or self.args.case.startswith('sandbox-') else
                  'mkdir /work/cgroups\nmount -t cgroup2 cgroup2 /work/cgroups\n')
         if self.args.case in ('clone-filter', 'pty-filter'):
@@ -203,6 +203,7 @@ exec sleep infinity
         elif self.args.case == 'partition-storage':
             markers = ['PARTITIONED_ROOT_AND_ESP_FORMAT_PASS', 'PARTITION_WRITES_LEAVE_PARENT_UNCHANGED_PASS',
                        'WHOLE_DISK_LAYER_PRESERVES_BOTH_PARTITIONS_PASS', 'PARTITION_VIEWS_RELEASE_BEFORE_SEALING_PASS']
+            markers += [f'CONCURRENT_PARENT_CHILD_{fs}_PASS' for fs in ('ext4', 'xfs')]
         elif self.args.case == 'partition-busy':
             markers = ['BUSY_PARTITION_RETAINS_WHOLE_SNAPSHOT_PASS']
         elif self.args.case == 'sandbox-unmapped-owner':

@@ -707,7 +707,7 @@ context-copy policy. No context root or source-stage mount goes into a command.
 
 ### 6.4 Format and mounts
 
-`format` is an optional struct with `fs` (currently ext4), root `size`,
+`format` is an optional struct with `fs` (ext4 or XFS), root `size`,
 `label`, and optional ESP size. Defaults are ext4, 256 GiB and an empty label.
 Capacity is stored as positive whole MiB; YAML accepts MiB, GiB and TiB.
 Internal formatter profiles supply all filesystem options. Formatting
@@ -799,7 +799,7 @@ fallback or per-step memory policy. Final artifact storage is separate.
 The supervisor mounts assigned kernel filesystems and creates idmapped views
 for commands. Superblocks remain supervisor-owned; commands receive namespace
 root semantics through mapping, without backing-device access. No userspace
-filesystem worker is required. Ext4 is supported; other drivers
+filesystem worker is required. Ext4 and XFS are supported; other drivers
 and metadata combinations require explicit qualification.
 
 The trusted environment loads and retains a fixed BPF LSM exception for exactly
@@ -1227,7 +1227,7 @@ RAII owns resources; destructors cannot certify successful finalization.
 ### 14.4 Mount filesystems under the environment-provided labeling exception
 
 1. Use kernel filesystems supporting the required idmapped-mount and metadata
-   semantics. Ext4 is supported. Fail explicitly if the selected driver, trusted formatter,
+   semantics. Ext4 and XFS are supported. Fail explicitly if the selected driver, trusted formatter,
    idmapping, BPF LSM, BTF or required hooks are unavailable. No fallback to
    command CAP_SYS_ADMIN, a different filesystem or an unreviewed backend.
 

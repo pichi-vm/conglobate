@@ -8,7 +8,7 @@ pub(crate) use runtime::CapturedFormatter;
 mod staged;
 pub(crate) use staged::FormatterRuntime;
 mod profile;
-pub(crate) use profile::Ext4Format;
+pub(crate) use profile::RootFormat;
 
 mod input;
 pub(crate) use input::FormatterInput;

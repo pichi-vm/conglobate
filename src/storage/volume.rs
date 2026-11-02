@@ -124,15 +124,20 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
         volume.scope.verify_current()?;
         Ok(volume)
     }
-    /// Initial backend is ext4, with fixed nodev/nosuid mount policy. The parent
+    /// Supported root filesystems use fixed nodev/nosuid mount policy. The parent
     /// must be trusted tmpfs in this volume's mount namespace; it stores only the
     /// empty attachment directory, not image data. No plan mount options pass through.
-    pub(crate) fn mount_ext4(self, parent: &Path) -> io::Result<Volume<'ns, 'a, 'w, Mounted>> {
+    pub(crate) fn mount_root(self, parent: &Path) -> io::Result<Volume<'ns, 'a, 'w, Mounted>> {
         let attempt = (|| -> io::Result<MountedResources> {
             self.scope.verify_current()?;
             let point = Point::create(parent)?;
             let source = self.snapshot.open_root()?;
-            let context = mount::fsopen("ext4", mount::FsOpenFlags::FSOPEN_CLOEXEC)?;
+            let filesystem = super::filesystem::detect(&source)?;
+            let context = mount::fsopen(filesystem, mount::FsOpenFlags::FSOPEN_CLOEXEC)?;
+            if filesystem == "xfs" {
+                // Parent and child snapshots legitimately share an on-disk UUID.
+                mount::fsconfig_set_flag(&context, "nouuid")?;
+            }
             mount::fsconfig_set_string(
                 &context,
                 "source",

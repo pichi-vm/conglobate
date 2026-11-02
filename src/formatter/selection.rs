@@ -13,16 +13,19 @@ use std::{
 impl CapturedFormatter {
     /// Resolve the internal formatter profile for a plan filesystem specification.
     ///
-    /// The kind-tagged plan enum admits only qualified backends. Match it
+    /// The filesystem enum admits only qualified backends. Match it
     /// explicitly so adding a variant requires a corresponding formatter choice.
     pub(crate) fn for_filesystem(spec: &Format) -> io::Result<CapturedFormatter> {
-        if spec.filesystem != crate::contract::plan::Filesystem::Ext4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "unsupported root filesystem",
-            ));
-        }
-        let captured = Self::for_name("ext4")?;
+        let captured = Self::for_name(match spec.filesystem {
+            crate::contract::plan::Filesystem::Ext4 => "ext4",
+            crate::contract::plan::Filesystem::Xfs => "xfs",
+            crate::contract::plan::Filesystem::Btrfs => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "unsupported root filesystem",
+                ));
+            }
+        })?;
         if let Some(size) = spec.esp {
             super::Fat32Format::try_from(size)?;
             captured.with_fat(CapturedFormatter::host_tool("mkfs.fat")?)
@@ -34,13 +37,18 @@ impl CapturedFormatter {
     /// Map a filesystem type name to a captured formatter runtime.
     pub(crate) fn for_name(name: &str) -> io::Result<CapturedFormatter> {
         let _profile = Self::profile_for_name(name)?;
-        Self::capture_host_ext4()
+        match name {
+            "ext4" => Self::capture_host_ext4(),
+            "xfs" => Self::host_tool("mkfs.xfs")?.with_mount_table(),
+            _ => unreachable!("profile was checked"),
+        }
     }
 
     /// Profile identity string for a known filesystem name, without capturing tools.
     pub(crate) fn profile_for_name(name: &str) -> Result<&'static str, io::Error> {
         match name {
-            "ext4" => Ok(super::Ext4Format::PROFILE),
+            "ext4" => Ok(super::RootFormat::PROFILE),
+            "xfs" => Ok("conglobate-xfs-v1"),
             other => Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 format!("unsupported filesystem type: {other}"),
@@ -150,16 +158,16 @@ mod tests {
     fn known_filesystem_maps_to_ext4_profile() {
         assert_eq!(
             CapturedFormatter::profile_for_name("ext4").unwrap(),
-            super::super::Ext4Format::PROFILE
+            super::super::RootFormat::PROFILE
         );
     }
 
     #[test]
     fn unknown_filesystem_is_rejected() {
-        let err = CapturedFormatter::profile_for_name("xfs").unwrap_err();
+        let err = CapturedFormatter::profile_for_name("unknown").unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
-        assert!(err.to_string().contains("xfs"));
-        assert!(CapturedFormatter::for_name("btrfs").is_err());
+        assert!(err.to_string().contains("unknown"));
+        assert!(CapturedFormatter::for_name("unknown").is_err());
     }
 
     #[test]
@@ -190,7 +198,7 @@ mod tests {
             "expected mke2fs among captured runtime files"
         );
         assert!(captured.files().any(|(path, _)| {
-            path.as_ref() == Path::new(super::super::Ext4Format::CONFIGURATION_PATH)
+            path.as_ref() == Path::new(super::super::RootFormat::CONFIGURATION_PATH)
         }));
     }
 }

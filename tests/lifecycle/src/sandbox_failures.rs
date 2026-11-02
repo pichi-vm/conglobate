@@ -3,7 +3,7 @@
 
 use conglobate::{
     execution::HelperProgram,
-    formatter::{CapturedFormatter, Ext4Format},
+    formatter::{CapturedFormatter, RootFormat},
     isolation::IdRange,
     path::ContextPath,
     process::ChildReaper,
@@ -190,7 +190,7 @@ impl SandboxFailures {
             let (formatter, snapshot) = formatter
                 .format(
                     snapshot,
-                    Ext4Format::new(
+                    RootFormat::new(
                         crate::value::FilesystemSize::new(16).unwrap(),
                         "rollback-probe".to_owned(),
                     ),
@@ -205,16 +205,25 @@ impl SandboxFailures {
             snapshot
         } else {
             // Namespace and mount-failure cases still need valid disk metadata.
-            // Leave the root partition unformatted to exercise mount rejection.
-            conglobate::storage::PartitionedSnapshot::create(
+            // Write only the ext4 signature so driver selection succeeds while
+            // the kernel still rejects the malformed filesystem at mount.
+            let partitions = conglobate::storage::PartitionedSnapshot::create(
                 snapshot,
-                &Ext4Format::new(
+                &RootFormat::new(
                     crate::value::FilesystemSize::new(16).unwrap(),
                     Default::default(),
                 )
                 .layout()?,
-            )?
-            .into_snapshot()?
+            )?;
+            {
+                use std::os::unix::fs::FileExt;
+                let root = fs::OpenOptions::new()
+                    .write(true)
+                    .open(format!("/dev/dm-{}", partitions.root_id().minor()))?;
+                root.write_all_at(&[0x53, 0xef], 1080)?;
+                root.sync_all()?;
+            }
+            partitions.into_snapshot()?
         };
         let device = snapshot.id();
         let runtime_parent = Path::new("/work/runtime-parent");
@@ -245,7 +254,7 @@ impl SandboxFailures {
                 | FailurePoint::SupervisorDeath
         ) {
             let mounted = volume
-                .mount_ext4(paths.volumes())
+                .mount_root(paths.volumes())
                 .map_err(|e| e.to_string())?;
             let entries = fs::read_dir(paths.volumes())?.collect::<Result<Vec<_>, _>>()?;
             assert_eq!(entries.len(), 1);

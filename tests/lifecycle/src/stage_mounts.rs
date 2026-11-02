@@ -5,7 +5,7 @@ use crate::{
     contract::plan::Format,
     contract::plan::{ImagePath, Mount},
     execution::HelperProgram,
-    formatter::{CapturedFormatter, Ext4Format},
+    formatter::{CapturedFormatter, RootFormat},
     step::SetupBudget,
     storage::{Active, Created, Mapping, Runtime, SnapshotMapping, Volume, Workspace},
 };
@@ -45,7 +45,7 @@ impl StageMounts {
             .stage(workspace)?
             .format(
                 snapshot,
-                Ext4Format::from(&spec),
+                RootFormat::from(&spec),
                 &HelperProgram::current()?,
                 SetupBudget::begin(),
             )?
@@ -84,7 +84,7 @@ impl StageMounts {
         let snapshot_id = snapshot.id();
         let volume = Volume::in_init_namespace(snapshot, runtime.recovery())?
             .with_mounts(&mounts, paths.volumes(), true)?
-            .mount_ext4(paths.volumes())?;
+            .mount_root(paths.volumes())?;
         {
             let view = volume.view()?;
             let descriptor = view.descriptor()?;
@@ -113,7 +113,7 @@ impl StageMounts {
             println!("BUSY_STAGE_MOUNT_RETAINS_SNAPSHOT_AND_RUNTIME_PASS");
             std::process::exit(0);
         }
-        let volume = volume.unmount()?.mount_ext4(paths.volumes())?;
+        let volume = volume.unmount()?.mount_root(paths.volumes())?;
         {
             let view = volume.view()?;
             let descriptor = view.descriptor()?;
@@ -125,7 +125,7 @@ impl StageMounts {
         let snapshot = volume.unmount()?.into_snapshot()?;
         assert_eq!(fs::read_dir(paths.volumes())?.count(), 0);
         let volume =
-            Volume::in_init_namespace(snapshot, runtime.recovery())?.mount_ext4(paths.volumes())?;
+            Volume::in_init_namespace(snapshot, runtime.recovery())?.mount_root(paths.volumes())?;
         {
             let view = volume.view()?;
             let descriptor = view.descriptor()?;
@@ -142,7 +142,7 @@ impl StageMounts {
                 paths.volumes(),
                 false,
             )?
-            .mount_ext4(paths.volumes())?;
+            .mount_root(paths.volumes())?;
         {
             let view = volume.view()?;
             let descriptor = view.descriptor()?;
@@ -171,7 +171,7 @@ impl StageMounts {
         // root, masters and partition views through explicit close paths.
         let snapshot = Self::format(&origin, &workspace, false)?;
         let volume =
-            Volume::in_init_namespace(snapshot, runtime.recovery())?.mount_ext4(paths.volumes())?;
+            Volume::in_init_namespace(snapshot, runtime.recovery())?.mount_root(paths.volumes())?;
         {
             let view = volume.view()?;
             let descriptor = view.descriptor()?;
@@ -182,7 +182,7 @@ impl StageMounts {
             paths.volumes(),
             false,
         )?;
-        let error = volume.mount_ext4(paths.volumes()).unwrap_err();
+        let error = volume.mount_root(paths.volumes()).unwrap_err();
         assert_eq!(error.raw_os_error(), Some(40));
         assert_eq!(fs::read_dir(paths.volumes())?.count(), 0);
         println!("SYMLINK_MOUNT_RELEASES_PARTIAL_VIEWS_PASS");

@@ -4,7 +4,7 @@
 use super::rejection::DiscardStorage;
 use crate::{
     execution::HelperProgram,
-    formatter::{CapturedFormatter, Ext4Format},
+    formatter::{CapturedFormatter, RootFormat},
     input::ResolvedBuild,
     planner::Stage,
     process::ChildReaper,
@@ -125,7 +125,7 @@ impl<'a> BootstrapBuild<'a> {
         formatter
             .format(
                 snapshot,
-                Ext4Format::from(self.stage.format.as_ref().expect("creation format")),
+                RootFormat::from(self.stage.format.as_ref().expect("creation format")),
                 &helper,
                 SetupBudget::begin(),
             )?

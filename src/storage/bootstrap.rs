@@ -40,8 +40,8 @@ impl<'n, 'o, 'w> BootstrapVolumes<'n, 'o, 'w, Unmounted> {
             )
             .into());
         }
-        let tool = self.tool.mount_ext4(parent)?;
-        let output = match self.output.mount_ext4(parent) {
+        let tool = self.tool.mount_root(parent)?;
+        let output = match self.output.mount_root(parent) {
             Ok(output) => output,
             Err(error) => {
                 return Err(match tool.unmount() {

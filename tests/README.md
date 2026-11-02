@@ -56,13 +56,15 @@ mount target releases partially acquired owners. `stage-mount-busy` holds a
 directory in a nested child mount and requires unmount to fail while retaining
 the whole snapshot and runtime until disposable guest shutdown.
 
-`partition-storage` formats a 4 KiB-sector GPT with native ext4 root and FAT32
+`partition-storage` formats a 4 KiB-sector GPT with native ext4 and XFS roots and FAT32
 ESP through the production formatter. It checks partition bounds and on-disk
 offsets, writes both filesystems, seals and extends the whole-disk snapshot,
 then checks persistence and hashes the entire parent disk to detect changes.
+It keeps the parent mounted while writing the child to catch shared-UUID aliasing.
 Writable partition views must close before sealing. `partition-busy` holds an
 ESP view open and requires finalization to fail while retaining the snapshot.
-These cases need `dosfstools` and the guest's vfat/NLS modules in addition to
+These cases need `dosfstools`, `xfsprogs` and the guest's
+vfat/NLS and XFS modules in addition to
 the ordinary lifecycle prerequisites.
 
 Compile with ordinary user privileges:

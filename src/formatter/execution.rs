@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{Ext4Format, FormatterInput, FormatterRuntime};
+use super::{FormatterInput, FormatterRuntime, RootFormat};
 use crate::{
     execution::HelperProgram,
     process::{Process, Running},
@@ -29,7 +29,7 @@ pub(crate) struct Formatting<'origin, 'workspace> {
 struct FormatInputs<'origin, 'workspace> {
     runtime: FormatterRuntime,
     snapshot: PartitionedSnapshot<'origin, 'workspace>,
-    format: Ext4Format,
+    format: RootFormat,
     next: Option<std::process::Command>,
 }
 impl FormatInputs<'_, '_> {
@@ -60,7 +60,7 @@ impl FormatterRuntime {
     pub(crate) fn format<'a, 'w>(
         self,
         snapshot: SnapshotMapping<'a, 'w>,
-        format: Ext4Format,
+        format: RootFormat,
         program: &HelperProgram,
         budget: SetupBudget,
     ) -> anyhow::Result<Formatting<'a, 'w>> {
@@ -86,11 +86,13 @@ impl FormatterRuntime {
         let result = (|| -> io::Result<Process<Running>> {
             budget.check()?;
             let valid_config = inputs.runtime.captured().files().any(|(path, file)| {
-                path.as_ref() == Path::new(Ext4Format::CONFIGURATION_PATH)
-                    && file.bytes() == Ext4Format::configuration()
+                path.as_ref() == Path::new(RootFormat::CONFIGURATION_PATH)
+                    && file.bytes() == RootFormat::configuration()
                     && !file.executable()
             });
-            if !valid_config {
+            if inputs.format.filesystem() == crate::contract::plan::Filesystem::Ext4
+                && !valid_config
+            {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
                     "formatter requires builder-owned ext4 configuration",

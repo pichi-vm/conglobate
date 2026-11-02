@@ -134,10 +134,7 @@ impl TryFrom<plan::Stage> for Stage {
             }
         }
         if let Some(spec) = &format {
-            if spec.filesystem != plan::Filesystem::Ext4 {
-                return Err(PlanError::Invalid("unsupported root filesystem".into()));
-            }
-            crate::formatter::Ext4Format::from(spec).layout()?;
+            crate::formatter::RootFormat::from(spec).layout()?;
             if let Some(esp) = spec.esp {
                 crate::formatter::Fat32Format::try_from(esp)?;
             } else if mount.values().any(|kind| *kind == plan::Mount::Esp) {

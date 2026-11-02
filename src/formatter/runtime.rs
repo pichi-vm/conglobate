@@ -158,10 +158,38 @@ impl CapturedFormatter {
             fat: None,
         })
     }
+    /// The formatter sees only its read-only tmpfs root, a private tmpfs /dev,
+    /// and one newly created, unmounted output partition. Supply that namespace's
+    /// mount table as ordinary files; mounting proc would expose supervisor FDs.
+    pub(super) fn with_mount_table(mut self) -> io::Result<Self> {
+        if self
+            .files
+            .keys()
+            .any(|existing| existing.as_ref().starts_with("proc"))
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "formatter runtime reserves /proc mount tables",
+            ));
+        }
+        let name = "proc/mounts";
+        let bytes = b"none / tmpfs ro 0 0\nnone /dev tmpfs rw 0 0\n";
+        self.files.insert(
+            RelativePath::try_from(Path::new(name)).expect("fixed mount table path"),
+            FormatterFile {
+                bytes: bytes.to_vec().into(),
+                #[cfg(test)]
+                digest: Sha256::digest(bytes).into(),
+                executable: false,
+            },
+        );
+        Ok(self)
+    }
+
     /// Add the builder-owned configuration, rejecting a supplied host config.
     /// The captured root must never choose ambient mke2fs defaults.
     pub(crate) fn with_ext4_configuration(mut self) -> io::Result<Self> {
-        let path = RelativePath::try_from(Path::new(super::Ext4Format::CONFIGURATION_PATH))
+        let path = RelativePath::try_from(Path::new(super::RootFormat::CONFIGURATION_PATH))
             .expect("fixed configuration path");
         if self.files.keys().any(|existing| {
             path.as_ref().starts_with(existing.as_ref())
@@ -175,9 +203,9 @@ impl CapturedFormatter {
         self.files.insert(
             path,
             FormatterFile {
-                bytes: super::Ext4Format::configuration().into(),
+                bytes: super::RootFormat::configuration().into(),
                 #[cfg(test)]
-                digest: super::Ext4Format::configuration_digest(),
+                digest: super::RootFormat::configuration_digest(),
                 executable: false,
             },
         );
@@ -211,10 +239,10 @@ mod tests {
         let (_, config) = captured
             .files()
             .find(|(path, _)| {
-                path.as_ref() == Path::new(super::super::Ext4Format::CONFIGURATION_PATH)
+                path.as_ref() == Path::new(super::super::RootFormat::CONFIGURATION_PATH)
             })
             .unwrap();
-        assert_eq!(config.bytes(), super::super::Ext4Format::configuration());
+        assert_eq!(config.bytes(), super::super::RootFormat::configuration());
         assert!(!config.executable());
         assert!(captured.with_ext4_configuration().is_err());
 

@@ -172,6 +172,7 @@ require_fs_module("fuse", "FUSE_FS")
 require_fs_module("virtiofs", "VIRTIO_FS")
 require_fs_module("loop", "BLK_DEV_LOOP")
 require_fs_module("vfat", "VFAT_FS")
+require_fs_module("xfs", "XFS_FS")
 require_fs_module("nls_cp437", "NLS_CODEPAGE_437")
 require_fs_module("nls_iso8859-1", "NLS_ISO8859_1")
 require_fs_module("virtio_net", "VIRTIO_NET")
@@ -206,11 +207,11 @@ if not os.path.isfile(modules_load):
     raise SystemExit("missing modules-load.d/pichi-virtiofs.conf")
 with open(modules_load) as handle:
     loaded = {line.strip() for line in handle if line.strip() and not line.startswith("#")}
-for name in ("fuse", "virtiofs", "loop", "vfat", "nls_cp437", "nls_iso8859-1", "virtio_net"):
+for name in ("fuse", "virtiofs", "loop", "vfat", "xfs", "nls_cp437", "nls_iso8859-1", "virtio_net"):
     if name not in loaded:
         raise SystemExit(f"modules-load.d must list {name}")
 
-for binary, package in (("mke2fs", "e2fsprogs"), ("mkfs.fat", "dosfstools")):
+for binary, package in (("mke2fs", "e2fsprogs"), ("mkfs.fat", "dosfstools"), ("mkfs.xfs", "xfsprogs")):
     paths = (in_root(f"/usr/sbin/{binary}"), in_root(f"/sbin/{binary}"))
     if not any(os.path.isfile(path) and os.access(path, os.X_OK) for path in paths):
         raise SystemExit(f"{package} {binary} is not executable in the appliance rootfs")

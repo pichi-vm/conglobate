@@ -83,7 +83,7 @@ binding. PMI bytes and their embedded command line are never rewritten. Updating
 Corium code requires a new PMI.
 
 Creation defaults to a 256 GiB ext4 root. `format` optionally selects
-whole MiB/GiB/TiB `size`, `label` and an `esp` capacity.
+`fs: ext4` or `fs: xfs`, whole MiB/GiB/TiB `size`, `label` and an `esp` capacity.
 
 COPY without `from` reads the captured Git context. With `from`, it reads a
 named stage's whole persisted root; stage mounts are not replayed. Destination
