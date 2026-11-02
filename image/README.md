@@ -22,8 +22,8 @@ builder.
   only when `github.ref` is `refs/heads/main` and the event is not
   `pull_request`.
 
-The rootfs is not a layer on `ghcr.io/pichi-vm/fedora`. That carapace does not
-treat virtiofs as first-class, so this image keeps the modules itself.
+The rootfs is built directly from packages. Its module tree includes the
+filesystems and device drivers needed by both the appliance and build stages.
 
 ## Guest
 
@@ -59,10 +59,24 @@ builder/input/output mirrors are emitted. Later attestation binds the image
 digest and TEE/builder. A manifest containing scutes carries one
 `dev.pichi.carapace.verity.hash` committing the final salt-linked chain root.
 The builder reads that commitment once through `pichi inspect` and uses it
-for the boot command line. Missing, malformed and zero roots are rejected.
+for `corium.root` in native bootconfig. Missing, malformed and zero roots are rejected.
 It requires a Pichi producer that records this manifest commitment. Existing
 verity parameters and per-scute salt/data-blocks annotations stay; no
 per-scute hashes are added.
+
+## Disk and boot components
+
+The carapace contains the complete mkosi GPT disk, using 4096-byte logical
+sectors and the native Discoverable Partitions Specification root type.
+Corium maps only that partition through its read-only root view. The split
+ext4 artifact is used to inspect filesystem geometry during packaging.
+
+Arma embeds the base platform device tree in the PMI and measures only the
+fixed `bootconfig` kernel command line. Native configuration carries
+`corium.root` and `kernel.console` / `kernel.systemd.*` settings. Pichi imports
+it with `--bootconfig` and preserves the PMI bytes. There is no detached DTB.
+A Corium binary update requires rebuilding the PMI; a new image root requires
+only rebinding its existing `corium.root` configuration value.
 
 ## OCI output
 
