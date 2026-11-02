@@ -1653,8 +1653,9 @@ and typed ext4 properties. Formatter and runtime resource limits still apply;
 accepting a size does not promise that mke2fs can format it. Sparse writable
 COW stores share the backing workspace's capacity, including snapshot metadata;
 they are never sized from the logical origin. Exhaustion fails the build.
-Trusted mke2fs uses 4096-byte filesystem blocks. After writers and mappings
-close, finalization compares snapshot exceptions with their read-only origin:
+Trusted mke2fs uses 4096-byte filesystem blocks and disables journaling for
+new roots, which are sealed after clean unmount. Inherited filesystem features
+are preserved. After writers and mappings close, finalization compares snapshot exceptions with their read-only origin:
 zeros for bootstrap, or the assembled parent chain for extension. It removes
 identical blocks while retaining zero writes that mask nonzero parent data.
 Retained exceptions are repacked into separate scratch storage before hashing
