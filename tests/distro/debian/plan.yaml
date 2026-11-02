@@ -1,51 +1,52 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/debian:trixie
-    exec:
-    - network: true
-      timeout: 20m
-      run: |
-        printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d
-        chmod 0755 /usr/sbin/policy-rc.d
-        apt-get update
-        DEBIAN_FRONTEND=noninteractive apt-get install -y systemd-sysv udev dbus util-linux
-        dpkg-query -W systemd-sysv udev dbus util-linux
-        rm /usr/sbin/policy-rc.d
-        printf 'conglobate Debian qualification\n' > /etc/conglobate-qualified
-        printf 'debian\n' > /etc/hostname
-        truncate -s 0 /etc/machine-id
-        # The inherited firmware boots with systemd.volatile=state. Preserve
-        # Debian's package database so tmpfiles can seed the fresh /var.
-        mkdir -p /usr/share/factory/var/lib /usr/lib/tmpfiles.d
-        cp -a /var/lib/dpkg /usr/share/factory/var/lib/dpkg
-        printf 'C /var/lib/dpkg - - - -\n' > /usr/lib/tmpfiles.d/conglobate-dpkg.conf
+    extend: qualification.local/debian:trixie
+    steps:
+    - exec:
+        command: |
+          printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d
+          chmod 0755 /usr/sbin/policy-rc.d
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y systemd-sysv udev dbus util-linux
+          dpkg-query -W systemd-sysv udev dbus util-linux
+          rm /usr/sbin/policy-rc.d
+          printf 'conglobate Debian qualification\n' > /etc/conglobate-qualified
+          printf 'debian\n' > /etc/hostname
+          truncate -s 0 /etc/machine-id
+          # The inherited firmware boots with systemd.volatile=state. Preserve
+          # Debian's package database so tmpfiles can seed the fresh /var.
+          mkdir -p /usr/share/factory/var/lib /usr/lib/tmpfiles.d
+          cp -a /var/lib/dpkg /usr/share/factory/var/lib/dpkg
+          printf 'C /var/lib/dpkg - - - -\n' > /usr/lib/tmpfiles.d/conglobate-dpkg.conf
+        network: true
+        timeout: 20m
     - copy:
-        from: qualification.service
+        path: qualification.service
         into: /etc/systemd/system/conglobate-qualification.service
     - copy:
-        from: qualification.sh
+        path: qualification.sh
         into: /usr/local/bin/conglobate-qualification
-    - run: chmod 0755 /usr/local/bin/conglobate-qualification
-    - run: |
-        mkdir -p /etc/systemd/system/multi-user.target.wants
-        ln -s ../conglobate-qualification.service /etc/systemd/system/multi-user.target.wants/conglobate-qualification.service
+    - exec:
+        command: chmod 0755 /usr/local/bin/conglobate-qualification
+    - exec:
+        command: |
+          mkdir -p /etc/systemd/system/multi-user.target.wants
+          ln -s ../conglobate-qualification.service /etc/systemd/system/multi-user.target.wants/conglobate-qualification.service
   firmware:
-    kind: build
-    from: rootfs
-    exec:
+    extend: rootfs
+    steps:
     - copy:
-        from: firmware
+        path: firmware
         into: /plan-input-firmware
-    - run: cp -a /plan-input-firmware/boot.pmi /qualification-boot.pmi
-    - copy:
-        from: firmware
-        into: /plan-input-firmware
-    - run: cp -a /plan-input-firmware/base.dtb /qualification-base.dtb
-    into:
-      pmi: /qualification-boot.pmi
-      dtb: /qualification-base.dtb
+    - exec:
+        command: cp -a /plan-input-firmware/boot.pmi /qualification-boot.pmi
 image:
   root: rootfs
-  boot: firmware
+  boot:
+    extract: {from: firmware, path: /qualification-boot.pmi}
+    define:
+      corium.root: ""
+      kernel.console: [ttyS0, hvc0]
+      kernel.systemd.volatile: state
+      kernel.systemd.unit: multi-user.target

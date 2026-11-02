@@ -46,10 +46,20 @@ mod tests {
     #[test]
     fn rejects_capacities_outside_the_fat32_cluster_range() {
         for size in ["16MiB", "256MiB", "1025GiB"] {
-            assert!(Fat32Format::try_from(size.parse::<FilesystemSize>().unwrap()).is_err());
+            assert!(
+                Fat32Format::try_from(
+                    serde_json::from_value::<FilesystemSize>(serde_json::json!(size)).unwrap()
+                )
+                .is_err()
+            );
         }
         for size in ["257MiB", "512MiB", "1024GiB"] {
-            assert!(Fat32Format::try_from(size.parse::<FilesystemSize>().unwrap()).is_ok());
+            assert!(
+                Fat32Format::try_from(
+                    serde_json::from_value::<FilesystemSize>(serde_json::json!(size)).unwrap()
+                )
+                .is_ok()
+            );
         }
     }
 }

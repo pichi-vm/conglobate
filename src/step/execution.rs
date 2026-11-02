@@ -5,8 +5,8 @@ use super::{
     CommandOutcome, CommandStartFailure, CommandStorage, Ready, SetupBudget, Step,
     TeardownCompletion,
 };
-use crate::value::CommandTimeout;
 use std::io;
+use std::time::Duration;
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ExecutionOutcome {
@@ -69,11 +69,7 @@ impl<'l, R: CommandStorage> Step<'l, Ready, R> {
     /// Transfer this step's assigned volume, require restricted-leaf readiness,
     /// start under the plan timeout, observe completion and finalize storage.
     /// Every failure after launch performs bounded cleanup before returning.
-    pub(crate) fn execute(
-        self,
-        budget: SetupBudget,
-        timeout: CommandTimeout,
-    ) -> ExecutionResult<R> {
+    pub(crate) fn execute(self, budget: SetupBudget, timeout: Duration) -> ExecutionResult<R> {
         if let Err(error) = budget.check().and_then(|()| {
             self.storage.0.send(
                 &self.namespace,

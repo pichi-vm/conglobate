@@ -13,7 +13,7 @@ impl OciCopy {
         fs::create_dir(context)?;
         fs::write(
             context.join("plan.yaml"),
-            "tasks:\n  rootfs:\n    kind: extend\n    from: qualification.local/fixture:ci\nimage: rootfs\n",
+            "image: qualification.local/fixture:ci\n",
         )?;
         fs::write(
             context.join("images.lock"),

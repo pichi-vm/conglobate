@@ -7,6 +7,7 @@ extern crate self as conglobate;
 mod anchor;
 mod disk;
 use contract::artifact;
+mod boot_config;
 mod cache;
 mod context;
 mod copy;
@@ -34,8 +35,6 @@ mod process;
 mod request;
 mod step;
 mod storage;
-mod template;
-mod transform;
 mod value;
 
 #[path = "../tests/lifecycle/src/main.rs"]
