@@ -13,6 +13,8 @@ env:
   # to the same nightly the fedora image builds with. Conglobate itself is
   # built with 1.94.0, matching the rootless checks.
   NIGHTLY: "nightly-2026-07-06"
+  ARMA_REV: "3297920b46122689fb13ca41acd61cbe94ac1de7"
+  PICHI_REV: "e88291119c71f94862de1ca4aa4079d05ee440bd"
 
 jobs:
   # Build each arch natively (no QEMU). Each build exports an OCI layout and
@@ -62,11 +64,13 @@ jobs:
         run: |
           # arma and pichi pick up their own rust-toolchain.toml / .cargo/config
           # when built in-tree. Corium is installed by image/build.sh.
-          git clone --depth 1 https://github.com/pichi-vm/arma /tmp/arma
-          (cd /tmp/arma && cargo build --release --bin arma)
+          git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/arma /tmp/arma
+          git -C /tmp/arma checkout --detach "$ARMA_REV"
+          (cd /tmp/arma && cargo build --locked --release --bin arma)
           echo "ARMA=/tmp/arma/target/release/arma" >> "$GITHUB_ENV"
-          git clone --depth 1 https://github.com/pichi-vm/pichi /tmp/pichi
-          (cd /tmp/pichi && cargo build --release --bin pichi)
+          git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/pichi /tmp/pichi
+          git -C /tmp/pichi checkout --detach "$PICHI_REV"
+          (cd /tmp/pichi && cargo build --locked --release --bin pichi)
           install -m755 /tmp/pichi/target/release/pichi /usr/local/bin/pichi
           cargo +1.94.0 build --locked --release --features cli --bin conglobate
           echo "CONGLOBATE_BIN=$PWD/target/release/conglobate" >> "$GITHUB_ENV"
@@ -108,8 +112,9 @@ jobs:
       - name: Install pichi
         run: |
           rustup toolchain install "$NIGHTLY" --profile minimal
-          git clone --depth 1 https://github.com/pichi-vm/pichi /tmp/pichi
-          (cd /tmp/pichi && cargo "+$NIGHTLY" build --release --bin pichi)
+          git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/pichi /tmp/pichi
+          git -C /tmp/pichi checkout --detach "$PICHI_REV"
+          (cd /tmp/pichi && cargo "+$NIGHTLY" build --locked --release --bin pichi)
           sudo install -m755 /tmp/pichi/target/release/pichi /usr/local/bin/pichi
 
       - name: Download OCI layout artifacts
