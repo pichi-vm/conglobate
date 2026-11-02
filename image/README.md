@@ -22,8 +22,8 @@ builder.
   only when `github.ref` is `refs/heads/main` and the event is not
   `pull_request`.
 
-The rootfs is not a layer on `ghcr.io/pichi-vm/fedora`. That carapace does not
-treat virtiofs as first-class, so this image keeps the modules itself.
+The rootfs is built directly from packages. Its module tree includes the
+filesystems and device drivers needed by both the appliance and build stages.
 
 ## Guest
 
@@ -38,9 +38,13 @@ treat virtiofs as first-class, so this image keeps the modules itself.
   oneshot whose `ExecStart` is `conglobate appliance`. When that process exits,
   success or failure, the unit powers the VM off. Appliance stdout and stderr
   go to the journal and to the kernel console (`console=hvc0`).
-- `e2fsprogs` provides image-resident `mke2fs` (standard paths, `/usr/sbin/mke2fs`
-  first). The engine still captures that binary and its `ldd` dependencies from
-  the guest root. There is no host formatter path.
+- `e2fsprogs` and `dosfstools` provide image-resident `mke2fs` and `mkfs.fat`.
+  The engine captures each formatter and its `ldd` dependencies from the
+  appliance. Loop, FAT and its character-set modules remain available.
+- `systemd-networkd` configures the virtual NIC with DHCP. The build service
+  runs in a separate offline namespace; only `network: true` commands join
+  the configured appliance namespace. `systemd-resolved` supplies its DNS
+  configuration through `/run/pichi/resolv.conf`.
 
 Image hardcodes, not CBOR fields: UID/GID maps, the network-namespace path, and
 the resolver path (`src/appliance/mounts.rs`).
@@ -59,10 +63,24 @@ builder/input/output mirrors are emitted. Later attestation binds the image
 digest and TEE/builder. A manifest containing scutes carries one
 `dev.pichi.carapace.verity.hash` committing the final salt-linked chain root.
 The builder reads that commitment once through `pichi inspect` and uses it
-for the boot command line. Missing, malformed and zero roots are rejected.
+for `corium.root` in native bootconfig. Missing, malformed and zero roots are rejected.
 It requires a Pichi producer that records this manifest commitment. Existing
 verity parameters and per-scute salt/data-blocks annotations stay; no
 per-scute hashes are added.
+
+## Disk and boot components
+
+The carapace contains the complete mkosi GPT disk, using 4096-byte logical
+sectors and the native Discoverable Partitions Specification root type.
+Corium maps only that partition through its read-only root view. The split
+ext4 artifact is used to inspect filesystem geometry during packaging.
+
+Arma embeds the base platform device tree in the PMI and measures only the
+fixed `bootconfig` kernel command line. Native configuration carries
+`corium.root` and `kernel.console` / `kernel.systemd.*` settings. Pichi imports
+it with `--bootconfig` and preserves the PMI bytes. There is no detached DTB.
+A Corium binary update requires rebuilding the PMI; a new image root requires
+only rebinding its existing `corium.root` configuration value.
 
 ## OCI output
 
@@ -84,7 +102,7 @@ salts. Firmware remains in its OCI blob paths.
 | --- | --- |
 | `mkosi.conf`, `mkosi.finalize`, `mkosi.repart/` | Fedora 43 rootfs |
 | `build.sh` | Corium initramfs, `pichi import`, local tag `conglobate:0.2.0` |
-| `config.json` | Launch requirements (2 GiB required, 4 GiB recommended) |
+| `config.json` | Launch requirements (2 GiB required, 3 GiB recommended) |
 | `units/` | Installed into the rootfs and enabled |
 | `conglobate.plan.yaml` | Self-host later, not used by bootstrap CI |
 | `check-stub.sh` | Static contract check (no VM) |

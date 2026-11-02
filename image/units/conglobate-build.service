@@ -14,15 +14,22 @@
 
 [Unit]
 Description=Conglobate build appliance (build-port CBOR on dev.pichi.build)
-Documentation=file:../README.md
+Documentation=https://github.com/pichi-vm/conglobate
 Requires=run-pichi-repo.mount run-pichi-cache.mount run-pichi-output.mount
+Requires=systemd-resolved.service conglobate-network.service
+Wants=network-online.target
 After=run-pichi-repo.mount run-pichi-cache.mount run-pichi-output.mount
+After=network-online.target systemd-resolved.service conglobate-network.service
 ConditionPathExists=/usr/bin/conglobate
 SuccessAction=poweroff-force
 FailureAction=poweroff-force
 
 [Service]
 Type=oneshot
+# The supervisor stays offline. Only opted-in commands join the configured
+# appliance network, through the namespace descriptor supplied to the engine.
+PrivateNetwork=yes
+BindReadOnlyPaths=/run/systemd/resolve/resolv.conf:/run/pichi/resolv.conf
 ExecStart=/usr/bin/conglobate appliance
 # Fail the boot target if the build fails; do not linger as active.
 RemainAfterExit=no
