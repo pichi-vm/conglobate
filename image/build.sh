@@ -23,7 +23,7 @@ ARMA="${ARMA:-arma}"
 CORIUM_GIT="${CORIUM_GIT:-https://github.com/pichi-vm/corium}"
 # Corium reads corium.root from bootconfig and mounts the native GPT root
 # through its existing read-only view, leaving the whole chain reusable.
-CORIUM_REV="${CORIUM_REV:-8990cec452fae3a3b4d5df8ad489e41c2b98c446}"
+CORIUM_REV="${CORIUM_REV:-94a4f584e93ee36e9dbfceab26836caad18bcabe}"
 CORIUM_TOOLCHAIN="${CORIUM_TOOLCHAIN:-stable}"
 CONGLOBATE_TOOLCHAIN="${CONGLOBATE_TOOLCHAIN:-1.94.0}"
 
