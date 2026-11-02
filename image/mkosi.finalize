@@ -169,6 +169,7 @@ def require_fs_module(name, option):
 
 require_fs_module("fuse", "FUSE_FS")
 require_fs_module("virtiofs", "VIRTIO_FS")
+require_fs_module("virtio_net", "VIRTIO_NET")
 
 binary = f"{buildroot}/usr/bin/conglobate"
 if not os.path.isfile(binary) or not os.access(binary, os.X_OK):
@@ -179,6 +180,7 @@ for unit in (
     "run-pichi-cache.mount",
     "run-pichi-output.mount",
     "conglobate-build.service",
+    "conglobate-network.service",
 ):
     path = f"{buildroot}/usr/lib/systemd/system/{unit}"
     if not os.path.isfile(path):
@@ -199,7 +201,7 @@ if not os.path.isfile(modules_load):
     raise SystemExit("missing modules-load.d/pichi-virtiofs.conf")
 with open(modules_load) as handle:
     loaded = {line.strip() for line in handle if line.strip() and not line.startswith("#")}
-for name in ("fuse", "virtiofs"):
+for name in ("fuse", "virtiofs", "virtio_net"):
     if name not in loaded:
         raise SystemExit(f"modules-load.d must list {name}")
 
@@ -208,6 +210,16 @@ if not os.path.isfile(mke2fs):
     mke2fs = in_root("/sbin/mke2fs")
 if not os.path.isfile(mke2fs) or not os.access(mke2fs, os.X_OK):
     raise SystemExit("e2fsprogs mke2fs is not executable in the appliance rootfs")
+
+network = f"{buildroot}/usr/lib/systemd/network/10-build.network"
+if not os.path.isfile(network):
+    raise SystemExit("missing DHCP configuration for the build network")
+for service, target in (("systemd-networkd", "multi-user"),
+                        ("systemd-resolved", "multi-user"),
+                        ("systemd-networkd-wait-online", "network-online")):
+    link = f"{buildroot}/usr/lib/systemd/system/{target}.target.wants/{service}.service"
+    if not os.path.islink(link):
+        raise SystemExit(f"network service is not enabled: {link}")
 
 ldd = subprocess.run(
     ["chroot", buildroot, "ldd", "/usr/bin/conglobate"],

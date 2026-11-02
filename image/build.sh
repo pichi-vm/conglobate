@@ -95,14 +95,21 @@ inst="$extra/usr/lib/systemd/system"
 mkdir -p "$extra/usr/bin" \
 	"$inst/local-fs.target.wants" \
 	"$inst/multi-user.target.wants" \
-	"$extra/usr/lib/modules-load.d"
+	"$extra/usr/lib/modules-load.d" \
+	"$extra/usr/lib/systemd/network"
 install -m0755 "$conglobate_bin" "$extra/usr/bin/conglobate"
 install -m0644 "$here/units/"*.mount "$here/units/"*.service "$inst/"
 for tag in repo cache output; do
 	ln -s "../run-pichi-${tag}.mount" "$inst/local-fs.target.wants/run-pichi-${tag}.mount"
 done
 ln -s ../conglobate-build.service "$inst/multi-user.target.wants/conglobate-build.service"
-printf '%s\n' fuse virtiofs > "$extra/usr/lib/modules-load.d/pichi-virtiofs.conf"
+for service in systemd-networkd systemd-resolved; do
+	ln -s "../${service}.service" "$inst/multi-user.target.wants/${service}.service"
+done
+mkdir -p "$inst/network-online.target.wants"
+ln -s ../systemd-networkd-wait-online.service "$inst/network-online.target.wants/systemd-networkd-wait-online.service"
+install -m0644 "$here/10-build.network" "$extra/usr/lib/systemd/network/"
+printf '%s\n' fuse virtiofs virtio_net > "$extra/usr/lib/modules-load.d/pichi-virtiofs.conf"
 
 # mkosi copies mkosi.extra/ into the image before mkosi.finalize.
 mkosi --force --release "$RELEASE" --output-dir "$work"
