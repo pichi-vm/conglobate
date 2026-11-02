@@ -14,7 +14,7 @@ from run import DistroRuntime, REPOSITORY
 
 
 class SeedRuntime(DistroRuntime):
-    TOOLS = DistroRuntime.TOOLS + ('gzip',)
+    TOOLS = DistroRuntime.TOOLS + ('gzip', 'sfdisk')
 
 
 class SeedRun:
@@ -24,7 +24,7 @@ class SeedRun:
         self.root = self.output / 'root'
 
     def run(self):
-        if not 0 < self.arguments.size_mib <= (2**63 - 1) // 1024**2:
+        if not 0 < self.arguments.size_mib <= (2**63 - 1) // 1024**2 - 2:
             raise ValueError('--size-mib must be positive and fit a signed 64-bit file size')
         size = self.arguments.size_mib * 1024**2
         if platform.machine() != 'x86_64':
@@ -51,15 +51,16 @@ class SeedRun:
 set -eux
 for module in virtio_pci virtio_blk ext4; do modprobe "$module"; done
 mkdir /target
-mke2fs -q -F -t ext4 -b 4096 -I 256 -i 65536 -m 0 -E root_owner=0:0,lazy_itable_init=0,lazy_journal_init=0 /dev/vda
-mount /dev/vda /target
+printf 'label: gpt\\nstart=256, size=ROOT_SECTORS, type=4f68bce3-e8cd-4db1-96e7-fbcaf984b709\\n' | sfdisk /dev/vda
+mke2fs -q -F -t ext4 -b 4096 -I 256 -i 65536 -m 0 -E root_owner=0:0,lazy_itable_init=0,lazy_journal_init=0 /dev/vda1
+mount /dev/vda1 /target
 tar --numeric-owner --same-owner --xattrs --xattrs-include='*' --acls -xzf /rootfs.tar.gz -C /target
 stat -c 'SEED_OWNER %u %g %a %n' /target/etc/passwd /target/etc/shadow
 sync
 umount /target
-e2fsck -fn /dev/vda
+e2fsck -fn /dev/vda1
 echo SEED_FORMAT_EXTRACT_UNMOUNT_PASS
-''')
+'''.replace('ROOT_SECTORS', str(size // 4096)))
         (self.root / 'init').write_text('''#!/bin/bash
 set -eu
 export PATH=/usr/bin:/usr/sbin
@@ -83,9 +84,9 @@ exec sleep infinity
             cwd=self.root, capture_output=True, check=True).stdout
         (self.output / 'initramfs.gz').write_bytes(gzip.compress(packed, compresslevel=1, mtime=0))
         shutil.copy2(self.arguments.kernel, self.output / 'vmlinuz')
-        image = self.output / 'root.ext4'
+        image = self.output / 'root.gpt'
         with image.open('wb') as stream:
-            stream.truncate(size)
+            stream.truncate(size + 2 * 1024**2)
         result = self.output / 'status.raw'
         result.write_bytes(bytes(4096))
         command = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-m', '2048',
@@ -93,7 +94,8 @@ exec sleep infinity
             '-monitor', 'none', '-kernel', str(self.output / 'vmlinuz'),
             '-initrd', str(self.output / 'initramfs.gz'),
             '-append', 'console=ttyS0 rdinit=/init selinux=0 panic=-1 quiet',
-            '-drive', f'file={image},format=raw,if=virtio',
+            '-drive', f'file={image},format=raw,if=none,id=image',
+            '-device', 'virtio-blk-pci,drive=image,logical_block_size=4096,physical_block_size=4096',
             '-drive', f'file={result},format=raw,if=virtio']
         (self.output / 'command.json').write_text(json.dumps(command, indent=2) + '\n')
         with (self.output / 'serial.txt').open('wb') as log:

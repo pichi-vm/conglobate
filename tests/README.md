@@ -49,6 +49,15 @@ is a terminal VM-disposal case that checks retained storage on abandonment.
 A failed wait now performs its own bounded cancellation and cleanup.
 The stalled formatter parks; synchronization does not use sleeps.
 
+`partition-storage` formats a 4 KiB-sector GPT with native ext4 root and FAT32
+ESP through the production formatter. It checks partition bounds and on-disk
+offsets, writes both filesystems, seals and extends the whole-disk snapshot,
+then checks persistence and hashes the entire parent disk to detect changes.
+Writable partition views must close before sealing. `partition-busy` holds an
+ESP view open and requires finalization to fail while retaining the snapshot.
+These cases need `dosfstools` and the guest's vfat/NLS modules in addition to
+the ordinary lifecycle prerequisites.
+
 Compile with ordinary user privileges:
 
 ```
@@ -97,8 +106,8 @@ exercises abrupt helper loss without Rust destructor execution.
 `--case sandbox-namespace-failure` and `--case sandbox-mount-failure` migrate
 pre-admission acquisition rollback from the historical volume-supervisor cases.
 The former temporarily sets the disposable guest's user-namespace allowance to
-zero and restores it before rollback; the latter deliberately leaves a dm-zero
-snapshot unformatted. Both use the production CommandSandbox/Runtime owners,
+zero and restores it before rollback; the latter has valid GPT metadata but
+deliberately leaves its root partition unformatted. Both use the production CommandSandbox/Runtime owners,
 retain original diagnostics, require clean resource directories and child drain,
 and explicitly release the returned snapshot and runtime. No plan runs and
 these cases do not validate receiver admission, labels or mounted command teardown.
@@ -399,8 +408,11 @@ SHA-256-pinned complete rootfs tar archive. It rejects layered whiteouts and mem
 path traversal, formats/extracts only in a disconnected disposable VM, checks
 passwd/shadow numeric ownership and modes, unmounts, and runs e2fsck. Supply
 `--size-mib` for the filesystem capacity needed by the rootfs and later package
-installs. The sparse filesystem can then be converted into an initial carapace
-externally. Filesystem capacity is independent of Carapace virtual geometry. This
+installs. The output `root.gpt` includes 2 MiB for GPT and alignment around that
+root capacity. The guest sees a 4096-byte-sector disk; `sfdisk` creates its GPT
+with the native root type, and Linux discovers the partition before formatting.
+The whole disk can then be imported as an initial carapace externally.
+Filesystem capacity is independent of Carapace virtual geometry. This
 is initial seed preparation, not a conglobate bootstrap-stage pass. The Debian
 seed provenance records its OCI origin and external importer identity.
 

@@ -146,7 +146,8 @@ impl SandboxFailures {
         } else {
             32 * 1024 * 1024
         })?;
-        let sectors = NonZeroU64::new(32768).unwrap();
+        // Root capacity plus GPT and alignment space.
+        let sectors = NonZeroU64::new(18 * 1024 * 1024 / 512).unwrap();
         let origin = Mapping::<Created>::create()?.zero(sectors)?;
         let snapshot = Mapping::<Created>::create()?
             .snapshot(
@@ -196,11 +197,17 @@ impl SandboxFailures {
                 .map_err(|e| e.to_string())?
                 .wait()
                 .map_err(|e| e.to_string())?
-                .into_parts();
+                .into_parts()?;
             formatter.close()?;
             snapshot
         } else {
-            snapshot
+            // Namespace and mount-failure cases still need valid disk metadata.
+            // Leave the root partition unformatted to exercise mount rejection.
+            conglobate::storage::PartitionedSnapshot::create(
+                snapshot,
+                &Ext4Format::new("16MiB".parse()?, Default::default()).layout()?,
+            )?
+            .into_snapshot()?
         };
         let device = snapshot.id();
         let runtime_parent = Path::new("/work/runtime-parent");
@@ -891,7 +898,7 @@ impl SandboxFailures {
                 .is_empty()
         );
         if let Some(returned) = returned {
-            let snapshot = returned.into_snapshot();
+            let snapshot = returned.into_snapshot()?;
             snapshot.usage()?;
             snapshot
                 .close()
