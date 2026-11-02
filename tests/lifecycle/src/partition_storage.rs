@@ -163,6 +163,14 @@ impl PartitionStorage {
             let mut magic = [0; 2];
             disk_file.read_exact(&mut magic)?;
             assert_eq!(magic, [0x53, 0xef]);
+            disk_file.seek(SeekFrom::Start(root.start * 512 + 1024 + 92))?;
+            let mut features = [0; 4];
+            disk_file.read_exact(&mut features)?;
+            assert_eq!(
+                u32::from_le_bytes(features) & 4,
+                0,
+                "new ext4 has no journal"
+            );
         }
         disk_file.seek(SeekFrom::Start(esp.start * 512 + 82))?;
         let mut fat = [0; 8];

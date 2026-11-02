@@ -710,6 +710,7 @@ context-copy policy. No context root or source-stage mount goes into a command.
 `format` is an optional struct with `fs` (ext4, XFS or Btrfs), root `size`,
 `label`, and optional ESP size. Defaults are ext4, 256 GiB and an empty label.
 Capacity is stored as positive whole MiB; YAML accepts MiB, GiB and TiB.
+New ext4 roots have no journal; inherited filesystems keep their features.
 Btrfs compression is disabled. Internal formatter profiles supply all filesystem options. Formatting
 always writes GPT with 4096-byte logical sectors and 1 MiB alignment. Use native
 Discoverable Partitions Specification root type UUIDs and the standard ESP UUID;

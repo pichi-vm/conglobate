@@ -45,7 +45,7 @@ impl RootFormat {
         "-m",
         "0",
         "-E",
-        "root_owner=0:0,nodiscard,lazy_itable_init=0,lazy_journal_init=0",
+        "root_owner=0:0,nodiscard,lazy_itable_init=0",
     ];
     pub(crate) fn new(size: FilesystemSize, label: String) -> Self {
         Self {
