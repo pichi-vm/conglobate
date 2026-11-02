@@ -11,6 +11,7 @@ use rustix::{
 };
 use std::{fs::File, io, marker::PhantomData, rc::Rc};
 mod attachment;
+mod children;
 pub(crate) use attachment::{Attached, InUse, MountPoint, RootWaitFailure};
 
 mod private {
@@ -100,7 +101,7 @@ impl<'ns> Mount<'ns, Detached> {
         match rustix::mount::mount_setattr(
             &self.resources.root,
             "",
-            MountSetAttrFlags::AT_EMPTY_PATH,
+            MountSetAttrFlags::AT_EMPTY_PATH | MountSetAttrFlags::AT_RECURSIVE,
             attributes,
         ) {
             Ok(()) => Ok(Mount {
