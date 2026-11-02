@@ -19,6 +19,12 @@ impl<'a> From<&'a Mapping<Active>> for SnapshotOrigin<'a> {
     }
 }
 
+impl SnapshotOrigin<'_> {
+    pub(super) fn open_read_only(&self) -> io::Result<std::fs::File> {
+        self.mapping.open_read_only()
+    }
+}
+
 /// Persistent writable snapshot over a read-only origin. Owned loop backing
 /// prevents reuse even if deferred removal outlives this wrapper. The origin
 /// borrow prevents explicit origin release while the snapshot owner is live.

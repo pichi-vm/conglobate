@@ -73,7 +73,7 @@ impl<'w> DerivedCarapace<'w> {
                 .into_snapshot()
                 .close()?
                 .detach()?
-                .seal_snapshot(*active.root())?,
+                .seal_snapshot(*active.root(), &active)?,
         );
         let active = active.extend(Arc::clone(&scute))?;
         produced.push(scute);

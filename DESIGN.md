@@ -2047,9 +2047,13 @@ COW stores share the backing workspace's capacity, including snapshot metadata;
 they are never sized from the logical origin. Exhaustion fails the build.
 Trusted mke2fs uses 4096-byte filesystem blocks and disables journaling for
 new roots, which are sealed after clean unmount. Inherited filesystem features
-are preserved. Finalization trims
-unused snapshot capacity, uses ecosystem wire types and seals the scute directly;
-there is no image-to-carapace import/conversion step.
+are preserved. After writers and mappings close, finalization compares snapshot
+exceptions with their read-only origin: zeros for bootstrap, or the assembled
+parent chain for extension. It removes identical blocks while retaining zero
+writes that mask nonzero parent data. Retained exceptions are repacked into
+separate scratch storage before hashing and sealing. Buffers are bounded;
+comparison or packing failures reject sealing. There is no image-to-carapace
+import/conversion step.
 
 Scute wire parsing belongs to devmap-snapshot. Carapace owns read-only loop,
 verity and snapshot assembly. Pichi bounds decompression by the required block
