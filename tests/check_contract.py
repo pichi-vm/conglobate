@@ -18,7 +18,7 @@ def main():
         raise SystemExit('the contract library must not enable default features')
     normal = {d['name'] for d in package['dependencies']
               if d['kind'] is None and not d['optional']}
-    if normal != {'serde', 'hex', 'thiserror'}:
+    if normal != {'serde', 'hex', 'thiserror', 'humantime-serde'}:
         raise SystemExit(f'unexpected library dependencies: {sorted(normal)}')
     binary = next(t for t in package['targets']
                   if t['name'] == 'conglobate' and 'bin' in t['kind'])

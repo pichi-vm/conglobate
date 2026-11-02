@@ -63,6 +63,7 @@ required-features = ["test-fixtures"]
 test = false
 
 [dependencies]
+humantime-serde = "1.1"
 # --- types-only lib surface (always on) ---
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }

@@ -1,0 +1,33 @@
+stages:
+  base:
+    use: registry.example.com/fedora-tools:latest
+    format:
+      fs: ext4
+      size: 4GiB
+      label: fedora
+      esp: 512MiB
+    mounts:
+      /boot/efi: esp
+      /tmp: tmpfs
+    steps:
+    - exec:
+        command: dnf -y --installroot=/mnt --releasever=43 install systemd bash
+        network: true
+        timeout: 30m
+    - copy:
+        path: files/os-release
+        into: /mnt/etc/os-release
+  configured:
+    extend: base
+    steps:
+    - exec:
+        command: printf '%s\n' configured > /etc/image-variant
+image:
+  root: configured
+  boot:
+    inherit: registry.example.com/firmware:latest
+    extend:
+      corium.root: ""
+      kernel.quiet: []
+      kernel.console: [ttyS0, hvc0]
+      old.value:
