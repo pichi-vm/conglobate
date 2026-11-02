@@ -165,7 +165,7 @@ impl ChainStorage {
             assert_eq!(bytes, inherited);
             assert_eq!(image.root(), Some(root));
             println!("WRITABLE_SNAPSHOT_OVER_VERIFIED_CHAIN_PASS");
-            let scute = std::sync::Arc::new(scratch.seal_snapshot(*mounted.root())?);
+            let scute = std::sync::Arc::new(scratch.seal_snapshot(*mounted.root(), &mounted)?);
             let root = *scute.root();
             drop(reader);
             let mounted = mounted.extend(scute)?;
