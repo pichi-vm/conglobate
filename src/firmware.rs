@@ -3,9 +3,11 @@
 
 mod boot_config_contract;
 mod output;
+mod pmi_contract;
 pub(crate) use boot_config_contract::BootConfigContract;
 use ciborium::Value;
-pub(crate) use output::{ExtractedFirmware, ExtractionError, FinalizedFirmware, FirmwareFile};
+pub(crate) use output::FirmwareFile;
+pub(crate) use pmi_contract::PmiContract;
 use std::collections::BTreeSet;
 
 #[derive(Debug, thiserror::Error)]
@@ -14,118 +16,6 @@ pub(crate) struct FirmwareError(String);
 impl FirmwareError {
     fn invalid(error: impl std::fmt::Display) -> Self {
         Self(error.to_string())
-    }
-}
-/// Every recognized target accepts one external measured DTB, without an
-/// already-signed launch identity. This is not validation of executable firmware
-/// or a signing operation. Unchanged DTBs do not need this permission.
-#[derive(Debug)]
-pub(crate) struct DtbContract {
-    capacity: u32,
-}
-impl DtbContract {
-    pub(crate) fn from_pmi(bytes: &[u8]) -> Result<Self, FirmwareError> {
-        let pe = goblin::pe::PE::parse(bytes).map_err(FirmwareError::invalid)?;
-        let mut targets = BTreeSet::new();
-        let mut capacity = u32::MAX;
-        for section in &pe.sections {
-            let name = section.name().map_err(FirmwareError::invalid)?;
-            if !name.starts_with(".pmi.") {
-                continue;
-            }
-            if !targets.insert(name) {
-                return Err(FirmwareError::invalid("duplicate PMI target section"));
-            }
-            let start = section.pointer_to_raw_data as usize;
-            let end = start
-                .checked_add(section.size_of_raw_data as usize)
-                .ok_or_else(|| FirmwareError::invalid("PMI section extent overflow"))?;
-            let manifest = Manifest(
-                bytes
-                    .get(start..end)
-                    .ok_or_else(|| FirmwareError::invalid("PMI section exceeds file"))?,
-            );
-            let value: Value = manifest.decode()?;
-            ManifestValue(&value).unique_maps()?;
-            match name {
-                ".pmi.vm" => match pe.header.coff_header.machine {
-                    0x8664 => {
-                        manifest.decode::<pmi::vm::Spec<pmi::vm::vcpu::x86_64::CpuState>>()?;
-                    }
-                    0xaa64 => {
-                        manifest.decode::<pmi::vm::Spec<pmi::vm::vcpu::aarch64::CpuState>>()?;
-                    }
-                    _ => return Err(FirmwareError::invalid("unsupported VM machine")),
-                },
-                ".pmi.sev" => {
-                    if manifest.decode::<pmi::sev::Spec>()?.id.is_some() {
-                        return Err(FirmwareError::invalid(
-                            "changed DTB would invalidate signed SEV launch identity",
-                        ));
-                    }
-                }
-                ".pmi.tdx" => {
-                    manifest.decode::<pmi::tdx::Spec>()?;
-                }
-                ".pmi.cca" => {
-                    manifest.decode::<pmi::cca::Spec>()?;
-                }
-                _ => {
-                    return Err(FirmwareError::invalid(format!(
-                        "DTB edits unsupported for target {name}"
-                    )));
-                }
-            }
-            let value = ManifestValue(&value);
-            let actions = value
-                .field("actions")
-                .and_then(Value::as_array)
-                .ok_or_else(|| FirmwareError::invalid("PMI has no actions"))?;
-            let mut fills = actions.iter().map(ManifestValue).filter(|action| {
-                action.field("type").and_then(Value::as_text) == Some("fill")
-                    && action.field("kind").and_then(Value::as_text) == Some("dt:dtb")
-            });
-            let (Some(fill), None) = (fills.next(), fills.next()) else {
-                return Err(FirmwareError::invalid(
-                    "target must accept exactly one external measured DTB",
-                ));
-            };
-            let reserved = fill
-                .field("section")
-                .and_then(Value::as_text)
-                .ok_or_else(|| FirmwareError::invalid("DTB fill lacks section"))?;
-            let mut sections = pe
-                .sections
-                .iter()
-                .filter(|s| s.name().ok() == Some(reserved));
-            let section = sections
-                .next()
-                .ok_or_else(|| FirmwareError::invalid("missing DTB fill section"))?;
-            if sections.next().is_some() {
-                return Err(FirmwareError::invalid("ambiguous DTB fill section"));
-            }
-            if section.size_of_raw_data != 0 || section.characteristics & 0x80 == 0 {
-                return Err(FirmwareError::invalid(
-                    "DTB fill must refer to a Zero section",
-                ));
-            }
-            capacity = capacity.min(section.virtual_size);
-        }
-        if targets.is_empty() {
-            return Err(FirmwareError::invalid(
-                "changed DTB requires a recognized PMI measurement contract",
-            ));
-        }
-        Ok(Self { capacity })
-    }
-    pub(crate) fn check_size(&self, bytes: usize) -> Result<(), FirmwareError> {
-        if bytes > self.capacity as usize {
-            Err(FirmwareError::invalid(
-                "transformed DTB exceeds firmware reserved capacity",
-            ))
-        } else {
-            Ok(())
-        }
     }
 }
 #[derive(Debug)]

@@ -190,7 +190,10 @@ impl SandboxFailures {
             let (formatter, snapshot) = formatter
                 .format(
                     snapshot,
-                    Ext4Format::new("16MiB".parse()?, "rollback-probe".to_owned().try_into()?),
+                    Ext4Format::new(
+                        crate::value::FilesystemSize::new(16).unwrap(),
+                        "rollback-probe".to_owned(),
+                    ),
                     &HelperProgram::current()?,
                     SetupBudget::begin(),
                 )
@@ -205,7 +208,11 @@ impl SandboxFailures {
             // Leave the root partition unformatted to exercise mount rejection.
             conglobate::storage::PartitionedSnapshot::create(
                 snapshot,
-                &Ext4Format::new("16MiB".parse()?, Default::default()).layout()?,
+                &Ext4Format::new(
+                    crate::value::FilesystemSize::new(16).unwrap(),
+                    Default::default(),
+                )
+                .layout()?,
             )?
             .into_snapshot()?
         };
@@ -405,7 +412,9 @@ impl SandboxFailures {
                             return Err(error.to_string().into());
                         }
                     };
-                    let running = admitted.start("10s".parse()?).map_err(|e| e.to_string())?;
+                    let running = admitted
+                        .start(std::time::Duration::from_secs(10))
+                        .map_err(|e| e.to_string())?;
                     let mut reader = BufReader::new(reader);
                     let mut line = String::new();
                     loop {
@@ -521,7 +530,7 @@ impl SandboxFailures {
                     let command = budget
                         .await_prepared(step)
                         .map_err(|e| e.to_string())?
-                        .start("5s".parse()?)
+                        .start(std::time::Duration::from_secs(5))
                         .map_err(|e| e.to_string())?;
                     let mut packet = [0; 4];
                     assert_eq!(ready.recv(&mut packet)?, 4);
@@ -600,7 +609,7 @@ impl SandboxFailures {
                     let command = budget
                         .await_prepared(step)
                         .map_err(|e| e.to_string())?
-                        .start("10s".parse()?)
+                        .start(std::time::Duration::from_secs(10))
                         .map_err(|e| e.to_string())?;
                     let mut diagnostics = BufReader::new(diagnostics);
                     let mut line = String::new();
@@ -688,7 +697,7 @@ impl SandboxFailures {
                         let observed = budget
                             .await_prepared(step)
                             .map_err(|e| e.to_string())?
-                            .start("1s".parse()?)
+                            .start(std::time::Duration::from_secs(1))
                             .map_err(|e| e.to_string())?
                             .observe();
                         assert!(observed.outcome().success());
@@ -718,7 +727,9 @@ impl SandboxFailures {
                     if matches!(point, FailurePoint::CleanupTimeout) {
                         use std::time::Duration;
                         let started = Instant::now();
-                        let failure = step.execute(budget, "1s".parse()?).unwrap_err();
+                        let failure = step
+                            .execute(budget, std::time::Duration::from_secs(1))
+                            .unwrap_err();
                         assert!(
                             matches!(failure.downcast_ref::<conglobate::step::execution::ExecutionOutcome>(), Some(conglobate::step::execution::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status))) if status.success())
                         );
@@ -759,7 +770,7 @@ impl SandboxFailures {
                         let running = budget
                             .await_prepared(step)
                             .map_err(|e| e.to_string())?
-                            .start("1s".parse()?)
+                            .start(std::time::Duration::from_secs(1))
                             .map_err(|e| e.to_string())?;
                         let execution_deadline = running.deadline();
                         let observed = running.observe();
@@ -792,7 +803,9 @@ impl SandboxFailures {
                         println!("SHELL_STATUS_BEFORE_HELD_CLEANUP_PASS");
                         returned
                     } else {
-                        let failure = step.execute(budget, "5s".parse()?).unwrap_err();
+                        let failure = step
+                            .execute(budget, std::time::Duration::from_secs(5))
+                            .unwrap_err();
                         assert!(
                             matches!(failure.downcast_ref::<conglobate::step::execution::ExecutionOutcome>(), Some(conglobate::step::execution::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status))) if status.success())
                         );
@@ -816,7 +829,9 @@ impl SandboxFailures {
                     let step = prepared
                         .launch(command, budget.deadline())
                         .map_err(|e| e.to_string())?;
-                    let failure = step.execute(budget, "5s".parse()?).unwrap_err();
+                    let failure = step
+                        .execute(budget, std::time::Duration::from_secs(5))
+                        .unwrap_err();
                     assert!(
                         matches!(failure.downcast_ref::<conglobate::step::execution::ExecutionOutcome>(),
                         Some(conglobate::step::execution::ExecutionOutcome::Command(conglobate::step::CommandOutcome::Exited(status))) if status.success())
@@ -835,7 +850,9 @@ impl SandboxFailures {
                     let step = prepared
                         .launch(command, budget.deadline())
                         .map_err(|e| e.to_string())?;
-                    let failure = step.execute(budget, "5s".parse()?).unwrap_err();
+                    let failure = step
+                        .execute(budget, std::time::Duration::from_secs(5))
+                        .unwrap_err();
                     eprintln!("attached fixture outcome: {failure}");
                     assert!(matches!(
                         failure.downcast_ref::<conglobate::step::execution::ExecutionOutcome>(),

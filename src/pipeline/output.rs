@@ -1,221 +1,192 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::CompletedImage;
+use super::{CompletedImage, boot_config::BootConfig, pmi::Pmi, root::Root};
 use crate::{
-    cache::{Cache, FromIndex as _},
+    artifact::Layer,
+    contract::plan::{Boot, Image, ImageRef, StageRef},
+    image::ImageReference,
     input::{CheckedImage, ResolvedBuild},
     output::AssembledImage,
-    planner::{Image, Local, Plan, Reference},
     request::BuildRequest,
-    storage::{ReadOnlyChain, SealedScute, Workspace},
+    storage::{Runtime, Workspace},
 };
 use anyhow::{anyhow, ensure};
 use std::{collections::BTreeMap, sync::Arc};
-#[derive(Debug)]
-pub(super) struct StageOutput<'b, 'w> {
-    pub(super) base: Option<&'b CheckedImage>,
-    pub(super) produced: Vec<Arc<SealedScute<'w>>>,
-    pub(super) firmware: Option<crate::firmware::FinalizedFirmware<'w>>,
-    pub(super) boot_base: Option<&'b CheckedImage>,
-}
-impl Clone for StageOutput<'_, '_> {
-    fn clone(&self) -> Self {
-        Self {
-            base: self.base,
-            produced: self.produced.clone(),
-            firmware: self.firmware.clone(),
-            boot_base: self.boot_base,
-        }
-    }
+
+#[derive(Debug, Clone)]
+pub(crate) struct StageOutput<'b, 'w> {
+    pub(crate) root: Option<Root<'b, 'w>>,
+    pub(crate) pmi: Option<Pmi<'b, 'w>>,
+    pub(crate) bootconfig: Option<BootConfig>,
 }
 impl<'b, 'w> StageOutput<'b, 'w> {
-    pub(super) fn remote(base: &'b CheckedImage) -> Self {
+    pub(super) fn remote(base: &'b CheckedImage, build: &ResolvedBuild) -> anyhow::Result<Self> {
         let has_boot = base
             .image()
             .manifest()
             .layers
             .iter()
-            .any(|l| matches!(l, crate::artifact::Layer::Pmi(_)));
-        Self {
-            base: Some(base),
-            produced: vec![],
-            firmware: None,
-            boot_base: has_boot.then_some(base),
+            .any(|layer| matches!(layer, Layer::Pmi(_)));
+        let config = base
+            .bootconfig(build.cache())?
+            .map(|bytes| BootConfig::inherited(bytes.bytes().to_vec(), base.root()))
+            .transpose()?
+            .filter(|config| !config.bytes.is_empty());
+        Ok(Self {
+            root: base.root().map(|_| Root {
+                base: Some(base),
+                produced: vec![],
+            }),
+            pmi: has_boot.then_some(Pmi::Inherited(base)),
+            bootconfig: config,
+        })
+    }
+    pub(super) fn resolve(
+        reference: &ImageRef,
+        build: &'b ResolvedBuild,
+        outputs: &BTreeMap<StageRef, Self>,
+    ) -> anyhow::Result<Self> {
+        match reference {
+            ImageRef::Local(name) => outputs
+                .get(name)
+                .cloned()
+                .ok_or_else(|| anyhow!("stage {name} has not completed")),
+            ImageRef::Remote(remote) => Self::remote(
+                build
+                    .images()
+                    .get(&ImageReference::from(remote))
+                    .ok_or_else(|| anyhow!("remote source is not resolved"))?,
+                build,
+            ),
         }
     }
-    pub(super) fn root(&self) -> Option<[u8; 32]> {
-        self.produced
-            .last()
-            .map(|s| *s.root())
-            .or_else(|| self.base.and_then(|b| b.root()))
-    }
-    pub(super) fn activate(&self, cache: &Cache) -> anyhow::Result<ReadOnlyChain<'w>> {
-        let base = self
-            .base
-            .filter(|base| base.root().is_some())
-            .map(|base| carapace::Chain::from_index(cache, base.image()))
-            .transpose()?;
-        if base.is_none() && self.produced.is_empty() {
-            return Err(anyhow!("task input requires a carapace"));
-        }
-        Ok(ReadOnlyChain::assemble(base, &self.produced)?)
-    }
-    pub(super) fn rewrite(
-        &mut self,
-        build: &ResolvedBuild,
-        workspace: &'w Workspace,
-    ) -> anyhow::Result<()> {
-        if self.firmware.is_none() {
-            self.firmware = self
-                .boot_base
-                .map(|image| {
-                    crate::firmware::FinalizedFirmware::inherited(image, build.cache(), workspace)
-                })
-                .transpose()?
-                .flatten();
-            self.boot_base = None;
-        }
-        if let Some(pair) = &self.firmware {
-            self.firmware = Some(pair.rewrite(self.root().map(hex::encode).as_deref())?);
+    pub(super) fn bind(&mut self) -> anyhow::Result<()> {
+        if let Some(root) = &self.root
+            && let Some(config) = &mut self.bootconfig
+        {
+            config.bind(root.hash())?;
         }
         Ok(())
     }
-    pub(super) fn select(plan: &Plan, outputs: &BTreeMap<Local, Self>) -> anyhow::Result<Self> {
-        let mut output = match plan.image() {
-            Image::Short(name) => outputs
-                .get(name)
-                .ok_or(anyhow!("missing image task"))?
-                .clone(),
-            Image::Long { root, boot } => {
-                let mut output = outputs
-                    .get(root)
-                    .ok_or(anyhow!("missing root task"))?
-                    .clone();
-                ensure!(output.root().is_some(), "image root task has no carapace");
-                let boot = outputs.get(boot).ok_or(anyhow!("missing boot task"))?;
-                ensure!(
-                    boot.firmware.is_some() || boot.boot_base.is_some(),
-                    "image boot task has no boot export"
-                );
-                output.firmware = boot.firmware.clone();
-                output.boot_base = boot.boot_base;
-                output
+    pub(super) fn select(
+        build: &'b ResolvedBuild,
+        outputs: &BTreeMap<StageRef, Self>,
+        reader: Option<(&'w Workspace, &Runtime<'_>)>,
+    ) -> anyhow::Result<Self> {
+        let plan = build.captured().graph().plan();
+        let resolve = |reference| Self::resolve(reference, build, outputs);
+        let mut output = match &plan.image {
+            Image::Shorthand(reference) => resolve(reference)?,
+            Image::Components { root, boot } => {
+                let root = root
+                    .as_ref()
+                    .map(|reference| {
+                        resolve(reference)?
+                            .root
+                            .ok_or_else(|| anyhow!("selected source has no root"))
+                    })
+                    .transpose()?;
+                let (pmi, bootconfig) = match boot {
+                    None => (None, None),
+                    Some(Boot::Extract { extract, define }) => {
+                        let source = resolve(&extract.from)?
+                            .root
+                            .ok_or_else(|| anyhow!("PMI file source has no root"))?;
+                        let (workspace, runtime) = reader
+                            .ok_or_else(|| anyhow!("PMI extraction requires a reader runtime"))?;
+                        let pmi = Pmi::File(Arc::new(source.read(
+                            build.cache(),
+                            workspace,
+                            runtime,
+                            |volume, budget| {
+                                Ok(volume.extract_artifact(
+                                    extract.path.as_ref(),
+                                    workspace,
+                                    budget,
+                                )?)
+                            },
+                        )?));
+                        let config = BootConfig::overlay(
+                            None,
+                            define.iter().map(|(key, value)| (key, Some(value))),
+                        )?;
+                        (Some(pmi), Some(config))
+                    }
+                    Some(boot) => {
+                        let reference = match boot {
+                            Boot::Shorthand(source) => source,
+                            Boot::Inherit { inherit }
+                            | Boot::InheritDefined { inherit, .. }
+                            | Boot::InheritExtended { inherit, .. } => inherit,
+                            Boot::Extract { .. } => unreachable!(),
+                        };
+                        let source = resolve(reference)?;
+                        let pmi = source
+                            .pmi
+                            .ok_or_else(|| anyhow!("selected source has no PMI"))?;
+                        let config = match boot {
+                            Boot::InheritDefined { define, .. } => Some(BootConfig::overlay(
+                                None,
+                                define.iter().map(|(key, value)| (key, Some(value))),
+                            )?),
+                            Boot::InheritExtended { extend, .. } => Some(BootConfig::overlay(
+                                source.bootconfig,
+                                extend.iter().map(|(key, value)| (key, value.as_ref())),
+                            )?),
+                            _ => source.bootconfig,
+                        };
+                        (Some(pmi), config)
+                    }
+                };
+                Self {
+                    root,
+                    pmi,
+                    bootconfig: bootconfig.filter(|config| !config.bytes.is_empty()),
+                }
             }
         };
         ensure!(
-            output.root().is_some() || output.firmware.is_some() || output.boot_base.is_some(),
-            "image task exports neither carapace nor boot"
+            output.root.is_some() || output.pmi.is_some(),
+            "image contains neither root nor PMI"
         );
-        // A boot-only build exports no implicit tool ancestry.
-        if output.root().is_none() {
-            output.base = None;
+        ensure!(
+            output.bootconfig.is_none() || output.pmi.is_some(),
+            "bootconfig requires PMI"
+        );
+        if let Some(root) = &output.root {
+            let hash = Some(root.hash());
+            let changed = !root.produced.is_empty()
+                || output.pmi.as_ref().is_some_and(|pmi| pmi.root() != hash)
+                || output
+                    .bootconfig
+                    .as_ref()
+                    .is_some_and(|config| config.root != hash);
+            if changed {
+                output.bind()?;
+            }
         }
         Ok(output)
-    }
-    pub(super) fn inherited(build: &'b ResolvedBuild) -> anyhow::Result<Self> {
-        let plan = build.captured().graph().plan();
-        let mut outputs = BTreeMap::new();
-        for name in plan.order() {
-            let task = &plan.tasks()[name];
-            ensure!(
-                matches!(task.kind(), crate::planner::TaskKind::Extend)
-                    && task.directives().is_empty(),
-                "pass-through requires empty extend tasks"
-            );
-            let output = match task.from() {
-                Reference::Local(local) => outputs
-                    .get(local)
-                    .cloned()
-                    .ok_or(anyhow!("missing local input"))?,
-                Reference::Remote(remote) => Self::remote(
-                    build
-                        .images()
-                        .get(&remote.as_ref().parse()?)
-                        .ok_or(anyhow!("missing remote input"))?,
-                ),
-            };
-            outputs.insert(name.clone(), output);
-        }
-        Self::select(plan, &outputs)
     }
     pub(super) fn assemble(
         self,
         request: &BuildRequest,
         build: &ResolvedBuild,
     ) -> anyhow::Result<CompletedImage> {
-        let root = self.root().map(hex::encode);
-        let Self {
-            base,
-            produced,
-            firmware,
-            boot_base,
-        } = self;
-        // Capture separately selected inherited boot without promoting its root
-        // or configuration into the output ancestry. No command runtime is used.
-        let workspace = if firmware.is_none() && boot_base.is_some() && !same_base(base, boot_base)
-        {
-            Some(Workspace::create()?)
-        } else {
-            None
-        };
-        let imported = if let Some(workspace) = &workspace {
-            crate::firmware::FinalizedFirmware::inherited(
-                boot_base.expect("selected boot"),
+        if let Some(pmi) = &self.pmi {
+            let size = self.bootconfig.as_ref().map(|config| config.bytes.len());
+            pmi.validate(
                 build.cache(),
-                workspace,
-            )?
-        } else {
-            None
-        };
-        let pair = firmware
-            .as_ref()
-            .or(imported.as_ref())
-            .map(|p| p.rewrite(root.as_deref()))
-            .transpose()?;
-        let inherited_dtb = if pair.is_none() {
-            boot_base
-                .map(|b| b.inherited_dtb(build.cache()))
-                .transpose()?
-                .flatten()
-        } else {
-            None
-        };
-        let transformed;
-        let dtb = if let Some(pair) = &pair {
-            pair.dtb()
-        } else {
-            transformed = crate::planner::TransformSelection::Builtin
-                .apply(inherited_dtb.as_ref().map(|s| s.bytes()), root.as_deref())?;
-            &transformed
-        };
-        let image = if let Some(pair) = &pair {
-            AssembledImage::firmware(
-                build.cache(),
-                base.map(|b| b.image()),
-                pair,
-                &produced,
-                request.output(),
-            )?
-        } else if let Some(base) = base {
-            AssembledImage::derived(
-                build.cache(),
-                base.image(),
-                &produced,
-                request.output(),
-                dtb,
-            )?
-        } else {
-            AssembledImage::bootstrap_layers(&produced, request.output())?
-        };
-        let image = image.bind_build(request, build.captured())?;
+                size,
+                crate::cache::HostArchitecture::current()?.oci_name(),
+            )?;
+        }
+        let image = AssembledImage::components(build.cache(), &self, request.output())?
+            .bind_build(request, build.captured())?;
         Ok(CompletedImage { image })
     }
 }
-fn same_base(left: Option<&CheckedImage>, right: Option<&CheckedImage>) -> bool {
-    match (left, right) {
-        (Some(a), Some(b)) => std::ptr::eq(a, b),
-        (None, None) => true,
-        _ => false,
-    }
-}
+
+#[cfg(test)]
+#[path = "../../tests/unit/composition.rs"]
+mod tests;

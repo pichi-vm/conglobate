@@ -32,7 +32,7 @@ pub(crate) enum CacheError {
     Invalid(&'static str),
 }
 
-/// JSON indexes, manifests and DTBs. Layers and firmware use other readers.
+/// JSON indexes, manifests and boot configuration. Layers and firmware use other readers.
 const MAX_METADATA_BYTES: u64 = 16 * 1024 * 1024;
 
 /// Pins directory authority; no method creates, downloads or modifies content.
@@ -115,22 +115,6 @@ impl Cache {
             return Err(CacheError::Invalid("metadata content mismatch"));
         }
         Ok(bytes)
-    }
-    /// Capture a firmware blob after authenticating its declared size and digest.
-    /// Firmware is not subject to the small JSON/DTB metadata size limit.
-    pub(crate) fn firmware_contract(
-        &self,
-        digest: &ContentDigest,
-        size: u64,
-    ) -> Result<crate::firmware::DtbContract, CacheError> {
-        let size_usize = usize::try_from(size)
-            .map_err(|_| CacheError::Invalid("firmware size exceeds address space"))?;
-        let mut bytes = Vec::new();
-        bytes
-            .try_reserve_exact(size_usize)
-            .map_err(|error| io::Error::other(error.to_string()))?;
-        self.copy_verified(digest, size, &mut bytes)?;
-        Ok(crate::firmware::DtbContract::from_pmi(&bytes)?)
     }
     /// Verify one complete read without retaining an unverified future read handle.
     /// Mounting layers requires independent dm-verity verification at use time.

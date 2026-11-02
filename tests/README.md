@@ -332,31 +332,40 @@ to both mounted filesystems; the generic runner returns failure. Their verifiers
 completed command cleanup, absent output and no execution of the next command.
 These checks qualify mount lifetime, not booting the output image.
 
-`pipeline/plan.yaml` exercises bootstrap, an extend task, a local build producer
-whose finalized artifact is copied into the root, and an explicit boot-producing
-build task in one offline build. An unreachable build has no lock entry and asks
-for networking; it must never run. Supply the Fedora seed and
-`--firmware-pmi` / `--firmware-dtb` using its existing pair. The bootstrap installs
-only a shell, rm and their shared libraries into a small new root. Later steps
-check persistence across command/COPY boundaries and separation of tool roots.
-Run `python3 tests/distro/pipeline/verify.py RUN_DIRECTORY` afterward (requires
-`fdtget`). It requires exactly two produced scutes, checks the exported
-blob graph and image-manifest build annotations, and reads `/chosen/bootargs`
-to verify the final corium root. It does not qualify booting or all
-stage/failure combinations.
-`pipeline/imported-boot.yaml` uses the same fresh root and artifact producer but
-selects boot from an empty extend task over an imported image. Supply a cache
-whose seed exports a PMI/DTB pair and run the verifier with `--imported-boot`.
-It requires automatic binding to the fresh root without inheriting the boot
-source's carapace.
+`pipeline/plan.yaml` creates a root, extends it with a named stage file, and
+extracts a PMI from a separate stage. An unreachable stage has no lock entry
+and requests networking; it must never run. Supply a GPT seed and an embedded-DTB
+PMI built with a bootconfig reservation using `--firmware-pmi`. Creation installs
+a small shell environment, and later steps check persistence and tool/root
+separation. `python3 tests/distro/pipeline/verify.py RUN_DIRECTORY` requires
+exactly two output scutes, authenticates the blob graph and build annotations,
+checks the unchanged PMI bytes, and verifies native `corium.root` binding.
+It does not qualify booting or every failure path.
 
-`pipeline/boot-only.yaml` selects a short-form boot-only build with local tools.
-Supply a PMI and a valid DTB without a `corium=` binding. The command requires
-`CARAPACE` to stay undefined; `pipeline/verify-boot-only.py RUN_DIRECTORY`
-checks the boot pair, empty scute list and absence of an output carapace. The
-ordinary composition and context fixtures also require the variable to remain
-undefined while the selected root task is executing, and the firmware producer
-requires it to be defined after that root finishes.
+`pipeline/imported-boot.yaml` selects PMI and config directly from an imported
+image while creating an independent root. Supply a seed with PMI and bootconfig
+and run the verifier with `--imported-boot`; its PMI comparison uses the supplied
+`--firmware-pmi` fixture. The boot source's carapace must not enter output ancestry.
+
+`pipeline/extend.yaml` extends that imported image and uses the whole-image
+shortcut. `pipeline/verify-extended.py RUN_DIRECTORY --cache CACHE --pin PIN`
+checks the inherited metadata and PMI, one new layer, and the updated native
+root binding. Its seed configuration contains only `corium.root`.
+
+`pipeline/copy-missing.yaml` attempts to copy a missing file from a completed
+stage into a mounted tmpfs. The runner must fail. Run
+`pipeline/verify-copy-failure.py RUN_DIRECTORY` to check the specific COPY error,
+absent publication, no subsequent command and no source/destination cleanup
+failure. This exercises the persisted reader's failure path with both roots live.
+
+`pipeline/boot-only.yaml` copies a supplied PMI into a stage and extracts it with
+`image.boot`. `pipeline/verify-boot-only.py RUN_DIRECTORY` checks that exactly that
+PMI survives, with no root or bootconfig. All execution fixtures verify that the
+old `CARAPACE` shell variable is absent.
+
+The stage-mount success fixture also reads earlier stages through named COPY.
+It requires that temporary content and mounted ESP paths are absent from those
+persisted-root readers, while explicit ESP mounts retain their disk contents.
 
 `prepare.py` copies an existing local artifact manifest and its components into
 a new OCI image-layout directory, verifies their SHA-256 digests and sizes, and
@@ -436,13 +445,12 @@ is initial seed preparation, not a conglobate bootstrap-stage pass. The Debian
 seed provenance records its OCI origin and external importer identity.
 
 The runner accepts `--reference` to name the pinned seed in the generated lock.
-For plans that package an existing firmware pair, `--firmware-pmi` and
-`--firmware-dtb` copy both files into the committed context's `firmware/` directory.
-They become measured context inputs; the binary does not fetch or select firmware.
-The Debian plan currently uses the known Fedora-built kernel/corium platform
-pair with Debian userspace, then the default DTB transformation binds its new root.
-That tests Debian APT/systemd and firmware-stage extraction, not Debian kernel
-packaging or new arma firmware generation.
+For plans that package an existing PMI, `--firmware-pmi` copies it into the
+committed context's `firmware/boot.pmi`. It becomes a measured context input;
+the binary does not fetch or select firmware. Use attached DTB mode and a native
+bootconfig reservation. The Debian/Alpine/NixOS plans compose this PMI with their
+userspace roots and native config, testing extraction and root binding rather
+than distribution-specific kernel packaging.
 
 
 The disposable VM environment now loads a fixed exact-name SELinux-label

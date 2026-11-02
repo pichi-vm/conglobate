@@ -58,7 +58,10 @@ impl FormatterFailures {
             let formatting = runtime
                 .format(
                     snapshot,
-                    Ext4Format::new("16MiB".parse()?, "failure-probe".to_owned().try_into()?),
+                    Ext4Format::new(
+                        crate::value::FilesystemSize::new(16).unwrap(),
+                        "failure-probe".to_owned(),
+                    ),
                     &HelperProgram::current()?,
                     budget,
                 )

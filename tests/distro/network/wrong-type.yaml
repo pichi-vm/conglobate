@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
-    - run: printf 'WRONG_NETWORK_TYPE_COMMAND_ADMITTED\n'
-      network: true
+    extend: qualification.local/fedora:43
+    steps:
+    - exec:
+        command: printf 'WRONG_NETWORK_TYPE_COMMAND_ADMITTED\n'
+        network: true
 image: rootfs

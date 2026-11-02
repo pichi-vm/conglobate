@@ -32,9 +32,9 @@ def verify(run):
     blob(manifest['config'])
     layers = manifest['layers']
     assert sorted(layer['mediaType'] for layer in layers) == [
-        'application/vnd.pichi.dtb.v1', 'application/vnd.pichi.pmi.v1']
+        'application/vnd.pichi.pmi.v1']
     for layer in layers:
-        blob(layer)
+        assert blob(layer) == (run / 'root/context/firmware/boot.pmi').read_bytes()
     return {'boot_only_passed': True, 'local_tool_root_not_exposed': True,
             'no_output_carapace_or_scutes': True, 'annotations_and_blobs_verified': True}
 
