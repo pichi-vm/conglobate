@@ -6,18 +6,18 @@ use conglobate::{document::YamlDocument, lock::ImageLock};
 #[test]
 fn pins_are_exact_top_level_identities() {
     let text = format!(
-        "version: 1\nimages:\n  example.test/base: {{index: sha256:{}}}\n",
+        "version: 1\nimages:\n  example.test/base:1: {{index: sha256:{}}}\n",
         "ab".repeat(32)
     );
     let lock = ImageLock::try_from(YamlDocument::from(text.as_str())).unwrap();
     assert_eq!(
-        lock.resolve(&"example.test/base".parse().unwrap())
+        lock.resolve(&"example.test/base:1".parse().unwrap())
             .unwrap()
             .bytes(),
         &[0xab; 32]
     );
     assert!(
-        lock.resolve(&"example.test/missing".parse().unwrap())
+        lock.resolve(&"example.test/missing:1".parse().unwrap())
             .is_err()
     );
 }

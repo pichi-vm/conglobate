@@ -18,9 +18,15 @@ pub(crate) struct ImageReference(String);
 impl FromStr for ImageReference {
     type Err = IdentityError;
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        text.parse::<crate::planner::schema::Remote>()
-            .map_err(|_| IdentityError::Reference)?;
-        Ok(Self(text.to_owned()))
+        crate::contract::plan::Remote::new(text.to_owned())
+            .map(|remote| Self::from(&remote))
+            .ok_or(IdentityError::Reference)
+    }
+}
+
+impl From<&crate::contract::plan::Remote> for ImageReference {
+    fn from(remote: &crate::contract::plan::Remote) -> Self {
+        Self(remote.to_string())
     }
 }
 
