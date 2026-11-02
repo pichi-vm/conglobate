@@ -21,7 +21,7 @@ class StageMountEvidence:
         if self.mode == 'success':
             for marker in ['STAGE_CREATION_MOUNTS_PASS', 'STAGE_NESTED_COPY_AND_RENAME_PASS',
                            'STAGE_EXTENSION_MOUNTS_PASS', 'STAGE_ESP_PERSISTS_TMPFS_DISAPPEARS_PASS',
-                           'STAGE_MOUNTS_NOT_INHERITED_PASS', 'DISTRO_BUILD_AND_EXPORT_PASS']:
+                           'STAGE_MOUNTS_NOT_INHERITED_PASS', 'STAGE_COPY_READS_PERSISTED_ROOT_PASS', 'DISTRO_BUILD_AND_EXPORT_PASS']:
                 checks[marker] = f'\n{marker}\n' in serial
             checks['exit_zero'] = status == b'DISTRO_BUILD_EXIT 0\n'
             manifest = build_manifest(self.run)

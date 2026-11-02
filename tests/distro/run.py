@@ -42,8 +42,6 @@ class DistroRun:
     def build(self, service):
         if platform.machine() != 'x86_64':
             raise RuntimeError('this runner currently qualifies only native amd64/KVM')
-        if bool(self.arguments.firmware_pmi) != bool(self.arguments.firmware_dtb):
-            raise RuntimeError('firmware PMI and DTB must be supplied together')
         if self.arguments.without_label_policy and self.arguments.label_fault_second_filesystem:
             raise RuntimeError('label fault requires the normal labeling exception')
         with tarfile.open(self.output / 'source.tar.gz', 'w:gz') as snapshot:
@@ -145,7 +143,6 @@ echo NETWORK_ENVIRONMENT_RETAINED_PASS"""
             firmware = context / 'firmware'
             firmware.mkdir()
             shutil.copy2(self.arguments.firmware_pmi, firmware / 'boot.pmi')
-            shutil.copy2(self.arguments.firmware_dtb, firmware / 'base.dtb')
         (context / 'images.lock').write_text(
             f'version: 1\nimages:\n  {self.arguments.reference}:\n    index: {self.arguments.pin}\n')
         for command in [['init', '-q'], ['add', '.'],
@@ -309,7 +306,6 @@ if __name__ == '__main__':
     parser.add_argument('--memory', type=int, default=8192, help='Disposable VM memory in MiB')
     parser.add_argument('--reference', default='qualification.local/fedora:43')
     parser.add_argument('--firmware-pmi', type=Path)
-    parser.add_argument('--firmware-dtb', type=Path)
     parser.add_argument('--external-network-fixture', action='store_true',
                         help='Serve a loopback-only host TCP endpoint reached through VM outbound networking')
     parser.add_argument('--network-fixture', action='store_true',

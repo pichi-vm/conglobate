@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # Offline CLI regression: COPY consumes committed context bytes without exposing
 # a checkout to commands. Run using the maintained distro runner and Fedora seed.
-tasks:
+stages:
   rootfs:
-    kind: extend
-    from: qualification.local/fedora:43
-    exec:
+    extend: qualification.local/fedora:43
+    steps:
     - copy:
-        from: message.txt
+        path: message.txt
         into: /etc/conglobate-context-check
-    - run: |
-        test -z "${CARAPACE+x}"
-        test "$(cat /etc/conglobate-context-check)" = 'committed context bytes'
-        test ! -e /context
-        test ! -e /build-context
-        printf 'COMMITTED_CONTEXT_COPY_PASS\n'
+    - exec:
+        command: |
+          test -z "${CARAPACE+x}"
+          test "$(cat /etc/conglobate-context-check)" = 'committed context bytes'
+          test ! -e /context
+          test ! -e /build-context
+          printf 'COMMITTED_CONTEXT_COPY_PASS\n'
 image: rootfs

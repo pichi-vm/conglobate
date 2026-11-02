@@ -26,8 +26,6 @@ mod processes;
 mod requests;
 #[path = "../tests/unit/supervision.rs"]
 mod supervision;
-#[path = "../tests/unit/templates.rs"]
-mod templates;
 #[path = "../tests/unit/values.rs"]
 mod values;
 

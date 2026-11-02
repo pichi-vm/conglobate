@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::CapturedFormatter;
-use crate::{path::ContextPath, planner::FilesystemSpec};
+use crate::{contract::plan::Format, path::ContextPath};
 use std::{
     collections::BTreeSet,
     env, fs, io,
@@ -15,17 +15,19 @@ impl CapturedFormatter {
     ///
     /// The kind-tagged plan enum admits only qualified backends. Match it
     /// explicitly so adding a variant requires a corresponding formatter choice.
-    pub(crate) fn for_filesystem(spec: &FilesystemSpec) -> io::Result<CapturedFormatter> {
-        match spec {
-            FilesystemSpec::Ext4(_) => {
-                let captured = Self::for_name("ext4")?;
-                if let Some(size) = spec.esp() {
-                    super::Fat32Format::try_from(size)?;
-                    captured.with_fat(CapturedFormatter::host_tool("mkfs.fat")?)
-                } else {
-                    Ok(captured)
-                }
-            }
+    pub(crate) fn for_filesystem(spec: &Format) -> io::Result<CapturedFormatter> {
+        if spec.filesystem != crate::contract::plan::Filesystem::Ext4 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "unsupported root filesystem",
+            ));
+        }
+        let captured = Self::for_name("ext4")?;
+        if let Some(size) = spec.esp {
+            super::Fat32Format::try_from(size)?;
+            captured.with_fat(CapturedFormatter::host_tool("mkfs.fat")?)
+        } else {
+            Ok(captured)
         }
     }
 

@@ -1,20 +1,20 @@
 # Firmware construction qualification
 
-This plan builds a new initramfs and runs arma inside an isolated firmware
-step, using the completed carapace's CARAPACE environment value. It replaces
-both PMI and DTB, then boots the emitted artifact and checks the expected kernel
-release from a systemd service. This validates firmware construction from a
-supplied kernel, not kernel compilation.
+This plan constructs an initramfs and runs Arma inside an isolated stage. It
+extracts the resulting embedded-DTB PMI, selects the separate userspace root,
+and overlays native bootconfig. Final composition binds `corium.root`; no shell
+root-hash variable is needed. Boot verification checks the expected kernel
+release from a systemd service. This tests firmware construction from a supplied
+kernel, not kernel compilation.
 
 Supply a committed context with the static `arma` executable, `vmlinuz`, its
 `kernel.config`, and `initrd-files.tar` containing static corium as `init` plus
 the matching dm-zero/snapshot/verity, ext4 and virtio module dependencies under
 `usr/lib/modules/<release>`. Acquisition/building of these inputs is external to
-conglobate. The reference run used Fedora kernel 7.2.10-200.fc44.x86_64; its exact
-binaries and local arma/corium source snapshots are pinned in the preserved
-context bundle. Arma had pre-existing local changes; these are included rather
-than represented as the clean revision alone.
+conglobate. Use a Corium build with native bootconfig and GPT support and an
+Arma build supporting `--dtb attached --cmdline bootconfig`.
 
 Run `run.py` with the Fedora cache/pin and this context, then `boot.py --expect
-CONGLOBATE_ARMA_FIRMWARE_BOOT_PASS`. The native amd64 build/boot passed. It makes
-no Arm64 or confidential-platform boot claim.
+CONGLOBATE_ARMA_FIRMWARE_BOOT_PASS`. A build alone is not a boot pass. This
+fixture targets native amd64; Arm64 and confidential platforms require their
+own qualification.

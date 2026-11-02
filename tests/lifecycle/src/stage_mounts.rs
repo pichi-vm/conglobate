@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
+    contract::plan::Format,
     contract::plan::{ImagePath, Mount},
     execution::HelperProgram,
     formatter::{CapturedFormatter, Ext4Format},
-    planner::FilesystemSpec,
     step::SetupBudget,
     storage::{Active, Created, Mapping, Runtime, SnapshotMapping, Volume, Workspace},
 };
@@ -36,10 +36,10 @@ impl StageMounts {
             scratch.attach()?,
             NonZeroU64::new(carapace::ZERO_SIZE_SECTORS).unwrap(),
         )?;
-        let spec: FilesystemSpec = serde_saphyr::from_str(if esp {
-            "kind: ext4\nsize: 32MiB\nesp: 257MiB"
+        let spec: Format = serde_saphyr::from_str(if esp {
+            "fs: ext4\nsize: 32MiB\nesp: 257MiB"
         } else {
-            "kind: ext4\nsize: 32MiB"
+            "fs: ext4\nsize: 32MiB"
         })?;
         let (formatter, snapshot) = CapturedFormatter::for_filesystem(&spec)?
             .stage(workspace)?
