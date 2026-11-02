@@ -102,7 +102,7 @@ salts. Firmware remains in its OCI blob paths.
 | --- | --- |
 | `mkosi.conf`, `mkosi.finalize`, `mkosi.repart/` | Fedora 43 rootfs |
 | `build.sh` | Corium initramfs, `pichi import`, local tag `conglobate:0.2.0` |
-| `config.json` | Launch requirements (2 GiB required, 4 GiB recommended) |
+| `config.json` | Launch requirements (2 GiB required, 3 GiB recommended) |
 | `units/` | Installed into the rootfs and enabled |
 | `conglobate.plan.yaml` | Self-host later, not used by bootstrap CI |
 | `check-stub.sh` | Static contract check (no VM) |

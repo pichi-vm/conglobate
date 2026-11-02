@@ -2,6 +2,6 @@
   "version": 1,
   "requirements": {
     "cpus": { "recommended": 2 },
-    "memory": { "required": 2048, "recommended": 4096 }
+    "memory": { "required": 2048, "recommended": 3072 }
   }
 }
