@@ -38,3 +38,18 @@ jobs:
         run: cargo test --locked --features cli --bin conglobate new_ext4_root_has_no_journal -- --ignored
       - name: Compile internal VM fixtures
         run: cargo check --locked --features test-fixtures --bin conglobate-lifecycle-tests
+
+  bootconfig:
+    runs-on: ubuntu-24.04
+    container: registry.fedoraproject.org/fedora:44
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install packaged bootconfig and Rust tooling
+        run: |
+          dnf install -y cargo gcc git kernel-tools
+          rpm -q cargo kernel-tools
+      - name: Compare native boot configuration with Linux
+        run: cargo test --locked --features cli --bin conglobate boot_config::tests -- --include-ignored
