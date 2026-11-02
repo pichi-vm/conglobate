@@ -2045,7 +2045,9 @@ and typed ext4 properties. Formatter and runtime resource limits still apply;
 accepting a size does not promise that mke2fs can format it. Sparse writable
 COW stores share the backing workspace's capacity, including snapshot metadata;
 they are never sized from the logical origin. Exhaustion fails the build.
-Trusted mke2fs uses 4096-byte filesystem blocks. Finalization trims
+Trusted mke2fs uses 4096-byte filesystem blocks and disables journaling for
+new roots, which are sealed after clean unmount. Inherited filesystem features
+are preserved. Finalization trims
 unused snapshot capacity, uses ecosystem wire types and seals the scute directly;
 there is no image-to-carapace import/conversion step.
 
