@@ -1210,14 +1210,9 @@ RAII owns resources; destructors cannot certify successful finalization.
    installs the policy nor makes label support a command-startup prerequisite.
    Appliance startup fails if BPF LSM, BTF or the label hook is unavailable.
 
-1. Implement that environment exception as a pure-Rust rewrite using Aya.
-   The trusted environment owns the LSM program and the load, attach and
-   pin path; both are Rust. This is the chosen environment path for
-   building the program and for load, attach and pin. Do not implement
-   the exception as a C program or revive the retired libbpf-rs wrapper.
-   A C BPF toolchain (bindeps)
-   or a precompiled object is not this path. Conglobate still does not
-   compile, load or attach the program.
+1. Pichi owns the implementation, loader and lifetime of the environment's
+   fixed labeling exception. Its [LSM sources](https://github.com/pichi-vm/pichi/tree/main/appliance/lsm)
+   and appliance checks qualify that implementation with the guest kernel.
 
 1. Match the complete attribute name, including termination; truncated
    prefix matches are forbidden. Preserve earlier LSM results. Other
