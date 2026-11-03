@@ -7,6 +7,8 @@ repository = "https://github.com/pichi-vm/conglobate"
 publish = false
 description = "Standalone image builder with isolated command execution"
 
+[workspace]
+
 [features]
 default = []
 yaml = ["dep:serde-saphyr"]
