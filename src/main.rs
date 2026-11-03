@@ -19,7 +19,6 @@ mod formatter;
 mod graph;
 mod image;
 mod input;
-mod inspect;
 mod isolation;
 mod lock;
 mod network;
@@ -73,7 +72,6 @@ fn main() -> std::process::ExitCode {
         }
     };
     let result = match command {
-        request::CliCommand::Inputs(request) => request.run(),
         request::CliCommand::Build(request) => Pipeline::new(*request).run(),
         request::CliCommand::Appliance => crate::appliance::run().map_err(Into::into),
     };

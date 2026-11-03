@@ -39,17 +39,9 @@ regardless of YAML key order. `bootstrap` formats a fresh filesystem and populat
 `/mnt`; `extend` retains its input chain plus one scute for all its commands;
 `build` discards its tool writes and retains declared artifacts only.
 
-Before resolving a lock, inspect the committed plan with:
-
-```sh
-conglobate inputs --repository . --commit "$(git rev-parse HEAD)" \
-  --context . --plan pichi.yaml
-```
-
-This prints a JSON object with an `images` array of unique remote references
-from the selected task closure. It uses the build's context reader and planner;
-no lock, cache, privileged setup, or commands are needed. Pichi consumes this
-output and resolves each reference to an OCI index pin.
+Generate the image lock with `pichi update` from the working-tree plan, then
+commit the plan and lock together before building. Pichi consumes the shared
+plan types directly; lock maintenance does not invoke the Conglobate CLI.
 
 `image: rootfs` uses that task's carapace and boot exports. The long form
 `image: {root: rootfs, boot: firmware}` selects them separately. A build task

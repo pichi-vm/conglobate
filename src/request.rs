@@ -30,8 +30,6 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Action {
     Build(Box<BuildArguments>),
-    /// Print the selected plan's remote image inputs as JSON.
-    Inputs(crate::inspect::Inspect),
     /// Build-port appliance entry (request/response CBOR); no flags.
     Appliance,
 }
@@ -97,7 +95,6 @@ pub(crate) struct BuildRequest {
 #[derive(Debug)]
 pub(crate) enum CliCommand {
     Build(Box<BuildRequest>),
-    Inputs(crate::inspect::Inspect),
     Appliance,
 }
 
@@ -111,7 +108,6 @@ where
         Action::Build(raw) => Ok(CliCommand::Build(Box::new(BuildRequest::from_build_args(
             *raw,
         )?))),
-        Action::Inputs(request) => Ok(CliCommand::Inputs(request)),
         Action::Appliance => Ok(CliCommand::Appliance),
     }
 }
@@ -182,7 +178,7 @@ impl BuildRequest {
     {
         match parse_cli(arguments)? {
             CliCommand::Build(request) => Ok(*request),
-            CliCommand::Appliance | CliCommand::Inputs(_) => {
+            CliCommand::Appliance => {
                 Err(RequestError::Cli(clap::Command::new("conglobate").error(
                     clap::error::ErrorKind::InvalidSubcommand,
                     "use the selected entrypoint via main",
