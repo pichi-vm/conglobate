@@ -115,7 +115,7 @@ assembly uses the carapace root.
 
 - [Architecture and scope](#1-architecture-and-scope)
   - [Build appliance](#14-build-appliance)
-  - [Appliance build-port CBOR](#15-appliance-build-port-cbor)
+  - [Appliance interface](#15-appliance-interface)
 - [Standalone CLI](#2-standalone-cli)
 - [Git context](#3-git-context)
 - [Image locks](#4-image-locks)
@@ -229,104 +229,22 @@ Conglobate's build output is a complete annotated OCI layout. It can publish
 into a new directory or an existing empty directory, including the appliance's
 writable output mount. The calling environment owns VM shutdown and disposal.
 
-### 1.5 Appliance build-port CBOR
+### 1.5 Appliance interface
 
-Transport is the named console in [§1.4](#14-build-appliance). Each message
-is one self-delimiting CBOR array, with no length prefix. Commands version
-their own request and response schemas; there is no global protocol version.
-
-- Guest → host: `["build", 1, null]` (`[command, version, body]`).
-- Host → guest success: `[true, Input]`.
-- Host → guest failure: `[false, message]`, where `message` is a string.
-
-The portable library exposes `launch::{Command, Request, Response,
-Requests, Build, Input, PORT_NAME}`. `Request<T>` supplies and validates the
-command name and `u16` version declared by `T: Command`; the trait also
-associates the response payload type. `Build` wraps a private `Option<()>`
-for build V1 and its response payload is `Input`. Construct it with
-`Build::default()` to encode a null request body. The untagged `Requests` enum
-bundles concrete requests. `Response<T>` has `Ok(T)` and `Err(String)` variants, with
-conversions to and from standard `Result`. Serde bounds live on the envelope
-implementations, not on the request trait.
-
-`launch/mod.rs` reexports one public contract type per file. Request decoding
-destructures a `(String, u16, T)` tuple. Response decoding derives untagged
-selection between `(bool, T)` and `(bool, String)` tuple decoders, each checking
-its status value. Public payloads and request dispatch also derive Serde.
-Untagged decoding reports a generic error when no variant matches.
-Server-side `Requests` checks the full request length; direct `Request<T>`
-decoding follows the format's tuple length checks, and Ciborium does not reject
-extra tuple elements on its own.
-`Option<()>` supports direct and buffered null decoding. Ciborium also decodes
-CBOR undefined as Serde None, so the Serde layer cannot distinguish these two
-input representations.
-
-The success payload is an `Input` map with these text-string fields:
-
-- `ref`: required Git ref name or full object ID.
-- `plan`: required plan path relative to the selected context.
-- `lock`: required lock path relative to the selected context.
-- `context`: required context directory within the mounted repository;
-  `"."` explicitly selects the root.
-- `location`: optional provenance locator; omitted or null means absent.
-  Serialization omits it when absent. It is not an authenticated identity.
-
-The derived wire decoder checks field types and rejects unknown and duplicate
-fields. Path types and Git parsers validate locators when they are used.
-Commit identities, mount tags, output paths, formatter paths, UID/GID maps,
-and network configuration do not belong in this payload.
-
-Conglobate opens `/run/pichi/repo`, resolves `ref` to a commit, and resolves
-context symlinks against that committed tree. Context selection must stay
-within the repository; plan and lock resolution must stay within the selected
-context. Absolute paths, escaping links, missing components, and symlink loops
-are rejected. Parent components are resolved after symlinks, never removed
-lexically before traversal. This checks the committed source actually used
-by the build rather than unrelated working-tree contents. Pichi likewise uses
-confined filesystem opens when reading the host lock. `/run/pichi/cache` is
-the read-only image cache.
-
-**Ref resolution (guest):** resolve `ref` with gix on the mounted repository to a
-single commit object. Accept a full object id (SHA-1 or SHA-256 hex) or a
-ref name; peel annotated tags to the commit. Reject abbreviated object ids,
-missing refs, and non-commit tips. Record the resolved commit in
-`dev.pichi.build.commit`, with `sha1:` or `sha256:` in the value. Optional
-`location` becomes `dev.pichi.build.location`; omit that annotation when absent.
-The location and fixed mount path are not authenticated identities. Do not
-record the host `ref` string separately. See [§11.1](#111-image-manifest-annotation-contract).
-
-**Wire decoding / failure rules:**
-
-- Emit definite-length arrays of exactly three request elements or two response
-  elements. Reject unknown command/version pairs, missing or extra elements,
-  and incorrect element types. Build V1 requires a null request body.
-- The boolean status determines whether the response payload is `Input` or an
-  error string. Their shapes cannot be mixed.
-- Decode exactly one response; leftover bytes already available in the buffer
-  or on the port are trailing data and fail the build.
-- Missing build-port device, undecodable CBOR, or a truncated response fails
-  the build. There is no silent default plan, lock, ref, or context.
-- This replaces the former map envelopes. Host and appliance must use the
-  matching command contract; changing a host library pin does not update a
-  separately published appliance image.
-
-**Output mount:** `/run/pichi/output` is an empty writable virtiofs mount supplied
-by the host (not a path Conglobate creates). Conglobate stages privately in a
-temporary child directory on that mount, then publishes by moving each top-level
-layout entry (`blobs/`, `oci-layout`, `index.json`) into the mount root with
-no-replace semantics (refuse if any destination name already exists). Fail if the mount is missing, not a
-directory, or non-empty before publication. This is distinct from CLI `--output`,
-which names a new directory that must not already exist (see [§11.2](#112-finalization-and-publication)
-finalization / publication and [§14.2](#142-resolve-and-verify-all-supplied-inputs-before-execution)).
+Pichi's guest adapter handles the host console exchange and invokes the
+standalone CLI. The engine receives a local repository, Git ref, selected
+context/plan/lock, image cache, output directory and optional source locator.
+It resolves and verifies these inputs, then emits the annotated OCI layout.
+The [Pichi build contract](https://github.com/pichi-vm/pichi/blob/main/BUILD.md)
+owns the console protocol, fixed guest paths and VM lifecycle.
 
 ## 2. Standalone CLI
 
 The standalone CLI exercises the same engine without a VM. It is the path used
 by rootless CI and local tests. It does not claim the appliance image's
 formatter-tool binding or build-port attestation; those are appliance-only.
-Appliance production builds use the CBOR
-contract in [§1.5](#15-appliance-build-port-cbor) instead of these host flags for
-request transport; both paths share plan/lock/cache semantics.
+Pichi's appliance adapter invokes the same CLI after receiving its host request.
+All environments use the same plan, lock, cache and output semantics.
 
 Required logical inputs for the CLI are a local Git repository path, a full
 commit identity (or a ref the CLI resolves locally), a context path within that
@@ -931,11 +849,10 @@ lock, then validate the finalized manifest and every referenced blob before
 publication. Hash finalized bytes after all manifest annotations and bootconfig edits
 are complete. Publication differs by destination:
 
-- **CLI `--output`:** stage under a temporary sibling of the named destination,
-  then publish the completed directory with an atomic no-replace rename onto a
-  path that must not already exist, even if empty.
-- **Appliance `/run/pichi/output`:** the virtiofs mount root already exists and
-  must be empty at start. Complete every fallible check while staging privately
+- **New `--output` directory:** stage under a temporary sibling, then publish
+  the completed directory with an atomic no-replace rename.
+- **Existing empty `--output` directory:** this includes the appliance
+  virtiofs mount at `/run/pichi/output` and must be empty at start. Complete every fallible check while staging privately
   in a temporary child directory on that same mount. Only then publish by moving
   each top-level layout entry (`oci-layout`, `index.json`, `blobs/`) into the
   mount root with no-replace semantics (refuse if any destination entry already
@@ -1007,7 +924,7 @@ owned by the trusted environment. Exact capability/syscall/ioctl profiles,
 fixed internal deadline values, internal formatter/property schemas, identity
 allocation, and runtime mount mechanics are implemented under that contract.
 The build-appliance image, build-port CBOR and
-virtiofs mount contract are locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-build-port-cbor);
+virtiofs mount contract are locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-interface);
 full engine reshape and confidential-platform qualification remain separate.
 Fully unprivileged storage assembly is outside the selected design.
 
@@ -1041,8 +958,8 @@ The build proceeds in this order; each failure aborts publication:
    close the runtime, annotate the manifest
    and verify the self-contained OCI layout.
 6. Finish fallible workspace/context cleanup, then publish without replacing
-   an existing destination: CLI `--output` uses an atomic no-replace rename of
-   the completed directory; the appliance empty `/run/pichi/output` mount uses
+   existing output content: a new `--output` path uses an atomic no-replace
+   rename of the completed directory; an existing empty output directory uses
    the validated move-children publish in §11.2 (no layout entry becomes visible
    until every fallible check has succeeded; a failed move cleans the mount).
 
@@ -1104,9 +1021,9 @@ RAII owns resources; destructors cannot certify successful finalization.
 1. Accept a local Git repository, full commit identity (CLI) or resolve
    appliance `ref` → commit on the mounted repo, context path,
    read-only image cache, explicit context-relative plan and lock paths,
-   and a new output destination for the CLI (`--output` must not already exist),
-   or the empty appliance mount at `/run/pichi/output` into which layout entries
-   are published (see [§1.5](#15-appliance-build-port-cbor)). Neither plan nor
+   and an output destination (a new directory or an existing empty one,
+   including the appliance mount at `/run/pichi/output`) into which the layout
+   is published (see [§1.5](#15-appliance-interface)). Neither plan nor
    lock has a default filename. Require
    committed files resolved within the selected context; reject absolute
    paths, escapes and missing/non-file inputs. Record selected paths and
@@ -1529,10 +1446,10 @@ when filesystem operations require them.
 `StageOutput` holds results without command/mount authority. Runtime cleanup
 precedes final component validation, image assembly, manifest annotation and
 publication. Pass-through builds use the same finalization without allocating
-an execution runtime. Publication happens only after all fallible checks. CLI `--output`
-uses a no-replacement atomic rename of the completed directory. The appliance
-`/run/pichi/output` mount cannot be renamed as a whole; after private staging
-and validation it publishes by moving each top-level layout entry into the
+an execution runtime. Publication happens only after all fallible checks. A new
+`--output` path uses a no-replacement atomic rename of the completed directory.
+An existing empty directory, including the appliance output mount, instead
+publishes by moving each top-level layout entry after private staging and validation into the
 empty mount root with no-replace semantics (§1.5, §11.2). If any publish move
 fails, remove already-moved entries and staging so no successful image remains
 exposed. Either path: no successful image is exposed after a failed build.

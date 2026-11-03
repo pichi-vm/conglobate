@@ -34,9 +34,7 @@ struct Cli {
 }
 #[derive(Debug, Subcommand)]
 enum Action {
-    Build(Box<BuildArguments>),
-    /// Build-port appliance entry (request/response CBOR); no flags.
-    Appliance,
+    Build(BuildArguments),
 }
 #[derive(Debug, Args)]
 struct BuildArguments {
@@ -124,58 +122,13 @@ pub(crate) struct BuildRequest {
     lock: ContextPath,
     cache: PathBuf,
     output: PathBuf,
-    /// Optional provenance locator for build annotations (e.g. appliance CBOR `location`).
+    /// Optional provenance locator for build annotations.
     /// Not used as Git identity; mount/path opens still use `repository`.
     location: Option<String>,
 }
-#[derive(Debug)]
-pub(crate) enum CliCommand {
-    Build(Box<BuildRequest>),
-    Appliance,
-}
-
-/// Parse argv into the build or appliance product command.
-pub(crate) fn parse_cli<I, T>(arguments: I) -> Result<CliCommand, RequestError>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString> + Clone,
-{
-    match Cli::try_parse_from(arguments)?.action {
-        Action::Build(raw) => Ok(CliCommand::Build(Box::new(BuildRequest::from_build_args(
-            *raw,
-        )?))),
-        Action::Appliance => Ok(CliCommand::Appliance),
-    }
-}
-
 impl BuildRequest {
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn from_parts(
-        id_mappings: Option<IdMappings>,
-        repository: PathBuf,
-        commit: CommitIdentity,
-        context: ContextDirectory,
-        plan: ContextPath,
-        lock: ContextPath,
-        cache: PathBuf,
-        output: PathBuf,
-    ) -> Self {
-        Self {
-            id_mappings,
-            repository,
-            commit,
-            context,
-            plan,
-            lock,
-            cache,
-            output,
-            location: None,
-        }
-    }
-
-    /// Record an optional build provenance locator without changing Git opens.
-    pub(crate) fn with_location(mut self, location: Option<String>) -> Result<Self, RequestError> {
-        if let Some(location) = &location {
+    fn from_build_args(raw: BuildArguments) -> Result<Self, RequestError> {
+        if let Some(location) = &raw.location {
             // URL parse errors may include credentials; return a fixed diagnostic.
             let locator =
                 gix::url::parse(location.as_bytes().into()).map_err(|_| RequestError::Location)?;
@@ -185,24 +138,21 @@ impl BuildRequest {
                 return Err(RequestError::Location);
             }
         }
-        self.location = location;
-        Ok(self)
-    }
-    fn from_build_args(raw: BuildArguments) -> Result<Self, RequestError> {
         let commit = CommitIdentity::resolve(&raw.repository, &raw.git_ref)?;
-        Self::from_parts(
-            raw.uid_map
+        Ok(Self {
+            id_mappings: raw
+                .uid_map
                 .zip(raw.gid_map)
                 .map(|(uid, gid)| IdMappings::new(uid, gid)),
-            raw.repository,
+            repository: raw.repository,
             commit,
-            ContextDirectory::try_from(raw.context.as_path())?,
-            ContextPath::try_from(raw.plan.as_path())?,
-            ContextPath::try_from(raw.lock.as_path())?,
-            raw.cache,
-            raw.output,
-        )
-        .with_location(raw.location)
+            context: ContextDirectory::try_from(raw.context.as_path())?,
+            plan: ContextPath::try_from(raw.plan.as_path())?,
+            lock: ContextPath::try_from(raw.lock.as_path())?,
+            cache: raw.cache,
+            output: raw.output,
+            location: raw.location,
+        })
     }
     /// Parse CLI arguments, resolve the Git ref and validate context-relative paths.
     /// This opens the repository but does not read the build documents or cache.
@@ -211,22 +161,13 @@ impl BuildRequest {
     /// Returns CLI diagnostics (including help/version requests), an invalid
     /// Git reference, or a path-validation error. Callers should use the CLI
     /// diagnostic's exit code to distinguish help/version from invalid input.
-    /// Test helper: parse argv as a build request only.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn parse_from<I, T>(arguments: I) -> Result<Self, RequestError>
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,
     {
-        match parse_cli(arguments)? {
-            CliCommand::Build(request) => Ok(*request),
-            CliCommand::Appliance => {
-                Err(RequestError::Cli(clap::Command::new("conglobate").error(
-                    clap::error::ErrorKind::InvalidSubcommand,
-                    "use the selected entrypoint via main",
-                )))
-            }
-        }
+        let Action::Build(raw) = Cli::try_parse_from(arguments)?.action;
+        Self::from_build_args(raw)
     }
     pub(crate) fn id_mappings(&self) -> Option<IdMappings> {
         self.id_mappings
@@ -252,7 +193,7 @@ impl BuildRequest {
     pub(crate) fn output(&self) -> &Path {
         &self.output
     }
-    /// Build provenance locator when supplied (appliance CBOR `location`).
+    /// Build provenance locator when supplied.
     pub(crate) fn location(&self) -> Option<&str> {
         self.location.as_deref()
     }
@@ -404,14 +345,10 @@ mod tests {
         let fixture = Fixture::new("sha1");
         let mut args = fixture.args();
         args.extend(["--plan", "plan", "--lock", "lock"].map(str::to_owned));
-        let Action::Build(explicit) = Cli::try_parse_from(&args).unwrap().action else {
-            panic!("expected build");
-        };
+        let Action::Build(explicit) = Cli::try_parse_from(&args).unwrap().action;
         assert_eq!(explicit.repository, fixture.0.path());
         args.remove(2);
-        let Action::Build(default) = Cli::try_parse_from(args).unwrap().action else {
-            panic!("expected build");
-        };
+        let Action::Build(default) = Cli::try_parse_from(args).unwrap().action;
         assert_eq!(default.repository, Path::new("."));
     }
     #[test]
@@ -533,15 +470,6 @@ mod tests {
                 );
             }
             other => panic!("expected clap unknown-arg error, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn appliance_subcommand_is_recognized() {
-        use crate::request::{CliCommand, parse_cli};
-        match parse_cli(["conglobate", "appliance"]).unwrap() {
-            CliCommand::Appliance => {}
-            other => panic!("expected Appliance, got {other:?}"),
         }
     }
 }

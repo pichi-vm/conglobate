@@ -119,10 +119,8 @@ pinned Git revisions against every crates.io advisory.
 Production image builds run in the dedicated disposable **build appliance** (a
 pichi image shipped by Pichi) with a qualified kernel and an independent
 environment controller that destroys the VM if conglobate crashes. systemd is
-PID 1; static virtiofs mounts expose `repo`/`cache`/`output` at
-`/run/pichi/{repo,cache,output}`; the guest opens named console
-`dev.pichi.build`, writes `["build", 1, null]`, then reads one
-self-delimiting host CBOR response. The supervisor runs as initial-namespace root. Build
+PID 1; Pichi's guest adapter receives the host request and invokes
+`conglobate build` with the selected inputs. The supervisor runs as initial-namespace root. Build
 commands are untrusted and run in restricted namespaces; they receive neither
 supervisor control resources nor backing block devices. The kernel,
 environment-provided BPF LSM labeling exception (pure-Rust Aya in the trusted
