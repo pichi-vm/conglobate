@@ -1,3 +1,4 @@
+version: 1
 stages:
   base:
     use: registry.example.com/fedora-tools:latest
