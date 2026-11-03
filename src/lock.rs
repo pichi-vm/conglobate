@@ -32,7 +32,7 @@ impl TryFrom<YamlDocument<'_>> for ImageLock {
             .iter()
             .map(|(reference, pin)| {
                 Ok((
-                    reference.parse()?,
+                    reference.to_string().parse()?,
                     IndexDigest::from_bytes(pin.index.as_sha256_array()),
                 ))
             })
