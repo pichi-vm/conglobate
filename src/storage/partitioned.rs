@@ -86,6 +86,10 @@ impl<'o, 'w> PartitionedSnapshot<'o, 'w> {
         self.root.id()
     }
 
+    pub(crate) fn esp_id(&self) -> Option<devmap_linux::DevId> {
+        self.esp.as_ref().map(Mapping::id)
+    }
+
     pub(super) fn open_root(&self) -> io::Result<File> {
         self.root.open_read_only()
     }
