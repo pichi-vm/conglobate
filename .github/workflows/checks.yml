@@ -21,7 +21,7 @@ jobs:
         run: hawkeye check --config lsm/program/licenserc.toml
 
   lint:
-    runs-on: ubuntu-24.04
+    runs-on: {group: apollo, labels: [self-hosted, Linux, X64]}
     timeout-minutes: 15
     env:
       CARGO_TERM_COLOR: always
@@ -43,7 +43,7 @@ jobs:
         run: cargo check --locked --no-default-features --lib
 
   dependencies:
-    runs-on: ubuntu-24.04
+    runs-on: {group: apollo, labels: [self-hosted, Linux, X64]}
     timeout-minutes: 30
     env:
       RUSTUP_TOOLCHAIN: '1.94.0'
