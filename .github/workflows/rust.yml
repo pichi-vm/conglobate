@@ -36,8 +36,9 @@ jobs:
         run: cargo test --locked --features cli --all-targets
       - name: Run ignored tests as root
         run: |
+          # The native bootconfig comparison runs in its packaged-tool job.
           sudo modprobe loop
-          cargo --config 'target."cfg(unix)".runner = ["sudo", "-n"]' test --locked --features cli --all-targets -- --ignored --test-threads=1
+          cargo --config 'target."cfg(unix)".runner = ["sudo", "-n"]' test --locked --features cli --all-targets -- --ignored --test-threads=1 --skip boot_config::tests
 
   bootconfig:
     runs-on: ubuntu-24.04
