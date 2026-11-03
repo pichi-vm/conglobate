@@ -5,7 +5,6 @@
 extern crate conglobate as contract;
 mod anchor;
 mod appliance;
-#[cfg(test)]
 mod disk;
 use contract::artifact;
 mod cache;
