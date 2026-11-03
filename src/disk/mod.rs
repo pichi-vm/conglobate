@@ -11,6 +11,8 @@
 //! device-mapper sectors. GPT 1.0 with 128-byte entries is supported.
 
 mod architecture;
+mod bounded;
+mod layout;
 mod partition;
 
 pub(crate) use architecture::Architecture;
