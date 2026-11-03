@@ -389,7 +389,7 @@ output directory:
 
 ```sh
 conglobate build <local-path> \
-  --commit <full-object-id> \
+  --ref <git-reference-or-full-commit-hash> \
   --context <path-in-commit> \
   --plan <context-relative-yaml-path> \
   --lock <context-relative-lock-path> \
@@ -408,9 +408,10 @@ Defaults and failure behavior:
   including confined symlink handling. Absolute paths, escapes, missing files
   and non-file targets fail. Both inputs must come from the selected commit.
   The manifest records their selected paths; the commit binds their bytes.
-- `--commit` identifies a commit, not a branch, tag, abbreviated hash, or index
-  snapshot. Locator and identity are separate on the CLI. The appliance passes
-  `ref` instead; the guest resolves `ref` → commit on the mounted repository.
+- `--ref` is required and accepts a Git reference or full commit hash. Resolve
+  it once against the local repository before capturing committed inputs.
+  Branches and tags resolve to commits; abbreviated hashes and non-commit
+  objects are rejected. The appliance's `ref` field uses the same resolution.
 - The cache is never mutated. Missing locked objects are errors; image tags
   are never resolved opportunistically during a build. Conglobate downloads
   no additional image artifacts.
