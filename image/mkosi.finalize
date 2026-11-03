@@ -186,7 +186,6 @@ for unit in (
     "run-pichi-cache.mount",
     "run-pichi-output.mount",
     "conglobate-build.service",
-    "conglobate-network.service",
 ):
     path = f"{buildroot}/usr/lib/systemd/system/{unit}"
     if not os.path.isfile(path):

@@ -194,7 +194,6 @@ impl ApplianceRequest {
         cache: &Path,
         output: &Path,
         id_mappings: crate::isolation::IdMappings,
-        network_namespace: PathBuf,
         resolv_conf: PathBuf,
     ) -> Result<BuildRequest, ApplianceRequestError> {
         let commit = resolve_ref(repository, &self.git_ref)?;
@@ -208,7 +207,6 @@ impl ApplianceRequest {
             cache.to_path_buf(),
             output.to_path_buf(),
             Some(resolv_conf),
-            Some(network_namespace),
         )
         .with_location(self.location))
     }
@@ -529,7 +527,6 @@ mod tests {
                 Path::new("/run/pichi/cache"),
                 Path::new("/run/pichi/output"),
                 super::super::mounts::id_mappings(),
-                PathBuf::from("/run/pichi/netns"),
                 PathBuf::from("/run/pichi/resolv.conf"),
             )
             .unwrap();
@@ -601,7 +598,6 @@ mod tests {
                 Path::new("/run/pichi/cache"),
                 Path::new("/run/pichi/output"),
                 super::super::mounts::id_mappings(),
-                PathBuf::from("/run/pichi/netns"),
                 PathBuf::from("/run/pichi/resolv.conf"),
             )
             .unwrap();

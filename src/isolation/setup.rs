@@ -18,7 +18,6 @@ use std::{io::IoSlice, mem::MaybeUninit};
 pub(crate) struct CommandSetup {
     namespace: File,
     devices: CommandDevices,
-    network: Option<File>,
     resolver: Option<crate::network::ResolverView>,
 }
 impl CommandSetup {
@@ -29,32 +28,14 @@ impl CommandSetup {
         Ok(Self {
             namespace,
             devices,
-            network: None,
             resolver: None,
         })
     }
-    pub(crate) fn with_resolver_view(
-        self,
-        resolver: crate::network::ResolverView,
-    ) -> io::Result<Self> {
-        if self.network.is_none() {
-            return Err(io::Error::other(
-                "resolver injection requires configured networking",
-            ));
-        }
-        Ok(Self {
+    pub(crate) fn with_resolver_view(self, resolver: crate::network::ResolverView) -> Self {
+        Self {
             resolver: Some(resolver),
             ..self
-        })
-    }
-    pub(crate) fn with_network_handle(self, network: File) -> io::Result<Self> {
-        if rustix::fs::fstatfs(&network)?.f_type as u64 != 0x6e73_6673 {
-            return Err(io::Error::other("setup network namespace requires nsfs"));
         }
-        Ok(Self {
-            network: Some(network),
-            ..self
-        })
     }
 
     /// Enter only in a fresh trusted setup process. Partial namespace transition
@@ -71,6 +52,7 @@ impl CommandSetup {
                 "command setup deadline expired",
             ));
         }
+        let network = self.resolver.is_some();
         if let Some(resolver) = self.resolver {
             // Clone mounts while still initially privileged. Opening cwd after
             // cloning selects this namespace's mount, not the parent's view.
@@ -82,7 +64,7 @@ impl CommandSetup {
             scope.commit();
         }
         Ok((
-            CommandNamespaces::enter_with_network(self.namespace, self.network, deadline)?,
+            CommandNamespaces::enter_with_network(self.namespace, network, deadline)?,
             self.devices,
         ))
     }

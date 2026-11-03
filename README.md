@@ -148,16 +148,7 @@ without a VM. [sandbox design](DESIGN.md#14-sandbox-lifecycle) specifies the
 boundary and teardown requirements. [Rust architecture](DESIGN.md#15-rust-architecture)
 explains the types-only lib, binary engine, ownership and typestate.
 
-Conglobate does not download missing Git objects or image artifacts. Plan
-commands have networking disabled by default. On the standalone CLI, enabled
-commands require an externally prepared, build-dedicated network namespace
-(`--network-namespace PATH`) and an explicit resolver file (`--resolv-conf PATH`).
-In the appliance image those paths are hardcodes, not CBOR fields. The
-environment owns network interfaces, routes, outbound NAT, firewall rules, DNS
-services and namespace lifetime. Conglobate pins the namespace once, joins it for
-enabled commands and temporarily mounts the captured resolver configuration
-read-only. Disabled commands receive a fresh disconnected namespace. Conglobate
-does not run a DNS relay or configure the external network.
+Conglobate does not download missing Git objects or image artifacts.
 Artifact preparation and attestation belong to the surrounding environment;
 the appliance image itself is built from this repository.
 
