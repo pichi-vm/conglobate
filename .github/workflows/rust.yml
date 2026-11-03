@@ -30,7 +30,7 @@ jobs:
       - name: Install build prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev e2fsprogs
+          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev e2fsprogs dosfstools
           rustup toolchain install 1.94.0 --profile minimal
       - name: Run rootless tests
         run: cargo test --locked --features cli --all-targets
