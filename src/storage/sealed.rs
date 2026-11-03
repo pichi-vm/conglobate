@@ -392,6 +392,91 @@ mod tests {
         }
     }
     #[test]
+    fn sealed_outputs_commit_the_final_root() {
+        use crate::{cache::Cache, output::AssembledImage, storage::Workspace};
+        use std::{io::Write, sync::Arc};
+
+        let directory = tempfile::tempdir().unwrap();
+        let workspace = Workspace {
+            root: File::open(directory.path()).unwrap(),
+        };
+        let mut scratch = workspace.scratch().unwrap();
+        scratch.write_all(&Store::new(2).0).unwrap();
+        let base = Arc::new(
+            scratch
+                .seal_with_reader([0; 32], |_, _| unreachable!())
+                .unwrap(),
+        );
+        let output = directory.path().join("base");
+        let cache = Cache::open(directory.path()).unwrap();
+        let selection = crate::pipeline::output::StageOutput {
+            root: Some(crate::pipeline::root::Root {
+                base: None,
+                produced: vec![Arc::clone(&base)],
+            }),
+            pmi: None,
+            bootconfig: None,
+        };
+        let image = AssembledImage::components(&cache, &selection, &output).unwrap();
+        assert_eq!(
+            image.image().manifest().carapace_root().unwrap(),
+            Some(*base.root())
+        );
+        image.publish().unwrap();
+
+        let index = std::fs::read(output.join("index.json")).unwrap();
+        let digest = crate::artifact::Digest::Sha256(Sha256::digest(&index).into());
+        std::fs::write(output.join("blobs/sha256").join(digest.hex()), &index).unwrap();
+        let cache = Cache::open(&output).unwrap();
+        let image = crate::input::CheckedImage::verify(
+            &cache,
+            cache.resolve(digest.to_string().parse().unwrap()).unwrap(),
+        )
+        .unwrap();
+        let mut scratch = workspace.scratch().unwrap();
+        scratch.write_all(&Store::new(2).0).unwrap();
+        let top = Arc::new(
+            scratch
+                .seal_with_reader(*base.root(), |_, _| unreachable!())
+                .unwrap(),
+        );
+        let extended = AssembledImage::components(
+            &cache,
+            &crate::pipeline::output::StageOutput {
+                root: Some(crate::pipeline::root::Root {
+                    base: Some(&image),
+                    produced: vec![Arc::clone(&top)],
+                }),
+                pmi: None,
+                bootconfig: None,
+            },
+            &directory.path().join("extended"),
+        )
+        .unwrap();
+        let bootstrap = AssembledImage::components(
+            &cache,
+            &crate::pipeline::output::StageOutput {
+                root: Some(crate::pipeline::root::Root {
+                    base: None,
+                    produced: vec![base, Arc::clone(&top)],
+                }),
+                pmi: None,
+                bootconfig: None,
+            },
+            &directory.path().join("bootstrap"),
+        )
+        .unwrap();
+        for output in [extended, bootstrap] {
+            assert_eq!(
+                output.image().manifest().carapace_root().unwrap(),
+                Some(*top.root())
+            );
+            assert_eq!(output.image().manifest().layers.len(), 2);
+            assert_eq!(output.image().root(), Some(*top.root()));
+            output.discard().unwrap();
+        }
+    }
+    #[test]
     fn readonly_cursors_are_independent_and_allow_eof_seeks() {
         use std::io::Write;
         let mut file = tempfile::tempfile().unwrap();

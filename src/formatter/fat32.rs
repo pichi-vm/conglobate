@@ -65,7 +65,10 @@ mod tests {
     #[test]
     #[ignore = "requires the mkfs.fat executable"]
     fn formats_a_four_kib_sector_fat32_filesystem() {
-        let format = Fat32Format::try_from("257MiB".parse::<FilesystemSize>().unwrap()).unwrap();
+        let format = Fat32Format::try_from(
+            serde_json::from_value::<FilesystemSize>(serde_json::json!("257MiB")).unwrap(),
+        )
+        .unwrap();
         let root = tempfile::tempdir().unwrap();
         let path = root.path().join("esp.fat");
         std::fs::File::create(&path)

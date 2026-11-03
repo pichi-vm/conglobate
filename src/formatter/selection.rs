@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::CapturedFormatter;
-use crate::{path::ContextPath, planner::FilesystemSpec};
+use crate::{contract::plan::Format, path::ContextPath};
 use std::{
     collections::BTreeSet,
     env, fs, io,
@@ -14,9 +14,14 @@ use std::{
 ///
 /// The kind-tagged plan enum admits only qualified backends. Match it
 /// explicitly so adding a variant requires a corresponding formatter choice.
-pub(crate) fn for_filesystem(spec: &FilesystemSpec) -> io::Result<CapturedFormatter> {
-    match spec {
-        FilesystemSpec::Ext4(_) => for_name("ext4"),
+pub(crate) fn for_filesystem(spec: &Format) -> io::Result<CapturedFormatter> {
+    let captured = match spec.filesystem {
+        crate::contract::plan::Filesystem::Ext4 => for_name("ext4")?,
+    };
+    if spec.esp.is_some() {
+        captured.with_fat(host_tool("mkfs.fat")?)
+    } else {
+        Ok(captured)
     }
 }
 
