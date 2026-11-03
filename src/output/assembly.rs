@@ -469,7 +469,7 @@ mod tests {
                     let commit = git(&["rev-parse", "HEAD"]);
                     let output = tempfile::tempdir().unwrap();
                     let destination = output.path().join("result");
-                    let request = BuildRequest::parse_from([
+                    let mut arguments = vec![
                         "conglobate",
                         "build",
                         repo.path().to_str().unwrap(),
@@ -485,9 +485,11 @@ mod tests {
                         input.directory.path().to_str().unwrap(),
                         "--output",
                         destination.to_str().unwrap(),
-                    ])
-                    .unwrap()
-                    .with_location(location.map(str::to_owned));
+                    ];
+                    if let Some(location) = location {
+                        arguments.extend(["--location", location]);
+                    }
+                    let request = BuildRequest::parse_from(arguments).unwrap();
                     let captured = CapturedBuild::try_from(&request).unwrap();
                     fs::write(selected.join("plan.yaml"), "working tree changed").unwrap();
                     let selection = input.selection(&image);
