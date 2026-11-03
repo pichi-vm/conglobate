@@ -157,10 +157,9 @@ assembly uses the carapace root.
    privileged stages run; commands never receive that initial-namespace root
    authority. The engine has no code dependency on VM management, virtiofs, GPT
    transport, or a particular hypervisor.
-3. **Build appliance** is a pichi image **shipped from this repository**
-   (bootstrap CI in the same class as `fedora`/`carapace` images). Self-host
-   later via `pichi build`. The appliance is how production builds run; see
-   [§1.4](#14-build-appliance).
+3. **Build appliance** is owned by Pichi. Its image recipe, publication and
+   qualification live in the [Pichi repository](https://github.com/pichi-vm/pichi/tree/main/appliance).
+   Conglobate supplies the standalone engine and its execution requirements.
 4. **`pichi build`** is a specialization of `pichi run` (owned by pichi's docs).
    It prepares committed inputs and cached images, launches this appliance, and
    retrieves/imports the result. It must not contradict this appliance contract.
@@ -168,7 +167,7 @@ assembly uses the carapace root.
 
 Unit and binary integration tests run directly on Linux through Cargo.
 Tests that require root are ignored by default and explicitly run as root in CI.
-Appliance behavior is checked manually with Pichi.
+Pichi owns appliance qualification.
 
 A build has the following lifecycle:
 
@@ -220,59 +219,15 @@ influences when commands can acquire external input.
 
 ### 1.4 Build appliance
 
-Conglobate ships its build-appliance as a **pichi image from this repo**, built
-by bootstrap CI (same class as the `fedora`/`carapace` images). Later, the
-appliance may self-host via `pichi build`.
+Pichi owns the guest OS, boot configuration, static mounts, environment
+policy, image construction and publication. Its appliance installs the
+Conglobate engine from the same pinned source as the host library.
+See [Pichi's appliance sources](https://github.com/pichi-vm/pichi/tree/main/appliance)
+and [build contract](https://github.com/pichi-vm/pichi/blob/main/BUILD.md).
 
-Bootstrap CI (`.github/workflows/build.yml`, sources under `image/`) builds
-that image with mkosi from Fedora 43 packages. It does not layer the published
-fedora carapace: that image does not treat `virtiofs` as first-class, so this
-rootfs keeps `virtiofs` and `fuse` and loads them after the initramfs pivot.
-systemd is PID 1 and its units bind tags `repo`, `cache`, and `output`.
-`e2fsprogs` supplies image-resident `mke2fs`. The release binary is installed
-at `/usr/bin/conglobate`. On `main`, CI pushes a multi-arch index to
-`ghcr.io/pichi-vm/conglobate` tagged `:0.2.0` (this crate's version) and
-`:latest`, with `platform.os` `pichi` and architectures `amd64` and `arm64`.
-`:0.2.0` is the durable pin (plus the digest once pushed). Consumers must
-not rely on `:latest` alone.
-Pull requests build the image and do not push. `image/conglobate.plan.yaml`
-stays a self-host-later skeleton; it is not this bootstrap.
-
-Product assumptions for the guest:
-
-1. **PID 1 is systemd.** There is no Conglobate-as-`/init` product path and no
-   custom mount generator.
-2. **Static virtiofs mounts** (configured in the image/unit, not by Conglobate
-   parsing mount tags from the host response) expose host tags:
-   - `repo` → `/run/pichi/repo`
-   - `cache` → `/run/pichi/cache`
-   - `output` → `/run/pichi/output`
-3. **Named build-port console** `dev.pichi.build`, opened read/write through
-   the kernel console/hvc sysfs path (not a udev symlink). The channel is
-   bidirectional (guest→host tx and host→guest rx).
-4. **Wire (one round trip, self-delimiting CBOR, no length prefix; no
-   streaming/multiplexing):** the guest opens the port, writes one request array
-   `["build", 1, null]`, then reads one host response array. The guest
-   must **not** assume the host already pushed bytes before the request (this
-   supersedes host one-shot CBOR push / uni-rx-only). On `[true, Input]`, Conglobate
-   runs the engine against the mounted paths and publishes into the empty
-   `/run/pichi/output` mount. The locked end state is the OCI layout
-   (`oci-layout`, `index.json`, `blobs/sha256/…`) only. Pichi imports the full
-   guest OCI graph and rebuilds verity from COW blobs plus per-scute salts
-   ([Pichi #28](https://github.com/pichi-vm/pichi/pull/28), `7df44442`).
-   [Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24) removes
-   the transitional packing list and flat copies; inherited layers remain
-   referenced in the self-contained OCI graph.
-   On `[false, message]`, it fails with the host error string.
-   There is **no** local CBOR copy retained as a second source of truth, **no**
-   Conglobate parse of virtiofs field readers / mount tags from the response,
-   and **no** mount generator in this crate.
-5. Appliance image hardcodes (not CBOR fields): UID/GID maps.
-   Formatting tools live in the image; see [§2](#2-standalone-cli).
-6. **Guest exit.** After `conglobate appliance` exits, success or failure, the
-   oneshot powers the VM off so the launcher is not left at a login prompt.
-   Appliance stdout and stderr are mirrored to the kernel console
-   (`console=hvc0`) and the journal.
+Conglobate's build output is a complete annotated OCI layout. It can publish
+into a new directory or an existing empty directory, including the appliance's
+writable output mount. The calling environment owns VM shutdown and disposal.
 
 ### 1.5 Appliance build-port CBOR
 
@@ -1026,7 +981,7 @@ Either category may require root on Linux. Such tests use `#[ignore]` and run
 explicitly as root in CI. A privileged test must fail when its prerequisites are
 missing instead of reporting a successful skip.
 
-Appliance testing is performed manually with Pichi. The repository does not
+Pichi owns appliance qualification. The repository does not
 maintain VM test harnesses or separate executables for testing private engine
 modules. CI checks Rust on native amd64 and Arm64. Confidential-computing
 hardware qualification and attestation remain separate work.
