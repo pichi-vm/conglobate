@@ -212,10 +212,6 @@ impl<'ns> Mount<'ns, Attached> {
             .output_namespace = Some(_namespace);
         Ok(self)
     }
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn root_metadata(&self) -> io::Result<std::fs::Metadata> {
-        self.resources.root.metadata()
-    }
     /// Cleanly remove this view. This is not filesystem sealing or proof that
     /// another mount/command cannot still write the underlying filesystem.
     pub(crate) fn close(self) -> io::Result<()> {

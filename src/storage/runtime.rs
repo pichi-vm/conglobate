@@ -158,8 +158,6 @@ impl<'w> Runtime<'w> {
             runtime: self,
             volumes: root.join("volumes"),
             domains: root.join("cgroups").join(&self.mounts.name),
-            #[cfg(feature = "test-fixtures")]
-            recovery: root.join("recovery"),
         })
     }
     pub(crate) fn close(self) -> io::Result<()> {
@@ -179,22 +177,12 @@ impl<'w> Runtime<'w> {
 #[derive(Debug)]
 pub(crate) struct RuntimePaths<'r, 'w> {
     runtime: &'r Runtime<'w>,
-    #[cfg(feature = "test-fixtures")]
-    recovery: PathBuf,
     volumes: PathBuf,
     domains: PathBuf,
 }
 impl RuntimePaths<'_, '_> {
     pub(crate) fn sandbox(&self) -> SandboxDirectories<'_> {
         SandboxDirectories::new(self.runtime.recovery(), &self.volumes, &self.domains)
-    }
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn domains(&self) -> &Path {
-        &self.domains
-    }
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn recovery(&self) -> &Path {
-        &self.recovery
     }
     pub(crate) fn volumes(&self) -> &Path {
         &self.volumes

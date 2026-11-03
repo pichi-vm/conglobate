@@ -40,10 +40,6 @@ impl LoopDevice {
     pub(super) fn id(&self) -> io::Result<devmap_linux::DevId> {
         self.device.as_ref().metadata()?.try_into()
     }
-    #[cfg(feature = "test-fixtures")]
-    pub(super) fn number(&self) -> io::Result<u32> {
-        Ok(self.device.status()?.number)
-    }
     pub(super) fn close(self) -> Result<(), (io::Error, Self)> {
         let result = (|| -> io::Result<()> {
             // systemd-udevd holds LOCK_SH for a whole blkid probe and rearms

@@ -1094,11 +1094,7 @@ register subjects and filesystems. Its only labeling role is `LabelProbe`
 admission. The VM has SELinux disabled; foreign labels belong to the target OS
 and confer no authority in the build environment. Before plan admission,
 verify required behavior under restricted command credentials; missing support
-fails without a capability fallback. The C sources
-`tests/environment/labels.bpf.c`, `tests/environment/loader.c` and related C
-loaders such as `tests/distro/labeling-fault/loader.c` remain an interim
-disposable-VM qualification harness until the Aya path exists, and are then
-retired. See the labeling requirements in section 14.4.
+fails without a capability fallback. See the labeling requirements in section 14.4.
 
 Label mutation is not constrained by ordinary file write-mode checks. Integrity
 therefore depends on inode/descriptor reachability and read-only views, alongside
@@ -1586,20 +1582,10 @@ RAII owns resources; destructors cannot certify successful finalization.
    The trusted environment owns the LSM program and the load, attach and
    pin path; both are Rust. This is the chosen environment path for
    building the program and for load, attach and pin. Do not implement
-   the exception as the C program tests/environment/labels.bpf.c loaded
-   by tests/environment/loader.c, and do not revive the retired
-   libbpf-rs wrapper around that C object. A C BPF toolchain (bindeps)
+   the exception as a C program or revive the retired libbpf-rs wrapper.
+   A C BPF toolchain (bindeps)
    or a precompiled object is not this path. Conglobate still does not
    compile, load or attach the program.
-
-1. Until the Aya program and its load, attach and pin path exist, keep the
-   current C fixture as the interim qualification harness for disposable-VM
-   tests. It is not linked into the conglobate binary and it is not the
-   production environment. When the Aya path exists, retire
-   tests/environment/labels.bpf.c, tests/environment/loader.c and the
-   related C loaders, including tests/distro/labeling-fault/loader.c. The
-   labeling-fault hook remains a test-only second program; retiring its C
-   loader does not add a second production policy.
 
 1. Match the complete attribute name, including termination; truncated
    prefix matches are forbidden. Preserve earlier LSM results. Other
@@ -1958,8 +1944,7 @@ RAII owns resources; destructors cannot certify successful finalization.
 
 The crate exposes a **types-only `[lib]`** (including OCI/image output types
 retired from `pichi-artifact`) and a **`[[bin]]` engine**. Engine modules remain
-private to the binary. Opt-in VM fixtures compile the same engine modules into a
-separate test binary. Downstream `pichi` depends on the lib for shared types.
+private to the binary. Downstream `pichi` depends on the lib for shared types.
 
 ### Inputs and workflow
 

@@ -147,19 +147,6 @@ impl<R: StepStorage> Step<'_, Running, R> {
         self.resources.0.supervision()
     }
 }
-impl Step<'_, Ready, crate::storage::Volume<'_, '_, '_, crate::storage::Mounted>> {
-    /// Send only the owned volume, using this step’s owned mapped namespace.
-    /// Failure leaves the entire step owned and available for cancellation.
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn send_volume_until(&self, deadline: Instant) -> io::Result<()> {
-        let volume = &self.storage.0;
-        let namespace = &self.namespace;
-        self.resources
-            .0
-            .supervision()
-            .send_volume_until(&volume.view()?, namespace, deadline)
-    }
-}
 
 #[cfg(test)]
 mod tests {

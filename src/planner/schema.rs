@@ -586,21 +586,10 @@ mod tests {
     use super::*;
     use crate::document::YamlDocument;
     #[test]
-    fn shipped_task_plans_parse() {
-        for text in [
-            include_str!("../../image/conglobate.plan.yaml"),
-            include_str!("../../tests/distro/alpine/plan.yaml"),
-            include_str!("../../tests/distro/debian/plan.yaml"),
-            include_str!("../../tests/distro/fedora/plan.yaml"),
-            include_str!("../../tests/distro/nixos/plan.yaml"),
-            include_str!("../../tests/distro/pipeline/plan.yaml"),
-            include_str!("../../tests/distro/pipeline/imported-boot.yaml"),
-            include_str!("../../tests/distro/pipeline/boot-only.yaml"),
-            include_str!("../../tests/distro/confinement/plan.yaml"),
-            include_str!("../../tests/distro/network/plan.yaml"),
-        ] {
-            YamlDocument::from(text).decode::<Plan>().unwrap();
-        }
+    fn appliance_plan_parses() {
+        YamlDocument::from(include_str!("../../image/conglobate.plan.yaml"))
+            .decode::<Plan>()
+            .unwrap();
     }
     #[test]
     fn non_string_names_and_null_collections_are_rejected() {

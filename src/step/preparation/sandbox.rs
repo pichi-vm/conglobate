@@ -2,10 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Assigned, CommandStorage, StoragePreparation};
-#[cfg(feature = "test-fixtures")]
-use super::{BootstrapPreparation, CommandPreparation};
-#[cfg(feature = "test-fixtures")]
-use crate::storage::{BootstrapVolumes, Mounted, Unmounted, Volume};
 use crate::{
     anchor::RecoveryDirectory,
     execution::HelperProgram,
@@ -78,24 +74,6 @@ impl<'l> CommandSandbox<'l> {
             self.gid.first(),
             self.directories.mounts,
         )
-    }
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn prepare<'n, 'o, 'w>(
-        &self,
-        volume: Volume<'n, 'o, 'w, Unmounted>,
-        reaper: ChildReaper,
-        budget: &SetupBudget,
-    ) -> anyhow::Result<CommandPreparation<'n, 'o, 'w>> {
-        self.prepare_storage::<Volume<'n, 'o, 'w, Mounted>>(volume, reaper, budget)
-    }
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn prepare_bootstrap<'n, 'o, 'w>(
-        &self,
-        volumes: BootstrapVolumes<'n, 'o, 'w, Unmounted>,
-        reaper: ChildReaper,
-        budget: &SetupBudget,
-    ) -> anyhow::Result<BootstrapPreparation<'n, 'o, 'w>> {
-        self.prepare_storage::<BootstrapVolumes<'n, 'o, 'w, Mounted>>(volumes, reaper, budget)
     }
     pub(crate) fn prepare_storage<R: CommandStorage>(
         &self,

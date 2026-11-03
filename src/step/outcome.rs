@@ -26,11 +26,11 @@ pub(crate) struct CommandResult<T> {
     cleanup: T,
 }
 impl<T> CommandResult<T> {
-    #[cfg(any(test, feature = "test-fixtures"))]
+    #[cfg(test)]
     pub(crate) fn outcome(&self) -> &CommandOutcome {
         &self.outcome
     }
-    #[cfg(any(test, feature = "test-fixtures"))]
+    #[cfg(test)]
     pub(crate) fn cleanup(&self) -> &T {
         &self.cleanup
     }
@@ -43,23 +43,6 @@ impl<T> CommandResult<T> {
         CommandResult {
             outcome: self.outcome,
             cleanup: transition(self.cleanup),
-        }
-    }
-}
-impl<T, E> CommandResult<Result<T, E>> {
-    /// Branch on cleanup success without separating either branch from the
-    /// original command outcome. `?` can propagate the complete failure owner.
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn transpose(self) -> Result<CommandResult<T>, CommandResult<E>> {
-        match self.cleanup {
-            Ok(cleanup) => Ok(CommandResult {
-                outcome: self.outcome,
-                cleanup,
-            }),
-            Err(cleanup) => Err(CommandResult {
-                outcome: self.outcome,
-                cleanup,
-            }),
         }
     }
 }
@@ -98,12 +81,6 @@ impl<'a, R: StepStorage> RunningCommand<'a, R> {
 pub(crate) struct ObservedCommand<'a, R: StepStorage> {
     command: Step<'a, Running, R>,
     deadline: Instant,
-}
-impl<R: StepStorage> ObservedCommand<'_, R> {
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn teardown_deadline(&self) -> Instant {
-        self.deadline
-    }
 }
 impl<'a, R: StepStorage> CommandResult<ObservedCommand<'a, R>> {
     pub(crate) fn teardown(self) -> CommandResult<io::Result<TeardownCompletion<R>>> {

@@ -91,12 +91,6 @@ impl<'w> ReadOnlyChain<'w> {
             .expect("SHA-256 chain commitment")
     }
 
-    /// Diagnostic identity, not an independent lifetime lease.
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn id(&self) -> devmap_linux::DevId {
-        self.mapping.id()
-    }
-
     /// Confirm this consumer has no remaining holders. Shared, immutable
     /// Carapace mappings retain their ordinary descriptor-based lifetime.
     pub(crate) fn close(self) -> io::Result<()> {

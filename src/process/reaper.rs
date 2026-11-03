@@ -29,10 +29,6 @@ pub(crate) struct ReapedChildren {
     reaper: ChildReaper,
 }
 impl ReapedChildren {
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn collected(&self) -> u64 {
-        self.reaper.collected
-    }
     /// Resume exclusive reaping for the next step without reinstalling the
     /// process-wide subreaper setting. Counts begin anew for that step.
     pub(crate) fn into_reaper(self) -> ChildReaper {

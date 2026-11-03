@@ -27,11 +27,6 @@ impl<'w> LoopAttachment<'w> {
     pub(crate) fn id(&self) -> io::Result<devmap_linux::DevId> {
         self.device.id()
     }
-    /// Diagnostic node number, not a lifetime lease or command authority.
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn number(&self) -> io::Result<u32> {
-        self.device.number()
-    }
     /// Flush and confirm unbound state before returning writable file authority.
     /// clear() alone can mean deferred detachment, so it is not sufficient.
     /// A shared BSD lock held by a udev probe is drained until a fixed deadline.
