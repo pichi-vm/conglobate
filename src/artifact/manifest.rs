@@ -17,8 +17,8 @@ use thiserror::Error;
 
 use crate::artifact::media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
-    MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_DTB_V1, MEDIA_TYPE_PICHI_PMI_V1,
-    MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+    MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_SCUTE_V1,
+    MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 
 /// Required chain-wide annotation keys (per D-06). These are the dm-verity
@@ -71,7 +71,7 @@ pub struct Manifest {
     /// carrying the launch contract (BUILD.md §7.1).
     pub config: ConfigDescriptor,
     /// Typed layer descriptors. Scutes appear in base-to-tip chain order;
-    /// PMI and DTB descriptors do not participate in that order.
+    /// PMI and boot configuration descriptors are outside that order.
     pub layers: Vec<Layer>,
     /// Top-level annotations. With scutes, MUST include
     /// `dev.pichi.carapace.verity.{algo,data-block-size,hash-block-size,
@@ -150,8 +150,11 @@ const _: () = {
         "Layer::Pmi serde rename must match MEDIA_TYPE_PICHI_PMI_V1"
     );
     assert!(
-        const_str_eq(MEDIA_TYPE_PICHI_DTB_V1, "application/vnd.pichi.dtb.v1"),
-        "Layer::Dtb serde rename must match MEDIA_TYPE_PICHI_DTB_V1"
+        const_str_eq(
+            MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
+            "application/vnd.pichi.bootconfig.v1+zstd"
+        ),
+        "bootconfig serde rename must match its media type"
     );
 };
 
@@ -189,10 +192,6 @@ pub enum Layer {
     /// Zstd-compressed native boot configuration. Requires one PMI.
     #[serde(rename = "application/vnd.pichi.bootconfig.v1+zstd")]
     BootConfig(BootConfigDescriptor),
-
-    /// Base DTB layer for a detached-channel PMI (BUILD.md §7.1). At most one.
-    #[serde(rename = "application/vnd.pichi.dtb.v1")]
-    Dtb(DtbDescriptor),
 }
 
 impl Layer {
@@ -202,7 +201,6 @@ impl Layer {
             Self::Scute(d) | Self::ScuteZstd(d) => &d.digest,
             Self::Pmi(d) => &d.digest,
             Self::BootConfig(d) => &d.digest,
-            Self::Dtb(d) => &d.digest,
         }
     }
 
@@ -212,7 +210,6 @@ impl Layer {
             Self::Scute(d) | Self::ScuteZstd(d) => d.size,
             Self::Pmi(d) => d.size,
             Self::BootConfig(d) => d.size,
-            Self::Dtb(d) => d.size,
         }
     }
 
@@ -232,7 +229,6 @@ impl Layer {
             Self::ScuteZstd(_) => MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
             Self::Pmi(_) => MEDIA_TYPE_PICHI_PMI_V1,
             Self::BootConfig(_) => MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
-            Self::Dtb(_) => MEDIA_TYPE_PICHI_DTB_V1,
         }
     }
 }
@@ -297,16 +293,6 @@ pub struct PmiDescriptor {
     pub size: u64,
 }
 
-/// Base DTB layer descriptor (no annotations; the measured base devicetree for
-/// a detached-channel PMI — BUILD.md §7.1).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct DtbDescriptor {
-    /// Content digest of the DTB blob.
-    pub digest: String,
-    /// Byte size of the DTB blob.
-    pub size: u64,
-}
-
 /// Validation errors for [`Manifest::validate`] (per D-07).
 #[derive(Debug, Error)]
 pub enum ManifestValidationError {
@@ -363,10 +349,6 @@ pub enum ManifestValidationError {
     /// Declared data-block count is zero or contradicts a raw blob's size.
     #[error("invalid data-block count for scute {0}")]
     BadScuteBlocks(String),
-
-    /// More than one base DTB layer (BUILD.md §7.1 — at most one).
-    #[error("artifact has more than one base DTB layer (got {0}); at most one is permitted")]
-    MultipleDtb(usize),
 }
 
 impl Manifest {
@@ -480,15 +462,6 @@ impl Manifest {
         }
         if boot_config_count != 0 && pmi_count == 0 {
             return Err(ManifestValidationError::BootConfigWithoutPmi);
-        }
-        // At most one base DTB layer (BUILD.md §7.1).
-        let dtb_count = self
-            .layers
-            .iter()
-            .filter(|l| matches!(l, Layer::Dtb(_)))
-            .count();
-        if dtb_count > 1 {
-            return Err(ManifestValidationError::MultipleDtb(dtb_count));
         }
         // The salt's parent prefix identifies the base without reading blobs.
         // Full chain continuity is checked when consumers verify the scutes.
@@ -682,54 +655,6 @@ mod tests {
         assert_eq!(m, m2);
     }
 
-    fn sample_dtb_layer() -> Layer {
-        Layer::Dtb(DtbDescriptor {
-            digest: "sha256:4444444444444444444444444444444444444444444444444444444444444444"
-                .into(),
-            size: 8192,
-        })
-    }
-
-    #[test]
-    fn dtb_layer_round_trips_and_validates() {
-        let mut m = sample_base_manifest();
-        m.layers.push(Layer::Pmi(PmiDescriptor {
-            digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
-                .into(),
-            size: 4096,
-        }));
-        m.layers.push(sample_dtb_layer());
-        m.validate().unwrap();
-
-        let b = serde_json::to_vec(&m).unwrap();
-        let m2 = serde_json::from_slice::<Manifest>(&b).unwrap();
-        m2.validate().unwrap();
-        assert_eq!(m, m2);
-        let json = String::from_utf8(b).unwrap();
-        assert!(json.contains(MEDIA_TYPE_PICHI_DTB_V1));
-    }
-
-    #[test]
-    fn validate_rejects_two_dtb_layers() {
-        let mut m = sample_base_manifest();
-        m.layers.push(sample_dtb_layer());
-        m.layers.push(sample_dtb_layer());
-        let err = m.validate().unwrap_err();
-        assert!(
-            matches!(err, ManifestValidationError::MultipleDtb(2)),
-            "{err:?}"
-        );
-    }
-
-    #[test]
-    fn dtb_layer_media_type_and_digest() {
-        let l = sample_dtb_layer();
-        assert_eq!(l.media_type_str(), MEDIA_TYPE_PICHI_DTB_V1);
-        assert_eq!(l.size(), 8192);
-        assert!(l.digest_str().starts_with("sha256:44"));
-        assert!(!l.is_zstd_variant());
-    }
-
     #[test]
     fn round_trip_byte_stable() {
         let m = sample_base_manifest();
@@ -848,7 +773,13 @@ mod tests {
         };
         base.annotations.salt.push_str("abcd");
         child.annotations.salt = "ab".repeat(32);
-        manifest.layers.insert(0, sample_dtb_layer());
+        manifest.layers.insert(
+            0,
+            Layer::Pmi(PmiDescriptor {
+                digest: format!("sha256:{}", "44".repeat(32)),
+                size: 8192,
+            }),
+        );
         manifest.layers.push(Layer::ScuteZstd(child));
         manifest.validate().unwrap();
 

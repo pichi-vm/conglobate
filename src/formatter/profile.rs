@@ -1,10 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{
-    planner::FilesystemSpec,
-    value::{FilesystemLabel, FilesystemSize},
-};
+use crate::{contract::plan::Format, value::FilesystemSize};
 #[cfg(test)]
 use sha2::{Digest, Sha256};
 use std::{ffi::OsString, path::Path};
@@ -14,11 +11,14 @@ use std::{ffi::OsString, path::Path};
 #[derive(Debug)]
 pub(crate) struct Ext4Format {
     size: FilesystemSize,
-    label: FilesystemLabel,
+    label: String,
+    esp: Option<FilesystemSize>,
 }
-impl From<&FilesystemSpec> for Ext4Format {
-    fn from(spec: &FilesystemSpec) -> Self {
-        Self::new(spec.size(), spec.label().clone())
+impl From<&Format> for Ext4Format {
+    fn from(spec: &Format) -> Self {
+        let mut format = Self::new(spec.size, spec.label.clone());
+        format.esp = spec.esp;
+        format
     }
 }
 impl Ext4Format {
@@ -42,8 +42,31 @@ impl Ext4Format {
         "-E",
         "root_owner=0:0,nodiscard,lazy_itable_init=0",
     ];
-    pub(crate) fn new(size: FilesystemSize, label: FilesystemLabel) -> Self {
-        Self { size, label }
+    pub(crate) fn new(size: FilesystemSize, label: String) -> Self {
+        Self {
+            size,
+            label,
+            esp: None,
+        }
+    }
+    pub(crate) fn layout(&self) -> std::io::Result<crate::disk::Layout> {
+        if self.size.bytes() < 16 * 1024 * 1024
+            || self.label.len() > 16
+            || self.label.contains('\0')
+        {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "ext4 requires at least 16 MiB and a label of at most 16 bytes without NUL",
+            ));
+        }
+        crate::disk::Layout::new(
+            crate::disk::Architecture::current()?,
+            self.size.bytes(),
+            self.esp()?.map(|esp| esp.bytes()),
+        )
+    }
+    pub(crate) fn esp(&self) -> std::io::Result<Option<super::Fat32Format>> {
+        self.esp.map(super::Fat32Format::try_from).transpose()
     }
     #[cfg(test)]
     pub(crate) fn size(&self) -> FilesystemSize {
@@ -62,7 +85,7 @@ impl Ext4Format {
         let mut args: Vec<_> = Self::OPTIONS.iter().map(OsString::from).collect();
         args.extend([
             "-L".into(),
-            self.label.as_ref().into(),
+            self.label.as_str().into(),
             device.as_os_str().to_owned(),
             self.size.blocks().to_string().into(),
         ]);
@@ -82,7 +105,7 @@ mod tests {
         std::fs::write(&configuration, Ext4Format::configuration()).unwrap();
         let path = directory.path().join("root.ext4");
         File::create(&path).unwrap().set_len(64 << 20).unwrap();
-        let format = Ext4Format::new("64MiB".parse().unwrap(), FilesystemLabel::default());
+        let format = Ext4Format::new(FilesystemSize::new(64).unwrap(), "root".into());
         assert!(
             Command::new("mke2fs")
                 .env("MKE2FS_CONFIG", configuration)
@@ -102,10 +125,7 @@ mod tests {
 
     #[test]
     fn capacity_and_label_are_data_in_fixed_formatter_arguments() {
-        let format = Ext4Format::new(
-            "16MiB".parse().unwrap(),
-            "-x; $(false)".to_owned().try_into().unwrap(),
-        );
+        let format = Ext4Format::new(FilesystemSize::new(16).unwrap(), "-x; $(false)".to_owned());
         let args = format.arguments(Path::new("/dev/output"));
         assert!(args.windows(2).any(|pair| pair == ["-T", "conglobate"]));
         assert_eq!(
@@ -113,7 +133,7 @@ mod tests {
             ["-L", "-x; $(false)", "/dev/output", "4096"].map(OsString::from)
         );
         assert_eq!(format.size().bytes(), 16 * 1024 * 1024);
-        let larger = Ext4Format::new("65GiB".parse().unwrap(), FilesystemLabel::default());
+        let larger = Ext4Format::new(FilesystemSize::new(66560).unwrap(), String::default());
         let args = larger.arguments(Path::new("/dev/output"));
         assert_eq!(args.last().unwrap(), "17039360");
     }

@@ -26,14 +26,14 @@ pub(crate) struct ImageLock {
 impl TryFrom<YamlDocument<'_>> for ImageLock {
     type Error = LockError;
     fn try_from(document: YamlDocument<'_>) -> Result<Self, Self::Error> {
-        let raw: crate::contract::build::Lock = document.decode()?;
+        let raw: crate::contract::plan::Lock = document.decode()?;
         let images = raw
             .images
             .iter()
             .map(|(reference, pin)| {
                 Ok((
-                    reference.parse()?,
-                    IndexDigest::from_bytes(pin.index.as_sha256_array()),
+                    reference.to_string().parse()?,
+                    IndexDigest::from_bytes(pin.as_sha256_array()),
                 ))
             })
             .collect::<Result<_, IdentityError>>()?;
@@ -52,23 +52,26 @@ impl ImageLock {
 
 #[cfg(test)]
 mod tests {
+    // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
+    // SPDX-License-Identifier: Apache-2.0
+
     use crate::{document::YamlDocument, lock::ImageLock};
 
     #[test]
     fn pins_are_exact_top_level_identities() {
         let text = format!(
-            "version: 1\nimages:\n  example.test/base: {{index: sha256:{}}}\n",
+            "version: 1\nimages:\n  example.test/base:1: sha256:{}\n",
             "ab".repeat(32)
         );
         let lock = ImageLock::try_from(YamlDocument::from(text.as_str())).unwrap();
         assert_eq!(
-            lock.resolve(&"example.test/base".parse().unwrap())
+            lock.resolve(&"example.test/base:1".parse().unwrap())
                 .unwrap()
                 .bytes(),
             &[0xab; 32]
         );
         assert!(
-            lock.resolve(&"example.test/missing".parse().unwrap())
+            lock.resolve(&"example.test/missing:1".parse().unwrap())
                 .is_err()
         );
     }
@@ -92,16 +95,17 @@ mod tests {
 
     #[test]
     fn duplicate_references_and_unknown_fields_are_rejected() {
-        let pin = format!("{{index: sha256:{}}}", "00".repeat(32));
+        let pin = format!("sha256:{}", "00".repeat(32));
         for text in [
-            format!("version: 1\nimages:\n  base: {pin}\n  base: {pin}"),
-            format!("version: 1\nversion: 1\nimages: {{base: {pin}}}"),
+            format!(
+                "version: 1\nimages:\n  registry.test/base:1: {pin}\n  registry.test/base:1: {pin}"
+            ),
+            format!("version: 1\nversion: 1\nimages: {{registry.test/base:1: {pin}}}"),
             "version: 1\nimages: {}\nextra: ignored".into(),
-            "version: 1\nimages: null".into(),
             format!("version: 1\nimages: {{base: {pin}}}"),
             "version: 2\nimages: {}".into(),
-            "version: 1\nimages: {base: {index: latest}}".into(),
-            "version: 1\nimages: {base: {index: sha256:00, manifest: other}}".into(),
+            "version: 1\nimages: {registry.test/base:1: latest}".into(),
+            "version: 1\nimages: {registry.test/base:1: sha256:00}".into(),
         ] {
             assert!(
                 ImageLock::try_from(YamlDocument::from(text.as_str())).is_err(),

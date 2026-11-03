@@ -24,13 +24,11 @@ pub(crate) enum CacheError {
     Manifest(#[from] crate::artifact::ManifestValidationError),
     #[error("cache I/O: {0}")]
     Io(#[from] io::Error),
-    #[error(transparent)]
-    Firmware(#[from] crate::firmware::FirmwareError),
     #[error("invalid cache content: {0}")]
     Invalid(&'static str),
 }
 
-/// JSON indexes, manifests and DTBs. Layers and firmware use other readers.
+/// JSON indexes, manifests and boot configuration. Layers and firmware use other readers.
 const MAX_METADATA_BYTES: u64 = 16 * 1024 * 1024;
 
 /// Pins directory authority; no method creates, downloads or modifies content.
@@ -114,22 +112,6 @@ impl Cache {
         }
         Ok(bytes)
     }
-    /// Capture a firmware blob after authenticating its declared size and digest.
-    /// Firmware is not subject to the small JSON/DTB metadata size limit.
-    pub(crate) fn firmware_contract(
-        &self,
-        digest: &ContentDigest,
-        size: u64,
-    ) -> Result<crate::firmware::DtbContract, CacheError> {
-        let size_usize = usize::try_from(size)
-            .map_err(|_| CacheError::Invalid("firmware size exceeds address space"))?;
-        let mut bytes = Vec::new();
-        bytes
-            .try_reserve_exact(size_usize)
-            .map_err(|error| io::Error::other(error.to_string()))?;
-        self.copy_verified(digest, size, &mut bytes)?;
-        Ok(crate::firmware::DtbContract::from_pmi(&bytes)?)
-    }
     /// Verify one complete read without retaining an unverified future read handle.
     /// Mounting layers requires independent dm-verity verification at use time.
     pub(crate) fn verify(&self, digest: &ContentDigest, size: u64) -> Result<(), CacheError> {
@@ -183,7 +165,7 @@ impl VerifiedMetadata {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use crate::artifact::Digest;
     use crate::cache::Cache;
     use sha2::{Digest as _, Sha256};
@@ -795,7 +777,7 @@ mod tests {
     }
 
     /// Authentic roots for cache metadata fixtures; production only seals snapshots.
-    pub(super) trait ScuteFixture {
+    pub(crate) trait ScuteFixture {
         fn scute_files(&self, parent: [u8; 32]) -> (devmap_verity::Header, Vec<u8>, [u8; 32]);
         fn scute_root(&self, parent: [u8; 32]) -> [u8; 32] {
             self.scute_files(parent).2
