@@ -258,7 +258,7 @@ mod tests {
                 layers.push(serde_json::json!({"mediaType":"application/vnd.pichi.bootconfig.v1+zstd", "digest":self.blob(&config), "size":config.len()}));
             }
             let config = serde_json::to_vec(&serde_json::json!({"source":name})).unwrap();
-            let manifest = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "config":crate::artifact::ConfigDescriptor::for_config(self.blob(&config),config.len() as u64), "layers":layers,"annotations":annotations})).unwrap();
+            let manifest = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "config":oci_spec::image::Descriptor::new(crate::contract::resources::MEDIA_TYPE_PICHI_CONFIG_V1.into(), config.len() as u64, (self.blob(&config)).parse::<oci_spec::image::Digest>().expect("config digest")), "layers":layers,"annotations":annotations})).unwrap();
             let index = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.index.v1+json", "manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "digest":self.blob(&manifest),"size":manifest.len(),"platform":{"os":"pichi","architecture":crate::cache::HostArchitecture::current().unwrap().oci_name()}}]})).unwrap();
             self.pins
                 .insert(format!("registry.test/{name}:1"), self.blob(&index));

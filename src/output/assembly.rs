@@ -148,10 +148,10 @@ impl AssembledImage {
             let mut manifest = match metadata {
                 Some(image) => {
                     let config = &image.image().manifest().config;
-                    if config.is_empty() {
+                    if config.media_type() == &MediaType::EmptyJSON {
                         staged.store_blob(b"{}")?;
                     } else {
-                        staged.copy_blob(cache, &config.digest.parse()?, config.size)?;
+                        staged.copy_blob(cache, config.digest(), config.size())?;
                     }
                     serde_json::from_slice::<serde_json::Value>(
                         image.image().manifest_bytes().bytes(),
@@ -159,7 +159,7 @@ impl AssembledImage {
                 }
                 None => {
                     staged.store_blob(b"{}")?;
-                    serde_json::json!({"schemaVersion":2,"mediaType":MediaType::ImageManifest,"artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,"config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
+                    serde_json::json!({"schemaVersion":2,"mediaType":MediaType::ImageManifest,"artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,"config":oci_spec::image::DescriptorBuilder::default().media_type(oci_spec::image::MediaType::EmptyJSON).digest("sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a".parse::<oci_spec::image::Digest>().expect("empty config digest")).size(2u64).data("e30=").build().expect("empty config descriptor"),"layers":[]})
                 }
             };
             let annotations = manifest
@@ -340,14 +340,27 @@ mod tests {
                 );
             }
             let config_descriptor = if empty_config {
-                crate::artifact::ConfigDescriptor::canonical()
+                oci_spec::image::DescriptorBuilder::default()
+                    .media_type(oci_spec::image::MediaType::EmptyJSON)
+                    .digest(
+                        "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+                            .parse::<oci_spec::image::Digest>()
+                            .expect("empty config digest"),
+                    )
+                    .size(2u64)
+                    .data("e30=")
+                    .build()
+                    .expect("empty config descriptor")
             } else {
-                crate::artifact::ConfigDescriptor::for_config(
-                    format!("sha256:{}", hex::encode(Sha256::digest(&config)))
+                oci_spec::image::Descriptor::new(
+                    crate::contract::resources::MEDIA_TYPE_PICHI_CONFIG_V1.into(),
+                    config.len() as u64,
+                    (format!("sha256:{}", hex::encode(Sha256::digest(&config)))
                         .parse::<Digest>()
                         .expect("SHA-256 digest")
-                        .to_string(),
-                    config.len() as u64,
+                        .to_string())
+                    .parse::<oci_spec::image::Digest>()
+                    .expect("config digest"),
                 )
             };
             let manifest = serde_json::to_vec_pretty(&serde_json::json!({

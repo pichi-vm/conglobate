@@ -42,10 +42,6 @@ pub const MEDIA_TYPE_PICHI_PMI_V1: &str = "application/vnd.pichi.pmi.v1";
 /// Zstd-compressed native Linux boot configuration text accompanying a PMI.
 pub const MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD: &str = "application/vnd.pichi.bootconfig.v1+zstd";
 
-/// OCI 1.1 empty descriptor. Formerly the artifact's config blob (inline
-/// `data: "e30="`); pichi artifacts now use [`crate::resources::MEDIA_TYPE_PICHI_CONFIG_V1`].
-pub const MEDIA_TYPE_OCI_EMPTY_V1: &str = "application/vnd.oci.empty.v1+json";
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -76,11 +72,10 @@ mod tests {
             MEDIA_TYPE_PICHI_CONFIG_V1,
             "application/vnd.pichi.config.v1+json"
         );
-        assert_eq!(MEDIA_TYPE_OCI_EMPTY_V1, "application/vnd.oci.empty.v1+json");
     }
 
     #[test]
-    fn all_constants_have_pichi_prefix_or_oci() {
+    fn all_constants_have_pichi_prefix() {
         assert!(MEDIA_TYPE_PICHI_ARTIFACT_V1.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_SCUTE_V1.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.starts_with("application/vnd.pichi."));
@@ -90,7 +85,6 @@ mod tests {
         assert!(MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_CONFIG_V1.starts_with("application/vnd.pichi."));
         assert!(MEDIA_TYPE_PICHI_CONFIG_V1.ends_with("+json"));
-        assert!(MEDIA_TYPE_OCI_EMPTY_V1.starts_with("application/vnd.oci."));
     }
 
     #[test]

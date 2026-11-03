@@ -6,7 +6,7 @@
 //! parse / serialise / validate / self-digest helpers.
 //!
 //! Phase 42 locks the schema: typed `layers: Vec<Layer>` (internally-
-//! tagged on `mediaType`), `ConfigDescriptor` for the OCI 1.1 empty-config
+//! tagged on `mediaType`), `oci_spec::image::Descriptor` for the OCI 1.1 empty-config
 //! pattern, and `validate()` enforcing all six D-07 rules.
 
 use super::BootConfigDescriptor;
@@ -17,8 +17,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::artifact::media_type::{
-    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
-    MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+    MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD, MEDIA_TYPE_PICHI_PMI_V1,
+    MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 
 /// Required chain-wide annotation keys (per D-06). These are the dm-verity
@@ -69,7 +69,7 @@ pub struct Manifest {
     /// Manifest config descriptor: either the OCI 1.1 empty config (artifacts
     /// with no launch contract) or a real `vnd.pichi.config.v1+json` blob
     /// carrying the launch contract (BUILD.md §7.1).
-    pub config: ConfigDescriptor,
+    pub config: oci_spec::image::Descriptor,
     /// Typed layer descriptors. Scutes appear in base-to-tip chain order;
     /// PMI and boot configuration descriptors are outside that order.
     pub layers: Vec<Layer>,
@@ -80,53 +80,6 @@ pub struct Manifest {
     /// `BTreeMap` for byte-stable JSON serialisation (lexicographic key order).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub annotations: BTreeMap<String, String>,
-}
-
-/// The manifest `config` descriptor. Either the OCI 1.1 empty config (inline
-/// `data: "e30="`, for artifacts with no launch contract) or a real
-/// `application/vnd.pichi.config.v1+json` blob referenced by digest (BUILD.md
-/// §7.1).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ConfigDescriptor {
-    /// `application/vnd.oci.empty.v1+json` or `application/vnd.pichi.config.v1+json`.
-    #[serde(rename = "mediaType")]
-    pub media_type: String,
-    /// SHA-256 digest of the config blob.
-    pub digest: String,
-    /// Byte length of the config blob.
-    pub size: u64,
-    /// Base64-encoded inline blob (present for the empty config; omitted for a
-    /// real config blob, which is stored/moved by digest).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub data: Option<String>,
-}
-
-impl ConfigDescriptor {
-    /// The canonical OCI 1.1 empty-config descriptor (`{}` inline).
-    pub fn canonical() -> Self {
-        Self {
-            media_type: MEDIA_TYPE_OCI_EMPTY_V1.to_string(),
-            digest: EMPTY_CONFIG_DIGEST.to_string(),
-            size: 2,
-            data: Some(EMPTY_CONFIG_DATA_BASE64.to_string()),
-        }
-    }
-
-    /// A real config-blob descriptor (`vnd.pichi.config.v1+json`), referenced by
-    /// digest; the blob is stored/moved separately.
-    pub fn for_config(digest: String, size: u64) -> Self {
-        Self {
-            media_type: MEDIA_TYPE_PICHI_CONFIG_V1.to_string(),
-            digest,
-            size,
-            data: None,
-        }
-    }
-
-    /// `true` for the OCI empty config (no launch contract).
-    pub fn is_empty(&self) -> bool {
-        self.media_type == MEDIA_TYPE_OCI_EMPTY_V1
-    }
 }
 
 /// Compile-time assertions: ensure `#[serde(rename = ...)]` strings on
@@ -399,14 +352,16 @@ impl Manifest {
         // Rule 2: config is either the canonical empty config or a real
         // pichi config blob (vnd.pichi.config.v1+json).
         let c = &self.config;
-        let is_canonical_empty = c.media_type == MEDIA_TYPE_OCI_EMPTY_V1
-            && c.size == 2
-            && c.data.as_deref() == Some(EMPTY_CONFIG_DATA_BASE64)
-            && c.digest == EMPTY_CONFIG_DIGEST;
-        let is_config_blob = c.media_type == MEDIA_TYPE_PICHI_CONFIG_V1;
+        let is_canonical_empty = c.media_type() == &oci_spec::image::MediaType::EmptyJSON
+            && c.size() == 2
+            && c.data()
+                .as_deref()
+                .is_none_or(|data| data == EMPTY_CONFIG_DATA_BASE64)
+            && c.digest().to_string() == EMPTY_CONFIG_DIGEST;
+        let is_config_blob = c.media_type().as_ref() == MEDIA_TYPE_PICHI_CONFIG_V1;
         if !is_canonical_empty && !is_config_blob {
             return Err(ManifestValidationError::BadConfig {
-                media_type: c.media_type.clone(),
+                media_type: c.media_type().to_string(),
             });
         }
         // Rule 3 (BUILD.md §7.1): the carapace verity-chain annotations describe
@@ -632,7 +587,17 @@ mod tests {
             schema_version: 2,
             media_type: "application/vnd.oci.image.manifest.v1+json".into(),
             artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
-            config: ConfigDescriptor::canonical(),
+            config: oci_spec::image::DescriptorBuilder::default()
+                .media_type(oci_spec::image::MediaType::EmptyJSON)
+                .digest(
+                    "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+                        .parse::<oci_spec::image::Digest>()
+                        .expect("empty config digest"),
+                )
+                .size(2u64)
+                .data("e30=")
+                .build()
+                .expect("empty config descriptor"),
             layers: vec![Layer::Scute(ScuteDescriptor {
                 digest: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
                     .into(),
@@ -666,17 +631,34 @@ mod tests {
 
     #[test]
     fn empty_config_canonical_matches_oci_spec() {
-        let c = ConfigDescriptor::canonical();
-        assert_eq!(c.media_type, MEDIA_TYPE_OCI_EMPTY_V1);
-        assert_eq!(c.size, 2);
-        assert_eq!(c.data.as_deref(), Some("e30="));
-        assert_eq!(c.digest, EMPTY_CONFIG_DIGEST);
+        let c = oci_spec::image::DescriptorBuilder::default()
+            .media_type(oci_spec::image::MediaType::EmptyJSON)
+            .digest(
+                "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+                    .parse::<oci_spec::image::Digest>()
+                    .expect("empty config digest"),
+            )
+            .size(2u64)
+            .data("e30=")
+            .build()
+            .expect("empty config descriptor");
+        assert_eq!(c.media_type(), &oci_spec::image::MediaType::EmptyJSON);
+        assert_eq!(c.size(), 2);
+        assert_eq!(c.data().as_deref(), Some("e30="));
+        assert_eq!(c.digest().to_string(), EMPTY_CONFIG_DIGEST);
         // Cross-check: SHA-256 of "{}" really is the EMPTY_CONFIG_DIGEST hex
         let manual = format!("sha256:{}", hex::encode(Sha256::digest(b"{}")))
             .parse::<oci_spec::image::Digest>()
             .expect("SHA-256 digest")
             .to_string();
         assert_eq!(manual, EMPTY_CONFIG_DIGEST);
+    }
+
+    #[test]
+    fn empty_config_data_is_optional() {
+        let mut manifest = sample_base_manifest();
+        manifest.config.set_data(None);
+        manifest.validate().unwrap();
     }
 
     #[test]
@@ -709,7 +691,8 @@ mod tests {
     #[test]
     fn validate_rejects_bad_config() {
         let mut m = sample_base_manifest();
-        m.config.media_type = "application/vnd.oci.image.config.v1+json".into();
+        m.config
+            .set_media_type(oci_spec::image::MediaType::ImageConfig);
         assert!(matches!(
             m.validate().unwrap_err(),
             ManifestValidationError::BadConfig { .. }
@@ -719,9 +702,12 @@ mod tests {
     #[test]
     fn validate_accepts_real_config_blob() {
         let mut m = sample_base_manifest();
-        m.config = ConfigDescriptor::for_config(
-            "sha256:5555555555555555555555555555555555555555555555555555555555555555".into(),
+        m.config = oci_spec::image::Descriptor::new(
+            crate::resources::MEDIA_TYPE_PICHI_CONFIG_V1.into(),
             42,
+            ("sha256:5555555555555555555555555555555555555555555555555555555555555555")
+                .parse::<oci_spec::image::Digest>()
+                .expect("config digest"),
         );
         m.validate().unwrap();
     }

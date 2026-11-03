@@ -66,12 +66,8 @@ impl Cache {
     pub(crate) fn verify_metadata(&self, image: &ResolvedImage) -> Result<(), CacheError> {
         let manifest = image.manifest();
         let config = &manifest.config;
-        if !config.is_empty() {
-            let digest = config
-                .digest
-                .parse()
-                .map_err(|_| CacheError::Invalid("invalid config digest"))?;
-            self.verify(&digest, config.size)?;
+        if config.media_type() != &MediaType::EmptyJSON {
+            self.verify(config.digest(), config.size())?;
         }
         for layer in &manifest.layers {
             if matches!(
@@ -236,9 +232,12 @@ mod tests {
                 schema_version: 2,
                 media_type: MediaType::ImageManifest.to_string().into(),
                 artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
-                config: crate::artifact::ConfigDescriptor::for_config(
-                    config_digest.to_string(),
+                config: oci_spec::image::Descriptor::new(
+                    crate::contract::resources::MEDIA_TYPE_PICHI_CONFIG_V1.into(),
                     config.len() as u64,
+                    (config_digest.to_string())
+                        .parse::<oci_spec::image::Digest>()
+                        .expect("config digest"),
                 ),
                 layers,
                 annotations,

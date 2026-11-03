@@ -17,10 +17,10 @@ mod media_type;
 
 pub use boot_config_descriptor::BootConfigDescriptor;
 pub use manifest::{
-    CARAPACE_ROOT_ANNOTATION, ConfigDescriptor, Layer, Manifest, ManifestValidationError,
-    PmiDescriptor, ScuteAnnotations, ScuteDescriptor,
+    CARAPACE_ROOT_ANNOTATION, Layer, Manifest, ManifestValidationError, PmiDescriptor,
+    ScuteAnnotations, ScuteDescriptor,
 };
 pub use media_type::{
-    MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
-    MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+    MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD, MEDIA_TYPE_PICHI_PMI_V1,
+    MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
