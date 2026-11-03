@@ -7,6 +7,7 @@ mod bootstrap;
 mod carapace;
 mod firmware;
 mod output;
+mod pmi;
 mod rejection;
 pub(crate) mod root;
 use crate::{
