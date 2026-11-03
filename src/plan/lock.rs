@@ -4,7 +4,7 @@
 //! Inputs shared by the host and builder. Transport and resolution are external.
 
 use crate::artifact::Digest;
-use crate::plan::Version;
+use crate::plan::{Remote, Version};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -14,7 +14,7 @@ use std::collections::BTreeMap;
 pub struct Lock {
     pub version: Version<1>,
     /// Each digest identifies a multi-architecture OCI index.
-    pub images: BTreeMap<String, Digest>,
+    pub images: BTreeMap<Remote, Digest>,
 }
 
 #[cfg(test)]
@@ -25,8 +25,10 @@ mod tests {
     fn lock_preserves_reference_keys_and_digest_strings() {
         let reference = "registry.example/base:1";
         let mut lock = Lock::default();
-        lock.images
-            .insert(reference.into(), Digest::Sha256([0x11; 32]));
+        lock.images.insert(
+            Remote::new(reference.into()).unwrap(),
+            Digest::Sha256([0x11; 32]),
+        );
         let value = serde_json::to_value(&lock).unwrap();
         assert_eq!(value["version"], 1);
         assert_eq!(
@@ -60,5 +62,19 @@ mod tests {
         let lock: Lock = serde_saphyr::from_str("version: 1\nimages: {}\n").unwrap();
         assert_eq!(lock, Lock::default());
         assert!(serde_saphyr::from_str::<Lock>("version: 1\nimages: null\n").is_err());
+    }
+
+    #[test]
+    fn lock_keys_require_explicit_remote_references() {
+        for reference in ["base", "team/base:1", "registry.example/base"] {
+            let value = serde_json::json!({
+                "version": 1,
+                "images": {reference: format!("sha256:{}", "11".repeat(32))}
+            });
+            assert!(
+                serde_json::from_value::<Lock>(value).is_err(),
+                "{reference}"
+            );
+        }
     }
 }
