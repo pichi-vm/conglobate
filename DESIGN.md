@@ -276,8 +276,7 @@ Product assumptions for the guest:
    There is **no** local CBOR copy retained as a second source of truth, **no**
    Conglobate parse of virtiofs field readers / mount tags from the response,
    and **no** mount generator in this crate.
-5. Appliance image hardcodes (not CBOR fields): UID/GID maps and the
-   resolver file path used when networking is enabled.
+5. Appliance image hardcodes (not CBOR fields): UID/GID maps.
    Formatting tools live in the image; see [§2](#2-standalone-cli).
 6. **Guest exit.** After `conglobate appliance` exits, success or failure, the
    oneshot powers the VM off so the launcher is not left at a login prompt.
@@ -435,11 +434,10 @@ Defaults and failure behavior:
   unsupported; no silent ownership rewriting. Pass-through builds do not need
   mappings.
 - Enabled commands inherit Conglobate's network namespace. Disabled commands
-  receive a fresh namespace with only loopback enabled. The standalone CLI
-  requires `--resolv-conf PATH` when any run step enables networking; the
-  appliance hardcodes the resolver path. Capture resolver
+  receive a fresh namespace with only loopback enabled. When any run step
+  enables networking, capture the environment's `/etc/resolv.conf`
   contents once and inject them temporarily, read-only, following symlinks
-  confined to the command root. No implicit resolver or DNS relay. Resolver
+  confined to the command root. No DNS relay. Resolver
   contents and their digest are not recorded as build annotations.
 - Successful output is published only when all components and manifest
   annotations are complete. Refuse an existing output destination rather than
@@ -1110,7 +1108,7 @@ creation and control access are prohibited. Context enters only through COPY.
 
 Enabled steps share the supervisor network namespace. The launching environment
 owns connectivity and network policy; supervisor controls must not be exposed
-on command-reachable sockets. The environment supplies `--resolv-conf`;
+on command-reachable sockets. The environment supplies `/etc/resolv.conf`;
 there is no built-in DNS relay, resolver annotation or persistent injection.
 
 On every exit path, stop/reap all descendants before removing runtime mounts
@@ -1495,10 +1493,9 @@ RAII owns resources; destructors cannot certify successful finalization.
    and DNS configuration for network-enabled commands. Reject unsupported
    behavior rather than silently weakening the sandbox.
 
-1. Read --resolv-conf PATH once if networking is needed and retain the
-   selected bytes privately. The argument is mandatory if any run step
-   has network: true. An unreadable or invalid selected file is an error;
-   there is no implicit host-file or public-resolver fallback. Resolver
+1. Read the environment's /etc/resolv.conf once if networking is needed and
+   retain the selected bytes privately. An unreadable or invalid file is an
+   error; there is no public-resolver fallback. Resolver
    configuration and its digest are not recorded as build annotations.
    The environment supplies resolvers reachable from the inherited network.
 
@@ -1782,7 +1779,7 @@ RAII owns resources; destructors cannot certify successful finalization.
    endpoints must not listen on command-reachable sockets. The surrounding
    environment owns connectivity and reachable services.
 
-1. Mount the captured --resolv-conf contents read-only at /etc/resolv.conf
+1. Mount the captured resolver contents read-only at /etc/resolv.conf
    for network-enabled commands. Follow existing symlinks only within the
    command root, including targets under /run. Reject escaping paths,
    loops, and incompatible target types. Use confined temporary mount
@@ -1929,8 +1926,8 @@ private to the binary. Downstream `pichi` depends on the lib for shared types.
 
 The standalone CLI or appliance supplies committed Git objects (after ref
 resolution), a read-only local image cache, UID/GID ranges (CLI flags or
-appliance image hardcodes), an optional resolver file (same split), the fixed
-labeling exception and independent VM disposal. Formatting
+appliance image hardcodes), /etc/resolv.conf for network-enabled commands,
+the fixed labeling exception and independent VM disposal. Formatting
 uses the internal filesystem-name → formatter map; there is no host
 `--formatter-runtime` input. Conglobate performs no artifact downloads, Git
 clone/checkout-as-SoT, network setup, policy registration or attestation. It

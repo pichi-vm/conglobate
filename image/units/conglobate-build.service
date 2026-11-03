@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # systemd is PID 1; Conglobate is a normal oneshot unit (not /init).
-# Image hardcodes (uid/gid maps and resolv.conf path) are supplied by the
+# Image hardcodes (uid/gid maps) are supplied by the
 # appliance binary constants, not by this unit's argv.
 #
 # RemainAfterExit=no is required for SuccessAction=: a oneshot that stays
@@ -26,7 +26,7 @@ FailureAction=poweroff-force
 
 [Service]
 Type=oneshot
-BindReadOnlyPaths=/run/systemd/resolve/resolv.conf:/run/pichi/resolv.conf
+BindReadOnlyPaths=/run/systemd/resolve/resolv.conf:/etc/resolv.conf
 ExecStartPre=/usr/libexec/conglobate-lsm /sys/fs/bpf/conglobate-label-policy
 ExecStart=/usr/bin/conglobate appliance
 # Fail the boot target if the build fails; do not linger as active.
