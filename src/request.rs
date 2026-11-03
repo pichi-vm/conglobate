@@ -22,6 +22,9 @@ pub(crate) enum RequestError {
     Commit,
     #[error("Git ref resolution: {0}")]
     Ref(String),
+
+    #[error("build location must be a credential-free Git locator")]
+    Location,
 }
 #[derive(Debug, Parser)]
 #[command(name = "conglobate", version)]
@@ -59,6 +62,10 @@ struct BuildArguments {
     cache: PathBuf,
     #[arg(long)]
     output: PathBuf,
+
+    /// Optional credential-free source locator recorded in build annotations.
+    #[arg(long)]
+    location: Option<String>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CommitIdentity(Vec<u8>);
@@ -167,13 +174,23 @@ impl BuildRequest {
     }
 
     /// Record an optional build provenance locator without changing Git opens.
-    pub(crate) fn with_location(mut self, location: Option<String>) -> Self {
+    pub(crate) fn with_location(mut self, location: Option<String>) -> Result<Self, RequestError> {
+        if let Some(location) = &location {
+            // URL parse errors may include credentials; return a fixed diagnostic.
+            let locator =
+                gix::url::parse(location.as_bytes().into()).map_err(|_| RequestError::Location)?;
+            if locator.password().is_some()
+                || (locator.user().is_some() && locator.scheme != gix::url::Scheme::Ssh)
+            {
+                return Err(RequestError::Location);
+            }
+        }
         self.location = location;
-        self
+        Ok(self)
     }
     fn from_build_args(raw: BuildArguments) -> Result<Self, RequestError> {
         let commit = CommitIdentity::resolve(&raw.repository, &raw.git_ref)?;
-        Ok(Self::from_parts(
+        Self::from_parts(
             raw.uid_map
                 .zip(raw.gid_map)
                 .map(|(uid, gid)| IdMappings::new(uid, gid)),
@@ -184,7 +201,8 @@ impl BuildRequest {
             ContextPath::try_from(raw.lock.as_path())?,
             raw.cache,
             raw.output,
-        ))
+        )
+        .with_location(raw.location)
     }
     /// Parse CLI arguments, resolve the Git ref and validate context-relative paths.
     /// This opens the repository but does not read the build documents or cache.
@@ -291,6 +309,41 @@ mod tests {
             .collect()
         }
     }
+    #[test]
+    fn location_is_optional_and_rejects_credentials_without_echoing_them() {
+        let fixture = Fixture::new("sha1");
+        let mut args = fixture.args();
+        args.extend(["--plan", "plan", "--lock", "lock"].map(str::to_owned));
+        assert!(
+            BuildRequest::parse_from(&args)
+                .unwrap()
+                .location()
+                .is_none()
+        );
+        for location in [
+            "https://example.invalid/repo",
+            "ssh://git@example.invalid/repo",
+        ] {
+            let mut located = args.clone();
+            located.extend(["--location", location].map(str::to_owned));
+            assert_eq!(
+                BuildRequest::parse_from(located).unwrap().location(),
+                Some(location)
+            );
+        }
+        for location in [
+            "https://secret@example.invalid/repo",
+            "https://user:secret@example.invalid/repo",
+            "ssh://user:secret@example.invalid/repo",
+        ] {
+            let mut located = args.clone();
+            located.extend(["--location", location].map(str::to_owned));
+            let error = BuildRequest::parse_from(located).unwrap_err().to_string();
+            assert!(error.contains("credential-free"));
+            assert!(!error.contains("secret"));
+        }
+    }
+
     #[test]
     fn refs_and_full_hashes_resolve_to_one_commit() {
         for format in ["sha1", "sha256"] {

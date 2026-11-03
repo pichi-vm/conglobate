@@ -17,8 +17,6 @@ use std::path::Path;
 pub(crate) enum ApplianceRequestError {
     #[error("appliance CBOR: {0}")]
     Decode(String),
-    #[error("build location must be a credential-free Git locator")]
-    InvalidLocation,
     #[error("appliance CBOR has trailing bytes after the response")]
     TrailingBytes,
     #[error("host rejected build-input: {0}")]
@@ -163,16 +161,6 @@ impl ApplianceRequest {
             context: context_text,
             location,
         } = input;
-        if let Some(location) = &location {
-            // Parser errors can include the input; never surface them here.
-            let locator = gix::url::parse(location.as_bytes().into())
-                .map_err(|_| ApplianceRequestError::InvalidLocation)?;
-            if locator.password().is_some()
-                || (locator.user().is_some() && locator.scheme != gix::url::Scheme::Ssh)
-            {
-                return Err(ApplianceRequestError::InvalidLocation);
-            }
-        }
         let plan = ContextPath::try_from(Path::new(&plan_text))?;
         let lock = ContextPath::try_from(Path::new(&lock_text))?;
         let context = ContextDirectory::try_from(Path::new(&context_text))?;
@@ -204,7 +192,7 @@ impl ApplianceRequest {
             cache.to_path_buf(),
             output.to_path_buf(),
         )
-        .with_location(self.location))
+        .with_location(self.location)?)
     }
 }
 
@@ -292,23 +280,6 @@ mod tests {
                 .location(),
             None
         );
-    }
-
-    #[test]
-    fn rejects_credentials_without_echoing_the_locator() {
-        for location in [
-            "https://secret@example.invalid/repo",
-            "https://user:secret@example.invalid/repo",
-            "ssh://user:secret@example.invalid/repo",
-        ] {
-            let mut fields = required();
-            fields.push(("location", Value::Text(location.into())));
-            let error = ApplianceRequest::decode(&encode(&fields))
-                .unwrap_err()
-                .to_string();
-            assert!(error.contains("credential-free"));
-            assert!(!error.contains("secret"));
-        }
     }
 
     #[test]

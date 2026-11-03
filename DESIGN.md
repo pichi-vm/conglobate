@@ -399,6 +399,9 @@ conglobate build <local-path> \
 
 Defaults and failure behavior:
 
+- `--location` optionally records a credential-free source locator on the
+  output manifest. It never changes which repository is read.
+
 - The positional repository path defaults to the current directory.
 - `--context` defaults to `.`. It cannot escape the selected commit.
   Appliance CBOR uses `context` for the same role.
