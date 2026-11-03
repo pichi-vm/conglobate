@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pub(crate) mod artifacts;
+#[cfg(test)]
+mod boot_config;
 mod bootstrap;
 mod carapace;
 mod firmware;
