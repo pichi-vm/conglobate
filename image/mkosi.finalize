@@ -44,6 +44,12 @@ for option in ("BLOCK", "BLK_DEV_INITRD", "DEVTMPFS", "PROC_FS", "SYSFS", "EFI_P
     if config.get(f"CONFIG_{option}") != "y":
         raise SystemExit(f"Corium requires CONFIG_{option}=y")
 
+for option in ("BPF_LSM", "DEBUG_INFO_BTF"):
+    if config.get(f"CONFIG_{option}") != "y":
+        raise SystemExit(f"the label policy requires CONFIG_{option}=y")
+if "bpf" not in config.get("CONFIG_LSM", "").strip('"').split(","):
+    raise SystemExit("the label policy requires bpf in CONFIG_LSM")
+
 # Corium does not prepare mountpoints in the read-only root. systemd mounts its
 # own API filesystems and /run after the handoff; provide the directories now.
 for directory in ("dev", "proc", "sys", "run"):
