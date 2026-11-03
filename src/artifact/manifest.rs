@@ -10,6 +10,7 @@
 //! pattern, and `validate()` enforcing all six D-07 rules.
 
 use super::BootConfigDescriptor;
+use crate::resources::MEDIA_TYPE_PICHI_CONFIG_V1;
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -17,8 +18,7 @@ use thiserror::Error;
 
 use crate::artifact::media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
-    MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_SCUTE_V1,
-    MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+    MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 
 /// Required chain-wide annotation keys (per D-06). These are the dm-verity
