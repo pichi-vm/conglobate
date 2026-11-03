@@ -33,7 +33,7 @@ impl TryFrom<YamlDocument<'_>> for ImageLock {
             .map(|(reference, pin)| {
                 Ok((
                     reference.parse()?,
-                    IndexDigest::from_bytes(pin.index.as_sha256_array()),
+                    IndexDigest::from_bytes(pin.as_sha256_array()),
                 ))
             })
             .collect::<Result<_, IdentityError>>()?;
@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn pins_are_exact_top_level_identities() {
         let text = format!(
-            "version: 1\nimages:\n  example.test/base: {{index: sha256:{}}}\n",
+            "version: 1\nimages:\n  example.test/base: sha256:{}\n",
             "ab".repeat(32)
         );
         let lock = ImageLock::try_from(YamlDocument::from(text.as_str())).unwrap();
@@ -92,7 +92,7 @@ mod tests {
 
     #[test]
     fn duplicate_references_and_unknown_fields_are_rejected() {
-        let pin = format!("{{index: sha256:{}}}", "00".repeat(32));
+        let pin = format!("sha256:{}", "00".repeat(32));
         for text in [
             format!("version: 1\nimages:\n  base: {pin}\n  base: {pin}"),
             format!("version: 1\nversion: 1\nimages: {{base: {pin}}}"),
@@ -100,7 +100,7 @@ mod tests {
             "version: 1\nimages: null".into(),
             format!("version: 1\nimages: {{base: {pin}}}"),
             "version: 2\nimages: {}".into(),
-            "version: 1\nimages: {base: {index: latest}}".into(),
+            "version: 1\nimages: {base: latest}".into(),
             "version: 1\nimages: {base: {index: sha256:00, manifest: other}}".into(),
         ] {
             assert!(
