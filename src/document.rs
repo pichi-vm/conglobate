@@ -20,15 +20,52 @@ impl YamlDocument<'_> {
         // The dependency exposes a non-exhaustive options struct, not a builder.
         let mut options = serde_saphyr::Options::default();
         options.strict_booleans = true;
+        options.no_schema = true;
         options.legacy_octal_numbers = false;
         options.duplicate_keys = serde_saphyr::DuplicateKeyPolicy::Error;
-        serde_saphyr::from_str_with_options(self.text, options)
+        // Buffer YAML's actual scalar/collection kinds before Serde visits the
+        // schema. Direct typed decoding coerces null to an empty map and some
+        // scalars to strings; neither belongs to the authored JSON-shaped model.
+        let value: serde_json::Value = serde_saphyr::from_str_with_options(self.text, options)?;
+        T::deserialize(value).map_err(serde::de::Error::custom)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn decoding_preserves_scalar_and_collection_types() {
+        use std::collections::BTreeMap;
+        for text in ["null", "[]", "false"] {
+            assert!(
+                YamlDocument::from(text)
+                    .decode::<BTreeMap<String, String>>()
+                    .is_err()
+            );
+        }
+        for text in ["{1: x}", "{true: x}", "{null: x}"] {
+            assert!(
+                YamlDocument::from(text)
+                    .decode::<BTreeMap<String, String>>()
+                    .is_err()
+            );
+        }
+        for text in ["true", "123", "null"] {
+            assert!(YamlDocument::from(text).decode::<String>().is_err());
+        }
+        assert_eq!(
+            YamlDocument::from("'123'").decode::<String>().unwrap(),
+            "123"
+        );
+        assert!(
+            YamlDocument::from("{}")
+                .decode::<BTreeMap<String, String>>()
+                .unwrap()
+                .is_empty()
+        );
+    }
 
     #[test]
     fn decoding_retains_the_scalar_byte_budget() {
