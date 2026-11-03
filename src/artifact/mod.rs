@@ -27,6 +27,5 @@ pub use media_type::{
 };
 
 pub use index::{
-    Index, IndexDescriptor, LayoutMarker, MEDIA_TYPE_OCI_INDEX_V1, MEDIA_TYPE_OCI_MANIFEST_V1,
-    Platform,
+    Index, IndexDescriptor, MEDIA_TYPE_OCI_INDEX_V1, MEDIA_TYPE_OCI_MANIFEST_V1, Platform,
 };

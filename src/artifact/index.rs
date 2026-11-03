@@ -48,20 +48,6 @@ pub struct Platform {
     pub variant: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct LayoutMarker {
-    pub image_layout_version: String,
-}
-
-impl Default for LayoutMarker {
-    fn default() -> Self {
-        Self {
-            image_layout_version: "1.0.0".into(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

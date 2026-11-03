@@ -7,7 +7,7 @@ use crate::{
     cache::{Cache, CacheError, ResolvedImage},
     image::IndexDigest,
 };
-use oci_spec::image::Digest;
+use oci_spec::image::{Digest, OciLayoutBuilder};
 use sha2::{Digest as _, Sha256};
 
 /// A self-contained staged image whose copied blobs were authenticated and
@@ -281,7 +281,12 @@ impl AssembledImage {
         staged.write_file(&staged.temporary.path().join("index.json"), &index)?;
         staged.write_file(
             &staged.temporary.path().join("oci-layout"),
-            &serde_json::to_vec(&crate::artifact::LayoutMarker::default())?,
+            &serde_json::to_vec(
+                &OciLayoutBuilder::default()
+                    .image_layout_version("1.0.0")
+                    .build()
+                    .expect("layout version is set"),
+            )?,
         )?;
         let output_cache = Cache::open(staged.temporary.path())?;
         let output_image = output_cache.resolve(pin)?;
