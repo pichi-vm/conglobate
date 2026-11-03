@@ -38,9 +38,10 @@ treat virtiofs as first-class, so this image keeps the modules itself.
   oneshot whose `ExecStart` is `conglobate appliance`. When that process exits,
   success or failure, the unit powers the VM off. Appliance stdout and stderr
   go to the journal and to the kernel console (`console=hvc0`).
-- `e2fsprogs` provides image-resident `mke2fs` (standard paths, `/usr/sbin/mke2fs`
-  first). The engine still captures that binary and its `ldd` dependencies from
-  the guest root. There is no host formatter path.
+- `e2fsprogs` and `dosfstools` provide the image-resident ext4 and FAT
+  formatters. The engine captures those binaries and their dependencies from
+  the guest root. Loop, FAT and character-set modules remain available for
+  stage filesystems. There is no host formatter path.
 
 Image hardcodes, not CBOR fields: UID/GID maps (`src/appliance/mounts.rs`).
 
