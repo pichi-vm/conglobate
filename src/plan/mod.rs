@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Portable pichi.yaml encoding. Documents require `version: 1`.
+//! Portable plan and lock encoding. Documents require `version: 1`.
 //! Execution checks belong to the consumer.
 //!
 //! String wrappers validate through `new(String) -> Option<Self>` and Serde.
@@ -40,6 +40,7 @@ pub use stage::Stage;
 pub use stage_ref::StageRef;
 pub use version::Version;
 
+use crate::artifact::Digest;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -51,4 +52,13 @@ pub struct Plan {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub stages: BTreeMap<StageRef, Stage>,
     pub image: Image,
+}
+
+/// Remote image references pinned to immutable OCI indexes.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Lock {
+    pub version: Version<1>,
+    /// Each digest identifies a multi-architecture OCI index.
+    pub images: BTreeMap<Remote, Digest>,
 }
