@@ -58,6 +58,23 @@ jobs:
           "$HOME/.cargo/bin/rustup" toolchain install stable --profile minimal
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
+      - name: Install the BPF linker
+        working-directory: lsm
+        run: |
+          # Reuse LLVM from the selected Rust toolchain.
+          linker_llvm="$(printf '%s' "$(rustc --print sysroot)"/lib/libLLVM.so.*)"
+          linker_llvm_version="${linker_llvm##*/libLLVM.so.}"
+          RUSTFLAGS="-C link-arg=$linker_llvm -C link-arg=-Wl,-rpath,${linker_llvm%/*}" \
+            cargo install --locked --version '=0.13.0' \
+              --no-default-features --features "llvm-${linker_llvm_version%%.*},no-llvm-linking" bpf-linker
+
+      - name: Check the Rust LSM
+        working-directory: lsm
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --locked --release --all-targets -- -D warnings
+          cargo test --locked --release -- --ignored
+
       - name: Build arma, pichi, and conglobate
         run: |
           # arma and pichi pick up their own rust-toolchain.toml / .cargo/config
