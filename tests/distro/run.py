@@ -144,7 +144,7 @@ echo NETWORK_ENVIRONMENT_RETAINED_PASS"""
             firmware.mkdir()
             shutil.copy2(self.arguments.firmware_pmi, firmware / 'boot.pmi')
         (context / 'images.lock').write_text(
-            f'version: 1\nimages:\n  {self.arguments.reference}:\n    index: {self.arguments.pin}\n')
+            f'version: 1\nimages:\n  {self.arguments.reference}: {self.arguments.pin}\n')
         for command in [['init', '-q'], ['add', '.'],
                         ['-c', 'user.name=Qualification', '-c', 'user.email=qualification@invalid',
                          'commit', '-qm', 'Pin qualification inputs']]:

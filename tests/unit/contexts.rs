@@ -284,7 +284,7 @@ fn request_planning_and_document_receipts_use_only_selected_committed_bytes() {
     let repo = Repository::new("sha1");
     let plan = b"version: 1\nimage: registry.test/base:1\n";
     let lock = format!(
-        "version: 1\nimages:\n  registry.test/base:1:\n    index: sha256:{}\n",
+        "version: 1\nimages:\n  registry.test/base:1: sha256:{}\n",
         "11".repeat(32)
     );
     repo.write("context/config/build.yml", plan);
@@ -353,7 +353,7 @@ fn network_plan_captures_an_explicit_resolver_once() {
     repo.write(
         "lock",
         format!(
-            "version: 1\nimages:\n  registry.test/base:1:\n    index: sha256:{}\n",
+            "version: 1\nimages:\n  registry.test/base:1: sha256:{}\n",
             "11".repeat(32)
         )
         .as_bytes(),
@@ -494,8 +494,7 @@ fn resolved_stages_require_carapaces_even_when_pmi_and_config_exist() {
     let repo = Repository::new("sha1");
     repo.write(
         "lock",
-        format!("version: 1\nimages:\n  registry.test/base:1:\n    index: {index_digest}\n")
-            .as_bytes(),
+        format!("version: 1\nimages:\n  registry.test/base:1: {index_digest}\n").as_bytes(),
     );
     for plan in [
         "version: 1\nstages: {root: {use: registry.test/base:1, format: {fs: ext4, size: 1GiB}, steps: [exec: {command: echo ok}]}}\nimage: root\n",
@@ -561,7 +560,7 @@ fn resolved_stages_require_carapaces_even_when_pmi_and_config_exist() {
     std::fs::write(blobs.join(pin.hex()), index).unwrap();
     repo.write(
         "lock",
-        format!("version: 1\nimages:\n  registry.test/base:1:\n    index: {pin}\n").as_bytes(),
+        format!("version: 1\nimages:\n  registry.test/base:1: {pin}\n").as_bytes(),
     );
     repo.write(
         "plan",
@@ -685,7 +684,7 @@ fn executing_stage_variants_require_environment_maps_before_cache_access() {
     repo.write(
         "lock",
         format!(
-            "version: 1\nimages:\n  registry.test/tools:1: {{index: sha256:{}}}\n",
+            "version: 1\nimages:\n  registry.test/tools:1: sha256:{}\n",
             "11".repeat(32),
         )
         .as_bytes(),
@@ -882,7 +881,7 @@ fn planning_scans_used_copies_and_static_documents_before_execution() {
     child.write(
         "lock",
         format!(
-            "version: 1\nimages:\n  registry.test/base:1: {{index: sha256:{}}}\n",
+            "version: 1\nimages:\n  registry.test/base:1: sha256:{}\n",
             "11".repeat(32)
         )
         .as_bytes(),

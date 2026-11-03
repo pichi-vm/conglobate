@@ -83,14 +83,9 @@ impl Fixture {
     fn request(&self, plan: &str) -> (tempfile::TempDir, BuildRequest) {
         let repository = tempfile::tempdir().unwrap();
         fs::write(repository.path().join("plan"), plan).unwrap();
-        let images: BTreeMap<_, _> = self
-            .pins
-            .iter()
-            .map(|(name, pin)| (name, serde_json::json!({"index":pin})))
-            .collect();
         fs::write(
             repository.path().join("lock"),
-            serde_json::to_vec(&serde_json::json!({"version":1,"images":images})).unwrap(),
+            serde_json::to_vec(&serde_json::json!({"version":1,"images":self.pins})).unwrap(),
         )
         .unwrap();
         for args in [

@@ -528,11 +528,12 @@ Proposed wire shape:
 ```yaml
 version: 1
 images:
-  registry.example.com/fedora:43:
-    index: sha256:...
-  registry.example.com/kernel-builder:43:
-    index: sha256:...
+  registry.example.com/fedora:43: sha256:...
+  registry.example.com/kernel-builder:43: sha256:...
 ```
+
+An empty lock uses `images: {}`. Normal YAML map deserialization also
+accepts `images: null` as an empty map.
 
 Every locked reference must identify a multi-architecture OCI index. A direct
 manifest is not accepted. One lock supports multiple architectures, but each
