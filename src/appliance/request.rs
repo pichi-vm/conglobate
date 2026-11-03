@@ -11,7 +11,7 @@ use crate::{
 #[cfg(test)]
 use ciborium::Value;
 use std::io::BufRead;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ApplianceRequestError {
@@ -194,7 +194,6 @@ impl ApplianceRequest {
         cache: &Path,
         output: &Path,
         id_mappings: crate::isolation::IdMappings,
-        resolv_conf: PathBuf,
     ) -> Result<BuildRequest, ApplianceRequestError> {
         let commit = resolve_ref(repository, &self.git_ref)?;
         Ok(BuildRequest::from_parts(
@@ -206,7 +205,6 @@ impl ApplianceRequest {
             self.lock,
             cache.to_path_buf(),
             output.to_path_buf(),
-            Some(resolv_conf),
         )
         .with_location(self.location))
     }
@@ -527,7 +525,6 @@ mod tests {
                 Path::new("/run/pichi/cache"),
                 Path::new("/run/pichi/output"),
                 super::super::mounts::id_mappings(),
-                PathBuf::from("/run/pichi/resolv.conf"),
             )
             .unwrap();
         assert_eq!(
@@ -598,7 +595,6 @@ mod tests {
                 Path::new("/run/pichi/cache"),
                 Path::new("/run/pichi/output"),
                 super::super::mounts::id_mappings(),
-                PathBuf::from("/run/pichi/resolv.conf"),
             )
             .unwrap();
         assert_eq!(build.repository(), repo);

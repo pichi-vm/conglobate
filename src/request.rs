@@ -55,8 +55,6 @@ struct BuildArguments {
     cache: PathBuf,
     #[arg(long)]
     output: PathBuf,
-    #[arg(long)]
-    resolv_conf: Option<PathBuf>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CommitIdentity(Vec<u8>);
@@ -84,7 +82,6 @@ pub(crate) struct BuildRequest {
     lock: ContextPath,
     cache: PathBuf,
     output: PathBuf,
-    resolv_conf: Option<PathBuf>,
     /// Optional provenance locator for build annotations (e.g. appliance CBOR `location`).
     /// Not used as Git identity; mount/path opens still use `repository`.
     location: Option<String>,
@@ -120,7 +117,6 @@ impl BuildRequest {
         lock: ContextPath,
         cache: PathBuf,
         output: PathBuf,
-        resolv_conf: Option<PathBuf>,
     ) -> Self {
         Self {
             id_mappings,
@@ -131,7 +127,6 @@ impl BuildRequest {
             lock,
             cache,
             output,
-            resolv_conf,
             location: None,
         }
     }
@@ -153,7 +148,6 @@ impl BuildRequest {
             ContextPath::try_from(raw.lock.as_path())?,
             raw.cache,
             raw.output,
-            raw.resolv_conf,
         ))
     }
     /// Parse CLI arguments and validate commit syntax and context-relative paths.
@@ -203,9 +197,6 @@ impl BuildRequest {
     }
     pub(crate) fn output(&self) -> &Path {
         &self.output
-    }
-    pub(crate) fn resolv_conf(&self) -> Option<&Path> {
-        self.resolv_conf.as_deref()
     }
     /// Build provenance locator when supplied (appliance CBOR `location`).
     pub(crate) fn location(&self) -> Option<&str> {

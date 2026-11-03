@@ -30,9 +30,7 @@ pub(crate) enum InputError {
     Selection(#[from] crate::copy::SelectionError),
     #[error(transparent)]
     Lock(#[from] LockError),
-    #[error("network-enabled commands require --resolv-conf")]
-    ResolverRequired,
-    #[error("resolver input: {0}")]
+    #[error("resolver input /etc/resolv.conf: {0}")]
     Resolver(std::io::Error),
 }
 
@@ -103,10 +101,10 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
         let networking = if graph.network_steps().is_empty() {
             None
         } else {
-            let path = request.resolv_conf().ok_or(InputError::ResolverRequired)?;
-            let resolver =
-                crate::network::ResolverInput::capture(path).map_err(InputError::Resolver)?;
-            Some(resolver)
+            Some(
+                crate::network::ResolverInput::capture(std::path::Path::new("/etc/resolv.conf"))
+                    .map_err(InputError::Resolver)?,
+            )
         };
         let id_mappings = if graph.execution_required() {
             Some(
