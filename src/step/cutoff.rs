@@ -47,15 +47,9 @@ impl SetupCutoff {
     /// Hex-encoded deterministic CBOR [version, monotonic nanoseconds] for a
     /// trusted helper argv. Re-forward these bytes; do not export a new budget.
     pub(crate) fn to_argument(self) -> String {
-        let mut encoder = minicbor::Encoder::new(Vec::new());
-        encoder
-            .array(2)
-            .expect("Vec writer")
-            .u8(1)
-            .expect("Vec writer")
-            .u64(self.0)
-            .expect("Vec writer");
-        hex::encode(encoder.into_writer())
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&(1u8, self.0), &mut bytes).expect("Vec writer");
+        hex::encode(bytes)
     }
     pub(crate) fn from_argument(text: &str) -> io::Result<Self> {
         if text.len() > 24 {
@@ -66,17 +60,16 @@ impl SetupCutoff {
         }
         let bytes =
             hex::decode(text).map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
-        let mut decoder = minicbor::Decoder::new(&bytes);
-        let parsed = (|| -> Result<Self, minicbor::decode::Error> {
-            if decoder.array()? != Some(2) || decoder.u8()? != 1 {
-                return Err(minicbor::decode::Error::message(
-                    "invalid setup cutoff version/shape",
-                ));
-            }
-            Ok(Self(decoder.u64()?))
-        })()
-        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
-        if decoder.position() != bytes.len() || parsed.to_argument() != text {
+        let (version, nanos): (u8, u64) = ciborium::from_reader(bytes.as_slice())
+            .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+        if version != 1 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "invalid setup cutoff version/shape",
+            ));
+        }
+        let parsed = Self(nanos);
+        if parsed.to_argument() != text {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "noncanonical setup cutoff",
