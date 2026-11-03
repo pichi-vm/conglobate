@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Portable pichi.yaml encoding. Execution checks belong to the consumer.
+//! Portable pichi.yaml encoding. Documents require `version: 1`.
+//! Execution checks belong to the consumer.
 //!
 //! String wrappers validate through `new(String) -> Option<Self>` and Serde.
 //! They provide display, borrowed string access, equality, ordering and hashing;
@@ -46,6 +47,7 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Plan {
+    pub version: Version<1>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub stages: BTreeMap<StageRef, Stage>,
     pub image: Image,
@@ -73,7 +75,7 @@ mod tests {
             json!({"extract":{"from":"builder", "path":"/image.pmi"}}),
             json!({"extract":{"from":"registry.test/builder:1", "path":"/image.pmi"}, "define":{"corium.root":""}}),
         ] {
-            let input = json!({"image":{"boot":boot}});
+            let input = json!({"version":1,"image":{"boot":boot}});
             let plan = decode(input.clone());
             assert_eq!(serde_json::to_value(plan).unwrap(), input);
         }
@@ -86,18 +88,21 @@ mod tests {
             json!({"from":"firmware", "path":"/image.pmi"}),
             json!({"inherit":"firmware", "typo":true}),
         ] {
-            assert!(serde_json::from_value::<Plan>(json!({"image":{"boot":boot}})).is_err());
+            assert!(
+                serde_json::from_value::<Plan>(json!({"version":1,"image":{"boot":boot}})).is_err()
+            );
         }
         assert!(
-            serde_json::from_value::<Plan>(json!({"image":{"boot":"firmware", "bootconfig":{}}}))
-                .is_err()
+            serde_json::from_value::<Plan>(
+                json!({"version":1,"image":{"boot":"firmware", "bootconfig":{}}})
+            )
+            .is_err()
         );
     }
 
     #[test]
     fn extraction_empty_definition_normalizes_to_omission_but_inherited_clear_remains() {
-        let mut input =
-            json!({"image":{"boot":{"extract":{"from":"builder", "path":"/image.pmi"}}}});
+        let mut input = json!({"version":1,"image":{"boot":{"extract":{"from":"builder", "path":"/image.pmi"}}}});
         let absent = decode(input.clone());
         input["image"]["boot"]["define"] = json!({});
         let empty = decode(input);
@@ -107,7 +112,8 @@ mod tests {
                 .get("define")
                 .is_none()
         );
-        let clear = decode(json!({"image":{"boot":{"inherit":"firmware", "define":{}}}}));
+        let clear =
+            decode(json!({"version":1,"image":{"boot":{"inherit":"firmware", "define":{}}}}));
         assert_eq!(
             serde_json::to_value(clear).unwrap()["image"]["boot"]["define"],
             json!({})
@@ -116,8 +122,9 @@ mod tests {
 
     #[test]
     fn default_format_and_empty_steps_do_not_need_authored_fields() {
-        let plan =
-            decode(json!({"stages":{"root":{"use":"registry.test/tools:1"}},"image":"root"}));
+        let plan = decode(
+            json!({"version":1,"stages":{"root":{"use":"registry.test/tools:1"}},"image":"root"}),
+        );
         let Stage::Create { format, steps, .. } = &plan.stages.values().next().unwrap() else {
             panic!()
         };
@@ -128,15 +135,15 @@ mod tests {
         assert!(normalized["stages"]["root"].get("steps").is_none());
         assert_eq!(decode(normalized), plan);
         decode(
-            json!({"stages":{"root":{"use":"tools", "format":{"fs":"ext4", "size":"512MiB", "label":"root", "esp":"512MiB"}}}, "image":"root"}),
+            json!({"version":1,"stages":{"root":{"use":"tools", "format":{"fs":"ext4", "size":"512MiB", "label":"root", "esp":"512MiB"}}}, "image":"root"}),
         );
         for fs in ["xfs", "btrfs"] {
             assert!(
-                serde_json::from_value::<Plan>(
-                    json!({"stages":{"root":{"use":"tools", "format":{"fs":fs}}}, "image":"root"})
-                )
-                .is_err()
-            );
+            serde_json::from_value::<Plan>(
+                json!({"version":1,"stages":{"root":{"use":"tools", "format":{"fs":fs}}}, "image":"root"})
+            )
+            .is_err()
+        );
         }
     }
 
@@ -156,8 +163,10 @@ mod tests {
             json!({"use":"tools", "format":{"fs":"ext4", "inodes":123}}),
         ] {
             assert!(
-                serde_json::from_value::<Plan>(json!({"stages":{"root":stage}, "image":"root"}))
-                    .is_err()
+                serde_json::from_value::<Plan>(
+                    json!({"version":1,"stages":{"root":stage}, "image":"root"})
+                )
+                .is_err()
             );
         }
     }
@@ -319,6 +328,17 @@ mod tests {
             "registry.example/root:",
         ] {
             assert!(Remote::new(text.into()).is_none(), "{text}");
+        }
+    }
+
+    #[test]
+    fn plans_require_an_explicit_supported_version() {
+        for input in [
+            json!({"image":"root"}),
+            json!({"version":2,"image":"root"}),
+            json!({"version":null,"image":"root"}),
+        ] {
+            assert!(serde_json::from_value::<Plan>(input).is_err());
         }
     }
 }
