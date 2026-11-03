@@ -2,10 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Ready, Running, Step, StepFailure, StepStorage, TeardownCompletion};
-use crate::{
-    isolation::{ExecutionGate, GateReady, Started},
-    value::CommandTimeout,
-};
+use crate::isolation::{ExecutionGate, GateReady, Started};
 use std::{
     io,
     time::{Duration, Instant},
@@ -96,7 +93,7 @@ impl<'a, R: StepStorage> PreparedStep<'a, R> {
     /// sandbox setup. A delayed acknowledgment never extends either cutoff.
     pub(crate) fn start(
         self,
-        timeout: CommandTimeout,
+        timeout: Duration,
     ) -> Result<RunningCommand<'a, R>, Box<CommandStartFailure<'a, R>>> {
         if let Err(source) = self.budget.check() {
             return Err(Box::new(CommandStartFailure::Ready(Box::new(
@@ -106,7 +103,7 @@ impl<'a, R: StepStorage> PreparedStep<'a, R> {
                 },
             ))));
         }
-        let Some(deadline) = Instant::now().checked_add(timeout.duration()) else {
+        let Some(deadline) = Instant::now().checked_add(timeout) else {
             return Err(Box::new(CommandStartFailure::Ready(Box::new(
                 StepFailure {
                     source: io::Error::new(

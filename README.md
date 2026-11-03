@@ -4,64 +4,56 @@ Conglobate builds layered OS images from committed plans and locally supplied,
 locked image artifacts. The crate is a types-only library plus a binary engine;
 the standalone CLI remains testable without a VM. Production builds run in a
 pichi appliance image shipped from this repository (see DESIGN.md). The
-approved plan format is the multi-stage task model in
-[DESIGN.md](DESIGN.md): tasks `bootstrap`, `extend`, and `build`, then
-assembly of one carapace and optional boot. The engine executes only the
-selected image's dependency closure. Builds produce
-a self-contained OCI image layout with build binding annotations on the image
-manifest. See [DESIGN.md](DESIGN.md) for the task model, CLI, appliance
-build-port CBOR contract, and schemas.
+plan format is the shared staged model in [DESIGN.md](DESIGN.md): named
+creation and extension stages, followed by selection of the root and boot
+components. The engine executes only the selected image's dependency closure.
+Builds produce a self-contained OCI image layout with build binding annotations
+on the image manifest.
 
 ## Plans
 
-A plan has named `tasks` and an explicit local `image` selection:
+A plan requires `version: 1` and an `image` selection. The optional `stages`
+map names the creation and extension stages:
 
 ```yaml
-tasks:
+version: 1
+stages:
   package:
-    kind: build
-    from: registry.example.com/tools:1
-    exec:
-      - run: printf 'built input\n' > /package
-    into: {package: /package}
+    use: registry.example.com/tools:1
+    steps:
+      - exec: {command: "printf 'built input\n' > /mnt/package"}
   rootfs:
-    kind: extend
-    from: registry.example.com/base:1
-    exec:
-      - copy: {from: package, into: /etc/package}
+    extend: registry.example.com/base:1
+    steps:
+      - copy: {from: package, path: /package, into: /etc/package}
 image: rootfs
 ```
 
-The separate lock pins each remote reference to an OCI index digest. Local
-references name tasks and never appear in the lock. Orphan tasks require no
-cache inputs, networking, or execution. Dependencies run before their consumers,
-regardless of YAML key order. `bootstrap` formats a fresh filesystem and populates
-`/mnt`; `extend` retains its input chain plus one scute for all its commands;
-`build` discards its tool writes and retains declared artifacts only.
+The separate lock maps each remote reference directly to an OCI index digest.
+Local references name stages and never appear in the lock. Dependencies execute
+before their consumers, regardless of YAML key order. Unselected stages do not
+execute or acquire cache inputs.
+
+Creation (`use`) runs tools at `/` and populates a newly formatted root at
+`/mnt`; tool writes are discarded. Extension (`extend`) modifies its input
+root at `/` and retains its boot components. Each stage adds one scute.
+Optional `format` controls ext4 capacity, label and ESP size. Explicit tmpfs
+and ESP mounts persist across that stage's directives.
+
+COPY without `from` reads the committed context. Named COPY reads a completed
+stage's persisted root; it does not replay temporary stage mounts. See
+[directives](DESIGN.md#63-directives) for path and copy rules.
 
 Generate the image lock with `pichi update` from the working-tree plan, then
 commit the plan and lock together before building. Pichi consumes the shared
 plan types directly; lock maintenance does not invoke the Conglobate CLI.
 
-`image: rootfs` uses that task's carapace and boot exports. The long form
-`image: {root: rootfs, boot: firmware}` selects them separately. A build task
-may provide boot without a carapace. Extend carries boot forward and automatically
-rewrites its DTB binding; assembly also binds separately imported boot to the
-selected root. There is no authored `transform` section.
-`CARAPACE` becomes available to commands after the selected image-root task
-completes. Commands that produce that root see it unset; input, ancestor and
-tool roots never substitute for the output identity. Boot-only builds leave it
-unset even when a local task supplies their tools.
-
-Some artifact wire details remain provisional implementation choices under
-[DESIGN §6.3](DESIGN.md#63-exec-from-into-and-copy), not additional design locks:
-`tasks` contains the map; `into` maps flat names to absolute regular-file paths;
-`copy.into` is an absolute destination. An explicit `pmi`/`dtb` pair in `into`
-provides boot. Directory exports and other value grammars fail closed. Context
-COPY selects a single bare file or directory name; source patterns and the old
-owner/group/mode fields are rejected. Artifact names conflicting with the context
-or another producer are rejected. Whether artifact keys should become paths is
-still open. These choices are isolated in the executable's private plan schema.
+`image: rootfs` forwards that image's components. Explicit composition selects
+root and boot independently; boot can be inherited or extracted from a PMI
+file in a source image. Native bootconfig accompanies the immutable PMI and
+supports literal definitions and overlays. An existing `corium.root` binds
+configuration to the selected root. See [image assembly](DESIGN.md#52-image-assembly)
+and [boot configuration](DESIGN.md#8-boot-configuration).
 
 The 28 October 2026 decision in
 [DESIGN §11](DESIGN.md#11-artifact-and-build-annotations) drops `inventory.cbor`
@@ -81,10 +73,9 @@ leave only `oci-layout`, `index.json`, and `blobs/sha256/…`. Later attestation
 binds the image digest and TEE/builder.
 
 Build publication stamps these annotations from the resolved committed input.
-Plan parsing, filesystem properties, and dependency ordering are private to
-the executable. The library does not expose legacy `pichi.build` plans or
-packing lists. Builds publish OCI layouts; consumers use the shared artifact
-types. The engine dependency module is `src/graph.rs`.
+The library owns the portable plan, lock and artifact types. The engine
+validates execution constraints and dependency ordering, then publishes the
+complete OCI layout. Its dependency module is `src/graph.rs`.
 
 ## Build and rootless checks
 
