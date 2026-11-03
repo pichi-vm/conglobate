@@ -15,6 +15,13 @@ env:
   NIGHTLY: "nightly-2026-07-06"
 
 jobs:
+  # Validate alongside builds; publication requires both to succeed.
+  checks:
+    name: Rootless checks
+    uses: ./.github/workflows/checks.yml
+    permissions:
+      contents: read
+
   # Build each arch natively (no QEMU). Each build exports an OCI layout and
   # uploads it. No arch job pushes. The index job, on main only, loads both
   # and pushes one multi-arch index.
@@ -114,7 +121,7 @@ jobs:
   # builds stay green without registry credentials.
   index:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: build
+    needs: [build, checks]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:

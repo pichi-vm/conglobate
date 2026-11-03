@@ -6,36 +6,19 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Fail-fast DAG (replaces three flat push/PR workflows):
-#
-#   Tier 1 — Rootless checks (parallel): lint (fmt+clippy),
-#            dependencies (gitlint / cargo-deny / audit)
-#   Tier 2 — after Tier 1 succeeds (parallel with each other):
-#            Rust tests (amd64/arm matrix),
-#            appliance build matrix
-#
-# A red Tier-1 job skips the expensive Tier-2 work.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  checks:
-    name: Rootless checks
-    uses: ./.github/workflows/checks.yml
-    permissions:
-      contents: read
-
   rust:
     name: Rust tests
-    needs: [checks]
     uses: ./.github/workflows/rust.yml
     permissions:
       contents: read
 
   build:
     name: build
-    needs: [checks]
     uses: ./.github/workflows/build.yml
     permissions:
       contents: read
