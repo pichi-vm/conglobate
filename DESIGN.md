@@ -173,9 +173,9 @@ assembly uses the carapace root.
    retrieves/imports the result. It must not contradict this appliance contract.
    It does not interpret private intermediate files to reconstruct the image.
 
-Rootless input, planning and pure-operation tests run without VM infrastructure.
-Privileged lifecycle tests run in disposable VMs under the independent shutdown
-contract. Appliance boot/CI verifies the image and transport separately.
+Unit and binary integration tests run directly on Linux through Cargo.
+Tests that require root are ignored by default and explicitly run as root in CI.
+Appliance behavior is checked manually with Pichi.
 
 A build has the following lifecycle:
 
@@ -1302,25 +1302,19 @@ authenticity policy.
 
 ## 12. Validation scope
 
-The implementation follows the ordered sandbox contract. Maintained tests
-cover committed inputs, locks, typed DTB operations, pipeline combinations,
-metadata, manifest build annotations, publication and disposable-VM lifecycle
-failures. Those tests exercise the task model in §5–§6 alongside the existing
-storage, isolation, metadata and publication behavior. Distro plans exercise Fedora
-DNF/SELinux, Debian APT/systemd, Alpine APK/OpenRC and NixOS closure construction.
-A separate firmware plan constructs an initramfs and arma PMI/DTB, then boots it.
+Tests belong to two categories: Rust unit tests inline in the owning source
+file, and integration tests that invoke the Conglobate binary. Both use Cargo's
+standard test harness. Integration fixtures contain build inputs and assertions
+about the binary's output; they do not import private engine modules.
 
-CI checks native amd64/Arm64 Rust and guest lifecycle behavior. Arm64 hosted guest
-tests explicitly record TCG when KVM is unavailable. This does not propose TCG as
-the production sandbox. Confidential-computing hardware qualification is deferred
-by user decision; attestation remains separate work (build-port transport is
-locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-build-port-cbor)).
+Either category may require root on Linux. Such tests use `#[ignore]` and run
+explicitly as root in CI. A privileged test must fail when its prerequisites are
+missing instead of reporting a successful skip.
 
-The binary remains standalone and does not create VMs; privileged tests run only
-inside disposable VMs. Distro plans do not imply support for every distribution
-and architecture combination. The supported labeling environment disables build-VM
-SELinux; an enforcing build VM requires separate qualification. Boot checks stop
-at their success markers and do not qualify guest-initiated shutdown.
+Appliance testing is performed manually with Pichi. The repository does not
+maintain VM test harnesses or separate executables for testing private engine
+modules. CI checks Rust on native amd64 and Arm64. Confidential-computing
+hardware qualification and attestation remain separate work.
 
 ## 13. Remaining decisions
 

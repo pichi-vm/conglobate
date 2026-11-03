@@ -3,7 +3,7 @@
 
 //! Build planning from one immutable committed context. Image verification follows.
 use crate::{
-    context::{CapturedContext, ContextError, ContextFile},
+    context::{CapturedContext, ContextError},
     document::YamlDocument,
     graph::BuildGraph,
     lock::{ImageLock, LockError},
@@ -11,8 +11,6 @@ use crate::{
     planner::{Plan, PlanError},
     request::BuildRequest,
 };
-#[cfg(test)]
-use sha2::{Digest, Sha256};
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum InputError {
@@ -42,27 +40,17 @@ pub(crate) enum InputError {
     Resolver(std::io::Error),
 }
 
-/// Selected context-relative name and digest of the exact resolved file bytes.
+/// Selected context-relative name of a resolved document.
 #[derive(Debug)]
 pub(crate) struct SelectedDocument {
     path: ContextPath,
-    #[cfg(test)]
-    sha256: [u8; 32],
 }
 impl SelectedDocument {
-    fn new(path: ContextPath, _file: &ContextFile) -> Self {
-        Self {
-            path,
-            #[cfg(test)]
-            sha256: Sha256::digest(_file.bytes()).into(),
-        }
+    fn new(path: ContextPath) -> Self {
+        Self { path }
     }
     pub(crate) fn path(&self) -> &ContextPath {
         &self.path
-    }
-    #[cfg(test)]
-    pub(crate) fn sha256(&self) -> &[u8; 32] {
-        &self.sha256
     }
 }
 
@@ -138,8 +126,8 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
         } else {
             None
         };
-        let plan = SelectedDocument::new(request.plan().clone(), &plan_file);
-        let lock = SelectedDocument::new(request.lock().clone(), &lock_file);
+        let plan = SelectedDocument::new(request.plan().clone());
+        let lock = SelectedDocument::new(request.lock().clone());
         Ok(Self {
             id_mappings,
             context,
@@ -151,10 +139,6 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
     }
 }
 impl CapturedBuild {
-    #[cfg(test)]
-    pub(crate) fn id_mappings(&self) -> Option<crate::isolation::IdMappings> {
-        self.id_mappings
-    }
     pub(crate) fn execution_mappings(&self) -> Result<crate::isolation::IdMappings, InputError> {
         self.id_mappings.ok_or(InputError::IdMappingsRequired)
     }
