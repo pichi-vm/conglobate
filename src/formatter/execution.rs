@@ -6,7 +6,7 @@ use crate::{
     execution::HelperProgram,
     process::{Process, Running},
     step::SetupBudget,
-    storage::SnapshotMapping,
+    storage::{PartitionedSnapshot, SnapshotMapping},
 };
 use std::{
     io,
@@ -28,14 +28,15 @@ pub(crate) struct Formatting<'origin, 'workspace> {
 #[derive(Debug)]
 struct FormatInputs<'origin, 'workspace> {
     runtime: FormatterRuntime,
-    snapshot: SnapshotMapping<'origin, 'workspace>,
+    snapshot: PartitionedSnapshot<'origin, 'workspace>,
     format: Ext4Format,
 }
 impl FormatInputs<'_, '_> {
     fn reject(self, error: anyhow::Error) -> anyhow::Error {
         let storage = self
             .snapshot
-            .close()
+            .into_snapshot()
+            .and_then(|snapshot| snapshot.close())
             .and_then(|attached| attached.detach())
             .map(|_| ());
         let runtime = self.runtime.close();
@@ -61,6 +62,19 @@ impl FormatterRuntime {
         program: &HelperProgram,
         budget: SetupBudget,
     ) -> anyhow::Result<Formatting<'a, 'w>> {
+        budget.check()?;
+        let layout = format.layout()?;
+        let snapshot = match PartitionedSnapshot::create(snapshot, &layout) {
+            Ok(snapshot) => snapshot,
+            Err(error) => {
+                return Err(match self.close() {
+                    Ok(()) => error.into(),
+                    Err(cleanup) => {
+                        anyhow::Error::new(error).context(format!("formatter cleanup: {cleanup}"))
+                    }
+                });
+            }
+        };
         let inputs = Box::new(FormatInputs {
             runtime: self,
             snapshot,
@@ -85,8 +99,9 @@ impl FormatterRuntime {
                 inputs.format.arguments(Path::new("/dev/output")),
                 budget.cutoff()?,
             )?;
-            command
-                .stdin(FormatterInput::new(&inputs.runtime, inputs.snapshot.id())?.into_stdio()?);
+            command.stdin(
+                FormatterInput::new(&inputs.runtime, inputs.snapshot.root_id())?.into_stdio()?,
+            );
             budget.check()?;
             command.spawn().map(Process::from)
         })();
@@ -139,7 +154,7 @@ impl<'a, 'w> Formatting<'a, 'w> {
                     reaped.status()
                 )));
             }
-            inputs.snapshot.usage()?;
+            inputs.snapshot.sync()?;
             Ok(())
         })();
         match result {
@@ -150,7 +165,8 @@ impl<'a, 'w> Formatting<'a, 'w> {
 }
 impl<'a, 'w> FormattedSnapshot<'a, 'w> {
     /// Consume successful execution; resource owners must still be closed.
-    pub(crate) fn into_parts(self) -> (FormatterRuntime, SnapshotMapping<'a, 'w>) {
-        (self.inputs.runtime, self.inputs.snapshot)
+    pub(crate) fn into_parts(self) -> io::Result<(FormatterRuntime, SnapshotMapping<'a, 'w>)> {
+        let snapshot = self.inputs.snapshot.into_snapshot()?;
+        Ok((self.inputs.runtime, snapshot))
     }
 }

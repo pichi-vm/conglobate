@@ -13,6 +13,7 @@
 mod architecture;
 mod bounded;
 mod layout;
+pub(crate) use layout::Layout;
 mod partition;
 
 pub(crate) use architecture::Architecture;

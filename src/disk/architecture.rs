@@ -12,6 +12,17 @@ pub(crate) enum Architecture {
 }
 
 impl Architecture {
+    pub(crate) fn current() -> std::io::Result<Self> {
+        match std::env::consts::ARCH {
+            "x86_64" => Ok(Self::X86_64),
+            "aarch64" => Ok(Self::Aarch64),
+            _ => Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "unsupported root architecture",
+            )),
+        }
+    }
+
     pub(super) fn partition_type(self) -> gpt::partition_types::Type {
         match self {
             Self::X86_64 => gpt::partition_types::LINUX_ROOT_X64,

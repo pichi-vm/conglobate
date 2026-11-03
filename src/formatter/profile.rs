@@ -45,6 +45,13 @@ impl Ext4Format {
     pub(crate) fn new(size: FilesystemSize, label: FilesystemLabel) -> Self {
         Self { size, label }
     }
+    pub(crate) fn layout(&self) -> std::io::Result<crate::disk::Layout> {
+        crate::disk::Layout::new(
+            crate::disk::Architecture::current()?,
+            self.size.bytes(),
+            None,
+        )
+    }
     #[cfg(test)]
     pub(crate) fn size(&self) -> FilesystemSize {
         self.size
