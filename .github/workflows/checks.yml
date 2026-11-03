@@ -113,4 +113,8 @@ jobs:
       - name: Check arm64 dependency policy
         run: cargo deny --locked --features cli --target aarch64-unknown-linux-gnu check licenses sources bans
       - name: Check known advisories
-        run: cargo audit
+        run: |
+          cargo audit
+          cargo audit --file lsm/Cargo.lock
+      - name: Check LSM dependencies
+        run: cargo deny --manifest-path lsm/Cargo.toml --locked --all-features check --config deny.toml licenses sources bans
