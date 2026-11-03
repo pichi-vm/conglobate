@@ -529,15 +529,13 @@ the registry host is required. Bare Hub short names are rejected. A reference
 is not `Remote` merely because it contains `/`. Parsing must not let a task
 name silently win over an OCI reference, or the reverse.
 
-Proposed wire shape:
+Wire shape:
 
 ```yaml
 version: 1
 images:
-  registry.example.com/fedora:43:
-    index: sha256:...
-  registry.example.com/kernel-builder:43:
-    index: sha256:...
+  registry.example.com/fedora:43: sha256:...
+  registry.example.com/kernel-builder:43: sha256:...
 ```
 
 Every locked reference must identify a multi-architecture OCI index. A direct
