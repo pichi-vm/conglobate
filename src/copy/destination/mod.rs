@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(test)]
+mod image;
 use super::{CopyMode, CopySources, SelectionError};
 use crate::{
     context::{CapturedContext, ContextEntry, ContextError},
