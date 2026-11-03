@@ -17,10 +17,8 @@ jobs:
     permissions:
       contents: read
 
-  build:
-    name: build
-    uses: ./.github/workflows/build.yml
+  checks:
+    name: Rootless checks
+    uses: ./.github/workflows/checks.yml
     permissions:
       contents: read
-      packages: write
-    secrets: inherit
