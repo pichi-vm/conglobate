@@ -87,7 +87,6 @@ salts. Firmware remains in its OCI blob paths.
 | `config.json` | Launch requirements (2 GiB required, 4 GiB recommended) |
 | `units/` | Installed into the rootfs and enabled |
 | `conglobate.plan.yaml` | Self-host later, not used by bootstrap CI |
-| `check-stub.sh` | Static contract check (no VM) |
 
 `image/build.sh` writes `image/.build/` and a temporary `image/mkosi.extra/`.
 Neither is source.
