@@ -11,7 +11,7 @@ use crate::{
 #[cfg(test)]
 use ciborium::Value;
 use std::io::BufRead;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ApplianceRequestError {
@@ -27,8 +27,6 @@ pub(crate) enum ApplianceRequestError {
     Path(#[from] PathError),
     #[error(transparent)]
     Request(#[from] RequestError),
-    #[error("Git ref resolution: {0}")]
-    Ref(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -194,10 +192,8 @@ impl ApplianceRequest {
         cache: &Path,
         output: &Path,
         id_mappings: crate::isolation::IdMappings,
-        network_namespace: PathBuf,
-        resolv_conf: PathBuf,
     ) -> Result<BuildRequest, ApplianceRequestError> {
-        let commit = resolve_ref(repository, &self.git_ref)?;
+        let commit = CommitIdentity::resolve(repository, &self.git_ref)?;
         Ok(BuildRequest::from_parts(
             Some(id_mappings),
             repository.to_path_buf(),
@@ -207,42 +203,9 @@ impl ApplianceRequest {
             self.lock,
             cache.to_path_buf(),
             output.to_path_buf(),
-            Some(resolv_conf),
-            Some(network_namespace),
         )
         .with_location(self.location))
     }
-}
-
-fn resolve_ref(repository: &Path, git_ref: &str) -> Result<CommitIdentity, ApplianceRequestError> {
-    let repo = gix::open::Options::isolated()
-        .open(repository)
-        .map_err(|error| ApplianceRequestError::Ref(error.to_string()))?
-        .to_thread_local();
-    // Full object id may be supplied directly.
-    if let Ok(commit) = CommitIdentity::try_from(git_ref) {
-        let id = gix::ObjectId::from_hex(hex::encode(commit.bytes()).as_bytes())
-            .map_err(|error| ApplianceRequestError::Ref(error.to_string()))?;
-        if id.kind() != repo.object_hash() {
-            return Err(ApplianceRequestError::Ref(
-                "commit object format differs from repository".into(),
-            ));
-        }
-        let _ = repo
-            .find_object(id)
-            .map_err(|error| ApplianceRequestError::Ref(error.to_string()))?
-            .try_into_commit()
-            .map_err(|error| ApplianceRequestError::Ref(error.to_string()))?;
-        return Ok(commit);
-    }
-    let mut reference = repo
-        .find_reference(git_ref)
-        .map_err(|error| ApplianceRequestError::Ref(error.to_string()))?;
-    let commit = reference
-        .peel_to_commit()
-        .map_err(|error| ApplianceRequestError::Ref(error.to_string()))?;
-    CommitIdentity::try_from(commit.id().to_string().as_str())
-        .map_err(|error| ApplianceRequestError::Ref(error.to_string()))
 }
 
 #[cfg(test)]
@@ -529,8 +492,6 @@ mod tests {
                 Path::new("/run/pichi/cache"),
                 Path::new("/run/pichi/output"),
                 super::super::mounts::id_mappings(),
-                PathBuf::from("/run/pichi/netns"),
-                PathBuf::from("/run/pichi/resolv.conf"),
             )
             .unwrap();
         assert_eq!(
@@ -601,8 +562,6 @@ mod tests {
                 Path::new("/run/pichi/cache"),
                 Path::new("/run/pichi/output"),
                 super::super::mounts::id_mappings(),
-                PathBuf::from("/run/pichi/netns"),
-                PathBuf::from("/run/pichi/resolv.conf"),
             )
             .unwrap();
         assert_eq!(build.repository(), repo);

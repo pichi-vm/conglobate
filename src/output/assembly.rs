@@ -472,9 +472,8 @@ mod tests {
                     let request = BuildRequest::parse_from([
                         "conglobate",
                         "build",
-                        "--repository",
                         repo.path().to_str().unwrap(),
-                        "--commit",
+                        "--ref",
                         &commit,
                         "--context",
                         context,

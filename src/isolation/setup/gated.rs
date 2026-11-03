@@ -27,16 +27,12 @@ impl GatedCommandSetup {
             self.setup.devices.into_handle().into(),
             self.gate.into_handle(),
         ];
-        let mut opcode = if let Some(network) = self.setup.network {
-            descriptors.push(network.into());
-            5
+        let opcode = if let Some(resolver) = self.setup.resolver {
+            descriptors.push(resolver.into_handle().into());
+            7
         } else {
             2
         };
-        if let Some(resolver) = self.setup.resolver {
-            descriptors.push(resolver.into_handle().into());
-            opcode = 7;
-        }
         Packet {
             opcode,
             descriptors,
@@ -48,16 +44,11 @@ impl GatedCommandSetup {
         Self::from_socket(&socket)
     }
     fn from_socket(socket: &impl AsFd) -> io::Result<Self> {
-        let mut packet = Packet::receive_shapes(socket, &[(2, 3), (5, 4), (7, 5)])?;
+        let mut packet = Packet::receive_shapes(socket, &[(2, 3), (7, 4)])?;
         let resolver = if packet.opcode == 7 {
             Some(crate::network::ResolverView::from_handle(
                 packet.descriptors.pop().expect("resolver").into(),
             )?)
-        } else {
-            None
-        };
-        let network = if matches!(packet.opcode, 5 | 7) {
-            Some(File::from(packet.descriptors.pop().expect("network")))
         } else {
             None
         };
@@ -66,12 +57,8 @@ impl GatedCommandSetup {
             CommandDevices::from_handle(packet.descriptors.pop().expect("devices").into())?;
         let setup =
             CommandSetup::new(packet.descriptors.pop().expect("namespace").into(), devices)?;
-        let setup = match network {
-            Some(network) => setup.with_network_handle(network)?,
-            None => setup,
-        };
         let setup = match resolver {
-            Some(resolver) => setup.with_resolver_view(resolver)?,
+            Some(resolver) => setup.with_resolver_view(resolver),
             None => setup,
         };
         Ok(Self { setup, gate })
@@ -279,46 +266,17 @@ mod input_tests {
         let directory = tempfile::tempdir_in("/dev/shm").unwrap();
         let resolver = tempfile::NamedTempFile::new_in(directory.path()).unwrap();
         let user = File::open("/proc/self/ns/user").unwrap();
-        let network = File::open("/proc/self/ns/net").unwrap();
         let devices = File::open(directory.path()).unwrap();
         let transfer = Transfer::new();
         transfer.send(
             &[0x82, 1, 7],
-            &[
-                user.as_fd(),
-                devices.as_fd(),
-                network.as_fd(),
-                resolver.as_fd(),
-            ],
+            &[user.as_fd(), devices.as_fd(), resolver.as_fd()],
         );
         assert!(
             GatedCommandSetup::from_socket(&transfer.receiver)
                 .unwrap_err()
                 .to_string()
                 .contains("read-only")
-        );
-    }
-    #[test]
-    fn network_transport_retains_identity_and_close_on_exec() {
-        let directory = tempfile::tempdir_in("/dev/shm").unwrap();
-        let user = File::open("/proc/self/ns/user").unwrap();
-        let network = File::open("/proc/self/ns/net").unwrap();
-        let devices = File::open(directory.path()).unwrap();
-        let transfer = Transfer::new();
-        transfer.send(
-            &[0x82, 1, 5],
-            &[user.as_fd(), devices.as_fd(), network.as_fd()],
-        );
-        let received = GatedCommandSetup::from_socket(&transfer.receiver).unwrap();
-        let handle = received.setup.network.unwrap();
-        assert_eq!(
-            handle.metadata().unwrap().ino(),
-            network.metadata().unwrap().ino()
-        );
-        assert!(
-            rustix::io::fcntl_getfd(&handle)
-                .unwrap()
-                .contains(rustix::io::FdFlags::CLOEXEC)
         );
     }
     #[test]

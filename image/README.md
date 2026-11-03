@@ -42,8 +42,7 @@ treat virtiofs as first-class, so this image keeps the modules itself.
   first). The engine still captures that binary and its `ldd` dependencies from
   the guest root. There is no host formatter path.
 
-Image hardcodes, not CBOR fields: UID/GID maps, the network-namespace path, and
-the resolver path (`src/appliance/mounts.rs`).
+Image hardcodes, not CBOR fields: UID/GID maps (`src/appliance/mounts.rs`).
 
 Build-port command version 1: `conglobate appliance` opens `dev.pichi.build`, writes
 `["build", 1, null]`, then reads one self-delimiting host response.

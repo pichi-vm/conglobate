@@ -14,8 +14,6 @@ use std::path::Path;
 pub(crate) const REPOSITORY: &str = "/run/pichi/repo";
 pub(crate) const CACHE: &str = "/run/pichi/cache";
 pub(crate) const OUTPUT: &str = "/run/pichi/output";
-pub(crate) const NETWORK_NAMESPACE: &str = "/run/pichi/netns";
-pub(crate) const RESOLV_CONF: &str = "/run/pichi/resolv.conf";
 
 /// Image-allocated parent identity ranges (not CBOR, not argv).
 pub(crate) fn id_mappings() -> IdMappings {
@@ -33,10 +31,4 @@ pub(crate) fn cache() -> &'static Path {
 }
 pub(crate) fn output() -> &'static Path {
     Path::new(OUTPUT)
-}
-pub(crate) fn network_namespace() -> &'static Path {
-    Path::new(NETWORK_NAMESPACE)
-}
-pub(crate) fn resolv_conf() -> &'static Path {
-    Path::new(RESOLV_CONF)
 }

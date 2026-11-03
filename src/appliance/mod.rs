@@ -36,8 +36,6 @@ pub(crate) fn run() -> Result<(), ApplianceError> {
         mounts::cache(),
         mounts::output(),
         mounts::id_mappings(),
-        mounts::network_namespace().to_path_buf(),
-        mounts::resolv_conf().to_path_buf(),
     )?;
     Pipeline::new(build)
         .run()

@@ -7,20 +7,13 @@ use rustix::{
     mount::MountPropagationFlags,
     process::{Gid, Uid},
 };
-use std::{
-    fs::{self, File},
-    io,
-    marker::PhantomData,
-    process::Command,
-    rc::Rc,
-    time::Instant,
-};
+use std::{fs::File, io, marker::PhantomData, process::Command, rc::Rc, time::Instant};
 
 /// Namespace preparation in a fresh single-threaded trusted helper. The helper
 /// irreversibly joins the supplied command user namespace, maps itself to root,
 /// and creates private mount/IPC/UTS namespaces plus a PID namespace for
-/// its next child. Offline entry creates a fresh network namespace; configured
-/// entry joins the selected network before entering the user namespace. It
+/// its next child. Offline entry creates a fresh network namespace; enabled
+/// entry inherits the supervisor's network namespace. It
 /// retains no namespace FD and has no restoration authority.
 ///
 /// This is not sandbox admission: the child must be trusted root-entry code
@@ -36,7 +29,7 @@ pub(crate) struct CommandNamespaces {
 impl CommandNamespaces {
     pub(super) fn enter_with_network(
         user_namespace: File,
-        network: Option<File>,
+        network: bool,
         deadline: Instant,
     ) -> io::Result<Self> {
         if Instant::now() >= deadline {
@@ -53,23 +46,10 @@ impl CommandNamespaces {
         if rustix::fs::fstatfs(&user_namespace)?.f_type as u64 != 0x6e73_6673 {
             return Err(io::Error::other("command user namespace requires nsfs"));
         }
-        let network_flags = match network {
-            Some(network) => {
-                use std::os::unix::fs::MetadataExt;
-                let selected = network.metadata()?;
-                let current = fs::metadata("/proc/self/ns/net")?;
-                if (selected.dev(), selected.ino()) == (current.dev(), current.ino()) {
-                    return Err(io::Error::other(
-                        "command network must differ from supervisor network",
-                    ));
-                }
-                // This namespace is owned by the supervisor's user namespace.
-                // Join it before surrendering that authority, then close the FD.
-                setns(&network, CloneFlags::CLONE_NEWNET)?;
-                drop(network);
-                CloneFlags::empty()
-            }
-            None => CloneFlags::CLONE_NEWNET,
+        let network_flags = if network {
+            CloneFlags::empty()
+        } else {
+            CloneFlags::CLONE_NEWNET
         };
         // Drop inherited supplementary membership while initial-namespace
         // authority is still available; the selected namespace may deny setgroups.
@@ -111,7 +91,7 @@ mod tests {
     #[test]
     fn expired_setup_fails_before_namespace_entry() {
         let user = File::open("/proc/self/ns/user").unwrap();
-        let error = CommandNamespaces::enter_with_network(user, None, Instant::now()).unwrap_err();
+        let error = CommandNamespaces::enter_with_network(user, false, Instant::now()).unwrap_err();
         assert_eq!(error.kind(), io::ErrorKind::TimedOut);
     }
 }

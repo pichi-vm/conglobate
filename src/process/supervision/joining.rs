@@ -100,14 +100,14 @@ pub(super) enum Packet {
     Gate(OwnedFd),
     Volume(OwnedFd, OwnedFd),
     Bootstrap(OwnedFd, OwnedFd, OwnedFd),
-    VolumeNetwork(OwnedFd, OwnedFd, OwnedFd, OwnedFd, OwnedFd),
-    BootstrapNetwork(OwnedFd, OwnedFd, OwnedFd, OwnedFd, OwnedFd, OwnedFd),
+    VolumeNetwork(OwnedFd, OwnedFd, OwnedFd, OwnedFd),
+    BootstrapNetwork(OwnedFd, OwnedFd, OwnedFd, OwnedFd, OwnedFd),
     Cleaned(ExitStatus),
     CleanupFailed(String),
 }
 impl Packet {
     // Canonical CBOR [version=1, opcode]. Offer=1, Joined=2, Volume=5; Cleaned=[1,11,bstr(wait status)]; Bootstrap=8 (tool, output, namespace).
-    // VolumeNetwork=9 (root, user, network, resolver, raw cleanup root);
+    // VolumeNetwork=9 (root, user, resolver, raw cleanup root);
     // BootstrapNetwork=10 adds output immediately after root; Cleaned=11.
     // CleanupFailed=[1,12,text], at most 1024 UTF-8 bytes, no descriptors. Gate=13 transfers the init endpoint.
     pub(super) fn send(self, socket: &IdentitySocket, deadline: Instant) -> io::Result<()> {
@@ -122,23 +122,16 @@ impl Packet {
             Self::Bootstrap(root, output, namespace) => {
                 (8, vec![root.as_fd(), output.as_fd(), namespace.as_fd()])
             }
-            Self::VolumeNetwork(root, user, network, resolver, raw) => (
+            Self::VolumeNetwork(root, user, resolver, raw) => (
                 9,
-                vec![
-                    root.as_fd(),
-                    user.as_fd(),
-                    network.as_fd(),
-                    resolver.as_fd(),
-                    raw.as_fd(),
-                ],
+                vec![root.as_fd(), user.as_fd(), resolver.as_fd(), raw.as_fd()],
             ),
-            Self::BootstrapNetwork(root, output, user, network, resolver, raw) => (
+            Self::BootstrapNetwork(root, output, user, resolver, raw) => (
                 10,
                 vec![
                     root.as_fd(),
                     output.as_fd(),
                     user.as_fd(),
-                    network.as_fd(),
                     resolver.as_fd(),
                     raw.as_fd(),
                 ],
@@ -262,30 +255,26 @@ impl Packet {
                     }
                     Ok(Self::Cleaned(status))
                 }
-                (9, 5) => {
+                (9, 4) => {
                     let raw = descriptors.pop().expect("raw cleanup root");
                     let resolver = descriptors.pop().expect("resolver");
-                    let network = descriptors.pop().expect("network");
                     let user = descriptors.pop().expect("user");
                     Ok(Self::VolumeNetwork(
                         descriptors.pop().expect("root"),
                         user,
-                        network,
                         resolver,
                         raw,
                     ))
                 }
-                (10, 6) => {
+                (10, 5) => {
                     let raw = descriptors.pop().expect("raw cleanup root");
                     let resolver = descriptors.pop().expect("resolver");
-                    let network = descriptors.pop().expect("network");
                     let user = descriptors.pop().expect("user");
                     let output = descriptors.pop().expect("output");
                     Ok(Self::BootstrapNetwork(
                         descriptors.pop().expect("root"),
                         output,
                         user,
-                        network,
                         resolver,
                         raw,
                     ))
@@ -551,7 +540,7 @@ mod tests {
     fn network_packets_preserve_descriptor_order_and_cloexec() {
         for bootstrap in [false, true] {
             let (a, b) = Fixture::pair();
-            let files: Vec<_> = (0..6).map(|_| tempfile::tempfile().unwrap()).collect();
+            let files: Vec<_> = (0..5).map(|_| tempfile::tempfile().unwrap()).collect();
             let descriptor = |i: usize| files[i].try_clone().unwrap().into();
             let packet = if bootstrap {
                 Packet::BootstrapNetwork(
@@ -560,21 +549,14 @@ mod tests {
                     descriptor(2),
                     descriptor(3),
                     descriptor(4),
-                    descriptor(5),
                 )
             } else {
-                Packet::VolumeNetwork(
-                    descriptor(0),
-                    descriptor(1),
-                    descriptor(2),
-                    descriptor(3),
-                    descriptor(4),
-                )
+                Packet::VolumeNetwork(descriptor(0), descriptor(1), descriptor(2), descriptor(3))
             };
             packet.send(&a, Fixture::deadline()).unwrap();
             let descriptors = match Packet::receive(&b, Fixture::deadline()).unwrap() {
-                Packet::VolumeNetwork(a, b, c, d, e) if !bootstrap => vec![a, b, c, d, e],
-                Packet::BootstrapNetwork(a, b, c, d, e, f) if bootstrap => vec![a, b, c, d, e, f],
+                Packet::VolumeNetwork(a, b, c, d) if !bootstrap => vec![a, b, c, d],
+                Packet::BootstrapNetwork(a, b, c, d, e) if bootstrap => vec![a, b, c, d, e],
                 _ => panic!("wrong network packet"),
             };
             for (received, expected) in descriptors.iter().zip(&files) {
@@ -593,7 +575,7 @@ mod tests {
     #[test]
     fn network_packets_reject_every_incorrect_descriptor_count() {
         let file = tempfile::tempfile().unwrap();
-        for (opcode, required) in [(9, 5), (10, 6)] {
+        for (opcode, required) in [(9, 4), (10, 5)] {
             for count in (0..=7).filter(|count| *count != required) {
                 let (a, b) = Fixture::pair();
                 let descriptors = vec![file.as_fd(); count];

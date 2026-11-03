@@ -33,13 +33,7 @@ pub(crate) enum InputError {
     Selection(#[from] crate::copy::SelectionError),
     #[error(transparent)]
     Lock(#[from] LockError),
-    #[error("network-enabled commands require --resolv-conf")]
-    ResolverRequired,
-    #[error("network-enabled commands require --network-namespace")]
-    NetworkNamespaceRequired,
-    #[error("network namespace input: {0}")]
-    NetworkNamespace(#[source] std::io::Error),
-    #[error("resolver input: {0}")]
+    #[error("resolver input /etc/resolv.conf: {0}")]
     Resolver(std::io::Error),
 }
 
@@ -66,7 +60,7 @@ pub(crate) struct CapturedBuild {
     plan: SelectedDocument,
     lock: SelectedDocument,
     graph: BuildGraph,
-    networking: Option<crate::network::NetworkInput>,
+    networking: Option<crate::network::ResolverInput>,
 }
 impl TryFrom<&BuildRequest> for CapturedBuild {
     type Error = InputError;
@@ -91,15 +85,10 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
         let networking = if graph.network_steps().is_empty() {
             None
         } else {
-            let path = request.resolv_conf().ok_or(InputError::ResolverRequired)?;
-            let resolver =
-                crate::network::ResolverInput::capture(path).map_err(InputError::Resolver)?;
-            let namespace = request
-                .network_namespace()
-                .ok_or(InputError::NetworkNamespaceRequired)?;
-            let namespace = crate::network::NetworkNamespace::open(namespace)
-                .map_err(InputError::NetworkNamespace)?;
-            Some(crate::network::NetworkInput::new(namespace, resolver))
+            Some(
+                crate::network::ResolverInput::capture(std::path::Path::new("/etc/resolv.conf"))
+                    .map_err(InputError::Resolver)?,
+            )
         };
         let id_mappings = if graph.plan().commands_required() {
             Some(
@@ -136,7 +125,7 @@ impl CapturedBuild {
     pub(crate) fn lock_document(&self) -> &SelectedDocument {
         &self.lock
     }
-    pub(crate) fn networking(&self) -> Option<&crate::network::NetworkInput> {
+    pub(crate) fn networking(&self) -> Option<&crate::network::ResolverInput> {
         self.networking.as_ref()
     }
     pub(crate) fn graph(&self) -> &BuildGraph {

@@ -267,8 +267,7 @@ Product assumptions for the guest:
    There is **no** local CBOR copy retained as a second source of truth, **no**
    Conglobate parse of virtiofs field readers / mount tags from the response,
    and **no** mount generator in this crate.
-5. Appliance image hardcodes (not CBOR fields): UID/GID maps, the network
-   namespace path used when networking is enabled, and the resolver file path.
+5. Appliance image hardcodes (not CBOR fields): UID/GID maps.
    Formatting tools live in the image; see [§2](#2-standalone-cli).
 6. **Guest exit.** After `conglobate appliance` exits, success or failure, the
    oneshot powers the VM off so the launcher is not left at a login prompt.
@@ -380,9 +379,8 @@ commit, context-relative plan and lock paths, a read-only image cache, and an
 output directory:
 
 ```sh
-conglobate build \
-  --repository <local-path> \
-  --commit <full-object-id> \
+conglobate build <local-path> \
+  --ref <git-reference-or-full-commit-hash> \
   --context <path-in-commit> \
   --plan <context-relative-yaml-path> \
   --lock <context-relative-lock-path> \
@@ -392,6 +390,7 @@ conglobate build \
 
 Defaults and failure behavior:
 
+- The positional repository path defaults to the current directory.
 - `--context` defaults to `.`. It cannot escape the selected commit.
   Appliance CBOR uses `context` for the same role.
 - `--plan` and `--lock` are required, with no default filenames or discovery.
@@ -400,9 +399,10 @@ Defaults and failure behavior:
   including confined symlink handling. Absolute paths, escapes, missing files
   and non-file targets fail. Both inputs must come from the selected commit.
   The manifest records their selected paths; the commit binds their bytes.
-- `--commit` identifies a commit, not a branch, tag, abbreviated hash, or index
-  snapshot. Locator and identity are separate on the CLI. The appliance passes
-  `ref` instead; the guest resolves `ref` → commit on the mounted repository.
+- `--ref` is required and accepts a Git reference or full commit hash. Resolve
+  it once against the local repository before capturing committed inputs.
+  Branches and tags resolve to commits; abbreviated hashes and non-commit
+  objects are rejected. The appliance's `ref` field uses the same resolution.
 - The cache is never mutated. Missing locked objects are errors; image tags
   are never resolved opportunistically during a build. Conglobate downloads
   no additional image artifacts.
@@ -425,13 +425,11 @@ Defaults and failure behavior:
   stages use the same pair. Images using IDs outside those ranges are
   unsupported; no silent ownership rewriting. Pass-through builds do not need
   mappings.
-- `--network-namespace PATH` and `--resolv-conf PATH` remain available on the
-  standalone CLI when any run step enables networking (same capture/join rules
-  as before). In the **appliance image** the namespace path and resolver file
-  are hardcodes, not CBOR fields. Open and retain the namespace descriptor once
-  before execution; do not reopen the pathname per step. Capture resolver
+- Enabled commands inherit Conglobate's network namespace. Disabled commands
+  receive a fresh namespace with only loopback enabled. When any run step
+  enables networking, capture the environment's `/etc/resolv.conf`
   contents once and inject them temporarily, read-only, following symlinks
-  confined to the command root. No implicit resolver or DNS relay. Resolver
+  confined to the command root. No DNS relay. Resolver
   contents and their digest are not recorded as build annotations.
 - Successful output is published only when all components and manifest
   annotations are complete. Refuse an existing output destination rather than
@@ -751,6 +749,13 @@ command namespace state and processes do not. Commands never receive device
 nodes, supervisor handles, cache descriptors or the Git object store. See
 [§14](#14-sandbox-lifecycle) for the complete execution and failure contract.
 
+Network access is opt-in per `exec` and defaults to false. For an enabled step,
+conglobate inherits its invoking network namespace. For a disabled step, it
+creates a fresh disconnected namespace. Commands cannot administer either
+namespace. The environment contract for NAT, reply traffic, and inbound policy
+is [§14.8](#148-networking-and-dns). Enabled steps may share network state,
+including conntrack. No command process may survive its step.
+
 ## 7. Literal values
 
 No `CARAPACE` environment injection or build-variable template expansion occurs.
@@ -833,15 +838,15 @@ capability set, restricted syscalls/ioctls, `no_new_privs`, private proc/dev/dev
 shm, empty read-only sysfs, and explicit environment and stdio. Namespace/mount
 creation and control access are prohibited. Context enters only through COPY.
 
-Commands never share the supervisor network namespace. Enabled steps join the
-environment-owned build namespace with outbound NAT without destination filtering; supervisor controls must not be
-exposed on reachable network addresses. The environment supplies `--resolv-conf`;
+Enabled steps share the supervisor network namespace. The launching environment
+owns connectivity and network policy; supervisor controls must not be exposed
+on command-reachable sockets. The environment supplies `/etc/resolv.conf`;
 there is no built-in DNS relay, resolver annotation or persistent injection.
 
 On every exit path, stop/reap all descendants before removing runtime mounts
 and resolver mounts, flushing and cleanly unmounting filesystems for sealing.
-Release borrowed network handles without dismantling the environment-owned network. Retain
-namespace handles and storage leases as needed for their actual resource
+Leave inherited networking unchanged. Retain namespace handles and storage
+leases as needed for their actual resource
 lifetimes, with no policy-specific identity pins or revocation transition. If
 quiescence cannot be proved, retain ownership and reject publication. Recover
 partial setup while conglobate is alive. If safe teardown cannot complete, fail
@@ -1173,14 +1178,11 @@ RAII owns resources; destructors cannot certify successful finalization.
    and DNS configuration for network-enabled commands. Reject unsupported
    behavior rather than silently weakening the sandbox.
 
-1. Require and capture --network-namespace when any step enables networking
-   as specified in section 14.8. Read --resolv-conf PATH once if networking is needed and retain the
-   selected bytes privately. The argument is mandatory if any run step
-   has network: true. An unreadable or invalid selected file is an error;
-   there is no implicit host-file or public-resolver fallback. Resolver
+1. Read the environment's /etc/resolv.conf once if networking is needed and
+   retain the selected bytes privately. An unreadable or invalid file is an
+   error; there is no public-resolver fallback. Resolver
    configuration and its digest are not recorded as build annotations.
-   The environment supplies resolvers reachable from the command network;
-   a supervisor-loopback address does not become reachable by copying it.
+   The environment supplies resolvers reachable from the inherited network.
 
 ### 14.3 Assemble storage and the build workspace
 
@@ -1337,7 +1339,7 @@ layers even if a later layer deletes their paths.
    owned enabled network namespace is intentionally shared across steps.
 
 1. Execute as UID/GID 0 inside the mapped command user namespace, with
-   private mount, PID, IPC and UTS namespaces, a separate network namespace
+   private mount, PID, IPC and UTS namespaces, a network namespace
    selected according to section 14.8, and private mount
    propagation. Pivot to the assigned image root and detach the old root.
    No initial-user-namespace root authority, context, backing device,
@@ -1387,36 +1389,23 @@ layers even if a later layer deletes their paths.
 ### 14.8 Networking and DNS
 
 1. Networking defaults to disabled. Offline commands receive a fresh
-   disconnected network namespace. Enabled commands join the externally
-   supplied --network-namespace PATH, captured once as an owned descriptor
-   before command execution. Reject missing/non-nsfs input and the supervisor's
-   own network namespace. Reject wrong namespace types through setns(CLONE_NEWNET)
-   in trusted setup before admitting commands. The environment supplies initial-user-namespace
-   ownership; conglobate does not introspect it. Capture precedes command
-   user-namespace creation and restricted capabilities exclude network
-   administration. Join during trusted setup; no handle or administration
-   authority reaches command code.
+   network namespace with only loopback enabled. Enabled commands inherit
+   Conglobate's network namespace without switching namespaces. Restricted
+   capabilities exclude network administration in either mode.
 
-1. The environment owns the enabled build namespace and its interfaces,
-   addresses, routes, NAT, firewall policy and lifetime. It provides outbound
-   NAT with replies allowed, no unsolicited inbound connections or inbound
-   forwarding, and access to all reachable destinations including private
-   networks. Conglobate neither provisions nor tears down these resources
-   and does not require supervisor-namespace forwarding sysctls. The
-   environment dedicates the namespace to this build. Sequential enabled
-   steps reuse it; connection tracking and other network state can persist,
-   but no command processes may survive a step. No unrelated services or
-   concurrent builds share the namespace. Systemd is an optional environment
+1. The launching environment owns interfaces, addresses, routes, NAT,
+   firewall policy and network namespace lifetime. It may launch Conglobate
+   inside a dedicated namespace. Conglobate neither provisions nor tears down
+   this connectivity. Enabled steps share its network state, but no command
+   processes may survive a step. Systemd is an optional environment
    implementation, not a dependency of the binary.
 
-1. Namespace separation isolates loopback and abstract Unix sockets, not
-   services listening on routable supervisor addresses. This design does
-   not promise to block access to every address belonging to the build VM.
-   Supervisor controls and attestation endpoints must not listen on the
-   command-reachable network. The surrounding environment owns upstream
-   connectivity and externally reachable services.
+1. Enabled commands can reach services on the inherited network, including
+   loopback and abstract Unix sockets. Supervisor controls and attestation
+   endpoints must not listen on command-reachable sockets. The surrounding
+   environment owns connectivity and reachable services.
 
-1. Mount the captured --resolv-conf contents read-only at /etc/resolv.conf
+1. Mount the captured resolver contents read-only at /etc/resolv.conf
    for network-enabled commands. Follow existing symlinks only within the
    command root, including targets under /run. Reject escaping paths,
    loops, and incompatible target types. Use confined temporary mount
@@ -1482,7 +1471,7 @@ layers even if a later layer deletes their paths.
    immediately reap a task stuck in uninterruptible I/O.
 
 1. On normal completion, stop/reap all descendants, then remove
-   runtime/resolver mounts, release borrowed network handles without modifying
+   runtime/resolver mounts without modifying
    the external network, flush and cleanly unmount assigned
    filesystems, and release references before sealing or the next step.
    Detect and propagate storage/writeback errors. Preserve primary failure
@@ -1563,8 +1552,8 @@ private to the binary. Downstream `pichi` depends on the lib for shared types.
 
 The standalone CLI or appliance supplies committed Git objects (after ref
 resolution), a read-only local image cache, UID/GID ranges (CLI flags or
-appliance image hardcodes), optional network namespace and resolver file (same
-split), the fixed labeling exception and independent VM disposal. Formatting
+appliance image hardcodes), /etc/resolv.conf for network-enabled commands,
+the fixed labeling exception and independent VM disposal. Formatting
 uses the internal filesystem-name → formatter map; there is no host
 `--formatter-runtime` input. Conglobate performs no artifact downloads, Git
 clone/checkout-as-SoT, network setup, policy registration or attestation. It
