@@ -9,7 +9,7 @@ use std::str::FromStr;
 use thiserror::Error;
 
 /// Typed digest sum-type. Per D-01.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Digest {
     /// SHA-256 (32 bytes).
     Sha256([u8; 32]),
