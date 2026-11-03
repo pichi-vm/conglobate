@@ -30,6 +30,7 @@ Type=oneshot
 # appliance network, through the namespace descriptor supplied to the engine.
 PrivateNetwork=yes
 BindReadOnlyPaths=/run/systemd/resolve/resolv.conf:/run/pichi/resolv.conf
+ExecStartPre=/usr/libexec/conglobate-lsm /sys/fs/bpf/conglobate-label-policy
 ExecStart=/usr/bin/conglobate appliance
 # Fail the boot target if the build fails; do not linger as active.
 RemainAfterExit=no
