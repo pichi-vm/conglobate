@@ -66,6 +66,23 @@ jobs:
           "$HOME/.cargo/bin/rustup" toolchain install stable --profile minimal
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
+      - name: Fetch arma and pichi sources
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/arma /tmp/arma
+          git -C /tmp/arma checkout --detach "$ARMA_REV"
+          git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/pichi /tmp/pichi
+          git -C /tmp/pichi checkout --detach "$PICHI_REV"
+          git -C /tmp/pichi submodule update --init --recursive
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-bin: false
+          workspaces: |
+            . -> target
+            lsm -> target
+            /tmp/arma -> target
+            /tmp/pichi -> target
+
       - name: Install the BPF linker
         working-directory: lsm
         run: |
@@ -80,13 +97,8 @@ jobs:
         run: |
           # arma and pichi pick up their own rust-toolchain.toml / .cargo/config
           # when built in-tree. Corium is installed by image/build.sh.
-          git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/arma /tmp/arma
-          git -C /tmp/arma checkout --detach "$ARMA_REV"
           (cd /tmp/arma && cargo build --locked --release --bin arma)
           echo "ARMA=/tmp/arma/target/release/arma" >> "$GITHUB_ENV"
-          git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/pichi /tmp/pichi
-          git -C /tmp/pichi checkout --detach "$PICHI_REV"
-          git -C /tmp/pichi submodule update --init --recursive
           (cd /tmp/pichi && cargo build --locked --release --bin pichi)
           install -m755 /tmp/pichi/target/release/pichi /usr/local/bin/pichi
           cargo +1.94.0 build --locked --release --features cli --bin conglobate
@@ -125,12 +137,21 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Install pichi
+      - name: Fetch pichi sources and toolchain
         run: |
           rustup toolchain install "$NIGHTLY" --profile minimal
           git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/pichi /tmp/pichi
           git -C /tmp/pichi checkout --detach "$PICHI_REV"
           git -C /tmp/pichi submodule update --init --recursive
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: /tmp/pichi -> target
+        env:
+          RUSTUP_TOOLCHAIN: ${{ env.NIGHTLY }}
+
+      - name: Install pichi
+        run: |
           (cd /tmp/pichi && cargo "+$NIGHTLY" build --locked --release --bin pichi)
           sudo install -m755 /tmp/pichi/target/release/pichi /usr/local/bin/pichi
 
