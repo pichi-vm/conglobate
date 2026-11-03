@@ -7,3 +7,6 @@ publish = false
 
 [dependencies]
 aya-ebpf = "0.2.1"
+
+[lints.clippy]
+self_named_module_files = "deny"
