@@ -101,4 +101,5 @@ missing_debug_implementations = "warn"
 unreachable_pub = "warn"
 
 [lints.clippy]
-all = "warn"
+self_named_module_files = "deny"
+all = { level = "warn", priority = -1 }
