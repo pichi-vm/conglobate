@@ -7,6 +7,9 @@ repository = "https://github.com/pichi-vm/conglobate"
 publish = false
 description = "Standalone image builder with isolated command execution"
 
+# Remain independently buildable when checked out as a submodule.
+[workspace]
+
 [features]
 default = []
 # Runtime dependencies are enabled only when building the CLI.
