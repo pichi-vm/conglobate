@@ -151,6 +151,12 @@ impl<'w> FirmwareFile<'w> {
     pub(crate) fn mode(&self) -> u32 {
         if self.executable { 0o755 } else { 0o644 }
     }
+    pub(crate) fn descriptor(&self) -> crate::artifact::PmiDescriptor {
+        crate::artifact::PmiDescriptor {
+            digest: self.digest.to_string(),
+            size: self.size,
+        }
+    }
     pub(crate) fn reader(&self) -> crate::storage::ScuteReader<'_> {
         crate::storage::ScuteReader::new(self.bytes.file(), self.size)
     }
