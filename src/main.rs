@@ -4,7 +4,6 @@
 #![forbid(unsafe_code)]
 extern crate conglobate as contract;
 mod anchor;
-mod appliance;
 mod disk;
 use contract::artifact;
 mod boot_config;
@@ -55,8 +54,8 @@ fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     }
-    let command = match request::parse_cli(arguments) {
-        Ok(command) => command,
+    let request = match request::BuildRequest::parse_from(arguments) {
+        Ok(request) => request,
         Err(request::RequestError::Cli(error)) => {
             let success = error.exit_code() == 0;
             let _ = error.print();
@@ -71,11 +70,7 @@ fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     };
-    let result = match command {
-        request::CliCommand::Build(request) => Pipeline::new(*request).run(),
-        request::CliCommand::Appliance => crate::appliance::run().map_err(Into::into),
-    };
-    match result {
+    match Pipeline::new(request).run() {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("conglobate: {error:#}");
