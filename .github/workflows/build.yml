@@ -36,8 +36,6 @@ jobs:
       options: --privileged
     permissions:
       contents: read
-    env:
-      CARGO_BUILD_JOBS: "2"
     steps:
       - uses: actions/checkout@v7.0.1
         with:
