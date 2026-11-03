@@ -32,10 +32,6 @@ pub(crate) enum InputError {
     Lock(#[from] LockError),
     #[error("network-enabled commands require --resolv-conf")]
     ResolverRequired,
-    #[error("network-enabled commands require --network-namespace")]
-    NetworkNamespaceRequired,
-    #[error("network namespace input: {0}")]
-    NetworkNamespace(#[source] std::io::Error),
     #[error("resolver input: {0}")]
     Resolver(std::io::Error),
 }
@@ -63,7 +59,7 @@ pub(crate) struct CapturedBuild {
     plan: SelectedDocument,
     lock: SelectedDocument,
     graph: BuildGraph,
-    networking: Option<crate::network::NetworkInput>,
+    networking: Option<crate::network::ResolverInput>,
 }
 impl TryFrom<&BuildRequest> for CapturedBuild {
     type Error = InputError;
@@ -110,12 +106,7 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
             let path = request.resolv_conf().ok_or(InputError::ResolverRequired)?;
             let resolver =
                 crate::network::ResolverInput::capture(path).map_err(InputError::Resolver)?;
-            let namespace = request
-                .network_namespace()
-                .ok_or(InputError::NetworkNamespaceRequired)?;
-            let namespace = crate::network::NetworkNamespace::open(namespace)
-                .map_err(InputError::NetworkNamespace)?;
-            Some(crate::network::NetworkInput::new(namespace, resolver))
+            Some(resolver)
         };
         let id_mappings = if graph.execution_required() {
             Some(
@@ -152,7 +143,7 @@ impl CapturedBuild {
     pub(crate) fn lock_document(&self) -> &SelectedDocument {
         &self.lock
     }
-    pub(crate) fn networking(&self) -> Option<&crate::network::NetworkInput> {
+    pub(crate) fn networking(&self) -> Option<&crate::network::ResolverInput> {
         self.networking.as_ref()
     }
     pub(crate) fn graph(&self) -> &BuildGraph {

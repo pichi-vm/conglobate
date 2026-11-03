@@ -18,7 +18,7 @@ pub(crate) struct VolumeInput {
     root: File,
     namespace: File,
     output: Option<File>,
-    network: Option<(File, ResolverView, File)>,
+    network: Option<(ResolverView, File)>,
 }
 impl Supervision<Joined> {
     /// Transfer a view through the already paired and joined control channel.
@@ -60,18 +60,16 @@ impl Supervision<Joined> {
     ) -> io::Result<()> {
         let raw = raw.descriptor()?.into();
         let resolver = network.resolver_view()?.into_handle().into();
-        let net = network.namespace().descriptor().try_clone()?.into();
         let user = namespace.descriptor()?.into();
         let packet = match output {
             Some(output) => Packet::BootstrapNetwork(
                 root.descriptor()?.into(),
                 output.descriptor()?.into(),
                 user,
-                net,
                 resolver,
                 raw,
             ),
-            None => Packet::VolumeNetwork(root.descriptor()?.into(), user, net, resolver, raw),
+            None => Packet::VolumeNetwork(root.descriptor()?.into(), user, resolver, raw),
         };
         packet.send(&self.socket.0, deadline)
     }
@@ -84,25 +82,17 @@ impl Supervision<Joined> {
             Packet::Bootstrap(root, output, namespace) => {
                 (root, Some(File::from(output)), namespace, None)
             }
-            Packet::VolumeNetwork(root, user, network, resolver, raw) => (
+            Packet::VolumeNetwork(root, user, resolver, raw) => (
                 root,
                 None,
                 user,
-                Some((
-                    File::from(network),
-                    ResolverView::from_handle(resolver.into())?,
-                    File::from(raw),
-                )),
+                Some((ResolverView::from_handle(resolver.into())?, File::from(raw))),
             ),
-            Packet::BootstrapNetwork(root, output, user, network, resolver, raw) => (
+            Packet::BootstrapNetwork(root, output, user, resolver, raw) => (
                 root,
                 Some(File::from(output)),
                 user,
-                Some((
-                    File::from(network),
-                    ResolverView::from_handle(resolver.into())?,
-                    File::from(raw),
-                )),
+                Some((ResolverView::from_handle(resolver.into())?, File::from(raw))),
             ),
             _ => {
                 return Err(io::Error::new(
@@ -152,7 +142,7 @@ impl VolumeInput {
         // This helper is trusted and no image writer has been admitted. On any
         // setup/cleanup failure the supervisor rejects the writable build layer.
         let (setup, resolver) = match self.network {
-            Some((network, view, raw)) => {
+            Some((view, raw)) => {
                 // The supervisor clones this independent raw view from its
                 // mounted root. Our fixture rejected cloning the received
                 // detached view (EINVAL), and retaining resolver scaffolding
@@ -169,12 +159,7 @@ impl VolumeInput {
                     ));
                 }
                 let target = ResolverTarget::resolve(raw).map_err(io::Error::other)?;
-                (
-                    setup
-                        .with_network_handle(network)?
-                        .with_resolver_view(view)?,
-                    Some(target),
-                )
+                (setup.with_resolver_view(view), Some(target))
             }
             None => (setup, None),
         };

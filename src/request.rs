@@ -57,8 +57,6 @@ struct BuildArguments {
     output: PathBuf,
     #[arg(long)]
     resolv_conf: Option<PathBuf>,
-    #[arg(long)]
-    network_namespace: Option<PathBuf>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CommitIdentity(Vec<u8>);
@@ -87,7 +85,6 @@ pub(crate) struct BuildRequest {
     cache: PathBuf,
     output: PathBuf,
     resolv_conf: Option<PathBuf>,
-    network_namespace: Option<PathBuf>,
     /// Optional provenance locator for build annotations (e.g. appliance CBOR `location`).
     /// Not used as Git identity; mount/path opens still use `repository`.
     location: Option<String>,
@@ -124,7 +121,6 @@ impl BuildRequest {
         cache: PathBuf,
         output: PathBuf,
         resolv_conf: Option<PathBuf>,
-        network_namespace: Option<PathBuf>,
     ) -> Self {
         Self {
             id_mappings,
@@ -136,7 +132,6 @@ impl BuildRequest {
             cache,
             output,
             resolv_conf,
-            network_namespace,
             location: None,
         }
     }
@@ -159,7 +154,6 @@ impl BuildRequest {
             raw.cache,
             raw.output,
             raw.resolv_conf,
-            raw.network_namespace,
         ))
     }
     /// Parse CLI arguments and validate commit syntax and context-relative paths.
@@ -209,9 +203,6 @@ impl BuildRequest {
     }
     pub(crate) fn output(&self) -> &Path {
         &self.output
-    }
-    pub(crate) fn network_namespace(&self) -> Option<&Path> {
-        self.network_namespace.as_deref()
     }
     pub(crate) fn resolv_conf(&self) -> Option<&Path> {
         self.resolv_conf.as_deref()
