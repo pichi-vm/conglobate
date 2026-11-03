@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Imported boot lineage bound to an independently bootstrapped root.
 # Supply a seed that exports both a carapace and PMI/bootconfig.
+version: 1
 stages:
   bootstrap:
     use: qualification.local/fedora:43

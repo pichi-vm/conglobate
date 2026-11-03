@@ -120,7 +120,7 @@ fn malformed_patterns_and_parent_traversal_fail_during_plan_parsing() {
         "",
     ] {
         let yaml = format!(
-            "image: root\nstages: {{root: {{extend: registry.test/base:1, steps: [{{copy: {{path: '{source}', into: /file}}}}]}}}}"
+            "version: 1\nimage: root\nstages: {{root: {{extend: registry.test/base:1, steps: [{{copy: {{path: '{source}', into: /file}}}}]}}}}"
         );
         assert_eq!(
             Plan::try_from(YamlDocument::from(yaml.as_str())).is_ok(),

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Supply a GPT image with PMI and bootconfig containing corium.root.
+version: 1
 stages:
   extended:
     extend: qualification.local/fedora:43

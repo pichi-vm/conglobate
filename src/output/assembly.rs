@@ -443,7 +443,11 @@ mod tests {
                     git(&["init", "-q", &format!("--object-format={algorithm}")]);
                     let selected = repo.path().join(context).join("config");
                     fs::create_dir_all(&selected).unwrap();
-                    fs::write(selected.join("plan.yaml"), "image: registry.test/base:1\n").unwrap();
+                    fs::write(
+                        selected.join("plan.yaml"),
+                        "version: 1\nimage: registry.test/base:1\n",
+                    )
+                    .unwrap();
                     fs::write(
                         selected.join("lock.yaml"),
                         format!(

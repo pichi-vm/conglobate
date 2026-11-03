@@ -211,7 +211,8 @@ fn all_five_component_subsets_publish_without_activating_source_roots() {
             "root",
         ),
     ] {
-        let (_repository, request, build) = fixture.build(&format!("image: {selection}"));
+        let (_repository, request, build) =
+            fixture.build(&format!("version: 1\nimage: {selection}"));
         let selected = fixture.selected(&build);
         let assembled =
             AssembledImage::components(build.cache(), &selected, request.output()).unwrap();
@@ -253,7 +254,7 @@ fn unchanged_root_config_overlay_does_not_rebind_but_joined_roots_do() {
         ("{root: registry.test/other:1, boot: registry.test/base:1}".to_owned(), hex::encode(fixture.roots["other"])),
         ("{root: registry.test/root:1, boot: {inherit: registry.test/pmi:1, define: {corium.root: ''}}}".to_owned(), hex::encode(fixture.roots["root"])),
     ] {
-        let (_repository,_request,build) = fixture.build(&format!("image: {image}"));
+        let (_repository,_request,build) = fixture.build(&format!("version: 1\nimage: {image}"));
         let selected = fixture.selected(&build);
         assert_eq!(Fixture::config(&selected).values()["corium.root"],[expected]);
     }
@@ -262,7 +263,7 @@ fn unchanged_root_config_overlay_does_not_rebind_but_joined_roots_do() {
 #[test]
 fn explicit_deletion_survives_root_join_and_empty_config_is_omitted() {
     let fixture = Fixture::new();
-    let (_repository,request,build) = fixture.build("image: {root: registry.test/other:1, boot: {inherit: registry.test/base:1, extend: {corium.root: null}}}");
+    let (_repository,request,build) = fixture.build("version: 1\nimage: {root: registry.test/other:1, boot: {inherit: registry.test/base:1, extend: {corium.root: null}}}");
     let selected = fixture.selected(&build);
     let config = Fixture::config(&selected);
     assert!(!config.values().contains_key("corium.root"));
@@ -273,8 +274,9 @@ fn explicit_deletion_survives_root_join_and_empty_config_is_omitted() {
         .image
         .discard()
         .unwrap();
-    let (_repository, request, build) = fixture
-        .build("image: {boot: {inherit: registry.test/boot:1, extend: {corium.root: null}}}");
+    let (_repository, request, build) = fixture.build(
+        "version: 1\nimage: {boot: {inherit: registry.test/boot:1, extend: {corium.root: null}}}",
+    );
     let selected = fixture.selected(&build);
     assert!(selected.bootconfig.is_none());
     selected
@@ -297,7 +299,7 @@ fn unavailable_selected_components_fail_before_runtime_or_publication() {
             "PMI file source has no carapace",
         ),
     ] {
-        let (_repository, request) = fixture.request(&format!("image: {image}"));
+        let (_repository, request) = fixture.request(&format!("version: 1\nimage: {image}"));
         let error = CapturedBuild::try_from(&request)
             .unwrap()
             .resolve(Cache::open(fixture.directory.path()).unwrap())
@@ -319,7 +321,8 @@ fn define_replaces_inherited_configuration_and_empty_definition_clears_it() {
         ),
         ("{inherit: registry.test/base:1, define: {}}", None),
     ] {
-        let (_repository, request, build) = fixture.build(&format!("image: {{boot: {boot}}}"));
+        let (_repository, request, build) =
+            fixture.build(&format!("version: 1\nimage: {{boot: {boot}}}"));
         let selected = fixture.selected(&build);
         if let Some(key) = expected {
             let config = Fixture::config(&selected);

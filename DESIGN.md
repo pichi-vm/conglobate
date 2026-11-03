@@ -608,6 +608,7 @@ stages are images; their roots provide the namespace for named COPY.
 has independent optional fields; an omitted field is absent:
 
 ```yaml
+version: 1
 image:
   root: rootfs
   boot:
@@ -662,6 +663,7 @@ platform. All selected components must agree with that platform.
 ### 6.2 Creation and extension
 
 ```yaml
+version: 1
 stages:
   rootfs:
     use: registry.example.com/tools:1
