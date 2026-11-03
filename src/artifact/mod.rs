@@ -16,7 +16,6 @@ mod digest;
 mod index;
 mod manifest;
 mod media_type;
-mod reference;
 
 pub use boot_config_descriptor::BootConfigDescriptor;
 pub use digest::{Digest, DigestParseError};
@@ -28,7 +27,6 @@ pub use media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
     MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
-pub use reference::{Reference, ReferenceKind, ReferenceParseError};
 
 pub use index::{
     Index, IndexDescriptor, LayoutMarker, MEDIA_TYPE_OCI_INDEX_V1, MEDIA_TYPE_OCI_MANIFEST_V1,

@@ -235,11 +235,7 @@ mod tests {
                 ImageRef::Local(_)
             ));
         }
-        for name in [
-            "localhost:5000/base:1",
-            "registry.example.com/team/base:1",
-            "[::1]:5000/base:1",
-        ] {
+        for name in ["localhost:5000/base:1", "registry.example.com/team/base:1"] {
             assert!(matches!(
                 serde_json::from_value::<ImageRef>(json!(name)).unwrap(),
                 ImageRef::Remote(_)
@@ -322,15 +318,25 @@ mod tests {
 
     #[test]
     fn remote_retains_components_without_registry_or_selector_defaults() {
-        use crate::{artifact::ReferenceKind, plan::Remote};
+        assert_eq!(
+            Remote::new("index.docker.io/team/image:v1".into())
+                .unwrap()
+                .to_string(),
+            "docker.io/team/image:v1"
+        );
+        for reference in ["registry.test:0/base:1", "registry.test:65536/base:1"] {
+            assert!(Remote::new(reference.into()).is_some());
+        }
+
+        use crate::plan::Remote;
         let remote = Remote::new("registry.example:5000/team/root:v1".into()).unwrap();
-        assert_eq!(remote.registry(), "registry.example:5000");
-        assert_eq!(remote.repository(), "team/root");
-        assert_eq!(remote.selector(), &ReferenceKind::Tag("v1".into()));
+        assert_eq!(remote.as_ref().registry(), "registry.example:5000");
+        assert_eq!(remote.as_ref().repository(), "team/root");
+        assert_eq!(remote.as_ref().tag(), Some("v1"));
         assert_eq!(remote.to_string(), "registry.example:5000/team/root:v1");
-        let text = format!("[::1]:5000/team/root@sha256:{}", "ab".repeat(32));
+        let text = format!("localhost:5000/team/root@sha256:{}", "ab".repeat(32));
         let remote: Remote = serde_json::from_value(json!(text)).unwrap();
-        assert!(matches!(remote.selector(), ReferenceKind::Digest(_)));
+        assert!(remote.as_ref().digest().is_some());
         assert_eq!(serde_json::to_value(remote).unwrap(), json!(text));
         for text in [
             "alpine",
@@ -338,6 +344,7 @@ mod tests {
             "registry.example/root",
             "localhost:5000/root",
             "registry.example/root:",
+            "[::1]:5000/base:1",
         ] {
             assert!(Remote::new(text.into()).is_none(), "{text}");
         }
