@@ -22,6 +22,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: korandoru/hawkeye@v6
+      - name: Check the kernel policy license headers
+        run: hawkeye check --config lsm/program/licenserc.toml
 
   lint:
     runs-on: ubuntu-24.04
