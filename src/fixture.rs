@@ -21,8 +21,6 @@ mod formatter;
 mod graph;
 mod image;
 mod input;
-#[allow(dead_code)]
-mod inspect;
 mod isolation;
 mod lock;
 mod network;
