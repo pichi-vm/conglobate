@@ -46,8 +46,9 @@ struct BuildArguments {
     /// Git repository containing the committed build inputs.
     #[arg(default_value = ".")]
     repository: PathBuf,
-    #[arg(long)]
-    commit: String,
+    /// Git reference or full commit hash to build.
+    #[arg(long = "ref", value_name = "REF")]
+    git_ref: String,
     #[arg(long, default_value = ".")]
     context: PathBuf,
     #[arg(long)]
@@ -171,12 +172,13 @@ impl BuildRequest {
         self
     }
     fn from_build_args(raw: BuildArguments) -> Result<Self, RequestError> {
+        let commit = CommitIdentity::resolve(&raw.repository, &raw.git_ref)?;
         Ok(Self::from_parts(
             raw.uid_map
                 .zip(raw.gid_map)
                 .map(|(uid, gid)| IdMappings::new(uid, gid)),
             raw.repository,
-            CommitIdentity::try_from(raw.commit.as_str())?,
+            commit,
             ContextDirectory::try_from(raw.context.as_path())?,
             ContextPath::try_from(raw.plan.as_path())?,
             ContextPath::try_from(raw.lock.as_path())?,
@@ -184,14 +186,14 @@ impl BuildRequest {
             raw.output,
         ))
     }
-    /// Parse CLI arguments and validate commit syntax and context-relative paths.
-    /// This does not open the repository/cache or verify their contents.
+    /// Parse CLI arguments, resolve the Git ref and validate context-relative paths.
+    /// This opens the repository but does not read the build documents or cache.
     ///
     /// # Errors
     /// Returns CLI diagnostics (including help/version requests), an invalid
-    /// commit identity, or a path-validation error. Callers should use the CLI
+    /// Git reference, or a path-validation error. Callers should use the CLI
     /// diagnostic's exit code to distinguish help/version from invalid input.
-    /// Test and lifecycle helper: parse argv as a build request only.
+    /// Test helper: parse argv as a build request only.
     #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn parse_from<I, T>(arguments: I) -> Result<Self, RequestError>
     where
@@ -243,15 +245,42 @@ mod tests {
     use crate::request::BuildRequest;
     use std::path::Path;
     #[derive(Debug)]
-    struct Fixture;
+    struct Fixture(tempfile::TempDir);
     impl Fixture {
-        fn args() -> Vec<String> {
+        fn new(format: &str) -> Self {
+            let fixture = Self(tempfile::tempdir().unwrap());
+            fixture.git(&["init", "-b", "main", &format!("--object-format={format}")]);
+            fixture.git(&["commit", "--allow-empty", "-m", "fixture"]);
+            fixture
+        }
+        fn git(&self, args: &[&str]) -> String {
+            let output = std::process::Command::new("git")
+                .args([
+                    "-c",
+                    "user.name=Fixture",
+                    "-c",
+                    "user.email=fixture@example.invalid",
+                    "-c",
+                    "commit.gpgsign=false",
+                ])
+                .args(args)
+                .current_dir(self.0.path())
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            String::from_utf8(output.stdout).unwrap().trim().to_owned()
+        }
+        fn args(&self) -> Vec<String> {
             [
                 "conglobate",
                 "build",
-                "repo",
-                "--commit",
-                "0123456789012345678901234567890123456789",
+                self.0.path().to_str().unwrap(),
+                "--ref",
+                "HEAD",
                 "--cache",
                 "cache",
                 "--output",
@@ -263,15 +292,69 @@ mod tests {
         }
     }
     #[test]
+    fn refs_and_full_hashes_resolve_to_one_commit() {
+        for format in ["sha1", "sha256"] {
+            let fixture = Fixture::new(format);
+            fixture.git(&["tag", "-a", "release", "-m", "release"]);
+            let head = fixture.git(&["rev-parse", "HEAD"]);
+            let mut args = fixture.args();
+            args.extend(["--plan", "plan", "--lock", "lock"].map(str::to_owned));
+            for reference in ["HEAD", "main", "refs/heads/main", "release", &head] {
+                args[4] = reference.to_owned();
+                let request = BuildRequest::parse_from(&args).unwrap();
+                assert_eq!(hex::encode(request.commit().bytes()), head);
+            }
+            args[4] = "main".into();
+            let request = BuildRequest::parse_from(&args).unwrap();
+            fixture.git(&["commit", "--allow-empty", "-m", "next"]);
+            assert_eq!(hex::encode(request.commit().bytes()), head);
+            fixture.git(&["checkout", "--detach", &head]);
+            args[4] = "HEAD".into();
+            assert_eq!(
+                hex::encode(BuildRequest::parse_from(&args).unwrap().commit().bytes()),
+                head
+            );
+        }
+    }
+
+    #[test]
+    fn missing_refs_and_non_commit_objects_are_rejected() {
+        for format in ["sha1", "sha256"] {
+            let fixture = Fixture::new(format);
+            let head = fixture.git(&["rev-parse", "HEAD"]);
+            let tree = fixture.git(&["rev-parse", "HEAD^{tree}"]);
+            fixture.git(&["tag", "tree", &tree]);
+            let wrong_format = "0".repeat(if format == "sha1" { 64 } else { 40 });
+            let absent = "0".repeat(head.len());
+            let mut args = fixture.args();
+            args.extend(["--plan", "plan", "--lock", "lock"].map(str::to_owned));
+            for reference in [
+                "missing",
+                "tree",
+                &tree,
+                &head[..12],
+                &wrong_format,
+                &absent,
+            ] {
+                args[4] = reference.to_owned();
+                assert!(BuildRequest::parse_from(&args).is_err(), "{reference}");
+            }
+            args.drain(3..5);
+            assert!(BuildRequest::parse_from(args).is_err());
+        }
+    }
+
+    #[test]
     fn repository_is_positional_and_defaults_to_current_directory() {
         use super::{Action, Cli};
         use clap::Parser;
-        let mut args = Fixture::args();
+        let fixture = Fixture::new("sha1");
+        let mut args = fixture.args();
         args.extend(["--plan", "plan", "--lock", "lock"].map(str::to_owned));
         let Action::Build(explicit) = Cli::try_parse_from(&args).unwrap().action else {
             panic!("expected build");
         };
-        assert_eq!(explicit.repository, Path::new("repo"));
+        assert_eq!(explicit.repository, fixture.0.path());
         args.remove(2);
         let Action::Build(default) = Cli::try_parse_from(args).unwrap().action else {
             panic!("expected build");
@@ -280,8 +363,9 @@ mod tests {
     }
     #[test]
     fn both_selected_configuration_paths_are_required() {
-        assert!(BuildRequest::parse_from(Fixture::args()).is_err());
-        let mut args = Fixture::args();
+        let fixture = Fixture::new("sha1");
+        assert!(BuildRequest::parse_from(fixture.args()).is_err());
+        let mut args = fixture.args();
         args.extend(["--plan".into(), "build/config.yml".into()]);
         assert!(BuildRequest::parse_from(args.clone()).is_err());
         args.extend(["--lock".into(), "pins/lock.yml".into()]);
@@ -292,7 +376,8 @@ mod tests {
     }
     #[test]
     fn context_selection_does_not_rebase_configuration_against_plan_directory() {
-        let mut args = Fixture::args();
+        let fixture = Fixture::new("sha1");
+        let mut args = fixture.args();
         args.extend(
             [
                 "--context",
@@ -311,8 +396,9 @@ mod tests {
     }
     #[test]
     fn absolute_and_escaping_plan_paths_fail() {
+        let fixture = Fixture::new("sha1");
         for path in ["/plan", "../plan", "."] {
-            let mut args = Fixture::args();
+            let mut args = fixture.args();
             args.extend(
                 ["--plan", path, "--lock", "lock"]
                     .into_iter()
@@ -324,7 +410,8 @@ mod tests {
 
     #[test]
     fn environment_id_maps_are_paired_and_validated() {
-        let mut args = Fixture::args();
+        let fixture = Fixture::new("sha1");
+        let mut args = fixture.args();
         args.extend(["--plan", "plan", "--lock", "lock"].map(str::to_owned));
         assert!(
             BuildRequest::parse_from(&args)
@@ -368,7 +455,8 @@ mod tests {
 
     #[test]
     fn formatter_runtime_flag_is_unknown() {
-        let mut args = Fixture::args();
+        let fixture = Fixture::new("sha1");
+        let mut args = fixture.args();
         args.extend(
             [
                 "--plan",
