@@ -31,6 +31,22 @@ jobs:
         run: cargo test --locked --features cli --all-targets
       - name: Run ignored tests as root
         run: |
+          # The native bootconfig comparison runs in its packaged-tool job.
           sudo modprobe loop
           sudo modprobe dm_snapshot
-          cargo --config 'target."cfg(unix)".runner = ["sudo", "-n"]' test --locked --features cli --all-targets -- --ignored --test-threads=1
+          cargo --config 'target."cfg(unix)".runner = ["sudo", "-n"]' test --locked --features cli --all-targets -- --ignored --test-threads=1 --skip boot_config::tests
+
+  bootconfig:
+    runs-on: ubuntu-24.04
+    container: registry.fedoraproject.org/fedora:44
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install packaged bootconfig and Rust tooling
+        run: |
+          dnf install -y cargo gcc git kernel-tools
+          rpm -q cargo kernel-tools
+      - name: Compare native boot configuration with Linux
+        run: cargo test --locked --features cli --bin conglobate boot_config::tests -- --include-ignored
