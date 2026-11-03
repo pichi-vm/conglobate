@@ -2,12 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Cache, CacheError, VerifiedMetadata};
-use crate::artifact::{
-    Index, MEDIA_TYPE_OCI_INDEX_V1 as INDEX, MEDIA_TYPE_OCI_MANIFEST_V1 as MANIFEST, Platform,
-};
 use crate::artifact::{MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
 use crate::image::IndexDigest;
-use oci_spec::image::Digest;
+use oci_spec::image::{Digest, ImageIndex, MediaType, Platform};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum HostArchitecture {
@@ -29,9 +26,9 @@ impl HostArchitecture {
         }
     }
     fn matches(self, platform: &Platform) -> bool {
-        platform.os == "pichi"
-            && platform.architecture == self.oci_name()
-            && match platform.variant.as_deref() {
+        platform.os() == &"pichi".into()
+            && platform.architecture() == &self.oci_name().into()
+            && match platform.variant().as_deref() {
                 None | Some("") => true,
                 Some("v8") => self == Self::Arm64,
                 _ => false,
@@ -100,16 +97,22 @@ impl Cache {
                 .expect("SHA-256 digest"),
             None,
         )?;
-        let parsed: Index = serde_json::from_slice(index.bytes())?;
-        if parsed.schema_version != 2 || parsed.media_type != INDEX {
+        let parsed: ImageIndex = serde_json::from_slice(index.bytes())?;
+        if parsed.schema_version() != 2
+            || parsed
+                .media_type()
+                .as_ref()
+                .is_some_and(|media_type| media_type != &MediaType::ImageIndex)
+        {
             return Err(CacheError::Invalid(
                 "lock must reference an OCI image index",
             ));
         }
-        let mut candidates = parsed.manifests.iter().filter(|descriptor| {
-            descriptor.artifact_type.as_deref() == Some(MEDIA_TYPE_PICHI_ARTIFACT_V1)
+        let mut candidates = parsed.manifests().iter().filter(|descriptor| {
+            descriptor.artifact_type().as_ref().map(AsRef::as_ref)
+                == Some(MEDIA_TYPE_PICHI_ARTIFACT_V1)
                 && descriptor
-                    .platform
+                    .platform()
                     .as_ref()
                     .is_some_and(|p| architecture.matches(p))
         });
@@ -121,20 +124,18 @@ impl Cache {
                 "index has ambiguous host platform entries",
             ));
         }
-        if selected.media_type != MANIFEST {
+        if selected.media_type() != &MediaType::ImageManifest {
             return Err(CacheError::Invalid(
                 "selected descriptor is not an image manifest",
             ));
         }
-        let digest = selected
-            .digest
-            .parse()
-            .map_err(|_| CacheError::Invalid("invalid manifest digest"))?;
-        let manifest_bytes = self.metadata(&digest, Some(selected.size))?;
+        let manifest_bytes = self.metadata(selected.digest(), Some(selected.size()))?;
         let manifest: Manifest = serde_json::from_slice(manifest_bytes.bytes())?;
         manifest.validate()?;
         // The shared format validates artifact contents, not the OCI envelope.
-        if manifest.schema_version != 2 || manifest.media_type != MANIFEST {
+        if manifest.schema_version != 2
+            || manifest.media_type != MediaType::ImageManifest.to_string()
+        {
             return Err(CacheError::Invalid("invalid manifest envelope"));
         }
         Ok(ResolvedImage {
@@ -233,7 +234,7 @@ mod tests {
             .collect();
             let manifest = Manifest {
                 schema_version: 2,
-                media_type: MANIFEST.into(),
+                media_type: MediaType::ImageManifest.to_string().into(),
                 artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
                 config: crate::artifact::ConfigDescriptor::for_config(
                     config_digest.to_string(),

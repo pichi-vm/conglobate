@@ -7,7 +7,7 @@ use crate::{
     cache::{Cache, CacheError, ResolvedImage},
     image::IndexDigest,
 };
-use oci_spec::image::{Digest, OciLayoutBuilder};
+use oci_spec::image::{Descriptor, Digest, ImageIndex, MediaType, OciLayoutBuilder, Platform};
 use sha2::{Digest as _, Sha256};
 
 /// A self-contained staged image whose copied blobs were authenticated and
@@ -159,7 +159,7 @@ impl AssembledImage {
                 }
                 None => {
                     staged.store_blob(b"{}")?;
-                    serde_json::json!({"schemaVersion":2,"mediaType":crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1,"artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,"config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
+                    serde_json::json!({"schemaVersion":2,"mediaType":MediaType::ImageManifest,"artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,"config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
                 }
             };
             let annotations = manifest
@@ -258,21 +258,19 @@ impl AssembledImage {
         architecture: crate::cache::HostArchitecture,
     ) -> Result<ResolvedImage, CacheError> {
         let digest = staged.store_blob(manifest)?;
-        let index = serde_json::to_vec(&crate::artifact::Index {
-            manifests: vec![crate::artifact::IndexDescriptor {
-                media_type: crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1.into(),
-                artifact_type: Some(crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into()),
-                digest: digest.to_string(),
-                size: manifest.len() as u64,
-                platform: Some(crate::artifact::Platform {
-                    os: "pichi".into(),
-                    architecture: architecture.oci_name().into(),
-                    variant: None,
-                }),
-                annotations: Default::default(),
-            }],
-            ..Default::default()
-        })?;
+        let mut platform = Platform::default();
+        platform.set_os("pichi".into());
+        platform.set_architecture(architecture.oci_name().into());
+        let mut descriptor =
+            Descriptor::new(MediaType::ImageManifest, manifest.len() as u64, digest);
+        descriptor.set_artifact_type(Some(crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into()));
+        descriptor.set_platform(Some(platform));
+        let mut index = ImageIndex::default();
+        index.set_media_type(Some(MediaType::ImageIndex));
+        index.set_manifests(vec![descriptor]);
+        let mut value = serde_json::to_value(&index)?;
+        value.sort_all_objects();
+        let index = serde_json::to_vec(&value)?;
         let pin: IndexDigest = staged
             .store_blob(&index)?
             .to_string()

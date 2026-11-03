@@ -12,7 +12,6 @@
 //! these shared types, including required scute lengths and a manifest chain tip.
 
 mod boot_config_descriptor;
-mod index;
 mod manifest;
 mod media_type;
 
@@ -24,8 +23,4 @@ pub use manifest::{
 pub use media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
     MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
-};
-
-pub use index::{
-    Index, IndexDescriptor, MEDIA_TYPE_OCI_INDEX_V1, MEDIA_TYPE_OCI_MANIFEST_V1, Platform,
 };
