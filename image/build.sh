@@ -13,8 +13,8 @@
 # here; CI pushes ghcr.io/pichi-vm/conglobate on main only.
 #
 # Requires: mkosi, pichi, arma (ARMA=<path> or on PATH), cargo + rustup,
-# cpio, dumpe2fs (e2fsprogs). Runs rootless (userns) aside from mkosi's own
-# user namespace.
+# bpf-linker, cpio, dumpe2fs (e2fsprogs). Runs rootless (userns) aside from
+# mkosi's own user namespace.
 set -euo pipefail
 
 RELEASE=43
@@ -81,6 +81,8 @@ if ldd "$conglobate_bin" | grep -q 'not found'; then
 	exit 1
 fi
 
+(cd "$repo/lsm" && cargo build --locked --release)
+
 if [ -n "${CORIUM_BIN:-}" ]; then
 	corium_bin="$CORIUM_BIN"
 else
@@ -93,11 +95,13 @@ fi
 # ---- 2. stage units, virtiofs autoload, and the engine into the rootfs ---
 inst="$extra/usr/lib/systemd/system"
 mkdir -p "$extra/usr/bin" \
+	"$extra/usr/libexec" \
 	"$inst/local-fs.target.wants" \
 	"$inst/multi-user.target.wants" \
 	"$extra/usr/lib/modules-load.d" \
 	"$extra/usr/lib/systemd/network"
 install -m0755 "$conglobate_bin" "$extra/usr/bin/conglobate"
+install -m0755 "$repo/lsm/target/release/conglobate-lsm" "$extra/usr/libexec/conglobate-lsm"
 install -m0644 "$here/units/"*.mount "$here/units/"*.service "$inst/"
 for tag in repo cache output; do
 	ln -s "../run-pichi-${tag}.mount" "$inst/local-fs.target.wants/run-pichi-${tag}.mount"
@@ -156,7 +160,7 @@ echo ">>> carapace $carapace  tip $hash"
 # corium= is the trust anchor Corium reads. systemd.* applies to PID 1 after
 # pivot: the carapace root is read-only, so /var must be volatile. virtiofs
 # mounts are units in the rootfs, not kernel command-line options.
-cmdline="corium=$hash console=hvc0 systemd.volatile=state systemd.unit=multi-user.target systemd.show_status=false"
+cmdline="corium=$hash console=hvc0 selinux=0 systemd.volatile=state systemd.unit=multi-user.target systemd.show_status=false"
 printf '%s\n' "$cmdline" > "$work/cmdline"
 "$ARMA" build \
 	--kernel "$work/vmlinuz" \
