@@ -7,7 +7,6 @@
 mod lazy;
 mod modules;
 mod read;
-pub(crate) use read::ContextFile;
 
 use crate::{path::ContextDirectory, request::CommitIdentity};
 use gix::{ObjectId, object::tree::EntryKind};
