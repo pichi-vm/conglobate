@@ -535,6 +535,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires root and mount namespaces"]
     fn private_shell_runs_the_context_plan_script() {
         if std::env::var("CONGLOBATE_SHELL_PROBE").as_deref()
             == Ok("private_shell_runs_the_context_plan_script")
@@ -546,6 +547,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires root and mount namespaces"]
     fn empty_bin_keeps_no_copied_files() {
         if std::env::var("CONGLOBATE_SHELL_PROBE").as_deref()
             == Ok("empty_bin_keeps_no_copied_files")
@@ -558,42 +560,22 @@ mod tests {
 
     fn unshare_probe(test_name: &str) {
         let output = Command::new("unshare")
-            .args([
-                "--user",
-                "--map-root-user",
-                "--mount",
-                "--propagation",
-                "private",
-                "--fork",
-            ])
+            .args(["--mount", "--propagation", "private", "--fork"])
             .env("CONGLOBATE_SHELL_PROBE", test_name)
             .arg(std::env::current_exe().unwrap())
-            .arg(test_name)
+            .args(["--ignored", "--exact"])
+            .arg(format!("isolation::shell::tests::{test_name}"))
             .output()
             .expect("unshare");
         if output.status.success() {
             return;
         }
         let stderr = String::from_utf8_lossy(&output.stderr);
-        if unshare_itself_denied(&stderr) {
-            eprintln!("skip: unprivileged mount namespace is unavailable: {stderr}");
-            return;
-        }
         panic!(
             "{test_name} failed: {}\nstdout:\n{}\nstderr:\n{stderr}",
             output.status,
             String::from_utf8_lossy(&output.stdout)
         );
-    }
-
-    /// Skip only when `unshare` could not create the namespace. A child that
-    /// prints "Permission denied" for some other reason must still fail.
-    fn unshare_itself_denied(stderr: &str) -> bool {
-        stderr.lines().any(|line| {
-            let line = line.to_ascii_lowercase();
-            line.contains("unshare:")
-                && (line.contains("permission denied") || line.contains("operation not permitted"))
-        })
     }
 
     fn run_minimal_shell() {

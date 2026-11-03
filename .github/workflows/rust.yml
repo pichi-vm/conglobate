@@ -1,4 +1,4 @@
-name: Rootless tests
+name: Rust tests
 
 on:
   workflow_call:
@@ -34,5 +34,7 @@ jobs:
           rustup toolchain install 1.94.0 --profile minimal
       - name: Run rootless tests
         run: cargo test --locked --features cli --all-targets
-      - name: Verify new ext4 roots have no journal
-        run: cargo test --locked --features cli --bin conglobate new_ext4_root_has_no_journal -- --ignored
+      - name: Run ignored tests as root
+        run: |
+          sudo modprobe loop
+          cargo --config 'target."cfg(unix)".runner = ["sudo", "-n"]' test --locked --features cli --all-targets -- --ignored --test-threads=1

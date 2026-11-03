@@ -126,16 +126,10 @@ mod tests {
         time::{Duration, Instant},
     };
 
-    fn attach_writable() -> Option<LoopDevice> {
+    fn attach_writable() -> LoopDevice {
         let backing = tempfile::tempfile().unwrap();
         backing.set_len(4096).unwrap();
-        // EPERM/EACCES: rootless CI has no loop-control authority. The kernel
-        // retains the backing reference taken by LOOP_CONFIGURE.
-        match LoopDevice::attach(&backing) {
-            Ok(device) => Some(device),
-            Err(error) if matches!(error.raw_os_error(), Some(1) | Some(13)) => None,
-            Err(error) => panic!("attach loop: {error}"),
-        }
+        LoopDevice::attach(&backing).expect("attach loop device; this test requires root")
     }
 
     fn node_path(device: &LoopDevice) -> PathBuf {
@@ -169,20 +163,18 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires root and loop devices"]
     fn sole_owner_detach_confirms_unbound_loop() {
-        let Some(device) = attach_writable() else {
-            return;
-        };
+        let device = attach_writable();
         let path = node_path(&device);
         device.close().expect("sole owner detach");
         assert_unbound(&path);
     }
 
     #[test]
+    #[ignore = "requires root and loop devices"]
     fn shared_probe_lock_is_drained_before_unbound_detach() {
-        let Some(device) = attach_writable() else {
-            return;
-        };
+        let device = attach_writable();
         let path = node_path(&device);
         let (ready_tx, ready_rx) = mpsc::channel();
         let probe_path = path.clone();
@@ -208,10 +200,9 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires root and loop devices"]
     fn nonlocking_holder_stays_busy() {
-        let Some(device) = attach_writable() else {
-            return;
-        };
+        let device = attach_writable();
         let path = node_path(&device);
         let holder = OpenOptions::new()
             .read(true)
@@ -240,10 +231,9 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires root and loop devices"]
     fn shared_lock_past_deadline_fails_closed() {
-        let Some(device) = attach_writable() else {
-            return;
-        };
+        let device = attach_writable();
         let path = node_path(&device);
         let (ready_tx, ready_rx) = mpsc::channel();
         let (release_tx, release_rx) = mpsc::channel::<()>();
@@ -293,10 +283,9 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires root and loop devices"]
     fn deadline_expiry_does_not_acquire_once_probe_drops() {
-        let Some(device) = attach_writable() else {
-            return;
-        };
+        let device = attach_writable();
         let path = node_path(&device);
         let (ready_tx, ready_rx) = mpsc::channel();
         let (started_tx, started_rx) = mpsc::channel();

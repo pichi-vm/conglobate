@@ -10,7 +10,7 @@ on:
 #   Tier 1 — Rootless checks (parallel): lint (fmt+clippy),
 #            dependencies (gitlint / cargo-deny / audit)
 #   Tier 2 — after Tier 1 succeeds (parallel with each other):
-#            Rootless tests (amd64/arm matrix),
+#            Rust tests (amd64/arm matrix),
 #            appliance build matrix
 #
 # A red Tier-1 job skips the expensive Tier-2 work.
@@ -22,7 +22,7 @@ jobs:
       contents: read
 
   rust:
-    name: Rootless tests
+    name: Rust tests
     needs: [checks]
     uses: ./.github/workflows/rust.yml
     permissions:
