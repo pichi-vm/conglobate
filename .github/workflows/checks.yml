@@ -102,10 +102,11 @@ jobs:
           fi
           echo "Squash title OK (${#squash_title}/50): ${squash_title}"
       - name: Install dependency checkers
-        run: |
-          rustup toolchain install 1.94.0 --profile minimal
-          cargo install --locked --version 0.19.9 cargo-deny
-          cargo install --locked --version 0.22.2 cargo-audit
+        uses: taiki-e/install-action@v2.90.0
+        with:
+          tool: cargo-deny@0.19.9,cargo-audit@0.22.2
+      - name: Install Rust
+        run: rustup toolchain install 1.94.0 --profile minimal
       - name: Check amd64 dependency policy
         run: cargo deny --locked --features cli --target x86_64-unknown-linux-gnu check licenses sources bans
       - name: Check arm64 dependency policy
