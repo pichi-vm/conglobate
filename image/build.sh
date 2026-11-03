@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-# Build the Conglobate appliance image — a pichi artifact (carapace + PMI
-# with embedded DTB + launch config). The initramfs is static Corium as /init; it
-# pivots into this rootfs, whose PID 1 is systemd. systemd then loads virtiofs
+# Build the Conglobate appliance image — a pichi artifact (partitioned carapace +
+# immutable PMI + native bootconfig + launch config). Static Corium is /init
+# in the initramfs. It pivots into this rootfs, whose PID 1 is systemd. That loads virtiofs
 # and fuse from the rootfs module tree and mounts tags repo/cache/output.
 #
 # ONE mkosi run builds the Fedora 43 rootfs from packages (not from the
@@ -21,9 +21,9 @@ RELEASE=43
 IMAGE="${IMAGE:-ghcr.io/pichi-vm/conglobate}"
 ARMA="${ARMA:-arma}"
 CORIUM_GIT="${CORIUM_GIT:-https://github.com/pichi-vm/corium}"
-# Corium 0.2: Linux 7+, corium=<hash>, GPT discovery and /sbin/init handoff.
-# Includes the read-only mount view needed to reuse the root chain.
-CORIUM_REV="${CORIUM_REV:-81af93c28f5624b36e12227bb45442d477b07eb2}"
+# Corium reads corium.root from bootconfig and mounts the native GPT root
+# through its existing read-only view, leaving the whole chain reusable.
+CORIUM_REV="${CORIUM_REV:-c33ae0e01d58b657f8f62cb91672885326a903b9}"
 CORIUM_TOOLCHAIN="${CORIUM_TOOLCHAIN:-stable}"
 CONGLOBATE_TOOLCHAIN="${CONGLOBATE_TOOLCHAIN:-1.94.0}"
 
@@ -128,6 +128,8 @@ find_one() {
 	ls -1 "$work" >&2
 	exit 1
 }
+disk="$work/conglobate.raw"
+[ -f "$disk" ] || { echo "!!! mkosi did not produce a GPT disk" >&2; exit 1; }
 root="$(find_one 'root ext4 partition' "$work"/*.root-*.raw "$work"/*.root.raw)"
 kver="$(cat "$work/kver")"
 echo ">>> kernel $kver  root $(basename "$root")"
@@ -147,7 +149,7 @@ echo ">>> initrd $(du -h "$initrd" | cut -f1)  modules: $(find "$stage" -name '*
 
 # ---- 4. import the carapace once; read its committed chain tip -----------
 carapace="conglobate:$VERSION-carapace"
-pichi import raw "$root" -t "$carapace" --quiet
+pichi import raw "$disk" -t "$carapace" --quiet
 hash="$(pichi inspect "$carapace" \
 	--format '{{ manifest.annotations["dev.pichi.carapace.verity.hash"] }}')"
 [[ "$hash" =~ ^[[:xdigit:]]{64}$ && "$hash" =~ [1-9a-fA-F] ]] || {
@@ -156,23 +158,32 @@ hash="$(pichi inspect "$carapace" \
 }
 echo ">>> carapace $carapace  tip $hash"
 
-# ---- 5. PMI with embedded base DTB -------------------------------------
-# corium= is the trust anchor Corium reads. systemd.* applies to PID 1 after
-# pivot: the carapace root is read-only, so /var must be volatile. virtiofs
-# mounts are units in the rootfs, not kernel command-line options.
-cmdline="corium=$hash console=hvc0 selinux=0 systemd.volatile=state systemd.unit=multi-user.target systemd.show_status=false"
-printf '%s\n' "$cmdline" > "$work/cmdline"
+# ---- 5. immutable PMI and native Linux boot configuration ---------------
+# Only the fixed bootconfig switch is measured in the kernel command line.
+# The selected chain root and kernel/systemd settings travel beside the PMI.
+cat > "$work/bootconfig" <<EOF
+corium.root = "$hash"
+kernel {
+    ro
+    selinux = "0"
+    console = "hvc0"
+    systemd.volatile = "state"
+    systemd.unit = "multi-user.target"
+    systemd.show_status = "false"
+}
+EOF
 "$ARMA" build \
 	--kernel "$work/vmlinuz" \
 	--config "$work/kernel.config" \
 	--initrd "$initrd" \
-	--cmdline "$cmdline" \
+	--cmdline bootconfig \
 	--dtb attached \
 	"$work/boot.pmi"
 
-# ---- 6. combine PMI + config onto the carapace ---------------------
+# ---- 6. combine immutable PMI and bootconfig onto the carapace -----------
 rev="${REVISION:-$(git -C "$repo" rev-parse HEAD 2>/dev/null || echo unknown)}"
 pichi import pmi "$work/boot.pmi" \
+	--bootconfig "$work/bootconfig" \
 	--config "$here/config.json" \
 	--carapace "$carapace" \
 	-a "org.opencontainers.image.source=https://github.com/pichi-vm/conglobate" \
@@ -186,5 +197,5 @@ if [ -n "${GITHUB_ENV:-}" ]; then
 	echo "CONGLOBATE_VERSION=$VERSION" >> "$GITHUB_ENV"
 fi
 
-echo ">>> imported conglobate:$VERSION (carapace + pmi + config)"
+echo ">>> imported conglobate:$VERSION (carapace + pmi + bootconfig + config)"
 echo "    push (main CI only): $IMAGE:$VERSION and $IMAGE:latest"
