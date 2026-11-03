@@ -41,7 +41,8 @@ struct BuildArguments {
     /// Map image GIDs starting at zero to an environment-reserved parent range.
     #[arg(long, requires = "uid_map", value_name = "PARENT_START:COUNT")]
     gid_map: Option<IdRange>,
-    #[arg(long)]
+    /// Git repository containing the committed build inputs.
+    #[arg(default_value = ".")]
     repository: PathBuf,
     #[arg(long)]
     commit: String,
@@ -215,7 +216,6 @@ mod tests {
             [
                 "conglobate",
                 "build",
-                "--repository",
                 "repo",
                 "--commit",
                 "0123456789012345678901234567890123456789",
@@ -228,6 +228,22 @@ mod tests {
             .map(str::to_owned)
             .collect()
         }
+    }
+    #[test]
+    fn repository_is_positional_and_defaults_to_current_directory() {
+        use super::{Action, Cli};
+        use clap::Parser;
+        let mut args = Fixture::args();
+        args.extend(["--plan", "plan", "--lock", "lock"].map(str::to_owned));
+        let Action::Build(explicit) = Cli::try_parse_from(&args).unwrap().action else {
+            panic!("expected build");
+        };
+        assert_eq!(explicit.repository, Path::new("repo"));
+        args.remove(2);
+        let Action::Build(default) = Cli::try_parse_from(args).unwrap().action else {
+            panic!("expected build");
+        };
+        assert_eq!(default.repository, Path::new("."));
     }
     #[test]
     fn both_selected_configuration_paths_are_required() {

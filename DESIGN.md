@@ -388,8 +388,7 @@ commit, context-relative plan and lock paths, a read-only image cache, and an
 output directory:
 
 ```sh
-conglobate build \
-  --repository <local-path> \
+conglobate build <local-path> \
   --commit <full-object-id> \
   --context <path-in-commit> \
   --plan <context-relative-yaml-path> \
@@ -400,6 +399,7 @@ conglobate build \
 
 Defaults and failure behavior:
 
+- The positional repository path defaults to the current directory.
 - `--context` defaults to `.`. It cannot escape the selected commit.
   Appliance CBOR uses `context` for the same role.
 - `--plan` and `--lock` are required, with no default filenames or discovery.
