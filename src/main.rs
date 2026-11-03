@@ -7,7 +7,6 @@ mod anchor;
 mod appliance;
 mod disk;
 use contract::artifact;
-#[cfg(test)]
 mod boot_config;
 mod cache;
 mod context;
