@@ -8,6 +8,7 @@ mod carapace;
 mod firmware;
 mod output;
 mod rejection;
+pub(crate) mod root;
 use crate::{
     cache::Cache,
     input::{CapturedBuild, ResolvedBuild},
