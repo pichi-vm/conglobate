@@ -187,12 +187,19 @@ mod tests {
                 blobs.push((digest, bytes));
                 parent = root;
             }
-            // Identity verification is distinct from firmware format validation.
-            for (media, bytes) in [("pmi", b"firmware".as_slice()), ("dtb", b"tree".as_slice())] {
+            let pmi = b"opaque PMI".to_vec();
+            let config = ruzstd::encoding::compress_to_vec(
+                b"kernel.quiet\n".as_slice(),
+                ruzstd::encoding::CompressionLevel::Fastest,
+            );
+            for (media, bytes) in [
+                ("pmi.v1", pmi.as_slice()),
+                ("bootconfig.v1+zstd", config.as_slice()),
+            ] {
                 let digest = Digest::Sha256(Sha256::digest(bytes).into());
                 layers.push(
                     serde_json::from_value(serde_json::json!({
-                        "mediaType": format!("application/vnd.pichi.{media}.v1"),
+                        "mediaType": format!("application/vnd.pichi.{media}"),
                         "digest": digest.to_string(), "size": bytes.len()
                     }))
                     .unwrap(),
