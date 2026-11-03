@@ -8,7 +8,6 @@ permissions:
   contents: read
 
 jobs:
-  # Tier-1 fail-fast (parallel with lint/dependencies).
   license-headers:
     name: license headers
     runs-on: ubuntu-24.04
