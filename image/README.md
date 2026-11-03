@@ -60,7 +60,10 @@ builder/input/output mirrors are emitted. Later attestation binds the image
 digest and TEE/builder. A manifest containing scutes carries one
 `dev.pichi.carapace.verity.hash` committing the final salt-linked chain root.
 The builder reads that commitment once through `pichi inspect` and uses it
-for the boot command line. Missing, malformed and zero roots are rejected.
+for `corium.root` in native bootconfig. The complete GPT disk is imported as
+one carapace; Corium mounts its native root partition. The PMI's embedded DTB
+and `bootconfig` command line remain immutable. Missing, malformed and zero
+roots are rejected.
 It requires a Pichi producer that records this manifest commitment. Existing
 verity parameters and per-scute salt/data-blocks annotations stay; no
 per-scute hashes are added.
