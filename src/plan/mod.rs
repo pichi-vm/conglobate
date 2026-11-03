@@ -21,6 +21,7 @@ mod mount;
 mod remote;
 mod stage;
 mod stage_ref;
+mod version;
 
 pub use boot::Boot;
 pub use boot_config::{Key, Value};
@@ -36,6 +37,7 @@ pub use mount::Mount;
 pub use remote::Remote;
 pub use stage::Stage;
 pub use stage_ref::StageRef;
+pub use version::Version;
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
