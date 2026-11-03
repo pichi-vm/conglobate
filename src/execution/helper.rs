@@ -154,55 +154,53 @@ impl HelperInvocation {
         Self::decode(text).map(Some)
     }
     fn encode(&self) -> String {
-        let mut e = minicbor::Encoder::new(Vec::new());
-        let (length, tag) = match self.role {
-            Role::Seed => (3, 0),
-            Role::Receiver { .. } => (7, 1),
-            Role::Namespaces(_) => (4, 2),
-            Role::Root(_) => (4, 3),
-            Role::Formatter { .. } => (5, 4),
-        };
-        e.array(length)
-            .expect("Vec writer")
-            .u8(1)
-            .expect("Vec writer")
-            .u8(tag)
-            .expect("Vec writer")
-            .str(&self.cutoff.to_argument())
-            .expect("Vec writer");
+        let mut bytes = Vec::new();
+        let cutoff = self.cutoff.to_argument();
         match &self.role {
-            Role::Seed => {}
+            Role::Seed => ciborium::into_writer(&(1u8, 0u8, cutoff), &mut bytes),
             Role::Receiver {
                 script,
                 uid,
                 gid,
                 parent,
-            } => {
-                e.str(script)
-                    .expect("Vec writer")
-                    .u32(*uid)
-                    .expect("Vec writer")
-                    .u32(*gid)
-                    .expect("Vec writer")
-                    .bytes(parent.as_os_str().as_bytes())
-                    .expect("Vec writer");
+            } => ciborium::into_writer(
+                &(
+                    1u8,
+                    1u8,
+                    cutoff,
+                    script,
+                    uid,
+                    gid,
+                    serde_bytes::Bytes::new(parent.as_os_str().as_bytes()),
+                ),
+                &mut bytes,
+            ),
+            Role::Namespaces(script) => {
+                ciborium::into_writer(&(1u8, 2u8, cutoff, script), &mut bytes)
             }
+            Role::Root(script) => ciborium::into_writer(&(1u8, 3u8, cutoff, script), &mut bytes),
             Role::Formatter {
                 executable,
                 arguments,
             } => {
-                e.bytes(executable.as_os_str().as_bytes())
-                    .expect("Vec writer");
-                e.array(arguments.len() as u64).expect("Vec writer");
-                for arg in arguments {
-                    e.bytes(arg.as_bytes()).expect("Vec writer");
-                }
-            }
-            Role::Namespaces(script) | Role::Root(script) => {
-                e.str(script).expect("Vec writer");
+                let arguments: Vec<_> = arguments
+                    .iter()
+                    .map(|arg| serde_bytes::Bytes::new(arg.as_bytes()))
+                    .collect();
+                ciborium::into_writer(
+                    &(
+                        1u8,
+                        4u8,
+                        cutoff,
+                        serde_bytes::Bytes::new(executable.as_os_str().as_bytes()),
+                        arguments,
+                    ),
+                    &mut bytes,
+                )
             }
         }
-        hex::encode(e.into_writer())
+        .expect("Vec writer");
+        hex::encode(bytes)
     }
     fn decode(text: &str) -> io::Result<Self> {
         if text.len() > MAX_ARGUMENT {
@@ -212,35 +210,40 @@ impl HelperInvocation {
             ));
         }
         let bytes = hex::decode(text).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        let mut d = minicbor::Decoder::new(&bytes);
         let parse = (|| -> Result<_, Box<dyn std::error::Error>> {
-            let length = d.array()?;
-            if d.u8()? != 1 {
+            use ciborium::Value::{Array, Bytes, Integer, Text};
+            let fields: Vec<ciborium::Value> = ciborium::from_reader(bytes.as_slice())?;
+            let [Integer(version), Integer(tag), Text(cutoff), rest @ ..] = fields.as_slice()
+            else {
+                return Err("invalid helper version/shape".into());
+            };
+            if u8::try_from(*version)? != 1 {
                 return Err("unknown helper version".into());
             }
-            let tag = d.u8()?;
-            let cutoff = SetupCutoff::from_argument(d.str()?)?;
-            let role = match (length, tag) {
-                (Some(3), 0) => Role::Seed,
-                (Some(7), 1) => Role::receiver(
-                    d.str()?.to_owned(),
-                    d.u32()?,
-                    d.u32()?,
-                    PathBuf::from(OsString::from_vec(d.bytes()?.to_vec())),
+            let cutoff = SetupCutoff::from_argument(cutoff)?;
+            let role = match (u8::try_from(*tag)?, rest) {
+                (0, []) => Role::Seed,
+                (1, [Text(script), Integer(uid), Integer(gid), Bytes(parent)]) => Role::receiver(
+                    script.clone(),
+                    u32::try_from(*uid)?,
+                    u32::try_from(*gid)?,
+                    PathBuf::from(OsString::from_vec(parent.clone())),
                 )?,
-                (Some(4), 2) => Role::Namespaces(d.str()?.to_owned()),
-                (Some(4), 3) => Role::Root(d.str()?.to_owned()),
-                (Some(5), 4) => {
-                    let executable = PathBuf::from(OsString::from_vec(d.bytes()?.to_vec()));
-                    let count = d.array()?.ok_or("indefinite formatter arguments")?;
-                    if count > 128 {
+                (2, [Text(script)]) => Role::Namespaces(script.clone()),
+                (3, [Text(script)]) => Role::Root(script.clone()),
+                (4, [Bytes(executable), Array(arguments)]) => {
+                    if arguments.len() > 128 {
                         return Err("too many formatter arguments".into());
                     }
-                    let arguments = (0..count)
-                        .map(|_| d.bytes().map(|b| OsString::from_vec(b.to_vec())))
+                    let arguments = arguments
+                        .iter()
+                        .map(|value| match value {
+                            Bytes(bytes) => Ok(OsString::from_vec(bytes.clone())),
+                            _ => Err("invalid formatter argument"),
+                        })
                         .collect::<Result<Vec<_>, _>>()?;
                     Role::Formatter {
-                        executable,
+                        executable: PathBuf::from(OsString::from_vec(executable.clone())),
                         arguments,
                     }
                 }
@@ -250,7 +253,7 @@ impl HelperInvocation {
             Ok(Self { cutoff, role })
         })()
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
-        if d.position() != bytes.len() || parse.encode() != text {
+        if parse.encode() != text {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "noncanonical helper input",
