@@ -1086,15 +1086,15 @@ root semantics through mapping, without backing-device access. No userspace
 filesystem worker is required. Ext4 is initially validated. Other drivers,
 formatters and metadata combinations require explicit qualification.
 
-The trusted environment loads and retains a fixed BPF LSM exception for exactly
+The appliance loads and retains a fixed BPF LSM exception for exactly
 `security.selinux`. That program, and its load, attach and pin path, are a
 pure-Rust Aya rewrite owned by the environment (section 14.4). Conglobate does
 not compile, load or attach the policy, does not depend on libbpf, and does not
-register subjects and filesystems. Its only labeling role is `LabelProbe`
-admission. The VM has SELinux disabled; foreign labels belong to the target OS
-and confer no authority in the build environment. Before plan admission,
-verify required behavior under restricted command credentials; missing support
-fails without a capability fallback. See the labeling requirements in section 14.4.
+register subjects and filesystems. Builds that do not set SELinux labels do
+not require this policy. Label operations remain subject to kernel checks;
+Conglobate does not probe labeling support before starting a command. The
+appliance has SELinux disabled; foreign labels belong to the target OS and
+confer no authority in the build environment. See section 14.4.
 
 Label mutation is not constrained by ordinary file write-mode checks. Integrity
 therefore depends on inode/descriptor reachability and read-only views, alongside
@@ -1334,9 +1334,9 @@ transport is already locked in [§1.4](#14-build-appliance)–[§1.5](#15-applia
 Sandbox policy is specified in section 14. Section 14.4 locks the environment
 labeling exception to a pure-Rust Aya program with Rust load, attach and pin,
 owned by the trusted environment. Exact capability/syscall/ioctl profiles,
-fixed internal deadline values, internal formatter/property schemas, both-root
-labeling admission, identity allocation, and runtime mount mechanics are
-implemented under that contract. The build-appliance image, build-port CBOR and
+fixed internal deadline values, internal formatter/property schemas, identity
+allocation, and runtime mount mechanics are implemented under that contract.
+The build-appliance image, build-port CBOR and
 virtiofs mount contract are locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-build-port-cbor);
 full engine reshape and confidential-platform qualification remain separate.
 Fully unprivileged storage assembly is outside the selected design.
@@ -1545,7 +1545,7 @@ RAII owns resources; destructors cannot certify successful finalization.
 1. Use kernel filesystems supporting the required idmapped-mount and metadata
    semantics. Ext4 is validated initially; qualify additional filesystems
    separately. Fail explicitly if the selected driver, trusted formatter,
-   idmapping, BPF LSM, BTF or required hooks are unavailable. No fallback to
+   idmapping or required filesystem hooks are unavailable. No fallback to
    command CAP_SYS_ADMIN, a different filesystem or an unreviewed backend.
 
 1. The supervisor mounts the filesystem and creates an idmapped view for
@@ -1562,15 +1562,16 @@ RAII owns resources; destructors cannot certify successful finalization.
    Retain normal kernel ownership, mode and ACL permission checking. Use nosuid,nodev;
    storing file capabilities/setuid bits must not grant build-host privilege.
 
-1. The trusted environment loads a fixed BPF LSM exception before
+1. The appliance loads a fixed BPF LSM exception before
    conglobate starts. It delegates the generic capability check for exactly
    security.selinux through inode_xattr_skipcap. There are no per-command
    registrations, subject/filesystem maps, target guards or activation
    transitions. Conglobate does not compile, load, attach, update or remove
    this policy and does not depend on libbpf. The environment retains the
-   pinned program for the lifetime of the VM. Conglobate's only labeling
-   role is LabelProbe admission: check required behavior under the
-   restricted command credentials, and do not install the policy.
+   pinned program for the lifetime of the VM. Standalone builds that do not
+   set SELinux labels do not require this exception. Conglobate neither
+   installs the policy nor makes label support a command-startup prerequisite.
+   Appliance startup fails if BPF LSM, BTF or the label hook is unavailable.
 
 1. Implement that environment exception as a pure-Rust rewrite using Aya.
    The trusted environment owns the LSM program and the load, attach and
@@ -2074,11 +2075,10 @@ Nix builders. Terminal injection/control and namespace/mount creation stay denie
 The environment's fixed BPF LSM exception permits exactly security.selinux
 labeling without making the target filesystem's policy the build VM's policy.
 The trusted environment builds, loads, attaches and pins that exception with
-Aya (pure Rust), as specified in section 14.4. Conglobate probes labeling
-under the actual command restrictions before admission, including both
-bootstrap roots. That `LabelProbe` check is its only labeling role. It neither
-loads nor revokes the exception. Ordinary ownership, ACL, mount and filesystem
-checks still apply.
+Aya (pure Rust), as specified in section 14.4. Conglobate does not probe label
+support before starting commands and neither loads nor revokes the exception.
+Commands that set labels encounter the kernel's normal checks. Ordinary
+ownership, ACL, mount and filesystem checks still apply.
 
 Each command reconstructs mounts/isolation and has a finite plan timeout
 (default five minutes). Setup and teardown use separate fixed internal deadlines.

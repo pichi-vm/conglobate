@@ -138,11 +138,10 @@ environment-provided BPF LSM labeling exception (pure-Rust Aya in the trusted
 environment; see the sandbox design), supervisor and **image-resident
 formatters** (internal filesystem-name → formatter map; formatting outside the
 command sandbox) are trusted. There is no host `--formatter-runtime` TEE input.
-The design requires native filesystem/idmapped mount support and the
-environment-loaded labeling exception; generic kernel version numbers alone do
-not establish those prerequisites. The current implementation also uses
-`open_tree(OPEN_TREE_CLONE)` on subtrees of its detached workspace. Ubuntu's GA
-6.8 kernel rejects this operation.
+The design requires native filesystem/idmapped mount support; generic kernel
+version numbers alone do not establish those prerequisites. The current
+implementation also uses `open_tree(OPEN_TREE_CLONE)` on subtrees of its detached
+workspace. Ubuntu's GA 6.8 kernel rejects this operation.
 
 The **standalone CLI** remains first-class for rootless checks and engine tests
 without a VM. [sandbox design](DESIGN.md#14-sandbox-lifecycle) specifies the
