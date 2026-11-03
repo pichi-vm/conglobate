@@ -26,7 +26,7 @@ impl FromIndex for Chain {
             .ok_or(CacheError::Invalid("indexed image has no carapace"))?;
         let mut parent = root;
         let mut scutes = Vec::new();
-        for layer in image.manifest().layers.iter().rev() {
+        for layer in image.manifest().layers().iter().rev() {
             if !matches!(
                 layer.media_type().as_ref(),
                 crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1

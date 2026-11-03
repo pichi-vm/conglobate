@@ -155,7 +155,7 @@ impl CheckedImage {
     ) -> Result<Option<crate::cache::VerifiedMetadata>, crate::cache::CacheError> {
         self.image
             .manifest()
-            .layers
+            .layers()
             .iter()
             .find(|layer| {
                 layer.media_type().as_ref() == crate::artifact::MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD

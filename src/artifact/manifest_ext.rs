@@ -5,10 +5,11 @@
 
 use super::ScuteAnnotations;
 use crate::resources::MEDIA_TYPE_PICHI_CONFIG_V1;
+use oci_spec::image::ImageManifest;
+#[cfg(test)]
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
+use super::ManifestValidationError;
 
 use crate::artifact::media_type::{
     MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD, MEDIA_TYPE_PICHI_PMI_V1,
@@ -18,7 +19,7 @@ use crate::artifact::media_type::{
 /// Required chain-wide annotation keys (per D-06). These are the dm-verity
 /// superblock fields a consumer needs to *reconstruct* the (undistributed)
 /// verity layer from the cow — the sole reason pichi carries them. All MUST be
-/// present in `Manifest::annotations` per D-07 rule 3 when scute layers exist.
+/// present in `ImageManifest::annotations` per D-07 rule 3 when scute layers exist.
 const CHAIN_ANNOTATION_VERITY_ALGO: &str = "dev.pichi.carapace.verity.algo";
 const CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE: &str = "dev.pichi.carapace.verity.data-block-size";
 const CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE: &str = "dev.pichi.carapace.verity.hash-block-size";
@@ -36,123 +37,39 @@ const EMPTY_CONFIG_DIGEST: &str =
 /// Canonical base64 encoding of `{}` (used as inline `data` per OCI 1.1).
 const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 
-/// pichi OCI artifact manifest (OCI Image Spec 1.1).
-///
-/// Schema invariants (per CONTEXT.md D-03 / D-07 — enforced by [`Manifest::validate`]):
-/// - Top-level `artifact_type` MUST equal [`MEDIA_TYPE_PICHI_ARTIFACT_V1`].
-/// - `config` MUST be the OCI 1.1 empty-config descriptor with inline `data: "e30="`.
-/// - Scute layers MUST appear in chain order, from base to tip.
-/// - At most ONE PMI component (D-03 — zero pmi = base/non-bootable, one pmi = appliance/bootable).
-/// - Top-level annotations MUST include the carapace verity *param* keys
-///   and one chain-tip root when scute layers exist.
-/// - Every scute layer MUST carry a `dev.pichi.scute.verity.salt` annotation
-///   parseable as hex (D-05 / D-07 rule 4-5).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Manifest {
-    /// Always `2` for OCI 1.1.
-    #[serde(rename = "schemaVersion")]
-    pub schema_version: u32,
-    /// OCI image manifest media type (`application/vnd.oci.image.manifest.v1+json`).
-    /// Carried as `String` (NOT `Option`) per D-03 — the pichi manifest is always
-    /// the OCI 1.1 image manifest envelope.
-    #[serde(rename = "mediaType")]
-    pub media_type: String,
-    /// OCI 1.1 wrapper type. MUST be `MEDIA_TYPE_PICHI_ARTIFACT_V1` per D-07 rule 1.
-    #[serde(rename = "artifactType")]
-    pub artifact_type: String,
-    /// Manifest config descriptor: either the OCI 1.1 empty config (artifacts
-    /// with no launch contract) or a real `vnd.pichi.config.v1+json` blob
-    /// carrying the launch contract (BUILD.md §7.1).
-    pub config: oci_spec::image::Descriptor,
-    /// Typed layer descriptors. Scutes appear in base-to-tip chain order;
-    /// PMI and boot configuration descriptors are outside that order.
-    pub layers: Vec<oci_spec::image::Descriptor>,
-    /// Top-level annotations. With scutes, MUST include
-    /// `dev.pichi.carapace.verity.{algo,data-block-size,hash-block-size,
-    /// version,hash-type,hash}` and SHOULD include
-    /// `org.opencontainers.image.created` (D-06).
-    /// `BTreeMap` for byte-stable JSON serialisation (lexicographic key order).
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub annotations: BTreeMap<String, String>,
+/// Pichi component and reconstruction rules for an upstream OCI manifest.
+/// OCI decoding is provided by `oci-spec`; these checks determine whether
+/// Pichi can consume the artifact.
+pub trait ManifestExt {
+    /// Validate supported components, reconstruction parameters and chain order.
+    fn validate(&self) -> Result<(), ManifestValidationError>;
+    /// Decode the declared chain tip; content verification remains the caller's job.
+    fn carapace_root(&self) -> Result<Option<[u8; 32]>, ManifestValidationError>;
 }
 
-/// Validation errors for [`Manifest::validate`] (per D-07).
-#[derive(Debug, Error)]
-pub enum ManifestValidationError {
-    /// The artifact contains a component Pichi does not support.
-    #[error("unsupported artifact layer media type: {0}")]
-    UnsupportedLayer(String),
-
-    /// D-07 rule 1: wrong `artifactType`.
-    #[error("artifactType must be {expected}, got {actual}")]
-    WrongArtifactType {
-        /// Expected value.
-        expected: String,
-        /// Actual value found.
-        actual: String,
-    },
-    /// D-07 rule 2: config descriptor is neither the canonical OCI empty config
-    /// nor a `vnd.pichi.config.v1+json` blob.
-    #[error(
-        "config descriptor mediaType {media_type} is not the OCI empty config or {MEDIA_TYPE_PICHI_CONFIG_V1}"
-    )]
-    BadConfig {
-        /// The offending config mediaType.
-        media_type: String,
-    },
-    /// D-07 rule 3: required chain annotation key is absent.
-    #[error("missing required chain annotation: {0}")]
-    MissingChainAnnotation(&'static str),
-    /// A chain annotation is present but malformed (e.g. non-integer
-    /// version/hash-type). This is a well-formedness check only — pichi imposes
-    /// no value whitelist (that is the guest consumer's control per the spec).
-    #[error("chain annotation {key} is malformed: {value}")]
-    BadChainAnnotation {
-        /// The annotation key.
-        key: &'static str,
-        /// The offending value.
-        value: String,
-    },
-    /// D-07 rule 5: more than one PMI layer.
-    #[error("artifact has more than one PMI layer (got {0}); per D-03 at most one is permitted")]
-    MultiplePmi(usize),
-
-    /// More than one boot configuration layer.
-    #[error("artifact has more than one boot configuration layer (got {0})")]
-    MultipleBootConfig(usize),
-
-    /// Boot configuration cannot be distributed independently of firmware.
-    #[error("boot configuration requires a PMI")]
-    BootConfigWithoutPmi,
-
-    /// Scute salt is not valid hex or lacks the 32-byte parent root prefix.
-    #[error("scute salt must contain a hex-encoded parent root: {0}")]
-    BadSalt(String),
-
-    /// The first scute must be the base; later scutes must have a parent.
-    #[error("scutes must appear in base-to-tip order: {0}")]
-    BadScuteOrder(String),
-
-    /// Declared data-block count is zero or contradicts a raw blob's size.
-    #[error("invalid data-block count for scute {0}")]
-    BadScuteBlocks(String),
-}
-
-impl Manifest {
+impl ManifestExt for ImageManifest {
     /// The chain-tip commitment, present exactly when this artifact has scutes.
     /// This parses the wire value; consumers must authenticate the manifest and
     /// verify scute reads against this root before using their contents.
-    pub fn carapace_root(&self) -> Result<Option<[u8; 32]>, ManifestValidationError> {
-        let value = self.annotations.get(CARAPACE_ROOT_ANNOTATION);
-        if !self.has_scutes() && value.is_none() {
+    fn carapace_root(&self) -> Result<Option<[u8; 32]>, ManifestValidationError> {
+        let has_scutes = self.layers().iter().any(|layer| {
+            matches!(
+                layer.media_type().as_ref(),
+                MEDIA_TYPE_PICHI_SCUTE_V1 | MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
+            )
+        });
+        let value = self
+            .annotations()
+            .as_ref()
+            .and_then(|a| a.get(CARAPACE_ROOT_ANNOTATION));
+        if !has_scutes && value.is_none() {
             return Ok(None);
         }
         let value = value.ok_or(ManifestValidationError::MissingChainAnnotation(
             CARAPACE_ROOT_ANNOTATION,
         ))?;
         let mut root = [0; 32];
-        if !self.has_scutes() || hex::decode_to_slice(value, &mut root).is_err() || root == [0; 32]
-        {
+        if !has_scutes || hex::decode_to_slice(value, &mut root).is_err() || root == [0; 32] {
             return Err(ManifestValidationError::BadChainAnnotation {
                 key: CARAPACE_ROOT_ANNOTATION,
                 value: value.clone(),
@@ -161,35 +78,27 @@ impl Manifest {
         Ok(Some(root))
     }
 
-    /// Return `true` if this manifest carries at least one scute layer (i.e.
-    /// it describes a carapace, so a verity root anchor is meaningful).
-    fn has_scutes(&self) -> bool {
-        self.layers.iter().any(|l| {
-            matches!(
-                l.media_type().as_ref(),
-                crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1
-                    | crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
-            )
-        })
-    }
-
     /// Validate manifest structure. Scute order starts with a zero-parent base;
     /// consumers must verify each subsequent parent against the preceding
     /// scute's content and the final root against the manifest commitment.
     ///
     /// # Errors
     /// Returns the first violated rule — does NOT collect all errors.
-    pub fn validate(&self) -> Result<(), ManifestValidationError> {
+    fn validate(&self) -> Result<(), ManifestValidationError> {
         // Rule 1: artifactType
-        if self.artifact_type != MEDIA_TYPE_PICHI_ARTIFACT_V1 {
+        if self.artifact_type().as_ref().map(AsRef::as_ref) != Some(MEDIA_TYPE_PICHI_ARTIFACT_V1) {
             return Err(ManifestValidationError::WrongArtifactType {
                 expected: MEDIA_TYPE_PICHI_ARTIFACT_V1.to_string(),
-                actual: self.artifact_type.clone(),
+                actual: self
+                    .artifact_type()
+                    .as_ref()
+                    .map(ToString::to_string)
+                    .unwrap_or_default(),
             });
         }
         // Rule 2: config is either the canonical empty config or a real
         // pichi config blob (vnd.pichi.config.v1+json).
-        let c = &self.config;
+        let c = self.config();
         let is_canonical_empty = c.media_type() == &oci_spec::image::MediaType::EmptyJSON
             && c.size() == 2
             && c.data()
@@ -206,7 +115,12 @@ impl Manifest {
         // the carapace, so they are required ONLY when scute layers are present.
         // A scute-less (PMI-only) artifact carries none of them.
         self.carapace_root()?;
-        if self.has_scutes() {
+        if self.layers().iter().any(|layer| {
+            matches!(
+                layer.media_type().as_ref(),
+                MEDIA_TYPE_PICHI_SCUTE_V1 | MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
+            )
+        }) {
             for key in [
                 CHAIN_ANNOTATION_VERITY_ALGO,
                 CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
@@ -214,7 +128,11 @@ impl Manifest {
                 CHAIN_ANNOTATION_VERITY_VERSION,
                 CHAIN_ANNOTATION_VERITY_HASH_TYPE,
             ] {
-                if !self.annotations.contains_key(key) {
+                if !self
+                    .annotations()
+                    .as_ref()
+                    .is_some_and(|a| a.contains_key(key))
+                {
                     return Err(ManifestValidationError::MissingChainAnnotation(key));
                 }
             }
@@ -225,7 +143,11 @@ impl Manifest {
                 CHAIN_ANNOTATION_VERITY_VERSION,
                 CHAIN_ANNOTATION_VERITY_HASH_TYPE,
             ] {
-                let v = &self.annotations[key];
+                let v = self
+                    .annotations()
+                    .as_ref()
+                    .and_then(|a| a.get(key))
+                    .expect("checked chain annotation");
                 if v.parse::<u32>().is_err() {
                     return Err(ManifestValidationError::BadChainAnnotation {
                         key,
@@ -236,7 +158,7 @@ impl Manifest {
         }
         // Rule 5 (out of order — bail early on count): at most one PMI
         let pmi_count = self
-            .layers
+            .layers()
             .iter()
             .filter(|l| {
                 matches!(
@@ -249,7 +171,7 @@ impl Manifest {
             return Err(ManifestValidationError::MultiplePmi(pmi_count));
         }
         let boot_config_count = self
-            .layers
+            .layers()
             .iter()
             .filter(|layer| {
                 matches!(
@@ -269,7 +191,7 @@ impl Manifest {
         // The salt's parent prefix identifies the base without reading blobs.
         // Full chain continuity is checked when consumers verify the scutes.
         let mut first_scute = true;
-        for layer in &self.layers {
+        for layer in self.layers() {
             match layer.media_type().as_ref() {
                 MEDIA_TYPE_PICHI_PMI_V1 | MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD => continue,
                 MEDIA_TYPE_PICHI_SCUTE_V1 | MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD => (),
@@ -277,7 +199,11 @@ impl Manifest {
             }
             let annotations = ScuteAnnotations::try_from(layer)?;
             let blocks = annotations.data_blocks.get();
-            let value = &self.annotations[CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE];
+            let value = self
+                .annotations()
+                .as_ref()
+                .and_then(|a| a.get(CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE))
+                .expect("checked chain annotation");
             let block_size = value
                 .parse::<u32>()
                 .ok()
@@ -344,15 +270,15 @@ mod tests {
         for root in [false, true] {
             let mut manifest = sample_base_manifest();
             if !root {
-                manifest.layers.clear();
-                manifest.annotations.clear();
+                manifest.layers_mut().clear();
+                manifest.set_annotations(None);
             }
-            manifest.layers.push(config.clone());
+            manifest.layers_mut().push(config.clone());
             assert!(matches!(
                 manifest.validate(),
                 Err(ManifestValidationError::BootConfigWithoutPmi)
             ));
-            manifest.layers.push(oci_spec::image::Descriptor::new(
+            manifest.layers_mut().push(oci_spec::image::Descriptor::new(
                 crate::artifact::MEDIA_TYPE_PICHI_PMI_V1.into(),
                 4096u64,
                 format!("sha256:{}", "12".repeat(32))
@@ -360,7 +286,7 @@ mod tests {
                     .expect("layer digest"),
             ));
             manifest.validate().unwrap();
-            manifest.layers.push(config.clone());
+            manifest.layers_mut().push(config.clone());
             assert!(matches!(
                 manifest.validate(),
                 Err(ManifestValidationError::MultipleBootConfig(2))
@@ -370,7 +296,7 @@ mod tests {
 
     #[test]
     fn data_blocks_is_a_required_positive_decimal_annotation() {
-        let mut descriptor = sample_base_manifest().layers.remove(0);
+        let mut descriptor = sample_base_manifest().layers_mut().remove(0);
         let annotations = ScuteAnnotations {
             salt: "00".into(),
             data_blocks: 2u64.try_into().unwrap(),
@@ -411,24 +337,24 @@ mod tests {
     fn validate_data_blocks_against_raw_descriptor() {
         for blocks in [1u64, 2, 1024, u64::MAX] {
             let mut manifest = sample_base_manifest();
-            let scute = &mut manifest.layers[0];
+            let scute = &mut manifest.layers_mut()[0];
             let mut annotations = ScuteAnnotations::try_from(&*scute).unwrap();
             annotations.data_blocks = blocks.try_into().unwrap();
             scute.set_annotations(Some(annotations.into()));
             assert_eq!(manifest.validate().is_ok(), blocks == 1);
         }
         let mut manifest = sample_base_manifest();
-        let mut scute = manifest.layers.remove(0);
+        let mut scute = manifest.layers_mut().remove(0);
         let mut annotations = ScuteAnnotations::try_from(&scute).unwrap();
         annotations.data_blocks = 2u64.try_into().unwrap();
         scute.set_annotations(Some(annotations.into()));
-        manifest.layers.push({
+        manifest.layers_mut().push({
             let mut descriptor = scute;
             descriptor.set_media_type(crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.into());
             descriptor
         });
         assert!(manifest.validate().is_ok());
-        let scute = &mut manifest.layers[0];
+        let scute = &mut manifest.layers_mut()[0];
         let mut annotations = ScuteAnnotations::try_from(&*scute).unwrap();
         annotations.data_blocks = u64::MAX.try_into().unwrap();
         scute.set_annotations(Some(annotations.into()));
@@ -459,23 +385,25 @@ mod tests {
         a
     }
 
-    fn sample_base_manifest() -> Manifest {
-        Manifest {
-            schema_version: 2,
-            media_type: "application/vnd.oci.image.manifest.v1+json".into(),
-            artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
-            config: oci_spec::image::DescriptorBuilder::default()
-                .media_type(oci_spec::image::MediaType::EmptyJSON)
-                .digest(
-                    "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
-                        .parse::<oci_spec::image::Digest>()
-                        .expect("empty config digest"),
-                )
-                .size(2u64)
-                .data("e30=")
-                .build()
-                .expect("empty config descriptor"),
-            layers: vec![{
+    fn sample_base_manifest() -> ImageManifest {
+        oci_spec::image::ImageManifestBuilder::default()
+            .schema_version(2u32)
+            .media_type("application/vnd.oci.image.manifest.v1+json")
+            .artifact_type(MEDIA_TYPE_PICHI_ARTIFACT_V1)
+            .config(
+                oci_spec::image::DescriptorBuilder::default()
+                    .media_type(oci_spec::image::MediaType::EmptyJSON)
+                    .digest(
+                        "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+                            .parse::<oci_spec::image::Digest>()
+                            .expect("empty config digest"),
+                    )
+                    .size(2u64)
+                    .data("e30=")
+                    .build()
+                    .expect("empty config descriptor"),
+            )
+            .layers(vec![{
                 let mut descriptor = oci_spec::image::Descriptor::new(
                     crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1.into(),
                     1024u64,
@@ -490,16 +418,21 @@ mod tests {
                     }),
                 ));
                 descriptor
-            }],
-            annotations: sample_chain_annotations(),
-        }
+            }])
+            .annotations(
+                (sample_chain_annotations())
+                    .into_iter()
+                    .collect::<std::collections::HashMap<String, String>>(),
+            )
+            .build()
+            .expect("manifest fields are set")
     }
 
     #[test]
     fn round_trip() {
         let m = sample_base_manifest();
         let b = serde_json::to_vec(&m).unwrap();
-        let m2 = serde_json::from_slice::<Manifest>(&b).unwrap();
+        let m2 = serde_json::from_slice::<ImageManifest>(&b).unwrap();
         m2.validate().unwrap();
         assert_eq!(m, m2);
     }
@@ -507,11 +440,11 @@ mod tests {
     #[test]
     fn round_trip_preserves_additional_layer_annotations() {
         let mut manifest = sample_base_manifest();
-        let mut annotations = manifest.layers[0].annotations().clone().unwrap();
+        let mut annotations = manifest.layers()[0].annotations().clone().unwrap();
         annotations.insert("org.example.description".into(), "retained".into());
-        manifest.layers[0].set_annotations(Some(annotations));
+        manifest.layers_mut()[0].set_annotations(Some(annotations));
         let bytes = serde_json::to_vec(&manifest).unwrap();
-        let decoded: Manifest = serde_json::from_slice(&bytes).unwrap();
+        let decoded: ImageManifest = serde_json::from_slice(&bytes).unwrap();
         decoded.validate().unwrap();
         assert_eq!(decoded, manifest);
     }
@@ -544,7 +477,9 @@ mod tests {
     #[test]
     fn empty_config_data_is_optional() {
         let mut manifest = sample_base_manifest();
-        manifest.config.set_data(None);
+        let mut config = manifest.config().clone();
+        config.set_data(None);
+        manifest.set_config(config);
         manifest.validate().unwrap();
     }
 
@@ -556,7 +491,7 @@ mod tests {
     #[test]
     fn validate_accepts_appliance_with_one_pmi() {
         let mut m = sample_base_manifest();
-        m.layers.push(oci_spec::image::Descriptor::new(
+        m.layers_mut().push(oci_spec::image::Descriptor::new(
             crate::artifact::MEDIA_TYPE_PICHI_PMI_V1.into(),
             4096u64,
             "sha256:2222222222222222222222222222222222222222222222222222222222222222"
@@ -569,7 +504,7 @@ mod tests {
     #[test]
     fn validate_rejects_wrong_artifact_type() {
         let mut m = sample_base_manifest();
-        m.artifact_type = "application/wrong".into();
+        m.set_artifact_type(Some("application/wrong".into()));
         let err = m.validate().unwrap_err();
         assert!(matches!(
             err,
@@ -580,8 +515,9 @@ mod tests {
     #[test]
     fn validate_rejects_bad_config() {
         let mut m = sample_base_manifest();
-        m.config
-            .set_media_type(oci_spec::image::MediaType::ImageConfig);
+        let mut config = m.config().clone();
+        config.set_media_type(oci_spec::image::MediaType::ImageConfig);
+        m.set_config(config);
         assert!(matches!(
             m.validate().unwrap_err(),
             ManifestValidationError::BadConfig { .. }
@@ -591,20 +527,22 @@ mod tests {
     #[test]
     fn validate_accepts_real_config_blob() {
         let mut m = sample_base_manifest();
-        m.config = oci_spec::image::Descriptor::new(
+        m.set_config(oci_spec::image::Descriptor::new(
             crate::resources::MEDIA_TYPE_PICHI_CONFIG_V1.into(),
             42,
             ("sha256:5555555555555555555555555555555555555555555555555555555555555555")
                 .parse::<oci_spec::image::Digest>()
                 .expect("config digest"),
-        );
+        ));
         m.validate().unwrap();
     }
 
     #[test]
     fn validate_rejects_missing_chain_annotation() {
         let mut m = sample_base_manifest();
-        m.annotations.remove(CHAIN_ANNOTATION_VERITY_ALGO);
+        m.annotations_mut()
+            .get_or_insert_default()
+            .remove(CHAIN_ANNOTATION_VERITY_ALGO);
         let err = m.validate().unwrap_err();
         assert!(
             matches!(err, ManifestValidationError::MissingChainAnnotation(k) if k == CHAIN_ANNOTATION_VERITY_ALGO)
@@ -615,7 +553,7 @@ mod tests {
     fn validate_rejects_multiple_pmi_layers() {
         let mut m = sample_base_manifest();
         for _ in 0..2 {
-            m.layers.push(oci_spec::image::Descriptor::new(
+            m.layers_mut().push(oci_spec::image::Descriptor::new(
                 crate::artifact::MEDIA_TYPE_PICHI_PMI_V1.into(),
                 1u64,
                 "sha256:0000000000000000000000000000000000000000000000000000000000000000"
@@ -632,9 +570,9 @@ mod tests {
     #[test]
     fn validate_rejects_non_hex_salt() {
         let mut m = sample_base_manifest();
-        let mut annotations = ScuteAnnotations::try_from(&m.layers[0]).unwrap();
+        let mut annotations = ScuteAnnotations::try_from(&m.layers()[0]).unwrap();
         annotations.salt = "ZZZZ".into();
-        m.layers[0].set_annotations(Some(annotations.into()));
+        m.layers_mut()[0].set_annotations(Some(annotations.into()));
         assert!(matches!(
             m.validate().unwrap_err(),
             ManifestValidationError::BadSalt(_)
@@ -644,16 +582,16 @@ mod tests {
     #[test]
     fn scutes_start_with_one_base_even_among_firmware_layers() {
         let mut manifest = sample_base_manifest();
-        let mut child = manifest.layers[0].clone();
+        let mut child = manifest.layers()[0].clone();
         // Only the parent prefix is the sentinel; the rest is ordinary salt.
-        let base = &mut manifest.layers[0];
+        let base = &mut manifest.layers_mut()[0];
         let mut annotations = ScuteAnnotations::try_from(&*base).unwrap();
         annotations.salt.push_str("abcd");
         base.set_annotations(Some(annotations.into()));
         let mut annotations = ScuteAnnotations::try_from(&child).unwrap();
         annotations.salt = "ab".repeat(32);
         child.set_annotations(Some(annotations.into()));
-        manifest.layers.insert(
+        manifest.layers_mut().insert(
             0,
             oci_spec::image::Descriptor::new(
                 crate::artifact::MEDIA_TYPE_PICHI_PMI_V1.into(),
@@ -663,20 +601,21 @@ mod tests {
                     .expect("layer digest"),
             ),
         );
-        manifest.layers.push({
+        manifest.layers_mut().push({
             let mut descriptor = child;
             descriptor.set_media_type(crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.into());
             descriptor
         });
         manifest.validate().unwrap();
 
-        manifest.layers.swap(1, 2);
+        manifest.layers_mut().swap(1, 2);
         assert!(matches!(
             manifest.validate(),
             Err(ManifestValidationError::BadScuteOrder(_))
         ));
-        manifest.layers.swap(1, 2);
-        manifest.layers.push(manifest.layers[1].clone());
+        manifest.layers_mut().swap(1, 2);
+        let layer = manifest.layers()[1].clone();
+        manifest.layers_mut().push(layer);
         assert!(matches!(
             manifest.validate(),
             Err(ManifestValidationError::BadScuteOrder(_))
@@ -687,7 +626,7 @@ mod tests {
     fn scute_salts_must_contain_a_complete_parent_root() {
         for salt in [String::new(), "00".repeat(31)] {
             let mut manifest = sample_base_manifest();
-            let base = &mut manifest.layers[0];
+            let base = &mut manifest.layers_mut()[0];
             let mut annotations = ScuteAnnotations::try_from(&*base).unwrap();
             annotations.salt = salt;
             base.set_annotations(Some(annotations.into()));
@@ -702,7 +641,9 @@ mod tests {
     fn validate_requires_one_nonzero_chain_tip() {
         let mut m = sample_base_manifest();
         assert_eq!(m.carapace_root().unwrap(), Some([0xab; 32]));
-        m.annotations.remove(CARAPACE_ROOT_ANNOTATION);
+        m.annotations_mut()
+            .get_or_insert_default()
+            .remove(CARAPACE_ROOT_ANNOTATION);
         assert!(matches!(
             m.validate(),
             Err(ManifestValidationError::MissingChainAnnotation(
@@ -717,7 +658,8 @@ mod tests {
             "ab".repeat(33),
             format!("sha256:{}", "ab".repeat(32)),
         ] {
-            m.annotations
+            m.annotations_mut()
+                .get_or_insert_default()
                 .insert(CARAPACE_ROOT_ANNOTATION.into(), invalid);
             assert!(matches!(
                 m.validate(),
@@ -727,12 +669,13 @@ mod tests {
                 })
             ));
         }
-        m.annotations
+        m.annotations_mut()
+            .get_or_insert_default()
             .insert(CARAPACE_ROOT_ANNOTATION.into(), "AB".repeat(32));
         m.validate().unwrap();
-        m.layers.clear();
+        m.layers_mut().clear();
         assert!(m.validate().is_err());
-        m.annotations.clear();
+        m.set_annotations(None);
         m.validate().unwrap();
         assert_eq!(m.carapace_root().unwrap(), None);
     }
@@ -744,7 +687,7 @@ mod tests {
             CHAIN_ANNOTATION_VERITY_HASH_TYPE,
         ] {
             let mut m = sample_base_manifest();
-            m.annotations.remove(key);
+            m.annotations_mut().get_or_insert_default().remove(key);
             assert!(
                 matches!(
                     m.validate().unwrap_err(),
@@ -760,7 +703,7 @@ mod tests {
         // Well-formedness only: non-integer version is rejected (but any integer
         // is accepted — pichi imposes no value whitelist).
         let mut m = sample_base_manifest();
-        m.annotations.insert(
+        m.annotations_mut().get_or_insert_default().insert(
             CHAIN_ANNOTATION_VERITY_VERSION.into(),
             "not-a-number".into(),
         );
@@ -776,25 +719,25 @@ mod tests {
         // A PMI-only (scute-less) manifest has no carapace, so chain
         // verity annotations are not required.
         let mut m = sample_base_manifest();
-        m.layers.clear();
-        m.layers.push(oci_spec::image::Descriptor::new(
+        m.layers_mut().clear();
+        m.layers_mut().push(oci_spec::image::Descriptor::new(
             crate::artifact::MEDIA_TYPE_PICHI_PMI_V1.into(),
             4096u64,
             "sha256:2222222222222222222222222222222222222222222222222222222222222222"
                 .parse::<oci_spec::image::Digest>()
                 .expect("layer digest"),
         ));
-        m.annotations.clear();
+        m.set_annotations(None);
         m.validate().unwrap();
     }
 
     #[test]
     fn validation_rejects_unsupported_components_after_oci_decoding() {
         let mut manifest = sample_base_manifest();
-        let mut unknown = manifest.layers[0].clone();
+        let mut unknown = manifest.layers()[0].clone();
         unknown.set_media_type("application/vnd.unknown.v1".into());
-        manifest.layers.push(unknown);
-        let decoded: Manifest =
+        manifest.layers_mut().push(unknown);
+        let decoded: ImageManifest =
             serde_json::from_value(serde_json::to_value(manifest).unwrap()).unwrap();
         assert!(matches!(
             decoded.validate(),

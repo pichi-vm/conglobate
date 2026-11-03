@@ -15,7 +15,7 @@ impl Pmi<'_, '_> {
             Self::Inherited(image) => image
                 .image()
                 .manifest()
-                .layers
+                .layers()
                 .iter()
                 .find(|layer| {
                     layer.media_type().as_ref() == crate::artifact::MEDIA_TYPE_PICHI_PMI_V1

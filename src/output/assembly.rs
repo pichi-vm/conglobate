@@ -148,7 +148,7 @@ impl AssembledImage {
             };
             let mut manifest = match metadata {
                 Some(image) => {
-                    let config = &image.image().manifest().config;
+                    let config = &image.image().manifest().config();
                     if config.media_type() == &MediaType::EmptyJSON {
                         staged.store_blob(b"{}")?;
                     } else {
@@ -163,13 +163,12 @@ impl AssembledImage {
                     serde_json::json!({"schemaVersion":2,"mediaType":MediaType::ImageManifest,"artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,"config":oci_spec::image::DescriptorBuilder::default().media_type(oci_spec::image::MediaType::EmptyJSON).digest("sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a".parse::<oci_spec::image::Digest>().expect("empty config digest")).size(2u64).data("e30=").build().expect("empty config descriptor"),"layers":[]})
                 }
             };
-            let annotations = manifest
+            if manifest["annotations"].is_null() {
+                manifest["annotations"] = serde_json::json!({});
+            }
+            let annotations = manifest["annotations"]
                 .as_object_mut()
-                .expect("manifest object")
-                .entry("annotations")
-                .or_insert_with(|| serde_json::json!({}))
-                .as_object_mut()
-                .ok_or_else(|| anyhow::anyhow!("invalid manifest annotations"))?;
+                .expect("validated manifest annotations");
             if selection.root.is_none() {
                 annotations.retain(|name, _| !name.starts_with("dev.pichi.carapace."));
             }
@@ -179,7 +178,7 @@ impl AssembledImage {
                 if let Some(base) = root.base {
                     let original: serde_json::Value =
                         serde_json::from_slice(base.image().manifest_bytes().bytes())?;
-                    for (index, layer) in base.image().manifest().layers.iter().enumerate() {
+                    for (index, layer) in base.image().manifest().layers().iter().enumerate() {
                         if matches!(
                             layer.media_type().as_ref(),
                             crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1
@@ -314,9 +313,13 @@ mod tests {
     }
     impl Input {
         fn new(empty_config: bool) -> Self {
-            Self::with_firmware(empty_config, b"opaque PMI".to_vec())
+            Self::with_annotations(
+                empty_config,
+                Some(serde_json::json!({"example.org/retain": "exactly"})),
+            )
         }
-        fn with_firmware(empty_config: bool, pmi: Vec<u8>) -> Self {
+        fn with_annotations(empty_config: bool, annotations: Option<serde_json::Value>) -> Self {
+            let pmi = b"opaque PMI".to_vec();
             let directory = tempfile::tempdir().unwrap();
             let mut blobs = BTreeMap::new();
             let bootconfig = ruzstd::encoding::compress_to_vec(
@@ -361,7 +364,7 @@ mod tests {
                     .expect("config digest"),
                 )
             };
-            let manifest = serde_json::to_vec_pretty(&serde_json::json!({
+            let mut manifest = serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
                 "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
@@ -370,9 +373,12 @@ mod tests {
                     {"mediaType": "application/vnd.pichi.pmi.v1", "digest": format!("sha256:{}", hex::encode(Sha256::digest(&pmi))).parse::<Digest>().expect("SHA-256 digest").to_string(), "size": pmi.len()},
                     {"mediaType": "application/vnd.pichi.bootconfig.v1+zstd", "digest": format!("sha256:{}", hex::encode(Sha256::digest(&bootconfig))).parse::<Digest>().expect("SHA-256 digest").to_string(), "size": bootconfig.len()}
                 ],
-                "annotations": {"example.org/retain": "exactly"},
                 "x-preserved-extension": {"nested": [1, 2, 3]}
-            })).unwrap();
+            });
+            if let Some(annotations) = annotations {
+                manifest["annotations"] = annotations;
+            }
+            let manifest = serde_json::to_vec_pretty(&manifest).unwrap();
             let manifest_digest = format!("sha256:{}", hex::encode(Sha256::digest(&manifest)))
                 .parse::<Digest>()
                 .expect("SHA-256 digest");
@@ -433,7 +439,7 @@ mod tests {
                 root: None,
                 pmi: Some(crate::pipeline::pmi::Pmi::Inherited(image)),
                 bootconfig: Some(crate::pipeline::boot_config::BootConfig {
-                    bytes: self.blobs[&image.image().manifest().layers[1].digest().to_string()]
+                    bytes: self.blobs[&image.image().manifest().layers()[1].digest().to_string()]
                         .clone(),
                     root: None,
                 }),
@@ -651,6 +657,24 @@ mod tests {
         assembled.discard().unwrap();
     }
     #[test]
+    fn inheritance_accepts_absent_or_null_annotations() {
+        for annotations in [None, Some(serde_json::Value::Null)] {
+            let input = Input::with_annotations(false, annotations);
+            let (cache, image) = input.open();
+            let parent = tempfile::tempdir().unwrap();
+            let selection = input.selection(&image);
+            let assembled =
+                AssembledImage::components(&cache, &selection, &parent.path().join("output"))
+                    .unwrap();
+            let source: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
+            let output: serde_json::Value =
+                serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
+            assert_eq!(output["layers"], source["layers"]);
+            assert_eq!(output["config"], source["config"]);
+            assert_eq!(output["annotations"], serde_json::json!({}));
+        }
+    }
+    #[test]
     fn inheritance_preserves_components_and_metadata_without_source_cache() {
         for empty_config in [true, false] {
             let input = Input::new(empty_config);
@@ -720,7 +744,7 @@ mod tests {
     fn captured_bootconfig_survives_loss_of_cache_copy() {
         let input = Input::new(false);
         let (cache, image) = input.open();
-        let digest = image.image().manifest().layers[1].digest().to_string();
+        let digest = image.image().manifest().layers()[1].digest().to_string();
         let selection = input.selection(&image);
         fs::remove_file(
             input
@@ -749,7 +773,7 @@ mod tests {
     fn missing_reference_retains_only_private_staging_for_cleanup() {
         let input = Input::new(false);
         let (cache, image) = input.open();
-        let layer = &image.image().manifest().layers[0];
+        let layer = &image.image().manifest().layers()[0];
         fs::remove_file(
             input
                 .directory

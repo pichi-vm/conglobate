@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Cache, CacheError, VerifiedMetadata};
-use crate::artifact::{MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
+use crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1;
+use crate::artifact::ManifestExt as _;
 use crate::image::IndexDigest;
+use oci_spec::image::ImageManifest;
 use oci_spec::image::{Digest, ImageIndex, MediaType, Platform};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,7 +42,7 @@ impl HostArchitecture {
 #[derive(Debug)]
 pub(crate) struct ResolvedImage {
     manifest_bytes: VerifiedMetadata,
-    manifest: Manifest,
+    manifest: ImageManifest,
     architecture: HostArchitecture,
     root: Option<[u8; 32]>,
 }
@@ -53,7 +55,7 @@ impl ResolvedImage {
     pub(crate) fn manifest_bytes(&self) -> &VerifiedMetadata {
         &self.manifest_bytes
     }
-    pub(crate) fn manifest(&self) -> &Manifest {
+    pub(crate) fn manifest(&self) -> &ImageManifest {
         &self.manifest
     }
     pub(crate) fn architecture(&self) -> HostArchitecture {
@@ -65,11 +67,11 @@ impl Cache {
     /// Pichi and checked lazily by Carapace against the manifest commitment.
     pub(crate) fn verify_metadata(&self, image: &ResolvedImage) -> Result<(), CacheError> {
         let manifest = image.manifest();
-        let config = &manifest.config;
+        let config = &manifest.config();
         if config.media_type() != &MediaType::EmptyJSON {
             self.verify(config.digest(), config.size())?;
         }
-        for layer in &manifest.layers {
+        for layer in manifest.layers() {
             if matches!(
                 layer.media_type().as_ref(),
                 crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1
@@ -124,11 +126,14 @@ impl Cache {
             ));
         }
         let manifest_bytes = self.metadata(selected.digest(), Some(selected.size()))?;
-        let manifest: Manifest = serde_json::from_slice(manifest_bytes.bytes())?;
+        let manifest: ImageManifest = serde_json::from_slice(manifest_bytes.bytes())?;
         manifest.validate()?;
         // The shared format validates artifact contents, not the OCI envelope.
-        if manifest.schema_version != 2
-            || manifest.media_type != MediaType::ImageManifest.to_string()
+        if manifest.schema_version() != 2
+            || manifest
+                .media_type()
+                .as_ref()
+                .is_some_and(|media| media != &MediaType::ImageManifest)
         {
             return Err(CacheError::Invalid("invalid manifest envelope"));
         }
@@ -237,20 +242,25 @@ mod tests {
             .into_iter()
             .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.into()))
             .collect();
-            let manifest = Manifest {
-                schema_version: 2,
-                media_type: MediaType::ImageManifest.to_string().into(),
-                artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
-                config: oci_spec::image::Descriptor::new(
+            let manifest = oci_spec::image::ImageManifestBuilder::default()
+                .schema_version(2u32)
+                .media_type(MediaType::ImageManifest)
+                .artifact_type(MEDIA_TYPE_PICHI_ARTIFACT_V1)
+                .config(oci_spec::image::Descriptor::new(
                     crate::contract::resources::MEDIA_TYPE_PICHI_CONFIG_V1.into(),
                     config.len() as u64,
                     (config_digest.to_string())
                         .parse::<oci_spec::image::Digest>()
                         .expect("config digest"),
-                ),
-                layers,
-                annotations,
-            };
+                ))
+                .layers(layers)
+                .annotations(
+                    (annotations)
+                        .into_iter()
+                        .collect::<std::collections::HashMap<String, String>>(),
+                )
+                .build()
+                .expect("manifest fields are set");
             blobs.push((config_digest, config));
             for (digest, bytes) in &blobs {
                 fs::write(
@@ -293,7 +303,7 @@ mod tests {
             let mut changed = bytes.clone();
             changed[0] ^= 1;
             fs::write(&path, changed).unwrap();
-            let scute = fixture.image.manifest().layers.iter().any(|layer| {
+            let scute = fixture.image.manifest().layers().iter().any(|layer| {
                 matches!(
                     layer.media_type().as_ref(),
                     crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1

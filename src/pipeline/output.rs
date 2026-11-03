@@ -21,7 +21,7 @@ pub(crate) struct StageOutput<'b, 'w> {
 }
 impl<'b, 'w> StageOutput<'b, 'w> {
     pub(super) fn remote(base: &'b CheckedImage, build: &ResolvedBuild) -> anyhow::Result<Self> {
-        let has_boot = base.image().manifest().layers.iter().any(|layer| {
+        let has_boot = base.image().manifest().layers().iter().any(|layer| {
             matches!(
                 layer.media_type().as_ref(),
                 crate::artifact::MEDIA_TYPE_PICHI_PMI_V1
@@ -181,6 +181,7 @@ impl<'b, 'w> StageOutput<'b, 'w> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::artifact::ManifestExt as _;
     use crate::{cache::Cache, cache::tests::ScuteFixture as _, input::CapturedBuild};
     use oci_spec::image::Digest;
     use sha2::{Digest as _, Sha256};
@@ -343,20 +344,20 @@ mod tests {
                 .unwrap()
                 .parse()
                 .unwrap();
-            let manifest: crate::artifact::Manifest = serde_json::from_slice(
+            let manifest: oci_spec::image::ImageManifest = serde_json::from_slice(
                 &fs::read(destination.join("blobs/sha256").join(digest.digest())).unwrap(),
             )
             .unwrap();
             assert_eq!(manifest.carapace_root().unwrap().is_some(), root);
             assert_eq!(
-                manifest.layers.iter().any(|layer| matches!(
+                manifest.layers().iter().any(|layer| matches!(
                     layer.media_type().as_ref(),
                     crate::artifact::MEDIA_TYPE_PICHI_PMI_V1
                 )),
                 boot
             );
             assert_eq!(
-                manifest.layers.iter().any(|layer| matches!(
+                manifest.layers().iter().any(|layer| matches!(
                     layer.media_type().as_ref(),
                     crate::artifact::MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD
                 )),
@@ -393,7 +394,7 @@ mod tests {
             let assembled =
                 AssembledImage::components(build.cache(), &selected, request.output()).unwrap();
             assert_eq!(
-                assembled.image().manifest().annotations["example.org/source"],
+                assembled.image().manifest().annotations().as_ref().unwrap()["example.org/source"],
                 metadata
             );
             // Inputs contain no prepared scutes. Reading a source root would fail.
@@ -404,7 +405,7 @@ mod tests {
                     assembled
                         .image()
                         .manifest()
-                        .layers
+                        .layers()
                         .iter()
                         .filter(|layer| matches!(
                             layer.media_type().as_ref(),

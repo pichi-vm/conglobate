@@ -255,24 +255,26 @@ pub(crate) mod tests {
 
     impl Store {
         fn manifest(&self) -> (Digest, Vec<u8>) {
-            let manifest = crate::artifact::Manifest {
-                schema_version: 2,
-                media_type: "application/vnd.oci.image.manifest.v1+json".into(),
-                artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
-                config: oci_spec::image::DescriptorBuilder::default()
-                    .media_type(oci_spec::image::MediaType::EmptyJSON)
-                    .digest(
-                        "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
-                            .parse::<oci_spec::image::Digest>()
-                            .expect("empty config digest"),
-                    )
-                    .size(2u64)
-                    .data("e30=")
-                    .build()
-                    .expect("empty config descriptor"),
-                layers: Vec::new(),
-                annotations: Default::default(),
-            };
+            let manifest = oci_spec::image::ImageManifestBuilder::default()
+                .schema_version(2u32)
+                .media_type("application/vnd.oci.image.manifest.v1+json")
+                .artifact_type(crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1)
+                .config(
+                    oci_spec::image::DescriptorBuilder::default()
+                        .media_type(oci_spec::image::MediaType::EmptyJSON)
+                        .digest(
+                            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+                                .parse::<oci_spec::image::Digest>()
+                                .expect("empty config digest"),
+                        )
+                        .size(2u64)
+                        .data("e30=")
+                        .build()
+                        .expect("empty config descriptor"),
+                )
+                .layers(Vec::new())
+                .build()
+                .expect("manifest fields are set");
             let bytes = serde_json::to_vec(&manifest).unwrap();
             (self.put(&bytes), bytes)
         }
@@ -438,34 +440,39 @@ pub(crate) mod tests {
             layers: Vec<oci_spec::image::Descriptor>,
             root: [u8; 32],
         ) -> Vec<u8> {
-            let manifest = crate::artifact::Manifest {
-                schema_version: 2,
-                media_type: "application/vnd.oci.image.manifest.v1+json".into(),
-                artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
-                config: oci_spec::image::DescriptorBuilder::default()
-                    .media_type(oci_spec::image::MediaType::EmptyJSON)
-                    .digest(
-                        "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
-                            .parse::<oci_spec::image::Digest>()
-                            .expect("empty config digest"),
-                    )
-                    .size(2u64)
-                    .data("e30=")
-                    .build()
-                    .expect("empty config descriptor"),
-                layers,
-                annotations: [
-                    ("algo", "sha256"),
-                    ("data-block-size", "4096"),
-                    ("hash-block-size", "4096"),
-                    ("version", "1"),
-                    ("hash-type", "1"),
-                    ("hash", &hex::encode(root)),
-                ]
-                .into_iter()
-                .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.to_owned()))
-                .collect(),
-            };
+            let manifest = oci_spec::image::ImageManifestBuilder::default()
+                .schema_version(2u32)
+                .media_type("application/vnd.oci.image.manifest.v1+json")
+                .artifact_type(crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1)
+                .config(
+                    oci_spec::image::DescriptorBuilder::default()
+                        .media_type(oci_spec::image::MediaType::EmptyJSON)
+                        .digest(
+                            "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+                                .parse::<oci_spec::image::Digest>()
+                                .expect("empty config digest"),
+                        )
+                        .size(2u64)
+                        .data("e30=")
+                        .build()
+                        .expect("empty config descriptor"),
+                )
+                .layers(layers)
+                .annotations(
+                    [
+                        ("algo", "sha256"),
+                        ("data-block-size", "4096"),
+                        ("hash-block-size", "4096"),
+                        ("version", "1"),
+                        ("hash-type", "1"),
+                        ("hash", &hex::encode(root)),
+                    ]
+                    .into_iter()
+                    .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.to_owned()))
+                    .collect::<std::collections::HashMap<String, String>>(),
+                )
+                .build()
+                .expect("manifest fields are set");
             serde_json::to_vec(&manifest).unwrap()
         }
         fn chain_image(
@@ -875,5 +882,21 @@ pub(crate) mod tests {
             let error = store.open().metadata(&digest, None).unwrap_err();
             assert!(error.to_string().contains("unsupported digest algorithm"));
         }
+    }
+    #[test]
+    fn optional_manifest_media_type_and_oci_metadata_are_preserved() {
+        let store = Store::new();
+        let (_, bytes) = store.manifest();
+        let mut value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        value.as_object_mut().unwrap().remove("mediaType");
+        value["subject"] = value["config"].clone();
+        value["config"]["urls"] = serde_json::json!(["https://example.org/config"]);
+        value["annotations"] = serde_json::json!({"org.example.description": "retained"});
+        let bytes = serde_json::to_vec_pretty(&value).unwrap();
+        let digest = store.put(&bytes);
+        let pin = store.index(vec![store.descriptor(&digest, bytes.len())]);
+        let image = store.open().resolve(pin).unwrap();
+        assert_eq!(image.manifest_bytes().bytes(), bytes);
+        assert_eq!(serde_json::to_value(image.manifest()).unwrap(), value);
     }
 }

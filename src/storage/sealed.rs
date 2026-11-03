@@ -247,6 +247,7 @@ impl SnapshotExtent {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::artifact::ManifestExt as _;
     use std::io::Cursor;
     #[derive(Debug)]
     struct Store(Vec<u8>);
@@ -498,7 +499,7 @@ mod tests {
                 output.image().manifest().carapace_root().unwrap(),
                 Some(*top.root())
             );
-            assert_eq!(output.image().manifest().layers.len(), 2);
+            assert_eq!(output.image().manifest().layers().len(), 2);
             assert_eq!(output.image().root(), Some(*top.root()));
             output.discard().unwrap();
         }
