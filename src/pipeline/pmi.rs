@@ -1,10 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{
-    artifact::PmiDescriptor, cache::Cache, firmware::FirmwareFile, input::CheckedImage,
-    output::StagedDirectory,
-};
+use crate::{cache::Cache, firmware::FirmwareFile, input::CheckedImage, output::StagedDirectory};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -13,17 +10,17 @@ pub(crate) enum Pmi<'b, 'w> {
     File(Arc<FirmwareFile<'w>>),
 }
 impl Pmi<'_, '_> {
-    pub(crate) fn descriptor(&self) -> PmiDescriptor {
+    pub(crate) fn descriptor(&self) -> oci_spec::image::Descriptor {
         match self {
             Self::Inherited(image) => image
                 .image()
                 .manifest()
-                .layers
+                .layers()
                 .iter()
-                .find_map(|layer| match layer {
-                    crate::artifact::Layer::Pmi(descriptor) => Some(descriptor.clone()),
-                    _ => None,
+                .find(|layer| {
+                    layer.media_type().as_ref() == crate::artifact::MEDIA_TYPE_PICHI_PMI_V1
                 })
+                .cloned()
                 .expect("selected PMI"),
             Self::File(file) => file.descriptor(),
         }
@@ -42,10 +39,10 @@ impl Pmi<'_, '_> {
     }
     pub(crate) fn store(&self, cache: &Cache, staged: &StagedDirectory) -> anyhow::Result<()> {
         let descriptor = self.descriptor();
-        let digest = descriptor.digest.parse()?;
+        let digest = descriptor.digest();
         match self {
-            Self::Inherited(_) => staged.copy_blob(cache, &digest, descriptor.size)?,
-            Self::File(file) => staged.store_verified(file.reader(), &digest, descriptor.size)?,
+            Self::Inherited(_) => staged.copy_blob(cache, digest, descriptor.size())?,
+            Self::File(file) => staged.store_verified(file.reader(), digest, descriptor.size())?,
         }
         Ok(())
     }

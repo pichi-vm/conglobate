@@ -9,3 +9,4 @@ pub mod artifact;
 pub mod launch;
 
 pub mod plan;
+pub mod resources;

@@ -28,12 +28,15 @@ impl Availability {
                 .ok_or_else(|| InputError::Components(format!("stage {name} is not available"))),
             ImageRef::Remote(remote) => {
                 let image = &images[&ImageReference::from(remote)];
-                let layers = &image.image().manifest().layers;
+                let layers = &image.image().manifest().layers();
                 Ok(Self {
                     root: image.root().is_some(),
-                    boot: layers
-                        .iter()
-                        .any(|layer| matches!(layer, crate::artifact::Layer::Pmi(_))),
+                    boot: layers.iter().any(|layer| {
+                        matches!(
+                            layer.media_type().as_ref(),
+                            crate::artifact::MEDIA_TYPE_PICHI_PMI_V1
+                        )
+                    }),
                 })
             }
         }

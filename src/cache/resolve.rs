@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Cache, CacheError, VerifiedMetadata};
-use crate::artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
-use crate::artifact::{
-    Index, MEDIA_TYPE_OCI_INDEX_V1 as INDEX, MEDIA_TYPE_OCI_MANIFEST_V1 as MANIFEST, Platform,
-};
+use crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1;
+use crate::artifact::ManifestExt as _;
 use crate::image::IndexDigest;
+use oci_spec::image::ImageManifest;
+use oci_spec::image::{Digest, ImageIndex, MediaType, Platform};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum HostArchitecture {
@@ -28,9 +28,9 @@ impl HostArchitecture {
         }
     }
     fn matches(self, platform: &Platform) -> bool {
-        platform.os == "pichi"
-            && platform.architecture == self.oci_name()
-            && match platform.variant.as_deref() {
+        platform.os() == &"pichi".into()
+            && platform.architecture() == &self.oci_name().into()
+            && match platform.variant().as_deref() {
                 None | Some("") => true,
                 Some("v8") => self == Self::Arm64,
                 _ => false,
@@ -42,7 +42,7 @@ impl HostArchitecture {
 #[derive(Debug)]
 pub(crate) struct ResolvedImage {
     manifest_bytes: VerifiedMetadata,
-    manifest: Manifest,
+    manifest: ImageManifest,
     architecture: HostArchitecture,
     root: Option<[u8; 32]>,
 }
@@ -55,7 +55,7 @@ impl ResolvedImage {
     pub(crate) fn manifest_bytes(&self) -> &VerifiedMetadata {
         &self.manifest_bytes
     }
-    pub(crate) fn manifest(&self) -> &Manifest {
+    pub(crate) fn manifest(&self) -> &ImageManifest {
         &self.manifest
     }
     pub(crate) fn architecture(&self) -> HostArchitecture {
@@ -67,43 +67,48 @@ impl Cache {
     /// Pichi and checked lazily by Carapace against the manifest commitment.
     pub(crate) fn verify_metadata(&self, image: &ResolvedImage) -> Result<(), CacheError> {
         let manifest = image.manifest();
-        let config = &manifest.config;
-        if !config.is_empty() {
-            let digest = config
-                .digest
-                .parse()
-                .map_err(|_| CacheError::Invalid("invalid config digest"))?;
-            self.verify(&digest, config.size)?;
+        let config = &manifest.config();
+        if config.media_type() != &MediaType::EmptyJSON {
+            self.verify(config.digest(), config.size())?;
         }
-        for layer in &manifest.layers {
+        for layer in manifest.layers() {
             if matches!(
-                layer,
-                crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
+                layer.media_type().as_ref(),
+                crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1
+                    | crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
             ) {
                 continue;
             }
-            let digest = layer
-                .digest_str()
-                .parse()
-                .map_err(|_| CacheError::Invalid("invalid layer digest"))?;
-            self.verify(&digest, layer.size())?;
+            let digest = layer.digest();
+            self.verify(digest, layer.size())?;
         }
         Ok(())
     }
 
     pub(crate) fn resolve(&self, pin: IndexDigest) -> Result<ResolvedImage, CacheError> {
         let architecture = HostArchitecture::current()?;
-        let index = self.metadata(&Digest::Sha256(*pin.bytes()), None)?;
-        let parsed: Index = serde_json::from_slice(index.bytes())?;
-        if parsed.schema_version != 2 || parsed.media_type != INDEX {
+        let index = self.metadata(
+            &format!("sha256:{}", hex::encode(*pin.bytes()))
+                .parse::<Digest>()
+                .expect("SHA-256 digest"),
+            None,
+        )?;
+        let parsed: ImageIndex = serde_json::from_slice(index.bytes())?;
+        if parsed.schema_version() != 2
+            || parsed
+                .media_type()
+                .as_ref()
+                .is_some_and(|media_type| media_type != &MediaType::ImageIndex)
+        {
             return Err(CacheError::Invalid(
                 "lock must reference an OCI image index",
             ));
         }
-        let mut candidates = parsed.manifests.iter().filter(|descriptor| {
-            descriptor.artifact_type.as_deref() == Some(MEDIA_TYPE_PICHI_ARTIFACT_V1)
+        let mut candidates = parsed.manifests().iter().filter(|descriptor| {
+            descriptor.artifact_type().as_ref().map(AsRef::as_ref)
+                == Some(MEDIA_TYPE_PICHI_ARTIFACT_V1)
                 && descriptor
-                    .platform
+                    .platform()
                     .as_ref()
                     .is_some_and(|p| architecture.matches(p))
         });
@@ -115,20 +120,21 @@ impl Cache {
                 "index has ambiguous host platform entries",
             ));
         }
-        if selected.media_type != MANIFEST {
+        if selected.media_type() != &MediaType::ImageManifest {
             return Err(CacheError::Invalid(
                 "selected descriptor is not an image manifest",
             ));
         }
-        let digest = selected
-            .digest
-            .parse()
-            .map_err(|_| CacheError::Invalid("invalid manifest digest"))?;
-        let manifest_bytes = self.metadata(&digest, Some(selected.size))?;
-        let manifest: Manifest = serde_json::from_slice(manifest_bytes.bytes())?;
+        let manifest_bytes = self.metadata(selected.digest(), Some(selected.size()))?;
+        let manifest: ImageManifest = serde_json::from_slice(manifest_bytes.bytes())?;
         manifest.validate()?;
         // The shared format validates artifact contents, not the OCI envelope.
-        if manifest.schema_version != 2 || manifest.media_type != MANIFEST {
+        if manifest.schema_version() != 2
+            || manifest
+                .media_type()
+                .as_ref()
+                .is_some_and(|media| media != &MediaType::ImageManifest)
+        {
             return Err(CacheError::Invalid("invalid manifest envelope"));
         }
         Ok(ResolvedImage {
@@ -143,7 +149,7 @@ impl Cache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::artifact::{Layer, ScuteAnnotations, ScuteDescriptor};
+    use crate::artifact::ScuteAnnotations;
     use sha2::{Digest as _, Sha256};
     use std::{collections::BTreeMap, fs};
 
@@ -170,19 +176,32 @@ mod tests {
                 } else {
                     data
                 };
-                let digest = Digest::Sha256(Sha256::digest(&bytes).into());
-                let descriptor = ScuteDescriptor {
-                    digest: digest.to_string(),
-                    size: bytes.len() as u64,
-                    annotations: ScuteAnnotations {
-                        data_blocks,
-                        salt: hex::encode(parent),
-                    },
+                let digest = format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
+                    .parse::<Digest>()
+                    .expect("SHA-256 digest");
+                let descriptor = {
+                    let mut descriptor = oci_spec::image::Descriptor::new(
+                        crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1.into(),
+                        bytes.len() as u64,
+                        digest.clone(),
+                    );
+                    descriptor.set_annotations(Some(
+                        std::collections::HashMap::<String, String>::from(ScuteAnnotations {
+                            data_blocks,
+                            salt: hex::encode(parent),
+                        }),
+                    ));
+                    descriptor
                 };
                 layers.push(if compressed {
-                    Layer::ScuteZstd(descriptor)
+                    {
+                        let mut descriptor = descriptor;
+                        descriptor
+                            .set_media_type(crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.into());
+                        descriptor
+                    }
                 } else {
-                    Layer::Scute(descriptor)
+                    descriptor
                 });
                 blobs.push((digest, bytes));
                 parent = root;
@@ -196,7 +215,9 @@ mod tests {
                 ("pmi.v1", pmi.as_slice()),
                 ("bootconfig.v1+zstd", config.as_slice()),
             ] {
-                let digest = Digest::Sha256(Sha256::digest(bytes).into());
+                let digest = format!("sha256:{}", hex::encode(Sha256::digest(bytes)))
+                    .parse::<Digest>()
+                    .expect("SHA-256 digest");
                 layers.push(
                     serde_json::from_value(serde_json::json!({
                         "mediaType": format!("application/vnd.pichi.{media}"),
@@ -207,7 +228,9 @@ mod tests {
                 blobs.push((digest, bytes.to_vec()));
             }
             let config = b"{\"requirements\":{}}".to_vec();
-            let config_digest = Digest::Sha256(Sha256::digest(&config).into());
+            let config_digest = format!("sha256:{}", hex::encode(Sha256::digest(&config)))
+                .parse::<Digest>()
+                .expect("SHA-256 digest");
             let annotations: BTreeMap<String, String> = [
                 ("algo", "sha256"),
                 ("data-block-size", "4096"),
@@ -219,21 +242,29 @@ mod tests {
             .into_iter()
             .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.into()))
             .collect();
-            let manifest = Manifest {
-                schema_version: 2,
-                media_type: MANIFEST.into(),
-                artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
-                config: crate::artifact::ConfigDescriptor::for_config(
-                    config_digest.to_string(),
+            let manifest = oci_spec::image::ImageManifestBuilder::default()
+                .schema_version(2u32)
+                .media_type(MediaType::ImageManifest)
+                .artifact_type(MEDIA_TYPE_PICHI_ARTIFACT_V1)
+                .config(oci_spec::image::Descriptor::new(
+                    crate::contract::resources::MEDIA_TYPE_PICHI_CONFIG_V1.into(),
                     config.len() as u64,
-                ),
-                layers,
-                annotations,
-            };
+                    (config_digest.to_string())
+                        .parse::<oci_spec::image::Digest>()
+                        .expect("config digest"),
+                ))
+                .layers(layers)
+                .annotations(
+                    (annotations)
+                        .into_iter()
+                        .collect::<std::collections::HashMap<String, String>>(),
+                )
+                .build()
+                .expect("manifest fields are set");
             blobs.push((config_digest, config));
             for (digest, bytes) in &blobs {
                 fs::write(
-                    directory.path().join("blobs/sha256").join(digest.hex()),
+                    directory.path().join("blobs/sha256").join(digest.digest()),
                     bytes,
                 )
                 .unwrap();
@@ -241,7 +272,9 @@ mod tests {
             let bytes = serde_json::to_vec(&manifest).unwrap();
             let image = ResolvedImage {
                 manifest_bytes: VerifiedMetadata {
-                    digest: Digest::Sha256(Sha256::digest(&bytes).into()),
+                    digest: format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
+                        .parse::<Digest>()
+                        .expect("SHA-256 digest"),
                     bytes,
                 },
                 root: manifest.carapace_root().unwrap(),
@@ -266,13 +299,16 @@ mod tests {
                 .directory
                 .path()
                 .join("blobs/sha256")
-                .join(digest.hex());
+                .join(digest.digest());
             let mut changed = bytes.clone();
             changed[0] ^= 1;
             fs::write(&path, changed).unwrap();
-            let scute = fixture.image.manifest().layers.iter().any(|layer| {
-                matches!(layer, Layer::Scute(_) | Layer::ScuteZstd(_))
-                    && layer.digest_str() == digest.to_string()
+            let scute = fixture.image.manifest().layers().iter().any(|layer| {
+                matches!(
+                    layer.media_type().as_ref(),
+                    crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1
+                        | crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
+                ) && layer.digest().to_string() == digest.to_string()
             });
             assert_eq!(
                 cache.verify_metadata(&fixture.image).is_ok(),

@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::StagedDirectory;
-use crate::artifact::{CARAPACE_ROOT_ANNOTATION, Digest};
+use crate::artifact::CARAPACE_ROOT_ANNOTATION;
 use crate::{
     cache::{Cache, CacheError, ResolvedImage},
     image::IndexDigest,
 };
+use oci_spec::image::{Descriptor, Digest, ImageIndex, MediaType, OciLayoutBuilder, Platform};
 use sha2::{Digest as _, Sha256};
 
 /// A self-contained staged image whose copied blobs were authenticated and
@@ -98,6 +99,7 @@ impl AssembledImage {
         if let Some(location) = request.location() {
             annotations.insert("dev.pichi.build.location".into(), location.into());
         }
+        manifest.sort_all_objects();
         let old_digest = self.image.manifest_bytes().digest().clone();
         let image = Self::resolve_staging(
             &self.staged,
@@ -108,7 +110,12 @@ impl AssembledImage {
             self.image.root() == image.root(),
             "build binding changed the scute graph"
         );
-        let new_digest = Digest::Sha256(Sha256::digest(image.manifest_bytes().bytes()).into());
+        let new_digest = format!(
+            "sha256:{}",
+            hex::encode(Sha256::digest(image.manifest_bytes().bytes()))
+        )
+        .parse::<Digest>()
+        .expect("SHA-256 digest");
         if old_digest != new_digest {
             std::fs::remove_file(self.staged.blob_path(&old_digest))?;
         }
@@ -141,11 +148,11 @@ impl AssembledImage {
             };
             let mut manifest = match metadata {
                 Some(image) => {
-                    let config = &image.image().manifest().config;
-                    if config.is_empty() {
+                    let config = &image.image().manifest().config();
+                    if config.media_type() == &MediaType::EmptyJSON {
                         staged.store_blob(b"{}")?;
                     } else {
-                        staged.copy_blob(cache, &config.digest.parse()?, config.size)?;
+                        staged.copy_blob(cache, config.digest(), config.size())?;
                     }
                     serde_json::from_slice::<serde_json::Value>(
                         image.image().manifest_bytes().bytes(),
@@ -153,16 +160,15 @@ impl AssembledImage {
                 }
                 None => {
                     staged.store_blob(b"{}")?;
-                    serde_json::json!({"schemaVersion":2,"mediaType":crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1,"artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,"config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
+                    serde_json::json!({"schemaVersion":2,"mediaType":MediaType::ImageManifest,"artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,"config":oci_spec::image::DescriptorBuilder::default().media_type(oci_spec::image::MediaType::EmptyJSON).digest("sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a".parse::<oci_spec::image::Digest>().expect("empty config digest")).size(2u64).data("e30=").build().expect("empty config descriptor"),"layers":[]})
                 }
             };
-            let annotations = manifest
+            if manifest["annotations"].is_null() {
+                manifest["annotations"] = serde_json::json!({});
+            }
+            let annotations = manifest["annotations"]
                 .as_object_mut()
-                .expect("manifest object")
-                .entry("annotations")
-                .or_insert_with(|| serde_json::json!({}))
-                .as_object_mut()
-                .ok_or_else(|| anyhow::anyhow!("invalid manifest annotations"))?;
+                .expect("validated manifest annotations");
             if selection.root.is_none() {
                 annotations.retain(|name, _| !name.starts_with("dev.pichi.carapace."));
             }
@@ -172,12 +178,13 @@ impl AssembledImage {
                 if let Some(base) = root.base {
                     let original: serde_json::Value =
                         serde_json::from_slice(base.image().manifest_bytes().bytes())?;
-                    for (index, layer) in base.image().manifest().layers.iter().enumerate() {
+                    for (index, layer) in base.image().manifest().layers().iter().enumerate() {
                         if matches!(
-                            layer,
-                            crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
+                            layer.media_type().as_ref(),
+                            crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1
+                                | crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
                         ) {
-                            staged.copy_blob(cache, &layer.digest_str().parse()?, layer.size())?;
+                            staged.copy_blob(cache, layer.digest(), layer.size())?;
                             layers.push(original["layers"][index].clone());
                         }
                     }
@@ -191,9 +198,7 @@ impl AssembledImage {
                         "produced scute parent differs from selected root"
                     );
                     staged.store_scute(scute)?;
-                    layers.push(serde_json::to_value(crate::artifact::Layer::Scute(
-                        scute.descriptor().clone(),
-                    ))?);
+                    layers.push(serde_json::to_value(scute.descriptor())?);
                     parent = *scute.root();
                 }
                 anyhow::ensure!(
@@ -215,23 +220,21 @@ impl AssembledImage {
             }
             if let Some(pmi) = &selection.pmi {
                 pmi.store(cache, &staged)?;
-                layers.push(serde_json::to_value(crate::artifact::Layer::Pmi(
-                    pmi.descriptor(),
-                ))?);
+                layers.push(serde_json::to_value(pmi.descriptor())?);
             }
             if let Some(config) = &selection.bootconfig
                 && !config.bytes.is_empty()
             {
                 anyhow::ensure!(selection.pmi.is_some(), "bootconfig requires PMI");
                 let digest = staged.store_blob(&config.bytes)?;
-                layers.push(serde_json::to_value(crate::artifact::Layer::BootConfig(
-                    crate::artifact::BootConfigDescriptor {
-                        digest: digest.to_string(),
-                        size: config.bytes.len() as u64,
-                    },
+                layers.push(serde_json::to_value(oci_spec::image::Descriptor::new(
+                    crate::artifact::MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD.into(),
+                    config.bytes.len() as u64,
+                    digest,
                 ))?);
             }
             manifest["layers"] = layers.into();
+            manifest.sort_all_objects();
             Ok(Self::resolve_staging(
                 &staged,
                 &serde_json::to_vec(&manifest)?,
@@ -252,21 +255,19 @@ impl AssembledImage {
         architecture: crate::cache::HostArchitecture,
     ) -> Result<ResolvedImage, CacheError> {
         let digest = staged.store_blob(manifest)?;
-        let index = serde_json::to_vec(&crate::artifact::Index {
-            manifests: vec![crate::artifact::IndexDescriptor {
-                media_type: crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1.into(),
-                artifact_type: Some(crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into()),
-                digest: digest.to_string(),
-                size: manifest.len() as u64,
-                platform: Some(crate::artifact::Platform {
-                    os: "pichi".into(),
-                    architecture: architecture.oci_name().into(),
-                    variant: None,
-                }),
-                annotations: Default::default(),
-            }],
-            ..Default::default()
-        })?;
+        let mut platform = Platform::default();
+        platform.set_os("pichi".into());
+        platform.set_architecture(architecture.oci_name().into());
+        let mut descriptor =
+            Descriptor::new(MediaType::ImageManifest, manifest.len() as u64, digest);
+        descriptor.set_artifact_type(Some(crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into()));
+        descriptor.set_platform(Some(platform));
+        let mut index = ImageIndex::default();
+        index.set_media_type(Some(MediaType::ImageIndex));
+        index.set_manifests(vec![descriptor]);
+        let mut value = serde_json::to_value(&index)?;
+        value.sort_all_objects();
+        let index = serde_json::to_vec(&value)?;
         let pin: IndexDigest = staged
             .store_blob(&index)?
             .to_string()
@@ -275,14 +276,25 @@ impl AssembledImage {
         staged.write_file(&staged.temporary.path().join("index.json"), &index)?;
         staged.write_file(
             &staged.temporary.path().join("oci-layout"),
-            &serde_json::to_vec(&crate::artifact::LayoutMarker::default())?,
+            &serde_json::to_vec(
+                &OciLayoutBuilder::default()
+                    .image_layout_version("1.0.0")
+                    .build()
+                    .expect("layout version is set"),
+            )?,
         )?;
         let output_cache = Cache::open(staged.temporary.path())?;
         let output_image = output_cache.resolve(pin)?;
         output_cache.verify_metadata(&output_image)?;
         // The index is the layout entrypoint, not referenced by its own
         // manifest. Remove the temporary lookup blob after validation.
-        std::fs::remove_file(staged.blob_path(&Digest::Sha256(Sha256::digest(&index).into())))?;
+        std::fs::remove_file(
+            staged.blob_path(
+                &format!("sha256:{}", hex::encode(Sha256::digest(&index)))
+                    .parse::<Digest>()
+                    .expect("SHA-256 digest"),
+            ),
+        )?;
         Ok(output_image)
     }
 }
@@ -301,9 +313,13 @@ mod tests {
     }
     impl Input {
         fn new(empty_config: bool) -> Self {
-            Self::with_firmware(empty_config, b"opaque PMI".to_vec())
+            Self::with_annotations(
+                empty_config,
+                Some(serde_json::json!({"example.org/retain": "exactly"})),
+            )
         }
-        fn with_firmware(empty_config: bool, pmi: Vec<u8>) -> Self {
+        fn with_annotations(empty_config: bool, annotations: Option<serde_json::Value>) -> Self {
+            let pmi = b"opaque PMI".to_vec();
             let directory = tempfile::tempdir().unwrap();
             let mut blobs = BTreeMap::new();
             let bootconfig = ruzstd::encoding::compress_to_vec(
@@ -317,31 +333,55 @@ mod tests {
             };
             for bytes in [&pmi, &bootconfig, &config] {
                 blobs.insert(
-                    Digest::Sha256(Sha256::digest(bytes).into()).to_string(),
+                    format!("sha256:{}", hex::encode(Sha256::digest(bytes)))
+                        .parse::<Digest>()
+                        .expect("SHA-256 digest")
+                        .to_string(),
                     bytes.clone(),
                 );
             }
             let config_descriptor = if empty_config {
-                crate::artifact::ConfigDescriptor::canonical()
+                oci_spec::image::DescriptorBuilder::default()
+                    .media_type(oci_spec::image::MediaType::EmptyJSON)
+                    .digest(
+                        "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+                            .parse::<oci_spec::image::Digest>()
+                            .expect("empty config digest"),
+                    )
+                    .size(2u64)
+                    .data("e30=")
+                    .build()
+                    .expect("empty config descriptor")
             } else {
-                crate::artifact::ConfigDescriptor::for_config(
-                    Digest::Sha256(Sha256::digest(&config).into()).to_string(),
+                oci_spec::image::Descriptor::new(
+                    crate::contract::resources::MEDIA_TYPE_PICHI_CONFIG_V1.into(),
                     config.len() as u64,
+                    (format!("sha256:{}", hex::encode(Sha256::digest(&config)))
+                        .parse::<Digest>()
+                        .expect("SHA-256 digest")
+                        .to_string())
+                    .parse::<oci_spec::image::Digest>()
+                    .expect("config digest"),
                 )
             };
-            let manifest = serde_json::to_vec_pretty(&serde_json::json!({
+            let mut manifest = serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.manifest.v1+json",
                 "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                 "config": config_descriptor,
                 "layers": [
-                    {"mediaType": "application/vnd.pichi.pmi.v1", "digest": Digest::Sha256(Sha256::digest(&pmi).into()).to_string(), "size": pmi.len()},
-                    {"mediaType": "application/vnd.pichi.bootconfig.v1+zstd", "digest": Digest::Sha256(Sha256::digest(&bootconfig).into()).to_string(), "size": bootconfig.len()}
+                    {"mediaType": "application/vnd.pichi.pmi.v1", "digest": format!("sha256:{}", hex::encode(Sha256::digest(&pmi))).parse::<Digest>().expect("SHA-256 digest").to_string(), "size": pmi.len()},
+                    {"mediaType": "application/vnd.pichi.bootconfig.v1+zstd", "digest": format!("sha256:{}", hex::encode(Sha256::digest(&bootconfig))).parse::<Digest>().expect("SHA-256 digest").to_string(), "size": bootconfig.len()}
                 ],
-                "annotations": {"example.org/retain": "exactly"},
                 "x-preserved-extension": {"nested": [1, 2, 3]}
-            })).unwrap();
-            let manifest_digest = Digest::Sha256(Sha256::digest(&manifest).into());
+            });
+            if let Some(annotations) = annotations {
+                manifest["annotations"] = annotations;
+            }
+            let manifest = serde_json::to_vec_pretty(&manifest).unwrap();
+            let manifest_digest = format!("sha256:{}", hex::encode(Sha256::digest(&manifest)))
+                .parse::<Digest>()
+                .expect("SHA-256 digest");
             let index = serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -353,7 +393,9 @@ mod tests {
                 }]
             })).unwrap();
             blobs.insert(manifest_digest.to_string(), manifest.clone());
-            let index_digest = Digest::Sha256(Sha256::digest(&index).into());
+            let index_digest = format!("sha256:{}", hex::encode(Sha256::digest(&index)))
+                .parse::<Digest>()
+                .expect("SHA-256 digest");
             fs::create_dir_all(directory.path().join("blobs/sha256")).unwrap();
             for (digest, bytes) in &blobs {
                 if empty_config && bytes == b"{}" {
@@ -372,7 +414,7 @@ mod tests {
                 directory
                     .path()
                     .join("blobs/sha256")
-                    .join(index_digest.hex()),
+                    .join(index_digest.digest()),
                 index,
             )
             .unwrap();
@@ -397,7 +439,8 @@ mod tests {
                 root: None,
                 pmi: Some(crate::pipeline::pmi::Pmi::Inherited(image)),
                 bootconfig: Some(crate::pipeline::boot_config::BootConfig {
-                    bytes: self.blobs[image.image().manifest().layers[1].digest_str()].clone(),
+                    bytes: self.blobs[&image.image().manifest().layers()[1].digest().to_string()]
+                        .clone(),
                     root: None,
                 }),
             }
@@ -513,9 +556,12 @@ mod tests {
                         image.image().architecture(),
                     )
                     .unwrap();
-                    let original = Digest::Sha256(
-                        Sha256::digest(assembled.image.manifest_bytes().bytes()).into(),
-                    );
+                    let original = format!(
+                        "sha256:{}",
+                        hex::encode(Sha256::digest(assembled.image.manifest_bytes().bytes()))
+                    )
+                    .parse::<Digest>()
+                    .expect("SHA-256 digest");
                     fs::remove_file(assembled.staged.blob_path(&original)).unwrap();
                     assembled.image = stale;
                     let assembled = assembled.bind_build(&request, &captured).unwrap();
@@ -558,7 +604,10 @@ mod tests {
                     let raw = serde_json::to_vec(&final_manifest).unwrap();
                     assert_eq!(
                         index["manifests"][0]["digest"],
-                        Digest::Sha256(Sha256::digest(&raw).into()).to_string()
+                        format!("sha256:{}", hex::encode(Sha256::digest(&raw)))
+                            .parse::<Digest>()
+                            .expect("SHA-256 digest")
+                            .to_string()
                     );
                     assert_eq!(index["manifests"][0]["size"], raw.len());
                 }
@@ -587,7 +636,9 @@ mod tests {
         assert_eq!(new["annotations"], old["annotations"]);
         assert_eq!(new["x-preserved-extension"], old["x-preserved-extension"]);
         assert_ne!(new["layers"][1]["digest"], old["layers"][1]["digest"]);
-        let digest = Digest::Sha256(Sha256::digest(&result).into());
+        let digest = format!("sha256:{}", hex::encode(Sha256::digest(&result)))
+            .parse::<Digest>()
+            .expect("SHA-256 digest");
         assert_eq!(new["layers"][1]["digest"], digest.to_string());
         assert_eq!(
             fs::read(assembled.staged.blob_path(&digest)).unwrap(),
@@ -604,6 +655,24 @@ mod tests {
         let cache = Cache::open(assembled.staged.temporary.path()).unwrap();
         cache.verify_metadata(assembled.image()).unwrap();
         assembled.discard().unwrap();
+    }
+    #[test]
+    fn inheritance_accepts_absent_or_null_annotations() {
+        for annotations in [None, Some(serde_json::Value::Null)] {
+            let input = Input::with_annotations(false, annotations);
+            let (cache, image) = input.open();
+            let parent = tempfile::tempdir().unwrap();
+            let selection = input.selection(&image);
+            let assembled =
+                AssembledImage::components(&cache, &selection, &parent.path().join("output"))
+                    .unwrap();
+            let source: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
+            let output: serde_json::Value =
+                serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
+            assert_eq!(output["layers"], source["layers"]);
+            assert_eq!(output["config"], source["config"]);
+            assert_eq!(output["annotations"], serde_json::json!({}));
+        }
     }
     #[test]
     fn inheritance_preserves_components_and_metadata_without_source_cache() {
@@ -675,7 +744,7 @@ mod tests {
     fn captured_bootconfig_survives_loss_of_cache_copy() {
         let input = Input::new(false);
         let (cache, image) = input.open();
-        let digest = image.image().manifest().layers[1].digest_str();
+        let digest = image.image().manifest().layers()[1].digest().to_string();
         let selection = input.selection(&image);
         fs::remove_file(
             input
@@ -704,13 +773,13 @@ mod tests {
     fn missing_reference_retains_only_private_staging_for_cleanup() {
         let input = Input::new(false);
         let (cache, image) = input.open();
-        let layer = &image.image().manifest().layers[0];
+        let layer = &image.image().manifest().layers()[0];
         fs::remove_file(
             input
                 .directory
                 .path()
                 .join("blobs/sha256")
-                .join(layer.digest_str().strip_prefix("sha256:").unwrap()),
+                .join(layer.digest().digest()),
         )
         .unwrap();
         let parent = tempfile::tempdir().unwrap();

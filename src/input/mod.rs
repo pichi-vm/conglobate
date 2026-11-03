@@ -155,19 +155,12 @@ impl CheckedImage {
     ) -> Result<Option<crate::cache::VerifiedMetadata>, crate::cache::CacheError> {
         self.image
             .manifest()
-            .layers
+            .layers()
             .iter()
-            .find_map(|layer| match layer {
-                crate::artifact::Layer::BootConfig(descriptor) => Some(descriptor),
-                _ => None,
+            .find(|layer| {
+                layer.media_type().as_ref() == crate::artifact::MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD
             })
-            .map(|descriptor| {
-                let digest = descriptor
-                    .digest
-                    .parse()
-                    .map_err(|_| crate::cache::CacheError::Invalid("invalid bootconfig digest"))?;
-                cache.metadata(&digest, Some(descriptor.size))
-            })
+            .map(|descriptor| cache.metadata(descriptor.digest(), Some(descriptor.size())))
             .transpose()
     }
     pub(crate) fn image(&self) -> &crate::cache::ResolvedImage {

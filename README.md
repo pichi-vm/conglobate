@@ -10,6 +10,11 @@ components. The engine executes only the selected image's dependency closure.
 Builds produce a self-contained OCI image layout with build binding annotations
 on the image manifest.
 
+The library uses `oci-spec` for OCI references, digests, descriptors, indexes
+and manifests. `artifact` contains Pichi media types, scute annotations and
+manifest validation through `ManifestExt`; `resources` contains the resource
+configuration schema.
+
 ## Plans
 
 A plan requires `version: 1` and an `image` selection. The optional `stages`

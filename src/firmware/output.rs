@@ -16,7 +16,7 @@ use std::{
 #[derive(Debug)]
 pub(crate) struct FirmwareFile<'w> {
     bytes: Scratch<'w>,
-    digest: crate::artifact::Digest,
+    digest: oci_spec::image::Digest,
     size: u64,
 }
 impl<'w> FirmwareFile<'w> {
@@ -74,11 +74,12 @@ impl<'w> FirmwareFile<'w> {
             size,
         })
     }
-    pub(crate) fn descriptor(&self) -> crate::artifact::PmiDescriptor {
-        crate::artifact::PmiDescriptor {
-            digest: self.digest.to_string(),
-            size: self.size,
-        }
+    pub(crate) fn descriptor(&self) -> oci_spec::image::Descriptor {
+        oci_spec::image::Descriptor::new(
+            crate::artifact::MEDIA_TYPE_PICHI_PMI_V1.into(),
+            self.size,
+            self.digest.clone(),
+        )
     }
     pub(crate) fn reader(&self) -> crate::storage::ScuteReader<'_> {
         crate::storage::ScuteReader::new(self.bytes.file(), self.size)

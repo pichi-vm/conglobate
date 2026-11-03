@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Cache, CacheError, ResolvedImage};
-use crate::artifact::{Digest as ContentDigest, Layer};
+
 use carapace::{Chain, Scute};
 use devmap_verity::{Algorithm, HashType, Header};
 use rustix::fs::{Dir, OFlags};
@@ -26,8 +26,12 @@ impl FromIndex for Chain {
             .ok_or(CacheError::Invalid("indexed image has no carapace"))?;
         let mut parent = root;
         let mut scutes = Vec::new();
-        for layer in image.manifest().layers.iter().rev() {
-            if !matches!(layer, Layer::Scute(_) | Layer::ScuteZstd(_)) {
+        for layer in image.manifest().layers().iter().rev() {
+            if !matches!(
+                layer.media_type().as_ref(),
+                crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1
+                    | crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
+            ) {
                 continue;
             }
             if parent == [0; 32] {
@@ -53,14 +57,14 @@ impl FromIndex for Chain {
 impl Cache {
     fn prepared_scute(
         &self,
-        layer: &Layer,
+        layer: &oci_spec::image::Descriptor,
         root: [u8; 32],
     ) -> Result<(Scute, [u8; 32]), CacheError> {
-        let digest: ContentDigest = layer
-            .digest_str()
-            .parse()
-            .map_err(|_| CacheError::Invalid("invalid scute digest"))?;
-        let source = PathBuf::from(format!("blobs/{}/{}", digest.algo(), digest.hex()));
+        let digest = layer.digest();
+        if digest.algorithm() != &oci_spec::image::DigestAlgorithm::Sha256 {
+            return Err(CacheError::Invalid("unsupported digest algorithm"));
+        }
+        let source = PathBuf::from(format!("blobs/{}/{}", digest.algorithm(), digest.digest()));
         let directory = source.with_extension("prepared");
         let handle = self.open_at(&directory, OFlags::DIRECTORY)?;
         let mut selected = None;
@@ -100,7 +104,11 @@ impl Cache {
             if hash.metadata()?.len() != header.total_size()? {
                 return Err(CacheError::Invalid("prepared hash extent mismatch"));
             }
-            let data_path = if matches!(layer, Layer::ScuteZstd(_)) || layer.size() != size {
+            let data_path = if matches!(
+                layer.media_type().as_ref(),
+                crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
+            ) || layer.size() != size
+            {
                 directory.join(format!("{size}.deflated"))
             } else {
                 source.clone()

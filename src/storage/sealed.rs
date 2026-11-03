@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Scratch, SnapshotOrigin};
-use crate::artifact::{ScuteAnnotations, ScuteDescriptor};
+use crate::artifact::ScuteAnnotations;
 use devmap_core::{BlockSize, Geometry};
 use devmap_snapshot::{Exception, Header};
 use devmap_verity::{Algorithm, Format as _, HashType, Header as VerityHeader, Parameters, Salt};
@@ -21,7 +21,7 @@ use std::{
 pub(crate) struct SealedScute<'workspace> {
     data: Scratch<'workspace>,
     hash: Scratch<'workspace>,
-    descriptor: ScuteDescriptor,
+    descriptor: oci_spec::image::Descriptor,
     root: [u8; 32],
     parent: [u8; 32],
 }
@@ -29,7 +29,7 @@ impl SealedScute<'_> {
     pub(crate) fn files(&self) -> (&File, &File) {
         (self.data.file(), self.hash.file())
     }
-    pub(crate) fn descriptor(&self) -> &ScuteDescriptor {
+    pub(crate) fn descriptor(&self) -> &oci_spec::image::Descriptor {
         &self.descriptor
     }
     pub(crate) fn root(&self) -> &[u8; 32] {
@@ -42,7 +42,7 @@ impl SealedScute<'_> {
         ScuteReader {
             file: self.data.file(),
             position: 0,
-            length: self.descriptor.size,
+            length: self.descriptor.size(),
         }
     }
 }
@@ -143,13 +143,21 @@ impl<'w> Scratch<'w> {
         let root = root.as_ref().try_into().expect("SHA-256 root width");
         let digest = format!("sha256:{}", hex::encode(input.digest.finalize()));
         hash.sync_all()?;
-        let descriptor = ScuteDescriptor {
-            digest,
-            size: bytes,
-            annotations: ScuteAnnotations {
-                data_blocks,
-                salt: hex::encode(salt),
-            },
+        let descriptor = {
+            let mut descriptor = oci_spec::image::Descriptor::new(
+                crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1.into(),
+                bytes,
+                digest
+                    .parse::<oci_spec::image::Digest>()
+                    .expect("layer digest"),
+            );
+            descriptor.set_annotations(Some(std::collections::HashMap::<String, String>::from(
+                ScuteAnnotations {
+                    data_blocks,
+                    salt: hex::encode(salt),
+                },
+            )));
+            descriptor
         };
         Ok(SealedScute {
             data: self,
@@ -239,6 +247,7 @@ impl SnapshotExtent {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::artifact::ManifestExt as _;
     use std::io::Cursor;
     #[derive(Debug)]
     struct Store(Vec<u8>);
@@ -292,10 +301,16 @@ mod tests {
             sealed.data_reader().read_to_end(&mut data).unwrap();
             assert_eq!(data, bytes);
             assert_eq!(
-                sealed.descriptor().digest,
+                sealed.descriptor().digest().to_string(),
                 format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
             );
-            assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 2);
+            assert_eq!(
+                ScuteAnnotations::try_from(sealed.descriptor())
+                    .unwrap()
+                    .data_blocks
+                    .get(),
+                2
+            );
             let mut tree = vec![0; 8192];
             sealed.files().1.read_exact_at(&mut tree, 0).unwrap();
             assert_eq!(sealed.files().1.metadata().unwrap().len(), 8192);
@@ -303,7 +318,12 @@ mod tests {
             let salt = header.parameters.salt.as_ref();
             assert_eq!(salt.len(), 64);
             assert_eq!(&salt[..32], parent);
-            assert_eq!(sealed.descriptor().annotations.salt, hex::encode(salt));
+            assert_eq!(
+                ScuteAnnotations::try_from(sealed.descriptor())
+                    .unwrap()
+                    .salt,
+                hex::encode(salt)
+            );
             assert_eq!(header.parameters.data.count.get(), 2);
             for (index, block) in bytes.chunks_exact(4096).enumerate() {
                 let mut hash = Sha256::new();
@@ -358,10 +378,16 @@ mod tests {
         assert_eq!((entry.old_chunk, entry.new_chunk), (2, 2));
         assert!(packed[4112..].iter().all(|byte| *byte == 0));
         assert_eq!(
-            sealed.descriptor().digest,
+            sealed.descriptor().digest().to_string(),
             format!("sha256:{}", hex::encode(Sha256::digest(&packed)))
         );
-        assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 3);
+        assert_eq!(
+            ScuteAnnotations::try_from(sealed.descriptor())
+                .unwrap()
+                .data_blocks
+                .get(),
+            3
+        );
         let mut header = [0; 512];
         sealed.files().1.read_exact_at(&mut header, 0).unwrap();
         assert_eq!(
@@ -425,8 +451,10 @@ mod tests {
         image.publish().unwrap();
 
         let index = std::fs::read(output.join("index.json")).unwrap();
-        let digest = crate::artifact::Digest::Sha256(Sha256::digest(&index).into());
-        std::fs::write(output.join("blobs/sha256").join(digest.hex()), &index).unwrap();
+        let digest = format!("sha256:{}", hex::encode(Sha256::digest(&index)))
+            .parse::<oci_spec::image::Digest>()
+            .expect("SHA-256 digest");
+        std::fs::write(output.join("blobs/sha256").join(digest.digest()), &index).unwrap();
         let cache = Cache::open(&output).unwrap();
         let image = crate::input::CheckedImage::verify(
             &cache,
@@ -471,7 +499,7 @@ mod tests {
                 output.image().manifest().carapace_root().unwrap(),
                 Some(*top.root())
             );
-            assert_eq!(output.image().manifest().layers.len(), 2);
+            assert_eq!(output.image().manifest().layers().len(), 2);
             assert_eq!(output.image().root(), Some(*top.root()));
             output.discard().unwrap();
         }

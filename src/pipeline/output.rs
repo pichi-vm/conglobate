@@ -3,7 +3,6 @@
 
 use super::{CompletedImage, boot_config::BootConfig, pmi::Pmi, root::Root};
 use crate::{
-    artifact::Layer,
     contract::plan::{Boot, Image, ImageRef, StageRef},
     image::ImageReference,
     input::{CheckedImage, ResolvedBuild},
@@ -22,12 +21,12 @@ pub(crate) struct StageOutput<'b, 'w> {
 }
 impl<'b, 'w> StageOutput<'b, 'w> {
     pub(super) fn remote(base: &'b CheckedImage, build: &ResolvedBuild) -> anyhow::Result<Self> {
-        let has_boot = base
-            .image()
-            .manifest()
-            .layers
-            .iter()
-            .any(|layer| matches!(layer, Layer::Pmi(_)));
+        let has_boot = base.image().manifest().layers().iter().any(|layer| {
+            matches!(
+                layer.media_type().as_ref(),
+                crate::artifact::MEDIA_TYPE_PICHI_PMI_V1
+            )
+        });
         let config = base
             .bootconfig(build.cache())?
             .map(|bytes| BootConfig::inherited(bytes.bytes().to_vec(), base.root()))
@@ -182,9 +181,9 @@ impl<'b, 'w> StageOutput<'b, 'w> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        artifact::Digest, cache::Cache, cache::tests::ScuteFixture as _, input::CapturedBuild,
-    };
+    use crate::artifact::ManifestExt as _;
+    use crate::{cache::Cache, cache::tests::ScuteFixture as _, input::CapturedBuild};
+    use oci_spec::image::Digest;
     use sha2::{Digest as _, Sha256};
     use std::{fs, path::Path, process::Command};
 
@@ -215,12 +214,14 @@ mod tests {
             fixture
         }
         fn blob(&self, bytes: &[u8]) -> String {
-            let digest = Digest::Sha256(Sha256::digest(bytes).into());
+            let digest = format!("sha256:{}", hex::encode(Sha256::digest(bytes)))
+                .parse::<Digest>()
+                .expect("SHA-256 digest");
             fs::write(
                 self.directory
                     .path()
                     .join("blobs/sha256")
-                    .join(digest.hex()),
+                    .join(digest.digest()),
                 bytes,
             )
             .unwrap();
@@ -257,7 +258,7 @@ mod tests {
                 layers.push(serde_json::json!({"mediaType":"application/vnd.pichi.bootconfig.v1+zstd", "digest":self.blob(&config), "size":config.len()}));
             }
             let config = serde_json::to_vec(&serde_json::json!({"source":name})).unwrap();
-            let manifest = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "config":crate::artifact::ConfigDescriptor::for_config(self.blob(&config),config.len() as u64), "layers":layers,"annotations":annotations})).unwrap();
+            let manifest = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "config":oci_spec::image::Descriptor::new(crate::contract::resources::MEDIA_TYPE_PICHI_CONFIG_V1.into(), config.len() as u64, (self.blob(&config)).parse::<oci_spec::image::Digest>().expect("config digest")), "layers":layers,"annotations":annotations})).unwrap();
             let index = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.index.v1+json", "manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "digest":self.blob(&manifest),"size":manifest.len(),"platform":{"os":"pichi","architecture":crate::cache::HostArchitecture::current().unwrap().oci_name()}}]})).unwrap();
             self.pins
                 .insert(format!("registry.test/{name}:1"), self.blob(&index));
@@ -343,23 +344,23 @@ mod tests {
                 .unwrap()
                 .parse()
                 .unwrap();
-            let manifest: crate::artifact::Manifest = serde_json::from_slice(
-                &fs::read(destination.join("blobs/sha256").join(digest.hex())).unwrap(),
+            let manifest: oci_spec::image::ImageManifest = serde_json::from_slice(
+                &fs::read(destination.join("blobs/sha256").join(digest.digest())).unwrap(),
             )
             .unwrap();
             assert_eq!(manifest.carapace_root().unwrap().is_some(), root);
             assert_eq!(
-                manifest
-                    .layers
-                    .iter()
-                    .any(|layer| matches!(layer, Layer::Pmi(_))),
+                manifest.layers().iter().any(|layer| matches!(
+                    layer.media_type().as_ref(),
+                    crate::artifact::MEDIA_TYPE_PICHI_PMI_V1
+                )),
                 boot
             );
             assert_eq!(
-                manifest
-                    .layers
-                    .iter()
-                    .any(|layer| matches!(layer, Layer::BootConfig(_))),
+                manifest.layers().iter().any(|layer| matches!(
+                    layer.media_type().as_ref(),
+                    crate::artifact::MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD
+                )),
                 config
             );
         }
@@ -393,7 +394,7 @@ mod tests {
             let assembled =
                 AssembledImage::components(build.cache(), &selected, request.output()).unwrap();
             assert_eq!(
-                assembled.image().manifest().annotations["example.org/source"],
+                assembled.image().manifest().annotations().as_ref().unwrap()["example.org/source"],
                 metadata
             );
             // Inputs contain no prepared scutes. Reading a source root would fail.
@@ -404,9 +405,12 @@ mod tests {
                     assembled
                         .image()
                         .manifest()
-                        .layers
+                        .layers()
                         .iter()
-                        .filter(|layer| matches!(layer, Layer::Scute(_)))
+                        .filter(|layer| matches!(
+                            layer.media_type().as_ref(),
+                            crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1
+                        ))
                         .count(),
                     1
                 );
@@ -414,7 +418,7 @@ mod tests {
             if boot {
                 let expected = b"opaque PMI".to_vec();
                 let descriptor = selected.pmi.as_ref().unwrap().descriptor();
-                assert_eq!(descriptor.digest, fixture.blob(&expected));
+                assert_eq!(descriptor.digest().to_string(), fixture.blob(&expected));
             }
             assembled.publish().unwrap();
             Fixture::assert_output(request.output(), root, boot, config);

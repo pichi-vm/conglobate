@@ -1,17 +1,14 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::artifact::{Reference, ReferenceKind};
+use oci_spec::distribution::Reference;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt;
+use std::{cmp::Ordering, fmt};
 
 /// A fully qualified image with an explicit registry, repository and selector.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Remote {
-    registry: String,
-    repository: String,
-    selector: ReferenceKind,
-}
+/// Uses the OCI distribution reference grammar; IPv6-literal registries are unsupported.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Remote(Reference);
 
 impl Remote {
     pub fn new(value: String) -> Option<Self> {
@@ -20,75 +17,46 @@ impl Remote {
         if !repository.contains('@') && !repository.rsplit('/').next()?.contains(':') {
             return None;
         }
-        let (host, port) = if let Some(ipv6) = registry.strip_prefix('[') {
-            let (address, suffix) = ipv6.split_once(']')?;
-            address.parse::<std::net::Ipv6Addr>().ok()?;
-            (
-                address,
-                if suffix.is_empty() {
-                    None
-                } else {
-                    Some(suffix.strip_prefix(':')?)
-                },
-            )
-        } else {
-            match registry.rsplit_once(':') {
-                Some((host, port)) => (host, Some(port)),
-                None => (registry, None),
-            }
-        };
-        if (!registry.starts_with('[')
-            && (!(host == "localhost" || host.contains('.') || port.is_some())
-                || host.split('.').any(|part| {
-                    part.is_empty()
-                        || !part.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
-                        || part.starts_with('-')
-                        || part.ends_with('-')
-                })))
-            || port.is_some_and(|p| {
-                !p.bytes().all(|b| b.is_ascii_digit())
-                    || p.parse::<u16>().ok().filter(|p| *p > 0).is_none()
-            })
-        {
-            return None;
-        }
         let parsed = value.parse::<Reference>().ok()?;
-        if parsed.registry != registry
-            || parsed.repo.split('/').any(|part| {
-                part.is_empty()
-                    || !part.bytes().all(|b| {
-                        b.is_ascii_lowercase() || b.is_ascii_digit() || b"._-".contains(&b)
-                    })
-                    || !part.as_bytes()[0].is_ascii_alphanumeric()
-                    || !part.as_bytes()[part.len() - 1].is_ascii_alphanumeric()
-            })
-        {
+        if parsed.registry() != registry && parsed.resolve_registry() != registry {
             return None;
         }
-        Some(Self {
-            registry: parsed.registry,
-            repository: parsed.repo,
-            selector: parsed.kind,
-        })
-    }
-
-    pub fn registry(&self) -> &str {
-        &self.registry
-    }
-    pub fn repository(&self) -> &str {
-        &self.repository
-    }
-    pub fn selector(&self) -> &ReferenceKind {
-        &self.selector
+        Some(Self(parsed))
     }
 }
+
+impl AsRef<Reference> for Remote {
+    fn as_ref(&self) -> &Reference {
+        &self.0
+    }
+}
+
+impl Ord for Remote {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (
+            self.0.registry(),
+            self.0.repository(),
+            self.0.tag(),
+            self.0.digest(),
+        )
+            .cmp(&(
+                other.0.registry(),
+                other.0.repository(),
+                other.0.tag(),
+                other.0.digest(),
+            ))
+    }
+}
+
+impl PartialOrd for Remote {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl fmt::Display for Remote {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}/{}", self.registry, self.repository)?;
-        match &self.selector {
-            ReferenceKind::Tag(tag) => write!(f, ":{tag}"),
-            ReferenceKind::Digest(digest) => write!(f, "@{digest}"),
-        }
+        self.0.fmt(f)
     }
 }
 impl Serialize for Remote {
