@@ -43,8 +43,10 @@ fn metadata_lock_pins_the_documented_fixture_index() {
 fn duplicate_references_and_unknown_fields_are_rejected() {
     let pin = format!("{{index: sha256:{}}}", "00".repeat(32));
     for text in [
-        format!("version: 1\nimages:\n  base: {pin}\n  base: {pin}"),
-        format!("version: 1\nversion: 1\nimages: {{base: {pin}}}"),
+        format!(
+            "version: 1\nimages:\n  registry.test/base:1: {pin}\n  registry.test/base:1: {pin}"
+        ),
+        format!("version: 1\nversion: 1\nimages: {{registry.test/base:1: {pin}}}"),
         "version: 1\nimages: {}\nextra: ignored".into(),
         "version: 1\nimages: null".into(),
         format!("version: 1\nimages: {{base: {pin}}}"),

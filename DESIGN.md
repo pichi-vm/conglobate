@@ -518,7 +518,8 @@ entries here. Direct remote `image` component selectors are pinned alongside
 selected remote stage inputs.
 
 A `Remote` value is a struct of OCI components and must be fully qualified:
-the registry host is required. Bare Hub short names are rejected. A reference
+the registry host and an explicit tag or digest are required. Bare Hub short
+names are rejected. A reference
 is not `Remote` merely because it contains `/`. Parsing must not let a stage
 name silently win over an OCI reference, or the reverse.
 

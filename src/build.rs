@@ -4,7 +4,7 @@
 //! Inputs shared by the host and builder. Transport and resolution are external.
 
 use crate::artifact::Digest;
-use crate::plan::Version;
+use crate::plan::{Remote, Version};
 use serde::{Deserialize, Deserializer, Serialize, de};
 use std::collections::BTreeMap;
 
@@ -14,7 +14,7 @@ use std::collections::BTreeMap;
 pub struct Lock {
     pub version: Version<1>,
     #[serde(deserialize_with = "image_pins")]
-    pub images: BTreeMap<String, ImagePin>,
+    pub images: BTreeMap<Remote, ImagePin>,
 }
 
 /// The index identifies all supported architectures for one input image.
@@ -26,8 +26,8 @@ pub struct ImagePin {
 
 fn image_pins<'de, D: Deserializer<'de>>(
     deserializer: D,
-) -> Result<BTreeMap<String, ImagePin>, D::Error> {
-    Option::<BTreeMap<String, ImagePin>>::deserialize(deserializer)?
+) -> Result<BTreeMap<Remote, ImagePin>, D::Error> {
+    Option::<BTreeMap<Remote, ImagePin>>::deserialize(deserializer)?
         .ok_or_else(|| de::Error::custom("images must be a non-null map"))
 }
 
@@ -40,7 +40,7 @@ mod tests {
         let reference = "registry.example/base:1";
         let mut lock = Lock::default();
         lock.images.insert(
-            reference.into(),
+            Remote::new(reference.into()).unwrap(),
             ImagePin {
                 index: Digest::Sha256([0x11; 32]),
             },
@@ -70,5 +70,19 @@ mod tests {
             serde_json::from_str::<Lock>(r#"{"version":1,"images":{}}"#).unwrap(),
             Lock::default()
         );
+    }
+
+    #[test]
+    fn lock_keys_require_explicit_remote_references() {
+        for reference in ["base", "team/base:1", "registry.example/base"] {
+            let value = serde_json::json!({
+                "version": 1,
+                "images": {reference: {"index": format!("sha256:{}", "11".repeat(32))}}
+            });
+            assert!(
+                serde_json::from_value::<Lock>(value).is_err(),
+                "{reference}"
+            );
+        }
     }
 }
