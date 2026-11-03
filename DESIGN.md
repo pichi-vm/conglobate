@@ -148,6 +148,8 @@ assembly uses the carapace root.
    owned by `pichi-artifact`); those types retire into this crate so OCI outputs
    are Conglobate outputs. The binary owns the build engine. **`pichi` depends
    on the Conglobate lib** for those types; it does not re-own artifact schemas.
+   Pichi owns console message types separately in `pichi-launch`; this library
+   exposes only build-domain and artifact contracts.
 2. **Standalone CLI** (`conglobate build`) remains a first-class, VM-free entry
    point for rootless checks and engine tests. Given a local Git repository, a
    commit (or resolved ref), a context path, plan/lock paths, a
