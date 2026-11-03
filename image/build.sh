@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-# Build the Conglobate appliance image — a pichi artifact (carapace + detached
-# DTB + PMI + launch config). The initramfs is static Corium as /init; it
+# Build the Conglobate appliance image — a pichi artifact (carapace + PMI
+# with embedded DTB + launch config). The initramfs is static Corium as /init; it
 # pivots into this rootfs, whose PID 1 is systemd. systemd then loads virtiofs
 # and fuse from the rootfs module tree and mounts tags repo/cache/output.
 #
@@ -152,7 +152,7 @@ hash="$(pichi inspect "$carapace" \
 }
 echo ">>> carapace $carapace  tip $hash"
 
-# ---- 5. detached-mode PMI + base DTB -------------------------------------
+# ---- 5. PMI with embedded base DTB -------------------------------------
 # corium= is the trust anchor Corium reads. systemd.* applies to PID 1 after
 # pivot: the carapace root is read-only, so /var must be volatile. virtiofs
 # mounts are units in the rootfs, not kernel command-line options.
@@ -163,13 +163,12 @@ printf '%s\n' "$cmdline" > "$work/cmdline"
 	--config "$work/kernel.config" \
 	--initrd "$initrd" \
 	--cmdline "$cmdline" \
-	--dtb "$work/base.dtb" \
+	--dtb attached \
 	"$work/boot.pmi"
 
-# ---- 6. combine PMI + DTB + config onto the carapace ---------------------
+# ---- 6. combine PMI + config onto the carapace ---------------------
 rev="${REVISION:-$(git -C "$repo" rev-parse HEAD 2>/dev/null || echo unknown)}"
 pichi import pmi "$work/boot.pmi" \
-	--dtb "$work/base.dtb" \
 	--config "$here/config.json" \
 	--carapace "$carapace" \
 	-a "org.opencontainers.image.source=https://github.com/pichi-vm/conglobate" \
@@ -183,5 +182,5 @@ if [ -n "${GITHUB_ENV:-}" ]; then
 	echo "CONGLOBATE_VERSION=$VERSION" >> "$GITHUB_ENV"
 fi
 
-echo ">>> imported conglobate:$VERSION (carapace + dtb + pmi + config)"
+echo ">>> imported conglobate:$VERSION (carapace + pmi + config)"
 echo "    push (main CI only): $IMAGE:$VERSION and $IMAGE:latest"
