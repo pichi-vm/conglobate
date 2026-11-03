@@ -3,7 +3,6 @@
 
 #![forbid(unsafe_code)]
 extern crate conglobate as contract;
-extern crate self as conglobate;
 mod anchor;
 mod appliance;
 use contract::artifact;
@@ -37,8 +36,6 @@ mod template;
 mod transform;
 mod value;
 
-#[cfg(test)]
-mod tests;
 use crate::{
     execution::{HelperInvocation, HelperProgram},
     pipeline::Pipeline,

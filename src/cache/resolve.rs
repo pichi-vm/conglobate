@@ -161,7 +161,7 @@ mod tests {
             let mut parent = [0; 32];
             for compressed in [false, true] {
                 let data = vec![7; if compressed { 4097 } else { 8192 }];
-                use crate::tests::ScuteFixture as _;
+                use crate::cache::tests::ScuteFixture as _;
                 let root = data.scute_root(parent);
                 let data_blocks =
                     std::num::NonZero::new((data.len() as u64).div_ceil(4096)).unwrap();
