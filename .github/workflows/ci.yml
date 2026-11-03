@@ -7,7 +7,7 @@ on:
 
 # Fail-fast DAG (replaces three flat push/PR workflows):
 #
-#   Tier 1 — Rootless checks (parallel): lint (fmt+clippy), image-stub,
+#   Tier 1 — Rootless checks (parallel): lint (fmt+clippy),
 #            dependencies (gitlint / cargo-deny / audit)
 #   Tier 2 — after Tier 1 succeeds (parallel with each other):
 #            Rootless tests (amd64/arm matrix),

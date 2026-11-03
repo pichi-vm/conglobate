@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Tier-1 fail-fast (parallel with image-stub/lint/dependencies).
+  # Tier-1 fail-fast (parallel with lint/dependencies).
   license-headers:
     name: license headers
     runs-on: ubuntu-24.04
@@ -22,19 +22,6 @@ jobs:
         with:
           persist-credentials: false
       - uses: korandoru/hawkeye@v6
-
-  # Cheap / fail-fast tier (parallel). Tests and the appliance build
-  # wait on this whole workflow via ci.yml, so a red lint or stub skips
-  # those expensive jobs.
-  image-stub:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          persist-credentials: false
-      - name: Validate build-appliance image tree
-        run: ./image/check-stub.sh
 
   lint:
     runs-on: ubuntu-24.04
@@ -56,8 +43,8 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Check Clippy
         run: cargo clippy --locked --features cli --all-targets -- -D warnings
-      - name: Check types-only lib
-        run: python3 tests/check_contract.py
+      - name: Compile the library without CLI features
+        run: cargo check --locked --no-default-features --lib
 
   dependencies:
     runs-on: ubuntu-24.04

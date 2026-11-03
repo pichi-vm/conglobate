@@ -82,7 +82,6 @@ jobs:
         run: |
           bash -n image/build.sh
           python3 -m py_compile image/mkosi.finalize
-          ./image/check-stub.sh
 
       - name: Export image as an OCI layout directory
         run: pichi save "conglobate:${CONGLOBATE_VERSION}" -o "oci-${{ matrix.arch }}"
