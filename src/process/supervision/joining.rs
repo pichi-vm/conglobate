@@ -149,14 +149,9 @@ impl Packet {
                         "invalid cleanup diagnostic size",
                     ));
                 }
-                let mut encoded = minicbor::Encoder::new(Vec::new());
-                encoded
-                    .array(3)
-                    .and_then(|e| e.u8(1))
-                    .and_then(|e| e.u8(12))
-                    .and_then(|e| e.str(message))
-                    .expect("Vec writer");
-                encoded.into_writer()
+                let mut bytes = Vec::new();
+                ciborium::into_writer(&(1u8, 12u8, message), &mut bytes).expect("Vec writer");
+                bytes
             }
             Self::Cleaned(status) => {
                 let mut bytes = vec![0x83, 1, opcode, 0x44];
@@ -221,22 +216,22 @@ impl Packet {
                 (13, 1) => Ok(Self::Gate(descriptors.pop().expect("gate"))),
                 (2, 0) => Ok(Self::Joined),
                 (12, 0) => {
-                    let mut decoder = minicbor::Decoder::new(&bytes[3..result.bytes]);
-                    let message = decoder.str().map_err(|_| {
-                        io::Error::new(io::ErrorKind::InvalidData, "invalid cleanup diagnostic")
-                    })?;
-                    let mut canonical = minicbor::Encoder::new(Vec::new());
-                    canonical.str(message).expect("Vec writer");
+                    let message: String =
+                        ciborium::from_reader(&bytes[3..result.bytes]).map_err(|_| {
+                            io::Error::new(io::ErrorKind::InvalidData, "invalid cleanup diagnostic")
+                        })?;
+                    let mut canonical = Vec::new();
+                    ciborium::into_writer(&message, &mut canonical).expect("Vec writer");
                     if message.is_empty()
                         || message.len() > 1024
-                        || canonical.writer().as_slice() != &bytes[3..result.bytes]
+                        || canonical.as_slice() != &bytes[3..result.bytes]
                     {
                         return Err(io::Error::new(
                             io::ErrorKind::InvalidData,
                             "invalid cleanup diagnostic encoding or size",
                         ));
                     }
-                    Ok(Self::CleanupFailed(message.to_owned()))
+                    Ok(Self::CleanupFailed(message))
                 }
                 (11, 0) => {
                     // Framing above excludes opcode 11 from the three-byte form.
