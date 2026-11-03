@@ -73,6 +73,8 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo clippy --locked --release --all-targets -- -D warnings
+          cargo clippy --locked --release -p conglobate-label-policy \
+            --target bpfel-unknown-none -Z build-std=core -- -D warnings
           cargo test --locked --release -- --ignored
 
       - name: Build arma, pichi, and conglobate
