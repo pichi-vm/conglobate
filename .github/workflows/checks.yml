@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
       - uses: korandoru/hawkeye@v6
 
-  # Cheap / fail-fast tier (parallel). Lifecycle and the appliance build
+  # Cheap / fail-fast tier (parallel). Tests and the appliance build
   # wait on this whole workflow via ci.yml, so a red lint or stub skips
   # those expensive jobs.
   image-stub:

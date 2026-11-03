@@ -12,10 +12,6 @@ a self-contained OCI image layout with build binding annotations on the image
 manifest. See [DESIGN.md](DESIGN.md) for the task model, CLI, appliance
 build-port CBOR contract, and schemas.
 
-Fedora, Debian, Alpine and NixOS example plans live under `tests/distro`. Confidential-computing qualification and
-appliance attestation are deferred; passing tests are not a universal security
-or operating-system compatibility claim.
-
 ## Plans
 
 A plan has named `tasks` and an explicit local `image` selection:
@@ -104,19 +100,12 @@ Build on Linux with Rust/Cargo and a C build toolchain for native dependencies
 such as zstd. The binary does not compile or load BPF, depend on libbpf/libelf,
 or require Clang's BPF target or special Linux-header include paths. The trusted
 execution environment supplies the fixed labeling exception described in
-[sandbox design](DESIGN.md#14-sandbox-lifecycle). That environment path is a
-pure-Rust Aya program together with Rust load, attach and pin. Conglobate does
-not perform those steps. The C fixtures `tests/environment/labels.bpf.c`,
-`tests/environment/loader.c` and related C loaders such as
-`tests/distro/labeling-fault/loader.c` are an interim harness for disposable-VM
-qualification only. Fixture tools build that interim policy separately and
-have additional compiler prerequisites until the Aya path replaces them.
+[sandbox design](DESIGN.md#14-sandbox-lifecycle).
 
 CI builds and tests with Rust 1.94.0 on native amd64 and Arm64. This is the tested
 toolchain, not a separately established minimum supported Rust version.
 
-The library has no default features. Enable `cli` to build the executable;
-`test-fixtures` enables it automatically for the internal VM fixtures.
+The library has no default features. Enable `cli` to build the executable.
 
 After dependencies are available, run these commands as an ordinary user:
 
@@ -126,7 +115,6 @@ cargo fmt --all -- --check
 cargo clippy --locked --features cli --all-targets -- -D warnings
 cargo test --locked --features cli --all-targets
 python3 tests/check_contract.py
-cargo check --locked --features test-fixtures --bin conglobate-lifecycle-tests
 ```
 
 Use `--offline` as well when all locked dependencies are already cached. The
@@ -139,9 +127,7 @@ workspace storage inside conglobate is separately required to be RAM-backed.
 Serialize Cargo checks and use `CARGO_BUILD_JOBS=2` in constrained development
 environments. The rootless workflow uses Rust 1.94.0 and runs formatting, Clippy,
 tests and doctests. A separate job runs pinned cargo-deny and cargo-audit tools
-for dependency policy and known advisories. Disposable-VM lifecycle CI runs on
-both architectures; Arm64 uses explicit TCG emulation when hosted KVM is absent.
-That is a functional test fixture, not a proposed production sandbox. Advisory
+for dependency policy and known advisories. Advisory
 matching depends on package source identities; clean reports do not certify
 pinned Git revisions against every crates.io advisory.
 
@@ -164,18 +150,12 @@ The design requires native filesystem/idmapped mount support and the
 environment-loaded labeling exception; generic kernel version numbers alone do
 not establish those prerequisites. The current implementation also uses
 `open_tree(OPEN_TREE_CLONE)` on subtrees of its detached workspace. Ubuntu's GA
-6.8 kernel rejects this operation. Hosted lifecycle tests use Ubuntu HWE
-kernels; the recorded kernel and feature checks are the supported evidence,
-rather than a generic minimum-version promise.
+6.8 kernel rejects this operation.
 
 The **standalone CLI** remains first-class for rootless checks and engine tests
 without a VM. [sandbox design](DESIGN.md#14-sandbox-lifecycle) specifies the
 boundary and teardown requirements. [Rust architecture](DESIGN.md#15-rust-architecture)
-explains the types-only lib, binary engine, ownership and typestate. Privileged
-integration tests must run inside disposable VMs, never directly on the
-development host. The maintained harness builds a fresh guest from trusted local
-tools and explicit kernel/module inputs. CI provisions these independently of
-the conglobate binary.
+explains the types-only lib, binary engine, ownership and typestate.
 
 Conglobate does not download missing Git objects or image artifacts. Plan
 commands have networking disabled by default. On the standalone CLI, enabled
@@ -198,9 +178,6 @@ transitions. Cleanup failures must preserve resource ownership rather than claim
 successful finalization. [Rust architecture](DESIGN.md#15-rust-architecture)
 describes the types-only library, binary engine, module boundaries and ownership
 model. Maintained regression fixtures live under `tests/`.
-
-See [tests/README.md](tests/README.md) for disposable-VM harness setup and
-fixture-specific instructions.
 
 ## Contributing
 

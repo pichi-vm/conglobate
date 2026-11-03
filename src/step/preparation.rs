@@ -4,8 +4,6 @@
 mod sandbox;
 use super::CommandStorage;
 use super::{Ready, Retained, Step};
-#[cfg(feature = "test-fixtures")]
-use crate::storage::{BootstrapVolumes, Mounted, Volume};
 use crate::{
     domain::{CommandDomain, DomainCreateFailure},
     isolation::{Mapped, UserNamespace},
@@ -112,8 +110,3 @@ impl<R: CommandStorage> StoragePreparation<R> {
         }
     }
 }
-#[cfg(feature = "test-fixtures")]
-pub(crate) type CommandPreparation<'n, 'o, 'w> = StoragePreparation<Volume<'n, 'o, 'w, Mounted>>;
-#[cfg(feature = "test-fixtures")]
-pub(crate) type BootstrapPreparation<'n, 'o, 'w> =
-    StoragePreparation<BootstrapVolumes<'n, 'o, 'w, Mounted>>;

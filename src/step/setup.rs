@@ -144,14 +144,6 @@ impl<'a, R: StepStorage> PreparedStep<'a, R> {
     }
 }
 impl<'a, R: StepStorage> RunningCommand<'a, R> {
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn deadline(&self) -> Instant {
-        self.deadline
-    }
-    #[cfg(feature = "test-fixtures")]
-    pub(crate) fn supervision(&self) -> &crate::process::Supervision<crate::process::Joined> {
-        self.step.supervision()
-    }
     pub(crate) fn teardown(self) -> io::Result<TeardownCompletion<R>> {
         self.step.teardown()
     }

@@ -34,15 +34,3 @@ impl<R: CommandStorage> TeardownCompletion<R> {
         })
     }
 }
-#[cfg(feature = "test-fixtures")]
-impl<R: CommandStorage> super::outcome::CommandResult<TeardownCompletion<R>> {
-    pub(crate) fn unmount(
-        self,
-    ) -> Result<
-        super::outcome::CommandResult<FinalizedStorage<R>>,
-        super::outcome::CommandResult<anyhow::Error>,
-    > {
-        self.map_cleanup(|completion| completion.unmount())
-            .transpose()
-    }
-}

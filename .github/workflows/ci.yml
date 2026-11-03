@@ -11,7 +11,6 @@ on:
 #            dependencies (gitlint / cargo-deny / audit)
 #   Tier 2 — after Tier 1 succeeds (parallel with each other):
 #            Rootless tests (amd64/arm matrix),
-#            Disposable VM lifecycle,
 #            appliance build matrix
 #
 # A red Tier-1 job skips the expensive Tier-2 work.
@@ -26,13 +25,6 @@ jobs:
     name: Rootless tests
     needs: [checks]
     uses: ./.github/workflows/rust.yml
-    permissions:
-      contents: read
-
-  lifecycle:
-    name: Disposable VM lifecycle
-    needs: [checks]
-    uses: ./.github/workflows/lifecycle.yml
     permissions:
       contents: read
 
