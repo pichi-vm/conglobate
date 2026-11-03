@@ -24,6 +24,12 @@ impl FromStr for ImageReference {
     }
 }
 
+impl From<&crate::contract::plan::Remote> for ImageReference {
+    fn from(remote: &crate::contract::plan::Remote) -> Self {
+        Self(remote.to_string())
+    }
+}
+
 impl AsRef<str> for ImageReference {
     fn as_ref(&self) -> &str {
         &self.0
