@@ -5,7 +5,7 @@
 
 use crate::artifact::Digest;
 use crate::plan::{Remote, Version};
-use serde::{Deserialize, Deserializer, Serialize, de};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 /// Remote image references pinned to immutable OCI indexes.
@@ -13,22 +13,8 @@ use std::collections::BTreeMap;
 #[serde(deny_unknown_fields)]
 pub struct Lock {
     pub version: Version<1>,
-    #[serde(deserialize_with = "image_pins")]
-    pub images: BTreeMap<Remote, ImagePin>,
-}
-
-/// The index identifies all supported architectures for one input image.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct ImagePin {
-    pub index: Digest,
-}
-
-fn image_pins<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> Result<BTreeMap<Remote, ImagePin>, D::Error> {
-    Option::<BTreeMap<Remote, ImagePin>>::deserialize(deserializer)?
-        .ok_or_else(|| de::Error::custom("images must be a non-null map"))
+    /// Each digest identifies a multi-architecture OCI index.
+    pub images: BTreeMap<Remote, Digest>,
 }
 
 #[cfg(test)]
@@ -41,14 +27,12 @@ mod tests {
         let mut lock = Lock::default();
         lock.images.insert(
             Remote::new(reference.into()).unwrap(),
-            ImagePin {
-                index: Digest::Sha256([0x11; 32]),
-            },
+            Digest::Sha256([0x11; 32]),
         );
         let value = serde_json::to_value(&lock).unwrap();
         assert_eq!(value["version"], 1);
         assert_eq!(
-            value["images"][reference]["index"],
+            value["images"][reference],
             format!("sha256:{}", "11".repeat(32))
         );
         assert_eq!(serde_json::from_value::<Lock>(value).unwrap(), lock);
@@ -61,8 +45,8 @@ mod tests {
             r#"{"version":2,"images":{}}"#,
             r#"{"version":1,"images":null}"#,
             r#"{"version":1,"images":{},"extra":true}"#,
-            r#"{"version":1,"images":{"registry.example/base:1":{"index":"sha256:01"}}}"#,
-            r#"{"version":1,"images":{"registry.example/base:1":{"index":"md5:01"}}}"#,
+            r#"{"version":1,"images":{"registry.example/base:1":"sha256:01"}}"#,
+            r#"{"version":1,"images":{"registry.example/base:1":"md5:01"}}"#,
         ] {
             assert!(serde_json::from_str::<Lock>(text).is_err(), "{text}");
         }
@@ -77,12 +61,22 @@ mod tests {
         for reference in ["base", "team/base:1", "registry.example/base"] {
             let value = serde_json::json!({
                 "version": 1,
-                "images": {reference: {"index": format!("sha256:{}", "11".repeat(32))}}
+                "images": {reference: format!("sha256:{}", "11".repeat(32))}
             });
             assert!(
                 serde_json::from_value::<Lock>(value).is_err(),
                 "{reference}"
             );
+        }
+    }
+
+    #[cfg(feature = "cli")]
+    #[test]
+    fn yaml_uses_the_parsers_normal_map_deserialization() {
+        for images in ["{}", "null"] {
+            let lock: Lock =
+                serde_saphyr::from_str(&format!("version: 1\nimages: {images}\n")).unwrap();
+            assert_eq!(lock, Lock::default());
         }
     }
 }
