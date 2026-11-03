@@ -23,7 +23,6 @@ cli = [
     "dep:devtree",
     "dep:seccompiler",
     "dep:linux-raw-sys",
-    "dep:minicbor",
     "dep:nix",
     "dep:rustix",
     "dep:ciborium",
@@ -69,7 +68,6 @@ pmi = { git = "https://github.com/pichi-vm/pmi", rev = "364ee0be240fa44c9d7cef76
 devtree = { git = "https://github.com/pichi-vm/devtree", rev = "e90bafce9ee9e4f7f570f07c5c242b6398c64980", features = ["alloc"], optional = true }
 seccompiler = { version = "=0.5.0", optional = true }
 linux-raw-sys = { version = "=0.12.1", features = ["general"], optional = true }
-minicbor = { version = "2.3.1", features = ["std"], optional = true }
 nix = { version = "0.31", optional = true, default-features = false, features = ["sched", "process"] }
 # Safe borrowed-descriptor mount_setattr API (upstream PR 1630); qualification
 # and the reason for this unreleased revision are recorded in DESIGN.md.

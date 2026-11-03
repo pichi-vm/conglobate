@@ -8,7 +8,6 @@
 [licenses]
 allow = [
     "Apache-2.0",   # this crate + many deps
-    "BlueOak-1.0.0", # minicbor
     "BSD-3-Clause", # encoding_rs WHATWG encoding data
     "Zlib",         # foldhash (gix pack cache)
     "MIT",          # many deps (dual MIT/Apache)
