@@ -8,7 +8,8 @@ plan format is the shared staged model in [DESIGN.md](DESIGN.md): named
 creation and extension stages, followed by selection of the root and boot
 components. The engine executes only the selected image's dependency closure.
 Builds produce a self-contained OCI image layout with build binding annotations
-on the image manifest.
+on the image manifest. Pichi owns the host–appliance wire types in its
+`pichi-launch` crate.
 
 ## Plans
 
