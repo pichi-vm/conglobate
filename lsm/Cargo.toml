@@ -17,3 +17,6 @@ aya-build = "0.2"
 
 [lints.rust]
 unsafe_code = "forbid"
+
+[lints.clippy]
+self_named_module_files = "deny"
