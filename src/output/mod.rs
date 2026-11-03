@@ -159,12 +159,11 @@ impl StagedDirectory {
         &self,
         scute: &crate::storage::SealedScute<'_>,
     ) -> Result<(), CacheError> {
-        let digest = scute
-            .descriptor()
-            .digest
-            .parse()
-            .map_err(|_| CacheError::Invalid("invalid produced scute digest"))?;
-        self.store_verified(scute.data_reader(), &digest, scute.descriptor().size)
+        self.store_verified(
+            scute.data_reader(),
+            scute.descriptor().digest(),
+            scute.descriptor().size(),
+        )
     }
     pub(crate) fn store_verified(
         &self,

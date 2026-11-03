@@ -3,7 +3,6 @@
 
 use super::{CompletedImage, boot_config::BootConfig, pmi::Pmi, root::Root};
 use crate::{
-    artifact::Layer,
     contract::plan::{Boot, Image, ImageRef, StageRef},
     image::ImageReference,
     input::{CheckedImage, ResolvedBuild},
@@ -22,12 +21,12 @@ pub(crate) struct StageOutput<'b, 'w> {
 }
 impl<'b, 'w> StageOutput<'b, 'w> {
     pub(super) fn remote(base: &'b CheckedImage, build: &ResolvedBuild) -> anyhow::Result<Self> {
-        let has_boot = base
-            .image()
-            .manifest()
-            .layers
-            .iter()
-            .any(|layer| matches!(layer, Layer::Pmi(_)));
+        let has_boot = base.image().manifest().layers.iter().any(|layer| {
+            matches!(
+                layer.media_type().as_ref(),
+                crate::artifact::MEDIA_TYPE_PICHI_PMI_V1
+            )
+        });
         let config = base
             .bootconfig(build.cache())?
             .map(|bytes| BootConfig::inherited(bytes.bytes().to_vec(), base.root()))
@@ -350,17 +349,17 @@ mod tests {
             .unwrap();
             assert_eq!(manifest.carapace_root().unwrap().is_some(), root);
             assert_eq!(
-                manifest
-                    .layers
-                    .iter()
-                    .any(|layer| matches!(layer, Layer::Pmi(_))),
+                manifest.layers.iter().any(|layer| matches!(
+                    layer.media_type().as_ref(),
+                    crate::artifact::MEDIA_TYPE_PICHI_PMI_V1
+                )),
                 boot
             );
             assert_eq!(
-                manifest
-                    .layers
-                    .iter()
-                    .any(|layer| matches!(layer, Layer::BootConfig(_))),
+                manifest.layers.iter().any(|layer| matches!(
+                    layer.media_type().as_ref(),
+                    crate::artifact::MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD
+                )),
                 config
             );
         }
@@ -407,7 +406,10 @@ mod tests {
                         .manifest()
                         .layers
                         .iter()
-                        .filter(|layer| matches!(layer, Layer::Scute(_)))
+                        .filter(|layer| matches!(
+                            layer.media_type().as_ref(),
+                            crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1
+                        ))
                         .count(),
                     1
                 );
@@ -415,7 +417,7 @@ mod tests {
             if boot {
                 let expected = b"opaque PMI".to_vec();
                 let descriptor = selected.pmi.as_ref().unwrap().descriptor();
-                assert_eq!(descriptor.digest, fixture.blob(&expected));
+                assert_eq!(descriptor.digest().to_string(), fixture.blob(&expected));
             }
             assembled.publish().unwrap();
             Fixture::assert_output(request.output(), root, boot, config);

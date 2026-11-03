@@ -99,6 +99,7 @@ impl AssembledImage {
         if let Some(location) = request.location() {
             annotations.insert("dev.pichi.build.location".into(), location.into());
         }
+        manifest.sort_all_objects();
         let old_digest = self.image.manifest_bytes().digest().clone();
         let image = Self::resolve_staging(
             &self.staged,
@@ -180,10 +181,11 @@ impl AssembledImage {
                         serde_json::from_slice(base.image().manifest_bytes().bytes())?;
                     for (index, layer) in base.image().manifest().layers.iter().enumerate() {
                         if matches!(
-                            layer,
-                            crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
+                            layer.media_type().as_ref(),
+                            crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1
+                                | crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
                         ) {
-                            staged.copy_blob(cache, &layer.digest_str().parse()?, layer.size())?;
+                            staged.copy_blob(cache, layer.digest(), layer.size())?;
                             layers.push(original["layers"][index].clone());
                         }
                     }
@@ -197,9 +199,7 @@ impl AssembledImage {
                         "produced scute parent differs from selected root"
                     );
                     staged.store_scute(scute)?;
-                    layers.push(serde_json::to_value(crate::artifact::Layer::Scute(
-                        scute.descriptor().clone(),
-                    ))?);
+                    layers.push(serde_json::to_value(scute.descriptor())?);
                     parent = *scute.root();
                 }
                 anyhow::ensure!(
@@ -221,23 +221,21 @@ impl AssembledImage {
             }
             if let Some(pmi) = &selection.pmi {
                 pmi.store(cache, &staged)?;
-                layers.push(serde_json::to_value(crate::artifact::Layer::Pmi(
-                    pmi.descriptor(),
-                ))?);
+                layers.push(serde_json::to_value(pmi.descriptor())?);
             }
             if let Some(config) = &selection.bootconfig
                 && !config.bytes.is_empty()
             {
                 anyhow::ensure!(selection.pmi.is_some(), "bootconfig requires PMI");
                 let digest = staged.store_blob(&config.bytes)?;
-                layers.push(serde_json::to_value(crate::artifact::Layer::BootConfig(
-                    crate::artifact::BootConfigDescriptor {
-                        digest: digest.to_string(),
-                        size: config.bytes.len() as u64,
-                    },
+                layers.push(serde_json::to_value(oci_spec::image::Descriptor::new(
+                    crate::artifact::MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD.into(),
+                    config.bytes.len() as u64,
+                    digest,
                 ))?);
             }
             manifest["layers"] = layers.into();
+            manifest.sort_all_objects();
             Ok(Self::resolve_staging(
                 &staged,
                 &serde_json::to_vec(&manifest)?,
@@ -435,7 +433,8 @@ mod tests {
                 root: None,
                 pmi: Some(crate::pipeline::pmi::Pmi::Inherited(image)),
                 bootconfig: Some(crate::pipeline::boot_config::BootConfig {
-                    bytes: self.blobs[image.image().manifest().layers[1].digest_str()].clone(),
+                    bytes: self.blobs[&image.image().manifest().layers[1].digest().to_string()]
+                        .clone(),
                     root: None,
                 }),
             }
@@ -721,7 +720,7 @@ mod tests {
     fn captured_bootconfig_survives_loss_of_cache_copy() {
         let input = Input::new(false);
         let (cache, image) = input.open();
-        let digest = image.image().manifest().layers[1].digest_str();
+        let digest = image.image().manifest().layers[1].digest().to_string();
         let selection = input.selection(&image);
         fs::remove_file(
             input
@@ -756,7 +755,7 @@ mod tests {
                 .directory
                 .path()
                 .join("blobs/sha256")
-                .join(layer.digest_str().strip_prefix("sha256:").unwrap()),
+                .join(layer.digest().digest()),
         )
         .unwrap();
         let parent = tempfile::tempdir().unwrap();

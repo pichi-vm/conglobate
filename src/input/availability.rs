@@ -31,9 +31,12 @@ impl Availability {
                 let layers = &image.image().manifest().layers;
                 Ok(Self {
                     root: image.root().is_some(),
-                    boot: layers
-                        .iter()
-                        .any(|layer| matches!(layer, crate::artifact::Layer::Pmi(_))),
+                    boot: layers.iter().any(|layer| {
+                        matches!(
+                            layer.media_type().as_ref(),
+                            crate::artifact::MEDIA_TYPE_PICHI_PMI_V1
+                        )
+                    }),
                 })
             }
         }

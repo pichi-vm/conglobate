@@ -384,8 +384,7 @@ pub(crate) mod tests {
             data: &[u8],
             parent: [u8; 32],
             compressed: bool,
-        ) -> (crate::artifact::Layer, [u8; 32]) {
-            use crate::cache::tests::ScuteFixture as _;
+        ) -> (oci_spec::image::Descriptor, [u8; 32]) {
             let (header, tree, root) = data.scute_files(parent);
             let data_blocks = std::num::NonZero::new((data.len() as u64).div_ceil(4096)).unwrap();
             let bytes = if compressed {
@@ -404,24 +403,41 @@ pub(crate) mod tests {
                 padded.resize(size as usize, 0);
                 std::fs::write(directory.join(format!("{size}.deflated")), padded).unwrap();
             }
-            let descriptor = crate::artifact::ScuteDescriptor {
-                digest: digest.to_string(),
-                size: bytes.len() as u64,
-                annotations: crate::artifact::ScuteAnnotations {
-                    data_blocks,
-                    salt: hex::encode(parent),
-                },
+            let descriptor = {
+                let mut descriptor = oci_spec::image::Descriptor::new(
+                    crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1.into(),
+                    bytes.len() as u64,
+                    digest.clone(),
+                );
+                descriptor.set_annotations(Some(
+                    std::collections::HashMap::<String, String>::from(
+                        crate::artifact::ScuteAnnotations {
+                            data_blocks,
+                            salt: hex::encode(parent),
+                        },
+                    ),
+                ));
+                descriptor
             };
             (
                 if compressed {
-                    crate::artifact::Layer::ScuteZstd(descriptor)
+                    {
+                        let mut descriptor = descriptor;
+                        descriptor
+                            .set_media_type(crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.into());
+                        descriptor
+                    }
                 } else {
-                    crate::artifact::Layer::Scute(descriptor)
+                    descriptor
                 },
                 root,
             )
         }
-        fn manifest_bytes(&self, layers: Vec<crate::artifact::Layer>, root: [u8; 32]) -> Vec<u8> {
+        fn manifest_bytes(
+            &self,
+            layers: Vec<oci_spec::image::Descriptor>,
+            root: [u8; 32],
+        ) -> Vec<u8> {
             let manifest = crate::artifact::Manifest {
                 schema_version: 2,
                 media_type: "application/vnd.oci.image.manifest.v1+json".into(),
@@ -454,7 +470,7 @@ pub(crate) mod tests {
         }
         fn chain_image(
             &self,
-            layers: Vec<crate::artifact::Layer>,
+            layers: Vec<oci_spec::image::Descriptor>,
             root: [u8; 32],
         ) -> crate::cache::ResolvedImage {
             let bytes = self.manifest_bytes(layers, root);
@@ -532,7 +548,7 @@ pub(crate) mod tests {
         let image = store.chain_image(vec![layer.clone()], root);
         let cache = store.open();
         cache.verify_metadata(&image).unwrap();
-        let digest = layer.digest_str().parse().unwrap();
+        let digest = layer.digest().to_string().parse().unwrap();
         let mut changed = std::fs::read(store.path(&digest)).unwrap();
         changed[0] ^= 1;
         std::fs::write(store.path(&digest), changed).unwrap();
@@ -604,7 +620,7 @@ pub(crate) mod tests {
         let image = store.chain_image(layers.clone(), top_root);
         assert_eq!(image.root(), Some(top_root));
         for layer in layers {
-            std::fs::remove_file(store.path(&layer.digest_str().parse().unwrap())).unwrap();
+            std::fs::remove_file(store.path(&layer.digest().to_string().parse().unwrap())).unwrap();
         }
         // Neither encoded blobs nor regenerated hash trees are needed for metadata.
         // Actual filesystem access must open prepared files and verify reads instead.
@@ -719,7 +735,6 @@ pub(crate) mod tests {
         let (tip, tip_root) = store.scute(&[4; 8192], base_root, false);
         // Other images can retain variants outside Carapace's hash convention.
         // Their presence must not hide the matching normal-format preparation.
-        use crate::cache::tests::ScuteFixture as _;
         use devmap_verity::Format as _;
         let (mut other_header, _, _) = [4; 8192].scute_files([0; 32]);
         other_header.parameters.hash_type = devmap_verity::HashType::ChromeOs;
@@ -728,7 +743,7 @@ pub(crate) mod tests {
             .format([4; 8192].as_slice(), &mut other_tree)
             .unwrap();
         let directory = store
-            .path(&tip.digest_str().parse().unwrap())
+            .path(&tip.digest().to_string().parse().unwrap())
             .with_extension("prepared");
         std::fs::write(
             directory.join("other-format.verity"),
@@ -745,7 +760,7 @@ pub(crate) mod tests {
             assert_eq!(chain.scutes.len(), count);
             assert!(chain.scutes[0].data.write_all_at(b"x", 0).is_err());
         }
-        let path = store.path(&tip.digest_str().parse().unwrap());
+        let path = store.path(&tip.digest().to_string().parse().unwrap());
         let (base, _) = store.scute(&[4; 8192], [0; 32], false);
         let image = store.chain_image(vec![base], base_root);
         std::fs::OpenOptions::new()
@@ -770,7 +785,7 @@ pub(crate) mod tests {
         let (base, root) = store.scute(&[1; 8192], [0; 32], false);
         let image = store.chain_image(vec![base.clone()], root);
         let directory = store
-            .path(&base.digest_str().parse().unwrap())
+            .path(&base.digest().to_string().parse().unwrap())
             .with_extension("prepared");
         let path = std::fs::read_dir(&directory)
             .unwrap()
@@ -805,7 +820,8 @@ pub(crate) mod tests {
             let (base, root) = store.scute(&vec![3; size], [0; 32], compressed);
             let image = store.chain_image(vec![base.clone()], root);
             if compressed {
-                std::fs::remove_file(store.path(&base.digest_str().parse().unwrap())).unwrap();
+                std::fs::remove_file(store.path(&base.digest().to_string().parse().unwrap()))
+                    .unwrap();
             }
             let chain = carapace::Chain::from_index(&store.open(), &image).unwrap();
             let mut bytes = vec![0; size.div_ceil(4096) * 4096];

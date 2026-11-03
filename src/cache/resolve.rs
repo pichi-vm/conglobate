@@ -71,16 +71,14 @@ impl Cache {
         }
         for layer in &manifest.layers {
             if matches!(
-                layer,
-                crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
+                layer.media_type().as_ref(),
+                crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1
+                    | crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
             ) {
                 continue;
             }
-            let digest = layer
-                .digest_str()
-                .parse()
-                .map_err(|_| CacheError::Invalid("invalid layer digest"))?;
-            self.verify(&digest, layer.size())?;
+            let digest = layer.digest();
+            self.verify(digest, layer.size())?;
         }
         Ok(())
     }
@@ -146,7 +144,7 @@ impl Cache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::artifact::{Layer, ScuteAnnotations, ScuteDescriptor};
+    use crate::artifact::ScuteAnnotations;
     use sha2::{Digest as _, Sha256};
     use std::{collections::BTreeMap, fs};
 
@@ -176,18 +174,29 @@ mod tests {
                 let digest = format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
                     .parse::<Digest>()
                     .expect("SHA-256 digest");
-                let descriptor = ScuteDescriptor {
-                    digest: digest.to_string(),
-                    size: bytes.len() as u64,
-                    annotations: ScuteAnnotations {
-                        data_blocks,
-                        salt: hex::encode(parent),
-                    },
+                let descriptor = {
+                    let mut descriptor = oci_spec::image::Descriptor::new(
+                        crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1.into(),
+                        bytes.len() as u64,
+                        digest.clone(),
+                    );
+                    descriptor.set_annotations(Some(
+                        std::collections::HashMap::<String, String>::from(ScuteAnnotations {
+                            data_blocks,
+                            salt: hex::encode(parent),
+                        }),
+                    ));
+                    descriptor
                 };
                 layers.push(if compressed {
-                    Layer::ScuteZstd(descriptor)
+                    {
+                        let mut descriptor = descriptor;
+                        descriptor
+                            .set_media_type(crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD.into());
+                        descriptor
+                    }
                 } else {
-                    Layer::Scute(descriptor)
+                    descriptor
                 });
                 blobs.push((digest, bytes));
                 parent = root;
@@ -285,8 +294,11 @@ mod tests {
             changed[0] ^= 1;
             fs::write(&path, changed).unwrap();
             let scute = fixture.image.manifest().layers.iter().any(|layer| {
-                matches!(layer, Layer::Scute(_) | Layer::ScuteZstd(_))
-                    && layer.digest_str() == digest.to_string()
+                matches!(
+                    layer.media_type().as_ref(),
+                    crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1
+                        | crate::artifact::MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD
+                ) && layer.digest().to_string() == digest.to_string()
             });
             assert_eq!(
                 cache.verify_metadata(&fixture.image).is_ok(),

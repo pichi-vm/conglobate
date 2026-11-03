@@ -11,16 +11,13 @@
 //! Retired here from the standalone `pichi-artifact` crate. The v1 format uses
 //! these shared types, including required scute lengths and a manifest chain tip.
 
-mod boot_config_descriptor;
 mod manifest;
 mod media_type;
+mod scute_annotations;
 
-pub use boot_config_descriptor::BootConfigDescriptor;
-pub use manifest::{
-    CARAPACE_ROOT_ANNOTATION, Layer, Manifest, ManifestValidationError, PmiDescriptor,
-    ScuteAnnotations, ScuteDescriptor,
-};
+pub use manifest::{CARAPACE_ROOT_ANNOTATION, Manifest, ManifestValidationError};
 pub use media_type::{
     MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD, MEDIA_TYPE_PICHI_PMI_V1,
     MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
+pub use scute_annotations::ScuteAnnotations;
