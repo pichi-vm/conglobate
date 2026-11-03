@@ -425,8 +425,10 @@ mod tests {
         image.publish().unwrap();
 
         let index = std::fs::read(output.join("index.json")).unwrap();
-        let digest = crate::artifact::Digest::Sha256(Sha256::digest(&index).into());
-        std::fs::write(output.join("blobs/sha256").join(digest.hex()), &index).unwrap();
+        let digest = format!("sha256:{}", hex::encode(Sha256::digest(&index)))
+            .parse::<oci_spec::image::Digest>()
+            .expect("SHA-256 digest");
+        std::fs::write(output.join("blobs/sha256").join(digest.digest()), &index).unwrap();
         let cache = Cache::open(&output).unwrap();
         let image = crate::input::CheckedImage::verify(
             &cache,

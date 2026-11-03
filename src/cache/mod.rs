@@ -7,7 +7,7 @@ mod resolve;
 pub(crate) use chain::FromIndex;
 pub(crate) use resolve::{HostArchitecture, ResolvedImage};
 
-use crate::artifact::Digest as ContentDigest;
+use oci_spec::image::Digest as ContentDigest;
 use rustix::fs::{Mode, OFlags, ResolveFlags};
 use sha2::{Digest, Sha256};
 use std::{
@@ -54,7 +54,10 @@ impl Cache {
         })
     }
     fn blob(&self, digest: &ContentDigest) -> Result<File, CacheError> {
-        let path = format!("blobs/{}/{}", digest.algo(), digest.hex());
+        if digest.algorithm() != &oci_spec::image::DigestAlgorithm::Sha256 {
+            return Err(CacheError::Invalid("unsupported digest algorithm"));
+        }
+        let path = format!("blobs/{}/{}", digest.algorithm(), digest.digest());
         self.regular_file(Path::new(&path))
     }
     fn open_at(&self, path: &Path, flags: OFlags) -> Result<File, CacheError> {
@@ -85,7 +88,11 @@ impl Cache {
         expected_size: Option<u64>,
     ) -> Result<VerifiedMetadata, CacheError> {
         let bytes = self.read_metadata(digest, expected_size)?;
-        if ContentDigest::Sha256(Sha256::digest(&bytes).into()) != *digest {
+        if format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
+            .parse::<ContentDigest>()
+            .expect("SHA-256 digest")
+            != *digest
+        {
             return Err(CacheError::Invalid("metadata content mismatch"));
         }
         Ok(VerifiedMetadata {
@@ -143,7 +150,7 @@ impl Cache {
             hash.update(&buffer[..count]);
             remaining -= count as u64;
         }
-        if file.read(&mut buffer[..1])? != 0 || hash.finalize().as_slice() != digest.as_bytes() {
+        if file.read(&mut buffer[..1])? != 0 || hex::encode(hash.finalize()) != digest.digest() {
             return Err(CacheError::Invalid("blob content mismatch"));
         }
         Ok(())
@@ -166,8 +173,8 @@ impl VerifiedMetadata {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::artifact::Digest;
     use crate::cache::Cache;
+    use oci_spec::image::Digest;
     use sha2::{Digest as _, Sha256};
     use std::path::PathBuf;
 
@@ -179,10 +186,12 @@ pub(crate) mod tests {
             store
         }
         fn path(&self, digest: &Digest) -> PathBuf {
-            self.0.path().join("blobs/sha256").join(digest.hex())
+            self.0.path().join("blobs/sha256").join(digest.digest())
         }
         fn put(&self, bytes: &[u8]) -> Digest {
-            let digest = Digest::Sha256(Sha256::digest(bytes).into());
+            let digest = format!("sha256:{}", hex::encode(Sha256::digest(bytes)))
+                .parse::<Digest>()
+                .expect("SHA-256 digest");
             std::fs::write(self.path(&digest), bytes).unwrap();
             digest
         }
@@ -236,7 +245,7 @@ pub(crate) mod tests {
         let moved = parent.path().join("moved");
         std::fs::rename(store.0.path(), &moved).unwrap();
         assert_eq!(cache.metadata(&digest, None).unwrap().bytes(), b"content");
-        let blob = moved.join("blobs/sha256").join(digest.hex());
+        let blob = moved.join("blobs/sha256").join(digest.digest());
         std::fs::remove_file(&blob).unwrap();
         let external = parent.path().join("external");
         std::fs::write(&external, b"content").unwrap();
@@ -278,7 +287,9 @@ pub(crate) mod tests {
         let selected = store.descriptor(&digest, bytes.len());
         let mut unrelated = selected.clone();
         unrelated["platform"]["os"] = "linux".into();
-        unrelated["digest"] = Digest::Sha256(Sha256::digest(b"not cached").into())
+        unrelated["digest"] = format!("sha256:{}", hex::encode(Sha256::digest(b"not cached")))
+            .parse::<Digest>()
+            .expect("SHA-256 digest")
             .to_string()
             .into();
         let pin = store.index(vec![unrelated, selected]);
@@ -341,7 +352,9 @@ pub(crate) mod tests {
         let (_, bytes) = store.manifest();
         let mut manifest: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         let config = b"{}";
-        let config_digest = Digest::Sha256(Sha256::digest(config).into());
+        let config_digest = format!("sha256:{}", hex::encode(Sha256::digest(config)))
+            .parse::<Digest>()
+            .expect("SHA-256 digest");
         manifest["config"] = serde_json::json!({
             "mediaType":"application/vnd.pichi.config.v1+json",
             "digest":config_digest.to_string(),"size":config.len()});
@@ -452,7 +465,13 @@ pub(crate) mod tests {
         assert_eq!(index["manifests"][0]["size"], manifest.len());
         assert_eq!(
             index["manifests"][0]["digest"],
-            Digest::Sha256(Sha256::digest(manifest.as_bytes()).into()).to_string()
+            format!(
+                "sha256:{}",
+                hex::encode(Sha256::digest(manifest.as_bytes()))
+            )
+            .parse::<Digest>()
+            .expect("SHA-256 digest")
+            .to_string()
         );
     }
 
@@ -807,6 +826,18 @@ pub(crate) mod tests {
             let mut tree = Cursor::new(Vec::new());
             let root = header.format(data.as_slice(), &mut tree).unwrap();
             (header, tree.into_inner(), root.as_ref().try_into().unwrap())
+        }
+    }
+    #[test]
+    fn unsupported_digest_algorithms_fail_before_reading_blobs() {
+        let store = Store::new();
+        for text in [
+            format!("sha512:{}", "ab".repeat(64)),
+            "other:payload".into(),
+        ] {
+            let digest: Digest = text.parse().unwrap();
+            let error = store.open().metadata(&digest, None).unwrap_err();
+            assert!(error.to_string().contains("unsupported digest algorithm"));
         }
     }
 }

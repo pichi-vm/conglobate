@@ -40,9 +40,6 @@ impl AsRef<str> for ImageReference {
 pub(crate) struct IndexDigest([u8; 32]);
 
 impl IndexDigest {
-    pub(crate) fn from_bytes(bytes: [u8; 32]) -> Self {
-        Self(bytes)
-    }
     pub(crate) fn bytes(&self) -> &[u8; 32] {
         &self.0
     }
@@ -51,7 +48,12 @@ impl IndexDigest {
 impl FromStr for IndexDigest {
     type Err = IdentityError;
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        let digest: crate::artifact::Digest = text.parse().map_err(|_| IdentityError::Digest)?;
-        Ok(Self(digest.as_sha256_array()))
+        let digest: oci_spec::image::Digest = text.parse().map_err(|_| IdentityError::Digest)?;
+        if digest.algorithm() != &oci_spec::image::DigestAlgorithm::Sha256 {
+            return Err(IdentityError::Digest);
+        }
+        let mut bytes = [0; 32];
+        hex::decode_to_slice(digest.digest(), &mut bytes).map_err(|_| IdentityError::Digest)?;
+        Ok(Self(bytes))
     }
 }

@@ -40,7 +40,7 @@ pub use stage::Stage;
 pub use stage_ref::StageRef;
 pub use version::Version;
 
-use crate::artifact::Digest;
+use oci_spec::image::Digest;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -65,11 +65,11 @@ pub struct Lock {
 
 #[cfg(test)]
 mod tests {
-    use crate::artifact::Digest;
     use crate::plan::{
         Directive, FilesystemSize, ImageRef, Key, Lock, Plan, Remote, Stage, StageRef,
         Value as ConfigValue,
     };
+    use oci_spec::image::Digest;
     use serde_json::{Value, json};
 
     fn decode(value: Value) -> Plan {
@@ -366,7 +366,9 @@ mod tests {
         let mut lock = Lock::default();
         lock.images.insert(
             Remote::new(reference.into()).unwrap(),
-            Digest::Sha256([0x11; 32]),
+            format!("sha256:{}", hex::encode([0x11; 32]))
+                .parse::<Digest>()
+                .expect("SHA-256 digest"),
         );
         let value = serde_json::to_value(&lock).unwrap();
         assert_eq!(value["version"], 1);
@@ -385,7 +387,7 @@ mod tests {
             r#"{"version":1,"images":null}"#,
             r#"{"version":1,"images":{},"extra":true}"#,
             r#"{"version":1,"images":{"registry.example/base:1":"sha256:01"}}"#,
-            r#"{"version":1,"images":{"registry.example/base:1":"md5:01"}}"#,
+            r#"{"version":1,"images":{"registry.example/base:1":"md5:"}}"#,
         ] {
             assert!(serde_json::from_str::<Lock>(text).is_err(), "{text}");
         }

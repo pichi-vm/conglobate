@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Cache, CacheError, VerifiedMetadata};
-use crate::artifact::{Digest, MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
 use crate::artifact::{
     Index, MEDIA_TYPE_OCI_INDEX_V1 as INDEX, MEDIA_TYPE_OCI_MANIFEST_V1 as MANIFEST, Platform,
 };
+use crate::artifact::{MEDIA_TYPE_PICHI_ARTIFACT_V1, Manifest};
 use crate::image::IndexDigest;
+use oci_spec::image::Digest;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum HostArchitecture {
@@ -93,7 +94,12 @@ impl Cache {
 
     pub(crate) fn resolve(&self, pin: IndexDigest) -> Result<ResolvedImage, CacheError> {
         let architecture = HostArchitecture::current()?;
-        let index = self.metadata(&Digest::Sha256(*pin.bytes()), None)?;
+        let index = self.metadata(
+            &format!("sha256:{}", hex::encode(*pin.bytes()))
+                .parse::<Digest>()
+                .expect("SHA-256 digest"),
+            None,
+        )?;
         let parsed: Index = serde_json::from_slice(index.bytes())?;
         if parsed.schema_version != 2 || parsed.media_type != INDEX {
             return Err(CacheError::Invalid(
@@ -170,7 +176,9 @@ mod tests {
                 } else {
                     data
                 };
-                let digest = Digest::Sha256(Sha256::digest(&bytes).into());
+                let digest = format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
+                    .parse::<Digest>()
+                    .expect("SHA-256 digest");
                 let descriptor = ScuteDescriptor {
                     digest: digest.to_string(),
                     size: bytes.len() as u64,
@@ -196,7 +204,9 @@ mod tests {
                 ("pmi.v1", pmi.as_slice()),
                 ("bootconfig.v1+zstd", config.as_slice()),
             ] {
-                let digest = Digest::Sha256(Sha256::digest(bytes).into());
+                let digest = format!("sha256:{}", hex::encode(Sha256::digest(bytes)))
+                    .parse::<Digest>()
+                    .expect("SHA-256 digest");
                 layers.push(
                     serde_json::from_value(serde_json::json!({
                         "mediaType": format!("application/vnd.pichi.{media}"),
@@ -207,7 +217,9 @@ mod tests {
                 blobs.push((digest, bytes.to_vec()));
             }
             let config = b"{\"requirements\":{}}".to_vec();
-            let config_digest = Digest::Sha256(Sha256::digest(&config).into());
+            let config_digest = format!("sha256:{}", hex::encode(Sha256::digest(&config)))
+                .parse::<Digest>()
+                .expect("SHA-256 digest");
             let annotations: BTreeMap<String, String> = [
                 ("algo", "sha256"),
                 ("data-block-size", "4096"),
@@ -233,7 +245,7 @@ mod tests {
             blobs.push((config_digest, config));
             for (digest, bytes) in &blobs {
                 fs::write(
-                    directory.path().join("blobs/sha256").join(digest.hex()),
+                    directory.path().join("blobs/sha256").join(digest.digest()),
                     bytes,
                 )
                 .unwrap();
@@ -241,7 +253,9 @@ mod tests {
             let bytes = serde_json::to_vec(&manifest).unwrap();
             let image = ResolvedImage {
                 manifest_bytes: VerifiedMetadata {
-                    digest: Digest::Sha256(Sha256::digest(&bytes).into()),
+                    digest: format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
+                        .parse::<Digest>()
+                        .expect("SHA-256 digest"),
                     bytes,
                 },
                 root: manifest.carapace_root().unwrap(),
@@ -266,7 +280,7 @@ mod tests {
                 .directory
                 .path()
                 .join("blobs/sha256")
-                .join(digest.hex());
+                .join(digest.digest());
             let mut changed = bytes.clone();
             changed[0] ^= 1;
             fs::write(&path, changed).unwrap();

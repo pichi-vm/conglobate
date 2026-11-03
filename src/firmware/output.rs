@@ -16,7 +16,7 @@ use std::{
 #[derive(Debug)]
 pub(crate) struct FirmwareFile<'w> {
     bytes: Scratch<'w>,
-    digest: crate::artifact::Digest,
+    digest: oci_spec::image::Digest,
     size: u64,
 }
 impl<'w> FirmwareFile<'w> {

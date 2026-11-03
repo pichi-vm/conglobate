@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::StagedDirectory;
-use crate::artifact::{CARAPACE_ROOT_ANNOTATION, Digest};
+use crate::artifact::CARAPACE_ROOT_ANNOTATION;
 use crate::{
     cache::{Cache, CacheError, ResolvedImage},
     image::IndexDigest,
 };
+use oci_spec::image::Digest;
 use sha2::{Digest as _, Sha256};
 
 /// A self-contained staged image whose copied blobs were authenticated and
@@ -108,7 +109,12 @@ impl AssembledImage {
             self.image.root() == image.root(),
             "build binding changed the scute graph"
         );
-        let new_digest = Digest::Sha256(Sha256::digest(image.manifest_bytes().bytes()).into());
+        let new_digest = format!(
+            "sha256:{}",
+            hex::encode(Sha256::digest(image.manifest_bytes().bytes()))
+        )
+        .parse::<Digest>()
+        .expect("SHA-256 digest");
         if old_digest != new_digest {
             std::fs::remove_file(self.staged.blob_path(&old_digest))?;
         }
@@ -282,7 +288,13 @@ impl AssembledImage {
         output_cache.verify_metadata(&output_image)?;
         // The index is the layout entrypoint, not referenced by its own
         // manifest. Remove the temporary lookup blob after validation.
-        std::fs::remove_file(staged.blob_path(&Digest::Sha256(Sha256::digest(&index).into())))?;
+        std::fs::remove_file(
+            staged.blob_path(
+                &format!("sha256:{}", hex::encode(Sha256::digest(&index)))
+                    .parse::<Digest>()
+                    .expect("SHA-256 digest"),
+            ),
+        )?;
         Ok(output_image)
     }
 }
@@ -317,7 +329,10 @@ mod tests {
             };
             for bytes in [&pmi, &bootconfig, &config] {
                 blobs.insert(
-                    Digest::Sha256(Sha256::digest(bytes).into()).to_string(),
+                    format!("sha256:{}", hex::encode(Sha256::digest(bytes)))
+                        .parse::<Digest>()
+                        .expect("SHA-256 digest")
+                        .to_string(),
                     bytes.clone(),
                 );
             }
@@ -325,7 +340,10 @@ mod tests {
                 crate::artifact::ConfigDescriptor::canonical()
             } else {
                 crate::artifact::ConfigDescriptor::for_config(
-                    Digest::Sha256(Sha256::digest(&config).into()).to_string(),
+                    format!("sha256:{}", hex::encode(Sha256::digest(&config)))
+                        .parse::<Digest>()
+                        .expect("SHA-256 digest")
+                        .to_string(),
                     config.len() as u64,
                 )
             };
@@ -335,13 +353,15 @@ mod tests {
                 "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                 "config": config_descriptor,
                 "layers": [
-                    {"mediaType": "application/vnd.pichi.pmi.v1", "digest": Digest::Sha256(Sha256::digest(&pmi).into()).to_string(), "size": pmi.len()},
-                    {"mediaType": "application/vnd.pichi.bootconfig.v1+zstd", "digest": Digest::Sha256(Sha256::digest(&bootconfig).into()).to_string(), "size": bootconfig.len()}
+                    {"mediaType": "application/vnd.pichi.pmi.v1", "digest": format!("sha256:{}", hex::encode(Sha256::digest(&pmi))).parse::<Digest>().expect("SHA-256 digest").to_string(), "size": pmi.len()},
+                    {"mediaType": "application/vnd.pichi.bootconfig.v1+zstd", "digest": format!("sha256:{}", hex::encode(Sha256::digest(&bootconfig))).parse::<Digest>().expect("SHA-256 digest").to_string(), "size": bootconfig.len()}
                 ],
                 "annotations": {"example.org/retain": "exactly"},
                 "x-preserved-extension": {"nested": [1, 2, 3]}
             })).unwrap();
-            let manifest_digest = Digest::Sha256(Sha256::digest(&manifest).into());
+            let manifest_digest = format!("sha256:{}", hex::encode(Sha256::digest(&manifest)))
+                .parse::<Digest>()
+                .expect("SHA-256 digest");
             let index = serde_json::to_vec(&serde_json::json!({
                 "schemaVersion": 2,
                 "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -353,7 +373,9 @@ mod tests {
                 }]
             })).unwrap();
             blobs.insert(manifest_digest.to_string(), manifest.clone());
-            let index_digest = Digest::Sha256(Sha256::digest(&index).into());
+            let index_digest = format!("sha256:{}", hex::encode(Sha256::digest(&index)))
+                .parse::<Digest>()
+                .expect("SHA-256 digest");
             fs::create_dir_all(directory.path().join("blobs/sha256")).unwrap();
             for (digest, bytes) in &blobs {
                 if empty_config && bytes == b"{}" {
@@ -372,7 +394,7 @@ mod tests {
                 directory
                     .path()
                     .join("blobs/sha256")
-                    .join(index_digest.hex()),
+                    .join(index_digest.digest()),
                 index,
             )
             .unwrap();
@@ -513,9 +535,12 @@ mod tests {
                         image.image().architecture(),
                     )
                     .unwrap();
-                    let original = Digest::Sha256(
-                        Sha256::digest(assembled.image.manifest_bytes().bytes()).into(),
-                    );
+                    let original = format!(
+                        "sha256:{}",
+                        hex::encode(Sha256::digest(assembled.image.manifest_bytes().bytes()))
+                    )
+                    .parse::<Digest>()
+                    .expect("SHA-256 digest");
                     fs::remove_file(assembled.staged.blob_path(&original)).unwrap();
                     assembled.image = stale;
                     let assembled = assembled.bind_build(&request, &captured).unwrap();
@@ -558,7 +583,10 @@ mod tests {
                     let raw = serde_json::to_vec(&final_manifest).unwrap();
                     assert_eq!(
                         index["manifests"][0]["digest"],
-                        Digest::Sha256(Sha256::digest(&raw).into()).to_string()
+                        format!("sha256:{}", hex::encode(Sha256::digest(&raw)))
+                            .parse::<Digest>()
+                            .expect("SHA-256 digest")
+                            .to_string()
                     );
                     assert_eq!(index["manifests"][0]["size"], raw.len());
                 }
@@ -587,7 +615,9 @@ mod tests {
         assert_eq!(new["annotations"], old["annotations"]);
         assert_eq!(new["x-preserved-extension"], old["x-preserved-extension"]);
         assert_ne!(new["layers"][1]["digest"], old["layers"][1]["digest"]);
-        let digest = Digest::Sha256(Sha256::digest(&result).into());
+        let digest = format!("sha256:{}", hex::encode(Sha256::digest(&result)))
+            .parse::<Digest>()
+            .expect("SHA-256 digest");
         assert_eq!(new["layers"][1]["digest"], digest.to_string());
         assert_eq!(
             fs::read(assembled.staged.blob_path(&digest)).unwrap(),

@@ -30,13 +30,8 @@ impl TryFrom<YamlDocument<'_>> for ImageLock {
         let images = raw
             .images
             .iter()
-            .map(|(reference, pin)| {
-                (
-                    ImageReference::from(reference),
-                    IndexDigest::from_bytes(pin.as_sha256_array()),
-                )
-            })
-            .collect();
+            .map(|(reference, pin)| Ok((ImageReference::from(reference), pin.to_string().parse()?)))
+            .collect::<Result<_, IdentityError>>()?;
         Ok(Self { images })
     }
 }
@@ -103,6 +98,8 @@ mod tests {
             format!("version: 1\nimages: {{base: {pin}}}"),
             "version: 2\nimages: {}".into(),
             "version: 1\nimages: {registry.test/base:1: latest}".into(),
+            "version: 1\nimages: {registry.test/base:1: sha256:00}".into(),
+            "version: 1\nimages: {registry.test/base:1: md5:01}".into(),
             "version: 1\nimages: {registry.test/base:1: {index: sha256:00, manifest: other}}"
                 .into(),
         ] {

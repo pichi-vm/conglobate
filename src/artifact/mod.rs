@@ -12,13 +12,11 @@
 //! these shared types, including required scute lengths and a manifest chain tip.
 
 mod boot_config_descriptor;
-mod digest;
 mod index;
 mod manifest;
 mod media_type;
 
 pub use boot_config_descriptor::BootConfigDescriptor;
-pub use digest::{Digest, DigestParseError};
 pub use manifest::{
     CARAPACE_ROOT_ANNOTATION, ConfigDescriptor, Layer, Manifest, ManifestValidationError,
     PmiDescriptor, ScuteAnnotations, ScuteDescriptor,

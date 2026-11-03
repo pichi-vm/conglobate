@@ -182,9 +182,8 @@ impl<'b, 'w> StageOutput<'b, 'w> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        artifact::Digest, cache::Cache, cache::tests::ScuteFixture as _, input::CapturedBuild,
-    };
+    use crate::{cache::Cache, cache::tests::ScuteFixture as _, input::CapturedBuild};
+    use oci_spec::image::Digest;
     use sha2::{Digest as _, Sha256};
     use std::{fs, path::Path, process::Command};
 
@@ -215,12 +214,14 @@ mod tests {
             fixture
         }
         fn blob(&self, bytes: &[u8]) -> String {
-            let digest = Digest::Sha256(Sha256::digest(bytes).into());
+            let digest = format!("sha256:{}", hex::encode(Sha256::digest(bytes)))
+                .parse::<Digest>()
+                .expect("SHA-256 digest");
             fs::write(
                 self.directory
                     .path()
                     .join("blobs/sha256")
-                    .join(digest.hex()),
+                    .join(digest.digest()),
                 bytes,
             )
             .unwrap();
@@ -344,7 +345,7 @@ mod tests {
                 .parse()
                 .unwrap();
             let manifest: crate::artifact::Manifest = serde_json::from_slice(
-                &fs::read(destination.join("blobs/sha256").join(digest.hex())).unwrap(),
+                &fs::read(destination.join("blobs/sha256").join(digest.digest())).unwrap(),
             )
             .unwrap();
             assert_eq!(manifest.carapace_root().unwrap().is_some(), root);

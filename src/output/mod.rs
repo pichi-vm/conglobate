@@ -4,8 +4,8 @@
 mod assembly;
 pub(crate) use assembly::AssembledImage;
 
-use crate::artifact::Digest;
 use crate::cache::{Cache, CacheError};
+use oci_spec::image::Digest;
 use sha2::{Digest as _, Sha256};
 use std::{
     ffi::OsString,
@@ -117,8 +117,8 @@ impl StagedDirectory {
         self.temporary
             .path()
             .join("blobs")
-            .join(digest.algo())
-            .join(digest.hex())
+            .join(digest.algorithm().as_ref())
+            .join(digest.digest())
     }
     /// Write at the final private staging name and remove it on failure.
     /// Keeping the file must not rename it: the current virtiofs transport
@@ -143,6 +143,9 @@ impl StagedDirectory {
         digest: &Digest,
         size: u64,
     ) -> Result<(), CacheError> {
+        if digest.algorithm() != &oci_spec::image::DigestAlgorithm::Sha256 {
+            return Err(CacheError::Invalid("unsupported digest algorithm"));
+        }
         let target = self.blob_path(digest);
         let mut pending = self.pending_file(&target)?;
         cache.copy_verified(digest, size, pending.as_file_mut())?;
@@ -169,6 +172,9 @@ impl StagedDirectory {
         digest: &Digest,
         size: u64,
     ) -> Result<(), CacheError> {
+        if digest.algorithm() != &oci_spec::image::DigestAlgorithm::Sha256 {
+            return Err(CacheError::Invalid("unsupported digest algorithm"));
+        }
         let mut pending = self.pending_file(&self.blob_path(digest))?;
         let mut hash = Sha256::new();
         let mut remaining = size;
@@ -183,7 +189,7 @@ impl StagedDirectory {
             hash.update(&buffer[..count]);
             remaining -= count as u64;
         }
-        if reader.read(&mut buffer[..1])? != 0 || hash.finalize().as_slice() != digest.as_bytes() {
+        if reader.read(&mut buffer[..1])? != 0 || hex::encode(hash.finalize()) != digest.digest() {
             return Err(CacheError::Invalid("produced scute content mismatch"));
         }
         pending.as_file().sync_all()?;
@@ -193,7 +199,9 @@ impl StagedDirectory {
     /// Store captured or newly produced small content, deriving its identity
     /// from these bytes. The coordinator supplies the matching descriptor.
     pub(crate) fn store_blob(&self, bytes: &[u8]) -> io::Result<Digest> {
-        let digest = Digest::Sha256(Sha256::digest(bytes).into());
+        let digest = format!("sha256:{}", hex::encode(Sha256::digest(bytes)))
+            .parse::<Digest>()
+            .expect("SHA-256 digest");
         self.write_file(&self.blob_path(&digest), bytes)?;
         Ok(digest)
     }
@@ -281,7 +289,9 @@ mod tests {
         let parent = tempfile::tempdir().unwrap();
         let staged = StagedDirectory::create(&parent.path().join("output")).unwrap();
         let bytes = vec![37u8; 150_000];
-        let digest = Digest::Sha256(Sha256::digest(&bytes).into());
+        let digest = format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
+            .parse::<Digest>()
+            .expect("SHA-256 digest");
         for (input, size) in [
             (&bytes[..bytes.len() - 1], bytes.len() as u64),
             (&bytes[..], bytes.len() as u64 - 1),
@@ -290,7 +300,9 @@ mod tests {
             assert!(staged.store_verified(input, &digest, size).is_err());
             assert!(!staged.blob_path(&digest).exists());
         }
-        let wrong = Digest::Sha256(Sha256::digest(b"wrong").into());
+        let wrong = format!("sha256:{}", hex::encode(Sha256::digest(b"wrong")))
+            .parse::<Digest>()
+            .expect("SHA-256 digest");
         assert!(
             staged
                 .store_verified(&bytes[..], &wrong, bytes.len() as u64)
@@ -330,8 +342,10 @@ mod tests {
         let parent = tempfile::tempdir().unwrap();
         let cache_path = parent.path().join("cache");
         fs::create_dir_all(cache_path.join("blobs/sha256")).unwrap();
-        let digest = Digest::Sha256(Sha256::digest(b"original").into());
-        let blob = cache_path.join("blobs/sha256").join(digest.hex());
+        let digest = format!("sha256:{}", hex::encode(Sha256::digest(b"original")))
+            .parse::<Digest>()
+            .expect("SHA-256 digest");
+        let blob = cache_path.join("blobs/sha256").join(digest.digest());
         fs::write(&blob, b"original").unwrap();
         let cache = Cache::open(&cache_path).unwrap();
         cache.verify(&digest, 8).unwrap();
@@ -361,7 +375,7 @@ mod tests {
         assert!(!parent.join("output").exists());
         assert_eq!(fs::read(moved.join("output/index.json")).unwrap(), b"index");
         assert_eq!(
-            fs::read(moved.join("output/blobs/sha256").join(digest.hex())).unwrap(),
+            fs::read(moved.join("output/blobs/sha256").join(digest.digest())).unwrap(),
             b"{}"
         );
         assert!(StagedDirectory::create(&moved.join("output")).is_err());

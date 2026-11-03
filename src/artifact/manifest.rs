@@ -672,7 +672,10 @@ mod tests {
         assert_eq!(c.data.as_deref(), Some("e30="));
         assert_eq!(c.digest, EMPTY_CONFIG_DIGEST);
         // Cross-check: SHA-256 of "{}" really is the EMPTY_CONFIG_DIGEST hex
-        let manual = crate::artifact::Digest::Sha256(Sha256::digest(b"{}").into()).to_string();
+        let manual = format!("sha256:{}", hex::encode(Sha256::digest(b"{}")))
+            .parse::<oci_spec::image::Digest>()
+            .expect("SHA-256 digest")
+            .to_string();
         assert_eq!(manual, EMPTY_CONFIG_DIGEST);
     }
 
