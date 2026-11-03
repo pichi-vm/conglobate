@@ -18,7 +18,7 @@ impl OciCopy {
         fs::write(
             context.join("images.lock"),
             format!(
-                "version: 1\nimages:\n  qualification.local/fixture:ci:\n    index: {}\n",
+                "version: 1\nimages:\n  qualification.local/fixture:ci: {}\n",
                 fs::read_to_string("/cache-fixture/chain.pin")?.trim()
             ),
         )?;

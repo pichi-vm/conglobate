@@ -451,7 +451,7 @@ mod tests {
                     fs::write(
                         selected.join("lock.yaml"),
                         format!(
-                            "version: 1\nimages: {{registry.test/base:1: {{index: sha256:{}}}}}\n",
+                            "version: 1\nimages: {{registry.test/base:1: sha256:{}}}\n",
                             "00".repeat(32)
                         ),
                     )

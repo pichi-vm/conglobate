@@ -4,7 +4,7 @@
 use conglobate::{document::YamlDocument, graph::BuildGraph, lock::ImageLock, planner::Plan};
 fn graph(plan: &str) -> Result<BuildGraph, conglobate::lock::LockError> {
     let pins = format!(
-        "version: 1\nimages:\n  registry.test/base:1: {{index: sha256:{}}}\n  registry.test/tools:1: {{index: sha256:{}}}\n",
+        "version: 1\nimages:\n  registry.test/base:1: sha256:{}\n  registry.test/tools:1: sha256:{}\n",
         "00".repeat(32),
         "11".repeat(32)
     );
