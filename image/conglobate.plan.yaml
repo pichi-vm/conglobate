@@ -9,6 +9,7 @@
 # units under image/units/, and that places `/usr/bin/conglobate` for the
 # oneshot `conglobate appliance` service.
 
+version: 1
 stages:
   bootstrap:
     use: qualification.local/fedora:43

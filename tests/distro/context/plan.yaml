@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Offline CLI regression: COPY consumes committed context bytes without exposing
 # a checkout to commands. Run using the maintained distro runner and Fedora seed.
+version: 1
 stages:
   rootfs:
     extend: qualification.local/fedora:43

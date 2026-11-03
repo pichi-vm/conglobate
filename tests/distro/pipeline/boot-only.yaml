@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Extract a PMI without bootconfig: this image has no root.
 # A local carapace used only as tools must not define CARAPACE.
+version: 1
 stages:
   boot:
     extend: qualification.local/fedora:43

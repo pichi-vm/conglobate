@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Portable pichi.yaml encoding. Execution checks belong to the consumer.
+//! Portable pichi.yaml encoding. Documents require `version: 1`.
+//! Execution checks belong to the consumer.
 //!
 //! String wrappers validate through `new(String) -> Option<Self>` and Serde.
 //! They provide display, borrowed string access, equality, ordering and hashing;
@@ -46,6 +47,7 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Plan {
+    pub version: Version<1>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub stages: BTreeMap<StageRef, Stage>,
     pub image: Image,

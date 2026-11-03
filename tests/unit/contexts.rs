@@ -282,7 +282,7 @@ fn request_planning_and_document_receipts_use_only_selected_committed_bytes() {
     use conglobate::{input::CapturedBuild, request::BuildRequest};
     use sha2::{Digest, Sha256};
     let repo = Repository::new("sha1");
-    let plan = b"image: registry.test/base:1\n";
+    let plan = b"version: 1\nimage: registry.test/base:1\n";
     let lock = format!(
         "version: 1\nimages:\n  registry.test/base:1:\n    index: sha256:{}\n",
         "11".repeat(32)
@@ -348,7 +348,7 @@ fn network_plan_captures_an_explicit_resolver_once() {
     let repo = Repository::new("sha1");
     repo.write(
         "plan",
-        b"stages:\n  rootfs:\n    extend: registry.test/base:1\n    steps:\n    - exec:\n        command: echo ok\n        network: true\nimage: rootfs\n",
+        b"version: 1\nstages:\n  rootfs:\n    extend: registry.test/base:1\n    steps:\n    - exec:\n        command: echo ok\n        network: true\nimage: rootfs\n",
     );
     repo.write(
         "lock",
@@ -409,7 +409,7 @@ fn network_plan_captures_an_explicit_resolver_once() {
     // An executing offline graph still needs environment-allocated identities.
     repo.write(
         "plan",
-        b"stages:\n  rootfs:\n    extend: registry.test/base:1\n    steps:\n    - exec:\n        command: echo ok\nimage: rootfs\n",
+        b"version: 1\nstages:\n  rootfs:\n    extend: registry.test/base:1\n    steps:\n    - exec:\n        command: echo ok\nimage: rootfs\n",
     );
     let execution_commit = repo.commit();
     let execution_id = hex::encode(execution_commit.bytes());
@@ -430,7 +430,7 @@ fn network_plan_captures_an_explicit_resolver_once() {
     assert_eq!(captured.id_mappings().unwrap().uid().count(), 131072);
 
     // Pass-through ignores supplied runtime inputs, including mappings.
-    repo.write("plan", b"image: registry.test/base:1\n");
+    repo.write("plan", b"version: 1\nimage: registry.test/base:1\n");
     let offline_commit = repo.commit();
     let offline_id = hex::encode(offline_commit.bytes());
     let position = args.iter().position(|arg| *arg == "--commit").unwrap();
@@ -498,8 +498,8 @@ fn resolved_stages_require_carapaces_even_when_pmi_and_config_exist() {
             .as_bytes(),
     );
     for plan in [
-        "stages: {root: {use: registry.test/base:1, format: {fs: ext4, size: 1GiB}, steps: [exec: {command: echo ok}]}}\nimage: root\n",
-        "stages: {root: {extend: registry.test/base:1, steps: [exec: {command: echo ok}]}}\nimage: root\n",
+        "version: 1\nstages: {root: {use: registry.test/base:1, format: {fs: ext4, size: 1GiB}, steps: [exec: {command: echo ok}]}}\nimage: root\n",
+        "version: 1\nstages: {root: {extend: registry.test/base:1, steps: [exec: {command: echo ok}]}}\nimage: root\n",
     ] {
         repo.write("plan", plan.as_bytes());
         let commit = repo.commit();
@@ -565,7 +565,7 @@ fn resolved_stages_require_carapaces_even_when_pmi_and_config_exist() {
     );
     repo.write(
         "plan",
-        b"stages:\n  rootfs:\n    extend: registry.test/base:1\n    steps: [exec: {command: echo ok}]\nimage: rootfs\n",
+        b"version: 1\nstages:\n  rootfs:\n    extend: registry.test/base:1\n    steps: [exec: {command: echo ok}]\nimage: rootfs\n",
     );
     let commit = repo.commit();
     let request = BuildRequest::parse_from([
@@ -693,11 +693,11 @@ fn executing_stage_variants_require_environment_maps_before_cache_access() {
     let cache = repo.0.path().join("missing-cache");
     let output = repo.0.path().join("unpublished-output");
     for plan in [
-        "stages: {root: {use: registry.test/tools:1, format: {fs: ext4, size: 16MiB}, steps: [exec: {command: 'true'}]}}\nimage: root\n",
-        "stages: {root: {extend: registry.test/tools:1, steps: [exec: {command: 'true'}]}}\nimage: root\n",
-        "stages: {root: {extend: registry.test/tools:1, steps: [copy: {path: input, into: /input}]}}\nimage: root\n",
-        "stages: {firmware: {extend: registry.test/tools:1, steps: [exec: {command: 'true'}]}}\nimage: {boot: {extract: {from: firmware, path: /image.pmi}}}\n",
-        "stages: {root: {extend: registry.test/tools:1, steps: [exec: {command: 'true'}]}, firmware: {extend: root, steps: [exec: {command: 'true'}]}}\nimage: {root: root, boot: {extract: {from: firmware, path: /image.pmi}}}\n",
+        "version: 1\nstages: {root: {use: registry.test/tools:1, format: {fs: ext4, size: 16MiB}, steps: [exec: {command: 'true'}]}}\nimage: root\n",
+        "version: 1\nstages: {root: {extend: registry.test/tools:1, steps: [exec: {command: 'true'}]}}\nimage: root\n",
+        "version: 1\nstages: {root: {extend: registry.test/tools:1, steps: [copy: {path: input, into: /input}]}}\nimage: root\n",
+        "version: 1\nstages: {firmware: {extend: registry.test/tools:1, steps: [exec: {command: 'true'}]}}\nimage: {boot: {extract: {from: firmware, path: /image.pmi}}}\n",
+        "version: 1\nstages: {root: {extend: registry.test/tools:1, steps: [exec: {command: 'true'}]}, firmware: {extend: root, steps: [exec: {command: 'true'}]}}\nimage: {root: root, boot: {extract: {from: firmware, path: /image.pmi}}}\n",
     ] {
         repo.write("plan", plan.as_bytes());
         repo.write("input", b"committed bytes");
@@ -878,7 +878,7 @@ fn planning_scans_used_copies_and_static_documents_before_execution() {
     use conglobate::{input::CapturedBuild, request::BuildRequest};
     let child = Repository::new("sha1");
     child.write("file", b"input");
-    child.write("plan", b"stages:\n  root:\n    extend: registry.test/base:1\n    steps:\n    - copy:\n        path: module\n        into: /input\nimage: root\n");
+    child.write("plan", b"version: 1\nstages:\n  root:\n    extend: registry.test/base:1\n    steps:\n    - copy:\n        path: module\n        into: /input\nimage: root\n");
     child.write(
         "lock",
         format!(
@@ -942,7 +942,7 @@ fn planning_scans_used_copies_and_static_documents_before_execution() {
         error.contains("module") && error.contains("needed store"),
         "{error}"
     );
-    repo.write("plan", b"stages:\n  unused:\n    extend: registry.test/base:1\n    steps:\n    - copy:\n        path: module\n        into: /input\nimage: registry.test/base:1\n");
+    repo.write("plan", b"version: 1\nstages:\n  unused:\n    extend: registry.test/base:1\n    steps:\n    - copy:\n        path: module\n        into: /input\nimage: registry.test/base:1\n");
     let commit = repo.commit();
     let identity = hex::encode(commit.bytes());
     let request = BuildRequest::parse_from([
