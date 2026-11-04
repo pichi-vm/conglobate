@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Portable pichi.yaml encoding. Documents require `version: 1`.
+//! Portable plan and lock encoding. Documents require `version: 1`.
 //! Execution checks belong to the consumer.
 //!
 //! String wrappers validate through `new(String) -> Option<Self>` and Serde.
@@ -18,6 +18,7 @@ mod format;
 mod image;
 mod image_path;
 mod image_ref;
+mod lock;
 mod mount;
 mod remote;
 mod stage;
@@ -34,6 +35,7 @@ pub use format::Format;
 pub use image::Image;
 pub use image_path::ImagePath;
 pub use image_ref::ImageRef;
+pub use lock::Lock;
 pub use mount::Mount;
 pub use remote::Remote;
 pub use stage::Stage;
