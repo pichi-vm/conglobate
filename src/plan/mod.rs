@@ -339,7 +339,7 @@ mod tests {
     }
 
     #[test]
-    fn remote_retains_components_without_registry_or_selector_defaults() {
+    fn remote_retains_components_and_defaults_only_the_tag() {
         use crate::{artifact::ReferenceKind, plan::Remote};
         let remote = Remote::new("registry.example:5000/team/root:v1".into()).unwrap();
         assert_eq!(remote.registry(), "registry.example:5000");
@@ -351,10 +351,22 @@ mod tests {
         assert!(matches!(remote.selector(), ReferenceKind::Digest(_)));
         assert_eq!(serde_json::to_value(remote).unwrap(), json!(text));
         for text in [
-            "alpine",
-            "team/root:v1",
             "registry.example/root",
             "localhost:5000/root",
+            "[::1]:5000/team/root",
+        ] {
+            let implicit: Remote = serde_json::from_value(json!(text)).unwrap();
+            let explicit = Remote::new(format!("{text}:latest")).unwrap();
+            assert_eq!(implicit, explicit);
+            assert_eq!(
+                serde_json::to_value(implicit).unwrap(),
+                json!(format!("{text}:latest"))
+            );
+        }
+        for text in [
+            "alpine",
+            "team/root",
+            "team/root:v1",
             "registry.example/root:",
         ] {
             assert!(Remote::new(text.into()).is_none(), "{text}");
