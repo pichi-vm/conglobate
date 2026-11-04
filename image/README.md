@@ -41,6 +41,7 @@ treat virtiofs as first-class, so this image keeps the modules itself.
 - `e2fsprogs` provides image-resident `mke2fs` (standard paths, `/usr/sbin/mke2fs`
   first). The engine still captures that binary and its `ldd` dependencies from
   the guest root. There is no host formatter path.
+- `dosfstools` provides image-resident `mkfs.fat` for FAT32 filesystems.
 
 Image hardcodes, not CBOR fields: UID/GID maps (`src/appliance/mounts.rs`).
 

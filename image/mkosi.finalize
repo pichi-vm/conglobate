@@ -19,7 +19,7 @@
 #   3. strip /boot and the in-tree vmlinuz/System.map — boot payload is the
 #      PMI's domain; the carapace keeps only its .ko module tree;
 #   4. require virtiofs + fuse in that module tree, /usr/bin/conglobate, the
-#      mount units, and image-resident mke2fs.
+#      mount units, and image-resident ext4/FAT formatters.
 
 import glob
 import os
@@ -210,11 +210,10 @@ for name in ("fuse", "virtiofs", "virtio_net"):
     if name not in loaded:
         raise SystemExit(f"modules-load.d must list {name}")
 
-mke2fs = in_root("/usr/sbin/mke2fs")
-if not os.path.isfile(mke2fs):
-    mke2fs = in_root("/sbin/mke2fs")
-if not os.path.isfile(mke2fs) or not os.access(mke2fs, os.X_OK):
-    raise SystemExit("e2fsprogs mke2fs is not executable in the appliance rootfs")
+for binary, package in (("mke2fs", "e2fsprogs"), ("mkfs.fat", "dosfstools")):
+    paths = (in_root(f"/usr/sbin/{binary}"), in_root(f"/sbin/{binary}"))
+    if not any(os.path.isfile(path) and os.access(path, os.X_OK) for path in paths):
+        raise SystemExit(f"{package} {binary} is not executable in the appliance rootfs")
 
 network = f"{buildroot}/usr/lib/systemd/network/10-build.network"
 if not os.path.isfile(network):
