@@ -42,6 +42,7 @@ treat virtiofs as first-class, so this image keeps the modules itself.
   first). The engine still captures that binary and its `ldd` dependencies from
   the guest root. There is no host formatter path.
 - `dosfstools` provides image-resident `mkfs.fat` for FAT32 filesystems.
+- The loop module is loaded for build filesystem backing devices.
 
 Image hardcodes, not CBOR fields: UID/GID maps (`src/appliance/mounts.rs`).
 
