@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-#[cfg(test)]
 mod fat32;
+pub(crate) use fat32::Fat32Format;
 mod runtime;
 pub(crate) use runtime::CapturedFormatter;
 mod staged;

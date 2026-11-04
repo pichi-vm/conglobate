@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{Header, MbrEntry, Partition, ROOT_PARTITION_TYPE, Record, SECTOR_SIZE};
+use super::{
+    ESP_PARTITION_TYPE, Header, MbrEntry, Partition, ROOT_PARTITION_TYPE, Record, SECTOR_SIZE,
+};
 use crc::{CRC_32_ISO_HDLC, Crc};
 use std::io::{self, Seek, SeekFrom, Write};
 use uuid::Uuid;
@@ -9,27 +11,29 @@ use zerocopy::IntoBytes as _;
 
 const ALIGNMENT: u64 = 2048; // 1 MiB in device-mapper sectors.
 
-/// One native root with 1 MiB alignment, plus both copies of its GPT metadata.
+/// A native root and optional ESP, with 1 MiB alignment and both GPT copies.
 #[derive(Debug)]
 pub(crate) struct Layout {
     root: Partition,
+    esp: Option<Partition>,
     sectors: u64,
 }
 
 impl Layout {
     /// The capacity describes partition contents, excluding GPT/alignment space.
-    pub(crate) fn new(root_bytes: u64) -> io::Result<Self> {
-        if root_bytes == 0
-            || !root_bytes.is_multiple_of(SECTOR_SIZE)
-            || root_bytes > carapace::ZERO_SIZE_BYTES
-        {
-            return Err(Self::invalid(
-                "root capacity must be positive, 4096-byte aligned and fit a carapace",
-            ));
-        }
+    pub(crate) fn new(root_bytes: u64, esp_bytes: Option<u64>) -> io::Result<Self> {
+        let esp = esp_bytes
+            .map(Self::partition_sectors)
+            .transpose()?
+            .map(|sectors| Partition {
+                start: ALIGNMENT,
+                sectors,
+            });
         let root = Partition {
-            start: ALIGNMENT,
-            sectors: root_bytes / 512,
+            start: esp.map_or(ALIGNMENT, |esp| {
+                (esp.start + esp.sectors).next_multiple_of(ALIGNMENT)
+            }),
+            sectors: Self::partition_sectors(root_bytes)?,
         };
         // The Carapace limit bounds this addition. Reserve four GPT blocks for
         // the backup table and one for its header, then round to 1 MiB.
@@ -39,7 +43,7 @@ impl Layout {
                 "disk layout exceeds the carapace backing extent",
             ));
         }
-        Ok(Self { root, sectors })
+        Ok(Self { root, esp, sectors })
     }
 
     pub(crate) fn bytes(&self) -> u64 {
@@ -71,16 +75,21 @@ impl Layout {
         mbr[446..462].copy_from_slice(protective.as_bytes());
         mbr[510..512].copy_from_slice(&[0x55, 0xaa]);
 
-        let root = Record {
-            kind: ROOT_PARTITION_TYPE.to_bytes_le(),
-            identity: Uuid::new_v4().to_bytes_le(),
-            start: (self.root.start / 8).into(),
-            end: ((self.root.start + self.root.sectors) / 8 - 1).into(),
-            attributes: 0.into(),
-            name: [0; 72],
-        };
         let mut table = [0; 128 * 128];
-        table[..128].copy_from_slice(root.as_bytes());
+        for (slot, (kind, partition)) in std::iter::once((ROOT_PARTITION_TYPE, self.root))
+            .chain(self.esp.map(|esp| (ESP_PARTITION_TYPE, esp)))
+            .enumerate()
+        {
+            let record = Record {
+                kind: kind.to_bytes_le(),
+                identity: Uuid::new_v4().to_bytes_le(),
+                start: (partition.start / 8).into(),
+                end: ((partition.start + partition.sectors) / 8 - 1).into(),
+                attributes: 0.into(),
+                name: [0; 72],
+            };
+            table[slot * 128..(slot + 1) * 128].copy_from_slice(record.as_bytes());
+        }
         let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
         let table_crc = crc.checksum(&table);
         let disk_guid = Uuid::new_v4().to_bytes_le();
@@ -116,6 +125,15 @@ impl Layout {
         writer.flush()
     }
 
+    fn partition_sectors(bytes: u64) -> io::Result<u64> {
+        if bytes == 0 || !bytes.is_multiple_of(SECTOR_SIZE) || bytes > carapace::ZERO_SIZE_BYTES {
+            return Err(Self::invalid(
+                "partition capacity must be positive, 4096-byte aligned and fit a carapace",
+            ));
+        }
+        Ok(bytes / 512)
+    }
+
     fn invalid(message: &'static str) -> io::Error {
         io::Error::new(io::ErrorKind::InvalidInput, message)
     }
@@ -130,7 +148,7 @@ mod tests {
     #[test]
     fn writes_aligned_native_roots_readable_by_an_independent_parser() {
         for size in [4096, 1024 * 1024, 1024 * 1024 + 4096] {
-            let layout = Layout::new(size).unwrap();
+            let layout = Layout::new(size, None).unwrap();
             let mut source = Cursor::new(Vec::new());
             layout
                 .write(&mut source, carapace::ZERO_SIZE_BYTES)
@@ -155,18 +173,24 @@ mod tests {
 
     #[test]
     fn metadata_writes_preserve_partition_contents_and_backing_tail() {
-        let layout = Layout::new(1024 * 1024).unwrap();
+        let layout = Layout::new(1024 * 1024, Some(1024 * 1024 + 4096)).unwrap();
         let capacity = layout.bytes() + 4096;
         let mut source = Cursor::new(vec![0x5a; capacity as usize]);
         layout.write(&mut source, capacity).unwrap();
         let disk = Disk::read(&mut source, capacity, ROOT_PARTITION_TYPE).unwrap();
-        let start = (disk.root.start * 512) as usize;
-        let end = start + (disk.root.sectors * 512) as usize;
-        assert!(
-            source.get_ref()[start..end]
-                .iter()
-                .all(|byte| *byte == 0x5a)
-        );
+        let esp = disk.esp.unwrap();
+        assert_eq!(esp.start, ALIGNMENT);
+        assert_eq!(esp.sectors * 512, 1024 * 1024 + 4096);
+        assert_eq!(disk.root.start % ALIGNMENT, 0);
+        for partition in [disk.root, esp] {
+            let start = (partition.start * 512) as usize;
+            let end = start + (partition.sectors * 512) as usize;
+            assert!(
+                source.get_ref()[start..end]
+                    .iter()
+                    .all(|byte| *byte == 0x5a)
+            );
+        }
         assert!(
             source.get_ref()[layout.bytes() as usize..]
                 .iter()
@@ -177,9 +201,10 @@ mod tests {
     #[test]
     fn rejects_invalid_sizes_without_writing() {
         for size in [0, 512, u64::MAX, carapace::ZERO_SIZE_BYTES] {
-            assert!(Layout::new(size).is_err());
+            assert!(Layout::new(size, None).is_err());
+            assert!(Layout::new(1024 * 1024, Some(size)).is_err());
         }
-        let layout = Layout::new(1024 * 1024).unwrap();
+        let layout = Layout::new(1024 * 1024, None).unwrap();
         let mut source = Cursor::new(vec![0x5a; 512]);
         for capacity in [
             0,
@@ -194,7 +219,7 @@ mod tests {
 
     #[test]
     fn disk_and_partition_ids_are_new_and_distinct() {
-        let layout = Layout::new(1024 * 1024).unwrap();
+        let layout = Layout::new(1024 * 1024, None).unwrap();
         let mut ids = std::collections::BTreeSet::new();
         for _ in 0..2 {
             let mut source = Cursor::new(Vec::new());
