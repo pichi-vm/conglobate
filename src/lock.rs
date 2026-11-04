@@ -4,7 +4,7 @@
 //! Committed top-level index pins. No network resolution or cache mutation.
 use crate::{
     document::YamlDocument,
-    image::{IdentityError, ImageReference, IndexDigest},
+    image::{ImageReference, IndexDigest},
 };
 use std::collections::BTreeMap;
 
@@ -12,8 +12,6 @@ use std::collections::BTreeMap;
 pub(crate) enum LockError {
     #[error("invalid lock YAML: {0}")]
     Document(#[from] serde_saphyr::Error),
-    #[error(transparent)]
-    Identity(#[from] IdentityError),
     #[error("missing image pin: {0}")]
     Missing(String),
 }

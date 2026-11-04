@@ -1,279 +1,283 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! One plan document, validated before execution and independent of key order.
-use crate::{document::YamlDocument, image::IdentityError, value::ValueError};
-use serde::{Deserialize, Deserializer};
-pub(crate) mod schema;
-pub(crate) mod transform;
-
-pub(crate) use transform::{
-    PropertyValue, TransformAction, TransformOperation, TransformSelection,
+//! Validated authored plans and compiled host-copy selections.
+use crate::{contract::plan, document::YamlDocument};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    time::Duration,
 };
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum PlanError {
-    #[error(transparent)]
-    Pattern(#[from] crate::copy::PatternError),
-    #[error(transparent)]
-    Mode(#[from] crate::copy::ModeError),
-    #[error(transparent)]
-    Template(#[from] crate::template::TemplateError),
+    #[error("invalid format: {0}")]
+    Format(#[from] std::io::Error),
     #[error("invalid plan YAML: {0}")]
     Document(#[from] serde_saphyr::Error),
+    #[error("invalid plan: {0}")]
+    Invalid(String),
     #[error(transparent)]
-    Identity(#[from] IdentityError),
-    #[error(transparent)]
-    Value(#[from] ValueError),
-    #[error(transparent)]
-    Schema(#[from] crate::planner::schema::Error),
-    #[error("{0}")]
-    Invalid(&'static str),
-    #[error("invalid regular expression: {0}")]
-    Regex(#[from] regex::Error),
+    Pattern(#[from] crate::copy::PatternError),
 }
-
-// Presence must survive parsing: null is not omission or an empty section.
-#[derive(Debug, Default)]
-pub(crate) enum Presence<T> {
-    #[default]
-    Absent,
-    Present(T),
-}
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for Presence<T> {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_option(PresenceVisitor(std::marker::PhantomData))
-    }
-}
-#[derive(Debug)]
-struct PresenceVisitor<T>(std::marker::PhantomData<T>);
-impl<'de, T: Deserialize<'de>> serde::de::Visitor<'de> for PresenceVisitor<T> {
-    type Value = Presence<T>;
-    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str("an explicit non-null value")
-    }
-    fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
-        Err(E::custom("null is not omission or an empty section"))
-    }
-    fn visit_some<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
-        T::deserialize(deserializer).map(Presence::Present)
-    }
-}
-impl<T> Presence<T> {
-    fn into_option(self) -> Option<T> {
-        match self {
-            Self::Absent => None,
-            Self::Present(value) => Some(value),
-        }
-    }
-}
-
-pub(crate) use crate::planner::schema::{
-    ArtifactName, Filesystem as FilesystemSpec, Image, Local, Reference, Run,
-};
-use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub(crate) struct Copy {
+    from: Option<plan::StageRef>,
+    path: plan::ImagePath,
     sources: Vec<crate::copy::SourcePattern>,
-    destination: ImagePath,
-    owner: Option<String>,
-    group: Option<String>,
-    mode: Option<crate::copy::CopyMode>,
+    destination: plan::ImagePath,
 }
 impl Copy {
+    pub(crate) fn from(&self) -> Option<&plan::StageRef> {
+        self.from.as_ref()
+    }
+    pub(crate) fn path(&self) -> &plan::ImagePath {
+        &self.path
+    }
     pub(crate) fn sources(&self) -> &[crate::copy::SourcePattern] {
         &self.sources
     }
     pub(crate) fn destination(&self) -> &str {
         self.destination.as_ref()
     }
-    pub(crate) fn owner(&self) -> Option<&str> {
-        self.owner.as_deref()
-    }
-    pub(crate) fn group(&self) -> Option<&str> {
-        self.group.as_deref()
-    }
-    pub(crate) fn mode(&self) -> Option<&crate::copy::CopyMode> {
-        self.mode.as_ref()
-    }
 }
 #[derive(Debug)]
-struct ImagePath(String);
-impl TryFrom<String> for ImagePath {
-    type Error = PlanError;
-    fn try_from(text: String) -> Result<Self, Self::Error> {
-        if !text.starts_with('/') || text.contains('\0') {
-            return Err(PlanError::Invalid(
-                "image path must be absolute and contain no NUL",
-            ));
-        }
-        Ok(Self(text))
-    }
+pub(crate) struct Exec {
+    pub(crate) exec: String,
+    pub(crate) network: bool,
+    pub(crate) timeout: Duration,
 }
-impl AsRef<str> for ImagePath {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
-
 #[derive(Debug)]
 pub(crate) enum Directive {
-    Run(Run),
+    Exec(Exec),
     Copy(Copy),
 }
-impl TryFrom<crate::planner::schema::Directive> for Directive {
+impl TryFrom<plan::Directive> for Directive {
     type Error = PlanError;
-    fn try_from(raw: crate::planner::schema::Directive) -> Result<Self, Self::Error> {
+    fn try_from(raw: plan::Directive) -> Result<Self, Self::Error> {
         Ok(match raw {
-            crate::planner::schema::Directive::Run(run) => Self::Run(run),
-            crate::planner::schema::Directive::Copy { copy } => Self::Copy(Copy {
-                sources: vec![copy.from.as_ref().parse()?],
-                destination: ImagePath::try_from(copy.into.as_ref().to_owned())?,
-                owner: None,
-                group: None,
-                mode: None,
+            plan::Directive::Exec {
+                command,
+                network,
+                timeout,
+            } => Self::Exec(Exec {
+                exec: command,
+                network,
+                timeout,
+            }),
+            plan::Directive::Copy { from, path, into } => Self::Copy(Copy {
+                sources: if from.is_none() {
+                    vec![path.normalized().parse()?]
+                } else {
+                    vec![]
+                },
+                from,
+                path,
+                destination: into,
             }),
         })
     }
 }
-impl Copy {
-    pub(crate) fn artifact(&self) -> &str {
-        self.sources[0].source()
-    }
-}
 #[derive(Debug)]
-pub(crate) struct Bootstrap {
-    filesystem: FilesystemSpec,
+pub(crate) struct Stage {
+    pub(crate) from: plan::ImageRef,
+    pub(crate) format: Option<plan::Format>,
+    pub(crate) mount: BTreeMap<plan::ImagePath, plan::Mount>,
+    pub(crate) derive: Vec<Directive>,
 }
-impl Bootstrap {
-    pub(crate) fn filesystem(&self) -> &FilesystemSpec {
-        &self.filesystem
-    }
-}
-#[derive(Debug)]
-pub(crate) struct Firmware {
-    pmi: String,
-    dtb: String,
-}
-impl Firmware {
-    pub(crate) fn pmi(&self) -> &str {
-        &self.pmi
-    }
-    pub(crate) fn dtb(&self) -> &str {
-        &self.dtb
-    }
-}
-#[derive(Debug)]
-pub(crate) enum TaskKind {
-    Bootstrap(Bootstrap),
-    Extend,
-    Build,
-}
-#[derive(Debug)]
-pub(crate) struct Task {
-    from: Reference,
-    kind: TaskKind,
-    directives: Vec<Directive>,
-    outputs: BTreeMap<ArtifactName, crate::planner::schema::ImagePath>,
-    firmware: Option<Firmware>,
-}
-impl Task {
-    pub(crate) fn from(&self) -> &Reference {
-        &self.from
-    }
-    pub(crate) fn kind(&self) -> &TaskKind {
-        &self.kind
-    }
-    pub(crate) fn directives(&self) -> &[Directive] {
-        &self.directives
-    }
-    pub(crate) fn outputs(&self) -> &BTreeMap<ArtifactName, crate::planner::schema::ImagePath> {
-        &self.outputs
-    }
-    pub(crate) fn firmware(&self) -> Option<&Firmware> {
-        self.firmware.as_ref()
+impl TryFrom<plan::Stage> for Stage {
+    type Error = PlanError;
+    fn try_from(raw: plan::Stage) -> Result<Self, Self::Error> {
+        let (from, format, mount, derive) = match raw {
+            plan::Stage::Create {
+                r#use,
+                format,
+                mounts,
+                steps,
+            } => (r#use, Some(format), mounts, steps),
+            plan::Stage::Extend {
+                extend,
+                mounts,
+                steps,
+            } => (extend, None, mounts, steps),
+        };
+        let mut paths = BTreeSet::new();
+        for path in mount.keys() {
+            let normalized = path.normalized();
+            let first = normalized
+                .trim_start_matches('/')
+                .split('/')
+                .next()
+                .unwrap_or("");
+            if normalized == "/"
+                || (format.is_none() && matches!(first, "dev" | "proc" | "sys"))
+                || !paths.insert(normalized)
+            {
+                return Err(PlanError::Invalid(
+                    "mounts cannot replace the root, runtime controls, or another mount".into(),
+                ));
+            }
+        }
+        if let Some(spec) = &format {
+            crate::formatter::Ext4Format::from(spec).layout()?;
+            if spec.esp.is_none() && mount.values().any(|kind| *kind == plan::Mount::Esp) {
+                return Err(PlanError::Invalid("ESP mount requires format.esp".into()));
+            }
+        }
+        Ok(Self {
+            from,
+            format,
+            mount,
+            derive: derive
+                .into_iter()
+                .map(Directive::try_from)
+                .collect::<Result<_, _>>()?,
+        })
     }
 }
 #[derive(Debug)]
 pub(crate) struct Plan {
-    tasks: BTreeMap<Local, Task>,
-    image: Image,
-    order: Vec<Local>,
+    pub(crate) stages: BTreeMap<plan::StageRef, Stage>,
+    pub(crate) image: plan::Image,
+    pub(crate) order: Vec<plan::StageRef>,
 }
 impl Plan {
-    pub(crate) fn tasks(&self) -> &BTreeMap<Local, Task> {
-        &self.tasks
+    /// The selected graph's remote inputs, including direct component selectors.
+    pub(crate) fn remote_sources(&self) -> impl Iterator<Item = &plan::Remote> {
+        self.order
+            .iter()
+            .map(|name| &self.stages[name].from)
+            .chain(self.image_sources())
+            .filter_map(|source| match source {
+                plan::ImageRef::Remote(remote) => Some(remote),
+                plan::ImageRef::Local(_) => None,
+            })
     }
-    pub(crate) fn image(&self) -> &Image {
-        &self.image
+    pub(crate) fn commands_required(&self) -> bool {
+        !self.order.is_empty()
     }
-    pub(crate) fn order(&self) -> &[Local] {
-        &self.order
+    pub(crate) fn root_reader_required(&self) -> bool {
+        matches!(
+            &self.image,
+            plan::Image::Components {
+                boot: Some(plan::Boot::Extract { .. }),
+                ..
+            }
+        )
+    }
+    fn image_sources(&self) -> Vec<&plan::ImageRef> {
+        match &self.image {
+            plan::Image::Shorthand(source) => vec![source],
+            plan::Image::Components { root, boot } => root
+                .iter()
+                .chain(boot.iter().map(|boot| match boot {
+                    plan::Boot::Shorthand(source) => source,
+                    plan::Boot::Inherit { inherit }
+                    | plan::Boot::InheritDefined { inherit, .. }
+                    | plan::Boot::InheritExtended { inherit, .. } => inherit,
+                    plan::Boot::Extract { extract, .. } => &extract.from,
+                }))
+                .collect(),
+        }
+    }
+    fn walk(
+        &self,
+        start: &plan::StageRef,
+        done: &mut BTreeSet<plan::StageRef>,
+        order: &mut Vec<plan::StageRef>,
+    ) -> Result<(), PlanError> {
+        let mut visiting = BTreeSet::new();
+        let mut stack = vec![(start.clone(), false)];
+        while let Some((name, exit)) = stack.pop() {
+            if exit {
+                visiting.remove(&name);
+                done.insert(name.clone());
+                order.push(name);
+                continue;
+            }
+            if done.contains(&name) {
+                continue;
+            }
+            let stage = self
+                .stages
+                .get(&name)
+                .ok_or_else(|| PlanError::Invalid(format!("unknown stage {name}")))?;
+            if !visiting.insert(name.clone()) {
+                return Err(PlanError::Invalid(format!(
+                    "stage dependency cycle at {name}"
+                )));
+            }
+            let mut dependencies = BTreeSet::new();
+            if let plan::ImageRef::Local(name) = &stage.from {
+                dependencies.insert(name.clone());
+            }
+            for directive in &stage.derive {
+                if let Directive::Copy(copy) = directive
+                    && let Some(name) = copy.from()
+                {
+                    dependencies.insert(name.clone());
+                }
+            }
+            stack.push((name, true));
+            stack.extend(dependencies.into_iter().rev().map(|name| (name, false)));
+        }
+        Ok(())
+    }
+}
+impl TryFrom<plan::Plan> for Plan {
+    type Error = PlanError;
+    fn try_from(raw: plan::Plan) -> Result<Self, Self::Error> {
+        if matches!(
+            raw.image,
+            plan::Image::Components {
+                root: None,
+                boot: None
+            }
+        ) {
+            return Err(PlanError::Invalid(
+                "image contains neither root nor PMI".into(),
+            ));
+        }
+        let stages = raw
+            .stages
+            .into_iter()
+            .map(|(name, stage)| Ok((name, Stage::try_from(stage)?)))
+            .collect::<Result<_, PlanError>>()?;
+        let mut plan = Self {
+            stages,
+            image: raw.image,
+            order: Vec::new(),
+        };
+        let mut checked = BTreeSet::new();
+        for name in plan.stages.keys() {
+            plan.walk(name, &mut checked, &mut Vec::new())?;
+        }
+        let mut order = Vec::new();
+        let mut done = BTreeSet::new();
+        for source in plan.image_sources() {
+            if let plan::ImageRef::Local(name) = source {
+                plan.walk(name, &mut done, &mut order)?;
+            }
+        }
+        plan.order = order;
+        Ok(plan)
     }
 }
 impl TryFrom<YamlDocument<'_>> for Plan {
     type Error = PlanError;
     fn try_from(document: YamlDocument<'_>) -> Result<Self, Self::Error> {
-        let raw: crate::planner::schema::Plan = document.decode()?;
-        let order = raw.order().to_vec();
-        let raw = raw.into_parts();
-        let tasks = raw
-            .0
-            .into_iter()
-            .map(|(name, task)| {
-                let crate::planner::schema::TaskParts {
-                    from,
-                    directives,
-                    filesystem,
-                    outputs,
-                    boot: firmware,
-                } = task.into_parts();
-                let kind = match filesystem {
-                    Some(filesystem) => TaskKind::Bootstrap(Bootstrap { filesystem }),
-                    None if outputs.is_some() => TaskKind::Build,
-                    None => TaskKind::Extend,
-                };
-                Ok((
-                    name,
-                    Task {
-                        from,
-                        directives: directives
-                            .into_iter()
-                            .map(Directive::try_from)
-                            .collect::<Result<_, PlanError>>()?,
-                        kind,
-                        outputs: outputs.unwrap_or_default(),
-                        firmware: firmware.map(|(pmi, dtb)| Firmware { pmi, dtb }),
-                    },
-                ))
-            })
-            .collect::<Result<_, PlanError>>()?;
-        Ok(Self {
-            tasks,
-            image: raw.1,
-            order,
-        })
+        Self::try_from(document.decode::<plan::Plan>()?)
     }
 }
 
-// Historical filesystem-operation tests retain direct construction of COPY
-// policies. Those policies are deliberately absent from the new plan schema.
 #[cfg(test)]
 impl Copy {
-    pub(crate) fn fixture(
-        source: &str,
-        destination: &str,
-        owner: String,
-        group: String,
-        mode: Option<String>,
-    ) -> Self {
+    pub(crate) fn fixture(source: &str, destination: &str) -> Self {
         Self {
+            from: None,
+            path: plan::ImagePath::new(source.to_owned()).unwrap(),
             sources: vec![source.parse().unwrap()],
-            destination: ImagePath::try_from(destination.to_owned()).unwrap(),
-            owner: Some(owner),
-            group: Some(group),
-            mode: mode.map(|s| s.parse().unwrap()),
+            destination: plan::ImagePath::new(destination.to_owned()).unwrap(),
         }
     }
 }
@@ -288,153 +292,130 @@ mod tests {
         Plan::try_from(YamlDocument::from(text))
     }
     #[test]
-    fn locked_filesystem_exec_and_image_sketches_are_accepted() {
-        let plan = parse("image: rootfs\ntasks:\n  rootfs:\n    kind: bootstrap\n    from: registry.example.com/fedora:43\n    filesystem:\n      kind: ext4\n      size: 4GiB\n      label: rootfs\n    exec:\n      - run: dnf install -y nginx\n        network: true\n        timeout: 5m\n").unwrap();
-        assert_eq!(plan.order()[0].as_ref(), "rootfs");
-        let Directive::Run(run) = &plan.tasks().values().next().unwrap().directives()[0] else {
+    fn creation_exec_and_component_selection_are_accepted() {
+        let plan = parse("version: 1\nimage: rootfs\nstages: {rootfs: {use: registry.test/tools:1, steps: [{exec: {command: install, network: true, timeout: 5m}}]}}").unwrap();
+        assert_eq!(plan.order[0].as_ref(), "rootfs");
+        let Directive::Exec(exec) = &plan.stages.values().next().unwrap().derive[0] else {
             panic!()
         };
-        assert!(run.network());
-        assert_eq!(run.timeout().duration().as_secs(), 300);
-        assert!(parse("image: {root: rootfs, boot: firmware}\ntasks:\n  rootfs: {kind: extend, from: registry.example.com/root:1}\n  firmware: {kind: build, from: rootfs, into: {pmi: /boot.pmi, dtb: /boot.dtb}}\n").is_ok());
+        assert!(exec.network);
+        assert_eq!(exec.timeout.as_secs(), 300);
+        assert!(parse("version: 1\nimage: {root: rootfs, boot: {extract: {from: firmware, path: /boot.pmi}}}\nstages: {rootfs: {extend: registry.test/root:1}, firmware: {extend: rootfs}}").is_ok());
     }
     #[test]
-    fn reject_old_pipeline_and_unlocked_kind_vocabulary() {
+    fn old_vocabulary_and_ambiguous_shapes_are_rejected() {
         for text in [
             "{}",
-            "image: x",
+            "version: 1\nimage: {}",
+            "version: 1\nimage: missing",
+            "version: 1\nimage: '1'\nstages: {1: {extend: registry.test/base:1}}",
             "bootstrap: {}",
             "carapace: {}",
             "firmware: {}",
             "transform: []",
             "platform: {}",
             "lock: {}",
+            "version: 1\nimage: registry.test/base:1\ntasks: {}",
+            "version: 1\nimage: null",
+            "version: 1\nimage: registry.test/base:1\nstages: null",
+            "version: 1\nimage: x\nimage: x\nstages: {}",
+            "version: 1\nimage: x\nstages: {x: {extend: a, extend: b}}",
         ] {
             assert!(parse(text).is_err(), "{text}");
         }
-        for kind in ["import", "platform", "export", "make", "produce"] {
-            assert!(
-                parse(&format!(
-                    "image: x\ntasks: {{x: {{kind: {kind}, from: registry.test/tool:1}}}}"
-                ))
-                .is_err()
-            );
-        }
-    }
-    #[test]
-    fn reject_unknown_duplicates_nulls_and_wrong_shapes_at_every_level() {
-        let good = "image: x\ntasks: {x: {kind: extend, from: registry.test/base:1}}";
-        assert!(parse(good).is_ok());
-        for field in [
-            "image: null",
-            "tasks: null",
-            "image: x\nimage: x\ntasks: {}",
-            "image: x\ntasks: {x: {kind: extend, kind: build, from: registry.test/base:1}}",
-        ] {
-            assert!(parse(field).is_err());
-        }
         for fields in [
-            "from: null",
-            "from: registry.test/base:1, exec: null",
-            "from: registry.test/base:1, derive: []",
-            "from: registry.test/base:1, filesystem: {kind: ext4, size: 16MiB}",
-            "from: registry.test/base:1, exec: [{run: echo, network: null}]",
-            "from: registry.test/base:1, exec: [{run: echo, network: yes}]",
-            "from: registry.test/base:1, exec: [{run: echo, timeout: 0s}]",
-            "from: registry.test/base:1, exec: [{run: echo, copy: {from: input, into: /x}}]",
-            "from: registry.test/base:1, exec: [{copy: {from: input, into: /x, owner: root}}]",
-            "from: registry.test/base:1, exec: [{copy: {from: a:b, into: /x}}]",
-            "from: registry.test/base:1, exec: [{copy: {from: '*', into: /x}}]",
+            "using: registry.test/base:1",
+            "extending: registry.test/base:1",
+            "extend: null",
+            "extend: registry.test/base:1, steps: null",
+            "extend: registry.test/base:1, format: {}",
+            "extend: registry.test/base:1, steps: [{exec: echo}]",
+            "extend: registry.test/base:1, steps: [{exec: {command: echo, network: null}}]",
+            "extend: registry.test/base:1, steps: [{exec: {command: echo, network: yes}}]",
+            "extend: registry.test/base:1, steps: [{exec: {command: echo}, copy: {path: input, into: /x}}]",
+            "extend: registry.test/base:1, steps: [{copy: {path: input, into: /x, owner: root}}]",
+            "extend: registry.test/base:1, steps: [{copy: {from: registry.test/remote:1, path: input, into: /x}}]",
         ] {
             assert!(
                 parse(&format!(
-                    "image: x\ntasks: {{x: {{kind: extend, {fields}}}}}"
+                    "version: 1\nimage: x\nstages: {{x: {{{fields}}}}}"
                 ))
                 .is_err(),
                 "{fields}"
             );
         }
-        for fs in [
-            "type: ext4, size: 16MiB",
-            "kind: xfs, size: 16MiB",
-            "kind: ext4, size: 4G",
-            "kind: ext4, size: 16MiB, properties: {}",
-            "kind: ext4, size: 16MiB, label: null",
-            "kind: ext4, size: 15MiB",
-            "kind: ext4, size: 16MiB, label: abcdefghijklmnopq",
+    }
+    #[test]
+    fn empty_steps_and_unrestricted_command_strings_are_accepted() {
+        for steps in [
+            "[]",
+            "[{exec: {command: ''}}]",
+            "[{exec: {command: ' ', timeout: 0s}}]",
         ] {
-            assert!(parse(&format!("image: x\ntasks: {{x: {{kind: bootstrap, from: registry.test/tool:1, filesystem: {{{fs}}}}}}}")).is_err(),"{fs}");
+            assert!(
+            parse(&format!(
+                "version: 1\nimage: x\nstages: {{x: {{extend: registry.test/base:1, steps: {steps}}}}}"
+            ))
+            .is_ok()
+        );
         }
     }
     #[test]
-    fn graph_checks_missing_inputs_exports_cycles_and_reachable_closure() {
-        let plan = parse("image: result\ntasks:\n  orphan: {kind: build, from: missing.registry/test:1, into: {ignored: /x}, exec: [{run: 'false', network: true}]}\n  result: {kind: extend, from: base, exec: [{copy: {from: payload, into: /payload}}]}\n  producer: {kind: build, from: base, into: {payload: /out}}\n  base: {kind: extend, from: registry.test/base:1}\n").unwrap();
+    fn conversion_checks_mounts_formats_and_unused_declarations() {
+        for mounts in [
+            "{'/': tmpfs}",
+            "{/tmp: tmpfs, 'tmp/.': tmpfs}",
+            "{dev: tmpfs}",
+            "{/proc/hidden: tmpfs}",
+            "{'./sys/': esp}",
+        ] {
+            assert!(parse(&format!("version: 1\nimage: registry.test/base:1\nstages: {{unused: {{extend: registry.test/base:1, mounts: {mounts}}}}}")).is_err());
+        }
+        for format in [
+            "kind: ext4",
+            "fs: unknown",
+            "size: 4096KiB",
+            "fs: ext4, size: 15MiB",
+            "label: null",
+            "fs: ext4, label: abcdefghijklmnopq",
+            "esp: 256MiB",
+        ] {
+            assert!(
+            parse(&format!(
+                "version: 1\nimage: x\nstages: {{x: {{use: registry.test/tools:1, format: {{{format}}}}}}}"
+            ))
+            .is_err(),
+            "{format}"
+        );
+        }
+        assert!(
+        parse(
+            "version: 1\nimage: x\nstages: {x: {use: registry.test/tools:1, mounts: {/efi: esp}}}"
+        )
+        .is_err()
+    );
+        assert!(parse("version: 1\nimage: x\nstages: {x: {use: registry.test/tools:1, format: {esp: 512MiB}, mounts: {/efi: esp, /tmp: tmpfs}}}").is_ok());
+    }
+    #[test]
+    fn graph_orders_copies_and_rejects_unknown_sources_and_unused_cycles() {
+        let plan = parse("version: 1\nimage: result\nstages:\n  orphan: {extend: missing.registry/test:1}\n  result: {extend: base, steps: [{copy: {from: producer, path: /out, into: /payload}}]}\n  producer: {extend: base}\n  base: {extend: registry.test/base:1}").unwrap();
         assert_eq!(
-            plan.order().iter().map(|n| n.as_ref()).collect::<Vec<_>>(),
+            plan.order
+                .iter()
+                .map(|name| name.as_ref())
+                .collect::<Vec<_>>(),
             ["base", "producer", "result"]
         );
-        for text in [
-            "image: x\ntasks: {x: {kind: extend, from: missing}}",
-            "image: x\ntasks: {x: {kind: extend, from: y}, y: {kind: extend, from: x}}",
-            "image: x\ntasks: {x: {kind: extend, from: registry.test/base:1, exec: [{copy: {from: payload, into: /x}}]}, y: {kind: build, from: x, into: {payload: /x}}}",
-            "image: x\ntasks: {x: {kind: build, from: registry.test/base:1, into: {payload: /x}}}",
-            "image: {root: x, boot: x}\ntasks: {x: {kind: bootstrap, from: registry.test/base:1, filesystem: {kind: ext4, size: 16MiB}}}",
-            "image: registry.test/base:1\ntasks: {}",
-            "image: x\ntasks: {x: {kind: extend, from: y}, y: {kind: build, from: registry.test/base:1, into: {pmi: /a, dtb: /b}}}",
+        for stages in [
+            "{x: {extend: missing}}",
+            "{x: {extend: y}, y: {extend: x}}",
+            "{x: {extend: registry.test/base:1, steps: [{copy: {from: missing, path: x, into: /x}}]}}",
         ] {
-            assert!(parse(text).is_err(), "{text}");
-        }
-        assert!(parse("image: boot\ntasks: {boot: {kind: build, from: registry.test/base:1, into: {pmi: /a, dtb: /b}}}").is_ok());
-    }
-    #[test]
-    fn defaults_and_remote_qualification_are_strict() {
-        use crate::planner::schema::{Local, Reference, Remote};
-        for remote in [
-            "registry.example.com/fedora:43",
-            "localhost:5000/tool:1",
-            "registry:5000/tool:1",
-            "[::1]:5000/tool:1",
-            "ghcr.io/pichi-vm/fedora",
-            "localhost/tool@sha256:0000000000000000000000000000000000000000000000000000000000000000",
-        ] {
-            assert!(remote.parse::<Remote>().is_ok(), "{remote}");
-            assert!(remote.parse::<Local>().is_err());
-        }
-        for bad in [
-            "alpine",
-            "alpine:latest",
-            "user/image:tag",
-            "./task",
-            "registry.test/../tool",
-            "registry.test/tool:bad:tag",
-            "registry.test:bad/tool",
-            "bad host.test/tool",
-            "registry.test/tool@sha256:00",
-        ] {
-            assert!(bad.parse::<Remote>().is_err(), "{bad}");
-        }
-        let local: Reference = serde_saphyr::from_str("base").unwrap();
-        assert!(matches!(local, Reference::Local(_)));
-        let plan = parse(
-            "image: x\ntasks: {x: {kind: extend, from: registry.test/base:1, exec: [{run: 'true'}]}}",
-        )
-        .unwrap();
-        let Directive::Run(run) = &plan.tasks().values().next().unwrap().directives()[0] else {
-            panic!()
-        };
-        assert!(!run.network());
-        assert_eq!(run.timeout().duration().as_secs(), 300);
-    }
-
-    #[test]
-    fn malformed_patterns_and_parent_traversal_fail_during_plan_parsing() {
-        for source in ["[", "[]", "[a-]", "\\", "[^]", "../file", "dir/../file", ""] {
-            let yaml = format!(
-                "image: root\ntasks: {{root: {{kind: extend, from: registry.test/base:1, exec: [{{copy: {{from: '{source}', into: /file}}}}]}}}}"
-            );
             assert!(
-                Plan::try_from(YamlDocument::from(yaml.as_str())).is_err(),
-                "{source:?}"
+                parse(&format!(
+                    "version: 1\nimage: registry.test/base:1\nstages: {stages}"
+                ))
+                .is_err()
             );
         }
     }

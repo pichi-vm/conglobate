@@ -2,9 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Validated COPY descriptions; filesystem execution is a separate authority.
-mod mode;
-pub(crate) use mode::{CopyMode, ModeError};
-
 mod pattern;
 pub(crate) use pattern::{PatternError, SourcePattern};
 
