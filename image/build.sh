@@ -113,7 +113,7 @@ done
 mkdir -p "$inst/network-online.target.wants"
 ln -s ../systemd-networkd-wait-online.service "$inst/network-online.target.wants/systemd-networkd-wait-online.service"
 install -m0644 "$here/10-build.network" "$extra/usr/lib/systemd/network/"
-printf '%s\n' fuse virtiofs loop virtio_net > "$extra/usr/lib/modules-load.d/pichi-virtiofs.conf"
+printf '%s\n' fuse virtiofs loop vfat nls_cp437 nls_iso8859-1 virtio_net > "$extra/usr/lib/modules-load.d/pichi-virtiofs.conf"
 
 # mkosi copies mkosi.extra/ into the image before mkosi.finalize.
 mkosi --force --release "$RELEASE" --output-dir "$work"
