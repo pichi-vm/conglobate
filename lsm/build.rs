@@ -8,6 +8,6 @@ fn main() -> aya_build::Result<()> {
             root_dir: "program",
             ..Default::default()
         }],
-        aya_build::Toolchain::Nightly,
+        aya_build::Toolchain::Custom("nightly-2026-07-06"),
     )
 }
