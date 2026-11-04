@@ -518,6 +518,8 @@ bytes alone does not establish the author's intended identity.
 
 ## 4. Image locks
 
+The shared lock type is `conglobate::plan::Lock`.
+
 The lock is a separate document, selected by `--lock`. It is not embedded
 in the plan. It maps each `Remote` reference to one immutable OCI index
 digest. `Local` references name tasks ([§6.1](#61-references)) and are not
