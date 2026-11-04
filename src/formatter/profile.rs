@@ -40,7 +40,9 @@ impl Ext4Format {
         "-m",
         "0",
         "-E",
-        "root_owner=0:0,nodiscard,lazy_itable_init=0",
+        // Fresh roots are snapshots over the zero device. Keep their inode
+        // tables initialized without allocating zero writes in RAM storage.
+        "root_owner=0:0,nodiscard,lazy_itable_init=0,assume_storage_prezeroed=1",
     ];
     pub(crate) fn new(size: FilesystemSize, label: String) -> Self {
         Self {
@@ -117,6 +119,47 @@ mod tests {
         let mut compatible = [0; 4];
         root.read_exact_at(&mut compatible, 1024 + 92).unwrap();
         assert_eq!(u32::from_le_bytes(compatible) & 4, 0);
+    }
+
+    #[test]
+    #[ignore = "requires mke2fs and dumpe2fs"]
+    fn default_ext4_is_initialized_without_allocating_inode_tables() {
+        use std::{fs::File, os::unix::fs::MetadataExt, process::Command};
+
+        let directory = tempfile::tempdir().unwrap();
+        let configuration = directory.path().join("mke2fs.conf");
+        std::fs::write(&configuration, Ext4Format::configuration()).unwrap();
+        let path = directory.path().join("root.ext4");
+        let format = Ext4Format::from(&Format::default());
+        File::create(&path)
+            .unwrap()
+            .set_len(format.size().bytes())
+            .unwrap();
+        assert!(
+            Command::new("mke2fs")
+                .env("MKE2FS_CONFIG", configuration)
+                .args(format.arguments(&path))
+                .status()
+                .unwrap()
+                .success()
+        );
+        // Eager initialization allocates 4 GiB for the default 256 GiB root.
+        assert!(path.metadata().unwrap().blocks() * 512 < 64 << 20);
+        let dump = Command::new("dumpe2fs")
+            .env("LC_ALL", "C")
+            .arg(&path)
+            .output()
+            .unwrap();
+        assert!(dump.status.success());
+        let text = String::from_utf8(dump.stdout).unwrap();
+        let mut groups = text
+            .lines()
+            .filter(|line| line.starts_with("Group ") && line.contains(": (Blocks "))
+            .peekable();
+        assert!(groups.peek().is_some());
+        for group in groups {
+            assert!(group.contains("ITABLE_ZEROED"), "{group}");
+        }
     }
 
     #[test]
