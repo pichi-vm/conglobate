@@ -83,7 +83,6 @@ pub(crate) struct CapturedFormatter {
     fat: Option<RelativePath<FilePath>>,
 }
 impl CapturedFormatter {
-    #[cfg(test)]
     pub(super) fn with_fat(mut self, fat: Self) -> io::Result<Self> {
         for (path, file) in &fat.files {
             if self.files.iter().any(|(existing, old)| {

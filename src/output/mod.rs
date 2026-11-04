@@ -163,7 +163,7 @@ impl StagedDirectory {
             .map_err(|_| CacheError::Invalid("invalid produced scute digest"))?;
         self.store_verified(scute.data_reader(), &digest, scute.descriptor().size)
     }
-    fn store_verified(
+    pub(crate) fn store_verified(
         &self,
         mut reader: impl Read,
         digest: &Digest,

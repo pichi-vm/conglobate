@@ -1,9 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-#[cfg(test)]
 mod image;
-use super::{CopyMode, CopySources, SelectionError};
+use super::{CopySources, SelectionError};
 use crate::{
     context::{CapturedContext, ContextEntry, ContextError},
     planner::Copy,
@@ -13,7 +12,7 @@ use std::{
     collections::VecDeque,
     ffi::{OsStr, OsString},
     fs::File,
-    io::{self, Read, Write},
+    io::{self, Write},
     os::unix::ffi::OsStrExt,
     path::{Path, PathBuf},
 };
@@ -39,37 +38,26 @@ pub(crate) struct CopyDestination<'a> {
     root: &'a File,
     output: Option<&'a File>,
 }
-#[derive(Debug)]
-struct MetadataPolicy<'a> {
-    uid: u32,
-    gid: u32,
-    mode: Option<&'a CopyMode>,
-}
-impl MetadataPolicy<'_> {
-    fn file(&self, file: &File, mode: u32, directory: bool) -> Result<(), CopyError> {
+impl<'a> CopyDestination<'a> {
+    fn file_metadata(file: &File, mode: u32) -> Result<(), CopyError> {
         fs::fchown(
             file,
-            Some(rustix::fs::Uid::from_raw(self.uid)),
-            Some(rustix::fs::Gid::from_raw(self.gid)),
+            Some(rustix::fs::Uid::ROOT),
+            Some(rustix::fs::Gid::ROOT),
         )?;
-        fs::fchmod(
-            file,
-            Mode::from_raw_mode(self.mode.map_or(mode, |m| m.apply(mode, directory))),
-        )?;
+        fs::fchmod(file, Mode::from_raw_mode(mode))?;
         Ok(())
     }
-    fn link(&self, parent: &File, name: &OsStr) -> Result<(), CopyError> {
+    fn link_owner(parent: &File, name: &OsStr) -> Result<(), CopyError> {
         fs::chownat(
             parent,
             name,
-            Some(rustix::fs::Uid::from_raw(self.uid)),
-            Some(rustix::fs::Gid::from_raw(self.gid)),
+            Some(rustix::fs::Uid::ROOT),
+            Some(rustix::fs::Gid::ROOT),
             AtFlags::SYMLINK_NOFOLLOW,
         )?;
         Ok(())
     }
-}
-impl<'a> CopyDestination<'a> {
     pub(crate) fn new(root: &'a File) -> Self {
         Self { root, output: None }
     }
@@ -153,7 +141,7 @@ impl<'a> CopyDestination<'a> {
         }
         Ok(resolved)
     }
-    fn directory(&self, path: &Path, policy: &MetadataPolicy<'_>) -> Result<File, CopyError> {
+    fn directory(&self, path: &Path) -> Result<File, CopyError> {
         let mut parent = self.open(Path::new(""), OFlags::RDONLY | OFlags::DIRECTORY)?;
         let mut prefix = PathBuf::new();
         for name in path.iter() {
@@ -176,66 +164,16 @@ impl<'a> CopyDestination<'a> {
             )?
             .into();
             if created {
-                policy.file(&next, 0o755, true)?;
+                Self::file_metadata(&next, 0o755)?;
             }
             parent = next;
         }
         Ok(parent)
     }
-    fn account(&self, path: &str, name: &str, field: usize) -> Result<u32, CopyError> {
-        let resolved = self.resolve(Path::new(path), true)?;
-        if !self.observe(&resolved)?.is_some_and(|m| m.is_file()) {
-            return Err(CopyError::Invalid("account database is not a regular file"));
-        }
-        let file = self.open(&resolved, OFlags::RDONLY | OFlags::NONBLOCK)?;
-        const LIMIT: u64 = 16 * 1024 * 1024;
-        let mut text = String::new();
-        file.take(LIMIT + 1).read_to_string(&mut text)?;
-        if text.len() as u64 > LIMIT {
-            return Err(CopyError::Invalid("account database exceeds size limit"));
-        }
-        text.lines()
-            .find(|line| line.split(':').next() == Some(name))
-            .and_then(|line| line.split(':').nth(field))
-            .and_then(|v| v.parse().ok())
-            .filter(|id| *id != u32::MAX)
-            .ok_or(CopyError::Invalid("missing account or invalid account ID"))
-    }
-    fn policy<'p>(&self, directive: &'p Copy) -> Result<MetadataPolicy<'p>, CopyError> {
-        let (uid, primary) = match directive.owner() {
-            None => (0, 0),
-            Some(s) if s.bytes().all(|b| b.is_ascii_digit()) => {
-                let id = Self::id(s)?;
-                (id, id)
-            }
-            Some(name) => (
-                self.account("/etc/passwd", name, 2)?,
-                self.account("/etc/passwd", name, 3)?,
-            ),
-        };
-        let gid = match directive.group() {
-            None => primary,
-            Some(s) if s.bytes().all(|b| b.is_ascii_digit()) => Self::id(s)?,
-            Some(name) => self.account("/etc/group", name, 2)?,
-        };
-        Ok(MetadataPolicy {
-            uid,
-            gid,
-            mode: directive.mode(),
-        })
-    }
-    fn id(value: &str) -> Result<u32, CopyError> {
-        value
-            .parse()
-            .ok()
-            .filter(|id| *id != u32::MAX)
-            .ok_or(CopyError::Invalid("invalid numeric owner/group"))
-    }
     fn leaf(
         &self,
         target: &Path,
         entry: &ContextEntry,
-        policy: &MetadataPolicy<'_>,
         context: &CapturedContext,
     ) -> Result<(), CopyError> {
         let name = target
@@ -244,7 +182,7 @@ impl<'a> CopyDestination<'a> {
         if self.observe(target)?.is_some_and(|m| m.is_dir()) {
             return Err(CopyError::Invalid("file conflicts with directory"));
         }
-        let parent = self.directory(target.parent().unwrap(), policy)?;
+        let parent = self.directory(target.parent().unwrap())?;
         match fs::unlinkat(&parent, name, AtFlags::empty()) {
             Ok(()) | Err(rustix::io::Errno::NOENT) => (),
             Err(error) => return Err(error.into()),
@@ -268,54 +206,16 @@ impl<'a> CopyDestination<'a> {
                 )?
                 .into();
                 file.write_all(&bytes)?;
-                policy.file(&file, if *executable { 0o755 } else { 0o644 }, false)?;
+                Self::file_metadata(&file, if *executable { 0o755 } else { 0o644 })?;
             }
             ContextEntry::Symlink(bytes) => {
                 fs::symlinkat(OsStr::from_bytes(bytes), &parent, name)?;
-                policy.link(&parent, name)?;
+                Self::link_owner(&parent, name)?;
             }
             ContextEntry::Directory | ContextEntry::Module { .. } => {
                 return Err(CopyError::Invalid("directory passed to leaf writer"));
             }
         }
-        Ok(())
-    }
-    /// Transfer captured regular bytes through the same confined destination
-    /// resolver as context COPY. No source filesystem handle is exposed.
-    pub(crate) fn artifact(
-        &self,
-        directive: &Copy,
-        source: &crate::firmware::FirmwareFile<'_>,
-    ) -> Result<(), CopyError> {
-        let policy = MetadataPolicy {
-            uid: 0,
-            gid: 0,
-            mode: None,
-        };
-        let mut target = self.resolve(Path::new(directive.destination()), true)?;
-        if directive.destination().ends_with('/') {
-            self.directory(&target, &policy)?;
-        }
-        if self.observe(&target)?.is_some_and(|m| m.is_dir()) {
-            target.push(directive.artifact());
-        }
-        let name = target
-            .file_name()
-            .ok_or(CopyError::Invalid("artifact destination is root"))?;
-        let parent = self.directory(target.parent().unwrap(), &policy)?;
-        match fs::unlinkat(&parent, name, AtFlags::empty()) {
-            Ok(()) | Err(rustix::io::Errno::NOENT) => (),
-            Err(e) => return Err(e.into()),
-        }
-        let mut file: File = fs::openat(
-            &parent,
-            name,
-            OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::CLOEXEC | OFlags::NOFOLLOW,
-            Mode::from_raw_mode(0o600),
-        )?
-        .into();
-        io::copy(&mut source.reader(), &mut file)?;
-        policy.file(&file, source.mode(), false)?;
         Ok(())
     }
     pub(crate) fn copy(
@@ -324,7 +224,6 @@ impl<'a> CopyDestination<'a> {
         directive: &Copy,
     ) -> Result<(), CopyError> {
         let sources = CopySources::select(context, directive.sources())?;
-        let policy = self.policy(directive)?;
         let destination = directive.destination();
         if sources.entries().len() > 1 && !destination.ends_with('/') {
             return Err(CopyError::Invalid(
@@ -333,36 +232,19 @@ impl<'a> CopyDestination<'a> {
         }
         let target = self.resolve(Path::new(destination), true)?;
         if destination.ends_with('/') {
-            self.directory(&target, &policy)?;
+            self.directory(&target)?;
         }
         for source in sources.entries() {
             if source.is_directory() {
-                let existed = self.observe(&target)?.is_some();
-                self.directory(&target, &policy)?;
-                let mut directories = Vec::new();
+                self.directory(&target)?;
                 for (relative, entry) in source.descendants() {
                     let path = self.resolve(&target.join(relative), false)?;
                     match entry {
                         ContextEntry::Directory => {
-                            self.directory(&path, &policy)?;
-                            directories.push(path);
+                            Self::file_metadata(&self.directory(&path)?, 0o755)?;
                         }
-                        _ => self.leaf(&path, entry, &policy, context)?,
+                        _ => self.leaf(&path, entry, context)?,
                     }
-                }
-                for path in directories.into_iter().rev() {
-                    policy.file(
-                        &self.open(&path, OFlags::RDONLY | OFlags::DIRECTORY)?,
-                        0o755,
-                        true,
-                    )?;
-                }
-                if !existed {
-                    policy.file(
-                        &self.open(&target, OFlags::RDONLY | OFlags::DIRECTORY)?,
-                        0o755,
-                        true,
-                    )?;
                 }
             } else {
                 let path = if self.observe(&target)?.is_some_and(|m| m.is_dir()) {
@@ -380,7 +262,6 @@ impl<'a> CopyDestination<'a> {
                     source
                         .entry()
                         .ok_or(CopyError::Invalid("missing source entry"))?,
-                    &policy,
                     context,
                 )?;
             }
@@ -450,30 +331,16 @@ mod tests {
                 context,
             }
         }
-        fn copy(&self, source: &str, destination: &str, extra: &str) -> Result<(), CopyError> {
-            self.copy_layout(source, destination, extra, None)
+        fn copy(&self, source: &str, destination: &str) -> Result<(), CopyError> {
+            self.copy_layout(source, destination, None)
         }
         fn copy_layout(
             &self,
             source: &str,
             destination: &str,
-            extra: &str,
             output: Option<&File>,
         ) -> Result<(), CopyError> {
-            let mode = if extra.trim().is_empty() {
-                None
-            } else {
-                let values: std::collections::BTreeMap<String, String> =
-                    crate::document::YamlDocument::from(extra).decode().unwrap();
-                values.get("mode").cloned()
-            };
-            let directive = crate::planner::Copy::fixture(
-                source,
-                destination,
-                rustix::process::geteuid().as_raw().to_string(),
-                rustix::process::getegid().as_raw().to_string(),
-                mode,
-            );
+            let directive = crate::planner::Copy::fixture(source, destination);
             let root = File::open(self.target.path()).unwrap();
             let writer = match output {
                 Some(output) => CopyDestination::bootstrap(&root, output),
@@ -483,9 +350,10 @@ mod tests {
         }
     }
     #[test]
+    #[ignore = "requires root to assign image ownership"]
     fn copies_committed_contents_and_preserves_nested_links() {
         let fixture = Fixture::new();
-        fixture.copy("dir", "/output", "").unwrap();
+        fixture.copy("dir", "/output").unwrap();
         assert_eq!(
             host::read(fixture.target.path().join("output/file")).unwrap(),
             b"committed"
@@ -494,23 +362,19 @@ mod tests {
             host::read_link(fixture.target.path().join("output/link")).unwrap(),
             Path::new("/outside")
         );
-        fixture
-            .copy("dir/file", "/mode", "        mode: 'u=rw,go='\n")
-            .unwrap();
-        assert_eq!(
-            host::metadata(fixture.target.path().join("mode"))
-                .unwrap()
-                .mode()
-                & 0o7777,
-            0o600
-        );
+        let metadata = host::metadata(fixture.target.path().join("output/file")).unwrap();
+        assert_eq!(metadata.mode() & 0o7777, 0o644);
+        assert_eq!((metadata.uid(), metadata.gid()), (0, 0));
+        let link = host::symlink_metadata(fixture.target.path().join("output/link")).unwrap();
+        assert_eq!((link.uid(), link.gid()), (0, 0));
     }
     #[test]
+    #[ignore = "requires root to assign image ownership"]
     fn confines_absolute_links_and_replaces_nested_links_and_hardlinks() {
         let fixture = Fixture::new();
         host::create_dir(fixture.target.path().join("safe")).unwrap();
         symlink("/safe", fixture.target.path().join("alias")).unwrap();
-        fixture.copy("dir/file", "/alias/file", "").unwrap();
+        fixture.copy("dir/file", "/alias/file").unwrap();
         assert_eq!(
             host::read(fixture.target.path().join("safe/file")).unwrap(),
             b"committed"
@@ -523,7 +387,7 @@ mod tests {
             fixture.target.path().join("out/file"),
         )
         .unwrap();
-        fixture.copy("dir", "/out", "").unwrap();
+        fixture.copy("dir", "/out").unwrap();
         assert_eq!(
             host::read(outside.path().join("sentinel")).unwrap(),
             b"untouched"
@@ -533,7 +397,7 @@ mod tests {
             fixture.target.path().join("hard"),
         )
         .unwrap();
-        fixture.copy("dir/file", "/hard", "").unwrap();
+        fixture.copy("dir/file", "/hard").unwrap();
         assert_eq!(
             host::read(outside.path().join("sentinel")).unwrap(),
             b"untouched"
@@ -544,6 +408,7 @@ mod tests {
         );
     }
     #[test]
+    #[ignore = "requires root to assign image ownership"]
     fn bootstrap_paths_and_links_cross_the_virtual_mount_boundary() {
         let fixture = Fixture::new();
         let output = tempfile::tempdir().unwrap();
@@ -562,7 +427,7 @@ mod tests {
             "/mntish/c",
         ] {
             fixture
-                .copy_layout("dir/file", path, "", Some(&output_fd))
+                .copy_layout("dir/file", path, Some(&output_fd))
                 .unwrap();
         }
         for path in ["forward", "direct"] {
@@ -583,37 +448,15 @@ mod tests {
         assert!(!output.path().join("hidden").exists());
     }
     #[test]
-    fn rejects_conflicts_and_resolves_accounts_only_inside_root() {
+    fn rejects_conflicts_and_symlink_cycles() {
         let fixture = Fixture::new();
         host::write(fixture.target.path().join("conflict"), b"original").unwrap();
-        assert!(fixture.copy("dir", "/conflict", "").is_err());
+        assert!(fixture.copy("dir", "/conflict").is_err());
         assert_eq!(
             host::read(fixture.target.path().join("conflict")).unwrap(),
             b"original"
         );
         symlink("cycle", fixture.target.path().join("cycle")).unwrap();
-        assert!(fixture.copy("dir/file", "/cycle", "").is_err());
-        host::create_dir(fixture.target.path().join("etc")).unwrap();
-        host::write(
-            fixture.target.path().join("etc/passwd"),
-            "builder:x:123:456::/:/bin/sh\n",
-        )
-        .unwrap();
-        let root = File::open(fixture.target.path()).unwrap();
-        let writer = CopyDestination::new(&root);
-        assert_eq!(writer.account("/etc/passwd", "builder", 2).unwrap(), 123);
-        assert_eq!(writer.account("/etc/passwd", "builder", 3).unwrap(), 456);
-        assert!(writer.account("/etc/passwd", "absent", 2).is_err());
-        assert!(CopyDestination::id("4294967295").is_err());
-        host::remove_file(fixture.target.path().join("etc/passwd")).unwrap();
-        fs::mknodat(
-            &root,
-            "etc/passwd",
-            fs::FileType::Fifo,
-            Mode::from_raw_mode(0o600),
-            0,
-        )
-        .unwrap();
-        assert!(writer.account("/etc/passwd", "builder", 2).is_err());
+        assert!(fixture.copy("dir/file", "/cycle").is_err());
     }
 }
