@@ -139,6 +139,7 @@ impl TryFrom<plan::Stage> for Stage {
 pub(crate) struct Plan {
     pub(crate) stages: BTreeMap<plan::StageRef, Stage>,
     pub(crate) image: plan::Image,
+    pub(crate) requirements: Option<crate::artifact::Requirements>,
     pub(crate) order: Vec<plan::StageRef>,
 }
 impl Plan {
@@ -246,6 +247,7 @@ impl TryFrom<plan::Plan> for Plan {
         let mut plan = Self {
             stages,
             image: raw.image,
+            requirements: raw.requirements,
             order: Vec::new(),
         };
         let mut checked = BTreeSet::new();

@@ -644,6 +644,20 @@ otherwise canonical empty metadata. A newly created root starts empty. Only
 selected root scutes define ancestry; selecting another image's boot component
 never imports its root. Build provenance always describes the current build.
 
+An optional top-level `requirements` replaces the output's launch contract:
+
+```yaml
+requirements:
+  cpus: {recommended: 2}
+  memory: {required: 1024, recommended: 2048}
+```
+
+It uses the existing artifact requirements schema: memory is in MiB, and
+`interfaces` declares host-provided networking. The engine writes a canonical
+version-1 artifact config. `requirements: {}` clears inherited requirements;
+omitting the field preserves the metadata inheritance above. Requirements apply
+to the final output, not the builder or intermediate stages.
+
 ### 5.3 Closure
 
 Validate every stage's shape and references, including unused cycles. Traverse
