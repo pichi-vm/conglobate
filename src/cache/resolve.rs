@@ -63,6 +63,17 @@ impl ResolvedImage {
     }
 }
 impl Cache {
+    /// Snapshot local tag mappings once; they name inputs but do not authenticate them.
+    pub(crate) fn tags(&self) -> Result<Index, CacheError> {
+        let bytes =
+            Self::read_metadata_file(self.regular_file(std::path::Path::new("index.json"))?, None)?;
+        let index: Index = serde_json::from_slice(&bytes)?;
+        if index.schema_version != 2 || index.media_type != INDEX {
+            return Err(CacheError::Invalid("invalid local cache index"));
+        }
+        Ok(index)
+    }
+
     /// Authenticate small non-scute inputs. Scutes are supplied separately by
     /// Pichi and checked lazily by Carapace against the manifest commitment.
     pub(crate) fn verify_metadata(&self, image: &ResolvedImage) -> Result<(), CacheError> {
@@ -137,6 +148,34 @@ impl Cache {
             manifest,
             architecture,
         })
+    }
+}
+
+impl crate::image::ImageReference {
+    pub(crate) fn cached_index(&self, tags: &Index) -> Result<IndexDigest, CacheError> {
+        if let Some((_, digest)) = self.as_ref().split_once('@') {
+            return digest
+                .parse()
+                .map_err(|_| CacheError::Invalid("invalid bootstrap digest"));
+        }
+        let mut matches = tags.manifests.iter().filter(|entry| {
+            entry
+                .annotations
+                .get("org.opencontainers.image.ref.name")
+                .is_some_and(|name| name == self.as_ref())
+        });
+        let selected = matches
+            .next()
+            .ok_or(CacheError::Invalid("bootstrap image is not in local cache"))?;
+        if matches.next().is_some() {
+            return Err(CacheError::Invalid(
+                "ambiguous bootstrap tag in local cache",
+            ));
+        }
+        selected
+            .digest
+            .parse()
+            .map_err(|_| CacheError::Invalid("invalid cached bootstrap digest"))
     }
 }
 

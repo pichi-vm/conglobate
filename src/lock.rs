@@ -14,9 +14,11 @@ pub(crate) enum LockError {
     Document(#[from] serde_saphyr::Error),
     #[error("missing image pin: {0}")]
     Missing(String),
+    #[error("image is both ordinary and bootstrap: {0}")]
+    Mixed(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct ImageLock {
     images: BTreeMap<ImageReference, IndexDigest>,
 }

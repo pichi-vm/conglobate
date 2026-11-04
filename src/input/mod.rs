@@ -56,7 +56,7 @@ pub(crate) struct CapturedBuild {
     id_mappings: Option<crate::isolation::IdMappings>,
     context: CapturedContext,
     plan: SelectedDocument,
-    lock: SelectedDocument,
+    lock: Option<SelectedDocument>,
     graph: BuildGraph,
     networking: Option<crate::network::ResolverInput>,
 }
@@ -66,9 +66,14 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
         let mut context =
             CapturedContext::capture(request.repository(), request.commit(), request.context())?;
         let plan_file = context.read(request.plan())?;
-        let lock_file = context.read(request.lock())?;
         let plan = Plan::try_from(YamlDocument::from(plan_file.text()?))?;
-        let lock = ImageLock::try_from(YamlDocument::from(lock_file.text()?))?;
+        let lock_required = plan.remote_sources().any(|(_, bootstrap)| !bootstrap);
+        let lock = if lock_required {
+            let file = context.read(request.lock())?;
+            ImageLock::try_from(YamlDocument::from(file.text()?))?
+        } else {
+            ImageLock::default()
+        };
         let graph = BuildGraph::new(plan, &lock)?;
         for name in &graph.plan().order {
             for directive in &graph.plan().stages[name].derive {
@@ -98,7 +103,7 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
             None
         };
         let plan = SelectedDocument::new(request.plan().clone());
-        let lock = SelectedDocument::new(request.lock().clone());
+        let lock = lock_required.then(|| SelectedDocument::new(request.lock().clone()));
         Ok(Self {
             id_mappings,
             context,
@@ -120,8 +125,8 @@ impl CapturedBuild {
     pub(crate) fn plan_document(&self) -> &SelectedDocument {
         &self.plan
     }
-    pub(crate) fn lock_document(&self) -> &SelectedDocument {
-        &self.lock
+    pub(crate) fn lock_document(&self) -> Option<&SelectedDocument> {
+        self.lock.as_ref()
     }
     pub(crate) fn networking(&self) -> Option<&crate::network::ResolverInput> {
         self.networking.as_ref()
@@ -198,9 +203,23 @@ impl CapturedBuild {
     /// Consume the captured planning phase after resolving all locked inputs.
     /// No privileged setup or output publication occurs here.
     pub(crate) fn resolve(self, cache: crate::cache::Cache) -> Result<ResolvedBuild, InputError> {
+        let tags = if self
+            .graph
+            .inputs()
+            .iter()
+            .any(|input| input.index().is_none() && !input.reference().as_ref().contains('@'))
+        {
+            cache.tags()?
+        } else {
+            crate::artifact::Index::default()
+        };
         let mut images = std::collections::BTreeMap::new();
         for input in self.graph.inputs() {
-            let image = cache.resolve(input.index())?;
+            let index = match input.index() {
+                Some(index) => index,
+                None => input.reference().cached_index(&tags)?,
+            };
+            let image = cache.resolve(index)?;
             let image = CheckedImage::verify(&cache, image)?;
             if input.root_required() && image.root().is_none() {
                 return Err(InputError::MissingExecutionCarapace(

@@ -10,16 +10,16 @@ use crate::{
 use std::collections::BTreeMap;
 
 #[derive(Debug)]
-pub(crate) struct LockedInput {
+pub(crate) struct ImageInput {
     reference: ImageReference,
-    index: IndexDigest,
+    index: Option<IndexDigest>,
     root_required: bool,
 }
-impl LockedInput {
+impl ImageInput {
     pub(crate) fn reference(&self) -> &ImageReference {
         &self.reference
     }
-    pub(crate) fn index(&self) -> IndexDigest {
+    pub(crate) fn index(&self) -> Option<IndexDigest> {
         self.index
     }
     pub(crate) fn root_required(&self) -> bool {
@@ -29,19 +29,27 @@ impl LockedInput {
 #[derive(Debug)]
 pub(crate) struct BuildGraph {
     plan: Plan,
-    inputs: Vec<LockedInput>,
+    inputs: Vec<ImageInput>,
     network_steps: Vec<(StageRef, usize)>,
 }
 impl BuildGraph {
     pub(crate) fn new(plan: Plan, lock: &ImageLock) -> Result<Self, LockError> {
         let mut inputs = BTreeMap::new();
-        for remote in plan.remote_sources() {
+        for (remote, bootstrap) in plan.remote_sources() {
             let reference = ImageReference::from(remote);
-            inputs.entry(reference.clone()).or_insert(LockedInput {
-                index: lock.resolve(&reference)?,
+            let index = if bootstrap {
+                None
+            } else {
+                Some(lock.resolve(&reference)?)
+            };
+            let input = inputs.entry(reference.clone()).or_insert(ImageInput {
+                index,
                 reference,
                 root_required: false,
             });
+            if input.index.is_none() != bootstrap {
+                return Err(LockError::Mixed(input.reference.as_ref().to_owned()));
+            }
         }
         let mut network_steps = Vec::new();
         for name in &plan.order {
@@ -70,8 +78,11 @@ impl BuildGraph {
     pub(crate) fn plan(&self) -> &Plan {
         &self.plan
     }
-    pub(crate) fn inputs(&self) -> &[LockedInput] {
+    pub(crate) fn inputs(&self) -> &[ImageInput] {
         &self.inputs
+    }
+    pub(crate) fn bootstrapped(&self) -> bool {
+        self.inputs.iter().any(|input| input.index.is_none())
     }
     pub(crate) fn network_steps(&self) -> &[(StageRef, usize)] {
         &self.network_steps
@@ -92,6 +103,19 @@ mod tests {
             &ImageLock::try_from(YamlDocument::from(pins.as_str())).unwrap(),
         )
     }
+    #[test]
+    fn bootstrap_tools_are_selected_without_pins_and_reused_once() {
+        let selected = graph("version: 1\nimage: final\nstages:\n  first: {use: !bootstrap localhost/fedora}\n  second: {use: !bootstrap localhost/fedora}\n  final: {extend: first, steps: [{copy: {from: second, path: /x, into: /x}}]}\n  orphan: {use: !bootstrap localhost/unused}").unwrap();
+        assert!(selected.bootstrapped());
+        assert_eq!(selected.inputs().len(), 1);
+        assert!(selected.inputs()[0].index().is_none());
+        assert!(selected.inputs()[0].root_required());
+        let conflict = graph(
+            "version: 1\nimage: {root: fresh, boot: registry.test/base:1}\nstages: {fresh: {use: !bootstrap registry.test/base:1}}",
+        );
+        assert!(matches!(conflict, Err(crate::lock::LockError::Mixed(_))));
+    }
+
     #[test]
     fn only_selected_closure_requires_pins_execution_or_network() {
         let plan = "version: 1\nimage: registry.test/base:1\nstages:\n  orphan: {extend: missing.registry/tool:1, steps: [exec: {command: never, network: true}]}\n";

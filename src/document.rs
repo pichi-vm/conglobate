@@ -16,6 +16,10 @@ impl<'a> From<&'a str> for YamlDocument<'a> {
 }
 
 impl YamlDocument<'_> {
+    pub(crate) fn plan(&self) -> Result<crate::contract::plan::Plan, serde_saphyr::Error> {
+        crate::contract::plan::Plan::from_yaml(self.text)
+    }
+
     pub(crate) fn decode<T: DeserializeOwned>(&self) -> Result<T, serde_saphyr::Error> {
         // The dependency exposes a non-exhaustive options struct, not a builder.
         let mut options = serde_saphyr::Options::default();

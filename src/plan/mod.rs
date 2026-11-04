@@ -23,6 +23,7 @@ mod mount;
 mod remote;
 mod stage;
 mod stage_ref;
+mod tool;
 mod version;
 
 pub use boot::Boot;
@@ -40,6 +41,7 @@ pub use mount::Mount;
 pub use remote::Remote;
 pub use stage::Stage;
 pub use stage_ref::StageRef;
+pub use tool::Tool;
 pub use version::Version;
 
 use serde::{Deserialize, Serialize};
@@ -56,6 +58,41 @@ pub struct Plan {
     /// Replace the output's launch requirements; omission preserves inheritance.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requirements: Option<crate::artifact::Requirements>,
+}
+
+#[cfg(feature = "yaml")]
+impl Plan {
+    /// Decode the authored YAML contract without silently discarding custom tags.
+    pub fn from_yaml(text: &str) -> Result<Self, serde_saphyr::Error> {
+        use serde::de::Error as _;
+        // The Serde buffer retains simple enum tags, but global tags can be
+        // ignored. Reject unsupported tags before typed decoding handles placement.
+        for event in serde_saphyr::granit_parser::Parser::new_from_str(text) {
+            let (event, _) = event.map_err(serde_saphyr::Error::custom)?;
+            if let Some(tag) = event.tag()
+                && !tag.is_yaml_core_schema()
+                && tag.to_string() != "!"
+                && tag.to_string() != "!bootstrap"
+            {
+                return Err(serde_saphyr::Error::custom(format!(
+                    "unsupported YAML tag {tag}"
+                )));
+            }
+        }
+        let mut options = serde_saphyr::Options::default();
+        options.strict_booleans = true;
+        options.no_schema = true;
+        options.legacy_octal_numbers = false;
+        options.duplicate_keys = serde_saphyr::DuplicateKeyPolicy::Error;
+        // Buffer the whole document so tags on struct fields are retained too.
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Document {
+            Plan(Plan),
+        }
+        let Document::Plan(plan) = serde_saphyr::from_str_with_options(text, options)?;
+        Ok(plan)
+    }
 }
 
 #[cfg(test)]
@@ -253,11 +290,7 @@ mod tests {
                 ImageRef::Local(_)
             ));
         }
-        for name in [
-            "localhost:5000/base:1",
-            "registry.example.com/team/base:1",
-            "[::1]:5000/base:1",
-        ] {
+        for name in ["registry.example.com/team/base:1", "[::1]:5000/base:1"] {
             assert!(matches!(
                 serde_json::from_value::<ImageRef>(json!(name)).unwrap(),
                 ImageRef::Remote(_)
@@ -265,6 +298,9 @@ mod tests {
             assert!(StageRef::new(name.into()).is_none());
         }
         for name in [
+            "localhost/base",
+            "localhost:5000/base:1",
+            "LOCALHOST:5000/base:1",
             "team/base:1",
             "registry.example.com/a/../b",
             "https://registry.example.com/base",

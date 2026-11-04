@@ -172,10 +172,10 @@ Appliance behavior is checked manually with Pichi.
 
 A build has the following lifecycle:
 
-1. Select a committed context (resolve ref→commit when given a ref) and verify
-   locked image inputs.
-2. Load plan and lock immediately from the object store; resolve other context
-   reads lazily with verify-on-use (see [§3](#3-git-context)).
+1. Select a committed context (resolve ref→commit when given a ref).
+2. Load the plan and any required lock from the object store and verify selected
+   image inputs from the cache. Resolve other context reads lazily with
+   verify-on-use (see [§3](#3-git-context)).
 3. Validate stages, references and `image`, then run only the selected closure.
 4. Create GPT roots using trusted formatters and populate `/mnt`, or extend
    existing roots at `/`. Retain one new scute per stage after clean teardown.
@@ -310,7 +310,8 @@ The success payload is an `Input` map with these text-string fields:
 
 - `ref`: required Git ref name or full object ID.
 - `plan`: required plan path relative to the selected context.
-- `lock`: required lock path relative to the selected context.
+- `lock`: required lock-path locator relative to the selected context; the file
+  is consumed only when selected ordinary image inputs require pins.
 - `context`: required context directory within the mounted repository;
   `"."` explicitly selects the root.
 - `location`: optional provenance locator; omitted or null means absent.
@@ -397,18 +398,19 @@ Defaults and failure behavior:
 - `--context` defaults to `.`. It cannot escape the selected commit.
   Appliance CBOR uses `context` for the same role.
 - `--plan` and `--lock` are required, with no default filenames or discovery.
-  Both paths are relative to the selected context, not the current directory or
-  each other's parent. Resolve them through the committed-context path rules,
-  including confined symlink handling. Absolute paths, escapes, missing files
-  and non-file targets fail. Both inputs must come from the selected commit.
-  The manifest records their selected paths; the commit binds their bytes.
+  Both locators are relative to the selected context, not the current directory
+  or each other's parent. Resolve consumed files through committed-context path
+  rules, including confined symlink handling. Absolute paths, escapes, missing
+  required files and non-file targets fail. When there are no selected ordinary
+  image inputs, the lock file is neither required nor read. The manifest records
+  consumed document paths; the commit binds their bytes.
 - `--ref` is required and accepts a Git reference or full commit hash. Resolve
   it once against the local repository before capturing committed inputs.
   Branches and tags resolve to commits; abbreviated hashes and non-commit
   objects are rejected. The appliance's `ref` field uses the same resolution.
-- The cache is never mutated. Missing locked objects are errors; image tags
-  are never resolved opportunistically during a build. Conglobate downloads
-  no additional image artifacts.
+- The cache is never mutated. Ordinary inputs use committed index pins;
+  bootstrap tools capture local tag mappings before execution. Missing cached
+  objects fail. Conglobate never resolves image references over the network.
 - **Formatting is outside the command sandbox.** Bootstrap selects a formatter
   from an **internal filesystem-name → formatter map** in the engine/image.
   The appliance image installs `e2fsprogs`, so `mke2fs` resides at the standard
@@ -458,8 +460,9 @@ commit files, or fetch remote content.
 
 ### 3.1 Immediate vs lazy reads
 
-1. **Plan and lock** are loaded **immediately** from the Git object store and
-   verified against their object identities before pipeline execution.
+1. **Plan and any required lock** are loaded from the Git object store and
+   verified against their object identities before pipeline execution. The
+   selected closure determines whether ordinary inputs require the lock.
 2. **COPY and other context reads** use **lazy gix verify-on-use**: each path is
    resolved and content-verified when first needed. There is **no** eager full
    context capture into a private tree as the design SoT, and **no** second
@@ -514,8 +517,9 @@ bytes alone does not establish the author's intended identity.
 
 The shared `conglobate::plan` module exports both `Plan` and `Lock`.
 The lock is a separate document, selected by `--lock`. It is not embedded
-in the plan. It maps each `Remote` reference to one immutable OCI index
-digest. `StageRef` references name stages ([§6.1](#61-references)) and are not
+in the plan. It maps each ordinary `Remote` reference to one immutable OCI
+index digest. Bootstrap tool references are excluded. `StageRef` references
+name stages ([§6.1](#61-references)) and are not
 entries here. Direct remote `image` component selectors are pinned alongside
 selected remote stage inputs.
 
@@ -676,8 +680,51 @@ but no command sandbox if there are no selected stages.
 disjoint validated grammars. Bare registry defaults and ambiguous short image
 names are not allowed. COPY's `from` accepts only a stage name. A missing local
 source or cycle fails before privileged setup. Local references never enter
-the lock; remote references pin complete OCI indexes and select the native
-platform. All selected components must agree with that platform.
+the lock; ordinary remote references pin complete OCI indexes and select the
+native platform. All selected components must agree with that platform.
+
+### Bootstrap tools
+
+A creation stage may resolve a tool carapace from the local cache without a
+committed lock pin:
+
+```yaml
+version: 1
+stages:
+  rootfs:
+    use: !bootstrap localhost/fedora
+    format: {size: 4GiB}
+    steps:
+      - exec: {command: mkdir -p /mnt/etc}
+image: rootfs
+```
+
+Only external `use` references accept `!bootstrap`. It is invalid on local
+stage names, `extend`, image component selectors or COPY sources. Generated
+stages can be used and extended normally. Fully qualified remote-looking names
+such as `ghcr.io/pichi-vm/fedora` are also valid bootstrap tools; an omitted tag
+means `latest`. Ordinary references cannot use `localhost`, including a port.
+Multiple bootstrap tools and mixed ordinary/bootstrap builds are supported.
+The same selected canonical reference cannot be both ordinary and bootstrap.
+Plan and lock versions remain 1.
+
+Only selected inputs are resolved. Ordinary inputs require their committed
+pins. Bootstrap tools ignore the lock, even if it contains stale entries for
+them. If no selected ordinary inputs remain, an absent or malformed unused
+lock does not affect the build. `pichi update` pins ordinary inputs only;
+`pichi build` never writes locks or Git history.
+
+Capture the local OCI cache `index.json` once before resolving bootstrap tags.
+Digest references select their cached index directly. Verify the index,
+native manifest and carapace through the ordinary digest/verity path. Neither
+a tag nor its registry-looking name proves publisher identity. Repeated uses
+retain their captured input even if the local name subsequently changes. The
+host can tag a successful output with the input name for recursive bootstrap
+builds; a failed build must leave that name unchanged.
+
+YAML consumers use `Plan::from_yaml` (the portable `yaml` feature) to preserve
+tags through aliases and reject unknown or misplaced tags. Existing readers
+reject bootstrap tool syntax; no document-version transition is required.
 
 ### 6.2 Creation and extension
 
@@ -933,7 +980,8 @@ not only on an index, index descriptor, or configuration blob:
 | `dev.pichi.build.commit` | Required: `sha1:<hex>` or `sha256:<hex>`, using the full resolved Git commit identity |
 | `dev.pichi.build.context` | Required: path inside that commit; `.` selects the commit root |
 | `dev.pichi.build.plan` | Required: plan path relative to the selected context |
-| `dev.pichi.build.lock` | Required: lock path relative to the selected context |
+| `dev.pichi.build.lock` | Present only when consumed: lock path relative to the context |
+| `dev.pichi.build.bootstrapped` | `"true"` iff this build used a selected bootstrap tool; otherwise absent |
 | `dev.pichi.build.location` | Optional: provenance hint for where to obtain the repository |
 
 Location says where to get it; commit says what it is; context selects a path
@@ -941,6 +989,15 @@ in that commit; plan and lock select paths relative to context. The commit
 value carries its algorithm. There are no separate tree or object-format keys.
 Plan and lock bytes are already bound through the commit and selected paths;
 do not mirror their content digests as additional build annotations.
+
+`bootstrapped` is a manifest annotation, never a layer annotation. It records
+this build's direct bootstrap use; all inherited `dev.pichi.build.*` keys are
+replaced. Raw import does not automatically claim a bootstrapped build. The
+marker identifies inputs accepted as publisher-trusted bootstrap roots, not
+an input inventory or proof of confidential-computing attestation. In a mixed
+build, ordinary input branches still require normal auditing. Future build
+attestation must bind actual input measurements, committed source and output;
+this marker does not implement that future attestation.
 
 Location is only a locator, not an authenticated identity. Omit it when no
 provenance hint is supplied; the appliance's fixed repository mount is not an

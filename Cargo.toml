@@ -9,9 +9,10 @@ description = "Standalone image builder with isolated command execution"
 
 [features]
 default = []
+yaml = ["dep:serde-saphyr"]
 # Runtime dependencies are enabled only when building the CLI.
 cli = [
-    "dep:serde-saphyr",
+    "yaml",
     "dep:serde_json",
     "dep:sha2",
     "dep:getrandom",

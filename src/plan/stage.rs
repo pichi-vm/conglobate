@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{Directive, Format, ImagePath, ImageRef, Mount};
+use super::{Directive, Format, ImagePath, ImageRef, Mount, Tool};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 #[serde(untagged, deny_unknown_fields)]
 pub enum Stage {
     Create {
-        r#use: ImageRef,
+        r#use: Tool,
         #[serde(default)]
         format: Format,
         #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]

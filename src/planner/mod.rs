@@ -81,6 +81,7 @@ impl TryFrom<plan::Directive> for Directive {
 #[derive(Debug)]
 pub(crate) struct Stage {
     pub(crate) from: plan::ImageRef,
+    pub(crate) bootstrap: bool,
     pub(crate) format: Option<plan::Format>,
     pub(crate) mount: BTreeMap<plan::ImagePath, plan::Mount>,
     pub(crate) derive: Vec<Directive>,
@@ -88,18 +89,27 @@ pub(crate) struct Stage {
 impl TryFrom<plan::Stage> for Stage {
     type Error = PlanError;
     fn try_from(raw: plan::Stage) -> Result<Self, Self::Error> {
-        let (from, format, mount, derive) = match raw {
+        let (from, bootstrap, format, mount, derive) = match raw {
             plan::Stage::Create {
                 r#use,
                 format,
                 mounts,
                 steps,
-            } => (r#use, Some(format), mounts, steps),
+            } => match r#use {
+                plan::Tool::Image(source) => (source, false, Some(format), mounts, steps),
+                plan::Tool::Bootstrap(remote) => (
+                    plan::ImageRef::Remote(remote),
+                    true,
+                    Some(format),
+                    mounts,
+                    steps,
+                ),
+            },
             plan::Stage::Extend {
                 extend,
                 mounts,
                 steps,
-            } => (extend, None, mounts, steps),
+            } => (extend, false, None, mounts, steps),
         };
         let mut paths = BTreeSet::new();
         for path in mount.keys() {
@@ -126,6 +136,7 @@ impl TryFrom<plan::Stage> for Stage {
         }
         Ok(Self {
             from,
+            bootstrap,
             format,
             mount,
             derive: derive
@@ -144,13 +155,17 @@ pub(crate) struct Plan {
 }
 impl Plan {
     /// The selected graph's remote inputs, including direct component selectors.
-    pub(crate) fn remote_sources(&self) -> impl Iterator<Item = &plan::Remote> {
+    pub(crate) fn remote_sources(&self) -> impl Iterator<Item = (&plan::Remote, bool)> {
         self.order
             .iter()
-            .map(|name| &self.stages[name].from)
-            .chain(self.image_sources())
-            .filter_map(|source| match source {
-                plan::ImageRef::Remote(remote) => Some(remote),
+            .map(|name| (&self.stages[name].from, self.stages[name].bootstrap))
+            .chain(
+                self.image_sources()
+                    .into_iter()
+                    .map(|source| (source, false)),
+            )
+            .filter_map(|(source, bootstrap)| match source {
+                plan::ImageRef::Remote(remote) => Some((remote, bootstrap)),
                 plan::ImageRef::Local(_) => None,
             })
     }
@@ -268,7 +283,7 @@ impl TryFrom<plan::Plan> for Plan {
 impl TryFrom<YamlDocument<'_>> for Plan {
     type Error = PlanError;
     fn try_from(document: YamlDocument<'_>) -> Result<Self, Self::Error> {
-        Self::try_from(document.decode::<plan::Plan>()?)
+        Self::try_from(document.plan()?)
     }
 }
 
