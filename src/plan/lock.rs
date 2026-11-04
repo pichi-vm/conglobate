@@ -65,8 +65,8 @@ mod tests {
     }
 
     #[test]
-    fn lock_keys_require_explicit_remote_references() {
-        for reference in ["base", "team/base:1", "registry.example/base"] {
+    fn lock_keys_require_fully_qualified_references() {
+        for reference in ["base", "team/base", "team/base:1"] {
             let value = serde_json::json!({
                 "version": 1,
                 "images": {reference: format!("sha256:{}", "11".repeat(32))}
@@ -76,5 +76,16 @@ mod tests {
                 "{reference}"
             );
         }
+    }
+
+    #[test]
+    fn implicit_latest_lock_key_matches_an_explicit_reference() {
+        let value = serde_json::json!({
+            "version": 1,
+            "images": {"registry.example/base": format!("sha256:{}", "11".repeat(32))}
+        });
+        let lock: Lock = serde_json::from_value(value).unwrap();
+        let reference = Remote::new("registry.example/base:latest".into()).unwrap();
+        assert_eq!(lock.images[&reference], Digest::Sha256([0x11; 32]));
     }
 }

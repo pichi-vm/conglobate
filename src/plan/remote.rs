@@ -5,7 +5,7 @@ use crate::artifact::{Reference, ReferenceKind};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 
-/// A fully qualified image with an explicit registry, repository and selector.
+/// A fully qualified image; an omitted selector means the `latest` tag.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Remote {
     registry: String,
@@ -15,11 +15,7 @@ pub struct Remote {
 
 impl Remote {
     pub fn new(value: String) -> Option<Self> {
-        let (registry, repository) = value.split_once('/')?;
-        // Require a tag or digest rather than accepting the parser's latest default.
-        if !repository.contains('@') && !repository.rsplit('/').next()?.contains(':') {
-            return None;
-        }
+        let (registry, _) = value.split_once('/')?;
         let (host, port) = if let Some(ipv6) = registry.strip_prefix('[') {
             let (address, suffix) = ipv6.split_once(']')?;
             address.parse::<std::net::Ipv6Addr>().ok()?;
@@ -98,8 +94,7 @@ impl Serialize for Remote {
 }
 impl<'de> Deserialize<'de> for Remote {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Self::new(String::deserialize(deserializer)?).ok_or_else(|| {
-            serde::de::Error::custom("expected an explicit registry, repository, and tag or digest")
-        })
+        Self::new(String::deserialize(deserializer)?)
+            .ok_or_else(|| serde::de::Error::custom("expected an explicit registry and repository"))
     }
 }
