@@ -14,6 +14,7 @@ mod mbr_entry;
 mod partition;
 mod record;
 
+pub(crate) use layout::Layout;
 pub(crate) use partition::Partition;
 
 use crc::{CRC_32_ISO_HDLC, Crc};
