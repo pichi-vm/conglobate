@@ -9,6 +9,7 @@
 
 mod entry;
 mod header;
+mod layout;
 mod mbr_entry;
 mod partition;
 mod record;

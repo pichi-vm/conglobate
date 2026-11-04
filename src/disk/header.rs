@@ -5,19 +5,19 @@ use super::Disk;
 use crc::{CRC_32_ISO_HDLC, Crc};
 use std::io;
 use zerocopy::{
-    FromBytes, Immutable, KnownLayout, Unaligned,
+    FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned,
     byteorder::little_endian::{U32, U64},
 };
 
 /// GPT 1.0 header. Fixed geometry is checked before using any disk lengths.
-#[derive(Debug, FromBytes, Immutable, KnownLayout, Unaligned)]
+#[derive(Debug, FromBytes, IntoBytes, Immutable, KnownLayout, Unaligned)]
 #[repr(C)]
 pub(super) struct Header {
-    signature: [u8; 8],
-    revision: U32,
-    size: U32,
-    crc32: U32,
-    reserved: U32,
+    pub(super) signature: [u8; 8],
+    pub(super) revision: U32,
+    pub(super) size: U32,
+    pub(super) crc32: U32,
+    pub(super) reserved: U32,
     pub(super) current_lba: U64,
     pub(super) backup_lba: U64,
     pub(super) first_usable: U64,
@@ -25,7 +25,7 @@ pub(super) struct Header {
     pub(super) disk_guid: [u8; 16],
     pub(super) part_start: U64,
     pub(super) num_parts: U32,
-    part_size: U32,
+    pub(super) part_size: U32,
     pub(super) crc32_parts: U32,
 }
 
