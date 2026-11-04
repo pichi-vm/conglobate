@@ -802,6 +802,12 @@ header's backup-LBA bounds the logical disk within Carapace's larger geometry;
 validate both headers/tables and partition ranges before mapping. Checked byte
 conversion separates GPT 4096-byte LBAs from device-mapper 512-byte sectors.
 Carapace is unchanged. No extra loop wrapper or kernel partition scan is needed.
+Input roots may also be unpartitioned, for example an image made with
+`mkfs.ext4 -d`. Conglobate first tries full GPT validation. If the GPT is invalid,
+its root view covers the whole device and has no ESP; I/O errors still fail.
+Layout selection does not identify filesystems. The existing mount layer
+validates the selected filesystem before commands run. Creation output remains
+GPT regardless of the tool image's layout.
 Corium separately reads GPT and maps the root with its existing readonly linear
 view. Systemd sibling-partition auto-discovery is not promised; runtime ESP
 mounting is explicit OS policy.

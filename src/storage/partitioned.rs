@@ -9,8 +9,9 @@ use std::{
     num::NonZeroU64,
 };
 
-/// Partition views ABOVE a writable whole-disk snapshot. All writes retain
-/// their disk offsets in one COW store. Explicit release precedes sealing.
+/// Root and optional ESP views above a writable snapshot. Unpartitioned roots
+/// start at zero; GPT partitions retain their disk offsets in the COW store.
+/// Explicit release precedes sealing.
 #[derive(Debug)]
 pub(crate) struct PartitionedSnapshot<'origin, 'workspace> {
     root: Mapping<Active>,
@@ -31,9 +32,17 @@ impl<'o, 'w> PartitionedSnapshot<'o, 'w> {
     pub(crate) fn open(snapshot: SnapshotMapping<'o, 'w>) -> io::Result<Self> {
         let mut file = snapshot.open_read_only()?;
         let capacity = Self::capacity(&mut file)?;
-        let disk = Disk::read(&mut file, capacity, ROOT_PARTITION_TYPE)?;
-        let root = disk.root;
-        let esp = disk.esp;
+        let (root, esp) = match Disk::read(&mut file, capacity, ROOT_PARTITION_TYPE) {
+            Ok(disk) => (disk.root, disk.esp),
+            Err(error) if error.kind() == io::ErrorKind::InvalidData => (
+                Partition {
+                    start: 0,
+                    sectors: capacity / 512,
+                },
+                None,
+            ),
+            Err(error) => return Err(error),
+        };
         let root = Self::view(&snapshot, root)?;
         let esp = match esp
             .map(|partition| Self::view(&snapshot, partition))
@@ -61,7 +70,7 @@ impl<'o, 'w> PartitionedSnapshot<'o, 'w> {
         if rustix::fs::ioctl_blksszget(&*file)? != 4096 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "partitioned images require 4096-byte logical sectors",
+                "images require 4096-byte logical sectors",
             ));
         }
         file.seek(SeekFrom::End(0))
@@ -148,11 +157,11 @@ mod tests {
 
     #[test]
     #[ignore = "requires root, loop devices and device mapper"]
-    fn partition_views_keep_disk_offsets_in_one_snapshot() {
+    fn root_views_keep_disk_offsets_in_one_snapshot() {
         let workspace = Workspace::create().unwrap();
         let sectors = NonZeroU64::new(carapace::ZERO_SIZE_SECTORS).unwrap();
         let origin = Mapping::<Created>::create().unwrap().zero(sectors).unwrap();
-        for esp in [None, Some(1024 * 1024)] {
+        for (partitioned, esp) in [(false, None), (true, None), (true, Some(1024 * 1024))] {
             let snapshot = Mapping::<Created>::create()
                 .unwrap()
                 .snapshot(
@@ -161,10 +170,20 @@ mod tests {
                     sectors,
                 )
                 .unwrap();
-            let layout = Layout::new(16 * 1024 * 1024, esp).unwrap();
-            let views = PartitionedSnapshot::create(snapshot, &layout).unwrap();
+            let (views, size) = if partitioned {
+                let layout = Layout::new(16 * 1024 * 1024, esp).unwrap();
+                (
+                    PartitionedSnapshot::create(snapshot, &layout).unwrap(),
+                    16 * 1024 * 1024,
+                )
+            } else {
+                (
+                    PartitionedSnapshot::open(snapshot).unwrap(),
+                    carapace::ZERO_SIZE_BYTES,
+                )
+            };
             let mut root = views.root.open_read_write().unwrap();
-            assert_eq!(root.seek(SeekFrom::End(0)).unwrap(), 16 * 1024 * 1024);
+            assert_eq!(root.seek(SeekFrom::End(0)).unwrap(), size);
             root.seek(SeekFrom::Start(0)).unwrap();
             root.write_all(b"root").unwrap();
             drop(root);
@@ -177,14 +196,24 @@ mod tests {
             views.sync().unwrap();
             let snapshot = views.into_snapshot().unwrap();
             let mut disk_file = snapshot.open_read_only().unwrap();
-            let disk = Disk::read(
-                &mut disk_file,
-                carapace::ZERO_SIZE_BYTES,
-                ROOT_PARTITION_TYPE,
-            )
-            .unwrap();
-            let root = disk.root;
-            for (partition, expected) in [(Some(root), b"root"), (disk.esp, b"esp!")] {
+            let (root, esp) = if partitioned {
+                let disk = Disk::read(
+                    &mut disk_file,
+                    carapace::ZERO_SIZE_BYTES,
+                    ROOT_PARTITION_TYPE,
+                )
+                .unwrap();
+                (disk.root, disk.esp)
+            } else {
+                (
+                    Partition {
+                        start: 0,
+                        sectors: sectors.get(),
+                    },
+                    None,
+                )
+            };
+            for (partition, expected) in [(Some(root), b"root"), (esp, b"esp!")] {
                 if let Some(partition) = partition {
                     disk_file
                         .seek(SeekFrom::Start(partition.start * 512))
@@ -195,7 +224,7 @@ mod tests {
                 }
             }
             drop(disk_file);
-            // Reopening consumes on-disk GPT data, not the creation layout.
+            // Reopening discovers the layout from the snapshot contents.
             let views = PartitionedSnapshot::open(snapshot).unwrap();
             views
                 .into_snapshot()
