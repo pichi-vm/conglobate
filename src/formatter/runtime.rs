@@ -80,8 +80,32 @@ impl FormatterFile {
 pub(crate) struct CapturedFormatter {
     executable: RelativePath<FilePath>,
     files: BTreeMap<RelativePath<FilePath>, FormatterFile>,
+    fat: Option<RelativePath<FilePath>>,
 }
 impl CapturedFormatter {
+    #[cfg(test)]
+    pub(super) fn with_fat(mut self, fat: Self) -> io::Result<Self> {
+        for (path, file) in &fat.files {
+            if self.files.iter().any(|(existing, old)| {
+                if existing == path {
+                    old.bytes != file.bytes || old.executable != file.executable
+                } else {
+                    existing.as_ref().starts_with(path.as_ref())
+                        || path.as_ref().starts_with(existing.as_ref())
+                }
+            }) {
+                return Err(io::Error::other(
+                    "trusted formatter inputs conflict between captures",
+                ));
+            }
+        }
+        self.fat = Some(fat.executable);
+        self.files.extend(fat.files);
+        Ok(self)
+    }
+    pub(super) fn fat(&self) -> Option<&RelativePath<FilePath>> {
+        self.fat.as_ref()
+    }
     pub(crate) fn capture(
         root: &Path,
         executable: RelativePath<FilePath>,
@@ -129,7 +153,11 @@ impl CapturedFormatter {
                 "formatter executable must be captured with execute permission",
             ));
         }
-        Ok(Self { executable, files })
+        Ok(Self {
+            executable,
+            files,
+            fat: None,
+        })
     }
     /// Add the builder-owned configuration, rejecting a supplied host config.
     /// The captured root must never choose ambient mke2fs defaults.
@@ -170,6 +198,31 @@ impl CapturedFormatter {
 mod tests {
     use super::*;
     use std::{fs, os::unix::fs::symlink};
+
+    #[test]
+    fn optional_fat_runtime_shares_identical_files_and_rejects_conflicts() {
+        let root = tempfile::tempdir().unwrap();
+        for (path, bytes) in [
+            ("ext4", b"ext4".as_slice()),
+            ("fat", b"fat".as_slice()),
+            ("lib", b"shared".as_slice()),
+        ] {
+            fs::write(root.path().join(path), bytes).unwrap();
+            fs::set_permissions(root.path().join(path), fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        let capture = |tool: &str| {
+            let executable = RelativePath::try_from(Path::new(tool)).unwrap();
+            let library = RelativePath::try_from(Path::new("lib")).unwrap();
+            CapturedFormatter::capture(root.path(), executable.clone(), [executable, library])
+                .unwrap()
+        };
+        let combined = capture("ext4").with_fat(capture("fat")).unwrap();
+        assert_eq!(combined.fat().unwrap().as_ref(), Path::new("fat"));
+        assert_eq!(combined.files().len(), 3);
+        let ext4 = capture("ext4");
+        fs::write(root.path().join("lib"), b"changed").unwrap();
+        assert!(ext4.with_fat(capture("fat")).is_err());
+    }
 
     #[test]
     fn configuration_is_builder_owned_and_rejects_runtime_path_collisions() {

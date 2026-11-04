@@ -30,9 +30,11 @@ struct FormatInputs<'origin, 'workspace> {
     runtime: FormatterRuntime,
     snapshot: PartitionedSnapshot<'origin, 'workspace>,
     format: Ext4Format,
+    next: Option<std::process::Command>,
 }
 impl FormatInputs<'_, '_> {
-    fn reject(self, error: anyhow::Error) -> anyhow::Error {
+    fn reject(mut self, error: anyhow::Error) -> anyhow::Error {
+        self.next.take();
         let storage = self
             .snapshot
             .into_snapshot()
@@ -75,10 +77,11 @@ impl FormatterRuntime {
                 });
             }
         };
-        let inputs = Box::new(FormatInputs {
+        let mut inputs = Box::new(FormatInputs {
             runtime: self,
             snapshot,
             format,
+            next: None,
         });
         let result = (|| -> io::Result<Process<Running>> {
             budget.check()?;
@@ -92,6 +95,23 @@ impl FormatterRuntime {
                     io::ErrorKind::InvalidInput,
                     "formatter requires builder-owned ext4 configuration",
                 ));
+            }
+            if let Some(format) = inputs.format.esp()? {
+                let device = inputs
+                    .snapshot
+                    .esp_id()
+                    .ok_or_else(|| io::Error::other("missing formatted ESP view"))?;
+                let executable =
+                    inputs.runtime.captured().fat().ok_or_else(|| {
+                        io::Error::other("ESP formatting requires captured mkfs.fat")
+                    })?;
+                let mut command = program.formatter(
+                    Path::new("/").join(executable.as_ref()),
+                    format.arguments(Path::new("/dev/output")),
+                    budget.cutoff()?,
+                )?;
+                command.stdin(FormatterInput::new(&inputs.runtime, device)?.into_stdio()?);
+                inputs.next = Some(command);
             }
             let executable = Path::new("/").join(inputs.runtime.captured().executable().as_ref());
             let mut command = program.formatter(
@@ -140,7 +160,7 @@ impl<'a, 'w> Formatting<'a, 'w> {
             }
         };
         // Successful wait is the proof permitting resource destruction again.
-        let inputs = ManuallyDrop::into_inner(inputs);
+        let mut inputs = ManuallyDrop::into_inner(inputs);
         let result = (|| -> io::Result<()> {
             if Instant::now() >= deadline {
                 return Err(io::Error::new(
@@ -158,7 +178,23 @@ impl<'a, 'w> Formatting<'a, 'w> {
             Ok(())
         })();
         match result {
-            Ok(()) => Ok(FormattedSnapshot { inputs }),
+            Ok(()) => {
+                if let Some(mut command) = inputs.next.take() {
+                    let process = command.spawn().map(Process::from);
+                    drop(command);
+                    match process {
+                        Ok(process) => Self {
+                            process,
+                            inputs: ManuallyDrop::new(inputs),
+                            deadline,
+                        }
+                        .wait(),
+                        Err(error) => Err(inputs.reject(error.into())),
+                    }
+                } else {
+                    Ok(FormattedSnapshot { inputs })
+                }
+            }
             Err(source) => Err(inputs.reject(source.into())),
         }
     }

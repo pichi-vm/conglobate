@@ -5,7 +5,8 @@
 //!
 //! GPT 1.0 uses 4096-byte logical blocks and 128-byte entries. Both metadata
 //! copies are checked without repair or filesystem probing. Only compact
-//! occupied-entry records survive each block read; only the root is mapped.
+//! occupied-entry records survive each block read. Root and optional ESP
+//! extents are available to the formatter and stage mounts.
 
 mod entry;
 mod header;
@@ -28,6 +29,7 @@ use zerocopy::FromBytes as _;
 
 const SECTOR_SIZE: u64 = 4096;
 const NO_AUTO: u64 = 1 << 63;
+const ESP_PARTITION_TYPE: Uuid = uuid::uuid!("c12a7328-f81f-11d2-ba4b-00a0c93ec93b");
 const MAX_ENTRIES: u32 = 8192;
 
 #[cfg(target_arch = "x86_64")]
@@ -41,6 +43,7 @@ compile_error!("Conglobate requires an x86-64 or AArch64 discoverable root parti
 #[derive(Debug)]
 pub(crate) struct Disk {
     pub(crate) root: Partition,
+    pub(crate) esp: Option<Partition>,
 }
 
 impl Disk {
@@ -83,8 +86,17 @@ impl Disk {
                 "multiple discoverable root partitions: {root} and {other}"
             )));
         }
+        // ESP use is explicit, so no-auto does not suppress it.
+        let mut esps = entries
+            .iter()
+            .filter(|entry| entry.kind == ESP_PARTITION_TYPE);
+        let esp = esps.next().map(Partition::try_from).transpose()?;
+        if esps.next().is_some() {
+            return Err(Self::invalid("multiple EFI System Partitions"));
+        }
         Ok(Self {
             root: Partition::try_from(root)?,
+            esp,
         })
     }
 

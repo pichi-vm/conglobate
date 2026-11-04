@@ -648,3 +648,23 @@ fn rejects_excessive_table_work_before_reading_entries() {
     assert!(message.contains("geometry"), "{message}");
     assert_eq!(spy.reads, [4096]);
 }
+
+#[test]
+fn selects_an_explicit_esp_and_rejects_ambiguity() {
+    let mut fixture = Fixture::new(&[partition_types::LINUX_ROOT_X64, partition_types::EFI]);
+    fixture.entries(|entries| entries.get_mut(&2).unwrap().flags = NO_AUTO);
+    let disk = Disk::read(&mut fixture.bytes, SIZE as u64, X64).unwrap();
+    assert_eq!(disk.esp.unwrap().start, 4096);
+    let mut fixture = Fixture::new(&[
+        partition_types::LINUX_ROOT_X64,
+        partition_types::EFI,
+        partition_types::EFI,
+    ]);
+    assert!(
+        fixture
+            .read()
+            .unwrap_err()
+            .to_string()
+            .contains("multiple EFI System Partitions")
+    );
+}

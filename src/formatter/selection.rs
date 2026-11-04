@@ -38,7 +38,11 @@ pub(crate) fn profile_for_name(name: &str) -> Result<&'static str, io::Error> {
 }
 
 fn capture_host_ext4() -> io::Result<CapturedFormatter> {
-    let executable = find_mke2fs()?;
+    host_tool("mke2fs")?.with_ext4_configuration()
+}
+
+fn host_tool(name: &str) -> io::Result<CapturedFormatter> {
+    let executable = find_tool(name)?;
     let relative = strip_root(&executable)?;
     let mut files = BTreeSet::new();
     files.insert(relative.clone());
@@ -51,33 +55,24 @@ fn capture_host_ext4() -> io::Result<CapturedFormatter> {
         .collect::<Result<Vec<_>, _>>()
         .map_err(io::Error::other)?;
     let executable = ContextPath::try_from(relative.as_path()).map_err(io::Error::other)?;
-    CapturedFormatter::capture(Path::new("/"), executable, paths)?.with_ext4_configuration()
+    CapturedFormatter::capture(Path::new("/"), executable, paths)
 }
 
-fn find_mke2fs() -> io::Result<PathBuf> {
-    for candidate in [
-        "/usr/sbin/mke2fs",
-        "/sbin/mke2fs",
-        "/usr/bin/mke2fs",
-        "/bin/mke2fs",
-    ] {
-        let path = PathBuf::from(candidate);
+fn find_tool(name: &str) -> io::Result<PathBuf> {
+    let path_var = env::var_os("PATH").unwrap_or_default();
+    for directory in ["/usr/sbin", "/sbin", "/usr/bin", "/bin"]
+        .map(PathBuf::from)
+        .into_iter()
+        .chain(env::split_paths(&path_var))
+    {
+        let path = directory.join(name);
         if path.is_file() {
             return fs::canonicalize(path);
         }
     }
-    let path_var = env::var_os("PATH").ok_or_else(|| {
-        io::Error::new(io::ErrorKind::NotFound, "mke2fs not found: PATH is unset")
-    })?;
-    for dir in env::split_paths(&path_var) {
-        let candidate = dir.join("mke2fs");
-        if candidate.is_file() {
-            return fs::canonicalize(candidate);
-        }
-    }
     Err(io::Error::new(
         io::ErrorKind::NotFound,
-        "mke2fs not found on PATH",
+        format!("trusted formatter {name} not found"),
     ))
 }
 
@@ -154,7 +149,7 @@ mod tests {
 
     #[test]
     fn captured_runtime_contains_the_executables_exact_elf_interpreter_path() {
-        let executable = find_mke2fs().unwrap();
+        let executable = find_tool("mke2fs").unwrap();
         let bytes = fs::read(&executable).unwrap();
         let elf = goblin::elf::Elf::parse(&bytes).unwrap();
         if let Some(interpreter) = elf.interpreter {

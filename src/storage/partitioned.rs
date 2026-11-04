@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{Active, Created, Mapping, SnapshotMapping};
-use crate::disk::{Disk, Layout, ROOT_PARTITION_TYPE};
+use crate::disk::{Disk, Layout, Partition, ROOT_PARTITION_TYPE};
 use std::{
     fs::File,
     io::{self, Seek, SeekFrom},
@@ -14,6 +14,7 @@ use std::{
 #[derive(Debug)]
 pub(crate) struct PartitionedSnapshot<'origin, 'workspace> {
     root: Mapping<Active>,
+    esp: Option<Mapping<Active>>,
     snapshot: SnapshotMapping<'origin, 'workspace>,
 }
 
@@ -31,16 +32,29 @@ impl<'o, 'w> PartitionedSnapshot<'o, 'w> {
         let mut file = snapshot.open_read_only()?;
         let capacity = Self::capacity(&mut file)?;
         let disk = Disk::read(&mut file, capacity, ROOT_PARTITION_TYPE)?;
-        let target = devmap_linux::targets::Linear {
-            device: snapshot.id(),
-            offset: disk.root.start,
+        let root = disk.root;
+        let esp = disk.esp;
+        let root = Self::view(&snapshot, root)?;
+        let esp = match esp
+            .map(|partition| Self::view(&snapshot, partition))
+            .transpose()
+        {
+            Ok(esp) => esp,
+            Err(error) => {
+                if let Err(cleanup) = root.close() {
+                    std::mem::forget(snapshot);
+                    return Err(io::Error::other(format!(
+                        "{error}; root view cleanup: {cleanup}"
+                    )));
+                }
+                return Err(error);
+            }
         };
-        let root = Mapping::<Created>::create()?.activate(
-            NonZeroU64::new(disk.root.sectors).expect("validated nonempty root"),
-            &target,
-            false,
-        )?;
-        Ok(Self { root, snapshot })
+        Ok(Self {
+            root,
+            esp,
+            snapshot,
+        })
     }
 
     fn capacity(file: &mut File) -> io::Result<u64> {
@@ -53,8 +67,27 @@ impl<'o, 'w> PartitionedSnapshot<'o, 'w> {
         file.seek(SeekFrom::End(0))
     }
 
+    fn view(
+        snapshot: &SnapshotMapping<'_, '_>,
+        partition: Partition,
+    ) -> io::Result<Mapping<Active>> {
+        let target = devmap_linux::targets::Linear {
+            device: snapshot.id(),
+            offset: partition.start,
+        };
+        Mapping::<Created>::create()?.activate(
+            NonZeroU64::new(partition.sectors).expect("validated nonempty partition"),
+            &target,
+            false,
+        )
+    }
+
     pub(crate) fn root_id(&self) -> devmap_linux::DevId {
         self.root.id()
+    }
+
+    pub(crate) fn esp_id(&self) -> Option<devmap_linux::DevId> {
+        self.esp.as_ref().map(Mapping::id)
     }
 
     pub(super) fn open_root(&self) -> io::Result<File> {
@@ -69,12 +102,25 @@ impl<'o, 'w> PartitionedSnapshot<'o, 'w> {
     /// Filesystem mounts have their separate syncfs/unmount protocol.
     pub(crate) fn sync(&self) -> io::Result<()> {
         self.root.open_read_only()?.sync_all()?;
+        if let Some(esp) = &self.esp {
+            esp.open_read_only()?.sync_all()?;
+        }
         self.validate()
     }
 
     pub(crate) fn into_snapshot(self) -> io::Result<SnapshotMapping<'o, 'w>> {
-        let Self { root, snapshot } = self;
+        let Self {
+            root,
+            esp,
+            snapshot,
+        } = self;
         if let Err(error) = root.close() {
+            std::mem::forget((esp, snapshot));
+            return Err(error);
+        }
+        if let Some(esp) = esp
+            && let Err(error) = esp.close()
+        {
             std::mem::forget(snapshot);
             return Err(error);
         }
@@ -94,46 +140,59 @@ mod tests {
         let workspace = Workspace::create().unwrap();
         let sectors = NonZeroU64::new(carapace::ZERO_SIZE_SECTORS).unwrap();
         let origin = Mapping::<Created>::create().unwrap().zero(sectors).unwrap();
-        let snapshot = Mapping::<Created>::create()
-            .unwrap()
-            .snapshot(
-                &origin,
-                workspace.snapshot_store().unwrap().attach().unwrap(),
-                sectors,
+        for esp in [None, Some(1024 * 1024)] {
+            let snapshot = Mapping::<Created>::create()
+                .unwrap()
+                .snapshot(
+                    &origin,
+                    workspace.snapshot_store().unwrap().attach().unwrap(),
+                    sectors,
+                )
+                .unwrap();
+            let layout = Layout::new(16 * 1024 * 1024, esp).unwrap();
+            let views = PartitionedSnapshot::create(snapshot, &layout).unwrap();
+            let mut root = views.root.open_read_write().unwrap();
+            assert_eq!(root.seek(SeekFrom::End(0)).unwrap(), 16 * 1024 * 1024);
+            root.seek(SeekFrom::Start(0)).unwrap();
+            root.write_all(b"root").unwrap();
+            drop(root);
+            if let Some(esp) = &views.esp {
+                let mut file = esp.open_read_write().unwrap();
+                assert_eq!(file.seek(SeekFrom::End(0)).unwrap(), 1024 * 1024);
+                file.seek(SeekFrom::Start(0)).unwrap();
+                file.write_all(b"esp!").unwrap();
+            }
+            views.sync().unwrap();
+            let snapshot = views.into_snapshot().unwrap();
+            let mut disk_file = snapshot.open_read_only().unwrap();
+            let disk = Disk::read(
+                &mut disk_file,
+                carapace::ZERO_SIZE_BYTES,
+                ROOT_PARTITION_TYPE,
             )
             .unwrap();
-        let layout = Layout::new(16 * 1024 * 1024).unwrap();
-        let views = PartitionedSnapshot::create(snapshot, &layout).unwrap();
-        let mut root = views.root.open_read_write().unwrap();
-        assert_eq!(root.seek(SeekFrom::End(0)).unwrap(), 16 * 1024 * 1024);
-        root.seek(SeekFrom::Start(0)).unwrap();
-        root.write_all(b"root").unwrap();
-        drop(root);
-        views.sync().unwrap();
-        let snapshot = views.into_snapshot().unwrap();
-        let mut disk_file = snapshot.open_read_only().unwrap();
-        let disk = Disk::read(
-            &mut disk_file,
-            carapace::ZERO_SIZE_BYTES,
-            ROOT_PARTITION_TYPE,
-        )
-        .unwrap();
-        disk_file
-            .seek(SeekFrom::Start(disk.root.start * 512))
-            .unwrap();
-        let mut bytes = [0; 4];
-        disk_file.read_exact(&mut bytes).unwrap();
-        assert_eq!(&bytes, b"root");
-        drop(disk_file);
-        // Reopening consumes on-disk GPT data, not the creation layout.
-        let views = PartitionedSnapshot::open(snapshot).unwrap();
-        views
-            .into_snapshot()
-            .unwrap()
-            .close()
-            .unwrap()
-            .detach()
-            .unwrap();
+            let root = disk.root;
+            for (partition, expected) in [(Some(root), b"root"), (disk.esp, b"esp!")] {
+                if let Some(partition) = partition {
+                    disk_file
+                        .seek(SeekFrom::Start(partition.start * 512))
+                        .unwrap();
+                    let mut bytes = [0; 4];
+                    disk_file.read_exact(&mut bytes).unwrap();
+                    assert_eq!(&bytes, expected);
+                }
+            }
+            drop(disk_file);
+            // Reopening consumes on-disk GPT data, not the creation layout.
+            let views = PartitionedSnapshot::open(snapshot).unwrap();
+            views
+                .into_snapshot()
+                .unwrap()
+                .close()
+                .unwrap()
+                .detach()
+                .unwrap();
+        }
         origin.close().unwrap();
     }
 }
