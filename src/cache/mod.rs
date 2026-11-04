@@ -98,7 +98,12 @@ impl Cache {
         digest: &ContentDigest,
         expected_size: Option<u64>,
     ) -> Result<Vec<u8>, CacheError> {
-        let mut file = self.blob(digest)?;
+        Self::read_metadata_file(self.blob(digest)?, expected_size)
+    }
+    fn read_metadata_file(
+        mut file: File,
+        expected_size: Option<u64>,
+    ) -> Result<Vec<u8>, CacheError> {
         let size = file.metadata()?.len();
         if size > MAX_METADATA_BYTES || expected_size.is_some_and(|expected| expected != size) {
             return Err(CacheError::Invalid(

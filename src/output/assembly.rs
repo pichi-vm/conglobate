@@ -82,18 +82,19 @@ impl AssembledImage {
                     .ok_or_else(|| anyhow::anyhow!("plan path is not UTF-8"))?
                     .into(),
             ),
-            (
-                "lock",
-                build
-                    .lock_document()
-                    .path()
-                    .as_ref()
-                    .to_str()
-                    .ok_or_else(|| anyhow::anyhow!("lock path is not UTF-8"))?
-                    .into(),
-            ),
         ] {
             annotations.insert(format!("dev.pichi.build.{key}"), value.into());
+        }
+        if let Some(lock) = build.lock_document() {
+            let path = lock
+                .path()
+                .as_ref()
+                .to_str()
+                .ok_or_else(|| anyhow::anyhow!("lock path is not UTF-8"))?;
+            annotations.insert("dev.pichi.build.lock".into(), path.into());
+        }
+        if build.graph().bootstrapped() {
+            annotations.insert("dev.pichi.build.bootstrapped".into(), "true".into());
         }
         if let Some(location) = request.location() {
             annotations.insert("dev.pichi.build.location".into(), location.into());
@@ -515,6 +516,7 @@ mod tests {
                         "plan",
                         "lock",
                         "location",
+                        "bootstrapped",
                         "tree",
                         "object-format",
                     ] {

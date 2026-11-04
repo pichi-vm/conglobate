@@ -268,13 +268,20 @@ mod tests {
                 .insert(format!("registry.test/{name}:1"), self.blob(&index));
         }
         fn request(&self, plan: &str) -> (tempfile::TempDir, BuildRequest) {
+            let lock = serde_json::to_string(&serde_json::json!({"version":1,"images":self.pins}))
+                .unwrap();
+            self.request_with_lock(plan, Some(&lock))
+        }
+        fn request_with_lock(
+            &self,
+            plan: &str,
+            lock: Option<&str>,
+        ) -> (tempfile::TempDir, BuildRequest) {
             let repository = tempfile::tempdir().unwrap();
             fs::write(repository.path().join("plan"), plan).unwrap();
-            fs::write(
-                repository.path().join("lock"),
-                serde_json::to_vec(&serde_json::json!({"version":1,"images":self.pins})).unwrap(),
-            )
-            .unwrap();
+            if let Some(lock) = lock {
+                fs::write(repository.path().join("lock"), lock).unwrap();
+            }
             for args in [
                 vec!["init", "-q"],
                 vec!["add", "."],
@@ -310,6 +317,10 @@ mod tests {
             let request = BuildRequest::parse_from([
                 "conglobate",
                 "build",
+                "--uid-map",
+                "65536:65536",
+                "--gid-map",
+                "65536:65536",
                 repository.path().to_str().unwrap(),
                 "--ref",
                 commit.trim(),
@@ -324,6 +335,27 @@ mod tests {
             ])
             .unwrap();
             (repository, request)
+        }
+        fn tags(&self, entries: &[(&str, &str)]) {
+            let entries: Vec<_> = entries
+                .iter()
+                .map(|(name, pin)| {
+                    serde_json::json!({
+                        "mediaType": crate::artifact::MEDIA_TYPE_OCI_INDEX_V1,
+                        "digest": pin, "size": 0,
+                        "annotations": {"org.opencontainers.image.ref.name": name},
+                    })
+                })
+                .collect();
+            fs::write(
+                self.directory.path().join("index.json"),
+                serde_json::to_vec(&serde_json::json!({
+                    "schemaVersion": 2, "mediaType": crate::artifact::MEDIA_TYPE_OCI_INDEX_V1,
+                    "manifests": entries,
+                }))
+                .unwrap(),
+            )
+            .unwrap();
         }
         fn build(&self, plan: &str) -> (tempfile::TempDir, BuildRequest, ResolvedBuild) {
             let (repository, request) = self.request(plan);
@@ -368,6 +400,152 @@ mod tests {
                 config
             );
         }
+    }
+
+    #[test]
+    fn bootstrap_resolution_ignores_unused_locks_and_freezes_local_aliases() {
+        let fixture = Fixture::new();
+        let reference = "localhost/fedora:latest";
+        let plan = "version: 1\nstages: {root: {use: !bootstrap localhost/fedora}}\nimage: root";
+        for lock in [
+            None,
+            Some("invalid lock"),
+            Some(
+                "version: 1\nimages: {localhost/fedora: sha256:0000000000000000000000000000000000000000000000000000000000000000}",
+            ),
+        ] {
+            fixture.tags(&[(reference, &fixture.pins["registry.test/base:1"])]);
+            let (_repo, request) = fixture.request_with_lock(plan, lock);
+            let captured = CapturedBuild::try_from(&request).unwrap();
+            assert!(captured.lock_document().is_none());
+            assert!(captured.graph().bootstrapped());
+            let build = captured
+                .resolve(Cache::open(fixture.directory.path()).unwrap())
+                .unwrap();
+            let key = &reference.parse().unwrap();
+            assert_eq!(build.images()[key].root(), Some(fixture.roots["base"]));
+            fixture.tags(&[(reference, &fixture.pins["registry.test/other:1"])]);
+            assert_eq!(build.images()[key].root(), Some(fixture.roots["base"]));
+            let next = CapturedBuild::try_from(&request)
+                .unwrap()
+                .resolve(Cache::open(fixture.directory.path()).unwrap())
+                .unwrap();
+            assert_eq!(next.images()[key].root(), Some(fixture.roots["other"]));
+        }
+    }
+
+    #[test]
+    fn only_selected_ordinary_inputs_consume_the_committed_lock() {
+        let fixture = Fixture::new();
+        let mixed = "version: 1\nstages:\n  tools: {use: !bootstrap registry.test/base:1}\n  final: {extend: registry.test/other:1, steps: [{copy: {from: tools, path: /x, into: /x}}]}\nimage: final";
+        fixture.tags(&[
+            (
+                "registry.test/base:1",
+                &fixture.pins["registry.test/base:1"],
+            ),
+            (
+                "registry.test/other:1",
+                &fixture.pins["registry.test/base:1"],
+            ),
+        ]);
+        for lock in [None, Some("invalid lock"), Some("version: 1\nimages: {}")] {
+            let (_repo, request) = fixture.request_with_lock(mixed, lock);
+            assert!(CapturedBuild::try_from(&request).is_err());
+            assert!(!request.output().exists());
+        }
+        let (_repo, request, build) = fixture.build(mixed);
+        assert!(build.captured().lock_document().is_some());
+        assert!(build.captured().graph().bootstrapped());
+        assert_eq!(
+            build.images()[&"registry.test/other:1".parse().unwrap()].root(),
+            Some(fixture.roots["other"])
+        );
+        assert!(!request.output().exists());
+        fs::remove_file(fixture.directory.path().join("index.json")).unwrap();
+        let (_repo, _, unused) = fixture.build("version: 1\nstages: {unused: {use: !bootstrap localhost/missing}}\nimage: registry.test/base:1");
+        assert!(!unused.captured().graph().bootstrapped());
+        assert!(unused.captured().lock_document().is_some());
+    }
+
+    #[test]
+    fn missing_ambiguous_and_corrupt_bootstrap_inputs_fail_before_output() {
+        let fixture = Fixture::new();
+        let plan =
+            "version: 1\nstages: {root: {use: !bootstrap registry.test/base:1}}\nimage: root";
+        let (_repo, request) = fixture.request_with_lock(plan, None);
+        let resolve = || {
+            CapturedBuild::try_from(&request)
+                .unwrap()
+                .resolve(Cache::open(fixture.directory.path()).unwrap())
+        };
+        assert!(resolve().is_err());
+        fixture.tags(&[]);
+        assert!(resolve().is_err());
+        let entry = (
+            "registry.test/base:1",
+            fixture.pins["registry.test/base:1"].as_str(),
+        );
+        fixture.tags(&[entry, entry]);
+        assert!(resolve().is_err());
+        fixture.tags(&[entry]);
+        let digest: Digest = entry.1.parse().unwrap();
+        fs::write(
+            fixture
+                .directory
+                .path()
+                .join("blobs/sha256")
+                .join(digest.hex()),
+            b"corrupt index",
+        )
+        .unwrap();
+        assert!(resolve().is_err());
+        assert!(!request.output().exists());
+    }
+
+    #[test]
+    fn bootstrap_digest_resolution_does_not_require_a_tag_database() {
+        let fixture = Fixture::new();
+        let plan = format!(
+            "version: 1\nstages: {{root: {{use: !bootstrap localhost/fedora@{}}}}}\nimage: root",
+            fixture.pins["registry.test/base:1"]
+        );
+        let (_repo, request) = fixture.request_with_lock(&plan, None);
+        let build = CapturedBuild::try_from(&request)
+            .unwrap()
+            .resolve(Cache::open(fixture.directory.path()).unwrap())
+            .unwrap();
+        assert_eq!(
+            build.images().values().next().unwrap().root(),
+            Some(fixture.roots["base"])
+        );
+    }
+
+    #[test]
+    fn bootstrap_binding_marks_manifest_only_and_omits_an_unused_lock() {
+        let fixture = Fixture::new();
+        fixture.tags(&[(
+            "registry.test/base:1",
+            &fixture.pins["registry.test/base:1"],
+        )]);
+        let plan =
+            "version: 1\nstages: {root: {use: !bootstrap registry.test/base:1}}\nimage: root";
+        let (_repo, request) = fixture.request_with_lock(plan, None);
+        let build = CapturedBuild::try_from(&request)
+            .unwrap()
+            .resolve(Cache::open(fixture.directory.path()).unwrap())
+            .unwrap();
+        let image = build.images().values().next().unwrap();
+        // Isolate manifest binding with an already assembled fixture; execution
+        // and creation-stage output selection are qualified by the VM suite.
+        let assembled = StageOutput::remote(image, &build)
+            .unwrap()
+            .assemble(&request, &build)
+            .unwrap();
+        let manifest = assembled.image.image().manifest();
+        assert_eq!(manifest.annotations["dev.pichi.build.bootstrapped"], "true");
+        assert!(!manifest.annotations.contains_key("dev.pichi.build.lock"));
+        assert!(manifest.annotations.contains_key("dev.pichi.build.commit"));
+        assert_eq!(manifest.layers, image.image().manifest().layers);
     }
 
     #[test]
