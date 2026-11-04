@@ -417,12 +417,28 @@ mod tests {
             pmi: None,
             bootconfig: None,
         };
-        let image = AssembledImage::components(&cache, &selection, &output).unwrap();
+        let requirements = serde_json::from_str(r#"{"memory":{"required":1024}}"#).unwrap();
+        let image =
+            AssembledImage::components(&cache, &selection, Some(&requirements), &output).unwrap();
+        let config = image.image().manifest().config.clone();
         assert_eq!(
             image.image().manifest().carapace_root().unwrap(),
             Some(*base.root())
         );
         image.publish().unwrap();
+        assert_eq!(
+            std::fs::read(
+                output.join("blobs/sha256").join(
+                    config
+                        .digest
+                        .parse::<crate::artifact::Digest>()
+                        .unwrap()
+                        .hex()
+                )
+            )
+            .unwrap(),
+            br#"{"version":1,"requirements":{"memory":{"required":1024}}}"#
+        );
 
         let index = std::fs::read(output.join("index.json")).unwrap();
         let digest = crate::artifact::Digest::Sha256(Sha256::digest(&index).into());
@@ -450,9 +466,11 @@ mod tests {
                 pmi: None,
                 bootconfig: None,
             },
+            None,
             &directory.path().join("extended"),
         )
         .unwrap();
+        assert_eq!(extended.image().manifest().config, config);
         let bootstrap = AssembledImage::components(
             &cache,
             &crate::pipeline::output::StageOutput {
@@ -463,9 +481,11 @@ mod tests {
                 pmi: None,
                 bootconfig: None,
             },
+            None,
             &directory.path().join("bootstrap"),
         )
         .unwrap();
+        assert!(bootstrap.image().manifest().config.is_empty());
         for output in [extended, bootstrap] {
             assert_eq!(
                 output.image().manifest().carapace_root().unwrap(),

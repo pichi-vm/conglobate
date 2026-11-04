@@ -131,6 +131,7 @@ impl AssembledImage {
     pub(crate) fn components(
         cache: &Cache,
         selection: &crate::pipeline::output::StageOutput<'_, '_>,
+        requirements: Option<&crate::artifact::Requirements>,
         destination: &std::path::Path,
     ) -> anyhow::Result<Self> {
         let staged = StagedDirectory::create(destination)?;
@@ -140,22 +141,32 @@ impl AssembledImage {
                 None => selection.pmi.as_ref().and_then(|pmi| pmi.inherited()),
             };
             let mut manifest = match metadata {
-                Some(image) => {
-                    let config = &image.image().manifest().config;
-                    if config.is_empty() {
-                        staged.store_blob(b"{}")?;
-                    } else {
-                        staged.copy_blob(cache, &config.digest.parse()?, config.size)?;
-                    }
-                    serde_json::from_slice::<serde_json::Value>(
-                        image.image().manifest_bytes().bytes(),
-                    )?
-                }
+                Some(image) => serde_json::from_slice::<serde_json::Value>(
+                    image.image().manifest_bytes().bytes(),
+                )?,
                 None => {
-                    staged.store_blob(b"{}")?;
                     serde_json::json!({"schemaVersion":2,"mediaType":crate::artifact::MEDIA_TYPE_OCI_MANIFEST_V1,"artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,"config":crate::artifact::ConfigDescriptor::canonical(),"layers":[]})
                 }
             };
+            if let Some(requirements) = requirements {
+                let bytes = serde_json::to_vec(&crate::artifact::Config {
+                    requirements: requirements.clone(),
+                    ..Default::default()
+                })?;
+                let digest = staged.store_blob(&bytes)?;
+                manifest["config"] =
+                    serde_json::to_value(crate::artifact::ConfigDescriptor::for_config(
+                        digest.to_string(),
+                        bytes.len() as u64,
+                    ))?;
+            } else if let Some(image) = metadata
+                && !image.image().manifest().config.is_empty()
+            {
+                let config = &image.image().manifest().config;
+                staged.copy_blob(cache, &config.digest.parse()?, config.size)?;
+            } else {
+                staged.store_blob(b"{}")?;
+            }
             let annotations = manifest
                 .as_object_mut()
                 .expect("manifest object")
@@ -494,7 +505,7 @@ mod tests {
                     fs::write(selected.join("plan.yaml"), "working tree changed").unwrap();
                     let selection = input.selection(&image);
                     let mut assembled =
-                        AssembledImage::components(&cache, &selection, &destination).unwrap();
+                        AssembledImage::components(&cache, &selection, None, &destination).unwrap();
                     // Seed stale build keys to exercise pass-through rebinding.
                     let mut manifest: serde_json::Value =
                         serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
@@ -581,7 +592,8 @@ mod tests {
         selection.bootconfig.as_mut().unwrap().bytes = result.to_vec();
         let parent = tempfile::tempdir().unwrap();
         let assembled =
-            AssembledImage::components(&cache, &selection, &parent.path().join("output")).unwrap();
+            AssembledImage::components(&cache, &selection, None, &parent.path().join("output"))
+                .unwrap();
         let new: serde_json::Value =
             serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
         assert_eq!(new["config"], old["config"]);
@@ -615,7 +627,8 @@ mod tests {
             let parent = tempfile::tempdir().unwrap();
             let destination = parent.path().join("output");
             let selection = input.selection(&image);
-            let assembled = AssembledImage::components(&cache, &selection, &destination).unwrap();
+            let assembled =
+                AssembledImage::components(&cache, &selection, None, &destination).unwrap();
             assert!(!destination.exists());
             assert!(assembled.image().root().is_none());
             assert_eq!(
@@ -664,7 +677,8 @@ mod tests {
             if empty_mount {
                 fs::create_dir(&destination).unwrap();
             }
-            let assembled = AssembledImage::components(&cache, &selection, &destination).unwrap();
+            let assembled =
+                AssembledImage::components(&cache, &selection, None, &destination).unwrap();
             assert_oci_only(assembled.staged.temporary.path());
             assembled.publish().unwrap();
             assert_oci_only(&destination);
@@ -689,7 +703,8 @@ mod tests {
         .unwrap();
         let parent = tempfile::tempdir().unwrap();
         let assembled =
-            AssembledImage::components(&cache, &selection, &parent.path().join("output")).unwrap();
+            AssembledImage::components(&cache, &selection, None, &parent.path().join("output"))
+                .unwrap();
         assert_eq!(
             serde_json::from_slice::<serde_json::Value>(assembled.image().manifest_bytes().bytes())
                 .unwrap(),
@@ -718,7 +733,8 @@ mod tests {
         let parent = tempfile::tempdir().unwrap();
         let destination = parent.path().join("output");
         let selection = input.selection(&image);
-        let _error = AssembledImage::components(&cache, &selection, &destination).unwrap_err();
+        let _error =
+            AssembledImage::components(&cache, &selection, None, &destination).unwrap_err();
         assert!(!destination.exists());
         assert_eq!(fs::read_dir(parent.path()).unwrap().count(), 0);
     }

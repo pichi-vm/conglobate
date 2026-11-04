@@ -53,6 +53,9 @@ pub struct Plan {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub stages: BTreeMap<StageRef, Stage>,
     pub image: Image,
+    /// Replace the output's launch requirements; omission preserves inheritance.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requirements: Option<crate::artifact::Requirements>,
 }
 
 #[cfg(test)]
@@ -64,6 +67,31 @@ mod tests {
 
     fn decode(value: Value) -> Plan {
         serde_json::from_value(value).unwrap()
+    }
+
+    #[test]
+    fn launch_requirements_preserve_explicit_empty_and_validate_values() {
+        for requirements in [
+            json!({}),
+            json!({"cpus":{"recommended":2},"memory":{"required":1024,"recommended":2048}}),
+        ] {
+            let value =
+                json!({"version":1,"image":"registry.test/base:1","requirements":requirements});
+            assert_eq!(serde_json::to_value(decode(value.clone())).unwrap(), value);
+        }
+        for requirements in [
+            json!({"cpus":{"required":0}}),
+            json!({"memory":{"required":3}}),
+            json!({"memory":{"required":2048,"recommended":1024}}),
+            json!({"unknown":true}),
+        ] {
+            assert!(
+                serde_json::from_value::<Plan>(
+                    json!({"version":1,"image":"registry.test/base:1","requirements":requirements})
+                )
+                .is_err()
+            );
+        }
     }
 
     #[test]

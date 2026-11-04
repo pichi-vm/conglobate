@@ -173,8 +173,13 @@ impl<'b, 'w> StageOutput<'b, 'w> {
         request: &BuildRequest,
         build: &ResolvedBuild,
     ) -> anyhow::Result<CompletedImage> {
-        let image = AssembledImage::components(build.cache(), &self, request.output())?
-            .bind_build(request, build.captured())?;
+        let image = AssembledImage::components(
+            build.cache(),
+            &self,
+            build.captured().graph().plan().requirements.as_ref(),
+            request.output(),
+        )?
+        .bind_build(request, build.captured())?;
         Ok(CompletedImage { image })
     }
 }
@@ -366,6 +371,36 @@ mod tests {
     }
 
     #[test]
+    fn authored_requirements_replace_inherited_config_and_publish_canonically() {
+        let fixture = Fixture::new();
+        for source in ["base", "pmi"] {
+            for (requirements, expected) in [
+                ("", format!("{{\"source\":\"{source}\"}}")),
+                ("requirements: {}", r#"{"version":1,"requirements":{}}"#.into()),
+                (
+                    "requirements: {cpus: {required: 1}, memory: {required: 1024, recommended: 2048}}",
+                    r#"{"version":1,"requirements":{"memory":{"required":1024,"recommended":2048}}}"#.into(),
+                ),
+            ] {
+                let (_repository, request, build) = fixture.build(&format!(
+                    "version: 1\nimage: registry.test/{source}:1\n{requirements}"
+                ));
+                let assembled = fixture.selected(&build).assemble(&request, &build).unwrap();
+                let config = assembled.image.image().manifest().config.clone();
+                assembled.publish().unwrap();
+                let bytes = fs::read(
+                    request.output().join("blobs/sha256").join(
+                        config.digest.parse::<Digest>().unwrap().hex(),
+                    ),
+                ).unwrap();
+                assert_eq!(bytes, expected.as_bytes());
+                assert_eq!(config.size, bytes.len() as u64);
+                assert_eq!(config.digest, Digest::Sha256(Sha256::digest(&bytes).into()).to_string());
+            }
+        }
+    }
+
+    #[test]
     fn all_five_component_subsets_publish_without_activating_source_roots() {
         let fixture = Fixture::new();
         for (selection, root, boot, config, metadata) in [
@@ -391,7 +426,8 @@ mod tests {
                 fixture.build(&format!("version: 1\nimage: {selection}"));
             let selected = fixture.selected(&build);
             let assembled =
-                AssembledImage::components(build.cache(), &selected, request.output()).unwrap();
+                AssembledImage::components(build.cache(), &selected, None, request.output())
+                    .unwrap();
             assert_eq!(
                 assembled.image().manifest().annotations["example.org/source"],
                 metadata
