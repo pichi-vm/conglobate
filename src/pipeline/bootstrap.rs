@@ -74,7 +74,7 @@ impl<'a> BootstrapBuild<'a> {
         let formatted = self
             .format(formatter, output)
             .context("format bootstrap filesystem")?;
-        let (formatter, output) = formatted.into_parts();
+        let (formatter, output) = formatted.into_parts()?;
         formatter.close()?;
         let tool = Mapping::<Created>::create()?.snapshot(
             &active,
@@ -112,7 +112,7 @@ impl<'a> BootstrapBuild<'a> {
         tool.discard()?;
         let scute = Arc::new(
             output
-                .into_snapshot()
+                .into_snapshot()?
                 .close()?
                 .detach()?
                 .seal_snapshot([0; 32], &origin)?,

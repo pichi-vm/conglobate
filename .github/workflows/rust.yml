@@ -32,4 +32,5 @@ jobs:
       - name: Run ignored tests as root
         run: |
           sudo modprobe loop
+          sudo modprobe dm_snapshot
           cargo --config 'target."cfg(unix)".runner = ["sudo", "-n"]' test --locked --features cli --all-targets -- --ignored --test-threads=1
