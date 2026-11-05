@@ -1025,8 +1025,13 @@ Require `dev.pichi.carapace.verity.hash` once on a manifest containing scutes.
 Producers stamp the final sealed root and preserve it through build binding;
 extend updates it together with the automatic boot command-line binding.
 Boot-only artifacts have no carapace root annotation. Keep the existing
-carapace verity parameters and per-scute salt/data-blocks for Pichi to
-reconstruct headers and trees. This completes the existing v1 format without
+per-scute salt/data-blocks for Pichi to reconstruct headers and trees.
+Manifest verity parameters are optional: `data-block-size` and `hash-block-size`
+default to 4096, `version` and `hash-type` default to 1. Producers omit each
+parameter equal to its default; consumers apply defaults only to absent fields
+and validate supplied overrides. Nondefault overrides survive composition;
+extending a chain with newly sealed scutes requires compatible parameters.
+This completes the existing v1 format without
 changing version identifiers.
 
 Scute descriptors in the manifest's `layers` array MUST follow base-to-tip

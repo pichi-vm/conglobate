@@ -397,6 +397,13 @@ mod tests {
                     Digest::Sha256(root).to_string()
                 );
             }
+            for parameter in ["data-block-size", "hash-block-size", "version", "hash-type"] {
+                assert!(
+                    !manifest
+                        .annotations
+                        .contains_key(&format!("dev.pichi.carapace.verity.{parameter}"))
+                );
+            }
             assert_eq!(
                 manifest
                     .layers
@@ -412,6 +419,49 @@ mod tests {
                 config
             );
         }
+    }
+
+    #[test]
+    fn composition_preserves_nondefault_parameters_and_omits_defaults() {
+        let mut fixture = Fixture::new();
+        let read = |digest: &str| -> serde_json::Value {
+            serde_json::from_slice(
+                &fs::read(
+                    fixture
+                        .directory
+                        .path()
+                        .join("blobs/sha256")
+                        .join(digest.strip_prefix("sha256:").unwrap()),
+                )
+                .unwrap(),
+            )
+            .unwrap()
+        };
+        let mut index = read(&fixture.pins["registry.test/root:1"]);
+        let mut manifest = read(index["manifests"][0]["digest"].as_str().unwrap());
+        manifest["annotations"]["dev.pichi.carapace.verity.hash-type"] = "0".into();
+        manifest["annotations"]["dev.pichi.carapace.verity.hash-block-size"] = "8192".into();
+        manifest["annotations"]["dev.pichi.carapace.verity.version"] = "2".into();
+        manifest["annotations"]["dev.pichi.carapace.verity.data-block-size"] = "04096".into();
+        let bytes = serde_json::to_vec(&manifest).unwrap();
+        index["manifests"][0]["digest"] = fixture.blob(&bytes).into();
+        index["manifests"][0]["size"] = bytes.len().into();
+        let pin = fixture.blob(&serde_json::to_vec(&index).unwrap());
+        fixture.pins.insert("registry.test/root:1".into(), pin);
+        let (_repo, request, build) =
+            fixture.build("version: 1\nimage: {root: registry.test/root:1}");
+        let selected = fixture.selected(&build);
+        let assembled =
+            AssembledImage::components(build.cache(), &selected, None, request.output()).unwrap();
+        let annotations = &assembled.image().manifest().annotations;
+        assert_eq!(annotations["dev.pichi.carapace.verity.hash-type"], "0");
+        assert_eq!(
+            annotations["dev.pichi.carapace.verity.hash-block-size"],
+            "8192"
+        );
+        assert_eq!(annotations["dev.pichi.carapace.verity.version"], "2");
+        assert!(!annotations.contains_key("dev.pichi.carapace.verity.data-block-size"));
+        assert_eq!(assembled.image().root(), Some(fixture.roots["root"]));
     }
 
     #[test]

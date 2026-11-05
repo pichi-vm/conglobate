@@ -21,10 +21,8 @@ use crate::artifact::media_type::{
     MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 
-/// Required chain-wide annotation keys (per D-06). These are the dm-verity
-/// superblock fields a consumer needs to *reconstruct* the (undistributed)
-/// verity layer from the cow — the sole reason pichi carries them. All MUST be
-/// present in `Manifest::annotations` per D-07 rule 3 when scute layers exist.
+/// Chain-wide verity parameters. Absent fields default to 4096-byte data/hash
+/// blocks, superblock version 1 and hash type 1. Producers omit default values.
 const CHAIN_ANNOTATION_VERITY_ALGO: &str = "dev.pichi.carapace.verity.algo";
 const CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE: &str = "dev.pichi.carapace.verity.data-block-size";
 const CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE: &str = "dev.pichi.carapace.verity.hash-block-size";
@@ -49,8 +47,8 @@ const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 /// - `config` MUST be the OCI 1.1 empty-config descriptor with inline `data: "e30="`.
 /// - Scute layers MUST appear in chain order, from base to tip.
 /// - At most ONE [`Layer::Pmi`] (D-03 — zero pmi = base/non-bootable, one pmi = appliance/bootable).
-/// - Top-level annotations MUST include the carapace verity *param* keys
-///   and one chain-tip root when scute layers exist.
+/// - Top-level annotations MUST include one chain-tip root when scutes exist.
+///   Reconstruction parameters are optional with defined defaults.
 /// - Every scute layer MUST carry a `dev.pichi.scute.verity.salt` annotation
 ///   parseable as hex (D-05 / D-07 rule 4-5).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -74,8 +72,8 @@ pub struct Manifest {
     /// PMI and boot configuration descriptors are outside that order.
     pub layers: Vec<Layer>,
     /// Top-level annotations. With scutes, MUST include
-    /// `dev.pichi.carapace.verity.{data-block-size,hash-block-size,
-    /// version,hash-type,hash}` and SHOULD include
+    /// `dev.pichi.carapace.verity.hash`; parameters default to 4096-byte data/hash
+    /// blocks, version 1 and hash type 1. SHOULD include
     /// `org.opencontainers.image.created` (D-06).
     /// `BTreeMap` for byte-stable JSON serialisation (lexicographic key order).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -425,33 +423,21 @@ impl Manifest {
                 media_type: c.media_type.clone(),
             });
         }
-        // Rule 3 (BUILD.md §7.1): the carapace verity-chain annotations describe
-        // the carapace, so they are required ONLY when scute layers are present.
-        // A scute-less (PMI-only) artifact carries none of them.
+        // The chain root is required for scutes; reconstruction overrides
+        // are optional. Consumers decide which well-formed values they support.
         self.carapace_root()?;
         if self.has_scutes() {
             for key in [
-                CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
                 CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE,
                 CHAIN_ANNOTATION_VERITY_VERSION,
                 CHAIN_ANNOTATION_VERITY_HASH_TYPE,
             ] {
-                if !self.annotations.contains_key(key) {
-                    return Err(ManifestValidationError::MissingChainAnnotation(key));
-                }
-            }
-            // Well-formedness only (no value whitelist — that is the guest
-            // consumer's TCB control per the carapace spec, not storage's):
-            // version / hash-type must parse as integers.
-            for key in [
-                CHAIN_ANNOTATION_VERITY_VERSION,
-                CHAIN_ANNOTATION_VERITY_HASH_TYPE,
-            ] {
-                let v = &self.annotations[key];
-                if v.parse::<u32>().is_err() {
+                if let Some(value) = self.annotations.get(key)
+                    && value.parse::<u32>().is_err()
+                {
                     return Err(ManifestValidationError::BadChainAnnotation {
                         key,
-                        value: v.clone(),
+                        value: value.clone(),
                     });
                 }
             }
@@ -486,14 +472,18 @@ impl Manifest {
                 continue;
             };
             let blocks = d.annotations.data_blocks.get();
-            let value = &self.annotations[CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE];
+            let value = self
+                .annotations
+                .get(CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE)
+                .map(String::as_str)
+                .unwrap_or("4096");
             let block_size = value
                 .parse::<u32>()
                 .ok()
                 .filter(|size| *size != 0)
                 .ok_or_else(|| ManifestValidationError::BadChainAnnotation {
                     key: CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
-                    value: value.clone(),
+                    value: value.into(),
                 })?;
             if blocks.checked_mul(u64::from(block_size)).is_none()
                 || (matches!(layer, Layer::Scute(_))
@@ -741,14 +731,27 @@ mod tests {
     }
 
     #[test]
-    fn validate_rejects_missing_chain_annotation() {
+    fn validate_accepts_omitted_and_partial_verity_defaults() {
         let mut m = sample_base_manifest();
-        m.annotations
-            .remove(CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE);
-        let err = m.validate().unwrap_err();
-        assert!(
-            matches!(err, ManifestValidationError::MissingChainAnnotation(k) if k == CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE)
+        for key in [
+            CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
+            CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE,
+            CHAIN_ANNOTATION_VERITY_VERSION,
+            CHAIN_ANNOTATION_VERITY_HASH_TYPE,
+        ] {
+            m.annotations.remove(key);
+            m.validate().unwrap();
+        }
+        assert_eq!(m.carapace_root().unwrap(), Some([0xab; 32]));
+        m.annotations.insert(
+            CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE.into(),
+            "2048".into(),
         );
+        let Layer::Scute(scute) = &mut m.layers[0] else {
+            unreachable!()
+        };
+        scute.annotations.data_blocks = scute.size.div_ceil(2048).try_into().unwrap();
+        m.validate().unwrap();
     }
 
     #[test]
@@ -926,20 +929,21 @@ mod tests {
     }
 
     #[test]
-    fn validate_requires_verity_version_and_hash_type_when_scutes_present() {
+    fn validate_rejects_malformed_optional_parameters() {
         for key in [
+            CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
+            CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE,
             CHAIN_ANNOTATION_VERITY_VERSION,
             CHAIN_ANNOTATION_VERITY_HASH_TYPE,
         ] {
-            let mut m = sample_base_manifest();
-            m.annotations.remove(key);
-            assert!(
-                matches!(
-                    m.validate().unwrap_err(),
-                    ManifestValidationError::MissingChainAnnotation(k) if k == key
-                ),
-                "missing {key} must be rejected"
-            );
+            for value in ["", "invalid", "-1", "4294967296"] {
+                let mut m = sample_base_manifest();
+                m.annotations.insert(key.into(), value.into());
+                assert!(matches!(
+                    m.validate(),
+                    Err(ManifestValidationError::BadChainAnnotation { .. })
+                ));
+            }
         }
     }
 
