@@ -239,7 +239,9 @@ mod tests {
                 let hash = bytes.scute_root([0; 32]);
                 self.roots.insert(name.into(), hash);
                 layers.push(serde_json::json!({"mediaType":"application/vnd.pichi.scute.v1", "digest":self.blob(&bytes), "size":bytes.len(), "annotations":{"dev.pichi.scute.verity.data-blocks":"2", "dev.pichi.scute.verity.salt":"00".repeat(32)}}));
+                // Exercise reuse of currently published, legacy-form inputs.
                 for (key, value) in [
+                    ("algo", "sha256"),
                     ("data-block-size", "4096"),
                     ("hash-block-size", "4096"),
                     ("version", "1"),
@@ -247,8 +249,7 @@ mod tests {
                 ] {
                     annotations[format!("dev.pichi.carapace.verity.{key}")] = value.into();
                 }
-                annotations["dev.pichi.carapace.verity.hash"] =
-                    Digest::Sha256(hash).to_string().into();
+                annotations["dev.pichi.carapace.verity.hash"] = hex::encode(hash).into();
             }
             if boot {
                 let bytes = b"opaque PMI".to_vec();
@@ -385,6 +386,17 @@ mod tests {
             )
             .unwrap();
             assert_eq!(manifest.carapace_root().unwrap().is_some(), root);
+            assert!(
+                !manifest
+                    .annotations
+                    .contains_key("dev.pichi.carapace.verity.algo")
+            );
+            if let Some(root) = manifest.carapace_root().unwrap() {
+                assert_eq!(
+                    manifest.annotations["dev.pichi.carapace.verity.hash"],
+                    Digest::Sha256(root).to_string()
+                );
+            }
             assert_eq!(
                 manifest
                     .layers

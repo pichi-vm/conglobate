@@ -356,12 +356,6 @@ impl Manifest {
     /// This parses the wire value; consumers must authenticate the manifest and
     /// verify scute reads against this root before using their contents.
     pub fn carapace_root(&self) -> Result<Option<[u8; 32]>, ManifestValidationError> {
-        if let Some(value) = self.annotations.get(CHAIN_ANNOTATION_VERITY_ALGO) {
-            return Err(ManifestValidationError::BadChainAnnotation {
-                key: CHAIN_ANNOTATION_VERITY_ALGO,
-                value: value.clone(),
-            });
-        }
         let value = self.annotations.get(CARAPACE_ROOT_ANNOTATION);
         if !self.has_scutes() && value.is_none() {
             return Ok(None);
@@ -369,8 +363,25 @@ impl Manifest {
         let value = value.ok_or(ManifestValidationError::MissingChainAnnotation(
             CARAPACE_ROOT_ANNOTATION,
         ))?;
-        let root = value.parse::<Digest>().ok().filter(|digest| {
-            self.has_scutes() && digest.to_string() == *value && digest.as_sha256_array() != [0; 32]
+        // Current pinned build appliances still use bare roots plus algo.
+        // New output uses only the qualified form; never accept two declarations.
+        let wire = match (
+            value.contains(':'),
+            self.annotations
+                .get(CHAIN_ANNOTATION_VERITY_ALGO)
+                .map(String::as_str),
+        ) {
+            (true, None) => value.clone(),
+            (false, Some("sha256")) => format!("sha256:{value}"),
+            _ => {
+                return Err(ManifestValidationError::BadChainAnnotation {
+                    key: CARAPACE_ROOT_ANNOTATION,
+                    value: value.clone(),
+                });
+            }
+        };
+        let root = wire.parse::<Digest>().ok().filter(|digest| {
+            self.has_scutes() && digest.to_string() == wire && digest.as_sha256_array() != [0; 32]
         });
         let root = root.ok_or_else(|| ManifestValidationError::BadChainAnnotation {
             key: CARAPACE_ROOT_ANNOTATION,
@@ -819,6 +830,39 @@ mod tests {
     }
 
     #[test]
+    fn current_appliance_roots_require_an_explicit_supported_algorithm() {
+        let mut manifest = sample_base_manifest();
+        manifest
+            .annotations
+            .insert(CARAPACE_ROOT_ANNOTATION.into(), "ab".repeat(32));
+        manifest
+            .annotations
+            .insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), "sha256".into());
+        assert_eq!(manifest.carapace_root().unwrap(), Some([0xab; 32]));
+        manifest.validate().unwrap();
+        for algorithm in ["", "sha512", "SHA256"] {
+            manifest
+                .annotations
+                .insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), algorithm.into());
+            assert!(manifest.validate().is_err());
+        }
+        manifest
+            .annotations
+            .insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), "sha256".into());
+        for value in [
+            "00".repeat(32),
+            "gg".repeat(32),
+            "AB".repeat(32),
+            "ab".repeat(33),
+        ] {
+            manifest
+                .annotations
+                .insert(CARAPACE_ROOT_ANNOTATION.into(), value);
+            assert!(manifest.validate().is_err());
+        }
+    }
+
+    #[test]
     fn validate_rejects_retired_algorithm_annotation() {
         for algorithm in ["sha256", "sha512", ""] {
             let mut manifest = sample_base_manifest();
@@ -828,7 +872,7 @@ mod tests {
             assert!(matches!(
                 manifest.validate(),
                 Err(ManifestValidationError::BadChainAnnotation {
-                    key: CHAIN_ANNOTATION_VERITY_ALGO,
+                    key: CARAPACE_ROOT_ANNOTATION,
                     ..
                 })
             ));
