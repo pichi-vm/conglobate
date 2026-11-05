@@ -19,14 +19,13 @@ pub(crate) struct AssembledImage {
     image: ResolvedImage,
 }
 impl AssembledImage {
-    fn verity_annotations() -> serde_json::Value {
-        // Reconstruction parameters are shared by every scute in this output.
-        serde_json::json!({
-            "dev.pichi.carapace.verity.data-block-size": "4096",
-            "dev.pichi.carapace.verity.hash-block-size": "4096",
-            "dev.pichi.carapace.verity.version": "1",
-            "dev.pichi.carapace.verity.hash-type": "1"
-        })
+    fn verity_defaults() -> [(&'static str, u32); 4] {
+        [
+            ("dev.pichi.carapace.verity.data-block-size", 4096),
+            ("dev.pichi.carapace.verity.hash-block-size", 4096),
+            ("dev.pichi.carapace.verity.version", 1),
+            ("dev.pichi.carapace.verity.hash-type", 1),
+        ]
     }
     fn set_tip_annotation(manifest: &mut serde_json::Value, root: Option<[u8; 32]>) {
         if let Some(root) = root {
@@ -216,15 +215,19 @@ impl AssembledImage {
                     parent == root.hash(),
                     "selected root hash differs from scute ancestry"
                 );
-                let parameters = Self::verity_annotations();
-                if root.base.is_none() {
-                    annotations.extend(parameters.as_object().expect("verity annotations").clone());
-                } else if !root.produced.is_empty() {
-                    for (key, expected) in parameters.as_object().expect("verity annotations") {
+                for (key, default) in Self::verity_defaults() {
+                    let value = annotations
+                        .get(key)
+                        .map(|value| value.as_str().expect("validated annotation").parse::<u32>())
+                        .transpose()?;
+                    if root.base.is_some() && !root.produced.is_empty() {
                         anyhow::ensure!(
-                            annotations.get(key) == Some(expected),
+                            value.unwrap_or(default) == default,
                             "source chain uses incompatible verity parameter {key}"
                         );
+                    }
+                    if value == Some(default) {
+                        annotations.remove(key);
                     }
                 }
                 Self::set_tip_annotation(&mut manifest, Some(parent));
