@@ -27,7 +27,7 @@ impl<'b, 'w> StageOutput<'b, 'w> {
             .manifest()
             .layers
             .iter()
-            .any(|layer| matches!(layer, Layer::Pmi(_)));
+            .any(|layer| matches!(layer, Layer::Pmi(_) | Layer::PmiZstd(_)));
         let config = base
             .bootconfig(build.cache())?
             .map(|bytes| BootConfig::inherited(bytes.bytes().to_vec(), base.root()))
@@ -408,7 +408,7 @@ mod tests {
                 manifest
                     .layers
                     .iter()
-                    .any(|layer| matches!(layer, Layer::Pmi(_))),
+                    .any(|layer| matches!(layer, Layer::Pmi(_) | Layer::PmiZstd(_))),
                 boot
             );
             assert_eq!(
@@ -689,8 +689,8 @@ mod tests {
             }
             if boot {
                 let expected = b"opaque PMI".to_vec();
-                let descriptor = selected.pmi.as_ref().unwrap().descriptor();
-                assert_eq!(descriptor.digest, fixture.blob(&expected));
+                let layer = selected.pmi.as_ref().unwrap().layer();
+                assert_eq!(layer.digest_str(), fixture.blob(&expected));
             }
             assembled.publish().unwrap();
             Fixture::assert_output(request.output(), root, boot, config);

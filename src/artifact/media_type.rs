@@ -11,7 +11,7 @@
 //!   params).
 //! - Add `scute.v1+zstd` (per D-08 — cow blobs MAY be zstd-compressed; default
 //!   level 3; readers must handle either form).
-//! - PMI blobs are NOT compressed by pichi (per D-09); no `pmi.v1+zstd`.
+//! - PMI transport accepts raw bytes or a zstd frame; launchers consume the decoded PMI.
 
 /// Wrapper artifact type per OCI 1.1 `artifactType`. Carried at the top level
 /// of the manifest (per D-03 — NOT inside `config.mediaType`).
@@ -34,10 +34,12 @@ pub const MEDIA_TYPE_PICHI_SCUTE_V1: &str = "application/vnd.pichi.scute.v1";
 /// the decompressed bytes per D-10.
 pub const MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD: &str = "application/vnd.pichi.scute.v1+zstd";
 
-/// PMI payload layer. Per D-09, PMI blobs are NOT compressed by pichi
-/// (they typically already wrap an internally-compressed kernel + initrd);
-/// no `+zstd` variant exists.
+/// Uncompressed PMI payload layer.
 pub const MEDIA_TYPE_PICHI_PMI_V1: &str = "application/vnd.pichi.pmi.v1";
+
+/// Zstd-compressed PMI transport. The descriptor identifies the encoded bytes;
+/// the consumer verifies and decodes them before passing the PMI to a launcher.
+pub const MEDIA_TYPE_PICHI_PMI_V1_ZSTD: &str = "application/vnd.pichi.pmi.v1+zstd";
 
 /// `requirements.yaml` launch-contract layer (BUILD.md §7) — the host-facing
 /// resource contract for a launchable artifact. A small uncompressed YAML
