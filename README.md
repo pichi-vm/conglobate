@@ -62,7 +62,8 @@ entirely. The image manifest carries `dev.pichi.build.commit` (`sha1:<hex>` or
 `dev.pichi.build.plan` / `dev.pichi.build.lock` (paths relative to context).
 `dev.pichi.build.location` is an optional provenance hint. There are no separate
 tree/object-format keys or builder/input/execution/output mirrors. The carapace
-tip root is recorded once in `dev.pichi.carapace.verity.hash`. Per-scute
+tip root is recorded once as `sha256:<hex>` in `dev.pichi.carapace.verity.hash`.
+Per-scute
 salt/data-blocks annotations let Pichi reconstruct the verity trees. Each newly
 sealed scute uses its parent root followed by a fresh 32-byte cryptographically
 random suffix as its salt. Reused layers keep their existing salts.

@@ -152,10 +152,11 @@ carapace="conglobate:$VERSION-carapace"
 pichi import raw "$disk" -t "$carapace" --quiet
 hash="$(pichi inspect "$carapace" \
 	--format '{{ manifest.annotations["dev.pichi.carapace.verity.hash"] }}')"
-[[ "$hash" =~ ^[[:xdigit:]]{64}$ && "$hash" =~ [1-9a-fA-F] ]] || {
+[[ "$hash" =~ ^sha256:[0-9a-f]{64}$ && "${hash#sha256:}" =~ [1-9a-f] ]] || {
 	echo "!!! invalid manifest carapace root: $hash" >&2
 	exit 1
 }
+hash="${hash#sha256:}"
 echo ">>> carapace $carapace  tip $hash"
 
 # ---- 5. immutable PMI and native Linux boot configuration ---------------

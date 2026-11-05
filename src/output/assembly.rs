@@ -22,7 +22,6 @@ impl AssembledImage {
     fn verity_annotations() -> serde_json::Value {
         // Reconstruction parameters are shared by every scute in this output.
         serde_json::json!({
-            "dev.pichi.carapace.verity.algo": "sha256",
             "dev.pichi.carapace.verity.data-block-size": "4096",
             "dev.pichi.carapace.verity.hash-block-size": "4096",
             "dev.pichi.carapace.verity.version": "1",
@@ -31,7 +30,8 @@ impl AssembledImage {
     }
     fn set_tip_annotation(manifest: &mut serde_json::Value, root: Option<[u8; 32]>) {
         if let Some(root) = root {
-            manifest["annotations"][CARAPACE_ROOT_ANNOTATION] = hex::encode(root).into();
+            manifest["annotations"][CARAPACE_ROOT_ANNOTATION] =
+                Digest::Sha256(root).to_string().into();
         }
     }
     /// Stamp the resolved input before hashing and validating the final layout.
