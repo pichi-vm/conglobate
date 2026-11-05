@@ -234,9 +234,7 @@ impl AssembledImage {
             }
             if let Some(pmi) = &selection.pmi {
                 pmi.store(cache, &staged)?;
-                layers.push(serde_json::to_value(crate::artifact::Layer::Pmi(
-                    pmi.descriptor(),
-                ))?);
+                layers.push(serde_json::to_value(pmi.layer())?);
             }
             if let Some(config) = &selection.bootconfig
                 && !config.bytes.is_empty()
@@ -320,9 +318,13 @@ mod tests {
     }
     impl Input {
         fn new(empty_config: bool) -> Self {
-            Self::with_firmware(empty_config, b"opaque PMI".to_vec())
+            Self::with_firmware(
+                empty_config,
+                b"opaque PMI".to_vec(),
+                crate::artifact::MEDIA_TYPE_PICHI_PMI_V1,
+            )
         }
-        fn with_firmware(empty_config: bool, pmi: Vec<u8>) -> Self {
+        fn with_firmware(empty_config: bool, pmi: Vec<u8>, media_type: &str) -> Self {
             let directory = tempfile::tempdir().unwrap();
             let mut blobs = BTreeMap::new();
             let bootconfig = ruzstd::encoding::compress_to_vec(
@@ -354,7 +356,7 @@ mod tests {
                 "artifactType": crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1,
                 "config": config_descriptor,
                 "layers": [
-                    {"mediaType": "application/vnd.pichi.pmi.v1", "digest": Digest::Sha256(Sha256::digest(&pmi).into()).to_string(), "size": pmi.len()},
+                    {"mediaType": media_type, "digest": Digest::Sha256(Sha256::digest(&pmi).into()).to_string(), "size": pmi.len()},
                     {"mediaType": "application/vnd.pichi.bootconfig.v1+zstd", "digest": Digest::Sha256(Sha256::digest(&bootconfig).into()).to_string(), "size": bootconfig.len()}
                 ],
                 "annotations": {"example.org/retain": "exactly"},
@@ -630,8 +632,24 @@ mod tests {
     }
     #[test]
     fn inheritance_preserves_components_and_metadata_without_source_cache() {
-        for empty_config in [true, false] {
-            let input = Input::new(empty_config);
+        for (empty_config, compressed) in
+            [(true, false), (false, false), (true, true), (false, true)]
+        {
+            let (bytes, media_type) = if compressed {
+                (
+                    ruzstd::encoding::compress_to_vec(
+                        b"opaque PMI".as_slice(),
+                        ruzstd::encoding::CompressionLevel::Fastest,
+                    ),
+                    crate::artifact::MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
+                )
+            } else {
+                (
+                    b"opaque PMI".to_vec(),
+                    crate::artifact::MEDIA_TYPE_PICHI_PMI_V1,
+                )
+            };
+            let input = Input::with_firmware(empty_config, bytes, media_type);
             let (cache, image) = input.open();
             let parent = tempfile::tempdir().unwrap();
             let destination = parent.path().join("output");

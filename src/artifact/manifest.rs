@@ -17,8 +17,8 @@ use thiserror::Error;
 
 use crate::artifact::media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
-    MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_SCUTE_V1,
-    MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
+    MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
+    MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 
 /// Chain-wide verity parameters. Absent fields default to 4096-byte data/hash
@@ -46,7 +46,7 @@ const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 /// - Top-level `artifact_type` MUST equal [`MEDIA_TYPE_PICHI_ARTIFACT_V1`].
 /// - `config` MUST be the OCI 1.1 empty-config descriptor with inline `data: "e30="`.
 /// - Scute layers MUST appear in chain order, from base to tip.
-/// - At most ONE [`Layer::Pmi`] (D-03 — zero pmi = base/non-bootable, one pmi = appliance/bootable).
+/// - At most ONE PMI, raw or compressed (D-03 — zero pmi = base/non-bootable, one pmi = appliance/bootable).
 /// - Top-level annotations MUST include one chain-tip root when scutes exist.
 ///   Reconstruction parameters are optional with defined defaults.
 /// - Every scute layer MUST carry a `dev.pichi.scute.verity.salt` annotation
@@ -149,6 +149,13 @@ const _: () = {
     );
     assert!(
         const_str_eq(
+            MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
+            "application/vnd.pichi.pmi.v1+zstd"
+        ),
+        "Layer::PmiZstd serde rename must match its media type"
+    );
+    assert!(
+        const_str_eq(
             MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
             "application/vnd.pichi.bootconfig.v1+zstd"
         ),
@@ -183,9 +190,14 @@ pub enum Layer {
     /// Zstd-compressed scute layer (per D-08).
     #[serde(rename = "application/vnd.pichi.scute.v1+zstd")]
     ScuteZstd(ScuteDescriptor),
-    /// PMI payload layer (uncompressed per D-09).
+
+    /// Uncompressed PMI payload layer.
     #[serde(rename = "application/vnd.pichi.pmi.v1")]
     Pmi(PmiDescriptor),
+
+    /// Zstd-compressed PMI transport; descriptor digest and size cover encoded bytes.
+    #[serde(rename = "application/vnd.pichi.pmi.v1+zstd")]
+    PmiZstd(PmiDescriptor),
 
     /// Zstd-compressed native boot configuration. Requires one PMI.
     #[serde(rename = "application/vnd.pichi.bootconfig.v1+zstd")]
@@ -197,7 +209,7 @@ impl Layer {
     pub fn digest_str(&self) -> &str {
         match self {
             Self::Scute(d) | Self::ScuteZstd(d) => &d.digest,
-            Self::Pmi(d) => &d.digest,
+            Self::Pmi(d) | Self::PmiZstd(d) => &d.digest,
             Self::BootConfig(d) => &d.digest,
         }
     }
@@ -206,7 +218,7 @@ impl Layer {
     pub fn size(&self) -> u64 {
         match self {
             Self::Scute(d) | Self::ScuteZstd(d) => d.size,
-            Self::Pmi(d) => d.size,
+            Self::Pmi(d) | Self::PmiZstd(d) => d.size,
             Self::BootConfig(d) => d.size,
         }
     }
@@ -215,7 +227,10 @@ impl Layer {
     /// Phase 44 cmd::pull's pipeline composer to decide whether to wrap
     /// the `BlobStore`-side sink in a `ZstdDecodeWriter` (Pitfall 5/12).
     pub fn is_zstd_variant(&self) -> bool {
-        matches!(self, Self::ScuteZstd(_) | Self::BootConfig(_))
+        matches!(
+            self,
+            Self::ScuteZstd(_) | Self::PmiZstd(_) | Self::BootConfig(_)
+        )
     }
 
     /// Return the static mediaType string for this variant. Mirrors the
@@ -226,6 +241,7 @@ impl Layer {
             Self::Scute(_) => MEDIA_TYPE_PICHI_SCUTE_V1,
             Self::ScuteZstd(_) => MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
             Self::Pmi(_) => MEDIA_TYPE_PICHI_PMI_V1,
+            Self::PmiZstd(_) => MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
             Self::BootConfig(_) => MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
         }
     }
@@ -282,7 +298,7 @@ impl ScuteAnnotations {
     }
 }
 
-/// PMI layer descriptor (no annotations — D-09).
+/// PMI layer descriptor. Digest and size identify the encoded blob bytes.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PmiDescriptor {
     /// Content digest of the PMI blob.
@@ -446,7 +462,7 @@ impl Manifest {
         let pmi_count = self
             .layers
             .iter()
-            .filter(|l| matches!(l, Layer::Pmi(_)))
+            .filter(|l| matches!(l, Layer::Pmi(_) | Layer::PmiZstd(_)))
             .count();
         if pmi_count > 1 {
             return Err(ManifestValidationError::MultiplePmi(pmi_count));
@@ -512,6 +528,49 @@ impl Manifest {
 mod tests {
     use super::*;
     use sha2::{Digest as _, Sha256};
+
+    #[test]
+    fn pmi_encodings_share_cardinality_and_bootconfig_rules() {
+        let descriptor = PmiDescriptor {
+            digest: format!("sha256:{}", "12".repeat(32)),
+            size: 73,
+        };
+        let variants = [Layer::Pmi(descriptor.clone()), Layer::PmiZstd(descriptor)];
+        for (encoded, expected_type) in variants.iter().zip([
+            "application/vnd.pichi.pmi.v1",
+            "application/vnd.pichi.pmi.v1+zstd",
+        ]) {
+            let json = serde_json::to_value(encoded).unwrap();
+            assert_eq!(json["mediaType"], expected_type);
+            assert_eq!(serde_json::from_value::<Layer>(json).unwrap(), *encoded);
+            assert_eq!(encoded.media_type_str(), expected_type);
+            assert_eq!(encoded.is_zstd_variant(), expected_type.ends_with("+zstd"));
+            assert_eq!(encoded.size(), 73);
+            for root in [false, true] {
+                let mut manifest = sample_base_manifest();
+                if !root {
+                    manifest.layers.clear();
+                    manifest.annotations.clear();
+                }
+                manifest.layers.push(encoded.clone());
+                manifest
+                    .layers
+                    .push(Layer::BootConfig(BootConfigDescriptor {
+                        digest: format!("sha256:{}", "34".repeat(32)),
+                        size: 12,
+                    }));
+                manifest.validate().unwrap();
+                for duplicate in &variants {
+                    let mut two = manifest.clone();
+                    two.layers.push(duplicate.clone());
+                    assert!(matches!(
+                        two.validate(),
+                        Err(ManifestValidationError::MultiplePmi(2))
+                    ));
+                }
+            }
+        }
+    }
 
     #[test]
     fn boot_config_is_a_compressed_component_requiring_one_pmi() {

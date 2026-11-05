@@ -946,9 +946,14 @@ and isolation tests does not prove absence of sandbox vulnerabilities.
 
 ## 10. Firmware measurement boundary
 
-The PMI and its embedded DTB/command line are immutable. Native bootconfig
-is distributed as a separate compressed component alongside the PMI. The
-builder verifies content digests without interpreting PMI launch targets.
+The PMI and its embedded DTB/command line are immutable. Transport may use
+`application/vnd.pichi.pmi.v1` or `application/vnd.pichi.pmi.v1+zstd`. In either
+case the OCI digest and size identify encoded bytes; a launcher receives the
+verified, decoded PMI. A manifest may contain at most one PMI layer across
+both encodings.
+Inheritance preserves the selected descriptor and encoded blob unchanged.
+Native bootconfig is distributed as a separate compressed component alongside
+the PMI. The builder verifies content digests without interpreting PMI launch targets.
 Dillo checks the bootconfig reservation at launch and adds native padding
 and the Linux trailer. Future signing flows must commit to the finalized
 selected components; composition never reseals existing PMI bytes.
