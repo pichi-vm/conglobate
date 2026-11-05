@@ -5,14 +5,15 @@ SPDX-License-Identifier: Apache-2.0
 
 # Build-appliance image
 
-Bootstrap CI builds this image with mkosi from Fedora 43 packages and, on
-`main`, publishes it to GHCR. Self-host via `pichi build` is later.
-`conglobate.plan.yaml` is only that skeleton; it is not the bootstrap
-builder.
+[`pichi.yaml`](pichi.yaml) builds the appliance on the Fedora image pinned in
+[`pichi.lock`](pichi.lock). A shared tools stage installs Fedora's Rust, Rust
+sources and LLVM packages. Separate stages build the engine and fixed LSM loader;
+the policy uses `RUSTC_BOOTSTRAP=1` for Cargo's `build-std=core` support.
+Only their executables enter the appliance root. Fedora supplies the kernel,
+modules and immutable PMI; the appliance adds its services, policy and formatters.
 
-The policy and loader come from the pinned [LSM submodule](../lsm).
-Run `git submodule update --init lsm` before building locally. The LSM
-repository owns its source checks; this repository builds the appliance.
+The policy and loader come from the pinned [LSM submodule](../lsm),
+whose repository owns their source checks.
 
 ## Registry
 
@@ -26,15 +27,37 @@ repository owns its source checks; this repository builds the appliance.
   only when `github.ref` is `refs/heads/main` and the event is not
   `pull_request`.
 
-The rootfs is not a layer on `ghcr.io/pichi-vm/fedora`. That carapace does not
-treat virtiofs as first-class, so this image keeps the modules itself.
+## Build
+
+Use native Linux amd64 or ARM64 with KVM, Pichi/Dillo and enough 2 MiB hugepages
+for an 8 GiB build VM. CI builds the host tools from the pinned `sources/pichi`
+and `sources/dillo` submodules. From the repository root, initialize the sources
+and pull the locked Fedora input:
+
+```sh
+git submodule update --init --recursive
+digest=$(sed -n 's/^  "ghcr.io\/pichi-vm\/fedora:43": //p' image/pichi.lock)
+pichi pull "ghcr.io/pichi-vm/fedora@$digest"
+BUILD_IMAGE=ghcr.io/pichi-vm/conglobate@sha256:262f87ecd7a178a90979eebd9689a0a28c1a4d844e6572a0fea116bf782a0b6f
+pichi build . --ref HEAD --plan image/pichi.yaml --lock image/pichi.lock \
+  --build-image "$BUILD_IMAGE" --memory 8192 -t ghcr.io/pichi-vm/conglobate:0.2.0
+```
+
+`BUILD_IMAGE` selects the existing appliance that Pichi boots to execute this
+build. The locked Fedora image supplies the stage filesystems and firmware;
+the output is a new appliance.
+
+Both native Linux CI jobs build one appliance from the locked Fedora base,
+run Pichi's staged-image acceptance through it, and use it to build Fedora.
+This completes the self-hosting cycle: Pichi builds Fedora, and Fedora supplies
+the appliance base. Both build jobs and the engine checks gate publication;
+CI retains image and staged-test evidence.
 
 ## Guest
 
 - systemd is PID 1 (`/sbin/init` after the Corium pivot).
-- `virtiofs` and `fuse` stay in the rootfs module tree. They are loaded after
-  pivot (`/usr/lib/modules-load.d/pichi-virtiofs.conf`), not from the initramfs.
-  Units mount:
+- Fedora supplies the kernel modules; normal device and filesystem loading
+  provides the appliance drivers without a custom module-load list. Units mount:
   - tag `repo` → `/run/pichi/repo` (`Type=virtiofs`, read-only)
   - tag `cache` → `/run/pichi/cache` (`Type=virtiofs`, read-only)
   - tag `output` → `/run/pichi/output` (`Type=virtiofs`, read-write)
@@ -63,9 +86,8 @@ relative to context, and an optional location hint. No execution receipts or
 builder/input/output mirrors are emitted. Later attestation binds the image
 digest and TEE/builder. A manifest containing scutes carries one
 `dev.pichi.carapace.verity.hash` committing the final salt-linked chain root.
-The builder reads that commitment once through `pichi inspect` and uses it
-for `corium.root` in native bootconfig. The complete GPT disk is imported as
-one carapace; Corium mounts its native root partition. The PMI's embedded DTB
+Conglobate binds the selected root in native bootconfig while preserving the
+inherited Fedora PMI. Corium mounts the native root partition. The PMI's embedded DTB
 and `bootconfig` command line remain immutable. Missing, malformed and zero
 roots are rejected.
 It requires a Pichi producer that records this manifest commitment. Existing
@@ -90,14 +112,10 @@ salts. Firmware remains in its OCI blob paths.
 
 | Path | Role |
 | --- | --- |
-| `mkosi.conf`, `mkosi.finalize`, `mkosi.repart/` | Fedora 43 rootfs |
-| `build.sh` | Corium initramfs, `pichi import`, local tag `conglobate:0.2.0` |
-| `config.json` | Launch requirements (2 GiB required, 4 GiB recommended) |
+| `pichi.yaml` | Appliance stages, inherited firmware and launch requirements |
+| `pichi.lock` | Qualified Fedora input digest |
 | `units/` | Installed into the rootfs and enabled |
-| `conglobate.plan.yaml` | Self-host later, not used by bootstrap CI |
-
-`image/build.sh` writes `image/.build/` and a temporary `image/mkosi.extra/`.
-Neither is source.
+| `10-build.network` | DHCP for the build network |
 
 Input scutes are prepared by Pichi in the read-only cache.
 Conglobate discovers them in manifest order from its trusted tip and delegates

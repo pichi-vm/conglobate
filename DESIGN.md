@@ -220,23 +220,19 @@ influences when commands can acquire external input.
 
 ### 1.4 Build appliance
 
-Conglobate ships its build-appliance as a **pichi image from this repo**, built
-by bootstrap CI (same class as the `fedora`/`carapace` images). Later, the
-appliance may self-host via `pichi build`.
+Conglobate ships its build appliance as a Pichi image from this repository.
+The production recipe, `image/pichi.yaml`, extends the Fedora image pinned in
+`image/pichi.lock`. It builds the engine and fixed policy in separate stages,
+installs their executables and the appliance units, and inherits Fedora's
+kernel, modules and immutable PMI. Native appliance builds exercise the
+inherited filesystems and BPF policy. See `image/README.md` for the build
+commands and guest contract.
 
-Bootstrap CI (`.github/workflows/build.yml`, sources under `image/`) builds
-that image with mkosi from Fedora 43 packages. It does not layer the published
-fedora carapace: that image does not treat `virtiofs` as first-class, so this
-rootfs keeps `virtiofs` and `fuse` and loads them after the initramfs pivot.
-systemd is PID 1 and its units bind tags `repo`, `cache`, and `output`.
-`e2fsprogs` supplies image-resident `mke2fs`. The release binary is installed
-at `/usr/bin/conglobate`. On `main`, CI pushes a multi-arch index to
-`ghcr.io/pichi-vm/conglobate` tagged `:0.2.0` (this crate's version) and
-`:latest`, with `platform.os` `pichi` and architectures `amd64` and `arm64`.
-`:0.2.0` is the durable pin (plus the digest once pushed). Consumers must
-not rely on `:latest` alone.
-Pull requests build the image and do not push. `image/conglobate.plan.yaml`
-stays a self-host-later skeleton; it is not this bootstrap.
+Both native Linux CI jobs build the appliance from Fedora and qualify it
+through staged-image acceptance and a real Fedora production build.
+Pull requests build and test without pushing images. Only successful main
+builds publish the multi-architecture index to `ghcr.io/pichi-vm/conglobate`
+under `:0.2.0` and `:latest`; consumers pin the index digest.
 
 Product assumptions for the guest:
 
