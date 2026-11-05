@@ -989,17 +989,40 @@ not only on an index, index descriptor, or configuration blob:
 | Annotation | Value |
 | --- | --- |
 | `dev.pichi.build.commit` | Required: `sha1:<hex>` or `sha256:<hex>`, using the full resolved Git commit identity |
-| `dev.pichi.build.context` | Required: path inside that commit; `.` selects the commit root |
-| `dev.pichi.build.plan` | Required: plan path relative to the selected context |
-| `dev.pichi.build.lock` | Present only when consumed: lock path relative to the context |
+| `dev.pichi.build.context` | Required: commitment to the context path inside that commit |
+| `dev.pichi.build.plan` | Required: commitment to the plan path relative to the selected context |
+| `dev.pichi.build.lock` | Present only when consumed: commitment to the lock path relative to the context |
 | `dev.pichi.build.bootstrapped` | `"true"` iff this build used a selected bootstrap tool; otherwise absent |
 | `dev.pichi.build.location` | Optional: provenance hint for where to obtain the repository |
 
-Location says where to get it; commit says what it is; context selects a path
-in that commit; plan and lock select paths relative to context. The commit
-value carries its algorithm. There are no separate tree or object-format keys.
-Plan and lock bytes are already bound through the commit and selected paths;
-do not mirror their content digests as additional build annotations.
+Location says where to get the repository; commit says which immutable checkout
+to audit. Context, plan and lock are path commitments, never plaintext names.
+Each is `sha256:<hex>` over the following concatenated bytes:
+
+```
+UTF-8 full annotation key || 0x00 || raw selected Git tree object ID || 0x00 || UTF-8 selector path
+```
+
+The context path is repository-relative (`.` for the root); plan and lock paths
+are context-relative, exactly as selected by the build request. The tree is the
+resolved context tree, including resolution through symlinks and submodules.
+The commit's object format determines the tree ID length (20 or 32 bytes).
+No tree ID is published separately. Including it prevents guessing filenames
+from the public commit ID alone; an observer who already knows the tree can
+still test candidate names. This is a commitment, not encryption or attestation.
+
+An auditor obtains the pinned commit using the optional location or out-of-band
+repository knowledge, enumerates candidate directories and their Git tree IDs,
+and hashes each candidate context selector with its tree ID. After matching the
+context commitment, they enumerate its files (including permitted symlink and
+submodule selections) and match the plan and optional lock commitments with the
+same tree ID and the respective annotation keys. They then resolve those paths
+under the ordinary committed-context rules and audit or reproduce the build.
+Custom names and multiple contexts need no convention or private path record.
+Distinct paths remain distinct even when their file bytes or trees are equal.
+The checkout, rather than the working tree, supplies all candidate objects.
+Plan and lock bytes remain bound through that commit and the selected paths;
+there are no extra tree/object-format keys or duplicate content digests.
 
 `bootstrapped` is a manifest annotation, never a layer annotation. It records
 this build's direct bootstrap use; all inherited `dev.pichi.build.*` keys are

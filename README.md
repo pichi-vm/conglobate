@@ -58,8 +58,10 @@ and [boot configuration](DESIGN.md#8-boot-configuration).
 The 28 October 2026 decision in
 [DESIGN §11](DESIGN.md#11-artifact-and-build-annotations) drops `inventory.cbor`
 entirely. The image manifest carries `dev.pichi.build.commit` (`sha1:<hex>` or
-`sha256:<hex>`), `dev.pichi.build.context` (path in that commit), and
-`dev.pichi.build.plan` / `dev.pichi.build.lock` (paths relative to context).
+`sha256:<hex>`), `dev.pichi.build.context` (context path commitment), and
+`dev.pichi.build.plan` / `dev.pichi.build.lock` (context-relative path commitments).
+These `sha256:<hex>` commitments include the selected Git tree identity; auditors
+with the pinned checkout match candidate paths using the algorithm in DESIGN.md.
 `dev.pichi.build.location` is an optional provenance hint. There are no separate
 tree/object-format keys or builder/input/execution/output mirrors. The carapace
 tip root is recorded once as `sha256:<hex>` in `dev.pichi.carapace.verity.hash`.

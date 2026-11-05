@@ -117,7 +117,6 @@ pub(crate) enum ContextEntry {
 #[derive(Debug)]
 pub(crate) struct CapturedContext {
     commit: ObjectId,
-    #[cfg(test)]
     subtree: ObjectId,
     stores: Vec<Store>,
     entries: BTreeMap<PathBuf, ContextEntry>,
@@ -139,7 +138,6 @@ impl CapturedContext {
         let root = reader.commit_tree(commit_id)?;
         let mut captured = Self {
             commit: commit_id,
-            #[cfg(test)]
             subtree: root,
             stores: vec![Store {
                 reader,
@@ -214,10 +212,7 @@ impl CapturedContext {
                 }
             }
         }
-        #[cfg(test)]
-        {
-            captured.subtree = subtree;
-        }
+        captured.subtree = subtree;
         captured.scan(store, PathBuf::new(), repository_path, subtree)?;
         Ok(captured)
     }
@@ -288,6 +283,17 @@ impl CapturedContext {
         self.entries
             .insert(selected.to_owned(), ContextEntry::Directory);
         Ok(())
+    }
+    /// Bind a selector without publishing its name or the selected tree identity.
+    pub(crate) fn path_commitment(&self, key: &str, path: &Path) -> crate::artifact::Digest {
+        use sha2::{Digest as _, Sha256};
+        let mut hash = Sha256::new();
+        hash.update(key.as_bytes());
+        hash.update([0]);
+        hash.update(self.subtree.as_bytes());
+        hash.update([0]);
+        hash.update(path.as_os_str().as_bytes());
+        crate::artifact::Digest::Sha256(hash.finalize().into())
     }
     pub(crate) fn commit(&self) -> ObjectId {
         self.commit

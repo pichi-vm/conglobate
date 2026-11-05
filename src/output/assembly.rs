@@ -62,32 +62,29 @@ impl AssembledImage {
             gix::hash::Kind::Sha256 => "sha256",
             _ => anyhow::bail!("unsupported Git commit algorithm"),
         };
+        annotations.insert(
+            "dev.pichi.build.commit".into(),
+            format!("{algorithm}:{commit}").into(),
+        );
         let context: &std::path::Path = request.context().as_ref();
-        for (key, value) in [
-            ("commit", format!("{algorithm}:{commit}")),
-            (
-                "context",
-                if context.as_os_str().is_empty() {
-                    ".".into()
-                } else {
-                    context
-                        .to_str()
-                        .ok_or_else(|| anyhow::anyhow!("context is not UTF-8"))?
-                        .into()
-                },
-            ),
-            (
-                "plan",
-                build
-                    .plan_document()
-                    .path()
-                    .as_ref()
-                    .to_str()
-                    .ok_or_else(|| anyhow::anyhow!("plan path is not UTF-8"))?
-                    .into(),
-            ),
+        let context = context
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("context is not UTF-8"))?;
+        let plan = build
+            .plan_document()
+            .path()
+            .as_ref()
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("plan path is not UTF-8"))?;
+        for (key, path) in [
+            ("context", if context.is_empty() { "." } else { context }),
+            ("plan", plan),
         ] {
-            annotations.insert(format!("dev.pichi.build.{key}"), value.into());
+            let key = format!("dev.pichi.build.{key}");
+            let commitment = build
+                .context()
+                .path_commitment(&key, std::path::Path::new(path));
+            annotations.insert(key, commitment.to_string().into());
         }
         if let Some(lock) = build.lock_document() {
             let path = lock
@@ -95,7 +92,11 @@ impl AssembledImage {
                 .as_ref()
                 .to_str()
                 .ok_or_else(|| anyhow::anyhow!("lock path is not UTF-8"))?;
-            annotations.insert("dev.pichi.build.lock".into(), path.into());
+            let key = "dev.pichi.build.lock";
+            let commitment = build
+                .context()
+                .path_commitment(key, std::path::Path::new(path));
+            annotations.insert(key.into(), commitment.to_string().into());
         }
         if build.graph().bootstrapped() {
             annotations.insert("dev.pichi.build.bootstrapped".into(), "true".into());
@@ -472,6 +473,12 @@ mod tests {
                         ),
                     )
                     .unwrap();
+                    if context != "." {
+                        let duplicate = repo.path().join("other/context/config");
+                        fs::create_dir_all(&duplicate).unwrap();
+                        fs::copy(selected.join("plan.yaml"), duplicate.join("plan.yaml")).unwrap();
+                        fs::copy(selected.join("lock.yaml"), duplicate.join("lock.yaml")).unwrap();
+                    }
                     git(&["add", "."]);
                     git(&[
                         "-c",
@@ -545,9 +552,42 @@ mod tests {
                         annotations["dev.pichi.build.commit"],
                         format!("{algorithm}:{commit}")
                     );
-                    assert_eq!(annotations["dev.pichi.build.context"], context);
-                    assert_eq!(annotations["dev.pichi.build.plan"], "config/plan.yaml");
-                    assert_eq!(annotations["dev.pichi.build.lock"], "config/lock.yaml");
+                    // An auditor obtains the tree from the pinned Git commit,
+                    // then matches context-relative candidates without a private path record.
+                    let tree = git(&[
+                        "rev-parse",
+                        &if context == "." {
+                            format!("{commit}^{{tree}}")
+                        } else {
+                            format!("{commit}:{context}")
+                        },
+                    ]);
+                    if context != "." {
+                        assert_eq!(
+                            tree,
+                            git(&["rev-parse", &format!("{commit}:other/context")])
+                        );
+                    }
+                    let tree = hex::decode(tree).unwrap();
+                    let commitment = |key: &str, path: &str| {
+                        let bytes = [key.as_bytes(), &[0], &tree, &[0], path.as_bytes()].concat();
+                        Digest::Sha256(Sha256::digest(bytes).into()).to_string()
+                    };
+                    for (key, path) in [
+                        ("context", context),
+                        ("plan", "config/plan.yaml"),
+                        ("lock", "config/lock.yaml"),
+                    ] {
+                        let key = format!("dev.pichi.build.{key}");
+                        assert_eq!(annotations[&key], commitment(&key, path));
+                        assert_ne!(annotations[&key], commitment(&key, "other/path"));
+                        assert_ne!(annotations[&key], commitment("different-role", path));
+                    }
+                    assert_ne!(
+                        annotations["dev.pichi.build.context"],
+                        commitment("dev.pichi.build.context", "other/context")
+                    );
+                    assert!(!annotations.values().any(|value| value == "config/plan.yaml" || value == "config/lock.yaml"));
                     assert_eq!(
                         annotations
                             .get("dev.pichi.build.location")
