@@ -9,7 +9,7 @@ use devmap_verity::{Algorithm, Format as _, HashType, Header as VerityHeader, Pa
 use sha2::{Digest, Sha256};
 use std::{
     fs::File,
-    io::{self, Read, Seek, SeekFrom},
+    io::{self, Read, Seek, SeekFrom, Write},
     num::NonZero,
     os::unix::fs::FileExt,
 };
@@ -90,7 +90,9 @@ impl Seek for ScuteReader<'_> {
 impl<'w> Scratch<'w> {
     /// Seal a detached persistent snapshot store. LoopAttachment::detach must
     /// have confirmed unbound state before returning this writable authority.
-    /// Compact against the retained, read-only origin before hashing any bytes.
+    /// Compare against the retained, read-only origin, then stream final-order
+    /// bytes into verity and the prepared COW together. In-place exception
+    /// planning supplies final geometry without a compacted-file intermediate.
     /// Caller separately owns command/finalization success proofs.
     pub(crate) fn seal_snapshot<'a>(
         self,
@@ -109,14 +111,13 @@ impl<'w> Scratch<'w> {
         let capacity = self.file.metadata()?.len();
         let extent = SnapshotExtent::read(&mut self.file, capacity)?;
         self.file.set_len(extent.bytes)?;
-        let packed = self._workspace.scratch()?;
-        let bytes = super::compact::compact(&self.file, packed.file(), read_origin)?;
-        self = packed;
-        self.file.sync_all()?;
-        self.file.rewind()?;
+        let compacted = super::compact::CompactSnapshot::new(&mut self.file, read_origin)?;
+        let bytes = compacted.size_bytes();
+        let mut packed = self._workspace.scratch()?;
         let mut hash = self._workspace.scratch()?;
         let mut input = MeasuredRead {
-            input: &mut self.file,
+            input: compacted,
+            data: &mut packed,
             digest: Sha256::new(),
         };
         let data_blocks = NonZero::new(bytes / 4096).expect("nonempty snapshot extent");
@@ -142,6 +143,7 @@ impl<'w> Scratch<'w> {
         let root = header.format(&mut input, &mut hash)?;
         let root = root.as_ref().try_into().expect("SHA-256 root width");
         let digest = format!("sha256:{}", hex::encode(input.digest.finalize()));
+        packed.sync_all()?;
         hash.sync_all()?;
         let descriptor = ScuteDescriptor {
             digest,
@@ -152,7 +154,7 @@ impl<'w> Scratch<'w> {
             },
         };
         Ok(SealedScute {
-            data: self,
+            data: packed,
             hash,
             root,
             descriptor,
@@ -161,13 +163,15 @@ impl<'w> Scratch<'w> {
     }
 }
 #[derive(Debug)]
-struct MeasuredRead<R> {
+struct MeasuredRead<R, W> {
     input: R,
+    data: W,
     digest: Sha256,
 }
-impl<R: Read> Read for MeasuredRead<R> {
+impl<R: Read, W: Write> Read for MeasuredRead<R, W> {
     fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
         let read = self.input.read(buffer)?;
+        self.data.write_all(&buffer[..read])?;
         self.digest.update(&buffer[..read]);
         Ok(read)
     }
