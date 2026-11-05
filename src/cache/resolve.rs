@@ -248,12 +248,11 @@ mod tests {
             let config = b"{\"requirements\":{}}".to_vec();
             let config_digest = Digest::Sha256(Sha256::digest(&config).into());
             let annotations: BTreeMap<String, String> = [
-                ("algo", "sha256"),
                 ("data-block-size", "4096"),
                 ("hash-block-size", "4096"),
                 ("version", "1"),
                 ("hash-type", "1"),
-                ("hash", &hex::encode(parent)),
+                ("hash", &Digest::Sha256(parent).to_string()),
             ]
             .into_iter()
             .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.into()))

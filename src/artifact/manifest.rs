@@ -9,7 +9,7 @@
 //! tagged on `mediaType`), `ConfigDescriptor` for the OCI 1.1 empty-config
 //! pattern, and `validate()` enforcing all six D-07 rules.
 
-use super::BootConfigDescriptor;
+use super::{BootConfigDescriptor, Digest};
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -33,7 +33,7 @@ const CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE: &str = "dev.pichi.carapace.verity
 const CHAIN_ANNOTATION_VERITY_VERSION: &str = "dev.pichi.carapace.verity.version";
 const CHAIN_ANNOTATION_VERITY_HASH_TYPE: &str = "dev.pichi.carapace.verity.hash-type";
 
-/// Hex-encoded SHA-256 root of the final scute, committing the salt-linked chain.
+/// Algorithm-qualified SHA-256 root of the final scute (sha256:<lowercase hex>).
 pub const CARAPACE_ROOT_ANNOTATION: &str = "dev.pichi.carapace.verity.hash";
 
 /// Canonical SHA-256 digest of `{}` (the OCI 1.1 empty config blob).
@@ -74,7 +74,7 @@ pub struct Manifest {
     /// PMI and boot configuration descriptors are outside that order.
     pub layers: Vec<Layer>,
     /// Top-level annotations. With scutes, MUST include
-    /// `dev.pichi.carapace.verity.{algo,data-block-size,hash-block-size,
+    /// `dev.pichi.carapace.verity.{data-block-size,hash-block-size,
     /// version,hash-type,hash}` and SHOULD include
     /// `org.opencontainers.image.created` (D-06).
     /// `BTreeMap` for byte-stable JSON serialisation (lexicographic key order).
@@ -356,6 +356,12 @@ impl Manifest {
     /// This parses the wire value; consumers must authenticate the manifest and
     /// verify scute reads against this root before using their contents.
     pub fn carapace_root(&self) -> Result<Option<[u8; 32]>, ManifestValidationError> {
+        if let Some(value) = self.annotations.get(CHAIN_ANNOTATION_VERITY_ALGO) {
+            return Err(ManifestValidationError::BadChainAnnotation {
+                key: CHAIN_ANNOTATION_VERITY_ALGO,
+                value: value.clone(),
+            });
+        }
         let value = self.annotations.get(CARAPACE_ROOT_ANNOTATION);
         if !self.has_scutes() && value.is_none() {
             return Ok(None);
@@ -363,15 +369,14 @@ impl Manifest {
         let value = value.ok_or(ManifestValidationError::MissingChainAnnotation(
             CARAPACE_ROOT_ANNOTATION,
         ))?;
-        let mut root = [0; 32];
-        if !self.has_scutes() || hex::decode_to_slice(value, &mut root).is_err() || root == [0; 32]
-        {
-            return Err(ManifestValidationError::BadChainAnnotation {
-                key: CARAPACE_ROOT_ANNOTATION,
-                value: value.clone(),
-            });
-        }
-        Ok(Some(root))
+        let root = value.parse::<Digest>().ok().filter(|digest| {
+            self.has_scutes() && digest.to_string() == *value && digest.as_sha256_array() != [0; 32]
+        });
+        let root = root.ok_or_else(|| ManifestValidationError::BadChainAnnotation {
+            key: CARAPACE_ROOT_ANNOTATION,
+            value: value.clone(),
+        })?;
+        Ok(Some(root.as_sha256_array()))
     }
 
     /// Return `true` if this manifest carries at least one scute layer (i.e.
@@ -415,7 +420,6 @@ impl Manifest {
         self.carapace_root()?;
         if self.has_scutes() {
             for key in [
-                CHAIN_ANNOTATION_VERITY_ALGO,
                 CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
                 CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE,
                 CHAIN_ANNOTATION_VERITY_VERSION,
@@ -608,7 +612,6 @@ mod tests {
 
     fn sample_chain_annotations() -> BTreeMap<String, String> {
         let mut a = BTreeMap::new();
-        a.insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), "sha256".into());
         a.insert(
             CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE.into(),
             "4096".into(),
@@ -619,7 +622,10 @@ mod tests {
         );
         a.insert(CHAIN_ANNOTATION_VERITY_VERSION.into(), "1".into());
         a.insert(CHAIN_ANNOTATION_VERITY_HASH_TYPE.into(), "1".into());
-        a.insert(CARAPACE_ROOT_ANNOTATION.into(), "ab".repeat(32));
+        a.insert(
+            CARAPACE_ROOT_ANNOTATION.into(),
+            format!("sha256:{}", "ab".repeat(32)),
+        );
         a.insert(
             "org.opencontainers.image.created".into(),
             "2026-05-06T14:32:00Z".into(),
@@ -726,10 +732,11 @@ mod tests {
     #[test]
     fn validate_rejects_missing_chain_annotation() {
         let mut m = sample_base_manifest();
-        m.annotations.remove(CHAIN_ANNOTATION_VERITY_ALGO);
+        m.annotations
+            .remove(CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE);
         let err = m.validate().unwrap_err();
         assert!(
-            matches!(err, ManifestValidationError::MissingChainAnnotation(k) if k == CHAIN_ANNOTATION_VERITY_ALGO)
+            matches!(err, ManifestValidationError::MissingChainAnnotation(k) if k == CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE)
         );
     }
 
@@ -812,6 +819,23 @@ mod tests {
     }
 
     #[test]
+    fn validate_rejects_retired_algorithm_annotation() {
+        for algorithm in ["sha256", "sha512", ""] {
+            let mut manifest = sample_base_manifest();
+            manifest
+                .annotations
+                .insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), algorithm.into());
+            assert!(matches!(
+                manifest.validate(),
+                Err(ManifestValidationError::BadChainAnnotation {
+                    key: CHAIN_ANNOTATION_VERITY_ALGO,
+                    ..
+                })
+            ));
+        }
+    }
+
+    #[test]
     fn validate_requires_one_nonzero_chain_tip() {
         let mut m = sample_base_manifest();
         assert_eq!(m.carapace_root().unwrap(), Some([0xab; 32]));
@@ -828,7 +852,12 @@ mod tests {
             "gg".repeat(32),
             "00".repeat(32),
             "ab".repeat(33),
-            format!("sha256:{}", "ab".repeat(32)),
+            "ab".repeat(32),
+            format!("sha256:{}", "gg".repeat(32)),
+            format!("sha256:{}", "00".repeat(32)),
+            format!("sha512:{}", "ab".repeat(32)),
+            format!("sha256:{}", "AB".repeat(32)),
+            format!("sha256:{}", "ab".repeat(33)),
         ] {
             m.annotations
                 .insert(CARAPACE_ROOT_ANNOTATION.into(), invalid);
@@ -840,8 +869,10 @@ mod tests {
                 })
             ));
         }
-        m.annotations
-            .insert(CARAPACE_ROOT_ANNOTATION.into(), "AB".repeat(32));
+        m.annotations.insert(
+            CARAPACE_ROOT_ANNOTATION.into(),
+            format!("sha256:{}", "ab".repeat(32)),
+        );
         m.validate().unwrap();
         m.layers.clear();
         assert!(m.validate().is_err());

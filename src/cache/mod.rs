@@ -411,12 +411,11 @@ pub(crate) mod tests {
                 config: crate::artifact::ConfigDescriptor::canonical(),
                 layers,
                 annotations: [
-                    ("algo", "sha256"),
                     ("data-block-size", "4096"),
                     ("hash-block-size", "4096"),
                     ("version", "1"),
                     ("hash-type", "1"),
-                    ("hash", &hex::encode(root)),
+                    ("hash", &crate::artifact::Digest::Sha256(root).to_string()),
                 ]
                 .into_iter()
                 .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.to_owned()))
@@ -585,7 +584,6 @@ pub(crate) mod tests {
             serde_json::from_slice(&store.manifest_bytes(vec![layer], root)).unwrap();
         manifest["annotations"]["dev.pichi.carapace.verity.version"] = "99".into();
         manifest["annotations"]["dev.pichi.carapace.verity.hash-type"] = "0".into();
-        manifest["annotations"]["dev.pichi.carapace.verity.algo"] = "untrusted hint".into();
         let bytes = serde_json::to_vec(&manifest).unwrap();
         let digest = store.put(&bytes);
         let cache = store.open();
