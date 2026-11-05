@@ -118,6 +118,11 @@ jobs:
         working-directory: sources/pichi
         run: cargo "+$NIGHTLY" test --locked --release --features vm-tests --test staged_images -- --nocapture
 
+      - name: Qualify committed submodule inputs
+        if: matrix.arch == 'amd64'
+        working-directory: sources/pichi
+        run: cargo "+$NIGHTLY" test --locked --release --features vm-tests --test build_submodules -- --nocapture
+
       - name: Preserve appliance qualification evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
