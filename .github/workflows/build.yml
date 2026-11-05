@@ -5,16 +5,12 @@ on:
   workflow_dispatch:
 
 env:
-  # Crate version. image/build.sh refuses to run when Cargo.toml disagrees.
+  # Crate version; unchanged by the producer migration.
   # Main pushes this tag and :latest. Pull requests do not push.
   CONGLOBATE_VERSION: "0.2.0"
-  # arma and pichi are nightly-only (artifact deps / `-Z bindeps`); arma
-  # cross-compiles the tatu firmware to bare-metal targets. Pin the toolchain
-  # to the same nightly the fedora image builds with. Conglobate itself is
-  # built with 1.94.0, matching the rootless checks.
+  # Host tools and staged-image fixtures require nightly.
   NIGHTLY: "nightly-2026-07-06"
-  ARMA_REV: "3297920b46122689fb13ca41acd61cbe94ac1de7"
-  PICHI_REV: "705419859134d6485e6f147f740eec8e063ff26a"
+  BUILD_IMAGE: "ghcr.io/pichi-vm/conglobate@sha256:262f87ecd7a178a90979eebd9689a0a28c1a4d844e6572a0fea116bf782a0b6f"
 
 jobs:
   # Validate alongside builds; publication requires both to succeed.
@@ -24,87 +20,67 @@ jobs:
     permissions:
       contents: read
 
-  # Build each arch natively (no QEMU). Each build exports an OCI layout and
-  # uploads it. No arch job pushes. The index job, on main only, loads both
-  # and pushes one multi-arch index.
+  # Build the Fedora-based appliance on native KVM.
   build:
     strategy:
       fail-fast: false
       matrix:
         include:
           - arch: amd64
-            runner: ubuntu-latest
+            runner: ubuntu-24.04
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: [ self-hosted, Linux, ARM64, bare-metal, aarch64, kvm ]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 180
-    container:
-      image: fedora:43
-      # --privileged: mkosi + `unshare -r` (the rootfs strip / mkfs) need
-      # user namespaces and full device access.
-      options: --privileged
     permissions:
       contents: read
     steps:
-      - name: Install system tooling
-        run: >-
-          dnf install -y
-          mkosi systemd-standalone-repart e2fsprogs util-linux coreutils cpio
-          git gcc curl openssl-devel pkgconf-pkg-config perl python3
-
       - uses: actions/checkout@v7.0.1
         with:
-          submodules: recursive
           persist-credentials: false
+          submodules: recursive
 
-      - name: Install Rust (${{ env.NIGHTLY }} + 1.94.0)
+      - name: Reserve build VM memory
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
-            -y --profile minimal --default-toolchain "$NIGHTLY" \
-            --target x86_64-unknown-none --target aarch64-unknown-none-softfloat
-          "$HOME/.cargo/bin/rustup" toolchain install 1.94.0 --profile minimal
-          "$HOME/.cargo/bin/rustup" toolchain install stable --profile minimal
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          if [ "${{ matrix.arch }}" = amd64 ]; then
+            sudo chmod a+rw /dev/kvm
+            sudo sysctl -w vm.nr_hugepages=4096
+          fi
+          test -r /dev/kvm && test -w /dev/kvm
+          test "$(cat /proc/sys/vm/nr_hugepages)" -ge 4096
 
-      - name: Install the BPF linker
-        working-directory: lsm
+      - name: Install the host toolchain
+        run: rustup toolchain install "$NIGHTLY" --profile minimal
+
+      - name: Configure the image cache
+        run: echo "XDG_DATA_HOME=$RUNNER_TEMP/appliance-image-cache" >> "$GITHUB_ENV"
+
+      - name: Build Pichi
+        working-directory: sources/pichi
         run: |
-          # Reuse LLVM from the selected Rust toolchain.
-          linker_llvm="$(printf '%s' "$(rustc --print sysroot)"/lib/libLLVM.so.*)"
-          linker_llvm_version="${linker_llvm##*/libLLVM.so.}"
-          RUSTFLAGS="-C link-arg=$linker_llvm -C link-arg=-Wl,-rpath,${linker_llvm%/*}" \
-            cargo install --locked --version '=0.13.0' \
-              --no-default-features --features "llvm-${linker_llvm_version%%.*},no-llvm-linking" bpf-linker
+          cargo "+$NIGHTLY" build --locked --release
+          echo "$PWD/target/release" >> "$GITHUB_PATH"
 
-      - name: Build arma, pichi, and conglobate
+      - name: Build Dillo
+        working-directory: sources/dillo
         run: |
-          # arma and pichi pick up their own rust-toolchain.toml / .cargo/config
-          # when built in-tree. Corium is installed by image/build.sh.
-          git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/arma /tmp/arma
-          git -C /tmp/arma checkout --detach "$ARMA_REV"
-          (cd /tmp/arma && cargo build --locked --release --bin arma)
-          echo "ARMA=/tmp/arma/target/release/arma" >> "$GITHUB_ENV"
-          git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/pichi /tmp/pichi
-          git -C /tmp/pichi checkout --detach "$PICHI_REV"
-          (cd /tmp/pichi && cargo build --locked --release --bin pichi)
-          install -m755 /tmp/pichi/target/release/pichi /usr/local/bin/pichi
-          cargo +1.94.0 build --locked --release --features cli --bin conglobate
-          echo "CONGLOBATE_BIN=$PWD/target/release/conglobate" >> "$GITHUB_ENV"
+          cargo "+$NIGHTLY" --config packaging/cargo-config.toml build --locked --release
+          echo "PICHI_DILLO=$PWD/target/release/dillo" >> "$GITHUB_ENV"
 
-      - name: Build appliance image (native ${{ matrix.arch }})
-        # REVISION reaches build.sh's provenance stamp: git rev-parse is not
-        # reliable in this checkout, so pass the SHA explicitly.
-        env:
-          REVISION: ${{ github.sha }}
-        run: ./image/build.sh
-
-      - name: Check image scripts
+      - name: Pull the locked Fedora base
         run: |
-          bash -n image/build.sh
-          python3 -m py_compile image/mkosi.finalize
+          digest=$(sed -n 's/^  "ghcr.io\/pichi-vm\/fedora:43": //p' image/pichi.lock)
+          pichi pull "ghcr.io/pichi-vm/fedora@$digest"
 
-      - name: Export image as an OCI layout directory
-        run: pichi save "conglobate:${CONGLOBATE_VERSION}" -o "oci-${{ matrix.arch }}"
+      - name: Build the appliance
+        run: |
+          test "$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1)" = "$CONGLOBATE_VERSION"
+          pichi build . --ref HEAD --plan image/pichi.yaml --lock image/pichi.lock \
+            --build-image "$BUILD_IMAGE" --memory 8192 \
+            -t qualification.local/appliance:build
+
+      - name: Export the appliance
+        run: pichi save qualification.local/appliance:build -o "oci-${{ matrix.arch }}"
 
       - name: Upload OCI layout artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -124,13 +100,15 @@ jobs:
       contents: read
       packages: write
     steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
       - name: Install pichi
         run: |
+          git submodule update --init --recursive sources/pichi
           rustup toolchain install "$NIGHTLY" --profile minimal
-          git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/pichi /tmp/pichi
-          git -C /tmp/pichi checkout --detach "$PICHI_REV"
-          (cd /tmp/pichi && cargo "+$NIGHTLY" build --locked --release --bin pichi)
-          sudo install -m755 /tmp/pichi/target/release/pichi /usr/local/bin/pichi
+          (cd sources/pichi && cargo "+$NIGHTLY" build --locked --release)
+          echo "$GITHUB_WORKSPACE/sources/pichi/target/release" >> "$GITHUB_PATH"
 
       - name: Download OCI layout artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0

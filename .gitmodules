@@ -1,3 +1,9 @@
 [submodule "lsm"]
 	path = lsm
 	url = https://github.com/pichi-vm/lsm.git
+[submodule "sources/pichi"]
+	path = sources/pichi
+	url = https://github.com/pichi-vm/pichi.git
+[submodule "sources/dillo"]
+	path = sources/dillo
+	url = https://github.com/pichi-vm/dillo.git
