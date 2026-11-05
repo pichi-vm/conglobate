@@ -30,6 +30,10 @@ impl AssembledImage {
     }
     fn set_tip_annotation(manifest: &mut serde_json::Value, root: Option<[u8; 32]>) {
         if let Some(root) = root {
+            manifest["annotations"]
+                .as_object_mut()
+                .expect("manifest annotations")
+                .remove("dev.pichi.carapace.verity.algo");
             manifest["annotations"][CARAPACE_ROOT_ANNOTATION] =
                 Digest::Sha256(root).to_string().into();
         }

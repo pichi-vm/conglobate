@@ -559,7 +559,10 @@ Conglobate verifies the index from the read-only cache, selects the matching
 platform manifest, and verifies it. A manifest containing scutes must carry
 `dev.pichi.carapace.verity.hash`: the final scute's nonzero SHA-256 root as
 `sha256:<64 lowercase hexadecimal characters>`. The separate `verity.algo`
-annotation is retired and rejected, as are bare roots and unsupported algorithms.
+annotation is retired from new output. A narrow input-only migration path accepts
+bare roots with an explicit `verity.algo=sha256` for currently pinned appliances.
+Bare roots without that declaration, unsupported algorithms, and any separate
+algorithm declaration alongside a qualified root are rejected.
 The root commits the
 complete chain through each scute's salt prefix; no per-scute root annotations
 are needed. Guest boot (`corium.root` in bootconfig) uses the same final root.
