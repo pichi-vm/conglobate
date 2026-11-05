@@ -101,7 +101,7 @@ mkdir -p "$extra/usr/bin" \
 	"$extra/usr/lib/modules-load.d" \
 	"$extra/usr/lib/systemd/network"
 install -m0755 "$conglobate_bin" "$extra/usr/bin/conglobate"
-install -m0755 "$repo/lsm/target/release/conglobate-lsm" "$extra/usr/libexec/conglobate-lsm"
+install -m0755 "$repo/lsm/target/release/lsm" "$extra/usr/libexec/conglobate-lsm"
 install -m0644 "$here/units/"*.mount "$here/units/"*.service "$inst/"
 for tag in repo cache output; do
 	ln -s "../run-pichi-${tag}.mount" "$inst/local-fs.target.wants/run-pichi-${tag}.mount"

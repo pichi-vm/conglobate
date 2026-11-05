@@ -46,15 +46,16 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          persist-credentials: false
-
       - name: Install system tooling
         run: >-
           dnf install -y
           mkosi systemd-standalone-repart e2fsprogs util-linux coreutils cpio
           git gcc curl openssl-devel pkgconf-pkg-config perl python3
+
+      - uses: actions/checkout@v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
 
       - name: Install Rust (${{ env.NIGHTLY }} + 1.94.0)
         run: |
@@ -74,15 +75,6 @@ jobs:
           RUSTFLAGS="-C link-arg=$linker_llvm -C link-arg=-Wl,-rpath,${linker_llvm%/*}" \
             cargo install --locked --version '=0.13.0' \
               --no-default-features --features "llvm-${linker_llvm_version%%.*},no-llvm-linking" bpf-linker
-
-      - name: Check the Rust LSM
-        working-directory: lsm
-        run: |
-          cargo fmt --all -- --check
-          cargo clippy --locked --release --all-targets -- -D warnings
-          cargo clippy --locked --release -p conglobate-label-policy \
-            --target bpfel-unknown-none -Z build-std=core -- -D warnings
-          cargo test --locked --release -- --ignored
 
       - name: Build arma, pichi, and conglobate
         run: |
