@@ -10,6 +10,7 @@ env:
   CONGLOBATE_VERSION: "0.2.0"
   # Host tools and staged-image fixtures require nightly.
   NIGHTLY: "nightly-2026-07-06"
+  FEDORA_REV: "166b960cec465052ca366c7b6103bd2268c26d2a"
   BUILD_IMAGE: "ghcr.io/pichi-vm/conglobate@sha256:262f87ecd7a178a90979eebd9689a0a28c1a4d844e6572a0fea116bf782a0b6f"
 
 jobs:
@@ -20,7 +21,7 @@ jobs:
     permissions:
       contents: read
 
-  # Qualify staged builds through the Fedora-based appliance on native KVM.
+  # Qualify the Fedora-based appliance on native KVM.
   build:
     strategy:
       fail-fast: false
@@ -73,6 +74,7 @@ jobs:
         run: |
           digest=$(sed -n 's/^  "ghcr.io\/pichi-vm\/fedora:43": //p' image/pichi.lock)
           pichi pull "ghcr.io/pichi-vm/fedora@$digest"
+          pichi tag "ghcr.io/pichi-vm/fedora@$digest" ghcr.io/pichi-vm/fedora:43
 
       - name: Build the appliance
         run: |
@@ -123,12 +125,23 @@ jobs:
         working-directory: sources/pichi
         run: cargo "+$NIGHTLY" test --locked --release --features vm-tests --test build_submodules -- --nocapture
 
+      - name: Build Fedora through the appliance
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/fedora "$RUNNER_TEMP/fedora"
+          git -C "$RUNNER_TEMP/fedora" checkout --detach "$FEDORA_REV"
+          git -C "$RUNNER_TEMP/fedora" submodule update --init --recursive
+          pichi build "$RUNNER_TEMP/fedora" --ref HEAD --memory 8192 \
+            --build-image qualification.local/appliance:build \
+            -t qualification.local/fedora:build
+          pichi inspect qualification.local/fedora:build > "$RUNNER_TEMP/fedora-output.json"
+
       - name: Preserve appliance qualification evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: appliance-evidence-${{ matrix.arch }}
           path: |
+            ${{ runner.temp }}/fedora-output.json
             ${{ runner.temp }}/staged-image-evidence/**/*.log
             ${{ runner.temp }}/staged-image-evidence/**/manifest.json
             ${{ runner.temp }}/staged-image-evidence/**/root-sectors.json
