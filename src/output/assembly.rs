@@ -219,7 +219,7 @@ impl AssembledImage {
                         "produced scute parent differs from selected root"
                     );
                     staged.install_scute(scute)?;
-                    layers.push(serde_json::to_value(crate::artifact::Layer::Scute(
+                    layers.push(serde_json::to_value(crate::artifact::Layer::ScuteZstd(
                         scute.descriptor().clone(),
                     ))?);
                     parent = *scute.root();
