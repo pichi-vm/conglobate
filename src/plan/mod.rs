@@ -107,14 +107,16 @@ mod tests {
     }
 
     #[test]
-    fn launch_requirements_preserve_explicit_empty_and_validate_values() {
+    fn launch_requirements_default_transport_and_validate_values() {
         for requirements in [
             json!({}),
             json!({"cpus":{"recommended":2},"memory":{"required":1024,"recommended":2048}}),
         ] {
             let value =
                 json!({"version":1,"image":"registry.test/base:1","requirements":requirements});
-            assert_eq!(serde_json::to_value(decode(value.clone())).unwrap(), value);
+            let mut expected = value.clone();
+            expected["requirements"]["slot"] = json!("mmio");
+            assert_eq!(serde_json::to_value(decode(value)).unwrap(), expected);
         }
         for requirements in [
             json!({"cpus":{"required":0}}),

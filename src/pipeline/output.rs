@@ -628,18 +628,18 @@ mod tests {
         for source in ["base", "pmi"] {
             for (requirements, expected) in [
                 ("", format!("{{\"source\":\"{source}\"}}")),
-                ("requirements: {}", r#"{"version":1,"requirements":{}}"#.into()),
+                ("requirements: {}", r#"{"version":1,"requirements":{"slot":"mmio"}}"#.into()),
                 (
                     "requirements: {slot: pci, interfaces: {public: {slot: mmio}}}",
                     r#"{"version":1,"requirements":{"slot":"pci","interfaces":{"public":{"slot":"mmio"}}}}"#.into(),
                 ),
                 (
                     "requirements: {storage: {required: 10240, recommended: 102400, slot: mmio}}",
-                    r#"{"version":1,"requirements":{"storage":{"required":10240,"recommended":102400,"slot":"mmio"}}}"#.into(),
+                    r#"{"version":1,"requirements":{"slot":"mmio","storage":{"required":10240,"recommended":102400,"slot":"mmio"}}}"#.into(),
                 ),
                 (
                     "requirements: {cpus: {required: 1, recommended: max}, memory: {required: 2048, recommended: max}, storage: {required: 10240, recommended: max}}",
-                    r#"{"version":1,"requirements":{"cpus":{"recommended":"max"},"memory":{"required":2048,"recommended":"max"},"storage":{"required":10240,"recommended":"max"}}}"#.into(),
+                    r#"{"version":1,"requirements":{"slot":"mmio","cpus":{"recommended":"max"},"memory":{"required":2048,"recommended":"max"},"storage":{"required":10240,"recommended":"max"}}}"#.into(),
                 ),
                 (
                     "requirements: {slot: pci, cpus: {required: 2, recommended: max}, memory: {required: 2048, recommended: max}, storage: {required: 10240, recommended: max, slot: mmio}, interfaces: {public: {description: Application traffic, slot: mmio, ingress: {required: [443], recommended: [80, [8000, 8100], all]}}}}",
@@ -647,7 +647,7 @@ mod tests {
                 ),
                 (
                     "requirements: {cpus: {required: 1}, memory: {required: 1024, recommended: 2048}}",
-                    r#"{"version":1,"requirements":{"memory":{"required":1024,"recommended":2048}}}"#.into(),
+                    r#"{"version":1,"requirements":{"slot":"mmio","memory":{"required":1024,"recommended":2048}}}"#.into(),
                 ),
             ] {
                 let (_repository, request, build) = fixture.build(&format!(

@@ -100,10 +100,10 @@ impl Config {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Requirements {
-    /// Default transport for attached devices. A resource's own declaration
-    /// takes precedence. A declared transport must be realized or launch fails.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub slot: Option<Slot>,
+    /// Default transport for attached devices, MMIO when omitted by the plan.
+    /// A resource's own declaration takes precedence. Launch must realize it.
+    #[serde(default)]
+    pub slot: Slot,
 
     /// vCPU band. The floor is 1 (a VM always has at least one vCPU), so a
     /// value of `1` carries no information and is canonicalised away; omit the
@@ -128,13 +128,14 @@ pub struct Requirements {
 }
 
 /// Declared virtio transport; the PMI platform must provide matching slots.
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Slot {
     /// Require PCI.
     Pci,
 
-    /// Require virtio-MMIO.
+    /// Require virtio-MMIO; the plan/config default.
+    #[default]
     Mmio,
 }
 
@@ -580,7 +581,7 @@ mod tests {
         let bytes = serde_json::to_vec(&c).unwrap();
         assert_eq!(
             std::str::from_utf8(&bytes).unwrap(),
-            r#"{"version":1,"requirements":{}}"#
+            r#"{"version":1,"requirements":{"slot":"mmio"}}"#
         );
         // recommended==1 is likewise the floor, but a real recommended survives.
         let c2 = Config {
@@ -681,14 +682,17 @@ mod tests {
     }
 
     #[test]
-    fn slot_types_are_typed_and_optional() {
+    fn slot_types_are_typed_and_default_to_mmio() {
         for slot in ["pci", "mmio"] {
             let value = serde_json::json!({
                 "slot": slot,
                 "interfaces": {"public": {"slot": slot}}
             });
             let requirements: Requirements = serde_json::from_value(value.clone()).unwrap();
-            assert_eq!(requirements.slot, requirements.interfaces["public"].slot);
+            assert_eq!(
+                Some(requirements.slot),
+                requirements.interfaces["public"].slot
+            );
             assert_eq!(serde_json::to_value(requirements).unwrap(), value);
         }
         for slot in [
@@ -706,8 +710,14 @@ mod tests {
             }
         }
         let requirements: Requirements = serde_json::from_str("{}").unwrap();
-        assert_eq!(requirements.slot, None);
-        assert_eq!(serde_json::to_string(&requirements).unwrap(), "{}");
+        assert_eq!(requirements.slot, Slot::Mmio);
+        assert_eq!(
+            serde_json::to_string(&requirements).unwrap(),
+            r#"{"slot":"mmio"}"#
+        );
+        let config: Config = serde_json::from_str(r#"{"version":1}"#).unwrap();
+        assert_eq!(config.requirements.slot, Slot::Mmio);
+        assert_eq!(config, Config::default());
     }
 
     #[test]
@@ -718,7 +728,7 @@ mod tests {
             serde_json::json!({"required": 1, "recommended": 3, "slot": "pci"}),
             serde_json::json!({"recommended": u64::MAX}),
         ] {
-            let value = serde_json::json!({"storage": storage});
+            let value = serde_json::json!({"slot":"mmio", "storage": storage});
             let requirements: Requirements = serde_json::from_value(value.clone()).unwrap();
             assert_eq!(serde_json::to_value(requirements).unwrap(), value);
         }
@@ -742,6 +752,7 @@ mod tests {
     #[test]
     fn max_recommendations_round_trip_without_becoming_omitted() {
         let value = serde_json::json!({"version": 1, "requirements": {
+            "slot": "mmio",
             "cpus": {"required": 2, "recommended": "max"},
             "memory": {"required": 2048, "recommended": "max"},
             "storage": {"required": 10240, "recommended": "max", "slot": "pci"}
@@ -774,7 +785,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             serde_json::to_string(&config).unwrap(),
-            r#"{"version":1,"requirements":{"cpus":{"recommended":"max"}}}"#
+            r#"{"version":1,"requirements":{"slot":"mmio","cpus":{"recommended":"max"}}}"#
         );
     }
 

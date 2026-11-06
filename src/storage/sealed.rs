@@ -620,7 +620,7 @@ mod tests {
                 )
             )
             .unwrap(),
-            br#"{"version":1,"requirements":{"memory":{"required":1024}}}"#
+            br#"{"version":1,"requirements":{"slot":"mmio","memory":{"required":1024}}}"#
         );
         let index = std::fs::read(output.join("index.json")).unwrap();
         let digest = crate::artifact::Digest::Sha256(Sha256::digest(&index).into());

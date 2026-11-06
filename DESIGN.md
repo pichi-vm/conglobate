@@ -668,8 +668,9 @@ version-1 artifact config. `requirements: {}` clears inherited requirements;
 omitting the field preserves the metadata inheritance above. Requirements apply
 to the final output, not the builder or intermediate stages.
 
-The optional `requirements.slot` declares a default transport for attached
-devices: `pci` or `mmio`. A resource's own `slot` overrides that default.
+The `requirements.slot` field declares a default transport for attached
+devices: `pci` or `mmio`. Omission means `mmio`; newly serialized configs
+record that default explicitly. A resource's own `slot` overrides that default.
 Declared transports are mandatory: the host realizes the requested VM or fails,
 without substituting a different bus. These declarations are transport types,
 not numeric slot assignments or permission to add hardware to the PMI platform.

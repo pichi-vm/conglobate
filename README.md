@@ -75,7 +75,8 @@ requirements:
 Memory and storage are in MiB. Storage describes the single mutable overlay
 above the read-only image. `max` requests the largest allocation the operator
 permits; `all` is a wildcard entry within a port list. A resource's slot type
-overrides the image's global default. Declared transports are mandatory: the
+overrides the image's global default (`mmio` when omitted). Declared transports
+are mandatory: the
 host must realize them or fail. These fields are recorded in the output's
 version-1 config blob. Pichi resolves policy into explicit per-device buses;
 Dillo implements that specification without transport substitution. See [launch requirements](DESIGN.md#52-image-assembly) for semantics.
