@@ -13,7 +13,7 @@ pub(crate) enum Pmi<'b, 'w> {
     File(Arc<FirmwareFile<'w>>),
 }
 impl Pmi<'_, '_> {
-    pub(crate) fn layer(&self) -> Layer {
+    pub(crate) fn source_layer(&self) -> Layer {
         match self {
             Self::Inherited(image) => image
                 .image()
@@ -38,13 +38,74 @@ impl Pmi<'_, '_> {
             Self::File(_) => None,
         }
     }
-    pub(crate) fn store(&self, cache: &Cache, staged: &StagedDirectory) -> anyhow::Result<()> {
-        let layer = self.layer();
+    pub(crate) fn store(&self, cache: &Cache, staged: &StagedDirectory) -> anyhow::Result<Layer> {
+        let layer = self.source_layer();
         let digest = layer.digest_str().parse()?;
         match self {
-            Self::Inherited(_) => staged.copy_blob(cache, &digest, layer.size())?,
-            Self::File(file) => staged.store_verified(file.reader(), &digest, layer.size())?,
+            Self::Inherited(_) => {
+                staged.copy_blob(cache, &digest, layer.size())?;
+                Ok(layer)
+            }
+            Self::File(file) => Ok(Layer::PmiZstd(staged.store_pmi(
+                file.reader(),
+                &digest,
+                layer.size(),
+            )?)),
         }
-        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        output::AssembledImage, pipeline::output::StageOutput, step::SetupBudget,
+        storage::Workspace,
+    };
+    use sha2::{Digest as _, Sha256};
+    use std::{fs, io::Read as _};
+
+    #[test]
+    #[ignore = "requires root for private RAM workspace"]
+    fn captured_pmi_assembly_emits_compressed_descriptor_and_original_content() {
+        let directory = tempfile::tempdir().unwrap();
+        let original = b"opaque captured PMI; exact original length";
+        let path = directory.path().join("captured");
+        fs::write(&path, original).unwrap();
+        let workspace = Workspace::create().unwrap();
+        let captured = FirmwareFile::capture(
+            fs::File::open(&path).unwrap(),
+            &workspace,
+            &SetupBudget::begin(),
+        )
+        .unwrap();
+        let selection = StageOutput {
+            root: None,
+            pmi: Some(Pmi::File(Arc::new(captured))),
+            bootconfig: None,
+        };
+        let cache = Cache::open(directory.path()).unwrap();
+        let destination = directory.path().join("output");
+        let assembled = AssembledImage::components(&cache, &selection, None, &destination).unwrap();
+        let layers = &assembled.image().manifest().layers;
+        assert_eq!(layers.len(), 1);
+        let Layer::PmiZstd(descriptor) = &layers[0] else {
+            panic!("new PMI must use compressed transport")
+        };
+        let descriptor = descriptor.clone();
+        assembled.publish().unwrap();
+        let digest: crate::artifact::Digest = descriptor.digest.parse().unwrap();
+        let encoded = fs::read(destination.join("blobs/sha256").join(digest.hex())).unwrap();
+        assert_eq!(descriptor.size, encoded.len() as u64);
+        assert_eq!(
+            digest,
+            crate::artifact::Digest::Sha256(Sha256::digest(&encoded).into())
+        );
+        let mut decoded = Vec::new();
+        ruzstd::decoding::StreamingDecoder::new(encoded.as_slice())
+            .unwrap()
+            .read_to_end(&mut decoded)
+            .unwrap();
+        assert_eq!(decoded, original);
     }
 }

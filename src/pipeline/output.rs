@@ -701,7 +701,7 @@ mod tests {
             }
             if boot {
                 let expected = b"opaque PMI".to_vec();
-                let layer = selected.pmi.as_ref().unwrap().layer();
+                let layer = selected.pmi.as_ref().unwrap().source_layer();
                 assert_eq!(layer.digest_str(), fixture.blob(&expected));
             }
             assembled.publish().unwrap();

@@ -3,10 +3,11 @@
 
 use super::{Scratch, SnapshotOrigin};
 use crate::artifact::{ScuteAnnotations, ScuteDescriptor};
+use crate::output::MeasuredWrite;
 use devmap_core::{BlockSize, Geometry};
 use devmap_snapshot::{Exception, Header};
 use devmap_verity::{Algorithm, Format as _, HashType, Header as VerityHeader, Parameters, Salt};
-use sha2::{Digest, Sha256};
+use sha2::Digest;
 use std::{
     fs::File,
     io::{self, Read, Seek, SeekFrom, Write},
@@ -221,36 +222,6 @@ impl<R: Read, W: Write, E: Write> Read for MeasuredRead<R, W, E> {
         Ok(read)
     }
 }
-/// Identity of the exact bytes accepted by the compressed blob sink.
-#[derive(Debug)]
-struct MeasuredWrite<W> {
-    output: W,
-    digest: Sha256,
-    size: u64,
-}
-impl<W> MeasuredWrite<W> {
-    fn new(output: W) -> Self {
-        Self {
-            output,
-            digest: Sha256::new(),
-            size: 0,
-        }
-    }
-}
-impl<W: Write> Write for MeasuredWrite<W> {
-    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
-        let written = self.output.write(buffer)?;
-        self.size = self
-            .size
-            .checked_add(written as u64)
-            .ok_or_else(|| io::Error::other("encoded scute size overflow"))?;
-        self.digest.update(&buffer[..written]);
-        Ok(written)
-    }
-    fn flush(&mut self) -> io::Result<()> {
-        self.output.flush()
-    }
-}
 /// Application-specific used extent of our kernel-produced 4KiB snapshot store.
 /// Wire decoding stays in devmap-snapshot. This is not an independent verifier
 /// of every snapshot semantic: the kernel health check precedes detachment.
@@ -318,6 +289,7 @@ impl SnapshotExtent {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sha2::Sha256;
     use std::io::Cursor;
     #[derive(Debug)]
     struct Store(Vec<u8>);
