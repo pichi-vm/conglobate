@@ -74,11 +74,11 @@ requirements:
 
 Memory and storage are in MiB. Storage describes the single mutable overlay
 above the read-only image. `max` requests the largest allocation the operator
-permits; `all` is a wildcard entry within a port list. Resource slot preferences
-override the global preference, otherwise placement is automatic. These fields
-are recorded in the output's version-1 config blob; allocation, provisioning,
-network exposure and soft device placement require consumer support in Pichi
-and Dillo. See [launch requirements](DESIGN.md#52-image-assembly) for semantics.
+permits; `all` is a wildcard entry within a port list. A resource's slot type
+overrides the image's global default. Declared transports are mandatory: the
+host must realize them or fail. These fields are recorded in the output's
+version-1 config blob. Pichi resolves policy into explicit per-device buses;
+Dillo implements that specification without transport substitution. See [launch requirements](DESIGN.md#52-image-assembly) for semantics.
 
 The 28 October 2026 decision in
 [DESIGN §11](DESIGN.md#11-artifact-and-build-annotations) drops `inventory.cbor`
@@ -132,13 +132,13 @@ ordinary disk-backed temporary storage is not a substitute. Set `TMPDIR` to an
 existing writable directory if the compiler's default temporary location is
 unsuitable. Builds may use disk-backed compiler temporary storage.
 
-Set `CONGLOBATE_STORAGE` to an existing writable directory to put image scratch
-and snapshot backing on mounted storage. The appliance supplies this directory
-on its writable device. Scratch files are anonymous and removed on last close;
-snapshot capacity is bounded by available backing space. An invalid directory
-fails the build. When unset, image backing uses the private tmpfs, supporting
-bootstrap builders that do not yet supply writable storage. Mount/control state
-always remains on the private tmpfs.
+Conglobate creates `/var/tmp/conglobate` and uses private per-build directories
+there for anonymous image scratch and snapshot backing. It uses that location
+without inspecting its backing filesystem; the environment supplies storage.
+Scratch files are removed on last close, and snapshot capacity is bounded by
+available backing space. Small runtime data and helpers use the private control
+tmpfs exposed under `/run/conglobate`; the service provisions that parent with
+`RuntimeDirectory=conglobate`. Output staging stays on the output filesystem.
 
 Serialize Cargo checks and use `CARGO_BUILD_JOBS=2` in constrained development
 environments. The rootless workflow uses Rust 1.94.0 and runs formatting, Clippy,
