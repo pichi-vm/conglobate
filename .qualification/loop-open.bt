@@ -1,0 +1,61 @@
+BEGIN
+{
+  printf("LOOP_TRACE_BEGIN\n");
+}
+
+tracepoint:syscalls:sys_enter_openat,
+tracepoint:syscalls:sys_enter_openat2
+/strncmp(str(args->filename), "/dev/loop", 9) == 0 || strncmp(str(args->filename), "/dev/block/7:", 13) == 0/
+{
+  @opening[tid] = 1;
+  @path[tid] = str(args->filename);
+}
+
+tracepoint:syscalls:sys_exit_openat,
+tracepoint:syscalls:sys_exit_openat2
+/@opening[tid]/
+{
+  printf("%llu OPEN pid=%d tid=%d comm=%s fd=%d path=%s\n", nsecs, pid, tid, comm, args->ret, @path[tid]);
+  if (args->ret >= 0) {
+    @loopfd[pid, (int64)args->ret] = 1;
+    @tracked[pid] = 1;
+  }
+  delete(@opening[tid]);
+  delete(@path[tid]);
+}
+
+tracepoint:syscalls:sys_enter_close
+/@loopfd[pid, (int64)args->fd]/
+{
+  @closing[tid] = 1;
+  @fd[tid] = args->fd;
+}
+
+tracepoint:syscalls:sys_exit_close
+/@closing[tid]/
+{
+  printf("%llu CLOSE pid=%d tid=%d comm=%s fd=%d ret=%d\n", nsecs, pid, tid, comm, @fd[tid], args->ret);
+  delete(@loopfd[pid, (int64)@fd[tid]]);
+  delete(@fd[tid]);
+  delete(@closing[tid]);
+}
+
+tracepoint:syscalls:sys_enter_ioctl
+/args->cmd == 0x4c01/
+{
+  printf("%llu CLEAR pid=%d tid=%d comm=%s fd=%d\n", nsecs, pid, tid, comm, args->fd);
+  @clearing[tid] = 1;
+}
+
+tracepoint:syscalls:sys_exit_ioctl
+/@clearing[tid]/
+{
+  printf("%llu CLEAR_RESULT pid=%d tid=%d comm=%s ret=%d\n", nsecs, pid, tid, comm, args->ret);
+  delete(@clearing[tid]);
+}
+
+tracepoint:sched:sched_process_exit
+/@tracked[pid]/
+{
+  printf("%llu EXIT pid=%d tid=%d comm=%s\n", nsecs, pid, tid, comm);
+}

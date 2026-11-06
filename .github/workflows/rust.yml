@@ -1,52 +1,64 @@
-name: Rust tests
+name: Trace loop holder qualification
 
 on:
-  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  rust:
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [ubuntu-24.04, ubuntu-24.04-arm]
-    runs-on: ${{ matrix.runner }}
+  trace:
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     env:
-      CARGO_TERM_COLOR: always
       RUSTUP_TOOLCHAIN: '1.94.0'
+      LOOP_EVIDENCE: /tmp/loop-holder-evidence
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Install build prerequisites
+      - name: Install diagnostic prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev e2fsprogs dosfstools
+          sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev e2fsprogs dosfstools bpftrace
           rustup toolchain install 1.94.0 --profile minimal
-      - name: Run rootless tests
-        run: cargo test --locked --features cli --all-targets
-      - name: Run ignored tests as root
+          mkdir -p "$LOOP_EVIDENCE"
+          uname -a > "$LOOP_EVIDENCE/kernel.txt"
+          bpftrace --version > "$LOOP_EVIDENCE/bpftrace-version.txt"
+      - name: Compile the unchanged test harness
         run: |
-          # The native bootconfig comparison runs in its packaged-tool job.
+          cargo test --locked --features cli --bin conglobate --no-run --message-format=json > "$LOOP_EVIDENCE/build.json"
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import json
+          import os
+          from pathlib import Path
+          artifacts = [json.loads(line) for line in (Path(os.environ['LOOP_EVIDENCE']) / 'build.json').read_text().splitlines()]
+          tests = [a['executable'] for a in artifacts if a.get('reason') == 'compiler-artifact' and a['profile']['test'] and a['target']['name'] == 'conglobate' and a.get('executable')]
+          assert len(tests) == 1, tests
+          print('CONGLOBATE_TEST_BIN=' + tests[0])
+          PY
+      - name: Trace the exact root test without changing teardown
+        run: |
+          "$CONGLOBATE_TEST_BIN" --list --ignored | grep -Fx 'storage::partitioned::tests::root_views_keep_disk_offsets_in_one_snapshot: test'
           sudo modprobe loop
           sudo modprobe dm_snapshot
-          cargo --config 'target."cfg(unix)".runner = ["sudo", "-n"]' test --locked --features cli --all-targets -- --ignored --test-threads=1 --skip boot_config::tests
-
-  bootconfig:
-    runs-on: ubuntu-24.04
-    container: registry.fedoraproject.org/fedora:44
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install packaged bootconfig and Rust tooling
+          sudo losetup --list --json > "$LOOP_EVIDENCE/loops-before.json"
+          sudo bpftrace -o "$LOOP_EVIDENCE/loop-open.trace" \
+            -c "env CONGLOBATE_TEST_BIN=$CONGLOBATE_TEST_BIN LOOP_EVIDENCE=$LOOP_EVIDENCE $GITHUB_WORKSPACE/.qualification/repeat-loop-test.sh" \
+            .qualification/loop-open.bt 2>&1 | tee "$LOOP_EVIDENCE/test.log"
+          test "$(cat "$LOOP_EVIDENCE/test-status")" = 0
+          grep -q 'LOOP_ATTEMPT 100 ' "$LOOP_EVIDENCE/test.log"
+          grep -q 'LOOP_TRACE_BEGIN' "$LOOP_EVIDENCE/loop-open.trace"
+          grep -q ' OPEN ' "$LOOP_EVIDENCE/loop-open.trace"
+          grep -q ' CLEAR ' "$LOOP_EVIDENCE/loop-open.trace"
+      - name: Record remaining loop state
+        if: always()
         run: |
-          dnf install -y cargo gcc git kernel-tools
-          rpm -q cargo kernel-tools
-      - name: Compare native boot configuration with Linux
-        run: cargo test --locked --features cli --bin conglobate boot_config::tests -- --include-ignored
+          sudo losetup --list --json > "$LOOP_EVIDENCE/loops-after.json"
+          sudo chmod -R a+rX "$LOOP_EVIDENCE"
+      - name: Preserve diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loop-holder-arm64
+          path: /tmp/loop-holder-evidence
