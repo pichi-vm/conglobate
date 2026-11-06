@@ -4,7 +4,7 @@
 use super::{Scratch, loop_device::LoopDevice};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 
-/// Owns both the kernel loop attachment and its writable RAM backing. No backing
+/// Owns the kernel loop attachment and its writable scratch backing. No backing
 /// access or raw FD escapes while attached. Device closes before backing on Drop;
 /// autoclear retains the kernel backing reference until remaining holders close.
 #[derive(Debug)]
@@ -13,8 +13,9 @@ pub(crate) struct LoopAttachment<'workspace> {
     backing: Scratch<'workspace>,
 }
 impl<'w> Scratch<'w> {
-    /// One attempt. Another claimant can win after get_free; kernel EBUSY is
-    /// reported with the backing intact. No blocking advisory lock/retry loop.
+    /// One configuration attempt, after bounded acquisition of the probe lock.
+    /// Another claimant can win after get_free; kernel EBUSY is reported with
+    /// the backing intact.
     pub(crate) fn attach(self) -> io::Result<LoopAttachment<'w>> {
         let device = LoopDevice::attach(&self.file)?;
         Ok(LoopAttachment {
@@ -29,9 +30,9 @@ impl<'w> LoopAttachment<'w> {
     }
     /// Flush and confirm unbound state before returning writable file authority.
     /// clear() alone can mean deferred detachment, so it is not sufficient.
-    /// A shared BSD lock held by a udev probe is drained until a fixed deadline.
-    /// An opener that does not hold that lock, or a shared lock that outlives
-    /// the deadline, still fails this call.
+    /// Probe locks and transient openers are drained within one fixed deadline.
+    /// A shared lock or other holder that outlives the deadline fails this call;
+    /// the original loop owner remains live until failure cleanup.
     pub(crate) fn detach(self) -> io::Result<Scratch<'w>> {
         self.device.close().map_err(|(source, device)| {
             drop(device);

@@ -23,6 +23,10 @@ impl LoopDevice {
             ));
         }
         let device = lodown::Device::open(lodown::Control::open()?.get_free()?)?;
+        // The scratch COW device is private, never a discoverable filesystem.
+        // Exclude udev metadata probes before LOOP_CONFIGURE emits its event,
+        // and retain the lock on this file description until detach/drop.
+        acquire_exclusive_lock(device.as_ref(), Instant::now() + PROBE_LOCK_DEADLINE)?;
         device.configure(
             file,
             4096,
@@ -42,40 +46,42 @@ impl LoopDevice {
     }
     pub(super) fn close(self) -> Result<(), (io::Error, Self)> {
         let result = (|| -> io::Result<()> {
-            // systemd-udevd holds LOCK_SH for a whole blkid probe and rearms
-            // that probe on IN_CLOSE_WRITE. Device-mapper's last close of this
-            // loop is one of those writes, so a probe is usually in progress
-            // here and is a real extra opener. Non-blocking LOCK_EX, retried
-            // until PROBE_LOCK_DEADLINE, waits that probe out and stops a new
-            // one from opening the node. On deadline the error returns below
-            // with this owner intact: nothing is cleared or dropped. An opener
-            // that never takes the shared lock is unaffected. LOOP_CLR_FD
-            // enters rundown only when this fd is the sole opener, and success
-            // still requires ENXIO.
-            acquire_exclusive_lock(self.device.as_ref())?;
+            // The advisory lock excludes cooperating probes, not open() itself.
+            // A probe may still be closing its descriptor. Keep ownership while
+            // draining those openers within the same lock/detach deadline.
+            let deadline = Instant::now() + PROBE_LOCK_DEADLINE;
+            acquire_exclusive_lock(self.device.as_ref(), deadline)?;
             self.device.as_ref().sync_all()?;
-            lodown::Device::from(self.device.as_ref().try_clone()?).clear()?;
-            match self.device.status() {
-                Err(error) if error.raw_os_error() == Some(6) => Ok(()), // ENXIO: unbound
-                Err(error) => Err(error),
-                Ok(_) => Err(io::Error::new(io::ErrorKind::ResourceBusy, LIVE_HOLDER)),
+            loop {
+                if Instant::now() >= deadline {
+                    return Err(io::Error::new(io::ErrorKind::ResourceBusy, LIVE_HOLDER));
+                }
+                lodown::Device::from(self.device.as_ref().try_clone()?).clear()?;
+                match self.device.status() {
+                    Err(error) if error.raw_os_error() == Some(6) => return Ok(()), // ENXIO
+                    Err(error) => return Err(error),
+                    Ok(_) => std::thread::sleep(
+                        deadline
+                            .saturating_duration_since(Instant::now())
+                            .min(PROBE_LOCK_POLL),
+                    ),
+                }
             }
         })();
         result.map_err(|source| (source, self))
     }
 }
 
-// Upper bound for draining a udev LOCK_SH probe before detach fails closed.
+// Upper bound for draining metadata probes and confirming loop detachment.
 // The smoke log's probe window was ~25ms (unmount at 3.560s, live-holder at
 // 3.585s). One second covers that blkid pass on a busy single-CPU guest.
 // Linux flock has no writer preference, so a blocking LOCK_EX can wait
 // forever while probes re-arm; this deadline fails closed instead.
 const PROBE_LOCK_DEADLINE: Duration = Duration::from_secs(1);
 const PROBE_LOCK_POLL: Duration = Duration::from_millis(20);
-const LIVE_HOLDER: &str = "loop detach remains deferred by a live holder";
+const LIVE_HOLDER: &str = "loop device remains busy with a live holder";
 
-fn acquire_exclusive_lock(file: &File) -> io::Result<()> {
-    let deadline = Instant::now() + PROBE_LOCK_DEADLINE;
+fn acquire_exclusive_lock(file: &File, deadline: Instant) -> io::Result<()> {
     loop {
         // Before every attempt, including the retry after EINTR. A probe that
         // drops after this instant must not be acquired: sleeping out a
@@ -164,6 +170,18 @@ mod tests {
 
     #[test]
     #[ignore = "requires root and loop devices"]
+    fn owned_scratch_loop_excludes_shared_probes() {
+        let device = attach_writable();
+        let path = node_path(&device);
+        let probe = File::open(&path).unwrap();
+        let result = rustix::fs::flock(&probe, rustix::fs::FlockOperation::NonBlockingLockShared);
+        drop(probe);
+        device.close().unwrap();
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::WouldBlock);
+    }
+
+    #[test]
+    #[ignore = "requires root and loop devices"]
     fn sole_owner_detach_confirms_unbound_loop() {
         let device = attach_writable();
         let path = node_path(&device);
@@ -175,6 +193,9 @@ mod tests {
     #[ignore = "requires root and loop devices"]
     fn shared_probe_lock_is_drained_before_unbound_detach() {
         let device = attach_writable();
+        // Deliberately release the lifetime lock to exercise defensive close
+        // behavior with a shared probe already in progress.
+        rustix::fs::flock(device.device.as_ref(), rustix::fs::FlockOperation::Unlock).unwrap();
         let path = node_path(&device);
         let (ready_tx, ready_rx) = mpsc::channel();
         let probe_path = path.clone();
@@ -214,6 +235,10 @@ mod tests {
             tx.send(match device.close() {
                 Ok(()) => None,
                 Err((error, returned)) => {
+                    assert!(
+                        returned.device.status().is_ok(),
+                        "busy loop owner must remain bound"
+                    );
                     drop(returned);
                     Some(error)
                 }
@@ -221,8 +246,8 @@ mod tests {
             .unwrap();
         });
         let error = rx
-            .recv_timeout(Duration::from_millis(500))
-            .expect("detach blocked on a non-locking holder")
+            .recv_timeout(PROBE_LOCK_DEADLINE + Duration::from_millis(400))
+            .expect("detach exceeded its deadline with a non-locking holder")
             .expect("non-locking holder must keep detach busy");
         assert_eq!(error.kind(), io::ErrorKind::ResourceBusy);
         assert!(error.to_string().contains("live holder"));
@@ -232,8 +257,30 @@ mod tests {
 
     #[test]
     #[ignore = "requires root and loop devices"]
+    fn transient_nonlocking_holder_is_drained_before_detach() {
+        let device = attach_writable();
+        let path = node_path(&device);
+        let held = File::open(&path).unwrap();
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let holder = thread::spawn(move || {
+            ready_tx.send(()).unwrap();
+            thread::sleep(Duration::from_millis(100));
+            drop(held);
+        });
+        ready_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        let result = device.close();
+        holder.join().unwrap();
+        result.expect("detach after transient opener closes");
+        assert_unbound(&path);
+    }
+
+    #[test]
+    #[ignore = "requires root and loop devices"]
     fn shared_lock_past_deadline_fails_closed() {
         let device = attach_writable();
+        // Deliberately release the lifetime lock to exercise defensive close
+        // behavior with a shared probe already in progress.
+        rustix::fs::flock(device.device.as_ref(), rustix::fs::FlockOperation::Unlock).unwrap();
         let path = node_path(&device);
         let (ready_tx, ready_rx) = mpsc::channel();
         let (release_tx, release_rx) = mpsc::channel::<()>();
@@ -286,6 +333,9 @@ mod tests {
     #[ignore = "requires root and loop devices"]
     fn deadline_expiry_does_not_acquire_once_probe_drops() {
         let device = attach_writable();
+        // Deliberately release the lifetime lock to exercise defensive close
+        // behavior with a shared probe already in progress.
+        rustix::fs::flock(device.device.as_ref(), rustix::fs::FlockOperation::Unlock).unwrap();
         let path = node_path(&device);
         let (ready_tx, ready_rx) = mpsc::channel();
         let (started_tx, started_rx) = mpsc::channel();
