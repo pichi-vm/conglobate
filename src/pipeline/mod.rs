@@ -50,11 +50,12 @@ impl Pipeline {
             StageOutput::select(&build, &std::collections::BTreeMap::new(), None)?
                 .assemble(&self.request, &build)?
         } else {
+            let staged = crate::output::StagedDirectory::create(self.request.output())?;
             let workspace = Workspace::create()?;
             let stages = Runtime::scoped(&workspace, std::path::Path::new("/run"), |runtime| {
-                self.execute(&build, &workspace, runtime)
+                self.execute(&build, &workspace, runtime, &staged)
             })?;
-            stages.assemble(&self.request, &build)?
+            stages.assemble_staged(&self.request, &build, staged)?
         };
         output.publish()?;
         Ok(())
@@ -64,6 +65,7 @@ impl Pipeline {
         build: &'b ResolvedBuild,
         workspace: &'w Workspace,
         runtime: &Runtime<'_>,
+        staged: &crate::output::StagedDirectory,
     ) -> anyhow::Result<StageOutput<'b, 'w>> {
         use anyhow::Context;
         use std::collections::BTreeMap;
@@ -86,8 +88,13 @@ impl Pipeline {
             let (output, next_reaper) = (|| -> anyhow::Result<_> {
                 let active = source.activate(build.cache())?;
                 if stage.format.is_some() {
-                    let result = bootstrap::BootstrapBuild::new(build, stage, &sources)
-                        .execute(workspace, runtime, active, reaper)?;
+                    let result = bootstrap::BootstrapBuild::new(build, stage, &sources).execute(
+                        workspace,
+                        runtime,
+                        active,
+                        reaper,
+                        staged.blob_directory()?,
+                    )?;
                     Ok((
                         StageOutput {
                             root: Some(root::Root {
@@ -104,7 +111,12 @@ impl Pipeline {
                         scutes: source.produced,
                         reaper,
                     }
-                    .derive(build, workspace, runtime, stage, &sources, active)?;
+                    .derive(
+                        stage,
+                        &sources,
+                        active,
+                        staged.blob_directory()?,
+                    )?;
                     input.root = Some(root::Root {
                         base: source.base,
                         produced: derived.scutes,

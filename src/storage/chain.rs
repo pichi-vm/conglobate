@@ -10,19 +10,19 @@ use std::{fs::File, io, num::NonZeroU64, sync::Arc};
 /// Carapace's descriptor-owned mappings.
 /// Retain prepared file handles and locally produced scutes across extensions.
 #[derive(Debug)]
-pub(crate) struct ReadOnlyChain<'w> {
+pub(crate) struct ReadOnlyChain {
     mapping: Mapping<Active>,
     _source: File,
     inputs: carapace::Chain,
-    _produced: Vec<Arc<SealedScute<'w>>>,
+    _produced: Vec<Arc<SealedScute>>,
 }
 
-impl<'w> ReadOnlyChain<'w> {
+impl ReadOnlyChain {
     /// Activate discovered inputs and newly sealed scutes together.
     /// Carapace revalidates their headers and verifies every consumed data block.
     pub(crate) fn assemble(
         base: Option<carapace::Chain>,
-        produced: &[Arc<SealedScute<'w>>],
+        produced: &[Arc<SealedScute>],
     ) -> io::Result<Self> {
         let mut inputs = base.unwrap_or_else(|| carapace::Chain {
             root: Box::new([0; 32]),
@@ -34,7 +34,7 @@ impl<'w> ReadOnlyChain<'w> {
         Self::activate(inputs, produced.to_vec())
     }
 
-    fn append(inputs: &mut carapace::Chain, scute: &SealedScute<'_>) -> io::Result<()> {
+    fn append(inputs: &mut carapace::Chain, scute: &SealedScute) -> io::Result<()> {
         if inputs.root.as_ref() != scute.parent() {
             return Err(io::Error::other(
                 "produced scute parent differs from input chain",
@@ -49,7 +49,7 @@ impl<'w> ReadOnlyChain<'w> {
         Ok(())
     }
 
-    fn activate(inputs: carapace::Chain, produced: Vec<Arc<SealedScute<'w>>>) -> io::Result<Self> {
+    fn activate(inputs: carapace::Chain, produced: Vec<Arc<SealedScute>>) -> io::Result<Self> {
         let source = inputs.assemble()?;
         let target = devmap_linux::targets::Linear {
             device: source.metadata()?.try_into()?,
@@ -83,8 +83,8 @@ impl<'w> ReadOnlyChain<'w> {
     }
 }
 
-impl<'a> From<&'a ReadOnlyChain<'_>> for super::SnapshotOrigin<'a> {
-    fn from(chain: &'a ReadOnlyChain<'_>) -> Self {
+impl<'a> From<&'a ReadOnlyChain> for super::SnapshotOrigin<'a> {
+    fn from(chain: &'a ReadOnlyChain) -> Self {
         Self::from(&chain.mapping)
     }
 }

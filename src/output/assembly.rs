@@ -132,13 +132,26 @@ impl AssembledImage {
     }
 }
 impl AssembledImage {
+    #[cfg(test)]
     pub(crate) fn components(
         cache: &Cache,
         selection: &crate::pipeline::output::StageOutput<'_, '_>,
         requirements: Option<&crate::artifact::Requirements>,
         destination: &std::path::Path,
     ) -> anyhow::Result<Self> {
-        let staged = StagedDirectory::create(destination)?;
+        Self::in_staging(
+            cache,
+            selection,
+            requirements,
+            StagedDirectory::create(destination)?,
+        )
+    }
+    pub(crate) fn in_staging(
+        cache: &Cache,
+        selection: &crate::pipeline::output::StageOutput<'_, '_>,
+        requirements: Option<&crate::artifact::Requirements>,
+        staged: StagedDirectory,
+    ) -> anyhow::Result<Self> {
         let assembled = (|| -> anyhow::Result<ResolvedImage> {
             let metadata = match &selection.root {
                 Some(root) => root.base,
@@ -205,7 +218,7 @@ impl AssembledImage {
                         scute.parent() == &parent,
                         "produced scute parent differs from selected root"
                     );
-                    staged.store_scute(scute)?;
+                    staged.install_scute(scute)?;
                     layers.push(serde_json::to_value(crate::artifact::Layer::Scute(
                         scute.descriptor().clone(),
                     ))?);

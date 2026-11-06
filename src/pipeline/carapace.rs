@@ -3,31 +3,31 @@
 
 use crate::{
     execution::HelperProgram,
-    input::ResolvedBuild,
     planner::Stage,
     process::ChildReaper,
     step::CommandSandbox,
-    storage::{Created, Mapping, Mounted, Runtime, SealedScute, Unmounted, Volume, Workspace},
+    storage::{Created, Mapping, Mounted, SealedScute, Unmounted, Volume},
 };
 use std::{num::NonZeroU64, sync::Arc};
 
 /// Retained layers and the build's reaper. Stage results keep no live mappings;
 /// a dependent stage activates the complete persisted chain when it needs it.
 #[derive(Debug)]
-pub(super) struct DerivedCarapace<'w> {
-    pub(super) scutes: Vec<Arc<SealedScute<'w>>>,
+pub(super) struct DerivedCarapace {
+    pub(super) scutes: Vec<Arc<SealedScute>>,
     pub(super) reaper: ChildReaper,
 }
-impl<'w> DerivedCarapace<'w> {
+impl DerivedCarapace {
     pub(super) fn derive(
         self,
-        build: &ResolvedBuild,
-        workspace: &'w Workspace,
-        runtime: &Runtime<'_>,
         stage: &Stage,
         sources: &super::sources::Sources<'_, '_>,
-        active: crate::storage::ReadOnlyChain<'w>,
+        active: crate::storage::ReadOnlyChain,
+        directory: std::fs::File,
     ) -> anyhow::Result<Self> {
+        let build = sources.build;
+        let workspace = sources.workspace;
+        let runtime = sources.runtime;
         let Self {
             scutes: mut produced,
             reaper,
@@ -63,13 +63,11 @@ impl<'w> DerivedCarapace<'w> {
             },
         )?;
         let (volume, reaper) = completed.into_parts();
-        let scute = Arc::new(
-            volume
-                .into_snapshot()?
-                .close()?
-                .detach()?
-                .seal_snapshot(*active.root(), &active)?,
-        );
+        let scute = Arc::new(volume.into_snapshot()?.close()?.detach()?.seal_snapshot(
+            *active.root(),
+            &active,
+            directory,
+        )?);
         active.close()?;
         produced.push(scute);
         Ok(DerivedCarapace {

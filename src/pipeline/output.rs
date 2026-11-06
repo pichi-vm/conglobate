@@ -16,7 +16,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Debug, Clone)]
 pub(crate) struct StageOutput<'b, 'w> {
-    pub(crate) root: Option<Root<'b, 'w>>,
+    pub(crate) root: Option<Root<'b>>,
     pub(crate) pmi: Option<Pmi<'b, 'w>>,
     pub(crate) bootconfig: Option<BootConfig>,
 }
@@ -173,11 +173,23 @@ impl<'b, 'w> StageOutput<'b, 'w> {
         request: &BuildRequest,
         build: &ResolvedBuild,
     ) -> anyhow::Result<CompletedImage> {
-        let image = AssembledImage::components(
+        self.assemble_staged(
+            request,
+            build,
+            crate::output::StagedDirectory::create(request.output())?,
+        )
+    }
+    pub(super) fn assemble_staged(
+        self,
+        request: &BuildRequest,
+        build: &ResolvedBuild,
+        staged: crate::output::StagedDirectory,
+    ) -> anyhow::Result<CompletedImage> {
+        let image = AssembledImage::in_staging(
             build.cache(),
             &self,
             build.captured().graph().plan().requirements.as_ref(),
-            request.output(),
+            staged,
         )?
         .bind_build(request, build.captured())?;
         Ok(CompletedImage { image })
