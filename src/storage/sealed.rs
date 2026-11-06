@@ -189,6 +189,8 @@ impl<'w> Scratch<'w> {
         packed.as_file().sync_all()?;
         hash.as_file().sync_all()?;
         blob.as_file().sync_all()?;
+        // Working reads use the plain COW; completed transport need not stay cached.
+        let _ = rustix::fs::fadvise(blob.as_file(), 0, None, rustix::fs::Advice::DontNeed);
         let descriptor = ScuteDescriptor {
             digest: format!("sha256:{}", hex::encode(digest.finalize())),
             size,
