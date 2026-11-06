@@ -255,6 +255,8 @@ impl StagedDirectory {
         } = encoder.finish()?;
         let digest = Digest::Sha256(digest.finalize().into());
         pending.as_file().sync_all()?;
+        // This completed transport is only needed for publication and verification.
+        let _ = rustix::fs::fadvise(pending.as_file(), 0, None, rustix::fs::Advice::DontNeed);
         pending
             .persist(Path::new(&path).join(digest.hex()))
             .map_err(|error| error.error)?;
