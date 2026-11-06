@@ -634,6 +634,10 @@ mod tests {
                     r#"{"version":1,"requirements":{"slot":"pci","interfaces":{"public":{"slot":"mmio"}}}}"#.into(),
                 ),
                 (
+                    "requirements: {storage: {required: 10240, recommended: 102400, slot: mmio}}",
+                    r#"{"version":1,"requirements":{"storage":{"required":10240,"recommended":102400,"slot":"mmio"}}}"#.into(),
+                ),
+                (
                     "requirements: {cpus: {required: 1}, memory: {required: 1024, recommended: 2048}}",
                     r#"{"version":1,"requirements":{"memory":{"required":1024,"recommended":2048}}}"#.into(),
                 ),

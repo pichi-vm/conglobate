@@ -676,6 +676,15 @@ assignments or permission to add hardware to the PMI platform. The schema record
 them; consuming them in Pichi and supporting soft preferences in Dillo are
 separate runtime work.
 
+The optional `requirements.storage` describes one mutable overlay above the
+read-only image. Its `required` and `recommended` capacities are positive integer
+MiB; a numeric recommendation must be at least the required capacity. Storage
+uses 64-bit capacities and has no memory-specific 2-MiB alignment constraint.
+Its optional `slot` overrides the global transport preference. Host backing
+paths, provisioning and overlay retention are operator configuration. This
+contract neither resizes immutable image layers nor declares named volumes.
+Host provisioning and guest overlay activation are separate runtime work.
+
 ### 5.3 Closure
 
 Validate every stage's shape and references, including unused cycles. Traverse
