@@ -30,8 +30,7 @@ struct RuntimeMounts<'w> {
     scope: ControlMountNamespace,
     parent: File,
     name: std::ffi::OsString,
-    workspace: &'w Workspace,
-    backing: std::ffi::OsString,
+    _workspace: &'w Workspace,
     attached: Vec<PathBuf>,
 }
 impl<'w> Runtime<'w> {
@@ -69,38 +68,26 @@ impl<'w> Runtime<'w> {
         }
         budget.check()?;
         let target = tempfile::Builder::new()
-            .prefix("conglobate-runtime-")
+            .prefix("build-")
             .permissions(std::fs::Permissions::from_mode(0o700))
             .tempdir_in(format!("/proc/self/fd/{}", parent.as_raw_fd()))?;
-        let backing = tempfile::Builder::new()
-            .prefix("runtime-")
-            .permissions(std::fs::Permissions::from_mode(0o700))
-            .tempdir_in(format!("/proc/self/fd/{}", workspace.root.as_raw_fd()))?;
-        // Both directories are exclusively acquired before retaining either.
-        // A collision/failure must never authorize cleanup of an existing entry.
         let name = target
             .keep()
             .file_name()
             .expect("generated runtime name")
             .to_owned();
-        let backing = backing
-            .keep()
-            .file_name()
-            .expect("generated backing name")
-            .to_owned();
         let mut mounts = RuntimeMounts {
             scope,
             parent,
-            backing,
             name,
-            workspace,
+            _workspace: workspace,
             attached: Vec::new(),
         };
         let acquired = (|| -> io::Result<RecoveryDirectory> {
             budget.check()?;
             let tree = mount::open_tree(
                 &workspace.root,
-                &mounts.backing,
+                ".",
                 mount::OpenTreeFlags::OPEN_TREE_CLONE | mount::OpenTreeFlags::OPEN_TREE_CLOEXEC,
             )?;
             mounts.attach(tree.into(), mounts.path())?;
@@ -240,13 +227,6 @@ impl RuntimeMounts<'_> {
             mount::unmount(target, mount::UnmountFlags::NOFOLLOW)?;
             self.attached.pop();
         }
-        fs::unlinkat(&self.workspace.root, &self.backing, fs::AtFlags::REMOVEDIR).or_else(|e| {
-            if e == rustix::io::Errno::NOENT {
-                Ok(())
-            } else {
-                Err(e)
-            }
-        })?;
         Self::remove_empty(&self.path())?;
         Self::check(deadline)
     }
