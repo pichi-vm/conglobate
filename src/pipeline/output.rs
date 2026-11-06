@@ -630,6 +630,10 @@ mod tests {
                 ("", format!("{{\"source\":\"{source}\"}}")),
                 ("requirements: {}", r#"{"version":1,"requirements":{}}"#.into()),
                 (
+                    "requirements: {slot: pci, interfaces: {public: {slot: mmio}}}",
+                    r#"{"version":1,"requirements":{"slot":"pci","interfaces":{"public":{"slot":"mmio"}}}}"#.into(),
+                ),
+                (
                     "requirements: {cpus: {required: 1}, memory: {required: 1024, recommended: 2048}}",
                     r#"{"version":1,"requirements":{"memory":{"required":1024,"recommended":2048}}}"#.into(),
                 ),

@@ -22,7 +22,7 @@ mod reference;
 pub use boot_config_descriptor::BootConfigDescriptor;
 pub use config::{
     Band, CONFIG_SCHEMA_VERSION, Config, ConfigError, Ingress, Interface, Memory, PortSpec,
-    Requirements,
+    Requirements, Slot,
 };
 pub use digest::{Digest, DigestParseError};
 pub use manifest::{
