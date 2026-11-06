@@ -95,13 +95,13 @@ impl Config {
 }
 
 /// The host-facing launch contract (BUILD.md §7): what the host MUST provide to
-/// launch a pichi artifact: resource sizing, networking and preferred device
+/// launch a pichi artifact: resource sizing, networking and declared device
 /// transports. Storage describes one mutable overlay above the read-only image.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Requirements {
-    /// Default preferred transport for attached devices. A resource's own
-    /// preference takes precedence; omission leaves placement automatic.
+    /// Default transport for attached devices. A resource's own declaration
+    /// takes precedence. A declared transport must be realized or launch fails.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub slot: Option<Slot>,
 
@@ -117,7 +117,7 @@ pub struct Requirements {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub memory: Option<Band<Memory>>,
 
-    /// Capacity and transport preference for the single mutable storage overlay.
+    /// Capacity and transport declaration for the single mutable storage overlay.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub storage: Option<Storage>,
 
@@ -127,14 +127,14 @@ pub struct Requirements {
     pub interfaces: BTreeMap<String, Interface>,
 }
 
-/// Preferred virtio transport, subject to the PMI platform's available slots.
+/// Declared virtio transport; the PMI platform must provide matching slots.
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Slot {
-    /// Prefer PCI.
+    /// Require PCI.
     Pci,
 
-    /// Prefer virtio-MMIO.
+    /// Require virtio-MMIO.
     Mmio,
 }
 
@@ -148,7 +148,7 @@ impl<'de> Deserialize<'de> for Slot {
     }
 }
 
-/// The single mutable overlay's capacity in MiB and preferred transport.
+/// The single mutable overlay's capacity in MiB and declared transport.
 /// Backing paths, retention and provisioning are operator configuration.
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 pub struct Storage {
@@ -156,7 +156,7 @@ pub struct Storage {
     #[serde(flatten)]
     pub capacity: Band<NonZeroU64>,
 
-    /// Preferred transport; omission inherits the global preference.
+    /// Declared transport; omission inherits the global default.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub slot: Option<Slot>,
 }
@@ -194,7 +194,7 @@ pub struct Interface {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ingress: Option<Ingress>,
 
-    /// Preferred transport; omission inherits the global preference.
+    /// Declared transport; omission inherits the global default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub slot: Option<Slot>,
 }
@@ -681,7 +681,7 @@ mod tests {
     }
 
     #[test]
-    fn slot_preferences_are_typed_and_optional() {
+    fn slot_types_are_typed_and_optional() {
         for slot in ["pci", "mmio"] {
             let value = serde_json::json!({
                 "slot": slot,
