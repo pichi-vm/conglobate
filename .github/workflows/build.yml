@@ -14,7 +14,7 @@ env:
   # built with 1.94.0, matching the rootless checks.
   NIGHTLY: "nightly-2026-07-06"
   ARMA_REV: "3297920b46122689fb13ca41acd61cbe94ac1de7"
-  PICHI_REV: "23e05f62c7224889866404a7c2612743cfa97f82"
+  PICHI_REV: "64f982cf1f603cf3c9f5f89d4608342635cd6b3f"
 
 jobs:
   # Validate alongside builds; publication requires both to succeed.
