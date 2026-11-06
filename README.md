@@ -130,8 +130,15 @@ Use `--offline` as well when all locked dependencies are already cached. The
 rootless tests require a writable `/dev/shm` tmpfs for RAM-backed materialization;
 ordinary disk-backed temporary storage is not a substitute. Set `TMPDIR` to an
 existing writable directory if the compiler's default temporary location is
-unsuitable. Builds may use disk-backed compiler temporary storage; build
-workspace storage inside conglobate is separately required to be RAM-backed.
+unsuitable. Builds may use disk-backed compiler temporary storage.
+
+Set `CONGLOBATE_STORAGE` to an existing writable directory to put image scratch
+and snapshot backing on mounted storage. The appliance supplies this directory
+on its writable device. Scratch files are anonymous and removed on last close;
+snapshot capacity is bounded by available backing space. An invalid directory
+fails the build. When unset, image backing uses the private tmpfs, supporting
+bootstrap builders that do not yet supply writable storage. Mount/control state
+always remains on the private tmpfs.
 
 Serialize Cargo checks and use `CARGO_BUILD_JOBS=2` in constrained development
 environments. The rootless workflow uses Rust 1.94.0 and runs formatting, Clippy,
