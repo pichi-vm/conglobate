@@ -113,6 +113,27 @@ impl StagedDirectory {
         Ok(temporary)
     }
 
+    pub(crate) fn blob_directory(&self) -> io::Result<File> {
+        let name = self
+            .temporary
+            .path()
+            .file_name()
+            .expect("generated staging name");
+        let path = Path::new(name).join("blobs/sha256");
+        Ok(rustix::fs::openat2(
+            &self.parent,
+            path,
+            rustix::fs::OFlags::RDONLY
+                | rustix::fs::OFlags::DIRECTORY
+                | rustix::fs::OFlags::CLOEXEC,
+            rustix::fs::Mode::empty(),
+            rustix::fs::ResolveFlags::BENEATH
+                | rustix::fs::ResolveFlags::NO_SYMLINKS
+                | rustix::fs::ResolveFlags::NO_MAGICLINKS,
+        )?
+        .into())
+    }
+
     fn blob_path(&self, digest: &Digest) -> PathBuf {
         self.temporary
             .path()
@@ -121,8 +142,6 @@ impl StagedDirectory {
             .join(digest.hex())
     }
     /// Write at the final private staging name and remove it on failure.
-    /// Keeping the file must not rename it: the current virtiofs transport
-    /// invalidates renamed inode IDs, so validation cannot reopen those files.
     /// Only publication exposes these names outside the supervisor's staging.
     fn pending_file(&self, path: &Path) -> io::Result<tempfile::NamedTempFile> {
         let path = tempfile::TempPath::try_from_path(path)?;
@@ -150,18 +169,23 @@ impl StagedDirectory {
         pending.keep().map_err(|error| error.error)?;
         Ok(())
     }
-    /// Stream a sealed layer without buffering its contents in memory. Verify
-    /// the exact written bytes before retaining their private staging name.
-    pub(crate) fn store_scute(
+    /// Install the already-written stream at its retained digest name without
+    /// copying or rehashing its externally backed COW bytes.
+    pub(crate) fn install_scute(
         &self,
-        scute: &crate::storage::SealedScute<'_>,
+        scute: &crate::storage::SealedScute,
     ) -> Result<(), CacheError> {
-        let digest = scute
+        let digest: Digest = scute
             .descriptor()
             .digest
             .parse()
             .map_err(|_| CacheError::Invalid("invalid produced scute digest"))?;
-        self.store_verified(scute.data_reader(), &digest, scute.descriptor().size)
+        let directory = self.blob_directory()?;
+        use std::os::fd::AsRawFd as _;
+        let destination =
+            PathBuf::from(format!("/proc/self/fd/{}", directory.as_raw_fd())).join(digest.hex());
+        scute.install_data(&destination)?;
+        Ok(())
     }
     pub(crate) fn store_verified(
         &self,
@@ -211,6 +235,18 @@ impl StagedDirectory {
     /// no-replace; on a mid-loop failure it attempts to move published names
     /// back into staging before returning Err.
     pub(crate) fn publish(self) -> io::Result<()> {
+        let directory = self.blob_directory()?;
+        for entry in fs::read_dir(format!("/proc/self/fd/{}", directory.as_raw_fd()))? {
+            let name = entry?.file_name();
+            let bytes = name.as_encoded_bytes();
+            if bytes.len() != 64
+                || !bytes
+                    .iter()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(b))
+            {
+                return Err(io::Error::other("unfinished or noncanonical output blob"));
+            }
+        }
         match &self.kind {
             PublishKind::RenameDirectory { name } => {
                 let result = rustix::fs::renameat_with(
@@ -276,6 +312,24 @@ impl StagedDirectory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn unfinished_prepared_files_prevent_publication() {
+        let parent = tempfile::tempdir().unwrap();
+        let destination = parent.path().join("output");
+        let staged = StagedDirectory::create(&destination).unwrap();
+        let directory = staged.blob_directory().unwrap();
+        fs::write(
+            format!(
+                "/proc/self/fd/{}/.scute-tree-unfinished",
+                directory.as_raw_fd()
+            ),
+            b"partial",
+        )
+        .unwrap();
+        assert!(staged.publish().is_err());
+        assert!(!destination.exists());
+    }
+
     #[test]
     fn produced_stream_must_match_size_and_digest_before_installation() {
         let parent = tempfile::tempdir().unwrap();

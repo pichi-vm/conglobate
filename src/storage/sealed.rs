@@ -14,20 +14,40 @@ use std::{
     os::unix::fs::FileExt,
 };
 
-/// Immutable local scute bytes and generated verity tree. No writable scratch
-/// authority escapes. This proves sealing, not command success or publication.
+/// Output-backed prepared files plus identities retained inside the VM.
+/// Storage remains mutable outside the VM; reuse must go through verity.
+/// This proves sealing, not command success or publication.
 ///
 #[derive(Debug)]
-pub(crate) struct SealedScute<'workspace> {
-    data: Scratch<'workspace>,
-    hash: Scratch<'workspace>,
+pub(crate) struct SealedScute {
+    data: File,
+    data_name: std::sync::Mutex<Option<tempfile::TempPath>>,
+    hash: tempfile::NamedTempFile,
     descriptor: ScuteDescriptor,
     root: [u8; 32],
     parent: [u8; 32],
+    // Temp paths use this descriptor; drop it after both temporary files.
+    _directory: File,
 }
-impl SealedScute<'_> {
+impl SealedScute {
     pub(crate) fn files(&self) -> (&File, &File) {
-        (self.data.file(), self.hash.file())
+        (&self.data, self.hash.as_file())
+    }
+    pub(crate) fn install_data(&self, destination: &std::path::Path) -> io::Result<()> {
+        let mut name = self
+            .data_name
+            .lock()
+            .map_err(|_| io::Error::other("prepared scute ownership poisoned"))?;
+        let pending = name
+            .take()
+            .ok_or_else(|| io::Error::other("prepared scute data already installed"))?;
+        match pending.persist(destination) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                *name = Some(error.path);
+                Err(error.error)
+            }
+        }
     }
     pub(crate) fn descriptor(&self) -> &ScuteDescriptor {
         &self.descriptor
@@ -38,9 +58,10 @@ impl SealedScute<'_> {
     pub(crate) fn parent(&self) -> &[u8; 32] {
         &self.parent
     }
+    #[cfg(test)]
     pub(crate) fn data_reader(&self) -> ScuteReader<'_> {
         ScuteReader {
-            file: self.data.file(),
+            file: &self.data,
             position: 0,
             length: self.descriptor.size,
         }
@@ -98,23 +119,33 @@ impl<'w> Scratch<'w> {
         self,
         parent: [u8; 32],
         origin: impl Into<SnapshotOrigin<'a>>,
-    ) -> io::Result<SealedScute<'w>> {
+        directory: File,
+    ) -> io::Result<SealedScute> {
         let origin = origin.into().open_read_only()?;
-        self.seal_with_reader(parent, |offset, bytes| origin.read_exact_at(bytes, offset))
+        self.seal_with_reader(directory, parent, |offset, bytes| {
+            origin.read_exact_at(bytes, offset)
+        })
     }
 
     fn seal_with_reader(
         mut self,
+        directory: File,
         parent: [u8; 32],
         read_origin: impl FnMut(u64, &mut [u8; 4096]) -> io::Result<()>,
-    ) -> io::Result<SealedScute<'w>> {
+    ) -> io::Result<SealedScute> {
         let capacity = self.file.metadata()?.len();
         let extent = SnapshotExtent::read(&mut self.file, capacity)?;
         self.file.set_len(extent.bytes)?;
         let compacted = super::compact::CompactSnapshot::new(&mut self.file, read_origin)?;
         let bytes = compacted.size_bytes();
-        let mut packed = self._workspace.scratch()?;
-        let mut hash = self._workspace.scratch()?;
+        use std::os::fd::AsRawFd as _;
+        let path = format!("/proc/self/fd/{}", directory.as_raw_fd());
+        let mut packed = tempfile::Builder::new()
+            .prefix(".scute-data-")
+            .tempfile_in(&path)?;
+        let mut hash = tempfile::Builder::new()
+            .prefix(".scute-tree-")
+            .tempfile_in(&path)?;
         let mut input = MeasuredRead {
             input: compacted,
             data: &mut packed,
@@ -143,8 +174,8 @@ impl<'w> Scratch<'w> {
         let root = header.format(&mut input, &mut hash)?;
         let root = root.as_ref().try_into().expect("SHA-256 root width");
         let digest = format!("sha256:{}", hex::encode(input.digest.finalize()));
-        packed.sync_all()?;
-        hash.sync_all()?;
+        packed.as_file().sync_all()?;
+        hash.as_file().sync_all()?;
         let descriptor = ScuteDescriptor {
             digest,
             size: bytes,
@@ -153,12 +184,15 @@ impl<'w> Scratch<'w> {
                 salt: hex::encode(salt),
             },
         };
+        let (data, name) = packed.into_parts();
         Ok(SealedScute {
-            data: packed,
+            data,
+            data_name: std::sync::Mutex::new(Some(name)),
             hash,
             root,
             descriptor,
             parent,
+            _directory: directory,
         })
     }
 }
@@ -290,7 +324,11 @@ mod tests {
             scratch.set_len(4 * 4096).unwrap();
             let parent = [3; 32];
             let sealed = scratch
-                .seal_with_reader(parent, |_, _| unreachable!())
+                .seal_with_reader(
+                    workspace.staging_parent().unwrap(),
+                    parent,
+                    |_, _| unreachable!(),
+                )
                 .unwrap();
             let mut data = Vec::new();
             sealed.data_reader().read_to_end(&mut data).unwrap();
@@ -344,13 +382,15 @@ mod tests {
         scratch.write_all(&input.0).unwrap();
         assert!(
             scratch
-                .seal_with_reader([3; 32], |_, _| Err(io::ErrorKind::PermissionDenied.into()))
+                .seal_with_reader(workspace.staging_parent().unwrap(), [3; 32], |_, _| Err(
+                    io::ErrorKind::PermissionDenied.into()
+                ))
                 .is_err()
         );
         let mut scratch = workspace.scratch().unwrap();
         scratch.write_all(&input.0).unwrap();
         let sealed = scratch
-            .seal_with_reader([3; 32], |_, bytes| {
+            .seal_with_reader(workspace.staging_parent().unwrap(), [3; 32], |_, bytes| {
                 bytes.fill(9);
                 Ok(())
             })
@@ -379,6 +419,35 @@ mod tests {
         );
     }
     #[test]
+    fn installing_prepared_data_transfers_only_its_name() {
+        let directory = tempfile::tempdir().unwrap();
+        let workspace = super::super::Workspace {
+            root: File::open(directory.path()).unwrap(),
+        };
+        let mut scratch = workspace.scratch().unwrap();
+        scratch.write_all(&Store::new(2).0).unwrap();
+        let sealed = scratch
+            .seal_with_reader(
+                workspace.staging_parent().unwrap(),
+                [0; 32],
+                |_, _| unreachable!(),
+            )
+            .unwrap();
+        let destination = directory.path().join("installed");
+        std::fs::create_dir(&destination).unwrap();
+        // A failed rename retains ownership, so it can be retried safely.
+        assert!(sealed.install_data(&destination).is_err());
+        std::fs::remove_dir(&destination).unwrap();
+        sealed.install_data(&destination).unwrap();
+        assert!(sealed.install_data(&destination).is_err());
+        let mut bytes = Vec::new();
+        sealed.data_reader().read_to_end(&mut bytes).unwrap();
+        assert_eq!(bytes, Store::new(2).0);
+        drop(sealed);
+        assert_eq!(std::fs::read(&destination).unwrap(), bytes);
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+    #[test]
     fn sealing_rejects_incomplete_snapshot_extents() {
         use std::io::Write;
         let directory = tempfile::tempdir().unwrap();
@@ -390,45 +459,136 @@ mod tests {
             scratch.write_all(&Store::new(2).0[..length]).unwrap();
             assert!(
                 scratch
-                    .seal_with_reader([0; 32], |_, _| unreachable!())
+                    .seal_with_reader(
+                        workspace.staging_parent().unwrap(),
+                        [0; 32],
+                        |_, _| unreachable!()
+                    )
                     .is_err()
             );
         }
     }
     #[test]
-    fn sealed_outputs_commit_the_final_root() {
-        use crate::{cache::Cache, output::AssembledImage, storage::Workspace};
+    #[ignore = "requires root, loop devices and device mapper"]
+    fn output_backed_reuse_authenticates_data_metadata_and_tree() {
+        use crate::{output::StagedDirectory, storage::ReadOnlyChain};
         use std::{io::Write, sync::Arc};
+        for corruption in 0..5 {
+            let directory = tempfile::tempdir().unwrap();
+            let workspace = super::super::Workspace {
+                root: File::open(directory.path()).unwrap(),
+            };
+            let staged = StagedDirectory::create(&directory.path().join("output")).unwrap();
+            let seal = |value| {
+                let mut store = Store::new(3);
+                store.entry(0, 0, 2);
+                store.0[8192..].fill(value);
+                let mut scratch = workspace.scratch().unwrap();
+                scratch.write_all(&store.0).unwrap();
+                Arc::new(
+                    scratch
+                        .seal_with_reader(staged.blob_directory().unwrap(), [0; 32], |_, bytes| {
+                            bytes.fill(0);
+                            Ok(())
+                        })
+                        .unwrap(),
+                )
+            };
+            let sealed = seal(0xa5);
+            match corruption {
+                1..=3 => {
+                    let (file, offset) = match corruption {
+                        1 => (sealed.files().0, 8192),
+                        2 => (sealed.files().0, 4096),
+                        _ => (sealed.files().1, 4096),
+                    };
+                    let mut byte = [0];
+                    file.read_exact_at(&mut byte, offset).unwrap();
+                    byte[0] ^= 0x80;
+                    file.write_all_at(&byte, offset).unwrap();
+                }
+                4 => {
+                    let replacement = seal(0x5a);
+                    for (source, target) in [
+                        (replacement.files().0, sealed.files().0),
+                        (replacement.files().1, sealed.files().1),
+                    ] {
+                        let mut bytes = vec![0; source.metadata().unwrap().len() as usize];
+                        source.read_exact_at(&mut bytes, 0).unwrap();
+                        target.write_all_at(&bytes, 0).unwrap();
+                    }
+                }
+                _ => {}
+            }
+            let mut bytes = [0; 4096];
+            match ReadOnlyChain::assemble(None, &[Arc::clone(&sealed)]) {
+                Ok(chain) => {
+                    let read = (|| -> io::Result<()> {
+                        let source = SnapshotOrigin::from(&chain).open_read_only()?;
+                        source.read_exact_at(&mut bytes, 0)
+                    })();
+                    chain.close().unwrap();
+                    if corruption == 0 {
+                        read.unwrap();
+                        assert_eq!(bytes, [0xa5; 4096]);
+                    } else {
+                        assert!(
+                            read.is_err(),
+                            "modified output must fail authenticated reuse"
+                        );
+                    }
+                }
+                Err(error) => assert_ne!(corruption, 0, "valid output-backed chain: {error}"),
+            }
+        }
+    }
 
+    #[test]
+    fn sealed_outputs_commit_the_final_root() {
+        use crate::{
+            cache::Cache,
+            output::{AssembledImage, StagedDirectory},
+        };
+        use std::{io::Write, sync::Arc};
         let directory = tempfile::tempdir().unwrap();
-        let workspace = Workspace {
+        let workspace = super::super::Workspace {
             root: File::open(directory.path()).unwrap(),
         };
-        let mut scratch = workspace.scratch().unwrap();
-        scratch.write_all(&Store::new(2).0).unwrap();
-        let base = Arc::new(
-            scratch
-                .seal_with_reader([0; 32], |_, _| unreachable!())
-                .unwrap(),
-        );
+        let seal = |staged: &StagedDirectory, parent| {
+            let mut scratch = workspace.scratch().unwrap();
+            scratch.write_all(&Store::new(2).0).unwrap();
+            Arc::new(
+                scratch
+                    .seal_with_reader(
+                        staged.blob_directory().unwrap(),
+                        parent,
+                        |_, _| unreachable!(),
+                    )
+                    .unwrap(),
+            )
+        };
         let output = directory.path().join("base");
-        let cache = Cache::open(directory.path()).unwrap();
+        let staged = StagedDirectory::create(&output).unwrap();
+        let base = seal(&staged, [0; 32]);
+        let base_root = *base.root();
         let selection = crate::pipeline::output::StageOutput {
             root: Some(crate::pipeline::root::Root {
                 base: None,
-                produced: vec![Arc::clone(&base)],
+                produced: vec![base],
             }),
             pmi: None,
             bootconfig: None,
         };
+        let cache = Cache::open(directory.path()).unwrap();
         let requirements = serde_json::from_str(r#"{"memory":{"required":1024}}"#).unwrap();
         let image =
-            AssembledImage::components(&cache, &selection, Some(&requirements), &output).unwrap();
+            AssembledImage::in_staging(&cache, &selection, Some(&requirements), staged).unwrap();
         let config = image.image().manifest().config.clone();
         assert_eq!(
             image.image().manifest().carapace_root().unwrap(),
-            Some(*base.root())
+            Some(base_root)
         );
+        drop(selection);
         image.publish().unwrap();
         assert_eq!(
             std::fs::read(
@@ -443,63 +603,52 @@ mod tests {
             .unwrap(),
             br#"{"version":1,"requirements":{"memory":{"required":1024}}}"#
         );
-
         let index = std::fs::read(output.join("index.json")).unwrap();
         let digest = crate::artifact::Digest::Sha256(Sha256::digest(&index).into());
         std::fs::write(output.join("blobs/sha256").join(digest.hex()), &index).unwrap();
         let cache = Cache::open(&output).unwrap();
-        let image = crate::input::CheckedImage::verify(
+        let base_image = crate::input::CheckedImage::verify(
             &cache,
             cache.resolve(digest.to_string().parse().unwrap()).unwrap(),
         )
         .unwrap();
-        let mut scratch = workspace.scratch().unwrap();
-        scratch.write_all(&Store::new(2).0).unwrap();
-        let top = Arc::new(
-            scratch
-                .seal_with_reader(*base.root(), |_, _| unreachable!())
-                .unwrap(),
-        );
-        let extended = AssembledImage::components(
-            &cache,
-            &crate::pipeline::output::StageOutput {
-                root: Some(crate::pipeline::root::Root {
-                    base: Some(&image),
-                    produced: vec![Arc::clone(&top)],
-                }),
+        for bootstrap in [false, true] {
+            let staged = StagedDirectory::create(&directory.path().join(if bootstrap {
+                "bootstrap"
+            } else {
+                "extended"
+            }))
+            .unwrap();
+            let (base, produced) = if bootstrap {
+                let base = seal(&staged, [0; 32]);
+                let top = seal(&staged, *base.root());
+                (None, vec![base, top])
+            } else {
+                (Some(&base_image), vec![seal(&staged, base_root)])
+            };
+            let expected_root = *produced.last().unwrap().root();
+            let selection = crate::pipeline::output::StageOutput {
+                root: Some(crate::pipeline::root::Root { base, produced }),
                 pmi: None,
                 bootconfig: None,
-            },
-            None,
-            &directory.path().join("extended"),
-        )
-        .unwrap();
-        assert_eq!(extended.image().manifest().config, config);
-        let bootstrap = AssembledImage::components(
-            &cache,
-            &crate::pipeline::output::StageOutput {
-                root: Some(crate::pipeline::root::Root {
-                    base: None,
-                    produced: vec![base, Arc::clone(&top)],
-                }),
-                pmi: None,
-                bootconfig: None,
-            },
-            None,
-            &directory.path().join("bootstrap"),
-        )
-        .unwrap();
-        assert!(bootstrap.image().manifest().config.is_empty());
-        for output in [extended, bootstrap] {
+            };
+            let assembled = AssembledImage::in_staging(&cache, &selection, None, staged).unwrap();
             assert_eq!(
-                output.image().manifest().carapace_root().unwrap(),
-                Some(*top.root())
+                assembled.image().manifest().carapace_root().unwrap(),
+                Some(expected_root)
             );
-            assert_eq!(output.image().manifest().layers.len(), 2);
-            assert_eq!(output.image().root(), Some(*top.root()));
-            output.discard().unwrap();
+            assert_eq!(assembled.image().root(), Some(expected_root));
+            assert_eq!(assembled.image().manifest().layers.len(), 2);
+            if bootstrap {
+                assert!(assembled.image().manifest().config.is_empty());
+            } else {
+                assert_eq!(assembled.image().manifest().config, config);
+            }
+            drop(selection);
+            assembled.discard().unwrap();
         }
     }
+
     #[test]
     fn readonly_cursors_are_independent_and_allow_eof_seeks() {
         use std::io::Write;

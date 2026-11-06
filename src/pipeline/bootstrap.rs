@@ -32,13 +32,14 @@ impl<'a> BootstrapBuild<'a> {
             sources,
         }
     }
-    pub(super) fn execute<'w>(
+    pub(super) fn execute(
         &self,
-        workspace: &'w Workspace,
+        workspace: &Workspace,
         runtime: &Runtime<'_>,
-        active: crate::storage::ReadOnlyChain<'w>,
+        active: crate::storage::ReadOnlyChain,
         reaper: ChildReaper,
-    ) -> anyhow::Result<Bootstrapped<'w>> {
+        directory: std::fs::File,
+    ) -> anyhow::Result<Bootstrapped> {
         let captured =
             selection::for_filesystem(self.stage.format.as_ref().expect("creation format"))
                 .context("capture trusted formatter")?;
@@ -48,17 +49,19 @@ impl<'a> BootstrapBuild<'a> {
             captured.stage(workspace)?,
             active,
             reaper,
+            directory,
         )
     }
 
-    fn produce<'w>(
+    fn produce(
         &self,
-        workspace: &'w Workspace,
+        workspace: &Workspace,
         runtime: &Runtime<'_>,
         formatter: crate::formatter::FormatterRuntime,
-        active: crate::storage::ReadOnlyChain<'w>,
+        active: crate::storage::ReadOnlyChain,
         reaper: ChildReaper,
-    ) -> anyhow::Result<Bootstrapped<'w>> {
+        directory: std::fs::File,
+    ) -> anyhow::Result<Bootstrapped> {
         let sectors = NonZeroU64::new(carapace::ZERO_SIZE_SECTORS).unwrap();
         let origin = Mapping::<Created>::create()?.zero(sectors)?;
         let output = Mapping::<Created>::create()?.snapshot(
@@ -110,7 +113,7 @@ impl<'a> BootstrapBuild<'a> {
                 .into_snapshot()?
                 .close()?
                 .detach()?
-                .seal_snapshot([0; 32], &origin)?,
+                .seal_snapshot([0; 32], &origin, directory)?,
         );
         active.close()?;
         origin.close()?;
@@ -135,7 +138,7 @@ impl<'a> BootstrapBuild<'a> {
 
 /// Bootstrap output only: tools have been discarded, and no later stage ran.
 #[derive(Debug)]
-pub(super) struct Bootstrapped<'w> {
+pub(super) struct Bootstrapped {
     pub(super) reaper: ChildReaper,
-    pub(super) scute: Arc<crate::storage::SealedScute<'w>>,
+    pub(super) scute: Arc<crate::storage::SealedScute>,
 }

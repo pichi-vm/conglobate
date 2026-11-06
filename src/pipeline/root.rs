@@ -10,11 +10,11 @@ use crate::{
 use std::{num::NonZeroU64, sync::Arc};
 
 #[derive(Debug, Clone)]
-pub(crate) struct Root<'b, 'w> {
+pub(crate) struct Root<'b> {
     pub(crate) base: Option<&'b CheckedImage>,
-    pub(crate) produced: Vec<Arc<SealedScute<'w>>>,
+    pub(crate) produced: Vec<Arc<SealedScute>>,
 }
-impl<'w> Root<'_, 'w> {
+impl Root<'_> {
     pub(crate) fn hash(&self) -> [u8; 32] {
         self.produced
             .last()
@@ -22,7 +22,7 @@ impl<'w> Root<'_, 'w> {
             .or_else(|| self.base.and_then(CheckedImage::root))
             .expect("selected root")
     }
-    pub(super) fn activate(&self, cache: &Cache) -> anyhow::Result<ReadOnlyChain<'w>> {
+    pub(super) fn activate(&self, cache: &Cache) -> anyhow::Result<ReadOnlyChain> {
         let base = self
             .base
             .map(|image| carapace::Chain::from_index(cache, image.image()))
@@ -31,7 +31,7 @@ impl<'w> Root<'_, 'w> {
     }
     /// Readers mount only the persisted root, with disposable journal writes.
     /// No stage mounts are inherited or recreated in this namespace.
-    pub(super) fn read<T>(
+    pub(super) fn read<'w, T>(
         &self,
         cache: &Cache,
         workspace: &'w Workspace,
