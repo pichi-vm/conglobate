@@ -27,6 +27,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y build-essential pkg-config zlib1g-dev e2fsprogs dosfstools
           rustup toolchain install 1.94.0 --profile minimal
+      - uses: Swatinem/rust-cache@v2
       - name: Run rootless tests
         run: cargo test --locked --features cli --all-targets
       - name: Run ignored tests as root
@@ -48,5 +49,6 @@ jobs:
         run: |
           dnf install -y cargo gcc git kernel-tools
           rpm -q cargo kernel-tools
+      - uses: Swatinem/rust-cache@v2
       - name: Compare native boot configuration with Linux
         run: cargo test --locked --features cli --bin conglobate boot_config::tests -- --include-ignored
