@@ -30,8 +30,15 @@ pub(crate) enum ContextError {
     Module { path: PathBuf, reason: String },
 }
 impl ContextError {
-    fn git(error: impl std::fmt::Display) -> Self {
-        Self::Git(error.to_string())
+    fn git(error: impl std::error::Error) -> Self {
+        let mut message = error.to_string();
+        let mut cause = error.source();
+        while let Some(error) = cause {
+            message.push_str(": ");
+            message.push_str(&error.to_string());
+            cause = error.source();
+        }
+        Self::Git(message)
     }
 }
 
@@ -421,6 +428,43 @@ mod tests {
                 repo.git(&["rev-parse", "HEAD:build"])
             );
             assert_eq!(capture.commit().as_bytes(), commit.bytes());
+        }
+    }
+
+    #[test]
+    fn git_allocation_limit_diagnostic_survives_loose_and_packed_reads() {
+        use super::ObjectReader;
+        let bytes = vec![b'x'; 16 * 1024 * 1024 + 1];
+        for format in ["sha1", "sha256"] {
+            for packed in [false, true] {
+                let repo = Repository::new(format);
+                repo.write("large", &bytes);
+                repo.write("small", b"accepted");
+                repo.commit();
+                if packed {
+                    repo.git(&["gc", "--prune=now"]);
+                }
+                // Reproduce the VM's reduced-trust bound without changing it.
+                let reader = ObjectReader(
+                    gix::open::Options::isolated()
+                        .with(gix::sec::Trust::Reduced)
+                        .open(repo.0.path())
+                        .unwrap()
+                        .to_thread_local(),
+                );
+                let id = |name| {
+                    gix::ObjectId::from_hex(repo.git(&["rev-parse", name]).as_bytes()).unwrap()
+                };
+                assert_eq!(reader.blob(id("HEAD:small")).unwrap(), b"accepted");
+                let error = reader.blob(id("HEAD:large")).unwrap_err().to_string();
+                assert!(error.starts_with("Git input: "), "{error}");
+                let cause = if packed {
+                    "Entry too large to fit in memory"
+                } else {
+                    "Cannot store 16777217 in memory"
+                };
+                assert!(error.contains(cause), "{format}/{packed}: {error}");
+            }
         }
     }
 
