@@ -52,9 +52,13 @@ impl Pipeline {
         } else {
             let staged = crate::output::StagedDirectory::create(self.request.output())?;
             let workspace = Workspace::create()?;
-            let stages = Runtime::scoped(&workspace, std::path::Path::new("/run"), |runtime| {
-                self.execute(&build, &workspace, runtime, &staged)
-            })?;
+            let _runtime_parent =
+                crate::storage::application_directory(std::path::Path::new("/run/conglobate"))?;
+            let stages = Runtime::scoped(
+                &workspace,
+                std::path::Path::new("/run/conglobate"),
+                |runtime| self.execute(&build, &workspace, runtime, &staged),
+            )?;
             stages.assemble_staged(&self.request, &build, staged)?
         };
         output.publish()?;

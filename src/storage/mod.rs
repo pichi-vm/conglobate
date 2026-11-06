@@ -25,23 +25,51 @@ use std::{
     io::{self, Read, Seek, SeekFrom, Write},
 };
 
-/// One private tmpfs for a build. The detached mount needs no globally visible
-/// pathname or pathname-based unmount. Only trusted supervisor setup creates it.
-/// Image scratch may use an environment-supplied backing directory instead.
-/// Mount/control state always stays on the private tmpfs.
-///
+/// One build's control tmpfs and anonymous scratch files in /var/tmp.
 /// Scratch leases cannot outlive this owner or overlap its destruction.
 #[derive(Debug)]
 pub(crate) struct Workspace {
     root: File,
-    backing: Option<File>,
+    backing: File,
+    _directory: Option<tempfile::TempDir>,
+    _parent: Option<File>,
 }
+
+/// Provision a conventional application directory without following a symlink
+/// or adopting an existing directory owned by another user.
+pub(super) fn application_directory(path: &std::path::Path) -> io::Result<File> {
+    use std::os::unix::fs::MetadataExt;
+    match fs::mkdirat(fs::CWD, path, fs::Mode::from_raw_mode(0o700)) {
+        Ok(()) | Err(rustix::io::Errno::EXIST) => {}
+        Err(error) => return Err(error.into()),
+    }
+    let directory = File::from(fs::open(
+        path,
+        fs::OFlags::RDONLY | fs::OFlags::DIRECTORY | fs::OFlags::CLOEXEC | fs::OFlags::NOFOLLOW,
+        fs::Mode::empty(),
+    )?);
+    let metadata = directory.metadata()?;
+    if metadata.uid() != 0 || metadata.mode() & 0o777 != 0o700 {
+        return Err(io::Error::other(
+            "application directory must be root-owned with mode 0700",
+        ));
+    }
+    Ok(directory)
+}
+
 impl Workspace {
     pub(crate) fn staging_parent(&self) -> io::Result<File> {
         self.root.try_clone()
     }
 
     pub(crate) fn create() -> io::Result<Self> {
+        use std::os::{fd::AsRawFd, unix::fs::PermissionsExt};
+        let parent = application_directory(std::path::Path::new("/var/tmp/conglobate"))?;
+        let directory = tempfile::Builder::new()
+            .prefix("build-")
+            .permissions(std::fs::Permissions::from_mode(0o700))
+            .tempdir_in(format!("/proc/self/fd/{}", parent.as_raw_fd()))?;
+        let backing = File::open(directory.path())?;
         let context = mount::fsopen("tmpfs", mount::FsOpenFlags::FSOPEN_CLOEXEC)?;
         mount::fsconfig_set_string(&context, "mode", "0700")?;
         mount::fsconfig_set_string(&context, "uid", "0")?;
@@ -54,34 +82,18 @@ impl Workspace {
                 | mount::MountAttrFlags::MOUNT_ATTR_NOSUID
                 | mount::MountAttrFlags::MOUNT_ATTR_NOEXEC,
         )?;
-        let backing = std::env::var_os("CONGLOBATE_STORAGE")
-            .map(|path| {
-                fs::open(
-                    std::path::Path::new(&path),
-                    fs::OFlags::RDONLY
-                        | fs::OFlags::DIRECTORY
-                        | fs::OFlags::CLOEXEC
-                        | fs::OFlags::NOFOLLOW,
-                    fs::Mode::empty(),
-                )
-                .map(File::from)
-            })
-            .transpose()?;
         Ok(Self {
             root: root.into(),
             backing,
+            _directory: Some(directory),
+            _parent: Some(parent),
         })
     }
-    /// Bound each sparse COW store by the workspace's backing capacity, including
-    /// its snapshot metadata. Logical origin size does not allocate backing.
-    /// Stores share the mount budget; exhaustion still fails the build.
+    /// Bound each sparse COW store by the available backing capacity.
+    /// Logical origin size does not allocate backing; stores share this space.
     pub(crate) fn snapshot_store(&self) -> io::Result<Scratch<'_>> {
-        let stat = fs::fstatvfs(self.backing.as_ref().unwrap_or(&self.root))?;
-        let blocks = if self.backing.is_some() {
-            stat.f_bavail
-        } else {
-            stat.f_blocks
-        };
+        let stat = fs::fstatvfs(&self.backing)?;
+        let blocks = stat.f_bavail;
         let bytes = blocks
             .checked_mul(stat.f_frsize)
             .ok_or_else(|| io::Error::other("workspace capacity overflow"))?;
@@ -99,7 +111,7 @@ impl Workspace {
     /// merely claim this Rust borrow represents a device's kernel lifetime.
     pub(crate) fn scratch(&self) -> io::Result<Scratch<'_>> {
         let file = fs::openat(
-            self.backing.as_ref().unwrap_or(&self.root),
+            &self.backing,
             ".",
             fs::OFlags::TMPFILE | fs::OFlags::RDWR | fs::OFlags::CLOEXEC | fs::OFlags::EXCL,
             fs::Mode::RUSR | fs::Mode::WUSR,
@@ -161,16 +173,73 @@ mod tests {
     use std::os::unix::fs::MetadataExt;
 
     #[test]
+    fn application_directory_rejects_symlinks_and_unprotected_entries() {
+        use std::os::unix::fs::{PermissionsExt, symlink};
+        let root = tempfile::tempdir().unwrap();
+        let target = root.path().join("target");
+        std::fs::create_dir(&target).unwrap();
+        std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o777)).unwrap();
+        assert!(application_directory(&target).is_err());
+        let link = root.path().join("link");
+        symlink(&target, &link).unwrap();
+        assert!(application_directory(&link).is_err());
+        let file = root.path().join("file");
+        std::fs::write(&file, b"keep").unwrap();
+        assert!(application_directory(&file).is_err());
+        assert_eq!(std::fs::read(&file).unwrap(), b"keep");
+    }
+
+    #[test]
+    #[ignore = "requires root in a private mount namespace and cgroup2"]
+    fn conventional_workspace_and_runtime_cleanup() {
+        use std::os::fd::AsRawFd;
+        use std::path::Path;
+        let workspace = Workspace::create().unwrap();
+        let directory =
+            std::fs::canonicalize(workspace._directory.as_ref().unwrap().path()).unwrap();
+        assert!(directory.starts_with("/var/tmp/conglobate"));
+        let mut scratch = workspace.scratch().unwrap();
+        scratch.write_all(b"scratch bytes").unwrap();
+        assert_eq!(scratch.file().metadata().unwrap().nlink(), 0);
+        assert_eq!(
+            scratch.file().metadata().unwrap().dev(),
+            directory.metadata().unwrap().dev()
+        );
+        drop(scratch);
+        let parent = application_directory(Path::new("/run/conglobate")).unwrap();
+        let mut runtime_directory = None;
+        Runtime::scoped(&workspace, Path::new("/run/conglobate"), |runtime| {
+            let paths = runtime.paths()?;
+            let path = paths.volumes().parent().unwrap().to_owned();
+            assert!(path.starts_with("/run/conglobate"));
+            let marker = format!("/proc/self/fd/{}/helper", workspace.root.as_raw_fd());
+            std::fs::write(&marker, b"runtime helper")?;
+            assert_eq!(std::fs::read(path.join("helper"))?, b"runtime helper");
+            std::fs::remove_file(marker)?;
+            runtime_directory = Some(path);
+            Ok(())
+        })
+        .unwrap();
+        assert!(!runtime_directory.unwrap().exists());
+        drop(parent);
+        drop(workspace);
+        assert!(!directory.exists());
+    }
+
+    #[test]
     fn snapshot_backing_tracks_workspace_capacity_without_allocating_it() {
         let directory = tempfile::tempdir().unwrap();
         let workspace = Workspace {
             root: File::open(directory.path()).unwrap(),
-            backing: None,
+            backing: File::open(directory.path()).unwrap(),
+            _directory: None,
+            _parent: None,
         };
         let stat = fs::fstatvfs(&workspace.root).unwrap();
         let scratch = workspace.snapshot_store().unwrap();
         let metadata = scratch.file().metadata().unwrap();
-        assert_eq!(metadata.len(), stat.f_blocks * stat.f_frsize / 4096 * 4096);
+        // Concurrent tests can release space after the free-space sample.
+        assert!(metadata.len() <= stat.f_blocks * stat.f_frsize);
         assert_eq!(metadata.blocks(), 0);
     }
 
@@ -180,9 +249,11 @@ mod tests {
         let backing = tempfile::tempdir().unwrap();
         let workspace = Workspace {
             root: File::open(control.path()).unwrap(),
-            backing: Some(File::open(backing.path()).unwrap()),
+            backing: File::open(backing.path()).unwrap(),
+            _directory: None,
+            _parent: None,
         };
-        let stat = fs::fstatvfs(workspace.backing.as_ref().unwrap()).unwrap();
+        let stat = fs::fstatvfs(&workspace.backing).unwrap();
         let mut scratch = workspace.snapshot_store().unwrap();
         assert_eq!(
             scratch.file().metadata().unwrap().dev(),

@@ -914,10 +914,15 @@ Abrupt supervisor death also invalidates the build and is handled by VM disposal
 
 The root supervisor owns verified inputs, cache handles, loop/device-mapper
 assembly, writable snapshots, image metadata, and publication. Immutable carapace
-layers remain cache-backed with verified reads. One private build-wide tmpfs
-holds mutable snapshots and scratch; ordinary tmpfs behavior applies. The
-execution environment configures capacity and resource limits, with no disk
-fallback or per-step memory policy. Final artifact storage is separate.
+layers remain cache-backed with verified reads. Large mutable snapshots and
+scratch use anonymous files in a private per-build directory beneath
+`/var/tmp/conglobate`, created by the binary. Conglobate uses that directory
+without inspecting its backing filesystem or accepting a storage environment
+variable. The environment supplies backing capacity. Small control data and
+helpers use a private tmpfs exposed beneath `/run/conglobate`; the service uses
+`RuntimeDirectory=conglobate`. Output staging and sealed layers remain on the
+requested output filesystem. No writable cache or durable state directory is
+required.
 
 The supervisor mounts assigned kernel filesystems and creates idmapped views
 for commands. Superblocks remain supervisor-owned; commands receive namespace
@@ -1166,7 +1171,7 @@ and checkout filters do not execute. The lock format, image-manifest annotation
 contract, YAML values, device exposure, and supported firmware measurement
 contracts are specified above. Temporary writable mappings use
 kernel deferred removal and scratch leases for in-process cleanup after failed
-activation; abrupt conglobate death is handled by disposal of the build VM. Ordinary tmpfs allocation failures propagate as build failures.
+activation; abrupt conglobate death is handled by disposal of the build VM. Scratch and runtime allocation failures propagate as build failures.
 
 Remaining ecosystem decisions are authentication of the intended Git identity,
 additional firmware signing contracts and hardware attestation. Component
@@ -1330,13 +1335,15 @@ RAII owns resources; destructors cannot certify successful finalization.
    Mount namespaces do not namespace these kernel objects. Concurrent
    builds must not collide or remove each other's resources.
 
-1. Use one private build-wide tmpfs for mutable snapshots and scratch:
-   disposable tool roots, newly generated
-   output-layer storage, runtime state, resolver bytes, and intermediate outputs.
-   Use ordinary tmpfs behavior, with no disk fallback. The environment
-   configures capacity and resource limits; do not add per-step memory,
-   swap, or tmpfs-size policy to plans. Allocation/write failures fail
-   the build. Final artifact destination storage is separate.
+1. Use private per-build directories below `/var/tmp/conglobate` for large
+   anonymous scratch files, including writable image snapshots and firmware
+   extraction. Provision the protected root-owned application directory
+   implicitly. Use the backing supplied by the environment without RAM/disk
+   checks, storage environment variables, or fallback. Small control data,
+   mountpoints and helpers belong below `/run/conglobate`. Preserve the
+   explicit memory-backed semantics of declared tmpfs mounts and `/dev/shm`.
+   Output staging and temporary verification trees use the output filesystem.
+   Allocation/write failures fail the build.
 
 1. Mount assigned filesystems with trusted kernel drivers. Only one writer
    implementation may own a writable backing volume at a time. Retain the

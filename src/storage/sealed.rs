@@ -314,7 +314,9 @@ mod tests {
         let control = tempfile::tempdir_in("/dev/shm").unwrap();
         let workspace = super::super::Workspace {
             root: File::open(control.path()).unwrap(),
-            backing: Some(File::open(directory.path()).unwrap()),
+            backing: File::open(directory.path()).unwrap(),
+            _directory: None,
+            _parent: None,
         };
         let bytes = Store::new(2).0;
         let mut salts = Vec::new();
@@ -349,7 +351,7 @@ mod tests {
             assert_eq!(&salt[..32], parent);
             assert_eq!(sealed.descriptor().annotations.salt, hex::encode(salt));
             assert_eq!(header.parameters.data.count.get(), 2);
-            for (index, block) in bytes.chunks_exact(4096).enumerate() {
+            for (index, block) in bytes.as_chunks::<4096>().0.iter().enumerate() {
                 let mut hash = Sha256::new();
                 hash.update(salt);
                 hash.update(block);
@@ -375,7 +377,9 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let workspace = super::super::Workspace {
             root: File::open(directory.path()).unwrap(),
-            backing: None,
+            backing: File::open(directory.path()).unwrap(),
+            _directory: None,
+            _parent: None,
         };
         let mut input = Store::new(8);
         input.entry(0, 1, 7);
@@ -426,7 +430,9 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let workspace = super::super::Workspace {
             root: File::open(directory.path()).unwrap(),
-            backing: None,
+            backing: File::open(directory.path()).unwrap(),
+            _directory: None,
+            _parent: None,
         };
         let mut scratch = workspace.scratch().unwrap();
         scratch.write_all(&Store::new(2).0).unwrap();
@@ -457,7 +463,9 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let workspace = super::super::Workspace {
             root: File::open(directory.path()).unwrap(),
-            backing: None,
+            backing: File::open(directory.path()).unwrap(),
+            _directory: None,
+            _parent: None,
         };
         for length in [0, 4096, 4097, 8191] {
             let mut scratch = workspace.scratch().unwrap();
@@ -482,7 +490,9 @@ mod tests {
             let directory = tempfile::tempdir().unwrap();
             let workspace = super::super::Workspace {
                 root: File::open(directory.path()).unwrap(),
-                backing: None,
+                backing: File::open(directory.path()).unwrap(),
+                _directory: None,
+                _parent: None,
             };
             let staged = StagedDirectory::create(&directory.path().join("output")).unwrap();
             let seal = |value| {
@@ -559,7 +569,9 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let workspace = super::super::Workspace {
             root: File::open(directory.path()).unwrap(),
-            backing: None,
+            backing: File::open(directory.path()).unwrap(),
+            _directory: None,
+            _parent: None,
         };
         let seal = |staged: &StagedDirectory, parent| {
             let mut scratch = workspace.scratch().unwrap();
