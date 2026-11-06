@@ -134,10 +134,12 @@ impl<'w> Scratch<'w> {
         parent: [u8; 32],
         read_origin: impl FnMut(u64, &mut [u8; 4096]) -> io::Result<()>,
     ) -> io::Result<SealedScute> {
+        crate::output::report_memory_phase("scute-start");
         let capacity = self.file.metadata()?.len();
         let extent = SnapshotExtent::read(&mut self.file, capacity)?;
         self.file.set_len(extent.bytes)?;
         let compacted = super::compact::CompactSnapshot::new(&mut self.file, read_origin)?;
+        crate::output::report_memory_phase("scute-planned");
         let bytes = compacted.size_bytes();
         use std::os::fd::AsRawFd as _;
         let path = format!("/proc/self/fd/{}", directory.as_raw_fd());
@@ -180,6 +182,7 @@ impl<'w> Scratch<'w> {
             header.format(&mut input, &mut hash)?
         };
         let root = root.as_ref().try_into().expect("SHA-256 root width");
+        crate::output::report_memory_phase("scute-formatted");
         // The frame trailer contributes to encoded identity and size too.
         let MeasuredWrite {
             output: blob,
@@ -191,6 +194,7 @@ impl<'w> Scratch<'w> {
         blob.as_file().sync_all()?;
         // Working reads use the plain COW; completed transport need not stay cached.
         let _ = rustix::fs::fadvise(blob.as_file(), 0, None, rustix::fs::Advice::DontNeed);
+        crate::output::report_memory_phase("scute-finished");
         let descriptor = ScuteDescriptor {
             digest: format!("sha256:{}", hex::encode(digest.finalize())),
             size,

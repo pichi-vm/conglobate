@@ -4,6 +4,18 @@
 mod assembly;
 pub(crate) use assembly::AssembledImage;
 
+// Temporary qualification instrumentation; never part of a production PR.
+pub(crate) fn report_memory_phase(phase: &str) {
+    for name in ["memory.current", "memory.peak", "memory.stat"] {
+        if let Ok(value) = std::fs::read_to_string(format!("/sys/fs/cgroup/{name}")) {
+            eprintln!(
+                "PICHI_MEMORY_PHASE {phase} {name} {}",
+                value.replace('\n', ";")
+            );
+        }
+    }
+}
+
 use crate::artifact::{Digest, PmiDescriptor};
 use crate::cache::{Cache, CacheError};
 use sha2::{Digest as _, Sha256};
@@ -226,6 +238,7 @@ impl StagedDirectory {
         digest: &Digest,
         size: u64,
     ) -> Result<PmiDescriptor, CacheError> {
+        report_memory_phase("pmi-start");
         let directory = self.blob_directory()?;
         let path = format!("/proc/self/fd/{}", directory.as_raw_fd());
         let pending = tempfile::Builder::new()
@@ -257,6 +270,7 @@ impl StagedDirectory {
         pending.as_file().sync_all()?;
         // This completed transport is only needed for publication and verification.
         let _ = rustix::fs::fadvise(pending.as_file(), 0, None, rustix::fs::Advice::DontNeed);
+        report_memory_phase("pmi-finished");
         pending
             .persist(Path::new(&path).join(digest.hex()))
             .map_err(|error| error.error)?;
