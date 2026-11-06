@@ -55,6 +55,31 @@ supports literal definitions and overlays. An existing `corium.root` binds
 configuration to the selected root. See [image assembly](DESIGN.md#52-image-assembly)
 and [boot configuration](DESIGN.md#8-boot-configuration).
 
+An optional `requirements` section replaces the output's launch contract:
+
+```yaml
+requirements:
+  slot: pci
+  cpus: {required: 2, recommended: max}
+  memory: {required: 2048, recommended: max}
+  storage: {required: 10240, recommended: max, slot: pci}
+  interfaces:
+    public:
+      description: Application traffic
+      slot: mmio
+      ingress:
+        required: [443]
+        recommended: [80, [8000, 8100], all]
+```
+
+Memory and storage are in MiB. Storage describes the single mutable overlay
+above the read-only image. `max` requests the largest allocation the operator
+permits; `all` is a wildcard entry within a port list. Resource slot preferences
+override the global preference, otherwise placement is automatic. These fields
+are recorded in the output's version-1 config blob; allocation, provisioning,
+network exposure and soft device placement require consumer support in Pichi
+and Dillo. See [launch requirements](DESIGN.md#52-image-assembly) for semantics.
+
 The 28 October 2026 decision in
 [DESIGN §11](DESIGN.md#11-artifact-and-build-annotations) drops `inventory.cbor`
 entirely. The image manifest carries `dev.pichi.build.commit` (`sha1:<hex>` or
