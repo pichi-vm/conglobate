@@ -246,8 +246,7 @@ impl AssembledImage {
                 Self::set_tip_annotation(&mut manifest, Some(parent));
             }
             if let Some(pmi) = &selection.pmi {
-                pmi.store(cache, &staged)?;
-                layers.push(serde_json::to_value(pmi.layer())?);
+                layers.push(serde_json::to_value(pmi.store(cache, &staged)?)?);
             }
             if let Some(config) = &selection.bootconfig
                 && !config.bytes.is_empty()
