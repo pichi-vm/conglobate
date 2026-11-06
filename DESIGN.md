@@ -668,6 +668,14 @@ version-1 artifact config. `requirements: {}` clears inherited requirements;
 omitting the field preserves the metadata inheritance above. Requirements apply
 to the final output, not the builder or intermediate stages.
 
+The optional `requirements.slot` is a default transport preference for all
+attached devices: `pci` or `mmio`. Each interface can override it with its own
+`slot`. Resource preference takes precedence over the global preference; when
+both are absent placement is automatic. These are preferences, not numeric slot
+assignments or permission to add hardware to the PMI platform. The schema records
+them; consuming them in Pichi and supporting soft preferences in Dillo are
+separate runtime work.
+
 ### 5.3 Closure
 
 Validate every stage's shape and references, including unused cycles. Traverse

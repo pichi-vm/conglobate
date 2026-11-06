@@ -13,8 +13,8 @@
 //!
 //! The `Requirements` model (and its `Band`/`PortSpec`/`Interface`/`Ingress`
 //! types) lives here — this module owns the artifact's config schema. It is
-//! JSON on the wire; the human-authored `config.yaml` is a build-time input the
-//! build filters into this (that filtering is build-side).
+//! JSON on the wire; the human-authored `pichi.yaml` supplies the requirements
+//! that the builder writes into this config.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -101,6 +101,11 @@ impl Config {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Requirements {
+    /// Default preferred transport for attached devices. A resource's own
+    /// preference takes precedence; omission leaves placement automatic.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slot: Option<Slot>,
+
     /// vCPU band. The floor is 1 (a VM always has at least one vCPU), so a
     /// value of `1` carries no information and is canonicalised away; omit the
     /// band entirely to leave sizing to the operator / dillo default.
@@ -119,6 +124,27 @@ pub struct Requirements {
     pub interfaces: BTreeMap<String, Interface>,
 }
 
+/// Preferred virtio transport, subject to the PMI platform's available slots.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Slot {
+    /// Prefer PCI.
+    Pci,
+
+    /// Prefer virtio-MMIO.
+    Mmio,
+}
+
+impl<'de> Deserialize<'de> for Slot {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        match String::deserialize(d)?.as_str() {
+            "pci" => Ok(Self::Pci),
+            "mmio" => Ok(Self::Mmio),
+            _ => Err(serde::de::Error::custom("expected \"pci\" or \"mmio\"")),
+        }
+    }
+}
+
 /// One declared network interface (BUILD.md §7).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -131,9 +157,9 @@ pub struct Interface {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ingress: Option<Ingress>,
 
-    /// Placement hint (`pci`/`mmio`); omit to let dillo choose.
+    /// Preferred transport; omission inherits the global preference.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub slot: Option<String>,
+    pub slot: Option<Slot>,
 }
 
 /// Inbound port bands for an [`Interface`] (BUILD.md §7).
@@ -429,7 +455,7 @@ mod tests {
                     required: Memory::from_mib(2048),
                     recommended: Memory::from_mib(4096),
                 }),
-                interfaces: BTreeMap::new(),
+                ..Default::default()
             },
         };
         let b = serde_json::to_vec(&c).unwrap();
@@ -532,5 +558,35 @@ mod tests {
         assert_eq!(j, r#"{"required":[443,[8000,8999]],"recommended":["*"]}"#);
         let back: Ingress = serde_json::from_str(&j).unwrap();
         assert_eq!(back, ing);
+    }
+
+    #[test]
+    fn slot_preferences_are_typed_and_optional() {
+        for slot in ["pci", "mmio"] {
+            let value = serde_json::json!({
+                "slot": slot,
+                "interfaces": {"public": {"slot": slot}}
+            });
+            let requirements: Requirements = serde_json::from_value(value.clone()).unwrap();
+            assert_eq!(requirements.slot, requirements.interfaces["public"].slot);
+            assert_eq!(serde_json::to_value(requirements).unwrap(), value);
+        }
+        for slot in [
+            serde_json::json!("pcie"),
+            serde_json::json!(0),
+            serde_json::json!({"pci": null}),
+            serde_json::json!(["pci"]),
+            serde_json::json!(true),
+        ] {
+            for value in [
+                serde_json::json!({"slot": slot}),
+                serde_json::json!({"interfaces": {"public": {"slot": slot}}}),
+            ] {
+                assert!(serde_json::from_value::<Requirements>(value).is_err());
+            }
+        }
+        let requirements: Requirements = serde_json::from_str("{}").unwrap();
+        assert_eq!(requirements.slot, None);
+        assert_eq!(serde_json::to_string(&requirements).unwrap(), "{}");
     }
 }
