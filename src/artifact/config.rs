@@ -18,7 +18,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt;
-use std::num::NonZeroU32;
+use std::num::{NonZeroU32, NonZeroU64};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -95,9 +95,8 @@ impl Config {
 }
 
 /// The host-facing launch contract (BUILD.md §7): what the host MUST provide to
-/// launch a pichi artifact. Models the fields pichi acts on — `cpus`/`memory`
-/// (VM sizing) and `interfaces` (network); `carapaces`/`volumes` (enforced
-/// in-guest) are defined with the build effort, not here.
+/// launch a pichi artifact: resource sizing, networking and preferred device
+/// transports. Storage describes one mutable overlay above the read-only image.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Requirements {
@@ -117,6 +116,10 @@ pub struct Requirements {
     /// than caught by a check.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub memory: Option<Band<Memory>>,
+
+    /// Capacity and transport preference for the single mutable storage overlay.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub storage: Option<Storage>,
 
     /// Network interfaces the host must wire (BUILD.md §7). One user-mode
     /// virtio-net device per entry; the map key is the operator-facing label.
@@ -142,6 +145,40 @@ impl<'de> Deserialize<'de> for Slot {
             "mmio" => Ok(Self::Mmio),
             _ => Err(serde::de::Error::custom("expected \"pci\" or \"mmio\"")),
         }
+    }
+}
+
+/// The single mutable overlay's capacity in MiB and preferred transport.
+/// Backing paths, retention and provisioning are operator configuration.
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
+pub struct Storage {
+    /// Positive MiB capacities; unlike memory, storage has no 2-MiB constraint.
+    #[serde(flatten)]
+    pub capacity: Band<NonZeroU64>,
+
+    /// Preferred transport; omission inherits the global preference.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slot: Option<Slot>,
+}
+
+impl<'de> Deserialize<'de> for Storage {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        // Decode a closed shape before constructing the checked band. Flattening
+        // deserialization would mix the band's unknown-field policy with slot.
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Wire {
+            required: Option<NonZeroU64>,
+            recommended: Option<NonZeroU64>,
+            slot: Option<Slot>,
+        }
+        let wire = Wire::deserialize(d)?;
+        let capacity = Band::new(wire.required, wire.recommended)
+            .ok_or_else(|| serde::de::Error::custom("recommended is below required"))?;
+        Ok(Self {
+            capacity,
+            slot: wire.slot,
+        })
     }
 }
 
@@ -588,5 +625,34 @@ mod tests {
         let requirements: Requirements = serde_json::from_str("{}").unwrap();
         assert_eq!(requirements.slot, None);
         assert_eq!(serde_json::to_string(&requirements).unwrap(), "{}");
+    }
+
+    #[test]
+    fn storage_describes_one_overlay_in_positive_mib() {
+        for storage in [
+            serde_json::json!({}),
+            serde_json::json!({"slot": "mmio"}),
+            serde_json::json!({"required": 1, "recommended": 3, "slot": "pci"}),
+            serde_json::json!({"recommended": u64::MAX}),
+        ] {
+            let value = serde_json::json!({"storage": storage});
+            let requirements: Requirements = serde_json::from_value(value.clone()).unwrap();
+            assert_eq!(serde_json::to_value(requirements).unwrap(), value);
+        }
+        for storage in [
+            serde_json::json!({"required": 0}),
+            serde_json::json!({"recommended": 0}),
+            serde_json::json!({"required": -1}),
+            serde_json::json!({"required": 1.5}),
+            serde_json::json!({"required": 4, "recommended": 2}),
+            serde_json::json!({"slot": "pcie"}),
+            serde_json::json!({"data": {"required": 1024}}),
+            serde_json::json!({"path": "/tmp/overlay"}),
+        ] {
+            assert!(
+                serde_json::from_value::<Requirements>(serde_json::json!({"storage": storage}))
+                    .is_err()
+            );
+        }
     }
 }
