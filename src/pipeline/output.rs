@@ -642,6 +642,10 @@ mod tests {
                     r#"{"version":1,"requirements":{"cpus":{"recommended":"max"},"memory":{"required":2048,"recommended":"max"},"storage":{"required":10240,"recommended":"max"}}}"#.into(),
                 ),
                 (
+                    "requirements: {slot: pci, cpus: {required: 2, recommended: max}, memory: {required: 2048, recommended: max}, storage: {required: 10240, recommended: max, slot: mmio}, interfaces: {public: {description: Application traffic, slot: mmio, ingress: {required: [443], recommended: [80, [8000, 8100], all]}}}}",
+                    r#"{"version":1,"requirements":{"slot":"pci","cpus":{"required":2,"recommended":"max"},"memory":{"required":2048,"recommended":"max"},"storage":{"required":10240,"recommended":"max","slot":"mmio"},"interfaces":{"public":{"description":"Application traffic","ingress":{"required":[443],"recommended":[80,[8000,8100],"all"]},"slot":"mmio"}}}}"#.into(),
+                ),
+                (
                     "requirements: {cpus: {required: 1}, memory: {required: 1024, recommended: 2048}}",
                     r#"{"version":1,"requirements":{"memory":{"required":1024,"recommended":2048}}}"#.into(),
                 ),

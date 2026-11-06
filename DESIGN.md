@@ -695,6 +695,13 @@ all host resources. A finite manual allocation meeting the required floor does
 not warn merely because the recommendation is `max`. Budget resolution belongs
 to the consumer, not the builder or this schema.
 
+Interface ingress keeps separate `required` and `recommended` port lists. Each
+entry is an integer port, an inclusive `[low, high]` range, or the unquoted YAML
+word `all` for all ports. For example, `[443, [8000, 8100], all]` preserves all
+three entries; `all` does not replace the surrounding list. The old `"*"` spelling
+is rejected. These schema changes retain config version 1 with no compatibility
+aliases or version migration while the contract is unstable.
+
 ### 5.3 Closure
 
 Validate every stage's shape and references, including unused cycles. Traverse

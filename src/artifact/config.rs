@@ -213,14 +213,16 @@ pub struct Ingress {
 }
 
 /// One ingress port-list entry: a single port, an inclusive `[low, high]`
-/// range, or `*` (all ports).
+/// range, or `all` (all ports).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PortSpec {
     /// A single port.
     Port(u16),
+
     /// An inclusive `[low, high]` range.
     Range(u16, u16),
-    /// All ports (`*`).
+
+    /// All ports (`all`).
     All,
 }
 
@@ -235,7 +237,7 @@ impl Serialize for PortSpec {
                 seq.serialize_element(hi)?;
                 seq.end()
             }
-            PortSpec::All => s.serialize_str("*"),
+            PortSpec::All => s.serialize_str("all"),
         }
     }
 }
@@ -246,7 +248,7 @@ impl<'de> Deserialize<'de> for PortSpec {
         impl<'de> serde::de::Visitor<'de> for V {
             type Value = PortSpec;
             fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.write_str("a port (integer), an inclusive [low, high] range, or \"*\"")
+                f.write_str("a port (integer), an inclusive [low, high] range, or \"all\"")
             }
             fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<PortSpec, E> {
                 u16::try_from(v)
@@ -254,11 +256,11 @@ impl<'de> Deserialize<'de> for PortSpec {
                     .map_err(|_| E::custom(format!("port {v} out of range")))
             }
             fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<PortSpec, E> {
-                if v == "*" {
+                if v == "all" {
                     Ok(PortSpec::All)
                 } else {
                     Err(E::custom(format!(
-                        "expected a port, range, or \"*\", got {v:?}"
+                        "expected a port, range, or \"all\", got {v:?}"
                     )))
                 }
             }
@@ -649,12 +651,33 @@ mod tests {
     fn port_spec_forms() {
         let ing = Ingress {
             required: vec![PortSpec::Port(443), PortSpec::Range(8000, 8999)],
-            recommended: vec![PortSpec::All],
+            recommended: vec![PortSpec::Port(80), PortSpec::All],
         };
         let j = serde_json::to_string(&ing).unwrap();
-        assert_eq!(j, r#"{"required":[443,[8000,8999]],"recommended":["*"]}"#);
+        assert_eq!(
+            j,
+            r#"{"required":[443,[8000,8999]],"recommended":[80,"all"]}"#
+        );
         let back: Ingress = serde_json::from_str(&j).unwrap();
         assert_eq!(back, ing);
+    }
+
+    #[test]
+    fn port_wildcard_stays_an_entry_in_either_list() {
+        for tier in ["required", "recommended"] {
+            let value = serde_json::json!({tier: [443, "all", [8000, 8100]]});
+            let ingress: Ingress = serde_json::from_value(value.clone()).unwrap();
+            assert_eq!(serde_json::to_value(ingress).unwrap(), value);
+            for invalid in [
+                serde_json::json!("all"),
+                serde_json::json!(["*"]),
+                serde_json::json!(["max"]),
+            ] {
+                assert!(
+                    serde_json::from_value::<Ingress>(serde_json::json!({tier: invalid})).is_err()
+                );
+            }
+        }
     }
 
     #[test]
