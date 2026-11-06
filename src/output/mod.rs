@@ -7,11 +7,15 @@ pub(crate) use assembly::AssembledImage;
 // Temporary qualification instrumentation; never part of a production PR.
 pub(crate) fn report_memory_phase(phase: &str) {
     for name in ["memory.current", "memory.peak", "memory.stat"] {
-        if let Ok(value) = std::fs::read_to_string(format!("/sys/fs/cgroup/{name}")) {
-            eprintln!(
+        // unshare changes new cgroup mounts, not this inherited mount's root.
+        match std::fs::read_to_string(format!(
+            "/sys/fs/cgroup/system.slice/conglobate-build.service/{name}"
+        )) {
+            Ok(value) => eprintln!(
                 "PICHI_MEMORY_PHASE {phase} {name} {}",
                 value.replace('\n', ";")
-            );
+            ),
+            Err(error) => eprintln!("PICHI_MEMORY_PHASE_ERROR {phase} {name} {error}"),
         }
     }
 }
