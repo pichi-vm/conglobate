@@ -10,9 +10,10 @@ use std::{
 
 /// Final-order bytes of a validated, detached 4-KiB persistent snapshot.
 /// Planning repacks exception metadata in place, always behind the scan, and
-/// leaves source data chunks untouched. No separate index or compacted COW is
-/// needed before verity consumes the stream. The origin is the same immutable
-/// chain used by the writer.
+/// retains source data until the final stream reads it, then releases it.
+/// The detached source is consumed destructively. No separate index or compacted
+/// COW is needed before verity consumes the stream. The origin is the same
+/// immutable chain used by the writer.
 #[derive(Debug)]
 pub(super) struct CompactSnapshot<'a> {
     source: &'a File,
@@ -94,6 +95,13 @@ impl<'a> CompactSnapshot<'a> {
             let slot = ((self.next - 2) % 257) as usize;
             self.source
                 .read_exact_at(&mut self.buffer, self.source_chunks[slot] * 4096)?;
+            // No later stream read needs this detached source chunk.
+            rustix::fs::fallocate(
+                self.source,
+                rustix::fs::FallocateFlags::PUNCH_HOLE | rustix::fs::FallocateFlags::KEEP_SIZE,
+                self.source_chunks[slot] * 4096,
+                4096,
+            )?;
         }
         self.next += 1;
         self.position = 0;
@@ -194,7 +202,6 @@ mod tests {
         })
         .unwrap();
         assert_eq!(entries(&target), [(2, 0), (3, 7)]);
-        assert_eq!(entries(&source), [(2, 0), (3, 7)]);
         assert_eq!(size, 4 * 4096);
     }
 
@@ -223,7 +230,6 @@ mod tests {
     #[test]
     fn stream_matches_final_order_at_arbitrary_read_boundaries() {
         let values: Vec<_> = (0..1030).map(|i| (i, (i % 3) as u8)).collect();
-        let mut input = source(&values);
         let expected = source(
             &values
                 .iter()
@@ -232,6 +238,7 @@ mod tests {
                 .collect::<Vec<_>>(),
         );
         for width in [1, 3, 4095, 4096, 8193] {
+            let mut input = source(&values);
             let mut stream = CompactSnapshot::new(&mut input, |_, bytes| {
                 bytes.fill(0);
                 Ok(())
@@ -251,6 +258,55 @@ mod tests {
             expected.read_exact_at(&mut reference, 0).unwrap();
             assert_eq!(actual, reference);
         }
+    }
+
+    #[test]
+    fn stream_releases_consumed_source_chunks() {
+        use std::os::unix::fs::MetadataExt;
+        let values: Vec<_> = (0..513).map(|i| (i, 7)).collect();
+        let mut input = source(&values);
+        input.sync_all().unwrap();
+        let before = input.metadata().unwrap().blocks();
+        let mut stream = CompactSnapshot::new(&mut input, |_, bytes| {
+            bytes.fill(0);
+            Ok(())
+        })
+        .unwrap();
+        let mut bytes = [0; 8192];
+        stream.read_exact(&mut bytes).unwrap();
+        // Reading the header and metadata must retain the payload.
+        assert_eq!(stream.source.metadata().unwrap().blocks(), before);
+        stream.read_exact(&mut bytes[..4096]).unwrap();
+        assert_eq!(bytes[..4096], [7; 4096]);
+        let mut discarded = [1; 4096];
+        stream
+            .source
+            .read_exact_at(&mut discarded, 2 * 4096)
+            .unwrap();
+        assert_eq!(discarded, [0; 4096]);
+        assert!(stream.source.metadata().unwrap().blocks() < before);
+        io::copy(&mut stream, &mut io::sink()).unwrap();
+        assert!(stream.source.metadata().unwrap().blocks() <= before - 513 * 8);
+    }
+
+    #[test]
+    fn source_release_failure_aborts_stream() {
+        use std::os::fd::AsRawFd;
+        let mut input = source(&[(0, 7)]);
+        let read_only = File::open(format!("/proc/self/fd/{}", input.as_raw_fd())).unwrap();
+        let mut stream = CompactSnapshot::new(&mut input, |_, bytes| {
+            bytes.fill(0);
+            Ok(())
+        })
+        .unwrap();
+        // Preserve reads while forcing deallocation to fail on a read-only fd.
+        stream.source = &read_only;
+        assert_eq!(
+            io::copy(&mut stream, &mut io::sink())
+                .unwrap_err()
+                .raw_os_error(),
+            Some(rustix::io::Errno::BADF.raw_os_error())
+        );
     }
 
     #[test]
