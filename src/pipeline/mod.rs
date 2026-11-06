@@ -76,7 +76,8 @@ impl Pipeline {
         let plan = build.captured().graph().plan();
         let mut outputs = BTreeMap::new();
         let mut reaper = crate::process::ChildReaper::install()?;
-        for name in &plan.order {
+        for (index, name) in plan.order.iter().enumerate() {
+            eprintln!("Building stage {}/{}: {name}", index + 1, plan.order.len());
             let stage = &plan.stages[name];
             let mut input = StageOutput::resolve(&stage.from, build, &outputs)?;
             let source = input
