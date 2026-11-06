@@ -685,6 +685,16 @@ paths, provisioning and overlay retention are operator configuration. This
 contract neither resizes immutable image layers nor declares named volumes.
 Host provisioning and guest overlay activation are separate runtime work.
 
+CPU, memory and storage sizing accept `recommended: max` to request the largest
+allocation permitted by the operator and platform. `required` stays numeric;
+numeric recommendations keep the same validation and ordering. Recommendations
+provide the run defaults from the image config. A manual allocation below the
+required floor must fail; below a numeric recommendation it must warn. `max`
+must resolve to a finite allocation before launch and does not authorize using
+all host resources. A finite manual allocation meeting the required floor does
+not warn merely because the recommendation is `max`. Budget resolution belongs
+to the consumer, not the builder or this schema.
+
 ### 5.3 Closure
 
 Validate every stage's shape and references, including unused cycles. Traverse

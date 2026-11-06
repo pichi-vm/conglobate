@@ -169,7 +169,7 @@ impl<'de> Deserialize<'de> for Storage {
         #[serde(deny_unknown_fields)]
         struct Wire {
             required: Option<NonZeroU64>,
-            recommended: Option<NonZeroU64>,
+            recommended: Option<Recommendation<NonZeroU64>>,
             slot: Option<Slot>,
         }
         let wire = Wire::deserialize(d)?;
@@ -283,9 +283,56 @@ impl<'de> Deserialize<'de> for PortSpec {
     }
 }
 
-/// A two-tier requirement (BUILD.md §7): `required` MUST be met or launch
-/// errors; `recommended` SHOULD be met or the instance starts with a warning.
-/// Neither is a ceiling; both are individually optional.
+/// A recommendation is either a concrete value or the largest allocation the
+/// operator permits. `Max` must resolve to a concrete value before launch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Recommendation<T> {
+    /// Prefer this value, which is also the default allocation.
+    Value(T),
+
+    /// Prefer the largest allocation permitted by operator and platform limits.
+    Max,
+}
+
+impl<T> Recommendation<T> {
+    /// Convert the numeric value without losing a `max` recommendation.
+    #[must_use]
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Recommendation<U> {
+        match self {
+            Self::Value(value) => Recommendation::Value(f(value)),
+            Self::Max => Recommendation::Max,
+        }
+    }
+}
+
+impl<T: Serialize> Serialize for Recommendation<T> {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Value(value) => value.serialize(s),
+            Self::Max => s.serialize_str("max"),
+        }
+    }
+}
+
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for Recommendation<T> {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Wire<T> {
+            Value(T),
+            Keyword(String),
+        }
+        match Wire::deserialize(d)? {
+            Wire::Value(value) => Ok(Self::Value(value)),
+            Wire::Keyword(value) if value == "max" => Ok(Self::Max),
+            Wire::Keyword(_) => Err(serde::de::Error::custom("expected a number or \"max\"")),
+        }
+    }
+}
+
+/// A two-tier sizing requirement. The recommendation supplies the default;
+/// a manual value below `required` errors, or below a numeric `recommended`
+/// warns. Neither is a ceiling; both are individually optional.
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, bound(serialize = "T: Serialize"))]
 pub struct Band<T> {
@@ -294,7 +341,7 @@ pub struct Band<T> {
     #[serde(skip_serializing_if = "Option::is_none")]
     required: Option<T>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    recommended: Option<T>,
+    recommended: Option<Recommendation<T>>,
 }
 
 // Manual `Default` (the derive would wrongly require `T: Default`; an empty band
@@ -314,8 +361,8 @@ impl<T: PartialOrd> Band<T> {
     /// newtype). This is the one place it's checked; [`Deserialize`] routes
     /// through it, so any band you hold — from code or the wire — is ordered.
     #[must_use]
-    pub fn new(required: Option<T>, recommended: Option<T>) -> Option<Self> {
-        if let (Some(req), Some(rec)) = (&required, &recommended)
+    pub fn new(required: Option<T>, recommended: Option<Recommendation<T>>) -> Option<Self> {
+        if let (Some(req), Some(Recommendation::Value(rec))) = (&required, &recommended)
             && rec < req
         {
             return None;
@@ -336,7 +383,7 @@ impl<T: Copy> Band<T> {
 
     /// The `recommended` tier, if set.
     #[must_use]
-    pub fn recommended(self) -> Option<T> {
+    pub fn recommended(self) -> Option<Recommendation<T>> {
         self.recommended
     }
 }
@@ -356,7 +403,7 @@ struct BandWire<T> {
     #[serde(default)]
     required: Option<T>,
     #[serde(default)]
-    recommended: Option<T>,
+    recommended: Option<Recommendation<T>>,
 }
 
 impl<'de, T> Deserialize<'de> for Band<T>
@@ -430,7 +477,7 @@ impl Requirements {
             if b.required == Some(floor) {
                 b.required = None;
             }
-            if b.recommended == Some(floor) {
+            if b.recommended == Some(Recommendation::Value(floor)) {
                 b.recommended = None;
             }
             if b.is_empty() {
@@ -447,8 +494,10 @@ impl Requirements {
 
     /// Recommended vCPU count, if declared.
     #[must_use]
-    pub fn cpus_recommended(&self) -> Option<u32> {
-        self.cpus.and_then(|b| b.recommended).map(NonZeroU32::get)
+    pub fn cpus_recommended(&self) -> Option<Recommendation<u32>> {
+        self.cpus
+            .and_then(|b| b.recommended)
+            .map(|r| r.map(NonZeroU32::get))
     }
 
     /// Required memory floor in MiB, if declared.
@@ -459,8 +508,10 @@ impl Requirements {
 
     /// Recommended memory in MiB, if declared.
     #[must_use]
-    pub fn memory_recommended_mib(&self) -> Option<u32> {
-        self.memory.and_then(|b| b.recommended).map(Memory::mib)
+    pub fn memory_recommended_mib(&self) -> Option<Recommendation<u32>> {
+        self.memory
+            .and_then(|b| b.recommended)
+            .map(|r| r.map(Memory::mib))
     }
 }
 
@@ -486,11 +537,11 @@ mod tests {
             requirements: Requirements {
                 cpus: Some(Band {
                     required: Some(nz(2)),
-                    recommended: Some(nz(4)),
+                    recommended: Some(Recommendation::Value(nz(4))),
                 }),
                 memory: Some(Band {
                     required: Memory::from_mib(2048),
-                    recommended: Memory::from_mib(4096),
+                    recommended: Memory::from_mib(4096).map(Recommendation::Value),
                 }),
                 ..Default::default()
             },
@@ -499,9 +550,15 @@ mod tests {
         let c2 = serde_json::from_slice::<Config>(&b).unwrap();
         assert_eq!(c, c2);
         assert_eq!(c2.requirements.cpus_required(), Some(2));
-        assert_eq!(c2.requirements.cpus_recommended(), Some(4));
+        assert_eq!(
+            c2.requirements.cpus_recommended(),
+            Some(Recommendation::Value(4))
+        );
         assert_eq!(c2.requirements.memory_required_mib(), Some(2048));
-        assert_eq!(c2.requirements.memory_recommended_mib(), Some(4096));
+        assert_eq!(
+            c2.requirements.memory_recommended_mib(),
+            Some(Recommendation::Value(4096))
+        );
     }
 
     #[test]
@@ -528,7 +585,7 @@ mod tests {
             requirements: Requirements {
                 cpus: Some(Band {
                     required: Some(nz(1)),
-                    recommended: Some(nz(4)),
+                    recommended: Some(Recommendation::Value(nz(4))),
                 }),
                 ..Default::default()
             },
@@ -536,14 +593,17 @@ mod tests {
         };
         let back = serde_json::from_slice::<Config>(&serde_json::to_vec(&c2).unwrap()).unwrap();
         assert_eq!(back.requirements.cpus_required(), None); // floor dropped
-        assert_eq!(back.requirements.cpus_recommended(), Some(4));
+        assert_eq!(
+            back.requirements.cpus_recommended(),
+            Some(Recommendation::Value(4))
+        );
     }
 
     #[test]
     fn rejects_recommended_below_required() {
         // The constructor rejects it — the relational invariant lives on the type...
-        assert!(Band::new(Some(nz(4)), Some(nz(2))).is_none());
-        assert!(Band::new(Some(nz(2)), Some(nz(4))).is_some());
+        assert!(Band::new(Some(nz(4)), Some(Recommendation::Value(nz(2)))).is_none());
+        assert!(Band::new(Some(nz(2)), Some(Recommendation::Value(nz(4)))).is_some());
         // ...and Deserialize routes through `new`, so the wire is rejected too.
         let err = serde_json::from_slice::<Config>(
             br#"{"version":1,"requirements":{"cpus":{"required":4,"recommended":2}}}"#,
@@ -652,6 +712,85 @@ mod tests {
             assert!(
                 serde_json::from_value::<Requirements>(serde_json::json!({"storage": storage}))
                     .is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn max_recommendations_round_trip_without_becoming_omitted() {
+        let value = serde_json::json!({"version": 1, "requirements": {
+            "cpus": {"required": 2, "recommended": "max"},
+            "memory": {"required": 2048, "recommended": "max"},
+            "storage": {"required": 10240, "recommended": "max", "slot": "pci"}
+        }});
+        let config: Config = serde_json::from_value(value.clone()).unwrap();
+        config.validate().unwrap();
+        assert_eq!(
+            config.requirements.cpus_recommended(),
+            Some(Recommendation::Max)
+        );
+        assert_eq!(
+            config.requirements.memory_recommended_mib(),
+            Some(Recommendation::Max)
+        );
+        assert_eq!(
+            config
+                .requirements
+                .storage
+                .as_ref()
+                .unwrap()
+                .capacity
+                .recommended(),
+            Some(Recommendation::Max)
+        );
+        assert_eq!(serde_json::to_value(config).unwrap(), value);
+
+        let config: Config = serde_json::from_str(
+            r#"{"version":1,"requirements":{"cpus":{"required":1,"recommended":"max"}}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            serde_json::to_string(&config).unwrap(),
+            r#"{"version":1,"requirements":{"cpus":{"recommended":"max"}}}"#
+        );
+    }
+
+    #[test]
+    fn sizing_keeps_numeric_constraints_and_max_is_only_recommended() {
+        for resource in ["cpus", "memory", "storage"] {
+            for band in [
+                serde_json::json!({"required": "max"}),
+                serde_json::json!({"recommended": "all"}),
+                serde_json::json!({"recommended": "*"}),
+                serde_json::json!({"recommended": 0}),
+                serde_json::json!({"recommended": -1}),
+                serde_json::json!({"recommended": 1.5}),
+                serde_json::json!({"required": 4, "recommended": 2}),
+                serde_json::json!({"recommended": {"max": true}}),
+                serde_json::json!({"recommended": {"max": null}}),
+                serde_json::json!({"recommended": ["max"]}),
+            ] {
+                assert!(
+                    serde_json::from_value::<Requirements>(serde_json::json!({resource: band}))
+                        .is_err(),
+                    "{resource}: {band}"
+                );
+            }
+        }
+        assert!(
+            serde_json::from_value::<Requirements>(
+                serde_json::json!({"memory": {"recommended": 3}})
+            )
+            .is_err()
+        );
+        for recommended in [
+            None,
+            Some(Recommendation::Value(nz(4))),
+            Some(Recommendation::Max),
+        ] {
+            assert_eq!(
+                Band::new(Some(nz(2)), recommended).unwrap().recommended(),
+                recommended
             );
         }
     }

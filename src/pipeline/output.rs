@@ -638,6 +638,10 @@ mod tests {
                     r#"{"version":1,"requirements":{"storage":{"required":10240,"recommended":102400,"slot":"mmio"}}}"#.into(),
                 ),
                 (
+                    "requirements: {cpus: {required: 1, recommended: max}, memory: {required: 2048, recommended: max}, storage: {required: 10240, recommended: max}}",
+                    r#"{"version":1,"requirements":{"cpus":{"recommended":"max"},"memory":{"required":2048,"recommended":"max"},"storage":{"required":10240,"recommended":"max"}}}"#.into(),
+                ),
+                (
                     "requirements: {cpus: {required: 1}, memory: {required: 1024, recommended: 2048}}",
                     r#"{"version":1,"requirements":{"memory":{"required":1024,"recommended":2048}}}"#.into(),
                 ),
