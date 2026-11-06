@@ -123,7 +123,7 @@ impl<'w> Scratch<'w> {
         directory: File,
     ) -> io::Result<SealedScute> {
         let origin = origin.into().open_read_only()?;
-        self.seal_with_reader(directory, parent, |offset, bytes| {
+        self.seal_with_reader(directory, parent, move |offset, bytes| {
             origin.read_exact_at(bytes, offset)
         })
     }
