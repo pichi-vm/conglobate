@@ -169,8 +169,8 @@ impl StagedDirectory {
         pending.keep().map_err(|error| error.error)?;
         Ok(())
     }
-    /// Install the already-written stream at its retained digest name without
-    /// copying or rehashing its externally backed COW bytes.
+    /// Install the completed encoded stream at its retained digest name.
+    /// The prepared COW remains temporary and is read only through verity.
     pub(crate) fn install_scute(
         &self,
         scute: &crate::storage::SealedScute,
@@ -184,7 +184,7 @@ impl StagedDirectory {
         use std::os::fd::AsRawFd as _;
         let destination =
             PathBuf::from(format!("/proc/self/fd/{}", directory.as_raw_fd())).join(digest.hex());
-        scute.install_data(&destination)?;
+        scute.install_blob(&destination)?;
         Ok(())
     }
     pub(crate) fn store_verified(

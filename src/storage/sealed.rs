@@ -20,27 +20,27 @@ use std::{
 ///
 #[derive(Debug)]
 pub(crate) struct SealedScute {
-    data: File,
-    data_name: std::sync::Mutex<Option<tempfile::TempPath>>,
+    data: tempfile::NamedTempFile,
     hash: tempfile::NamedTempFile,
+    blob_name: std::sync::Mutex<Option<tempfile::TempPath>>,
     descriptor: ScuteDescriptor,
     root: [u8; 32],
     parent: [u8; 32],
-    // Temp paths use this descriptor; drop it after both temporary files.
+    // Temp paths use this descriptor; drop it after all temporary paths.
     _directory: File,
 }
 impl SealedScute {
     pub(crate) fn files(&self) -> (&File, &File) {
-        (&self.data, self.hash.as_file())
+        (self.data.as_file(), self.hash.as_file())
     }
-    pub(crate) fn install_data(&self, destination: &std::path::Path) -> io::Result<()> {
+    pub(crate) fn install_blob(&self, destination: &std::path::Path) -> io::Result<()> {
         let mut name = self
-            .data_name
+            .blob_name
             .lock()
             .map_err(|_| io::Error::other("prepared scute ownership poisoned"))?;
         let pending = name
             .take()
-            .ok_or_else(|| io::Error::other("prepared scute data already installed"))?;
+            .ok_or_else(|| io::Error::other("encoded scute blob already installed"))?;
         match pending.persist(destination) {
             Ok(()) => Ok(()),
             Err(error) => {
@@ -61,9 +61,9 @@ impl SealedScute {
     #[cfg(test)]
     pub(crate) fn data_reader(&self) -> ScuteReader<'_> {
         ScuteReader {
-            file: &self.data,
+            file: self.data.as_file(),
             position: 0,
-            length: self.descriptor.size,
+            length: self.descriptor.annotations.data_blocks.get() * 4096,
         }
     }
 }
@@ -112,7 +112,7 @@ impl<'w> Scratch<'w> {
     /// Seal a detached persistent snapshot store. LoopAttachment::detach must
     /// have confirmed unbound state before returning this writable authority.
     /// Compare against the retained, read-only origin, then stream final-order
-    /// bytes into verity and the prepared COW together. In-place exception
+    /// bytes into verity, the prepared COW, and zstd together. In-place exception
     /// planning supplies final geometry without a compacted-file intermediate.
     /// Caller separately owns command/finalization success proofs.
     pub(crate) fn seal_snapshot<'a>(
@@ -146,11 +146,10 @@ impl<'w> Scratch<'w> {
         let mut hash = tempfile::Builder::new()
             .prefix(".scute-tree-")
             .tempfile_in(&path)?;
-        let mut input = MeasuredRead {
-            input: compacted,
-            data: &mut packed,
-            digest: Sha256::new(),
-        };
+        let blob = tempfile::Builder::new()
+            .prefix(".scute-blob-")
+            .tempfile_in(&path)?;
+        let mut encoder = zstd::stream::write::Encoder::new(MeasuredWrite::new(blob), 3)?;
         let data_blocks = NonZero::new(bytes / 4096).expect("nonempty snapshot extent");
         let block = BlockSize::from_bytes(NonZero::new(4096).expect("nonzero block size"))
             .expect("valid block size");
@@ -171,24 +170,36 @@ impl<'w> Scratch<'w> {
                 hash: block,
             },
         };
-        let root = header.format(&mut input, &mut hash)?;
+        let root = {
+            let mut input = MeasuredRead {
+                input: compacted,
+                data: &mut packed,
+                encoded: &mut encoder,
+            };
+            header.format(&mut input, &mut hash)?
+        };
         let root = root.as_ref().try_into().expect("SHA-256 root width");
-        let digest = format!("sha256:{}", hex::encode(input.digest.finalize()));
+        // The frame trailer contributes to encoded identity and size too.
+        let MeasuredWrite {
+            output: blob,
+            digest,
+            size,
+        } = encoder.finish()?;
         packed.as_file().sync_all()?;
         hash.as_file().sync_all()?;
+        blob.as_file().sync_all()?;
         let descriptor = ScuteDescriptor {
-            digest,
-            size: bytes,
+            digest: format!("sha256:{}", hex::encode(digest.finalize())),
+            size,
             annotations: ScuteAnnotations {
                 data_blocks,
                 salt: hex::encode(salt),
             },
         };
-        let (data, name) = packed.into_parts();
         Ok(SealedScute {
-            data,
-            data_name: std::sync::Mutex::new(Some(name)),
+            data: packed,
             hash,
+            blob_name: std::sync::Mutex::new(Some(blob.into_temp_path())),
             root,
             descriptor,
             parent,
@@ -197,17 +208,47 @@ impl<'w> Scratch<'w> {
     }
 }
 #[derive(Debug)]
-struct MeasuredRead<R, W> {
+struct MeasuredRead<R, W, E> {
     input: R,
     data: W,
-    digest: Sha256,
+    encoded: E,
 }
-impl<R: Read, W: Write> Read for MeasuredRead<R, W> {
+impl<R: Read, W: Write, E: Write> Read for MeasuredRead<R, W, E> {
     fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
         let read = self.input.read(buffer)?;
         self.data.write_all(&buffer[..read])?;
-        self.digest.update(&buffer[..read]);
+        self.encoded.write_all(&buffer[..read])?;
         Ok(read)
+    }
+}
+/// Identity of the exact bytes accepted by the compressed blob sink.
+#[derive(Debug)]
+struct MeasuredWrite<W> {
+    output: W,
+    digest: Sha256,
+    size: u64,
+}
+impl<W> MeasuredWrite<W> {
+    fn new(output: W) -> Self {
+        Self {
+            output,
+            digest: Sha256::new(),
+            size: 0,
+        }
+    }
+}
+impl<W: Write> Write for MeasuredWrite<W> {
+    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+        let written = self.output.write(buffer)?;
+        self.size = self
+            .size
+            .checked_add(written as u64)
+            .ok_or_else(|| io::Error::other("encoded scute size overflow"))?;
+        self.digest.update(&buffer[..written]);
+        Ok(written)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        self.output.flush()
     }
 }
 /// Application-specific used extent of our kernel-produced 4KiB snapshot store.
@@ -307,6 +348,20 @@ mod tests {
                 .map(|extent| extent.bytes)
         }
     }
+    fn encoded_blob(sealed: &SealedScute, plain: &[u8]) -> Vec<u8> {
+        let name = sealed.blob_name.lock().unwrap();
+        let blob = std::fs::read(name.as_ref().unwrap()).unwrap();
+        assert_eq!(sealed.descriptor().size, blob.len() as u64);
+        assert_eq!(
+            sealed.descriptor().digest,
+            format!("sha256:{}", hex::encode(Sha256::digest(&blob)))
+        );
+        let mut decoder = ruzstd::decoding::StreamingDecoder::new(blob.as_slice()).unwrap();
+        let mut decoded = Vec::new();
+        decoder.read_to_end(&mut decoded).unwrap();
+        assert_eq!(decoded, plain);
+        blob
+    }
     #[test]
     fn sealed_snapshot_preserves_bytes_digest_and_tree() {
         use std::io::Write;
@@ -337,10 +392,7 @@ mod tests {
             let mut data = Vec::new();
             sealed.data_reader().read_to_end(&mut data).unwrap();
             assert_eq!(data, bytes);
-            assert_eq!(
-                sealed.descriptor().digest,
-                format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))
-            );
+            encoded_blob(&sealed, &bytes);
             assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 2);
             let mut tree = vec![0; 8192];
             sealed.files().1.read_exact_at(&mut tree, 0).unwrap();
@@ -372,7 +424,7 @@ mod tests {
         assert_ne!(roots[0], roots[1]);
     }
     #[test]
-    fn sealing_hashes_only_packed_exceptions_and_propagates_origin_failure() {
+    fn sealing_encodes_only_packed_exceptions_and_propagates_origin_failure() {
         use std::io::Write;
         let directory = tempfile::tempdir().unwrap();
         let workspace = super::super::Workspace {
@@ -408,10 +460,7 @@ mod tests {
         let entry = Exception::decode(packed[4096..4112].try_into().unwrap());
         assert_eq!((entry.old_chunk, entry.new_chunk), (2, 2));
         assert!(packed[4112..].iter().all(|byte| *byte == 0));
-        assert_eq!(
-            sealed.descriptor().digest,
-            format!("sha256:{}", hex::encode(Sha256::digest(&packed)))
-        );
+        encoded_blob(&sealed, &packed);
         assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 3);
         let mut header = [0; 512];
         sealed.files().1.read_exact_at(&mut header, 0).unwrap();
@@ -426,7 +475,7 @@ mod tests {
         );
     }
     #[test]
-    fn installing_prepared_data_transfers_only_its_name() {
+    fn installing_encoded_blob_transfers_only_its_name() {
         let directory = tempfile::tempdir().unwrap();
         let workspace = super::super::Workspace {
             root: File::open(directory.path()).unwrap(),
@@ -443,19 +492,76 @@ mod tests {
                 |_, _| unreachable!(),
             )
             .unwrap();
+        let encoded = encoded_blob(&sealed, &Store::new(2).0);
         let destination = directory.path().join("installed");
         std::fs::create_dir(&destination).unwrap();
         // A failed rename retains ownership, so it can be retried safely.
-        assert!(sealed.install_data(&destination).is_err());
+        assert!(sealed.install_blob(&destination).is_err());
         std::fs::remove_dir(&destination).unwrap();
-        sealed.install_data(&destination).unwrap();
-        assert!(sealed.install_data(&destination).is_err());
+        sealed.install_blob(&destination).unwrap();
+        assert!(sealed.install_blob(&destination).is_err());
         let mut bytes = Vec::new();
         sealed.data_reader().read_to_end(&mut bytes).unwrap();
         assert_eq!(bytes, Store::new(2).0);
         drop(sealed);
-        assert_eq!(std::fs::read(&destination).unwrap(), bytes);
+        assert_eq!(std::fs::read(&destination).unwrap(), encoded);
         assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+    #[test]
+    fn encoded_stream_includes_trailer_and_propagates_sink_errors() {
+        #[derive(Debug)]
+        struct ShortWrites(Vec<u8>);
+        impl Write for ShortWrites {
+            fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+                let count = bytes.len().min(3);
+                self.0.extend_from_slice(&bytes[..count]);
+                Ok(count)
+            }
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+        #[derive(Debug)]
+        struct Full;
+        impl Write for Full {
+            fn write(&mut self, _: &[u8]) -> io::Result<usize> {
+                Err(io::ErrorKind::StorageFull.into())
+            }
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+        let mut encoder =
+            zstd::stream::write::Encoder::new(MeasuredWrite::new(ShortWrites(Vec::new())), 3)
+                .unwrap();
+        encoder.write_all(&[0xa5; 8192]).unwrap();
+        let encoded = encoder.finish().unwrap();
+        assert_eq!(encoded.size, encoded.output.0.len() as u64);
+        assert_eq!(
+            encoded.digest.finalize().as_slice(),
+            Sha256::digest(&encoded.output.0).as_slice()
+        );
+        let mut decoder =
+            ruzstd::decoding::StreamingDecoder::new(encoded.output.0.as_slice()).unwrap();
+        let mut decoded = Vec::new();
+        decoder.read_to_end(&mut decoded).unwrap();
+        assert_eq!(decoded, [0xa5; 8192]);
+
+        let encoder = zstd::stream::write::Encoder::new(MeasuredWrite::new(Full), 3).unwrap();
+        assert_eq!(
+            encoder.finish().unwrap_err().kind(),
+            io::ErrorKind::StorageFull
+        );
+        let mut encoder = zstd::stream::write::Encoder::new(MeasuredWrite::new(Full), 3).unwrap();
+        // Incompressible input forces output during write, before finish.
+        let mut input = vec![0; 1024 * 1024];
+        for (index, block) in input.chunks_exact_mut(32).enumerate() {
+            block.copy_from_slice(Sha256::digest((index as u64).to_le_bytes()).as_slice());
+        }
+        assert_eq!(
+            encoder.write_all(&input).unwrap_err().kind(),
+            io::ErrorKind::StorageFull
+        );
     }
     #[test]
     fn sealing_rejects_incomplete_snapshot_extents() {
