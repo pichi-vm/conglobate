@@ -311,8 +311,10 @@ mod tests {
     fn sealed_snapshot_preserves_bytes_digest_and_tree() {
         use std::io::Write;
         let directory = tempfile::tempdir().unwrap();
+        let control = tempfile::tempdir_in("/dev/shm").unwrap();
         let workspace = super::super::Workspace {
-            root: File::open(directory.path()).unwrap(),
+            root: File::open(control.path()).unwrap(),
+            backing: Some(File::open(directory.path()).unwrap()),
         };
         let bytes = Store::new(2).0;
         let mut salts = Vec::new();
@@ -373,6 +375,7 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let workspace = super::super::Workspace {
             root: File::open(directory.path()).unwrap(),
+            backing: None,
         };
         let mut input = Store::new(8);
         input.entry(0, 1, 7);
@@ -423,6 +426,7 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let workspace = super::super::Workspace {
             root: File::open(directory.path()).unwrap(),
+            backing: None,
         };
         let mut scratch = workspace.scratch().unwrap();
         scratch.write_all(&Store::new(2).0).unwrap();
@@ -453,6 +457,7 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let workspace = super::super::Workspace {
             root: File::open(directory.path()).unwrap(),
+            backing: None,
         };
         for length in [0, 4096, 4097, 8191] {
             let mut scratch = workspace.scratch().unwrap();
@@ -477,6 +482,7 @@ mod tests {
             let directory = tempfile::tempdir().unwrap();
             let workspace = super::super::Workspace {
                 root: File::open(directory.path()).unwrap(),
+                backing: None,
             };
             let staged = StagedDirectory::create(&directory.path().join("output")).unwrap();
             let seal = |value| {
@@ -553,6 +559,7 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let workspace = super::super::Workspace {
             root: File::open(directory.path()).unwrap(),
+            backing: None,
         };
         let seal = |staged: &StagedDirectory, parent| {
             let mut scratch = workspace.scratch().unwrap();

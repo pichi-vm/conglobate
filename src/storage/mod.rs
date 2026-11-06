@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Supervisor-owned mutable RAM storage. Immutable layers remain cache-backed.
+//! Supervisor-owned mutable storage. Immutable layers remain cache-backed.
 mod partitioned;
 pub(crate) use partitioned::PartitionedSnapshot;
 mod runtime;
@@ -27,12 +27,14 @@ use std::{
 
 /// One private tmpfs for a build. The detached mount needs no globally visible
 /// pathname or pathname-based unmount. Only trusted supervisor setup creates it.
-/// Capacity/swap policy belongs to the environment; errors never fall back to disk.
+/// Image scratch may use an environment-supplied backing directory instead.
+/// Mount/control state always stays on the private tmpfs.
 ///
 /// Scratch leases cannot outlive this owner or overlap its destruction.
 #[derive(Debug)]
 pub(crate) struct Workspace {
     root: File,
+    backing: Option<File>,
 }
 impl Workspace {
     pub(crate) fn staging_parent(&self) -> io::Result<File> {
@@ -52,15 +54,35 @@ impl Workspace {
                 | mount::MountAttrFlags::MOUNT_ATTR_NOSUID
                 | mount::MountAttrFlags::MOUNT_ATTR_NOEXEC,
         )?;
-        Ok(Self { root: root.into() })
+        let backing = std::env::var_os("CONGLOBATE_STORAGE")
+            .map(|path| {
+                fs::open(
+                    std::path::Path::new(&path),
+                    fs::OFlags::RDONLY
+                        | fs::OFlags::DIRECTORY
+                        | fs::OFlags::CLOEXEC
+                        | fs::OFlags::NOFOLLOW,
+                    fs::Mode::empty(),
+                )
+                .map(File::from)
+            })
+            .transpose()?;
+        Ok(Self {
+            root: root.into(),
+            backing,
+        })
     }
     /// Bound each sparse COW store by the workspace's backing capacity, including
     /// its snapshot metadata. Logical origin size does not allocate backing.
     /// Stores share the mount budget; exhaustion still fails the build.
     pub(crate) fn snapshot_store(&self) -> io::Result<Scratch<'_>> {
-        let stat = fs::fstatvfs(&self.root)?;
-        let bytes = stat
-            .f_blocks
+        let stat = fs::fstatvfs(self.backing.as_ref().unwrap_or(&self.root))?;
+        let blocks = if self.backing.is_some() {
+            stat.f_bavail
+        } else {
+            stat.f_blocks
+        };
+        let bytes = blocks
             .checked_mul(stat.f_frsize)
             .ok_or_else(|| io::Error::other("workspace capacity overflow"))?;
         let bytes = bytes / 4096 * 4096;
@@ -77,7 +99,7 @@ impl Workspace {
     /// merely claim this Rust borrow represents a device's kernel lifetime.
     pub(crate) fn scratch(&self) -> io::Result<Scratch<'_>> {
         let file = fs::openat(
-            &self.root,
+            self.backing.as_ref().unwrap_or(&self.root),
             ".",
             fs::OFlags::TMPFILE | fs::OFlags::RDWR | fs::OFlags::CLOEXEC | fs::OFlags::EXCL,
             fs::Mode::RUSR | fs::Mode::WUSR,
@@ -89,7 +111,7 @@ impl Workspace {
     }
 }
 
-/// Writable anonymous RAM storage with ordinary file I/O. This is not a sealed
+/// Writable anonymous storage with ordinary file I/O. This is not a sealed
 /// layer or output receipt; dropping it discards its contents. No Clone or raw
 /// file accessor permits escaping its workspace lease.
 #[derive(Debug)]
@@ -143,11 +165,49 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let workspace = Workspace {
             root: File::open(directory.path()).unwrap(),
+            backing: None,
         };
         let stat = fs::fstatvfs(&workspace.root).unwrap();
         let scratch = workspace.snapshot_store().unwrap();
         let metadata = scratch.file().metadata().unwrap();
         assert_eq!(metadata.len(), stat.f_blocks * stat.f_frsize / 4096 * 4096);
         assert_eq!(metadata.blocks(), 0);
+    }
+
+    #[test]
+    fn mounted_backing_keeps_control_separate_and_scratch_anonymous() {
+        let control = tempfile::tempdir_in("/dev/shm").unwrap();
+        let backing = tempfile::tempdir().unwrap();
+        let workspace = Workspace {
+            root: File::open(control.path()).unwrap(),
+            backing: Some(File::open(backing.path()).unwrap()),
+        };
+        let stat = fs::fstatvfs(workspace.backing.as_ref().unwrap()).unwrap();
+        let mut scratch = workspace.snapshot_store().unwrap();
+        assert_eq!(
+            scratch.file().metadata().unwrap().dev(),
+            backing.path().metadata().unwrap().dev()
+        );
+        assert_eq!(scratch.file().metadata().unwrap().nlink(), 0);
+        // Free space can change while other tests create files on this device.
+        assert!(scratch.file().metadata().unwrap().len() <= stat.f_blocks * stat.f_frsize);
+        assert_eq!(scratch.file().metadata().unwrap().blocks(), 0);
+        assert_eq!(
+            workspace
+                .staging_parent()
+                .unwrap()
+                .metadata()
+                .unwrap()
+                .ino(),
+            control.path().metadata().unwrap().ino()
+        );
+        scratch.write_all(b"image contents").unwrap();
+        scratch.seek(SeekFrom::Start(0)).unwrap();
+        let mut bytes = [0; 14];
+        scratch.read_exact(&mut bytes).unwrap();
+        assert_eq!(&bytes, b"image contents");
+        drop(scratch);
+        assert_eq!(std::fs::read_dir(backing.path()).unwrap().count(), 0);
+        assert_eq!(std::fs::read_dir(control.path()).unwrap().count(), 0);
     }
 }
