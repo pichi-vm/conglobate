@@ -43,8 +43,8 @@ fi
 VERSION="$crate_version"
 
 case "$(uname -m)" in
-	x86_64)  MUSL=x86_64-unknown-linux-musl ;;
-	aarch64) MUSL=aarch64-unknown-linux-musl ;;
+	x86_64)  MUSL=x86_64-unknown-linux-musl; arch=amd64 ;;
+	aarch64) MUSL=aarch64-unknown-linux-musl; arch=arm64 ;;
 	*) echo "!!! unsupported arch $(uname -m)" >&2; exit 1 ;;
 esac
 
@@ -154,7 +154,7 @@ echo ">>> initrd $(du -h "$initrd" | cut -f1)  modules: $(find "$stage" -name '*
 
 # ---- 4. import the carapace once; read its committed chain tip -----------
 carapace="conglobate:$VERSION-carapace"
-pichi import raw "$disk" -t "$carapace" --quiet
+pichi import raw "$disk" --arch "$arch" -t "$carapace" --quiet
 hash="$(pichi inspect "$carapace" \
 	--format '{{ manifest.annotations["dev.pichi.carapace.verity.hash"] }}')"
 [[ "$hash" =~ ^sha256:[0-9a-f]{64}$ && "${hash#sha256:}" =~ [1-9a-f] ]] || {
