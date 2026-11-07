@@ -49,17 +49,16 @@ jobs:
       - name: 📦 Install build tools
         run: |
           dnf copr enable -y npmccallum/pichi
-          dnf install -y arma pichi
+          dnf install -y arma pichi corium
 
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
-      - name: Install Rust (1.94.0 + stable)
+      - name: Install Rust (1.94.0)
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
             -y --profile minimal --default-toolchain 1.94.0
-          "$HOME/.cargo/bin/rustup" toolchain install stable --profile minimal
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - uses: Swatinem/rust-cache@v2
