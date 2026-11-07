@@ -1,0 +1,35 @@
+#!/usr/bin/make -f
+
+export CARGO_HOME = $(CURDIR)/debian/cargo-home
+export CARGO_NET_OFFLINE = true
+export CARGO_TARGET_DIR = $(CURDIR)/target
+
+%:
+	dh $@ --buildsystem=none
+
+override_dh_auto_build:
+	cargo --config .cargo/vendor.toml build --frozen --release --bin conglobate --features cli
+
+override_dh_auto_test:
+	target/release/conglobate --help > /dev/null
+
+override_dh_auto_install:
+	install -Dm0755 target/release/conglobate debian/conglobate/usr/bin/conglobate
+	install -d debian/conglobate/usr/lib/systemd/system
+	install -m0644 packaging/systemd/* debian/conglobate/usr/lib/systemd/system/
+
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start
+
+override_dh_installdocs:
+	dh_installdocs README.md LICENSE
+	find vendor -type f \( -iname 'license*' -o -iname 'licence*' -o \
+	    -iname 'copying*' -o -iname 'notice*' -o -iname 'copyright*' \) \
+	    -exec install -Dm0644 '{}' 'debian/conglobate/usr/share/doc/conglobate/dependency-licenses/{}' \;
+
+override_dh_auto_clean:
+	rm -rf target debian/cargo-home
+
+# Cargo checksums include vendored Cargo.toml.orig files.
+override_dh_clean:
+	dh_clean -Xvendor/

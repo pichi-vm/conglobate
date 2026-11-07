@@ -204,3 +204,18 @@ amd64 and Arm64.
   for a reader with no knowledge of the project's history or how the work was
   produced. Do not reference internal process, prior iterations, or review
   back-and-forth. (gitlint cannot check this — it is a review responsibility.)
+
+## Distribution packages
+
+Main snapshots are built for `amd64`/`x86_64` and `arm64`/`aarch64` in
+[`npmccallum/pichi` COPR](https://copr.fedorainfracloud.org/coprs/npmccallum/pichi/)
+and [`ppa:nmccallum/pichi`](https://launchpad.net/~nmccallum/+archive/ubuntu/pichi).
+The package name is `conglobate`. These are guest packages for releases with
+kernel 7.0 or newer.
+
+COPR tracks `main`, uses `packaging/conglobate.spec`, and runs the
+`.copr/Makefile` source-RPM target. GitHub pushes prepared Debian source to
+Launchpad; see [debian/README.source](debian/README.source) for that process.
+
+The package owns `conglobate-build.service` and the three `run-pichi-*.mount`
+units. Installation leaves them disabled; the appliance image enables them.

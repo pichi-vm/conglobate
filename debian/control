@@ -1,0 +1,14 @@
+Source: conglobate
+Section: admin
+Priority: optional
+Maintainer: Nathaniel McCallum <nathaniel@mccallum.life>
+Build-Depends: debhelper-compat (= 13), cargo (>= 1.93), rustc (>= 1.93), systemd-dev
+Standards-Version: 4.7.2
+Homepage: https://github.com/pichi-vm/conglobate
+Rules-Requires-Root: no
+
+Package: conglobate
+Architecture: amd64 arm64
+Depends: ${shlibs:Depends}, ${misc:Depends}, pichi-lsm, systemd, systemd-resolved, e2fsprogs, dosfstools, git, ca-certificates
+Description: image builder for the pichi appliance
+ Image builder for the Pichi appliance.
