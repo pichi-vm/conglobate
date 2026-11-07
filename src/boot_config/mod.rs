@@ -270,12 +270,10 @@ mod tests {
             let config: BootConfig = text.parse().unwrap();
             for input in [text, config.as_ref()] {
                 fs::write(&path, input).unwrap();
-                let output = Command::new(
-                    std::env::var_os("BOOTCONFIG").unwrap_or_else(|| "bootconfig".into()),
-                )
-                .arg(&path)
-                .output()
-                .expect("install the Linux bootconfig utility");
+                let output = Command::new("bootconfig")
+                    .arg(&path)
+                    .output()
+                    .expect("install the Linux bootconfig utility");
                 assert!(
                     output.status.success(),
                     "{input:?}: {}",
@@ -297,11 +295,7 @@ mod tests {
             "a=é;",
         ] {
             fs::write(&path, text).unwrap();
-            let output =
-                Command::new(std::env::var_os("BOOTCONFIG").unwrap_or_else(|| "bootconfig".into()))
-                    .arg(&path)
-                    .output()
-                    .unwrap();
+            let output = Command::new("bootconfig").arg(&path).output().unwrap();
             assert!(!output.status.success(), "{text:?}");
             assert!(text.parse::<BootConfig>().is_err(), "{text:?}");
         }
@@ -309,11 +303,7 @@ mod tests {
         for (count, valid) in [(4095, true), (4096, false)] {
             let text = format!("a={};a:={};", ",".repeat(count), ",".repeat(count));
             fs::write(&path, &text).unwrap();
-            let output =
-                Command::new(std::env::var_os("BOOTCONFIG").unwrap_or_else(|| "bootconfig".into()))
-                    .arg(&path)
-                    .output()
-                    .unwrap();
+            let output = Command::new("bootconfig").arg(&path).output().unwrap();
             assert_eq!(output.status.success(), valid);
             assert_eq!(text.parse::<BootConfig>().is_ok(), valid);
         }
