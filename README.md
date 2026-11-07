@@ -221,7 +221,7 @@ and [`ppa:nmccallum/pichi`](https://launchpad.net/~nmccallum/+archive/ubuntu/pic
 The package name is `conglobate`. These are guest packages for releases with
 kernel 7.0 or newer.
 
-COPR tracks `main`, uses `packaging/conglobate.spec`, and runs the
+COPR tracks `main`, uses `.copr/conglobate.spec`, and runs the
 `.copr/Makefile` source-RPM target. GitHub pushes prepared Debian source to
 Launchpad; see [debian/README.source](debian/README.source) for that process.
 

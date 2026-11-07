@@ -34,7 +34,7 @@ cargo build --locked --release --bin conglobate --features cli
 %install
 install -Dpm0755 target/release/conglobate %{buildroot}%{_bindir}/conglobate
 install -d %{buildroot}%{_unitdir}
-install -pm0644 packaging/systemd/* %{buildroot}%{_unitdir}/
+install -pm0644 .copr/systemd/* %{buildroot}%{_unitdir}/
 
 find .cargo-home -type f \( -iname 'license*' -o -iname 'licence*' -o \
     -iname 'copying*' -o -iname 'notice*' -o -iname 'copyright*' \) \

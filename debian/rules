@@ -16,7 +16,7 @@ override_dh_auto_test:
 override_dh_auto_install:
 	install -Dm0755 target/release/conglobate debian/conglobate/usr/bin/conglobate
 	install -d debian/conglobate/usr/lib/systemd/system
-	install -m0644 packaging/systemd/* debian/conglobate/usr/lib/systemd/system/
+	install -m0644 .copr/systemd/* debian/conglobate/usr/lib/systemd/system/
 
 override_dh_installsystemd:
 	dh_installsystemd --no-enable --no-start

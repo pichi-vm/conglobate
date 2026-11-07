@@ -98,7 +98,7 @@ mkdir -p "$extra/usr/bin" \
 	"$extra/usr/lib/modules-load.d" \
 	"$extra/usr/lib/systemd/network"
 install -m0755 "$conglobate_bin" "$extra/usr/bin/conglobate"
-install -m0644 "$repo/packaging/systemd/"* "$inst/"
+install -m0644 "$repo/.copr/systemd/"* "$inst/"
 # The image composes the build engine and policy; the packages stay independent.
 mkdir -p "$inst/conglobate-build.service.d"
 printf '%s\n' '[Unit]' 'Requires=pichi-lsm.service' 'After=pichi-lsm.service' > "$inst/conglobate-build.service.d/pichi-lsm.conf"
