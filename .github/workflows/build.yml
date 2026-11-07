@@ -131,29 +131,16 @@ jobs:
   index:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: [build, checks]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
       contents: read
       packages: write
     steps:
-      - name: Fetch pichi sources and toolchain
+      - name: 📦 Install Pichi
         run: |
-          rustup toolchain install "$NIGHTLY" --profile minimal
-          git clone --filter=blob:none --no-checkout https://github.com/pichi-vm/pichi /tmp/pichi
-          git -C /tmp/pichi checkout --detach "$PICHI_REV"
-          git -C /tmp/pichi submodule update --init --recursive
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: /tmp/pichi -> target
-        env:
-          RUSTUP_TOOLCHAIN: ${{ env.NIGHTLY }}
-
-      - name: Install pichi
-        run: |
-          (cd /tmp/pichi && cargo "+$NIGHTLY" build --locked --release --bin pichi)
-          sudo install -m755 /tmp/pichi/target/release/pichi /usr/local/bin/pichi
+          sudo add-apt-repository --yes ppa:nmccallum/pichi
+          sudo apt-get install -y pichi
 
       - name: Download OCI layout artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
