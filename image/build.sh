@@ -20,7 +20,6 @@ set -euo pipefail
 RELEASE=43
 IMAGE="${IMAGE:-ghcr.io/pichi-vm/conglobate}"
 ARMA="${ARMA:-arma}"
-CONGLOBATE_TOOLCHAIN="${CONGLOBATE_TOOLCHAIN:-1.94.0}"
 
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
@@ -63,7 +62,7 @@ mkdir -p "$work"
 if [ -n "${CONGLOBATE_BIN:-}" ]; then
 	conglobate_bin="$CONGLOBATE_BIN"
 else
-	cargo "+$CONGLOBATE_TOOLCHAIN" build --locked --release --features cli --bin conglobate --manifest-path "$repo/Cargo.toml"
+	cargo +1.94.0 build --locked --release --features cli --bin conglobate --manifest-path "$repo/Cargo.toml"
 	conglobate_bin="$repo/target/release/conglobate"
 fi
 if [ ! -x "$conglobate_bin" ]; then
