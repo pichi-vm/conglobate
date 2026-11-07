@@ -12,7 +12,7 @@
 # units via mkosi.extra, then imports the image. Registry push is not done
 # here; CI pushes ghcr.io/pichi-vm/conglobate on main only.
 #
-# Requires: mkosi, pichi, arma (ARMA=<path> or on PATH), cargo + rustup,
+# Requires: mkosi, pichi, arma (ARMA=<path> or on PATH), corium, cargo + rustup,
 # cpio, dumpe2fs (e2fsprogs). Runs rootless (userns) aside from
 # mkosi's own user namespace.
 set -euo pipefail
@@ -20,11 +20,6 @@ set -euo pipefail
 RELEASE=43
 IMAGE="${IMAGE:-ghcr.io/pichi-vm/conglobate}"
 ARMA="${ARMA:-arma}"
-CORIUM_GIT="${CORIUM_GIT:-https://github.com/pichi-vm/corium}"
-# Corium reads corium.root from bootconfig and mounts the native GPT root
-# through its existing read-only view, leaving the whole chain reusable.
-CORIUM_REV="${CORIUM_REV:-c33ae0e01d58b657f8f62cb91672885326a903b9}"
-CORIUM_TOOLCHAIN="${CORIUM_TOOLCHAIN:-stable}"
 CONGLOBATE_TOOLCHAIN="${CONGLOBATE_TOOLCHAIN:-1.94.0}"
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -43,8 +38,8 @@ fi
 VERSION="$crate_version"
 
 case "$(uname -m)" in
-	x86_64)  MUSL=x86_64-unknown-linux-musl; arch=amd64 ;;
-	aarch64) MUSL=aarch64-unknown-linux-musl; arch=arm64 ;;
+	x86_64)  arch=amd64 ;;
+	aarch64) arch=arm64 ;;
 	*) echo "!!! unsupported arch $(uname -m)" >&2; exit 1 ;;
 esac
 
@@ -81,14 +76,7 @@ if ldd "$conglobate_bin" | grep -q 'not found'; then
 	exit 1
 fi
 
-if [ -n "${CORIUM_BIN:-}" ]; then
-	corium_bin="$CORIUM_BIN"
-else
-	rustup target add --toolchain "$CORIUM_TOOLCHAIN" "$MUSL"
-	cargo "+$CORIUM_TOOLCHAIN" install --locked --git "$CORIUM_GIT" --rev "$CORIUM_REV" \
-		--target "$MUSL" --root "$work/corium" --quiet corium
-	corium_bin="$work/corium/bin/corium"
-fi
+corium_bin="${CORIUM_BIN:-$(command -v corium)}"
 
 # ---- 2. stage units, virtiofs autoload, and the engine into the rootfs ---
 inst="$extra/usr/lib/systemd/system"
