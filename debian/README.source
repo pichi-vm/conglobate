@@ -29,4 +29,5 @@ Conglobate runs in the guest, so only releases with kernel 7.0+ are selected.
 The package builds the CLI with --features cli and installs its appliance
 service and three virtiofs mount units. Installing the package does not
 enable or start the appliance. Image builders enable the units explicitly.
-The LSM helper is supplied by the pichi-lsm dependency.
+The appliance installs pichi-lsm and orders its service before the build
+service through image-specific systemd configuration.
