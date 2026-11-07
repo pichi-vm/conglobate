@@ -7,12 +7,12 @@
 //! request array, then reads one self-delimiting CBOR response. The guest must
 //! not assume the host already pushed bytes before the request.
 
-use crate::contract::launch::{Build, PORT_NAME as CONSOLE_NAME, Request};
+use crate::contract::launch::{Finish, PORT_NAME as CONSOLE_NAME, Request, Response, Start};
 #[cfg(test)]
 use ciborium::Value;
 use std::{
     fs,
-    io::{self, Write},
+    io::{self, Read, Write},
     path::Path,
 };
 
@@ -22,8 +22,10 @@ pub(crate) enum ConsoleError {
     Io(#[from] io::Error),
     #[error("build console {CONSOLE_NAME} was not found under sysfs virtio-ports")]
     NotFound,
-    #[error("build-port request encode: {0}")]
+    #[error("build-port encode: {0}")]
     Encode(String),
+    #[error("finish acknowledgement: {0}")]
+    Finish(String),
 }
 
 /// Locate `<dev_root>/<port>` for the port whose sysfs `name` equals `dev.pichi.build`.
@@ -59,10 +61,10 @@ pub(crate) fn open_build_console(
     Err(ConsoleError::NotFound)
 }
 
-/// Encode the guest→host request: `["build", 1, null]`.
+/// Encode the guest→host request: `["start", 1, null]`.
 pub(crate) fn encode_build_input_request() -> Result<Vec<u8>, ConsoleError> {
     let mut bytes = Vec::new();
-    ciborium::into_writer(&Request(Build::default()), &mut bytes)
+    ciborium::into_writer(&Request(Start::default()), &mut bytes)
         .map_err(|error| ConsoleError::Encode(error.to_string()))?;
     Ok(bytes)
 }
@@ -73,6 +75,22 @@ pub(crate) fn write_build_input_request(file: &mut impl Write) -> Result<(), Con
     file.write_all(&bytes)?;
     file.flush()?;
     Ok(())
+}
+
+/// Report completion only after the pipeline has finalized its output or failed.
+pub(crate) fn write_build_result(
+    file: &mut (impl Read + Write),
+    result: Result<(), String>,
+) -> Result<(), ConsoleError> {
+    ciborium::into_writer(&Request(Finish(result.err())), &mut *file)
+        .map_err(|error| ConsoleError::Encode(error.to_string()))?;
+    file.flush()?;
+    let response: Response<Option<()>> =
+        ciborium::from_reader(file).map_err(|error| ConsoleError::Finish(error.to_string()))?;
+    match response {
+        Response::Ok(_) => Ok(()),
+        Response::Err(error) => Err(ConsoleError::Finish(error)),
+    }
 }
 
 /// Read one self-delimiting CBOR value from the console (host → guest).
@@ -108,18 +126,40 @@ mod tests {
     }
 
     #[test]
-    fn encode_request_is_v1_build_input() {
+    fn encode_request_is_start() {
         let bytes = encode_build_input_request().unwrap();
         let value: Value = ciborium::from_reader(Cursor::new(&bytes)).unwrap();
         assert_eq!(
             value,
             Value::Array(vec![
-                Value::Text("build".into()),
+                Value::Text("start".into()),
                 Value::Integer(1.into()),
                 Value::Null
             ])
         );
-        assert_eq!(bytes, b"\x83\x65build\x01\xf6");
+        assert_eq!(bytes, b"\x83\x65start\x01\xf6");
+    }
+
+    #[test]
+    fn finish_reports_success_or_original_failure_and_waits_for_acknowledgement() {
+        for result in [
+            Ok(()),
+            Err("rootfs command 1: apt exited with status 100".into()),
+        ] {
+            let (mut guest, mut host) = UnixStream::pair().unwrap();
+            let expected = result.clone().err();
+            let server = thread::spawn(move || {
+                let request: crate::contract::launch::Requests =
+                    ciborium::from_reader(&mut host).unwrap();
+                assert_eq!(
+                    request,
+                    crate::contract::launch::Requests::Finish(Request(Finish(expected)))
+                );
+                ciborium::into_writer(&Response::Ok(None::<()>), &mut host).unwrap();
+            });
+            write_build_result(&mut guest, result).unwrap();
+            server.join().unwrap();
+        }
     }
 
     #[test]
@@ -145,7 +185,7 @@ mod tests {
             assert_eq!(
                 request,
                 Value::Array(vec![
-                    Value::Text("build".into()),
+                    Value::Text("start".into()),
                     Value::Integer(1.into()),
                     Value::Null
                 ])

@@ -8,7 +8,7 @@ mod mounts;
 mod request;
 
 use crate::pipeline::Pipeline;
-use console::{open_build_console, write_build_input_request};
+use console::{open_build_console, write_build_input_request, write_build_result};
 use request::ApplianceRequest;
 use std::path::Path;
 
@@ -24,21 +24,30 @@ pub(crate) enum ApplianceError {
 
 /// Open `dev.pichi.build`, request build-input, decode the host response, run.
 ///
-/// The guest writes `["build", 1, null]`, then reads `[true, Input]` or
-/// `[false, message]` as one self-delimiting CBOR array. The host responds
-/// only after the request.
+/// Request input with `start`, then report the result with `finish` and
+/// wait for its acknowledgement before the appliance shuts down.
 pub(crate) fn run() -> Result<(), ApplianceError> {
     let mut file = open_build_console(Path::new("/sys"), Path::new("/dev"))?;
     write_build_input_request(&mut file)?;
-    let request = ApplianceRequest::decode_response_from_port(&mut file)?;
-    let build = request.into_build_request(
-        mounts::repository(),
-        mounts::cache(),
-        mounts::output(),
-        mounts::id_mappings(),
-    )?;
-    Pipeline::new(build)
-        .run()
-        .map_err(ApplianceError::Pipeline)?;
+    let result = (|| -> Result<(), ApplianceError> {
+        let request = ApplianceRequest::decode_response_from_port(&mut file)?;
+        let build = request.into_build_request(
+            mounts::repository(),
+            mounts::cache(),
+            mounts::output(),
+            mounts::id_mappings(),
+        )?;
+        Pipeline::new(build).run().map_err(ApplianceError::Pipeline)
+    })();
+    let reported = write_build_result(
+        &mut file,
+        result
+            .as_ref()
+            .map(|_| ())
+            .map_err(|error| format!("{error:#}")),
+    );
+    // Preserve the build failure if the host also disconnected while reporting.
+    result?;
+    reported?;
     Ok(())
 }

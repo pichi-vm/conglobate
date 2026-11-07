@@ -250,9 +250,9 @@ Product assumptions for the guest:
 3. **Named build-port console** `dev.pichi.build`, opened read/write through
    the kernel console/hvc sysfs path (not a udev symlink). The channel is
    bidirectional (guest→host tx and host→guest rx).
-4. **Wire (one round trip, self-delimiting CBOR, no length prefix; no
+4. **Wire (input exchange and terminal result, self-delimiting CBOR, no length prefix; no
    streaming/multiplexing):** the guest opens the port, writes one request array
-   `["build", 1, null]`, then reads one host response array. The guest
+   `["start", 1, null]`, then reads one host response array. The guest
    must **not** assume the host already pushed bytes before the request (this
    supersedes host one-shot CBOR push / uni-rx-only). On `[true, Input]`, Conglobate
    runs the engine against the mounted paths and publishes into the empty
@@ -280,16 +280,25 @@ Transport is the named console in [§1.4](#14-build-appliance). Each message
 is one self-delimiting CBOR array, with no length prefix. Commands version
 their own request and response schemas; there is no global protocol version.
 
-- Guest → host: `["build", 1, null]` (`[command, version, body]`).
+- Guest → host: `["start", 1, null]` (`[command, version, body]`).
 - Host → guest success: `[true, Input]`.
 - Host → guest failure: `[false, message]`, where `message` is a string.
+- Guest → host: `["finish", 1, null]`, after output finalization.
+- Guest → host: `["finish", 1, message]`, including build error context on failure.
+- Host → guest: `[true, null]` acknowledges receipt before guest shutdown.
+
+The host requires a terminal success and successful VM exit before importing
+output. Missing or malformed completion is a failed/interrupted build, never
+implicit success. Both commands are version 1 and require a matching host
+and appliance.
 
 The portable library exposes `launch::{Command, Request, Response,
-Requests, Build, Input, PORT_NAME}`. `Request<T>` supplies and validates the
+Requests, Start, Finish, Input, PORT_NAME}`. `Request<T>` supplies and validates the
 command name and `u16` version declared by `T: Command`; the trait also
-associates the response payload type. `Build` wraps a private `Option<()>`
-for build V1 and its response payload is `Input`. Construct it with
-`Build::default()` to encode a null request body. The untagged `Requests` enum
+associates the response payload type. `Start` wraps a private `Option<()>`
+and its response payload is `Input`. Construct it with `Start::default()`
+to encode a null request body. `Finish` carries an `Option<String>`: null
+on success or the failure message; its response payload is null. The untagged `Requests` enum
 bundles concrete requests. `Response<T>` has `Ok(T)` and `Err(String)` variants, with
 conversions to and from standard `Result`. Serde bounds live on the envelope
 implementations, not on the request trait.
