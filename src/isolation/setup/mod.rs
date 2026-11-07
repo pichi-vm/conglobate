@@ -19,6 +19,7 @@ pub(crate) struct CommandSetup {
     namespace: File,
     devices: CommandDevices,
     resolver: Option<crate::network::ResolverView>,
+    bootstrap: bool,
 }
 impl CommandSetup {
     pub(crate) fn new(namespace: File, devices: CommandDevices) -> io::Result<Self> {
@@ -29,7 +30,14 @@ impl CommandSetup {
             namespace,
             devices,
             resolver: None,
+            bootstrap: false,
         })
+    }
+    pub(crate) fn with_bootstrap(self) -> Self {
+        Self {
+            bootstrap: true,
+            ..self
+        }
     }
     pub(crate) fn with_resolver_view(self, resolver: crate::network::ResolverView) -> Self {
         Self {

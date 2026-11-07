@@ -138,6 +138,11 @@ impl VolumeInput {
     ) -> io::Result<(Mount<'_, Idmapped>, CommandSetup, Option<ResolverTarget>)> {
         let output_namespace = self.namespace.try_clone()?;
         let setup = CommandSetup::new(self.namespace.try_clone()?, devices)?;
+        let setup = if self.output.is_some() {
+            setup.with_bootstrap()
+        } else {
+            setup
+        };
         // Create placeholders on the raw view before applying its UID mapping.
         // This helper is trusted and no image writer has been admitted. On any
         // setup/cleanup failure the supervisor rejects the writable build layer.
