@@ -56,9 +56,9 @@ impl GatedRootSetup {
         cutoff: SetupCutoff,
     ) -> io::Result<GatedRestrictedCommand> {
         cutoff.deadline()?;
-        let (devices, gate) = self.into_parts();
+        let (devices, gate, bootstrap) = self.into_parts();
         let scope = PrivateMountNamespace::enter()?;
-        let root = CommandRoot::from_current_directory(scope, devices)?;
+        let root = CommandRoot::from_current_directory(scope, devices, bootstrap)?;
         let filter = CommandSyscalls::compile()?;
         let command = root
             .enter()?

@@ -135,10 +135,18 @@ impl RuntimeTargets {
     /// Call only in the private command setup mount/PID namespaces. A partial
     /// failure is exit-only; the enclosing namespace retains attached mounts
     /// until its tasks stop. Detached resources close automatically on failure.
-    pub(super) fn install(self, devices: super::CommandDevices) -> io::Result<()> {
+    pub(super) fn install(
+        self,
+        devices: super::CommandDevices,
+        output: Option<Self>,
+    ) -> io::Result<()> {
         RuntimeFilesystem::Proc.attach(&self.proc)?;
         RuntimeFilesystem::EmptySys.attach(&self.sys)?;
-        devices.attach(&self.dev)
+        if let Some(output) = &output {
+            RuntimeFilesystem::Proc.attach(&output.proc)?;
+            RuntimeFilesystem::EmptySys.attach(&output.sys)?;
+        }
+        devices.attach(&self.dev, output.as_ref().map(|output| &output.dev))
     }
 }
 
@@ -242,6 +250,112 @@ mod tests {
         fs,
         os::unix::fs::{PermissionsExt, symlink},
     };
+
+    #[test]
+    #[ignore = "requires root and mount/PID namespaces"]
+    fn bootstrap_runtime_is_private_and_not_captured() {
+        use std::io::{Read, Write};
+        if let Some(path) = std::env::var_os("CONGLOBATE_RUNTIME_PROBE") {
+            let root = File::open(&path).unwrap();
+            let output = File::open(std::path::Path::new(&path).join("mnt")).unwrap();
+            let targets = RuntimeTargets::resolve(&root).unwrap();
+            let output = RuntimeTargets::resolve(&output).unwrap();
+            targets
+                .install(
+                    super::super::CommandDevices::create(0, 0).unwrap(),
+                    Some(output),
+                )
+                .unwrap();
+            for prefix in [
+                std::path::PathBuf::from(&path),
+                std::path::PathBuf::from(&path).join("mnt"),
+            ] {
+                let proc = prefix.join("proc");
+                assert_eq!(
+                    rustix::fs::fstatfs(File::open(&proc).unwrap())
+                        .unwrap()
+                        .f_type,
+                    0x9fa0
+                );
+                let status = fs::read_to_string(proc.join("self/status")).unwrap();
+                assert!(status.lines().any(|line| line == "Tgid:\t1"), "{status}");
+                for restricted in ["sys", "sysrq-trigger", "irq", "bus"] {
+                    let path = proc.join(restricted);
+                    if path.exists() {
+                        let flags = rustix::fs::fstatvfs(File::open(path).unwrap())
+                            .unwrap()
+                            .f_flag;
+                        assert!(flags.contains(rustix::fs::StatVfsMountFlags::RDONLY));
+                    }
+                }
+                assert_eq!(fs::read_dir(prefix.join("sys")).unwrap().count(), 0);
+                assert_eq!(
+                    fs::write(prefix.join("sys/probe"), b"x")
+                        .unwrap_err()
+                        .raw_os_error(),
+                    Some(30)
+                );
+                let dev = prefix.join("dev");
+                File::options()
+                    .write(true)
+                    .open(dev.join("null"))
+                    .unwrap()
+                    .write_all(b"x")
+                    .unwrap();
+                let mut zero = [1];
+                File::open(dev.join("zero"))
+                    .unwrap()
+                    .read_exact(&mut zero)
+                    .unwrap();
+                assert_eq!(zero, [0]);
+                File::open(dev.join("urandom"))
+                    .unwrap()
+                    .read_exact(&mut zero)
+                    .unwrap();
+                File::options()
+                    .read(true)
+                    .write(true)
+                    .open(dev.join("ptmx"))
+                    .unwrap();
+                fs::write(dev.join("shm/probe"), b"x").unwrap();
+                for absent in ["kvm", "mem", "sda", "log"] {
+                    assert!(!dev.join(absent).exists());
+                }
+            }
+            return;
+        }
+        let image = tempfile::tempdir().unwrap();
+        fs::create_dir(image.path().join("mnt")).unwrap();
+        let output = std::process::Command::new("unshare")
+            .args([
+                "--mount",
+                "--pid",
+                "--fork",
+                "--mount-proc",
+                "--propagation",
+                "private",
+            ])
+            .arg(std::env::current_exe().unwrap())
+            .args([
+                "--ignored",
+                "--exact",
+                "isolation::runtime::tests::bootstrap_runtime_is_private_and_not_captured",
+                "--nocapture",
+            ])
+            .env("CONGLOBATE_RUNTIME_PROBE", image.path())
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        for prefix in [image.path().to_path_buf(), image.path().join("mnt")] {
+            for name in ["proc", "sys", "dev"] {
+                assert_eq!(fs::read_dir(prefix.join(name)).unwrap().count(), 0);
+            }
+        }
+    }
 
     #[test]
     fn absolute_symlinks_resolve_inside_the_image() {

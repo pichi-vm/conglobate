@@ -25,6 +25,7 @@ pub(crate) struct CommandRoot {
     root: File,
     devices: CommandDevices,
     input: File,
+    bootstrap: bool,
     _thread: PhantomData<Rc<()>>,
 }
 
@@ -53,6 +54,7 @@ impl CommandRoot {
     pub(crate) fn from_current_directory(
         scope: PrivateMountNamespace,
         devices: CommandDevices,
+        bootstrap: bool,
     ) -> io::Result<Self> {
         let root = File::open(".")?;
         Ok(Self {
@@ -60,6 +62,7 @@ impl CommandRoot {
             root,
             devices,
             input: File::open("/dev/null")?,
+            bootstrap,
             _thread: PhantomData,
         })
     }
@@ -76,7 +79,23 @@ impl CommandRoot {
         // separate session severs any inherited controlling terminal before
         // exposing the private tty device. Failure is fatal to command setup.
         rustix::process::setsid()?;
-        super::runtime::RuntimeTargets::resolve(&self.root)?.install(self.devices)?;
+        let output = if self.bootstrap {
+            // /mnt is the separately attached output view. Never infer bootstrap
+            // authority from an image-provided directory or follow its symlink.
+            let output = rustix::fs::openat2(
+                &self.root,
+                "mnt",
+                rustix::fs::OFlags::PATH
+                    | rustix::fs::OFlags::DIRECTORY
+                    | rustix::fs::OFlags::CLOEXEC,
+                rustix::fs::Mode::empty(),
+                rustix::fs::ResolveFlags::BENEATH | rustix::fs::ResolveFlags::NO_SYMLINKS,
+            )?;
+            Some(super::runtime::RuntimeTargets::resolve(&output.into())?)
+        } else {
+            None
+        };
+        super::runtime::RuntimeTargets::resolve(&self.root)?.install(self.devices, output)?;
         // Bare roots have mount points now, but the context-plan smoke still
         // has no /bin/sh. Install a private interpreter before the root is
         // cloned so the pivot includes it and the ext4 layer does not.

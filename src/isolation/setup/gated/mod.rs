@@ -14,6 +14,7 @@ pub(crate) struct GatedCommandSetup {
 pub(crate) struct GatedRootSetup {
     devices: CommandDevices,
     gate: ExecutionEndpoint,
+    bootstrap: bool,
 }
 impl CommandSetup {
     pub(crate) fn with_gate(self, gate: ExecutionEndpoint) -> GatedCommandSetup {
@@ -29,7 +30,9 @@ impl GatedCommandSetup {
         ];
         let opcode = if let Some(resolver) = self.setup.resolver {
             descriptors.push(resolver.into_handle().into());
-            7
+            if self.setup.bootstrap { 9 } else { 7 }
+        } else if self.setup.bootstrap {
+            8
         } else {
             2
         };
@@ -44,8 +47,8 @@ impl GatedCommandSetup {
         Self::from_socket(&socket)
     }
     fn from_socket(socket: &impl AsFd) -> io::Result<Self> {
-        let mut packet = Packet::receive_shapes(socket, &[(2, 3), (7, 4)])?;
-        let resolver = if packet.opcode == 7 {
+        let mut packet = Packet::receive_shapes(socket, &[(2, 3), (7, 4), (8, 3), (9, 4)])?;
+        let resolver = if matches!(packet.opcode, 7 | 9) {
             Some(crate::network::ResolverView::from_handle(
                 packet.descriptors.pop().expect("resolver").into(),
             )?)
@@ -61,6 +64,11 @@ impl GatedCommandSetup {
             Some(resolver) => setup.with_resolver_view(resolver),
             None => setup,
         };
+        let setup = if matches!(packet.opcode, 8 | 9) {
+            setup.with_bootstrap()
+        } else {
+            setup
+        };
         Ok(Self { setup, gate })
     }
     /// Enter using the existing setup deadline, without starting a new budget.
@@ -68,12 +76,14 @@ impl GatedCommandSetup {
         self,
         deadline: std::time::Instant,
     ) -> io::Result<(CommandNamespaces, GatedRootSetup)> {
+        let bootstrap = self.setup.bootstrap;
         let (scope, devices) = self.setup.enter_until(deadline)?;
         Ok((
             scope,
             GatedRootSetup {
                 devices,
                 gate: self.gate,
+                bootstrap,
             },
         ))
     }
@@ -81,7 +91,7 @@ impl GatedCommandSetup {
 impl GatedRootSetup {
     pub(crate) fn into_input(self) -> io::Result<Stdio> {
         Packet {
-            opcode: 3,
+            opcode: if self.bootstrap { 10 } else { 3 },
             descriptors: vec![self.devices.into_handle().into(), self.gate.into_handle()],
         }
         .send()
@@ -90,14 +100,18 @@ impl GatedRootSetup {
         Self::from_socket(&io::stdin())
     }
     fn from_socket(socket: &impl AsFd) -> io::Result<Self> {
-        let mut packet = Packet::receive_shapes(socket, &[(3, 2)])?;
+        let mut packet = Packet::receive_shapes(socket, &[(3, 2), (10, 2)])?;
         let gate = ExecutionEndpoint::from_handle(packet.descriptors.pop().expect("gate"))?;
         let devices =
             CommandDevices::from_handle(packet.descriptors.pop().expect("devices").into())?;
-        Ok(Self { devices, gate })
+        Ok(Self {
+            devices,
+            gate,
+            bootstrap: packet.opcode == 10,
+        })
     }
-    pub(crate) fn into_parts(self) -> (CommandDevices, ExecutionEndpoint) {
-        (self.devices, self.gate)
+    pub(crate) fn into_parts(self) -> (CommandDevices, ExecutionEndpoint, bool) {
+        (self.devices, self.gate, self.bootstrap)
     }
 }
 #[derive(Debug)]
@@ -291,28 +305,31 @@ mod input_tests {
     }
     #[test]
     fn transport_preserves_identity_and_sets_close_on_exec() {
-        // Ordinary existing tmpfs directory, not a privileged device mount.
-        // This tests transport only; mount authority is exercised in the VM.
-        let directory = tempfile::tempdir_in("/dev/shm").unwrap();
-        let namespace = File::open("/proc/self/ns/user").unwrap();
-        let expected = namespace.metadata().unwrap().ino();
-        let devices = File::open(directory.path()).unwrap();
-        let transfer = Transfer::new();
-        transfer.send(&[0x82, 1, 2], &[namespace.as_fd(), devices.as_fd()]);
-        let received = GatedCommandSetup::from_socket(&transfer.receiver).unwrap();
-        assert_eq!(received.setup.namespace.metadata().unwrap().ino(), expected);
-        assert!(
-            rustix::io::fcntl_getfd(&received.setup.namespace)
-                .unwrap()
-                .contains(rustix::io::FdFlags::CLOEXEC)
-        );
-        let device = received.setup.devices.into_handle();
-        assert!(
-            rustix::io::fcntl_getfd(&device)
-                .unwrap()
-                .contains(rustix::io::FdFlags::CLOEXEC)
-        );
-        let bad = File::open(directory.path()).unwrap();
-        assert!(CommandSetup::new(bad, CommandDevices::from_handle(device).unwrap()).is_err());
+        for opcode in [2, 8] {
+            // Ordinary existing tmpfs directory, not a privileged device mount.
+            // This tests transport only; mount authority is exercised in the VM.
+            let directory = tempfile::tempdir_in("/dev/shm").unwrap();
+            let namespace = File::open("/proc/self/ns/user").unwrap();
+            let expected = namespace.metadata().unwrap().ino();
+            let devices = File::open(directory.path()).unwrap();
+            let transfer = Transfer::new();
+            transfer.send(&[0x82, 1, opcode], &[namespace.as_fd(), devices.as_fd()]);
+            let received = GatedCommandSetup::from_socket(&transfer.receiver).unwrap();
+            assert_eq!(received.setup.bootstrap, opcode == 8);
+            assert_eq!(received.setup.namespace.metadata().unwrap().ino(), expected);
+            assert!(
+                rustix::io::fcntl_getfd(&received.setup.namespace)
+                    .unwrap()
+                    .contains(rustix::io::FdFlags::CLOEXEC)
+            );
+            let device = received.setup.devices.into_handle();
+            assert!(
+                rustix::io::fcntl_getfd(&device)
+                    .unwrap()
+                    .contains(rustix::io::FdFlags::CLOEXEC)
+            );
+            let bad = File::open(directory.path()).unwrap();
+            assert!(CommandSetup::new(bad, CommandDevices::from_handle(device).unwrap()).is_err());
+        }
     }
 }

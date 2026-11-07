@@ -963,6 +963,13 @@ capability set, restricted syscalls/ioctls, `no_new_privs`, private proc/dev/dev
 shm, empty read-only sysfs, and explicit environment and stdio. Namespace/mount
 creation and control access are prohibited. Context enters only through COPY.
 
+Bootstrap commands receive the same runtime environment at their output root
+(`/mnt`) before package scripts can chroot into it: procfs belongs to the command
+PID namespace with kernel-control paths restricted; `/dev` reuses that command's
+private basic devices, devpts and shared memory; `/sys` is empty and read-only.
+These mounts are transient and are not captured in the resulting image. Target
+`/run` remains recipe-owned temporary storage, not the supervisor's runtime.
+
 Enabled steps share the supervisor network namespace. The launching environment
 owns connectivity and network policy; supervisor controls must not be exposed
 on command-reachable sockets. The environment supplies `/etc/resolv.conf`;

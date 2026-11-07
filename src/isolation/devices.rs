@@ -93,7 +93,7 @@ impl CommandDevices {
         Ok(Self { root })
     }
 
-    pub(super) fn attach(self, target: &File) -> io::Result<()> {
+    pub(super) fn attach(self, target: &File, output: Option<&File>) -> io::Result<()> {
         mount::move_mount(
             &self.root,
             "",
@@ -102,7 +102,26 @@ impl CommandDevices {
             MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH | MoveMountFlags::MOVE_MOUNT_T_EMPTY_PATH,
         )?;
         DeviceRuntime::Pts.attach(&self.root, "pts")?;
-        DeviceRuntime::SharedMemory.attach(&self.root, "shm")
+        DeviceRuntime::SharedMemory.attach(&self.root, "shm")?;
+        if let Some(output) = output {
+            // Reuse this command's approved devices, preserving private pts/shm.
+            let tree = mount::open_tree(
+                &self.root,
+                "",
+                mount::OpenTreeFlags::AT_EMPTY_PATH
+                    | mount::OpenTreeFlags::AT_RECURSIVE
+                    | mount::OpenTreeFlags::OPEN_TREE_CLONE
+                    | mount::OpenTreeFlags::OPEN_TREE_CLOEXEC,
+            )?;
+            mount::move_mount(
+                &tree,
+                "",
+                output,
+                "",
+                MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH | MoveMountFlags::MOVE_MOUNT_T_EMPTY_PATH,
+            )?;
+        }
+        Ok(())
     }
 }
 
