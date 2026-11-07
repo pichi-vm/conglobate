@@ -1,3 +1,0 @@
-[submodule "lsm"]
-	path = lsm
-	url = https://github.com/pichi-vm/lsm.git

@@ -13,7 +13,7 @@
 # here; CI pushes ghcr.io/pichi-vm/conglobate on main only.
 #
 # Requires: mkosi, pichi, arma (ARMA=<path> or on PATH), cargo + rustup,
-# bpf-linker, cpio, dumpe2fs (e2fsprogs). Runs rootless (userns) aside from
+# cpio, dumpe2fs (e2fsprogs). Runs rootless (userns) aside from
 # mkosi's own user namespace.
 set -euo pipefail
 
@@ -81,8 +81,6 @@ if ldd "$conglobate_bin" | grep -q 'not found'; then
 	exit 1
 fi
 
-(cd "$repo/lsm" && cargo build --locked --release)
-
 if [ -n "${CORIUM_BIN:-}" ]; then
 	corium_bin="$CORIUM_BIN"
 else
@@ -95,14 +93,12 @@ fi
 # ---- 2. stage units, virtiofs autoload, and the engine into the rootfs ---
 inst="$extra/usr/lib/systemd/system"
 mkdir -p "$extra/usr/bin" \
-	"$extra/usr/libexec" \
 	"$inst/local-fs.target.wants" \
 	"$inst/multi-user.target.wants" \
 	"$extra/usr/lib/modules-load.d" \
 	"$extra/usr/lib/systemd/network"
 install -m0755 "$conglobate_bin" "$extra/usr/bin/conglobate"
-install -m0755 "$repo/lsm/target/release/pichi-lsm" "$extra/usr/libexec/pichi-lsm"
-install -m0644 "$repo/packaging/systemd/"* "$repo/lsm/packaging/systemd/pichi-lsm.service" "$inst/"
+install -m0644 "$repo/packaging/systemd/"* "$inst/"
 # The image composes the build engine and policy; the packages stay independent.
 mkdir -p "$inst/conglobate-build.service.d"
 printf '%s\n' '[Unit]' 'Requires=pichi-lsm.service' 'After=pichi-lsm.service' > "$inst/conglobate-build.service.d/pichi-lsm.conf"
