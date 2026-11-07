@@ -113,6 +113,11 @@ done
 mkdir -p "$inst/network-online.target.wants"
 ln -s ../systemd-networkd-wait-online.service "$inst/network-online.target.wants/systemd-networkd-wait-online.service"
 install -m0644 "$here/10-build.network" "$extra/usr/lib/systemd/network/"
+install -m0644 "$here/bootstrap-time.service" "$inst/"
+mkdir -p "$inst/conglobate-build.service.d" "$extra/etc/systemd/system"
+install -m0644 "$here/bootstrap-time.conf" "$inst/conglobate-build.service.d/"
+# Only the ordered bootstrap service may adjust the appliance clock.
+ln -s /dev/null "$extra/etc/systemd/system/chronyd.service"
 printf '%s\n' fuse virtiofs loop vfat nls_cp437 nls_iso8859-1 virtio_net > "$extra/usr/lib/modules-load.d/pichi-virtiofs.conf"
 
 # mkosi copies mkosi.extra/ into the image before mkosi.finalize.

@@ -177,6 +177,14 @@ Conglobate does not download missing Git objects or image artifacts.
 Artifact preparation and attestation belong to the surrounding environment;
 the appliance image itself is built from this repository.
 
+The appliance includes Chrony and establishes time before starting Conglobate.
+It first uses unauthenticated NTP to obtain approximate time, then NTS with
+normal TLS certificate validation. Both steps must succeed; failure powers off
+the appliance. This runs outside the command sandbox and grants build commands
+no clock-setting privileges. It is an interim bootstrap: an attacker can
+influence the initial certificate-validation time, and host-controlled delays
+remain outside its security guarantee.
+
 ## Implementation style
 
 Application Rust forbids unsafe code. Prefer methods on meaningful owning types,
