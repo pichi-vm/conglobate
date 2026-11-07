@@ -18,7 +18,6 @@
 set -euo pipefail
 
 RELEASE=43
-IMAGE="${IMAGE:-ghcr.io/pichi-vm/conglobate}"
 ARMA="${ARMA:-arma}"
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -190,4 +189,4 @@ if [ -n "${GITHUB_ENV:-}" ]; then
 fi
 
 echo ">>> imported conglobate:$VERSION (carapace + pmi + bootconfig + config)"
-echo "    push (main CI only): $IMAGE:$VERSION and $IMAGE:latest"
+echo "    push (main CI only): ghcr.io/pichi-vm/conglobate:$VERSION and ghcr.io/pichi-vm/conglobate:latest"
