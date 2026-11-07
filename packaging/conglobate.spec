@@ -13,7 +13,6 @@ BuildRequires:  rust
 BuildRequires:  gcc
 BuildRequires:  git
 BuildRequires:  systemd-rpm-macros
-Requires:       pichi-lsm
 Requires:       systemd
 Requires:       systemd-networkd
 Requires:       systemd-resolved

@@ -103,6 +103,9 @@ mkdir -p "$extra/usr/bin" \
 install -m0755 "$conglobate_bin" "$extra/usr/bin/conglobate"
 install -m0755 "$repo/lsm/target/release/pichi-lsm" "$extra/usr/libexec/pichi-lsm"
 install -m0644 "$repo/packaging/systemd/"* "$repo/lsm/packaging/systemd/pichi-lsm.service" "$inst/"
+# The image composes the build engine and policy; the packages stay independent.
+mkdir -p "$inst/conglobate-build.service.d"
+printf '%s\n' '[Unit]' 'Requires=pichi-lsm.service' 'After=pichi-lsm.service' > "$inst/conglobate-build.service.d/pichi-lsm.conf"
 for tag in repo cache output; do
 	ln -s "../run-pichi-${tag}.mount" "$inst/local-fs.target.wants/run-pichi-${tag}.mount"
 done

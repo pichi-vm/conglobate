@@ -9,6 +9,6 @@ Rules-Requires-Root: no
 
 Package: conglobate
 Architecture: amd64 arm64
-Depends: ${shlibs:Depends}, ${misc:Depends}, pichi-lsm, systemd, systemd-resolved, e2fsprogs, dosfstools, git, ca-certificates
+Depends: ${shlibs:Depends}, ${misc:Depends}, systemd, systemd-resolved, e2fsprogs, dosfstools, git, ca-certificates
 Description: image builder for the pichi appliance
  Image builder for the Pichi appliance.
