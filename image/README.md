@@ -10,9 +10,9 @@ Bootstrap CI builds this image with mkosi from Fedora 43 packages and, on
 `conglobate.plan.yaml` is only that skeleton; it is not the bootstrap
 builder.
 
-The policy and loader come from the pinned [LSM submodule](../lsm).
-Run `git submodule update --init lsm` before building locally. The LSM
-repository owns its source checks; this repository builds the appliance.
+The policy, loader and service unit come from the `pichi-lsm` RPM in
+`npmccallum/pichi` COPR. The LSM repository owns its source checks; this
+repository builds the appliance.
 
 ## Registry
 

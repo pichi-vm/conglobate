@@ -8,9 +8,6 @@ env:
   # Crate version. image/build.sh refuses to run when Cargo.toml disagrees.
   # Main pushes this tag and :latest. Pull requests do not push.
   CONGLOBATE_VERSION: "0.2.0"
-  # LSM and the publisher source build use nightly. Conglobate itself uses
-  # 1.94.0, matching the rootless checks.
-  NIGHTLY: "nightly-2026-07-06"
   PICHI_REV: "64f982cf1f603cf3c9f5f89d4608342635cd6b3f"
 
 jobs:
@@ -56,33 +53,18 @@ jobs:
 
       - uses: actions/checkout@v7.0.1
         with:
-          submodules: recursive
           persist-credentials: false
 
-      - name: Install Rust (${{ env.NIGHTLY }} + 1.94.0)
+      - name: Install Rust (1.94.0 + stable)
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
-            -y --profile minimal --default-toolchain "$NIGHTLY"
-          "$HOME/.cargo/bin/rustup" toolchain install 1.94.0 --profile minimal
+            -y --profile minimal --default-toolchain 1.94.0
           "$HOME/.cargo/bin/rustup" toolchain install stable --profile minimal
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - uses: Swatinem/rust-cache@v2
         with:
           cache-bin: false
-          workspaces: |
-            . -> target
-            lsm -> target
-
-      - name: Install the BPF linker
-        working-directory: lsm
-        run: |
-          # Reuse LLVM from the selected Rust toolchain.
-          linker_llvm="$(printf '%s' "$(rustc --print sysroot)"/lib/libLLVM.so.*)"
-          linker_llvm_version="${linker_llvm##*/libLLVM.so.}"
-          RUSTFLAGS="-C link-arg=$linker_llvm -C link-arg=-Wl,-rpath,${linker_llvm%/*}" \
-            cargo install --locked --version '=0.13.0' \
-              --no-default-features --features "llvm-${linker_llvm_version%%.*},no-llvm-linking" bpf-linker
 
       - name: 🔨 Build Conglobate
         run: |
