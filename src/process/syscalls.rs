@@ -214,6 +214,7 @@ impl CommandSyscalls {
             sys::__NR_setxattrat,
             sys::__NR_removexattrat,
             sys::__NR_mmap,
+            sys::__NR_msync,
             sys::__NR_mprotect,
             sys::__NR_munmap,
             sys::__NR_mremap,
