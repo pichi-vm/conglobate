@@ -117,9 +117,10 @@ pub struct Requirements {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub memory: Option<Band<Memory>>,
 
-    /// Capacity and transport declaration for the single mutable storage overlay.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub storage: Option<Storage>,
+    /// Capacity and transport for one mutable overlay; defaults to a 1024 MiB
+    /// recommendation without a required minimum.
+    #[serde(default, skip_serializing_if = "Storage::is_default")]
+    pub storage: Storage,
 
     /// Network interfaces the host must wire (BUILD.md §7). One user-mode
     /// virtio-net device per entry; the map key is the operator-facing label.
@@ -151,7 +152,7 @@ impl<'de> Deserialize<'de> for Slot {
 
 /// The single mutable overlay's capacity in MiB and declared transport.
 /// Backing paths, retention and provisioning are operator configuration.
-#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct Storage {
     /// Positive MiB capacities; unlike memory, storage has no 2-MiB constraint.
     #[serde(flatten)]
@@ -160,6 +161,26 @@ pub struct Storage {
     /// Declared transport; omission inherits the global default.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub slot: Option<Slot>,
+}
+
+impl Default for Storage {
+    fn default() -> Self {
+        Self {
+            capacity: Band {
+                required: None,
+                recommended: Some(Recommendation::Value(Self::DEFAULT_RECOMMENDED)),
+            },
+            slot: None,
+        }
+    }
+}
+
+impl Storage {
+    const DEFAULT_RECOMMENDED: NonZeroU64 = NonZeroU64::new(1024).unwrap();
+
+    fn is_default(&self) -> bool {
+        self == &Self::default()
+    }
 }
 
 impl<'de> Deserialize<'de> for Storage {
@@ -174,7 +195,12 @@ impl<'de> Deserialize<'de> for Storage {
             slot: Option<Slot>,
         }
         let wire = Wire::deserialize(d)?;
-        let capacity = Band::new(wire.required, wire.recommended)
+        let recommended = wire.recommended.or(Some(Recommendation::Value(
+            wire.required
+                .unwrap_or(Self::DEFAULT_RECOMMENDED)
+                .max(Self::DEFAULT_RECOMMENDED),
+        )));
+        let capacity = Band::new(wire.required, recommended)
             .ok_or_else(|| serde::de::Error::custom("recommended is below required"))?;
         Ok(Self {
             capacity,
@@ -721,10 +747,41 @@ mod tests {
     }
 
     #[test]
+    fn omitted_storage_recommendation_defaults_at_parse() {
+        for value in [
+            serde_json::json!({"version": 1}),
+            serde_json::json!({"version": 1, "requirements": {}}),
+            serde_json::json!({"version": 1, "requirements": {"storage": {}}}),
+        ] {
+            let config: Config = serde_json::from_value(value).unwrap();
+            assert_eq!(config, Config::default());
+            assert_eq!(
+                config.requirements.storage.capacity.recommended(),
+                Some(Recommendation::Value(NonZeroU64::new(1024).unwrap()))
+            );
+        }
+        for (value, expected) in [
+            (serde_json::json!({"required": 1}), 1024),
+            (serde_json::json!({"required": 2048}), 2048),
+            (serde_json::json!({"recommended": 2}), 2),
+        ] {
+            let storage: Storage = serde_json::from_value(value).unwrap();
+            assert_eq!(
+                storage.capacity.recommended(),
+                Some(Recommendation::Value(NonZeroU64::new(expected).unwrap()))
+            );
+        }
+        #[cfg(feature = "yaml")]
+        {
+            let yaml: Requirements = serde_saphyr::from_str("storage: {}\n").unwrap();
+            assert_eq!(yaml.storage, Storage::default());
+        }
+    }
+
+    #[test]
     fn storage_describes_one_overlay_in_positive_mib() {
         for storage in [
-            serde_json::json!({}),
-            serde_json::json!({"slot": "mmio"}),
+            serde_json::json!({"recommended": 1024, "slot": "mmio"}),
             serde_json::json!({"required": 1, "recommended": 3, "slot": "pci"}),
             serde_json::json!({"recommended": u64::MAX}),
         ] {
@@ -768,13 +825,7 @@ mod tests {
             Some(Recommendation::Max)
         );
         assert_eq!(
-            config
-                .requirements
-                .storage
-                .as_ref()
-                .unwrap()
-                .capacity
-                .recommended(),
+            config.requirements.storage.capacity.recommended(),
             Some(Recommendation::Max)
         );
         assert_eq!(serde_json::to_value(config).unwrap(), value);
