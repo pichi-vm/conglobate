@@ -47,7 +47,8 @@ volatility. Mount settings are not inherited by later stages.
 Use `mounts: {/var: none}` to persist writes to `/var`, optionally adding
 `/var/cache: tmpfs` to keep just the cache temporary. Overrides match normalized
 paths exactly; `none` does not remove child mounts and is harmless for a path
-without a default. Omitted mounts and `mounts: {}` both retain defaults.
+without a default. A parent tmpfs still covers its subtree: `/var/cache: none`
+does not persist that directory while `/var` remains tmpfs. Omitted mounts and `mounts: {}` both retain defaults.
 Existing recipes that persist `/run`, `/tmp`, or `/var` must explicitly disable
 the corresponding default. `/run` and `/var` tmpfs roots use mode `0755`; other
 tmpfs mounts, including `/tmp`, use `1777`. ESP mounts remain explicit.

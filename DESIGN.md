@@ -844,7 +844,8 @@ explicit paths, rejects duplicate aliases, overlays defaults, and removes exact
 paths marked `none` before storage sees the resolved mount map. `none` is a no-op
 without a matching default and never disables child mounts or mandatory sandbox
 runtime mounts. It exposes inherited directory contents rather than deleting
-them. Settings and temporary contents are not inherited by later stages.
+them, unless an ancestor mount still covers that directory. Disabling
+`/var/cache` alone does not bypass the default `/var` tmpfs. Settings and temporary contents are not inherited by later stages.
 `/run` and `/var` tmpfs roots have mode `0755`; other tmpfs roots use `1777`.
 This is build-time statelessness, not runtime volatility configuration. Existing
 plans that need writes in these directories persisted must use `none`.
