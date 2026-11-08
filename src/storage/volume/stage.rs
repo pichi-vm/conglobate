@@ -3,9 +3,7 @@
 
 use super::{MountLease, Point};
 use crate::{
-    anchor::RecoveryDirectory,
-    contract::plan::{ImagePath, Mount},
-    isolation::IdRange,
+    anchor::RecoveryDirectory, contract::plan::ImagePath, isolation::IdRange, planner::Mount,
     storage::PartitionedSnapshot,
 };
 use rustix::{fs, mount};
@@ -64,7 +62,11 @@ impl StageMounts {
                     )?;
                     mount::fsconfig_set_string(&context, "umask", "0022")?;
                 } else {
-                    mount::fsconfig_set_string(&context, "mode", "1777")?;
+                    let mode = match path.normalized().as_str() {
+                        "/run" | "/var" => "0755",
+                        _ => "1777",
+                    };
+                    mount::fsconfig_set_string(&context, "mode", mode)?;
                 }
                 mount::fsconfig_set_string(&context, "uid", "0")?;
                 mount::fsconfig_set_string(&context, "gid", "0")?;
@@ -186,5 +188,80 @@ impl Drop for StageAttachments {
             // Fallback only. MountLease's lazy detach never yields a receipt.
             drop(point);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        document::YamlDocument,
+        planner::Plan,
+        storage::{Created, Mapping, Workspace},
+    };
+    use std::{
+        num::NonZeroU64,
+        os::unix::fs::{MetadataExt, PermissionsExt},
+    };
+
+    #[test]
+    #[ignore = "requires root, tmpfs, loop devices and device mapper"]
+    fn defaults_survive_views_but_not_stage_completion() {
+        let parent = tempfile::tempdir_in("/dev/shm").unwrap();
+        std::fs::set_permissions(parent.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+        let scope = RecoveryDirectory::open(parent.path()).unwrap();
+        let workspace = Workspace::create().unwrap();
+        let sectors = NonZeroU64::new(carapace::ZERO_SIZE_SECTORS).unwrap();
+        let origin = Mapping::<Created>::create().unwrap().zero(sectors).unwrap();
+        let snapshot = Mapping::<Created>::create()
+            .unwrap()
+            .snapshot(
+                &origin,
+                workspace.snapshot_store().unwrap().attach().unwrap(),
+                sectors,
+            )
+            .unwrap();
+        let snapshot = PartitionedSnapshot::open(snapshot).unwrap();
+        let plan = Plan::try_from(YamlDocument::from(
+            "version: 1\nimage: x\nstages: {x: {extend: registry.test/base:1}}",
+        ))
+        .unwrap();
+        let mounts = &plan.stages.values().next().unwrap().mount;
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join("var")).unwrap();
+        std::fs::write(root.path().join("var/inherited"), "keep").unwrap();
+        let root_file = File::open(root.path()).unwrap();
+        let mut stage = StageMounts::default();
+        stage
+            .populate(mounts, &snapshot, &scope, parent.path())
+            .unwrap();
+        for iteration in 0..2 {
+            let mut attachments = StageAttachments::default();
+            stage.attach(&root_file, &scope, &mut attachments).unwrap();
+            for (path, mode) in [("run", 0o755), ("tmp", 0o1777), ("var", 0o755)] {
+                let path = root.path().join(path);
+                assert_eq!(path.metadata().unwrap().mode() & 0o7777, mode);
+                assert!(!path.join("inherited").exists());
+                if iteration == 0 {
+                    std::fs::write(path.join("temporary"), "same stage").unwrap();
+                } else {
+                    assert_eq!(
+                        std::fs::read_to_string(path.join("temporary")).unwrap(),
+                        "same stage"
+                    );
+                }
+            }
+            attachments.close(&scope).unwrap();
+        }
+        stage.close(&scope).unwrap();
+        for path in ["run", "tmp", "var"] {
+            assert!(!root.path().join(path).join("temporary").exists());
+        }
+        assert_eq!(
+            std::fs::read_to_string(root.path().join("var/inherited")).unwrap(),
+            "keep"
+        );
+        snapshot.into_snapshot().unwrap().close().unwrap();
+        origin.close().unwrap();
     }
 }
