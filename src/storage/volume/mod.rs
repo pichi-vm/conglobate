@@ -80,7 +80,7 @@ impl<'ns, 'a, 'w> Volume<'ns, 'a, 'w, Unmounted> {
         mut self,
         mounts: &std::collections::BTreeMap<
             crate::contract::plan::ImagePath,
-            crate::contract::plan::Mount,
+            crate::planner::Mount,
         >,
         parent: &Path,
     ) -> io::Result<Self> {

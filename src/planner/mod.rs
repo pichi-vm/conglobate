@@ -83,9 +83,16 @@ pub(crate) struct Stage {
     pub(crate) from: plan::ImageRef,
     pub(crate) bootstrap: bool,
     pub(crate) format: Option<plan::Format>,
-    pub(crate) mount: BTreeMap<plan::ImagePath, plan::Mount>,
+    pub(crate) mount: BTreeMap<plan::ImagePath, Mount>,
     pub(crate) derive: Vec<Directive>,
 }
+/// Resolved mounts only: disabling a default never reaches storage.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Mount {
+    Esp,
+    Tmpfs,
+}
+
 impl TryFrom<plan::Stage> for Stage {
     type Error = PlanError;
     fn try_from(raw: plan::Stage) -> Result<Self, Self::Error> {
@@ -128,9 +135,28 @@ impl TryFrom<plan::Stage> for Stage {
                 ));
             }
         }
+        let mut resolved = BTreeMap::new();
+        for path in ["/run", "/tmp", "/var"] {
+            resolved.insert(plan::ImagePath::new(path.into()).unwrap(), Mount::Tmpfs);
+        }
+        for (path, kind) in mount {
+            let path = plan::ImagePath::new(path.normalized()).unwrap();
+            match kind {
+                plan::Mount::None => {
+                    resolved.remove(&path);
+                }
+                plan::Mount::Tmpfs => {
+                    resolved.insert(path, Mount::Tmpfs);
+                }
+                plan::Mount::Esp => {
+                    resolved.insert(path, Mount::Esp);
+                }
+            }
+        }
+        let mount = resolved;
         if let Some(spec) = &format {
             crate::formatter::Ext4Format::from(spec).layout()?;
-            if spec.esp.is_none() && mount.values().any(|kind| *kind == plan::Mount::Esp) {
+            if spec.esp.is_none() && mount.values().any(|kind| *kind == Mount::Esp) {
                 return Err(PlanError::Invalid("ESP mount requires format.esp".into()));
             }
         }
@@ -377,6 +403,61 @@ mod tests {
         );
         }
     }
+    #[test]
+    fn defaults_and_exact_overrides_apply_to_every_stage_shape() {
+        for source in [
+            "extend: registry.test/base:1",
+            "use: registry.test/tools:1",
+            "use: !bootstrap registry.test/tools:1",
+        ] {
+            for declaration in ["", ", mounts: {}"] {
+                let plan = parse(&format!(
+                    "version: 1\nimage: x\nstages: {{x: {{{source}{declaration}}}}}"
+                ))
+                .unwrap();
+                let mounts = &plan.stages.values().next().unwrap().mount;
+                assert_eq!(mounts.len(), 3);
+                for path in ["/run", "/tmp", "/var"] {
+                    assert_eq!(mounts.get(path), Some(&super::Mount::Tmpfs));
+                }
+            }
+            let format = if source.starts_with("use:") {
+                ", format: {esp: 512MiB}"
+            } else {
+                ""
+            };
+            let plan = parse(&format!("version: 1\nimage: x\nstages: {{x: {{{source}{format}, mounts: {{'var/.': none, /var/cache: tmpfs, /absent: none, /tmp: esp}}}}}}")).unwrap();
+            let mounts = &plan.stages.values().next().unwrap().mount;
+            assert_eq!(mounts.len(), 3);
+            assert_eq!(mounts.get("/tmp"), Some(&super::Mount::Esp));
+            assert_eq!(mounts.get("/var/cache"), Some(&super::Mount::Tmpfs));
+            assert!(!mounts.contains_key("/var"));
+        }
+    }
+
+    #[test]
+    fn overrides_do_not_propagate_to_later_stages() {
+        let plan = parse("version: 1\nimage: child\nstages: {base: {extend: registry.test/base:1, mounts: {/run: none, /tmp: none, /var: none}}, child: {extend: base}}").unwrap();
+        assert!(plan.stages["base"].mount.is_empty());
+        assert_eq!(plan.stages["child"].mount.len(), 3);
+    }
+
+    #[test]
+    fn disabling_mounts_still_validates_paths_and_values() {
+        for mounts in [
+            "{/var: none, 'var/.': tmpfs}",
+            "{/var: none, 'var/.': none}",
+            "{'/': none}",
+            "{'/../tmp': none}",
+            "{/dev: none}",
+            "{/proc: none}",
+            "{/sys: none}",
+            "{/tmp: null}",
+        ] {
+            assert!(parse(&format!("version: 1\nimage: x\nstages: {{x: {{extend: registry.test/base:1, mounts: {mounts}}}}}")).is_err(), "{mounts}");
+        }
+    }
+
     #[test]
     fn conversion_checks_mounts_formats_and_unused_declarations() {
         for mounts in [

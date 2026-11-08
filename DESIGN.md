@@ -837,7 +837,17 @@ An ESP is FAT32 with 4096-byte sectors and one-sector clusters. Supported size i
 Capture and verify `mkfs.fat` alongside the selected root formatter. Image commands do not format or
 mount devices with supervisor authority.
 
-`mounts` maps image-relative paths to `tmpfs` or `esp`, in both stage shapes.
+`mounts` maps image-relative paths to `tmpfs`, `esp`, or `none`, in both stage
+shapes. Each stage independently defaults `/run`, `/tmp`, and `/var` to tmpfs;
+omitted mounts and an empty map retain these defaults. The planner normalizes
+explicit paths, rejects duplicate aliases, overlays defaults, and removes exact
+paths marked `none` before storage sees the resolved mount map. `none` is a no-op
+without a matching default and never disables child mounts or mandatory sandbox
+runtime mounts. It exposes inherited directory contents rather than deleting
+them. Settings and temporary contents are not inherited by later stages.
+`/run` and `/var` tmpfs roots have mode `0755`; other tmpfs roots use `1777`.
+This is build-time statelessness, not runtime volatility configuration. Existing
+plans that need writes in these directories persisted must use `none`.
 Leading `/` is optional; normalize duplicates, reject root replacement,
 traversal, symlink targets and control-path masking. Creation's `/boot/efi` means
 `/mnt/boot/efi` in its command namespace. Mount parents before children and
@@ -968,7 +978,7 @@ Bootstrap commands receive the same runtime environment at their output root
 PID namespace with kernel-control paths restricted; `/dev` reuses that command's
 private basic devices, devpts and shared memory; `/sys` is empty and read-only.
 These mounts are transient and are not captured in the resulting image. Target
-`/run` remains recipe-owned temporary storage, not the supervisor's runtime.
+`/run` defaults to stage-owned temporary storage, not the supervisor's runtime.
 
 Enabled steps share the supervisor network namespace. The launching environment
 owns connectivity and network policy; supervisor controls must not be exposed

@@ -37,8 +37,20 @@ execute or acquire cache inputs.
 Creation (`use`) runs tools at `/` and populates a newly formatted root at
 `/mnt`; tool writes are discarded. Extension (`extend`) modifies its input
 root at `/` and retains its boot components. Each stage adds one scute.
-Optional `format` controls ext4 capacity, label and ESP size. Explicit tmpfs
-and ESP mounts persist across that stage's directives.
+Optional `format` controls ext4 capacity, label and ESP size. Every stage mounts
+`/run`, `/tmp`, and `/var` as tmpfs by default, encouraging stateless `/var` images.
+These image-relative mounts live at `/mnt` during creation and `/` during
+extension. Contents survive between directives but writes are discarded at the
+end of the stage. This does not erase inherited contents or configure runtime
+volatility. Mount settings are not inherited by later stages.
+
+Use `mounts: {/var: none}` to persist writes to `/var`, optionally adding
+`/var/cache: tmpfs` to keep just the cache temporary. Overrides match normalized
+paths exactly; `none` does not remove child mounts and is harmless for a path
+without a default. Omitted mounts and `mounts: {}` both retain defaults.
+Existing recipes that persist `/run`, `/tmp`, or `/var` must explicitly disable
+the corresponding default. `/run` and `/var` tmpfs roots use mode `0755`; other
+tmpfs mounts, including `/tmp`, use `1777`. ESP mounts remain explicit.
 
 COPY without `from` reads the committed context. Named COPY reads a completed
 stage's persisted root; it does not replay temporary stage mounts. See
