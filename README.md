@@ -3,7 +3,7 @@
 Conglobate builds layered OS images from committed plans and locally supplied,
 locked image artifacts. The crate is a types-only library plus a binary engine;
 the standalone CLI remains testable without a VM. Production builds run in a
-pichi appliance image shipped from this repository (see DESIGN.md). The
+[Pichi build appliance](https://github.com/pichi-vm/pichi/tree/main/appliance). The
 plan format is the shared staged model in [DESIGN.md](DESIGN.md): named
 creation and extension stages, followed by selection of the root and boot
 components. The engine executes only the selected image's dependency closure.
@@ -164,8 +164,8 @@ pinned Git revisions against every crates.io advisory.
 ## Runtime trust boundary
 
 Production image builds run in the dedicated disposable **build appliance** (a
-pichi image shipped from this repo) with a qualified kernel and an independent
-environment controller that destroys the VM if conglobate crashes. systemd is
+pichi image built by the Pichi repository) with a qualified kernel and an
+independent environment controller that destroys the VM if conglobate crashes. systemd is
 PID 1; static virtiofs mounts expose `repo`/`cache`/`output` at
 `/run/pichi/{repo,cache,output}`; the guest opens named console
 `dev.pichi.build`, writes `["build", 1, null]`, then reads one
@@ -188,7 +188,7 @@ explains the types-only lib, binary engine, ownership and typestate.
 
 Conglobate does not download missing Git objects or image artifacts.
 Artifact preparation and attestation belong to the surrounding environment;
-the appliance image itself is built from this repository.
+the appliance image itself is built by the Pichi repository.
 
 The appliance includes Chrony and establishes time before starting Conglobate.
 It first uses unauthenticated NTP to obtain approximate time, then NTS with
