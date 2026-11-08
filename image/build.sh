@@ -74,7 +74,7 @@ if ldd "$conglobate_bin" | grep -q 'not found'; then
 	exit 1
 fi
 
-corium_bin="${CORIUM_BIN:-$(command -v corium)}"
+corium_bin="$(command -v corium)"
 
 # ---- 2. stage units, virtiofs autoload, and the engine into the rootfs ---
 inst="$extra/usr/lib/systemd/system"
