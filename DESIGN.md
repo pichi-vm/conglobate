@@ -675,6 +675,26 @@ not numeric slot assignments or permission to add hardware to the PMI platform.
 Pichi resolves the launch policy into explicit per-device bus assignments;
 Dillo implements those assignments without a global bus default or fallback.
 
+`requirements.filesystems` declares required host directory shares by public
+virtiofs tag. An optional `description` explains what the operator must supply;
+hosts and configuration assistants can display it when requesting a binding.
+Each entry also accepts `readonly` (default `false`) and an optional `slot`
+transport override. For example:
+
+```yaml
+requirements:
+  filesystems:
+    repo:
+      description: Git repository containing the build source.
+      readonly: true
+    output:
+      description: Empty directory for the resulting OCI image.
+```
+
+The host must bind every declared name and enforce its access requirement before
+launch. Host directory paths and guest mount points are not part of this schema.
+The guest chooses where to mount each share; undeclared fields are rejected.
+
 The optional `requirements.storage` describes one mutable overlay above the
 read-only image. Its `required` and `recommended` capacities are positive integer
 MiB; a numeric recommendation must be at least the required capacity. Storage

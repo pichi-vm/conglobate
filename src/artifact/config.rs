@@ -126,6 +126,28 @@ pub struct Requirements {
     /// virtio-net device per entry; the map key is the operator-facing label.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub interfaces: BTreeMap<String, Interface>,
+
+    /// Required host directory shares, keyed by public virtiofs tag.
+    /// Guest mount points and host source paths are not image metadata.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub filesystems: BTreeMap<String, Filesystem>,
+}
+
+/// A required virtiofs share. The host binds its name; the guest mounts it.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Filesystem {
+    /// Human-facing description of the directory the operator must supply.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+
+    /// Require host-enforced read-only access; omission requires writable access.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub readonly: bool,
+
+    /// Declared transport; omission inherits the image's default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slot: Option<Slot>,
 }
 
 /// Declared virtio transport; the PMI platform must provide matching slots.
@@ -731,6 +753,7 @@ mod tests {
             for value in [
                 serde_json::json!({"slot": slot}),
                 serde_json::json!({"interfaces": {"public": {"slot": slot}}}),
+                serde_json::json!({"filesystems": {"data": {"slot": slot}}}),
             ] {
                 assert!(serde_json::from_value::<Requirements>(value).is_err());
             }
@@ -744,6 +767,39 @@ mod tests {
         let config: Config = serde_json::from_str(r#"{"version":1}"#).unwrap();
         assert_eq!(config.requirements.slot, Slot::Mmio);
         assert_eq!(config, Config::default());
+    }
+
+    #[test]
+    fn filesystem_requirements_round_trip_without_private_paths() {
+        let value = serde_json::json!({"version": 1, "requirements": {
+            "slot": "pci",
+            "filesystems": {
+                "repo": {
+                    "description": "Git repository containing the build source.",
+                    "readonly": true,
+                    "slot": "mmio"
+                },
+                "output": {}
+            }
+        }});
+        let config: Config = serde_json::from_value(value.clone()).unwrap();
+        assert!(config.requirements.filesystems["repo"].readonly);
+        assert_eq!(
+            config.requirements.filesystems["repo"].slot,
+            Some(Slot::Mmio)
+        );
+        assert_eq!(
+            config.requirements.filesystems["output"],
+            Filesystem::default()
+        );
+        assert_eq!(serde_json::to_value(config).unwrap(), value);
+
+        for private_field in ["mountpoint", "source"] {
+            let invalid = serde_json::json!({"version": 1, "requirements": {
+                "filesystems": {"repo": {private_field: "/private"}}
+            }});
+            assert!(serde_json::from_value::<Config>(invalid).is_err());
+        }
     }
 
     #[test]
