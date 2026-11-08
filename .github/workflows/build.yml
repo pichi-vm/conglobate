@@ -65,11 +65,6 @@ jobs:
         with:
           cache-bin: false
 
-      - name: 🔨 Build Conglobate
-        run: |
-          cargo +1.94.0 build --locked --release --features cli --bin conglobate
-          echo "CONGLOBATE_BIN=$PWD/target/release/conglobate" >> "$GITHUB_ENV"
-
       - name: Build appliance image (native ${{ matrix.arch }})
         # REVISION reaches build.sh's provenance stamp: git rev-parse is not
         # reliable in this checkout, so pass the SHA explicitly.

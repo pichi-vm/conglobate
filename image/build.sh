@@ -58,12 +58,8 @@ rm -rf "$work"
 mkdir -p "$work"
 
 # ---- 1. conglobate release binary + static Corium init -------------------
-if [ -n "${CONGLOBATE_BIN:-}" ]; then
-	conglobate_bin="$CONGLOBATE_BIN"
-else
-	cargo +1.94.0 build --locked --release --features cli --bin conglobate --manifest-path "$repo/Cargo.toml"
-	conglobate_bin="$repo/target/release/conglobate"
-fi
+cargo +1.94.0 build --locked --release --features cli --bin conglobate --manifest-path "$repo/Cargo.toml"
+conglobate_bin="$repo/target/release/conglobate"
 if [ ! -x "$conglobate_bin" ]; then
 	echo "!!! conglobate binary is not executable: $conglobate_bin" >&2
 	exit 1
