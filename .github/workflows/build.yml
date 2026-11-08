@@ -5,9 +5,6 @@ on:
   workflow_dispatch:
 
 env:
-  # Crate version. image/build.sh refuses to run when Cargo.toml disagrees.
-  # Main pushes this tag and :latest. Pull requests do not push.
-  CONGLOBATE_VERSION: "0.2.0"
   PICHI_REV: "64f982cf1f603cf3c9f5f89d4608342635cd6b3f"
 
 jobs:
@@ -22,6 +19,8 @@ jobs:
   # uploads it. No arch job pushes. The index job, on main only, loads both
   # and pushes one multi-arch index.
   build:
+    outputs:
+      version: ${{ steps.appliance.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
@@ -66,6 +65,7 @@ jobs:
           cache-bin: false
 
       - name: Build appliance image (native ${{ matrix.arch }})
+        id: appliance
         # REVISION reaches build.sh's provenance stamp: git rev-parse is not
         # reliable in this checkout, so pass the SHA explicitly.
         env:
@@ -78,7 +78,9 @@ jobs:
           python3 -m py_compile image/mkosi.finalize
 
       - name: Export image as an OCI layout directory
-        run: pichi save "conglobate:${CONGLOBATE_VERSION}" -o "oci-${{ matrix.arch }}"
+        env:
+          VERSION: ${{ steps.appliance.outputs.version }}
+        run: pichi save "conglobate:${VERSION}" -o "oci-${{ matrix.arch }}"
 
       - name: Upload OCI layout artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -86,7 +88,7 @@ jobs:
           name: oci-${{ matrix.arch }}
           path: oci-${{ matrix.arch }}
 
-  # Load both OCI layouts, assemble one multi-arch index, and push :0.2.0
+  # Load both OCI layouts, assemble one multi-arch index, and push its version
   # and :latest. Absent on pull requests and on non-main branches, so those
   # builds stay green without registry credentials.
   index:
@@ -116,11 +118,12 @@ jobs:
             > "$HOME/.docker/config.json"
 
       - name: Load, assemble, and push the multi-arch index
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
           # platform.os = pichi: a carapace is a pichi VM guest, not a
           # container "used on" an OS. Producer and `pichi pull` share this.
-          # :0.2.0 is the durable pin; :latest is a moving alias.
-          VERSION="${CONGLOBATE_VERSION}"
+          # The crate version is the durable pin; :latest is a moving alias.
           pichi load "oci-amd64" --tag "conglobate:${VERSION}-amd64"
           pichi load "oci-arm64" --tag "conglobate:${VERSION}-arm64"
           list="conglobate:${VERSION}"

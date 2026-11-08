@@ -24,16 +24,11 @@ here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 cd "$here"
 
-crate_version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$repo/Cargo.toml" | head -1)"
-if [ -z "$crate_version" ]; then
+VERSION="$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$repo/Cargo.toml" | head -1)"
+if [ -z "$VERSION" ]; then
 	echo "!!! could not read package version from $repo/Cargo.toml" >&2
 	exit 1
 fi
-if [ -n "${CONGLOBATE_VERSION:-}" ] && [ "$CONGLOBATE_VERSION" != "$crate_version" ]; then
-	echo "!!! CONGLOBATE_VERSION=$CONGLOBATE_VERSION does not match Cargo.toml $crate_version" >&2
-	exit 1
-fi
-VERSION="$crate_version"
 
 case "$(uname -m)" in
 	x86_64)  arch=amd64 ;;
@@ -180,8 +175,8 @@ pichi import pmi "$work/boot.pmi" \
 	-a "org.opencontainers.image.description=Conglobate build appliance for pichi" \
 	-t "conglobate:$VERSION"
 
-if [ -n "${GITHUB_ENV:-}" ]; then
-	echo "CONGLOBATE_VERSION=$VERSION" >> "$GITHUB_ENV"
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+	echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 fi
 
 echo ">>> imported conglobate:$VERSION (carapace + pmi + bootconfig + config)"
