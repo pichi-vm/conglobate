@@ -410,7 +410,7 @@ mod tests {
             "use: registry.test/tools:1",
             "use: !bootstrap registry.test/tools:1",
         ] {
-            for declaration in ["", ", mounts: {}"] {
+            for declaration in ["", ", mounts: {}", ", mounts: {/var/cache: none}"] {
                 let plan = parse(&format!(
                     "version: 1\nimage: x\nstages: {{x: {{{source}{declaration}}}}}"
                 ))
