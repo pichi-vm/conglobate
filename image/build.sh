@@ -13,7 +13,7 @@
 # here; CI pushes ghcr.io/pichi-vm/conglobate on main only.
 #
 # Requires: mkosi, pichi, arma (ARMA=<path> or on PATH), corium, cargo + rustup,
-# cpio, dumpe2fs (e2fsprogs). Runs rootless (userns) aside from
+# cpio, xz/gzip/zstd, dumpe2fs (e2fsprogs). Runs rootless (userns) aside from
 # mkosi's own user namespace.
 set -euo pipefail
 

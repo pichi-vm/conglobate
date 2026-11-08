@@ -43,7 +43,7 @@ jobs:
       - name: Install system tooling
         run: >-
           dnf install -y
-          mkosi systemd-standalone-repart e2fsprogs util-linux coreutils cpio
+          mkosi systemd-standalone-repart e2fsprogs util-linux coreutils cpio xz gzip zstd
           git gcc curl openssl-devel pkgconf-pkg-config perl python3 dnf5-plugins
 
       - name: 📦 Install build tools

@@ -131,17 +131,17 @@ while stack:
 modsroot = f"{outdir}/initrd-mods/usr/lib/modules/{kver}"
 os.makedirs(modsroot, exist_ok=True)
 for rel in sorted(keep):
-    # Corium passes compressed files directly to finit_module; no userspace
-    # decompressor is shipped. Fail at build time if the kernel cannot load it.
-    compression = {".xz": "XZ", ".gz": "GZIP", ".zst": "ZSTD"}.get(os.path.splitext(rel)[1])
-    if compression:
-        for option in ("MODULE_DECOMPRESS", f"MODULE_COMPRESS_{compression}"):
-            if config.get(f"CONFIG_{option}") != "y":
-                raise SystemExit(f"Corium compressed module {rel} requires CONFIG_{option}=y")
     src = f"{kd}/{rel}"
-    dst = f"{modsroot}/{rel}"
+    # Arma requires plain modules in a supplied initramfs.
+    suffix = os.path.splitext(rel)[1]
+    decompressor = {".xz": "xz", ".gz": "gzip", ".zst": "zstd"}.get(suffix)
+    dst = f"{modsroot}/{rel.removesuffix(suffix) if decompressor else rel}"
     os.makedirs(os.path.dirname(dst), exist_ok=True)
-    shutil.copy2(src, dst)
+    if decompressor:
+        with open(dst, "wb") as output:
+            subprocess.run([decompressor, "-dc", src], stdout=output, check=True)
+    else:
+        shutil.copy2(src, dst)
 print(f">>> initrd module set: {len(keep)} .ko exported (from {len(PIVOT)} pivot roots)")
 
 # ---- 3. strip boot payload from the carapace rootfs ----------------------
