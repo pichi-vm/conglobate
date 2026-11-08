@@ -220,23 +220,12 @@ influences when commands can acquire external input.
 
 ### 1.4 Build appliance
 
-Conglobate ships its build-appliance as a **pichi image from this repo**, built
-by bootstrap CI (same class as the `fedora`/`carapace` images). Later, the
-appliance may self-host via `pichi build`.
-
-Bootstrap CI (`.github/workflows/build.yml`, sources under `image/`) builds
-that image with mkosi from Fedora 43 packages. It does not layer the published
-fedora carapace: that image does not treat `virtiofs` as first-class, so this
-rootfs keeps `virtiofs` and `fuse` and loads them after the initramfs pivot.
-systemd is PID 1 and its units bind tags `repo`, `cache`, and `output`.
-`e2fsprogs` supplies image-resident `mke2fs`. The release binary is installed
-at `/usr/bin/conglobate`. On `main`, CI pushes a multi-arch index to
-`ghcr.io/pichi-vm/conglobate` tagged `:0.2.0` (this crate's version) and
-`:latest`, with `platform.os` `pichi` and architectures `amd64` and `arm64`.
-`:0.2.0` is the durable pin (plus the digest once pushed). Consumers must
-not rely on `:latest` alone.
-Pull requests build the image and do not push. `image/conglobate.plan.yaml`
-stays a self-host-later skeleton; it is not this bootstrap.
+The [Pichi repository](https://github.com/pichi-vm/pichi/tree/main/appliance)
+builds the Fedora-based appliance with `pichi build` and publishes
+`ghcr.io/pichi-vm/pichi-build:latest`, the command's default build image.
+Conglobate supplies the packaged executable, `conglobate-build.service` and
+the `run-pichi-*.mount` units. The appliance installs and enables those units,
+the LSM package's loader service, and its own network and clock configuration.
 
 Product assumptions for the guest:
 
