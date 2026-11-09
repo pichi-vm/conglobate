@@ -569,9 +569,13 @@ pub(crate) mod tests {
         let image = store.chain_image(layers.clone(), top_root);
         assert_eq!(image.root(), Some(top_root));
         for layer in layers {
-            std::fs::remove_file(store.path(&layer.digest_str().parse().unwrap())).unwrap();
+            std::fs::write(
+                store.path(&layer.digest_str().parse().unwrap()),
+                vec![0; layer.size() as usize],
+            )
+            .unwrap();
         }
-        // Neither encoded blobs nor regenerated hash trees are needed for metadata.
+        // Input selection requires the extent, without scanning encoded content.
         // Actual filesystem access must open prepared files and verify reads instead.
         store.open().verify_metadata(&image).unwrap();
     }

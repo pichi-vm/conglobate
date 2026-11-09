@@ -74,8 +74,8 @@ impl Cache {
         Ok(index)
     }
 
-    /// Authenticate small non-scute inputs. Scutes are supplied separately by
-    /// Pichi and checked lazily by Carapace against the manifest commitment.
+    /// Authenticate metadata and require regular scute files of the declared size.
+    /// Scute payloads are checked lazily by Carapace, without scanning them here.
     pub(crate) fn verify_metadata(&self, image: &ResolvedImage) -> Result<(), CacheError> {
         let manifest = image.manifest();
         let config = &manifest.config;
@@ -87,17 +87,20 @@ impl Cache {
             self.verify(&digest, config.size)?;
         }
         for layer in &manifest.layers {
-            if matches!(
-                layer,
-                crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
-            ) {
-                continue;
-            }
             let digest = layer
                 .digest_str()
                 .parse()
                 .map_err(|_| CacheError::Invalid("invalid layer digest"))?;
-            self.verify(&digest, layer.size())?;
+            if matches!(
+                layer,
+                crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
+            ) {
+                if self.blob(&digest)?.metadata()?.len() != layer.size() {
+                    return Err(CacheError::Invalid("scute size mismatch"));
+                }
+            } else {
+                self.verify(&digest, layer.size())?;
+            }
         }
         Ok(())
     }
@@ -295,6 +298,38 @@ mod tests {
     }
 
     #[test]
+    fn metadata_checks_require_supplied_scute_extents() {
+        for index in 0..2 {
+            for damage in ["missing", "short", "long", "directory"] {
+                let fixture = ContentFixture::new();
+                let (digest, original) = &fixture.blobs[index];
+                let path = fixture
+                    .directory
+                    .path()
+                    .join("blobs/sha256")
+                    .join(digest.hex());
+                fs::remove_file(&path).unwrap();
+                match damage {
+                    "missing" => {}
+                    "short" => fs::write(&path, &original[..original.len() - 1]).unwrap(),
+                    "long" => {
+                        let mut bytes = original.clone();
+                        bytes.push(0);
+                        fs::write(&path, bytes).unwrap();
+                    }
+                    "directory" => fs::create_dir(&path).unwrap(),
+                    _ => unreachable!(),
+                }
+                let cache = Cache::open(fixture.directory.path()).unwrap();
+                assert!(
+                    cache.verify_metadata(&fixture.image).is_err(),
+                    "{index}: {damage}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn metadata_checks_do_not_scan_scute_payloads() {
         let fixture = ContentFixture::new();
         let cache = Cache::open(fixture.directory.path()).unwrap();
@@ -317,7 +352,7 @@ mod tests {
                 scute,
                 "{digest}"
             );
-            // Export still authenticates encoded bytes as it copies them.
+            // Explicit byte reads still authenticate the encoded content.
             assert!(
                 cache
                     .copy_verified(digest, bytes.len() as u64, &mut std::io::sink())

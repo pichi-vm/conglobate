@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    artifact::Layer, cache::Cache, firmware::FirmwareFile, input::CheckedImage,
-    output::StagedDirectory,
+    artifact::Layer, firmware::FirmwareFile, input::CheckedImage, output::StagedDirectory,
 };
 use std::sync::Arc;
 
@@ -38,17 +37,13 @@ impl Pmi<'_, '_> {
             Self::File(_) => None,
         }
     }
-    pub(crate) fn store(&self, cache: &Cache, staged: &StagedDirectory) -> anyhow::Result<Layer> {
+    pub(crate) fn store(&self, staged: &StagedDirectory) -> anyhow::Result<Layer> {
         let layer = self.source_layer();
-        let digest = layer.digest_str().parse()?;
         match self {
-            Self::Inherited(_) => {
-                staged.copy_blob(cache, &digest, layer.size())?;
-                Ok(layer)
-            }
+            Self::Inherited(_) => Ok(layer),
             Self::File(file) => Ok(Layer::PmiZstd(staged.store_pmi(
                 file.reader(),
-                &digest,
+                &layer.digest_str().parse()?,
                 layer.size(),
             )?)),
         }
@@ -59,7 +54,7 @@ impl Pmi<'_, '_> {
 mod tests {
     use super::*;
     use crate::{
-        output::AssembledImage, pipeline::output::StageOutput, step::SetupBudget,
+        cache::Cache, output::AssembledImage, pipeline::output::StageOutput, step::SetupBudget,
         storage::Workspace,
     };
     use sha2::{Digest as _, Sha256};

@@ -669,6 +669,49 @@ mod tests {
     }
 
     #[test]
+    fn composition_references_inherited_scute_and_pmi() {
+        let fixture = Fixture::new();
+        let (_repository, request, build) = fixture
+            .build("version: 1\nimage: {root: registry.test/root:1, boot: registry.test/boot:1}");
+        let completed = fixture.selected(&build).assemble(&request, &build).unwrap();
+        let manifest = completed.image.image().manifest().clone();
+        let layers = manifest.layers;
+        completed.publish().unwrap();
+        for layer in layers {
+            let digest: Digest = layer.digest_str().parse().unwrap();
+            let present = request
+                .output()
+                .join("blobs/sha256")
+                .join(digest.hex())
+                .exists();
+            assert_eq!(
+                present,
+                !matches!(
+                    layer,
+                    Layer::Scute(_) | Layer::ScuteZstd(_) | Layer::Pmi(_) | Layer::PmiZstd(_)
+                )
+            );
+            let source = if present {
+                request.output().to_path_buf()
+            } else {
+                fixture.directory.path().to_path_buf()
+            };
+            let bytes = fs::read(source.join("blobs/sha256").join(digest.hex())).unwrap();
+            assert_eq!(bytes.len() as u64, layer.size());
+            assert_eq!(Digest::Sha256(Sha256::digest(&bytes).into()), digest);
+        }
+        assert!(
+            request
+                .output()
+                .join("blobs/sha256")
+                .join(manifest.config.digest.parse::<Digest>().unwrap().hex())
+                .is_file()
+        );
+        assert!(request.output().join("oci-layout").exists());
+        assert!(request.output().join("index.json").exists());
+    }
+
+    #[test]
     fn all_five_component_subsets_publish_without_activating_source_roots() {
         let fixture = Fixture::new();
         for (selection, root, boot, config, metadata) in [

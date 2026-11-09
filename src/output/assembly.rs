@@ -9,7 +9,7 @@ use crate::{
 };
 use sha2::{Digest as _, Sha256};
 
-/// A self-contained staged image whose copied blobs were authenticated and
+/// A staged image whose present copied blobs were authenticated and
 /// whose new scutes were sealed against the selected parent root.
 /// No mutable staging authority escapes.
 /// This is not a successful plan execution or a publication receipt.
@@ -205,7 +205,6 @@ impl AssembledImage {
                             layer,
                             crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
                         ) {
-                            staged.copy_blob(cache, &layer.digest_str().parse()?, layer.size())?;
                             layers.push(original["layers"][index].clone());
                         }
                     }
@@ -246,7 +245,7 @@ impl AssembledImage {
                 Self::set_tip_annotation(&mut manifest, Some(parent));
             }
             if let Some(pmi) = &selection.pmi {
-                layers.push(serde_json::to_value(pmi.store(cache, &staged)?)?);
+                layers.push(serde_json::to_value(pmi.store(&staged)?)?);
             }
             if let Some(config) = &selection.bootconfig
                 && !config.bytes.is_empty()
@@ -308,7 +307,7 @@ impl AssembledImage {
         )?;
         let output_cache = Cache::open(staged.temporary.path())?;
         let output_image = output_cache.resolve(pin)?;
-        output_cache.verify_metadata(&output_image)?;
+        // Blob writers authenticate new bytes; inherited layers stay in the inputs.
         // The index is the layout entrypoint, not referenced by its own
         // manifest. Remove the temporary lookup blob after validation.
         std::fs::remove_file(staged.blob_path(&Digest::Sha256(Sha256::digest(&index).into())))?;
@@ -602,7 +601,7 @@ mod tests {
         }
     }
     #[test]
-    fn overlay_replaces_only_bootconfig_and_is_self_contained() {
+    fn overlay_replaces_only_bootconfig_and_references_input_pmi() {
         let input = Input::new(false);
         let (cache, image) = input.open();
         let old: serde_json::Value = serde_json::from_slice(&input.manifest).unwrap();
@@ -636,14 +635,14 @@ mod tests {
                 .blob_path(&old_digest.parse().unwrap())
                 .exists()
         );
-        drop(cache);
-        fs::remove_dir_all(input.directory.path()).unwrap();
-        let cache = Cache::open(assembled.staged.temporary.path()).unwrap();
-        cache.verify_metadata(assembled.image()).unwrap();
+        let pmi = &image.image().manifest().layers[0];
+        let digest = pmi.digest_str().parse().unwrap();
+        assert!(!assembled.staged.blob_path(&digest).exists());
+        cache.verify(&digest, pmi.size()).unwrap();
         assembled.discard().unwrap();
     }
     #[test]
-    fn inheritance_preserves_components_and_metadata_without_source_cache() {
+    fn inheritance_preserves_descriptors_and_input_output_closure() {
         for (empty_config, compressed) in
             [(true, false), (false, false), (true, true), (false, true)]
         {
@@ -677,21 +676,23 @@ mod tests {
                 .unwrap(),
                 serde_json::from_slice::<serde_json::Value>(&input.manifest).unwrap()
             );
-            drop(cache);
-            fs::remove_dir_all(input.directory.path()).unwrap();
             let blob_directory = assembled.staged.temporary.path().join("blobs/sha256");
             assert_eq!(
                 fs::read_dir(&blob_directory).unwrap().count(),
-                input.blobs.len()
+                input.blobs.len() - 1
             );
+            let pmi = &image.image().manifest().layers[0];
             for (digest, expected) in input.blobs {
                 if expected == input.manifest {
                     continue;
                 } // JSON may be serialized canonically.
-                assert_eq!(
-                    fs::read(blob_directory.join(digest.strip_prefix("sha256:").unwrap())).unwrap(),
-                    expected
-                );
+                let path = blob_directory.join(digest.strip_prefix("sha256:").unwrap());
+                if digest == pmi.digest_str() {
+                    assert!(!path.exists());
+                    cache.verify(&digest.parse().unwrap(), pmi.size()).unwrap();
+                } else {
+                    assert_eq!(fs::read(path).unwrap(), expected);
+                }
             }
             assert!(
                 !assembled
@@ -749,24 +750,25 @@ mod tests {
                 .unwrap(),
             serde_json::from_slice::<serde_json::Value>(&input.manifest).unwrap()
         );
+        let layer = &assembled.image().manifest().layers[1];
         Cache::open(assembled.staged.temporary.path())
             .unwrap()
-            .verify_metadata(assembled.image())
+            .verify(&layer.digest_str().parse().unwrap(), layer.size())
             .unwrap();
         assembled.discard().unwrap();
         assert_eq!(fs::read_dir(parent.path()).unwrap().count(), 0);
     }
     #[test]
-    fn missing_reference_retains_only_private_staging_for_cleanup() {
+    fn missing_config_retains_only_private_staging_for_cleanup() {
         let input = Input::new(false);
         let (cache, image) = input.open();
-        let layer = &image.image().manifest().layers[0];
+        let config = &image.image().manifest().config;
         fs::remove_file(
             input
                 .directory
                 .path()
                 .join("blobs/sha256")
-                .join(layer.digest_str().strip_prefix("sha256:").unwrap()),
+                .join(config.digest.strip_prefix("sha256:").unwrap()),
         )
         .unwrap();
         let parent = tempfile::tempdir().unwrap();

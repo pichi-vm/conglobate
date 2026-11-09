@@ -7,7 +7,7 @@ the standalone CLI remains testable without a VM. Production builds run in a
 plan format is the shared staged model in [DESIGN.md](DESIGN.md): named
 creation and extension stages, followed by selection of the root and boot
 components. The engine executes only the selected image's dependency closure.
-Builds produce a self-contained OCI image layout with build binding annotations
+Builds produce an input-backed OCI image layout with build binding annotations
 on the image manifest.
 
 ## Plans
@@ -115,7 +115,9 @@ binds the image digest and TEE/builder.
 Build publication stamps these annotations from the resolved committed input.
 The library owns the portable plan, lock and artifact types. The engine
 validates execution constraints and dependency ordering, then publishes the
-complete OCI layout. Its dependency module is `src/graph.rs`.
+input-backed OCI layout. Inherited layer bytes remain in the build inputs;
+consumers must resolve omitted blobs from those inputs. The output alone is
+not guaranteed to be self-contained. Its dependency module is `src/graph.rs`.
 
 ## Build and rootless checks
 
