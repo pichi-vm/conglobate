@@ -246,12 +246,21 @@ Product assumptions for the guest:
    supersedes host one-shot CBOR push / uni-rx-only). On `[true, Input]`, Conglobate
    runs the engine against the mounted paths and publishes into the empty
    `/run/pichi/output` mount. The locked end state is the OCI layout
-   (`oci-layout`, `index.json`, `blobs/sha256/…`) only. Pichi imports the full
-   guest OCI graph and rebuilds verity from COW blobs plus per-scute salts
+   (`oci-layout`, `index.json`, `blobs/sha256/…`) only. Pichi imports the
+   guest-authored OCI graph and rebuilds verity from COW blobs plus per-scute
+   salts
    ([Pichi #28](https://github.com/pichi-vm/pichi/pull/28), `7df44442`).
    [Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24) removes
    the transitional packing list and flat copies; inherited layers remain
-   referenced in the self-contained OCI graph.
+   referenced by their original descriptors. Output may omit inherited
+   layer blobs supplied by the read-only input cache. Configs, manifests, new
+   layers and generated boot configuration remain present. After explicit
+   success and VM exit, the matching host importer must resolve every omitted
+   layer by digest, verify its exact bytes and size into private staging, and
+   perform the usual verity/boot/root checks before publication. A bad present
+   output blob is an error, not permission to use the cache. No packing list or
+   host-generated manifest is introduced. This input-backed output contract
+   applies to both appliance and direct `conglobate build` invocations.
    On `[false, message]`, it fails with the host error string.
    There is **no** local CBOR copy retained as a second source of truth, **no**
    Conglobate parse of virtiofs field readers / mount tags from the response,
@@ -1022,25 +1031,31 @@ Nathaniel's decision of 28 October 2026, tracked in
 with build annotations on the **image manifest**. Drop `inventory.cbor`
 entirely; it is not an optional output. Do not emit a replacement receipt file.
 
-The output directory is itself a self-contained OCI image layout:
+The output directory is an input-backed OCI image layout:
 
 ```text
 result/
   oci-layout         # OCI layout version; external OCI formats remain JSON
   index.json         # output image index
-  blobs/sha256/      # all referenced manifest, configuration and layer blobs
+  blobs/sha256/      # manifest/configuration blobs and newly produced layer blobs
 ```
 
-OCI consumers use `result/` directly. With host OCI import landed in
+Consumers resolve omitted blobs from the original build inputs. With host OCI
+import landed in
 [Pichi #28](https://github.com/pichi-vm/pichi/pull/28) (`7df44442`),
 [Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24) is implemented:
 no `build.yaml` or flat `NNNN.cow` / `NNNN.verity` / `boot.pmi` copies are
 emitted. Pichi imports the full OCI graph and rebuilds verity from COW blobs
-and per-scute salts. Boot-only output contains its PMI and optional native bootconfig as OCI blobs.
+and per-scute salts. Boot-only output references inherited PMI or includes newly
+produced PMI, and includes any generated bootconfig as an OCI blob.
 
-Include every blob referenced by the output image, including inherited blobs
-from the cache. Import must not require the original cache. The final manifest
-describes exactly the selected components and finalized bootconfig.
+The output is never guaranteed to be self-contained. Every referenced blob
+must exist in the output or the build inputs; only inputs may fill output gaps.
+Inherited scute and PMI descriptors stay unchanged without recopying their
+bytes. Metadata, newly produced layers and generated bootconfig remain in the
+output. The final manifest describes exactly the selected components and
+finalized bootconfig. Appliance consumers need the matching input-aware host
+importer; ordinary complete-layout import cannot consume this output alone.
 
 ### 11.1 Image-manifest annotation contract
 
@@ -1233,7 +1248,7 @@ The build proceeds in this order; each failure aborts publication:
    span directives; flush and normally unmount all views before sealing.
 5. Select components, apply the bootconfig overlay and implicit root binding,
    close the runtime, annotate the manifest
-   and verify the self-contained OCI layout.
+   and validate the input-backed OCI graph.
 6. Finish fallible workspace/context cleanup, then publish without replacing
    an existing destination: CLI `--output` uses an atomic no-replace rename of
    the completed directory; the appliance empty `/run/pichi/output` mount uses
@@ -1653,10 +1668,10 @@ layers even if a later layer deletes their paths.
    transport copies. Do not treat a clean process exit alone as evidence
    that filesystem writes succeeded.
 
-1. Emit a self-contained OCI image layout with the build annotations in
-   [§11.1](#111-image-manifest-annotation-contract). Include every referenced
-   output blob, including inherited ones. Do not emit an inventory or mirror
-   builder, input, execution or output records into annotations. The commit,
+1. Emit an input-backed OCI image layout with the build annotations in
+   [§11.1](#111-image-manifest-annotation-contract). Include newly produced
+   blobs; inherited layer bytes remain in the inputs. Do not emit an inventory
+   or mirror builder, input, execution or output records into annotations. The commit,
    context and plan/lock paths bind committed build inputs; network acquisition
    is not claimed to be reproducible or exhaustive input accounting.
 
