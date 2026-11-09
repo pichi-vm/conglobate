@@ -6,6 +6,7 @@ pub(crate) use assembly::AssembledImage;
 
 use crate::artifact::{Digest, PmiDescriptor};
 use crate::cache::{Cache, CacheError};
+use crate::contract::plan::PmiEncoding;
 use sha2::{Digest as _, Sha256};
 use std::{
     ffi::OsString,
@@ -18,7 +19,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// Identity of the exact bytes accepted by the compressed blob sink.
+/// Identity of the exact bytes accepted by the encoded blob sink.
 #[derive(Debug)]
 pub(crate) struct MeasuredWrite<W> {
     pub(crate) output: W,
@@ -46,6 +47,45 @@ impl<W: Write> Write for MeasuredWrite<W> {
     }
     fn flush(&mut self) -> io::Result<()> {
         self.output.flush()
+    }
+}
+
+/// Shared verified producer path with selectable transport encoding.
+enum PmiWriter {
+    Raw(MeasuredWrite<tempfile::NamedTempFile>),
+
+    Zstd(zstd::stream::write::Encoder<'static, MeasuredWrite<tempfile::NamedTempFile>>),
+}
+impl PmiWriter {
+    fn new(output: tempfile::NamedTempFile, encoding: PmiEncoding) -> io::Result<Self> {
+        let output = MeasuredWrite::new(output);
+        Ok(match encoding {
+            PmiEncoding::Raw => Self::Raw(output),
+            PmiEncoding::Zstd => Self::Zstd(zstd::stream::write::Encoder::new(output, 3)?),
+        })
+    }
+    fn finish(self) -> io::Result<MeasuredWrite<tempfile::NamedTempFile>> {
+        match self {
+            Self::Raw(mut output) => {
+                output.flush()?;
+                Ok(output)
+            }
+            Self::Zstd(output) => output.finish(),
+        }
+    }
+}
+impl Write for PmiWriter {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        match self {
+            Self::Raw(output) => output.write(bytes),
+            Self::Zstd(output) => output.write(bytes),
+        }
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            Self::Raw(output) => output.flush(),
+            Self::Zstd(output) => output.flush(),
+        }
     }
 }
 
@@ -218,20 +258,21 @@ impl StagedDirectory {
         scute.install_blob(&destination)?;
         Ok(())
     }
-    /// Compress trusted captured PMI while retaining both byte identities.
+    /// Encode captured PMI while verifying its original byte identity.
     /// Only the finished encoded identity selects an installed output name.
     pub(crate) fn store_pmi(
         &self,
         mut reader: impl Read,
         digest: &Digest,
         size: u64,
+        encoding: PmiEncoding,
     ) -> Result<PmiDescriptor, CacheError> {
         let directory = self.blob_directory()?;
         let path = format!("/proc/self/fd/{}", directory.as_raw_fd());
         let pending = tempfile::Builder::new()
             .prefix(".pmi-blob-")
             .tempfile_in(&path)?;
-        let mut encoder = zstd::stream::write::Encoder::new(MeasuredWrite::new(pending), 3)?;
+        let mut encoder = PmiWriter::new(pending, encoding)?;
         let mut hash = Sha256::new();
         let mut remaining = size;
         let mut buffer = [0u8; 65536];
@@ -381,55 +422,71 @@ mod tests {
 
     #[test]
     fn produced_pmi_identity_includes_complete_encoded_frame() {
-        let parent = tempfile::tempdir().unwrap();
-        let staged = StagedDirectory::create(&parent.path().join("output")).unwrap();
-        let bytes = vec![37u8; 150_001];
-        let digest = Digest::Sha256(Sha256::digest(&bytes).into());
-        let directory = staged.blob_directory().unwrap();
-        let path = format!("/proc/self/fd/{}", directory.as_raw_fd());
-        for (input, size) in [
-            (&bytes[..bytes.len() - 1], bytes.len() as u64),
-            (&bytes[..], bytes.len() as u64 - 1),
-            (&bytes[..], bytes.len() as u64 + 1),
-        ] {
-            assert!(staged.store_pmi(input, &digest, size).is_err());
+        for encoding in [PmiEncoding::Raw, PmiEncoding::Zstd] {
+            let parent = tempfile::tempdir().unwrap();
+            let staged = StagedDirectory::create(&parent.path().join("output")).unwrap();
+            let bytes = vec![37u8; 150_001];
+            let digest = Digest::Sha256(Sha256::digest(&bytes).into());
+            let directory = staged.blob_directory().unwrap();
+            let path = format!("/proc/self/fd/{}", directory.as_raw_fd());
+            for (input, size) in [
+                (&bytes[..bytes.len() - 1], bytes.len() as u64),
+                (&bytes[..], bytes.len() as u64 - 1),
+                (&bytes[..], bytes.len() as u64 + 1),
+            ] {
+                assert!(staged.store_pmi(input, &digest, size, encoding).is_err());
+                assert_eq!(fs::read_dir(&path).unwrap().count(), 0);
+            }
+            let wrong = Digest::Sha256(Sha256::digest(b"wrong").into());
+            assert!(
+                staged
+                    .store_pmi(&bytes[..], &wrong, bytes.len() as u64, encoding)
+                    .is_err()
+            );
             assert_eq!(fs::read_dir(&path).unwrap().count(), 0);
+            let descriptor = staged
+                .store_pmi(&bytes[..], &digest, bytes.len() as u64, encoding)
+                .unwrap();
+            let encoded = fs::read(staged.blob_path(&descriptor.digest.parse().unwrap())).unwrap();
+            assert_eq!(descriptor.size, encoded.len() as u64);
+            assert_eq!(
+                descriptor.digest,
+                Digest::Sha256(Sha256::digest(&encoded).into()).to_string()
+            );
+            match encoding {
+                PmiEncoding::Raw => {
+                    assert_eq!(encoded, bytes);
+                    assert_eq!(descriptor.digest, digest.to_string());
+                }
+                PmiEncoding::Zstd => {
+                    let mut decoded = Vec::new();
+                    let mut decoder =
+                        ruzstd::decoding::StreamingDecoder::new(encoded.as_slice()).unwrap();
+                    decoder.read_to_end(&mut decoded).unwrap();
+                    assert!(decoder.into_inner().is_empty());
+                    assert_eq!(decoded, bytes);
+                    assert_ne!(descriptor.digest, digest.to_string());
+                }
+            }
+            // A failed retry cannot remove an already completed encoded blob.
+            assert!(
+                staged
+                    .store_pmi(
+                        &bytes[..bytes.len() - 1],
+                        &digest,
+                        bytes.len() as u64,
+                        encoding
+                    )
+                    .is_err()
+            );
+            assert_eq!(fs::read_dir(&path).unwrap().count(), 1);
+            assert_eq!(
+                fs::read(staged.blob_path(&descriptor.digest.parse().unwrap())).unwrap(),
+                encoded
+            );
+            drop(directory);
+            staged.discard().unwrap();
         }
-        let wrong = Digest::Sha256(Sha256::digest(b"wrong").into());
-        assert!(
-            staged
-                .store_pmi(&bytes[..], &wrong, bytes.len() as u64)
-                .is_err()
-        );
-        assert_eq!(fs::read_dir(&path).unwrap().count(), 0);
-        let descriptor = staged
-            .store_pmi(&bytes[..], &digest, bytes.len() as u64)
-            .unwrap();
-        let encoded = fs::read(staged.blob_path(&descriptor.digest.parse().unwrap())).unwrap();
-        assert_eq!(descriptor.size, encoded.len() as u64);
-        assert_eq!(
-            descriptor.digest,
-            Digest::Sha256(Sha256::digest(&encoded).into()).to_string()
-        );
-        let mut decoded = Vec::new();
-        let mut decoder = ruzstd::decoding::StreamingDecoder::new(encoded.as_slice()).unwrap();
-        decoder.read_to_end(&mut decoded).unwrap();
-        assert!(decoder.into_inner().is_empty());
-        assert_eq!(decoded, bytes);
-        assert_ne!(descriptor.digest, digest.to_string());
-        // A failed retry cannot remove an already completed encoded blob.
-        assert!(
-            staged
-                .store_pmi(&bytes[..bytes.len() - 1], &digest, bytes.len() as u64)
-                .is_err()
-        );
-        assert_eq!(fs::read_dir(&path).unwrap().count(), 1);
-        assert_eq!(
-            fs::read(staged.blob_path(&descriptor.digest.parse().unwrap())).unwrap(),
-            encoded
-        );
-        drop(directory);
-        staged.discard().unwrap();
     }
 
     struct LateFailure<'a>(&'a [u8]);
@@ -444,22 +501,24 @@ mod tests {
 
     #[test]
     fn pmi_source_failure_does_not_install_partial_frame() {
-        let parent = tempfile::tempdir().unwrap();
-        let staged = StagedDirectory::create(&parent.path().join("output")).unwrap();
-        let bytes = b"opaque PMI";
-        let digest = Digest::Sha256(Sha256::digest(bytes).into());
-        assert!(
-            staged
-                .store_pmi(LateFailure(bytes), &digest, bytes.len() as u64)
-                .is_err()
-        );
-        let directory = staged.blob_directory().unwrap();
-        assert_eq!(
-            fs::read_dir(format!("/proc/self/fd/{}", directory.as_raw_fd()))
-                .unwrap()
-                .count(),
-            0
-        );
+        for encoding in [PmiEncoding::Raw, PmiEncoding::Zstd] {
+            let parent = tempfile::tempdir().unwrap();
+            let staged = StagedDirectory::create(&parent.path().join("output")).unwrap();
+            let bytes = b"opaque PMI";
+            let digest = Digest::Sha256(Sha256::digest(bytes).into());
+            assert!(
+                staged
+                    .store_pmi(LateFailure(bytes), &digest, bytes.len() as u64, encoding)
+                    .is_err()
+            );
+            let directory = staged.blob_directory().unwrap();
+            assert_eq!(
+                fs::read_dir(format!("/proc/self/fd/{}", directory.as_raw_fd()))
+                    .unwrap()
+                    .count(),
+                0
+            );
+        }
     }
     #[test]
     fn late_collision_preserves_existing_output_and_cleans_staging() {

@@ -89,24 +89,31 @@ impl<'b, 'w> StageOutput<'b, 'w> {
                     .transpose()?;
                 let (pmi, bootconfig) = match boot {
                     None => (None, None),
-                    Some(Boot::Extract { extract, define }) => {
+                    Some(Boot::Extract {
+                        extract,
+                        define,
+                        encoding,
+                    }) => {
                         let source = resolve(&extract.from)?
                             .root
                             .ok_or_else(|| anyhow!("PMI file source has no root"))?;
                         let (workspace, runtime) = reader
                             .ok_or_else(|| anyhow!("PMI extraction requires a reader runtime"))?;
-                        let pmi = Pmi::File(Arc::new(source.read(
-                            build.cache(),
-                            workspace,
-                            runtime,
-                            |volume, budget| {
-                                Ok(volume.extract_artifact(
-                                    extract.path.as_ref(),
-                                    workspace,
-                                    budget,
-                                )?)
-                            },
-                        )?));
+                        let pmi = Pmi::File {
+                            file: Arc::new(source.read(
+                                build.cache(),
+                                workspace,
+                                runtime,
+                                |volume, budget| {
+                                    Ok(volume.extract_artifact(
+                                        extract.path.as_ref(),
+                                        workspace,
+                                        budget,
+                                    )?)
+                                },
+                            )?),
+                            encoding: *encoding,
+                        };
                         let config = BootConfig::overlay(
                             None,
                             define.iter().map(|(key, value)| (key, Some(value))),

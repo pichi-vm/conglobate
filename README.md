@@ -63,8 +63,12 @@ plan types directly; lock maintenance does not invoke the Conglobate CLI.
 
 `image: rootfs` forwards that image's components. Explicit composition selects
 root and boot independently; boot can be inherited or extracted from a PMI
-file in a source image. Native bootconfig accompanies the immutable PMI and
-supports literal definitions and overlays. An existing `corium.root` binds
+file in a source image. Extracted boot payloads default to zstd transport;
+`boot: {extract: {from: firmware, path: /boot.pmi}, encoding: raw}` selects
+uncompressed transport while preserving byte verification. Raw transport uses
+more artifact space and avoids launch-time decompression. Native bootconfig
+accompanies the immutable PMI and supports literal definitions and overlays.
+An existing `corium.root` binds
 configuration to the selected root. See [image assembly](DESIGN.md#52-image-assembly)
 and [boot configuration](DESIGN.md#8-boot-configuration).
 

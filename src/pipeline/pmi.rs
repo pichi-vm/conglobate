@@ -2,15 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    artifact::Layer, cache::Cache, firmware::FirmwareFile, input::CheckedImage,
-    output::StagedDirectory,
+    artifact::Layer, cache::Cache, contract::plan::PmiEncoding, firmware::FirmwareFile,
+    input::CheckedImage, output::StagedDirectory,
 };
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Pmi<'b, 'w> {
     Inherited(&'b CheckedImage),
-    File(Arc<FirmwareFile<'w>>),
+    File {
+        file: Arc<FirmwareFile<'w>>,
+        encoding: PmiEncoding,
+    },
 }
 impl Pmi<'_, '_> {
     pub(crate) fn source_layer(&self) -> Layer {
@@ -23,19 +26,19 @@ impl Pmi<'_, '_> {
                 .find(|layer| matches!(layer, Layer::Pmi(_) | Layer::PmiZstd(_)))
                 .expect("selected PMI")
                 .clone(),
-            Self::File(file) => Layer::Pmi(file.descriptor()),
+            Self::File { file, .. } => Layer::Pmi(file.descriptor()),
         }
     }
     pub(super) fn root(&self) -> Option<[u8; 32]> {
         match self {
             Self::Inherited(image) => image.root(),
-            Self::File(_) => None,
+            Self::File { .. } => None,
         }
     }
     pub(crate) fn inherited(&self) -> Option<&CheckedImage> {
         match self {
             Self::Inherited(image) => Some(image),
-            Self::File(_) => None,
+            Self::File { .. } => None,
         }
     }
     pub(crate) fn store(&self, cache: &Cache, staged: &StagedDirectory) -> anyhow::Result<Layer> {
@@ -46,11 +49,14 @@ impl Pmi<'_, '_> {
                 staged.copy_blob(cache, &digest, layer.size())?;
                 Ok(layer)
             }
-            Self::File(file) => Ok(Layer::PmiZstd(staged.store_pmi(
-                file.reader(),
-                &digest,
-                layer.size(),
-            )?)),
+            Self::File { file, encoding } => {
+                let descriptor =
+                    staged.store_pmi(file.reader(), &digest, layer.size(), *encoding)?;
+                Ok(match encoding {
+                    PmiEncoding::Raw => Layer::Pmi(descriptor),
+                    PmiEncoding::Zstd => Layer::PmiZstd(descriptor),
+                })
+            }
         }
     }
 }
@@ -81,7 +87,10 @@ mod tests {
         .unwrap();
         let selection = StageOutput {
             root: None,
-            pmi: Some(Pmi::File(Arc::new(captured))),
+            pmi: Some(Pmi::File {
+                file: Arc::new(captured),
+                encoding: PmiEncoding::Zstd,
+            }),
             bootconfig: None,
         };
         let cache = Cache::open(directory.path()).unwrap();

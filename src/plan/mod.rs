@@ -26,7 +26,7 @@ mod stage_ref;
 mod tool;
 mod version;
 
-pub use boot::Boot;
+pub use boot::{Boot, PmiEncoding};
 pub use boot_config::{Key, Value};
 pub use directive::Directive;
 pub use extract::Extract;
@@ -164,6 +164,37 @@ mod tests {
         assert!(
             serde_json::from_value::<Plan>(
                 json!({"version":1,"image":{"boot":"firmware", "bootconfig":{}}})
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn extracted_pmi_encoding_is_explicit_and_defaults_to_zstd() {
+        let base = json!({"version":1,"image":{"boot":{"extract":{"from":"builder", "path":"/image.pmi"}}}});
+        let default = decode(base.clone());
+        let mut encoded = base.clone();
+        encoded["image"]["boot"]["encoding"] = json!("zstd");
+        assert_eq!(decode(encoded), default);
+        assert!(
+            serde_json::to_value(default).unwrap()["image"]["boot"]
+                .get("encoding")
+                .is_none()
+        );
+        let mut raw = base.clone();
+        raw["image"]["boot"]["encoding"] = json!("raw");
+        assert_eq!(
+            serde_json::to_value(decode(raw)).unwrap()["image"]["boot"]["encoding"],
+            json!("raw")
+        );
+        for invalid in [json!("gzip"), json!(false), json!(0)] {
+            let mut input = base.clone();
+            input["image"]["boot"]["encoding"] = invalid;
+            assert!(serde_json::from_value::<Plan>(input).is_err());
+        }
+        assert!(
+            serde_json::from_value::<Plan>(
+                json!({"version":1,"image":{"boot":{"inherit":"firmware", "encoding":"raw"}}})
             )
             .is_err()
         );

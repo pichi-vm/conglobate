@@ -8,6 +8,22 @@ use super::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+/// Transport for a newly extracted PMI. Compression remains the default.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PmiEncoding {
+    Raw,
+
+    #[default]
+    Zstd,
+}
+
+impl PmiEncoding {
+    fn is_default(&self) -> bool {
+        *self == Self::Zstd
+    }
+}
+
 /// Boot configuration always belongs to the selected immutable PMI.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
@@ -26,6 +42,8 @@ pub enum Boot {
     },
     Extract {
         extract: Extract,
+        #[serde(default, skip_serializing_if = "PmiEncoding::is_default")]
+        encoding: PmiEncoding,
         #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
         define: BTreeMap<Key, Value>,
     },
