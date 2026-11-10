@@ -29,7 +29,7 @@ jobs:
           rustup toolchain install 1.94.0 --profile minimal
       - uses: Swatinem/rust-cache@v2
       - name: Run rootless tests
-        run: cargo test --locked --features cli --all-targets
+        run: cargo test --locked --features cli,git --all-targets
       - name: Run ignored tests as root
         run: |
           # The native bootconfig comparison runs in its packaged-tool job.

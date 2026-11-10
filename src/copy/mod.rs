@@ -11,3 +11,6 @@ pub(crate) use source::{CopySources, SelectionError};
 mod destination;
 pub(crate) use destination::CopyDestination;
 pub(crate) use destination::CopyError;
+
+#[cfg(test)]
+mod context_tests;

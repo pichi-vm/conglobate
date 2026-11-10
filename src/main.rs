@@ -9,6 +9,7 @@ mod terminal;
 use contract::artifact;
 mod boot_config;
 mod cache;
+mod commit;
 mod context;
 mod copy;
 mod deadline;

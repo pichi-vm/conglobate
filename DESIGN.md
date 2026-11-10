@@ -142,7 +142,7 @@ assembly uses the carapace root.
 
 ### 1.1 Component responsibilities
 
-1. **Conglobate crate** is a types-only `[lib]` plus a `[[bin]]` engine.
+1. **Conglobate crate** has a types-only default `[lib]` plus a `[[bin]]` engine.
    The library exposes shared types (including OCI/image output types formerly
    owned by `pichi-artifact`); those types retire into this crate so OCI outputs
    are Conglobate outputs. The binary owns the build engine. **`pichi` depends
@@ -700,6 +700,16 @@ builds; a failed build must leave that name unchanged.
 YAML consumers use `Plan::from_yaml` (the portable `yaml` feature) to preserve
 tags through aliases and reject unknown or misplaced tags. Existing readers
 reject bootstrap tool syntax; no document-version transition is required.
+
+With the optional `git` feature, `Plan::from_git` resolves the requested ref
+once and returns its full commit identity alongside the parsed plan. It uses
+the engine's private captured-context reader, including object verification,
+confined committed symlinks, and pinned submodule commits resolved through
+committed `.gitmodules`. It does not read working-tree plan contents. Context
+and plan locators retain Git slash semantics; Windows rejects non-UTF-8 paths
+and names containing backslashes or colons rather than reinterpreting them.
+The feature adds no execution or isolation dependencies. Callers use the
+returned immutable identity when submitting the build.
 
 ### 6.2 Creation and extension
 
@@ -1587,7 +1597,7 @@ layers even if a later layer deletes their paths.
 
 ## 15. Rust architecture
 
-The crate exposes a **types-only `[lib]`** (including OCI/image output types
+The crate exposes a **types-only default `[lib]`** (including OCI/image output types
 retired from `pichi-artifact`) and a **`[[bin]]` engine**. Engine modules remain
 private to the binary. Downstream `pichi` depends on the lib for shared types.
 

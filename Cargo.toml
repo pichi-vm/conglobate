@@ -12,6 +12,7 @@ description = "Standalone image builder with isolated command execution"
 [features]
 default = []
 yaml = ["dep:serde-saphyr"]
+git = ["yaml", "dep:gix"]
 # Runtime dependencies are enabled only when building the CLI.
 cli = [
     "yaml",
@@ -92,6 +93,7 @@ devmap-core = { git = "https://github.com/pichi-vm/devmap.git", branch = "main",
 devmap-verity = { git = "https://github.com/pichi-vm/devmap.git", branch = "main", version = "0.1.0", optional = true, features = ["sha2"] }
 
 [dev-dependencies]
+tempfile = "3"
 # Independent GPT fixtures.
 gpt = "4.1"
 ciborium = "0.2.2"

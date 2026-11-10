@@ -147,6 +147,13 @@ CI builds and tests with Rust 1.94.0 on native amd64 and Arm64. This is the test
 toolchain, not a separately established minimum supported Rust version.
 
 The library has no default features. Enable `cli` to build the executable.
+The optional `git` feature includes `yaml` and exposes
+`Plan::from_git(repository, git_ref, context, plan)`. It returns the resolved
+full commit identity and the parsed plan using the same verified committed
+reader as the engine; working-tree plan bytes and `.gitmodules` do not control
+that read. Context and plan use Git slash paths. On Windows, non-UTF-8 names
+and names containing backslashes or colons fail explicitly rather than acquire
+native path semantics. The default library remains types-only.
 
 After dependencies are available, run these commands as an ordinary user:
 

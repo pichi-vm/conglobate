@@ -17,6 +17,8 @@ pub(crate) enum PathError {
     Empty,
     #[error("context path contains NUL")]
     Nul,
+    #[error("Git path cannot be represented without reinterpretation on this platform")]
+    Platform,
 }
 
 /// A relative locator whose components must still be resolved in context.
@@ -84,6 +86,18 @@ impl<K: PathKind> AsRef<Path> for RelativePath<K> {
     }
 }
 
+/// Convert Git slash paths without letting native Windows syntax reinterpret them.
+pub(crate) fn git_path(bytes: &[u8]) -> Result<&Path, PathError> {
+    if bytes.contains(&0) {
+        return Err(PathError::Nul);
+    }
+    #[cfg(windows)]
+    if bytes.contains(&b'\\') || bytes.contains(&b':') {
+        return Err(PathError::Platform);
+    }
+    gix::path::try_from_byte_slice(bytes).map_err(|_| PathError::Platform)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -110,5 +124,33 @@ mod tests {
                 .as_ref(),
             Path::new("a/../plans/build.yml")
         );
+    }
+}
+
+#[cfg(all(test, unix))]
+mod unix_tests {
+    use super::*;
+
+    #[test]
+    fn git_paths_preserve_names_that_are_not_windows_paths() {
+        for bytes in [b"dir\\plan".as_slice(), b"C:plan", b"\xff"] {
+            assert_eq!(
+                gix::path::into_bstr(git_path(bytes).unwrap()).as_ref(),
+                bytes
+            );
+        }
+    }
+}
+
+#[cfg(all(test, windows))]
+mod windows_tests {
+    use super::*;
+
+    #[test]
+    fn git_paths_never_gain_windows_separator_or_drive_meaning() {
+        for bytes in [b"dir\\plan".as_slice(), b"C:plan", b"dir/C:/plan", b"\xff"] {
+            assert_eq!(git_path(bytes), Err(PathError::Platform));
+        }
+        assert_eq!(git_path(b"dir/../plan").unwrap(), Path::new("dir/../plan"));
     }
 }

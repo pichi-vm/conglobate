@@ -4,7 +4,7 @@
 //! Resolve committed gitlinks using only staged stores, without initialization.
 use super::{CapturedContext, ContextError, ObjectReader, Store};
 use gix::{ObjectId, object::tree::EntryKind};
-use std::{ffi::OsStr, os::unix::ffi::OsStrExt, path::Path};
+use std::path::Path;
 
 const MAX_DEPTH: usize = 8;
 
@@ -46,9 +46,11 @@ impl CapturedContext {
             .filter_map(|section| {
                 let value = section.value("path")?;
                 let bytes: &[u8] = value.as_ref();
-                (bytes == path.as_os_str().as_bytes())
-                    .then(|| section.header().subsection_name())
-                    .flatten()
+                (bytes
+                    == gix::path::to_unix_separators_on_windows(gix::path::into_bstr(path))
+                        .as_ref())
+                .then(|| section.header().subsection_name())
+                .flatten()
             });
         let name = names.next().ok_or(ContextError::Invalid(
             "used gitlink has no .gitmodules mapping",
@@ -56,7 +58,7 @@ impl CapturedContext {
         if names.next().is_some() {
             return Err(ContextError::Invalid("ambiguous submodule path mapping"));
         }
-        let name = Path::new(OsStr::from_bytes(name.as_ref()));
+        let name = crate::path::git_path(name.as_ref())?;
         if name.as_os_str().is_empty()
             || name.is_absolute()
             || name

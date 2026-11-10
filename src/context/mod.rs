@@ -8,13 +8,12 @@ mod lazy;
 mod modules;
 mod read;
 
-use crate::{path::ContextDirectory, request::CommitIdentity};
+use crate::{commit::CommitIdentity, path::ContextDirectory};
 use gix::{ObjectId, object::tree::EntryKind};
 use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     ffi::{OsStr, OsString},
     fmt,
-    os::unix::ffi::OsStrExt,
     path::{Path, PathBuf},
 };
 
@@ -22,6 +21,8 @@ use std::{
 pub(crate) enum ContextError {
     #[error("context I/O: {0}")]
     Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Path(#[from] crate::path::PathError),
     #[error("Git input: {0}")]
     Git(String),
     #[error("invalid committed context: {0}")]
@@ -178,7 +179,7 @@ impl CapturedContext {
                 .iter()
                 .find(|entry| {
                     let bytes: &[u8] = entry.filename.as_ref();
-                    bytes == name.as_bytes()
+                    bytes == gix::path::into_bstr(Path::new(&name)).as_ref()
                 })
                 .ok_or(ContextError::Invalid("context subtree does not exist"))?;
             let id = entry.oid.to_owned();
@@ -206,8 +207,8 @@ impl CapturedContext {
                     if target.is_empty() || target.contains(&0) {
                         return Err(ContextError::Invalid("invalid symlink contents"));
                     }
-                    let target = Path::new(OsStr::from_bytes(&target));
-                    if target.is_absolute() {
+                    let target = crate::path::git_path(&target)?;
+                    if target.has_root() {
                         return Err(ContextError::Invalid("absolute context symlink"));
                     }
                     for part in target.iter().rev() {
@@ -322,7 +323,7 @@ impl<'a> TryFrom<&'a [u8]> for EntryName<'a> {
         {
             return Err(ContextError::Invalid("invalid tree entry name"));
         }
-        Ok(Self(OsStr::from_bytes(bytes)))
+        Ok(Self(crate::path::git_path(bytes)?.as_os_str()))
     }
 }
 
@@ -350,25 +351,25 @@ impl ObjectReader {
     }
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, unix))]
+pub(crate) mod tests {
     use crate::{
+        commit::CommitIdentity,
         context::{CapturedContext, ContextEntry},
         path::ContextDirectory,
-        request::CommitIdentity,
     };
     use std::{path::Path, process::Command};
 
-    struct Repository(tempfile::TempDir);
+    pub(crate) struct Repository(pub(crate) tempfile::TempDir);
     impl Repository {
-        fn new(format: &str) -> Self {
+        pub(crate) fn new(format: &str) -> Self {
             let repo = Self(tempfile::tempdir().unwrap());
             repo.git(&["init", &format!("--object-format={format}")]);
             repo.git(&["config", "user.name", "Fixture"]);
             repo.git(&["config", "user.email", "fixture@example.invalid"]);
             repo
         }
-        fn git(&self, args: &[&str]) -> String {
+        pub(crate) fn git(&self, args: &[&str]) -> String {
             let output = Command::new("git")
                 .args(args)
                 .current_dir(self.0.path())
@@ -383,17 +384,17 @@ mod tests {
             );
             String::from_utf8(output.stdout).unwrap().trim().to_owned()
         }
-        fn write(&self, name: &str, bytes: &[u8]) {
+        pub(crate) fn write(&self, name: &str, bytes: &[u8]) {
             let path = self.0.path().join(name);
             std::fs::create_dir_all(path.parent().unwrap()).unwrap();
             std::fs::write(path, bytes).unwrap();
         }
-        fn commit(&self) -> CommitIdentity {
+        pub(crate) fn commit(&self) -> CommitIdentity {
             self.git(&["add", "--ignore-removal", "."]);
             self.git(&["commit", "-m", "fixture"]);
             CommitIdentity::try_from(self.git(&["rev-parse", "HEAD"]).as_str()).unwrap()
         }
-        fn capture(
+        pub(crate) fn capture(
             &self,
             commit: &CommitIdentity,
             context: &str,
@@ -745,7 +746,7 @@ mod tests {
 
     impl Repository {
         /// Stage a store without a module checkout; name deliberately differs from path.
-        fn module(&self, child: &Repository, path: &str, name: &str) {
+        pub(crate) fn module(&self, child: &Repository, path: &str, name: &str) {
             let store = self.0.path().join(".git/modules").join(name);
             std::fs::create_dir_all(store.parent().unwrap()).unwrap();
             self.git(&[
@@ -772,106 +773,6 @@ mod tests {
                 &format!("160000,{id},{path}"),
             ]);
         }
-    }
-
-    #[test]
-    #[ignore = "requires root to assign image ownership"]
-    fn used_modules_resolve_recorded_objects_and_context_subdirectories() {
-        use crate::path::ContextPath;
-        for format in ["sha1", "sha256"] {
-            let child = Repository::new(format);
-            child.write("dir/file", b"module bytes");
-            child.commit();
-            let repo = Repository::new(format);
-            repo.module(&child, "vendor/lib", "different-name");
-            let commit = repo.commit();
-            // Neither local config nor working .gitmodules controls resolution.
-            repo.write(".gitmodules", b"invalid working metadata");
-            child.write("dir/file", b"later bytes");
-            child.commit();
-            let mut context = repo.capture(&commit, ".").unwrap();
-            let path = ContextPath::try_from(Path::new("vendor/lib/dir/file")).unwrap();
-            assert_eq!(context.read(&path).unwrap().bytes(), b"module bytes");
-            crate::copy::CopySources::prepare(&mut context, &["vendor/lib".parse().unwrap()])
-                .unwrap();
-            let output = tempfile::tempdir().unwrap();
-            let root = std::fs::File::open(output.path()).unwrap();
-            let directive = crate::planner::Copy::fixture("vendor/lib", "/copied");
-            crate::copy::CopyDestination::new(&root)
-                .copy(&context, &directive)
-                .unwrap();
-            assert_eq!(
-                std::fs::read(output.path().join("copied/dir/file")).unwrap(),
-                b"module bytes"
-            );
-            let mut context = repo.capture(&commit, "vendor/lib/dir").unwrap();
-            let path = ContextPath::try_from(Path::new("file")).unwrap();
-            assert_eq!(context.read(&path).unwrap().bytes(), b"module bytes");
-        }
-    }
-
-    #[test]
-    fn copy_preparation_requires_only_selected_module_stores() {
-        use crate::copy::{CopySources, SourcePattern};
-        let child = Repository::new("sha1");
-        child.write("file", b"module");
-        child.commit();
-        let repo = Repository::new("sha1");
-        repo.write("kept", b"ordinary");
-        repo.module(&child, "used", "used-store");
-        repo.module(&child, "unused", "unused-store");
-        let commit = repo.commit();
-        std::fs::remove_dir_all(repo.0.path().join(".git/modules/unused-store")).unwrap();
-        let prepare = |context: &mut CapturedContext, pattern: &str| {
-            CopySources::prepare(context, &[pattern.parse::<SourcePattern>().unwrap()])
-        };
-        let mut context = repo.capture(&commit, ".").unwrap();
-        prepare(&mut context, "kept").unwrap();
-        prepare(&mut context, "us*/file").unwrap();
-        let error = prepare(&mut context, "unused/file")
-            .unwrap_err()
-            .to_string();
-        assert!(
-            error.contains("unused") && error.contains("needed store"),
-            "{error}"
-        );
-        for pattern in ["unused", "/", "un*"] {
-            let mut context = repo.capture(&commit, ".").unwrap();
-            assert!(prepare(&mut context, pattern).is_err(), "{pattern}");
-        }
-    }
-
-    #[test]
-    fn nested_module_depth_is_limited_to_eight_used_gitlinks() {
-        use crate::{copy::CopySources, path::ContextPath};
-        let mut child = Repository::new("sha1");
-        child.write("file", b"deep bytes");
-        child.commit();
-        for _ in 0..9 {
-            let parent = Repository::new("sha1");
-            parent.write("file", b"at this depth");
-            parent.module(&child, "nested", "store");
-            parent.commit();
-            child = parent;
-        }
-        let commit = CommitIdentity::try_from(child.git(&["rev-parse", "HEAD"]).as_str()).unwrap();
-        let mut context = child.capture(&commit, ".").unwrap();
-        let within = format!("{}file", "nested/".repeat(8));
-        let path = ContextPath::try_from(Path::new(&within)).unwrap();
-        assert_eq!(context.read(&path).unwrap().bytes(), b"at this depth");
-        CopySources::prepare(&mut context, &[within.parse().unwrap()]).unwrap();
-        let beyond = format!("{}file", "nested/".repeat(9));
-        let path = ContextPath::try_from(Path::new(&beyond)).unwrap();
-        let error = context.read(&path).unwrap_err().to_string();
-        assert!(error.contains("depth") && error.contains("8"), "{error}");
-        assert!(CopySources::prepare(&mut context, &["/".parse().unwrap()]).is_err());
-        let mut context = child.capture(&commit, &"nested/".repeat(8)).unwrap();
-        assert!(
-            context
-                .read(&ContextPath::try_from(Path::new("file")).unwrap())
-                .is_ok()
-        );
-        assert!(child.capture(&commit, &"nested/".repeat(9)).is_err());
     }
 
     #[test]

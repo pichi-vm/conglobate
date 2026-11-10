@@ -3,12 +3,7 @@
 
 use super::{CapturedContext, ContextEntry, ContextError};
 use crate::path::ContextPath;
-use std::{
-    collections::VecDeque,
-    ffi::OsString,
-    os::unix::ffi::OsStrExt,
-    path::{Path, PathBuf},
-};
+use std::{collections::VecDeque, ffi::OsString, path::PathBuf};
 
 /// Owned bytes from a verify-on-use blob load.
 #[derive(Debug)]
@@ -30,7 +25,7 @@ impl CapturedContext {
     /// Regular file blobs are verified when this returns.
     pub(crate) fn read(&mut self, path: &ContextPath) -> Result<ContextFile, ContextError> {
         let mut pending: VecDeque<OsString> = path.as_ref().iter().map(OsString::from).collect();
-        let bytes = path.as_ref().as_os_str().as_bytes();
+        let bytes = gix::path::into_bstr(path.as_ref());
         if bytes.ends_with(b"/") || bytes.ends_with(b"/.") {
             pending.push_back(OsString::from("."));
         }
@@ -58,8 +53,8 @@ impl CapturedContext {
                         return Err(ContextError::Invalid("too many context symlinks"));
                     }
                     let requires_directory = target.ends_with(b"/") || target.ends_with(b"/.");
-                    let target = Path::new(std::ffi::OsStr::from_bytes(target));
-                    if target.is_absolute() {
+                    let target = crate::path::git_path(target)?;
+                    if target.has_root() {
                         return Err(ContextError::Invalid("absolute context symlink"));
                     }
                     resolved.pop();
