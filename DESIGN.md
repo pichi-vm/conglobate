@@ -457,6 +457,25 @@ there is no architecture override or implied emulation support. Resource
 limits belong to the execution environment. The exit-code taxonomy remains
 an implementation-interface detail.
 
+### 2.1 Run from the build console
+
+`conglobate run [repository] --cache <path> --output <path>` uses the same
+runtime argument definition as `build`: repository defaults to `.`, cache and
+output are required, and UID/GID mappings are optional as a pair. The mappings
+remain necessary for stages that execute commands. Ref, context, plan, lock
+and optional location are supplied only through the version-1 start/input/finish
+exchange in §1.5, not through `run` flags. The console name is the protocol's
+well-known `dev.pichi.build`; it is not a runtime setting.
+
+Console input and ordinary CLI input share argument conversion and validation.
+The pipeline executes directly, and completion/error reporting preserves the
+acknowledgement and original-error precedence. The caller owns resource
+preparation and process/environment disposal; Conglobate does not start services.
+
+The `appliance` adapter temporarily supplies its original fixed resources.
+Publish the additive package, then switch and publish the calling image before
+removing the legacy adapter and package-owned units.
+
 ## 3. Git context
 
 Conglobate consumes a specified commit from a local repository (CLI) or from the

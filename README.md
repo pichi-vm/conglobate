@@ -119,6 +119,27 @@ input-backed OCI layout. Inherited layer bytes remain in the build inputs;
 consumers must resolve omitted blobs from those inputs. The output alone is
 not guaranteed to be self-contained. Its dependency module is `src/graph.rs`.
 
+## Run from the build console
+
+`run` accepts the same runtime arguments as `build`. Ref, context, plan, lock
+and optional location arrive over the well-known `dev.pichi.build` console
+instead of command-line flags:
+
+```sh
+conglobate run /caller/repository --cache /caller/cache --output /caller/output
+```
+
+The repository defaults to `.`. Cache and output are required. UID/GID mappings
+are optional as a pair, just as for `build`; stages that execute commands need
+both. Console input uses the same ref, path and location validation as the CLI.
+Conglobate runs the engine directly and waits for completion acknowledgement.
+The caller supplies mounts, networking, resolver configuration, labeling support
+and shutdown policy; `run` does not start services.
+
+The zero-argument `appliance` command and packaged units remain temporarily
+for existing images. Publish a package with `run` before switching an image;
+remove the legacy entry and units after the replacement image is available.
+
 ## Build and rootless checks
 
 Build on Linux with Rust/Cargo and a C build toolchain for native dependencies
