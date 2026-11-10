@@ -36,7 +36,7 @@ impl StepStorage for () {}
 impl private::Storage for crate::storage::Volume<'_, '_, '_, crate::storage::Mounted> {}
 impl StepStorage for crate::storage::Volume<'_, '_, '_, crate::storage::Mounted> {}
 
-/// Unfinished steps intentionally retain storage through dedicated-VM disposal.
+/// Unfinished steps intentionally retain storage through environment disposal.
 /// Drop cannot prove descendant quiescence, even if child termination succeeds.
 #[derive(Debug)]
 struct Retained<R: StepStorage>(ManuallyDrop<R>);

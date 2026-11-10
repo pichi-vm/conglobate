@@ -269,7 +269,7 @@ impl Drop for AttachmentLease {
                 Ok(()) => drop(backing),
                 Err(error) => {
                     // Retain attachment and namespace descriptors on failure.
-                    // The supervisor must prove quiescence or dispose of the VM.
+                    // The supervisor must prove quiescence or dispose of the environment.
                     eprintln!("attachment retained after cleanup failure: {error}");
                     std::mem::forget(backing);
                 }

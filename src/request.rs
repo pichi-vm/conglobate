@@ -37,8 +37,6 @@ enum Action {
     Build(Box<BuildArguments>),
     /// Run the build request/result protocol with caller-supplied resources.
     Run(RuntimeArguments),
-    /// Build-port appliance entry (request/response CBOR); no flags.
-    Appliance,
 }
 #[derive(Debug, Args)]
 struct BuildArguments {
@@ -131,7 +129,7 @@ pub(crate) struct BuildRequest {
     lock: ContextPath,
     cache: PathBuf,
     output: PathBuf,
-    /// Optional provenance locator for build annotations (e.g. appliance CBOR `location`).
+    /// Optional provenance locator for build annotations (e.g. terminal CBOR `location`).
     /// Not used as Git identity; mount/path opens still use `repository`.
     location: Option<String>,
 }
@@ -139,7 +137,6 @@ pub(crate) struct BuildRequest {
 pub(crate) enum CliCommand {
     Build(Box<BuildRequest>),
     Run(RuntimeArguments),
-    Appliance,
 }
 
 /// Parse argv into the selected build entry point.
@@ -153,7 +150,6 @@ where
             *raw,
         )?))),
         Action::Run(args) => Ok(CliCommand::Run(args)),
-        Action::Appliance => Ok(CliCommand::Appliance),
     }
 }
 
@@ -244,12 +240,10 @@ impl BuildRequest {
     {
         match parse_cli(arguments)? {
             CliCommand::Build(request) => Ok(*request),
-            CliCommand::Run(_) | CliCommand::Appliance => {
-                Err(RequestError::Cli(clap::Command::new("conglobate").error(
-                    clap::error::ErrorKind::InvalidSubcommand,
-                    "use the selected entrypoint via main",
-                )))
-            }
+            CliCommand::Run(_) => Err(RequestError::Cli(clap::Command::new("conglobate").error(
+                clap::error::ErrorKind::InvalidSubcommand,
+                "use the selected entrypoint via main",
+            ))),
         }
     }
     pub(crate) fn id_mappings(&self) -> Option<IdMappings> {
@@ -276,7 +270,7 @@ impl BuildRequest {
     pub(crate) fn output(&self) -> &Path {
         &self.output
     }
-    /// Build provenance locator when supplied (appliance CBOR `location`).
+    /// Build provenance locator when supplied (terminal CBOR `location`).
     pub(crate) fn location(&self) -> Option<&str> {
         self.location.as_deref()
     }
@@ -697,7 +691,6 @@ mod tests {
                 match cli.action {
                     super::Action::Build(args) => args.runtime,
                     super::Action::Run(args) => args,
-                    super::Action::Appliance => panic!("unexpected adapter"),
                 }
             };
             let defaults = runtime(args.clone());
@@ -752,11 +745,7 @@ mod tests {
     }
 
     #[test]
-    fn appliance_subcommand_is_recognized() {
-        use crate::request::{CliCommand, parse_cli};
-        match parse_cli(["conglobate", "appliance"]).unwrap() {
-            CliCommand::Appliance => {}
-            other => panic!("expected Appliance, got {other:?}"),
-        }
+    fn appliance_subcommand_is_rejected() {
+        assert!(super::parse_cli(["conglobate", "appliance"]).is_err());
     }
 }

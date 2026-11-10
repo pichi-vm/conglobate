@@ -1,6 +1,6 @@
 # Conglobate image build design
 
-Status: design target for the locked build-VM redesign (docs-first).
+Status: build engine design and execution contract.
 Requirements use “must” or direct statements of behavior. The crate is a
 types-only library plus a binary engine; the standalone CLI remains first-class
 and VM-free for tests. The [sandbox lifecycle](#14-sandbox-lifecycle) and
@@ -74,14 +74,13 @@ views before closing the whole-disk snapshot. A failed unmount retains owners
 and cannot produce a successful image. Persisted-image readers do not replay
 stage mounts; ESP data is part of the disk and tmpfs data disappears.
 Future attestation must bind the trusted execution environment, including the
-kernel, environment-provided labeling policy, appliance image (and its internal
-formatter profiles) and effective configuration, to the image digest; measuring
+kernel, environment-provided labeling policy, formatter profiles and effective
+configuration, to the image digest; measuring
 conglobate alone is insufficient.
 
 The implementation uses kernel ext4 mounts and an environment-provided labeling
-exception. The trusted environment implements that exception as a pure-Rust Aya
-program and a Rust load, attach and pin path (section 14.4). Conglobate does
-not compile or load it. Confidential-hardware qualification remains deferred;
+exception. The trusted environment supplies that exception (section 14.4).
+Conglobate does not compile or load it. Confidential-hardware qualification remains deferred;
 tests do not prove absence of sandbox vulnerabilities.
 
 The sections follow a build from input selection through execution and output
@@ -114,9 +113,9 @@ assembly uses the carapace root.
 ## Contents
 
 - [Architecture and scope](#1-architecture-and-scope)
-  - [Build appliance](#14-build-appliance)
-  - [Appliance build-port CBOR](#15-appliance-build-port-cbor)
+  - [Terminal CBOR](#14-terminal-cbor)
 - [Standalone CLI](#2-standalone-cli)
+  - [Run from the build console](#21-run-from-the-build-console)
 - [Git context](#3-git-context)
 - [Image locks](#4-image-locks)
 - [Context and pipeline](#5-context-and-pipeline)
@@ -152,23 +151,15 @@ assembly uses the carapace root.
    point for rootless checks and engine tests. Given a local Git repository, a
    commit (or resolved ref), a context path, plan/lock paths, a
    read-only image cache and an output directory, it produces an importable
-   artifact with build annotations without requiring virtiofs, a hypervisor,
-   or the appliance image. The supervisor runs as root for storage assembly when
-   privileged stages run; commands never receive that initial-namespace root
-   authority. The engine has no code dependency on VM management, virtiofs, GPT
-   transport, or a particular hypervisor.
-3. **Build appliance** is a pichi image **shipped from this repository**
-   (bootstrap CI in the same class as `fedora`/`carapace` images). Self-host
-   later via `pichi build`. The appliance is how production builds run; see
-   [§1.4](#14-build-appliance).
-4. **`pichi build`** is a specialization of `pichi run` (owned by pichi's docs).
-   It prepares committed inputs and cached images, launches this appliance, and
-   retrieves/imports the result. It must not contradict this appliance contract.
-   It does not interpret private intermediate files to reconstruct the image.
+   artifact with build annotations. The supervisor runs as root for storage
+   assembly when privileged stages run; commands never receive that
+   initial-namespace root authority. The caller owns deployment.
+3. **Run entry** (`conglobate run`) receives the versioned build
+   request over the well-known protocol console and runs the same engine.
+   The caller supplies runtime paths, identity ranges and lifecycle policy.
 
 Unit and binary integration tests run directly on Linux through Cargo.
 Tests that require root are ignored by default and explicitly run as root in CI.
-Appliance behavior is checked manually with Pichi.
 
 A build has the following lifecycle:
 
@@ -183,8 +174,6 @@ A build has the following lifecycle:
    define it fresh, or extend that boot source's settings. Bind an existing
    `corium.root` when new layers or a different root are joined. Verify component digests
    and annotate the manifest.
-6. In the appliance, later bind the image digest and TEE/builder to
-   attestation evidence.
 
 The annotated OCI image is the Conglobate output. Importing or publishing the
 image, transporting it out of a VM, and obtaining hardware attestation are
@@ -218,63 +207,9 @@ pinning and reproducible OS/package selection are outside the initial
 builder's guarantees. Build annotations do not claim a closed set of all
 influences when commands can acquire external input.
 
-### 1.4 Build appliance
+### 1.4 Terminal CBOR
 
-The [Pichi repository](https://github.com/pichi-vm/pichi/tree/main/appliance)
-builds the Fedora-based appliance with `pichi build` and publishes
-`ghcr.io/pichi-vm/pichi-build:latest`, the command's default build image.
-Conglobate supplies the packaged executable, `conglobate-build.service` and
-the `run-pichi-*.mount` units. The appliance installs and enables those units,
-the LSM package's loader service, and its own network and clock configuration.
-
-Product assumptions for the guest:
-
-1. **PID 1 is systemd.** There is no Conglobate-as-`/init` product path and no
-   custom mount generator.
-2. **Static virtiofs mounts** (configured in the image/unit, not by Conglobate
-   parsing mount tags from the host response) expose host tags:
-   - `repo` → `/run/pichi/repo`
-   - `cache` → `/run/pichi/cache`
-   - `output` → `/run/pichi/output`
-3. **Named build-port console** `dev.pichi.build`, opened read/write through
-   the kernel console/hvc sysfs path (not a udev symlink). The channel is
-   bidirectional (guest→host tx and host→guest rx).
-4. **Wire (input exchange and terminal result, self-delimiting CBOR, no length prefix; no
-   streaming/multiplexing):** the guest opens the port, writes one request array
-   `["start", 1, null]`, then reads one host response array. The guest
-   must **not** assume the host already pushed bytes before the request (this
-   supersedes host one-shot CBOR push / uni-rx-only). On `[true, Input]`, Conglobate
-   runs the engine against the mounted paths and publishes into the empty
-   `/run/pichi/output` mount. The locked end state is the OCI layout
-   (`oci-layout`, `index.json`, `blobs/sha256/…`) only. Pichi imports the
-   guest-authored OCI graph and rebuilds verity from COW blobs plus per-scute
-   salts
-   ([Pichi #28](https://github.com/pichi-vm/pichi/pull/28), `7df44442`).
-   [Conglobate #24](https://github.com/pichi-vm/conglobate/issues/24) removes
-   the transitional packing list and flat copies; inherited layers remain
-   referenced by their original descriptors. Output may omit inherited
-   layer blobs supplied by the read-only input cache. Configs, manifests, new
-   layers and generated boot configuration remain present. After explicit
-   success and VM exit, the matching host importer must resolve every omitted
-   layer by digest, verify its exact bytes and size into private staging, and
-   perform the usual verity/boot/root checks before publication. A bad present
-   output blob is an error, not permission to use the cache. No packing list or
-   host-generated manifest is introduced. This input-backed output contract
-   applies to both appliance and direct `conglobate build` invocations.
-   On `[false, message]`, it fails with the host error string.
-   There is **no** local CBOR copy retained as a second source of truth, **no**
-   Conglobate parse of virtiofs field readers / mount tags from the response,
-   and **no** mount generator in this crate.
-5. Appliance image hardcodes (not CBOR fields): UID/GID maps.
-   Formatting tools live in the image; see [§2](#2-standalone-cli).
-6. **Guest exit.** After `conglobate appliance` exits, success or failure, the
-   oneshot powers the VM off so the launcher is not left at a login prompt.
-   Appliance stdout and stderr are mirrored to the kernel console
-   (`console=hvc0`) and the journal.
-
-### 1.5 Appliance build-port CBOR
-
-Transport is the named console in [§1.4](#14-build-appliance). Each message
+Transport is the well-known `dev.pichi.build` virtio console. Each message
 is one self-delimiting CBOR array, with no length prefix. Commands version
 their own request and response schemas; there is no global protocol version.
 
@@ -283,12 +218,10 @@ their own request and response schemas; there is no global protocol version.
 - Host → guest failure: `[false, message]`, where `message` is a string.
 - Guest → host: `["finish", 1, null]`, after output finalization.
 - Guest → host: `["finish", 1, message]`, including build error context on failure.
-- Host → guest: `[true, null]` acknowledges receipt before guest shutdown.
+- Host → guest: `[true, null]` acknowledges receipt before the `run` command returns.
 
-The host requires a terminal success and successful VM exit before importing
-output. Missing or malformed completion is a failed/interrupted build, never
-implicit success. Both commands are version 1 and require a matching host
-and appliance.
+Missing or malformed completion is a failed/interrupted build, never
+implicit success. Both commands are version 1 and require matching peers.
 
 The portable library exposes `launch::{Command, Request, Response,
 Requests, Start, Finish, Input, PORT_NAME}`. `Request<T>` supplies and validates the
@@ -319,7 +252,7 @@ The success payload is an `Input` map with these text-string fields:
 - `plan`: required plan path relative to the selected context.
 - `lock`: required lock-path locator relative to the selected context; the file
   is consumed only when selected ordinary image inputs require pins.
-- `context`: required context directory within the mounted repository;
+- `context`: required context directory within the supplied repository;
   `"."` explicitly selects the root.
 - `location`: optional provenance locator; omitted or null means absent.
   Serialization omits it when absent. It is not an authenticated identity.
@@ -329,57 +262,41 @@ fields. Path types and Git parsers validate locators when they are used.
 Commit identities, mount tags, output paths, formatter paths, UID/GID maps,
 and network configuration do not belong in this payload.
 
-Conglobate opens `/run/pichi/repo`, resolves `ref` to a commit, and resolves
+Conglobate opens the caller-supplied repository, resolves `ref` to a commit, and resolves
 context symlinks against that committed tree. Context selection must stay
 within the repository; plan and lock resolution must stay within the selected
 context. Absolute paths, escaping links, missing components, and symlink loops
 are rejected. Parent components are resolved after symlinks, never removed
 lexically before traversal. This checks the committed source actually used
-by the build rather than unrelated working-tree contents. Pichi likewise uses
-confined filesystem opens when reading the host lock. `/run/pichi/cache` is
-the read-only image cache.
+by the build rather than unrelated working-tree contents. The caller supplies the read-only image cache.
 
-**Ref resolution (guest):** resolve `ref` with gix on the mounted repository to a
+**Ref resolution (guest):** resolve `ref` with gix on the supplied repository to a
 single commit object. Accept a full object id (SHA-1 or SHA-256 hex) or a
 ref name; peel annotated tags to the commit. Reject abbreviated object ids,
 missing refs, and non-commit tips. Record the resolved commit in
 `dev.pichi.build.commit`, with `sha1:` or `sha256:` in the value. Optional
 `location` becomes `dev.pichi.build.location`; omit that annotation when absent.
-The location and fixed mount path are not authenticated identities. Do not
+The location and local repository path are not authenticated identities. Do not
 record the host `ref` string separately. See [§11.1](#111-image-manifest-annotation-contract).
 
 **Wire decoding / failure rules:**
 
 - Emit definite-length arrays of exactly three request elements or two response
   elements. Reject unknown command/version pairs, missing or extra elements,
-  and incorrect element types. Build V1 requires a null request body.
+  and incorrect element types. Start V1 requires a null request body.
 - The boolean status determines whether the response payload is `Input` or an
   error string. Their shapes cannot be mixed.
 - Decode exactly one response; leftover bytes already available in the buffer
   or on the port are trailing data and fail the build.
 - Missing build-port device, undecodable CBOR, or a truncated response fails
   the build. There is no silent default plan, lock, ref, or context.
-- This replaces the former map envelopes. Host and appliance must use the
-  matching command contract; changing a host library pin does not update a
-  separately published appliance image.
-
-**Output mount:** `/run/pichi/output` is an empty writable virtiofs mount supplied
-by the host (not a path Conglobate creates). Conglobate stages privately in a
-temporary child directory on that mount, then publishes by moving each top-level
-layout entry (`blobs/`, `oci-layout`, `index.json`) into the mount root with
-no-replace semantics (refuse if any destination name already exists). Fail if the mount is missing, not a
-directory, or non-empty before publication. This is distinct from CLI `--output`,
-which names a new directory that must not already exist (see [§11.2](#112-finalization-and-publication)
-finalization / publication and [§14.2](#142-resolve-and-verify-all-supplied-inputs-before-execution)).
+- This replaces the former map envelopes. Both peers must use the matching command contract.
 
 ## 2. Standalone CLI
 
-The standalone CLI exercises the same engine without a VM. It is the path used
-by rootless CI and local tests. It does not claim the appliance image's
-formatter-tool binding or build-port attestation; those are appliance-only.
-Appliance production builds use the CBOR
-contract in [§1.5](#15-appliance-build-port-cbor) instead of these host flags for
-request transport; both paths share plan/lock/cache semantics.
+The CLI is the execution entry point used by callers and integration tests.
+The caller supplies the execution environment and owns any external transport,
+service lifecycle and attestation.
 
 Required logical inputs for the CLI are a local Git repository path, a full
 commit identity (or a ref the CLI resolves locally), a context path within that
@@ -403,7 +320,6 @@ Defaults and failure behavior:
 
 - The positional repository path defaults to the current directory.
 - `--context` defaults to `.`. It cannot escape the selected commit.
-  Appliance CBOR uses `context` for the same role.
 - `--plan` and `--lock` are required, with no default filenames or discovery.
   Both locators are relative to the selected context, not the current directory
   or each other's parent. Resolve consumed files through committed-context path
@@ -414,24 +330,22 @@ Defaults and failure behavior:
 - `--ref` is required and accepts a Git reference or full commit hash. Resolve
   it once against the local repository before capturing committed inputs.
   Branches and tags resolve to commits; abbreviated hashes and non-commit
-  objects are rejected. The appliance's `ref` field uses the same resolution.
+  objects are rejected.
 - The cache is never mutated. Ordinary inputs use committed index pins;
   bootstrap tools capture local tag mappings before execution. Missing cached
   objects fail. Conglobate never resolves image references over the network.
 - **Formatting is outside the command sandbox.** Bootstrap selects a formatter
   from an **internal filesystem-name → formatter map** in the engine/image.
-  The appliance image installs `e2fsprogs`, so `mke2fs` resides at the standard
-  paths that map probes first. Capture still reads that binary and its dynamic
-  dependencies from the guest root; standalone CLI builds use the same probe
-  on the host. There is **no** `--formatter-runtime` flag and **no**
+  The environment installs `e2fsprogs`, supplying `mke2fs` at a standard
+  path that the map probes. Capture reads that binary and its dynamic
+  dependencies from the execution environment. There is **no** `--formatter-runtime` flag and **no**
   host-supplied mke2fs (or other formatter) manifest as a TEE input. Plan
   authors cannot override formatter selection. The internal formatter profile
   and filesystem specification control formatting; no execution receipt is
   emitted.
 - `--uid-map PARENT_START:COUNT` and `--gid-map PARENT_START:COUNT` remain
-  available on the standalone CLI for VM-free and fixture execution of stages
-  that need mappings. In the **appliance image** these ranges are hardcodes,
-  not CBOR fields and not host CLI flags. Each maps image IDs starting at zero
+  available for stages that need mappings. The caller reserves and supplies
+  these ranges. Each maps image IDs starting at zero
   onto a contiguous parent range. Parent ID zero, empty ranges, overflow and
   the invalid all-ones ID are rejected. UID and GID counts may differ. All
   stages use the same pair. Images using IDs outside those ranges are
@@ -444,8 +358,8 @@ Defaults and failure behavior:
   confined to the command root. No DNS relay. Resolver
   contents and their digest are not recorded as build annotations.
 - Successful output is published only when all components and manifest
-  annotations are complete. Refuse an existing output destination rather than
-  overwrite it.
+  annotations are complete. Accept a new or empty output directory; never
+  overwrite existing entries.
 - Logs go to stderr; the process exit status distinguishes success from
   failure. A precise exit-code taxonomy is deferred.
 - No successful artifact is published for a failed build. Failure diagnostics
@@ -464,7 +378,7 @@ runtime argument definition as `build`: repository defaults to `.`, cache and
 output are required, and UID/GID mappings are optional as a pair. The mappings
 remain necessary for stages that execute commands. Ref, context, plan, lock
 and optional location are supplied only through the version-1 start/input/finish
-exchange in §1.5, not through `run` flags. The console name is the protocol's
+exchange in §1.4, not through `run` flags. The console name is the protocol's
 well-known `dev.pichi.build`; it is not a runtime setting.
 
 Console input and ordinary CLI input share argument conversion and validation.
@@ -472,14 +386,10 @@ The pipeline executes directly, and completion/error reporting preserves the
 acknowledgement and original-error precedence. The caller owns resource
 preparation and process/environment disposal; Conglobate does not start services.
 
-The `appliance` adapter temporarily supplies its original fixed resources.
-Publish the additive package, then switch and publish the calling image before
-removing the legacy adapter and package-owned units.
-
 ## 3. Git context
 
-Conglobate consumes a specified commit from a local repository (CLI) or from the
-appliance-mounted repo after resolving `ref` → commit. It does **not** use a
+Conglobate consumes a specified commit from a local repository after resolving
+`ref` to a commit. It does **not** use a
 working-tree checkout as source of truth. Caller-side working-tree cleanliness
 policy is outside this interface. Conglobate does not create repositories,
 commit files, or fetch remote content.
@@ -500,16 +410,15 @@ commit files, or fetch remote content.
 
 ### 3.1.1 Submodules (Model E)
 
-One host repository virtiofs mount supplies the superproject and its existing
+The caller supplies the superproject repository and its existing
 `.git/modules` stores. Resolve each used gitlink at its recorded commit using
 that store; never substitute a module working tree or its current HEAD. Use
 committed `.gitmodules` path-to-name mappings, including names that differ from
 paths. Nested stores live under their parent store's `modules/<name>`.
 No host alternates are allowed.
 
-Conglobate never fetches or runs submodule init. Pichi must not initialize
-submodules either. The user stages the host checkout with only the modules
-needed for the build. A needed store or recorded commit missing on disk is a
+Conglobate never fetches or runs submodule init. The caller supplies the
+module stores needed for the build. A needed store or recorded commit missing on disk is a
 clear planning failure.
 
 The fail policy is **used-paths eager**: before execution, resolve stores for
@@ -586,7 +495,7 @@ platform manifest, and verifies it. A manifest containing scutes must carry
 `dev.pichi.carapace.verity.hash`: the final scute's nonzero SHA-256 root as
 `sha256:<64 lowercase hexadecimal characters>`. The separate `verity.algo`
 annotation is retired from new output. A narrow input-only migration path accepts
-bare roots with an explicit `verity.algo=sha256` for currently pinned appliances.
+bare roots with an explicit `verity.algo=sha256` for legacy image inputs.
 Bare roots without that declaration, unsupported algorithms, and any separate
 algorithm declaration alongside a qualified root are rejected.
 The root commits the
@@ -819,7 +728,7 @@ root at `/` and retains its boot components. Both use one writable whole-disk
 snapshot for the new output layer. Stop writers, flush and normally unmount
 all filesystem views, remove partition mappings, close the snapshot, detach its
 loop attachment and seal.
-Failed cleanup retains resources for VM disposal and rejects publication.
+Failed cleanup retains resources for environment disposal and rejects publication.
 
 ### 6.3 Directives
 
@@ -939,16 +848,11 @@ it does not update the Corium binary. New Corium code requires a newly built PMI
 It specifies the ordered setup, execution, teardown, finalization, and validation
 requirements. This section summarizes its relationship to the build pipeline.
 
-Conglobate runs as the only major workflow in a dedicated disposable build VM.
-The execution environment must independently shut down that VM if conglobate
-crashes or exits unexpectedly. It must not start another build or reuse abandoned
-kernel resources in that VM. This is an environment contract. The Conglobate engine does not implement VM
-lifecycle management; the appliance image and `pichi build`/`run` own that.
-A separate in-guest guardian and cross-invocation recovery are not required.
-Normal step failures and bounded teardown remain conglobate's responsibility.
-An incomplete cleanup is terminal: return an error, publish nothing and require
-VM disposal. No recovery/reuse API or retry of a failed build is required.
-Abrupt supervisor death also invalidates the build and is handled by VM disposal.
+The execution environment must independently dispose of retained resources if
+Conglobate crashes, exits unexpectedly or cannot complete cleanup. It must not
+reuse abandoned kernel resources for another build. Normal step failures and
+bounded teardown remain Conglobate's responsibility. Incomplete cleanup is
+terminal: return an error and publish nothing. There is no recovery/reuse API.
 
 The root supervisor owns verified inputs, cache handles, loop/device-mapper
 assembly, writable snapshots, image metadata, and publication. Immutable carapace
@@ -957,8 +861,8 @@ scratch use anonymous files in a private per-build directory beneath
 `/var/tmp/conglobate`, created by the binary. Conglobate uses that directory
 without inspecting its backing filesystem or accepting a storage environment
 variable. The environment supplies backing capacity. Small control data and
-helpers use a private tmpfs exposed beneath `/run/conglobate`; the service uses
-`RuntimeDirectory=conglobate`. Output staging and sealed layers remain on the
+helpers use a private tmpfs exposed beneath `/run/conglobate`; the caller
+provides that parent directory. Output staging and sealed layers remain on the
 requested output filesystem. No writable cache or durable state directory is
 required.
 
@@ -968,15 +872,12 @@ root semantics through mapping, without backing-device access. No userspace
 filesystem worker is required. Ext4 is supported; other drivers
 and metadata combinations require explicit qualification.
 
-The appliance loads and retains a fixed BPF LSM exception for exactly
-`security.selinux`. That program, and its load, attach and pin path, are a
-pure-Rust Aya rewrite owned by the environment (section 14.4). Conglobate does
-not compile, load or attach the policy, does not depend on libbpf, and does not
-register subjects and filesystems. Builds that do not set SELinux labels do
-not require this policy. Label operations remain subject to kernel checks;
-Conglobate does not probe labeling support before starting a command. The
-appliance has SELinux disabled; foreign labels belong to the target OS and
-confer no authority in the build environment. See section 14.4.
+The execution environment supplies the labeling exception for exactly
+`security.selinux` described in section 14.4. Conglobate does not load or manage
+that policy. Builds that do not set SELinux labels do not require this exception.
+Label operations remain subject to kernel checks; Conglobate does not probe
+labeling support before starting a command. Foreign labels belong to the target
+OS and must confer no authority in the build environment.
 
 Label mutation is not constrained by ordinary file write-mode checks. Integrity
 therefore depends on inode/descriptor reachability and read-only views, alongside
@@ -1010,15 +911,15 @@ leases as needed for their actual resource
 lifetimes, with no policy-specific identity pins or revocation transition. If
 quiescence cannot be proved, retain ownership and reject publication. Recover
 partial setup while conglobate is alive. If safe teardown cannot complete, fail
-the build and require VM disposal; do not start another step or reuse resources.
-The environment-owned labeling exception remains loaded until VM shutdown.
+the build and require environment disposal; do not start another step or reuse resources.
+The environment-owned labeling exception remains loaded until environment shutdown.
 Propagate filesystem/writeback errors; forced/lazy unmount is not evidence of
 clean finalization. Supervisor death is an environment shutdown test, not an
 in-guest recovery protocol.
 
 Foreign target SELinux labels, ownership, ACL semantics, and file capabilities
-must survive into the booted image independently of the build VM policy. The
-validated foreign-label environment disables build-VM SELinux; an enforcing
+must survive into the booted image independently of the execution environment policy. The
+validated foreign-label environment disables execution-environment SELinux; an enforcing
 configuration requires separate qualification. Initially unsupported are
 `trusted.*` access, persistent device creation, and immutable/append-only flag
 changes (including clearing inherited flags). Named pipes (FIFOs) are supported
@@ -1073,7 +974,7 @@ must exist in the output or the build inputs; only inputs may fill output gaps.
 Inherited scute and PMI descriptors stay unchanged without recopying their
 bytes. Metadata, newly produced layers and generated bootconfig remain in the
 output. The final manifest describes exactly the selected components and
-finalized bootconfig. Appliance consumers need the matching input-aware host
+finalized bootconfig. Consumers need an input-aware
 importer; ordinary complete-layout import cannot consume this output alone.
 
 ### 11.1 Image-manifest annotation contract
@@ -1106,7 +1007,7 @@ attestation must bind actual input measurements, committed source and output;
 this marker does not implement that future attestation.
 
 Location is only a locator, not an authenticated identity. Omit it when no
-provenance hint is supplied; the appliance's fixed repository mount is not an
+provenance hint is supplied; a local repository path is not an
 identity. Locators must not expose embedded credentials. The host-requested
 `ref` is resolved before publication and is not a separate annotation.
 
@@ -1159,21 +1060,15 @@ lock, then validate the finalized manifest and every referenced blob before
 publication. Hash finalized bytes after all manifest annotations and bootconfig edits
 are complete. Publication differs by destination:
 
-- **CLI `--output`:** stage under a temporary sibling of the named destination,
-  then publish the completed directory with an atomic no-replace rename onto a
-  path that must not already exist, even if empty.
-- **Appliance `/run/pichi/output`:** the virtiofs mount root already exists and
-  must be empty at start. Complete every fallible check while staging privately
-  in a temporary child directory on that same mount. Only then publish by moving
-  each top-level layout entry (`oci-layout`, `index.json`, `blobs/`) into the
-  mount root with no-replace semantics (refuse if any destination entry already
-  exists). If any move fails, delete already-moved
-  entries and the staging child so the mount does not retain a partial successful
-  image. After a successful publish, remove the temporary child. Virtiofs rename
-  within the mount is sufficient for this move-children publish; a whole-mount
-  rename is neither required nor possible. The shared “atomic publish” invariant
-  means “no successful image exposed until publish completes; failure leaves no
-  successful image,” not “one rename of the mount root.”
+- **New directory:** stage under a temporary sibling of the named destination,
+  then publish the completed directory with an atomic no-replace rename.
+- **Existing empty directory:** stage privately inside it, then move each
+  top-level layout entry (`oci-layout`, `index.json`, `blobs/`) into the
+  destination with no-replace semantics. If a move fails, remove already-moved
+  entries and staging so no successful image remains. This permits output on
+  a filesystem root without requiring that root to be renamed.
+
+Neither path overwrites existing entries or publishes before validation.
 
 The resulting layout includes the canonical empty config blob when referenced;
 replaced, unreferenced blobs are not exported.
@@ -1187,7 +1082,7 @@ profiles or other privileged environment that determined the result.
 
 Standalone execution publishes the same annotated image without claiming
 attestation. Report-data encoding, endorsements, verifier policy, freshness,
-and hardware-specific mechanisms remain appliance integration work.
+and hardware-specific mechanisms belong to external integrations.
 
 Hash the finalized bytes the trusted builder actually produced before relying
 on an untrusted output transport. Re-reading mutable host output and treating
@@ -1209,9 +1104,8 @@ Either category may require root on Linux. Such tests use `#[ignore]` and run
 explicitly as root in CI. A privileged test must fail when its prerequisites are
 missing instead of reporting a successful skip.
 
-Appliance testing is performed manually with Pichi. The repository does not
-maintain VM test harnesses or separate executables for testing private engine
-modules. CI checks Rust on native amd64 and Arm64. Confidential-computing
+The repository does not maintain deployment test harnesses or separate
+executables for testing private engine modules. CI checks Rust on native amd64 and Arm64. Confidential-computing
 hardware qualification and attestation remain separate work.
 
 ## 13. Remaining decisions
@@ -1222,21 +1116,17 @@ and checkout filters do not execute. The lock format, image-manifest annotation
 contract, YAML values, device exposure, and supported firmware measurement
 contracts are specified above. Temporary writable mappings use
 kernel deferred removal and scratch leases for in-process cleanup after failed
-activation; abrupt conglobate death is handled by disposal of the build VM. Scratch and runtime allocation failures propagate as build failures.
+activation; abrupt conglobate death is handled by disposal of the execution environment. Scratch and runtime allocation failures propagate as build failures.
 
 Remaining ecosystem decisions are authentication of the intended Git identity,
 additional firmware signing contracts and hardware attestation. Component
-selection and bootconfig overlays are specified here. Appliance build-port
-transport remains as defined in §1.4–§1.5.
+selection and bootconfig overlays are specified here.
 
-Sandbox policy is specified in section 14. Section 14.4 locks the environment
-labeling exception to a pure-Rust Aya program with Rust load, attach and pin,
-owned by the trusted environment. Exact capability/syscall/ioctl profiles,
+Sandbox policy is specified in section 14. Section 14.4 specifies the labeling
+exception supplied by the trusted environment. Exact capability/syscall/ioctl profiles,
 fixed internal deadline values, internal formatter/property schemas, identity
 allocation, and runtime mount mechanics are implemented under that contract.
-The build-appliance image, build-port CBOR and
-virtiofs mount contract are locked in [§1.4](#14-build-appliance)–[§1.5](#15-appliance-build-port-cbor);
-full engine reshape and confidential-platform qualification remain separate.
+Deployment and confidential-platform qualification remain external work.
 Fully unprivileged storage assembly is outside the selected design.
 
 The scope excludes remote Git retrieval, uncommitted working-tree inputs,
@@ -1268,15 +1158,12 @@ The build proceeds in this order; each failure aborts publication:
 5. Select components, apply the bootconfig overlay and implicit root binding,
    close the runtime, annotate the manifest
    and validate the input-backed OCI graph.
-6. Finish fallible workspace/context cleanup, then publish without replacing
-   an existing destination: CLI `--output` uses an atomic no-replace rename of
-   the completed directory; the appliance empty `/run/pichi/output` mount uses
-   the validated move-children publish in §11.2 (no layout entry becomes visible
-   until every fallible check has succeeded; a failed move cleans the mount).
+6. Finish fallible workspace/context cleanup, then publish into a new or empty
+   directory without replacing existing entries, using the rules in §11.2.
 
 On failure, stop and reap commands before releasing their dependencies. Preserve
 both operation and cleanup errors. If quiescence or cleanup cannot be established,
-reject publication and retain resources until the environment destroys the VM.
+reject publication and retain resources until the environment disposes of them.
 RAII owns resources; destructors cannot certify successful finalization.
 
 ### 14.1 Trust model and scope
@@ -1284,17 +1171,11 @@ RAII owns resources; destructors cannot certify successful finalization.
 1. Conglobate's engine binary runs as initial-namespace root when privileged
    stages execute. It verifies inputs, interprets plans, assembles storage,
    owns execution and cleanup, finalizes images, and annotates the manifest. The
-   types-only library has no VM transport or init dependency. Appliance boot
-   (systemd PID 1, static virtiofs, build-port console) is specified in §1.4; the
-   engine itself does not implement virtiofs or a mount generator.
+   library has no transport or init dependency.
 
-1. Production deployment is the dedicated disposable appliance VM with
-   conglobate as its only major workflow. An independent environment
-   controller shuts down the VM on conglobate crash or unexpected exit. No
-   new build or resource reuse is allowed in an abandoned VM. A separate
-   guardian and recovery across invocations are not required. Qualify
-   shutdown behavior in the execution environment. Standalone CLI tests may
-   run the same engine without that appliance.
+1. An independent execution environment must dispose of abandoned resources
+   after a crash or failed cleanup. No new build may reuse those resources.
+   The caller owns this lifecycle; Conglobate does not select a deployment.
 
 1. Build commands are untrusted, including namespace root. Trust the build
    kernel, supervisor, environment-provided BPF LSM labeling exception and
@@ -1329,13 +1210,10 @@ RAII owns resources; destructors cannot certify successful finalization.
 
 ### 14.2 Resolve and verify all supplied inputs before execution
 
-1. Accept a local Git repository, full commit identity (CLI) or resolve
-   appliance `ref` → commit on the mounted repo, context path,
-   read-only image cache, explicit context-relative plan and lock paths,
-   and a new output destination for the CLI (`--output` must not already exist),
-   or the empty appliance mount at `/run/pichi/output` into which layout entries
-   are published (see [§1.5](#15-appliance-build-port-cbor)). Neither plan nor
-   lock has a default filename. Require
+1. Accept a local Git repository, resolve its requested ref to a commit,
+   and use the selected context path, read-only image cache, explicit
+   context-relative plan and lock paths, and a new or empty output directory.
+   Neither plan nor lock has a default filename. Require
    committed files resolved within the selected context; reject absolute
    paths, escapes and missing/non-file inputs. Record selected paths and
    bind their exact bytes through the commit annotation. Load plan and lock
@@ -1429,32 +1307,11 @@ RAII owns resources; destructors cannot certify successful finalization.
    Retain normal kernel ownership, mode and ACL permission checking. Use nosuid,nodev;
    storing file capabilities/setuid bits must not grant build-host privilege.
 
-1. The appliance loads a fixed BPF LSM exception before
-   conglobate starts. It delegates the generic capability check for exactly
-   security.selinux through inode_xattr_skipcap. There are no per-command
-   registrations, subject/filesystem maps, target guards or activation
-   transitions. Conglobate does not compile, load, attach, update or remove
-   this policy and does not depend on libbpf. The environment retains the
-   pinned program for the lifetime of the VM. Standalone builds that do not
-   set SELinux labels do not require this exception. Conglobate neither
-   installs the policy nor makes label support a command-startup prerequisite.
-   Appliance startup fails if BPF LSM, BTF or the label hook is unavailable.
-
-1. Implement that environment exception as a pure-Rust rewrite using Aya.
-   The trusted environment owns the LSM program and the load, attach and
-   pin path; both are Rust. This is the chosen environment path for
-   building the program and for load, attach and pin. Do not implement
-   the exception as a C program or revive the retired libbpf-rs wrapper.
-   A C BPF toolchain (bindeps)
-   or a precompiled object is not this path. Conglobate still does not
-   compile, load or attach the program.
-
-1. Match the complete attribute name, including termination; truncated
-   prefix matches are forbidden. Preserve earlier LSM results. Other
-   security attributes retain normal checks. The build VM must have SELinux
-   disabled; image label strings belong to the target OS's independent
-   policy and must not confer authority in the build environment. The
-   exception is not a grant of CAP_SYS_ADMIN or SELinux administration.
+1. The execution environment must permit setting exactly `security.selinux`
+   without granting commands CAP_SYS_ADMIN or control over its labeling policy.
+   Other security attributes retain normal checks. Foreign labels belong to
+   the target OS and must not confer authority in the execution environment.
+   Conglobate does not install, activate or modify this exception.
 
 1. Ordinary file write-mode denial is not a labeling integrity boundary:
    security.* attribute checks can bypass that DAC check. Commands must
@@ -1490,10 +1347,10 @@ RAII owns resources; destructors cannot certify successful finalization.
    Remove identity pins and rollback states used solely for policy
    registration. Stop/reap all descendants before storage finalization;
    cgroup joining and admission handshakes remain necessary. Failure to
-   prove quiescence rejects publication and requires VM disposal. There
+   prove quiescence rejects publication and requires environment disposal. There
    is no policy revocation step and no numeric policy-identity reuse race.
    Supervisor death still must not expose privileged handles or permit
-   storage reuse before the independently triggered VM shutdown.
+   storage reuse before the independently triggered environment shutdown.
 
 ### 14.5 Execute the image closure under the stage rules
 
@@ -1585,8 +1442,7 @@ layers even if a later layer deletes their paths.
    firewall policy and network namespace lifetime. It may launch Conglobate
    inside a dedicated namespace. Conglobate neither provisions nor tears down
    this connectivity. Enabled steps share its network state, but no command
-   processes may survive a step. Systemd is an optional environment
-   implementation, not a dependency of the binary.
+   processes may survive a step.
 
 1. Enabled commands can reach services on the inherited network, including
    loopback and abstract Unix sockets. Supervisor controls and attestation
@@ -1613,13 +1469,13 @@ layers even if a later layer deletes their paths.
 
 1. Preserve correct target UID/GID values, permissions, ordinary extended
    attributes, ACL access and inheritance, file capabilities, and SELinux
-   labels. The target OS policy is independent of the build VM policy.
-   Labels are image metadata; commands must not administer the build VM's
+   labels. The target OS policy is independent of the execution environment policy.
+   Labels are image metadata; commands must not administer the execution environment's
    SELinux policy. Successful xattr readback alone is insufficient: check
    access decisions and the bytes/behavior after independent target boot.
 
 1. The tested foreign-label path uses a build kernel with SELinux disabled.
-   SELinux in the build VM is not a requirement; isolation remains one.
+   SELinux in the execution environment is not a requirement; isolation remains one.
    Do not equate permissive mode with disabled/absent SELinux. An enforcing
    deployment must separately demonstrate the required foreign-label
    behavior without weakening command containment.
@@ -1646,7 +1502,7 @@ layers even if a later layer deletes their paths.
    they are not independent recovery supervisors. Retain cancellation
    authority outside the command sandbox. Do not rely solely on process
    groups, launcher exit or numeric PID paths. The environment handles
-   abrupt conglobate death by shutting down the dedicated VM.
+   abrupt conglobate death by shutting down the execution environment.
 
 1. Setup and teardown have finite FIXED INTERNAL DEADLINES, chosen and
    tested as implementation constants. They are not plan or CLI knobs
@@ -1673,10 +1529,10 @@ layers even if a later layer deletes their paths.
 
 1. Incomplete cleanup must not authorize publication or unsafe identity/
    resource reuse. Keep ownership while the process remains alive, report
-   failure and require VM disposal if teardown cannot complete. Validate
+   failure and require environment disposal if teardown cannot complete. Validate
    normal completion, partial setup, timeout, helper death, blocked I/O,
-   supervisor death with independent VM shutdown, and output rejection.
-   Shared-host recovery and concurrent builds inside one VM are out of scope.
+   supervisor death with independent environment shutdown, and output rejection.
+   Shared-host recovery and concurrent builds in one execution environment are out of scope.
 
 ### 14.11 Finalize and publish
 
@@ -1694,19 +1550,18 @@ layers even if a later layer deletes their paths.
    context and plan/lock paths bind committed build inputs; network acquisition
    is not claimed to be reproducible or exhaustive input accounting.
 
-1. Require a new output directory. Stage the complete artifact, verify its
-   identities, and publish atomically without replacement. Failures emit
+1. Require a new or empty output directory. Stage the input-backed artifact,
+   verify its identities, and publish without replacement as specified in §11.2. Failures emit
    diagnostics, not a successful artifact. Cache mutation/import and
-   attestation belong to external integrations. The appliance may attest
-   the finalized image digest and TEE/builder later.
+   attestation belong to external integrations.
 
 ### 14.12 Validation requirements
 
 1. Before accepting production output, qualify the actual integrated
    kernel/device contract, dual-mount bootstrap, full tool-root launch, trusted COPY
    and export, capability/seccomp policy on both architectures, ID reuse,
-   keyring/FD closure, helper death, supervisor death with VM shutdown,
-   fixed deadlines, blocked I/O, independent build VMs, clean/error
+   keyring/FD closure, helper death, supervisor death with environment shutdown,
+   fixed deadlines, blocked I/O, independent execution environments, clean/error
    finalization, and publication ordering.
    Include benign owned-object positive/negative containment tests and
    malformed-input/parser tests; passing them is not proof of absence
@@ -1727,8 +1582,8 @@ layers even if a later layer deletes their paths.
 1. Deferred qualification (user decision): run the composed design in
    Intel TDX, AMD SEV-SNP, and Arm CCA deployment
    environments. Measure startup/step costs and compatibility, with no
-   nested-virtualization assumption. Appliance transport and attestation
-   qualification are separate from the standalone binary's tests.
+   nested-virtualization assumption. Deployment and attestation qualification
+   are separate from the binary's tests.
 
 ## 15. Rust architecture
 
@@ -1738,14 +1593,12 @@ private to the binary. Downstream `pichi` depends on the lib for shared types.
 
 ### Inputs and workflow
 
-The standalone CLI or appliance supplies committed Git objects (after ref
-resolution), a read-only local image cache, UID/GID ranges (CLI flags or
-appliance image hardcodes), /etc/resolv.conf for network-enabled commands,
-the fixed labeling exception and independent VM disposal. Formatting
-uses the internal filesystem-name → formatter map; there is no host
-`--formatter-runtime` input. Conglobate performs no artifact downloads, Git
-clone/checkout-as-SoT, network setup, policy registration or attestation. It
-has no dependency on the pichi binary; pichi depends on this lib.
+The caller supplies committed Git objects, a read-only local image cache,
+UID/GID ranges, `/etc/resolv.conf` for network-enabled commands, and the
+execution environment described above. Formatting uses the internal
+filesystem-name → formatter map; there is no `--formatter-runtime` input.
+Conglobate performs no artifact downloads, Git checkout, network setup,
+policy registration or attestation.
 
 `BuildRequest`, `ResolvedBuild` and `BuildGraph` progressively validate inputs.
 Plan and lock load immediately from the object store; COPY and other context
@@ -1764,13 +1617,13 @@ when filesystem operations require them.
 `StageOutput` holds results without command/mount authority. Runtime cleanup
 precedes final component validation, image assembly, manifest annotation and
 publication. Pass-through builds use the same finalization without allocating
-an execution runtime. Publication happens only after all fallible checks. CLI `--output`
-uses a no-replacement atomic rename of the completed directory. The appliance
-`/run/pichi/output` mount cannot be renamed as a whole; after private staging
-and validation it publishes by moving each top-level layout entry into the
-empty mount root with no-replace semantics (§1.5, §11.2). If any publish move
-fails, remove already-moved entries and staging so no successful image remains
-exposed. Either path: no successful image is exposed after a failed build.
+an execution runtime. Publication happens only after all fallible checks.
+A new output path uses a no-replacement atomic rename of the completed directory.
+An existing empty output directory cannot be renamed as a whole; after private
+staging and validation, publication moves each top-level layout entry into that
+directory with no-replace semantics (§11.2). If any publish move fails, remove
+already-moved entries and staging so no successful image remains exposed.
+Neither path exposes a successful image after a failed build.
 
 ### Ownership and Rust states
 
@@ -1796,7 +1649,7 @@ consuming transitions express what each operation may do. Important examples:
 
 RAII provides ordinary scoped cleanup; destructors cannot prove quiescence or
 successful writeback. Explicit fallible completion performs those checks.
-Terminal failure retains diagnostic truth and requires VM disposal when cleanup
+Terminal failure retains diagnostic truth and requires environment disposal when cleanup
 cannot finish. There is no guardian process or persisted recovery state machine.
 
 ### Storage
@@ -1806,7 +1659,7 @@ compression or padding requires materialization; writable layers and filesystem
 workspaces are always RAM-backed. Cache identity checks and authenticated reads
 remain distinct protections. Device-mapper and loop owners retain descriptor and
 mount-namespace identity through partial setup and explicit teardown. Unresolved
-live resources remain retained until VM disposal. Deferred device removal is a
+live resources remain retained until environment disposal. Deferred device removal is a
 destructor fallback, never evidence of successful close or permission to seal.
 
 Carapace owns the logical origin geometry through `ZERO_SIZE_SECTORS`.
@@ -1864,9 +1717,8 @@ PTY queries/unlock/raw-mode settings and caller-local parent-death signals suppo
 Nix builders. Terminal injection/control and namespace/mount creation stay denied.
 
 The environment's fixed BPF LSM exception permits exactly security.selinux
-labeling without making the target filesystem's policy the build VM's policy.
-The trusted environment builds, loads, attaches and pins that exception with
-Aya (pure Rust), as specified in section 14.4. Conglobate does not probe label
+labeling without making the target filesystem's policy the execution environment's policy.
+The trusted environment supplies that exception as specified in section 14.4. Conglobate does not probe label
 support before starting commands and neither loads nor revokes the exception.
 Commands that set labels encounter the kernel's normal checks. Ordinary
 ownership, ACL, mount and filesystem checks still apply.
@@ -1890,7 +1742,7 @@ cutoff to a poll duration without renewing it; cross-process conversion remains
 in `SetupCutoff`.
 Cgroup containment, process identity, cancellation, reaping and descendant drain
 precede releasing mounts or sealing storage. Independent environment shutdown
-handles supervisor death; another build must never reuse that abandoned VM.
+handles supervisor death; another build must never reuse those abandoned resources.
 
 Networking is offline by default. Enabled commands join an environment-supplied,
 validated and pinned namespace and receive captured read-only resolver bytes.

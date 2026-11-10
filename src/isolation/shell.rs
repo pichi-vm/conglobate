@@ -8,7 +8,7 @@
 //! cannot succeed even after `/dev`, `/proc`, and `/sys` exist. When `bin/sh`
 //! is already a regular file this module does nothing. Otherwise it mounts a
 //! private tmpfs over every top-level directory the closure touches, whether
-//! or not that directory already exists, and copies the appliance shell,
+//! or not that directory already exists, and copies the environment shell,
 //! `cat`, and their dynamic-loader closure there. The clone used for
 //! `pivot_root` includes those mounts; they are not part of the sealed layer.
 //! Only the empty mount-point directories remain on the writable snapshot.
@@ -115,7 +115,7 @@ fn host_tool(name: &str) -> io::Result<PathBuf> {
     }
     Err(io::Error::new(
         io::ErrorKind::NotFound,
-        format!("appliance has no {name} for a root without /bin/sh"),
+        format!("environment has no {name} for a root without /bin/sh"),
     ))
 }
 
@@ -259,7 +259,7 @@ impl<'a> Layout<'a> {
 
     /// Always cover `top` with a private tmpfs. An existing directory is
     /// hidden for this command only; its bytes, including a pre-existing
-    /// empty `/bin`, stay on the layer without the appliance binaries.
+    /// empty `/bin`, stay on the layer without the environment binaries.
     fn directory(&mut self, top: &OsStr) -> io::Result<File> {
         if let Some((_, root)) = self.private.iter().find(|(name, _)| name == top) {
             return root.try_clone();

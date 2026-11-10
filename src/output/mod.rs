@@ -73,8 +73,7 @@ impl StagedDirectory {
     /// - If `destination` does not exist: stage as a sibling under its parent
     ///   (CLI `--output` naming a new directory).
     /// - If `destination` exists as an empty directory: stage inside it and
-    ///   publish layout entries into that directory (appliance empty virtiofs
-    ///   mount at `/run/pichi/output`).
+    ///   publish layout entries into that directory.
     ///
     /// # Errors
     /// Rejects a nameless destination, a non-empty or non-directory existing

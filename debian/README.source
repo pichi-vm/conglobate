@@ -25,9 +25,5 @@ https://ubuntu.com/docs/launchpad/user/how-to/launchpad-web-signing/
 
 Build prepared source offline with dpkg-buildpackage -b -us -uc.
 
-Conglobate runs in the guest, so only releases with kernel 7.0+ are selected.
-The package builds the CLI with --features cli and installs its appliance
-service and three virtiofs mount units. Installing the package does not
-enable or start the appliance. Image builders enable the units explicitly.
-The appliance installs pichi-lsm and orders its service before the build
-service through image-specific systemd configuration.
+The package builds the CLI with --features cli and installs the executable.
+The caller supplies its execution environment and runtime resources.

@@ -155,7 +155,7 @@ impl Drop for MappingLease {
             // Best effort only. Deferred removal preserves live kernel holders;
             // it is never an explicit successful close or quiescence proof.
             if let Err(error) = self.control.remove(id, true) {
-                eprintln!("device mapping retained until VM disposal: {error}");
+                eprintln!("device mapping retained until environment disposal: {error}");
             }
         }
     }

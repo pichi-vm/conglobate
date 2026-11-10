@@ -17,8 +17,8 @@ use std::{
 
 /// Retains both writable storage and runtime until the trusted formatter exits.
 /// No image command can obtain these resources while formatting is in flight.
-/// Abandoning an unfinished formatter retains inputs until VM disposal: the
-/// process destructor's best-effort termination does not prove it was reaped.
+/// An unfinished formatter retains inputs until environment disposal.
+/// The process destructor's best-effort termination does not prove it was reaped.
 #[derive(Debug)]
 pub(crate) struct Formatting<'origin, 'workspace> {
     process: Process<Running>,
