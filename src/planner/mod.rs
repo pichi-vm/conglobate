@@ -222,88 +222,22 @@ impl Plan {
                 .collect(),
         }
     }
-    fn walk(
-        &self,
-        start: &plan::StageRef,
-        done: &mut BTreeSet<plan::StageRef>,
-        order: &mut Vec<plan::StageRef>,
-    ) -> Result<(), PlanError> {
-        let mut visiting = BTreeSet::new();
-        let mut stack = vec![(start.clone(), false)];
-        while let Some((name, exit)) = stack.pop() {
-            if exit {
-                visiting.remove(&name);
-                done.insert(name.clone());
-                order.push(name);
-                continue;
-            }
-            if done.contains(&name) {
-                continue;
-            }
-            let stage = self
-                .stages
-                .get(&name)
-                .ok_or_else(|| PlanError::Invalid(format!("unknown stage {name}")))?;
-            if !visiting.insert(name.clone()) {
-                return Err(PlanError::Invalid(format!(
-                    "stage dependency cycle at {name}"
-                )));
-            }
-            let mut dependencies = BTreeSet::new();
-            if let plan::ImageRef::Local(name) = &stage.from {
-                dependencies.insert(name.clone());
-            }
-            for directive in &stage.derive {
-                if let Directive::Copy(copy) = directive
-                    && let Some(name) = copy.from()
-                {
-                    dependencies.insert(name.clone());
-                }
-            }
-            stack.push((name, true));
-            stack.extend(dependencies.into_iter().rev().map(|name| (name, false)));
-        }
-        Ok(())
-    }
 }
 impl TryFrom<plan::Plan> for Plan {
     type Error = PlanError;
     fn try_from(raw: plan::Plan) -> Result<Self, Self::Error> {
-        if matches!(
-            raw.image,
-            plan::Image::Components {
-                root: None,
-                boot: None
-            }
-        ) {
-            return Err(PlanError::Invalid(
-                "image contains neither root nor PMI".into(),
-            ));
-        }
+        let order = raw.stage_order().map_err(PlanError::Invalid)?;
         let stages = raw
             .stages
             .into_iter()
             .map(|(name, stage)| Ok((name, Stage::try_from(stage)?)))
             .collect::<Result<_, PlanError>>()?;
-        let mut plan = Self {
+        Ok(Self {
             stages,
             image: raw.image,
             requirements: raw.requirements,
-            order: Vec::new(),
-        };
-        let mut checked = BTreeSet::new();
-        for name in plan.stages.keys() {
-            plan.walk(name, &mut checked, &mut Vec::new())?;
-        }
-        let mut order = Vec::new();
-        let mut done = BTreeSet::new();
-        for source in plan.image_sources() {
-            if let plan::ImageRef::Local(name) = source {
-                plan.walk(name, &mut done, &mut order)?;
-            }
-        }
-        plan.order = order;
-        Ok(plan)
+            order,
+        })
     }
 }
 impl TryFrom<YamlDocument<'_>> for Plan {

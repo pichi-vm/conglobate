@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Portable plan and lock encoding. Documents require `version: 1`.
-//! Execution checks belong to the consumer.
+//! Portable plan and lock encoding and dependency selection. Documents require `version: 1`.
+//! Execution-resource checks belong to the consumer.
 //!
 //! String wrappers validate through `new(String) -> Option<Self>` and Serde.
 //! They provide display, borrowed string access, equality, ordering and hashing;
@@ -21,6 +21,7 @@ mod image_ref;
 mod lock;
 mod mount;
 mod remote;
+mod selection;
 mod stage;
 mod stage_ref;
 mod tool;
