@@ -31,7 +31,7 @@ pub(crate) enum InputError {
     Selection(#[from] crate::copy::SelectionError),
     #[error(transparent)]
     Lock(#[from] LockError),
-    #[error("resolver input /etc/resolv.conf: {0}")]
+    #[error("resolver input: {0}")]
     Resolver(std::io::Error),
 }
 
@@ -63,6 +63,17 @@ pub(crate) struct CapturedBuild {
 impl TryFrom<&BuildRequest> for CapturedBuild {
     type Error = InputError;
     fn try_from(request: &BuildRequest) -> Result<Self, Self::Error> {
+        Self::capture(request, || {
+            crate::network::ResolverInput::capture(std::path::Path::new("/etc/resolv.conf"))
+        })
+    }
+}
+impl CapturedBuild {
+    /// Capture networking once, only when the selected graph requires it.
+    pub(crate) fn capture(
+        request: &BuildRequest,
+        resolver: impl FnOnce() -> std::io::Result<crate::network::ResolverInput>,
+    ) -> Result<Self, InputError> {
         let mut context =
             CapturedContext::capture(request.repository(), request.commit(), request.context())?;
         let plan_file = context.read(request.plan())?;
@@ -88,10 +99,7 @@ impl TryFrom<&BuildRequest> for CapturedBuild {
         let networking = if graph.network_steps().is_empty() {
             None
         } else {
-            Some(
-                crate::network::ResolverInput::capture(std::path::Path::new("/etc/resolv.conf"))
-                    .map_err(InputError::Resolver)?,
-            )
+            Some(resolver().map_err(InputError::Resolver)?)
         };
         let id_mappings = if graph.plan().commands_required() {
             Some(

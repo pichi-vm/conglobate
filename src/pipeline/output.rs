@@ -434,6 +434,63 @@ mod tests {
     }
 
     #[test]
+    fn resolver_initialization_follows_only_selected_network_steps() {
+        let fixture = Fixture::new();
+        for (plan, expected) in [
+            ("version: 1\nimage: registry.test/base:1", 0),
+            (
+                "version: 1\nimage: root\nstages:\n  root: {extend: registry.test/base:1, steps: [exec: {command: offline, network: false}]}",
+                0,
+            ),
+            (
+                "version: 1\nimage: registry.test/base:1\nstages:\n  unused: {extend: registry.test/base:1, steps: [exec: {command: unused, network: true}]}",
+                0,
+            ),
+            (
+                "version: 1\nimage: root\nstages:\n  root: {extend: registry.test/base:1, steps: [exec: {command: online, network: true}, exec: {command: offline, network: false}, exec: {command: online-again, network: true}]}",
+                1,
+            ),
+            (
+                "version: 1\nimage: child\nstages:\n  parent: {extend: registry.test/base:1, steps: [exec: {command: online, network: true}]}\n  child: {extend: parent, steps: [exec: {command: offline, network: false}]}",
+                1,
+            ),
+        ] {
+            let (repository, request) = fixture.request(plan);
+            let resolver = repository.path().join("resolver");
+            let mut calls = 0;
+            let captured = CapturedBuild::capture(&request, || {
+                calls += 1;
+                // Initialization must finish before resolver bytes are captured.
+                fs::write(&resolver, b"nameserver 192.0.2.53\n")?;
+                crate::network::ResolverInput::capture(&resolver)
+            })
+            .unwrap();
+            assert_eq!(calls, expected);
+            assert_eq!(captured.networking().is_some(), expected == 1);
+            if let Some(input) = captured.networking() {
+                fs::write(&resolver, b"changed after capture").unwrap();
+                assert_eq!(input.bytes(), b"nameserver 192.0.2.53\n");
+            } else {
+                assert!(!resolver.exists());
+            }
+        }
+    }
+
+    #[test]
+    fn resolver_initialization_failure_stops_build_capture() {
+        let fixture = Fixture::new();
+        let (_repository, request) = fixture.request(
+            "version: 1\nimage: root\nstages:\n  root: {extend: registry.test/base:1, steps: [exec: {command: online, network: true}]}",
+        );
+        let error = CapturedBuild::capture(&request, || {
+            Err(std::io::Error::other("network readiness failed"))
+        })
+        .unwrap_err();
+        assert!(error.to_string().contains("network readiness failed"));
+        assert!(!request.output().exists());
+    }
+
+    #[test]
     fn composition_preserves_nondefault_parameters_and_omits_defaults() {
         let mut fixture = Fixture::new();
         let read = |digest: &str| -> serde_json::Value {

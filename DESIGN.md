@@ -226,6 +226,13 @@ builds the Fedora-based appliance with `pichi build` and publishes
 Conglobate supplies the packaged executable, `conglobate-build.service` and
 the `run-pichi-*.mount` units. The appliance installs and enables those units,
 the LSM package's loader service, and its own network and clock configuration.
+The build service does not wait for network readiness. After parsing the
+committed plan once, the appliance requests `bootstrap-time.service` only if
+the selected dependency closure contains `network: true`. That image-owned
+unit must finish network, resolver and clock setup before Conglobate captures
+`/run/systemd/resolve/resolv.conf`. Failure aborts the build through the normal
+result protocol. Non-network steps retain their per-step isolation even in a
+mixed plan. Direct CLI builds capture `/etc/resolv.conf` without systemd calls.
 
 Product assumptions for the guest:
 
@@ -439,8 +446,8 @@ Defaults and failure behavior:
   mappings.
 - Enabled commands inherit Conglobate's network namespace. Disabled commands
   receive a fresh namespace with only loopback enabled. When any run step
-  enables networking, capture the environment's `/etc/resolv.conf`
-  contents once and inject them temporarily, read-only, following symlinks
+  enables networking, capture the environment's resolver contents once and
+  inject them temporarily, read-only, following symlinks
   confined to the command root. No DNS relay. Resolver
   contents and their digest are not recorded as build annotations.
 - Successful output is published only when all components and manifest
@@ -981,7 +988,7 @@ These mounts are transient and are not captured in the resulting image. Target
 
 Enabled steps share the supervisor network namespace. The launching environment
 owns connectivity and network policy; supervisor controls must not be exposed
-on command-reachable sockets. The environment supplies `/etc/resolv.conf`;
+on command-reachable sockets. The environment supplies resolver bytes;
 there is no built-in DNS relay, resolver annotation or persistent injection.
 
 On every exit path, stop/reap all descendants before removing runtime mounts
@@ -1345,9 +1352,11 @@ RAII owns resources; destructors cannot certify successful finalization.
    and DNS configuration for network-enabled commands. Reject unsupported
    behavior rather than silently weakening the sandbox.
 
-1. Read the environment's /etc/resolv.conf once if networking is needed and
-   retain the selected bytes privately. An unreadable or invalid file is an
-   error; there is no public-resolver fallback. Resolver
+1. Capture the environment's resolver file once if networking is needed and
+   retain the selected bytes privately. Standalone builds use /etc/resolv.conf;
+   appliances use /run/systemd/resolve/resolv.conf after demand initialization.
+   An unreadable or invalid file is an error; there is no public-resolver
+   fallback. Resolver
    configuration and its digest are not recorded as build annotations.
    The environment supplies resolvers reachable from the inherited network.
 
@@ -1721,11 +1730,12 @@ private to the binary. Downstream `pichi` depends on the lib for shared types.
 
 The standalone CLI or appliance supplies committed Git objects (after ref
 resolution), a read-only local image cache, UID/GID ranges (CLI flags or
-appliance image hardcodes), /etc/resolv.conf for network-enabled commands,
+appliance image hardcodes), resolver bytes for network-enabled commands,
 the fixed labeling exception and independent VM disposal. Formatting
 uses the internal filesystem-name → formatter map; there is no host
 `--formatter-runtime` input. Conglobate performs no artifact downloads, Git
-clone/checkout-as-SoT, network setup, policy registration or attestation. It
+clone/checkout-as-SoT, policy registration or attestation. Appliance entry
+requests image-owned network setup only for selected network steps. It
 has no dependency on the pichi binary; pichi depends on this lib.
 
 `BuildRequest`, `ResolvedBuild` and `BuildGraph` progressively validate inputs.

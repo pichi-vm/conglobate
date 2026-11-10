@@ -37,7 +37,21 @@ pub(crate) fn run() -> Result<(), ApplianceError> {
             mounts::output(),
             mounts::id_mappings(),
         )?;
-        Pipeline::new(build).run().map_err(ApplianceError::Pipeline)
+        Pipeline::new(build)
+            .run_with_resolver(|| {
+                let status = std::process::Command::new("/usr/bin/systemctl")
+                    .args(["start", "bootstrap-time.service"])
+                    .status()?;
+                if !status.success() {
+                    return Err(std::io::Error::other(format!(
+                        "network bootstrap failed: {status}"
+                    )));
+                }
+                crate::network::ResolverInput::capture(Path::new(
+                    "/run/systemd/resolve/resolv.conf",
+                ))
+            })
+            .map_err(ApplianceError::Pipeline)
     })();
     let reported = write_build_result(
         &mut file,

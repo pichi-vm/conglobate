@@ -242,3 +242,8 @@ Launchpad; see [debian/README.source](debian/README.source) for that process.
 
 The package owns `conglobate-build.service` and the three `run-pichi-*.mount`
 units. Installation leaves them disabled; the appliance image enables them.
+After reading the committed plan, the appliance starts `bootstrap-time.service`
+only when a selected step requests `network: true`. The image supplies this
+unit to wait for networking, DNS and clock setup before resolver capture.
+Builds without selected network steps skip that setup. Direct CLI builds keep
+using the caller's `/etc/resolv.conf` and do not start system services.

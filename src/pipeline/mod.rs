@@ -40,11 +40,19 @@ impl Pipeline {
     /// failures retain unfinished kernel resources until environment disposal;
     /// returning an error is not a successful teardown receipt.
     pub(crate) fn run(self) -> anyhow::Result<()> {
+        self.run_with_resolver(|| {
+            crate::network::ResolverInput::capture(std::path::Path::new("/etc/resolv.conf"))
+        })
+    }
+    pub(crate) fn run_with_resolver(
+        self,
+        resolver: impl FnOnce() -> std::io::Result<crate::network::ResolverInput>,
+    ) -> anyhow::Result<()> {
         if !rustix::process::geteuid().is_root() {
             return Err(anyhow!("conglobate requires root"));
         }
-        let build =
-            CapturedBuild::try_from(&self.request)?.resolve(Cache::open(self.request.cache())?)?;
+        let build = CapturedBuild::capture(&self.request, resolver)?
+            .resolve(Cache::open(self.request.cache())?)?;
         let inherited = !build.captured().graph().execution_required();
         let output = if inherited {
             StageOutput::select(&build, &std::collections::BTreeMap::new(), None)?
