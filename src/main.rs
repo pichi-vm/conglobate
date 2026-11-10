@@ -6,6 +6,7 @@ extern crate conglobate as contract;
 mod anchor;
 mod appliance;
 mod disk;
+mod terminal;
 use contract::artifact;
 mod boot_config;
 mod cache;
@@ -73,7 +74,8 @@ fn main() -> std::process::ExitCode {
     };
     let result = match command {
         request::CliCommand::Build(request) => Pipeline::new(*request).run(),
-        request::CliCommand::Appliance => crate::appliance::run().map_err(Into::into),
+        request::CliCommand::Run(args) => crate::terminal::run(args),
+        request::CliCommand::Appliance => crate::appliance::run(),
     };
     match result {
         Ok(()) => std::process::ExitCode::SUCCESS,

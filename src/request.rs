@@ -35,20 +35,15 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Action {
     Build(Box<BuildArguments>),
+    /// Run the build request/result protocol with caller-supplied resources.
+    Run(RuntimeArguments),
     /// Build-port appliance entry (request/response CBOR); no flags.
     Appliance,
 }
 #[derive(Debug, Args)]
 struct BuildArguments {
-    /// Map image UIDs starting at zero to an environment-reserved parent range.
-    #[arg(long, requires = "gid_map", value_name = "PARENT_START:COUNT")]
-    uid_map: Option<IdRange>,
-    /// Map image GIDs starting at zero to an environment-reserved parent range.
-    #[arg(long, requires = "uid_map", value_name = "PARENT_START:COUNT")]
-    gid_map: Option<IdRange>,
-    /// Git repository containing the committed build inputs.
-    #[arg(default_value = ".")]
-    repository: PathBuf,
+    #[command(flatten)]
+    runtime: RuntimeArguments,
     /// Git reference or full commit hash to build.
     #[arg(long = "ref", value_name = "REF")]
     git_ref: String,
@@ -58,14 +53,26 @@ struct BuildArguments {
     plan: PathBuf,
     #[arg(long)]
     lock: PathBuf,
-    #[arg(long)]
-    cache: PathBuf,
-    #[arg(long)]
-    output: PathBuf,
 
     /// Optional credential-free source locator recorded in build annotations.
     #[arg(long)]
     location: Option<String>,
+}
+#[derive(Debug, Args)]
+pub(crate) struct RuntimeArguments {
+    /// Map image UIDs starting at zero to an environment-reserved parent range.
+    #[arg(long, requires = "gid_map", value_name = "PARENT_START:COUNT")]
+    pub(crate) uid_map: Option<IdRange>,
+    /// Map image GIDs starting at zero to an environment-reserved parent range.
+    #[arg(long, requires = "uid_map", value_name = "PARENT_START:COUNT")]
+    pub(crate) gid_map: Option<IdRange>,
+    /// Git repository containing the committed build inputs.
+    #[arg(default_value = ".")]
+    pub(crate) repository: PathBuf,
+    #[arg(long)]
+    pub(crate) cache: PathBuf,
+    #[arg(long)]
+    pub(crate) output: PathBuf,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CommitIdentity(Vec<u8>);
@@ -131,10 +138,11 @@ pub(crate) struct BuildRequest {
 #[derive(Debug)]
 pub(crate) enum CliCommand {
     Build(Box<BuildRequest>),
+    Run(RuntimeArguments),
     Appliance,
 }
 
-/// Parse argv into the build or appliance product command.
+/// Parse argv into the selected build entry point.
 pub(crate) fn parse_cli<I, T>(arguments: I) -> Result<CliCommand, RequestError>
 where
     I: IntoIterator<Item = T>,
@@ -144,6 +152,7 @@ where
         Action::Build(raw) => Ok(CliCommand::Build(Box::new(BuildRequest::from_build_args(
             *raw,
         )?))),
+        Action::Run(args) => Ok(CliCommand::Run(args)),
         Action::Appliance => Ok(CliCommand::Appliance),
     }
 }
@@ -188,19 +197,34 @@ impl BuildRequest {
         self.location = location;
         Ok(self)
     }
+    /// Combine protocol input with caller resources using the CLI validation path.
+    pub(crate) fn from_terminal_input(
+        input: crate::contract::launch::Input,
+        runtime: RuntimeArguments,
+    ) -> Result<Self, RequestError> {
+        Self::from_build_args(BuildArguments {
+            runtime,
+            git_ref: input.r#ref,
+            context: input.context.into(),
+            plan: input.plan.into(),
+            lock: input.lock.into(),
+            location: input.location,
+        })
+    }
     fn from_build_args(raw: BuildArguments) -> Result<Self, RequestError> {
-        let commit = CommitIdentity::resolve(&raw.repository, &raw.git_ref)?;
+        let commit = CommitIdentity::resolve(&raw.runtime.repository, &raw.git_ref)?;
         Self::from_parts(
-            raw.uid_map
-                .zip(raw.gid_map)
+            raw.runtime
+                .uid_map
+                .zip(raw.runtime.gid_map)
                 .map(|(uid, gid)| IdMappings::new(uid, gid)),
-            raw.repository,
+            raw.runtime.repository,
             commit,
             ContextDirectory::try_from(raw.context.as_path())?,
             ContextPath::try_from(raw.plan.as_path())?,
             ContextPath::try_from(raw.lock.as_path())?,
-            raw.cache,
-            raw.output,
+            raw.runtime.cache,
+            raw.runtime.output,
         )
         .with_location(raw.location)
     }
@@ -220,7 +244,7 @@ impl BuildRequest {
     {
         match parse_cli(arguments)? {
             CliCommand::Build(request) => Ok(*request),
-            CliCommand::Appliance => {
+            CliCommand::Run(_) | CliCommand::Appliance => {
                 Err(RequestError::Cli(clap::Command::new("conglobate").error(
                     clap::error::ErrorKind::InvalidSubcommand,
                     "use the selected entrypoint via main",
@@ -261,6 +285,7 @@ impl BuildRequest {
 #[cfg(test)]
 mod tests {
     use crate::request::BuildRequest;
+    use clap::Parser;
     use std::path::Path;
     #[derive(Debug)]
     struct Fixture(tempfile::TempDir);
@@ -309,6 +334,129 @@ mod tests {
             .collect()
         }
     }
+    #[test]
+    fn terminal_and_cli_share_launch_argument_validation() {
+        use crate::contract::launch::Input;
+        let fixture = Fixture::new("sha1");
+        let input = Input {
+            r#ref: "refs/heads/main".into(),
+            plan: "plan.yml".into(),
+            lock: "lock.yml".into(),
+            context: "project".into(),
+            location: Some("https://example.invalid/repo".into()),
+        };
+        let compare = |input: Input| {
+            let mut args = vec![
+                "conglobate",
+                "build",
+                fixture.0.path().to_str().unwrap(),
+                "--ref",
+                &input.r#ref,
+                "--plan",
+                &input.plan,
+                "--lock",
+                &input.lock,
+                "--context",
+                &input.context,
+                "--cache",
+                "cache",
+                "--output",
+                "out",
+                "--uid-map",
+                "120000:32000",
+                "--gid-map",
+                "240000:16000",
+            ];
+            if let Some(location) = input.location.as_deref() {
+                args.extend(["--location", location]);
+            }
+            let cli = BuildRequest::parse_from(args);
+            let terminal = BuildRequest::from_terminal_input(
+                input,
+                super::RuntimeArguments {
+                    repository: fixture.0.path().to_path_buf(),
+                    cache: "cache".into(),
+                    output: "out".into(),
+                    uid_map: Some("120000:32000".parse().unwrap()),
+                    gid_map: Some("240000:16000".parse().unwrap()),
+                },
+            );
+            match (cli, terminal) {
+                (Ok(cli), Ok(terminal)) => {
+                    assert_eq!(cli.commit(), terminal.commit());
+                    assert_eq!(cli.repository(), terminal.repository());
+                    assert_eq!(cli.context(), terminal.context());
+                    assert_eq!(cli.plan(), terminal.plan());
+                    assert_eq!(cli.lock(), terminal.lock());
+                    assert_eq!(cli.location(), terminal.location());
+                    assert_eq!(cli.cache(), terminal.cache());
+                    assert_eq!(cli.output(), terminal.output());
+                    for (a, b) in [
+                        (
+                            cli.id_mappings().unwrap().uid(),
+                            terminal.id_mappings().unwrap().uid(),
+                        ),
+                        (
+                            cli.id_mappings().unwrap().gid(),
+                            terminal.id_mappings().unwrap().gid(),
+                        ),
+                    ] {
+                        assert_eq!(a.first(), b.first());
+                        assert_eq!(a.count(), b.count());
+                    }
+                    true
+                }
+                (Err(cli), Err(terminal)) => {
+                    assert_eq!(cli.to_string(), terminal.to_string());
+                    false
+                }
+                other => panic!("entry points disagree: {other:?}"),
+            }
+        };
+        assert!(compare(input.clone()));
+        let mut without_location = input.clone();
+        without_location.location = None;
+        assert!(compare(without_location));
+        for path in ["../escape", "/etc/passwd"] {
+            let mut invalid = input.clone();
+            invalid.plan = path.into();
+            assert!(!compare(invalid));
+            let mut invalid = input.clone();
+            invalid.lock = path.into();
+            assert!(!compare(invalid));
+            let mut invalid = input.clone();
+            invalid.context = path.into();
+            assert!(!compare(invalid));
+        }
+        for reference in [
+            "missing".to_owned(),
+            fixture.git(&["rev-parse", "HEAD^{tree}"]),
+        ] {
+            let mut invalid = input.clone();
+            invalid.r#ref = reference;
+            assert!(!compare(invalid));
+        }
+        let mut unmapped_args = fixture.args();
+        unmapped_args.extend(["--plan", "plan.yml", "--lock", "lock.yml"].map(str::to_owned));
+        let cli = BuildRequest::parse_from(unmapped_args).unwrap();
+        let unmapped = BuildRequest::from_terminal_input(
+            input.clone(),
+            super::RuntimeArguments {
+                repository: fixture.0.path().to_path_buf(),
+                cache: "cache".into(),
+                output: "out".into(),
+                uid_map: None,
+                gid_map: None,
+            },
+        )
+        .unwrap();
+        assert!(cli.id_mappings().is_none() && unmapped.id_mappings().is_none());
+        assert_eq!(cli.commit(), unmapped.commit());
+        let mut invalid = input;
+        invalid.location = Some("https://user:secret@example.invalid/repo".into());
+        assert!(!compare(invalid));
+    }
+
     #[test]
     fn location_is_optional_and_rejects_credentials_without_echoing_them() {
         let fixture = Fixture::new("sha1");
@@ -407,12 +555,12 @@ mod tests {
         let Action::Build(explicit) = Cli::try_parse_from(&args).unwrap().action else {
             panic!("expected build");
         };
-        assert_eq!(explicit.repository, fixture.0.path());
+        assert_eq!(explicit.runtime.repository, fixture.0.path());
         args.remove(2);
         let Action::Build(default) = Cli::try_parse_from(args).unwrap().action else {
             panic!("expected build");
         };
-        assert_eq!(default.repository, Path::new("."));
+        assert_eq!(default.runtime.repository, Path::new("."));
     }
     #[test]
     fn both_selected_configuration_paths_are_required() {
@@ -534,6 +682,73 @@ mod tests {
             }
             other => panic!("expected clap unknown-arg error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn run_runtime_arguments_match_build_defaults_and_mapping_rules() {
+        let fixture = Fixture::new("sha1");
+        for command in ["build", "run"] {
+            let mut args = vec!["conglobate", command, "--cache=cache", "--output=out"];
+            if command == "build" {
+                args.extend(["--ref=HEAD", "--plan=plan", "--lock=lock"]);
+            }
+            let runtime = |args: Vec<&str>| {
+                let cli = super::Cli::try_parse_from(args).unwrap();
+                match cli.action {
+                    super::Action::Build(args) => args.runtime,
+                    super::Action::Run(args) => args,
+                    super::Action::Appliance => panic!("unexpected adapter"),
+                }
+            };
+            let defaults = runtime(args.clone());
+            assert_eq!(defaults.repository, Path::new("."));
+            assert!(defaults.uid_map.is_none() && defaults.gid_map.is_none());
+            let mut mapped = args.clone();
+            mapped.extend(["--uid-map=120000:32000", "--gid-map=240000:16000"]);
+            let mapped = runtime(mapped);
+            assert_eq!(mapped.uid_map.unwrap().count(), 32000);
+            assert_eq!(mapped.gid_map.unwrap().first(), 240000);
+            for maps in [
+                vec!["--uid-map=120000:32000"],
+                vec!["--gid-map=240000:16000"],
+                vec!["--uid-map=0:65536", "--gid-map=240000:16000"],
+            ] {
+                let mut invalid = args.clone();
+                invalid.extend(maps);
+                assert!(super::Cli::try_parse_from(invalid).is_err());
+            }
+            for absent in ["--cache=cache", "--output=out"] {
+                assert!(
+                    super::Cli::try_parse_from(args.iter().filter(|arg| **arg != absent)).is_err()
+                );
+            }
+        }
+        let run = [
+            "conglobate",
+            "run",
+            fixture.0.path().to_str().unwrap(),
+            "--cache=cache",
+            "--output=out",
+        ];
+        assert!(matches!(
+            super::parse_cli(run).unwrap(),
+            super::CliCommand::Run(_)
+        ));
+        for flag in [
+            "--ref=HEAD",
+            "--context=.",
+            "--plan=plan",
+            "--lock=lock",
+            "--location=https://example.invalid/repo",
+            "--port-name=caller.build",
+        ] {
+            let mut invalid = run.to_vec();
+            invalid.push(flag);
+            assert!(super::parse_cli(invalid).is_err());
+        }
+        let mut old_name = run;
+        old_name[1] = "terminal";
+        assert!(super::parse_cli(old_name).is_err());
     }
 
     #[test]

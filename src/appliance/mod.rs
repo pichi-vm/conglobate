@@ -1,53 +1,16 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Build-appliance entry: named-console build-port + fixed mounts → engine.
-
-mod console;
+//! Temporary entry point for images predating caller-supplied terminal settings.
 mod mounts;
-mod request;
 
-use crate::pipeline::Pipeline;
-use console::{open_build_console, write_build_input_request, write_build_result};
-use request::ApplianceRequest;
-use std::path::Path;
-
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum ApplianceError {
-    #[error(transparent)]
-    Console(#[from] console::ConsoleError),
-    #[error(transparent)]
-    Request(#[from] request::ApplianceRequestError),
-    #[error(transparent)]
-    Pipeline(anyhow::Error),
-}
-
-/// Open `dev.pichi.build`, request build-input, decode the host response, run.
-///
-/// Request input with `start`, then report the result with `finish` and
-/// wait for its acknowledgement before the appliance shuts down.
-pub(crate) fn run() -> Result<(), ApplianceError> {
-    let mut file = open_build_console(Path::new("/sys"), Path::new("/dev"))?;
-    write_build_input_request(&mut file)?;
-    let result = (|| -> Result<(), ApplianceError> {
-        let request = ApplianceRequest::decode_response_from_port(&mut file)?;
-        let build = request.into_build_request(
-            mounts::repository(),
-            mounts::cache(),
-            mounts::output(),
-            mounts::id_mappings(),
-        )?;
-        Pipeline::new(build).run().map_err(ApplianceError::Pipeline)
-    })();
-    let reported = write_build_result(
-        &mut file,
-        result
-            .as_ref()
-            .map(|_| ())
-            .map_err(|error| format!("{error:#}")),
-    );
-    // Preserve the build failure if the host also disconnected while reporting.
-    result?;
-    reported?;
-    Ok(())
+pub(crate) fn run() -> anyhow::Result<()> {
+    let mappings = mounts::id_mappings();
+    crate::terminal::run(crate::request::RuntimeArguments {
+        repository: mounts::repository().to_path_buf(),
+        cache: mounts::cache().to_path_buf(),
+        output: mounts::output().to_path_buf(),
+        uid_map: Some(mappings.uid()),
+        gid_map: Some(mappings.gid()),
+    })
 }

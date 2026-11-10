@@ -3,11 +3,11 @@
 
 //! Open the named virtio console via sysfs virtio-ports. No udev symlink dependency.
 //!
-//! Build port: guest opens `dev.pichi.build` read/write, writes one CBOR
-//! request array, then reads one self-delimiting CBOR response. The guest must
+//! Open the protocol console read/write, send one CBOR request
+//! array, then read one self-delimiting CBOR response. The caller must
 //! not assume the host already pushed bytes before the request.
 
-use crate::contract::launch::{Finish, PORT_NAME as CONSOLE_NAME, Request, Response, Start};
+use crate::contract::launch::{Finish, PORT_NAME, Request, Response, Start};
 #[cfg(test)]
 use ciborium::Value;
 use std::{
@@ -20,7 +20,7 @@ use std::{
 pub(crate) enum ConsoleError {
     #[error("console I/O: {0}")]
     Io(#[from] io::Error),
-    #[error("build console {CONSOLE_NAME} was not found under sysfs virtio-ports")]
+    #[error("build protocol console was not found under sysfs virtio-ports")]
     NotFound,
     #[error("build-port encode: {0}")]
     Encode(String),
@@ -28,7 +28,7 @@ pub(crate) enum ConsoleError {
     Finish(String),
 }
 
-/// Locate `<dev_root>/<port>` for the port whose sysfs `name` equals `dev.pichi.build`.
+/// Locate `<dev_root>/<port>` for the well-known protocol port name.
 ///
 /// Opens the device read/write. `sysfs_root` is typically `/sys` and `dev_root`
 /// typically `/dev`. Tests inject temporary trees for both.
@@ -51,7 +51,7 @@ pub(crate) fn open_build_console(
             continue;
         };
         let name = name.trim_end_matches(['\n', '\r']);
-        if name != CONSOLE_NAME {
+        if name != PORT_NAME {
             continue;
         }
         let dev_name = path.file_name().ok_or(ConsoleError::NotFound)?;
@@ -96,7 +96,7 @@ pub(crate) fn write_build_result(
 /// Read one self-delimiting CBOR value from the console (host → guest).
 ///
 /// Does not read to EOF: the host may leave the port open after the response.
-/// Test helper: production reads via [`super::request::ApplianceRequest::decode_response`].
+/// Test helper: production reads via [`super::request::decode_response_from_port`].
 #[cfg(test)]
 pub(crate) fn read_cbor_value(file: &mut impl std::io::Read) -> Result<Value, ConsoleError> {
     ciborium::from_reader(file)
@@ -121,7 +121,7 @@ mod tests {
         fs::create_dir_all(ports.join("vport0p2")).unwrap();
         fs::create_dir_all(&dev).unwrap();
         fs::write(ports.join("vport0p1/name"), "other\n").unwrap();
-        fs::write(ports.join("vport0p2/name"), "dev.pichi.build\n").unwrap();
+        fs::write(ports.join("vport0p2/name"), format!("{PORT_NAME}\n")).unwrap();
         (sysfs, dev)
     }
 
@@ -160,6 +160,22 @@ mod tests {
             write_build_result(&mut guest, result).unwrap();
             server.join().unwrap();
         }
+    }
+
+    #[test]
+    fn does_not_substitute_another_port_for_the_protocol_name() {
+        let root = tempfile::TempDir::new().unwrap();
+        let (sysfs, dev) = fixture_named_port(root.path());
+        fs::write(
+            sysfs.join("class/virtio-ports/vport0p2/name"),
+            "other.build\n",
+        )
+        .unwrap();
+        fs::write(dev.join("vport0p2"), []).unwrap();
+        assert!(matches!(
+            open_build_console(&sysfs, &dev),
+            Err(ConsoleError::NotFound)
+        ));
     }
 
     #[test]

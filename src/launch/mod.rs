@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Typed requests and responses for the bidirectional appliance console.
+//! Typed requests and responses for the bidirectional build console.
 //! Commands version their own request and response payloads. Transport and
 //! filesystem resolution are outside this portable contract.
 
@@ -21,7 +21,7 @@ pub use requests::Requests;
 pub use response::Response;
 pub use start::Start;
 
-/// Named bidirectional console used by the build appliance.
+/// Well-known bidirectional console for the build protocol.
 pub const PORT_NAME: &str = "dev.pichi.build";
 
 #[cfg(test)]
