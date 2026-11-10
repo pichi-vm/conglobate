@@ -46,7 +46,7 @@ const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 /// - Top-level `artifact_type` MUST equal [`MEDIA_TYPE_PICHI_ARTIFACT_V1`].
 /// - `config` MUST be the OCI 1.1 empty-config descriptor with inline `data: "e30="`.
 /// - Scute layers MUST appear in chain order, from base to tip.
-/// - At most ONE PMI, raw or compressed (D-03 — zero pmi = base/non-bootable, one pmi = appliance/bootable).
+/// - At most ONE PMI, raw or compressed (D-03 — zero pmi = base/non-bootable, one pmi = bootable).
 /// - Top-level annotations MUST include one chain-tip root when scutes exist.
 ///   Reconstruction parameters are optional with defined defaults.
 /// - Every scute layer MUST carry a `dev.pichi.scute.verity.salt` annotation
@@ -377,7 +377,7 @@ impl Manifest {
         let value = value.ok_or(ManifestValidationError::MissingChainAnnotation(
             CARAPACE_ROOT_ANNOTATION,
         ))?;
-        // Current pinned build appliances still use bare roots plus algo.
+        // Legacy images use bare roots plus an explicit algorithm.
         // New output uses only the qualified form; never accept two declarations.
         let wire = match (
             value.contains(':'),
@@ -748,7 +748,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_accepts_appliance_with_one_pmi() {
+    fn validate_accepts_bootable_image_with_one_pmi() {
         let mut m = sample_base_manifest();
         m.layers.push(Layer::Pmi(PmiDescriptor {
             digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
@@ -892,7 +892,7 @@ mod tests {
     }
 
     #[test]
-    fn current_appliance_roots_require_an_explicit_supported_algorithm() {
+    fn legacy_roots_require_an_explicit_supported_algorithm() {
         let mut manifest = sample_base_manifest();
         manifest
             .annotations

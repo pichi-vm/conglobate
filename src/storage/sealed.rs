@@ -15,8 +15,8 @@ use std::{
     os::unix::fs::FileExt,
 };
 
-/// Output-backed prepared files plus identities retained inside the VM.
-/// Storage remains mutable outside the VM; reuse must go through verity.
+/// Output-backed prepared files and identities retained by this execution.
+/// External storage remains mutable; reuse must go through verity.
 /// This proves sealing, not command success or publication.
 ///
 #[derive(Debug)]

@@ -30,14 +30,14 @@ impl Pipeline {
         Self { request }
     }
     /// Resolve local inputs, execute the plan and publish its verified output.
-    /// The caller supplies the dedicated disposable-VM environment; this method
-    /// does not manage VM shutdown or turn the calling process into a sandbox.
+    /// The caller supplies an isolated execution environment; this method
+    /// does not dispose of that environment or sandbox its own process.
     ///
     /// # Errors
     /// Rejects non-root execution, invalid/unavailable inputs, unsupported work,
     /// failed stage execution, cleanup, assembly or publication.
-    /// Ordinary errors do not authorize another build in the same VM. Some
-    /// failures retain unfinished kernel resources until environment disposal;
+    /// Ordinary errors do not authorize another build in the same execution
+    /// environment. Some failures retain unfinished kernel resources until disposal;
     /// returning an error is not a successful teardown receipt.
     pub(crate) fn run(self) -> anyhow::Result<()> {
         if !rustix::process::geteuid().is_root() {

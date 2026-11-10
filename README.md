@@ -2,8 +2,7 @@
 
 Conglobate builds layered OS images from committed plans and locally supplied,
 locked image artifacts. The crate is a types-only library plus a binary engine;
-the standalone CLI remains testable without a VM. Production builds run in a
-[Pichi build appliance](https://github.com/pichi-vm/pichi/tree/main/appliance). The
+the CLI accepts explicit build inputs and execution resources. The
 plan format is the shared staged model in [DESIGN.md](DESIGN.md): named
 creation and extension stages, followed by selection of the root and boot
 components. The engine executes only the selected image's dependency closure.
@@ -136,10 +135,6 @@ Conglobate runs the engine directly and waits for completion acknowledgement.
 The caller supplies mounts, networking, resolver configuration, labeling support
 and shutdown policy; `run` does not start services.
 
-The zero-argument `appliance` command and packaged units remain temporarily
-for existing images. Publish a package with `run` before switching an image;
-remove the legacy entry and units after the replacement image is available.
-
 ## Build and rootless checks
 
 Build on Linux with Rust/Cargo and a C build toolchain for native dependencies
@@ -174,8 +169,8 @@ there for anonymous image scratch and snapshot backing. It uses that location
 without inspecting its backing filesystem; the environment supplies storage.
 Scratch files are removed on last close, and snapshot capacity is bounded by
 available backing space. Small runtime data and helpers use the private control
-tmpfs exposed under `/run/conglobate`; the service provisions that parent with
-`RuntimeDirectory=conglobate`. Output staging stays on the output filesystem.
+tmpfs exposed under `/run/conglobate`; the caller provisions that parent
+directory. Output staging stays on the output filesystem.
 
 Serialize Cargo checks and use `CARGO_BUILD_JOBS=2` in constrained development
 environments. The rootless workflow uses Rust 1.94.0 and runs formatting, Clippy,
@@ -186,18 +181,13 @@ pinned Git revisions against every crates.io advisory.
 
 ## Runtime trust boundary
 
-Production image builds run in the dedicated disposable **build appliance** (a
-pichi image built by the Pichi repository) with a qualified kernel and an
-independent environment controller that destroys the VM if conglobate crashes. systemd is
-PID 1; static virtiofs mounts expose `repo`/`cache`/`output` at
-`/run/pichi/{repo,cache,output}`; the guest opens named console
-`dev.pichi.build`, writes `["build", 1, null]`, then reads one
-self-delimiting host CBOR response. The supervisor runs as initial-namespace root. Build
-commands are untrusted and run in restricted namespaces; they receive neither
-supervisor control resources nor backing block devices. The kernel,
-environment-provided BPF LSM labeling exception (pure-Rust Aya in the trusted
-environment; see the sandbox design), supervisor and **image-resident
-formatters** (internal filesystem-name → formatter map; formatting outside the
+The execution environment supplies a qualified kernel and an independent way
+to dispose of resources after a supervisor crash or incomplete cleanup. The
+supervisor runs as initial-namespace root. Build commands are untrusted and
+run in restricted namespaces; they receive neither supervisor control resources
+nor backing block devices. The kernel,
+environment-provided labeling exception (see the sandbox design), supervisor
+and **image-resident formatters** (internal filesystem-name → formatter map; formatting outside the
 command sandbox) are trusted. There is no host `--formatter-runtime` TEE input.
 The design requires native filesystem/idmapped mount support; generic kernel
 version numbers alone do not establish those prerequisites. The current
@@ -211,15 +201,7 @@ explains the types-only lib, binary engine, ownership and typestate.
 
 Conglobate does not download missing Git objects or image artifacts.
 Artifact preparation and attestation belong to the surrounding environment;
-the appliance image itself is built by the Pichi repository.
-
-The appliance includes Chrony and establishes time before starting Conglobate.
-It first uses unauthenticated NTP to obtain approximate time, then NTS with
-normal TLS certificate validation. Both steps must succeed; failure powers off
-the appliance. This runs outside the command sandbox and grants build commands
-no clock-setting privileges. It is an interim bootstrap: an attacker can
-influence the initial certificate-validation time, and host-controlled delays
-remain outside its security guarantee.
+Conglobate does not select or configure those integrations.
 
 ## Implementation style
 
@@ -254,12 +236,11 @@ amd64 and Arm64.
 Main snapshots are built for `amd64`/`x86_64` and `arm64`/`aarch64` in
 [`npmccallum/pichi` COPR](https://copr.fedorainfracloud.org/coprs/npmccallum/pichi/)
 and [`ppa:nmccallum/pichi`](https://launchpad.net/~nmccallum/+archive/ubuntu/pichi).
-The package name is `conglobate`. These are guest packages for releases with
-kernel 7.0 or newer.
+The package name is `conglobate`. Supported execution environments require
+the kernel facilities described above.
 
 COPR tracks `main`, uses `.copr/conglobate.spec`, and runs the
 `.copr/Makefile` source-RPM target. GitHub pushes prepared Debian source to
 Launchpad; see [debian/README.source](debian/README.source) for that process.
 
-The package owns `conglobate-build.service` and the three `run-pichi-*.mount`
-units. Installation leaves them disabled; the appliance image enables them.
+The packages install the builder executable without service or mount units.

@@ -458,7 +458,7 @@ impl Drop for MountLease {
                 point.path(),
                 mount::UnmountFlags::DETACH | mount::UnmountFlags::NOFOLLOW,
             ) {
-                eprintln!("volume mount retained until VM disposal: {error}");
+                eprintln!("volume mount retained until environment disposal: {error}");
                 std::mem::forget(point);
             }
         }

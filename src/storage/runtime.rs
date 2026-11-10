@@ -19,7 +19,7 @@ use std::{
 };
 
 /// Control resources borrow the one RAM workspace. Explicit close is required
-/// before publication. Abandonment retains mounts until dedicated VM disposal.
+/// before publication. Abandonment retains mounts until environment disposal.
 #[derive(Debug)]
 pub(crate) struct Runtime<'w> {
     recovery: RecoveryDirectory,
@@ -35,7 +35,7 @@ struct RuntimeMounts<'w> {
 }
 impl<'w> Runtime<'w> {
     /// Run trusted stage orchestration and require explicit runtime close on
-    /// either returned outcome. Panic/crash still requires dedicated VM disposal.
+    /// either returned outcome. Panic/crash still requires environment disposal.
     /// Returned output cannot borrow the runtime being closed.
     pub(crate) fn scoped<T>(
         workspace: &'w Workspace,
@@ -235,7 +235,7 @@ impl Drop for RuntimeMounts<'_> {
     fn drop(&mut self) {
         if !self.attached.is_empty() {
             eprintln!(
-                "runtime retained until VM disposal: {}",
+                "runtime retained until environment disposal: {}",
                 self.path().display()
             );
         }

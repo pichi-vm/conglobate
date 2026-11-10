@@ -292,7 +292,7 @@ impl<I: Termination> Drop for ChildLease<I> {
         if let Some(mut child) = self.child.take() {
             // Best-effort fallback only. Never block indefinitely in Drop or
             // manufacture a quiescence receipt. The enclosing step must retain
-            // resource authority for unresolved process lifetimes until VM exit.
+            // resource authority for unresolved processes until environment disposal.
             let _ = self.termination.kill(&mut child);
             let deadline = Instant::now() + Duration::from_millis(250);
             loop {

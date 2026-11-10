@@ -129,8 +129,8 @@ impl ContainedHelper {
     }
 
     /// Close admission, cancel the domain, reap the helper, then drain adoptees.
-    /// Any error is terminal. Unresolved process ownership is retained for VM
-    /// disposal, and the enclosing Step keeps its namespace and storage.
+    /// Any error is terminal. Unresolved process ownership is retained until
+    /// environment disposal; the enclosing Step keeps its namespace and storage.
     pub(crate) fn finish_until(
         self,
         reaper: crate::process::ChildReaper,

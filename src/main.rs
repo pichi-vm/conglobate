@@ -4,7 +4,6 @@
 #![forbid(unsafe_code)]
 extern crate conglobate as contract;
 mod anchor;
-mod appliance;
 mod disk;
 mod terminal;
 use contract::artifact;
@@ -75,7 +74,6 @@ fn main() -> std::process::ExitCode {
     let result = match command {
         request::CliCommand::Build(request) => Pipeline::new(*request).run(),
         request::CliCommand::Run(args) => crate::terminal::run(args),
-        request::CliCommand::Appliance => crate::appliance::run(),
     };
     match result {
         Ok(()) => std::process::ExitCode::SUCCESS,
