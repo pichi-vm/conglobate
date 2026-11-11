@@ -10,7 +10,7 @@ use devmap_verity::{Algorithm, Format as _, HashType, Header as VerityHeader, Pa
 use sha2::Digest;
 use std::{
     fs::File,
-    io::{self, Read, Seek, SeekFrom, Write},
+    io::{self, BufWriter, Read, Seek, SeekFrom, Write},
     num::NonZero,
     os::unix::fs::FileExt,
 };
@@ -150,7 +150,10 @@ impl<'w> Scratch<'w> {
         let blob = tempfile::Builder::new()
             .prefix(".scute-blob-")
             .tempfile_in(&path)?;
-        let mut encoder = zstd::stream::write::Encoder::new(MeasuredWrite::new(blob), 3)?;
+        let mut encoder = zstd::stream::write::Encoder::new(
+            BufWriter::with_capacity(256 * 1024, MeasuredWrite::new(blob)),
+            3,
+        )?;
         let data_blocks = NonZero::new(bytes / 4096).expect("nonempty snapshot extent");
         let block = BlockSize::from_bytes(NonZero::new(4096).expect("nonzero block size"))
             .expect("valid block size");
@@ -174,10 +177,12 @@ impl<'w> Scratch<'w> {
         let root = {
             let mut input = MeasuredRead {
                 input: compacted,
-                data: &mut packed,
+                data: BufWriter::with_capacity(256 * 1024, &mut packed),
                 encoded: &mut encoder,
             };
-            header.format(&mut input, &mut hash)?
+            let root = header.format(&mut input, &mut hash)?;
+            input.data.flush()?;
+            root
         };
         let root = root.as_ref().try_into().expect("SHA-256 root width");
         // The frame trailer contributes to encoded identity and size too.
@@ -185,7 +190,10 @@ impl<'w> Scratch<'w> {
             output: blob,
             digest,
             size,
-        } = encoder.finish()?;
+        } = encoder
+            .finish()?
+            .into_inner()
+            .map_err(|error| error.into_error())?;
         packed.as_file().sync_all()?;
         hash.as_file().sync_all()?;
         blob.as_file().sync_all()?;
