@@ -105,6 +105,15 @@ impl FormatterInput {
             "dev",
             MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
         )?;
+        // Detached mount trees are dissolved when their owning FD closes.
+        // Attach this root before releasing the packet's descriptors.
+        mount::move_mount(
+            &self.root,
+            "",
+            fs::CWD,
+            "/",
+            MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
+        )?;
         rustix::process::fchdir(&self.root)?;
         rustix::process::chroot(".")?;
         rustix::process::chdir("/")?;
@@ -155,6 +164,72 @@ mod tests {
                 assert_eq!(peer.read(&mut [0]).unwrap(), 0);
             }
         }
+    }
+    #[test]
+    #[ignore = "requires root and mount namespaces"]
+    fn devices_survive_input_close() {
+        const CHILD: &str = "CONGLOBATE_FORMATTER_MOUNT_TEST";
+        if std::env::var_os(CHILD).is_some() {
+            nix::sched::unshare(nix::sched::CloneFlags::CLONE_NEWNS).unwrap();
+            mount::mount_change(
+                "/",
+                mount::MountPropagationFlags::PRIVATE | mount::MountPropagationFlags::REC,
+            )
+            .unwrap();
+            FormatterInput::from_stdin().unwrap().enter().unwrap();
+            assert_eq!(std::fs::read("/dev/output").unwrap(), b"formatter device");
+            return;
+        }
+        let context = mount::fsopen("tmpfs", FsOpenFlags::FSOPEN_CLOEXEC).unwrap();
+        mount::fsconfig_create(&context).unwrap();
+        let root: File = mount::fsmount(
+            &context,
+            FsMountFlags::FSMOUNT_CLOEXEC,
+            MountAttrFlags::empty(),
+        )
+        .unwrap()
+        .into();
+        fs::mkdirat(&root, "dev", Mode::RWXU).unwrap();
+        let context = mount::fsopen("tmpfs", FsOpenFlags::FSOPEN_CLOEXEC).unwrap();
+        mount::fsconfig_create(&context).unwrap();
+        let devices: File = mount::fsmount(
+            &context,
+            FsMountFlags::FSMOUNT_CLOEXEC,
+            MountAttrFlags::MOUNT_ATTR_NOSUID | MountAttrFlags::MOUNT_ATTR_NOEXEC,
+        )
+        .unwrap()
+        .into();
+        fs::mknodat(
+            &devices,
+            "null",
+            FileType::CharacterDevice,
+            Mode::from_raw_mode(0o600),
+            fs::makedev(1, 3),
+        )
+        .unwrap();
+        let marker = fs::openat(
+            &devices,
+            "output",
+            fs::OFlags::CREATE | fs::OFlags::WRONLY | fs::OFlags::CLOEXEC,
+            Mode::from_raw_mode(0o600),
+        )
+        .unwrap();
+        std::io::Write::write_all(&mut File::from(marker), b"formatter device").unwrap();
+        let input = FormatterInput { root, devices };
+        assert!(
+            std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "formatter::input::tests::devices_survive_input_close",
+                    "--ignored",
+                    "--nocapture",
+                ])
+                .env(CHILD, "1")
+                .stdin(input.into_stdio().unwrap())
+                .status()
+                .unwrap()
+                .success()
+        );
     }
     #[test]
     fn malformed_or_truncated_packets_release_rights() {
