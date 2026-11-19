@@ -147,6 +147,9 @@ impl<'w> Scratch<'w> {
         let mut hash = tempfile::Builder::new()
             .prefix(".scute-tree-")
             .tempfile_in(&path)?;
+        // Stage beneath the private /var/tmp workspace, independent of TMPDIR.
+        // Hash its final byte order while copying, never by rereading output.
+        let mut staged_hash = self._workspace.scratch()?;
         let blob = tempfile::Builder::new()
             .prefix(".scute-blob-")
             .tempfile_in(&path)?;
@@ -174,17 +177,27 @@ impl<'w> Scratch<'w> {
                 hash: block,
             },
         };
-        let root = {
+        let (root, data_digest) = {
             let mut input = MeasuredRead {
                 input: compacted,
-                data: BufWriter::with_capacity(256 * 1024, &mut packed),
+                data: MeasuredWrite::new(BufWriter::with_capacity(256 * 1024, &mut packed)),
                 encoded: &mut encoder,
             };
-            let root = header.format(&mut input, &mut hash)?;
+            let root = header.format(&mut input, &mut staged_hash)?;
             input.data.flush()?;
-            root
+            (root, input.data.digest.finalize())
         };
         let root = root.as_ref().try_into().expect("SHA-256 root width");
+        staged_hash.rewind()?;
+        let verity_digest = {
+            let mut output = MeasuredWrite::new(BufWriter::with_capacity(256 * 1024, &mut hash));
+            if io::copy(&mut staged_hash, &mut output)? != header.total_size()? {
+                return Err(io::Error::other("generated verity size mismatch"));
+            }
+            output.flush()?;
+            output.digest.finalize()
+        };
+        drop(staged_hash);
         // The frame trailer contributes to encoded identity and size too.
         let MeasuredWrite {
             output: blob,
@@ -201,6 +214,9 @@ impl<'w> Scratch<'w> {
             digest: format!("sha256:{}", hex::encode(digest.finalize())),
             size,
             annotations: ScuteAnnotations {
+                digest: Some(format!("sha256:{}", hex::encode(data_digest))),
+                size: Some(bytes.to_string()),
+                verity_digest: Some(format!("sha256:{}", hex::encode(verity_digest))),
                 data_blocks,
                 salt: hex::encode(salt),
             },
@@ -340,6 +356,14 @@ mod tests {
         let mut decoded = Vec::new();
         decoder.read_to_end(&mut decoded).unwrap();
         assert_eq!(decoded, plain);
+        assert_eq!(
+            sealed.descriptor().annotations.digest.as_deref(),
+            Some(format!("sha256:{}", hex::encode(Sha256::digest(plain))).as_str())
+        );
+        assert_eq!(
+            sealed.descriptor().annotations.size.as_deref(),
+            Some(plain.len().to_string().as_str())
+        );
         blob
     }
     #[test]
@@ -377,6 +401,15 @@ mod tests {
             let mut tree = vec![0; 8192];
             sealed.files().1.read_exact_at(&mut tree, 0).unwrap();
             assert_eq!(sealed.files().1.metadata().unwrap().len(), 8192);
+            let file_digest = format!("sha256:{}", hex::encode(Sha256::digest(&tree)));
+            assert_eq!(
+                sealed.descriptor().annotations.verity_digest.as_deref(),
+                Some(file_digest.as_str())
+            );
+            assert_ne!(
+                file_digest,
+                format!("sha256:{}", hex::encode(sealed.root()))
+            );
             let header = VerityHeader::decode(tree[..512].try_into().unwrap()).unwrap();
             let salt = header.parameters.salt.as_ref();
             assert_eq!(salt.len(), 64);
@@ -399,6 +432,12 @@ mod tests {
             assert_eq!(sealed.root().as_slice(), hash.finalize().as_slice());
             salts.push(salt.to_vec());
             roots.push(*sealed.root());
+            // Host mutation changes its output copy, never the expected identity.
+            sealed.files().1.write_all_at(b"changed", 0).unwrap();
+            assert_eq!(
+                sealed.descriptor().annotations.verity_digest.as_deref(),
+                Some(file_digest.as_str())
+            );
         }
         assert_ne!(salts[0][32..], salts[1][32..]);
         assert_ne!(roots[0], roots[1]);
@@ -453,6 +492,43 @@ mod tests {
                 .get(),
             3
         );
+    }
+    #[test]
+    fn generated_identity_hashes_multilevel_tree_in_file_order() {
+        let directory = tempfile::tempdir().unwrap();
+        let control = tempfile::tempdir().unwrap();
+        let workspace = super::super::Workspace {
+            root: File::open(control.path()).unwrap(),
+            backing: File::open(control.path()).unwrap(),
+            _directory: None,
+            _parent: None,
+        };
+        let mut store = Store::new(131);
+        for index in 0..129 {
+            store.entry(index, index as u64, index as u64 + 2);
+        }
+        store.0[8192..].fill(0xa5);
+        let mut scratch = workspace.scratch().unwrap();
+        scratch.write_all(&store.0).unwrap();
+        let sealed = scratch
+            .seal_with_reader(
+                File::open(directory.path()).unwrap(),
+                [0; 32],
+                |_, bytes| {
+                    bytes.fill(0);
+                    Ok(())
+                },
+            )
+            .unwrap();
+        let mut tree = vec![0; sealed.hash.as_file().metadata().unwrap().len() as usize];
+        sealed.hash.as_file().read_exact_at(&mut tree, 0).unwrap();
+        // One header, one root block, and two leaf hash blocks.
+        assert_eq!(tree.len(), 4 * 4096);
+        assert_eq!(
+            sealed.descriptor().annotations.verity_digest.as_deref(),
+            Some(format!("sha256:{}", hex::encode(Sha256::digest(&tree))).as_str())
+        );
+        assert_eq!(std::fs::read_dir(control.path()).unwrap().count(), 0);
     }
     #[test]
     fn installing_encoded_blob_transfers_only_its_name() {
@@ -744,6 +820,23 @@ mod tests {
             );
             assert_eq!(assembled.image().root(), Some(expected_root));
             assert_eq!(assembled.image().manifest().layers.len(), 2);
+            let root = selection.root.as_ref().unwrap();
+            let inherited = usize::from(root.base.is_some());
+            if let Some(base) = root.base {
+                assert_eq!(
+                    assembled.image().manifest().layers[0],
+                    base.image().manifest().layers[0]
+                );
+            }
+            for (layer, produced) in assembled.image().manifest().layers[inherited..]
+                .iter()
+                .zip(&root.produced)
+            {
+                assert_eq!(
+                    layer,
+                    &crate::artifact::Layer::ScuteZstd(produced.descriptor().clone())
+                );
+            }
             if bootstrap {
                 assert!(assembled.image().manifest().config.is_empty());
             } else {

@@ -1053,6 +1053,34 @@ size; for compressed scutes it bounds decoded bytes, with only the final
 block allowed to be partial. Missing counts are invalid in v1. Producers
 emit the count used to format the verity tree; no version identifiers change.
 
+Newly sealed scutes also publish three per-layer string annotations:
+
+- `dev.pichi.scute.digest`: SHA-256 of the exact decompressed scute bytes,
+  encoded as `sha256:` followed by 64 lowercase hexadecimal digits.
+- `dev.pichi.scute.size`: the exact decompressed byte count as a positive
+  decimal string, without block padding added by a consumer.
+- `dev.pichi.scute.verity.digest`: SHA-256 of the complete generated verity
+  file, using the same digest encoding. This includes the canonical header
+  (zero UUID), header padding, and all tree blocks and padding.
+
+The descriptor's existing digest and size still identify transport bytes.
+The verity file digest is distinct from its verity root and does not replace
+salt-chain validation. Its file size follows from the existing verity geometry
+and `Header::total_size()`; there is no additional size annotation. The producer
+hashes scute bytes while sealing and hashes verity bytes while copying a finished
+staging file to output. It never establishes expected identities by rereading
+the designated host output, and publishes no descriptor after a failed transfer.
+The staging file lives beneath the supervisor's private `/var/tmp/conglobate`
+workspace, independent of `TMPDIR`. The existing seekable formatter is reused;
+staging is discarded after the sequential copy. This relies on the guest scratch
+storage: private guest permissions do not authenticate its disk against the host.
+Encryption of `/var/tmp` is future work, not provided by this change.
+
+Older input layers may lack these identities. Composition preserves inherited
+layer descriptors, including absent annotations, without inventing identities
+from host-backed data. These optional schema additions do not change version
+identifiers. Every newly sealed layer emits all three annotations.
+
 ### 11.2 Finalization and publication
 
 Validate the annotation values against the selected commit, context, plan and

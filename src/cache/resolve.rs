@@ -217,6 +217,9 @@ mod tests {
                     digest: digest.to_string(),
                     size: bytes.len() as u64,
                     annotations: ScuteAnnotations {
+                        digest: None,
+                        size: None,
+                        verity_digest: None,
                         data_blocks,
                         salt: hex::encode(parent),
                     },
