@@ -18,7 +18,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// Identity of the exact bytes accepted by the compressed blob sink.
+/// Identity of the exact bytes accepted by an output sink.
 #[derive(Debug)]
 pub(crate) struct MeasuredWrite<W> {
     pub(crate) output: W,
@@ -40,7 +40,7 @@ impl<W: Write> Write for MeasuredWrite<W> {
         self.size = self
             .size
             .checked_add(written as u64)
-            .ok_or_else(|| io::Error::other("encoded layer size overflow"))?;
+            .ok_or_else(|| io::Error::other("output size overflow"))?;
         self.digest.update(&buffer[..written]);
         Ok(written)
     }

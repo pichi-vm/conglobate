@@ -274,9 +274,42 @@ pub struct ScuteAnnotations {
     /// Hex-encoded salt for this scute.
     #[serde(rename = "dev.pichi.scute.verity.salt")]
     pub salt: String,
+    /// SHA-256 of the exact decompressed bytes. Absent on older scutes.
+    #[serde(
+        rename = "dev.pichi.scute.digest",
+        default,
+        deserialize_with = "ScuteAnnotations::deserialize_identity",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub digest: Option<String>,
+    /// Exact decompressed byte count as a decimal annotation string.
+    #[serde(
+        rename = "dev.pichi.scute.size",
+        default,
+        deserialize_with = "ScuteAnnotations::deserialize_identity",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub size: Option<String>,
+    /// SHA-256 of the complete generated verity file, including its header
+    /// and padding. This is distinct from the verity root.
+    #[serde(
+        rename = "dev.pichi.scute.verity.digest",
+        default,
+        deserialize_with = "ScuteAnnotations::deserialize_identity",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub verity_digest: Option<String>,
 }
 
 impl ScuteAnnotations {
+    // Missing identities are compatible with old manifests; a supplied OCI
+    // annotation must still be a string, including when its value is null.
+    fn deserialize_identity<'de, D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<String>, D::Error> {
+        String::deserialize(deserializer).map(Some)
+    }
+
     // OCI annotation values are strings; expose a typed length to callers.
     fn serialize_blocks<S: serde::Serializer>(
         blocks: &std::num::NonZeroU64,
@@ -359,6 +392,15 @@ pub enum ManifestValidationError {
     /// The first scute must be the base; later scutes must have a parent.
     #[error("scutes must appear in base-to-tip order: {0}")]
     BadScuteOrder(String),
+
+    /// A supplied content identity is malformed or contradicts scute geometry.
+    #[error("scute annotation {key} is malformed: {value}")]
+    BadScuteAnnotation {
+        /// The annotation key.
+        key: &'static str,
+        /// The offending value.
+        value: String,
+    },
 
     /// Declared data-block count is zero or contradicts a raw blob's size.
     #[error("invalid data-block count for scute {0}")]
@@ -507,6 +549,38 @@ impl Manifest {
             {
                 return Err(ManifestValidationError::BadScuteBlocks(d.digest.clone()));
             }
+            for (key, value) in [
+                ("dev.pichi.scute.digest", &d.annotations.digest),
+                (
+                    "dev.pichi.scute.verity.digest",
+                    &d.annotations.verity_digest,
+                ),
+            ] {
+                if let Some(value) = value
+                    && !value
+                        .parse::<Digest>()
+                        .is_ok_and(|digest| digest.to_string() == *value)
+                {
+                    return Err(ManifestValidationError::BadScuteAnnotation {
+                        key,
+                        value: value.clone(),
+                    });
+                }
+            }
+            if let Some(value) = &d.annotations.size {
+                let size = value.parse::<u64>().ok().filter(|size| {
+                    *size != 0
+                        && size.to_string() == *value
+                        && size.div_ceil(u64::from(block_size)) == blocks
+                        && (!matches!(layer, Layer::Scute(_)) || *size == d.size)
+                });
+                if size.is_none() {
+                    return Err(ManifestValidationError::BadScuteAnnotation {
+                        key: "dev.pichi.scute.size",
+                        value: value.clone(),
+                    });
+                }
+            }
             let salt = hex::decode(&d.annotations.salt)
                 .map_err(|_| ManifestValidationError::BadSalt(d.annotations.salt.clone()))?;
             let parent = salt
@@ -619,6 +693,9 @@ mod tests {
                 .is_err()
         );
         let annotations = ScuteAnnotations {
+            digest: None,
+            size: None,
+            verity_digest: None,
             salt: "00".into(),
             data_blocks: 2u64.try_into().unwrap(),
         };
@@ -641,6 +718,96 @@ mod tests {
             json["dev.pichi.scute.verity.data-blocks"] = invalid;
             assert!(serde_json::from_value::<ScuteAnnotations>(json).is_err());
         }
+    }
+
+    #[test]
+    fn content_identities_are_optional_string_annotations() {
+        let legacy = serde_json::json!({
+            "dev.pichi.scute.verity.data-blocks": "2",
+            "dev.pichi.scute.verity.salt": "00".repeat(32),
+        });
+        let annotations: ScuteAnnotations = serde_json::from_value(legacy.clone()).unwrap();
+        assert_eq!(serde_json::to_value(annotations).unwrap(), legacy);
+        let mut current = legacy;
+        current["dev.pichi.scute.digest"] = format!("sha256:{}", "12".repeat(32)).into();
+        current["dev.pichi.scute.size"] = "8192".into();
+        current["dev.pichi.scute.verity.digest"] = format!("sha256:{}", "34".repeat(32)).into();
+        let annotations: ScuteAnnotations = serde_json::from_value(current.clone()).unwrap();
+        assert_eq!(serde_json::to_value(annotations).unwrap(), current);
+        for key in [
+            "dev.pichi.scute.digest",
+            "dev.pichi.scute.size",
+            "dev.pichi.scute.verity.digest",
+        ] {
+            for value in [serde_json::json!(8192), serde_json::Value::Null] {
+                let mut invalid = current.clone();
+                invalid[key] = value;
+                assert!(serde_json::from_value::<ScuteAnnotations>(invalid).is_err());
+            }
+        }
+    }
+
+    #[test]
+    fn validate_content_identities_against_format_and_geometry() {
+        let mut manifest = sample_base_manifest();
+        let Layer::Scute(scute) = &mut manifest.layers[0] else {
+            unreachable!()
+        };
+        scute.annotations.digest = Some(format!("sha256:{}", "12".repeat(32)));
+        scute.annotations.size = Some(scute.size.to_string());
+        scute.annotations.verity_digest = Some(format!("sha256:{}", "34".repeat(32)));
+        manifest.validate().unwrap();
+        let original = manifest.layers[0].clone();
+        for field in ["digest", "verity_digest"] {
+            for value in [
+                "sha256:abcd".into(),
+                format!("sha512:{}", "12".repeat(32)),
+                format!("sha256:{}", "AB".repeat(32)),
+            ] {
+                let Layer::Scute(scute) = &mut manifest.layers[0] else {
+                    unreachable!()
+                };
+                if field == "digest" {
+                    scute.annotations.digest = Some(value);
+                } else {
+                    scute.annotations.verity_digest = Some(value);
+                }
+                assert!(matches!(
+                    manifest.validate(),
+                    Err(ManifestValidationError::BadScuteAnnotation { .. })
+                ));
+                manifest.layers[0] = original.clone();
+            }
+        }
+        for value in [
+            "0",
+            "-1",
+            "+1024",
+            "01024",
+            "1023",
+            "1025",
+            "18446744073709551616",
+        ] {
+            let Layer::Scute(scute) = &mut manifest.layers[0] else {
+                unreachable!()
+            };
+            scute.annotations.size = Some(value.into());
+            assert!(
+                matches!(
+                    manifest.validate(),
+                    Err(ManifestValidationError::BadScuteAnnotation { .. })
+                ),
+                "{value}"
+            );
+        }
+        let Layer::Scute(mut compressed) = original else {
+            unreachable!()
+        };
+        compressed.size = 100;
+        // Existing format permits a partial final block in inherited scutes.
+        compressed.annotations.size = Some("1023".into());
+        manifest.layers[0] = Layer::ScuteZstd(compressed);
+        manifest.validate().unwrap();
     }
 
     #[test]
@@ -704,6 +871,9 @@ mod tests {
                     .into(),
                 size: 1024,
                 annotations: ScuteAnnotations {
+                    digest: None,
+                    size: None,
+                    verity_digest: None,
                     data_blocks: 1u64.try_into().unwrap(),
                     salt: "00".repeat(32),
                 },
@@ -1056,6 +1226,9 @@ mod tests {
             digest: "sha256:dead".into(),
             size: 0,
             annotations: ScuteAnnotations {
+                digest: None,
+                size: None,
+                verity_digest: None,
                 data_blocks: 1u64.try_into().unwrap(),
                 salt: "deadbeef".into(),
             },
@@ -1075,6 +1248,9 @@ mod tests {
             digest: "sha256:dead".into(),
             size: 0,
             annotations: ScuteAnnotations {
+                digest: None,
+                size: None,
+                verity_digest: None,
                 data_blocks: 1u64.try_into().unwrap(),
                 salt: "deadbeef".into(),
             },

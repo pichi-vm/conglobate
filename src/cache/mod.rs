@@ -390,6 +390,9 @@ pub(crate) mod tests {
                 digest: digest.to_string(),
                 size: bytes.len() as u64,
                 annotations: crate::artifact::ScuteAnnotations {
+                    digest: None,
+                    size: None,
+                    verity_digest: None,
                     data_blocks,
                     salt: hex::encode(parent),
                 },
