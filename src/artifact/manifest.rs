@@ -14,7 +14,6 @@ use super::{
     AsString, BootConfigDescriptor, ConfigDescriptor, Digest, ManifestAnnotations, MediaType,
     PichiArtifact,
 };
-use crate::is_default::IsDefault;
 
 use crate::plan::Version;
 use devmap_verity::Salt;
@@ -58,7 +57,6 @@ pub struct Manifest {
     pub layers: Vec<Layer>,
     /// Typed annotation view. Verity parameters have native defaults;
     /// unrelated annotations remain in the original manifest bytes.
-    #[serde(default, skip_serializing_if = "IsDefault::is_default")]
     pub annotations: ManifestAnnotations,
 }
 
@@ -366,7 +364,7 @@ mod tests {
                 let mut manifest = sample_base_manifest();
                 if !root {
                     manifest.layers.clear();
-                    manifest.annotations = Default::default();
+                    manifest.annotations.verity = Default::default();
                 }
                 manifest.layers.push(encoded.clone());
                 manifest
@@ -410,7 +408,7 @@ mod tests {
             let mut manifest = sample_base_manifest();
             if !root {
                 manifest.layers.clear();
-                manifest.annotations = Default::default();
+                manifest.annotations.verity = Default::default();
             }
             manifest.layers.push(config.clone());
             assert!(matches!(
@@ -593,6 +591,14 @@ mod tests {
             })],
             annotations: ManifestAnnotations {
                 oci: Default::default(),
+                build: super::super::BuildProvenance {
+                    commit: Digest::Sha1([0xab; 20]),
+                    context: ".".into(),
+                    plan: "plan.yaml".into(),
+                    lock: None,
+                    location: None,
+                    bootstrapped: false.into(),
+                },
                 verity: super::super::CarapaceVerity {
                     root: Some(Digest::Sha256([0xab; 32])),
                     ..Default::default()
@@ -795,7 +801,7 @@ mod tests {
         m.validate().unwrap();
         m.layers.clear();
         assert!(m.validate().is_err());
-        m.annotations = Default::default();
+        m.annotations.verity = Default::default();
         m.validate().unwrap();
         assert_eq!(m.carapace_root().unwrap(), None);
     }
@@ -811,7 +817,7 @@ mod tests {
             digest: Digest::Sha256([0x22; 32]),
             size: 4096,
         }));
-        m.annotations = Default::default();
+        m.annotations.verity = Default::default();
         m.validate().unwrap();
     }
 

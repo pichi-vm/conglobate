@@ -13,6 +13,7 @@
 
 mod as_string;
 mod boot_config_descriptor;
+mod build_provenance;
 mod carapace_verity;
 mod compressable;
 mod config;
@@ -31,6 +32,7 @@ mod zstd;
 
 pub use as_string::AsString;
 pub use boot_config_descriptor::BootConfigDescriptor;
+pub use build_provenance::BuildProvenance;
 pub use carapace_verity::CarapaceVerity;
 pub use compressable::Compressable;
 pub use config::{

@@ -1004,6 +1004,11 @@ not only on an index, index descriptor, or configuration blob:
 | `dev.pichi.build.bootstrapped` | `"true"` iff this build used a selected bootstrap tool; otherwise absent |
 | `dev.pichi.build.location` | Optional: provenance hint for where to obtain the repository |
 
+The typed manifest requires commit, context, and plan during deserialization;
+missing provenance is not backfilled. Commit identities must contain the full
+SHA-1 or SHA-256 digest. Assembly stamps the captured build binding before its
+first staged-manifest validation and writes only the final manifest.
+
 Location says where to get it; commit says what it is; context selects a path
 in that commit; plan and lock select paths relative to context. The commit
 value carries its algorithm. There are no separate tree or object-format keys.
