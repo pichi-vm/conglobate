@@ -211,9 +211,11 @@ mod tests {
                     annotations: ScuteAnnotations {
                         digest: data_digest,
                         size: NonZero::new(data_size as u64).unwrap().into(),
-                        verity_digest: Digest::Sha256(Sha256::digest(&tree).into()),
-                        data_blocks: data_blocks.into(),
-                        salt: parent.to_vec().try_into().unwrap(),
+                        verity: crate::artifact::ScuteVerity {
+                            digest: Digest::Sha256(Sha256::digest(&tree).into()),
+                            data_blocks: data_blocks.into(),
+                            salt: parent.to_vec().try_into().unwrap(),
+                        },
                     },
                 };
                 layers.push(if compressed {

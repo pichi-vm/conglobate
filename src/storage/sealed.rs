@@ -64,7 +64,7 @@ impl SealedScute {
         ScuteReader {
             file: self.data.as_file(),
             position: 0,
-            length: self.descriptor.annotations.data_blocks.get() * 4096,
+            length: self.descriptor.annotations.verity.data_blocks.get() * 4096,
         }
     }
 }
@@ -216,9 +216,11 @@ impl<'w> Scratch<'w> {
             annotations: ScuteAnnotations {
                 digest: crate::artifact::Digest::Sha256(data_digest.into()),
                 size: NonZero::new(bytes).expect("nonempty scute").into(),
-                verity_digest: crate::artifact::Digest::Sha256(verity_digest.into()),
-                data_blocks: data_blocks.into(),
-                salt: salt.to_vec().try_into().expect("valid header salt"),
+                verity: crate::artifact::ScuteVerity {
+                    digest: crate::artifact::Digest::Sha256(verity_digest.into()),
+                    data_blocks: data_blocks.into(),
+                    salt: salt.to_vec().try_into().expect("valid header salt"),
+                },
             },
         };
         Ok(SealedScute {
@@ -397,13 +399,13 @@ mod tests {
             sealed.data_reader().read_to_end(&mut data).unwrap();
             assert_eq!(data, bytes);
             encoded_blob(&sealed, &bytes);
-            assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 2);
+            assert_eq!(sealed.descriptor().annotations.verity.data_blocks.get(), 2);
             let mut tree = vec![0; 8192];
             sealed.files().1.read_exact_at(&mut tree, 0).unwrap();
             assert_eq!(sealed.files().1.metadata().unwrap().len(), 8192);
             let file_digest = format!("sha256:{}", hex::encode(Sha256::digest(&tree)));
             assert_eq!(
-                sealed.descriptor().annotations.verity_digest.to_string(),
+                sealed.descriptor().annotations.verity.digest.to_string(),
                 file_digest.as_str()
             );
             assert_ne!(
@@ -414,7 +416,7 @@ mod tests {
             let salt = header.parameters.salt.as_ref();
             assert_eq!(salt.len(), 64);
             assert_eq!(&salt[..32], parent);
-            assert_eq!(sealed.descriptor().annotations.salt.as_ref(), salt);
+            assert_eq!(sealed.descriptor().annotations.verity.salt.as_ref(), salt);
             assert_eq!(header.parameters.data.count.get(), 2);
             for (index, block) in bytes.as_chunks::<4096>().0.iter().enumerate() {
                 let mut hash = Sha256::new();
@@ -435,7 +437,7 @@ mod tests {
             // Host mutation changes its output copy, never the expected identity.
             sealed.files().1.write_all_at(b"changed", 0).unwrap();
             assert_eq!(
-                sealed.descriptor().annotations.verity_digest.to_string(),
+                sealed.descriptor().annotations.verity.digest.to_string(),
                 file_digest.as_str()
             );
         }
@@ -480,7 +482,7 @@ mod tests {
         assert_eq!((entry.old_chunk, entry.new_chunk), (2, 2));
         assert!(packed[4112..].iter().all(|byte| *byte == 0));
         encoded_blob(&sealed, &packed);
-        assert_eq!(sealed.descriptor().annotations.data_blocks.get(), 3);
+        assert_eq!(sealed.descriptor().annotations.verity.data_blocks.get(), 3);
         let mut header = [0; 512];
         sealed.files().1.read_exact_at(&mut header, 0).unwrap();
         assert_eq!(
@@ -525,7 +527,7 @@ mod tests {
         // One header, one root block, and two leaf hash blocks.
         assert_eq!(tree.len(), 4 * 4096);
         assert_eq!(
-            sealed.descriptor().annotations.verity_digest.to_string(),
+            sealed.descriptor().annotations.verity.digest.to_string(),
             format!("sha256:{}", hex::encode(Sha256::digest(&tree))).as_str()
         );
         assert_eq!(std::fs::read_dir(control.path()).unwrap().count(), 0);

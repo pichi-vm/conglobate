@@ -9,7 +9,9 @@
 //! tagged on `mediaType`), `ConfigDescriptor` for the OCI 1.1 empty-config
 //! pattern, and `validate()` enforcing all six D-07 rules.
 
-use super::{AsString, BootConfigDescriptor, Digest, Salt};
+#[cfg(test)]
+use super::{AsString, Salt};
+use super::{BootConfigDescriptor, Digest, ScuteAnnotations};
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -284,32 +286,8 @@ pub struct ScuteDescriptor {
     pub digest: Digest,
     /// Byte size of the blob.
     pub size: u64,
-    /// Per-scute annotations (D-05).
+    /// Per-scute annotations.
     pub annotations: ScuteAnnotations,
-}
-
-/// Per-scute annotations (D-05). The salt's prefix MUST equal the previous
-/// scute's verity root for non-base scutes (carapace salt-chain binding —
-/// not enforced here; chain validation is v0.9 Phase 46 carapace work).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ScuteAnnotations {
-    /// dm-verity header `data_blocks`: COW length rounded up to data blocks.
-    /// Required, positive, and encoded as a decimal annotation string.
-    #[serde(rename = "dev.pichi.scute.verity.data-blocks")]
-    pub data_blocks: AsString<std::num::NonZeroU64>,
-    /// Hex-encoded salt for this scute.
-    #[serde(rename = "dev.pichi.scute.verity.salt")]
-    pub salt: Salt,
-    /// Required SHA-256 of the exact decompressed bytes.
-    #[serde(rename = "dev.pichi.scute.digest")]
-    pub digest: Digest,
-    /// Required exact decompressed byte count as a decimal annotation string.
-    #[serde(rename = "dev.pichi.scute.size")]
-    pub size: AsString<std::num::NonZeroU64>,
-    /// Required SHA-256 of the complete generated verity file, including its
-    /// header and padding. This is distinct from the verity root.
-    #[serde(rename = "dev.pichi.scute.verity.digest")]
-    pub verity_digest: Digest,
 }
 
 /// PMI layer descriptor. Digest and size identify the encoded blob bytes.
@@ -513,7 +491,7 @@ impl Manifest {
             let (Layer::Scute(d) | Layer::ScuteZstd(d)) = layer else {
                 continue;
             };
-            let blocks = d.annotations.data_blocks.get();
+            let blocks = d.annotations.verity.data_blocks.get();
             let value = self
                 .annotations
                 .get(CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE)
@@ -548,7 +526,7 @@ impl Manifest {
                     value: size.to_string(),
                 });
             }
-            let parent = &d.annotations.salt.as_ref()[..32];
+            let parent = &d.annotations.verity.salt.as_ref()[..32];
             if first_scute != parent.iter().all(|byte| *byte == 0) {
                 return Err(ManifestValidationError::BadScuteOrder(d.digest.clone()));
             }
@@ -655,9 +633,11 @@ mod tests {
         let annotations = ScuteAnnotations {
             digest: Digest::Sha256([0x11; 32]),
             size: NonZero::new(1024).unwrap().into(),
-            verity_digest: Digest::Sha256([0x22; 32]),
-            salt: vec![0; 32].try_into().unwrap(),
-            data_blocks: NonZero::new(2).unwrap().into(),
+            verity: crate::artifact::ScuteVerity {
+                digest: Digest::Sha256([0x22; 32]),
+                salt: vec![0; 32].try_into().unwrap(),
+                data_blocks: NonZero::new(2).unwrap().into(),
+            },
         };
         let json = serde_json::to_value(&annotations).unwrap();
         let mut missing = json.clone();
@@ -710,7 +690,7 @@ mod tests {
         };
         scute.annotations.digest = scute.digest.clone();
         scute.annotations.size = NonZero::new(scute.size).unwrap().into();
-        scute.annotations.verity_digest = Digest::Sha256([0x34; 32]);
+        scute.annotations.verity.digest = Digest::Sha256([0x34; 32]);
         manifest.validate().unwrap();
         let original = manifest.layers[0].clone();
         let Layer::Scute(scute) = &mut manifest.layers[0] else {
@@ -749,21 +729,21 @@ mod tests {
             let Layer::Scute(scute) = &mut manifest.layers[0] else {
                 unreachable!()
             };
-            scute.annotations.data_blocks = NonZero::new(blocks).unwrap().into();
+            scute.annotations.verity.data_blocks = NonZero::new(blocks).unwrap().into();
             assert_eq!(manifest.validate().is_ok(), blocks == 1);
         }
         let mut manifest = sample_base_manifest();
         let Layer::Scute(mut scute) = manifest.layers.remove(0) else {
             unreachable!()
         };
-        scute.annotations.data_blocks = NonZero::new(2).unwrap().into();
+        scute.annotations.verity.data_blocks = NonZero::new(2).unwrap().into();
         scute.annotations.size = NonZero::new(8192).unwrap().into();
         manifest.layers.push(Layer::ScuteZstd(scute));
         assert!(manifest.validate().is_ok());
         let Layer::ScuteZstd(scute) = &mut manifest.layers[0] else {
             unreachable!()
         };
-        scute.annotations.data_blocks = NonZero::new(u64::MAX).unwrap().into();
+        scute.annotations.verity.data_blocks = NonZero::new(u64::MAX).unwrap().into();
         assert!(matches!(
             manifest.validate(),
             Err(ManifestValidationError::BadScuteBlocks(_))
@@ -805,9 +785,11 @@ mod tests {
                 annotations: ScuteAnnotations {
                     digest: Digest::Sha256([0x11; 32]),
                     size: NonZero::new(1024).unwrap().into(),
-                    verity_digest: Digest::Sha256([0x22; 32]),
-                    data_blocks: NonZero::new(1).unwrap().into(),
-                    salt: vec![0; 32].try_into().unwrap(),
+                    verity: crate::artifact::ScuteVerity {
+                        digest: Digest::Sha256([0x22; 32]),
+                        data_blocks: NonZero::new(1).unwrap().into(),
+                        salt: vec![0; 32].try_into().unwrap(),
+                    },
                 },
             })],
             annotations: sample_chain_annotations(),
@@ -915,7 +897,8 @@ mod tests {
         let Layer::Scute(scute) = &mut m.layers[0] else {
             unreachable!()
         };
-        scute.annotations.data_blocks = NonZero::new(scute.size.div_ceil(2048)).unwrap().into();
+        scute.annotations.verity.data_blocks =
+            NonZero::new(scute.size.div_ceil(2048)).unwrap().into();
         m.validate().unwrap();
     }
 
@@ -944,8 +927,8 @@ mod tests {
         let Layer::Scute(base) = &mut manifest.layers[0] else {
             unreachable!()
         };
-        base.annotations.salt = [vec![0; 32], vec![0xab, 0xcd]].concat().try_into().unwrap();
-        child.annotations.salt = vec![0xab; 32].try_into().unwrap();
+        base.annotations.verity.salt = [vec![0; 32], vec![0xab, 0xcd]].concat().try_into().unwrap();
+        child.annotations.verity.salt = vec![0xab; 32].try_into().unwrap();
         manifest.layers.insert(
             0,
             Layer::Pmi(PmiDescriptor {
@@ -1142,9 +1125,11 @@ mod tests {
             annotations: ScuteAnnotations {
                 digest: Digest::Sha256([0x11; 32]),
                 size: NonZero::new(1024).unwrap().into(),
-                verity_digest: Digest::Sha256([0x22; 32]),
-                data_blocks: NonZero::new(1).unwrap().into(),
-                salt: vec![0; 32].try_into().unwrap(),
+                verity: crate::artifact::ScuteVerity {
+                    digest: Digest::Sha256([0x22; 32]),
+                    data_blocks: NonZero::new(1).unwrap().into(),
+                    salt: vec![0; 32].try_into().unwrap(),
+                },
             },
         };
         let pmi_desc = PmiDescriptor {
@@ -1164,9 +1149,11 @@ mod tests {
             annotations: ScuteAnnotations {
                 digest: Digest::Sha256([0x11; 32]),
                 size: NonZero::new(1024).unwrap().into(),
-                verity_digest: Digest::Sha256([0x22; 32]),
-                data_blocks: NonZero::new(1).unwrap().into(),
-                salt: vec![0; 32].try_into().unwrap(),
+                verity: crate::artifact::ScuteVerity {
+                    digest: Digest::Sha256([0x22; 32]),
+                    data_blocks: NonZero::new(1).unwrap().into(),
+                    salt: vec![0; 32].try_into().unwrap(),
+                },
             },
         };
         let pmi_desc = PmiDescriptor {

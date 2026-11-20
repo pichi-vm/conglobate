@@ -392,9 +392,11 @@ pub(crate) mod tests {
                 annotations: crate::artifact::ScuteAnnotations {
                     digest: crate::artifact::Digest::Sha256(Sha256::digest(data).into()),
                     size: NonZero::new(data.len() as u64).unwrap().into(),
-                    verity_digest: crate::artifact::Digest::Sha256(Sha256::digest(&tree).into()),
-                    data_blocks: data_blocks.into(),
-                    salt: parent.to_vec().try_into().unwrap(),
+                    verity: crate::artifact::ScuteVerity {
+                        digest: crate::artifact::Digest::Sha256(Sha256::digest(&tree).into()),
+                        data_blocks: data_blocks.into(),
+                        salt: parent.to_vec().try_into().unwrap(),
+                    },
                 },
             };
             (

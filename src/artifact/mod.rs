@@ -29,7 +29,7 @@ pub use config::{
 pub use digest::{Digest, DigestParseError};
 pub use manifest::{
     CARAPACE_ROOT_ANNOTATION, ConfigDescriptor, Layer, Manifest, ManifestValidationError,
-    PmiDescriptor, ScuteAnnotations, ScuteDescriptor,
+    PmiDescriptor, ScuteDescriptor,
 };
 pub use media_type::{
     MEDIA_TYPE_OCI_EMPTY_V1, MEDIA_TYPE_PICHI_ARTIFACT_V1, MEDIA_TYPE_PICHI_BOOTCONFIG_V1_ZSTD,
@@ -47,3 +47,8 @@ mod salt;
 mod salt_error;
 pub use salt::Salt;
 pub use salt_error::SaltError;
+
+mod scute_annotations;
+mod scute_verity;
+pub use scute_annotations::ScuteAnnotations;
+pub use scute_verity::ScuteVerity;
