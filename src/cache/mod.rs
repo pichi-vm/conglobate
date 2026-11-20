@@ -391,7 +391,7 @@ pub(crate) mod tests {
                 size: bytes.len() as u64,
                 annotations: crate::artifact::ScuteAnnotations {
                     digest: format!("sha256:{}", hex::encode(Sha256::digest(data))),
-                    size: data.len().to_string(),
+                    size: std::num::NonZeroU64::new(data.len() as u64).unwrap().into(),
                     verity_digest: format!("sha256:{}", hex::encode(Sha256::digest(&tree))),
                     data_blocks: data_blocks.into(),
                     salt: devmap_verity::Salt::new(&parent).unwrap().into(),
