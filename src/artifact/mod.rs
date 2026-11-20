@@ -17,7 +17,7 @@ mod digest;
 mod index;
 mod manifest;
 mod media_type;
-mod reference;
+mod reference_kind;
 
 pub use boot_config_descriptor::BootConfigDescriptor;
 pub use config::{
@@ -34,7 +34,8 @@ pub use media_type::{
     MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
     MEDIA_TYPE_PICHI_REQUIREMENTS_V1, MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
-pub use reference::{Reference, ReferenceKind, ReferenceParseError};
+pub use oci_spec::distribution::{ParseError as ReferenceParseError, Reference};
+pub use reference_kind::ReferenceKind;
 
 pub use index::{
     Index, IndexDescriptor, LayoutMarker, MEDIA_TYPE_OCI_INDEX_V1, MEDIA_TYPE_OCI_MANIFEST_V1,
