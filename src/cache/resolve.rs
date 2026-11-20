@@ -223,7 +223,7 @@ mod tests {
                         size: data_size.to_string(),
                         verity_digest: Digest::Sha256(Sha256::digest(&tree).into()).to_string(),
                         data_blocks: data_blocks.into(),
-                        salt: hex::encode(parent),
+                        salt: devmap_verity::Salt::new(&parent).unwrap().into(),
                     },
                 };
                 layers.push(if compressed {
