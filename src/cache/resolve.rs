@@ -134,11 +134,6 @@ impl Cache {
             .map_err(|_| CacheError::Invalid("invalid manifest digest"))?;
         let manifest_bytes = self.metadata(&digest, Some(selected.size))?;
         let manifest: Manifest = serde_json::from_slice(manifest_bytes.bytes())?;
-        manifest.validate()?;
-        // The shared format validates artifact contents, not the OCI envelope.
-        if manifest.schema_version != 2 || manifest.media_type != MANIFEST {
-            return Err(CacheError::Invalid("invalid manifest envelope"));
-        }
         Ok(ResolvedImage {
             manifest_bytes,
             root: manifest.carapace_root()?,
