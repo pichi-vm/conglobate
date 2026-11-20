@@ -639,7 +639,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn decoded_manifest_still_requires_structural_validation() {
+    fn manifest_structure_is_checked_during_deserialization() {
         let store = Store::new();
         let (_, bytes) = store.manifest();
         let mut manifest: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
@@ -649,11 +649,7 @@ pub(crate) mod tests {
         let index = store.index(vec![store.descriptor(&digest, bytes.len())]);
         let error = store.open().resolve(index).unwrap_err();
         let source = std::error::Error::source(&error).unwrap();
-        assert!(
-            source
-                .downcast_ref::<crate::artifact::ManifestValidationError>()
-                .is_some()
-        );
+        assert!(source.downcast_ref::<serde_json::Error>().is_some());
     }
 
     #[test]

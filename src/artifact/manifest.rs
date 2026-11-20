@@ -42,16 +42,17 @@ const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 
 /// pichi OCI artifact manifest (OCI Image Spec 1.1).
 ///
-/// Schema invariants (per CONTEXT.md D-03 / D-07 — enforced by [`Manifest::validate`]):
+/// Deserialization checks these invariants. Call [`Manifest::validate`] after
+/// constructing or modifying a manifest in Rust:
 /// - Top-level `artifact_type` MUST equal [`MEDIA_TYPE_PICHI_ARTIFACT_V1`].
-/// - `config` MUST be the OCI 1.1 empty-config descriptor with inline `data: "e30="`.
+/// - `config` is either the canonical OCI empty config or a Pichi config blob.
 /// - Scute layers MUST appear in chain order, from base to tip.
 /// - At most ONE PMI, raw or compressed (D-03 — zero pmi = base/non-bootable, one pmi = bootable).
 /// - Top-level annotations MUST include one chain-tip root when scutes exist.
 ///   Reconstruction parameters are optional with defined defaults.
 /// - Every scute layer MUST carry a `dev.pichi.scute.verity.salt` annotation
 ///   parseable as hex (D-05 / D-07 rule 4-5).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct Manifest {
     /// Always `2` for OCI 1.1.
     #[serde(rename = "schemaVersion")]
@@ -78,6 +79,33 @@ pub struct Manifest {
     /// `BTreeMap` for byte-stable JSON serialisation (lexicographic key order).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub annotations: BTreeMap<String, String>,
+}
+
+impl<'de> Deserialize<'de> for Manifest {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Wire {
+            schema_version: u32,
+            media_type: String,
+            artifact_type: String,
+            config: ConfigDescriptor,
+            layers: Vec<Layer>,
+            #[serde(default)]
+            annotations: BTreeMap<String, String>,
+        }
+        let wire = Wire::deserialize(deserializer)?;
+        let manifest = Self {
+            schema_version: wire.schema_version,
+            media_type: wire.media_type,
+            artifact_type: wire.artifact_type,
+            config: wire.config,
+            layers: wire.layers,
+            annotations: wire.annotations,
+        };
+        manifest.validate().map_err(serde::de::Error::custom)?;
+        Ok(manifest)
+    }
 }
 
 /// The manifest `config` descriptor. Either the OCI 1.1 empty config (inline
@@ -320,6 +348,9 @@ pub struct PmiDescriptor {
 /// Validation errors for [`Manifest::validate`] (per D-07).
 #[derive(Debug, Error)]
 pub enum ManifestValidationError {
+    /// Only the OCI image-manifest v2 envelope is supported.
+    #[error("invalid manifest envelope: expected OCI image manifest schemaVersion 2")]
+    BadEnvelope,
     /// D-07 rule 1: wrong `artifactType`.
     #[error("artifactType must be {expected}, got {actual}")]
     WrongArtifactType {
@@ -438,6 +469,9 @@ impl Manifest {
     /// # Errors
     /// Returns the first violated rule — does NOT collect all errors.
     pub fn validate(&self) -> Result<(), ManifestValidationError> {
+        if self.schema_version != 2 || self.media_type != super::MEDIA_TYPE_OCI_MANIFEST_V1 {
+            return Err(ManifestValidationError::BadEnvelope);
+        }
         // Rule 1: artifactType
         if self.artifact_type != MEDIA_TYPE_PICHI_ARTIFACT_V1 {
             return Err(ManifestValidationError::WrongArtifactType {
@@ -878,6 +912,14 @@ mod tests {
             })],
             annotations: sample_chain_annotations(),
         }
+    }
+
+    #[test]
+    fn deserialization_checks_manifest_relationships() {
+        let mut json = serde_json::to_value(sample_base_manifest()).unwrap();
+        let duplicate_base = json["layers"][0].clone();
+        json["layers"].as_array_mut().unwrap().push(duplicate_base);
+        assert!(serde_json::from_value::<Manifest>(json).is_err());
     }
 
     #[test]
