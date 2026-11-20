@@ -215,9 +215,9 @@ impl<'w> Scratch<'w> {
             size,
             annotations: ScuteAnnotations {
                 digest: format!("sha256:{}", hex::encode(data_digest)),
-                size: bytes.to_string(),
+                size: NonZero::new(bytes).unwrap().into(),
                 verity_digest: format!("sha256:{}", hex::encode(verity_digest)),
-                data_blocks,
+                data_blocks: data_blocks.into(),
                 salt: hex::encode(salt),
             },
         };
@@ -361,8 +361,8 @@ mod tests {
             format!("sha256:{}", hex::encode(Sha256::digest(plain))).as_str()
         );
         assert_eq!(
-            sealed.descriptor().annotations.size.as_str(),
-            plain.len().to_string().as_str()
+            sealed.descriptor().annotations.size.get(),
+            plain.len() as u64
         );
         blob
     }

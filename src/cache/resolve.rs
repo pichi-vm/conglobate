@@ -187,6 +187,7 @@ mod tests {
     use super::*;
     use crate::artifact::{Layer, ScuteAnnotations, ScuteDescriptor};
     use sha2::{Digest as _, Sha256};
+    use std::num::NonZero;
     use std::{collections::BTreeMap, fs};
 
     struct ContentFixture {
@@ -220,9 +221,9 @@ mod tests {
                     size: bytes.len() as u64,
                     annotations: ScuteAnnotations {
                         digest: data_digest.to_string(),
-                        size: data_size.to_string(),
+                        size: NonZero::new(data_size as u64).unwrap().into(),
                         verity_digest: Digest::Sha256(Sha256::digest(&tree).into()).to_string(),
-                        data_blocks,
+                        data_blocks: data_blocks.into(),
                         salt: hex::encode(parent),
                     },
                 };

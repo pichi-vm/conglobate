@@ -174,7 +174,7 @@ pub(crate) mod tests {
     use crate::artifact::Digest;
     use crate::cache::Cache;
     use sha2::{Digest as _, Sha256};
-    use std::path::PathBuf;
+    use std::{num::NonZero, path::PathBuf};
 
     struct Store(tempfile::TempDir);
     impl Store {
@@ -391,9 +391,9 @@ pub(crate) mod tests {
                 size: bytes.len() as u64,
                 annotations: crate::artifact::ScuteAnnotations {
                     digest: format!("sha256:{}", hex::encode(Sha256::digest(data))),
-                    size: data.len().to_string(),
+                    size: NonZero::new(data.len() as u64).unwrap().into(),
                     verity_digest: format!("sha256:{}", hex::encode(Sha256::digest(&tree))),
-                    data_blocks,
+                    data_blocks: data_blocks.into(),
                     salt: hex::encode(parent),
                 },
             };

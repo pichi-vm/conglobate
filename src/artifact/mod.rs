@@ -11,6 +11,7 @@
 //! Retired here from the standalone `pichi-artifact` crate. The v1 format uses
 //! these shared types, including required scute lengths and a manifest chain tip.
 
+mod as_string;
 mod boot_config_descriptor;
 mod config;
 mod digest;
@@ -19,6 +20,7 @@ mod manifest;
 mod media_type;
 mod reference;
 
+pub use as_string::AsString;
 pub use boot_config_descriptor::BootConfigDescriptor;
 pub use config::{
     Band, CONFIG_SCHEMA_VERSION, Config, ConfigError, Ingress, Interface, Memory, PortSpec,
