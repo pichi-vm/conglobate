@@ -58,6 +58,9 @@ humantime-serde = "1.1"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 hex = "0.4"
+# IPv6 registry parsing: https://github.com/youki-dev/oci-spec-rs/pull/360,
+# backported to 0.9. Replace the pin when an upstream release includes it.
+oci-spec = { git = "https://github.com/npmccallum/oci-spec-rs", rev = "0604732f3ada939cbe0f2be01b00cd2ce25401b9", version = "0.9", default-features = false, features = ["distribution"] }
 
 # --- binary runtime (bins require `cli`) ---
 serde-saphyr = { version = "2.1", optional = true, default-features = false, features = ["deserialize"] }

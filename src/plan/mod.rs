@@ -412,6 +412,49 @@ mod tests {
     }
 
     #[test]
+    fn remote_uses_oci_names_with_plan_selector_constraints() {
+        use crate::plan::Remote;
+
+        for (input, expected) in [
+            ("docker.io/alpine", "docker.io/library/alpine:latest"),
+            ("index.docker.io/team/root:v1", "docker.io/team/root:v1"),
+            (
+                "[2001:db8::1]:5000/team/root",
+                "[2001:db8::1]:5000/team/root:latest",
+            ),
+        ] {
+            let remote = Remote::new(input.into()).unwrap();
+            assert_eq!(remote.to_string(), expected);
+            assert_eq!(Remote::new(expected.into()).unwrap(), remote);
+        }
+        for input in [
+            "registry.example/a/../b:tag",
+            "registry.example/a//b:tag",
+            "registry.example/a\\b:tag",
+            "registry.example/Uppercase:tag",
+            "registry.example/root:tag:extra",
+            "registry.example/root:é",
+            "registry.example:0/root",
+            "registry.example:65536/root",
+            "[:::]:5000/root",
+        ] {
+            assert!(Remote::new(input.into()).is_none(), "{input}");
+        }
+        for input in [
+            format!("registry.example/root@sha512:{}", "ab".repeat(64)),
+            format!("registry.example/root:tag@sha256:{}", "ab".repeat(32)),
+        ] {
+            assert!(Remote::new(input).is_none());
+        }
+        let remote =
+            Remote::new(format!("registry.example/root@sha256:{}", "AB".repeat(32))).unwrap();
+        assert_eq!(
+            remote.to_string(),
+            format!("registry.example/root@sha256:{}", "ab".repeat(32))
+        );
+    }
+
+    #[test]
     fn plans_require_an_explicit_supported_version() {
         for input in [
             json!({"image":"root"}),

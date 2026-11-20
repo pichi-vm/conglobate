@@ -33,14 +33,10 @@ impl Remote {
                 None => (registry, None),
             }
         };
-        if (!registry.starts_with('[')
-            && (!(host == "localhost" || host.contains('.') || port.is_some())
-                || host.split('.').any(|part| {
-                    part.is_empty()
-                        || !part.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
-                        || part.starts_with('-')
-                        || part.ends_with('-')
-                })))
+        if !(registry.starts_with('[')
+            || host == "localhost"
+            || host.contains('.')
+            || port.is_some())
             || port.is_some_and(|p| {
                 !p.bytes().all(|b| b.is_ascii_digit())
                     || p.parse::<u16>().ok().filter(|p| *p > 0).is_none()
@@ -49,22 +45,20 @@ impl Remote {
             return None;
         }
         let parsed = value.parse::<Reference>().ok()?;
-        if parsed.registry != registry
-            || parsed.repo.split('/').any(|part| {
-                part.is_empty()
-                    || !part.bytes().all(|b| {
-                        b.is_ascii_lowercase() || b.is_ascii_digit() || b"._-".contains(&b)
-                    })
-                    || !part.as_bytes()[0].is_ascii_alphanumeric()
-                    || !part.as_bytes()[part.len() - 1].is_ascii_alphanumeric()
-            })
-        {
+        if parsed.registry() != registry && parsed.resolve_registry() != registry {
             return None;
         }
+        // Plans use one selector and SHA-256 identities. The upstream parser
+        // also permits tag+digest, other algorithms, and Unicode tag letters.
+        let selector = match (parsed.tag(), parsed.digest()) {
+            (Some(tag), None) if tag.is_ascii() => ReferenceKind::Tag(tag.into()),
+            (None, Some(digest)) => ReferenceKind::Digest(digest.parse().ok()?),
+            _ => return None,
+        };
         Some(Self {
-            registry: parsed.registry,
-            repository: parsed.repo,
-            selector: parsed.kind,
+            registry: parsed.registry().into(),
+            repository: parsed.repository().into(),
+            selector,
         })
     }
 
