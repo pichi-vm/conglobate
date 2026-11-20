@@ -434,7 +434,7 @@ dependencies = [
 [[package]]
 name = "devmap-core"
 version = "0.1.0"
-source = "git+https://github.com/pichi-vm/devmap.git?branch=main#19a368a0083ad0cbe92e6a5b65e0bb5761f8616c"
+source = "git+https://github.com/pichi-vm/devmap.git?branch=main#7b162bfc069985041b33ba1fad6590e6d6a5323e"
 dependencies = [
  "iocuddle 0.4.0",
 ]
@@ -442,7 +442,7 @@ dependencies = [
 [[package]]
 name = "devmap-linux"
 version = "0.1.0"
-source = "git+https://github.com/pichi-vm/devmap.git?branch=main#19a368a0083ad0cbe92e6a5b65e0bb5761f8616c"
+source = "git+https://github.com/pichi-vm/devmap.git?branch=main#7b162bfc069985041b33ba1fad6590e6d6a5323e"
 dependencies = [
  "devmap-core",
  "iocuddle 0.4.0",
@@ -452,7 +452,7 @@ dependencies = [
 [[package]]
 name = "devmap-snapshot"
 version = "0.1.0"
-source = "git+https://github.com/pichi-vm/devmap.git?branch=main#19a368a0083ad0cbe92e6a5b65e0bb5761f8616c"
+source = "git+https://github.com/pichi-vm/devmap.git?branch=main#7b162bfc069985041b33ba1fad6590e6d6a5323e"
 dependencies = [
  "devmap-core",
  "devmap-linux",
@@ -461,7 +461,7 @@ dependencies = [
 [[package]]
 name = "devmap-verity"
 version = "0.1.0"
-source = "git+https://github.com/pichi-vm/devmap.git?branch=main#19a368a0083ad0cbe92e6a5b65e0bb5761f8616c"
+source = "git+https://github.com/pichi-vm/devmap.git?branch=main#7b162bfc069985041b33ba1fad6590e6d6a5323e"
 dependencies = [
  "devmap-core",
  "devmap-linux",

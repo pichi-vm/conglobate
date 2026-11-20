@@ -251,7 +251,6 @@ mod tests {
                 ("data-block-size", "4096"),
                 ("hash-block-size", "4096"),
                 ("version", "1"),
-                ("hash-type", "1"),
                 ("hash", &Digest::Sha256(parent).to_string()),
             ]
             .into_iter()
@@ -266,7 +265,7 @@ mod tests {
                     config.len() as u64,
                 ),
                 layers,
-                annotations,
+                annotations: annotations.try_into().unwrap(),
             };
             blobs.push((config_digest, config));
             for (digest, bytes) in &blobs {

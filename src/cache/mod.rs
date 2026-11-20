@@ -419,12 +419,13 @@ pub(crate) mod tests {
                     ("data-block-size", "4096"),
                     ("hash-block-size", "4096"),
                     ("version", "1"),
-                    ("hash-type", "1"),
                     ("hash", &crate::artifact::Digest::Sha256(root).to_string()),
                 ]
                 .into_iter()
                 .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.to_owned()))
-                .collect(),
+                .collect::<std::collections::BTreeMap<_, _>>()
+                .try_into()
+                .unwrap(),
             };
             serde_json::to_vec(&manifest).unwrap()
         }
@@ -587,8 +588,8 @@ pub(crate) mod tests {
         let (layer, root) = store.scute(&[7; 8192], [0; 32], true);
         let mut manifest: serde_json::Value =
             serde_json::from_slice(&store.manifest_bytes(vec![layer], root)).unwrap();
-        manifest["annotations"]["dev.pichi.carapace.verity.version"] = "99".into();
-        manifest["annotations"]["dev.pichi.carapace.verity.hash-type"] = "0".into();
+        manifest["annotations"]["dev.pichi.carapace.verity.version"] = "1".into();
+        manifest["annotations"]["dev.pichi.carapace.verity.hash-block-size"] = "8192".into();
         let bytes = serde_json::to_vec(&manifest).unwrap();
         let digest = store.put(&bytes);
         let cache = store.open();

@@ -19,20 +19,15 @@ pub(crate) struct AssembledImage {
     image: ResolvedImage,
 }
 impl AssembledImage {
-    fn verity_defaults() -> [(&'static str, u32); 4] {
+    fn verity_defaults() -> [(&'static str, u32); 3] {
         [
             ("dev.pichi.carapace.verity.data-block-size", 4096),
             ("dev.pichi.carapace.verity.hash-block-size", 4096),
             ("dev.pichi.carapace.verity.version", 1),
-            ("dev.pichi.carapace.verity.hash-type", 1),
         ]
     }
     fn set_tip_annotation(manifest: &mut serde_json::Value, root: Option<[u8; 32]>) {
         if let Some(root) = root {
-            manifest["annotations"]
-                .as_object_mut()
-                .expect("manifest annotations")
-                .remove("dev.pichi.carapace.verity.algo");
             manifest["annotations"][CARAPACE_ROOT_ANNOTATION] =
                 Digest::Sha256(root).to_string().into();
         }
