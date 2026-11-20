@@ -189,9 +189,9 @@ impl<'b, 'w> StageOutput<'b, 'w> {
             build.cache(),
             &self,
             build.captured().graph().plan().requirements.as_ref(),
+            build.captured().provenance(request)?,
             staged,
-        )?
-        .bind_build(request, build.captured())?;
+        )?;
         Ok(CompletedImage { image })
     }
 }
@@ -246,7 +246,8 @@ mod tests {
         }
         fn image(&mut self, name: &str, seed: Option<u8>, boot: bool, config: Option<&str>) {
             let mut layers = Vec::new();
-            let mut annotations = serde_json::json!({"example.org/source":name});
+            let mut annotations = serde_json::to_value(crate::cache::tests::provenance()).unwrap();
+            annotations["example.org/source"] = name.into();
             if let Some(seed) = seed {
                 let bytes = vec![seed; 8192];
                 let (_, tree, hash) = bytes.scute_files([0; 32]);

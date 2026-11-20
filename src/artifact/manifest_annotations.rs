@@ -1,15 +1,18 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{CarapaceVerity, OciAnnotations};
+use super::{BuildProvenance, CarapaceVerity, OciAnnotations};
 use serde::{Deserialize, Serialize};
 
 /// Typed view of manifest annotations; assembly preserves the original JSON.
-#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ManifestAnnotations {
     /// Informational OCI metadata, independent of platform selection.
     #[serde(flatten)]
     pub oci: OciAnnotations,
+    /// Required source binding for the build.
+    #[serde(flatten)]
+    pub build: BuildProvenance,
     /// Carapace identity and reconstruction parameters.
     #[serde(flatten)]
     pub verity: CarapaceVerity,
@@ -21,18 +24,32 @@ mod tests {
     use crate::artifact::Digest;
     use serde_json::json;
 
+    fn with_provenance(extra: serde_json::Value) -> serde_json::Value {
+        let mut values = json!({
+            "dev.pichi.build.commit": format!("sha1:{}", "ab".repeat(20)),
+            "dev.pichi.build.context": ".",
+            "dev.pichi.build.plan": "plan.yaml"
+        });
+        values
+            .as_object_mut()
+            .unwrap()
+            .extend(extra.as_object().unwrap().clone());
+        values
+    }
+
     #[test]
     fn decode_applies_defaults_and_accepts_native_spellings() {
-        let empty: ManifestAnnotations = serde_json::from_str("{}").unwrap();
-        assert_eq!(empty, ManifestAnnotations::default());
-        assert_eq!(serde_json::to_value(empty).unwrap(), json!({}));
-        let decoded: ManifestAnnotations = serde_json::from_value(json!({
+        let minimal = with_provenance(json!({}));
+        let decoded: ManifestAnnotations = serde_json::from_value(minimal.clone()).unwrap();
+        assert_eq!(decoded.verity, CarapaceVerity::default());
+        assert_eq!(serde_json::to_value(decoded).unwrap(), minimal);
+        let decoded: ManifestAnnotations = serde_json::from_value(with_provenance(json!({
             "dev.pichi.carapace.verity.hash": format!("sha256:{}", "AB".repeat(32)),
             "dev.pichi.carapace.verity.data-block-size": "02048",
             "dev.pichi.carapace.verity.hash-block-size": "+8192",
             "dev.pichi.carapace.verity.version": "01",
             "example.org/source": "retained in raw JSON"
-        }))
+        })))
         .unwrap();
         assert_eq!(decoded.verity.root, Some(Digest::Sha256([0xab; 32])));
         assert_eq!(decoded.verity.data_block_size.bytes().get(), 2048);
@@ -55,37 +72,61 @@ mod tests {
         ] {
             let value = json!({ format!("dev.pichi.carapace.verity.{key}"): value });
             assert!(
-                serde_json::from_value::<ManifestAnnotations>(value).is_err(),
+                serde_json::from_value::<ManifestAnnotations>(with_provenance(value)).is_err(),
                 "{key}"
             );
         }
         assert!(
-            serde_json::from_value::<ManifestAnnotations>(json!({
+            serde_json::from_value::<ManifestAnnotations>(with_provenance(json!({
                 "dev.pichi.carapace.verity.hash": 1
-            }))
+            })))
             .is_err()
         );
     }
 
     #[test]
     fn decode_ignores_unknown_fields_and_accepts_absent_root() {
-        let decoded: ManifestAnnotations = serde_json::from_value(json!({
+        let decoded: ManifestAnnotations = serde_json::from_value(with_provenance(json!({
             "dev.pichi.carapace.verity.hash": null,
             "dev.pichi.carapace.verity.algo": "sha512",
             "dev.pichi.carapace.verity.hash-type": "0",
             "example.org/source": {"unknown": true}
-        }))
+        })))
         .unwrap();
-        assert_eq!(decoded, ManifestAnnotations::default());
+        assert_eq!(decoded.verity, CarapaceVerity::default());
+    }
+
+    #[test]
+    fn provenance_requires_source_facts_without_inventing_optional_values() {
+        let value = with_provenance(json!({}));
+        assert!(serde_json::from_value::<ManifestAnnotations>(json!({})).is_err());
+        for key in ["commit", "context", "plan"] {
+            let key = format!("dev.pichi.build.{key}");
+            let mut missing = value.clone();
+            missing.as_object_mut().unwrap().remove(&key);
+            assert!(serde_json::from_value::<ManifestAnnotations>(missing).is_err());
+        }
+        let decoded: ManifestAnnotations = serde_json::from_value(value).unwrap();
+        assert!(decoded.build.lock.is_none());
+        assert!(decoded.build.location.is_none());
+        assert!(!*decoded.build.bootstrapped);
+        for (key, value) in [("commit", "sha1:abcd"), ("bootstrapped", "yes")] {
+            assert!(
+                serde_json::from_value::<ManifestAnnotations>(with_provenance(json!({
+                    format!("dev.pichi.build.{key}"): value
+                })))
+                .is_err()
+            );
+        }
     }
 
     #[test]
     fn oci_annotations_preserve_informational_strings() {
-        let values = json!({
+        let values = with_provenance(json!({
             "org.opencontainers.image.created": "2026-05-06T14:32:00+05:30",
             "org.opencontainers.image.source": "https://example.org/source",
             "org.opencontainers.image.architecture": "informational-hint"
-        });
+        }));
         let decoded: ManifestAnnotations = serde_json::from_value(values.clone()).unwrap();
         assert_eq!(
             decoded.oci.created.as_deref(),
@@ -101,9 +142,9 @@ mod tests {
         );
         assert_eq!(serde_json::to_value(decoded).unwrap(), values);
         assert!(
-            serde_json::from_value::<ManifestAnnotations>(json!({
+            serde_json::from_value::<ManifestAnnotations>(with_provenance(json!({
                 "org.opencontainers.image.created": 123
-            }))
+            })))
             .is_err()
         );
     }

@@ -88,10 +88,7 @@ impl Cache {
         if ContentDigest::Sha256(Sha256::digest(&bytes).into()) != *digest {
             return Err(CacheError::Invalid("metadata content mismatch"));
         }
-        Ok(VerifiedMetadata {
-            digest: digest.clone(),
-            bytes,
-        })
+        Ok(VerifiedMetadata { bytes })
     }
     fn read_metadata(
         &self,
@@ -157,13 +154,9 @@ impl Cache {
 
 #[derive(Debug)]
 pub(crate) struct VerifiedMetadata {
-    digest: ContentDigest,
     bytes: Vec<u8>,
 }
 impl VerifiedMetadata {
-    pub(crate) fn digest(&self) -> &ContentDigest {
-        &self.digest
-    }
     pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
     }
@@ -171,6 +164,17 @@ impl VerifiedMetadata {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    pub(crate) fn provenance() -> crate::artifact::BuildProvenance {
+        crate::artifact::BuildProvenance {
+            commit: crate::artifact::Digest::Sha1([0xab; 20]),
+            context: ".".into(),
+            plan: "plan.yaml".into(),
+            lock: None,
+            location: None,
+            bootstrapped: false.into(),
+        }
+    }
+
     use crate::artifact::Digest;
     use crate::artifact::Media as _;
     use crate::cache::Cache;
@@ -264,7 +268,11 @@ pub(crate) mod tests {
                     )
                 },
                 layers: Vec::new(),
-                annotations: Default::default(),
+                annotations: crate::artifact::ManifestAnnotations {
+                    oci: Default::default(),
+                    build: provenance(),
+                    verity: Default::default(),
+                },
             };
             let bytes = serde_json::to_vec(&manifest).unwrap();
             (self.put(&bytes), bytes)
@@ -296,7 +304,6 @@ pub(crate) mod tests {
         let pin = store.index(vec![unrelated, selected]);
         let image = store.open().resolve(pin).unwrap();
         assert_eq!(image.manifest_bytes().bytes(), bytes);
-        assert_eq!(image.manifest_bytes().digest(), &digest);
     }
 
     #[test]
@@ -434,6 +441,7 @@ pub(crate) mod tests {
                 layers,
                 annotations: crate::artifact::ManifestAnnotations {
                     oci: Default::default(),
+                    build: provenance(),
                     verity: crate::artifact::CarapaceVerity {
                         root: Some(crate::artifact::Digest::Sha256(root)),
                         ..Default::default()
