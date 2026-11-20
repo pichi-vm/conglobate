@@ -413,16 +413,12 @@ pub(crate) mod tests {
                 artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
                 config: crate::artifact::ConfigDescriptor::canonical(),
                 layers,
-                annotations: [
-                    ("data-block-size", "4096"),
-                    ("hash-block-size", "4096"),
-                    ("version", "1"),
-                    ("hash-type", "1"),
-                    ("hash", &crate::artifact::Digest::Sha256(root).to_string()),
-                ]
-                .into_iter()
-                .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.to_owned()))
-                .collect(),
+                annotations: crate::artifact::ManifestAnnotations {
+                    verity: crate::artifact::CarapaceVerity {
+                        root: Some(crate::artifact::Digest::Sha256(root)),
+                        ..Default::default()
+                    },
+                },
             };
             serde_json::to_vec(&manifest).unwrap()
         }
@@ -580,21 +576,20 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn reconstruction_annotations_do_not_configure_execution() {
+    fn unsupported_reconstruction_parameters_fail_at_decode() {
         let store = Store::new();
         let (layer, root) = store.scute(&[7; 8192], [0; 32], true);
         let mut manifest: serde_json::Value =
             serde_json::from_slice(&store.manifest_bytes(vec![layer], root)).unwrap();
         manifest["annotations"]["dev.pichi.carapace.verity.version"] = "99".into();
-        manifest["annotations"]["dev.pichi.carapace.verity.hash-type"] = "0".into();
         let bytes = serde_json::to_vec(&manifest).unwrap();
         let digest = store.put(&bytes);
-        let cache = store.open();
-        let image = cache
-            .resolve(store.index(vec![store.descriptor(&digest, bytes.len())]))
-            .unwrap();
-        assert_eq!(image.root(), Some(root));
-        cache.verify_metadata(&image).unwrap();
+        assert!(
+            store
+                .open()
+                .resolve(store.index(vec![store.descriptor(&digest, bytes.len())]))
+                .is_err()
+        );
     }
 
     #[test]

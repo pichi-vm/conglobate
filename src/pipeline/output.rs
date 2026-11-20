@@ -263,17 +263,16 @@ mod tests {
                         "dev.pichi.scute.verity.digest": Digest::Sha256(Sha256::digest(&tree).into()).to_string(),
                     }
                 }));
-                // Exercise reuse of currently published, legacy-form inputs.
+                // Exercise normalization of explicit default parameters.
                 for (key, value) in [
-                    ("algo", "sha256"),
                     ("data-block-size", "4096"),
                     ("hash-block-size", "4096"),
                     ("version", "1"),
-                    ("hash-type", "1"),
                 ] {
                     annotations[format!("dev.pichi.carapace.verity.{key}")] = value.into();
                 }
-                annotations["dev.pichi.carapace.verity.hash"] = hex::encode(hash).into();
+                annotations["dev.pichi.carapace.verity.hash"] =
+                    Digest::Sha256(hash).to_string().into();
             }
             if boot {
                 let bytes = b"opaque PMI".to_vec();
@@ -405,27 +404,21 @@ mod tests {
                 .unwrap()
                 .parse()
                 .unwrap();
-            let manifest: crate::artifact::Manifest = serde_json::from_slice(
-                &fs::read(destination.join("blobs/sha256").join(digest.hex())).unwrap(),
-            )
-            .unwrap();
+            let bytes = fs::read(destination.join("blobs/sha256").join(digest.hex())).unwrap();
+            let manifest: crate::artifact::Manifest = serde_json::from_slice(&bytes).unwrap();
+            let wire: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            let annotations = wire["annotations"].as_object().unwrap();
             assert_eq!(manifest.carapace_root().unwrap().is_some(), root);
-            assert!(
-                !manifest
-                    .annotations
-                    .contains_key("dev.pichi.carapace.verity.algo")
-            );
+            assert!(!annotations.contains_key("dev.pichi.carapace.verity.algo"));
             if let Some(root) = manifest.carapace_root().unwrap() {
                 assert_eq!(
-                    manifest.annotations["dev.pichi.carapace.verity.hash"],
+                    annotations["dev.pichi.carapace.verity.hash"],
                     Digest::Sha256(root).to_string()
                 );
             }
             for parameter in ["data-block-size", "hash-block-size", "version", "hash-type"] {
                 assert!(
-                    !manifest
-                        .annotations
-                        .contains_key(&format!("dev.pichi.carapace.verity.{parameter}"))
+                    !annotations.contains_key(&format!("dev.pichi.carapace.verity.{parameter}"))
                 );
             }
             assert_eq!(
@@ -463,9 +456,7 @@ mod tests {
         };
         let mut index = read(&fixture.pins["registry.test/root:1"]);
         let mut manifest = read(index["manifests"][0]["digest"].as_str().unwrap());
-        manifest["annotations"]["dev.pichi.carapace.verity.hash-type"] = "0".into();
         manifest["annotations"]["dev.pichi.carapace.verity.hash-block-size"] = "8192".into();
-        manifest["annotations"]["dev.pichi.carapace.verity.version"] = "2".into();
         manifest["annotations"]["dev.pichi.carapace.verity.data-block-size"] = "04096".into();
         let bytes = serde_json::to_vec(&manifest).unwrap();
         index["manifests"][0]["digest"] = fixture.blob(&bytes).into();
@@ -477,13 +468,13 @@ mod tests {
         let selected = fixture.selected(&build);
         let assembled =
             AssembledImage::components(build.cache(), &selected, None, request.output()).unwrap();
-        let annotations = &assembled.image().manifest().annotations;
-        assert_eq!(annotations["dev.pichi.carapace.verity.hash-type"], "0");
+        let wire: serde_json::Value =
+            serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
+        let annotations = wire["annotations"].as_object().unwrap();
         assert_eq!(
             annotations["dev.pichi.carapace.verity.hash-block-size"],
             "8192"
         );
-        assert_eq!(annotations["dev.pichi.carapace.verity.version"], "2");
         assert!(!annotations.contains_key("dev.pichi.carapace.verity.data-block-size"));
         assert_eq!(assembled.image().root(), Some(fixture.roots["root"]));
     }
@@ -628,9 +619,12 @@ mod tests {
             .assemble(&request, &build)
             .unwrap();
         let manifest = assembled.image.image().manifest();
-        assert_eq!(manifest.annotations["dev.pichi.build.bootstrapped"], "true");
-        assert!(!manifest.annotations.contains_key("dev.pichi.build.lock"));
-        assert!(manifest.annotations.contains_key("dev.pichi.build.commit"));
+        let wire: serde_json::Value =
+            serde_json::from_slice(assembled.image.image().manifest_bytes().bytes()).unwrap();
+        let annotations = wire["annotations"].as_object().unwrap();
+        assert_eq!(annotations["dev.pichi.build.bootstrapped"], "true");
+        assert!(!annotations.contains_key("dev.pichi.build.lock"));
+        assert!(annotations.contains_key("dev.pichi.build.commit"));
         assert_eq!(manifest.layers, image.image().manifest().layers);
     }
 
@@ -751,10 +745,9 @@ mod tests {
             let assembled =
                 AssembledImage::components(build.cache(), &selected, None, request.output())
                     .unwrap();
-            assert_eq!(
-                assembled.image().manifest().annotations["example.org/source"],
-                metadata
-            );
+            let wire: serde_json::Value =
+                serde_json::from_slice(assembled.image().manifest_bytes().bytes()).unwrap();
+            assert_eq!(wire["annotations"]["example.org/source"], metadata);
             // Inputs contain no prepared scutes. Reading a source root would fail.
             if root {
                 let expected = &fixture.roots[metadata];

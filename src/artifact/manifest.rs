@@ -9,8 +9,8 @@
 //! tagged on `mediaType`), `ConfigDescriptor` for the OCI 1.1 empty-config
 //! pattern, and `validate()` enforcing all six D-07 rules.
 
-use super::{AsString, BootConfigDescriptor, Digest};
-use std::collections::BTreeMap;
+use super::{AsString, BootConfigDescriptor, Digest, ManifestAnnotations};
+use crate::is_default::IsDefault;
 
 use devmap_verity::Salt;
 use serde::{Deserialize, Serialize};
@@ -22,17 +22,7 @@ use crate::artifact::media_type::{
     MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
 
-/// Chain-wide verity parameters. Absent fields default to 4096-byte data/hash
-/// blocks, superblock version 1 and hash type 1. Producers omit default values.
-const CHAIN_ANNOTATION_VERITY_ALGO: &str = "dev.pichi.carapace.verity.algo";
-const CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE: &str = "dev.pichi.carapace.verity.data-block-size";
-const CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE: &str = "dev.pichi.carapace.verity.hash-block-size";
-/// dm-verity superblock `version` and `hash_type` — reconstruction inputs that
-/// were previously hardcoded in the builder rather than conveyed.
-const CHAIN_ANNOTATION_VERITY_VERSION: &str = "dev.pichi.carapace.verity.version";
-const CHAIN_ANNOTATION_VERITY_HASH_TYPE: &str = "dev.pichi.carapace.verity.hash-type";
-
-/// Algorithm-qualified SHA-256 root of the final scute (sha256:<lowercase hex>).
+/// Algorithm-qualified SHA-256 root of the final scute.
 pub const CARAPACE_ROOT_ANNOTATION: &str = "dev.pichi.carapace.verity.hash";
 
 /// Canonical SHA-256 digest of `{}` (the OCI 1.1 empty config blob).
@@ -74,13 +64,10 @@ pub struct Manifest {
     /// Typed layer descriptors. Scutes appear in base-to-tip chain order;
     /// PMI and boot configuration descriptors are outside that order.
     pub layers: Vec<Layer>,
-    /// Top-level annotations. With scutes, MUST include
-    /// `dev.pichi.carapace.verity.hash`; parameters default to 4096-byte data/hash
-    /// blocks, version 1 and hash type 1. SHOULD include
-    /// `org.opencontainers.image.created` (D-06).
-    /// `BTreeMap` for byte-stable JSON serialisation (lexicographic key order).
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub annotations: BTreeMap<String, String>,
+    /// Typed annotation view. Verity parameters have native defaults;
+    /// unrelated annotations remain in the original manifest bytes.
+    #[serde(default, skip_serializing_if = "IsDefault::is_default")]
+    pub annotations: ManifestAnnotations,
 }
 
 /// The manifest `config` descriptor. Either the OCI 1.1 empty config (inline
@@ -317,9 +304,7 @@ pub enum ManifestValidationError {
     /// D-07 rule 3: required chain annotation key is absent.
     #[error("missing required chain annotation: {0}")]
     MissingChainAnnotation(&'static str),
-    /// A chain annotation is present but malformed (e.g. non-integer
-    /// version/hash-type). This is a well-formedness check only — pichi imposes
-    /// no value whitelist (that is the guest consumer's control per the spec).
+    /// The chain root contradicts the manifest's scute structure.
     #[error("chain annotation {key} is malformed: {value}")]
     BadChainAnnotation {
         /// The annotation key.
@@ -363,40 +348,22 @@ pub enum ManifestValidationError {
 
 impl Manifest {
     /// The chain-tip commitment, present exactly when this artifact has scutes.
-    /// This parses the wire value; consumers must authenticate the manifest and
+    /// Consumers must authenticate the manifest and
     /// verify scute reads against this root before using their contents.
     pub fn carapace_root(&self) -> Result<Option<[u8; 32]>, ManifestValidationError> {
-        let value = self.annotations.get(CARAPACE_ROOT_ANNOTATION);
-        if !self.has_scutes() && value.is_none() {
+        let root = self.annotations.verity.root.as_ref();
+        if !self.has_scutes() && root.is_none() {
             return Ok(None);
         }
-        let value = value.ok_or(ManifestValidationError::MissingChainAnnotation(
+        let root = root.ok_or(ManifestValidationError::MissingChainAnnotation(
             CARAPACE_ROOT_ANNOTATION,
         ))?;
-        // Legacy images use bare roots plus an explicit algorithm.
-        // New output uses only the qualified form; never accept two declarations.
-        let wire = match (
-            value.contains(':'),
-            self.annotations
-                .get(CHAIN_ANNOTATION_VERITY_ALGO)
-                .map(String::as_str),
-        ) {
-            (true, None) => value.clone(),
-            (false, Some("sha256")) => format!("sha256:{value}"),
-            _ => {
-                return Err(ManifestValidationError::BadChainAnnotation {
-                    key: CARAPACE_ROOT_ANNOTATION,
-                    value: value.clone(),
-                });
-            }
-        };
-        let root = wire.parse::<Digest>().ok().filter(|digest| {
-            self.has_scutes() && digest.to_string() == wire && digest.as_sha256_array() != [0; 32]
-        });
-        let root = root.ok_or_else(|| ManifestValidationError::BadChainAnnotation {
-            key: CARAPACE_ROOT_ANNOTATION,
-            value: value.clone(),
-        })?;
+        if !self.has_scutes() || root.as_sha256_array() == [0; 32] {
+            return Err(ManifestValidationError::BadChainAnnotation {
+                key: CARAPACE_ROOT_ANNOTATION,
+                value: root.to_string(),
+            });
+        }
         Ok(Some(root.as_sha256_array()))
     }
 
@@ -435,25 +402,7 @@ impl Manifest {
                 media_type: c.media_type.clone(),
             });
         }
-        // The chain root is required for scutes; reconstruction overrides
-        // are optional. Consumers decide which well-formed values they support.
         self.carapace_root()?;
-        if self.has_scutes() {
-            for key in [
-                CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE,
-                CHAIN_ANNOTATION_VERITY_VERSION,
-                CHAIN_ANNOTATION_VERITY_HASH_TYPE,
-            ] {
-                if let Some(value) = self.annotations.get(key)
-                    && value.parse::<u32>().is_err()
-                {
-                    return Err(ManifestValidationError::BadChainAnnotation {
-                        key,
-                        value: value.clone(),
-                    });
-                }
-            }
-        }
         // Rule 5 (out of order — bail early on count): at most one PMI
         let pmi_count = self
             .layers
@@ -484,19 +433,7 @@ impl Manifest {
                 continue;
             };
             let blocks = d.annotations.data_blocks.get();
-            let value = self
-                .annotations
-                .get(CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE)
-                .map(String::as_str)
-                .unwrap_or("4096");
-            let block_size = value
-                .parse::<u32>()
-                .ok()
-                .filter(|size| *size != 0)
-                .ok_or_else(|| ManifestValidationError::BadChainAnnotation {
-                    key: CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
-                    value: value.into(),
-                })?;
+            let block_size = self.annotations.verity.data_block_size.bytes().get();
             if blocks.checked_mul(u64::from(block_size)).is_none()
                 || (matches!(layer, Layer::Scute(_))
                     && blocks != d.size.div_ceil(u64::from(block_size)))
@@ -561,7 +498,7 @@ mod tests {
                 let mut manifest = sample_base_manifest();
                 if !root {
                     manifest.layers.clear();
-                    manifest.annotations.clear();
+                    manifest.annotations = Default::default();
                 }
                 manifest.layers.push(encoded.clone());
                 manifest
@@ -603,7 +540,7 @@ mod tests {
             let mut manifest = sample_base_manifest();
             if !root {
                 manifest.layers.clear();
-                manifest.annotations.clear();
+                manifest.annotations = Default::default();
             }
             manifest.layers.push(config.clone());
             assert!(matches!(
@@ -757,29 +694,6 @@ mod tests {
         ));
     }
 
-    fn sample_chain_annotations() -> BTreeMap<String, String> {
-        let mut a = BTreeMap::new();
-        a.insert(
-            CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE.into(),
-            "4096".into(),
-        );
-        a.insert(
-            CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE.into(),
-            "4096".into(),
-        );
-        a.insert(CHAIN_ANNOTATION_VERITY_VERSION.into(), "1".into());
-        a.insert(CHAIN_ANNOTATION_VERITY_HASH_TYPE.into(), "1".into());
-        a.insert(
-            CARAPACE_ROOT_ANNOTATION.into(),
-            format!("sha256:{}", "ab".repeat(32)),
-        );
-        a.insert(
-            "org.opencontainers.image.created".into(),
-            "2026-05-06T14:32:00Z".into(),
-        );
-        a
-    }
-
     fn sample_base_manifest() -> Manifest {
         Manifest {
             schema_version: 2,
@@ -797,7 +711,12 @@ mod tests {
                     salt: Salt::new(&[0; 32]).unwrap().into(),
                 },
             })],
-            annotations: sample_chain_annotations(),
+            annotations: ManifestAnnotations {
+                verity: super::super::CarapaceVerity {
+                    root: Some(Digest::Sha256([0xab; 32])),
+                    ..Default::default()
+                },
+            },
         }
     }
 
@@ -877,20 +796,12 @@ mod tests {
     #[test]
     fn validate_accepts_omitted_and_partial_verity_defaults() {
         let mut m = sample_base_manifest();
-        for key in [
-            CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
-            CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE,
-            CHAIN_ANNOTATION_VERITY_VERSION,
-            CHAIN_ANNOTATION_VERITY_HASH_TYPE,
-        ] {
-            m.annotations.remove(key);
-            m.validate().unwrap();
-        }
+        m.validate().unwrap();
         assert_eq!(m.carapace_root().unwrap(), Some([0xab; 32]));
-        m.annotations.insert(
-            CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE.into(),
-            "2048".into(),
-        );
+        m.annotations.verity.data_block_size = "2048"
+            .parse::<devmap_core::BlockSize<devmap_verity::Constraint>>()
+            .unwrap()
+            .into();
         let Layer::Scute(scute) = &mut m.layers[0] else {
             unreachable!()
         };
@@ -977,134 +888,26 @@ mod tests {
     }
 
     #[test]
-    fn legacy_roots_require_an_explicit_supported_algorithm() {
-        let mut manifest = sample_base_manifest();
-        manifest
-            .annotations
-            .insert(CARAPACE_ROOT_ANNOTATION.into(), "ab".repeat(32));
-        manifest
-            .annotations
-            .insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), "sha256".into());
-        assert_eq!(manifest.carapace_root().unwrap(), Some([0xab; 32]));
-        manifest.validate().unwrap();
-        for algorithm in ["", "sha512", "SHA256"] {
-            manifest
-                .annotations
-                .insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), algorithm.into());
-            assert!(manifest.validate().is_err());
-        }
-        manifest
-            .annotations
-            .insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), "sha256".into());
-        for value in [
-            "00".repeat(32),
-            "gg".repeat(32),
-            "AB".repeat(32),
-            "ab".repeat(33),
-        ] {
-            manifest
-                .annotations
-                .insert(CARAPACE_ROOT_ANNOTATION.into(), value);
-            assert!(manifest.validate().is_err());
-        }
-    }
-
-    #[test]
-    fn validate_rejects_retired_algorithm_annotation() {
-        for algorithm in ["sha256", "sha512", ""] {
-            let mut manifest = sample_base_manifest();
-            manifest
-                .annotations
-                .insert(CHAIN_ANNOTATION_VERITY_ALGO.into(), algorithm.into());
-            assert!(matches!(
-                manifest.validate(),
-                Err(ManifestValidationError::BadChainAnnotation {
-                    key: CARAPACE_ROOT_ANNOTATION,
-                    ..
-                })
-            ));
-        }
-    }
-
-    #[test]
     fn validate_requires_one_nonzero_chain_tip() {
         let mut m = sample_base_manifest();
         assert_eq!(m.carapace_root().unwrap(), Some([0xab; 32]));
-        m.annotations.remove(CARAPACE_ROOT_ANNOTATION);
+        m.annotations.verity.root = None;
         assert!(matches!(
             m.validate(),
-            Err(ManifestValidationError::MissingChainAnnotation(
-                CARAPACE_ROOT_ANNOTATION
-            ))
+            Err(ManifestValidationError::MissingChainAnnotation(_))
         ));
-        for invalid in [
-            "".into(),
-            "deadbeef".into(),
-            "gg".repeat(32),
-            "00".repeat(32),
-            "ab".repeat(33),
-            "ab".repeat(32),
-            format!("sha256:{}", "gg".repeat(32)),
-            format!("sha256:{}", "00".repeat(32)),
-            format!("sha512:{}", "ab".repeat(32)),
-            format!("sha256:{}", "AB".repeat(32)),
-            format!("sha256:{}", "ab".repeat(33)),
-        ] {
-            m.annotations
-                .insert(CARAPACE_ROOT_ANNOTATION.into(), invalid);
-            assert!(matches!(
-                m.validate(),
-                Err(ManifestValidationError::BadChainAnnotation {
-                    key: CARAPACE_ROOT_ANNOTATION,
-                    ..
-                })
-            ));
-        }
-        m.annotations.insert(
-            CARAPACE_ROOT_ANNOTATION.into(),
-            format!("sha256:{}", "ab".repeat(32)),
-        );
+        m.annotations.verity.root = Some(Digest::Sha256([0; 32]));
+        assert!(matches!(
+            m.validate(),
+            Err(ManifestValidationError::BadChainAnnotation { .. })
+        ));
+        m.annotations.verity.root = Some(Digest::Sha256([0xab; 32]));
         m.validate().unwrap();
         m.layers.clear();
         assert!(m.validate().is_err());
-        m.annotations.clear();
+        m.annotations = Default::default();
         m.validate().unwrap();
         assert_eq!(m.carapace_root().unwrap(), None);
-    }
-
-    #[test]
-    fn validate_rejects_malformed_optional_parameters() {
-        for key in [
-            CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE,
-            CHAIN_ANNOTATION_VERITY_HASH_BLOCK_SIZE,
-            CHAIN_ANNOTATION_VERITY_VERSION,
-            CHAIN_ANNOTATION_VERITY_HASH_TYPE,
-        ] {
-            for value in ["", "invalid", "-1", "4294967296"] {
-                let mut m = sample_base_manifest();
-                m.annotations.insert(key.into(), value.into());
-                assert!(matches!(
-                    m.validate(),
-                    Err(ManifestValidationError::BadChainAnnotation { .. })
-                ));
-            }
-        }
-    }
-
-    #[test]
-    fn validate_rejects_malformed_verity_version() {
-        // Well-formedness only: non-integer version is rejected (but any integer
-        // is accepted — pichi imposes no value whitelist).
-        let mut m = sample_base_manifest();
-        m.annotations.insert(
-            CHAIN_ANNOTATION_VERITY_VERSION.into(),
-            "not-a-number".into(),
-        );
-        assert!(matches!(
-            m.validate().unwrap_err(),
-            ManifestValidationError::BadChainAnnotation { key, .. }
-                if key == CHAIN_ANNOTATION_VERITY_VERSION
-        ));
     }
 
     #[test]
@@ -1117,7 +920,7 @@ mod tests {
             digest: Digest::Sha256([0x22; 32]),
             size: 4096,
         }));
-        m.annotations.clear();
+        m.annotations = Default::default();
         m.validate().unwrap();
     }
 
