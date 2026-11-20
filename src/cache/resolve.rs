@@ -68,7 +68,7 @@ impl Cache {
         let bytes =
             Self::read_metadata_file(self.regular_file(std::path::Path::new("index.json"))?, None)?;
         let index: Index = serde_json::from_slice(&bytes)?;
-        if index.schema_version != 2 || index.media_type != INDEX {
+        if index.media_type != INDEX {
             return Err(CacheError::Invalid("invalid local cache index"));
         }
         Ok(index)
@@ -102,7 +102,7 @@ impl Cache {
         let architecture = HostArchitecture::current()?;
         let index = self.metadata(&Digest::Sha256(*pin.bytes()), None)?;
         let parsed: Index = serde_json::from_slice(index.bytes())?;
-        if parsed.schema_version != 2 || parsed.media_type != INDEX {
+        if parsed.media_type != INDEX {
             return Err(CacheError::Invalid(
                 "lock must reference an OCI image index",
             ));
@@ -134,8 +134,8 @@ impl Cache {
         let manifest_bytes = self.metadata(&digest, Some(selected.size))?;
         let manifest: Manifest = serde_json::from_slice(manifest_bytes.bytes())?;
         manifest.validate()?;
-        // The shared format validates artifact contents, not the OCI envelope.
-        if manifest.schema_version != 2 || manifest.media_type != MANIFEST {
+        // Media type is still checked at this lookup boundary.
+        if manifest.media_type != MANIFEST {
             return Err(CacheError::Invalid("invalid manifest envelope"));
         }
         Ok(ResolvedImage {
@@ -259,7 +259,7 @@ mod tests {
             .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.into()))
             .collect();
             let manifest = Manifest {
-                schema_version: 2,
+                schema_version: Default::default(),
                 media_type: MANIFEST.into(),
                 artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
                 config: crate::artifact::ConfigDescriptor::for_config(

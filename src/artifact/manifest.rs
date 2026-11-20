@@ -12,6 +12,7 @@
 use super::{AsString, BootConfigDescriptor, Digest};
 use std::collections::BTreeMap;
 
+use crate::plan::Version;
 use devmap_verity::Salt;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -58,7 +59,7 @@ const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 pub struct Manifest {
     /// Always `2` for OCI 1.1.
     #[serde(rename = "schemaVersion")]
-    pub schema_version: u32,
+    pub schema_version: Version<2>,
     /// OCI image manifest media type (`application/vnd.oci.image.manifest.v1+json`).
     /// Carried as `String` (NOT `Option`) per D-03 — the pichi manifest is always
     /// the OCI 1.1 image manifest envelope.
@@ -782,7 +783,7 @@ mod tests {
 
     fn sample_base_manifest() -> Manifest {
         Manifest {
-            schema_version: 2,
+            schema_version: Version,
             media_type: "application/vnd.oci.image.manifest.v1+json".into(),
             artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
             config: ConfigDescriptor::canonical(),

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::plan::Version;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -11,7 +12,7 @@ pub const MEDIA_TYPE_OCI_MANIFEST_V1: &str = "application/vnd.oci.image.manifest
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Index {
-    pub schema_version: u32,
+    pub schema_version: Version<2>,
     pub media_type: String,
     pub manifests: Vec<IndexDescriptor>,
 }
@@ -19,7 +20,7 @@ pub struct Index {
 impl Default for Index {
     fn default() -> Self {
         Self {
-            schema_version: 2,
+            schema_version: Version,
             media_type: MEDIA_TYPE_OCI_INDEX_V1.into(),
             manifests: Vec::new(),
         }

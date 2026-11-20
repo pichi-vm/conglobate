@@ -252,7 +252,7 @@ pub(crate) mod tests {
     impl Store {
         fn manifest(&self) -> (Digest, Vec<u8>) {
             let manifest = crate::artifact::Manifest {
-                schema_version: 2,
+                schema_version: Default::default(),
                 media_type: "application/vnd.oci.image.manifest.v1+json".into(),
                 artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
                 config: crate::artifact::ConfigDescriptor::canonical(),
@@ -329,14 +329,13 @@ pub(crate) mod tests {
             let encoded = serde_json::to_vec(&manifest).unwrap();
             let digest = store.put(&encoded);
             let pin = store.index(vec![store.descriptor(&digest, encoded.len())]);
-            assert!(
-                store
-                    .open()
-                    .resolve(pin)
-                    .unwrap_err()
-                    .to_string()
-                    .contains("envelope")
-            );
+            assert!(store.open().resolve(pin).unwrap_err().to_string().contains(
+                if field == "schemaVersion" {
+                    "expected version 2"
+                } else {
+                    "envelope"
+                }
+            ));
         }
     }
 
@@ -408,7 +407,7 @@ pub(crate) mod tests {
         }
         fn manifest_bytes(&self, layers: Vec<crate::artifact::Layer>, root: [u8; 32]) -> Vec<u8> {
             let manifest = crate::artifact::Manifest {
-                schema_version: 2,
+                schema_version: Default::default(),
                 media_type: "application/vnd.oci.image.manifest.v1+json".into(),
                 artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
                 config: crate::artifact::ConfigDescriptor::canonical(),
