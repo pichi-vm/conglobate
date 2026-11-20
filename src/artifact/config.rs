@@ -20,20 +20,16 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::num::{NonZeroU32, NonZeroU64};
 
+use crate::plan::Version;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
-/// The config-blob schema version carried in-body. Bumped when the meaning of a
-/// field changes; consumers reject anything they don't understand.
-pub const CONFIG_SCHEMA_VERSION: u32 = 1;
 
 /// The pichi artifact config blob (`application/vnd.pichi.config.v1+json`).
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    /// Schema version (see [`CONFIG_SCHEMA_VERSION`]). Required on the wire so
+    /// Schema version 1. Required on the wire so
     /// the blob is self-identifying independent of the media-type suffix.
-    pub version: u32,
+    pub version: Version<1>,
 
     /// The host-facing launch contract.
     #[serde(default)]
@@ -51,46 +47,6 @@ impl Serialize for Config {
         state.serialize_field("version", &self.version)?;
         state.serialize_field("requirements", &requirements)?;
         state.end()
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            version: CONFIG_SCHEMA_VERSION,
-            requirements: Requirements::default(),
-        }
-    }
-}
-
-/// Errors constructing or validating a [`Config`].
-#[derive(Debug, Error)]
-pub enum ConfigError {
-    /// The blob declares a schema version this build does not understand.
-    #[error("unsupported config schema version {got} (this build understands {want})")]
-    UnsupportedVersion {
-        /// The version found in the blob.
-        got: u32,
-        /// The version this build supports.
-        want: u32,
-    },
-}
-
-impl Config {
-    /// Check the schema version is understood. Requirement invariants (nonzero,
-    /// 2-MiB memory, band ordering) are enforced by the field types at parse, so
-    /// there is nothing else to check here. Callers validate after decoding.
-    ///
-    /// # Errors
-    /// [`ConfigError::UnsupportedVersion`] if the version is not understood.
-    pub fn validate(&self) -> Result<(), ConfigError> {
-        if self.version != CONFIG_SCHEMA_VERSION {
-            return Err(ConfigError::UnsupportedVersion {
-                got: self.version,
-                want: CONFIG_SCHEMA_VERSION,
-            });
-        }
-        Ok(())
     }
 }
 
@@ -562,7 +518,7 @@ mod tests {
     #[test]
     fn requirements_round_trip_and_accessors() {
         let c = Config {
-            version: CONFIG_SCHEMA_VERSION,
+            version: Version,
             requirements: Requirements {
                 cpus: Some(Band {
                     required: Some(nz(2)),
@@ -666,12 +622,7 @@ mod tests {
 
     #[test]
     fn rejects_unknown_version() {
-        let config: Config = serde_json::from_slice(br#"{"version":2,"requirements":{}}"#).unwrap();
-        let err = config.validate();
-        assert!(matches!(
-            err,
-            Err(ConfigError::UnsupportedVersion { got: 2, want: 1 })
-        ));
+        assert!(serde_json::from_slice::<Config>(br#"{"version":2,"requirements":{}}"#).is_err());
     }
 
     #[test]
@@ -815,7 +766,6 @@ mod tests {
             "storage": {"required": 10240, "recommended": "max", "slot": "pci"}
         }});
         let config: Config = serde_json::from_value(value.clone()).unwrap();
-        config.validate().unwrap();
         assert_eq!(
             config.requirements.cpus_recommended(),
             Some(Recommendation::Max)

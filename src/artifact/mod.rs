@@ -23,8 +23,7 @@ mod reference;
 pub use as_string::AsString;
 pub use boot_config_descriptor::BootConfigDescriptor;
 pub use config::{
-    Band, CONFIG_SCHEMA_VERSION, Config, ConfigError, Ingress, Interface, Memory, PortSpec,
-    Recommendation, Requirements, Slot, Storage,
+    Band, Config, Ingress, Interface, Memory, PortSpec, Recommendation, Requirements, Slot, Storage,
 };
 pub use digest::{Digest, DigestParseError};
 pub use manifest::{
