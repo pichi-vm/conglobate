@@ -379,7 +379,7 @@ pub(crate) mod tests {
             let directory = self.path(&digest).with_extension("prepared");
             std::fs::create_dir_all(&directory).unwrap();
             let key = hex::encode(Sha256::digest(header.encode()));
-            std::fs::write(directory.join(format!("{key}.verity")), tree).unwrap();
+            std::fs::write(directory.join(format!("{key}.verity")), &tree).unwrap();
             let size = header.parameters.data_size().unwrap();
             if compressed || data.len() as u64 != size {
                 let mut padded = data.to_vec();
@@ -390,9 +390,9 @@ pub(crate) mod tests {
                 digest: digest.to_string(),
                 size: bytes.len() as u64,
                 annotations: crate::artifact::ScuteAnnotations {
-                    digest: None,
-                    size: None,
-                    verity_digest: None,
+                    digest: format!("sha256:{}", hex::encode(Sha256::digest(data))),
+                    size: data.len().to_string(),
+                    verity_digest: format!("sha256:{}", hex::encode(Sha256::digest(&tree))),
                     data_blocks,
                     salt: hex::encode(parent),
                 },
@@ -786,12 +786,35 @@ pub(crate) mod tests {
         }
     }
 
+    #[test]
+    fn rejects_inherited_scutes_without_content_identities() {
+        let store = Store::new();
+        for compressed in [false, true] {
+            let (layer, root) = store.scute(&[7; 4096], [0; 32], compressed);
+            store.chain_image(vec![layer.clone()], root);
+            let original: serde_json::Value =
+                serde_json::from_slice(&store.manifest_bytes(vec![layer], root)).unwrap();
+            for key in [
+                "dev.pichi.scute.digest",
+                "dev.pichi.scute.size",
+                "dev.pichi.scute.verity.digest",
+            ] {
+                let mut manifest = original.clone();
+                manifest["layers"][0]["annotations"]
+                    .as_object_mut()
+                    .unwrap()
+                    .remove(key);
+                let bytes = serde_json::to_vec(&manifest).unwrap();
+                let digest = store.put(&bytes);
+                let index = store.index(vec![store.descriptor(&digest, bytes.len())]);
+                assert!(store.open().resolve(index).is_err(), "{compressed}: {key}");
+            }
+        }
+    }
+
     /// Authentic roots for cache metadata fixtures; production only seals snapshots.
     pub(crate) trait ScuteFixture {
         fn scute_files(&self, parent: [u8; 32]) -> (devmap_verity::Header, Vec<u8>, [u8; 32]);
-        fn scute_root(&self, parent: [u8; 32]) -> [u8; 32] {
-            self.scute_files(parent).2
-        }
     }
     impl ScuteFixture for [u8] {
         fn scute_files(&self, parent: [u8; 32]) -> (devmap_verity::Header, Vec<u8>, [u8; 32]) {

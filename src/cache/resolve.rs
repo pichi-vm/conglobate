@@ -204,7 +204,9 @@ mod tests {
             for compressed in [false, true] {
                 let data = vec![7; if compressed { 4097 } else { 8192 }];
                 use crate::cache::tests::ScuteFixture as _;
-                let root = data.scute_root(parent);
+                let (_, tree, root) = data.scute_files(parent);
+                let data_digest = Digest::Sha256(Sha256::digest(&data).into());
+                let data_size = data.len();
                 let data_blocks =
                     std::num::NonZero::new((data.len() as u64).div_ceil(4096)).unwrap();
                 let bytes = if compressed {
@@ -217,9 +219,9 @@ mod tests {
                     digest: digest.to_string(),
                     size: bytes.len() as u64,
                     annotations: ScuteAnnotations {
-                        digest: None,
-                        size: None,
-                        verity_digest: None,
+                        digest: data_digest.to_string(),
+                        size: data_size.to_string(),
+                        verity_digest: Digest::Sha256(Sha256::digest(&tree).into()).to_string(),
                         data_blocks,
                         salt: hex::encode(parent),
                     },

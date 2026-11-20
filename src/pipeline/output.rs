@@ -248,9 +248,21 @@ mod tests {
             let mut annotations = serde_json::json!({"example.org/source":name});
             if let Some(seed) = seed {
                 let bytes = vec![seed; 8192];
-                let hash = bytes.scute_root([0; 32]);
+                let (_, tree, hash) = bytes.scute_files([0; 32]);
                 self.roots.insert(name.into(), hash);
-                layers.push(serde_json::json!({"mediaType":"application/vnd.pichi.scute.v1", "digest":self.blob(&bytes), "size":bytes.len(), "annotations":{"dev.pichi.scute.verity.data-blocks":"2", "dev.pichi.scute.verity.salt":"00".repeat(32)}}));
+                let digest = self.blob(&bytes);
+                layers.push(serde_json::json!({
+                    "mediaType": "application/vnd.pichi.scute.v1",
+                    "digest": digest,
+                    "size": bytes.len(),
+                    "annotations": {
+                        "dev.pichi.scute.verity.data-blocks": "2",
+                        "dev.pichi.scute.verity.salt": "00".repeat(32),
+                        "dev.pichi.scute.digest": digest,
+                        "dev.pichi.scute.size": bytes.len().to_string(),
+                        "dev.pichi.scute.verity.digest": Digest::Sha256(Sha256::digest(&tree).into()).to_string(),
+                    }
+                }));
                 // Exercise reuse of currently published, legacy-form inputs.
                 for (key, value) in [
                     ("algo", "sha256"),
