@@ -217,7 +217,7 @@ impl<'w> Scratch<'w> {
                 digest: format!("sha256:{}", hex::encode(data_digest)),
                 size: bytes.to_string(),
                 verity_digest: format!("sha256:{}", hex::encode(verity_digest)),
-                data_blocks,
+                data_blocks: data_blocks.into(),
                 salt: hex::encode(salt),
             },
         };

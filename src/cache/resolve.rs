@@ -222,7 +222,7 @@ mod tests {
                         digest: data_digest.to_string(),
                         size: data_size.to_string(),
                         verity_digest: Digest::Sha256(Sha256::digest(&tree).into()).to_string(),
-                        data_blocks,
+                        data_blocks: data_blocks.into(),
                         salt: hex::encode(parent),
                     },
                 };
