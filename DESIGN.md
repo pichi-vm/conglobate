@@ -1047,7 +1047,9 @@ COW bytes retain their blob digest, but independently sealed layers have
 different salts, verity trees and roots.
 
 Every raw or compressed scute requires `dev.pichi.scute.verity.data-blocks`
-as a positive decimal string. Its padded byte extent must fit in `u64`. For
+as a positive decimal string. Leading zeros and a leading `+` are accepted;
+whitespace is invalid. Producers emit decimal digits without leading zeros
+or a sign. Its padded byte extent must fit in `u64`. For
 raw scutes it must equal the descriptor size rounded up to the data block
 size; for compressed scutes it bounds decoded bytes, with only the final
 block allowed to be partial. Missing counts are invalid in v1. Producers
