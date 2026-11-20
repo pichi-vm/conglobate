@@ -1053,7 +1053,7 @@ size; for compressed scutes it bounds decoded bytes, with only the final
 block allowed to be partial. Missing counts are invalid in v1. Producers
 emit the count used to format the verity tree; no version identifiers change.
 
-Newly sealed scutes also publish three per-layer string annotations:
+Every scute descriptor must include three content-identity string annotations:
 
 - `dev.pichi.scute.digest`: SHA-256 of the exact decompressed scute bytes,
   encoded as `sha256:` followed by 64 lowercase hexadecimal digits.
@@ -1076,10 +1076,11 @@ staging is discarded after the sequential copy. This relies on the guest scratch
 storage: private guest permissions do not authenticate its disk against the host.
 Encryption of `/var/tmp` is future work, not provided by this change.
 
-Older input layers may lack these identities. Composition preserves inherited
-layer descriptors, including absent annotations, without inventing identities
-from host-backed data. These optional schema additions do not change version
-identifiers. Every newly sealed layer emits all three annotations.
+Input layers lacking any identity are rejected during manifest parsing, including
+older inherited descriptors. They must be rebuilt by a producer that emits the
+required identities; consumers do not invent them from host-backed output.
+Composition preserves accepted inherited descriptors. Raw scutes must declare
+the same digest and size in their content identities and transport descriptor.
 
 ### 11.2 Finalization and publication
 
