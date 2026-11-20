@@ -13,13 +13,16 @@
 
 mod as_string;
 mod boot_config_descriptor;
+mod build_provenance;
 mod carapace_verity;
+mod commit;
 mod config;
 mod digest;
 mod index;
 mod manifest;
 mod manifest_annotations;
 mod media_type;
+mod oci_annotations;
 mod reference;
 mod salt;
 mod salt_error;
@@ -55,3 +58,7 @@ pub use carapace_verity::CarapaceVerity;
 pub use manifest_annotations::ManifestAnnotations;
 pub use scute_annotations::ScuteAnnotations;
 pub use scute_verity::ScuteVerity;
+
+pub use build_provenance::BuildProvenance;
+pub use commit::Commit;
+pub use oci_annotations::OciAnnotations;

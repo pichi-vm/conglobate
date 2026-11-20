@@ -60,11 +60,10 @@ pub struct Manifest {
     /// Typed layer descriptors. Scutes appear in base-to-tip chain order;
     /// PMI and boot configuration descriptors are outside that order.
     pub layers: Vec<Layer>,
-    /// Top-level annotations. With scutes, MUST include
+    /// Required build provenance and optional OCI metadata. With scutes, MUST include
     /// `dev.pichi.carapace.verity.hash`; parameters default to 4096-byte data/hash
     /// blocks, version 1 and hash type 1. SHOULD include
     /// `org.opencontainers.image.created` (D-06).
-    #[serde(default, skip_serializing_if = "ManifestAnnotations::is_empty")]
     pub annotations: ManifestAnnotations,
 }
 
@@ -78,7 +77,6 @@ impl<'de> Deserialize<'de> for Manifest {
             artifact_type: String,
             config: ConfigDescriptor,
             layers: Vec<Layer>,
-            #[serde(default)]
             annotations: ManifestAnnotations,
         }
         let wire = Wire::deserialize(deserializer)?;
@@ -505,7 +503,7 @@ mod tests {
                 let mut manifest = sample_base_manifest();
                 if !root {
                     manifest.layers.clear();
-                    manifest.annotations = BTreeMap::<String, String>::new().try_into().unwrap();
+                    manifest.annotations = sample_build_annotations().try_into().unwrap();
                 }
                 manifest.layers.push(encoded.clone());
                 manifest
@@ -547,7 +545,7 @@ mod tests {
             let mut manifest = sample_base_manifest();
             if !root {
                 manifest.layers.clear();
-                manifest.annotations = BTreeMap::<String, String>::new().try_into().unwrap();
+                manifest.annotations = sample_build_annotations().try_into().unwrap();
             }
             manifest.layers.push(config.clone());
             assert!(matches!(
@@ -687,8 +685,20 @@ mod tests {
         ));
     }
 
+    fn sample_build_annotations() -> BTreeMap<String, String> {
+        [
+            (
+                "dev.pichi.build.commit".into(),
+                format!("sha1:{}", "12".repeat(20)),
+            ),
+            ("dev.pichi.build.context".into(), ".".into()),
+            ("dev.pichi.build.plan".into(), "plan.yaml".into()),
+        ]
+        .into()
+    }
+
     fn sample_chain_annotations() -> BTreeMap<String, String> {
-        let mut a = BTreeMap::<String, String>::new();
+        let mut a = sample_build_annotations();
         a.insert(
             CHAIN_ANNOTATION_VERITY_DATA_BLOCK_SIZE.into(),
             "4096".into(),
@@ -916,14 +926,14 @@ mod tests {
         m.validate().unwrap();
         m.layers.clear();
         assert!(m.validate().is_err());
-        m.annotations = BTreeMap::<String, String>::new().try_into().unwrap();
+        m.annotations = sample_build_annotations().try_into().unwrap();
         m.validate().unwrap();
         assert_eq!(m.carapace_root().unwrap(), None);
     }
 
     #[test]
     fn verity_annotations_are_flat_and_typed() {
-        let mut json = serde_json::to_value(BTreeMap::<String, String>::new()).unwrap();
+        let mut json = serde_json::to_value(sample_build_annotations()).unwrap();
         json["dev.pichi.carapace.verity.hash"] =
             serde_json::to_value(Digest::Sha256([0xab; 32])).unwrap();
         json["dev.pichi.carapace.verity.data-block-size"] = "4096".into();
@@ -933,7 +943,7 @@ mod tests {
         assert_eq!(annotations.verity.data_block_size.bytes().get(), 4096);
         assert_eq!(annotations.verity.hash_block_size.bytes().get(), 8192);
         let encoded = serde_json::to_value(annotations).unwrap();
-        assert_eq!(encoded["example.org/source"], "ignored");
+        assert!(encoded.get("example.org/source").is_none());
         assert!(
             encoded
                 .get("dev.pichi.carapace.verity.data-block-size")
@@ -961,7 +971,7 @@ mod tests {
             digest: Digest::Sha256([0x22; 32]),
             size: 4096,
         }));
-        m.annotations = BTreeMap::<String, String>::new().try_into().unwrap();
+        m.annotations = sample_build_annotations().try_into().unwrap();
         m.validate().unwrap();
     }
 

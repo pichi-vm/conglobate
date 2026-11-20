@@ -189,9 +189,9 @@ impl<'b, 'w> StageOutput<'b, 'w> {
             build.cache(),
             &self,
             build.captured().graph().plan().requirements.as_ref(),
+            build.captured().provenance(request)?,
             staged,
-        )?
-        .bind_build(request, build.captured())?;
+        )?;
         Ok(CompletedImage { image })
     }
 }
@@ -245,7 +245,8 @@ mod tests {
         }
         fn image(&mut self, name: &str, seed: Option<u8>, boot: bool, config: Option<&str>) {
             let mut layers = Vec::new();
-            let mut annotations = serde_json::json!({"example.org/source":name});
+            let mut annotations = serde_json::to_value(crate::cache::tests::annotations()).unwrap();
+            annotations["org.opencontainers.image.source"] = name.into();
             if let Some(seed) = seed {
                 let bytes = vec![seed; 8192];
                 let (_, tree, hash) = bytes.scute_files([0; 32]);
@@ -605,21 +606,11 @@ mod tests {
             .assemble(&request, &build)
             .unwrap();
         let manifest = assembled.image.image().manifest();
+        assert!(*manifest.annotations.build.bootstrapped);
+        assert!(manifest.annotations.build.lock.is_none());
         assert_eq!(
-            manifest.annotations.other["dev.pichi.build.bootstrapped"],
-            "true"
-        );
-        assert!(
-            !manifest
-                .annotations
-                .other
-                .contains_key("dev.pichi.build.lock")
-        );
-        assert!(
-            manifest
-                .annotations
-                .other
-                .contains_key("dev.pichi.build.commit")
+            manifest.annotations.build.commit,
+            build.captured().provenance(&request).unwrap().commit
         );
         assert_eq!(manifest.layers, image.image().manifest().layers);
     }
@@ -742,8 +733,14 @@ mod tests {
                 AssembledImage::components(build.cache(), &selected, None, request.output())
                     .unwrap();
             assert_eq!(
-                assembled.image().manifest().annotations.other["example.org/source"],
-                metadata
+                assembled
+                    .image()
+                    .manifest()
+                    .annotations
+                    .oci
+                    .source
+                    .as_deref(),
+                Some(metadata)
             );
             // Inputs contain no prepared scutes. Reading a source root would fail.
             if root {

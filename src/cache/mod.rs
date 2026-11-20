@@ -88,10 +88,7 @@ impl Cache {
         if ContentDigest::Sha256(Sha256::digest(&bytes).into()) != *digest {
             return Err(CacheError::Invalid("metadata content mismatch"));
         }
-        Ok(VerifiedMetadata {
-            digest: digest.clone(),
-            bytes,
-        })
+        Ok(VerifiedMetadata { bytes })
     }
     fn read_metadata(
         &self,
@@ -157,13 +154,9 @@ impl Cache {
 
 #[derive(Debug)]
 pub(crate) struct VerifiedMetadata {
-    digest: ContentDigest,
     bytes: Vec<u8>,
 }
 impl VerifiedMetadata {
-    pub(crate) fn digest(&self) -> &ContentDigest {
-        &self.digest
-    }
     pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes
     }
@@ -171,6 +164,24 @@ impl VerifiedMetadata {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    pub(crate) fn provenance() -> crate::artifact::BuildProvenance {
+        crate::artifact::BuildProvenance {
+            commit: crate::artifact::Commit::Sha1([0x12; 20]).into(),
+            context: ".".into(),
+            plan: "plan.yaml".into(),
+            lock: None,
+            location: None,
+            bootstrapped: false.into(),
+        }
+    }
+    pub(crate) fn annotations() -> crate::artifact::ManifestAnnotations {
+        crate::artifact::ManifestAnnotations {
+            build: provenance(),
+            verity: Default::default(),
+            oci: Default::default(),
+        }
+    }
+
     use crate::artifact::Digest;
     use crate::cache::Cache;
     use sha2::{Digest as _, Sha256};
@@ -257,7 +268,7 @@ pub(crate) mod tests {
                 artifact_type: crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
                 config: crate::artifact::ConfigDescriptor::canonical(),
                 layers: Vec::new(),
-                annotations: Default::default(),
+                annotations: annotations(),
             };
             let bytes = serde_json::to_vec(&manifest).unwrap();
             (self.put(&bytes), bytes)
@@ -289,7 +300,10 @@ pub(crate) mod tests {
         let pin = store.index(vec![unrelated, selected]);
         let image = store.open().resolve(pin).unwrap();
         assert_eq!(image.manifest_bytes().bytes(), bytes);
-        assert_eq!(image.manifest_bytes().digest(), &digest);
+        assert_eq!(
+            Digest::Sha256(Sha256::digest(image.manifest_bytes().bytes()).into()),
+            digest
+        );
     }
 
     #[test]
@@ -423,6 +437,12 @@ pub(crate) mod tests {
                 ]
                 .into_iter()
                 .map(|(key, value)| (format!("dev.pichi.carapace.verity.{key}"), value.to_owned()))
+                .chain(
+                    serde_json::from_value::<std::collections::BTreeMap<String, String>>(
+                        serde_json::to_value(provenance()).unwrap(),
+                    )
+                    .unwrap(),
+                )
                 .collect::<std::collections::BTreeMap<_, _>>()
                 .try_into()
                 .unwrap(),

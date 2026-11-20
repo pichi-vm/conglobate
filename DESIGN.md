@@ -989,6 +989,21 @@ not only on an index, index descriptor, or configuration blob:
 | `dev.pichi.build.bootstrapped` | `"true"` iff this build used a selected bootstrap tool; otherwise absent |
 | `dev.pichi.build.location` | Optional: provenance hint for where to obtain the repository |
 
+`ManifestAnnotations` requires the build group at deserialization. Missing
+commit, context, or plan rejects both new and inherited manifests; lock and
+location remain optional. `Commit` distinguishes SHA-1 and SHA-256 object IDs.
+The string-valued wire encoding is retained through `AsString<T>`; supplied
+numbers, booleans, digests, and timestamps are checked during decoding. Build
+provenance is stamped before the output manifest is first validated.
+
+The flattened `CarapaceVerity` group always exists in Rust. Its optional root
+is required exactly when scutes exist; its other fields hold concrete defaults:
+4096-byte data/hash blocks and `Version<1>`. Hash type is fixed to normal (1). Block sizes use
+Devmap's verity constraints and invalid formats fail at deserialization. Default
+values are omitted from the wire map. Unknown annotation keys are ignored rather
+than retained by the typed view; raw source JSON remains available to assembly
+for preserving unrelated metadata. No annotation grants filesystem authority.
+
 Location says where to get it; commit says what it is; context selects a path
 in that commit; plan and lock select paths relative to context. The commit
 value carries its algorithm. There are no separate tree or object-format keys.

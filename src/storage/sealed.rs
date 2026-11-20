@@ -764,8 +764,14 @@ mod tests {
         };
         let cache = Cache::open(directory.path()).unwrap();
         let requirements = serde_json::from_str(r#"{"memory":{"required":1024}}"#).unwrap();
-        let image =
-            AssembledImage::in_staging(&cache, &selection, Some(&requirements), staged).unwrap();
+        let image = AssembledImage::in_staging(
+            &cache,
+            &selection,
+            Some(&requirements),
+            crate::cache::tests::provenance(),
+            staged,
+        )
+        .unwrap();
         let config = image.image().manifest().config.clone();
         assert_eq!(
             image.image().manifest().carapace_root().unwrap(),
@@ -806,7 +812,14 @@ mod tests {
                 pmi: None,
                 bootconfig: None,
             };
-            let assembled = AssembledImage::in_staging(&cache, &selection, None, staged).unwrap();
+            let assembled = AssembledImage::in_staging(
+                &cache,
+                &selection,
+                None,
+                crate::cache::tests::provenance(),
+                staged,
+            )
+            .unwrap();
             assert_eq!(
                 assembled.image().manifest().carapace_root().unwrap(),
                 Some(expected_root)
