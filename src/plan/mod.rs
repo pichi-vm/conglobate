@@ -111,6 +111,10 @@ mod tests {
         for requirements in [
             json!({}),
             json!({"cpus":{"recommended":2},"memory":{"required":1024,"recommended":2048}}),
+            json!({"filesystems":{
+                "repo":{"description":"Build source repository","readonly":true},
+                "output":{}
+            }}),
         ] {
             let value =
                 json!({"version":1,"image":"registry.test/base:1","requirements":requirements});
@@ -123,6 +127,9 @@ mod tests {
             json!({"memory":{"required":3}}),
             json!({"memory":{"required":2048,"recommended":1024}}),
             json!({"unknown":true}),
+            json!({"filesystems":{"repo":{"mountpoint":"/private"}}}),
+            json!({"filesystems":{"repo":{"readonly":"true"}}}),
+            json!({"filesystems":{"repo":{"description":true}}}),
         ] {
             assert!(
                 serde_json::from_value::<Plan>(
