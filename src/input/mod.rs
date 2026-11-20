@@ -165,11 +165,8 @@ impl CheckedImage {
                 _ => None,
             })
             .map(|descriptor| {
-                let digest = descriptor
-                    .digest
-                    .parse()
-                    .map_err(|_| crate::cache::CacheError::Invalid("invalid bootconfig digest"))?;
-                cache.metadata(&digest, Some(descriptor.size))
+                let digest = &descriptor.digest;
+                cache.metadata(digest, Some(descriptor.size))
             })
             .transpose()
     }

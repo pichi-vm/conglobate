@@ -21,6 +21,9 @@ pub enum DigestParseError {
     /// Algorithm prefix not recognised (only `sha256:` is supported in v0.8).
     #[error("unknown algorithm prefix: expected 'sha256:', got '{0}'")]
     UnknownAlgorithm(String),
+    /// SHA-256 identities use canonical lowercase hexadecimal.
+    #[error("digest must use lowercase hexadecimal")]
+    NonCanonical,
     /// Hex decoding failed.
     #[error("invalid hex in digest: {0}")]
     InvalidHex(#[from] hex::FromHexError),
@@ -79,6 +82,9 @@ impl FromStr for Digest {
                 });
             }
             let bytes = hex::decode(hex_str)?;
+            if hex_str.bytes().any(|byte| byte.is_ascii_uppercase()) {
+                return Err(DigestParseError::NonCanonical);
+            }
             let mut arr = [0u8; 32];
             arr.copy_from_slice(&bytes);
             Ok(Self::Sha256(arr))
@@ -114,6 +120,22 @@ mod tests {
 
     /// Known SHA-256 of "hello": 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
     const HELLO_HEX: &str = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+
+    #[test]
+    fn deserialize_requires_a_canonical_digest_string() {
+        let digest = Digest::Sha256([0xab; 32]);
+        let json = serde_json::to_value(&digest).unwrap();
+        assert_eq!(serde_json::from_value::<Digest>(json).unwrap(), digest);
+        for invalid in [
+            serde_json::json!(format!("sha256:{}", "AB".repeat(32))),
+            serde_json::json!("sha256:ab"),
+            serde_json::json!(format!("sha512:{}", "ab".repeat(32))),
+            serde_json::json!(123),
+            serde_json::Value::Null,
+        ] {
+            assert!(serde_json::from_value::<Digest>(invalid).is_err());
+        }
+    }
 
     #[test]
     fn from_str_round_trip() {

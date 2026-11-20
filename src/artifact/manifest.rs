@@ -35,8 +35,10 @@ const CHAIN_ANNOTATION_VERITY_HASH_TYPE: &str = "dev.pichi.carapace.verity.hash-
 pub const CARAPACE_ROOT_ANNOTATION: &str = "dev.pichi.carapace.verity.hash";
 
 /// Canonical SHA-256 digest of `{}` (the OCI 1.1 empty config blob).
-const EMPTY_CONFIG_DIGEST: &str =
-    "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a";
+const EMPTY_CONFIG_DIGEST: Digest = Digest::Sha256([
+    0x44, 0x13, 0x6f, 0xa3, 0x55, 0xb3, 0x67, 0x8a, 0x11, 0x46, 0xad, 0x16, 0xf7, 0xe8, 0x64, 0x9e,
+    0x94, 0xfb, 0x4f, 0xc2, 0x1f, 0xe7, 0x7e, 0x83, 0x10, 0xc0, 0x60, 0xf6, 0x1c, 0xaa, 0xff, 0x8a,
+]);
 /// Canonical base64 encoding of `{}` (used as inline `data` per OCI 1.1).
 const EMPTY_CONFIG_DATA_BASE64: &str = "e30=";
 
@@ -90,7 +92,7 @@ pub struct ConfigDescriptor {
     #[serde(rename = "mediaType")]
     pub media_type: String,
     /// SHA-256 digest of the config blob.
-    pub digest: String,
+    pub digest: Digest,
     /// Byte length of the config blob.
     pub size: u64,
     /// Base64-encoded inline blob (present for the empty config; omitted for a
@@ -104,7 +106,7 @@ impl ConfigDescriptor {
     pub fn canonical() -> Self {
         Self {
             media_type: MEDIA_TYPE_OCI_EMPTY_V1.to_string(),
-            digest: EMPTY_CONFIG_DIGEST.to_string(),
+            digest: EMPTY_CONFIG_DIGEST,
             size: 2,
             data: Some(EMPTY_CONFIG_DATA_BASE64.to_string()),
         }
@@ -112,7 +114,7 @@ impl ConfigDescriptor {
 
     /// A real config-blob descriptor (`vnd.pichi.config.v1+json`), referenced by
     /// digest; the blob is stored/moved separately.
-    pub fn for_config(digest: String, size: u64) -> Self {
+    pub fn for_config(digest: Digest, size: u64) -> Self {
         Self {
             media_type: MEDIA_TYPE_PICHI_CONFIG_V1.to_string(),
             digest,
@@ -205,8 +207,8 @@ pub enum Layer {
 }
 
 impl Layer {
-    /// Return the descriptor digest as a `&str` regardless of variant.
-    pub fn digest_str(&self) -> &str {
+    /// The content identity, regardless of layer encoding.
+    pub fn digest(&self) -> &Digest {
         match self {
             Self::Scute(d) | Self::ScuteZstd(d) => &d.digest,
             Self::Pmi(d) | Self::PmiZstd(d) => &d.digest,
@@ -251,7 +253,7 @@ impl Layer {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ScuteDescriptor {
     /// Content digest of the blob.
-    pub digest: String,
+    pub digest: Digest,
     /// Byte size of the blob.
     pub size: u64,
     /// Per-scute annotations (D-05).
@@ -272,26 +274,26 @@ pub struct ScuteAnnotations {
     pub salt: Salt,
     /// Required SHA-256 of the exact decompressed bytes.
     #[serde(rename = "dev.pichi.scute.digest")]
-    pub digest: String,
+    pub digest: Digest,
     /// Required exact decompressed byte count as a decimal annotation string.
     #[serde(rename = "dev.pichi.scute.size")]
     pub size: AsString<std::num::NonZeroU64>,
     /// Required SHA-256 of the complete generated verity file, including its
     /// header and padding. This is distinct from the verity root.
     #[serde(rename = "dev.pichi.scute.verity.digest")]
-    pub verity_digest: String,
+    pub verity_digest: Digest,
 }
 
 /// PMI layer descriptor. Digest and size identify the encoded blob bytes.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PmiDescriptor {
     /// Content digest of the PMI blob.
-    pub digest: String,
+    pub digest: Digest,
     /// Byte size of the PMI blob.
     pub size: u64,
 }
 
-/// Validation errors for [`Manifest::validate`] (per D-07).
+/// Structural validation errors, also reported during manifest deserialization.
 #[derive(Debug, Error)]
 pub enum ManifestValidationError {
     /// D-07 rule 1: wrong `artifactType`.
@@ -338,7 +340,7 @@ pub enum ManifestValidationError {
 
     /// The first scute must be the base; later scutes must have a parent.
     #[error("scutes must appear in base-to-tip order: {0}")]
-    BadScuteOrder(String),
+    BadScuteOrder(Digest),
 
     /// A supplied content identity is malformed or contradicts scute geometry.
     #[error("scute annotation {key} is malformed: {value}")]
@@ -351,7 +353,7 @@ pub enum ManifestValidationError {
 
     /// Declared data-block count is zero or contradicts a raw blob's size.
     #[error("invalid data-block count for scute {0}")]
-    BadScuteBlocks(String),
+    BadScuteBlocks(Digest),
 }
 
 impl Manifest {
@@ -383,9 +385,10 @@ impl Manifest {
                 });
             }
         };
-        let root = wire.parse::<Digest>().ok().filter(|digest| {
-            self.has_scutes() && digest.to_string() == wire && digest.as_sha256_array() != [0; 32]
-        });
+        let root = wire
+            .parse::<Digest>()
+            .ok()
+            .filter(|digest| self.has_scutes() && digest.as_sha256_array() != [0; 32]);
         let root = root.ok_or_else(|| ManifestValidationError::BadChainAnnotation {
             key: CARAPACE_ROOT_ANNOTATION,
             value: value.clone(),
@@ -496,27 +499,10 @@ impl Manifest {
             {
                 return Err(ManifestValidationError::BadScuteBlocks(d.digest.clone()));
             }
-            for (key, value) in [
-                ("dev.pichi.scute.digest", &d.annotations.digest),
-                (
-                    "dev.pichi.scute.verity.digest",
-                    &d.annotations.verity_digest,
-                ),
-            ] {
-                if !value
-                    .parse::<Digest>()
-                    .is_ok_and(|digest| digest.to_string() == *value)
-                {
-                    return Err(ManifestValidationError::BadScuteAnnotation {
-                        key,
-                        value: value.clone(),
-                    });
-                }
-            }
             if matches!(layer, Layer::Scute(_)) && d.annotations.digest != d.digest {
                 return Err(ManifestValidationError::BadScuteAnnotation {
                     key: "dev.pichi.scute.digest",
-                    value: d.annotations.digest.clone(),
+                    value: d.annotations.digest.to_string(),
                 });
             }
             let size = d.annotations.size.get();
@@ -550,7 +536,7 @@ mod tests {
     #[test]
     fn pmi_encodings_share_cardinality_and_bootconfig_rules() {
         let descriptor = PmiDescriptor {
-            digest: format!("sha256:{}", "12".repeat(32)),
+            digest: Digest::Sha256([0x12; 32]),
             size: 73,
         };
         let variants = [Layer::Pmi(descriptor.clone()), Layer::PmiZstd(descriptor)];
@@ -574,7 +560,7 @@ mod tests {
                 manifest
                     .layers
                     .push(Layer::BootConfig(BootConfigDescriptor {
-                        digest: format!("sha256:{}", "34".repeat(32)),
+                        digest: Digest::Sha256([0x34; 32]),
                         size: 12,
                     }));
                 manifest.validate().unwrap();
@@ -593,7 +579,7 @@ mod tests {
     #[test]
     fn boot_config_is_a_compressed_component_requiring_one_pmi() {
         let config = Layer::BootConfig(BootConfigDescriptor {
-            digest: format!("sha256:{}", "34".repeat(32)),
+            digest: Digest::Sha256([0x34; 32]),
             size: 73,
         });
         let json = serde_json::to_value(&config).unwrap();
@@ -618,7 +604,7 @@ mod tests {
                 Err(ManifestValidationError::BootConfigWithoutPmi)
             ));
             manifest.layers.push(Layer::Pmi(PmiDescriptor {
-                digest: format!("sha256:{}", "12".repeat(32)),
+                digest: Digest::Sha256([0x12; 32]),
                 size: 4096,
             }));
             manifest.validate().unwrap();
@@ -633,9 +619,9 @@ mod tests {
     #[test]
     fn data_blocks_is_a_required_positive_decimal_annotation() {
         let annotations = ScuteAnnotations {
-            digest: format!("sha256:{}", "11".repeat(32)),
+            digest: Digest::Sha256([0x11; 32]),
             size: NonZero::new(1024).unwrap().into(),
-            verity_digest: format!("sha256:{}", "22".repeat(32)),
+            verity_digest: Digest::Sha256([0x22; 32]),
             salt: vec![0; 32].try_into().unwrap(),
             data_blocks: NonZero::new(2).unwrap().into(),
         };
@@ -690,13 +676,13 @@ mod tests {
         };
         scute.annotations.digest = scute.digest.clone();
         scute.annotations.size = NonZero::new(scute.size).unwrap().into();
-        scute.annotations.verity_digest = format!("sha256:{}", "34".repeat(32));
+        scute.annotations.verity_digest = Digest::Sha256([0x34; 32]);
         manifest.validate().unwrap();
         let original = manifest.layers[0].clone();
         let Layer::Scute(scute) = &mut manifest.layers[0] else {
             unreachable!()
         };
-        scute.annotations.digest = format!("sha256:{}", "ff".repeat(32));
+        scute.annotations.digest = Digest::Sha256([0xff; 32]);
         assert!(matches!(
             manifest.validate(),
             Err(ManifestValidationError::BadScuteAnnotation {
@@ -705,27 +691,6 @@ mod tests {
             })
         ));
         manifest.layers[0] = original.clone();
-        for field in ["digest", "verity_digest"] {
-            for value in [
-                "sha256:abcd".into(),
-                format!("sha512:{}", "12".repeat(32)),
-                format!("sha256:{}", "AB".repeat(32)),
-            ] {
-                let Layer::Scute(scute) = &mut manifest.layers[0] else {
-                    unreachable!()
-                };
-                if field == "digest" {
-                    scute.annotations.digest = value;
-                } else {
-                    scute.annotations.verity_digest = value;
-                }
-                assert!(matches!(
-                    manifest.validate(),
-                    Err(ManifestValidationError::BadScuteAnnotation { .. })
-                ));
-                manifest.layers[0] = original.clone();
-            }
-        }
         for size in [1023u64, 1025] {
             let Layer::Scute(scute) = &mut manifest.layers[0] else {
                 unreachable!()
@@ -801,13 +766,12 @@ mod tests {
             artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
             config: ConfigDescriptor::canonical(),
             layers: vec![Layer::Scute(ScuteDescriptor {
-                digest: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
-                    .into(),
+                digest: Digest::Sha256([0x11; 32]),
                 size: 1024,
                 annotations: ScuteAnnotations {
-                    digest: format!("sha256:{}", "11".repeat(32)),
+                    digest: Digest::Sha256([0x11; 32]),
                     size: NonZero::new(1024).unwrap().into(),
-                    verity_digest: format!("sha256:{}", "22".repeat(32)),
+                    verity_digest: Digest::Sha256([0x22; 32]),
                     data_blocks: NonZero::new(1).unwrap().into(),
                     salt: vec![0; 32].try_into().unwrap(),
                 },
@@ -842,7 +806,7 @@ mod tests {
         assert_eq!(c.data.as_deref(), Some("e30="));
         assert_eq!(c.digest, EMPTY_CONFIG_DIGEST);
         // Cross-check: SHA-256 of "{}" really is the EMPTY_CONFIG_DIGEST hex
-        let manual = crate::artifact::Digest::Sha256(Sha256::digest(b"{}").into()).to_string();
+        let manual = Digest::Sha256(Sha256::digest(b"{}").into());
         assert_eq!(manual, EMPTY_CONFIG_DIGEST);
     }
 
@@ -855,8 +819,7 @@ mod tests {
     fn validate_accepts_bootable_image_with_one_pmi() {
         let mut m = sample_base_manifest();
         m.layers.push(Layer::Pmi(PmiDescriptor {
-            digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
-                .into(),
+            digest: Digest::Sha256([0x22; 32]),
             size: 4096,
         }));
         m.validate().unwrap();
@@ -886,10 +849,7 @@ mod tests {
     #[test]
     fn validate_accepts_real_config_blob() {
         let mut m = sample_base_manifest();
-        m.config = ConfigDescriptor::for_config(
-            "sha256:5555555555555555555555555555555555555555555555555555555555555555".into(),
-            42,
-        );
+        m.config = ConfigDescriptor::for_config(Digest::Sha256([0x55; 32]), 42);
         m.validate().unwrap();
     }
 
@@ -922,8 +882,7 @@ mod tests {
         let mut m = sample_base_manifest();
         for _ in 0..2 {
             m.layers.push(Layer::Pmi(PmiDescriptor {
-                digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-                    .into(),
+                digest: Digest::Sha256([0x00; 32]),
                 size: 1,
             }));
         }
@@ -948,7 +907,7 @@ mod tests {
         manifest.layers.insert(
             0,
             Layer::Pmi(PmiDescriptor {
-                digest: format!("sha256:{}", "44".repeat(32)),
+                digest: Digest::Sha256([0x44; 32]),
                 size: 8192,
             }),
         );
@@ -1113,8 +1072,7 @@ mod tests {
         let mut m = sample_base_manifest();
         m.layers.clear();
         m.layers.push(Layer::Pmi(PmiDescriptor {
-            digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
-                .into(),
+            digest: Digest::Sha256([0x22; 32]),
             size: 4096,
         }));
         m.annotations.clear();
@@ -1137,18 +1095,18 @@ mod tests {
     #[test]
     fn pichi_layer_is_zstd_variant() {
         let scute_desc = ScuteDescriptor {
-            digest: "sha256:dead".into(),
+            digest: Digest::Sha256([0xde; 32]),
             size: 0,
             annotations: ScuteAnnotations {
-                digest: format!("sha256:{}", "11".repeat(32)),
+                digest: Digest::Sha256([0x11; 32]),
                 size: NonZero::new(1024).unwrap().into(),
-                verity_digest: format!("sha256:{}", "22".repeat(32)),
+                verity_digest: Digest::Sha256([0x22; 32]),
                 data_blocks: NonZero::new(1).unwrap().into(),
                 salt: vec![0; 32].try_into().unwrap(),
             },
         };
         let pmi_desc = PmiDescriptor {
-            digest: "sha256:beef".into(),
+            digest: Digest::Sha256([0xbe; 32]),
             size: 0,
         };
         assert!(!Layer::Scute(scute_desc.clone()).is_zstd_variant());
@@ -1159,18 +1117,18 @@ mod tests {
     #[test]
     fn pichi_layer_media_type_str() {
         let scute_desc = ScuteDescriptor {
-            digest: "sha256:dead".into(),
+            digest: Digest::Sha256([0xde; 32]),
             size: 0,
             annotations: ScuteAnnotations {
-                digest: format!("sha256:{}", "11".repeat(32)),
+                digest: Digest::Sha256([0x11; 32]),
                 size: NonZero::new(1024).unwrap().into(),
-                verity_digest: format!("sha256:{}", "22".repeat(32)),
+                verity_digest: Digest::Sha256([0x22; 32]),
                 data_blocks: NonZero::new(1).unwrap().into(),
                 salt: vec![0; 32].try_into().unwrap(),
             },
         };
         let pmi_desc = PmiDescriptor {
-            digest: "sha256:beef".into(),
+            digest: Digest::Sha256([0xbe; 32]),
             size: 0,
         };
         assert_eq!(

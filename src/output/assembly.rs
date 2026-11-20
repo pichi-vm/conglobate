@@ -171,16 +171,14 @@ impl AssembledImage {
                     ..Default::default()
                 })?;
                 let digest = staged.store_blob(&bytes)?;
-                manifest["config"] =
-                    serde_json::to_value(crate::artifact::ConfigDescriptor::for_config(
-                        digest.to_string(),
-                        bytes.len() as u64,
-                    ))?;
+                manifest["config"] = serde_json::to_value(
+                    crate::artifact::ConfigDescriptor::for_config(digest, bytes.len() as u64),
+                )?;
             } else if let Some(image) = metadata
                 && !image.image().manifest().config.is_empty()
             {
                 let config = &image.image().manifest().config;
-                staged.copy_blob(cache, &config.digest.parse()?, config.size)?;
+                staged.copy_blob(cache, &config.digest, config.size)?;
             } else {
                 staged.store_blob(b"{}")?;
             }
@@ -254,7 +252,7 @@ impl AssembledImage {
                 let digest = staged.store_blob(&config.bytes)?;
                 layers.push(serde_json::to_value(crate::artifact::Layer::BootConfig(
                     crate::artifact::BootConfigDescriptor {
-                        digest: digest.to_string(),
+                        digest,
                         size: config.bytes.len() as u64,
                     },
                 ))?);
@@ -357,7 +355,7 @@ mod tests {
                 crate::artifact::ConfigDescriptor::canonical()
             } else {
                 crate::artifact::ConfigDescriptor::for_config(
-                    Digest::Sha256(Sha256::digest(&config).into()).to_string(),
+                    Digest::Sha256(Sha256::digest(&config).into()),
                     config.len() as u64,
                 )
             };
@@ -429,7 +427,8 @@ mod tests {
                 root: None,
                 pmi: Some(crate::pipeline::pmi::Pmi::Inherited(image)),
                 bootconfig: Some(crate::pipeline::boot_config::BootConfig {
-                    bytes: self.blobs[image.image().manifest().layers[1].digest_str()].clone(),
+                    bytes: self.blobs[&image.image().manifest().layers[1].digest().to_string()]
+                        .clone(),
                     root: None,
                 }),
             }
@@ -636,7 +635,7 @@ mod tests {
                 .exists()
         );
         let pmi = &image.image().manifest().layers[0];
-        let digest = pmi.digest_str().parse().unwrap();
+        let digest = pmi.digest().clone();
         assert!(!assembled.staged.blob_path(&digest).exists());
         cache.verify(&digest, pmi.size()).unwrap();
         assembled.discard().unwrap();
@@ -687,7 +686,7 @@ mod tests {
                     continue;
                 } // JSON may be serialized canonically.
                 let path = blob_directory.join(digest.strip_prefix("sha256:").unwrap());
-                if digest == pmi.digest_str() {
+                if digest == pmi.digest().to_string() {
                     assert!(!path.exists());
                     cache.verify(&digest.parse().unwrap(), pmi.size()).unwrap();
                 } else {
@@ -731,14 +730,14 @@ mod tests {
     fn captured_bootconfig_survives_loss_of_cache_copy() {
         let input = Input::new(false);
         let (cache, image) = input.open();
-        let digest = image.image().manifest().layers[1].digest_str();
+        let digest = image.image().manifest().layers[1].digest();
         let selection = input.selection(&image);
         fs::remove_file(
             input
                 .directory
                 .path()
                 .join("blobs/sha256")
-                .join(digest.strip_prefix("sha256:").unwrap()),
+                .join(digest.hex()),
         )
         .unwrap();
         let parent = tempfile::tempdir().unwrap();
@@ -753,7 +752,7 @@ mod tests {
         let layer = &assembled.image().manifest().layers[1];
         Cache::open(assembled.staged.temporary.path())
             .unwrap()
-            .verify(&layer.digest_str().parse().unwrap(), layer.size())
+            .verify(layer.digest(), layer.size())
             .unwrap();
         assembled.discard().unwrap();
         assert_eq!(fs::read_dir(parent.path()).unwrap().count(), 0);
@@ -768,7 +767,7 @@ mod tests {
                 .directory
                 .path()
                 .join("blobs/sha256")
-                .join(config.digest.strip_prefix("sha256:").unwrap()),
+                .join(config.digest.hex()),
         )
         .unwrap();
         let parent = tempfile::tempdir().unwrap();

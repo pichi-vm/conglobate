@@ -287,7 +287,7 @@ mod tests {
                 layers.push(serde_json::json!({"mediaType":"application/vnd.pichi.bootconfig.v1+zstd", "digest":self.blob(&config), "size":config.len()}));
             }
             let config = serde_json::to_vec(&serde_json::json!({"source":name})).unwrap();
-            let manifest = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "config":crate::artifact::ConfigDescriptor::for_config(self.blob(&config),config.len() as u64), "layers":layers,"annotations":annotations})).unwrap();
+            let manifest = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "config":crate::artifact::ConfigDescriptor::for_config(self.blob(&config).parse().unwrap(),config.len() as u64), "layers":layers,"annotations":annotations})).unwrap();
             let index = serde_json::to_vec(&serde_json::json!({"schemaVersion":2, "mediaType":"application/vnd.oci.image.index.v1+json", "manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json", "artifactType":crate::artifact::MEDIA_TYPE_PICHI_ARTIFACT_V1, "digest":self.blob(&manifest),"size":manifest.len(),"platform":{"os":"pichi","architecture":crate::cache::HostArchitecture::current().unwrap().oci_name()}}]})).unwrap();
             self.pins
                 .insert(format!("registry.test/{name}:1"), self.blob(&index));
@@ -670,12 +670,12 @@ mod tests {
                 assembled.publish().unwrap();
                 let bytes = fs::read(
                     request.output().join("blobs/sha256").join(
-                        config.digest.parse::<Digest>().unwrap().hex(),
+                        config.digest.hex(),
                     ),
                 ).unwrap();
                 assert_eq!(bytes, expected.as_bytes());
                 assert_eq!(config.size, bytes.len() as u64);
-                assert_eq!(config.digest, Digest::Sha256(Sha256::digest(&bytes).into()).to_string());
+                assert_eq!(config.digest, Digest::Sha256(Sha256::digest(&bytes).into()));
             }
         }
     }
@@ -690,7 +690,7 @@ mod tests {
         let layers = manifest.layers;
         completed.publish().unwrap();
         for layer in layers {
-            let digest: Digest = layer.digest_str().parse().unwrap();
+            let digest: Digest = layer.digest().clone();
             let present = request
                 .output()
                 .join("blobs/sha256")
@@ -716,7 +716,7 @@ mod tests {
             request
                 .output()
                 .join("blobs/sha256")
-                .join(manifest.config.digest.parse::<Digest>().unwrap().hex())
+                .join(manifest.config.digest.hex())
                 .is_file()
         );
         assert!(request.output().join("oci-layout").exists());
@@ -773,7 +773,7 @@ mod tests {
             if boot {
                 let expected = b"opaque PMI".to_vec();
                 let layer = selected.pmi.as_ref().unwrap().source_layer();
-                assert_eq!(layer.digest_str(), fixture.blob(&expected));
+                assert_eq!(layer.digest().to_string(), fixture.blob(&expected));
             }
             assembled.publish().unwrap();
             Fixture::assert_output(request.output(), root, boot, config);

@@ -80,26 +80,20 @@ impl Cache {
         let manifest = image.manifest();
         let config = &manifest.config;
         if !config.is_empty() {
-            let digest = config
-                .digest
-                .parse()
-                .map_err(|_| CacheError::Invalid("invalid config digest"))?;
-            self.verify(&digest, config.size)?;
+            let digest = &config.digest;
+            self.verify(digest, config.size)?;
         }
         for layer in &manifest.layers {
-            let digest = layer
-                .digest_str()
-                .parse()
-                .map_err(|_| CacheError::Invalid("invalid layer digest"))?;
+            let digest = layer.digest();
             if matches!(
                 layer,
                 crate::artifact::Layer::Scute(_) | crate::artifact::Layer::ScuteZstd(_)
             ) {
-                if self.blob(&digest)?.metadata()?.len() != layer.size() {
+                if self.blob(digest)?.metadata()?.len() != layer.size() {
                     return Err(CacheError::Invalid("scute size mismatch"));
                 }
             } else {
-                self.verify(&digest, layer.size())?;
+                self.verify(digest, layer.size())?;
             }
         }
         Ok(())
@@ -217,12 +211,12 @@ mod tests {
                 };
                 let digest = Digest::Sha256(Sha256::digest(&bytes).into());
                 let descriptor = ScuteDescriptor {
-                    digest: digest.to_string(),
+                    digest: digest.clone(),
                     size: bytes.len() as u64,
                     annotations: ScuteAnnotations {
-                        digest: data_digest.to_string(),
+                        digest: data_digest,
                         size: NonZero::new(data_size as u64).unwrap().into(),
-                        verity_digest: Digest::Sha256(Sha256::digest(&tree).into()).to_string(),
+                        verity_digest: Digest::Sha256(Sha256::digest(&tree).into()),
                         data_blocks: data_blocks.into(),
                         salt: parent.to_vec().try_into().unwrap(),
                     },
@@ -271,7 +265,7 @@ mod tests {
                 media_type: MANIFEST.into(),
                 artifact_type: MEDIA_TYPE_PICHI_ARTIFACT_V1.into(),
                 config: crate::artifact::ConfigDescriptor::for_config(
-                    config_digest.to_string(),
+                    config_digest.clone(),
                     config.len() as u64,
                 ),
                 layers,
@@ -350,8 +344,7 @@ mod tests {
             changed[0] ^= 1;
             fs::write(&path, changed).unwrap();
             let scute = fixture.image.manifest().layers.iter().any(|layer| {
-                matches!(layer, Layer::Scute(_) | Layer::ScuteZstd(_))
-                    && layer.digest_str() == digest.to_string()
+                matches!(layer, Layer::Scute(_) | Layer::ScuteZstd(_)) && layer.digest() == digest
             });
             assert_eq!(
                 cache.verify_metadata(&fixture.image).is_ok(),
