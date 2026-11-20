@@ -983,6 +983,13 @@ importer; ordinary complete-layout import cannot consume this output alone.
 
 ### 11.1 Image-manifest annotation contract
 
+The typed annotation view exposes optional OCI creation time, source and
+architecture as informational strings. It preserves creation-time text without
+parsing or normalizing it; producers remain responsible for RFC3339 syntax.
+Platform selection uses the index descriptor, not the architecture annotation.
+Unknown annotations are ignored by the typed view and preserved through
+assembly's original JSON.
+
 Write these build binding facts on the published image manifest itself,
 not only on an index, index descriptor, or configuration blob:
 

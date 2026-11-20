@@ -20,6 +20,7 @@ mod index;
 mod manifest;
 mod manifest_annotations;
 mod media_type;
+mod oci_annotations;
 mod reference;
 
 pub use as_string::AsString;
@@ -39,6 +40,7 @@ pub use media_type::{
     MEDIA_TYPE_PICHI_CONFIG_V1, MEDIA_TYPE_PICHI_PMI_V1, MEDIA_TYPE_PICHI_PMI_V1_ZSTD,
     MEDIA_TYPE_PICHI_REQUIREMENTS_V1, MEDIA_TYPE_PICHI_SCUTE_V1, MEDIA_TYPE_PICHI_SCUTE_V1_ZSTD,
 };
+pub use oci_annotations::OciAnnotations;
 pub use reference::{Reference, ReferenceKind, ReferenceParseError};
 
 pub use index::{

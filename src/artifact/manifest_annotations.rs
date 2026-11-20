@@ -1,12 +1,15 @@
 // SPDX-FileCopyrightText: Advanced Micro Devices, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::CarapaceVerity;
+use super::{CarapaceVerity, OciAnnotations};
 use serde::{Deserialize, Serialize};
 
 /// Typed view of manifest annotations; assembly preserves the original JSON.
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ManifestAnnotations {
+    /// Informational OCI metadata, independent of platform selection.
+    #[serde(flatten)]
+    pub oci: OciAnnotations,
     /// Carapace identity and reconstruction parameters.
     #[serde(flatten)]
     pub verity: CarapaceVerity,
@@ -74,5 +77,34 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(decoded, ManifestAnnotations::default());
+    }
+
+    #[test]
+    fn oci_annotations_preserve_informational_strings() {
+        let values = json!({
+            "org.opencontainers.image.created": "2026-05-06T14:32:00+05:30",
+            "org.opencontainers.image.source": "https://example.org/source",
+            "org.opencontainers.image.architecture": "informational-hint"
+        });
+        let decoded: ManifestAnnotations = serde_json::from_value(values.clone()).unwrap();
+        assert_eq!(
+            decoded.oci.created.as_deref(),
+            Some("2026-05-06T14:32:00+05:30")
+        );
+        assert_eq!(
+            decoded.oci.source.as_deref(),
+            Some("https://example.org/source")
+        );
+        assert_eq!(
+            decoded.oci.architecture.as_deref(),
+            Some("informational-hint")
+        );
+        assert_eq!(serde_json::to_value(decoded).unwrap(), values);
+        assert!(
+            serde_json::from_value::<ManifestAnnotations>(json!({
+                "org.opencontainers.image.created": 123
+            }))
+            .is_err()
+        );
     }
 }
